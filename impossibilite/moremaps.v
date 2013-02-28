@@ -28,7 +28,7 @@ Module MapMorphisms (E : OrderedType) (M : S with Module E := E).
     
     Let Equiv := Equiv elt_eq.
 
-    (** Caract�risation de Equiv plus proche de celle de Containers *)
+    (** Caractérisation de Equiv plus proche de celle de Containers *)
     Lemma Equiv_1 : forall {m m'}, Equiv m m' ->
       forall k e, MapsTo k e m -> 
         exists e', elt_eq e e' /\ MapsTo k e' m'.
@@ -202,7 +202,7 @@ Module MapMorphisms (E : OrderedType) (M : S with Module E := E).
         contradiction (OT.lt_antirefl R).
     Qed.
 
-    (* Morphisme le plus général pour fold par rapport à Equiv *)
+    (* Morphisme le plus gÃ©nÃ©ral pour fold par rapport Ã  Equiv *)
     Global Instance fold_m `{A_Equiv : Equivalence A Aeq} :
       Proper ((E.eq ==> elt_eq ==> Aeq ==> Aeq) ==> Equiv ==> Aeq ==> Aeq)
       (@fold elt A).
@@ -218,7 +218,7 @@ Module MapMorphisms (E : OrderedType) (M : S with Module E := E).
       apply IHl; auto. apply Hf; auto.
     Qed.
 
-    (** Exemple: fold appliqué à add *)
+    (** Exemple: fold appliquÃ© Ã  add *)
     Global Instance Equiv_Equivalence : Equivalence Equiv.
     Proof.
       constructor; repeat intro; apply Equiv_3; intros;
@@ -233,7 +233,7 @@ Module MapMorphisms (E : OrderedType) (M : S with Module E := E).
 
   End WithElt.
 
-  (** Passage à Equal *)
+  (** Passage Ã  Equal *)
   Section Equal.
     Variable elt : Type.
 
@@ -244,8 +244,8 @@ Module MapMorphisms (E : OrderedType) (M : S with Module E := E).
       apply Equiv_3; intro k; rewrite (H k); reflexivity.
     Qed.
 
-    (* si on exprime cette équivalence en utilisant 'relation_equivalence',
-       on peut réécrire directement Equiv en Equal dans les signatures de 
+    (* si on exprime cette Ã©quivalence en utilisant 'relation_equivalence',
+       on peut rÃ©Ã©crire directement Equiv en Equal dans les signatures de 
        morphisme car 'respectful' est un morphisme pour relation_equivalence *)
     
     Global Instance fold_add_Equal :

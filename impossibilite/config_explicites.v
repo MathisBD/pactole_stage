@@ -145,8 +145,8 @@ Qed.
 Definition good_robots (s:state): MapRobots.t position :=
   (MapRobotsProps.filter (fun rbt _ => dec_is_good s rbt) s.(robots)).
 
-(* � savoir: In x y = (exists e , MapsTo x e y.
-  (bon strictement parlant c'est un "Raw.MapsTo" tr�s moche mais c'est
+(* À savoir: In x y = (exists e , MapsTo x e y.
+  (bon strictement parlant c'est un "Raw.MapsTo" très moche mais c'est
   convertible). *)
 
 (** ** Main property of [good_robots]. *)
@@ -380,13 +380,13 @@ Definition get_all_robots s :=
 Definition sch_always:scheduler := fun s => get_all_robots s. 
 
 
-(* FIXME: il faut simplement dire que si on les goods sont empil�s alors la
-   transition ne les d�place plus (ind�pendemment des bads, du tick et du
+(* FIXME: il faut simplement dire que si on les goods sont empilés alors la
+   transition ne les déplace plus (indépendemment des bads, du tick et du
    scheduler). *)
 XXXX
 (* Chelou car le scheduler peut ne choisir que certains robots, donc les autres
-   sont forc�s de ne pas bouger? Par ailleurs est-ce-que le tick doit vraiment
-   �tre quantifi� ou bien seulement les tick apr�s une certaine date?
+   sont forcés de ne pas bouger? Par ailleurs est-ce-que le tick doit vraiment
+   être quantifié ou bien seulement les tick après une certaine date?
  *)
 Definition stable_stacked t (mr:MapRobots.t position) p :=
   forall tck (b:Robotset.t) ts' sch,
@@ -403,10 +403,10 @@ Definition solution (s:timed_state) (t:transition) (p:position) :=
 
 (* XU *)
 
-(* foireux sur les quantifications, ici je force tb à être la même partout *)
+(* foireux sur les quantifications, ici je force tb Ã  Ãªtre la mÃªme partout *)
 Inductive leadsto_solution2 (s:timed_state) (t:transition) :=
 | now : forall (ps:position), solution s t ps -> leadsto_solution2 s t
-(* Ici on parenth�se pour que tous les successeurs soient ok *)
+(* Ici on parenthèse pour que tous les successeurs soient ok *)
 | later : (forall (s':timed_state), 
             global_transition sch_always t s s' -> leadsto_solution2 s' t) -> leadsto_solution2 s t.
 
@@ -449,7 +449,7 @@ Definition is_max_good (m:state) x:Prop :=
 Definition is_min_good (m:state) x:Prop :=
   moremappred.For_all (fun rbt n => (x <= n)%Z /\ is_good m rbt) (m.(robots)). 
 
-(* Versions decidables, � remettre et prouver compatible si n�cessaire.
+(* Versions decidables, à remettre et prouver compatible si nécessaire.
 
 Definition is_max_good (m:state) x :=
   MapRobotsProps.for_all
@@ -525,7 +525,7 @@ Proof.
     - split.
       + reflexivity.
       + intros r p h np H.
-        assert (peqnp:p=np). (* tout �a pour �a! *)
+        assert (peqnp:p=np). (* tout ça pour ça! *)
         eapply MapRobotsFacts.MapsTo_fun;eauto.
         subst np.
         assert (h' : MapRobots.MapsTo r p (robots (thestate ts))).
@@ -617,8 +617,8 @@ Lemma global_trans_determ :
   induction X.
   elim e ; intros.
   apply (nosol x) ; exact H1.
-  (* putain mais c'est quoi cette hypothèse ? *)
-  (* ça peut pas marcher dans le but 3 les ticks diffèrent de 1 ! *)
+  (* putain mais c'est quoi cette hypothÃ¨se ? *)
+  (* Ã§a peut pas marcher dans le but 3 les ticks diffÃ¨rent de 1 ! *)
   apply IHX.
   intros.
   rewrite e in H.
@@ -632,7 +632,7 @@ Lemma global_trans_determ :
   rewrite H0.
   intros.
   Check (H2 tb0 s'1 H1).
-  (* là c'est déjà mort *) 
+  (* lÃ  c'est dÃ©jÃ  mort *) 
   assert (thestate (global_transition sch_always t tb0 s') = (thestate (global_transition sch_always t tb0 s))).
   rewrite (tdet_schalways_sameconf_samemove t tb0 s s') ; try reflexivity.
   assumption.
