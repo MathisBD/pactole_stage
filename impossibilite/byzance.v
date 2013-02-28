@@ -28,8 +28,15 @@ Record position (good bad : finite) :=
  { good_places : (name good) -> Z
  ; bad_places : (name bad) -> Z
  }.
+(* Je ne suis pas sur que prendre Z soit ideal.
+   Le probleme avec deux robots gentils, zero mechants,
+   un scheduler qui active systematiquement tout le monde,
+   et deux robots separes de seulement une case n'a pas de solution
+   dans mon formalisme (l'espace entre les robots reste constamment
+   impair)
+*)
 
-(** [ident_split] is a group (not worth proving it, I guess)
+(** [ident_split] is a group (not worth proving it, I guess)
     and acts on positions (not worth proving it is an action group) *)
 Definition pos_remap good bad (s : ident_split good bad)
                               (p : position good bad) : position good bad :=
@@ -68,6 +75,22 @@ Record robogram (good bad : finite) :=
  ; move_morph : forall p q, pos_equiv p q -> move p = move q
  ; move_antimorph : forall p, move (flip p) = (-(move p))%Z
  }.
+(* Je commente un peu ici.
+   Dans cette situation, le robogram a tout de même une info pas forcement
+   souhaitable : le nombre de robots byzantins. On ne sait pas qui est
+   byzantin, mais on sait combien il y en a. Cependant, je ne pense pas
+   que ce soit genant : un robogramme doit être robuste contre un nombre
+   maximal de byzantins. Ce nombre maximal peut etre connu du robogramme,
+   et n'importe quel robogramme robuste contre n byzantins l'est aussi
+   automatiquement pour m byzantins avec m<n (sinon il suffirait que
+   le demon utilise le robogramme pour (n-m) mechants robots).
+
+   Si j'ai bien compris votre code initial et ce que m'a dit Xavier une
+   fois, move ne devrait pas etre une fonction, mais une relation
+   (non determinisme). Cela pourrait peut etre resoudre le probleme des
+   positions (voir mon commentaire sur [position]), mais ca risque de
+   compliquer des trucs.
+*)
 
 (** Recentering the view (required to be passed to a robogram) for a robot
     centered on this view. *)
@@ -94,6 +117,9 @@ Definition itere good bad (p : position good bad) (r : robogram good bad)
              else z
   ; bad_places := bad_replace d
   |}.
+(* Si on utilise une relation pour les gentils robots, itere doit
+   etre transforme en relation.
+*)
 
 (** Now we expect some fairness property: from a given position, a given
     robot will be moved by an iteration sooner or later. *)
@@ -104,9 +130,18 @@ Inductive fair_for_one good bad (r : robogram good bad)
                -> fair_for_one r s g p
  | Delayed : fair_for_one r s g (itere p r (s p)) ->
              fair_for_one r s g p.
+(* C'est la que les choses se compliquent si [move] est une relation,
+   puisqu'il faut preciser si la fairness doit ou non etre independante
+   du choix de transition. *)
 
 (** A [demon] is a strategy for the scheduler. *)
 Record demon (good bad : finite) (r : robogram good bad) :=
  { strategy : position good bad -> demonic_action good bad
  ; fairness : forall g p, fair_for_one r strategy g p
  }.
+
+(* Je n'ai pas encore decrit ce qu'est une solution au probleme.
+   La encore se pose le probleme de [move] fonctionnel ou relationnel,
+   avec pas mal de subtilites. Il faut en discuter pour voir ce qu'on
+   veut exactement.
+*)
