@@ -8,7 +8,8 @@ Require Import ZArith.
 Record finite :=
  { name : Set
  ; next : option name -> option name
- ; rec_on_names : forall z, Acc (fun x y => next (Some x) = Some y) z
+ ; NextRel := fun x y => next (Some y) = Some x
+ ; RecOnNames : forall z, Acc NextRel z
  }.
 
 (** Here are the two kind of robots. *)
@@ -20,7 +21,7 @@ Inductive ident (good bad : finite) :=
 Record ident_split (good bad : finite)  :=
  { section : ident good bad -> ident good bad
  ; retraction : ident good bad -> ident good bad
- ; inversion : forall a, retraction (section a) = a
+ ; Inversion : forall a, retraction (section a) = a
  }.
 
 (** ** Positions *)
@@ -50,7 +51,7 @@ Definition pos_remap good bad (s : ident_split good bad)
   |}.
 
 (** Equality on positions *)
-Record pos_eq good bad (p q : position good bad) : Prop :=
+Record PosEq good bad (p q : position good bad) : Prop :=
  { good_ext : forall n, good_places p n = good_places q n
  ; bad_ext : forall n, bad_places p n = bad_places q n
  }.
@@ -63,17 +64,17 @@ Definition flip good bad (p : position good bad) : position good bad :=
 
 (** Equivalence of positions. Two positions are equivalent, if they
     are equal up to a full renaming of robots regardless of their nastiness. *)
-Record pos_equiv good bad (p q : position good bad) : Prop :=
+Record PosEquiv good bad (p q : position good bad) : Prop :=
  { remap : ident_split good bad
- ; good_remap : pos_eq p (pos_remap remap q)
+ ; good_remap : PosEq p (pos_remap remap q)
  }.
 
 (** ** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
 Record robogram (good bad : finite) :=
  { move : position good bad -> Z
- ; move_morph : forall p q, pos_equiv p q -> move p = move q
- ; move_antimorph : forall p, move (flip p) = (-(move p))%Z
+ ; MoveMorph : forall p q, PosEquiv p q -> move p = move q
+ ; MoveAntimorph : forall p, move (flip p) = (-(move p))%Z
  }.
 (* Je commente un peu ici.
    Dans cette situation, le robogram a tout de même une info pas forcement
@@ -123,13 +124,13 @@ Definition itere good bad (p : position good bad) (r : robogram good bad)
 
 (** Now we expect some fairness property: from a given position, a given
     robot will be moved by an iteration sooner or later. *)
-Inductive fair_for_one good bad (r : robogram good bad)
+Inductive FairForOne good bad (r : robogram good bad)
           (s : position good bad -> demonic_action good bad)
           (g : name good) (p : position good bad) : Prop :=
- | Immediate : (if good_activation (s p) g then True else False)
-               -> fair_for_one r s g p
- | Delayed : fair_for_one r s g (itere p r (s p)) ->
-             fair_for_one r s g p.
+ | immediate : (if good_activation (s p) g then True else False)
+               -> FairForOne r s g p
+ | delayed : FairForOne r s g (itere p r (s p)) ->
+             FairForOne r s g p.
 (* C'est la que les choses se compliquent si [move] est une relation,
    puisqu'il faut preciser si la fairness doit ou non etre independante
    du choix de transition. *)
@@ -137,7 +138,7 @@ Inductive fair_for_one good bad (r : robogram good bad)
 (** A [demon] is a strategy for the scheduler. *)
 Record demon (good bad : finite) (r : robogram good bad) :=
  { strategy : position good bad -> demonic_action good bad
- ; fairness : forall g p, fair_for_one r strategy g p
+ ; Fairness : forall g p, FairForOne r strategy g p
  }.
 
 (* Je n'ai pas encore decrit ce qu'est une solution au probleme.
