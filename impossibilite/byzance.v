@@ -7,11 +7,11 @@ Require Import ZArith.
 (** We have finetely many robots. Some are good, other are evil. *)
 Record finite :=
  { name : Set
- ; next : name -> option name
- ; prev : name -> option name
- ; NextRel := fun x y => next x = Some y
- ; PrevRel := fun x y => prev x = Some y
- ; NextPrev : forall x y, NextRel x y <-> PrevRel y x
+ ; next : option name -> option name
+ ; prev : option name -> option name
+ ; NextRel := fun x y => next (Some x) = Some y
+ ; PrevRel := fun x y => prev (Some x) = Some y
+ ; NextPrev : forall x y, next x = y <-> prev y = x
  ; RecNext : forall z, Acc NextRel z
  ; RecPrev : forall z, Acc PrevRel z
  }.
