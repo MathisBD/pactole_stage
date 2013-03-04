@@ -22,11 +22,14 @@ Inductive ident (good bad : finite) :=
  | Bad : name bad -> ident good bad.
 
 (** Renaming of agents *)
-Record ident_split (good bad : finite)  :=
- { section : ident good bad -> ident good bad
- ; retraction : ident good bad -> ident good bad
- ; Inversion : forall a, retraction (section a) = a
+Record automorphism (t : Set)  :=
+ { section : t -> t
+ ; retraction : t -> t
+ ; Inversion : forall x y, section x = y <-> retraction y = x
  }.
+(* L'implication suffit, car [t] est fini en pratique,
+   mais cela oblige dans certaines preuves a montrer que
+   l'implication inverse est egalement verifiee... *)
 
 (** ** Positions *)
 Record position (good bad : finite) :=
@@ -43,7 +46,7 @@ Record position (good bad : finite) :=
 
 (** [ident_split] is a group (not worth proving it, I guess)
     and acts on positions (not worth proving it is an action group) *)
-Definition pos_remap good bad (s : ident_split good bad)
+Definition pos_remap good bad (s : automorphism (ident good bad))
                               (p : position good bad) : position good bad :=
  let pos_remap_aux := fun i => match retraction s i with
                                | Good g => good_places p g
@@ -69,7 +72,7 @@ Definition flip good bad (p : position good bad) : position good bad :=
 (** Equivalence of positions. Two positions are equivalent, if they
     are equal up to a full renaming of robots regardless of their nastiness. *)
 Record PosEquiv good bad (p q : position good bad) : Prop :=
- { remap : ident_split good bad
+ { remap : automorphism (ident good bad)
  ; good_remap : PosEq p (pos_remap remap q)
  }.
 
