@@ -43,6 +43,9 @@ Record position (good bad : finite) :=
    et deux robots separes de seulement une case n'a pas de solution
    dans mon formalisme (l'espace entre les robots reste constamment
    impair)
+   
+   Edit: maintenant on prend Qc (rationnels), ce probleme est donc
+   regle.
 *)
 
 (** [ident_split] is a group (not worth proving it, I guess)
@@ -64,10 +67,20 @@ Record PosEq good bad (p q : position good bad) : Prop :=
  ; bad_ext : forall n, bad_places p n = bad_places q n
  }.
 
+(* Bon je degage flip pour mettre zoom a la place.
+   (flip = zoom -1)
+
 (** Flipping a position (left <-> right) *)
 Definition flip good bad (p : position good bad) : position good bad :=
  {| good_places := fun n => (-(good_places p n))%Qc
   ; bad_places := fun n => (-(bad_places p n))%Qc
+  |}.
+*)
+
+(** Zooming a position (flipping the view is taking a -1 coef) *)
+Definition zoom (k : Qc) good bad (p : position good bad) : position good bad :=
+ {| good_places := fun n => (k * (good_places p n))%Qc
+  ; bad_places := fun n => (k * (bad_places p n))%Qc
   |}.
 
 (** Equivalence of positions. Two positions are equivalent, if they
@@ -82,7 +95,7 @@ Record PosEquiv good bad (p q : position good bad) : Prop :=
 Record robogram (good bad : finite) :=
  { move : position good bad -> Qc
  ; MoveMorph : forall p q, PosEquiv p q -> move p = move q
- ; MoveAntimorph : forall p, move (flip p) = (-(move p))%Qc
+ ; MoveZoom : forall k p, (move (zoom k p) = k * (move p))%Qc
  }.
 (* Je commente un peu ici.
    Dans cette situation, le robogram a tout de même une info pas forcement
