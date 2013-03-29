@@ -1,5 +1,6 @@
 Set Implicit Arguments.
-Require Import ZArith.
+(*Require Import ZArith.*)
+Require Import Qcanon.
 (** * Byzantine Robots *)
 
 (** ** Agents *)
@@ -33,8 +34,8 @@ Record automorphism (t : Set)  :=
 
 (** ** Positions *)
 Record position (good bad : finite) :=
- { good_places : (name good) -> Z
- ; bad_places : (name bad) -> Z
+ { good_places : (name good) -> Qc
+ ; bad_places : (name bad) -> Qc
  }.
 (* Je ne suis pas sur que prendre Z soit ideal.
    Le probleme avec deux robots gentils, zero mechants,
@@ -65,8 +66,8 @@ Record PosEq good bad (p q : position good bad) : Prop :=
 
 (** Flipping a position (left <-> right) *)
 Definition flip good bad (p : position good bad) : position good bad :=
- {| good_places := fun n => (-(good_places p n))%Z
-  ; bad_places := fun n => (-(bad_places p n))%Z
+ {| good_places := fun n => (-(good_places p n))%Qc
+  ; bad_places := fun n => (-(bad_places p n))%Qc
   |}.
 
 (** Equivalence of positions. Two positions are equivalent, if they
@@ -79,9 +80,9 @@ Record PosEquiv good bad (p q : position good bad) : Prop :=
 (** ** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
 Record robogram (good bad : finite) :=
- { move : position good bad -> Z
+ { move : position good bad -> Qc
  ; MoveMorph : forall p q, PosEquiv p q -> move p = move q
- ; MoveAntimorph : forall p, move (flip p) = (-(move p))%Z
+ ; MoveAntimorph : forall p, move (flip p) = (-(move p))%Qc
  }.
 (* Je commente un peu ici.
    Dans cette situation, le robogram a tout de même une info pas forcement
@@ -102,16 +103,16 @@ Record robogram (good bad : finite) :=
 
 (** Recentering the view (required to be passed to a robogram) for a robot
     centered on this view. *)
-Definition center good bad (p : position good bad) (z : Z) : position good bad
-:= {| good_places := fun n => ((good_places p n) - z)%Z
-    ; bad_places := fun n => ((bad_places p n) - z)%Z
+Definition center good bad (p : position good bad) (z : Qc) : position good bad
+:= {| good_places := fun n => ((good_places p n) - z)%Qc
+    ; bad_places := fun n => ((bad_places p n) - z)%Qc
     |}.
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all bad robots
     as it whishes, and select the good robots to be activated for computation *)
 Record demonic_action (good bad : finite) :=
- { bad_replace : (name bad) -> Z
+ { bad_replace : (name bad) -> Qc
  ; good_activation : (name good) -> bool
  }.
 
@@ -121,7 +122,7 @@ Definition itere good bad (p : position good bad) (r : robogram good bad)
  {| good_places :=
     fun n => let z := good_places p n in
              if good_activation d n
-             then (z + move r (center p z))%Z
+             then (z + move r (center p z))%Qc
              else z
   ; bad_places := bad_replace d
   |}.
@@ -153,3 +154,34 @@ Record demon (good bad : finite) (r : robogram good bad) :=
    avec pas mal de subtilites. Il faut en discuter pour voir ce qu'on
    veut exactement.
 *)
+
+Definition win good bad (r : robogram good bad) 
+  (d : @demon good bad r) (gp : name good -> Qc) : Prop := 
+  exists q , 
+    forall g : name good, 
+      gp g = q /\
+      forall (bp : name bad -> Qc),
+        move r 
+          (@center good bad {|good_places := gp; bad_places := bp |} 
+            (gp g)) = 0%Qc.
+
+
+Inductive transition_chain good bad (r : robogram good bad) (d : @demon good bad r)
+  (p : position good bad) : position good bad -> Prop :=
+| Refl_trans : transition_chain d p p
+| Trans_trans : forall q, 
+  transition_chain d p q -> transition_chain d p (itere q r (strategy d q)).
+
+Definition solution good bad (r : robogram good bad) : Prop := 
+  forall (d : @demon good bad r) (p : position good bad),
+    exists q, 
+      @transition_chain good bad r d p q  /\ @win good bad r d (good_places q).
+
+
+
+(* 
+ *** Local Variables: ***
+ *** coq-prog-name: "coqtop" ***
+ *** fill-column: 80 ***
+ *** End: ***
+ *)
