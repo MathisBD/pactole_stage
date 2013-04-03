@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 Require Import Qcanon.
+Require Import Qcabs.
 (** * Byzantine Robots *)
 
 (** ** Agents *)
@@ -76,7 +77,7 @@ Definition center good bad (p : position good bad) (z : Qc) : position good bad
     |Todo: find a better name| *)
 Record robogram (good bad : finite) :=
  { algo : position good bad -> Qc
- ; AlgoMorph : forall k p q, PosImpl k p q -> k * algo p = algo q
+ ; AlgoMorph : forall k p q, PosImpl k p q -> algo p = k * algo q
  ; cmove := fun (activated : bool)
                 (pos : position good bad)
                 (g : name good)
@@ -92,44 +93,69 @@ Record demonic_action (good bad : finite) :=
  ; good_activation : (name good) -> bool
  }.
 
-(** How to go from one position to the other. *)
-Definition itere good bad (p : position good bad) (r : robogram good bad)
-                 (d : demonic_action good bad) : position good bad :=
- {| good_places := fun g => cmove r (good_activation d g) p g
-  ; bad_places := bad_replace d
-  |}.
+(** A [demon] is just a stream of [demonic_action]s. *)
+CoInductive demon (good bad : finite) :=
+  NextDemon : demonic_action good bad -> demon good bad -> demon good bad.
 
-(** Execution of a demon. *)
-Definition run good bad (r : robogram good bad)
-                        (d : position good bad -> demonic_action good bad)
-                        (p : position good bad)
-: nat -> position good bad
-:= fix run n :=
-   match n with
-   | O => p
-   | S n => itere (run n) r (d (run n))
-   end.
+Definition demon_head good bad (d : demon good bad) : demonic_action good bad :=
+  match d with NextDemon da _ => da end.
 
-(** A [demon] is a strategy for the scheduler. *)
-Record demon (good bad : finite) (r : robogram good bad) :=
- { strategy : position good bad -> demonic_action good bad
- ; Fairness : forall g p, exists n,
-              good_activation (strategy (run r strategy p n)) g = true
- }.
+Definition demon_tail good bad (d : demon good bad) : demon good bad :=
+  match d with NextDemon _ d => d end.
+
+(** A [demon] is [Fair] if at any time it will later activate any robot. *)
+Inductive LocallyFairForOne good bad g (d : demon good bad) : Prop :=
+  | ImmediatelyFair : good_activation (demon_head d) g = true ->
+                      LocallyFairForOne g d
+  | LaterFair : good_activation (demon_head d) g = false ->
+                LocallyFairForOne g (demon_tail d) -> LocallyFairForOne g d
+  .
+
+CoInductive Fair good bad (d : demon good bad) : Prop :=
+  AlwaysFair : Fair (demon_tail d) -> (forall g, LocallyFairForOne g d) ->
+               Fair d.
+
+(** Now we can [execute] some robogram from a given position with a [demon] *)
+CoInductive execution good :=
+  NextExecution : (name good -> Qc) -> execution good -> execution good.
+
+Definition execution_head good (e : execution good) : (name good -> Qc) :=
+  match e with NextExecution gp _ => gp end.
+
+Definition execution_tail good (e : execution good) : execution good :=
+  match e with NextExecution _ e => e end.
+
+Definition new_goods good bad (r : robogram good bad)
+                     (da : demonic_action good bad) (gp : name good -> Qc)
+                     : name good -> Qc
+:= fun g => cmove r (good_activation da g)
+                  {| good_places := gp ; bad_places := bad_replace da |} g.
+
+Definition execute good bad (r : robogram good bad)
+: demon good bad -> (name good -> Qc) -> execution good
+:= cofix execute d gp :=
+   let ngp := new_goods r (demon_head d) gp in
+   NextExecution ngp (execute (demon_tail d) ngp).
 
 (** Expressing that all good robots are confined in a small disk. *)
-Definition imprisonned (prison_center : Qc) (square_radius : Qc)
-                       good bad (r : robogram good bad) (d : demon r)
-                       (p : position good bad) :=
-  forall g n, let d := good_places (run r (strategy d) p n) g - prison_center in
-              d*d < square_radius.
+CoInductive imprisonned (prison_center : Qc) (radius : Qc) good
+                        (e : execution good) : Prop
+:= InDisk : (forall g, [(prison_center - execution_head e g)] <= radius)
+            -> imprisonned prison_center radius (execution_tail e)
+            -> imprisonned prison_center radius e.
+
+(** The execution will end in a small disk. *)
+Inductive attracted (pc : Qc) (r : Qc) good (e : execution good) : Prop :=
+  | Captured : imprisonned pc r e -> attracted pc r e
+  | WillBeCaptured : attracted pc r (execution_tail e) -> attracted pc r e
+  .
 
 (** A solution is just convergence property for any demon. *)
 Definition solution good bad (r : robogram good bad) : Prop :=
-  forall (d : demon r) (p : position good bad) (epsilon : Qc),
-  (epsilon <> 0)%Qc ->
-  exists (N : nat) (pc : Qc),
-  imprisonned pc (epsilon * epsilon) d (run r (strategy d) p N).
+  forall (gp : name good -> Qc),
+  forall (d : demon good bad), Fair d ->
+  forall (epsilon : Qc), 0 < epsilon ->
+  exists (lim_app : Qc), attracted lim_app epsilon (execute r d gp).
 
 (* 
  *** Local Variables: ***
