@@ -1,0 +1,65 @@
+Le dossier contient 3 versions de la formalisation.
+
+La première version (P. Courtieu, X. Urbain) :
+→ config_explicites
+→ moremaps
+→ moreZ
+
+Cadre : Non déterministe, travail sur ℤ, utilise Map et Set, rendez-vous
+Notes : Utiliser ℤ est une mauvaise idée à la base,
+        car le problème sans byzantins avec deux robots à une distance
+        impaire l’un de l’autre resteront à distance impaire, et ne pourront
+        jamais converger vers la même case. Il faut donc demander une propriété
+        plus complexe, à savoir qu’il doivent au bout d’un certain nombre d’étapes
+        rester sur deux cases voisines et ne plus les quitter.
+        Autre remarque, dans ce cadre, les robots peuvent avoir des comportements
+        différents à différentes échelles.
+
+La deuxième version (C. Auger) :
+→ byzance
+→ Equivalences
+→ Finites
+→ impossible_N_N
+
+Cadre : Déterministe, travail sur ℚ, n’utilise plus Map et Set, rendez-vous
+Notes : Finites.v n’est pas utilisé, mais contient des lemmes potentiellement utiles
+        Equivalences.v n’est utilisé que pour la réflexivité (qui de toutes façons
+        est triviale à montrer).
+        L’intérêt de travailler sur ℚ est que d’une part on retire l’histoire des
+        deux cases voisines, d’autre part on peut définir proprement un zoom
+        (homothétie) et parler d’invariance par rapport au zoom. (Dans ℤ,
+        si un robot est en position impaire, on peut pas zoomer d’un facteur 1/2.)
+        Dans ce formalisme, l’absence de solution au problème N vs N est montrée.
+        Cependant, le problème à deux robots gentils sans byzantins est a priori
+        insoluble, puisqu’on peut faire en sorte que les robots soient arbitrairement
+        proches l’un de l’autre (d’une distance>0) sans jamais pour autant se
+        retrouver sur la même case en un nombre fini d’étapes.
+
+La troisième version (C. Auger) :
+→ ConvergentFormalism
+→ Finites
+→ Qcabs
+→ convergence_2_0
+→ no_convergence_N_N
+
+Cadre : Détermiste, travail sur ℚ, n’utilise plus Map et Set, convergence
+Notes : Equivalences a été retiré, car le formalisme a été un peu modifié
+        (pour intégrer le zoom, on parle alors de k-implication ;
+         si "x k-implique y" alors il existe une permutation des gentils
+         et méchants robots telle que en partant de x, en appliquant la
+         permutation et en zoomant d’un facteur k, on obtienne y.
+         En particulier, si k≠0 et x k-implique y, alors y k⁻¹-implique x.
+         En particulier, pour tout x, x 0-implique la position où tout le monde est en 0)
+        Qcabs est une bibliothéque réecrite à partir de Qabs pour gérer
+        les valeurs absolues dans Qc (=rationnels en représentation canonique).
+        convergence_2_0 est une preuve (modulo un axiome qui est a priori démontrable)
+                        de l’existence d’une solution au problème à deux robots sans
+                        byzantins (la solution est triviale, mais conforte le formalisme)
+        no_convergence_N_N est une preuve (sans axiomes) de l’impossibilité d’une
+                           solution au problème N vs N
+==========================================================================================
+La troisième version est donc celle qui a actuellement le plus de sens.
+Si ce n’est pas exactement le formalisme souhaité, ça n’en reste pas moins
+un formalisme intéressant. Je n’ai pas voulu effacer les versions précédentes au cas où,
+mais je pense seuls les cinq fichiers sus-mentionnés devraient être concervés
+(et peut être faudrait-il reprendre Equivalences pour l’adapter aux k-implications).
