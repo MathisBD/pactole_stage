@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import byzance.
+Require Import ConvergentFormalism.
 (** * All stuff about [finite] *)
 
 (** Yet all that stuff is useless, it just give some insurance that this is

@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 Require Import ConvergentFormalism.
+Require Import MeetingTheorem.
 Require Import Field.
 Require Import Qcanon.
 Require Import Qcabs.
@@ -7,13 +8,6 @@ Require Import Qcabs.
 (* Impossibility in a N robots vs N robots *)
 
 (* Useful permutations *)
-Definition id_perm f : automorphism (ident f f).
-refine {| section := id
-        ; retraction := id
-        |}.
-abstract (unfold id; split; auto).
-Defined.
-
 Definition swap_p f (n s : name f -> ident f f) : name f -> ident f f :=
   fun x => match next f (Some x) with None => n x | _ => s x end.
 
@@ -42,127 +36,6 @@ subst s; unfold swap_p, swaper; simpl;
 ).
 Defined.
 
-(* Useful initial position and a special rational depending on a robogram *)
-Definition pos0 f := {| good_places := fun _:name f => 0
-                      ; bad_places := fun _:name f => 1
-                      |}.
-
-Definition delta f (r : robogram f f) := algo r (pos0 f).
-
-(* First part of the proof with the shifting demon *)
-Definition demon1 (d : Qc) f : Qc -> demon f f :=
-  cofix demon1 k :=
-  NextDemon {| bad_replace := fun _ => k
-             ; good_activation := fun _ => true
-             |} (demon1 (k+d)).
-
-Lemma demon1_is_fair (d : Qc) f : forall q, Fair (demon1 d f q).
-Proof.
-  cofix; intros q; split.
-  + simpl.
-    fold (demon1 d f).
-    apply demon1_is_fair.
-  + left; split.
-Qed.
-
-Lemma S1 f (x : name f) (r : robogram f f) (l : Qc)
-: forall (gp : name f -> Qc) (k : Qc), (forall g, gp g = k) ->
-  imprisonned l [delta r] (execute r (demon1 (delta r) f (1 + k)) gp) ->
-  [delta r] = 0.
-Proof.
-  intros.
-  set (p_plus_nd := fun p => nat_rec _ p (fun _ y => y + (delta r))).
-  assert (forall n,
-          exists gp, (forall g, gp g = p_plus_nd k n) /\
-          imprisonned l [delta r] (execute r (demon1 (delta r) f
-                      (1 + p_plus_nd k n)) gp)
-  ).
-  + induction n.
-    - exists gp; split; auto.
-    - clear - IHn x.
-      destruct IHn as [gp [Hgp Himp]].
-      exists (new_goods r(demon_head(demon1(delta r)f(1+(p_plus_nd k n))))gp).
-      split.
-      * simpl.
-        unfold new_goods; simpl; unfold center; simpl; intros; rewrite Hgp.
-        rewrite (@AlgoMorph f f r 1 _ (pos0 f)); [fold (delta r); ring|].
-        split with (id_perm f); split; simpl; intros; (try rewrite Hgp);
-        ring_simplify; split.
-      * destruct Himp.
-        revert Himp; clear.
-        simpl; fold (demon1 (delta r) f) (execute r).
-        now rewrite Qcplus_assoc.
-  + clear - H1 x.
-    generalize (H1 0%nat), (H1 3%nat).
-    simpl; clear - x.
-    intros [gp0 [Hgp0 Himp0]] [gp3 [Hgp3 Himp3]].
-    destruct Himp0 as [H0 _].
-    destruct Himp3 as [H3 _].
-    generalize (H0 x), (H3 x); clear - Hgp0 Hgp3.
-    simpl; unfold new_goods; simpl; unfold center; simpl.
-    rewrite Hgp0, Hgp3.
-    repeat (rewrite (@AlgoMorph f f r 1 _ (pos0 f)); fold (delta r)).
-    - clear.
-      cut (forall a b, [a] <= [b] -> [a - (b + b + b)] <= [b] -> [b] = 0).
-      * intros H K L; apply H with (l - (k + 1 * delta r)); auto.
-        clear - L.
-        cut (l - (k + delta r + delta r + delta r + 1 * delta r) =
-             l - (k + 1 * delta r) - (delta r + delta r + delta r));
-        [intros []; auto|ring].
-      * { clear; intros a b K L.
-          apply Qcle_antisym; [|apply Qcabs_nonneg].
-          rewrite Qcabs_Qcminus in L.
-          generalize (Qcplus_le_compat _ _ _ _ K
-                      (Qcle_trans _ _ _ (Qcabs_triangle_reverse _ _) L)).
-          clear; intros K; generalize (proj1 (Qcle_minus_iff _ _) K); clear K.
-          cut (-[b] = [b]+[b]+-([a]+([b+b+b]-[a]))).
-          - intros [].
-            intros H; generalize (Qcopp_le_compat _ _ H).
-            now rewrite Qcopp_involutive.
-          - cut ([b]+[b]+[b]=[b+b+b]); [intros []; ring|].
-            cut ((1+1+1)*b=b+b+b); [intros []|ring].
-            cut ((1+1+1)*[b]=[b]+[b]+[b]); [intros []|ring].
-            now rewrite Qcabs_Qcmult.
-        }
-    - split with (id_perm f).
-      split; simpl; intros; (try rewrite Hgp3); ring_simplify; split.
-    - split with (id_perm f).
-      split; simpl; intros; (try rewrite Hgp0); ring_simplify; split.
-Qed.
-
-Lemma S2 f (x : name f) (r : robogram f f) : solution r -> ~ 0 < [delta r].
-Proof.
-  intros Hs H.
-  destruct (Hs (fun _=>0) (demon1 (delta r) f 1) (demon1_is_fair _ _ _)
-               [delta r] H) as [lim Hlim].
-  cut (forall (gp : name f -> Qc) (k : Qc), (forall g, gp g = k) ->
-       attracted lim [delta r] (execute r (demon1 (delta r) f (1 + k)) gp) ->
-       [delta r] = 0).
-  + intros K.
-    generalize (K (fun _ => 0) 0 (fun x => eq_refl 0)); clear K.
-    rewrite Qcplus_0_r; intros K; rewrite (K Hlim) in H; clear - H.
-    discriminate.
-  + clear - x.
-    intros.
-    remember (execute r (demon1 (delta r) f (1+k)) gp).
-    revert gp k H Heqe.
-    induction H0; intros; subst.
-    - eapply S1; eauto.
-    - clear H0.
-      apply (IHattracted (new_goods r {|bad_replace:=fun _=>1+k
-                                       ;good_activation:=fun _=>true|} gp)
-                         (k + delta r)).
-      * clear - H.
-        intros g; unfold new_goods; simpl; unfold center; simpl.
-        rewrite (@AlgoMorph f f r 1 _ (pos0 f));
-        [fold (delta r); rewrite H; ring|].
-        split with (id_perm f).
-        split; intros; simpl; repeat rewrite H; ring_simplify; split.
-      * simpl; clear.
-        fold (demon1 (delta r) f) (execute r).
-        now rewrite Qcplus_assoc.
-Qed.
-
 (* Second part of the proof with the lazy demon *)
 Definition lazy_action f : demonic_action f f :=
   {| bad_replace := fun x => match next f (Some x) with None => 0 | _ => 1 end
@@ -188,7 +61,7 @@ Proof.
   intros.
   unfold new_goods; simpl; unfold center; simpl.
   rewrite (@AlgoMorph f f r (match next f (Some g) with None => -1%Qc
-                             | _ => 1 end) _ (pos0 f)).
+                             | _ => 1 end) _ (pos0 f f)).
   + fold (delta r); case Hd; case H; clear.
     destruct (next f (Some g)); ring.
   + split with (match next f (Some g) with
@@ -249,13 +122,10 @@ Qed.
 Theorem no_solution f (Htwo : two f) (r : robogram f f) : solution r -> False.
 Proof.
   intros Hs.
-  generalize (L2 Htwo Hs).
-  generalize (fun x => S2 x Hs).
+  apply (L2 Htwo Hs).
+  symmetry.
+  apply meeting_theorem; auto.
   revert Htwo; unfold two.
   destruct (prev f (prev f None)); auto.
-  intros _ H; generalize (delta r), (H n); clear.
-  intros a Ka Ha.
-  destruct (proj1 (Qcabs_Qcle_condition _ _) (Qcnot_lt_le _ _ Ka)).
-  apply Ha.
-  apply Qcle_antisym; auto.
+  intros [].
 Qed.

@@ -63,3 +63,10 @@ Si ce n’est pas exactement le formalisme souhaité, ça n’en reste pas moins
 un formalisme intéressant. Je n’ai pas voulu effacer les versions précédentes au cas où,
 mais je pense seuls les cinq fichiers sus-mentionnés devraient être concervés
 (et peut être faudrait-il reprendre Equivalences pour l’adapter aux k-implications).
+==========================================================================================
+mise a jour (après version 26)
+Les anciennes versions ont été supprimées.
+
+FiniteSum a été ajouté.
+MeetingTheorem a été ajouté
+(généralisation triviale de ce qui était fait dans no_convergence_N_N)
