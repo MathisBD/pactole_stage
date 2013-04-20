@@ -61,7 +61,7 @@ Definition goodies f : name (fplus f f) -> Qc :=
 
 Lemma stable_goodies f (r : robogram (fplus f f) f) (Hd : 0 = delta r)
 : forall gp, (forall g, gp g = goodies g) ->
-              forall g b, new_goods r (periodic_action f b) gp g = goodies g.
+              forall b g, new_goods r (periodic_action f b) gp g = goodies g.
 Proof.
   intros.
   unfold new_goods; simpl; unfold cmove, center; simpl.
@@ -78,61 +78,50 @@ Proof.
     - destruct g; simpl; ring.
 Qed.
 
-Lemma L1 f (r : robogram (fplus f f) f) (l : Qc) (H : 0 = delta r)
-: forall (gp : name f -> Qc), (forall x, gp x = goodies f x) ->
-  imprisonned l (1/(1+1+1)) (execute r (demon2 f) gp) ->
+Lemma L1 f (x : name f) (r : robogram (fplus f f) f) (l : Qc) (H : 0 = delta r)
+: forall (gp : name (fplus f f) -> Qc), (forall x, gp x = goodies x) ->
+  forall b, imprisonned l (1/(1+1+1)) (execute r (demon2 f b) gp) ->
   False.
 Proof.
-  intros; destruct H1; revert H1 Htwo;
-  generalize (stable_goodies r H gp H0); clear.
-  intros Hgp K Htwo.
-  revert Htwo; unfold two.
-  case_eq (prev f None); [|intros L; rewrite L; auto].
-  intros _x_ H_x_; assert (Hx := proj2 (NextPrev f _ _) H_x_); clear H_x_.
-  case_eq (prev f (Some _x_)); [|auto].
-  intros _y_ H_y_ _; assert (Hy := proj2 (NextPrev f _ _) H_y_); clear H_y_.
-  generalize (K _x_), (K _y_).
-  clear - Hgp Hx Hy.
-  simpl; repeat rewrite Hgp.
-  unfold goodies; rewrite Hx; rewrite Hy; clear.
+  intros; destruct H1; set (X := stable_goodies r H gp H0 b).
+  generalize (X (inl x)), (X (inr x)), (H1 (inl x)), (H1 (inr x)); clear.
+  simpl; repeat (intros H; rewrite H; clear).
   cut (l = l - 0); [intros []|ring].
-  intros K H; revert K.
-  rewrite Qcabs_Qcminus.
+  intros H; rewrite Qcabs_Qcminus.
   intros K; generalize (Qcle_trans _ _ _ (Qcabs_triangle_reverse 1 l) K).
   intros L; generalize (Qcplus_le_compat _ _ _ _ H L); clear.
   cut ([1] = [l] + ([1] - [l])); [intros []|ring].
   intros K; apply K; split.
 Qed.
 
-Lemma L2 f (Htwo : two f) (r : robogram f f) : solution r -> ~ 0 = delta r.
+Lemma L2 f (x : name f) (r : robogram (fplus f f) f)
+: solution r -> ~ 0 = delta r.
 Proof.
   intros Hs H.
-  destruct (Hs (goodies f) (demon2 f) (demon2_is_fair _) (1/(1+1+1))
+  destruct (Hs (@goodies f) (demon2 f true) (demon2_is_fair _ true) (1/(1+1+1))
                (eq_refl _)) as [lim Hlim].
-  cut (forall (gp : name f -> Qc), (forall g, gp g = goodies f g) ->
-       attracted lim (1/(1+1+1)) (execute r (demon2 f) gp) -> False).
+  cut (forall b (gp : name (fplus f f) -> Qc), (forall g, gp g = goodies g) ->
+       attracted lim (1/(1+1+1)) (execute r (demon2 f b) gp) -> False).
   + intros K.
-    exact (K (goodies f) (fun x => eq_refl _) Hlim).
-  + clear - H Htwo; intros.
-    remember (execute r (demon2 f) gp).
-    revert gp H0 Heqe.
+    exact (K true (@goodies f) (fun x => eq_refl _) Hlim).
+  + clear - H x; intros.
+    remember (execute r (demon2 f b) gp).
+    revert gp H0 b Heqe.
     induction H1; intros; subst.
     - eapply L1; eauto.
     - clear H1.
-      apply (IHattracted (new_goods r (lazy_action f) gp)); auto.
-      now apply stable_goodies.
+      now apply (IHattracted _ (stable_goodies r H gp H0 b) (negb b)).
 Qed.
 
 (******************************************************************************)
 (* The main theorem : there is no solution to the N vs N problem.             *)
 (******************************************************************************)
-Theorem no_solution f (Htwo : two f) (r : robogram f f) : solution r -> False.
+Theorem no_solution f (x : name f) (r : robogram (fplus f f) f)
+: solution r -> False.
 Proof.
   intros Hs.
-  apply (L2 Htwo Hs).
+  apply (L2 x Hs).
   symmetry.
   apply meeting_theorem; auto.
-  revert Htwo; unfold two.
-  destruct (prev f (prev f None)); auto.
-  intros [].
+  left; auto.
 Qed.
