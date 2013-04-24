@@ -83,8 +83,8 @@ Lemma L1 f (x : name f) (r : robogram (fplus f f) f) (l : Qc) (H : 0 = delta r)
   forall b, imprisonned l (1/(1+1+1)) (execute r (demon2 f b) gp) ->
   False.
 Proof.
-  intros; destruct H1; set (X := stable_goodies r H gp H0 b).
-  generalize (X (inl x)), (X (inr x)), (H1 (inl x)), (H1 (inr x)); clear.
+  intros; destruct H1.
+  generalize (H0 (inl x)), (H0 (inr x)), (H1 (inl x)), (H1 (inr x)); clear.
   simpl; repeat (intros H; rewrite H; clear).
   cut (l = l - 0); [intros []|ring].
   intros H; rewrite Qcabs_Qcminus.

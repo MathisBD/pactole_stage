@@ -76,8 +76,7 @@ Lemma L1 f (Htwo : two f) (r : robogram f f) (l : Qc) (H : 0 = delta r)
   imprisonned l (1/(1+1+1)) (execute r (demon2 f) gp) ->
   False.
 Proof.
-  intros; destruct H1; revert H1 Htwo;
-  generalize (stable_goodies r H gp H0); clear.
+  intros; destruct H1; revert H0 H1 Htwo; clear.
   intros Hgp K Htwo.
   revert Htwo; unfold two.
   case_eq (prev f None); [|intros L; rewrite L; auto].

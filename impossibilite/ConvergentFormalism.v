@@ -134,8 +134,7 @@ Definition new_goods good bad (r : robogram good bad)
 Definition execute good bad (r : robogram good bad)
 : demon good bad -> (name good -> Qc) -> execution good
 := cofix execute d gp :=
-   let ngp := new_goods r (demon_head d) gp in
-   NextExecution ngp (execute (demon_tail d) ngp).
+   NextExecution gp (execute (demon_tail d) (new_goods r (demon_head d) gp)).
 
 (** Expressing that all good robots are confined in a small disk. *)
 CoInductive imprisonned (prison_center : Qc) (radius : Qc) good

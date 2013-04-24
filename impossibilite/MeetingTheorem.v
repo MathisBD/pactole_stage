@@ -73,33 +73,26 @@ Proof.
     generalize (H0 x), (H3 x); clear - Hgp0 Hgp3.
     simpl; unfold new_goods; simpl; unfold center; simpl.
     rewrite Hgp0, Hgp3.
-    repeat (rewrite (@AlgoMorph g b r 1 _ (pos0 g b)); fold (delta r)).
-    - clear.
-      cut (forall a b, [a] <= [b] -> [a - (b + b + b)] <= [b] -> [b] = 0).
-      * intros H K L; apply H with (l - (k + 1 * delta r)); auto.
-        clear - L.
-        cut (l - (k + delta r + delta r + delta r + 1 * delta r) =
-             l - (k + 1 * delta r) - (delta r + delta r + delta r));
-        [intros []; auto|ring].
-      * { clear; intros a b K L.
-          apply Qcle_antisym; [|apply Qcabs_nonneg].
-          rewrite Qcabs_Qcminus in L.
-          generalize (Qcplus_le_compat _ _ _ _ K
-                      (Qcle_trans _ _ _ (Qcabs_triangle_reverse _ _) L)).
-          clear; intros K; generalize (proj1 (Qcle_minus_iff _ _) K); clear K.
-          cut (-[b] = [b]+[b]+-([a]+([b+b+b]-[a]))).
-          - intros [].
-            intros H; generalize (Qcopp_le_compat _ _ H).
-            now rewrite Qcopp_involutive.
-          - cut ([b]+[b]+[b]=[b+b+b]); [intros []; ring|].
-            cut ((1+1+1)*b=b+b+b); [intros []|ring].
-            cut ((1+1+1)*[b]=[b]+[b]+[b]); [intros []|ring].
-            now rewrite Qcabs_Qcmult.
-        }
-    - split with (id_perm g b).
-      split; simpl; intros; (try rewrite Hgp3); ring_simplify; split.
-    - split with (id_perm g b).
-      split; simpl; intros; (try rewrite Hgp0); ring_simplify; split.
+    cut (forall a b, [a] <= [b] -> [a - (b + b + b)] <= [b] -> [b] = 0).
+    * intros H K L; apply H with (l - k); auto.
+      clear - L.
+      cut (l - (k + delta r + delta r + delta r) =
+           l - k - (delta r + delta r + delta r));
+      [intros []; auto|ring].
+    * clear; intros a b K L.
+      apply Qcle_antisym; [|apply Qcabs_nonneg].
+      rewrite Qcabs_Qcminus in L.
+      generalize (Qcplus_le_compat _ _ _ _ K
+                  (Qcle_trans _ _ _ (Qcabs_triangle_reverse _ _) L)).
+      clear; intros K; generalize (proj1 (Qcle_minus_iff _ _) K); clear K.
+      cut (-[b] = [b]+[b]+-([a]+([b+b+b]-[a]))).
+      - intros [].
+        intros H; generalize (Qcopp_le_compat _ _ H).
+        now rewrite Qcopp_involutive.
+      - cut ([b]+[b]+[b]=[b+b+b]); [intros []; ring|].
+        cut ((1+1+1)*b=b+b+b); [intros []|ring].
+        cut ((1+1+1)*[b]=[b]+[b]+[b]); [intros []|ring].
+        now rewrite Qcabs_Qcmult.
 Qed.
 
 Lemma S2 g b (x : name g) (r : robogram g b) : solution r -> ~ 0 < [delta r].
