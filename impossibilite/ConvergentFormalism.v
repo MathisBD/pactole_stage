@@ -37,14 +37,21 @@ Record position (good bad : finite) :=
 
 (** [automorphism (ident good bad)] is a group (not worth proving it, I guess)
     and acts on positions (not worth proving it is an action group) *)
-Definition pos_remap_aux good bad s p (i : ident good bad) :=
+Definition pos_remap good bad s p :=
+  let pos_remap := fun i =>
   match retraction s i with
   | Good g => good_places p g
   | Bad g => bad_places p g
-  end.
-Definition pos_remap (k : Qc) good bad s p : position good bad :=
- {| good_places := fun n => k * pos_remap_aux s p (Good good bad n)
-  ; bad_places := fun n => k * pos_remap_aux s p (Bad good bad n)
+  end
+  in {| good_places := fun g => pos_remap (Good good bad g)
+      ; bad_places := fun b => pos_remap (Bad good bad b) |}.
+
+(** [similarity k t p] returns a position [p] centered in [t] and zoomed of
+    a factor [k]; this function is used to set the frame of reference for
+    a given robot. *)
+Definition similarity (k t : Qc) good bad p : position good bad :=
+ {| good_places := fun n => k * (good_places p n - t)
+  ; bad_places := fun n => k * (bad_places p n - t)
   |}.
 
 (** Equality on positions *)
@@ -53,44 +60,24 @@ Record PosEq good bad (p q : position good bad) : Prop :=
  ; bad_ext : forall n, bad_places p n = bad_places q n
  }.
 
-(** Imlication on positions.
-    A position [p] 'k-implies' a position [q] if there is
-    a permutation [s] on the identifiers such that k*s(p)
-    (zooming [retraction s p] with a coefficient of [k]) is equal to [q].
-
-    Note that '1-implication' is in fact an equivalence,
-    and 'p 0-implies q' is equivalent to saying that [q] is a position
-    where every robot is on '0' ([p] is fully unconstrained). *)
-Record PosImpl (k : Qc) good bad (p q : position good bad) : Prop :=
- { remap : automorphism (ident good bad)
- ; good_remap : PosEq p (pos_remap k remap q)
- }.
-
-(** Recentering the view (required to be passed to a robogram) for a robot
-    centered on this view. *)
-Definition center good bad (p : position good bad) (z : Qc) : position good bad
-:= {| good_places := fun n => ((good_places p n) - z)%Qc
-    ; bad_places := fun n => ((bad_places p n) - z)%Qc
-    |}.
-
 (** ** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
 Record robogram (good bad : finite) :=
  { algo : position good bad -> Qc
- ; AlgoMorph : forall k p q, PosImpl k p q -> algo p = k * algo q
- ; cmove := fun (activated : bool)
-                (pos : position good bad)
-                (g : name good)
-            => let offset := good_places pos g in
-               if activated then offset + algo (center pos offset) else offset
+ ; AlgoMorph : forall p q s, PosEq q (pos_remap s p) -> algo p = algo q
  }.
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all bad robots
-    as it whishes, and select the good robots to be activated for computation *)
+    as it whishes, and sets the referential of all good robots it selects.
+    A reference of 0 is a special reference meaning that the robot will not
+    be activated. Any other reference gives a factor for zooming.
+    Note that we do not want the demon give a zoom factor k of 0,
+    since to compute the new position we then need to multiply the
+    computed result by the inverse of k (which is not defined in this case). *)
 Record demonic_action (good bad : finite) :=
  { bad_replace : (name bad) -> Qc
- ; good_activation : (name good) -> bool
+ ; good_reference : (name good) -> Qc
  }.
 
 (** A [demon] is just a stream of [demonic_action]s. *)
@@ -103,11 +90,22 @@ Definition demon_head good bad (d : demon good bad) : demonic_action good bad :=
 Definition demon_tail good bad (d : demon good bad) : demon good bad :=
   match d with NextDemon _ d => d end.
 
+Inductive inverse (k : Qc) :=
+  | IsNul : k = 0 -> inverse k
+  | Inv : forall l, l * k = 1 -> inverse k.
+
+Definition inv (k : Qc) : inverse k :=
+  match Qc_eq_dec k 0 with
+  | left H => IsNul H
+  | right H => Inv (Qcmult_inv_l k H)
+  end.
+
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne good bad g (d : demon good bad) : Prop :=
-  | ImmediatelyFair : good_activation (demon_head d) g = true ->
+  | ImmediatelyFair : forall l H,
+                      inv (good_reference (demon_head d) g) = @Inv _ l H ->
                       LocallyFairForOne g d
-  | LaterFair : good_activation (demon_head d) g = false ->
+  | LaterFair : forall H, inv (good_reference (demon_head d) g) = IsNul H ->
                 LocallyFairForOne g (demon_tail d) -> LocallyFairForOne g d
   .
 
@@ -128,8 +126,15 @@ Definition execution_tail good (e : execution good) : execution good :=
 Definition new_goods good bad (r : robogram good bad)
                      (da : demonic_action good bad) (gp : name good -> Qc)
                      : name good -> Qc
-:= fun g => cmove r (good_activation da g)
-                  {| good_places := gp ; bad_places := bad_replace da |} g.
+:= fun g =>
+   let k := good_reference da g in
+   let t := gp g in
+   match inv k with
+   | IsNul _ => t
+   | Inv l _ => t + l * (algo r (similarity k t {| good_places := gp
+                                                 ; bad_places := bad_replace da
+                                                 |}))
+   end.
 
 Definition execute good bad (r : robogram good bad)
 : demon good bad -> (name good -> Qc) -> execution good

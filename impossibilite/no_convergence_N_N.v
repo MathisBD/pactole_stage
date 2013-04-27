@@ -39,14 +39,21 @@ Defined.
 (* Second part of the proof with the lazy demon *)
 Definition lazy_action f : demonic_action f f :=
   {| bad_replace := fun x => match next f (Some x) with None => 0 | _ => 1 end
-   ; good_activation := fun _ => true
+   ; good_reference := fun x => match next f (Some x) with None => -1%Qc
+                                                         | _ => 1 end
    |}.
 
 Definition demon2 f : demon f f :=
   cofix demon2 := NextDemon (lazy_action f) demon2.
 
 Lemma demon2_is_fair f : Fair (demon2 f).
-Proof. cofix; split; auto; left; split. Qed.
+Proof.
+  cofix; split; auto.
+  intros g; case_eq (inv (good_reference (demon_head (demon2 f)) g)).
+  + intros K; exfalso; simpl in *.
+    destruct (next f (Some g)); discriminate.
+  + intros l e; left with l e; auto.
+Qed.
 
 Definition goodies f : name f -> Qc :=
   fun x => match next f (Some x) with None => 1 | _ => 0 end.
@@ -59,16 +66,16 @@ Lemma stable_goodies f (r : robogram f f) (Hd : 0 = delta r)
               forall g : name f, new_goods r (lazy_action f) gp g = goodies f g.
 Proof.
   intros.
-  unfold new_goods; simpl; unfold center; simpl.
-  rewrite (@AlgoMorph f f r (match next f (Some g) with None => -1%Qc
-                             | _ => 1 end) _ (pos0 f f)).
+  unfold new_goods; simpl; unfold similarity; simpl.
+  rewrite (@AlgoMorph f f r _ (pos0 f f)
+           (match next f (Some g) with None => swap_perm2 f
+            | _ => swap_perm1 f end)).
   + fold (delta r); case Hd; case H; clear.
-    destruct (next f (Some g)); ring.
-  + split with (match next f (Some g) with
-                | None => swap_perm2 f | _ => swap_perm1 f end).
-    split; simpl; intros n; repeat rewrite H; unfold goodies;
-    destruct (next f (Some g)); unfold pos_remap_aux; simpl;
-    unfold swap_p; simpl; destruct (next f (Some n)); ring.
+    destruct (inv match next f (Some g) with None => -1%Qc | _ => 1 end); ring.
+  + split; simpl; rewrite H; simpl;
+    intros x; generalize (H x); unfold goodies; clear;
+    destruct (next f (Some g)); simpl; unfold swap_p;
+    case_eq (next f (Some x)); intros; (rewrite H0||rewrite H); ring.
 Qed.
 
 Lemma L1 f (Htwo : two f) (r : robogram f f) (l : Qc) (H : 0 = delta r)

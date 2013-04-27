@@ -6,8 +6,6 @@ Require Import Field.
 Require Import Qcanon.
 Require Import Qcabs.
 
-(* Impossibility in a N robots vs N robots *)
-
 (* Useful permutations *)
 Definition swap_aux1 f (x : ident (fplus f f) f) : ident (fplus f f) f :=
   match x with
@@ -42,8 +40,10 @@ Defined.
 (* Second part of the proof with the lazy demon *)
 Definition periodic_action f (b : bool) : demonic_action (fplus f f) f :=
   {| bad_replace := fun x => if b then 0 else 1
-   ; good_activation := fun (x : name (fplus f f)) =>
-                        match x with inl _ => b | inr _ => negb b end
+   ; good_reference := fun (x : name (fplus f f)) =>
+                       match x with inl _ => if b then 1 else 0
+                                  | inr _ => if b then 0 else -1%Qc
+                                  end
    |}.
 
 Definition demon2 f : bool -> demon (fplus f f) f :=
@@ -53,7 +53,7 @@ Lemma demon2_is_fair f : forall b, Fair (demon2 f b).
 Proof.
   cofix.
   intros b; split; simpl; fold (demon2 f); auto.
-  clear; destruct b; intros [a|a]; [|right|right|]; auto; left; auto.
+  clear; destruct b; intros [a|a]; (eright; [esplit|]||idtac); eleft; split.
 Qed.
 
 Definition goodies f : name (fplus f f) -> Qc :=
@@ -64,18 +64,22 @@ Lemma stable_goodies f (r : robogram (fplus f f) f) (Hd : 0 = delta r)
               forall b g, new_goods r (periodic_action f b) gp g = goodies g.
 Proof.
   intros.
-  unfold new_goods; simpl; unfold cmove, center; simpl.
+  unfold new_goods; simpl; unfold similarity; simpl.
   case H.
-  case_eq (match g with inl _ => b | inr _ => negb b end); intros K; try ring.
+  case_eq (inv match g with inl _ => if b then 1 else 0
+           | inr _ => if b then 0 else -1%Qc end); auto.
+  intros x K M.
   rewrite
-  (@AlgoMorph (fplus f f) f r (if b then 1 else -1%Qc) _ (pos0 (fplus f f) f)).
+  (@AlgoMorph (fplus f f) f r _ (pos0 (fplus f f) f)
+              (if b then swap_perm2 f else swap_perm1 f)).
   + fold (delta r); case Hd; ring.
-  + split with (if b then swap_perm2 f else swap_perm1 f).
-    cut (b = match g with inl _ => true | _ => false end);
-    [intros L; clear K; subst|destruct g; auto; destruct b; auto].
-    split; simpl; unfold pos_remap_aux; simpl; intros; repeat rewrite H; simpl.
-    - clear; destruct g; destruct n; simpl; ring.
-    - destruct g; simpl; ring.
+  + cut (b = match g with inl _ => true | _ => false end);
+    [|destruct g; destruct b; auto; discriminate].
+    intros L; clear x M K; subst; unfold pos_remap; simpl.
+    rewrite H; unfold goodies.
+    split; simpl; intros n; destruct g; simpl;
+    try (rewrite H; unfold goodies; ring);
+    destruct n; (try rewrite H); simpl; ring.
 Qed.
 
 Lemma L1 f (x : name f) (r : robogram (fplus f f) f) (l : Qc) (H : 0 = delta r)

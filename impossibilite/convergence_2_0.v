@@ -49,23 +49,20 @@ Defined.
 Definition converger (p : position two_elements no_elements) : Qc :=
   (good_places p true + good_places p false)/(1+1).
 
-Lemma converger_morph k p q : PosImpl k p q -> converger p = k * converger q.
+Lemma converger_morph p q s
+: PosEq q (pos_remap s p) -> converger p = converger q.
 Proof.
-  intros [autom Heq]; simpl in *.
+  intros Heq; simpl in *.
   unfold converger.
   rewrite (good_ext Heq true).
   rewrite (good_ext Heq false).
-  simpl; clear.
-  cut (  pos_remap_aux autom q (Good two_elements no_elements true)
-       + pos_remap_aux autom q (Good two_elements no_elements false)
-       = good_places q true + good_places q false).
-  + intros []; unfold Qcdiv; ring.
-  + destruct autom as [sec ret Hsplit]; unfold pos_remap_aux; simpl.
-    case_eq (ret (Good two_elements no_elements true)); simpl; [|intros []].
-    case_eq (ret (Good two_elements no_elements false)); simpl; [|intros []].
-    intros n Hn m Hm.
-    generalize (proj2 (Hsplit _ _) Hn), (proj2 (Hsplit _ _) Hm); clear.
-    destruct n, m; intros A B; [|ring|ring|]; rewrite A in B; inversion B.
+  f_equal.
+  destruct s as [sec ret Hsplit]; simpl.
+  case_eq (ret (Good two_elements no_elements true)); simpl; [|intros []].
+  case_eq (ret (Good two_elements no_elements false)); simpl; [|intros []].
+  intros n Hn m Hm.
+  generalize (proj2 (Hsplit _ _) Hn), (proj2 (Hsplit _ _) Hm); clear.
+  destruct n, m; intros A B; [|ring|ring|]; rewrite A in B; inversion B.
 Qed.
 
 Record div2_e_rel (eps : Qc) (p1 p2 : Qc) : Prop :=
@@ -103,23 +100,28 @@ Proof.
     - intros gp Hgp.
       destruct (L _ fair_some_demon (new_goods solver_2_0 (demon_head d) gp))
       as [lim Hlim]; [|exists lim; right; auto].
-      revert H; subst; case (Hgp true); case (Hgp false); clear.
-      unfold demon_head; destruct d; clear.
-      intros K; unfold new_goods; rewrite K; clear K.
-      destruct (good_activation d false); simpl;
-      unfold converger; simpl; generalize (gp true), (gp false).
-      * intros a b.
-        cut (forall x y, 0=x -> [x]<=[y]); [|intros x y []; apply Qcabs_nonneg].
-        intros H; apply H; clear H.
-        field_simplify; [split|discriminate].
-      * intros a b.
-        cut (forall x y, x=y -> [x]<=[y]); [|intros x y []; apply Qcle_refl].
-        intros H; apply H; clear H.
-        field_simplify; [|discriminate].
-        unfold Qcdiv; field_simplify; auto; discriminate.
-    - case_eq (good_activation (demon_head d) false).
+      clear - Heqdiameter H H0 Hgp.
+      unfold new_goods; rewrite H0; clear H0; simpl; unfold converger; simpl.
+      repeat rewrite Hgp; clear gp Hgp.
+      subst; generalize (init_gp true), (init_gp false).
+      revert H; generalize (good_reference (demon_head d) true).
+      destruct (inv (good_reference (demon_head d) false)).
+      * clear; intros.
+        cut (q0-q1=((q0+l*((q*(q0-q0)+q*(q1-q0))/(1+1))-q1)*(1+1)));
+        [intros []; apply Qcle_refl|].
+        case Qcmult_plus_distr_r; unfold Qcdiv; repeat rewrite Qcmult_assoc.
+        rewrite H; field; discriminate.
+      * revert e; generalize (good_reference (demon_head d) false).
+        clear; intros.
+        cut (0 = ((q1+l*((q0*(q1-q1)+q0*(q2-q1))/(1+1))-
+                  (q2+l0*((q*(q1-q2)+q*(q2-q2))/(1+1))))*(1+1)));
+        [intros []; apply Qcabs_nonneg|].
+        unfold Qcdiv.
+        repeat case Qcmult_plus_distr_r; repeat rewrite Qcmult_assoc.
+        rewrite H; rewrite e; field; discriminate.
+    - case_eq (inv (good_reference (demon_head d) false)).
       * clear - H L Heqdiameter fair_some_demon.
-        intros K gp Hgp.
+        intros K _ gp Hgp.
         destruct (L _ fair_some_demon (new_goods solver_2_0 (demon_head d) gp))
         as [lim Hlim]; [|exists lim; right; auto].
         revert H K; subst; case (Hgp true); case (Hgp false); clear.

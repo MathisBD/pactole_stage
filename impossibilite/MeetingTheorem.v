@@ -5,8 +5,6 @@ Require Import Field.
 Require Import Qcanon.
 Require Import Qcabs.
 
-(* Impossibility in a N byzantine robots vs 2N regular robots *)
-
 Definition id_perm g b : automorphism (ident g b).
 refine {| section := id
         ; retraction := id
@@ -25,7 +23,7 @@ Definition delta g b (r : robogram g b) := algo r (pos0 g b).
 Definition demon1 (d : Qc) g b : Qc -> demon g b :=
   cofix demon1 k :=
   NextDemon {| bad_replace := fun _ => k
-             ; good_activation := fun _ => true
+             ; good_reference := fun _ => 1
              |} (demon1 (k+d)).
 
 Lemma demon1_is_fair (d : Qc) g b : forall q, Fair (demon1 d g b q).
@@ -34,7 +32,7 @@ Proof.
   + simpl.
     fold (demon1 d g b).
     apply demon1_is_fair.
-  + left; split.
+  + eleft; simpl; unfold inv; split.
 Qed.
 
 Lemma S1 g b (x : name g) (r : robogram g b) (l : Qc)
@@ -56,10 +54,10 @@ Proof.
       exists (new_goods r(demon_head(demon1(delta r)g b(1+(p_plus_nd k n))))gp).
       split.
       * simpl.
-        unfold new_goods; simpl; unfold center; simpl; intros; rewrite Hgp.
-        rewrite (@AlgoMorph g b r 1 _ (pos0 g b)); [fold (delta r); ring|].
-        split with (id_perm g b); split; simpl; intros; (try rewrite Hgp);
-        ring_simplify; split.
+        unfold new_goods; simpl; unfold similarity; simpl; intros; rewrite Hgp.
+        rewrite (@AlgoMorph g b r _ (pos0 g b) (id_perm g b));
+        [fold (delta r); field; discriminate|].
+        split; simpl; intros; [rewrite Hgp|]; ring.
       * destruct Himp.
         revert Himp; clear.
         simpl; fold (demon1 (delta r) g b) (execute r).
@@ -71,7 +69,7 @@ Proof.
     destruct Himp0 as [H0 _].
     destruct Himp3 as [H3 _].
     generalize (H0 x), (H3 x); clear - Hgp0 Hgp3.
-    simpl; unfold new_goods; simpl; unfold center; simpl.
+    simpl; unfold new_goods; simpl; unfold similarity; simpl.
     rewrite Hgp0, Hgp3.
     cut (forall a b, [a] <= [b] -> [a - (b + b + b)] <= [b] -> [b] = 0).
     * intros H K L; apply H with (l - k); auto.
@@ -115,13 +113,12 @@ Proof.
     - eapply S1; eauto.
     - clear H0.
       apply (IHattracted (new_goods r {|bad_replace:=fun _=>1+k
-                                       ;good_activation:=fun _=>true|} gp)
+                                       ;good_reference:=fun _=>1|} gp)
                          (k + delta r)).
       * clear - H.
-        intros g0; unfold new_goods; simpl; unfold center; simpl.
-        rewrite (@AlgoMorph g b r 1 _ (pos0 g b));
-        [fold (delta r); rewrite H; ring|].
-        split with (id_perm g b).
+        intros g0; unfold new_goods; simpl; unfold similarity; simpl.
+        rewrite (@AlgoMorph g b r _ (pos0 g b) (id_perm g b));
+        [fold (delta r); rewrite H; field; discriminate|].
         split; intros; simpl; repeat rewrite H; ring_simplify; split.
       * simpl; clear.
         fold (demon1 (delta r) g b) (execute r).
