@@ -120,20 +120,7 @@ Proof.
         repeat case Qcmult_plus_distr_r; repeat rewrite Qcmult_assoc.
         rewrite H; rewrite e; field; discriminate.
     - case_eq (inv (good_reference (demon_head d) false)).
-      * clear - H L Heqdiameter fair_some_demon.
-        intros K _ gp Hgp.
-        destruct (L _ fair_some_demon (new_goods solver_2_0 (demon_head d) gp))
-        as [lim Hlim]; [|exists lim; right; auto].
-        revert H K; subst; case (Hgp true); case (Hgp false); clear.
-        unfold demon_head; destruct d; clear.
-        intros H K; unfold new_goods; rewrite H, K; simpl; clear H K.
-        unfold converger; simpl; generalize (gp true), (gp false).
-        intros a b.
-        cut (forall x y, x=y -> [x]<=[y]); [|intros x y []; apply Qcle_refl].
-        intros H; apply H; clear H.
-        field_simplify; [|discriminate].
-        unfold Qcdiv; field_simplify; auto; discriminate.
-      * intros K gp Hgp.
+      * intros K _ gp Hgp.
         destruct fair_some_demon.
         generalize (IHM fair_some_demon); clear - H K Hgp.
         intros L; destruct (L (new_goods solver_2_0 (demon_head d) gp))
@@ -141,6 +128,19 @@ Proof.
         clear - H K Hgp.
         destruct d; simpl in *; unfold new_goods.
         intros []; simpl; [rewrite H|rewrite K]; simpl; auto.
+      * clear - H L Heqdiameter fair_some_demon.
+        intros l e X gp Hgp.
+        destruct (L _ fair_some_demon (new_goods solver_2_0 (demon_head d) gp))
+        as [lim Hlim]; [|exists lim; right; auto].
+        revert H e X; subst; case (Hgp true); case (Hgp false); clear.
+        unfold demon_head; destruct d; clear.
+        intros H K e; unfold new_goods. rewrite H, e; simpl; clear H e.
+        unfold converger; simpl; generalize (gp true), (gp false).
+        intros a b.
+        cut (forall x y, x=y -> [x]<=[y]); [|intros x y []; apply Qcle_refl].
+        intros H; apply H; clear H.
+        unfold Qcdiv; case Qcmult_plus_distr_r; repeat rewrite Qcmult_assoc.
+        rewrite K; field; discriminate.
   + clear K; exists (init_gp true); subst; clear - Hcomp pos_eps; left.
     cut (forall g, [init_gp true - init_gp g] <= eps).
     - generalize (init_gp true); intros pc; generalize init_gp.
@@ -148,12 +148,13 @@ Proof.
       cut (forall g, [pc - new_goods solver_2_0 da gp g] <= eps).
       * split; auto; apply RegTest_2_0; auto.
       * intros g; generalize (Hgp true), (Hgp false); clear.
-        unfold solver_2_0, new_goods, converger, cmove; simpl.
-        case (good_activation da g); [|case g; auto].
-        generalize (gp true), (gp false), (gp g); clear.
+        unfold solver_2_0, new_goods, converger, similarity; simpl.
+        destruct (inv (good_reference da g)); [case g; auto|].
+        unfold Qcdiv; case Qcmult_plus_distr_r; repeat rewrite Qcmult_assoc.
+        rewrite e; generalize (gp true), (gp false), (gp g); clear.
         intros a b c.
         cut (((pc - a) + (pc - b)) / (1 + 1) =
-             pc - (c + (a - c + (b - c)) / (1 + 1)));
+             pc - (c + 1 * (a - c + (b - c)) * / (1 + 1)));
         [intros []|field; discriminate].
         generalize (pc - a), (pc - b); clear; intros a b A B.
         apply Qcmult_lt_0_le_reg_r with [1+1]; [split|].
