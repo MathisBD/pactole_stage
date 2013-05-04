@@ -56,6 +56,13 @@ Definition fair_tactic_ good bad (x : name good)
 Definition fair_tactic good bad (dt : demon_tactic good bad) : Prop :=
   forall x, fair_tactic_ x (fst dt) (snd dt).
 
+Lemma Qc_inversion (k : inv_pair) d x : d * x = 1 -> (beta k) * x = 0 -> False.
+Proof.
+  intros A B; destruct (Qcmult_integral _ _ B); clear B.
+  + generalize (Hinv k); rewrite H; discriminate.
+  + subst; rewrite Qcmult_comm in A; discriminate.
+Qed.
+
 Lemma simili_demon_fairness good bad k t (dt : demon_tactic good bad)
 : fair_tactic dt -> Fair (simili_demon k t dt).
 Proof.
@@ -67,17 +74,12 @@ Proof.
     destruct l; simpl; auto.
     - destruct (inv (good_reference d x)); intros [].
       destruct (inv (beta k * good_reference d x)); auto.
-      destruct (Qcmult_integral _ _ e0).
-      * clear - H; destruct k; simpl in *; subst; discriminate.
-      * rewrite H in e; clear - e; rewrite Qcmult_comm in e; discriminate.
+      apply (Qc_inversion k e e0).
     - revert d0; induction l; simpl in *; intros.
       * destruct (inv (good_reference d0 x)); auto.
         destruct (inv (good_reference d x)); destruct H.
         destruct (inv (beta k * good_reference d x)); auto.
-        destruct (Qcmult_integral _ _ e1);
-        [ clear - H; destruct k; simpl in *; subst; discriminate
-        | rewrite H in e0; clear - e0; rewrite Qcmult_comm in e0; discriminate
-        ].
+        apply (Qc_inversion k e0 e1).
       * destruct (inv (good_reference d0 x)); auto.
   + intros g.
     generalize (H g); clear.
@@ -124,12 +126,6 @@ abstract (induction n; simpl; auto; rewrite (Qcmult_comm (beta k));
 ).
 Defined.
 
-Lemma Qcabs_nonnull : forall q, q <> 0 -> 0 < [q].
-Proof.
-  intros u Hu; destruct (Qclt_le_dec 0 [u]); auto; destruct Hu.
-  destruct (proj1 (Qcabs_Qcle_condition _ _) q); apply Qcle_antisym; auto.
-Qed.
-
 Lemma cycle k t good bad dt (r : robogram good bad) gp
 : fpower (@execution_tail good)
   (execute r (simili_demon k t dt) gp) (S (length (snd dt))) =
@@ -171,205 +167,81 @@ Proof.
   case app_assoc; auto.
 Qed.
 
-Lemma X
-(good : finite)
-(bad : finite)
-(r : robogram good bad)
-(gp : name good -> Qc)
-(dt : demon_tactic good bad)
-(k : inv_pair)
-(t : Qc)
-(Hsim : similitude k t good gp
-         (after_tactic k t r dt gp))
-:
-forall m : nat,
-exists u : Qc,
-  similitude (inv_power k m) u good gp
-    (execution_head
-       (fpower (execution_tail (good:=good))
-          (execute r (simili_demon k t dt) gp) (m * S (length (snd dt))))).
+Lemma demon_trick good bad (r : robogram good bad) gp dt k t
+: similitude k t good gp (after_tactic k t r dt gp) ->
+  forall m : nat,
+    exists u : Qc,
+      similitude (inv_power k m) u good gp
+        (execution_head
+          (fpower (execution_tail (good:=good))
+             (execute r (simili_demon k t dt) gp) (m * S (length (snd dt))))).
 Proof.
-intros m; revert gp dt Hsim.
-induction m.
-simpl.
-exists 0; intros x; simpl; ring.
-unfold mult; fold (mult m).
-intros.
-rewrite Plus.plus_comm.
-rewrite fpower_com.
-rewrite cycle.
-assert (Z : forall n (dt : demon_tactic good bad),
-length (snd (fpower (tactic_rot k t) dt n))
-= length (snd dt)).
-clear; intros n dt.
-induction n; simpl; auto.
-destruct (fpower (tactic_rot k t) dt n); simpl in *.
-destruct l; simpl in *; auto.
-generalize (simili_action k t d); case IHn; clear.
-intros; induction l; simpl in *; auto.
-
-destruct (IHm (after_tactic k t r dt gp) (fpower (tactic_rot k t) dt
-(S (length (snd dt))))); clear IHm.
-
-revert Hsim.
-unfold similitude.
-unfold after_tactic.
-rewrite Z.
-Notation "'η'" := (@execution_head _).
-Notation "'τ'" := (@execution_tail _).
-Notation "« k ∞ t ∞ dt »" := (simili_demon k t dt) (format "« k ∞ t ∞ dt »").
-Notation "« k 'ρ' t »" := (tactic_rot k t) (format "« k 'ρ' t »").
-Notation "'α'" := (@alpha _).
-Notation "⦃ dt ⦄" := (S (length (snd dt))) (format "⦃ dt ⦄").
-Notation "⟦ r ∷ gp ↠ d ⟧" := (execute r d gp) (format "⟦ r ∷ gp ↠ d ⟧").
-Notation "« f ↑ n ∷ x »" := (fpower f x n) (format "« f ↑ n ∷ x »").
-idtac.
-
-generalize (η «τ↑⦃dt⦄∷⟦r∷gp↠«k∞t∞dt»⟧») at 1 2.
-generalize (⦃dt⦄) at 2 3.
-clear - Z.
-intros.
-revert gp q Hsim dt; induction n; auto.
-intros.
-cut (forall x, new_goods r (simili_action k t (fst dt)) q x =
-        (alpha k) * (new_goods r (fst dt) gp) x + t).
-intros P; generalize (IHn _ _ P (tactic_rot k t dt)).
-clear - Hsim Z.
-change (S n) with (plus (S O) n).
-rewrite Plus.plus_comm.
-rewrite fpower_com.
-rewrite fpower_com.
-unfold fpower at 5 8.
-unfold execution_tail at 4 6.
-unfold execute at 3 4.
-fold (execute r (demon_tail «k∞t∞dt»)).
-fold (execute r (demon_tail «k∞t∞««k ρ t»↑⦃dt⦄∷dt»»)).
-unfold demon_head.
-unfold demon_tail.
-unfold simili_demon.
-fold (@simili_demon good bad k t).
-generalize (big_step k t dt).
-destruct ««k ρ t»↑⦃dt⦄∷dt».
-intros Heq;
-cut (d = fst (big_rot k t dt));
-[cut (l = snd (big_rot k t dt));
-[clear Heq; intros A B; subst|case Heq; split]|case Heq; split].
-unfold big_rot.
-destruct dt.
-unfold fst, snd.
-intros [].
-fold (snd («k ρ t» (d, l))).
-
-f_equal.
-f_equal.
-f_equal.
-f_equal.
-clear - Z.
-rewrite (big_step k t («k ρ t» (d, l))).
-unfold big_rot.
-simpl.
-destruct l; simpl.
-split.
-f_equal.
-rewrite map_app.
-split.
-
-clear - Hsim.
-destruct dt; simpl.
-intros x; clear - Hsim.
-unfold new_goods.
-simpl.
-destruct (inv (good_reference d x)).
-rewrite e.
-rewrite (Qcmult_comm (beta k)).
-simpl.
-auto.
-destruct (inv (beta k * good_reference d x)).
-revert e e0; generalize (good_reference d x); intros y B A; exfalso.
-clear - A B.
-revert B.
-case (Qcmult_1_l y).
-set (a := 1) at 2; case (Hinv k); subst a.
-rewrite (Qcmult_comm (beta k)).
-case Qcmult_assoc; rewrite A; clear.
-cut (0 = l * (alpha k * 0)); [intros []|ring].
-discriminate.
-unfold similarity; simpl.
-assert (forall x y : ident good bad, x = y <-> y = x).
-clear; split; auto.
-rewrite (@AlgoMorph good bad r
-  {|
-  good_places := fun n : name good =>
-                 good_reference d x * (gp n - gp x);
-  bad_places := fun n : name bad =>
-                good_reference d x *
-                (bad_replace d n - gp x) |}
-  {|
-  good_places := fun n : name good =>
-                 beta k * good_reference d x *
-                 (q n - q x);
-  bad_places := fun n : name bad =>
-                beta k * good_reference d x *
-                (alpha k * bad_replace d n + t - q x) |}
-  {|Inversion := H|}).
-generalize (algo r
-  {|
-  good_places := fun n : name good =>
-                 beta k * good_reference d x *
-                 (q n - q x);
-  bad_places := fun n : name bad =>
-                beta k * good_reference d x *
-                (alpha k * bad_replace d n + t - q x) |}).
-clear - Hsim e e0.
-intros.
-rewrite Hsim.
-cut (l * alpha k = l0); [intros []; ring|].
-revert e e0; generalize (good_reference d x); clear.
-intros.
-case (Qcmult_1_l (l * alpha k)).
-case e0; clear e0.
-cut ((beta k * alpha k) * (l * q) * l0 = l0 * (beta k * q) * (l * alpha k));
-[intros []|ring].
-rewrite Hinv.
-rewrite e.
-ring.
-unfold pos_remap; simpl.
-generalize (good_reference d x), (bad_replace d).
-split; simpl.
-intros n.
-case (Qcmult_1_l (q0 * (gp n - gp x))).
-case (Hinv k).
-repeat rewrite Hsim; ring.
-intros n.
-case (Qcmult_1_l (q0 * (q1 n - gp x))).
-case (Hinv k).
-rewrite Hsim; ring.
-
-exists ((alpha k) ^ m * t + x).
-revert H.
-rewrite Z; clear Z.
-revert Hsim.
-unfold similitude.
-unfold after_tactic.
-
-generalize (S (length (snd dt))).
-intros l.
-generalize (execute r (simili_demon k t dt) gp).
-intros e.
-generalize (execution_head (fpower (@execution_tail good) e l)).
-intros f.
-generalize (fpower (tactic_rot k t) dt l).
-intros d.
-generalize (execute r (simili_demon k t d) f).
-intros g.
-generalize (fpower (@execution_tail good) g (m * l)).
-clear.
-intros e H I y.
-rewrite I.
-rewrite H.
-clear.
-simpl.
-ring.
+  intros Hsim m; revert gp dt Hsim.
+  induction m.
+  + simpl; exists 0; intros x; simpl; ring.
+  + unfold mult; fold (mult m); intros.
+    rewrite Plus.plus_comm, fpower_com, cycle.
+    assert (Z : forall n (dt : demon_tactic good bad),
+                length (snd (fpower (tactic_rot k t) dt n)) = length (snd dt)).
+    - clear; intros n dt.
+      induction n; simpl; auto.
+      destruct (fpower (tactic_rot k t) dt n); simpl in *.
+      destruct l; simpl in *; auto.
+      generalize (simili_action k t d); case IHn; clear.
+      intros; induction l; simpl in *; auto.
+    - destruct (IHm (after_tactic k t r dt gp)
+                    (fpower (tactic_rot k t) dt (S (length (snd dt)))));
+      clear IHm.
+      * { revert Hsim; unfold similitude, after_tactic; rewrite Z.
+          generalize (S (length (snd dt))) at 1 3 4 5; intros n.
+          generalize (execution_head (fpower (@execution_tail good)
+                      (execute r (simili_demon k t dt) gp) n)) at 1 2.
+          clear; intros q Hsim x.
+          revert gp q Hsim dt; induction n; auto.
+          intros gp q Hsim dt.
+          cut (forall x, new_goods r (simili_action k t (fst dt)) q x =
+                         (alpha k) * (new_goods r (fst dt) gp) x + t).
+          + intros P; generalize (IHn _ _ P (tactic_rot k t dt)).
+            clear - Hsim; change (S n) with (plus (S O) n).
+            rewrite Plus.plus_comm, fpower_com, fpower_com.
+            fold (@simili_demon good bad k t).
+            unfold fpower at 5 8, execution_tail at 4 6, execute at 3 4.
+            fold (execute r); unfold demon_head, demon_tail, simili_demon.
+            fold (@simili_demon good bad k t).
+            generalize (big_step k t dt).
+            destruct (fpower (tactic_rot k t) dt (S (length (snd dt)))).
+            intros Heq.
+            cut (d = fst (big_rot k t dt) /\ l = snd (big_rot k t dt));
+            [clear Heq|case Heq; clear; split; split].
+            intros [A B]; subst; unfold big_rot; destruct dt; unfold fst, snd.
+            intros []; repeat f_equal.
+            fold (snd (tactic_rot k t (d, l))).
+            rewrite (big_step k t (tactic_rot k t (d, l))); unfold big_rot.
+            destruct l; simpl; f_equal.
+            rewrite map_app; auto.
+          + destruct dt; simpl; clear - Hsim.
+            intros x; unfold new_goods; simpl; generalize (good_reference d x).
+            intros y; destruct (inv y);
+            [rewrite e; rewrite (Qcmult_comm (beta k)); simpl; auto|].
+            destruct (inv (beta k * y)); [destruct (Qc_inversion k e e0)|].
+            unfold similarity; simpl.
+            cut (forall a b, a = b -> (q x)+l0*a = (alpha k)*((gp x)+l*b)+t);
+            [intros H; apply H|intros a _ []].
+            - clear - Hsim; apply AlgoMorph with
+              {|Inversion := fun x y => conj (@eq_sym _ x y) (@eq_sym _ y x)|}.
+              split; simpl; intros; repeat rewrite Hsim;
+              rewrite <- (Qcmult_1_l (y * _)); case (Hinv k); ring.
+            - rewrite Hsim; cut (l * (alpha k) = l0); [intros []; ring|].
+              case (Qcmult_1_l (l * alpha k)); case e0; clear - e.
+              rewrite <- Qcmult_1_l; destruct e.
+              rewrite <- Qcmult_1_l; destruct (Hinv k).
+              ring.
+        }
+      * exists ((alpha k) ^ m * t + x).
+        revert H; rewrite Z; clear Z; revert Hsim.
+        unfold similitude, after_tactic.
+        intros H I y; rewrite I, H; clear.
+        simpl; ring.
 Qed.
 
 Theorem Contraction good bad (r : robogram good bad) (Hr : solution r)
@@ -409,10 +281,10 @@ Proof.
                    (execute r (simili_demon k t dt) gp)
                    (mult m (S (length (snd dt))))))).
           - clear - Hsim.
-            apply X; auto.
+            apply demon_trick; auto.
           - destruct (H1 n) as [u Hu]; revert H0 Hu; clear - H q.
             rewrite Mult.mult_comm; simpl.
-            rewrite Plus.plus_comm; rewrite fpower_com.
+            rewrite Plus.plus_comm, fpower_com.
             generalize (fpower (@execution_tail good)
                         (execute r (simili_demon k t dt) gp) n).
             generalize (mult (length (snd dt)) n); clear - H q.
@@ -445,7 +317,7 @@ Proof.
                 cut (((1+1)/(1+1+1))*[u]=[u]/(1+1+1)+[u]/(1+1+1));
                 [intros []|field; discriminate].
                 clear - Hu; intros R.
-                apply (Qcmult_lt_0_le_reg_r _ _ _ (Qcabs_nonnull Hu) R); split.
+                apply (Qcmult_lt_0_le_reg_r _ _ _ (Qcabs_nonnull _ Hu) R);split.
               * destruct He; apply (IHm _ He); intros; case Hsim; clear.
                 f_equal; revert e; induction m; simpl; intros; f_equal; auto.
         }

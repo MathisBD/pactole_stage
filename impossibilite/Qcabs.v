@@ -124,3 +124,17 @@ Proof.
   + clear A; intros H; apply Qred_morph; apply B; destruct H as [X Y]; split;
     apply Qred_comorph; auto.
 Qed.
+
+Lemma Qcabs_null (q : Qc) : [q] = 0 -> q = 0.
+Proof.
+  intros H.
+  destruct (proj1 (Qcabs_Qcle_condition q 0)) as [A B].
+  + rewrite H; apply Qcle_refl.
+  + apply Qcle_antisym; auto.
+Qed.
+
+Lemma Qcabs_nonnull (q : Qc) : q <> 0 -> 0 < [q].
+Proof.
+  intros Hq; destruct (Qclt_le_dec 0 [q]); auto; destruct Hq.
+  destruct (proj1 (Qcabs_Qcle_condition _ _) q0); apply Qcle_antisym; auto.
+Qed.
