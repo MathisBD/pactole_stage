@@ -1,5 +1,4 @@
 Set Implicit Arguments.
-Require Import Utf8.
 Require Import Qcanon.
 Require Import Qcabs.
 (** * Byzantine Robots *)
@@ -8,105 +7,65 @@ Require Import Qcabs.
 
 (** We have finetely many robots. Some are good, other are evil. *)
 Record finite :=
- { name :> Set
- ; next : option name → option name
- ; prev : option name → option name
+ { name : Set
+ ; next : option name -> option name
+ ; prev : option name -> option name
  ; NextRel := fun x y => next (Some x) = Some y
  ; PrevRel := fun x y => prev (Some x) = Some y
- ; NextPrev : ∀ x y, next x = y ↔ prev y = x
- ; RecNext : ∀ z, Acc NextRel z
- ; RecPrev : ∀ z, Acc PrevRel z
+ ; NextPrev : forall x y, next x = y <-> prev y = x
+ ; RecNext : forall z, Acc NextRel z
+ ; RecPrev : forall z, Acc PrevRel z
  }.
 
-(* For clarity's sake we will write location for robots location, and Qc for
-   zooming factor and translation vectors. Obviously these ar all rationals and
-   we will:
- - multiply locations by zooming factor and obtain new locations
- - add locations and vectors and obtain new locations. *)
-Definition location := Qc.
+(** Here are the two kind of robots. *)
+Inductive ident (good bad : finite) :=
+ | Good : name good -> ident good bad
+ | Bad : name bad -> ident good bad.
 
-Section goodbad.
-
-(** Here are the two kinds of robots. *)
-Variable G B : finite.
-
-(** Disjoint union of both kinds od robots is obtained by a sum type. *)
-Inductive ident :=
- | Good : G → ident
- | Bad : B → ident.
-
-(** Notation of the paper. *)
-Notation "'G{+U}B'" := ident.
-
+(** Renaming of agents *)
 Record automorphism (t : Set)  :=
- { section :> t → t
- ; retraction : t → t
- ; Inversion : ∀ x y, section x = y ↔ retraction y = x
+ { section : t -> t
+ ; retraction : t -> t
+ ; Inversion : forall x y, section x = y <-> retraction y = x
  }.
-
-Notation "s ⁻¹" := (s.(retraction)) (at level 99).
-
-(** Renaming of agents are bijections *)
-Definition permutation := automorphism.
-
-(* [automorphism (G{+U}B good bad)] is a group (not worth proving it, I guess)
-   and acts on positions (not worth proving it is an action group) *)
 
 (** ** Positions *)
-
-(** We explicitely say that a permutation has a different treatment for good and
-   byzantine robots, because later we will consider that byzantine positions are
-   chosen by the demon whereas positions of good robots will be computed by its
-   algorithm. *)
-Record position :=
- { gp : G → location
- ; bp : B → location
+Record position (good bad : finite) :=
+ { good_places : (name good) -> Qc
+ ; bad_places : (name bad) -> Qc
  }.
 
-(** Locating a robot in a position. *)
-Definition locate p (id: G{+U}B): location :=
-  match id with
-  | Good g => p.(gp) g
-  | Bad b => p.(bp) b
-  end.
-
-(** Extension of a robots substitution to a subtitution of robots locations in a
-    position. *)
-Definition subst_pos σ (p:position) :=
-  {| gp := fun g => locate p (σ (Good g)) ;
-     bp := fun b => locate p (σ (Bad b)) |}.
-
-(** Notation of the paper *)
-Notation "p '∘' s" := (subst_pos s p) (at level 20,only parsing).
-
-(** ** Similarities  *)
+(** [automorphism (ident good bad)] is a group (not worth proving it, I guess)
+    and acts on positions (not worth proving it is an action group) *)
+Definition pos_remap good bad s p :=
+  let pos_remap := fun i =>
+  match retraction s i with
+  | Good g => good_places p g
+  | Bad g => bad_places p g
+  end
+  in {| good_places := fun g => pos_remap (Good good bad g)
+      ; bad_places := fun b => pos_remap (Bad good bad b) |}.
 
 (** [similarity k t p] returns a position [p] centered in [t] and zoomed of
     a factor [k]; this function is used to set the frame of reference for
     a given robot. *)
-Definition similarity (k t : Qc) p : position :=
- {| gp := fun n => k * (p.(gp) n - t)
-  ; bp := fun n => k * (p.(bp) n - t)
+Definition similarity (k t : Qc) good bad p : position good bad :=
+ {| good_places := fun n => k * (good_places p n - t)
+  ; bad_places := fun n => k * (bad_places p n - t)
   |}.
 
-(** Notation of the paper. *)
-Notation "'[[' k ',' t ']]'" := (similarity k t).
-
-(** ** Equalities on positions *)
-
-(** A position is a pair of location functions. Equality on positions is the
-    extentional equality of the two location functions. *)
-Record PosEq (p q : position) : Prop :=
- { good_ext : ∀ n, p.(gp) n = q.(gp) n
- ; bad_ext  : ∀ n, p.(bp) n = q.(bp) n }.
-
-(** ** The program of correct robots *)
+(** Equality on positions *)
+Record PosEq good bad (p q : position good bad) : Prop :=
+ { good_ext : forall n, good_places p n = good_places q n
+ ; bad_ext : forall n, bad_places p n = bad_places q n
+ }.
 
 (** ** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
-Record robogram :=
- { algo : position → location
- ; AlgoMorph : ∀ p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q }.
+Record robogram (good bad : finite) :=
+ { algo : position good bad -> Qc
+ ; AlgoMorph : forall p q s, PosEq q (pos_remap s p) -> algo p = algo q
+ }.
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all bad robots
@@ -116,34 +75,24 @@ Record robogram :=
     Note that we do not want the demon give a zoom factor k of 0,
     since to compute the new position we then need to multiply the
     computed result by the inverse of k (which is not defined in this case). *)
-Record demonic_action :=
-  {
-    bad_replace : B → location
-    ; good_reference : G → Qc
-  }.
-
-
+Record demonic_action (good bad : finite) :=
+ { bad_replace : (name bad) -> Qc
+ ; good_reference : (name good) -> Qc
+ }.
 
 (** A [demon] is just a stream of [demonic_action]s. *)
-CoInductive demon :=
-  NextDemon : demonic_action → demon → demon.
+CoInductive demon (good bad : finite) :=
+  NextDemon : demonic_action good bad -> demon good bad -> demon good bad.
 
-(** *** Destructors *)
-
-Definition demon_head (d : demon) : demonic_action :=
+Definition demon_head good bad (d : demon good bad) : demonic_action good bad :=
   match d with NextDemon da _ => da end.
 
-Definition demon_tail (d : demon) : demon :=
+Definition demon_tail good bad (d : demon good bad) : demon good bad :=
   match d with NextDemon _ d => d end.
 
-(** ** Fairness *)
-
-(** Inversing a maybe null rational *)
-
 Inductive inverse (k : Qc) :=
-  | IsNul : k = 0 → inverse k
-  | Inv : ∀ l, l * k = 1 → inverse k.
-
+  | IsNul : k = 0 -> inverse k
+  | Inv : forall l, l * k = 1 -> inverse k.
 
 Definition inv (k : Qc) : inverse k :=
   match Qc_eq_dec k 0 with
@@ -152,130 +101,65 @@ Definition inv (k : Qc) : inverse k :=
   end.
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
-Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : ∀ l H,
-                      inv (good_reference (demon_head d) g) = @Inv _ l H →
+Inductive LocallyFairForOne good bad g (d : demon good bad) : Prop :=
+  | ImmediatelyFair : forall l H,
+                      inv (good_reference (demon_head d) g) = @Inv _ l H ->
                       LocallyFairForOne g d
-  | LaterFair : ∀ H, inv (good_reference (demon_head d) g) = IsNul H →
-                LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d
+  | LaterFair : forall H, inv (good_reference (demon_head d) g) = IsNul H ->
+                LocallyFairForOne g (demon_tail d) -> LocallyFairForOne g d
   .
 
-CoInductive Fair (d : demon) : Prop :=
-  AlwaysFair : Fair (demon_tail d) → (∀ g, LocallyFairForOne g d) →
+CoInductive Fair good bad (d : demon good bad) : Prop :=
+  AlwaysFair : Fair (demon_tail d) -> (forall g, LocallyFairForOne g d) ->
                Fair d.
 
-(** ** Full synchronicity
-
-  A fully synchronous demon is a particular case of fair demon: all good robots
-  are activated at each round. In our setting this means that the demon never
-  return a null reference. *)
-
-
-(** A demon is fully synchronous for one particular good robot g at the first
-    step. *)
-Inductive FullySynchronousForOne g d:Prop :=
-  ImmediatelyFair2:
-    (good_reference (demon_head d) g) ≠ 0 → 
-                      FullySynchronousForOne g d.
-(* instead of ≠ 0, we may put:
- ∀ l H, inv (good_reference (demon_head d) g) = @Inv _ l H → *)
-
-(** A demon is fully synchronous if it is fully synchronous for all good robots
-    at all step. *)
-CoInductive FullySynchronous d :=
-  NextfullySynch:
-    (∀ g, FullySynchronousForOne g d)
-    → FullySynchronous (demon_tail d)
-    → FullySynchronous d.
-
-
-  Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
-  Proof.
-    cofix.
-    intros d H.
-    destruct H.
-    constructor.
-    - apply fully_synchronous_implies_fair.
-      apply H.
-    - intros g.
-      clear fully_synchronous_implies_fair; admit. (* hack sordide pour que ladmit ne plante pas au qed. *)
-  Qed.
-
-(** ** Executions *)
-
 (** Now we can [execute] some robogram from a given position with a [demon] *)
-CoInductive execution :=
-  NextExecution : (G → location) → execution → execution.
+CoInductive execution good :=
+  NextExecution : (name good -> Qc) -> execution good -> execution good.
 
-(** *** Destructors *)
-
-Definition execution_head (e : execution) : (G → location) :=
+Definition execution_head good (e : execution good) : (name good -> Qc) :=
   match e with NextExecution gp _ => gp end.
 
-Definition execution_tail (e : execution) : execution :=
+Definition execution_tail good (e : execution good) : execution good :=
   match e with NextExecution _ e => e end.
 
-Definition new_goods (r : robogram)
-                     (da : demonic_action) (gp : G → location)
-                     : G → location
+Definition new_goods good bad (r : robogram good bad)
+                     (da : demonic_action good bad) (gp : name good -> Qc)
+                     : name good -> Qc
 := fun g =>
-   let k := da.(good_reference) g in
+   let k := good_reference da g in
    let t := gp g in
-   (* l allows getting back the move in the scheduler reference from the move in
-      the robot's local reference *)
    match inv k with
    | IsNul _ => t
-   | Inv l _ => t + l * (algo r ([[k, t]] {| gp := gp; bp := bad_replace da |}))
+   | Inv l _ => t + l * (algo r (similarity k t {| good_places := gp
+                                                 ; bad_places := bad_replace da
+                                                 |}))
    end.
 
-Definition execute (r : robogram): demon → (G → location) → execution :=
-  cofix execute d gp :=
-  NextExecution gp (execute (demon_tail d) (new_goods r (demon_head d) gp)).
-
-(** ** Properties of executions  *)
+Definition execute good bad (r : robogram good bad)
+: demon good bad -> (name good -> Qc) -> execution good
+:= cofix execute d gp :=
+   NextExecution gp (execute (demon_tail d) (new_goods r (demon_head d) gp)).
 
 (** Expressing that all good robots are confined in a small disk. *)
-CoInductive imprisonned (prison_center : location) (radius : Qc)
-                        (e : execution) : Prop
-:= InDisk : (∀ g, [(prison_center - execution_head e g)] <= radius)
-            → imprisonned prison_center radius (execution_tail e)
-            → imprisonned prison_center radius e.
+CoInductive imprisonned (prison_center : Qc) (radius : Qc) good
+                        (e : execution good) : Prop
+:= InDisk : (forall g, [(prison_center - execution_head e g)] <= radius)
+            -> imprisonned prison_center radius (execution_tail e)
+            -> imprisonned prison_center radius e.
 
 (** The execution will end in a small disk. *)
-Inductive attracted (pc : location) (r : Qc) (e : execution) : Prop :=
-  | Captured : imprisonned pc r e → attracted pc r e
-  | WillBeCaptured : attracted pc r (execution_tail e) → attracted pc r e
+Inductive attracted (pc : Qc) (r : Qc) good (e : execution good) : Prop :=
+  | Captured : imprisonned pc r e -> attracted pc r e
+  | WillBeCaptured : attracted pc r (execution_tail e) -> attracted pc r e
   .
 
 (** A solution is just convergence property for any demon. *)
-Definition solution (r : robogram) : Prop :=
-  ∀ (gp : G → location),
-  ∀ (d : demon), Fair d →
-  ∀ (epsilon : Qc), 0 < epsilon →
-  exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
-
-
-(** A solution is just convergence property for any demon. *)
-Definition solution_fully_synchronous (r : robogram) : Prop :=
-  ∀ (gp : G → location),
-  ∀ (d : demon), FullySynchronous d →
-  ∀ (epsilon : Qc), 0 < epsilon →
-  exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
-
-
-Lemma synchro : ∀ r, solution r → solution_fully_synchronous r.
-Proof.
-  intros r H.
-  unfold solution_fully_synchronous, solution in *.
-  intros gp d H0 epsilon H1.
-  apply H.
-  apply fully_synchronous_implies_fair.
-  assumption.
-  assumption.
-Qed.
-
-
-End goodbad.
+Definition solution good bad (r : robogram good bad) : Prop :=
+  forall (gp : name good -> Qc),
+  forall (d : demon good bad), Fair d ->
+  forall (epsilon : Qc), 0 < epsilon ->
+  exists (lim_app : Qc), attracted lim_app epsilon (execute r d gp).
 
 (* 
  *** Local Variables: ***
