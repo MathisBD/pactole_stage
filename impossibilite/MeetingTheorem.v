@@ -57,7 +57,7 @@ Proof.
         unfold new_goods; simpl; unfold similarity; simpl; intros; rewrite Hgp.
         rewrite (@AlgoMorph g b r _ (pos0 g b) (id_perm g b));
         [fold (delta r); field; discriminate|].
-        split; simpl; intros; [rewrite Hgp|]; ring.
+        split; simpl;unfold position_after_renaming;simpl; intros; [rewrite Hgp|] ; ring.
       * destruct Himp.
         revert Himp; clear.
         simpl; fold (demon1 (delta r) g b) (execute r).
@@ -119,7 +119,7 @@ Proof.
         intros g0; unfold new_goods; simpl; unfold similarity; simpl.
         rewrite (@AlgoMorph g b r _ (pos0 g b) (id_perm g b));
         [fold (delta r); rewrite H; field; discriminate|].
-        split; intros; simpl; repeat rewrite H; ring_simplify; split.
+        split; intros; simpl;unfold position_after_renaming;simpl; repeat rewrite H; ring_simplify; split.
       * simpl; clear.
         fold (demon1 (delta r) g b) (execute r).
         now rewrite Qcplus_assoc.

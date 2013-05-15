@@ -55,6 +55,45 @@ Proof.
   + intros l e; left with l e; auto.
 Qed.
 
+
+
+Lemma demon2_is_fully_synchronous: forall f, FullySynchronous (demon2 f).
+Proof.
+  cofix.
+  intros f.
+  constructor.  
+  - unfold demon2.
+    intros g.
+    unfold lazy_action.
+    destruct (next f (Some g)) eqn:h.
+    assert (h':1 *
+               good_reference
+                 (demon_head
+                    (cofix demon2  : demon f f :=
+                       NextDemon
+                         {|
+                           bad_replace := fun x : name f =>
+                                            match next f (Some x) with
+                                              | Some _ => 1
+                                              | None => 0
+                                            end;
+                           good_reference := fun x : name f =>
+                                               match next f (Some x) with
+                                                 | Some _ => 1
+                                                 | None => - (1)
+                                               end |} demon2)) g = 1).
+    { admit. }
+    
+    apply ImmediatelyFair2 with (l:=1) (H:=h').
+    simpl.
+    rewrite h.
+    Show Existentials.
+    unfold lazy_action;simpl.
+    destruct (next f (Some n));discriminate.
+  - assumption.
+Qed.
+
+
 Definition goodies f : name f -> Qc :=
   fun x => match next f (Some x) with None => 1 | _ => 0 end.
 
@@ -74,7 +113,7 @@ Proof.
     destruct (inv match next f (Some g) with None => -1%Qc | _ => 1 end); ring.
   + split; simpl; rewrite H; simpl;
     intros x; generalize (H x); unfold goodies; clear;
-    destruct (next f (Some g)); simpl; unfold swap_p;
+    destruct (next f (Some g)); simpl;unfold position_after_renaming;simpl;unfold swap_p;
     case_eq (next f (Some x)); intros; (rewrite H0||rewrite H); ring.
 Qed.
 
@@ -83,7 +122,7 @@ Lemma L1 f (Htwo : two f) (r : robogram f f) (l : Qc) (H : 0 = delta r)
   imprisonned l (1/(1+1+1)) (execute r (demon2 f) gp) ->
   False.
 Proof.
-  intros; destruct H1; revert H0 H1 Htwo; clear.
+  intros ; destruct H1; revert H0 H1 Htwo; clear.
   intros Hgp K Htwo.
   revert Htwo; unfold two.
   case_eq (prev f None); [|intros L; rewrite L; auto].
@@ -135,3 +174,17 @@ Proof.
   destruct (prev f (prev f None)); auto.
   intros [].
 Qed.
+
+
+Theorem no_solution_fully_synchronous f (Htwo : two f) (r : robogram f f) :
+  solution_fully_synchronous r -> False.
+Proof.
+  intros Hs.
+  apply (L2 Htwo Hs).
+  symmetry.
+  apply meeting_theorem; auto.
+  revert Htwo; unfold two.
+  destruct (prev f (prev f None)); auto.
+  intros [].
+Qed.
+
