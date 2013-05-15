@@ -1,6 +1,6 @@
 Set Implicit Arguments.
-Require Import ConvergentFormalism.
-Require Import MeetingTheorem.
+Require Import ConvergentFormalism3.
+Require Import MeetingTheorem3.
 Require Import Field.
 Require Import Qcanon.
 Require Import Qcabs.
@@ -56,6 +56,52 @@ Proof.
 Qed.
 
 
+
+Lemma demon2_is_fully_synchronous: forall f, FullySynchronous (demon2 f).
+Proof.
+  cofix.
+  intros f.
+  constructor.  
+  - unfold demon2.
+    intros g.
+    constructor.
+    simpl.
+    destruct (next f (Some g));discriminate.
+  - apply demon2_is_fully_synchronous.
+Qed.    
+
+(* With the other version of FullySynchronous:
+    unfold lazy_action.
+    destruct (next f (Some g)) eqn:h.
+    assert (h':1 *
+               good_reference
+                 (demon_head
+                    (cofix demon2  : demon f f :=
+                       NextDemon
+                         {|
+                           bad_replace := fun x : name f =>
+                                            match next f (Some x) with
+                                              | Some _ => 1
+                                              | None => 0
+                                            end;
+                           good_reference := fun x : name f =>
+                                               match next f (Some x) with
+                                                 | Some _ => 1
+                                                 | None => - (1)
+                                               end |} demon2)) g = 1).
+    { admit. }
+    
+    simpl.
+    rewrite h.
+    discriminate.
+    apply ImmediatelyFair2 with (l:=1) (H:=h').
+    Show Existentials.
+    unfold lazy_action;simpl.
+    destruct (next f (Some n));discriminate.
+*)
+
+
+
 Definition goodies f : name f -> Qc :=
   fun x => match next f (Some x) with None => 1 | _ => 0 end.
 
@@ -75,8 +121,8 @@ Proof.
     destruct (inv match next f (Some g) with None => -1%Qc | _ => 1 end); ring.
   + split; simpl; rewrite H; simpl;
     intros x; generalize (H x); unfold goodies; clear;
-    destruct (next f (Some g)); simpl;unfold swap_p;
-    case_eq (next f (Some x)); intros; (rewrite H0||rewrite H); ring.
+    destruct (next f (Some g));simpl;unfold swap_p;
+    case_eq (next f (Some x)); intros;simpl; (rewrite H0||rewrite H); ring.
 Qed.
 
 Lemma L1 f (Htwo : two f) (r : robogram f f) (l : Qc) (H : 0 = delta r)
@@ -123,6 +169,26 @@ Proof.
       now apply stable_goodies.
 Qed.
 
+Lemma L2' f (Htwo : two f) (r : robogram f f) : solution_fully_synchronous r -> ~ 0 = delta r.
+Proof.
+  intros Hs H.
+  destruct (Hs (goodies f) (demon2 f) (demon2_is_fully_synchronous _) (1/(1+1+1))
+               (eq_refl _)) as [lim Hlim].
+  cut (forall (gp : name f -> Qc), (forall g, gp g = goodies f g) ->
+       attracted lim (1/(1+1+1)) (execute r (demon2 f) gp) -> False).
+  + intros K.
+    exact (K (goodies f) (fun x => eq_refl _) Hlim).
+  + clear - H Htwo; intros.
+    remember (execute r (demon2 f) gp).
+    revert gp H0 Heqe.
+    induction H1; intros; subst.
+    - eapply L1; eauto.
+    - clear H1.
+      apply (IHattracted (new_goods r (lazy_action f) gp)); auto.
+      now apply stable_goodies.
+Qed.
+
+
 (******************************************************************************)
 (* The main theorem : there is no solution to the N vs N problem.             *)
 (******************************************************************************)
@@ -132,6 +198,19 @@ Proof.
   apply (L2 Htwo Hs).
   symmetry.
   apply meeting_theorem; auto.
+  revert Htwo; unfold two.
+  destruct (prev f (prev f None)); auto.
+  intros [].
+Qed.
+
+
+Theorem no_solution_fully_synchronous f (Htwo : two f) (r : robogram f f) :
+  solution_fully_synchronous r -> False.
+Proof.
+  intros Hs.
+  apply (L2' Htwo Hs).
+  symmetry.
+  apply meeting_theorem'; auto.
   revert Htwo; unfold two.
   destruct (prev f (prev f None)); auto.
   intros [].

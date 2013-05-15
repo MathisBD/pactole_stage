@@ -1,6 +1,6 @@
 Set Implicit Arguments.
-Require Import ConvergentFormalism.
-Require Import FiniteSum.
+Require Import ConvergentFormalism3.
+(* Require Import FiniteSum. *)
 Require Import Field.
 Require Import Qcanon.
 Require Import Qcabs.
@@ -13,8 +13,8 @@ abstract (unfold id; split; auto).
 Defined.
 
 (* Useful initial position and a special rational depending on a robogram *)
-Definition pos0 g b := {| good_places := fun _:name g => 0
-                        ; bad_places := fun _:name b => 1
+Definition pos0 g b := {| gp := fun _:name g => 0
+                        ; bp := fun _:name b => 1
                         |}.
 
 Definition delta g b (r : robogram g b) := algo r (pos0 g b).
@@ -34,6 +34,22 @@ Proof.
     apply demon1_is_fair.
   + eleft; simpl; unfold inv; split.
 Qed.
+
+Lemma demon1_is_fully_synchronous: forall q d g b, FullySynchronous (demon1 d g b q).
+Proof.
+  cofix.
+  intros q.
+  constructor.  
+  - unfold demon1.
+    intros g'.
+    constructor.
+    simpl.
+    discriminate.
+  - simpl. 
+    fold (demon1 d g b).
+    apply demon1_is_fully_synchronous.
+Qed.    
+
 
 Lemma S1 g b (x : name g) (r : robogram g b) (l : Qc)
 : forall (gp : name g -> Qc) (k : Qc), (forall g, gp g = k) ->
@@ -57,7 +73,7 @@ Proof.
         unfold new_goods; simpl; unfold similarity; simpl; intros; rewrite Hgp.
         rewrite (@AlgoMorph g b r _ (pos0 g b) (id_perm g b));
         [fold (delta r); field; discriminate|].
-        split;simpl; intros; [rewrite Hgp|] ; ring.
+        split; simpl; intros; [rewrite Hgp|]; ring.
       * destruct Himp.
         revert Himp; clear.
         simpl; fold (demon1 (delta r) g b) (execute r).
@@ -125,11 +141,54 @@ Proof.
         now rewrite Qcplus_assoc.
 Qed.
 
+Lemma S2' g b (x : name g) (r : robogram g b) : solution_fully_synchronous r -> ~ 0 < [delta r].
+Proof.
+  intros Hs H.
+  destruct (Hs (fun _=>0) (demon1 (delta r) g b 1) (demon1_is_fully_synchronous _ _ _ _)
+               [delta r] H) as [lim Hlim].
+  cut (forall (gp : name g -> Qc) (k : Qc), (forall g, gp g = k) ->
+       attracted lim [delta r] (execute r (demon1 (delta r) g b (1 + k)) gp) ->
+       [delta r] = 0).
+  + intros K.
+    generalize (K (fun _ => 0) 0 (fun x => eq_refl 0)); clear K.
+    rewrite Qcplus_0_r; intros K; rewrite (K Hlim) in H; clear - H.
+    discriminate.
+  + clear - x.
+    intros.
+    remember (execute r (demon1 (delta r) g b (1+k)) gp).
+    revert gp k H Heqe.
+    induction H0; intros; subst.
+    - eapply S1; eauto.
+    - clear H0.
+      apply (IHattracted (new_goods r {|bad_replace:=fun _=>1+k
+                                       ;good_reference:=fun _=>1|} gp)
+                         (k + delta r)).
+      * clear - H.
+        intros g0; unfold new_goods; simpl; unfold similarity; simpl.
+        rewrite (@AlgoMorph g b r _ (pos0 g b) (id_perm g b));
+        [fold (delta r); rewrite H; field; discriminate|].
+        split; intros; simpl; repeat rewrite H; ring_simplify; split.
+      * simpl; clear.
+        fold (demon1 (delta r) g b) (execute r).
+        now rewrite Qcplus_assoc.
+Qed.
+
 Theorem meeting_theorem g b (x : name g) (r : robogram g b)
 : solution r -> delta r = 0.
 Proof.
   intros Hs.
   generalize (S2 x Hs); generalize (delta r); clear.
+  intros q Hneg.
+  generalize (proj1 (Qcabs_Qcle_condition _ _) (Qcnot_lt_le _ _ Hneg)); clear.
+  intros [A B]; apply Qcle_antisym; auto.
+Qed.
+
+
+Theorem meeting_theorem' g b (x : name g) (r : robogram g b)
+: solution_fully_synchronous r -> delta r = 0.
+Proof.
+  intros Hs.
+  generalize (S2' x Hs); generalize (delta r); clear.
   intros q Hneg.
   generalize (proj1 (Qcabs_Qcle_condition _ _) (Qcnot_lt_le _ _ Hneg)); clear.
   intros [A B]; apply Qcle_antisym; auto.
