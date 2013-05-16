@@ -110,10 +110,10 @@ Definition two f :=
 
 Lemma stable_goodies f (r : robogram f f) (Hd : 0 = delta r)
 : forall gp, (forall g : name f, gp g = goodies f g) ->
-              forall g : name f, new_goods r (lazy_action f) gp g = goodies f g.
+              forall g : name f, round r (lazy_action f) gp g = goodies f g.
 Proof.
   intros.
-  unfold new_goods; simpl; unfold similarity; simpl.
+  unfold round; simpl; unfold similarity; simpl.
   rewrite (@AlgoMorph f f r _ (pos0 f f)
            (match next f (Some g) with None => swap_perm2 f
             | _ => swap_perm1 f end)).
@@ -165,7 +165,7 @@ Proof.
     induction H1; intros; subst.
     - eapply L1; eauto.
     - clear H1.
-      apply (IHattracted (new_goods r (lazy_action f) gp)); auto.
+      apply (IHattracted (round r (lazy_action f) gp)); auto.
       now apply stable_goodies.
 Qed.
 
@@ -184,7 +184,7 @@ Proof.
     induction H1; intros; subst.
     - eapply L1; eauto.
     - clear H1.
-      apply (IHattracted (new_goods r (lazy_action f) gp)); auto.
+      apply (IHattracted (round r (lazy_action f) gp)); auto.
       now apply stable_goodies.
 Qed.
 

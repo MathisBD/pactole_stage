@@ -238,7 +238,7 @@ Definition execution_head (e : execution) : (G → location) :=
 Definition execution_tail (e : execution) : execution :=
   match e with NextExecution _ e => e end.
 
-Definition new_goods (r : robogram)
+Definition round (r : robogram)
                      (da : demonic_action) (gp : G → location)
                      : G → location
 := fun g =>
@@ -253,7 +253,7 @@ Definition new_goods (r : robogram)
 
 Definition execute (r : robogram): demon → (G → location) → execution :=
   cofix execute d gp :=
-  NextExecution gp (execute (demon_tail d) (new_goods r (demon_head d) gp)).
+  NextExecution gp (execute (demon_tail d) (round r (demon_head d) gp)).
 
 (** ** Properties of executions  *)
 
@@ -267,8 +267,7 @@ CoInductive imprisonned (prison_center : location) (radius : Qc)
 (** The execution will end in a small disk. *)
 Inductive attracted (pc : location) (r : Qc) (e : execution) : Prop :=
   | Captured : imprisonned pc r e → attracted pc r e
-  | WillBeCaptured : attracted pc r (execution_tail e) → attracted pc r e
-  .
+  | WillBeCaptured : attracted pc r (execution_tail e) → attracted pc r e.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
