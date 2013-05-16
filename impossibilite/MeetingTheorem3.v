@@ -22,8 +22,8 @@ Definition delta g b (r : robogram g b) := algo r (pos0 g b).
 (* First part of the proof with the shifting demon *)
 Definition demon1 (d : Qc) g b : Qc -> demon g b :=
   cofix demon1 k :=
-  NextDemon {| bad_replace := fun _ => k
-             ; good_reference := fun _ => 1
+  NextDemon {| byz_replace := fun _ => k
+             ; frame := fun _ => 1
              |} (demon1 (k+d)).
 
 Lemma demon1_is_fair (d : Qc) g b : forall q, Fair (demon1 d g b q).
@@ -128,8 +128,8 @@ Proof.
     induction H0; intros; subst.
     - eapply S1; eauto.
     - clear H0.
-      apply (IHattracted (new_goods r {|bad_replace:=fun _=>1+k
-                                       ;good_reference:=fun _=>1|} gp)
+      apply (IHattracted (new_goods r {|byz_replace:=fun _=>1+k
+                                       ;frame:=fun _=>1|} gp)
                          (k + delta r)).
       * clear - H.
         intros g0; unfold new_goods; simpl; unfold similarity; simpl.
@@ -160,8 +160,8 @@ Proof.
     induction H0; intros; subst.
     - eapply S1; eauto.
     - clear H0.
-      apply (IHattracted (new_goods r {|bad_replace:=fun _=>1+k
-                                       ;good_reference:=fun _=>1|} gp)
+      apply (IHattracted (new_goods r {|byz_replace:=fun _=>1+k
+                                       ;frame:=fun _=>1|} gp)
                          (k + delta r)).
       * clear - H.
         intros g0; unfold new_goods; simpl; unfold similarity; simpl.

@@ -12,10 +12,10 @@ Definition swap_p f (n s : name f -> ident f f) : name f -> ident f f :=
   fun x => match next f (Some x) with None => n x | _ => s x end.
 
 Definition swaper f (g b : name f -> ident f f) : ident f f -> ident f f :=
-  fun x => match x with Good x => g x | Bad x => b x end.
+  fun x => match x with Good x => g x | Byz x => b x end.
 
 Definition swap_perm1 f : automorphism (ident f f).
-refine (let s := swaper (swap_p(Bad f f)(Good f f)) (swap_p(Good f f)(Bad f f))
+refine (let s := swaper (swap_p(Byz f f)(Good f f)) (swap_p(Good f f)(Byz f f))
         in {| section := s ; retraction := s |}).
 abstract (
 intros x y; split; intros; subst; [destruct x as [t|t]|destruct y as [t|t]];
@@ -26,7 +26,7 @@ subst s; unfold swap_p, swaper; simpl;
 Defined.
 
 Definition swap_perm2 f : automorphism (ident f f).
-refine (let s := swaper (swap_p(Good f f)(Bad f f)) (swap_p(Bad f f)(Good f f))
+refine (let s := swaper (swap_p(Good f f)(Byz f f)) (swap_p(Byz f f)(Good f f))
         in {| section := s ; retraction := s |}).
 abstract (
 intros x y; split; intros; subst; [destruct x as [t|t]|destruct y as [t|t]];
@@ -38,8 +38,8 @@ Defined.
 
 (* Second part of the proof with the lazy demon *)
 Definition lazy_action f : demonic_action f f :=
-  {| bad_replace := fun x => match next f (Some x) with None => 0 | _ => 1 end
-   ; good_reference := fun x => match next f (Some x) with None => -1%Qc
+  {| byz_replace := fun x => match next f (Some x) with None => 0 | _ => 1 end
+   ; frame := fun x => match next f (Some x) with None => -1%Qc
                                                          | _ => 1 end
    |}.
 
@@ -49,7 +49,7 @@ Definition demon2 f : demon f f :=
 Lemma demon2_is_fair f : Fair (demon2 f).
 Proof.
   cofix; split; auto.
-  intros g; case_eq (inv (good_reference (demon_head (demon2 f)) g)).
+  intros g; case_eq (inv (frame (demon_head (demon2 f)) g)).
   + intros K; exfalso; simpl in *.
     destruct (next f (Some g)); discriminate.
   + intros l e; left with l e; auto.
@@ -74,17 +74,17 @@ Qed.
     unfold lazy_action.
     destruct (next f (Some g)) eqn:h.
     assert (h':1 *
-               good_reference
+               frame
                  (demon_head
                     (cofix demon2  : demon f f :=
                        NextDemon
                          {|
-                           bad_replace := fun x : name f =>
+                           byz_replace := fun x : name f =>
                                             match next f (Some x) with
                                               | Some _ => 1
                                               | None => 0
                                             end;
-                           good_reference := fun x : name f =>
+                           frame := fun x : name f =>
                                                match next f (Some x) with
                                                  | Some _ => 1
                                                  | None => - (1)

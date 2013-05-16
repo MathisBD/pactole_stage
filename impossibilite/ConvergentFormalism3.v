@@ -25,7 +25,7 @@ Record finite :=
  - add locations and vectors and obtain new locations. *)
 Notation location := Qc (only parsing).
 
-Section goodbad.
+Section goodbyz.
 
 (** Here are the two kinds of robots. *)
 Variable G B : finite.
@@ -33,7 +33,7 @@ Variable G B : finite.
 (** Disjoint union of both kinds od robots is obtained by a sum type. *)
 Inductive ident :=
  | Good : G → ident
- | Bad : B → ident.
+ | Byz : B → ident.
 (* TODO: rename into robots? GB? *)
 
 Record automorphism (t : Set)  :=
@@ -47,7 +47,7 @@ Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 (** Renaming of agents are bijections *)
 Definition permutation := automorphism.
 
-(* [automorphism (ident good bad)] is a group (not worth proving it, I guess)
+(* [automorphism (ident good byz)] is a group (not worth proving it, I guess)
    and acts on positions (not worth proving it is an action group) *)
 
 (** ** Positions *)
@@ -67,14 +67,14 @@ Record position :=
 Definition locate p (id: ident): location :=
   match id with
   | Good g => p.(gp) g
-  | Bad b => p.(bp) b
+  | Byz b => p.(bp) b
   end.
 
 (** Extension of a robots substitution to a subtitution of robots locations in a
     position. *)
 Definition subst_pos σ (p:position) :=
   {| gp := fun g => locate p (σ (Good g)) ;
-     bp := fun b => locate p (σ (Bad b)) |}.
+     bp := fun b => locate p (σ (Byz b)) |}.
 
 (** Notation of the paper *)
 Notation "p '∘' s" := (subst_pos s p) (at level 20,only parsing).
@@ -98,7 +98,7 @@ Notation "'[[' k ',' t ']]'" := (similarity k t).
     extentional equality of the two location functions. *)
 Record PosEq (p q : position) : Prop :=
  { good_ext : ∀ n, p.(gp) n = q.(gp) n
- ; bad_ext  : ∀ n, p.(bp) n = q.(bp) n }.
+ ; byz_ext  : ∀ n, p.(bp) n = q.(bp) n }.
 
 (** ** The program of correct robots *)
 
@@ -109,7 +109,7 @@ Record robogram :=
  ; AlgoMorph : ∀ p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q }.
 
 (** ** Demonic schedulers *)
-(** A [demonic_action] moves all bad robots
+(** A [demonic_action] moves all byz robots
     as it whishes, and sets the referential of all good robots it selects.
     A reference of 0 is a special reference meaning that the robot will not
     be activated. Any other reference gives a factor for zooming.
@@ -118,8 +118,8 @@ Record robogram :=
     computed result by the inverse of k (which is not defined in this case). *)
 Record demonic_action :=
   {
-    bad_replace : B → location
-    ; good_reference : G → Qc
+    byz_replace : B → location
+    ; frame : G → Qc
   }.
 
 
@@ -154,9 +154,9 @@ Definition inv (k : Qc) : inverse k :=
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
   | ImmediatelyFair : ∀ l H,
-                      inv (good_reference (demon_head d) g) = @Inv _ l H →
+                      inv (frame (demon_head d) g) = @Inv _ l H →
                       LocallyFairForOne g d
-  | LaterFair : ∀ H, inv (good_reference (demon_head d) g) = IsNul H →
+  | LaterFair : ∀ H, inv (frame (demon_head d) g) = IsNul H →
                 LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d
   .
 
@@ -175,10 +175,10 @@ CoInductive Fair (d : demon) : Prop :=
     step. *)
 Inductive FullySynchronousForOne g d:Prop :=
   ImmediatelyFair2:
-    (good_reference (demon_head d) g) ≠ 0 → 
+    (frame (demon_head d) g) ≠ 0 → 
                       FullySynchronousForOne g d.
 (* instead of ≠ 0, we may put:
- ∀ l H, inv (good_reference (demon_head d) g) = @Inv _ l H → *)
+ ∀ l H, inv (frame (demon_head d) g) = @Inv _ l H → *)
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
     at all step. *)
@@ -242,13 +242,13 @@ Definition new_goods (r : robogram)
                      (da : demonic_action) (gp : G → location)
                      : G → location
 := fun g =>
-   let k := da.(good_reference) g in
+   let k := da.(frame) g in
    let t := gp g in
    (* l allows getting back the move in the scheduler reference from the move in
       the robot's local reference *)
    match inv k with
    | IsNul _ => t
-   | Inv l _ => t + l * (algo r ([[k, t]] {| gp := gp; bp := bad_replace da |}))
+   | Inv l _ => t + l * (algo r ([[k, t]] {| gp := gp; bp := byz_replace da |}))
    end.
 
 Definition execute (r : robogram): demon → (G → location) → execution :=
@@ -298,7 +298,7 @@ Proof.
 Qed.
 
 
-End goodbad.
+End goodbyz.
 
 (* 
  *** Local Variables: ***
