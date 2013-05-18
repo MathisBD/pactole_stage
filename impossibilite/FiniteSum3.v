@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import ConvergentFormalism.
+Require Import ConvergentFormalism3.
 
 Definition chain_aux_aux A B (ob : option B) : option (B + A) :=
   match ob with
@@ -153,3 +153,18 @@ Proof.
 Proof.
   abstract (apply chainf_acc; apply RecPrev).
 Defined.
+
+Definition one : finite.
+refine {| name := unit
+        ; next := fun x => match x with None => Some tt | _ => None end
+        ; prev := fun x => match x with None => Some tt | _ => None end
+        |}.
+Proof.
+  abstract (
+    split; [destruct x as [[]|]|destruct y as [[]|]]; intros; subst; auto
+  ).
+  abstract (split; discriminate).
+  abstract (split; discriminate).
+Defined.
+
+Definition fS (f : finite) : finite := fplus one f.
