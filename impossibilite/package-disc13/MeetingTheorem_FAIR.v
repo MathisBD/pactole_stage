@@ -22,7 +22,7 @@ Definition delta g b (r : robogram g b) := algo r (pos0 g b).
 (* First part of the proof with the shifting demon *)
 Definition demon1 (d : Qc) g b : Qc -> demon g b :=
   cofix demon1 k :=
-  NextDemon {| byz_replace := fun _ => k
+  NextDemon {| locate_byz := fun _ => k
              ; frame := fun _ => 1
              |} (demon1 (k+d)).
 
@@ -112,7 +112,7 @@ Proof.
     induction H0; intros; subst.
     - eapply S1; eauto.
     - clear H0.
-      apply (IHattracted (round r {|byz_replace:=fun _=>1+k
+      apply (IHattracted (round r {|locate_byz:=fun _=>1+k
                                        ;frame:=fun _=>1|} gp)
                          (k + delta r)).
       * clear - H.

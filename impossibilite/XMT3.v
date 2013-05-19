@@ -24,7 +24,7 @@ Definition delta g b (r : robogram g b) bp :=
 (* First part of the proof with the shifting demon *)
 Definition demon1 (d : Qc) g b (bp : name b -> Qc) : Qc -> demon g b :=
   cofix demon1 k :=
-  NextDemon {| byz_replace := fun x => bp x + k
+  NextDemon {| locate_byz := fun x => bp x + k
              ; frame := fun _ => 1
              |} (demon1 (k+d)).
 
@@ -102,7 +102,7 @@ Proof.
 Qed.
 
 Lemma S2' g b (x : name g) (r : robogram g b) (bp : name b -> Qc)
-: solution_fully_synchronous r -> ~ 0 < [delta r bp].
+: solution_FSYNC r -> ~ 0 < [delta r bp].
 Proof.
   intros Hs H.
   assert ([delta r bp] = 0).
@@ -127,7 +127,7 @@ Proof.
 Qed.
 
 Theorem meeting_theorem' g b (x : name g) (r : robogram g b) (bp : name b -> Qc)
-: solution_fully_synchronous r -> delta r bp = 0.
+: solution_FSYNC r -> delta r bp = 0.
 Proof.
   intros Hs.
   generalize (S2' x bp Hs); generalize (delta r); clear.

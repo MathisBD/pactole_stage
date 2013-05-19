@@ -51,7 +51,7 @@ Defined.
 
 (* Second part of the proof with the lazy demon *)
 Definition demon_trick g b : demonic_action (fS g) (fplus b (fS g)) :=
-  {| byz_replace := fun x : name (fplus b (fS g)) =>
+  {| locate_byz := fun x : name (fplus b (fS g)) =>
                     match x with inr (inl _) => 0 | _ => 1 end
    ; frame := fun x : name (fS g) => 1
    |}.
@@ -69,7 +69,7 @@ Defined.
 
 Lemma demon_trick_similitude g b
       (r : robogram (fS g) (fplus b (fS g)))
-      (Hr : solution_fully_synchronous r) :
+      (Hr : solution_FSYNC r) :
   similitude' unity 0 (fS g) (goodies (g := g))
              (after_tactic unity 0 r (demon_trick g b) (goodies (g := g))).
 Proof.
@@ -98,7 +98,7 @@ Qed.
 (* Note that u : name g means that g is non-empty *)
 
 Theorem no_solution g b (r : robogram (fS g) (fplus b (fS g)))
-: forall (u : name g), solution_fully_synchronous r -> False.
+: forall (u : name g), solution_FSYNC r -> False.
 Proof.
   intros u Hs.
   assert (K : goodies (g := g) (inl tt) <>

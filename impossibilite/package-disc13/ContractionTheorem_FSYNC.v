@@ -13,7 +13,7 @@ Record inv_pair :=
 Definition simili_action' good bad (k : inv_pair) (t : Qc)
                                    (da : demonic_action good bad)
 : demonic_action good bad
-:= {| byz_replace := fun x => (alpha k) * (byz_replace da x) + t
+:= {| locate_byz := fun x => (alpha k) * (locate_byz da x) + t
     ; frame := fun x => (beta k) * (frame da x)
     |}.
 

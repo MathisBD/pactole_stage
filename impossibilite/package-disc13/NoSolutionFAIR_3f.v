@@ -47,13 +47,13 @@ Defined.
 
 (* Second part of the proof with the lazy demon *)
 Definition da1 g b : demonic_action (fplus (fplus b g) g) (fplus b g) :=
-  {| byz_replace := fun _ => 1
+  {| locate_byz := fun _ => 1
    ; frame := fun x : name (fplus _ _) =>
                        match x with inl _ => 0 | _ => -(1) end
    |}.
 
 Definition da2 g b : demonic_action (fplus (fplus b g) g) (fplus b g) :=
-  {| byz_replace := fun x : name (fplus _ _) =>
+  {| locate_byz := fun x : name (fplus _ _) =>
                     match x with inl _ => 1 | _ => 0 end
    ; frame := fun x : name (fplus _ _) =>
                        match x with inl _ => 1 | _ => 0 end
@@ -254,7 +254,7 @@ Proof.
     repeat case L; simpl.
     generalize (
      @AlgoMorph _ _ r (pos0 (fplus (fplus b g) g) (fplus b g))
-     (similarity 1 0 {|gp:=gp;bp:=byz_replace (da2 g b)|})
+     (similarity 1 0 {|gp:=gp;bp:=locate_byz (da2 g b)|})
      (swap_perm2 g b));
     simpl; intros []; [|rewrite K; simpl; ring].
     split; simpl; intros.

@@ -24,7 +24,7 @@ Definition delta g b (r : robogram g b) bp :=
 (* First part of the proof with the shifting demon *)
 Definition demon1 (d : Qc) g b (bp : name b -> Qc) : Qc -> demon g b :=
   cofix demon1 k :=
-  NextDemon {| byz_replace := fun x => bp x + k
+  NextDemon {| locate_byz := fun x => bp x + k
              ; frame := fun _ => 1
              |} (demon1 (k+d)).
 

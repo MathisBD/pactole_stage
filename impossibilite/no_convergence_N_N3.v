@@ -38,7 +38,7 @@ Defined.
 
 (* Second part of the proof with the lazy demon *)
 Definition lazy_action f : demonic_action f f :=
-  {| byz_replace := fun x => match next f (Some x) with None => 0 | _ => 1 end
+  {| locate_byz := fun x => match next f (Some x) with None => 0 | _ => 1 end
    ; frame := fun x => match next f (Some x) with None => -1%Qc
                                                          | _ => 1 end
    |}.
@@ -79,7 +79,7 @@ Qed.
                     (cofix demon2  : demon f f :=
                        NextDemon
                          {|
-                           byz_replace := fun x : name f =>
+                           locate_byz := fun x : name f =>
                                             match next f (Some x) with
                                               | Some _ => 1
                                               | None => 0
@@ -169,7 +169,7 @@ Proof.
       now apply stable_goodies.
 Qed.
 
-Lemma L2' f (Htwo : two f) (r : robogram f f) : solution_fully_synchronous r -> ~ 0 = delta r.
+Lemma L2' f (Htwo : two f) (r : robogram f f) : solution_FSYNC r -> ~ 0 = delta r.
 Proof.
   intros Hs H.
   destruct (Hs (goodies f) (demon2 f) (demon2_is_fully_synchronous _) (1/(1+1+1))
@@ -204,8 +204,8 @@ Proof.
 Qed.
 
 
-Theorem no_solution_fully_synchronous f (Htwo : two f) (r : robogram f f) :
-  solution_fully_synchronous r -> False.
+Theorem no_solution_FSYNC f (Htwo : two f) (r : robogram f f) :
+  solution_FSYNC r -> False.
 Proof.
   intros Hs.
   apply (L2' Htwo Hs).

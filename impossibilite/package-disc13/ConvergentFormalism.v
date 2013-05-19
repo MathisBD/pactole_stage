@@ -118,7 +118,7 @@ Record robogram :=
     computed result by the inverse of k (which is not defined in this case). *)
 Record demonic_action :=
   {
-    byz_replace : B → location
+    locate_byz : B → location
     ; frame : G → Qc
   }.
 
@@ -264,7 +264,7 @@ Definition round (r : robogram)
       the robot's local reference *)
    match inv k with
    | IsNul _ => t
-   | Inv l _ => t + l * (algo r ([[k, t]] {| gp := gp; bp := byz_replace da |}))
+   | Inv l _ => t + l * (algo r ([[k, t]] {| gp := gp; bp := locate_byz da |}))
    end.
 
 Definition execute (r : robogram): demon → (G → location) → execution :=

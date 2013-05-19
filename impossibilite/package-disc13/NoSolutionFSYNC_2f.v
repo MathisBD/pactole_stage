@@ -51,7 +51,7 @@ Defined.
 
 (* Second part of the proof with the lazy demon *)
 Definition demon_trick g b : demonic_action (fS g) (fplus b (fS g)) :=
-  {| byz_replace := fun x : name (fplus b (fS g)) =>
+  {| locate_byz := fun x : name (fplus b (fS g)) =>
                     match x with inr (inl _) => 0 | _ => 1 end
    ; frame := fun x : name (fS g) => 1
    |}.
