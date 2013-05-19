@@ -9,7 +9,7 @@ Definition finite_run good bad (r : robogram good bad)
 : (list (demonic_action good bad)) -> (demonic_action good bad) ->
   (name good -> Qc) -> (name good -> Qc) :=
   fix finite_run l da gp :=
-  let gp := new_goods r da gp in
+  let gp := round r da gp in
   match l with
   | nil => gp
   | cons da l => finite_run l da gp
@@ -27,8 +27,8 @@ Record inv_pair :=
 Definition simili_action good bad (k : inv_pair) (t : Qc)
                                   (da : demonic_action good bad)
 : demonic_action good bad
-:= {| bad_replace := fun x => (alpha k) * (bad_replace da x) + t
-    ; good_reference := fun x => (beta k) * (good_reference da x)
+:= {| byz_replace := fun x => (alpha k) * (byz_replace da x) + t
+    ; frame := fun x => (beta k) * (frame da x)
     |}.
 
 Definition tactic_rot good bad k t (dt : demon_tactic good bad)
@@ -48,7 +48,7 @@ Definition simili_demon good bad k t
 Definition fair_tactic_ good bad (x : name good)
 : demonic_action good bad -> list (demonic_action good bad) -> Prop
 := fix fair_tactic da l :=
-   match inv (good_reference da x) with
+   match inv (frame da x) with
    | IsNul _ => match l with nil => False | da :: l => fair_tactic da l end
    | Inv _ _ => True
    end.
@@ -72,25 +72,25 @@ Proof.
     fold (@simili_demon good bad k t).
     apply simili_demon_fairness; intros x; generalize (H x); simpl; clear.
     destruct l; simpl; auto.
-    - destruct (inv (good_reference d x)); intros [].
-      destruct (inv (beta k * good_reference d x)); auto.
+    - destruct (inv (frame d x)); intros [].
+      destruct (inv (beta k * frame d x)); auto.
       apply (Qc_inversion k e e0).
     - revert d0; induction l; simpl in *; intros.
-      * destruct (inv (good_reference d0 x)); auto.
-        destruct (inv (good_reference d x)); destruct H.
-        destruct (inv (beta k * good_reference d x)); auto.
+      * destruct (inv (frame d0 x)); auto.
+        destruct (inv (frame d x)); destruct H.
+        destruct (inv (beta k * frame d x)); auto.
         apply (Qc_inversion k e0 e1).
-      * destruct (inv (good_reference d0 x)); auto.
+      * destruct (inv (frame d0 x)); auto.
   + intros g.
     generalize (H g); clear.
     destruct dt; revert d; simpl.
     set (s := l) at 1; rewrite (app_nil_end l); subst s.
     generalize (@nil (demonic_action good bad)).
     induction l; simpl; auto.
-    - intros l d; case_eq (inv (good_reference d g)).
+    - intros l d; case_eq (inv (frame d g)).
       * intros e _ [].
       * eleft; simpl; eauto.
-    - intros m d; case_eq (inv (good_reference d g)).
+    - intros m d; case_eq (inv (frame d g)).
       * eright; simpl; eauto.
         fold (@simili_demon good bad k t).
         now case app_assoc; apply IHl.
@@ -173,7 +173,7 @@ Lemma demon_trick good bad (r : robogram good bad) gp dt k t
     exists u : Qc,
       similitude (inv_power k m) u good gp
         (execution_head
-          (fpower (execution_tail (good:=good))
+          (fpower (execution_tail (G:=good))
              (execute r (simili_demon k t dt) gp) (m * S (length (snd dt))))).
 Proof.
   intros Hsim m; revert gp dt Hsim.
@@ -199,8 +199,8 @@ Proof.
           clear; intros q Hsim x.
           revert gp q Hsim dt; induction n; auto.
           intros gp q Hsim dt.
-          cut (forall x, new_goods r (simili_action k t (fst dt)) q x =
-                         (alpha k) * (new_goods r (fst dt) gp) x + t).
+          cut (forall x, round r (simili_action k t (fst dt)) q x =
+                         (alpha k) * (round r (fst dt) gp) x + t).
           + intros P; generalize (IHn _ _ P (tactic_rot k t dt)).
             clear - Hsim; change (S n) with (plus (S O) n).
             rewrite Plus.plus_comm, fpower_com, fpower_com.
@@ -220,7 +220,7 @@ Proof.
             destruct l; simpl; f_equal.
             rewrite map_app; auto.
           + destruct dt; simpl; clear - Hsim.
-            intros x; unfold new_goods; simpl; generalize (good_reference d x).
+            intros x; unfold round; simpl; generalize (frame d x).
             intros y; destruct (inv y);
             [rewrite e; rewrite (Qcmult_comm (beta k)); simpl; auto|].
             destruct (inv (beta k * y)); [destruct (Qc_inversion k e e0)|].

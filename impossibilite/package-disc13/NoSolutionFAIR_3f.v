@@ -1,11 +1,11 @@
 Set Implicit Arguments.
 Require Import ConvergentFormalism.
 Require Import FiniteSum.
-Require Import MeetingTheorem.
+Require Import MeetingTheorem_FAIR.
 Require Import Field.
 Require Import Qcanon.
 Require Import Qcabs.
-Require Import ContractionTheorem.
+Require Import ContractionTheorem_FAIR.
 
 Definition endo t := t -> t.
 
@@ -13,17 +13,17 @@ Definition endo t := t -> t.
 Definition swap_aux1 g b : endo (ident (fplus (fplus b g) g) (fplus b g)) :=
   fun x =>
   match x with
-  | Bad a => Good (fplus _ _) _ (inl a)
-  | Good (inl a) => Bad _ _ a
+  | Byz a => Good (fplus _ _) _ (inl a)
+  | Good (inl a) => Byz _ _ a
   | Good (inr a) => Good (fplus _ _) _ (inr a)
   end.
 
 Definition swap_aux2 g b : endo (ident (fplus (fplus b g) g) (fplus b g)) :=
   fun x =>
   match x with
-  | Bad (inl a) => Bad _ (fplus _ _) (inl a)
-  | Bad (inr a) => Good (fplus _ _) _ (inr a)
-  | Good (inr a) => Bad _ (fplus _ _) (inr a)
+  | Byz (inl a) => Byz _ (fplus _ _) (inl a)
+  | Byz (inr a) => Good (fplus _ _) _ (inr a)
+  | Good (inr a) => Byz _ (fplus _ _) (inr a)
   | Good (inl a) => Good (fplus _ _) _ (inl a)
   end.
 
@@ -47,15 +47,15 @@ Defined.
 
 (* Second part of the proof with the lazy demon *)
 Definition da1 g b : demonic_action (fplus (fplus b g) g) (fplus b g) :=
-  {| bad_replace := fun _ => 1
-   ; good_reference := fun x : name (fplus _ _) =>
+  {| byz_replace := fun _ => 1
+   ; frame := fun x : name (fplus _ _) =>
                        match x with inl _ => 0 | _ => -(1) end
    |}.
 
 Definition da2 g b : demonic_action (fplus (fplus b g) g) (fplus b g) :=
-  {| bad_replace := fun x : name (fplus _ _) =>
+  {| byz_replace := fun x : name (fplus _ _) =>
                     match x with inl _ => 1 | _ => 0 end
-   ; good_reference := fun x : name (fplus _ _) =>
+   ; frame := fun x : name (fplus _ _) =>
                        match x with inl _ => 1 | _ => 0 end
    |}.
 
@@ -69,16 +69,16 @@ Proof. intros [a|a]; split. Qed.
 Require Import Utf8.
 
 
-Inductive LocallyStronglyKtBoundedForOne good bad (k:nat) g (d:demon good bad): Prop :=
+Inductive LocallyStronglyKtBoundedForOne good byz (k:nat) g (d:demon good byz): Prop :=
   ImmediatelyKBounded:
-    (good_reference (demon_head d) g) ≠ 0 →
+    (frame (demon_head d) g) ≠ 0 →
     LocallyStronglyKtBoundedForOne k g d
 | LaterKBounded:
-    (k>0)%nat →  (good_reference (demon_head d) g) = 0 →
+    (k>0)%nat →  (frame (demon_head d) g) = 0 →
                      LocallyStronglyKtBoundedForOne (k-1) g (demon_tail d)
                      → LocallyStronglyKtBoundedForOne k g d.
 
-CoInductive StronglyKBounded good bad k (d:demon good bad) :=
+CoInductive StronglyKBounded good byz k (d:demon good byz) :=
   NextKBounded: (∀ g, LocallyStronglyKtBoundedForOne k g d)
     → StronglyKBounded k (demon_tail d)
     → StronglyKBounded k d.
@@ -92,9 +92,6 @@ Definition unity : inv_pair.
 refine {| alpha := 1 ; beta := 1 |}.
 abstract (ring).
 Defined.
-
-Check (fun g b => (simili_demon unity 0 (demon_trick g b))).
-
 
 Lemma LocallyStronglyTwoBounded_demon_trick g b r:
   LocallyStronglyKtBoundedForOne 2 r (simili_demon unity 0 (demon_trick g b)).
@@ -126,7 +123,7 @@ Proof.
       discriminate.
 Qed.
 
-
+(*
 CoInductive bisimilar g b: demon g b -> demon g b -> Prop :=
   bisim_samehead:forall d1 d2,
                    bisimilar (demon_tail (demon_tail d1))
@@ -214,7 +211,7 @@ Proof.
   destruct 
   destruct (simili_demon unity 0 (demon_trick g b)).
   destruct d0.
-*)  
+
 
 
 Lemma TwoStronglyBounded_demon_trick g b :
@@ -230,7 +227,7 @@ Proof.
       apply TwoStronglyBounded_demon_trick.     Guarded.
 
 Qed.
-
+*)
 Lemma demon_trick_similitude g b
       (r : robogram (fplus (fplus b g) g) (fplus b g))
       (Hr : solution r) (u : name (fplus (fplus b g) g)) :
@@ -241,23 +238,23 @@ Proof.
   generalize (meeting_theorem u Hr).
   unfold delta.
   intros K.
-  assert (forall y, goodies (b:=b) y = new_goods r (da1 g b)(goodies (b:=b)) y).
-  + unfold new_goods; intros [a|a]; simpl; auto.
+  assert (forall y, goodies (b:=b) y = round r (da1 g b)(goodies (b:=b)) y).
+  + unfold round; intros [a|a]; simpl; auto.
     generalize (
      @AlgoMorph _ _ r (pos0 (fplus (fplus b g) g) (fplus b g))
-     (similarity (-(1)) 1{|good_places:=goodies(b:=b);bad_places:=fun _ => 1 |})
+     (similarity (-(1)) 1{|gp:=goodies(b:=b);bp:=fun _ => 1 |})
      (swap_perm1 g b));
     simpl; intros []; [|rewrite K; ring].
     split; simpl; intros; [|ring].
     destruct n; simpl; ring.
   + revert H.
-    generalize (new_goods r (da1 g b) (goodies (b := b))).
+    generalize (round r (da1 g b) (goodies (b := b))).
     intros gp L.
-    unfold new_goods; intros [a|a]; simpl; auto; [|case L; simpl; ring].
+    unfold round; intros [a|a]; simpl; auto; [|case L; simpl; ring].
     repeat case L; simpl.
     generalize (
      @AlgoMorph _ _ r (pos0 (fplus (fplus b g) g) (fplus b g))
-     (similarity 1 0 {|good_places:=gp;bad_places:=bad_replace (da2 g b)|})
+     (similarity 1 0 {|gp:=gp;bp:=byz_replace (da2 g b)|})
      (swap_perm2 g b));
     simpl; intros []; [|rewrite K; simpl; ring].
     split; simpl; intros.

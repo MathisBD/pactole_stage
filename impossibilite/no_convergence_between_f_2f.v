@@ -144,3 +144,22 @@ Proof.
     simpl; clear.
     discriminate.
 Qed.
+
+
+
+Require Import Finites.
+
+(* Here we would like to have a quantitfication on any non empy set of
+   good robots, but since our finite sets are isomorphic to segments
+   of N, we chose one concrete representation of a non empty set,
+   namely (fS g), for any g whose carrier is itself non empty. *)
+Theorem no_solution_paper_version: 
+  forall g b (u:name g) (r: robogram (fS g) (fplus b (fS g))),
+    ~ solution r.
+Proof.
+  intros g b u r.
+  intro.
+  eapply no_solution;eauto.
+Qed.
+
+
