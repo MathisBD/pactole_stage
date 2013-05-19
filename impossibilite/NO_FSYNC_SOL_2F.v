@@ -94,6 +94,9 @@ Qed.
 (******************************************************************************)
 (* The main theorem : there is no solution to the N vs N problem.             *)
 (******************************************************************************)
+
+(* Note that u : name g means that g is non-empty *)
+
 Theorem no_solution g b (r : robogram (fS g) (fplus b (fS g)))
 : forall (u : name g), solution_fully_synchronous r -> False.
 Proof.
