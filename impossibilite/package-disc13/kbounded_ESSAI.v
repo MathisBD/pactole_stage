@@ -36,21 +36,23 @@ Lemma bisimilar_kbounded : forall good byz k (d d':demon good byz),
                              bisimilar d d' -> StronglyKBounded k d
                              -> StronglyKBounded k d'.
 Proof.
-(*
+  intros good byz k.
   cofix.
-  intros good byz k d d' H H0.
-  destruct H0.
-  constructor.
-  - intros g.
-    inversion H0.
-    admit.
-  - destruct H.
-   apply bisimilar_kbounded with (demon_tail d1).
-    assumption.
-    assumption.*)
-admit.
+  intros d d' Hdd' Hd.
+  split.
+  + intros g; revert Hdd'; destruct Hd as [Hd _]; generalize (Hd g); clear.
+    intros Hd; revert d'; induction Hd; simpl.
+    - left; destruct Hdd' as [h t _ [L _]]; simpl in *.
+      now case (L g).
+    - right; auto.
+      * destruct Hdd' as [h t _ [L _]]; simpl in *.
+        now case (L g).
+      * apply IHHd.
+        now destruct Hdd'.
+  + apply bisimilar_kbounded with (demon_tail d).
+    - now destruct Hdd'.
+    - now destruct Hd.
 Qed.
-
 
 Require Import ContractionTheorem_FAIR.
 Require Import NoSolutionFAIR_3f.
