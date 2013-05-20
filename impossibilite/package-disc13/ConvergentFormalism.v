@@ -189,21 +189,6 @@ CoInductive FullySynchronous d :=
     → FullySynchronous d.
 
 
-Inductive LocallyStronglyKtBoundedForOne (k:nat) g d: Prop :=
-  ImmediatelyKBounded:
-    ∀ l H, inv (frame (demon_head d) g) = @Inv _ l H →
-           LocallyStronglyKtBoundedForOne k g d
-| LaterKBounded:
-    (k>0)%nat → ∀ H, inv (frame (demon_head d) g) = IsNul H →
-                     LocallyStronglyKtBoundedForOne (k-1) g (demon_tail d)
-                     → LocallyStronglyKtBoundedForOne k g d.
-
-CoInductive StronglyKBounded k d :=
-  NextKBounded: (∀ g, LocallyStronglyKtBoundedForOne k g d)
-    → StronglyKBounded k (demon_tail d)
-    → StronglyKBounded k d.
-
-
 Lemma neq0_invisInv: ∀ x,
               x ≠ 0 ->
               ∃ l H, inv x = @Inv _ l H.
