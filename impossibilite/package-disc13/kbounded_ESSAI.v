@@ -23,9 +23,8 @@ Definition da_similar g d (d1 d2:demonic_action g d): Prop :=
   (forall x, d1.(frame) x = d2.(frame) x) /\
   (forall x, d1.(locate_byz) x = d2.(locate_byz) x).
 
-CoInductive bisimilar g b: demon g b -> demon g b -> Prop :=
+CoInductive bisimilar g b (d1 d2 : demon g b) : Prop :=
   bisim_samehead:
-    forall d1 d2,
       bisimilar (demon_tail d1) (demon_tail d2) -> 
       da_similar (demon_head d1) (demon_head d2) -> 
       bisimilar d1 d2.
@@ -42,10 +41,10 @@ Proof.
   split.
   + intros g; revert Hdd'; destruct Hd as [Hd _]; generalize (Hd g); clear.
     intros Hd; revert d'; induction Hd; simpl.
-    - left; destruct Hdd' as [h t _ [L _]]; simpl in *.
+    - left; destruct Hdd' as [_ [L _]]; simpl in *.
       now case (L g).
     - right; auto.
-      * destruct Hdd' as [h t _ [L _]]; simpl in *.
+      * destruct Hdd' as [_ [L _]]; simpl in *.
         now case (L g).
       * apply IHHd.
         now destruct Hdd'.
@@ -228,15 +227,41 @@ Qed.
 
 Lemma TwoStronglyBounded_demon_trick g b :
   forall d X X',
+  (fair_tactic (X, cons X' nil)) ->
   bisimilar d (@simili_demon g b unity 0 (X, cons X' nil)) -> 
   StronglyKBounded 2 d.
 Proof.
   cofix coHI.
-  intros d X X' H.
+  intros d X X' HXX' H.
   constructor.
-  - admit. (* Lemme supplementaire à prouver. *)
-  - constructor.
-    + admit.
+  - clear - HXX' H.
+    destruct H as [[_ [H2 _]] [H1 _]]; simpl in *.
+    intros x; generalize (HXX' x) (H1 x) (H2 x); simpl; clear.
+    destruct (inv (frame X x)).
+    + destruct (inv (frame X' x)); intros [].
+      right.
+clear; admit. (* fait chier le 2>0 *)
+      * revert e; case H; clear; auto.
+      * left.
+        rewrite H0; intros K; revert e0; rewrite K; clear.
+        rewrite Qcmult_comm; discriminate.
+    + left.
+      rewrite H0; intros K; revert e; rewrite K; clear.
+      rewrite Qcmult_comm; discriminate.
+  - apply (coHI (demon_tail d) X' X).
+    + clear - HXX'.
+      intros x; generalize (HXX' x); simpl; clear.
+      destruct (inv (frame X x)), (inv (frame X' x)); auto.
+    + clear - H; destruct H; revert H; clear.
+      simpl.
+      fold (simili_demon unity 0 (X', (cons (simili_action unity 0 X) nil))).
+admit.
+Qed.
+      intros [A B]; split.
+      Guarded.
+   constructor.
+    +
+clear; admit.
     + destruct d.
       destruct d0.
       apply coHI with X X'. Guarded.
