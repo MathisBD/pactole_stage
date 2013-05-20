@@ -286,7 +286,7 @@ Definition solution_FSYNC (r : robogram) : Prop :=
   exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
 
 
-Lemma synchro : ∀ r, solution r → solution_FSYNC r.
+Lemma solution_FAIR_is_solution_FSYNC : ∀ r, solution r → solution_FSYNC r.
 Proof.
   intros r H.
   unfold solution_FSYNC, solution in *.
