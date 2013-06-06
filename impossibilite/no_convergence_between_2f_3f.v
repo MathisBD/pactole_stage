@@ -111,7 +111,7 @@ Proof.
 Qed.
 
 (******************************************************************************)
-(* The main theorem : there is no solution to the N vs N problem.             *)
+(* The main theorem : there is no solution to the 2N vs N problem.            *)
 (******************************************************************************)
 Theorem no_solution g b (r : robogram (fplus (fplus b g) g) (fplus b g))
 : forall (u : name g), solution r -> False.
