@@ -11,6 +11,21 @@ Set Implicit Arguments.
 Require Import Utf8.
 Require Import Qcanon.
 Require Import Qcabs.
+
+Lemma Qcmult_0_l : forall q, 0 * q = 0.
+Proof. intro. Qc_unfolds. apply Qc_is_canon. reflexivity. Qed.
+
+Lemma Qcmult_0_r : forall q, q * 0 = 0.
+Proof. intro. rewrite Qcmult_comm. apply Qcmult_0_l. Qed.
+
+Lemma Qcinv_non_0 : forall q, q <> 0 -> / q <> 0.
+Proof.
+intros q Hq Habs. apply Hq.
+rewrite <- Qcmult_1_l at 1. rewrite <- Qcmult_inv_r with q.
+rewrite Qcmult_comm. rewrite Qcmult_assoc. rewrite Habs.
+now rewrite Qcmult_0_r. assumption.
+Qed.
+
 (** * Byzantine Robots *)
 
 (** ** Agents *)
@@ -56,6 +71,12 @@ Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 (** Renaming of agents are bijections *)
 Definition permutation := automorphism.
 
+Definition id_perm : automorphism (ident).
+refine {| section := id;
+          retraction := id |}.
+abstract (unfold id; split; auto).
+Defined.
+
 (* [automorphism (ident good byz)] is a group (not worth proving it, I guess)
    and acts on positions (not worth proving it is an action group) *)
 
@@ -88,15 +109,20 @@ Definition subst_pos σ (p:position) :=
 (** Notation of the paper *)
 Notation "p '∘' s" := (subst_pos s p) (at level 20,only parsing).
 
-(** ** Similarities  *)
+(** ** Homothecies and Similarities  *)
+
+(** [homothecy k p] returns a position [p] zoomed by a factor [k].
+    This function is used to express that prorams are invariant by scale change. **)
+Definition homothecy k p :=
+  {| gp := fun n => k * p.(gp) n;
+     bp := fun n => k * p.(bp) n |}.
 
 (** [similarity k t p] returns a position [p] centered in [t] and zoomed of
     a factor [k]; this function is used to set the frame of reference for
     a given robot. *)
 Definition similarity (k t : Qc) p : position :=
- {| gp := fun n => k * (p.(gp) n - t)
-  ; bp := fun n => k * (p.(bp) n - t)
-  |}.
+ {| gp := fun n => k * (p.(gp) n - t);
+    bp := fun n => k * (p.(bp) n - t) |}.
 
 (** Notation of the paper. *)
 Notation "'[[' k ',' t ']]'" := (similarity k t).
@@ -109,22 +135,14 @@ Record PosEq (p q : position) : Prop :=
  { good_ext : ∀ n, p.(gp) n = q.(gp) n
  ; byz_ext  : ∀ n, p.(bp) n = q.(bp) n }.
 
-
-
-
-
 (** ** The program of correct robots *)
 
-(** ** Good robots have a common program, which we call a robogram *)
+(** ** Good robots have a common program, which we call a robogram
+    |Todo: find a better name| *)
 Record robogram :=
- { algo : position → location
- ; AlgoMorph : ∀ p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q }.
-
-
-
-
-
-
+ { algo : position → location;
+   AlgoMorph : forall p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q;
+   AlgoZoom : forall k (Hk : k <> 0) p, algo p = /k * algo (homothecy k p) }.
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
@@ -156,30 +174,14 @@ Definition demon_tail (d : demon) : demon :=
 
 (** ** Fairness *)
 
-(** Inversing a maybe null rational *)
-
-Inductive inverse (k : Qc) :=
-  | IsNul : k = 0 → inverse k
-  | Inv : ∀ l, l * k = 1 → inverse k.
-
-
-Definition inv (k : Qc) : inverse k :=
-  match Qc_eq_dec k 0 with
-  | left H => IsNul H
-  | right H => Inv (Qcmult_inv_l k H)
-  end.
-
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : ∀ l H,
-                      inv (frame (demon_head d) g) = @Inv _ l H →
-                      LocallyFairForOne g d
-  | LaterFair : ∀ H, inv (frame (demon_head d) g) = IsNul H →
-                LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d
-  .
+  | ImmediatelyFair : frame (demon_head d) g ≠ 0 → LocallyFairForOne g d
+  | LaterFair : frame (demon_head d) g = 0 → 
+                LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
 
 CoInductive Fair (d : demon) : Prop :=
-  AlwaysFair : Fair (demon_tail d) → (∀ g, LocallyFairForOne g d) →
+  AlwaysFair : (∀ g, LocallyFairForOne g d) → Fair (demon_tail d) →
                Fair d.
 
 (** ** Full synchronicity
@@ -207,27 +209,8 @@ CoInductive FullySynchronous d :=
     → FullySynchronous d.
 
 
-Lemma neq0_invisInv: ∀ x,
-              x ≠ 0 ->
-              ∃ l H, inv x = @Inv _ l H.
-Proof.
-  intros x H.
-  unfold inv.
-  exists (/ x).
-  destruct (Qc_eq_dec x 0).
-  - elim H.
-    assumption.
-  - exists (Qcmult_inv_l x n). reflexivity.
-Qed.
-
 Lemma local_fully_synchronous_implies_fair: ∀ g d, FullySynchronousForOne g d → LocallyFairForOne g d.
-Proof.
-  intros g d H.
-  induction H.
-  apply neq0_invisInv in H.
-  decompose [ex] H. clear H.
-  econstructor 1;eauto.
-Qed.
+Proof. induction 1. now constructor. Qed.
 
 
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
@@ -236,11 +219,11 @@ Proof.
   intros d H.
   destruct H.
   constructor.
-  - apply fully_synchronous_implies_fair.
-    apply H.
   - intros g.
     apply local_fully_synchronous_implies_fair.
     apply f.
+  - apply fully_synchronous_implies_fair.
+    apply H.
 Qed.
 
 (** ** Executions *)
@@ -257,18 +240,13 @@ Definition execution_head (e : execution) : (G → location) :=
 Definition execution_tail (e : execution) : execution :=
   match e with NextExecution _ e => e end.
 
-Definition round (r : robogram)
-                     (da : demonic_action) (gp : G → location)
-                     : G → location
+Definition round (r : robogram) (da : demonic_action) (gp : G → location) : G → location
 := fun g =>
    let k := da.(frame) g in
    let t := gp g in
    (* l allows getting back the move in the scheduler reference from the move in
       the robot's local reference *)
-   match inv k with
-   | IsNul _ => t
-   | Inv l _ => t + l * (algo r ([[k, t]] {| gp := gp; bp := locate_byz da |}))
-   end.
+   if Qc_eq_dec k 0 then t else t + /k * (algo r ([[k, t]] {| gp := gp; bp := locate_byz da |})).
 
 Definition execute (r : robogram): demon → (G → location) → execution :=
   cofix execute d gp :=
@@ -277,16 +255,15 @@ Definition execute (r : robogram): demon → (G → location) → execution :=
 (** ** Properties of executions  *)
 
 (** Expressing that all good robots are confined in a small disk. *)
-CoInductive imprisonned (prison_center : location) (radius : Qc)
-                        (e : execution) : Prop
-:= InDisk : (∀ g, [(prison_center - execution_head e g)] <= radius)
-            → imprisonned prison_center radius (execution_tail e)
-            → imprisonned prison_center radius e.
+CoInductive imprisonned (center : location) (radius : Qc) (e : execution) : Prop
+:= InDisk : (∀ g, [(center - execution_head e g)] <= radius)
+            → imprisonned center radius (execution_tail e)
+            → imprisonned center radius e.
 
 (** The execution will end in a small disk. *)
-Inductive attracted (pc : location) (r : Qc) (e : execution) : Prop :=
-  | Captured : imprisonned pc r e → attracted pc r e
-  | WillBeCaptured : attracted pc r (execution_tail e) → attracted pc r e.
+Inductive attracted (center : location) (radius : Qc) (e : execution) : Prop :=
+  | Captured : imprisonned center radius e → attracted center radius e
+  | WillBeCaptured : attracted center radius (execution_tail e) → attracted center radius e.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
@@ -308,11 +285,9 @@ Lemma solution_FAIR_FSYNC : ∀ r, solution r → solution_FSYNC r.
 Proof.
   intros r H.
   unfold solution_FSYNC, solution in *.
-  intros gp d H0 epsilon H1.
+  intros gp d H0.
   apply H.
-  apply fully_synchronous_implies_fair.
-  assumption.
-  assumption.
+  now apply fully_synchronous_implies_fair.
 Qed.
 
 End goodbyz.
