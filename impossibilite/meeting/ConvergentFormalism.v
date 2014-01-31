@@ -26,6 +26,11 @@ rewrite Qcmult_comm. rewrite Qcmult_assoc. rewrite Habs.
 now rewrite Qcmult_0_r. assumption.
 Qed.
 
+Ltac coinduction proof :=
+  cofix proof; intros; constructor;
+   [ clear proof | try (apply proof; clear proof) ].
+
+
 (** * Byzantine Robots *)
 
 (** ** Agents *)
@@ -72,8 +77,9 @@ Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 Definition permutation := automorphism.
 
 Definition id_perm : automorphism (ident).
-refine {| section := id;
-          retraction := id |}.
+refine {| section := id
+        ; retraction := id
+        |}.
 abstract (unfold id; split; auto).
 Defined.
 
@@ -109,20 +115,15 @@ Definition subst_pos σ (p:position) :=
 (** Notation of the paper *)
 Notation "p '∘' s" := (subst_pos s p) (at level 20,only parsing).
 
-(** ** Homothecies and Similarities  *)
-
-(** [homothecy k p] returns a position [p] zoomed by a factor [k].
-    This function is used to express that prorams are invariant by scale change. **)
-Definition homothecy k p :=
-  {| gp := fun n => k * p.(gp) n;
-     bp := fun n => k * p.(bp) n |}.
+(** ** Similarities  *)
 
 (** [similarity k t p] returns a position [p] centered in [t] and zoomed of
     a factor [k]; this function is used to set the frame of reference for
     a given robot. *)
 Definition similarity (k t : Qc) p : position :=
- {| gp := fun n => k * (p.(gp) n - t);
-    bp := fun n => k * (p.(bp) n - t) |}.
+ {| gp := fun n => k * (p.(gp) n - t)
+  ; bp := fun n => k * (p.(bp) n - t)
+  |}.
 
 (** Notation of the paper. *)
 Notation "'[[' k ',' t ']]'" := (similarity k t).
@@ -140,9 +141,8 @@ Record PosEq (p q : position) : Prop :=
 (** ** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
 Record robogram :=
- { algo : position → location;
-   AlgoMorph : forall p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q;
-   AlgoZoom : forall k (Hk : k <> 0) p, algo p = /k * algo (homothecy k p) }.
+ { algo : position → location
+ ; AlgoMorph : ∀ p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q }.
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
@@ -215,15 +215,9 @@ Proof. induction 1. now constructor. Qed.
 
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
 Proof.
-  cofix.
-  intros d H.
-  destruct H.
-  constructor.
-  - intros g.
-    apply local_fully_synchronous_implies_fair.
-    apply f.
-  - apply fully_synchronous_implies_fair.
-    apply H.
+coinduction fully_fair.
+- intro. apply local_fully_synchronous_implies_fair. apply H.
+- now inversion H.
 Qed.
 
 (** ** Executions *)
@@ -251,6 +245,10 @@ Definition round (r : robogram) (da : demonic_action) (gp : G → location) : G 
 Definition execute (r : robogram): demon → (G → location) → execution :=
   cofix execute d gp :=
   NextExecution gp (execute (demon_tail d) (round r (demon_head d) gp)).
+
+Lemma execute_tail : forall (r : robogram) (d : demon) gp,
+  execution_tail (execute r d gp) = execute r (demon_tail d) (round r (demon_head d) gp).
+Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
 
 (** ** Properties of executions  *)
 
