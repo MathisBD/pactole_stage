@@ -214,7 +214,7 @@ Hypothesis Hmove : move <> 1.
 
 Lemma ratio_inv : forall ρ, ρ <> 0 -> ρ / (1 - move) <> 0.
 Proof.
-intros ρ Hρ Habs. apply Hρ. SearchPattern (_ * / _ = 1). apply (Rmult_eq_compat_l (1 - move)) in Habs.
+intros ρ Hρ Habs. apply Hρ. apply (Rmult_eq_compat_l (1 - move)) in Habs.
 unfold Rdiv in Habs. replace ( (1 - move) * (ρ * / (1 - move))) with (ρ * ((1 - move) * / (1 - move))) in Habs by ring.
 rewrite Rinv_r in Habs. now ring_simplify in Habs. intro Heq. apply Hmove. symmetry. now apply Rminus_diag_uniq.
 Qed.

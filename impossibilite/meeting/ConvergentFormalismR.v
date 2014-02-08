@@ -49,7 +49,7 @@ Record finite :=
  - add locations and vectors and obtain new locations. *)
 Notation location := R (only parsing).
 
-Section goodbyz.
+Section goodbyz. (* Remove to have notations outside it *)
 
 (** Here are the two kinds of robots. *)
 Variable G B : finite.
@@ -108,7 +108,7 @@ Definition subst_pos σ (p:position) :=
      bp := fun b => locate p (σ (Byz b)) |}.
 
 (** Notation of the paper *)
-Notation "p '∘' s" := (subst_pos s p) (at level 20,only parsing).
+Notation "p '∘' s" := (subst_pos s p) (at level 20, only parsing).
 
 (** ** Similarities  *)
 
@@ -121,7 +121,7 @@ Definition similarity (k t : R) p : position :=
   |}.
 
 (** Notation of the paper. *)
-Notation "'[[' k ',' t ']]'" := (similarity k t).
+Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'").
 
 (** ** Equalities on positions *)
 
@@ -235,7 +235,7 @@ Definition round (r : robogram) (da : demonic_action) (gp : G → location) : G 
    let t := gp g in
    (* l allows getting back the move in the scheduler reference from the move in
       the robot's local reference *)
-   if Rdec k 0 then t else t + /k * (algo r ([[k, t]] {| gp := gp; bp := locate_byz da |})).
+   if Rdec k 0 then t else t + /k * (algo r (⟦k, t⟧ {| gp := gp; bp := locate_byz da |})).
 
 Definition execute (r : robogram): demon → (G → location) → execution :=
   cofix execute d gp :=
@@ -284,6 +284,10 @@ Proof.
 Qed.
 
 End goodbyz.
+
+Notation "s ⁻¹" := (s.(retraction)) (at level 99).
+Notation "p '∘' s" := (subst_pos s p) (at level 20, only parsing).
+Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 40, format "'⟦' k ','  t '⟧'").
 
 (* 
  *** Local Variables: ***

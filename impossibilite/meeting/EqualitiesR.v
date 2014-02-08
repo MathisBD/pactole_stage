@@ -14,11 +14,26 @@ Class Bisimulation (T : Type) := {
   bisim_equiv : Equivalence bisim}.
 Infix "≈" := bisim (at level 0).
 
+(** **  Equality of positions  **)
+
+Instance pos_eq_equiv G B : Equivalence (@PosEq G B).
+Proof. split.
++ split; intuition.
++ intros d1 d2 [H1 H2]. split; intro; now rewrite H1 || rewrite H2.
++ intros d1 d2 d3 [H1 H2] [H3 H4]. now split; intro; rewrite H1, H3 || rewrite H2, H4.
+Qed.
+
+Instance gp_compat G B : Proper (@PosEq G B ==> (eq ==> eq)) (@gp G B).
+Proof. intros [] [] [Hpos _] x1 x2 Heq. subst. apply Hpos. Qed.
+
+Instance bp_compat G B : Proper (@PosEq G B ==> (eq ==> eq)) (@bp G B).
+Proof. intros [] [] [_ Hpos] x1 x2 Heq. subst. apply Hpos. Qed.
+
 
 (** **  Equality of demons  **)
 
 (** ***  Equality of demonic_actions  **)
-Definition da_eq G B (da1 da2 : demonic_action G B) :=
+Definition da_eq {G B} (da1 da2 : demonic_action G B) :=
   (forall g, da1.(frame) g = da2.(frame) g) /\ (forall b, da1.(locate_byz) b = da2.(locate_byz) b).
 
 Instance da_eq_equiv G B : Equivalence (@da_eq G B).
@@ -53,7 +68,7 @@ Proof. exists deq. apply deq_equiv. Qed.
 
 (** **  Equality of robograms  **)
 
-Definition req G B (r1 r2 : robogram G B) := forall p, algo r1 p = algo r2 p.
+Definition req {G B} (r1 r2 : robogram G B) := forall p, algo r1 p = algo r2 p.
 
 Instance req_equiv G B : Equivalence (@req G B).
 Proof. split.
@@ -62,7 +77,7 @@ Proof. split.
 + intros d1 d2 d3 H1 H2 x. now rewrite H1, H2.
 Qed.
 
-Instance algo_compat G B : Proper (@req G B ==> @PosEq G B ==> eq) (@algo G B).
+Instance algo_compat G B : Proper (req ==> @PosEq G B ==> eq) (@algo G B).
 Proof.
 intros r1 r2 Hr p1 p2 Hp. rewrite Hr. apply AlgoMorph with (id_perm G B).
 simpl. unfold subst_pos. now destruct Hp; split; simpl.
@@ -75,16 +90,8 @@ intros k1 k2 Hk t1 t2 Ht p1 p2 [Hp1 Hp2]. subst.
 split; intro; simpl; now rewrite Hp1 || rewrite Hp2.
 Qed.
 
-(* Duplicate from MeetingTheorem_Fair *)
-Definition id_perm g b : automorphism (ident g b).
-refine {| section := fun x => x
-        ; retraction := fun x => x
-        |}.
-abstract (unfold id; split; auto).
-Defined.
-
 Instance round_compat G B :
-  Proper (@req G B ==> @da_eq G B ==> (eq ==> eq) ==> eq ==> eq) (@round G B).
+  Proper (req ==> da_eq ==> (eq ==> eq) ==> eq ==> eq) (@round G B).
 Proof.
 intros [r1 Hr1] [r2 Hr2] Hr d1 d2 Hd gp1 gp2 Hgp p1 p2 Hp.
 unfold req in Hr. simpl in Hr. unfold round.
@@ -123,7 +130,7 @@ Proof. intros e1 e2 He ? ? ?. subst. inversion He. intuition. Qed.
 Instance execution_tail_compat (G : finite) : Proper (eeq ==> eeq) (@execution_tail G).
 Proof. intros e1 e2 He. now inversion He. Qed.
 
-Theorem execute_compat G B : Proper ((@req G B) ==> deq ==> (eq ==> eq) ==> eeq) (@execute G B).
+Theorem execute_compat G B : Proper (req ==> deq ==> (eq ==> eq) ==> eeq) (@execute G B).
 Proof.
 intros r1 r2 Hr.
 cofix proof. constructor. simpl. intro. now apply (H0 p p).
