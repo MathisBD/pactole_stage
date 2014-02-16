@@ -108,12 +108,19 @@ intros G e [g] He pt Habs. induction Habs.
   inversion He. now apply IHHabs.
 Qed.
 
-Lemma Always_Differ_compat G : Proper (eeq ==> iff) (@Always_Differ G).
+Lemma Always_Differ_compat G : forall e1 e2, eeq e1 e2 -> @Always_Differ G e1 -> Always_Differ e2.
 Proof.
-intros e1 e2 He. split; intro Hdiff.
-  coinduction diff. intros. rewrite <- He. inversion_clear Hdiff as [Hdiff2 _]. apply Hdiff2.
-  coinduction diff. intros. rewrite He. inversion_clear Hdiff as [Hdiff2 _]. apply Hdiff2.
-Admitted.
+coinduction diff.
+  intros. rewrite <- H. now destruct H0.
+  destruct H. apply (diff _ _ H1). now destruct H0.
+Qed.
+
+Lemma Always_Differ_compat_iff G : Proper (eeq ==> iff) (@Always_Differ G).
+Proof.
+intros e1 e2 He; split; intro.
+  now apply (Always_Differ_compat He).
+  now apply (Always_Differ_compat (symmetry He)).
+Qed.
 
 
 Section MeetingEven.
@@ -204,40 +211,37 @@ cofix bad_fair1. constructor.
     rewrite bad_demon_tail1. apply bad_fair1.
 Qed.
 
-Lemma round1_1 : PosEq (lift_pos (round r da1_1 gpos1)) pos2.
+Lemma round_dist1_1 : ExtEq (round r da1_1 gpos1) gpos2.
 Proof.
-split; intros []; intro x; unfold round; simpl; Rdec; ring_simplify.
-  rewrite pos1_similarity_00. fold move. rewrite Hmove. field.
-  rewrite pos1_similarity_11. rewrite (AlgoMorph r (swap0 G) (q:=pos1)). fold move. rewrite Hmove. field.
-  symmetry. apply pos2_pos1_equiv.
+intros [x | x]; unfold round; simpl; Rdec; ring_simplify.
+rewrite pos1_similarity_00. fold move. rewrite Hmove. field.
+rewrite pos1_similarity_11. rewrite (AlgoMorph r (swap0 G) (q:=pos1)). fold move. rewrite Hmove. field.
+symmetry. apply pos2_pos1_equiv.
 Qed.
 
-Corollary round_dist1_1 : forall x, round r da1_1 gpos1 x = gpos2 x.
-Proof. intro. change (round r da1_1 gpos1) with (gp (lift_pos (round r da1_1 gpos1))). now rewrite round1_1. Qed.
-
-Lemma round1_2 : PosEq (lift_pos (round r da1_2 gpos2)) pos1.
+Lemma round_dist1_2 : ExtEq (round r da1_2 gpos2) gpos1.
 Proof.
-split; intros []; intro x; unfold round; simpl; Rdec; ring_simplify.
-  rewrite pos2_similarity_11. fold move. rewrite Hmove. field.
-  rewrite pos2_similarity_00. rewrite (AlgoMorph r (swap0 G) (q:=pos1)). fold move. rewrite Hmove. field.
-    symmetry. apply pos2_pos1_equiv.
+intros [x | x]; unfold round; simpl; Rdec; ring_simplify.
+rewrite pos2_similarity_11. fold move. rewrite Hmove. field.
+rewrite pos2_similarity_00. rewrite (AlgoMorph r (swap0 G) (q:=pos1)). fold move. rewrite Hmove. field.
+symmetry. apply pos2_pos1_equiv.
 Qed.
 
-Corollary round_dist1_2 : forall x, round r da1_2 gpos2 x = gpos1 x.
-Proof. intro. change (round r da1_2 gpos2) with (gp (lift_pos (round r da1_2 gpos2))). now rewrite round1_2. Qed.
+Theorem Always_Differ1_aux : forall e, (ExtEq e gpos1) -> Always_Differ (execute r bad_demon1 e).
+Proof.
+cofix differs. intros e He. constructor.
+  simpl. intros. subst. apply neq_sym. do 2 rewrite He. exact R1_neq_R0.
+  rewrite execute_tail, bad_demon_head1_1. constructor.
+    intros. subst. simpl. do 2 rewrite (round_compat_bis (reflexivity r) (reflexivity da1_1) He).
+    do 2 rewrite round_dist1_1. simpl. exact R1_neq_R0.
+    rewrite execute_tail, bad_demon_tail1, bad_demon_head1_2.
+  apply differs. rewrite He. intro x.
+  rewrite (round_compat_bis (reflexivity r) (reflexivity da1_2) (round_dist1_1)).
+  apply round_dist1_2.
+Qed.
 
 Theorem Always_Differ1 : Always_Differ (execute r bad_demon1 gpos1).
-Proof.
-cofix differs. constructor.
-  simpl. intros. apply neq_sym. exact R1_neq_R0.
-  rewrite execute_tail. constructor.
-    intros. simpl. do 2 rewrite round_dist1_1. simpl. exact R1_neq_R0.
-  rewrite execute_tail, bad_demon_tail1, bad_demon_head1_1, bad_demon_head1_2.
-  assert (eeq (execute r bad_demon1 (round r da1_2 (round r da1_1 gpos1))) (execute r bad_demon1 gpos1)) as Heeq.
-    apply execute_compat; try reflexivity. intros ? ? ?. subst. rewrite <- round_dist1_2.
-    apply round_compat; try reflexivity. apply (gp_compat round1_1).
-  rewrite (Always_Differ_compat Heeq). apply differs.
-Admitted.
+Proof. apply Always_Differ1_aux. reflexivity. Qed.
 
 End Move1.
 

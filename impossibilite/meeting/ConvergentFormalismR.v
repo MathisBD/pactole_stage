@@ -125,11 +125,13 @@ Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k
 
 (** ** Equalities on positions *)
 
+Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
+
 (** A position is a pair of location functions. Equality on positions is the
     extentional equality of the two location functions. *)
-Record PosEq (p q : position) : Prop :=
- { good_ext : ∀ n, p.(gp) n = q.(gp) n
- ; byz_ext  : ∀ n, p.(bp) n = q.(bp) n }.
+Record PosEq (p q : position) : Prop := {
+  good_ext : ∀n, p.(gp) n = q.(gp) n;
+  byz_ext  : ∀n, p.(bp) n = q.(bp) n}.
 
 (** ** The program of correct robots *)
 

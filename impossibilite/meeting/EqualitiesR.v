@@ -16,6 +16,17 @@ Infix "≈" := bisim (at level 0).
 
 (** **  Equality of positions  **)
 
+(** ***  On good robots only  **)
+
+Instance ExtEq_equiv T U : Equivalence (@ExtEq T U).
+Proof. split.
++ now intros ? ?.
++ intros f g Heq x. now rewrite Heq.
++ intros f g h Hfg Hgh x. now rewrite Hfg, Hgh.
+Qed.
+
+(** ***  On full positions  **)
+
 Instance pos_eq_equiv G B : Equivalence (@PosEq G B).
 Proof. split.
 + split; intuition.
@@ -24,10 +35,10 @@ Proof. split.
 Qed.
 
 Instance gp_compat G B : Proper (@PosEq G B ==> (eq ==> eq)) (@gp G B).
-Proof. intros [] [] [Hpos _] x1 x2 Heq. subst. apply Hpos. Qed.
+Proof. intros [] [] [Hpos _] x1 x2 Hx. subst. now rewrite Hpos. Qed.
 
 Instance bp_compat G B : Proper (@PosEq G B ==> (eq ==> eq)) (@bp G B).
-Proof. intros [] [] [_ Hpos] x1 x2 Heq. subst. apply Hpos. Qed.
+Proof. intros [] [] [_ Hpos] x1 x2 Hx. subst. now rewrite Hpos. Qed.
 
 
 (** **  Equality of demons  **)
@@ -94,7 +105,7 @@ Instance round_compat G B :
   Proper (req ==> da_eq ==> (eq ==> eq) ==> eq ==> eq) (@round G B).
 Proof.
 intros [r1 Hr1] [r2 Hr2] Hr d1 d2 Hd gp1 gp2 Hgp p1 p2 Hp.
-unfold req in Hr. simpl in Hr. unfold round.
+unfold req in Hr. unfold round. simpl in *.
 rewrite (frame_compat Hd Hp). destruct (Rdec (frame d2 p2) 0).
   now apply Hgp.
   f_equal. now apply Hgp. f_equal. simpl. rewrite Hr.
@@ -103,6 +114,21 @@ rewrite (frame_compat Hd Hp). destruct (Rdec (frame d2 p2) 0).
   split; intro; simpl. symmetry. now apply Hgp.
   symmetry. apply Hd.
 Qed.
+
+Instance round_compat_bis G B :
+  Proper  (req ==> da_eq ==> ExtEq ==> ExtEq) (@round G B).
+Proof.
+intros [r1 Hr1] [r2 Hr2] Hr da1 da2 Hda gp1 gp2 Hgp p.
+unfold req in Hr. unfold round. simpl in *.
+rewrite (frame_compat Hda (eq_refl p)). destruct (Rdec (frame da2 p) 0).
+  now apply Hgp.
+  f_equal. now apply Hgp. f_equal. simpl. rewrite Hr.
+  subst. rewrite Hgp.
+  apply Hr2 with (id_perm G B). apply similarity_compat; trivial.
+  split; intro; simpl. symmetry. now apply Hgp.
+  symmetry. apply Hda.
+Qed.
+
 
 (** **  Equality of execution  **)
 
