@@ -30,11 +30,104 @@ Ltac Rdec := repeat
   end.
 
 
+(********************************)
+(** *  Fair and k-Fair demons  **)
+(********************************)
+
+(* g will be activated in at most k steps *)
+Inductive AtMost {G B} g (d : demon G B) : nat -> Prop :=
+  | kNow : forall k, frame (demon_head d) g <> 0 -> AtMost g d k
+  | kLater : forall k, frame (demon_head d) g = 0 ->
+            AtMost g (demon_tail d) k -> AtMost g d (S k).
+
+(* k-fair: every robot is activated at most every k steps *)
+CoInductive kFair {G B} k (d : demon G B) :=
+  AlwayskFair : (forall g, AtMost g d k) -> kFair k (demon_tail d) ->
+                kFair k d.
+
+Lemma AtMost_LocallyFair {G B} : forall g (d : demon G B) k,
+  AtMost g d k -> LocallyFairForOne g d.
+Proof.
+intros g d k Hg. induction Hg.
+  now constructor 1.
+  now constructor 2.
+Qed.
+
+Theorem kFair_Fair {G B} : forall k (d : demon G B), kFair k d -> Fair d.
+Proof.
+coinduction kfair_is_fair.
+  destruct H. intro. now apply AtMost_LocallyFair with k.
+  apply (kfair_is_fair k). now destruct H.
+Qed.
+
+Lemma AtMost_trans {G B} : forall g (d : demon G B) k,
+  AtMost g d k -> forall k', (k <= k')%nat -> AtMost g d k'.
+Proof.
+intros g d k Hd. induction Hd; intros k' Hk.
+  now constructor 1.
+  destruct k'.
+    now inversion Hk.
+    constructor 2.
+      assumption.
+      apply IHHd. omega.
+Qed.
+
+Theorem kFair_trans {G B} : forall k (d: demon G B),
+  kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
+Proof.
+coinduction fair; destruct H.
+  intro. now apply AtMost_trans with k.
+  now apply (fair k).
+Qed.
+
+
 (*****************************)
 (** *  The Meeting Problem  **)
 (*****************************)
 
-(** **  Framework for an even number of robots  **)
+CoInductive Meet G (pt: location) (e : execution G) : Prop :=
+  Meeting : (forall p, execution_head e p = pt) -> Meet pt (execution_tail e) -> Meet pt e.
+
+Inductive WillMeet G (pt : location) (e : execution G) : Prop :=
+  | Now : Meet pt e -> WillMeet pt e
+  | Later : WillMeet pt (execution_tail e) -> WillMeet pt e.
+
+Definition solMeeting G B (r : robogram G B) := forall (gp : G -> location) (d : demon G B) k,
+  kFair k d -> exists pt : location, WillMeet pt (execute r d gp).
+
+
+(* We will prove that with [bad_demon], robots are always apart. *)
+CoInductive Always_Differ G (e : execution (fplus G G)) :=
+  CAD : (forall x y, execution_head e (inl x) <> execution_head e (inr y)) ->
+        Always_Differ (execution_tail e) -> Always_Differ e.
+
+Theorem different_no_meeting : forall (G : finite) e,
+  inhabited G -> @Always_Differ G e -> forall pt, ~WillMeet pt e.
+Proof.
+intros G e [g] He pt Habs. induction Habs.
+  inversion H. inversion He. elim (H2 g g). now do 2 rewrite H0.
+  inversion He. now apply IHHabs.
+Qed.
+
+Lemma Always_Differ_compat G : forall e1 e2,
+  eeq e1 e2 -> @Always_Differ G e1 -> Always_Differ e2.
+Proof.
+coinduction diff.
+  intros. rewrite <- H. now destruct H0.
+  destruct H. apply (diff _ _ H1). now destruct H0.
+Qed.
+
+Lemma Always_Differ_compat_iff G : Proper (eeq ==> iff) (@Always_Differ G).
+Proof.
+intros e1 e2 He; split; intro.
+  now apply (Always_Differ_compat He).
+  now apply (Always_Differ_compat (symmetry He)).
+Qed.
+
+
+(***********************************************************************)
+(** *  Framework for an even number of robots without byzantine ones  **)
+(***********************************************************************)
 
 Definition Zero : finite.
 refine {|
@@ -85,43 +178,10 @@ Definition lift_pos G (pos : (fplus G G) -> R) := {| gp := pos; bp := Zero_fun R
 Lemma pos_equiv : forall G (pos : position (fplus G G) Zero), PosEq pos (lift_pos pos.(gp)).
 Proof. intro. split; intros []; now simpl. Qed.
 
-CoInductive Meet G (pt: location) (e : execution G) : Prop :=
-  Meeting : (forall p, execution_head e p = pt) -> Meet pt (execution_tail e) -> Meet pt e.
 
-Inductive WillMeet G (pt : location) (e : execution G) : Prop :=
-  | Now : Meet pt e -> WillMeet pt e
-  | Later : WillMeet pt (execution_tail e) -> WillMeet pt e.
-
-Definition solMeeting G B (r : robogram G B) := forall (gp : G -> location) (d : demon G B),
-  Fair d -> exists pt : location, WillMeet pt (execute r d gp).
-
-
-(* We will prove that with [bad_demon], robots are always apart. *)
-CoInductive Always_Differ G (e : execution (fplus G G)) :=
-  CAD : (forall x y, execution_head e (inl x) <> execution_head e (inr y)) ->
-        Always_Differ (execution_tail e) -> Always_Differ e.
-
-Theorem different_no_meeting : forall (G : finite) e, inhabited G ->@Always_Differ G e -> forall pt, ~WillMeet pt e.
-Proof.
-intros G e [g] He pt Habs. induction Habs.
-  inversion H. inversion He. elim (H2 g g). now do 2 rewrite H0.
-  inversion He. now apply IHHabs.
-Qed.
-
-Lemma Always_Differ_compat G : forall e1 e2, eeq e1 e2 -> @Always_Differ G e1 -> Always_Differ e2.
-Proof.
-coinduction diff.
-  intros. rewrite <- H. now destruct H0.
-  destruct H. apply (diff _ _ H1). now destruct H0.
-Qed.
-
-Lemma Always_Differ_compat_iff G : Proper (eeq ==> iff) (@Always_Differ G).
-Proof.
-intros e1 e2 He; split; intro.
-  now apply (Always_Differ_compat He).
-  now apply (Always_Differ_compat (symmetry He)).
-Qed.
-
+(*************************************************************)
+(** *  Proof of the impossiblity of meeting for two robots  **)
+(*************************************************************)
 
 Section MeetingEven.
 
@@ -134,7 +194,7 @@ Variable r : robogram (fplus G G) Zero.
    - otherwise, just activate one and the distance between them does not become zero
      and you can scale it back on the next round. *)
 
-(** Teh reference starting position **)
+(** The reference starting position **)
 Definition gpos1 : (fplus G G) -> location := fun x => match x with inl a => 0 | inr b => 1 end.
 Definition pos1 := lift_pos gpos1.
 
@@ -148,6 +208,7 @@ Proof. split; intros []; intro; reflexivity. Qed.
 Lemma pos2_pos1_equiv : PosEq (pos2 ∘ swap0 G) pos1.
 Proof. split; intros []; intro; reflexivity. Qed.
 
+(** Relative positions in the reference positions. **)
 (* The last two digits denotes the operation perfomed :
    - first  : 0 -> same scale; 1 -> inverse scale 
    - second : 0 -> same place; 1 -> shifted place *)
@@ -179,6 +240,8 @@ Proof. split; intros[]; intro x; simpl; ring. Qed.
 (** The movement of robots in the reference position **)
 Definition move := algo r pos1.
 
+(** **  First case: the robots exchange their positions  **)
+
 Section Move1.
 
 Hypothesis Hmove : move = 1.
@@ -202,7 +265,7 @@ Proof. reflexivity. Qed.
 Lemma bad_demon_head1_2 : demon_head (demon_tail bad_demon1) = da1_2.
 Proof. reflexivity. Qed.
 
-Lemma Fair_bad_demon1 : Fair bad_demon1.
+Lemma kFair_bad_demon1 : kFair 1 bad_demon1.
 Proof.
 cofix bad_fair1. constructor.
   intro. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
@@ -245,13 +308,15 @@ Proof. apply Always_Differ1_aux. reflexivity. Qed.
 
 End Move1.
 
+(** **  Second case: Only one robot is activated at a time **)
+
 Section MoveNot1.
 
 Hypothesis Hmove : move <> 1.
 
 Lemma ratio_inv : forall ρ, ρ <> 0 -> ρ / (1 - move) <> 0.
 Proof.
-intros ρ Hρ Habs. apply Hρ. SearchPattern (_ * / _ = 1). apply (Rmult_eq_compat_l (1 - move)) in Habs.
+intros ρ Hρ Habs. apply Hρ. apply (Rmult_eq_compat_l (1 - move)) in Habs.
 unfold Rdiv in Habs. 
 replace ( (1 - move) * (ρ * / (1 - move))) with (ρ * ((1 - move) * / (1 - move))) in Habs by ring.
 rewrite Rinv_r in Habs. now ring_simplify in Habs. intro Heq. apply Hmove. symmetry. now apply Rminus_diag_uniq.
@@ -280,7 +345,7 @@ Lemma bad_demon_tail2 :
   forall ρ, demon_tail (demon_tail (bad_demon2 ρ)) = bad_demon2 (ρ / (1 - move) / (1 - move)).
 Proof. reflexivity. Qed.
 
-Theorem Fair_bad_demon2 : forall ρ, ρ <> 0 -> Fair (bad_demon2 ρ).
+Theorem kFair_bad_demon2 : forall ρ, ρ <> 0 -> kFair 1 (bad_demon2 ρ).
 Proof.
 cofix fair_demon. intros ρ Hρ. constructor.
   intros [].
@@ -464,37 +529,26 @@ Qed.
 
 End MoveNot1.
 
+(** **  Merging both cases  **)
+
 Definition bad_demon : R -> demon (fplus G G) Zero.
 destruct (Rdec move 1).
-  (* Robots exchange positions *)
+  (** Robots exchange positions **)
   intros _. exact bad_demon1.
-  (* Robots do no exchange positions *)
+  (** Robots do no exchange positions **)
   exact bad_demon2.
 Defined.
 
-Theorem Fair_bad_demon : forall ρ, ρ <> 0 -> Fair (bad_demon ρ).
+Theorem kFair_bad_demon : forall ρ, ρ <> 0 -> kFair 1 (bad_demon ρ).
 Proof.
 intros. unfold bad_demon. destruct (Rdec move 1).
-  exact Fair_bad_demon1.
-  now apply Fair_bad_demon2.
+  exact kFair_bad_demon1.
+  now apply kFair_bad_demon2.
 Qed.
-(*
-Theorem Always_Different : forall pos,
-  (forall x x', pos (inr x) = pos (inr x')) ->
-  (forall y y', pos (inl y) = pos (inl y')) ->
-  (forall x y, pos (inr x) <> pos (inl y)) ->
-  forall x y, Always_Differ (execute r (bad_demon (/ (pos (inr x) - pos (inl y)))) pos).
-Proof.
-intros pos Hx Hy Hpos x y. unfold bad_demon. destruct (Rdec move 1).
-  now apply Always_Differ1.
-  apply Always_Differ2. assumption. intro Habs. rewrite Habs in Hpos.
-  ring_simplify in Hpos. symmetry in Hpos. revert Hpos. exact R1_neq_R0.
-Qed.
-*)
 
 Theorem noMeeting : inhabited G -> ~(solMeeting r).
 Proof.
-intros HG Habs. specialize (Habs gpos1 (bad_demon 1) (Fair_bad_demon R1_neq_R0)).
+intros HG Habs. specialize (Habs gpos1 (bad_demon 1) 1%nat (kFair_bad_demon R1_neq_R0)).
 destruct Habs as [pt Habs]. revert Habs. apply different_no_meeting. assumption.
 destruct HG as [g]. unfold bad_demon.
 destruct (Rdec move 1) as [Hmove | Hmove].
