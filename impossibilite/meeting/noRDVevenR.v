@@ -265,7 +265,7 @@ Proof. reflexivity. Qed.
 Lemma bad_demon_head1_2 : demon_head (demon_tail bad_demon1) = da1_2.
 Proof. reflexivity. Qed.
 
-Lemma kFair_bad_demon1 : kFair 1 bad_demon1.
+Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof.
 cofix bad_fair1. constructor.
   intro. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
@@ -542,7 +542,7 @@ Defined.
 Theorem kFair_bad_demon : forall ρ, ρ <> 0 -> kFair 1 (bad_demon ρ).
 Proof.
 intros. unfold bad_demon. destruct (Rdec move 1).
-  exact kFair_bad_demon1.
+  apply kFair_trans with 0%nat. exact kFair_bad_demon1. omega.
   now apply kFair_bad_demon2.
 Qed.
 
