@@ -39,8 +39,7 @@ $(call includecmdwithout@,$(COQBIN)coqtop -config)
 #                        #
 ##########################
 
-COQLIBS?=-I meeting\
-  -I . 
+COQLIBS?=-I . 
 COQDOCLIBS?=
 
 ##########################
@@ -81,50 +80,20 @@ endif
 #                    #
 ######################
 
-VFILES:=convergence_2_0.v\
-  package-disc13/kbounded_ESSAI.v\
-  package-disc13/ContractionTheorem_FSYNC.v\
-  package-disc13/ConvergentFormalism.v\
-  package-disc13/NoSolutionFAIR_3f.v\
-  package-disc13/MeetingTheorem_FSYNC.v\
-  package-disc13/Qcabs.v\
-  package-disc13/MeetingTheorem_FAIR.v\
-  package-disc13/FiniteSum.v\
-  package-disc13/ContractionTheorem_FAIR.v\
-  package-disc13/NoSolutionFSYNC_2f.v\
-  XMT3.v\
-  MeetingTheorem3.v\
-  ConvergentFormalism.v\
+VFILES:=noRDVR.v\
   Qcabs.v\
-  no_convergence_between_2f_3f.v\
-  FiniteSum3.v\
-  MeetingTheorem.v\
-  no_convergence_N_N.v\
-  FiniteSum.v\
-  Equivalences.v\
-  ContractionTheorem.v\
-  no_convergence_between_f_2f.v\
-  XCT3.v\
-  no_convergence_N_N3.v\
-  ConvergentFormalism2.v\
-  Finites.v\
-  no_convergence_N_2N.v\
-  NO_FSYNC_SOL_2F.v\
-  ConvergentFormalism3.v\
-  meeting/noRDVR.v\
-  meeting/ConvergentFormalism.v\
-  meeting/FiniteSumR.v\
-  meeting/noRDVevenR.v\
-  meeting/EqualitiesR.v\
-  meeting/ConvergentFormalismR.v\
-  meeting/Equalities.v\
-  meeting/noRDV.v
+  FiniteSumR.v\
+  noRDVevenR.v\
+  EqualitiesR.v\
+  ConvergentFormalismR.v\
+  Equalities.v\
+  noRDV.v
 
 -include $(addsuffix .d,$(VFILES))
 .SECONDARY: $(addsuffix .d,$(VFILES))
 
 VOFILES:=$(VFILES:.v=.vo)
-VOFILESINC=$(filter $(wildcard meeting/*),$(VOFILES)) $(filter $(wildcard ./*),$(VOFILES)) 
+VOFILESINC=$(filter $(wildcard ./*),$(VOFILES)) 
 GLOBFILES:=$(VFILES:.v=.glob)
 VIFILES:=$(VFILES:.v=.vi)
 GFILES:=$(VFILES:.v=.g)
