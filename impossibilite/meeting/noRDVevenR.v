@@ -84,9 +84,10 @@ Qed.
 (*****************************)
 (** *  The Meeting Problem  **)
 (*****************************)
+Definition stacked_at G (pos:G -> location) (pt:location):= forall r:G, pos r = pt.
 
 CoInductive Meet G (pt: location) (e : execution G) : Prop :=
-  Meeting : (forall p, execution_head e p = pt) -> Meet pt (execution_tail e) -> Meet pt e.
+  Meeting : stacked_at (execution_head e) pt -> Meet pt (execution_tail e) -> Meet pt e.
 
 Inductive WillMeet G (pt : location) (e : execution G) : Prop :=
   | Now : Meet pt e -> WillMeet pt e
