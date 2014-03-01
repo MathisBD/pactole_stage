@@ -34,6 +34,66 @@ Ltac Rdec := repeat
 (** *  Fair and k-Fair demons  **)
 (********************************)
 
+(* g will be activated before at most k steps of h *)
+Inductive Between {G B} g h (d : demon G B) : nat -> Prop :=
+  | kReset : forall k, frame (demon_head d) g <> 0 -> Between g h d k
+  | kReduce : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h <> 0 ->
+            Between g h (demon_tail d) k -> Between g h d (S k)
+  | kStall : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h = 0 ->
+            Between g h (demon_tail d) k -> Between g h d k.
+
+
+(* Trivially, a robot is never activated before itself with a fair demon!
+   The fairness hypothesis is necessary, otherwise the the robot may never be activated. *)
+Lemma Between_same {G B} : forall g (d : demon G B) k, LocallyFairForOne g d -> Between g g d k.
+Proof.
+intros g d k Hd. induction Hd.
+  now constructor 1.
+  now constructor 3.
+Qed.
+
+(* k-fair: every robot g is activated within at most k activation of any other robot h *)
+CoInductive kFair {G B} k (d : demon G B) :=
+  AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
+                kFair k d.
+
+Lemma Between_LocallyFair {G B} : forall g (d : demon G B) h k,
+  Between g h d k -> LocallyFairForOne g d.
+Proof.
+intros g h d k Hg. induction Hg.
+  now constructor 1.
+  now constructor 2.
+  now constructor 2.
+Qed.
+
+Theorem kFair_Fair {G B} : forall k (d : demon G B), kFair k d -> Fair d.
+Proof.
+coinduction kfair_is_fair.
+  destruct H. intro. apply Between_LocallyFair with g k. now apply b.
+  apply (kfair_is_fair k). now destruct H.
+Qed.
+
+Lemma Between_trans {G B} : forall g h (d : demon G B) k,
+  Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
+Proof.
+intros g h d k Hd. induction Hd; intros k' Hk.
+  now constructor 1.
+  destruct k'.
+    now inversion Hk.
+    constructor 2; assumption || now (apply IHHd; omega).
+  constructor 3; assumption || now (apply IHHd; omega).
+Qed.
+
+Theorem kFair_trans {G B} : forall k (d: demon G B),
+  kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
+Proof.
+coinduction fair; destruct H.
+  intros. now apply Between_trans with k.
+  now apply (fair k).
+Qed.
+
+(* Old version commented out.
+
 (* g will be activated in at most k steps *)
 Inductive AtMost {G B} g (d : demon G B) : nat -> Prop :=
   | kNow : forall k, frame (demon_head d) g <> 0 -> AtMost g d k
@@ -79,11 +139,12 @@ coinduction fair; destruct H.
   intro. now apply AtMost_trans with k.
   now apply (fair k).
 Qed.
-
+*)
 
 (*****************************)
 (** *  The Meeting Problem  **)
 (*****************************)
+
 Definition stacked_at G (pos:G -> location) (pt:location):= forall r:G, pos r = pt.
 
 CoInductive Meet G (pt: location) (e : execution G) : Prop :=
@@ -269,9 +330,9 @@ Proof. reflexivity. Qed.
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof.
 cofix bad_fair1. constructor.
-  intro. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
+  intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
   constructor.
-    intro. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
+    intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
     rewrite bad_demon_tail1. apply bad_fair1.
 Qed.
 
@@ -349,6 +410,35 @@ Proof. reflexivity. Qed.
 Theorem kFair_bad_demon2 : forall ρ, ρ <> 0 -> kFair 1 (bad_demon2 ρ).
 Proof.
 cofix fair_demon. intros ρ Hρ. constructor.
+  intros [n | n] [m | m].
+    constructor 1. rewrite bad_demon_head2_1. now simpl.
+    constructor 1. rewrite bad_demon_head2_1. now simpl.
+    constructor 2.
+      rewrite bad_demon_head2_1. now simpl.
+      rewrite bad_demon_head2_1. now simpl.
+      constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+    constructor 3.
+      rewrite bad_demon_head2_1. now simpl.
+      rewrite bad_demon_head2_1. now simpl.
+      constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+  constructor. intros [n | n] [m | m].
+    constructor 3.
+      rewrite bad_demon_head2_2. now simpl.
+      rewrite bad_demon_head2_2. now simpl.
+      rewrite bad_demon_tail2. constructor 1. rewrite bad_demon_head2_1. simpl. now do 2 apply ratio_inv.
+    constructor 2.
+      rewrite bad_demon_head2_2. now simpl.
+      rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+      rewrite bad_demon_tail2. constructor 1. rewrite bad_demon_head2_1. simpl. now do 2 apply ratio_inv.
+    constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+    constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+  rewrite bad_demon_tail2. apply fair_demon. now do 2 apply ratio_inv.
+Qed.
+
+(* Old version commented out.
+Theorem kFair_bad_demon2 : forall ρ, ρ <> 0 -> kFair 1 (bad_demon2 ρ).
+Proof.
+cofix fair_demon. intros ρ Hρ. constructor.
   intros [].
     constructor 1. rewrite bad_demon_head2_1. now simpl.
     constructor 2.
@@ -361,7 +451,7 @@ cofix fair_demon. intros ρ Hρ. constructor.
     constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
   rewrite bad_demon_tail2. apply fair_demon. now do 2 apply ratio_inv.
 Qed.
-
+*)
 Lemma round_dist2_1 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall x y, round r (da2_1 ρ) pos (inr x) - round r (da2_1 ρ) pos (inl y) = (1 - move) / ρ.
 Proof.
