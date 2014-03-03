@@ -158,13 +158,23 @@ Definition solMeeting G B (r : robogram G B) := forall (gp : G -> location) (d :
   kFair k d -> exists pt : location, WillMeet pt (execute r d gp).
 
 
+Definition bivalent G (p: (fplus G G) -> R) :=
+  forall x y:G, p (inl x) <> p (inr y).
+
 (* We will prove that with [bad_demon], robots are always apart. *)
 CoInductive Always_Differ G (e : execution (fplus G G)) :=
-  CAD : (forall x y, execution_head e (inl x) <> execution_head e (inr y)) ->
+  CAD : bivalent (execution_head e) ->
         Always_Differ (execution_tail e) -> Always_Differ e.
 
-Theorem different_no_meeting : forall (G : finite) e,
-  inhabited G -> @Always_Differ G e -> forall pt, ~WillMeet pt e.
+(* 
+(* We will prove that with [bad_demon], robots are always apart. *)
+CoInductive Always_Differ G (e : execution (fplus G G)) :=
+  CAD : (forall x y:G, execution_head e (inl x) <> execution_head e (inr y)) ->
+        Always_Differ (execution_tail e) -> Always_Differ e.*)
+
+
+Theorem different_no_meeting : forall (G : finite) (e:execution (fplus G G)),
+  inhabited G -> Always_Differ e -> forall pt, ~WillMeet pt e.
 Proof.
 intros G e [g] He pt Habs. induction Habs.
   inversion H. inversion He. elim (H2 g g). now do 2 rewrite H0.
@@ -175,7 +185,7 @@ Lemma Always_Differ_compat G : forall e1 e2,
   eeq e1 e2 -> @Always_Differ G e1 -> Always_Differ e2.
 Proof.
 coinduction diff.
-  intros. rewrite <- H. now destruct H0.
+unfold bivalent in *. intros. rewrite <- H. now destruct H0.
   destruct H. apply (diff _ _ H1). now destruct H0.
 Qed.
 
@@ -355,9 +365,9 @@ Qed.
 Theorem Always_Differ1_aux : forall e, (ExtEq e gpos1) -> Always_Differ (execute r bad_demon1 e).
 Proof.
 cofix differs. intros e He. constructor.
-  simpl. intros. subst. apply neq_sym. do 2 rewrite He. exact R1_neq_R0.
+  simpl. unfold bivalent in *. intros. subst. apply neq_sym. do 2 rewrite He. exact R1_neq_R0.
   rewrite execute_tail, bad_demon_head1_1. constructor.
-    intros. subst. simpl. do 2 rewrite (round_compat_bis (reflexivity r) (reflexivity da1_1) He).
+    unfold bivalent in *. intros. subst. simpl. do 2 rewrite (round_compat_bis (reflexivity r) (reflexivity da1_1) He).
     do 2 rewrite round_dist1_1. simpl. exact R1_neq_R0.
     rewrite execute_tail, bad_demon_tail1, bad_demon_head1_2.
   apply differs. rewrite He. intro x.
@@ -571,9 +581,9 @@ Theorem Always_Differ2 : forall pos,
 Proof.
 cofix differs. intros pos Hx Hy Hpos x y. constructor; [| constructor].
 (* Inital state *)
-  simpl. intros. apply neq_sym. now apply Hpos.
+  unfold bivalent in *. simpl. intros. apply neq_sym. now apply Hpos.
 (* State after one step *)
-  simpl. intros. apply neq_sym. now apply round_differ2_1.
+  unfold bivalent in *. simpl. intros. apply neq_sym. now apply round_differ2_1.
 (* State after two steps *)
   do 2 rewrite execute_tail. rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.
   pose (ρ := / (pos (inr x) - pos (inl y))). fold ρ.
