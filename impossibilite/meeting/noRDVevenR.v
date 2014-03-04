@@ -154,8 +154,9 @@ Inductive WillMeet G (pt : location) (e : execution G) : Prop :=
   | Now : Meet pt e -> WillMeet pt e
   | Later : WillMeet pt (execution_tail e) -> WillMeet pt e.
 
-Definition solMeeting G B (r : robogram G B) := forall (gp : G -> location) (d : demon G B) k,
-  kFair k d -> exists pt : location, WillMeet pt (execute r d gp).
+
+Definition solMeeting G B (r : robogram G B) (d : demon G B) :=
+  forall (gp : G -> location), exists pt : location, WillMeet pt (execute r d gp).
 
 
 Definition bivalent G (p: (fplus G G) -> R) :=
@@ -647,9 +648,20 @@ intros. unfold bad_demon. destruct (Rdec move 1).
   now apply kFair_bad_demon2.
 Qed.
 
-Theorem noMeeting : inhabited G -> ~(solMeeting r).
+Theorem kFair_bad_demon' : forall ρ, ρ <> 0 -> forall k, (k>=1)%nat -> kFair k (bad_demon ρ).
 Proof.
-intros HG Habs. specialize (Habs gpos1 (bad_demon 1) 1%nat (kFair_bad_demon R1_neq_R0)).
+intros.
+eapply kFair_trans with 1%nat.
+apply kFair_bad_demon;auto.
+auto.
+Qed.
+
+
+Theorem noMeeting : inhabited G -> forall k, (1<=k)%nat -> ~(forall d, kFair k d -> solMeeting r d).
+Proof.
+intros HG k h Habs.
+specialize (Habs (bad_demon 1) (kFair_bad_demon' R1_neq_R0 h) gpos1).
+(* specialize (Habs 1%nat (bad_demon 1) (kFair_bad_demon R1_neq_R0) gpos1). *)
 destruct Habs as [pt Habs]. revert Habs. apply different_no_meeting. assumption.
 destruct HG as [g]. unfold bad_demon.
 destruct (Rdec move 1) as [Hmove | Hmove].
