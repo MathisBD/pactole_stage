@@ -7,8 +7,7 @@ Require Import Morphisms.
 
 Set Implicit Arguments.
 
-Lemma neq_sym A : forall x y : A, x <> y -> y <> x.
-Proof. auto. Qed.
+(** * Some necessary results on Reals. *)
 
 Lemma Rminus1 : -1 <> 0.
 Proof.
@@ -147,16 +146,16 @@ Qed.
 
 Definition stacked_at G (pos:G -> location) (pt:location):= forall r:G, pos r = pt.
 
-CoInductive Meet G (pt: location) (e : execution G) : Prop :=
-  Meeting : stacked_at (execution_head e) pt -> Meet pt (execution_tail e) -> Meet pt e.
+CoInductive Gather G (pt: location) (e : execution G) : Prop :=
+  Gathering : stacked_at (execution_head e) pt -> Gather pt (execution_tail e) -> Gather pt e.
 
-Inductive WillMeet G (pt : location) (e : execution G) : Prop :=
-  | Now : Meet pt e -> WillMeet pt e
-  | Later : WillMeet pt (execution_tail e) -> WillMeet pt e.
+Inductive WillGather G (pt : location) (e : execution G) : Prop :=
+  | Now : Gather pt e -> WillGather pt e
+  | Later : WillGather pt (execution_tail e) -> WillGather pt e.
 
 
-Definition solMeeting G B (r : robogram G B) (d : demon G B) :=
-  forall (gp : G -> location), exists pt : location, WillMeet pt (execute r d gp).
+Definition solGathering G B (r : robogram G B) (d : demon G B) :=
+  forall (gp : G -> location), exists pt : location, WillGather pt (execute r d gp).
 
 
 Definition bivalent G (p: (fplus G G) -> R) :=
@@ -175,7 +174,7 @@ CoInductive Always_Differ G (e : execution (fplus G G)) :=
 
 
 Theorem different_no_meeting : forall (G : finite) (e:execution (fplus G G)),
-  inhabited G -> Always_Differ e -> forall pt, ~WillMeet pt e.
+  inhabited G -> Always_Differ e -> forall pt, ~WillGather pt e.
 Proof.
 intros G e [g] He pt Habs. induction Habs.
   inversion H. inversion He. elim (H2 g g). now do 2 rewrite H0.
@@ -256,7 +255,7 @@ Proof. intro. split; intros []; now simpl. Qed.
 (** *  Proof of the impossiblity of meeting for two robots  **)
 (*************************************************************)
 
-Section MeetingEven.
+Section GatheringEven.
 
 Variable G : finite.
 Variable r : robogram (fplus G G) Zero.
@@ -366,7 +365,7 @@ Qed.
 Theorem Always_Differ1_aux : forall e, (ExtEq e gpos1) -> Always_Differ (execute r bad_demon1 e).
 Proof.
 cofix differs. intros e He. constructor.
-  simpl. unfold bivalent in *. intros. subst. apply neq_sym. do 2 rewrite He. exact R1_neq_R0.
+  simpl. unfold bivalent in *. intros. subst. apply not_eq_sym. do 2 rewrite He. exact R1_neq_R0.
   rewrite execute_tail, bad_demon_head1_1. constructor.
     unfold bivalent in *. intros. subst. simpl. do 2 rewrite (round_compat_bis (reflexivity r) (reflexivity da1_1) He).
     do 2 rewrite round_dist1_1. simpl. exact R1_neq_R0.
@@ -582,9 +581,9 @@ Theorem Always_Differ2 : forall pos,
 Proof.
 cofix differs. intros pos Hx Hy Hpos x y. constructor; [| constructor].
 (* Inital state *)
-  unfold bivalent in *. simpl. intros. apply neq_sym. now apply Hpos.
+  unfold bivalent in *. simpl. intros. apply not_eq_sym. now apply Hpos.
 (* State after one step *)
-  unfold bivalent in *. simpl. intros. apply neq_sym. now apply round_differ2_1.
+  unfold bivalent in *. simpl. intros. apply not_eq_sym. now apply round_differ2_1.
 (* State after two steps *)
   do 2 rewrite execute_tail. rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.
   pose (ρ := / (pos (inr x) - pos (inl y))). fold ρ.
@@ -657,7 +656,7 @@ auto.
 Qed.
 
 
-Theorem noMeeting : inhabited G -> forall k, (1<=k)%nat -> ~(forall d, kFair k d -> solMeeting r d).
+Theorem noGathering : inhabited G -> forall k, (1<=k)%nat -> ~(forall d, kFair k d -> solGathering r d).
 Proof.
 intros HG k h Habs.
 specialize (Habs (bad_demon 1) (kFair_bad_demon' R1_neq_R0 h) gpos1).
@@ -670,7 +669,7 @@ destruct (Rdec move 1) as [Hmove | Hmove].
   apply (Always_Differ2 Hmove gpos1); try reflexivity. intros. simpl. apply R1_neq_R0.
 Qed.
 
-End MeetingEven.
+End GatheringEven.
 
-Check noMeeting.
-Print Assumptions noMeeting.
+Check noGathering.
+Print Assumptions noGathering.

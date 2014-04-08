@@ -42,9 +42,6 @@ Qed.
 Lemma Qcmult_reg_r : forall q₁ q₂ q₃, q₃ <> 0 -> (q₁ * q₃ = q₂ * q₃ <-> q₁ = q₂).
 Proof. intros. setoid_rewrite Qcmult_comm. now apply Qcmult_reg_l. Qed.
 
-Lemma neq_sym A : forall x y : A, x <> y -> y <> x.
-Proof. auto. Qed.
-
 
 (*****************************)
 (** *  The Meeting Problem  **)
@@ -332,14 +329,14 @@ constructor.
   fold pos1. fold pos2.
   assert ((/ (pos1 false - pos1 true) = / (pos false - pos true) / (1 - move))) as Hpos1.
     unfold pos1. unfold Qcdiv. rewrite <- Qcinv_mult_distr. f_equal.
-    apply neq_sym in Hpos. rewrite Qceq_minus_iff in Hpos.
+    apply not_eq_sym in Hpos. rewrite Qceq_minus_iff in Hpos.
     rewrite (round_dist2_1 _ (Qcinv_non_0 Hpos) (eq_sym (Qcinv_involutive _))).
     unfold Qcdiv. rewrite Qcinv_involutive. ring.
   assert ((/ (pos2 false - pos2 true) = / (pos1 false - pos1 true) / (1 - move))) as Hpos2.
     unfold pos2. rewrite <- Hpos1. unfold Qcdiv. rewrite <- Qcinv_mult_distr. f_equal.
     rewrite round_dist2_2.
       unfold Qcdiv. rewrite Qcinv_involutive. ring.
-      apply Qcinv_non_0. rewrite <- Qceq_minus_iff. apply neq_sym. apply round_differ2_1. assumption.
+      apply Qcinv_non_0. rewrite <- Qceq_minus_iff. apply not_eq_sym. apply round_differ2_1. assumption.
       rewrite Qcinv_involutive. reflexivity.
     rewrite <- Hpos1. rewrite <- Hpos2. apply differs. clear differs.
     unfold pos2. rewrite <- Hpos1. apply round_differ2_2.

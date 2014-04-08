@@ -6,8 +6,6 @@ Require Import Morphisms.
 
 Set Implicit Arguments.
 
-Lemma neq_sym A : forall x y : A, x <> y -> y <> x.
-Proof. auto. Qed.
 
 Lemma Rminus1 : -1 <> 0.
 Proof.
@@ -323,7 +321,7 @@ constructor.
     unfold pos1. unfold Rdiv. rewrite <- Rinv_mult_distr. f_equal.
     rewrite (round_dist2_1 _ (Rinv_neq_0_compat _ Hneq) (eq_sym (Rinv_involutive _ Hneq))).
     now field. assumption. shift.
-  assert (pos1 false <> pos1 true). apply neq_sym. now apply round_differ2_1.
+  assert (pos1 false <> pos1 true). apply not_eq_sym. now apply round_differ2_1.
   assert ((/ (pos2 false - pos2 true) = / (pos1 false - pos1 true) / (1 - move))) as Hpos2.
     unfold pos2. rewrite <- Hpos1. unfold Rdiv. rewrite <- Rinv_mult_distr. f_equal.
     rewrite round_dist2_2.
