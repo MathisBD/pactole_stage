@@ -59,7 +59,7 @@ Section goodbyz.
 (** Here are the two kinds of robots. *)
 Variable G B : finite.
 
-(** Disjoint union of both kinds od robots is obtained by a sum type. *)
+(** Disjoint union of both kinds of robots is obtained by a sum type. *)
 Inductive ident :=
  | Good : G → ident
  | Byz : B → ident.
@@ -184,6 +184,67 @@ CoInductive Fair (d : demon) : Prop :=
   AlwaysFair : (∀ g, LocallyFairForOne g d) → Fair (demon_tail d) →
                Fair d.
 
+(** [Between g h d] means that [g] will be activated before at most [k]
+    steps of [h] in demon [d]. *)
+Inductive Between g h (d : demon) : nat -> Prop :=
+| kReset : forall k, frame (demon_head d) g <> 0 -> Between g h d k
+| kReduce : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h <> 0 ->
+                      Between g h (demon_tail d) k -> Between g h d (S k)
+| kStall : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h = 0 ->
+                     Between g h (demon_tail d) k -> Between g h d k.
+
+
+(** A robot is never activated before itself with a fair demon! The
+    fairness hypothesis is necessary, otherwise the robot may never be
+    activated. *)
+Lemma Between_same :
+  forall g (d : demon) k, LocallyFairForOne g d -> Between g g d k.
+Proof.
+intros g d k Hd. induction Hd.
+  now constructor 1.
+  now constructor 3.
+Qed.
+
+(* k-fair: every robot g is activated within at most k activation of any other robot h *)
+CoInductive kFair k (d : demon) :=
+  AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
+                kFair k d.
+
+Lemma Between_LocallyFair : forall g (d : demon) h k,
+  Between g h d k -> LocallyFairForOne g d.
+Proof.
+intros g h d k Hg. induction Hg.
+  now constructor 1.
+  now constructor 2.
+  now constructor 2.
+Qed.
+
+Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
+Proof.
+coinduction kfair_is_fair.
+  destruct H. intro. apply Between_LocallyFair with g k. now apply b.
+  apply (kfair_is_fair k). now destruct H.
+Qed.
+
+Lemma Between_trans : forall g h (d : demon) k,
+  Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
+Proof.
+intros g h d k Hd. induction Hd; intros k' Hk.
+  now constructor 1.
+  destruct k'.
+    now inversion Hk.
+    constructor 2; assumption || now (apply IHHd; omega).
+  constructor 3; assumption || now (apply IHHd; omega).
+Qed.
+
+Theorem kFair_trans : forall k (d: demon),
+  kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
+Proof.
+coinduction fair; destruct H.
+  intros. now apply Between_trans with k.
+  now apply (fair k).
+Qed.
+
 (** ** Full synchronicity
 
   A fully synchronous demon is a particular case of fair demon: all good robots
@@ -289,10 +350,3 @@ Proof.
 Qed.
 
 End goodbyz.
-
-(* 
- *** Local Variables: ***
- *** coq-prog-name: "coqtop" ***
- *** fill-column: 80 ***
- *** End: ***
- *)

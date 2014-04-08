@@ -28,7 +28,7 @@ Ltac Rdec := repeat
 
 
 (*****************************)
-(** *  The Meeting Problem  **)
+(** *  The Gathering Problem  **)
 (*****************************)
 
 (** **  Framework for two robots  **)
@@ -105,17 +105,17 @@ f_equal; ring.
 intros [].
 Qed.
 
-CoInductive Meet G (pt: location) (e : execution G) : Prop :=
-  Meeting : (forall p, execution_head e p = pt) -> Meet pt (execution_tail e) -> Meet pt e.
+CoInductive Gather G (pt: location) (e : execution G) : Prop :=
+  Gathering : (forall p, execution_head e p = pt) -> Gather pt (execution_tail e) -> Gather pt e.
 
-Inductive WillMeet G (pt : location) (e : execution G) : Prop :=
-  | Now : Meet pt e -> WillMeet pt e
-  | Later : WillMeet pt (execution_tail e) -> WillMeet pt e.
+Inductive WillGather G (pt : location) (e : execution G) : Prop :=
+  | Now : Gather pt e -> WillGather pt e
+  | Later : WillGather pt (execution_tail e) -> WillGather pt e.
 
-Definition solMeeting G B (r : robogram G B) := forall (gp : G -> location) (d : demon G B),
-  Fair d -> exists pt : location, WillMeet pt (execute r d gp).
+Definition solGathering G B (r : robogram G B) := forall (gp : G -> location) (d : demon G B),
+  Fair d -> exists pt : location, WillGather pt (execute r d gp).
 
-Section MeetingTwo.
+Section GatheringTwo.
 
 Variable r : robogram Two Zero.
 
@@ -359,14 +359,14 @@ intros pos Hpos. unfold bad_demon. destruct (Rdec move 1).
   ring_simplify in Hpos. symmetry in Hpos. revert Hpos. exact R1_neq_R0.
 Qed.
 
-Theorem different_no_meeting : forall e, Always_Differ e -> forall pt, ~WillMeet pt e.
+Theorem different_no_meeting : forall e, Always_Differ e -> forall pt, ~WillGather pt e.
 Proof.
 intros e He pt Habs. induction Habs.
   inversion H. inversion He. elim H2. now do 2 rewrite H0.
   inversion He. now apply IHHabs.
 Qed.
 
-Theorem noMeeting : ~(solMeeting r).
+Theorem noGathering : ~(solGathering r).
 Proof.
 assert (- (1) <> 0) as H10. exact Rminus1.
 intro Habs. specialize (Habs gpos (bad_demon (- (1))) (Fair_bad_demon H10)). destruct Habs as [pt Habs].
@@ -375,7 +375,7 @@ replace (- (1)) with (/ (gpos false - gpos true)) by (simpl; field).
 apply Always_Different; simpl; field.
 Qed.
 
-End MeetingTwo.
+End GatheringTwo.
 
-Check noMeeting.
-Print Assumptions noMeeting.
+Check noGathering.
+Print Assumptions noGathering.

@@ -7,14 +7,17 @@ Require Import Morphisms.
 
 Set Implicit Arguments.
 
+(***************************************)
 (** * Some necessary results on Reals. *)
+(***************************************)
 
 Lemma Rminus1 : -1 <> 0.
 Proof.
-intro Habs. apply Ropp_eq_compat in Habs.
-rewrite Ropp_involutive, Ropp_0 in Habs. now apply R1_neq_R0.
+  intro Habs. apply Ropp_eq_compat in Habs.
+  rewrite Ropp_involutive, Ropp_0 in Habs. now apply R1_neq_R0.
 Qed.
 
+(** Small dedicated decision tactic for reals *)
 Ltac Rdec := repeat
   match goal with
     | |- context[Rdec ?x ?x] =>
@@ -27,118 +30,6 @@ Ltac Rdec := repeat
         let Heq := fresh "Heq" in destruct (Rdec (-1) 0) as [Heq | Heq];
         [now elim Rminus1 | clear Heq]
   end.
-
-
-(********************************)
-(** *  Fair and k-Fair demons  **)
-(********************************)
-
-(* g will be activated before at most k steps of h *)
-Inductive Between {G B} g h (d : demon G B) : nat -> Prop :=
-  | kReset : forall k, frame (demon_head d) g <> 0 -> Between g h d k
-  | kReduce : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h <> 0 ->
-            Between g h (demon_tail d) k -> Between g h d (S k)
-  | kStall : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h = 0 ->
-            Between g h (demon_tail d) k -> Between g h d k.
-
-
-(* Trivially, a robot is never activated before itself with a fair demon!
-   The fairness hypothesis is necessary, otherwise the the robot may never be activated. *)
-Lemma Between_same {G B} : forall g (d : demon G B) k, LocallyFairForOne g d -> Between g g d k.
-Proof.
-intros g d k Hd. induction Hd.
-  now constructor 1.
-  now constructor 3.
-Qed.
-
-(* k-fair: every robot g is activated within at most k activation of any other robot h *)
-CoInductive kFair {G B} k (d : demon G B) :=
-  AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
-                kFair k d.
-
-Lemma Between_LocallyFair {G B} : forall g (d : demon G B) h k,
-  Between g h d k -> LocallyFairForOne g d.
-Proof.
-intros g h d k Hg. induction Hg.
-  now constructor 1.
-  now constructor 2.
-  now constructor 2.
-Qed.
-
-Theorem kFair_Fair {G B} : forall k (d : demon G B), kFair k d -> Fair d.
-Proof.
-coinduction kfair_is_fair.
-  destruct H. intro. apply Between_LocallyFair with g k. now apply b.
-  apply (kfair_is_fair k). now destruct H.
-Qed.
-
-Lemma Between_trans {G B} : forall g h (d : demon G B) k,
-  Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
-Proof.
-intros g h d k Hd. induction Hd; intros k' Hk.
-  now constructor 1.
-  destruct k'.
-    now inversion Hk.
-    constructor 2; assumption || now (apply IHHd; omega).
-  constructor 3; assumption || now (apply IHHd; omega).
-Qed.
-
-Theorem kFair_trans {G B} : forall k (d: demon G B),
-  kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
-Proof.
-coinduction fair; destruct H.
-  intros. now apply Between_trans with k.
-  now apply (fair k).
-Qed.
-
-(* Old version commented out.
-
-(* g will be activated in at most k steps *)
-Inductive AtMost {G B} g (d : demon G B) : nat -> Prop :=
-  | kNow : forall k, frame (demon_head d) g <> 0 -> AtMost g d k
-  | kLater : forall k, frame (demon_head d) g = 0 ->
-            AtMost g (demon_tail d) k -> AtMost g d (S k).
-
-(* k-fair: every robot is activated at most every k steps *)
-CoInductive kFair {G B} k (d : demon G B) :=
-  AlwayskFair : (forall g, AtMost g d k) -> kFair k (demon_tail d) ->
-                kFair k d.
-
-Lemma AtMost_LocallyFair {G B} : forall g (d : demon G B) k,
-  AtMost g d k -> LocallyFairForOne g d.
-Proof.
-intros g d k Hg. induction Hg.
-  now constructor 1.
-  now constructor 2.
-Qed.
-
-Theorem kFair_Fair {G B} : forall k (d : demon G B), kFair k d -> Fair d.
-Proof.
-coinduction kfair_is_fair.
-  destruct H. intro. now apply AtMost_LocallyFair with k.
-  apply (kfair_is_fair k). now destruct H.
-Qed.
-
-Lemma AtMost_trans {G B} : forall g (d : demon G B) k,
-  AtMost g d k -> forall k', (k <= k')%nat -> AtMost g d k'.
-Proof.
-intros g d k Hd. induction Hd; intros k' Hk.
-  now constructor 1.
-  destruct k'.
-    now inversion Hk.
-    constructor 2.
-      assumption.
-      apply IHHd. omega.
-Qed.
-
-Theorem kFair_trans {G B} : forall k (d: demon G B),
-  kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
-Proof.
-coinduction fair; destruct H.
-  intro. now apply AtMost_trans with k.
-  now apply (fair k).
-Qed.
-*)
 
 (*****************************)
 (** *  The Meeting Problem  **)
@@ -337,7 +228,7 @@ Proof. reflexivity. Qed.
 Lemma bad_demon_head1_2 : demon_head (demon_tail bad_demon1) = da1_2.
 Proof. reflexivity. Qed.
 
-Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
+Lemma kFair_bad_demon1 : ConvergentFormalismR.kFair 0 bad_demon1.
 Proof.
 cofix bad_fair1. constructor.
   intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
@@ -643,14 +534,14 @@ Defined.
 Theorem kFair_bad_demon : forall ρ, ρ <> 0 -> kFair 1 (bad_demon ρ).
 Proof.
 intros. unfold bad_demon. destruct (Rdec move 1).
-  apply kFair_trans with 0%nat. exact kFair_bad_demon1. omega.
+  apply kFair_ord with 0%nat. exact kFair_bad_demon1. omega.
   now apply kFair_bad_demon2.
 Qed.
 
 Theorem kFair_bad_demon' : forall ρ, ρ <> 0 -> forall k, (k>=1)%nat -> kFair k (bad_demon ρ).
 Proof.
 intros.
-eapply kFair_trans with 1%nat.
+eapply kFair_ord with 1%nat.
 apply kFair_bad_demon;auto.
 auto.
 Qed.

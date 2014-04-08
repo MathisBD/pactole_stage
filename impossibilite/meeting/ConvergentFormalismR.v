@@ -54,7 +54,7 @@ Section goodbyz. (* Remove to have notations outside it *)
 (** Here are the two kinds of robots. *)
 Variable G B : finite.
 
-(** Disjoint union of both kinds od robots is obtained by a sum type. *)
+(** Disjoint union of both kinds of robots is obtained by a sum type. *)
 Inductive ident :=
  | Good : G → ident
  | Byz : B → ident.
@@ -181,6 +181,73 @@ CoInductive Fair (d : demon) : Prop :=
   AlwaysFair : (∀ g, LocallyFairForOne g d) → Fair (demon_tail d) →
                Fair d.
 
+(** [Between g h d] means that [g] will be activated before at most [k]
+    steps of [h] in demon [d]. *)
+Inductive Between g h (d : demon) : nat -> Prop :=
+| kReset : forall k, frame (demon_head d) g <> 0 -> Between g h d k
+| kReduce : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h <> 0 ->
+                      Between g h (demon_tail d) k -> Between g h d (S k)
+| kStall : forall k, frame (demon_head d) g = 0 -> frame (demon_head d) h = 0 ->
+                     Between g h (demon_tail d) k -> Between g h d k.
+
+
+
+(* k-fair: every robot g is activated within at most k activation of any other robot h *)
+CoInductive kFair k (d : demon) :=
+  AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
+                kFair k d.
+
+Lemma Between_LocallyFair : forall g (d : demon) h k,
+  Between g h d k -> LocallyFairForOne g d.
+Proof.
+  intros g h d k Hg. induction Hg.
+  now constructor 1.
+  now constructor 2.
+  now constructor 2.
+Qed.
+
+(** A robot is never activated before itself with a fair demon! The
+    fairness hypothesis is necessary, otherwise the robot may never be
+    activated. *)
+Lemma Between_same :
+  forall g (d : demon) k, LocallyFairForOne g d -> Between g g d k.
+Proof.
+  intros g d k Hd. induction Hd.
+  now constructor 1.
+  now constructor 3.
+Qed.
+
+(** A k-fair demon is fair. *)
+Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
+Proof.
+  coinduction kfair_is_fair.
+  destruct H. intro. apply Between_LocallyFair with g k. now apply b.
+  apply (kfair_is_fair k). now destruct H.
+Qed.
+
+(* FIXME: rename? *)
+(** [Between g h d k] is monotonic on [k]. *)
+Lemma Between_ord : forall g h (d : demon) k,
+  Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
+Proof.
+  intros g h d k Hd. induction Hd; intros k' Hk.
+  now constructor 1.
+  destruct k'.
+    now inversion Hk.
+    constructor 2; assumption || now (apply IHHd; omega).
+  constructor 3; assumption || now (apply IHHd; omega).
+Qed.
+
+(* FIXME: rename? *)
+(** [kFair k d] is monotonic on [k] relation. *)
+Theorem kFair_ord : forall k (d: demon),
+  kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
+Proof.
+  coinduction fair; destruct H.
+  - intros. now apply Between_ord with k.
+  - now apply (fair k).
+Qed.
+
 (** ** Full synchronicity
 
   A fully synchronous demon is a particular case of fair demon: all good robots
@@ -206,15 +273,17 @@ CoInductive FullySynchronous d :=
     → FullySynchronous d.
 
 
-Lemma local_fully_synchronous_implies_fair: ∀ g d, FullySynchronousForOne g d → LocallyFairForOne g d.
+(** A locally synchronous demon is fair *)
+Lemma local_fully_synchronous_implies_fair:
+  ∀ g d, FullySynchronousForOne g d → LocallyFairForOne g d.
 Proof. induction 1. now constructor. Qed.
 
-
+(** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
 Proof.
-coinduction fully_fair.
-- intro. apply local_fully_synchronous_implies_fair. apply H.
-- now inversion H.
+  coinduction fully_fair.
+  - intro. apply local_fully_synchronous_implies_fair. apply H.
+  - now inversion H.
 Qed.
 
 (** ** Executions *)
@@ -223,7 +292,7 @@ Qed.
 CoInductive execution :=
   NextExecution : (G → location) → execution → execution.
 
-(** *** Destructors *)
+(** *** Destructors for demons *)
 
 Definition execution_head (e : execution) : (G → location) :=
   match e with NextExecution gp _ => gp end.
@@ -231,18 +300,33 @@ Definition execution_head (e : execution) : (G → location) :=
 Definition execution_tail (e : execution) : execution :=
   match e with NextExecution _ e => e end.
 
-Definition round (r : robogram) (da : demonic_action) (gp : G → location) : G → location
-:= fun g =>
-   let k := da.(frame) g in
-   let t := gp g in
-   (* l allows getting back the move in the scheduler reference from the move in
+(** [round r da gp] return the new position of good robots (that is a function
+    giving the position of each good robot) from the previous one [gp] by
+    applying the robogram [r] on [gp] where demonic_action [da] has been applied
+    beforehand (to set what each robot actually sees (zoom factor + bad robots
+    position)). *)
+Definition round (r : robogram) (da : demonic_action) (gp : G → location)
+ : G → location :=
+  (** for a given robot, we compute the new position *)
+  fun g => 
+    let k := da.(frame) g in (** first see what is the zooming factor set by the demon *)
+    let t := gp g in (** t is the current position of g seen by the demon *)
+    (* l allows getting back the move in the scheduler reference from the move in
       the robot's local reference *)
-   if Rdec k 0 then t else t + /k * (algo r (⟦k, t⟧ {| gp := gp; bp := locate_byz da |})).
+    if Rdec k 0 then t (** If g is not activated (zooming factor = 0), do nothing *)
+    else (* otherwise compute the position [g] actually sees, apply robogram
+            [r] on it and translate the destination location back in the global
+            reference *)
+      let pos_seen_by_r := ⟦k, t⟧ {| gp := gp; bp := locate_byz da |} in
+      t + /k * (algo r pos_seen_by_r).
 
+(** [execute r d gp] returns an (infinite) execution from an initial global
+    position [gp], a demon [d] and a robogram [r] running on each good robot. *)
 Definition execute (r : robogram): demon → (G → location) → execution :=
   cofix execute d gp :=
   NextExecution gp (execute (demon_tail d) (round r (demon_head d) gp)).
 
+(** Decomposition lemma for [execute]. *)
 Lemma execute_tail : forall (r : robogram) (d : demon) gp,
   execution_tail (execute r d gp) = execute r (demon_tail d) (round r (demon_head d) gp).
 Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
@@ -260,7 +344,8 @@ Inductive attracted (center : location) (radius : R) (e : execution) : Prop :=
   | Captured : imprisonned center radius e → attracted center radius e
   | WillBeCaptured : attracted center radius (execution_tail e) → attracted center radius e.
 
-(** A solution is just convergence property for any demon. *)
+(** [solution r] means that robogram [r] is a solution, i.e. is convergent
+    ([attracted]) for any demon. *)
 Definition solution (r : robogram) : Prop :=
   ∀ (gp : G → location),
   ∀ (d : demon), Fair d →
@@ -268,7 +353,7 @@ Definition solution (r : robogram) : Prop :=
   exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
 
 
-(** A solution is just convergence property for any demon. *)
+(** Solution restricted to fully synchronous demons. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
   ∀ (gp : G → location),
   ∀ (d : demon), FullySynchronous d →
@@ -276,6 +361,7 @@ Definition solution_FSYNC (r : robogram) : Prop :=
   exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
 
 
+(** A Solution is also a solution restricted to fully synchronous demons. *)
 Lemma solution_FAIR_FSYNC : ∀ r, solution r → solution_FSYNC r.
 Proof.
   intros r H.
@@ -287,6 +373,7 @@ Qed.
 
 End goodbyz.
 
+(** Exporting notations of section above. *)
 Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 Notation "p '∘' s" := (subst_pos s p) (at level 20, only parsing).
 Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 40, format "'⟦' k ','  t '⟧'").
