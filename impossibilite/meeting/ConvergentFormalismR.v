@@ -311,10 +311,8 @@ Definition round (r : robogram) (da : demonic_action) (gp : G → location)
   fun g => 
     let k := da.(frame) g in (** first see what is the zooming factor set by the demon *)
     let t := gp g in (** t is the current position of g seen by the demon *)
-    (* l allows getting back the move in the scheduler reference from the move in
-      the robot's local reference *)
     if Rdec k 0 then t (** If g is not activated (zooming factor = 0), do nothing *)
-    else (* otherwise compute the position [g] actually sees, apply robogram
+    else (** otherwise compute the position [g] actually sees, apply robogram
             [r] on it and translate the destination location back in the global
             reference *)
       let pos_seen_by_r := ⟦k, t⟧ {| gp := gp; bp := locate_byz da |} in

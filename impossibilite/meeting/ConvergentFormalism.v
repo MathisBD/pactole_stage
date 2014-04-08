@@ -138,7 +138,7 @@ Record PosEq (p q : position) : Prop :=
 
 (** ** The program of correct robots *)
 
-(** ** Good robots have a common program, which we call a robogram
+(** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
 Record robogram :=
  { algo : position → location
