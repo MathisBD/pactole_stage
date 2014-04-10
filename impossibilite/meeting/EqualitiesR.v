@@ -5,9 +5,15 @@ Require Import ConvergentFormalismR.
 Set Implicit Arguments.
 
 
-(****************************************)
-(** *  General results about equality  **)
-(****************************************)
+(* ********************************************************* *)
+(** *  General results about equality in the robot model **)
+(* ******************************************************** *)
+
+(** This module contains definitions and properties about the notions
+    of equality we need for proofs. In particular it contains
+    technical lemmas (introduced by <<Instance: Proper...>>) making
+    these equality relations proper rewriting relations (i.e. that
+    some constants are morphisms for these relations). *)
 
 Class Bisimulation (T : Type) := {
   bisim : T -> T -> Prop;

@@ -153,3 +153,5 @@ Proof.
 Proof.
   abstract (apply chainf_acc; apply RecPrev).
 Defined.
+
+Notation " X ⊎ Y" := (fplus X Y) (at level 95).

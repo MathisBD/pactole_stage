@@ -4,7 +4,6 @@ Require Import EqualitiesR.
 Require Import FiniteSumR.
 Require Import Morphisms.
 
-
 Set Implicit Arguments.
 
 (* ************************************* *)
@@ -33,6 +32,11 @@ Ltac Rdec := repeat
 
 (** *  The Gathering Problem  **)
 
+(** Vocabulary: we call a [location] the coordinate of a robot. We
+    call a [position] a function from robots to position. An
+    [execution] is an infinite (coinductive) stream of [position]s. A
+    [demon] is an infinite stream of [demonic_action]s. *)
+
 (** ** Some properties related to the gathering problem *)
 (** [gathered_at pos pt] means that in position [pos] all robots
     are at the same location [pt] (exactly). *)
@@ -57,39 +61,40 @@ Definition solGathering {G B} (r : robogram G B) (d : demon G B) :=
 
 (** [Split p] means that position [p] contains to bijective sets of
     robots that do not share positions. *)
-Definition Split {G} (p: (fplus G G) -> R) :=
+Definition Split {G} (p: (G ⊎ G) -> R) :=
   forall x y:G, p (inl x) <> p (inr y).
 
 (** [Always_Differ e] means that (infinite) execution [e] is [Split]
     forever. We will prove that with [bad_demon], robots are always
     apart. *)
-CoInductive Always_Differ {G} (e : execution (fplus G G)) :=
+CoInductive Always_Differ {G} (e : execution (G ⊎ G)) :=
   CAD : Split (execution_head e) ->
         Always_Differ (execution_tail e) -> Always_Differ e.
 
 (** ** Linking the different properties *)
 
-Theorem different_no_gathering : forall (G : finite) (e:execution (fplus G G)),
+Theorem different_no_gathering : forall (G : finite) (e:execution (G ⊎ G)),
   inhabited G -> Always_Differ e -> forall pt, ~WillGather pt e.
 Proof.
-intros G e [g] He pt Habs. induction Habs.
-  inversion H. inversion He. elim (H2 g g). now do 2 rewrite H0.
-  inversion He. now apply IHHabs.
+  intros G e [g] He pt Habs.
+  induction Habs.
+  - inversion H. inversion He. elim (H2 g g). now do 2 rewrite H0.
+  - inversion He. now apply IHHabs.
 Qed.
 
 Lemma Always_Differ_compat G : forall e1 e2,
   eeq e1 e2 -> @Always_Differ G e1 -> Always_Differ e2.
 Proof.
-coinduction diff.
-unfold Split in *. intros. rewrite <- H. now destruct H0.
-  destruct H. apply (diff _ _ H1). now destruct H0.
+  coinduction diff.
+  - unfold Split in *. intros. rewrite <- H. now destruct H0.
+  - destruct H. apply (diff _ _ H1). now destruct H0.
 Qed.
 
 Lemma Always_Differ_compat_iff G : Proper (eeq ==> iff) (@Always_Differ G).
 Proof.
-intros e1 e2 He; split; intro.
-  now apply (Always_Differ_compat He).
-  now apply (Always_Differ_compat (symmetry He)).
+  intros e1 e2 He; split; intro.
+  - now apply (Always_Differ_compat He).
+  - now apply (Always_Differ_compat (symmetry He)).
 Qed.
 
 
@@ -111,7 +116,7 @@ Defined.
 
 
 (** Permutation of two robots **)
-Definition swap (G : finite) : automorphism (fplus G G).
+Definition swap (G : finite) : automorphism (G ⊎ G).
 refine ({|
   section := fun x => match x with inl a => inr a | inr b => inl b end;
   retraction := fun x => match x with inl a => inr a | inr b => inl b end;
@@ -148,24 +153,27 @@ abstract (intros [x | []] [y | []];
           f_equal; injection H; apply σ.(Inversion)).
 Defined.
 
-Definition swap0 G : automorphism (ident (fplus G G) Zero) := lift_automorphism (swap G).
+Definition swap0 G : automorphism (ident (G ⊎ G) Zero) := lift_automorphism (swap G).
 
 Lemma swap0_involutive : forall G pos, PosEq (pos ∘ swap0 G ∘ swap0 G) pos.
 Proof. split; intros []; intro; reflexivity. Qed.
 
 
-Definition lift_pos G (pos : (fplus G G) -> R) := {| gp := pos; bp := Zero_fun R |}.
+Definition lift_pos G (pos : (G ⊎ G) -> R) := {| gp := pos; bp := Zero_fun R |}.
 
-Lemma pos_equiv : forall G (pos : position (fplus G G) Zero), PosEq pos (lift_pos pos.(gp)).
+Lemma pos_equiv : forall G (pos : position (G ⊎ G) Zero), PosEq pos (lift_pos pos.(gp)).
 Proof. intro. split; intros []; now simpl. Qed.
 
 
-(** * Proof of the impossiblity of gathering for two robots  **)
+(** * Proof of the impossiblity of gathering for two robots
+    From now on and until the final theorem we give us a set [G] of
+    good robots, and a robogram on ([G] ⊎ [G]) × ∅. *)
 
 Section GatheringEven.
 
+
 Variable G : finite.
-Variable r : robogram (fplus G G) Zero.
+Variable r : robogram (G ⊎ G) Zero.
 
 (* A demon that fails the robogram :
    - if robots go on the position of the other one (symmetrical by definition of robogram), 
@@ -174,11 +182,11 @@ Variable r : robogram (fplus G G) Zero.
      and you can scale it back on the next round. *)
 
 (** The reference starting position **)
-Definition gpos1 : (fplus G G) -> location := fun x => match x with inl a => 0 | inr b => 1 end.
+Definition gpos1 : (G ⊎ G) -> location := fun x => match x with inl a => 0 | inr b => 1 end.
 Definition pos1 := lift_pos gpos1.
 
 (** The symmetrical position of the starting position **)
-Definition gpos2 : (fplus G G) -> location := fun x => match x with inl a => 1 | inr b => 0 end.
+Definition gpos2 : (G ⊎ G) -> location := fun x => match x with inl a => 1 | inr b => 0 end.
 Definition pos2 := lift_pos gpos2.
 
 Lemma pos1_pos2_equiv : PosEq (pos1 ∘ swap0 G) pos2.
@@ -225,15 +233,15 @@ Section Move1.
 
 Hypothesis Hmove : move = 1.
 
-Definition da1_1 : demonic_action (fplus G G) Zero := {|
+Definition da1_1 : demonic_action (G ⊎ G) Zero := {|
   locate_byz := Zero_fun R;
-  frame := fun x : fplus G G => match x with inl _ => 1 | inr _ => - (1) end |}.
+  frame := fun x : (G ⊎ G) => match x with inl _ => 1 | inr _ => - (1) end |}.
 
-Definition da1_2 : demonic_action (fplus G G) Zero := {|
+Definition da1_2 : demonic_action (G ⊎ G) Zero := {|
   locate_byz := Zero_fun R;
-  frame := fun x : fplus G G => match x with inl _ => - (1) | inr _ => 1 end |}.
+  frame := fun x : (G ⊎ G) => match x with inl _ => - (1) | inr _ => 1 end |}.
 
-CoFixpoint bad_demon1 : demon (fplus G G) Zero := NextDemon da1_1 (NextDemon da1_2 bad_demon1).
+CoFixpoint bad_demon1 : demon (G ⊎ G) Zero := NextDemon da1_1 (NextDemon da1_2 bad_demon1).
 
 Lemma bad_demon_tail1 : demon_tail (demon_tail bad_demon1) = bad_demon1.
 Proof. reflexivity. Qed.
@@ -246,40 +254,44 @@ Proof. reflexivity. Qed.
 
 Lemma kFair_bad_demon1 : ConvergentFormalismR.kFair 0 bad_demon1.
 Proof.
-cofix bad_fair1. constructor.
-  intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
+  cofix bad_fair1.
   constructor.
-    intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
-    rewrite bad_demon_tail1. apply bad_fair1.
+  - intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
+  - constructor.
+    + intros. constructor. simpl. destruct g; exact Rminus1 || exact R1_neq_R0.
+    + rewrite bad_demon_tail1. apply bad_fair1.
 Qed.
 
 Lemma round_dist1_1 : ExtEq (round r da1_1 gpos1) gpos2.
 Proof.
-intros [x | x]; unfold round; simpl; Rdec; ring_simplify.
-rewrite pos1_similarity_00. fold move. rewrite Hmove. field.
-rewrite pos1_similarity_11. rewrite (AlgoMorph r (swap0 G) (q:=pos1)). fold move. rewrite Hmove. field.
-symmetry. apply pos2_pos1_equiv.
+  intros [x | x]; unfold round; simpl; Rdec; ring_simplify.
+  - rewrite pos1_similarity_00. fold move. rewrite Hmove. field.
+  - rewrite pos1_similarity_11.
+    rewrite (AlgoMorph r (swap0 G) (q:=pos1)).
+    + fold move. rewrite Hmove. field.
+    + symmetry. apply pos2_pos1_equiv.
 Qed.
 
 Lemma round_dist1_2 : ExtEq (round r da1_2 gpos2) gpos1.
 Proof.
-intros [x | x]; unfold round; simpl; Rdec; ring_simplify.
-rewrite pos2_similarity_11. fold move. rewrite Hmove. field.
-rewrite pos2_similarity_00. rewrite (AlgoMorph r (swap0 G) (q:=pos1)). fold move. rewrite Hmove. field.
-symmetry. apply pos2_pos1_equiv.
+  intros [x | x]; unfold round; simpl; Rdec; ring_simplify.
+  - rewrite pos2_similarity_11. fold move. rewrite Hmove. field.
+  - rewrite pos2_similarity_00. rewrite (AlgoMorph r (swap0 G) (q:=pos1)).
+    + fold move. rewrite Hmove. field.
+    + symmetry. apply pos2_pos1_equiv.
 Qed.
 
 Theorem Always_Differ1_aux : forall e, (ExtEq e gpos1) -> Always_Differ (execute r bad_demon1 e).
 Proof.
-cofix differs. intros e He. constructor.
-  simpl. unfold Split in *. intros. subst. apply not_eq_sym. do 2 rewrite He. exact R1_neq_R0.
-  rewrite execute_tail, bad_demon_head1_1. constructor.
-    unfold Split in *. intros. subst. simpl. do 2 rewrite (round_compat_bis (reflexivity r) (reflexivity da1_1) He).
-    do 2 rewrite round_dist1_1. simpl. exact R1_neq_R0.
-    rewrite execute_tail, bad_demon_tail1, bad_demon_head1_2.
-  apply differs. rewrite He. intro x.
-  rewrite (round_compat_bis (reflexivity r) (reflexivity da1_2) (round_dist1_1)).
-  apply round_dist1_2.
+  cofix differs. intros e He. constructor.
+  - simpl. unfold Split in *. intros. subst. apply not_eq_sym. do 2 rewrite He. exact R1_neq_R0.
+  - rewrite execute_tail, bad_demon_head1_1. constructor.
+    + unfold Split in *. intros. subst. simpl. do 2 rewrite (round_compat_bis (reflexivity r) (reflexivity da1_1) He).
+      do 2 rewrite round_dist1_1. simpl. exact R1_neq_R0.
+    + rewrite execute_tail, bad_demon_tail1, bad_demon_head1_2.
+      apply differs. rewrite He. intro x.
+      rewrite (round_compat_bis (reflexivity r) (reflexivity da1_2) (round_dist1_1)).
+      apply round_dist1_2.
 Qed.
 
 Theorem Always_Differ1 : Always_Differ (execute r bad_demon1 gpos1).
@@ -295,21 +307,23 @@ Hypothesis Hmove : move <> 1.
 
 Lemma ratio_inv : forall ρ, ρ <> 0 -> ρ / (1 - move) <> 0.
 Proof.
-intros ρ Hρ Habs. apply Hρ. apply (Rmult_eq_compat_l (1 - move)) in Habs.
-unfold Rdiv in Habs. 
-replace ( (1 - move) * (ρ * / (1 - move))) with (ρ * ((1 - move) * / (1 - move))) in Habs by ring.
-rewrite Rinv_r in Habs. now ring_simplify in Habs. intro Heq. apply Hmove. symmetry. now apply Rminus_diag_uniq.
+  intros ρ Hρ Habs. apply Hρ. apply (Rmult_eq_compat_l (1 - move)) in Habs.
+  unfold Rdiv in Habs. 
+  replace ( (1 - move) * (ρ * / (1 - move))) with (ρ * ((1 - move) * / (1 - move))) in Habs by ring.
+  rewrite Rinv_r in Habs.
+  - now ring_simplify in Habs.
+  - intro Heq. apply Hmove. symmetry. now apply Rminus_diag_uniq.
 Qed.
 
-Definition da2_1 ρ : demonic_action (fplus G G) Zero := {|
+Definition da2_1 ρ : demonic_action (G ⊎ G) Zero := {|
   locate_byz := Zero_fun R;
-  frame := fun x : name (fplus G G) => match x with inl _ => ρ | inr _ => 0 end |}.
+  frame := fun x : name (G ⊎ G) => match x with inl _ => ρ | inr _ => 0 end |}.
 
-Definition da2_2 ρ : demonic_action (fplus G G) Zero := {|
+Definition da2_2 ρ : demonic_action (G ⊎ G) Zero := {|
   locate_byz := Zero_fun R;
-  frame := fun x : name (fplus G G) => match x with inl _ => 0 | inr _ => -ρ end |}.
+  frame := fun x : name (G ⊎ G) => match x with inl _ => 0 | inr _ => -ρ end |}.
 
-CoFixpoint bad_demon2 ρ : demon (fplus G G) Zero :=
+CoFixpoint bad_demon2 ρ : demon (G ⊎ G) Zero :=
   NextDemon (da2_1 ρ) 
   (NextDemon (da2_2 (ρ / (1 - move)))
   (bad_demon2 (ρ / (1 - move) / (1 - move)))). (* ρ updated *)
@@ -326,30 +340,31 @@ Proof. reflexivity. Qed.
 
 Theorem kFair_bad_demon2 : forall ρ, ρ <> 0 -> kFair 1 (bad_demon2 ρ).
 Proof.
-cofix fair_demon. intros ρ Hρ. constructor.
-  intros [n | n] [m | m].
-    constructor 1. rewrite bad_demon_head2_1. now simpl.
-    constructor 1. rewrite bad_demon_head2_1. now simpl.
-    constructor 2.
+  cofix fair_demon. intros ρ Hρ. constructor.
+  - intros [n | n] [m | m].
+    + constructor 1. rewrite bad_demon_head2_1. now simpl.
+    + constructor 1. rewrite bad_demon_head2_1. now simpl.
+    + constructor 2.
+      * rewrite bad_demon_head2_1. now simpl.
+      * rewrite bad_demon_head2_1. now simpl.
+      * constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+    + constructor 3.
       rewrite bad_demon_head2_1. now simpl.
       rewrite bad_demon_head2_1. now simpl.
       constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
-    constructor 3.
-      rewrite bad_demon_head2_1. now simpl.
-      rewrite bad_demon_head2_1. now simpl.
-      constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
-  constructor. intros [n | n] [m | m].
-    constructor 3.
-      rewrite bad_demon_head2_2. now simpl.
-      rewrite bad_demon_head2_2. now simpl.
-      rewrite bad_demon_tail2. constructor 1. rewrite bad_demon_head2_1. simpl. now do 2 apply ratio_inv.
-    constructor 2.
+  - constructor.
+    + intros [n | n] [m | m].
+      * constructor 3.
+        rewrite bad_demon_head2_2. now simpl.
+        rewrite bad_demon_head2_2. now simpl.
+        rewrite bad_demon_tail2. constructor 1. rewrite bad_demon_head2_1. simpl. now do 2 apply ratio_inv.
+      * constructor 2.
       rewrite bad_demon_head2_2. now simpl.
       rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
       rewrite bad_demon_tail2. constructor 1. rewrite bad_demon_head2_1. simpl. now do 2 apply ratio_inv.
-    constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
-    constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
-  rewrite bad_demon_tail2. apply fair_demon. now do 2 apply ratio_inv.
+      * constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+      * constructor 1. rewrite bad_demon_head2_2. simpl. apply Ropp_neq_0_compat. now apply ratio_inv.
+    + rewrite bad_demon_tail2. apply fair_demon. now do 2 apply ratio_inv.
 Qed.
 
 (* Old version commented out.
@@ -372,36 +387,37 @@ Qed.
 Lemma round_dist2_1 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall x y, round r (da2_1 ρ) pos (inr x) - round r (da2_1 ρ) pos (inl y) = (1 - move) / ρ.
 Proof.
-intros ρ pos Hρ Hpos. unfold round. simpl. Rdec. destruct (Rdec ρ 0) as [| _]. contradiction.
-intros x y. erewrite (@AlgoMorph _ _ r _ pos1 (id_perm (fplus G G) Zero)).
-fold move. unfold Rminus. ring_simplify. rewrite Hpos. now field.
-clear x; split; intros []; intro x; simpl.
-  assert (forall x y, pos (inl x) = pos (inl y)) as Heq.
-    intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
-    apply Rplus_eq_reg_l with (pos (inr x)).
-    unfold Rminus in Hpos. now do 2 rewrite Hpos.
-  rewrite (Heq x y). ring.
-  rewrite Hpos. now rewrite Rinv_r.
+  intros ρ pos Hρ Hpos. unfold round. simpl. Rdec. destruct (Rdec ρ 0) as [| _].
+  { contradiction. }
+  intros x y. erewrite (@AlgoMorph _ _ r _ pos1 (id_perm (G ⊎ G) Zero)).
+  - fold move. unfold Rminus. ring_simplify. rewrite Hpos. now field.
+  - clear x; split; intros []; intro x; simpl.
+    + assert (forall x y, pos (inl x) = pos (inl y)) as Heq.
+      { intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
+        apply Rplus_eq_reg_l with (pos (inr x)).
+        unfold Rminus in Hpos. now do 2 rewrite Hpos. }
+      rewrite (Heq x y). ring.
+    + rewrite Hpos. now rewrite Rinv_r.
 Qed.
 
 Corollary round_sameX2_1 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall x x', round r (da2_1 ρ) pos (inr x) = round r (da2_1 ρ) pos (inr x').
 Proof.
-intros. apply Rplus_eq_reg_l with (- round r (da2_1 ρ) pos (inl x)).
-setoid_rewrite Rplus_comm.
-change (round r (da2_1 ρ) pos (inr x) - round r (da2_1 ρ) pos (inl x)
-  = round r (da2_1 ρ) pos (inr x') - round r (da2_1 ρ) pos (inl x)).
-now setoid_rewrite round_dist2_1.
+  intros. apply Rplus_eq_reg_l with (- round r (da2_1 ρ) pos (inl x)).
+  setoid_rewrite Rplus_comm.
+  change (round r (da2_1 ρ) pos (inr x) - round r (da2_1 ρ) pos (inl x)
+          = round r (da2_1 ρ) pos (inr x') - round r (da2_1 ρ) pos (inl x)).
+  now setoid_rewrite round_dist2_1.
 Qed.
 
 Corollary round_sameY2_1 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall y y', round r (da2_1 ρ) pos (inl y) = round r (da2_1 ρ) pos (inl y').
 Proof.
-intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
-apply Rplus_eq_reg_l with (round r (da2_1 ρ) pos (inr y)).
-change (round r (da2_1 ρ) pos (inr y) - round r (da2_1 ρ) pos (inl y) =
-round r (da2_1 ρ) pos (inr y) - round r (da2_1 ρ) pos (inl y')).
-now setoid_rewrite round_dist2_1.
+  intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
+  apply Rplus_eq_reg_l with (round r (da2_1 ρ) pos (inr y)).
+  change (round r (da2_1 ρ) pos (inr y) - round r (da2_1 ρ) pos (inl y) =
+          round r (da2_1 ρ) pos (inr y) - round r (da2_1 ρ) pos (inl y')).
+  now setoid_rewrite round_dist2_1.
 Qed.
 
 Corollary round_differ2_1 : forall pos,
@@ -411,52 +427,56 @@ Corollary round_differ2_1 : forall pos,
   forall x y x' y', round r (da2_1 (/(pos(inr x)-pos(inl y)))) pos (inr x')
                  <> round r (da2_1 (/(pos(inr x)-pos(inl y)))) pos (inl y').
 Proof.
-intros pos Hx Hy Hpos x y x' y' Habs.
-assert (pos (inr x) - pos (inl y) <> 0) as Hρ. intro. apply (Hpos x y). now apply Rminus_diag_uniq.
-apply Rminus_diag_eq in Habs. rewrite (@round_dist2_1 _ pos (Rinv_neq_0_compat _ Hρ)) in Habs.
-  unfold Rdiv in Habs. rewrite Rinv_involutive in Habs; trivial.
-  apply Rmult_integral in Habs. destruct Habs as [Habs | Habs].
-    apply Rminus_diag_uniq in Habs. symmetry in Habs. contradiction.
-    contradiction.
-  intros. rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y).
+  intros pos Hx Hy Hpos x y x' y' Habs.
+  assert (pos (inr x) - pos (inl y) <> 0) as Hρ.
+  { intro. apply (Hpos x y). now apply Rminus_diag_uniq. }
+  apply Rminus_diag_eq in Habs.
+  rewrite (@round_dist2_1 _ pos (Rinv_neq_0_compat _ Hρ)) in Habs.
+  - unfold Rdiv in Habs. rewrite Rinv_involutive in Habs; trivial.
+    apply Rmult_integral in Habs. destruct Habs as [Habs | Habs].
+    + apply Rminus_diag_uniq in Habs. symmetry in Habs. contradiction.
+    + contradiction.
+  - intros. rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y).
 Qed.
 
 Lemma round_dist2_2 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall x y, round r (da2_2 ρ) pos (inr x) - round r (da2_2 ρ) pos (inl y) = (1 - move) / ρ.
 Proof.
-intros ρ pos Hρ Hpos. unfold round. simpl. Rdec.
-destruct (Rdec (-ρ) 0) as [Heq | _]. elim (Ropp_neq_0_compat ρ Hρ Heq).
-intros x y. erewrite (@AlgoMorph _ _ r _ pos1 (swap0 G)).
-  fold move.
-  replace (pos (inr x) + / - ρ * move - pos (inl y)) with (pos (inr x) - pos (inl y) + / - ρ * move) by ring.
-  rewrite Hpos. now field.
-split; intros []; intro n; simpl.
-  assert (forall x y, pos (inr x) = pos (inr y)) as Heq.
-    intros. apply Rplus_eq_reg_l with (- (pos (inl x))).
-    setoid_rewrite Rplus_comm. unfold Rminus in Hpos. now do 2 rewrite Hpos.
-  rewrite (Heq n x). ring.
-  replace (- ρ * (pos (inl n) - pos (inr x))) with (ρ * (pos (inr x) - pos (inl n))) by ring.
-  rewrite Hpos. now rewrite Rinv_r.
+  intros ρ pos Hρ Hpos. unfold round. simpl. Rdec.
+  destruct (Rdec (-ρ) 0) as [Heq | _].
+  - elim (Ropp_neq_0_compat ρ Hρ Heq).
+  - intros x y.
+    erewrite (@AlgoMorph _ _ r _ pos1 (swap0 G)).
+    { fold move.
+      replace (pos (inr x) + / - ρ * move - pos (inl y)) with (pos (inr x) - pos (inl y) + / - ρ * move) by ring.
+      rewrite Hpos. now field. }
+    split; intros []; intro n; simpl.
+    + assert (forall x y, pos (inr x) = pos (inr y)) as Heq.
+      intros. apply Rplus_eq_reg_l with (- (pos (inl x))).
+      setoid_rewrite Rplus_comm. unfold Rminus in Hpos. now do 2 rewrite Hpos.
+      rewrite (Heq n x). ring.
+    + replace (- ρ * (pos (inl n) - pos (inr x))) with (ρ * (pos (inr x) - pos (inl n))) by ring.
+      rewrite Hpos. now rewrite Rinv_r.
 Qed.
 
 Corollary round_sameX2_2 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall x x', round r (da2_2 ρ) pos (inr x) = round r (da2_2 ρ) pos (inr x').
 Proof.
-intros. apply Rplus_eq_reg_l with (- round r (da2_2 ρ) pos (inl x)).
-setoid_rewrite Rplus_comm.
-change (round r (da2_2 ρ) pos (inr x) - round r (da2_2 ρ) pos (inl x)
-  = round r (da2_2 ρ) pos (inr x') - round r (da2_2 ρ) pos (inl x)).
-now setoid_rewrite round_dist2_2.
+  intros. apply Rplus_eq_reg_l with (- round r (da2_2 ρ) pos (inl x)).
+  setoid_rewrite Rplus_comm.
+  change (round r (da2_2 ρ) pos (inr x) - round r (da2_2 ρ) pos (inl x)
+          = round r (da2_2 ρ) pos (inr x') - round r (da2_2 ρ) pos (inl x)).
+  now setoid_rewrite round_dist2_2.
 Qed.
 
 Corollary round_sameY2_2 : forall ρ pos, ρ <> 0 -> (forall x y, pos (inr x) - pos (inl y) = /ρ) ->
   forall y y', round r (da2_2 ρ) pos (inl y) = round r (da2_2 ρ) pos (inl y').
 Proof.
-intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
-apply Rplus_eq_reg_l with (round r (da2_2 ρ) pos (inr y)).
-change (round r (da2_2 ρ) pos (inr y) - round r (da2_2 ρ) pos (inl y) =
-round r (da2_2 ρ) pos (inr y) - round r (da2_2 ρ) pos (inl y')).
-now setoid_rewrite round_dist2_2.
+  intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
+  apply Rplus_eq_reg_l with (round r (da2_2 ρ) pos (inr y)).
+  change (round r (da2_2 ρ) pos (inr y) - round r (da2_2 ρ) pos (inl y) =
+          round r (da2_2 ρ) pos (inr y) - round r (da2_2 ρ) pos (inl y')).
+  now setoid_rewrite round_dist2_2.
 Qed.
 
 Corollary round_differ2_2 : forall pos,
@@ -466,14 +486,17 @@ Corollary round_differ2_2 : forall pos,
   forall x y x' y', round r (da2_2 (/(pos(inr x)-pos(inl y)))) pos (inr x')
                  <> round r (da2_2 (/(pos(inr x)-pos(inl y)))) pos (inl y').
 Proof.
-intros pos Hx Hy Hpos x y x' y' Habs.
-assert (pos (inr x) - pos (inl y) <> 0) as Hρ. intro. apply (Hpos x y). now apply Rminus_diag_uniq.
-apply Rminus_diag_eq in Habs. rewrite (@round_dist2_2 _ pos (Rinv_neq_0_compat _ Hρ)) in Habs.
-  unfold Rdiv in Habs. rewrite Rinv_involutive in Habs; trivial.
-  apply Rmult_integral in Habs. destruct Habs as [Habs | Habs].
-    apply Rminus_diag_uniq in Habs. symmetry in Habs. contradiction.
-    contradiction.
-  intros. rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y).
+  intros pos Hx Hy Hpos x y x' y' Habs.
+  assert (pos (inr x) - pos (inl y) <> 0) as Hρ.
+  { intro. apply (Hpos x y). now apply Rminus_diag_uniq. }
+  apply Rminus_diag_eq in Habs.
+  rewrite (@round_dist2_2 _ pos (Rinv_neq_0_compat _ Hρ)) in Habs.
+  - unfold Rdiv in Habs. rewrite Rinv_involutive in Habs; trivial.
+    apply Rmult_integral in Habs.
+    destruct Habs as [Habs | Habs].
+    + apply Rminus_diag_uniq in Habs. symmetry in Habs. contradiction.
+    + contradiction.
+  - intros. rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y).
 Qed.
 
 Ltac shift := let Hm := fresh "Hm" in intro Hm; apply Rminus_diag_uniq in Hm;
@@ -481,99 +504,128 @@ Ltac shift := let Hm := fresh "Hm" in intro Hm; apply Rminus_diag_uniq in Hm;
 
 
 Theorem Always_Differ2 : forall pos,
-  (forall x x', pos (inr x) = pos (inr x')) ->
-  (forall y y', pos (inl y) = pos (inl y')) ->
-  (forall x y, pos (inr x) <> pos (inl y)) ->
-  forall x y, Always_Differ (execute r (bad_demon2 (/ (pos (inr x) - pos (inl y)))) pos).
+                           (forall x x', pos (inr x) = pos (inr x')) ->
+                           (forall y y', pos (inl y) = pos (inl y')) ->
+                           (forall x y, pos (inr x) <> pos (inl y)) ->
+                           forall x y, Always_Differ (execute r (bad_demon2 (/ (pos (inr x) - pos (inl y)))) pos).
 Proof.
-cofix differs. intros pos Hx Hy Hpos x y. constructor; [| constructor].
-(* Inital state *)
-  unfold Split in *. simpl. intros. apply not_eq_sym. now apply Hpos.
-(* State after one step *)
-  unfold Split in *. simpl. intros. apply not_eq_sym. now apply round_differ2_1.
-(* State after two steps *)
-  do 2 rewrite execute_tail. rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.
-  pose (ρ := / (pos (inr x) - pos (inl y))). fold ρ.
-  pose (pos1 := round r (da2_1 ρ) pos). fold pos1.
-  pose (pos2 := round r (da2_2 (ρ / (1 - move))) pos1). fold pos2.
-  (* properties of pos *)
-  assert (pos (inr x) - pos (inl y) <> 0) as Hneq. shift. apply (Hpos _ _ Hm).
-  assert (ρ <> 0) as Hρ. now apply Rinv_neq_0_compat.
-  (* properties of pos1 *)
-  assert (pos1 (inr x) <> pos1 (inl y)). now apply round_differ2_1.
-  assert (forall x x', pos1 (inr x) = pos1 (inr x')) as Hx1.
-    unfold pos1. apply round_sameX2_1. assumption. intros. unfold ρ.
-    rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y).
-  assert (forall y y', pos1 (inl y) = pos1 (inl y')) as Hy1.
-    unfold pos1. apply round_sameY2_1. assumption. intros. unfold ρ.
-    rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y).
-  assert ((/ (pos1 (inr x) - pos1 (inl y)) = / (pos (inr x) - pos (inl y)) / (1 - move))) as Hpos1.
-    unfold pos1. unfold Rdiv. rewrite <- Rinv_mult_distr. f_equal.
-    rewrite (round_dist2_1 _ (Rinv_neq_0_compat _ Hneq)).
-      now field.
-      intros x' y'. rewrite Rinv_involutive; trivial. now rewrite (Hx x' x), (Hy y' y). 
-      assumption.
-      shift.
-  (* properties of pos2 *)
-  assert (forall x x', pos2 (inr x) = pos2 (inr x')) as Hx2.
-    unfold pos1. apply round_sameX2_2. now apply ratio_inv. intros x' y'.
-    rewrite (Hx1 x' x), (Hy1 y' y). rewrite <- Rinv_involutive at 1; trivial. f_equal. exact Hpos1. shift.
-  assert (forall y y', pos2 (inl y) = pos2 (inl y')) as Hy2.
-    unfold pos1. apply round_sameY2_2. now apply ratio_inv. intros x' y'.
-    rewrite (Hx1 x' x), (Hy1 y' y). rewrite <- Rinv_involutive at 1; trivial. f_equal. exact Hpos1. shift.
-  assert ((/ (pos2 (inr x) - pos2 (inl y)) = / (pos1 (inr x) - pos1 (inl y)) / (1 - move))) as Hpos2.
-    unfold pos2. rewrite Hpos1. unfold Rdiv. repeat rewrite <- Rinv_mult_distr; try assumption || now shift.
-      f_equal. rewrite round_dist2_2.
-        unfold ρ. field. split; shift. now apply (Hpos x y).
-        now apply ratio_inv.
-        intros x' y'. rewrite (Hx1 x' x),(Hy1 y' y). rewrite <- Rinv_involutive at 1; try now shift.
-        f_equal. now rewrite Hpos1.
-      intro Habs. apply Rmult_integral in Habs. destruct Habs as [? | Habs]. contradiction. revert Habs. shift.
-  (* final proof *)
-  unfold ρ. rewrite <- Hpos1. rewrite <- Hpos2. apply differs; clear differs; try assumption.
-  intros x' y'. unfold pos2, ρ. rewrite <- Hpos1. apply round_differ2_2; try assumption.
-  apply round_differ2_1; assumption.
+  cofix differs. intros pos Hx Hy Hpos x y.
+  constructor; [| constructor].
+  (* Inital state *)
+  - unfold Split in *. simpl. intros. apply not_eq_sym. now apply Hpos.
+  (* State after one step *)
+  - unfold Split in *. simpl. intros. apply not_eq_sym. now apply round_differ2_1.
+  (* State after two steps *)
+  - do 2 rewrite execute_tail.
+    rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.
+    pose (ρ := / (pos (inr x) - pos (inl y))). fold ρ.
+    pose (pos1 := round r (da2_1 ρ) pos). fold pos1.
+    pose (pos2 := round r (da2_2 (ρ / (1 - move))) pos1). fold pos2.
+    (* properties of pos *)
+    assert (pos (inr x) - pos (inl y) <> 0) as Hneq.
+    { shift. apply (Hpos _ _ Hm). }
+    assert (ρ <> 0) as Hρ.
+    { now apply Rinv_neq_0_compat. }
+    (* properties of pos1 *)
+    assert (pos1 (inr x) <> pos1 (inl y)).
+    { now apply round_differ2_1. }
+    assert (forall x x', pos1 (inr x) = pos1 (inr x')) as Hx1.
+    { unfold pos1. apply round_sameX2_1. assumption. intros. unfold ρ.
+      rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y). }
+    assert (forall y y', pos1 (inl y) = pos1 (inl y')) as Hy1.
+    { unfold pos1. apply round_sameY2_1. assumption. intros. unfold ρ.
+      rewrite Rinv_involutive; trivial. now rewrite (Hx x0 x), (Hy y0 y). }
+    assert ((/ (pos1 (inr x) - pos1 (inl y))
+             = / (pos (inr x) - pos (inl y)) / (1 - move))) as Hpos1.
+    { unfold pos1. unfold Rdiv.
+      rewrite <- Rinv_mult_distr.
+      - f_equal.
+        rewrite (round_dist2_1 _ (Rinv_neq_0_compat _ Hneq)).
+        + now field.
+        + intros x' y'. rewrite Rinv_involutive; trivial.
+          now rewrite (Hx x' x), (Hy y' y). 
+      - assumption.
+      - shift. }
+    (* properties of pos2 *)
+    assert (forall x x', pos2 (inr x) = pos2 (inr x')) as Hx2.
+    { unfold pos1.
+      apply round_sameX2_2.
+      - now apply ratio_inv.
+      - intros x' y'.
+        rewrite (Hx1 x' x), (Hy1 y' y). rewrite <- Rinv_involutive at 1; trivial.
+        f_equal. exact Hpos1. shift. }
+    assert (forall y y', pos2 (inl y) = pos2 (inl y')) as Hy2.
+    { unfold pos1. apply round_sameY2_2. now apply ratio_inv. intros x' y'.
+      rewrite (Hx1 x' x), (Hy1 y' y). rewrite <- Rinv_involutive at 1; trivial.
+      f_equal. exact Hpos1. shift. }
+    assert ((/ (pos2 (inr x) - pos2 (inl y))
+             = / (pos1 (inr x) - pos1 (inl y)) / (1 - move))) as Hpos2.
+    { unfold pos2. rewrite Hpos1. unfold Rdiv.
+      repeat rewrite <- Rinv_mult_distr; try assumption || now shift.
+      - f_equal. rewrite round_dist2_2.
+        + unfold ρ. field. split; shift. now apply (Hpos x y).
+        + now apply ratio_inv.
+        + intros x' y'. rewrite (Hx1 x' x),(Hy1 y' y).
+          rewrite <- Rinv_involutive at 1; try now shift.
+          f_equal. now rewrite Hpos1.
+      - intro Habs. apply Rmult_integral in Habs.
+        destruct Habs as [? | Habs]. contradiction. revert Habs. shift. }
+    (* final proof *)
+    unfold ρ. rewrite <- Hpos1. rewrite <- Hpos2.
+    apply differs; clear differs; try assumption.
+    intros x' y'. unfold pos2, ρ. rewrite <- Hpos1.
+    apply round_differ2_2; try assumption.
+    apply round_differ2_1; assumption.
 Qed.
 
 End MoveNot1.
 
 (** **  Merging both cases  **)
 
-Definition bad_demon : R -> demon (fplus G G) Zero.
-destruct (Rdec move 1).
+Definition bad_demon : R -> demon (G ⊎ G) Zero.
+  destruct (Rdec move 1).
   (** Robots exchange positions **)
-  intros _. exact bad_demon1.
-  (** Robots do no exchange positions **)
-  exact bad_demon2.
+  - intros _. exact bad_demon1.
+    (** Robots do no exchange positions **)
+  - exact bad_demon2.
 Defined.
 
 Theorem kFair_bad_demon : forall ρ, ρ <> 0 -> kFair 1 (bad_demon ρ).
 Proof.
-intros. unfold bad_demon. destruct (Rdec move 1).
-  apply kFair_ord with 0%nat. exact kFair_bad_demon1. omega.
-  now apply kFair_bad_demon2.
+  intros. unfold bad_demon.
+  destruct (Rdec move 1).
+  - apply kFair_ord with 0%nat. exact kFair_bad_demon1. omega.
+  - now apply kFair_bad_demon2.
 Qed.
 
 Theorem kFair_bad_demon' : forall ρ, ρ <> 0 -> forall k, (k>=1)%nat -> kFair k (bad_demon ρ).
 Proof.
-intros.
-eapply kFair_ord with 1%nat.
-apply kFair_bad_demon;auto.
-auto.
+  intros.
+  eapply kFair_ord with 1%nat.
+  - apply kFair_bad_demon;auto.
+  - auto.
 Qed.
 
+(** * Final theorem
 
-Theorem noGathering : inhabited G -> forall k, (1<=k)%nat -> ~(forall d, kFair k d -> solGathering r d).
+Given a non empty finite even set [G ⊎ G] and a robogram [r] on ([G] ⊎
+[G]) × ∅, there is no (k>0)-fair demon  for which the
+gathering problem is solved for any starting position. *)
+
+Theorem noGathering :
+  inhabited G -> forall k, (1<=k)%nat -> ~(forall d, kFair k d -> solGathering r d).
 Proof.
-intros HG k h Habs.
-specialize (Habs (bad_demon 1) (kFair_bad_demon' R1_neq_R0 h) gpos1).
-(* specialize (Habs 1%nat (bad_demon 1) (kFair_bad_demon R1_neq_R0) gpos1). *)
-destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering. assumption.
-destruct HG as [g]. unfold bad_demon.
-destruct (Rdec move 1) as [Hmove | Hmove].
-  now apply Always_Differ1.
-  replace 1 with (/ (gpos1 (inr g) - (gpos1 (inl g)))) by (simpl; field).
-  apply (Always_Differ2 Hmove gpos1); try reflexivity. intros. simpl. apply R1_neq_R0.
+  intros HG k h Habs.
+  specialize (Habs (bad_demon 1) (kFair_bad_demon' R1_neq_R0 h) gpos1).
+  (* specialize (Habs 1%nat (bad_demon 1) (kFair_bad_demon R1_neq_R0) gpos1). *)
+  destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
+  - assumption.
+  - destruct HG as [g]. unfold bad_demon.
+    destruct (Rdec move 1) as [Hmove | Hmove].
+    + now apply Always_Differ1.
+    + replace 1 with (/ (gpos1 (inr g) - (gpos1 (inl g)))) by (simpl; field).
+      apply (Always_Differ2 Hmove gpos1); try reflexivity.
+      intros. simpl. apply R1_neq_R0.
 Qed.
 
 End GatheringEven.

@@ -161,7 +161,8 @@ Record demonic_action :=
 CoInductive demon :=
   NextDemon : demonic_action → demon → demon.
 
-(** *** Destructors *)
+(** Destructors for demons, getting the head demonic action or the
+    tail of the demon. *)
 
 Definition demon_head (d : demon) : demonic_action :=
   match d with NextDemon da _ => da end.
