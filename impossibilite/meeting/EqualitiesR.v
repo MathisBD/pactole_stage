@@ -1,5 +1,6 @@
 Require Import Reals.
 Require Import Morphisms.
+Require Import FiniteSumR.
 Require Import ConvergentFormalismR.
 
 Set Implicit Arguments.

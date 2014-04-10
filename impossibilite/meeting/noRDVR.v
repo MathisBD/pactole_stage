@@ -1,4 +1,5 @@
 Require Import Reals.
+Require Import FiniteSumR.
 Require Import ConvergentFormalismR.
 Require Import EqualitiesR.
 Require Import Morphisms.

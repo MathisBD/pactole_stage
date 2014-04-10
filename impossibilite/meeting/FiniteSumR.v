@@ -1,5 +1,27 @@
 Set Implicit Arguments.
-Require Import ConvergentFormalismR.
+Require Import Utf8.
+
+(** This module formalises finite sets and there properties. *)
+
+(** * Definition of finite sets
+    This definition uses the notion of successor (and predecessor)
+    functions on the set, these two functions must be match exactly
+    and be terminating. *)
+
+Record finite :=
+ { name :> Set
+ ; next : option name → option name
+ ; prev : option name → option name
+ ; NextRel := fun x y => next (Some x) = Some y
+ ; PrevRel := fun x y => prev (Some x) = Some y
+ ; NextPrev : ∀ x y, next x = y ↔ prev y = x
+ ; RecNext : ∀ z, Acc NextRel z
+ ; RecPrev : ∀ z, Acc PrevRel z
+ }.
+
+(** * Chaining and flipping successor (and predecessor) functions *)
+
+(** ** Definitions *)
 
 Definition chain_aux_aux A B (ob : option B) : option (B + A) :=
   match ob with
@@ -26,6 +48,8 @@ Definition flip A B (x : A + B) : B + A :=
 
 Definition oflip A B (x : option (A + B)) : option (B + A) :=
   match x with Some x => Some (flip x) | _ => None end.
+
+(** ** Properties of chaining and flipping *)
 
 Lemma flip_invol A B (x : A + B) : flip (flip x) = x.
 Proof. case x as [a|b]; split. Qed.
@@ -137,6 +161,9 @@ Proof.
     intros [[z [Heq1 _]]|[z [Heq1 Heq2]]]; subst; eauto.
 Qed.
 
+(** * Disjoint uninon of finite sets. *)
+
+(** [fplus f g] is the disjoint union of finite sets [f] and [g]. It is a finite set and it is denoted by [f ⊎ g] (see <<Notation>> below) *)
 Definition fplus (f g : finite) : finite.
 refine {| name := (name f) + (name g)
         ; next := fun x => oflip (chain (next f) (next g) x)

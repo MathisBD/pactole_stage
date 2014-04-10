@@ -10,6 +10,7 @@
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Reals.
+Require Import FiniteSumR.
 Open Scope R_scope.
 
 
@@ -30,17 +31,6 @@ Ltac coinduction proof :=
 
 (** ** Agents *)
 
-(** We have finetely many robots. Some are good, other are evil. *)
-Record finite :=
- { name :> Set
- ; next : option name → option name
- ; prev : option name → option name
- ; NextRel := fun x y => next (Some x) = Some y
- ; PrevRel := fun x y => prev (Some x) = Some y
- ; NextPrev : ∀ x y, next x = y ↔ prev y = x
- ; RecNext : ∀ z, Acc NextRel z
- ; RecPrev : ∀ z, Acc PrevRel z
- }.
 
 (* For clarity's sake we will write location for robots location, and Qc for
    zooming factor and translation vectors. Obviously these ar all rationals and
@@ -51,7 +41,7 @@ Notation location := R (only parsing).
 
 Section goodbyz. (* Remove to have notations outside it *)
 
-(** Here are the two kinds of robots. *)
+(** We have finetely many robots. Some are good, other are evil. *)
 Variable G B : finite.
 
 (** Disjoint union of both kinds of robots is obtained by a sum type. *)

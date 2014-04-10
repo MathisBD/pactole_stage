@@ -64,17 +64,17 @@ Definition solGathering {G B} (r : robogram G B) (d : demon G B) :=
 Definition Split {G} (p: (G ⊎ G) -> R) :=
   forall x y:G, p (inl x) <> p (inr y).
 
-(** [Always_Differ e] means that (infinite) execution [e] is [Split]
+(** [Always_Split e] means that (infinite) execution [e] is [Split]
     forever. We will prove that with [bad_demon], robots are always
     apart. *)
-CoInductive Always_Differ {G} (e : execution (G ⊎ G)) :=
+CoInductive Always_Split {G} (e : execution (G ⊎ G)) :=
   CAD : Split (execution_head e) ->
-        Always_Differ (execution_tail e) -> Always_Differ e.
+        Always_Split (execution_tail e) -> Always_Split e.
 
 (** ** Linking the different properties *)
 
 Theorem different_no_gathering : forall (G : finite) (e:execution (G ⊎ G)),
-  inhabited G -> Always_Differ e -> forall pt, ~WillGather pt e.
+  inhabited G -> Always_Split e -> forall pt, ~WillGather pt e.
 Proof.
   intros G e [g] He pt Habs.
   induction Habs.
@@ -82,19 +82,19 @@ Proof.
   - inversion He. now apply IHHabs.
 Qed.
 
-Lemma Always_Differ_compat G : forall e1 e2,
-  eeq e1 e2 -> @Always_Differ G e1 -> Always_Differ e2.
+Lemma Always_Split_compat G : forall e1 e2,
+  eeq e1 e2 -> @Always_Split G e1 -> Always_Split e2.
 Proof.
   coinduction diff.
   - unfold Split in *. intros. rewrite <- H. now destruct H0.
   - destruct H. apply (diff _ _ H1). now destruct H0.
 Qed.
 
-Lemma Always_Differ_compat_iff G : Proper (eeq ==> iff) (@Always_Differ G).
+Lemma Always_Split_compat_iff G : Proper (eeq ==> iff) (@Always_Split G).
 Proof.
   intros e1 e2 He; split; intro.
-  - now apply (Always_Differ_compat He).
-  - now apply (Always_Differ_compat (symmetry He)).
+  - now apply (Always_Split_compat He).
+  - now apply (Always_Split_compat (symmetry He)).
 Qed.
 
 
@@ -281,7 +281,7 @@ Proof.
     + symmetry. apply pos2_pos1_equiv.
 Qed.
 
-Theorem Always_Differ1_aux : forall e, (ExtEq e gpos1) -> Always_Differ (execute r bad_demon1 e).
+Theorem Always_Split1_aux : forall e, (ExtEq e gpos1) -> Always_Split (execute r bad_demon1 e).
 Proof.
   cofix differs. intros e He. constructor.
   - simpl. unfold Split in *. intros. subst. apply not_eq_sym. do 2 rewrite He. exact R1_neq_R0.
@@ -294,8 +294,8 @@ Proof.
       apply round_dist1_2.
 Qed.
 
-Theorem Always_Differ1 : Always_Differ (execute r bad_demon1 gpos1).
-Proof. apply Always_Differ1_aux. reflexivity. Qed.
+Theorem Always_Split1 : Always_Split (execute r bad_demon1 gpos1).
+Proof. apply Always_Split1_aux. reflexivity. Qed.
 
 End Move1.
 
@@ -503,11 +503,11 @@ Ltac shift := let Hm := fresh "Hm" in intro Hm; apply Rminus_diag_uniq in Hm;
   try (contradiction || symmetry in Hm; contradiction).
 
 
-Theorem Always_Differ2 : forall pos,
+Theorem Always_Split2 : forall pos,
                            (forall x x', pos (inr x) = pos (inr x')) ->
                            (forall y y', pos (inl y) = pos (inl y')) ->
                            (forall x y, pos (inr x) <> pos (inl y)) ->
-                           forall x y, Always_Differ (execute r (bad_demon2 (/ (pos (inr x) - pos (inl y)))) pos).
+                           forall x y, Always_Split (execute r (bad_demon2 (/ (pos (inr x) - pos (inl y)))) pos).
 Proof.
   cofix differs. intros pos Hx Hy Hpos x y.
   constructor; [| constructor].
@@ -622,9 +622,9 @@ Proof.
   - assumption.
   - destruct HG as [g]. unfold bad_demon.
     destruct (Rdec move 1) as [Hmove | Hmove].
-    + now apply Always_Differ1.
+    + now apply Always_Split1.
     + replace 1 with (/ (gpos1 (inr g) - (gpos1 (inl g)))) by (simpl; field).
-      apply (Always_Differ2 Hmove gpos1); try reflexivity.
+      apply (Always_Split2 Hmove gpos1); try reflexivity.
       intros. simpl. apply R1_neq_R0.
 Qed.
 
