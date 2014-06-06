@@ -44,7 +44,7 @@ Definition gathered_at {G} (pos:G -> location) (pt:location):= forall r:G, pos r
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
-CoInductive Gather {G} (pt: location) (e : execution G) : Prop :=
+CoInductive Gather {G} (pt: location) (e : execution G) :=
   Gathering : gathered_at (execution_head e) pt -> Gather pt (execution_tail e) -> Gather pt e.
 
 (** [WillGather pt e] means that (infinite) execution [e] is
