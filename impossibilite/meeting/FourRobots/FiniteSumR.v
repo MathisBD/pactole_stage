@@ -171,10 +171,10 @@ refine {| name := (name f) + (name g)
         |}.
 Proof.
   abstract (
-  intros x y; split; intros; subst;
-  [rewrite oflip_invol; apply fplus_prev_next
-  |rewrite fplus_next_prev; apply oflip_invol]
-  ).
+      intros x y; split; intros; subst;
+      [rewrite oflip_invol; apply fplus_prev_next
+      |rewrite fplus_next_prev; apply oflip_invol]
+    ).
 Proof.
   abstract (apply fchain_acc; apply RecNext).
 Proof.

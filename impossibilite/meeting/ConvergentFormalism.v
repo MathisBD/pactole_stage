@@ -9,6 +9,9 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
+Require Import Recdef.
+Require Import Sorting.
+Import Permutation.
 Require Import Qcanon.
 Require Import Qcabs.
 
@@ -36,16 +39,8 @@ Ltac coinduction proof :=
 (** ** Agents *)
 
 (** We have finetely many robots. Some are good, other are evil. *)
-Record finite :=
- { name :> Set
- ; next : option name → option name
- ; prev : option name → option name
- ; NextRel := fun x y => next (Some x) = Some y
- ; PrevRel := fun x y => prev (Some x) = Some y
- ; NextPrev : ∀ x y, next x = y ↔ prev y = x
- ; RecNext : ∀ z, Acc NextRel z
- ; RecPrev : ∀ z, Acc PrevRel z
- }.
+
+Require Import FiniteSumR.
 
 (* For clarity's sake we will write location for robots location, and Qc for
    zooming factor and translation vectors. Obviously these ar all rationals and
@@ -136,13 +131,54 @@ Record PosEq (p q : position) : Prop :=
  { good_ext : ∀ n, p.(gp) n = q.(gp) n
  ; byz_ext  : ∀ n, p.(bp) n = q.(bp) n }.
 
+
+Function fold_left
+         (X:finite) Y (f: Y -> X.(name) -> Y)
+         (x:X.(name)) (init:Y) {wf (X.(PrevRel)) x} : Y :=
+  match X.(next) (Some x) with
+    | None => f init x
+    | Some nxt => @fold_left X Y f nxt (f init x)
+  end.
+Proof.
+  - intros X Y f x init nxt teq.
+    red.
+    apply (X.(NextPrev)).
+    assumption.
+  - intros X.
+    intro.
+    apply (X.(RecPrev)).
+Defined.
+
+(* un vieux rappeur qui pue. Ça eu été bien mais ça paie pu. *)
+Definition mc_solaar (X:finite) Y (f: Y -> X.(name) -> Y) (init:Y) : Y :=
+  match X.(next) None with
+    | None =>  init
+    | Some min => @fold_left X Y f min init
+  end.
+
+Definition spectrum := list location.
+
+Definition nominal_spectrum (p:position): spectrum :=
+  @mc_solaar (G ⊎ B) (list location)
+             (fun acc id => cons (match id with
+                                      inl g => p.(gp) g
+                                    | inr b => p.(bp) b
+                                  end) acc) nil.
+
+
+Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
+
 (** ** The program of correct robots *)
 
 (** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
+Definition robogram := spectrum → location.
+(* 
 Record robogram :=
  { algo : position → location
  ; AlgoMorph : ∀ p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q }.
+ *)
+
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
@@ -156,6 +192,8 @@ Record demonic_action :=
   {
     locate_byz : B → location
     ; frame : G → Qc
+    ; spectrum_of : G → (position → list location)
+    ; spectrum_ok: forall g:G, forall p:position, is_spectrum (spectrum_of g p) p
   }.
 
 
@@ -299,10 +337,15 @@ Definition execution_tail (e : execution) : execution :=
 Definition round (r : robogram) (da : demonic_action) (gp : G → location) : G → location
 := fun g =>
    let k := da.(frame) g in
+   let spectr := da.(spectrum_of) g in
    let t := gp g in
-   (* l allows getting back the move in the scheduler reference from the move in
-      the robot's local reference *)
-   if Qc_eq_dec k 0 then t else t + /k * (algo r ([[k, t]] {| gp := gp; bp := locate_byz da |})).
+   (* Apply the robogram to the subjective (spectrum) view of the
+      robot then translate the resulting location back to the
+      scheduler reference. By construction the spectrum is the
+      multisets of occupied positions but gives no information about
+      which robot occupies which position. *)
+   if Qc_eq_dec k 0 then t
+   else t + /k * (r (spectr ([[k, t]] {| gp := gp; bp := locate_byz da |}))).
 
 Definition execute (r : robogram): demon → (G → location) → execution :=
   cofix execute d gp :=

@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 Require Import Utf8.
+Require Import Recdef.
 
 (** This module formalises finite sets and there properties. *)
 
@@ -36,6 +37,30 @@ Proof.
   apply A.(NextPrev).
   reflexivity.
 Qed.
+
+Function fold_left_from
+         (X:finite) Y (f: Y -> X.(name) -> Y)
+         (x:X.(name)) (init:Y) {wf (X.(PrevRel)) x} : Y :=
+  match X.(next) (Some x) with
+    | None => f init x
+    | Some nxt => @fold_left_from X Y f nxt (f init x)
+  end.
+Proof.
+  - intros X Y f x init nxt teq.
+    red.
+    apply (X.(NextPrev)).
+    assumption.
+  - intros X.
+    intro.
+    apply (X.(RecPrev)).
+Defined.
+
+(* iteration over all element of a finite set *)
+Definition fold_left (X:finite) Y (f: Y -> X.(name) -> Y) (init:Y) : Y :=
+  match X.(next) None with
+    | None =>  init
+    | Some min => @fold_left_from X Y f min init
+  end.
 
 
 

@@ -1,0 +1,9 @@
+-I .
+ConvergentFormalism.v
+ConvergentFormalismR.v
+FiniteSumR.v
+Qcabs.v
+
+
+
+# noRDV Equalities EqualitiesR noRDVevenR noRDVR
