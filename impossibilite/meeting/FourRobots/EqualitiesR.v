@@ -2,6 +2,7 @@ Require Import Reals.
 Require Import Morphisms.
 Require Import FiniteSumR.
 Require Import ConvergentFormalismR.
+Import Permutation.
 
 Set Implicit Arguments.
 
@@ -65,6 +66,57 @@ Proof. intros p q Hpq n [m | m] Hnm; subst; simpl; rewrite Hpq; reflexivity. Qed
 Instance subst_pos_compat G B : Proper (ExtEq ==> @PosEq G B ==> @PosEq G B) (@subst_pos G B).
 Proof. intros σ σ' Hσ p q Hpq. split; intro n; simpl; now rewrite Hpq, Hσ. Qed.
 
+(** ***  On spectra  **)
+
+Definition spec_eq (s1 s2 : spectrum) := Permutation s1 s2.
+
+Instance spec_eq_equiv : Equivalence spec_eq.
+Proof. apply Permutation_Equivalence. 
+Qed.
+
+Instance spec_eq_bisim : Bisimulation spectrum.
+Proof. exists spec_eq. exact spec_eq_equiv. Qed.
+
+Instance fold_left_compat X Y : Proper ((eq ==> eq ==> eq) ==> eq ==> eq) (@fold_left X Y).
+Proof.
+intros f g Hfg.
+unfold fold_left. destruct (X.(next) None); try reflexivity. 
+pattern n. apply (well_founded_induction X.(RecPrev)). 
+intros n1 Hn. case_eq (X.(next) (Some n1)).
+  intros n0 Hn0 acc1 acc2 Hacc. subst. setoid_rewrite fold_left_from_equation. rewrite Hn0.
+  apply Hn. unfold PrevRel. now rewrite <- X.(NextPrev). now apply Hfg.
+  intros Hn0 acc1 acc2 Hacc. subst. setoid_rewrite fold_left_from_equation. rewrite Hn0. now apply Hfg.
+Qed.
+
+Instance nominal_spectrum_compat G B : Proper (@PosEq G B ==> spec_eq) (@nominal_spectrum G B).
+Proof.
+intros p1 p2 Hp.
+unfold nominal_spectrum. destruct Hp.
+assert (Hcompat := @fold_left_compat (G ⊎ B) spectrum
+  (fun (acc : list R) (id : G ⊎ B) =>
+    match id with
+      | inl g => gp p1 g
+      | inr b => bp p1 b
+    end :: acc)
+  (fun (acc : list R) (id : G ⊎ B) =>
+    match id with
+      | inl g => gp p2 g
+      | inr b => bp p2 b
+    end :: acc)).
+replace (fold_left (G ⊎ B)
+        (fun (acc : list R) (id : G ⊎ B) =>
+         match id with
+         | inl g => gp p1 g
+         | inr b => bp p1 b
+         end :: acc) Datatypes.nil)
+  with (fold_left (G ⊎ B)
+       (fun (acc : list R) (id : G ⊎ B) =>
+         match id with
+         | inl g => gp p2 g
+         | inr b => bp p2 b
+         end :: acc) Datatypes.nil).
+  setoid_rewrite (good_ext. Qed.
+
 (** **  Equality of demons  **)
 
 (** ***  Equality of demonic_actions  **)
@@ -83,6 +135,14 @@ Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd. simpl in *. apply (H0 p2). 
 
 Instance frame_compat G B : Proper (@da_eq G B ==> eq ==> eq) (@frame G B).
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd. simpl in *. apply (H p2). Qed.
+
+Instance spectrum_of_compat {G B} : Proper (@da_eq G B ==> eq ==> @PosEq G B ==> spec_eq) (@spectrum_of G B). 
+Proof.
+intros [? ? da1 ?] [? ? da2 ?] Hda g1 g2 Hg p1 p2 Hp. simpl. unfold da_eq in Hda. simpl in Hda.
+unfold spec_eq. subst. Print is_spectrum.
+apply (Permutation_trans (l' := nominal_spectrum p1)).
+apply (spectrum_ok g2 p1).
+Qed.
 
 (** ***  Equality of demons  **)
 CoInductive deq {G B} (d1 d2 : demon G B) : Prop :=
@@ -103,20 +163,9 @@ Proof. exists deq. apply deq_equiv. Qed.
 
 (** **  Equality of robograms  **)
 
-Definition req {G B} (r1 r2 : robogram G B) := forall p, algo r1 p = algo r2 p.
+Print robogram.
 
-Instance req_equiv G B : Equivalence (@req G B).
-Proof. split.
-+ split; intuition.
-+ intros d1 d2 H x. now rewrite H.
-+ intros d1 d2 d3 H1 H2 x. now rewrite H1, H2.
-Qed.
-
-Instance algo_compat G B : Proper (req ==> @PosEq G B ==> eq) (@algo G B).
-Proof.
-intros r1 r2 Hr p1 p2 Hp. rewrite Hr. apply AlgoMorph with (id_perm G B).
-simpl. unfold subst_pos. now destruct Hp; split; simpl.
-Qed.
+Definition req (r1 r2 : robogram) := ExtEq r1 r2.
 
 Instance similarity_compat G B :
   Proper (eq ==> eq ==> (@PosEq G B) ==> (@PosEq G B)) (@similarity G B).
@@ -125,16 +174,16 @@ intros k1 k2 Hk t1 t2 Ht p1 p2 [Hp1 Hp2]. subst.
 split; intro; simpl; now rewrite Hp1 || rewrite Hp2.
 Qed.
 
+Print round.
 Instance round_compat G B :
   Proper (req ==> da_eq ==> (eq ==> eq) ==> eq ==> eq) (@round G B).
 Proof.
-intros [r1 Hr1] [r2 Hr2] Hr d1 d2 Hd gp1 gp2 Hgp p1 p2 Hp.
+intros r1 r2 Hr d1 d2 Hd gp1 gp2 Hgp p1 p2 Hp.
 unfold req in Hr. unfold round. simpl in *.
 rewrite (frame_compat Hd Hp). destruct (Rdec (frame d2 p2) 0).
   now apply Hgp.
   f_equal. now apply Hgp. f_equal. simpl. rewrite Hr.
-  subst. rewrite (Hgp p2 p2 refl_equal).
-  apply Hr2 with (id_perm G B). apply similarity_compat; trivial.
+  subst. rewrite Hd. , Hgp. apply Hr. apply Hr2 with (id_perm G B). apply similarity_compat; trivial.
   split; intro; simpl. symmetry. now apply Hgp.
   symmetry. apply Hd.
 Qed.

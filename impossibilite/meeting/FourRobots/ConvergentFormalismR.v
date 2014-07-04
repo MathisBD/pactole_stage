@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, X. Urbain                                     *)
+(*   C. Auger, P. Courtieu, X. Urbain, L. Rieg                            *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
@@ -9,9 +9,13 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
+Require Import Sorting.
+Import Permutation.
 Require Import Reals.
-Require Import FiniteSumR.
 Open Scope R_scope.
+Require Import List.
+Open Scope list_scope.
+Require Import FiniteSumR.
 
 
 Lemma Rdec : forall x y : R, {x = y} + {x <> y}.
@@ -50,13 +54,13 @@ Inductive ident :=
  | Byz : B → ident.
 (* TODO: rename into robots? GB? *)
 
-Definition spectre := list location.
-
 Record automorphism (t : Set)  :=
  { section :> t → t
  ; retraction : t → t
  ; Inversion : ∀ x y, section x = y ↔ retraction y = x
  }.
+
+Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 
 (** Renaming of agents are bijections *)
 Definition permutation := automorphism.
@@ -81,35 +85,7 @@ Record position :=
  { gp : G → location
  ; bp : B → location
  }.
-
 (* TODO rename it into gpbp? notation gp+bp? *)
-Require Import List.
-Require Import Recdef.
-
-Function build_spectre (F:finite) (i:F) (p:F -> location) {wf (PrevRel F) i} : spectre :=
-  match next F (Some i) with
-    | None => p i :: nil
-    | Some j => p i :: build_spectre F j p
-  end.
-Proof.
-  - abstract (intros F i p j teq;
-              red;
-              apply (NextPrev F);
-              assumption).
-  - abstract(intros F;intro; apply (RecPrev F)).
-Defined.
-
-
-
-
-Inductive is_spectre: position -> spectre -> Prop :=
-| C1: is_spectre empty_pos nil
-| C2: forall p:position, forall s:spectre, forall l:location, forall r:ident,
-        is_spectre p s
-        -> is_spectre (fun x => if eq_robot x r then l else p x) (l::s).
-
-  forall n (l:location), spectre l n -> 
-
 
 
 (** Locating a robot in a position. *)
@@ -151,13 +127,27 @@ Record PosEq (p q : position) : Prop := {
   good_ext : ∀n, p.(gp) n = q.(gp) n;
   byz_ext  : ∀n, p.(bp) n = q.(bp) n}.
 
+
+Definition spectrum := list location.
+
+Definition nominal_spectrum (p:position): spectrum :=
+  @fold_left (G ⊎ B) spectrum
+             (fun (acc:list R) id =>
+                cons (match id with
+                          inl g => p.(gp) g
+                        | inr b => p.(bp) b
+                      end) acc) nil.
+
+
+Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
 (** ** The program of correct robots *)
 
 (** ** Good robots have a common program, which we call a robogram
     |Todo: find a better name| *)
-Record robogram :=
- { algo : forall id:Type, (id → location) → location
- ; AlgoMorph : ∀ p q (σ : permutation ident), PosEq q (p ∘ σ) → algo p = algo q }.
+Definition robogram := spectrum → location.
+(*Record robogram :=
+ { algo : position → location
+ ; AlgoMorph : ∀ p q σ, PosEq q (p ∘ (σ ⁻¹)) → algo p = algo q }.*)
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
@@ -171,6 +161,8 @@ Record demonic_action :=
   {
     locate_byz : B → location
     ; frame : G → R
+    ; spectrum_of : G → (position → spectrum)
+    ; spectrum_ok: forall g:G, forall p:position, is_spectrum (spectrum_of g p) p
   }.
 
 
@@ -329,13 +321,14 @@ Definition round (r : robogram) (da : demonic_action) (gp : G → location)
   (** for a given robot, we compute the new position *)
   fun g => 
     let k := da.(frame) g in (** first see what is the zooming factor set by the demon *)
+    let spectr := da.(spectrum_of) g in
     let t := gp g in (** t is the current position of g seen by the demon *)
     if Rdec k 0 then t (** If g is not activated (zooming factor = 0), do nothing *)
     else (** otherwise compute the position [g] actually sees, apply robogram
             [r] on it and translate the destination location back in the global
             reference *)
       let pos_seen_by_r := ⟦k, t⟧ {| gp := gp; bp := locate_byz da |} in
-      t + /k * (algo r pos_seen_by_r).
+      t + /k * (r (spectr pos_seen_by_r)).
 
 (** [execute r d gp] returns an (infinite) execution from an initial global
     position [gp], a demon [d] and a robogram [r] running on each good robot. *)
@@ -391,7 +384,7 @@ Qed.
 End goodbyz.
 
 (** Exporting notations of section above. *)
-(*Notation "s ⁻¹" := (s.(retraction)) (at level 99).*)
+Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 Notation "p '∘' s" := (subst_pos s p) (at level 20, only parsing).
 Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 40, format "'⟦' k ','  t '⟧'").
 

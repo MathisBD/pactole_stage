@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 Require Import Utf8.
+Require Import Recdef.
 
 (** This module formalises finite sets and there properties. *)
 
@@ -12,12 +13,57 @@ Record finite :=
  { name :> Set
  ; next : option name → option name
  ; prev : option name → option name
- ; NextRel := fun x y => next (Some x) = Some y
- ; PrevRel := fun x y => prev (Some x) = Some y
- ; NextPrev : ∀ x y, next x = y ↔ prev y = x
- ; RecNext : ∀ z, Acc NextRel z
- ; RecPrev : ∀ z, Acc PrevRel z
+ ; NextRel := fun x y:name => next (Some x) = Some y
+ ; PrevRel := fun x y:name => prev (Some x) = Some y
+ ; NextPrev : ∀ x y:option name, next x = y ↔ prev y = x
+ ; RecNext : ∀ z:name, Acc NextRel z
+ ; RecPrev : ∀ z:name, Acc PrevRel z
  }.
+
+
+Lemma unique_min :
+  forall A:finite, forall x y a, A.(prev) x = a -> A.(prev) y = a -> x = y.
+Proof.
+  intros A x y a H H0.
+  apply NextPrev in H.
+  apply NextPrev in H0.
+  subst.
+  reflexivity.
+Qed.
+
+Lemma always_min : forall A:finite, A.(prev) (A.(next) None) = None.
+Proof.
+  intros A.
+  apply A.(NextPrev).
+  reflexivity.
+Qed.
+
+Function fold_left_from
+         (X:finite) Y (f: Y -> X.(name) -> Y)
+         (x:X.(name)) (init:Y) {wf (X.(PrevRel)) x} : Y :=
+  match X.(next) (Some x) with
+    | None => f init x
+    | Some nxt => @fold_left_from X Y f nxt (f init x)
+  end.
+Proof.
+  - intros X Y f x init nxt teq.
+    red.
+    apply (X.(NextPrev)).
+    assumption.
+  - intros X.
+    intro.
+    apply (X.(RecPrev)).
+Defined.
+
+(* iteration over all element of a finite set *)
+Definition fold_left (X:finite) Y (f: Y -> X.(name) -> Y) (init:Y) : Y :=
+  match X.(next) None with
+    | None =>  init
+    | Some min => @fold_left_from X Y f min init
+  end.
+
+
+
 
 (** * Chaining and flipping successor (and predecessor) functions *)
 
@@ -171,10 +217,10 @@ refine {| name := (name f) + (name g)
         |}.
 Proof.
   abstract (
-      intros x y; split; intros; subst;
-      [rewrite oflip_invol; apply fplus_prev_next
-      |rewrite fplus_next_prev; apply oflip_invol]
-    ).
+  intros x y; split; intros; subst;
+  [rewrite oflip_invol; apply fplus_prev_next
+  |rewrite fplus_next_prev; apply oflip_invol]
+  ).
 Proof.
   abstract (apply fchain_acc; apply RecNext).
 Proof.
