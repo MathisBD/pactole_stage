@@ -4,8 +4,13 @@ Require Import ConvergentFormalismR.
 Require Import EqualitiesR.
 Require Import FiniteSumR.
 Require Import Morphisms.
+Require Import Psatz.
 
 Set Implicit Arguments.
+
+Lemma le_neq_lt : forall m n : nat, (n <= m -> n <> m -> n < m)%nat.
+Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
+
 
 (* ************************************* *)
 (** * Some necessary results on Reals.   *)
@@ -703,9 +708,11 @@ Ltac Rdec_aux H :=
     | _ => fail
   end.
 
+Definition Stack (gp : Four -> location) :=
+  exists f1 f2 : Four, f1 <> f2 /\ gp f1 = gp f2.
+
 Lemma has_stack_spec : forall (pos : position Four Zero),
-  (exists r, has_stack pos = Some r)
-  <-> exists f1 f2 : Four, f1 <> f2 /\ pos.(gp) f1 = pos.(gp) f2.
+  (exists r, has_stack pos = Some r) <-> Stack pos.(gp).
 Proof.
 intros pos. split; intro H.
 + destruct H as [r H]. unfold has_stack in H. repeat Rdec_aux H;
@@ -935,8 +942,21 @@ try solve [reflexivity | discriminate H | right; now intros [] | left; now intro
     assert (Hmax := sort4_max pos). rewrite Hord in Hmax. apply Hmax.
 + exfalso. destruct H as [r [Hr | Hr]].
   - elim (Rlt_irrefl t). apply Rle_lt_trans with (gp pos n).
-    
-    
+      assert (exists n : Four, t = gp pos n) as Ht.
+      { destruct (sort4_perm pos) as [σ Hσ]. rewrite Hord in Hσ. inversion Hσ.
+        destruct (σ (Good _ _ (Four4 : name Four))) as [m | []]. now exists m. }
+      destruct Ht as [m Hm]. subst t. apply Hr.
+      pose (Hmax := sort4_max pos). rewrite Hord in Hmax.
+      SearchAbout Rlt Rle. revert Hneq0. generalize (Hmax (Good _ _ n)). simpl.
+      clear. psatz R.
+  - clear Hneq0. elim (Rlt_irrefl x).
+      assert (exists n : Four, x = gp pos n) as Hx.
+      { destruct (sort4_perm pos) as [σ Hσ]. rewrite Hord in Hσ. inversion Hσ.
+        destruct (σ (Good _ _ (One4 : name Four))) as [m | []]. now exists m. }
+      destruct Hx as [m Hm]. subst x.
+      apply Rle_lt_trans with (gp pos n).
+      pose (Hmin := sort4_min pos). rewrite Hord in Hmin. now apply (Hmin (Good _ _ n)).
+      destruct (Hr m) as [Hm _]. clear -Hm Hneq. psatz R.
 Qed.
 
 Definition extreme_center (pos : position Four Zero) :=
@@ -972,3 +992,28 @@ Definition robogram := {|
   AlgoMorph := robogram4_morph |}.
 
 Print Assumptions robogram.
+
+Inductive Will_stack (e : execution Four) :=
+  | Stacked : Stack (execution_head e) -> Will_stack e
+  | After :  Will_stack (execution_tail e) -> Will_stack e.
+
+Theorem stack_4 : forall d : demon Four Zero, forall k, kFair k d ->
+  forall pos, Will_stack (execute robogram d pos).
+Proof.
+
+Admitted.
+
+Theorem stack_sol : forall d : demon Four Zero, forall k, kFair k d ->
+  forall pos, Stack pos -> solGathering (execute robogram d pos).
+
+Theorem meeting4 :
+  forall d : demon Four Zero, forall k, kFair k d -> solGathering robogram d.
+Proof.
+intros d k Hfair gp.
+induction (stack_4 Hfair gp).
++ destruct s as [n1 [n2 [Hneq Heq]]].
+  exists (execution_head e n1).
+  induction
+  
++ 
+Qed.
