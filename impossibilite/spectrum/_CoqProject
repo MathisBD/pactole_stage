@@ -1,9 +1,10 @@
+-install none
 -I .
 ConvergentFormalism.v
 ConvergentFormalismR.v
 FiniteSumR.v
 Qcabs.v
-
+EqualitiesR.v
 
 
 # noRDV Equalities EqualitiesR noRDVevenR noRDVR

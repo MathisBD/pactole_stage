@@ -138,8 +138,11 @@ Definition nominal_spectrum (p:position): spectrum :=
                         | inr b => p.(bp) b
                       end) acc) nil.
 
+Lemma In_spectrum : forall (pos : position) (g : G), List.In (gp pos g) (nominal_spectrum pos).
+Proof. Admitted.
 
 Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
+
 (** ** The program of correct robots *)
 
 (** ** Good robots have a common program, which we call a robogram
