@@ -165,7 +165,9 @@ Record demonic_action :=
     locate_byz : B → location
     ; frame : G → R
     ; spectrum_of : G → (position → spectrum)
-    ; spectrum_ok: forall g:G, forall p:position, is_spectrum (spectrum_of g p) p
+    ; spectrum_ok : forall g:G, forall p:position, is_spectrum (spectrum_of g p) p
+    ; spectrum_exteq : forall g pos1 pos2, PosEq pos1 pos2 -> spectrum_of g pos1 = spectrum_of g pos2
+      (* can be omitted if we sort the spectra in [round]. *)
   }.
 
 

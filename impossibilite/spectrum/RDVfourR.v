@@ -12,6 +12,9 @@ Set Implicit Arguments.
 Lemma le_neq_lt : forall m n : nat, (n <= m -> n <> m -> n < m)%nat.
 Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
 
+Lemma Rle_neq_lt : forall m n : R, n <= m -> n <> m -> n < m.
+Proof. intros n m Hle Hneq. now destruct (Rle_lt_or_eq_dec _ _ Hle). Qed.
+
 
 (* ************************************* *)
 (** * Some necessary results on Reals.   *)
@@ -576,12 +579,47 @@ Proof. Admitted.
 
 Corollary is_forbidden_false : forall pos, is_forbidden pos = false <-> ~forbidden pos.
 Proof. intro pos. assert (Hp := is_forbidden_true pos). destruct (is_forbidden pos); rewrite <- Hp; intuition. Qed.
+Print round.
 
-Definition range b1 b2 (pos : position Four Zero) :=
-  forall x, b1 <= gp pos x <= b2.
+Definition range b1 b2 (s : spectrum) :=
+  List.Forall (fun x => b1 <= x <= b2) s.
 
-Definition extremal r (pos : position Four Zero) :=
-  exists b, range b r pos \/ range r b pos.
+Lemma Forall_Perm_trans A : forall (l1 l2 : list A) (P Q : A -> Prop),
+  (eq ==> iff)%signature P Q -> Permutation l1 l2 -> List.Forall P l1 -> List.Forall Q l2.
+Proof.
+intros l1 l2 P Q HPQ Hperm Hfor. 
+rewrite List.Forall_forall in *. intros. rewrite <- (HPQ _ _ eq_refl). 
+apply Hfor. revert H. apply Permutation_in. now symmetry.
+Qed.
+
+Lemma Forall_Permutation_compat {A} : Proper ((eq ==> iff) ==> @Permutation A ==> iff) List.Forall.
+Proof.
+intros f g Hfg l1 l2 Hl. split; apply Forall_Perm_trans; easy || now symmetry.
+Qed.
+
+Lemma range_compat : Proper (eq ==> eq ==> @Permutation R ==> iff) range.
+Proof.
+intros inf1 inf2 ? sup1 sup2 ? s1 s2 Hs. subst.
+unfold range. split; apply Forall_Perm_trans; trivial. reflexivity. reflexivity. now symmetry.
+Qed.
+
+Lemma range_split : forall b1 b2 s,
+  range b1 b2 s <-> (List.Forall (fun x => b1 <= x) s /\ List.Forall (fun x => x <= b2) s).
+Proof.
+intros b1 b2 s. unfold range. setoid_rewrite List.Forall_forall.
+intuition; apply (H _ H0).
+Qed.
+
+Lemma last_In : forall A l (x : A), l <> List.nil -> List.In (List.last l x) l.
+Proof.
+intro A. induction l; intros x Hx. now elim Hx.
+destruct l. now left. 
+change (List.In (List.last (a0 :: l) x) (a :: a0 :: l)).
+right. apply IHl. discriminate.
+Qed.
+
+Definition extremal r (s : spectrum) :=
+  exists b, range b r s \/ range r b s.
 
 (*
 Parameter is_extremal : ident Four Zero -> position Four Zero -> bool.
@@ -593,52 +631,43 @@ Definition is_extremal r (s : spectrum) :=
   if Rdec r (List.hd r (sort s)) then true else
   if Rdec r (List.last (sort s) r) then true else false.
 
-Theorem is_extremal_correct : forall r (pos : position Four Zero),
-  is_extremal r (nominal_spectrum pos) = true <-> extremal r pos.
+Theorem is_extremal_correct : forall r (s : spectrum),
+  List.In r s -> (is_extremal r s = true <-> extremal r s).
 Proof.
-unfold is_extremal,extremal. intros r pos.
+unfold is_extremal,extremal. intros r s Hin.
 repeat Rdec_full; split; intro H; try (reflexivity || discriminate H);
 try solve [reflexivity | discriminate H | right; now intros [] | left; now intros []].
-+ clear H. exists (List.last (sort (nominal_spectrum pos)) r). right. rewrite Heq.
-  intro s. split.
-    apply sort_min. now apply In_spectrum.
-    apply sort_max. now apply In_spectrum.
-+ clear H. exists (List.hd r (sort (nominal_spectrum pos))). left. rewrite Heq.
-  intro s. split.
-    apply sort_min. now apply In_spectrum.
-    apply sort_max. now apply In_spectrum.
-+ exfalso. destruct H as [s [Hs | Hs]].
-  - elim (Rlt_irrefl r). apply Rlt_le_trans with (gp pos n).
-      assert (exists n : Four, t = gp pos n) as Ht.
-      { destruct (sort4_perm pos) as [σ Hσ]. rewrite Hord in Hσ. inversion Hσ.
-        destruct (σ (Good _ _ (Four4 : name Four))) as [m | []]. now exists m. }
-      destruct Ht as [m Hm]. subst t. apply Hr.
-      pose (Hmax := sort4_max pos). rewrite Hord in Hmax.
-      SearchAbout Rlt Rle. revert Hneq0. generalize (Hmax (Good _ _ n)). simpl.
-      clear. psatz R.
-  - clear Hneq0. elim (Rlt_irrefl x).
-      assert (exists n : Four, x = gp pos n) as Hx.
-      { destruct (sort4_perm pos) as [σ Hσ]. rewrite Hord in Hσ. inversion Hσ.
-        destruct (σ (Good _ _ (One4 : name Four))) as [m | []]. now exists m. }
-      destruct Hx as [m Hm]. subst x.
-      apply Rle_lt_trans with (gp pos n).
-      pose (Hmin := sort4_min pos). rewrite Hord in Hmin. now apply (Hmin (Good _ _ n)).
-      destruct (Hr m) as [Hm _]. clear -Hm Hneq. psatz R.
++ clear H. rewrite Heq. exists (List.last (sort s) r). right.
+  rewrite range_split. split;
+  rewrite List.Forall_forall; apply sort_min || apply sort_max.
++ clear H. exists (List.hd r (sort s)). left. rewrite Heq.
+  rewrite range_split. split;
+  rewrite List.Forall_forall; apply sort_min || apply sort_max.
++ exfalso. destruct H as [b [Hb | Hb]].
+  - elim (Rlt_irrefl r). apply Rlt_le_trans with (List.last (sort s) r).
+      revert Hneq0. generalize (sort_max s r r Hin). apply Rle_neq_lt.
+      apply range_split in Hb. destruct Hb as [_ Hb]. rewrite List.Forall_forall in Hb.
+      apply Hb. apply (Permutation_in _ (symmetry (Permuted_sort s))). apply last_In.
+      apply (Permutation_in _ (Permuted_sort s)) in Hin. destruct (sort s).
+      inversion Hin. discriminate.
+  - elim (Rlt_irrefl r). apply Rle_lt_trans with (List.hd r (sort s)).
+      apply range_split in Hb. destruct Hb as [Hb _]. rewrite List.Forall_forall in Hb.
+      apply Hb. apply (Permutation_in _ (symmetry (Permuted_sort s))).
+      apply (Permutation_in _ (Permuted_sort s)) in Hin. destruct (sort s).
+      inversion Hin. now left.
+      assert (Hneq' : List.hd r (sort s) <> r). { intro. apply Hneq. now symmetry. }
+      revert Hneq'. generalize (sort_min s r r Hin). apply Rle_neq_lt.
 Qed.
 
-Definition extreme_center (pos : position Four Zero) :=
-  let '(x, y, z, t) := sort4 Rle_lt_dec (pos.(gp) One4) (pos.(gp) Two4) (pos.(gp) Three4) (pos.(gp) Four4) in
-  (x + y) / 2.
+Definition extreme_center (s : spectrum) :=
+  (List.hd 0 (sort s) + List.last (sort s) 0) / 2.
+(* When there is no robot (s is empty), the center is 2. *)
 
-Definition robogram4 (s : spectrum) : location :=
+Definition robogram (s : spectrum) : location :=
   if is_forbidden s then 0 else
   match has_dups s with
     | Some p => p
-    | None => if is_extremal 0 pos then 0 else extreme_center pos end.
-
-Definition robogram := fun s =>
-
-  AlgoMorph := robogram4_morph |}.
+    | None => if is_extremal 0 s then 0 else extreme_center s end.
 
 Print Assumptions robogram.
 

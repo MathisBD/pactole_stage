@@ -118,37 +118,42 @@ Qed.
 (** **  Equality of demons  **)
 
 (** ***  Equality of demonic_actions  **)
-Section Old_def.
-Definition da_eq0 {G B} (da1 da2 : demonic_action G B) :=
-  (forall g, da1.(frame) g = da2.(frame) g) /\
-  (forall b, da1.(locate_byz) b = da2.(locate_byz) b).
-
-Instance da_eq_equiv0 G B : Equivalence (@da_eq0 G B).
-Proof. split.
-+ split; intuition.
-+ intros d1 d2 [H1 H2]. repeat split; intros; now rewrite H1 || rewrite H2.
-+ intros d1 d2 d3 [H1 H2] [H3 H4]. now repeat split; intros; rewrite H1, H3 || rewrite H2, H4.
-Qed.
-
-Instance frame_compat0 G B : Proper (@da_eq0 G B ==> eq ==> eq) (@frame G B).
-Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H1 p2). Qed.
-
-Instance locate_byz_compat0 G B : Proper (@da_eq0 G B ==> eq ==> eq) (@locate_byz G B).
-Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
-
-Instance spectrum_of_compat0 {G B} : Proper (@da_eq0 G B ==> eq ==> @PosEq G B ==> @Permutation R) (@spectrum_of G B). 
-Proof.
-intros [? ? da1 ?] [? ? da2 ?] Hda g1 g2 Hg p1 p2 Hp. unfold da_eq0 in Hda. simpl in *. subst.
-apply (Permutation_trans (l' := nominal_spectrum p1)).
-apply (spectrum_ok g2 p1). rewrite Hp. symmetry. apply spectrum_ok0.
-Qed.
-End Old_def.
 
 Definition da_eq {G B} (da1 da2 : demonic_action G B) :=
   (forall g, da1.(frame) g = da2.(frame) g) /\
   (forall b, da1.(locate_byz) b = da2.(locate_byz) b) /\
   (forall g pos1 pos2, PosEq pos1 pos2 -> da1.(spectrum_of) g pos1 = da2.(spectrum_of) g pos2).
-(*  (forall g pos, da1.(spectrum_of) g pos = da2.(spectrum_of) g pos). *)
+
+Instance da_eq_equiv G B : Equivalence (@da_eq G B).
+Proof. split.
++ split; intuition. now apply spectrum_exteq.
++ intros d1 d2 [H1 [H2 H3]]. now repeat split; intros; rewrite H1 || rewrite H2 || rewrite (H3 _ pos2 pos1).
++ intros d1 d2 d3 [H1 [H2 H3]] [H4 [H5 H6]]. repeat split; intros; try solve [now rewrite H1, H4 | now rewrite H2, H5].
+ rewrite (H3 _ pos1 pos2), (H6 _ pos2 pos1); trivial. now rewrite (spectrum_exteq d3 _ H). now symmetry.
+Qed.
+
+Instance frame_compat G B : Proper (@da_eq G B ==> eq ==> eq) (@frame G B).
+Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H1 p2). Qed.
+
+Instance locate_byz_compat G B : Proper (@da_eq G B ==> eq ==> eq) (@locate_byz G B).
+Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 [H2 H3]]. simpl in *. apply (H2 p2). Qed.
+
+Instance spectrum_of_compat_perm {G B} : Proper (@da_eq G B ==> eq ==> @PosEq G B ==> @Permutation R) (@spectrum_of G B). 
+Proof.
+intros [? ? da1 ?] [? ? da2 ?] Hda g1 g2 Hg p1 p2 Hp. unfold da_eq in Hda. simpl in *. subst.
+apply (Permutation_trans (l' := nominal_spectrum p1)).
+apply (spectrum_ok g2 p1). rewrite Hp. symmetry. apply spectrum_ok0.
+Qed.
+
+Instance spectrum_of_compat {G B} : Proper (@da_eq G B ==> eq ==> @PosEq G B ==> eq) (@spectrum_of G B). 
+Proof.
+intros [? ? da1 ?] [? ? da2 ?] Hda g1 g2 Hg p1 p2 Hp. unfold da_eq in Hda. simpl in *. subst.
+rewrite (spectrum_exteq g2 p1 p2 Hp). now apply Hda.
+Qed.
+(*
+Definition da_eq {G B} (da1 da2 : demonic_action G B) :=
+  (forall g, da1.(frame) g = da2.(frame) g) /\
+  (forall b, da1.(locate_byz) b = da2.(locate_byz) b).
 
 Instance da_eq_trans G B : Transitive (@da_eq G B).
 Proof.
@@ -174,14 +179,14 @@ Proof.
 intros [] [] Hd p1 p2 Hp g1 g2 Hg. subst. destruct Hd as [H1 [H2 H3]].
 simpl in *. now rewrite (H3 _ _ _ Hg).
 Qed.
-
+*)
 (** ***  Equality of demons  **)
 CoInductive deq {G B} (d1 d2 : demon G B) : Prop :=
   | Cdeq : da_eq (demon_head d1) (demon_head d2) -> deq (demon_tail d1) (demon_tail d2) -> deq d1 d2.
 
 Instance deq_equiv G B : Equivalence (@deq G B).
 Proof. split.
-+ coinduction deq_refl. split; intuition. admit. (* FALSE *)
++ coinduction deq_refl. split; intuition. now rewrite H.
 + coinduction deq_sym. symmetry. now inversion H. now inversion H.
 + coinduction deq_trans.
     inversion H. inversion H0. now transitivity (demon_head y).
@@ -218,7 +223,7 @@ unfold req in Hr. unfold round. simpl in *.
 rewrite (frame_compat Hd Hp). destruct (Rdec (frame da2 p2) 0).
   now apply Hgp.
   f_equal. now apply Hgp. f_equal. rewrite Hr.
-  subst. rewrite spectrum_of_compat; try easy. now rewrite (Hgp p2 p2 eq_refl), Hd, Hgp.
+  subst. now rewrite (Hgp p2 p2 eq_refl), Hd, Hgp.
 Qed.
 
 Instance round_compat_bis G B :
