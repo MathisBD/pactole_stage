@@ -2,6 +2,7 @@ Require Import Reals.
 Require Import Morphisms.
 Require Import FiniteSumR.
 Require Import ConvergentFormalismR.
+Require Import Sorting.
 Import Permutation.
 
 Set Implicit Arguments.

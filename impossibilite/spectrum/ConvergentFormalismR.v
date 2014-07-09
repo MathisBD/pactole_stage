@@ -49,6 +49,7 @@ Section goodbyz. (* Remove to have notations outside it *)
 Variable G B : finite.
 
 (** Disjoint union of both kinds of robots is obtained by a sum type. *)
+(* TODO: replace this by (G ⊎ B). *)
 Inductive ident :=
  | Good : G → ident
  | Byz : B → ident.
@@ -130,16 +131,46 @@ Record PosEq (p q : position) : Prop := {
 
 Definition spectrum := list location.
 
-Definition nominal_spectrum (p:position): spectrum :=
-  @fold_left (G ⊎ B) spectrum
-             (fun (acc:list R) id =>
+Definition f p := (fun (acc:list R) id =>
                 cons (match id with
                           inl g => p.(gp) g
                         | inr b => p.(bp) b
-                      end) acc) nil.
+                      end) acc).
+
+Definition nominal_spectrum (p:position): spectrum :=
+  @fold_left (G ⊎ B) spectrum (f p) nil.
+
+Require Import Relation_Operators.
+
+(** Locating a robot in a position. *)
+Definition locate_GUB p (id: (G ⊎ B)): location :=
+  match id with
+  | inl g => p.(gp) g
+  | inr b => p.(bp) b
+  end.
+
+(*
+Lemma In_spectrum : forall (pos : position) (g : (G ⊎ B)) (min:(G ⊎ B)) init,
+                      List.In (locate_GUB pos g) init \/ clos_refl_trans_1n _ ((G ⊎ B).(NextRel)) min g
+                      -> List.In (locate_GUB pos g) (fold_left_from (G ⊎ B) (f pos) min init).
+Proof.
+  intros pos g.
+  induction ((G ⊎ B).(RecNext) g).
+  intros min init H1.
+  admit.
+Qed.
+
+Lemma In_spectrum : forall (pos : position) (g : G) l,
+                      List.In (gp pos g) (fold_left (G ⊎ B) (f pos) l).
+Proof.
+  intros pos g l.
+*)  
 
 Lemma In_spectrum : forall (pos : position) (g : G), List.In (gp pos g) (nominal_spectrum pos).
-Proof. Admitted.
+Proof.
+Admitted.
+
+
 
 Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
 
