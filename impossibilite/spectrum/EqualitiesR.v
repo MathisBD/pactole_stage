@@ -95,24 +95,15 @@ Qed.
 
 Instance nominal_spectrum_compat G B : Proper (@PosEq G B ==> eq) (@nominal_spectrum G B).
 Proof.
-intros p1 p2 Hp.
-unfold nominal_spectrum. destruct Hp.
-unfold spectrum.
-assert ((fold_left (G ⊎ B)
-     (fun (acc : list R) (id : G ⊎ B) =>
-      match id with
-      | inl g => gp p1 g
-      | inr b => bp p1 b
-      end :: acc) Datatypes.nil)
-  = (fold_left (G ⊎ B)
-     (fun (acc : list R) (id : G ⊎ B) =>
-      match id with
-      | inl g => gp p2 g
-      | inr b => bp p2 b
-      end :: acc) Datatypes.nil)) as Heq.
+  intros p1 p2 Hp.
+  unfold nominal_spectrum. destruct Hp.
+  unfold spectrum.
   { apply fold_left_compat; try reflexivity.
-    intros acc1 acc2 Hacc x y Heq. subst. destruct y; now rewrite good_ext || rewrite byz_ext. }
-now rewrite Heq.
+    intros acc1 acc2 Hacc x y Heq.
+    subst.
+    destruct y;unfold f;simpl.
+    - now rewrite good_ext.
+    - now rewrite byz_ext. }
 Qed.
 
 (** **  Equality of demons  **)
