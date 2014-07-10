@@ -21,7 +21,7 @@ Record finite :=
  }.
 
 
-Lemma unique_min :
+Lemma unique_prev :
   forall A:finite, forall x y a, A.(prev) x = a -> A.(prev) y = a -> x = y.
 Proof.
   intros A x y a H H0.
@@ -31,11 +31,69 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma unique_next :
+  forall A:finite, forall x y a, A.(next) x = a -> A.(next) y = a -> x = y.
+Proof.
+  intros A x y a H H0.
+  apply NextPrev in H.
+  apply NextPrev in H0.
+  subst.
+  reflexivity.
+Qed.
+
+
+
+(* If None is its own successor, then the type is actually empty. This
+   is a consequence of finitness of the set. *)
+Lemma onlyNone_emptyType :
+  forall A:finite, (A.(next) None) = None -> forall x:name A, False.
+Proof.
+  intros A H x.
+  induction (A.(RecPrev) x).
+  unfold PrevRel in *.
+  destruct (next A (Some x)) eqn:Heq.
+  - apply (H1 n).
+    apply (A.(NextPrev)).
+    assumption.
+  - pose (unique_next _ _ _ H Heq).
+    inversion e.
+Qed.
+
 Lemma always_min : forall A:finite, A.(prev) (A.(next) None) = None.
 Proof.
   intros A.
   apply A.(NextPrev).
   reflexivity.
+Qed.
+
+Require Import Relation_Operators Operators_Properties Setoid.
+
+(* the minimum is related to any element by the reflexive transitive
+   closure of next. *)
+Lemma min_prop:
+  forall A min,
+    A.(next) None = Some min
+    -> forall x, clos_refl_trans_1n A (A.(NextRel)) min x.
+Proof.
+  intros A min H x.
+  (* We need the other definition of trans_refl to do the induction step. *)
+  setoid_rewrite <- clos_rt_rt1n_iff.
+  setoid_rewrite clos_rt_rtn1_iff.
+  induction (A.(RecNext) x).
+  destruct (prev A (Some x)) eqn:Heq.
+  - econstructor 2 with n.
+    + red.
+      apply (A.(NextPrev)).
+      assumption.
+    + apply H1.
+      red.
+      apply (A.(NextPrev)).
+      assumption.
+  - apply (A.(NextPrev)) in Heq.
+    rewrite H in Heq.
+    inversion Heq.
+    subst.
+    constructor 1.
 Qed.
 
 Function fold_left_from

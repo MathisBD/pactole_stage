@@ -149,26 +149,69 @@ Definition locate_GUB p (id: (G ⊎ B)): location :=
   | inr b => p.(bp) b
   end.
 
-(*
-Lemma In_spectrum : forall (pos : position) (g : (G ⊎ B)) (min:(G ⊎ B)) init,
+
+Lemma In_fold_left_from : forall (pos : position) (g : (G ⊎ B)) (min:(G ⊎ B)) init,
                       List.In (locate_GUB pos g) init \/ clos_refl_trans_1n _ ((G ⊎ B).(NextRel)) min g
                       -> List.In (locate_GUB pos g) (fold_left_from (G ⊎ B) (f pos) min init).
 Proof.
-  intros pos g.
-  induction ((G ⊎ B).(RecNext) g).
-  intros min init H1.
-  admit.
+  intros pos g min.
+  revert g pos.
+  induction ((G ⊎ B).(RecPrev) min).
+  rename x into min.
+  intros g pos init [HIn | Htrans].
+  - rewrite fold_left_from_equation.
+    destruct (next (G ⊎ B) (Some min)) eqn:heq.
+    + apply H0.
+      * red.
+        apply (G ⊎ B).(NextPrev).
+        assumption.
+      * left.
+        apply in_cons.
+        assumption.
+    + apply in_cons.
+      assumption.
+  - destruct Htrans.
+    + rewrite fold_left_from_equation.
+      { destruct (next (G ⊎ B) (Some min)) eqn:heq.
+        + apply H0.
+          * red.
+            apply (G ⊎ B).(NextPrev).
+            assumption.
+          * left.
+            apply in_eq.
+        + apply in_eq. }
+    + rewrite fold_left_from_equation.
+      red in H1.
+      rewrite H1.
+      apply H0.
+      * red.
+        apply (G ⊎ B).(NextPrev).
+        assumption.
+      * right.
+        assumption.
 Qed.
 
-Lemma In_spectrum : forall (pos : position) (g : G) l,
-                      List.In (gp pos g) (fold_left (G ⊎ B) (f pos) l).
+Lemma In_spectrum_fold_left : forall (pos : position) (r : G ⊎ B) l,
+                      List.In (locate_GUB pos r) (fold_left (G ⊎ B) (f pos) l).
 Proof.
   intros pos g l.
-*)  
+  unfold fold_left.
+  destruct (next (G ⊎ B) None) eqn:Heq.
+  - apply In_fold_left_from.
+    right.
+    apply min_prop.
+    assumption.
+  - (* contradiction à prouver sur finite: si None -> None alors name n'est pas habité *)
+    elim (onlyNone_emptyType (G ⊎ B));auto.
+Qed.
 
-Lemma In_spectrum : forall (pos : position) (g : G), List.In (gp pos g) (nominal_spectrum pos).
+
+Lemma In_spectrum : forall (pos : position) (r : G ⊎ B), List.In (locate_GUB pos r) (nominal_spectrum pos).
 Proof.
-Admitted.
+  intros pos r.
+  unfold nominal_spectrum.
+  apply In_spectrum_fold_left.
+Qed.
 
 
 
