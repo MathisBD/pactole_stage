@@ -348,7 +348,7 @@ Definition forbidden (s : spectrum) := exists p1, exists p2, Permutation s (p1 :
 Definition center4 (s : spectrum) := List.fold_left Rplus s 0.
 
 (** Are robots on a stack **)
-Fixpoint has_dups (l : list R) : option R :=
+Function has_dups (l : list R) : option R :=
   match l with
     | List.nil => None
     | _ :: List.nil => None
@@ -373,19 +373,143 @@ Ltac Rdec_aux H :=
     | _ => fail
   end.
 
+(* PC: j'ai mis des inférieurs stricts ici, sans quoi le lemme
+   has_dups_spec2 est faux pour une valeur par défaut mal choisie. Il
+   y avait une raison pour mettre des <= ? *)
 Definition Stack (s : spectrum) :=
-  exists n1 n2, (n1 <= List.length s)%nat /\ (n2 <= List.length s)%nat /\
+  exists n1 n2, (n1 < List.length s)%nat /\ (n2 < List.length s)%nat /\
                 n1 <> n2 /\ List.nth n1 s 0 = List.nth n2 s 0.
 
+(* Stack does not exhibit the first repeated occurrence of a location,
+   so this is not trivial to prove. *)
 Lemma has_dups_spec : forall (s : spectrum),
-  (exists r, has_dups s = Some r) <-> Stack s.
+  (exists r, has_dups s = Some r) -> Stack s.
 Proof.
 induction s.
-+ split; intro Habs. 
++ intro Habs. 
   exfalso. destruct Habs as [? Habs]. now inversion Habs.
-  destruct Habs as [n1 [n2 [Hn1 [Hn2 [Hneq Heq]]]]].
-  destruct n1, n2; now elim Hneq.
-Admitted.
++ intros h.
+  destruct h as [x h].
+  simpl in h.
+  destruct s.
+    { inversion h. }
+    { destruct (List.in_dec Rdec a (r :: s)).
+      - unfold Stack.
+        exists 0%nat.
+        assert (hInnth:exists n, (n < List.length (r::s))%nat
+                          /\ forall default, List.nth n (r::s) default = a).
+        { admit. }
+        destruct hInnth as [y hInnth].
+        destruct hInnth as [hInnth1 hInnth2].
+        exists (S y);intuition;auto.
+        + simpl in hInnth1.
+          simpl.
+          omega.
+        + simpl in hInnth1.
+          simpl.
+          omega.
+        + simpl.
+          simpl in hInnth2.
+          symmetry.
+          apply hInnth2.
+      - assert (hstack:Stack (r::s)).
+        { apply IHs.
+          exists x.
+          assumption. }
+        unfold Stack in hstack.
+        decompose [ex and] hstack.
+        clear hstack.
+        exists (S x0).
+        exists (S x1).
+        intuition;auto.
+        + simpl in H,H0.
+          simpl.
+          omega.
+        + simpl in H,H0.
+          simpl.
+          omega. }
+Qed.
+
+
+Lemma Stack_nonempty : forall s, Stack s -> s <> List.nil.
+Proof.
+  intros s H.
+  unfold Stack in H.
+  destruct H.
+  destruct H.
+  destruct H.
+  intro abs.
+  rewrite abs in H.
+  simpl in H.
+  omega.
+Qed.
+
+Lemma No_Stack_nil : ~ Stack Datatypes.nil.
+Proof.
+  intro abs.
+  apply Stack_nonempty with Datatypes.nil;auto.
+Qed.
+
+(* Stack does not exhibit the first repeated occurrence of a location,
+   so this is not trivial to prove. *)
+Lemma has_dups_spec2 : forall (s : spectrum),
+  Stack s -> exists r, has_dups s = Some r.
+Proof.
+  intros s.
+  induction s.
+  - intro.
+    exfalso.
+    apply No_Stack_nil;auto.
+  - intros has.
+    destruct (List.in_dec Rdec a s) eqn:heq.
+    + exists a.
+      simpl.
+      destruct s.
+      * inversion i.
+      * rewrite heq.
+        reflexivity.
+    + assert (hstacks:Stack s).
+      { unfold Stack in has.
+        decompose [and ex] has.
+        clear has.
+        (* x cannot be 0 since a is not repeated in s. *)
+        destruct x.
+        { exfalso.
+          simpl List.nth in H3 at 1.
+          destruct x0.
+          { omega. }
+          simpl in H3.
+          apply n.
+          rewrite H3.
+          apply List.nth_In.
+          simpl in H0.
+          omega. }
+        (* x0 cannot be 0 since a is not repeated in s. *)
+        destruct x0.
+        { exfalso.
+          simpl List.nth in H3 at 1.
+          simpl in H3.
+          apply n.
+          rewrite <- H3.
+          apply List.nth_In.
+          simpl in H.
+          omega. }
+        simpl in H3.
+        exists x.
+        exists x0.
+        intuition;auto. }
+      specialize (IHs hstacks).
+      destruct IHs.
+      exists x.
+      simpl.
+      destruct s.
+      * exfalso.
+        apply No_Stack_nil;auto.
+      * rewrite heq.
+        assumption.
+Qed.
+
+
 (*
 (** ** Sorting 3 and 4 elements **)
 Definition Sorted3 abc :=
@@ -671,12 +795,16 @@ Definition robogram (s : spectrum) : location :=
 
 Print Assumptions robogram.
 
+
+Definition Stacked (pos:Four -> R) :=
+  exists l, forall r, pos r = l.
+
 Inductive Will_stack (e : execution Four) :=
-  | Stacked : Stack (execution_head e) -> Will_stack e
+  | AlreadyStacked : Stacked (execution_head e) -> Will_stack e
   | After :  Will_stack (execution_tail e) -> Will_stack e.
 
 Theorem stack_4 : forall d : demon Four Zero, forall k, kFair k d ->
-  forall pos, Will_stack (execute robogram d pos).
+  forall pos, ~ is_forbidden pos -> Will_stack (execute robogram d pos).
 Proof.
 
 Admitted.
