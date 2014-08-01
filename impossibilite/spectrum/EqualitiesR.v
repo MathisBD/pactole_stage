@@ -101,7 +101,7 @@ Proof.
   { apply fold_left_compat; try reflexivity.
     intros acc1 acc2 Hacc x y Heq.
     subst.
-    destruct y;unfold f;simpl.
+    destruct y;unfold iter_acc;simpl.
     - now rewrite good_ext.
     - now rewrite byz_ext. }
 Qed.

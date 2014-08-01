@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, X. Urbain                                     *)
+(*   C. Auger, P. Courtieu, X. Urbain, L. Rieg                            *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
@@ -103,17 +103,20 @@ Definition subst_pos σ (p:position) :=
      bp := fun b => locate p (σ (Byz b)) |}.
 
 (** Notation of the paper *)
-Notation "p '∘' s" := (subst_pos s p) (at level 20, only parsing).
+Notation "p '∘' s" := (subst_pos s p) (at level 40, only parsing).
 
 (** ** Similarities  *)
+
+(** Pointwise mapping of a function on a position *)
+Definition map_pos (f : location -> location) (p : position) :=
+ {| gp := fun n => f (p.(gp) n)
+  ; bp := fun n => f (p.(bp) n)
+  |}.
 
 (** [similarity k t p] returns a position [p] centered in [t] and zoomed of
     a factor [k]; this function is used to set the frame of reference for
     a given robot. *)
-Definition similarity (k t : R) p : position :=
- {| gp := fun n => k * (p.(gp) n - t)
-  ; bp := fun n => k * (p.(bp) n - t)
-  |}.
+Definition similarity (k t : R) p : position := map_pos (fun x => k * (x - t)) p.
 
 (** Notation of the paper. *)
 Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'").
@@ -128,17 +131,23 @@ Record PosEq (p q : position) : Prop := {
   good_ext : ∀n, p.(gp) n = q.(gp) n;
   byz_ext  : ∀n, p.(bp) n = q.(bp) n}.
 
+Lemma map_inverse : forall (f g : location -> location) (pos : position),
+  (forall x, f (g x) = x) -> PosEq (map_pos f (map_pos g pos)) pos.
+Proof. intros f g pos Hinv. now split; intro x; simpl; rewrite Hinv. Qed.
+
+Corollary similarity_inverse : forall k t pos, k <> 0 -> PosEq (⟦ /k, -k*t⟧ (⟦k, t⟧ pos)) pos.
+Proof. intros k t pos Hk. split; intro x; simpl; now field. Qed.
 
 Definition spectrum := list location.
 
-Definition f p := (fun (acc:list R) id =>
+Definition iter_acc p := (fun (acc:list R) id =>
                 cons (match id with
                           inl g => p.(gp) g
                         | inr b => p.(bp) b
                       end) acc).
 
 Definition nominal_spectrum (p:position): spectrum :=
-  @fold_left (G ⊎ B) spectrum (f p) nil.
+  @fold_left (G ⊎ B) spectrum (iter_acc p) nil.
 
 Require Import Relation_Operators.
 
@@ -152,7 +161,7 @@ Definition locate_GUB p (id: (G ⊎ B)): location :=
 
 Lemma In_fold_left_from : forall (pos : position) (g : (G ⊎ B)) (min:(G ⊎ B)) init,
                       List.In (locate_GUB pos g) init \/ clos_refl_trans_1n _ ((G ⊎ B).(NextRel)) min g
-                      -> List.In (locate_GUB pos g) (fold_left_from (G ⊎ B) (f pos) min init).
+                      -> List.In (locate_GUB pos g) (fold_left_from (G ⊎ B) (iter_acc pos) min init).
 Proof.
   intros pos g min.
   revert g pos.
@@ -192,7 +201,7 @@ Proof.
 Qed.
 
 Lemma In_spectrum_fold_left : forall (pos : position) (r : G ⊎ B) l,
-                      List.In (locate_GUB pos r) (fold_left (G ⊎ B) (f pos) l).
+                      List.In (locate_GUB pos r) (fold_left (G ⊎ B) (iter_acc pos) l).
 Proof.
   intros pos g l.
   unfold fold_left.
@@ -212,6 +221,23 @@ Proof.
   unfold nominal_spectrum.
   apply In_spectrum_fold_left.
 Qed.
+
+Lemma nominal_spectrum_map : forall f pos, nominal_spectrum (map_pos f pos) = List.map f (nominal_spectrum pos).
+Proof.
+intros f pos. unfold nominal_spectrum.
+Admitted.
+
+Corollary nominal_spectrum_similarity : forall k t pos,
+  nominal_spectrum (⟦ k, t⟧ pos) = List.map (fun x => k * (x - t)) (nominal_spectrum pos).
+Proof. intros. apply nominal_spectrum_map. Qed.
+
+(** Getting the identfier of the n-th robot. *)
+Definition get_nth (X : finite) : nat -> option X :=
+  (fix aux acc m :=
+    match m with
+      | 0 => acc
+      | S m' => aux (X.(next) acc) m'
+    end) None.
 
 
 
@@ -338,6 +364,14 @@ Proof.
   - now apply (fair k).
 Qed.
 
+Theorem Fair0 : forall d, kFair 0 d ->
+  forall g h, (demon_head d).(frame) g = 0 <-> (demon_head d).(frame) h = 0.
+Proof.
+intros d Hd g h. destruct Hd as [Hd _]. split; intro H.
+  assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
+  assert (Hh := Hd h g). inversion Hh. contradiction. assumption.
+Qed.
+
 (** ** Full synchronicity
 
   A fully synchronous demon is a particular case of fair demon: all good robots
@@ -395,8 +429,7 @@ Definition execution_tail (e : execution) : execution :=
     applying the robogram [r] on [gp] where demonic_action [da] has been applied
     beforehand (to set what each robot actually sees (zoom factor + bad robots
     position)). *)
-Definition round (r : robogram) (da : demonic_action) (gp : G → location)
- : G → location :=
+Definition round (r : robogram) (da : demonic_action) (gp : G → location) : G → location :=
   (** for a given robot, we compute the new position *)
   fun g => 
     let k := da.(frame) g in (** first see what is the zooming factor set by the demon *)
@@ -464,7 +497,7 @@ End goodbyz.
 
 (** Exporting notations of section above. *)
 Notation "s ⁻¹" := (s.(retraction)) (at level 99).
-Notation "p '∘' s" := (subst_pos s p) (at level 20, only parsing).
+Notation "p '∘' s" := (subst_pos s p) (at level 40, left associativity, only parsing).
 Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 40, format "'⟦' k ','  t '⟧'").
 
 (* 
