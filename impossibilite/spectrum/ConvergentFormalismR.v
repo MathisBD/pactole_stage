@@ -16,15 +16,7 @@ Open Scope R_scope.
 Require Import List.
 Open Scope list_scope.
 Require Import FiniteSumR.
-
-
-Lemma Rdec : forall x y : R, {x = y} + {x <> y}.
-Proof.
-intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
-  left. now apply Rle_antisym.
-  right; intro; subst. contradiction.
-  right; intro; subst. pose (Rle_refl y). contradiction.
-Qed.
+Require Export Preliminary.
 
 Ltac coinduction proof :=
   cofix proof; intros; constructor;

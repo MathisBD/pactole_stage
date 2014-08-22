@@ -1,5 +1,5 @@
 Require Import Bool.
-Require Import Reals.
+Require Import Rbase.
 Require Import List.
 Require Import ConvergentFormalismR.
 Require Import EqualitiesR.
@@ -8,334 +8,13 @@ Require Import Morphisms.
 Require Import Psatz.
 Import Permutation.
 Import Datatypes. (* to overshadow Rlist and its constructors [nil] and [cons] *)
+Require FMapWeakList.
+Require Import FMultisetMap.
+Require Import Preliminary.
+
 Set Implicit Arguments.
+Close Scope R_scope.
 
-
-
-(* ************************************ *)
-(** * Some necessary results on Lists.  *)
-(* ************************************ *)
-
-Section List_results.
-Context (A : Type).
-(*Context (eqdec : SetoidDec.EqDec (SetoidDec.eq_setoid A)).*)
-
-Instance In_perm_compat : Proper (eq ==> @Permutation A ==> iff) (@In A).
-Proof. intros x y ? l l' Hl. subst. split; apply Permutation_in; assumption || now symmetry. Qed.
-
-Lemma last_In : forall l (x : A), l <> List.nil -> List.In (List.last l x) l.
-Proof.
-induction l; intros x Hx. now elim Hx.
-destruct l. now left. 
-change (List.In (List.last (a0 :: l) x) (a :: a0 :: l)).
-right. apply IHl. discriminate.
-Qed.
-
-Fixpoint alls (x : A) n :=
-  match n with
-    | 0 => Datatypes.nil
-    | S m => x :: alls x m
-  end.
-
-Lemma alls_length : forall (x : A) n, length (alls x n) = n.
-Proof. intros x n. induction n; simpl; auto. Qed.
-
-Lemma alls_In : forall (x y : A) n, In y (alls x n) -> y = x.
-Proof.
-intros x y n Hin. induction n.
-  contradiction Hin.
-  destruct Hin. now symmetry. now apply IHn.
-Qed.
-
-Corollary alls_not_In : forall (x y : A) n, x <> y -> ~In y (alls x n).
-Proof. intros x y n Hxy Habs. apply Hxy. symmetry. apply (alls_In _ _ _ Habs). Qed.
-
-Lemma alls_inj1 : forall x1 x2 n1 n2, alls x1 (S n1) = alls x2 n2 -> x1 = x2.
-Proof. intros x1 x2 n1 [] Heq; simpl in *. discriminate Heq. now inversion Heq. Qed.
-
-Lemma alls_inj2 : forall x1 x2 n1 n2, alls x1 n1 = alls x2 n2 -> n1 = n2.
-Proof.
-intros x1 x2 n1. induction n1; intros [] Heq; try reflexivity || discriminate Heq.
-f_equal. apply IHn1. now inversion Heq.
-Qed.
-
-Lemma alls_carac : forall x l, (forall y, In y l -> y = x) <-> l = alls x (length l).
-Proof.
-intros x l. split; intro H.
-  induction l. reflexivity. simpl. f_equal.
-    apply H. now left.
-    apply IHl. intros y Hy. apply H. now right.
-  rewrite H. intro. apply alls_In.
-Qed. 
-
-Lemma Forall_Perm_trans : forall (l1 l2 : list A) (P Q : A -> Prop),
-  (eq ==> iff)%signature P Q -> Permutation l1 l2 -> List.Forall P l1 -> List.Forall Q l2.
-Proof.
-intros l1 l2 P Q HPQ Hperm Hfor. 
-rewrite List.Forall_forall in *. intros. rewrite <- (HPQ _ _ eq_refl). 
-apply Hfor. revert H. apply Permutation_in. now symmetry.
-Qed.
-
-Lemma Forall_Permutation_compat : Proper ((eq ==> iff) ==> @Permutation A ==> iff) List.Forall.
-Proof. intros f g Hfg l1 l2 Hl. split; apply Forall_Perm_trans; easy || now symmetry. Qed.
-
-Lemma Permutation_alls : forall (x : A) n l,
-  Permutation l (alls x n) -> l = alls x n.
-Proof.
-intros x n. induction n; intros l Hl.
-  simpl in *. apply Permutation_nil. now symmetry.
-  destruct l.
-    apply Permutation_nil in Hl. discriminate Hl.
-    assert (a = x). { apply alls_In with (S n). simpl alls. rewrite <- Hl. now left. }
-    subst. simpl in *. f_equal. apply IHn. apply (Permutation_cons_inv Hl).
-Qed.
-
-Lemma map_alls : forall f pt n, map f (alls pt n) = alls (f pt) n.
-Proof. intros f pt n. induction n. reflexivity. simpl. now rewrite IHn. Qed.
-
-Lemma In_nth : forall d x (l : list A), In x l -> exists n, (n < length l)%nat /\ nth n l d = x.
-Proof.
-intros x d l Hin. induction l.
-- inversion Hin.
-- destruct Hin.
-    subst. exists 0%nat. split. simpl. now auto with arith. reflexivity.
-    destruct (IHl H) as [n [Hn Hl]]. apply lt_n_S in Hn. exists (S n). now split.
-Qed.
-
-Lemma In_split_first : forall (x : A) l, In x l -> exists l1, exists l2, ~List.In x l1 /\ l = l1 ++ x :: l2.
-Proof.
-intros x l. induction l as [| a l]; intro Hin.
-  now elim (List.in_nil Hin).
-  destruct Hin.
-    subst. exists nil. exists l. intuition.
-    destruct (IHl H) as [l1 [l2 [Hnin Heq]]].
-    exists (a :: l1). exists l2. subst. intuition.
-Abort. (* require decidability of equality *)
-
-Lemma Permutation_in_inside : forall (x : A) l l',
-  Permutation l l' -> In x l -> exists l1 l2, l' = l1 ++ x :: l2.
-Proof.
-intros x l l' Hperm Hin. rewrite Hperm in Hin.
-destruct (in_split _ _ Hin) as [l1 [l2 Heq]]. exists l1. exists l2. now subst l'.
-Qed.
-(*
-Proof.
-intros x l l' perm Hin. induction perm using Permutation_ind_bis.
-+ inversion Hin. SearchAbout In.
-+ destruct Hin.
-  - subst. exists nil. exists l'. simpl. repeat split. now apply Permutation_cons.
-  - destruct (IHperm H) as [l1 [l2 [Hperm Heq]]]. subst l'. exists (x0 :: l1). exists l2.
-    split; trivial. simpl. etransitivity; try constructor 3. now apply Permutation_cons.
-+ destruct Hin as [? | [? | Hin]]; try subst.
-  - exists (cons x0 nil). exists l'. simpl. split. now do 2 constructor. reflexivity.
-  - exists nil. exists (cons y l'). simpl. split. etransitivity. constructor 3. now do 2 constructor. reflexivity.
-  - destruct (IHperm Hin) as [l1 [l2 [Hperm Heq]]]. subst l'.
-    exists (x0 :: y :: l1). exists l2. split; trivial. simpl.
-    transitivity (x0 :: y :: l). constructor. transitivity (x0 :: x :: y :: l1 ++ l2). constructor.
-    transitivity (y :: x :: l1 ++ l2); constructor. assumption. constructor.
-+ rewrite perm1 in Hin. destruct (IHperm2 Hin) as [l1 [l2 [Hperm Heq]]].
-  subst l''. exists l1. exists l2. split. now transitivity l'. reflexivity.
-Qed.
-*)
-
-Corollary Permutation_cons_inside : forall (x : A) l l',
-  Permutation (x :: l) l' -> exists l1 l2, Permutation l (l1 ++ l2) /\ l' = l1 ++ x :: l2.
-Proof.
-intros x l l' Hperm. destruct (Permutation_in_inside x Hperm) as [l1 [l2 Heql]]. now left.
-exists l1. exists l2. split.
-- apply Permutation_cons_inv with x. transitivity l'. assumption. subst. symmetry. apply Permutation_middle.
-- assumption.
-Qed.
-
-Lemma Permutation_NoDup : forall l l' : list A, Permutation l l' -> NoDup l -> NoDup l'.
-Proof.
-intros l l' Hperm. induction Hperm; intro Hdup.
-+ trivial.
-+ inversion_clear Hdup. constructor.
-    intro Habs. apply H. now rewrite Hperm.
-    auto.
-+ inversion_clear Hdup. inversion_clear H0. constructor.
-    intros [Habs | Habs]. subst. apply H. now left. contradiction.
-    constructor. intro Habs. apply H. now right. assumption.
-+ auto.
-Qed.
-
-Lemma remove_in_out eq_dec : forall (x y : A) l, y <> x -> (In x (remove eq_dec y l) <-> In x l).
-Proof.
-intros x y l Hxy. induction l. reflexivity.
-simpl. destruct (eq_dec y a).
-  subst. rewrite IHl. split; intro H. now right. now destruct H.
-  simpl. now rewrite IHl.
-Qed.
-Global Arguments remove_in_out eq_dec [x] y l _.
-
-Lemma remove_alls eq_dec : forall x n, remove eq_dec x (alls x n) = nil.
-Proof.
-intros x n. induction n.
-  reflexivity.
-  simpl. destruct (eq_dec x x) as [_ | Hneq]; assumption || now elim Hneq.
-Qed.
-
-Lemma remove_nil eq_dec : forall x l, remove eq_dec x l = nil -> exists n, l = alls x n.
-Proof.
-intros x l Hl. induction l.
-  now exists 0%nat.
-  simpl in Hl. destruct (eq_dec x a).
-    destruct (IHl Hl) as [n ?]. subst. now exists (S n).
-    discriminate Hl.
-Qed.
-
-Instance remove_Perm_proper eq_dec : Proper (eq ==> @Permutation A ==> @Permutation A) (@remove A eq_dec).
-Proof.
-intros x y ? l1 l2 Hl. subst. induction Hl.
-- apply Permutation_refl.
-- simpl. destruct (eq_dec y x). assumption. now constructor.
-- simpl. destruct (eq_dec y y0), (eq_dec y x); apply Permutation_refl || now constructor.
-- now constructor 4 with (remove eq_dec y l').
-Qed.
-
-Lemma remove_app eq_dec : forall (x : A) l1 l2,
-  remove eq_dec x (l1 ++ l2) = remove eq_dec x l1 ++ remove eq_dec x l2.
-Proof.
-intros x l1 l2. induction l1. reflexivity. simpl.
-destruct (eq_dec x a). apply IHl1. simpl. f_equal. apply IHl1.
-Qed.
-
-Corollary remove_inside_in eq_dec :
-  forall (x : A) l1 l2, remove eq_dec x (l1 ++ x :: l2) = remove eq_dec x l1 ++ remove eq_dec x l2.
-Proof. intros x ? ?. rewrite remove_app. simpl. destruct (eq_dec x x) as [| Hneq]. reflexivity. now elim Hneq. Qed.
-
-Corollary remove_inside_out eq_dec : forall (x y : A) l1 l2,
-  x <> y -> remove eq_dec x (l1 ++ y :: l2) = remove eq_dec x l1 ++ y :: remove eq_dec x l2.
-Proof. intros x y ? ? ?. rewrite remove_app. simpl. destruct (eq_dec x y). contradiction. reflexivity. Qed.
-
-Lemma remove_idempotent eq_dec : forall (x : A) l, remove eq_dec x (remove eq_dec x l) = remove eq_dec x l.
-Proof.
-intros x l. induction l.
-  reflexivity.
-  simpl. destruct (eq_dec x a) eqn:Hx.
-    assumption.
-    simpl. rewrite Hx. now rewrite IHl.
-Qed.
-
-Lemma remove_comm eq_dec : forall (x y : A) l,
-  remove eq_dec x (remove eq_dec y l) = remove eq_dec y (remove eq_dec x l).
-Proof.
-intros x y l. induction l.
-  reflexivity.
-  simpl. destruct (eq_dec y a) eqn:Hy, (eq_dec x a) eqn:Hx; simpl;
-  try rewrite Hx; try rewrite Hy; simpl; now rewrite IHl.
-Qed.
-
-
-Lemma count_occ_app eq_dec : forall l1 l2 (x : A),
-  count_occ eq_dec (l1 ++ l2) x = (count_occ eq_dec l1 x + count_occ eq_dec l2 x)%nat.
-Proof.
-intros l1. induction l1; intros l2 x; simpl.
-  reflexivity.
-  destruct (eq_dec a x); now rewrite IHl1.
-Qed.
-
-Instance count_occ_proper eq_dec : Proper (@Permutation A ==> eq ==> eq) (@count_occ A eq_dec).
-Proof.
-intro l. induction l as [| x l]; intros [| x' l'] Hl ? ? ?; subst.
-  reflexivity.
-  apply Permutation_nil in Hl. discriminate Hl.
-  symmetry in Hl. apply Permutation_nil in Hl. discriminate Hl.
-  destruct (eq_dec x x') as [? | Hx].
-  + subst x'. apply Permutation_cons_inv in Hl. apply IHl in Hl.
-    simpl. now rewrite (Hl _ _ (eq_refl y)).
-  + destruct (Permutation_cons_inside Hl) as [l1 [l2 [Hperm Heql]]].
-    rewrite Heql. simpl. rewrite (IHl _ Hperm _ _ (eq_refl y)). do 2 rewrite count_occ_app.
-    simpl. destruct (eq_dec x y). now apply plus_n_Sm. reflexivity.
-Qed.
-
-Lemma count_occ_remove_in eq_dec : forall (x : A) l, count_occ eq_dec (remove eq_dec x l) x = 0%nat.
-Proof.
-intros x l. induction l. reflexivity. simpl.
-destruct (eq_dec x a) as [| Hneq]. assumption. simpl.
-destruct (eq_dec a x). now elim Hneq. assumption. 
-Qed.
-
-Lemma count_occ_remove_out eq_dec :
-  forall (x y : A) l, x <> y -> count_occ eq_dec (remove eq_dec x l) y = count_occ eq_dec l y.
-Proof.
-intros x y l Hxy. induction l. reflexivity. simpl.
-destruct (eq_dec x a); simpl; destruct (eq_dec a y).
-  subst. now elim Hxy.
-  assumption.
-  now f_equal.
-  assumption.
-Qed.
-Global Arguments count_occ_remove_out [eq_dec] x [y] [l] _.
-
-Lemma count_occ_alls_in eq_dec : forall x n, count_occ eq_dec (alls x n) x = n.
-Proof.
-intros x n. induction n; simpl.
-  reflexivity.
-  destruct (eq_dec x x) as [| Hneq]. now rewrite IHn. now elim Hneq. 
-Qed.
-
-Lemma count_occ_alls_out eq_dec : forall x y n, x <> y -> count_occ eq_dec (alls x n) y = 0%nat.
-Proof. intros x y n Hxy. induction n; simpl; trivial; now destruct (eq_dec x y). Qed.
-
-Theorem remove_count_occ_restore eq_dec : forall x l,
-  Permutation l (alls x (count_occ eq_dec l x) ++ (remove eq_dec x l)).
-Proof.
-intros x l. induction l.
-+ reflexivity.
-+ simpl. destruct (eq_dec a x) as [| Hneq]. subst.
-  - simpl. apply Permutation_cons. destruct (eq_dec x x) as [| Hneq]. assumption. now elim Hneq.
-  - destruct (eq_dec x a). subst. now elim Hneq. etransitivity.
-      now apply Permutation_cons, IHl.
-      now apply Permutation_cons_app.
-Qed.
-
-End List_results.
-
-Definition count_occ_properR := count_occ_proper Rdec.
-Definition remove_Perm_properR := remove_Perm_proper Rdec.
-Existing Instance count_occ_properR.
-Existing Instance remove_Perm_properR.
-Existing Instance In_perm_compat.
-
-
-(** **  The same for real unumbers. **)
-
-(** Small dedicated decision tactic for reals handling 1<>0 and r=r *)
-Ltac Rdec := repeat
-  match goal with
-    | |- context[Rdec ?x ?x] =>
-        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
-        [clear Heq | exfalso; elim Heq; reflexivity]
-    | |- context[Rdec 1 0] => 
-        let Heq := fresh "Heq" in destruct (Rdec 1 0) as [Heq | Heq];
-        [now elim R1_neq_R0 | clear Heq]
-    | H : context[Rdec ?x ?x] |- _ =>
-        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
-        [clear Heq | exfalso; elim Heq; reflexivity]
-  end.
-
-
-Lemma le_neq_lt : forall m n : nat, (n <= m -> n <> m -> n < m)%nat.
-Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
-
-Lemma Rle_neq_lt : forall x y : R, x <= y -> x <> y -> x < y.
-Proof. intros ? ? Hle ?. now destruct (Rle_lt_or_eq_dec _ _ Hle). Qed.
-
-Lemma Rdiv_reg : forall x y z, z <> 0 -> x / z = y / z -> x = y.
-Proof.
-intros x y z Hneq Heq. setoid_rewrite <- Rmult_1_r. rewrite <- Rinv_r with z.
-setoid_rewrite <- Rmult_comm at 2 4. do 2 rewrite <- Rmult_assoc.
-unfold Rdiv in Heq. now rewrite Heq. assumption.
-Qed.
-
-Lemma local_invert : forall k t x y, k <> 0 -> (k * (x - t) = k * (y - t) <-> x = y).
-Proof.
-intros. split; intro.
-  SearchAbout Rplus eq. psatz R.
-  now subst.
-Qed.
 
 (** *  The Gathering Problem  **)
 
@@ -654,8 +333,10 @@ Qed.
 Lemma sort_alls : forall pt n, sort (alls pt n) = alls pt n.
 Proof. intros. apply StronglySorted_sort_identity. apply StronglySorted_alls. Qed.
 
+Open Scope R_scope.
+
 Theorem sort_min : forall (s : spectrum) (d x : R), List.In x s ->
-  List.hd d (sort s) <= x.
+  (List.hd d (sort s) <= x)%R.
 Proof.
 intros s d x Hin.
 assert (Hsort := StronglySorted_sort s Rleb_trans).
@@ -668,7 +349,7 @@ destruct (sort s).
 Qed.
 
 Theorem sort_max : forall (s : spectrum) (d x : R), List.In x s ->
-  x <= List.last (sort s) d.
+  (x <= List.last (sort s) d)%R.
 Proof.
 intros s d x Hin.
 assert (Hsort := StronglySorted_sort s Rleb_trans).
@@ -682,6 +363,55 @@ intros a l Hsorted HP Hle x Hin. destruct Hin.
 - destruct l. inversion H. now apply HP.
 Qed.
 
+Existing Instance Permutation_map_aux_Proper.
+
+Lemma StronglySorted_map_increasing : forall A B (RA : relation A) (RB : relation B) f, Proper (RA ==> RB) f ->
+  forall l, StronglySorted RA l -> StronglySorted RB (map f l).
+Proof.
+intros A B RA RB f Hf l Hl. induction Hl; simpl; constructor.
+  assumption.
+  induction H; simpl; constructor.
+    now apply Hf.
+    apply IHForall.
+      now inversion_clear Hl.
+      now inversion_clear IHHl.
+Qed.
+
+Corollary sort_map_increasing : forall f, Proper (Rleb ==> Rleb) f -> forall l, sort (map f l) = map f (sort l).
+Proof.
+intros f Hf l. rewrite (Permuted_sort l) at 1.
+apply StronglySorted_sort_identity, (StronglySorted_map_increasing Hf), (StronglySorted_sort l Rleb_trans).
+Qed.
+
+Lemma StronglySorted_map_decreasing : forall A B (RA : relation A) (RB : relation B) f, Proper (RA --> RB) f ->
+  forall l, StronglySorted RA l -> StronglySorted RB (rev (map f l)).
+Proof.
+intros A B RA RB f Hf l Hl. rewrite <- map_rev. induction Hl; simpl.
+  now constructor. rewrite map_app.
+  SearchAbout StronglySorted app.
+Admitted.
+
+Corollary sort_map_decreasing : forall f, Proper (Rleb --> Rleb) f -> forall l, sort (map f l) = rev (map f (sort l)).
+Proof.
+intros f Hf l. rewrite (Permuted_sort l) at 1. rewrite (Permutation_rev (map f (sort l))) at 1.
+apply StronglySorted_sort_identity, (StronglySorted_map_decreasing Hf), (StronglySorted_sort l Rleb_trans).
+Qed.
+
+Lemma app_last : forall {A : Type} (d : A) l1 l2, l2 <> nil -> last (l1 ++ l2) d = last l2 d.
+Proof.
+intros A d l1 l2 Hl2. induction l1; simpl.
+  reflexivity.
+  assert (l1 ++ l2 <> nil). { intro Habs. apply Hl2. now destruct (app_eq_nil _ _ Habs). }
+  destruct (l1 ++ l2). now elim H. assumption.
+Qed.
+
+Lemma last_rev_hd : forall {A : Type} (d : A) l, last (rev l) d = hd d l.
+Proof. intros A d l. destruct l; simpl. reflexivity. rewrite app_last. reflexivity. discriminate. Qed.
+
+Corollary hd_rev_last : forall {A : Type} (d : A) l, hd d (rev l) = last l d.
+Proof. intros A d l. rewrite <- (rev_involutive l) at 2. now rewrite last_rev_hd. Qed.
+
+Close Scope R_scope.
 
 (** *  Definitions for 4 robots **)
 
@@ -704,23 +434,219 @@ intros p1 p2 Heq. split; intros [pt1 [pt2 [n [Hneq Hpt]]]];
 exists pt1; exists pt2; exists n; split; trivial; now rewrite <- Hpt, Heq.
 Qed.
 
+Definition center4 (s : spectrum) := List.fold_left Rplus s R0.
+
+(** **  Are robots on a stack?  **)
+
+Module Rdecidable : DecidableType with Definition t := R
+                                  with Definition eq := @Logic.eq R
+                                  with Definition eq_dec := Rdec.
+  Definition t := R.
+  Definition eq := @Logic.eq R.
+  Definition eq_refl : forall x : t, eq x x := reflexivity.
+  Definition eq_sym : forall x y : t, eq x y -> eq y x := symmetry.
+  Definition eq_trans : forall x y z : t, eq x y -> eq y z -> eq x z := transitivity.
+  Definition eq_dec : forall x y : t, {eq x y} + {~ eq x y} := Rdec.
+End Rdecidable.
+
+Module Mraw : FMultisetsOn Rdecidable := FMultisets FMapWeakList.Make Rdecidable.
+Module M := FMultisetFacts Rdecidable Mraw.
+Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70).
+Notation "m1  [<=]  m2" := (M.Subset m1 m2) (at level 70).
+
+Lemma pair_dec : forall xn ym : R * nat, {M.eq_pair xn ym} + {~M.eq_pair xn ym}.
+Proof.
+unfold M.eq_pair. intros [x n] [y m]. compute.
+destruct (Rdec x y).
+  destruct (eq_nat_dec n m).
+    left. now split. 
+    right. now intros [? ?].
+  right. now intros [? ?].
+Qed.
+
+Definition Melt_field_struct : @field_theory M.elt _ _ _ _ _ _ _ _ _ := Rfield.
+Add Field Melt_field : Melt_field_struct.
+
+Inductive stackResult :=
+  | NoResult (** No robots **)
+  | Valid (l : location) (n : nat) (** One majoritary stack of size [n] at location [l]. **)
+  | Invalid (n : nat) (** One majoritary stack of size [n] seen at least twice **).
+
+Lemma stackResult_dec : forall x y : stackResult, {x = y} + {x <> y}.
+Proof. decide equality. apply eq_nat_dec. apply Rdec. apply eq_nat_dec. Qed.
+
+
+Definition multiset (s : spectrum) : M.t := List.fold_left (fun acc x => M.add x 1 acc) s M.empty.
+
+Lemma multiset_nil : multiset nil [=] M.empty.
+Proof. reflexivity. Qed.
+
+Lemma multiset_cons_aux : forall s x m,
+  List.fold_left (fun acc y => M.add y 1 acc) (x :: s) m [=]
+  M.add x 1 (List.fold_left (fun acc x => M.add x 1 acc) s m).
+Proof.
+intro s. induction s; intros x m.
+  reflexivity.
+  simpl. intro.
+  assert (Hf : Proper (M.eq ==> eq ==> M.eq) (fun (acc : M.t) (y : M.elt) => M.add y 1 acc)).
+  { clear. intros s1 s2 Hs x y Hxy. now rewrite Hxy, Hs. }
+  rewrite (@fold_left_start _ _ Logic.eq M.eq _ _ _ Hf s _ (M.add x 1 (M.add a 1 m)) (M.add_comm _ _ _ _ _)).
+  apply IHs.
+Qed.
+
+Lemma multiset_cons : forall x s, multiset (x :: s) [=] M.add x 1 (multiset s).
+Proof. intros x s y. unfold multiset. now rewrite multiset_cons_aux. Qed.
+
+Lemma multiset_app : forall s s', multiset (s ++ s') [=] M.union (multiset s) (multiset s').
+Proof.
+induction s; intros s'; simpl.
+  now rewrite M.union_empty_l.
+  do 2 rewrite multiset_cons. intro x. destruct (Rdec x a).
+    subst a. rewrite M.add_spec. rewrite IHs. repeat rewrite M.union_spec. rewrite M.add_spec. omega.
+    rewrite M.add_spec'. rewrite IHs. repeat rewrite M.union_spec. rewrite M.add_spec'. reflexivity. auto. auto.
+Qed.
+
+Instance multiset_compat : Proper (@Permutation R ==> M.eq) multiset.
+Proof.
+intro s1. induction s1 as [| x s1]; intros s2 Hperm.
+  apply Permutation_nil in Hperm. now subst.
+  assert (Hx := Permutation_in_inside x Hperm). destruct Hx as [l1 [l2 Heq]]. now left. subst s2.
+  intro y. rewrite multiset_app, M.union_spec. do 2 rewrite multiset_cons.
+  destruct (Rdec x y) as [Heq | Hneq].
+    subst y. repeat rewrite M.add_spec. rewrite plus_assoc. f_equal. rewrite <- M.union_spec, <- multiset_app.
+    apply IHs1. now apply Permutation_cons_app_inv with x.
+    repeat rewrite M.add_spec'; trivial. rewrite <- M.union_spec, <- multiset_app.
+    apply IHs1. now apply Permutation_cons_app_inv with x.
+Qed.
+
+Lemma multiset_Permutation :
+  forall x l n, M.multiplicity x (multiset l) = n -> exists l', ~In x l' /\ Permutation l (alls x n ++ l').
+Proof.
+intros x l. induction l; intros n Hin.
+  exists nil. split. now auto. rewrite multiset_nil, M.empty_spec in Hin. subst n. simpl. reflexivity.
+  rewrite multiset_cons in Hin. destruct (Rdec a x).
+  - subst a. rewrite M.add_spec in Hin. destruct n. omega.
+    rewrite plus_comm in Hin. simpl in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+    exists l'. split. assumption. simpl. now constructor.
+  - rewrite M.add_spec' in Hin; trivial. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+    exists (a :: l'). split. intros [|]; contradiction.
+    transitivity (a :: alls x n ++ l'); now constructor || apply Permutation_middle.
+Qed.
+
+Lemma multiset_alls : forall x n, n > 0 -> multiset (alls x n) [=] M.singleton x n.
+Proof.
+intros x n Hn. induction n. omega. clear Hn. simpl. rewrite multiset_cons. destruct n.
+  rewrite multiset_nil. setoid_rewrite <- M.union_empty_r at 3. now rewrite M.add_union_singleton.
+  rewrite IHn; try omega. intro y. rewrite M.singleton_spec.
+  destruct (Rdecidable.eq_dec y x) as [Heq |] eqn:Hxy.
+    rewrite Heq in *. rewrite M.add_spec. rewrite M.singleton_spec. rewrite Hxy. omega.
+    rewrite M.add_spec'. rewrite M.singleton_spec. now rewrite Hxy. auto.
+Qed.
+
+Corollary multiset_In : forall x l, M.multiplicity x (multiset l) > 0 <-> In x l.
+Proof.
+intros x l. split; intro Hl.
+- destruct (multiset_Permutation _ (eq_refl (M.multiplicity x (multiset l)))) as [l' [Hl' Hperm]].
+  rewrite Hperm. rewrite in_app_iff. left. destruct (M.multiplicity x (multiset l)). omega. now left.
+- induction l. now inversion Hl. rewrite multiset_cons. destruct (Rdec a x).
+    subst a. rewrite M.add_spec. omega.
+    rewrite M.add_spec'; trivial. apply IHl. now inversion_clear Hl.
+Qed.
+
+
+Definition f_majority :=
+  fun x n res =>
+    match res with
+      | NoResult => Valid x n
+      | Valid y m => match nat_compare n m with
+         | Lt => Valid y m
+         | Eq => Invalid m
+         | Gt => Valid x n
+        end
+      | Invalid m => match nat_compare n m with
+         | Lt => Invalid m
+         | Eq => Invalid m
+         | Gt => Valid x n
+        end
+    end.
+
+Lemma f_majority_comm : forall x y n m a, f_majority y m (f_majority x n a) = f_majority x n (f_majority y m a).
+Proof.
+intros x y n m [| l r | r]; unfold f_majority.
+  + destruct (nat_compare n m) eqn:Hnm.
+    - rewrite nat_compare_Eq_comm in Hnm. rewrite Hnm. rewrite nat_compare_eq_iff in Hnm. now subst.
+    - rewrite nat_compare_Lt_Gt in Hnm. now rewrite Hnm.
+    - rewrite <- nat_compare_Lt_Gt in Hnm. now rewrite Hnm.
+  + destruct (nat_compare n r) eqn: Hnr.
+    - destruct (nat_compare m r) eqn: Hmr.
+        now rewrite Hnr.
+        now rewrite Hnr.
+        rewrite nat_compare_eq_iff in Hnr. subst r. rewrite <- nat_compare_Lt_Gt in Hmr. now rewrite Hmr.
+    - destruct (nat_compare m r) eqn: Hmr.
+        now rewrite Hnr.
+        now rewrite Hnr.
+        rewrite <- nat_compare_lt in Hnr. rewrite <- nat_compare_gt in Hmr.
+        assert (Hnm : (n < m)%nat) by (now transitivity r). rewrite nat_compare_lt in Hnm. now rewrite Hnm.
+    - destruct (nat_compare m r) eqn: Hmr.
+        rewrite nat_compare_eq_iff in Hmr. subst r. rewrite Hnr. rewrite <- nat_compare_Lt_Gt in Hnr. now rewrite Hnr.
+        rewrite Hnr. rewrite <- nat_compare_gt in Hnr. rewrite <- nat_compare_lt in Hmr.
+        assert (Hmn : (m < n)%nat) by (now transitivity r). rewrite nat_compare_lt in Hmn. now rewrite Hmn.
+        destruct (nat_compare n m) eqn:Hnm.
+          rewrite nat_compare_Eq_comm in Hnm. rewrite Hnm. rewrite nat_compare_eq_iff in Hnm. now subst.
+          rewrite nat_compare_Lt_Gt in Hnm. now rewrite Hnm.
+          rewrite <- nat_compare_Lt_Gt in Hnm. now rewrite Hnm.
+  + destruct (nat_compare n r) eqn: Hnr.
+    - destruct (nat_compare m r) eqn: Hmr.
+        now rewrite Hnr.
+        now rewrite Hnr.
+        rewrite nat_compare_eq_iff in Hnr. subst r. rewrite <- nat_compare_Lt_Gt in Hmr. now rewrite Hmr.
+    - destruct (nat_compare m r) eqn: Hmr.
+        now rewrite Hnr.
+        now rewrite Hnr.
+        rewrite <- nat_compare_lt in Hnr. rewrite <- nat_compare_gt in Hmr.
+        assert (Hnm : (n < m)%nat) by (now transitivity r). rewrite nat_compare_lt in Hnm. now rewrite Hnm.
+    - destruct (nat_compare m r) eqn: Hmr.
+        rewrite nat_compare_eq_iff in Hmr. subst r. rewrite Hnr. rewrite <- nat_compare_Lt_Gt in Hnr. now rewrite Hnr.
+        rewrite Hnr. rewrite <- nat_compare_gt in Hnr. rewrite <- nat_compare_lt in Hmr.
+        assert (Hmn : (m < n)%nat) by (now transitivity r). rewrite nat_compare_lt in Hmn. now rewrite Hmn.
+        destruct (nat_compare n m) eqn:Hnm.
+          rewrite nat_compare_Eq_comm in Hnm. rewrite Hnm. rewrite nat_compare_eq_iff in Hnm. now subst.
+          rewrite nat_compare_Lt_Gt in Hnm. now rewrite Hnm.
+          rewrite <- nat_compare_Lt_Gt in Hnm. now rewrite Hnm.
+Qed.
+
+Instance f_majority_compat : Proper (M.eq ==> eq ==> eq) (M.fold f_majority).
+Proof.
+apply M.fold_compat.
+  now auto with typeclass_instances.
+  now repeat intro; subst.
+  exact f_majority_comm.
+Qed.
+
+Definition majority_stack (s : spectrum) : stackResult := M.fold f_majority (multiset s) NoResult.
+
+Instance majority_stack_invariant : Proper (@Permutation R ==> eq) majority_stack.
+Proof.
+intros s1 s2 Hperm. unfold majority_stack. apply M.fold_compat.
+  now auto with typeclass_instances.
+  now repeat intro; subst.
+  exact f_majority_comm.
+  now rewrite Hperm.
+  reflexivity.
+Qed.
+
+Lemma majority_stack_nil : majority_stack nil = NoResult.
+Proof. unfold majority_stack. now rewrite multiset_nil, M.fold_empty. Qed.
+
 (* Both Stack and has_dups should be changed to output the position of the highest stack, *if it is unique*.
    This probably requires multisets to define it propertly. *)
 Definition Stack pos :=
-  exists n1 : Four, exists n2 : Four, n1 <> n2 /\ pos.(gp) n1 = pos.(gp) n2.
+  exists x, exists n, M.multiplicity x (multiset (nominal_spectrum pos)) = n
+  /\ forall y, x <> y -> (M.multiplicity y (multiset (nominal_spectrum pos)) < n)%nat.
 
-Definition center4 (s : spectrum) := List.fold_left Rplus s 0.
+Instance Stack_proper : Proper (@PosEq Four Zero ==> iff) Stack.
+Proof. intros ? ? Hpos. unfold Stack. now setoid_rewrite Hpos. Qed.
 
-(** Are robots on a stack **)
-Function has_dups (l : list R) : option R :=
-  match l with
-    | List.nil => None
-    | h :: t => if List.in_dec Rdec h t then Some h else has_dups t
-  end.
-
-(* can be proved with the correct definition *)
-Hypothesis Stack_proper : Proper (@PosEq Four Zero ==> iff) Stack.
-Hypothesis has_dups_invariant : Proper (@Permutation R ==> eq) has_dups.
 
 (** Two stack of robots of the same size. **)
 Definition is_forbidden (s : spectrum) :=
@@ -745,233 +671,615 @@ Ltac Rdec_full :=
     | _ => fail
   end.
 
-Lemma has_dups_spec : forall l x, has_dups l = Some x
-  <-> (exists l1 l2, ~List.In x l1 /\ NoDup l1 /\ (forall y, In y l1 -> ~In y l2) /\ In x l2 /\ l = l1 ++ x :: l2).
+Lemma majority_stack_NoResult_spec_aux : forall m r, 
+  M.fold f_majority m r = NoResult <-> M.Empty m /\ r = NoResult.
 Proof.
-induction l; intro x; split; intro H.
-+ discriminate H.
-+ destruct H as [[] [l2 [_ [_ [_ [_ Habs]]]]]]; discriminate Habs.
-+ simpl in H. destruct (List.in_dec Rdec a l) as [Hin | Hnin].
-  - inversion H. subst. clear H. exists nil. exists l. intuition. constructor.
-  - rewrite IHl in H. destruct H as [l1 [l2 [H1 [H2 [H3 [H4 H5]]]]]]. clear IHl. subst. destruct (Rdec a x).
-      subst. elim Hnin. apply in_or_app. now right; left.
-      exists (a :: l1). exists l2. intuition.
-        destruct H; contradiction.
-        constructor. intro Habs. apply Hnin. apply in_or_app. now left. assumption.
-        destruct H.
-          subst. apply Hnin. apply in_or_app. now do 2 right.
-          now apply (H3 y).
-+ destruct H as [l1 [l2 [H1 [H2 [H3 [H4 H5]]]]]]. rewrite H5. destruct l1.
-    simpl in *. destruct (in_dec Rdec x l2). reflexivity. contradiction.
-    rewrite <- app_comm_cons. simpl. destruct (in_dec Rdec r (l1 ++ x :: l2)) as [Hin | Hnin].
-    - inversion_clear H2. elim (H3 r). now left. apply in_app_or in Hin. destruct Hin. contradiction.
-      destruct H2. subst. elim H1. now left. assumption.
-    - rewrite <- app_comm_cons in H5. inversion H5. subst. rewrite IHl. clear IHl H5.
-      exists l1. exists l2. intuition. now inversion H2.
-      now apply (H3 y); try right.
+intros m r. rewrite M.fold_spec, <- M.elements_nil. split; intro H.
++ revert r H. induction (M.elements m); intros r H.
+  - simpl in H. now split.
+  - exfalso. simpl in H. apply IHl in H. destruct H as [_ H].
+    destruct a, r; simpl in H; discriminate H || (destruct (nat_compare n n0); discriminate H).
++ destruct H as [H1 H2]. subst r. rewrite H1. reflexivity.
 Qed.
 
-(* PC: j'ai mis des inférieurs stricts ici, sans quoi le lemme
-   has_dups_spec2 est faux pour une valeur par défaut mal choisie. Il
-   y avait une raison pour mettre des <= ?
-   LR: Juste une erreur de définition
-       De toute façon, je pars actuellement sur utiliser la position pour 
-       définir les propriétés absolues (ie ne dépendant pas d'un robot)
-       et le spectre pour les versions locales utilisées par les robots *)
-
-Definition Stack2 (s : spectrum) :=
-  exists n1 n2, (n1 < List.length s)%nat /\ (n2 < List.length s)%nat /\
-                n1 <> n2 /\ List.nth n1 s 0 = List.nth n2 s 0.
-
-(* Stack does not exhibit the first repeated occurrence of a location,
-   so this is not trivial to prove. *)
-Lemma has_dups_spec2 : forall (s : spectrum),
-  (exists r, has_dups s = Some r) -> Stack2 s.
+Corollary majority_stack_NoResult_spec : forall m, majority_stack m = NoResult <-> m = nil.
 Proof.
-induction s.
-+ intro Habs. 
-  exfalso. destruct Habs as [? Habs]. now inversion Habs.
-+ intros h.
-  destruct h as [x h].
-  simpl in h.
-  destruct s.
-    { inversion h. }
-    { destruct (List.in_dec Rdec a (r :: s)).
-      - unfold Stack.
-        exists 0%nat.
-        assert (hInnth:exists n, (n < List.length (r::s))%nat
-                          /\ forall default, List.nth n (r::s) default = a).
-        { admit. }
-        destruct hInnth as [y hInnth].
-        destruct hInnth as [hInnth1 hInnth2].
-        exists (S y);intuition;auto.
-        + simpl in hInnth1.
-          simpl.
-          omega.
-        + simpl in hInnth1.
-          simpl.
-          omega.
-        + simpl.
-          simpl in hInnth2.
-          symmetry.
-          apply hInnth2.
-      - assert (hstack:Stack2 (r::s)).
-        { apply IHs.
-          exists x.
-          assumption. }
-        unfold Stack2 in hstack.
-        decompose [ex and] hstack.
-        clear hstack.
-        exists (S x0).
-        exists (S x1).
-        intuition;auto.
-        + simpl in H,H0.
-          simpl.
-          omega.
-        + simpl in H,H0.
-          simpl.
-          omega. }
+intro m. unfold majority_stack. rewrite majority_stack_NoResult_spec_aux. split; intro H.
+  destruct m.
+    reflexivity.
+    destruct H as [H1 H2]. exfalso. cut (0 = S (M.multiplicity r (multiset m)))%nat. omega.
+    rewrite <- (H1 r) at 1. rewrite multiset_cons, M.add_spec. omega.
+  subst m. split.
+    rewrite multiset_nil. apply M.empty_spec.
+    reflexivity.
 Qed.
 
-
-Lemma Stack_nonempty : forall s, Stack2 s -> s <> List.nil.
-Proof. intros s [n [_ [H _]]]. intro Habs. subst. inversion H. Qed.
-
-Lemma No_Stack_nil : ~ Stack2 Datatypes.nil.
+Lemma majority_stack_Valid_0_aux : forall x m r, 
+  M.fold f_majority m r = Valid x 0 <-> M.Empty m /\ r = Valid x 0.
 Proof.
-  intro abs.
-  apply Stack_nonempty with Datatypes.nil;auto.
+intros x m r. rewrite M.fold_spec. rewrite <- M.elements_nil.
+assert (Hm : forall xn, InA M.eq_pair xn (M.elements m) -> M.multiplicity (fst xn) m = snd xn /\ (snd xn > 0)%nat)
+by (intro; apply M.elements_spec).
+revert r. induction (M.elements m); simpl; intro r.
+  now intuition.
+  rewrite IHl. clear IHl.
+    split; intros [H1 H2]; exfalso.
+      subst l. destruct a, r; simpl in H2.
+        specialize (Hm (e, n)). inversion H2. subst e n. clear H2. apply (lt_irrefl 0). apply Hm. now left.
+        destruct (nat_compare n n0) eqn:Hn.
+          discriminate H2.
+          inversion H2. subst. clear H2. rewrite <- nat_compare_lt in Hn. now inversion Hn.
+          inversion H2. subst. clear H2. rewrite <- nat_compare_gt in Hn. now inversion Hn.
+        destruct (nat_compare n n0) eqn:Hn.
+          discriminate H2.
+          discriminate H2.
+          inversion H2. subst. clear H2. rewrite <- nat_compare_gt in Hn. now inversion Hn.
+      now inversion H1.
+    intros xn Hin. apply Hm. now right. 
 Qed.
 
-(* Stack does not exhibit the first repeated occurrence of a location,
-   so this is not trivial to prove. *)
-Lemma has_dups_spec2bis : forall (s : spectrum),
-  Stack2 s -> exists r, has_dups s = Some r.
+Corollary majority_stack_Valid_0 : forall m x, majority_stack m <> Valid x 0.
 Proof.
-  intros s.
-  induction s.
-  - intro.
-    exfalso.
-    apply No_Stack_nil;auto.
-  - intros has.
-    destruct (List.in_dec Rdec a s) eqn:heq.
-    + exists a.
-      simpl.
-      destruct s.
-      * inversion i.
-      * rewrite heq.
-        reflexivity.
-    + assert (hstacks:Stack2 s).
-      { unfold Stack2 in has.
-        decompose [and ex] has.
-        clear has.
-        (* x cannot be 0 since a is not repeated in s. *)
-        destruct x.
-        { exfalso.
-          simpl List.nth in H3 at 1.
-          destruct x0.
-          { omega. }
-          simpl in H3.
-          apply n.
-          rewrite H3.
-          apply List.nth_In.
-          simpl in H0.
-          omega. }
-        (* x0 cannot be 0 since a is not repeated in s. *)
-        destruct x0.
-        { exfalso.
-          simpl List.nth in H3 at 1.
-          simpl in H3.
-          apply n.
-          rewrite <- H3.
-          apply List.nth_In.
-          simpl in H.
-          omega. }
-        simpl in H3.
-        exists x.
-        exists x0.
-        intuition;auto. }
-      specialize (IHs hstacks).
-      destruct IHs.
-      exists x.
-      simpl.
-      destruct s.
-      * exfalso.
-        apply No_Stack_nil;auto.
-      * rewrite heq.
-        assumption.
+unfold majority_stack. intros m x H. rewrite majority_stack_Valid_0_aux in H. destruct H as [_ H]. discriminate H.
 Qed.
 
-
-Lemma has_dups_NoDup_None : forall l, has_dups l = None <-> NoDup l.
+Lemma majority_stack_Valid_spec_aux : forall x n m r, (n > 0)%nat ->
+  (M.fold f_majority m r = Valid x n <->
+  (r = Valid x n /\ (forall y, (M.multiplicity y m < n)%nat)
+   \/ M.multiplicity x m = n /\ (forall y m, (r = Valid y m \/ r = Invalid m) -> m < n)%nat
+      /\ forall y, x <> y -> (M.multiplicity y m < n)%nat)).
 Proof.
-induction l.
-+ split; intro. constructor. reflexivity.
-+ simpl. destruct (in_dec Rdec a l).
-  - split; intro H. discriminate H. inversion H. contradiction.
-  - split; intro H; rewrite IHl in *. now constructor. now inversion H.
+intros x n m r Hn. rewrite M.fold_spec.
+assert (Hm : ((r = Valid x n /\ forall y, (M.multiplicity y m < n)%nat)
+          \/ M.multiplicity x m = n /\ (forall y m, (r = Valid y m \/ r = Invalid m) -> m < n)%nat
+             /\ forall y, x <> y -> (M.multiplicity y m < n)%nat)
+        <-> (r = Valid x n /\ (forall y n', InA M.eq_pair (y, n') (M.elements m) -> n' < n)%nat
+             \/ InA M.eq_pair (x, n) (M.elements m) /\ (forall y m, (r = Valid y m \/ r = Invalid m) -> m < n)%nat
+             /\ (forall y n', x <> y -> InA M.eq_pair (y, n') (M.elements m) -> n' < n)%nat)).
+{ split; intros [[H1 H2] | [H1 [H2 H3]]].
+  + left. split.
+    - assumption.
+    - intros y n' Hin. rewrite M.elements_spec in Hin.
+      destruct Hin as [Hin Hpos]. simpl in Hin. rewrite <- Hin. apply H2.
+  + right. repeat split.
+    - rewrite M.elements_spec. now repeat split.
+    - assumption.
+    - intros y n' Hneq Hin. rewrite M.elements_spec in Hin. destruct Hin as [Hin Hpos].
+      simpl in Hin. rewrite <- Hin. apply H3. assumption.
+  + left. split.
+    - assumption.
+    - intro y. destruct (InA_dec pair_dec (y, M.multiplicity y m) (M.elements m)) as [Hin | Hin].
+        now apply (H2 y (M.multiplicity y m)).
+        rewrite M.elements_spec in Hin.
+        assert (M.multiplicity y m = 0%nat). {cut (~M.multiplicity y m > 0)%nat. clear. omega. now auto. }
+        now rewrite H.
+  + right. repeat split.
+    - rewrite M.elements_spec in H1. now destruct H1.
+    - assumption.
+    - intros y Hneq. destruct (InA_dec pair_dec (y, M.multiplicity y m) (M.elements m)) as [Hin | Hin].
+        now apply (H3 y (M.multiplicity y m)).
+        rewrite M.elements_spec in Hin.
+        assert (M.multiplicity y m = 0%nat). {cut (~M.multiplicity y m > 0)%nat. clear. omega. now auto. }
+        now rewrite H. }
+rewrite Hm. clear Hm.
+assert (Hdup := M.elements_NoDupA m).
+revert r. induction (M.elements m) as [| [x' n'] l]; intro r.
+* simpl. split; intro H.
+    left. split. assumption. intros p Habs. now inversion Habs.
+    destruct H as [[H _] | [H _]]. assumption. now inversion H.
+* simpl. inversion_clear Hdup. rename H into Hnin. rename H0 into Hdup.
+  rewrite IHl; trivial. clear IHl. split; intros [[H1 H2] | [H1 [H2 H3]]].
+  + destruct r eqn:Hr; simpl in H1.
+    - right. destruct (pair_dec (x, n) (x', n')) as [Heq | Hneq].
+        repeat split.
+          now left.
+          intros ? ? [H | H]; discriminate H.
+          intros y p Hxy Hin. inversion_clear Hin.
+            exfalso. apply Hxy. now compute in H, Heq; destruct H, Heq; subst.
+            now apply (H2 y).
+        elim Hneq. compute. inversion_clear H1. now split.
+    - destruct (nat_compare n' n0) eqn:Hnn.
+        now inversion_clear H1.
+        inversion H1. subst l0 n0. clear H1. left. rewrite <- nat_compare_lt in Hnn. split.
+          reflexivity.
+          intros y p Hin. inversion_clear Hin.
+            destruct H as [_ H]. compute in H. now subst n'.
+            now apply (H2 y).
+        inversion H1. subst x' n'. clear H1. right. repeat split.
+          now left.
+          intros y p [Habs | Habs]; inversion Habs. subst l0 n0. clear Habs. now rewrite <- nat_compare_gt in Hnn.
+          intros y p Hneq Hin. inversion_clear Hin.
+          destruct H as [H _]. compute in H. now elim Hneq.
+          now apply (H2 y).
+    - right. destruct (nat_compare n' n0) eqn:Hnn.
+        now inversion_clear H1.
+        now inversion_clear H1.
+        inversion H1. subst x' n'. clear H1. repeat split.
+          now left.
+          intros ? ? [H | H]. discriminate H. inversion H. subst m0. clear H. now rewrite <- nat_compare_gt in Hnn.
+          intros y p Hneq Hin. inversion_clear Hin.
+            compute in H. destruct H. now elim Hneq.
+            now apply (H2 y).
+  + destruct r eqn:Hr; simpl in H1.
+    - right. destruct (pair_dec (x, n) (x', n')) as [Heq | Hneq].
+        repeat split.
+          now left.
+          intros ? ? [H | H]; discriminate H.
+          intros y p Hxy Hin. inversion_clear Hin.
+            exfalso. apply Hxy. now compute in H, Heq; destruct H, Heq; subst.
+            now apply (H3 y).
+        repeat split. 
+          now right.
+          intros ? ? [H | H]; discriminate H.
+          intros y p Hxy Hin. inversion_clear Hin.
+            compute in H; destruct H; subst. simpl in H2. apply (H2 x'). now left.
+            now apply (H3 y).
+    - simpl in H2. destruct (nat_compare n' n0) eqn:Hnn.
+        right. rewrite nat_compare_eq_iff in Hnn. subst n0. repeat split.
+          now right.
+          intros y m' [Heq | Habs].
+            inversion Heq. subst m' l0. clear Heq. apply (H2 y). now right.
+            now inversion Habs.
+          intros y p Hxy Hin. inversion_clear Hin.
+            compute in H; destruct H; subst. apply (H2 x'). now right.
+            now apply (H3 y). 
+        rewrite <- nat_compare_lt in Hnn. destruct (pair_dec (x, n) (l0, n0)) as [Heq | Hneq].
+          compute in Heq; destruct Heq; subst. elim (lt_irrefl n0). apply (H2 l0). now left.
+          right. repeat split.
+            now right.
+            intros y p [Hin | Hin]; inversion Hin. subst l0 n0. clear Hin. apply (H2 y). now left.
+            intros y p Hxy Hin. inversion_clear Hin.
+              compute in H; destruct H; subst. transitivity n0. assumption. apply (H2 l0). now left.
+              now apply (H3 y).
+        rewrite <- nat_compare_gt in Hnn. right. repeat split.
+          now right.
+          intros y p [Hin | Hin]; inversion Hin. subst. transitivity n'. assumption. apply (H2 x'). now left.
+          intros y p Hxy Hin. inversion_clear Hin.
+            compute in H; destruct H; subst. apply (H2 x'). now left.
+            now apply (H3 y).
+    - right. repeat split.
+        now right.
+        intros y p [Hin | Hin]; inversion Hin; subst; clear Hin. simpl in H2. destruct (nat_compare n' p) eqn:Hnp.
+          apply (H2 y). now right.
+          apply (H2 y). now right.
+          transitivity n'.
+            now rewrite <- nat_compare_gt in Hnp.
+            apply (H2 x'). now left.
+        intros y p Hxy Hin. simpl in H2. destruct (nat_compare n' n0) eqn:Hnn.
+          rewrite nat_compare_eq_iff in Hnn. subst n0. inversion_clear Hin.
+            compute in H; destruct H; subst. apply (H2 x'). now right.
+            now apply (H3 y).
+          rewrite <- nat_compare_lt in Hnn. inversion_clear Hin.
+            compute in H; destruct H; subst. transitivity n0.
+              assumption.
+              apply (H2 x'). now right.
+            now apply (H3 y).
+          rewrite <- nat_compare_gt in Hnn. inversion_clear Hin.
+            compute in H; destruct H; subst. apply (H2 x'). now left.
+            now apply (H3 y).
+  + subst r. simpl. 
+    assert (Hnn : nat_compare n' n = Lt). { rewrite <- nat_compare_lt. apply (H2 x'). now left. }
+    rewrite Hnn. left. split.
+      reflexivity.
+      intros y p Hin. apply (H2 y). now right.
+  + destruct r eqn:Hr; simpl.
+    - destruct (pair_dec (x, n) (x', n')) as [Heq | Hneq].
+        left. compute in Heq; destruct Heq; subst n' x'. split.
+          reflexivity.
+          intros y p Hin. destruct (Rdec x y).
+            subst y. elim Hnin. apply (@InA_eqA _ M.eq_key _ l (x, p)).
+              reflexivity.
+              revert Hin. apply InA_impl_compat; trivial. now intros ? ? [? ?].
+            apply (H3 y). assumption. now right.
+        inversion_clear H1.
+          contradiction.
+          right. repeat split.
+            assumption.
+            intros y p [Hin | Hin]; inversion Hin; subst y p; clear Hin.
+            assert (x <> x').
+            { intro Habs. subst x'. apply Hnin. apply (@InA_eqA _ _ _ l (x, n)).
+                reflexivity.
+                revert H. apply InA_impl_compat; trivial. now intros ? ? [? ?]. }
+            apply (H3 x'). assumption. now left.
+            intros y p Hxy Hin. apply (H3 y). assumption. now right.
+    - destruct (nat_compare n' n0) eqn:Hnn.
+        right. rewrite nat_compare_eq_iff in Hnn. subst n0. destruct (eq_nat_dec n n') as [Habs | Hnn].
+          subst n'. elim (lt_irrefl n). apply (H2 l0). now left.
+          inversion_clear H1. elim Hnn. now destruct H. repeat split.
+            assumption.
+            intros y p [Hin | Hin]; inversion Hin; subst n'; clear Hin. apply (H2 l0). now left.
+            intros y p Hxy Hin. apply (H3 y). assumption. now right.
+        rewrite <- nat_compare_lt in Hnn. right. inversion_clear H1.
+          compute in H; destruct H; subst x' n'. elim (lt_irrefl n). transitivity n0.
+            assumption.
+            apply (H2 l0). now left.
+          repeat split.
+            assumption.
+            intros y p [Hin | Hin]; inversion Hin; subst l0 n0; clear Hin. apply (H2 y). now left.
+            intros y p Hxy Hin. apply (H3 y). assumption. now right.
+        destruct (pair_dec (x, n) (x', n')) as [Heq | Hneq].
+          left. clear H1 H2. compute in Heq; destruct Heq; subst x' n'. split.
+            reflexivity.
+            intros y p Hin. destruct (Rdec x y).
+              subst y. elim Hnin. apply (@InA_eqA _ _ _ _ (x, p)).
+                reflexivity.
+                revert Hin. apply InA_impl_compat; trivial. now intros ? ? [? ?].
+              apply (H3 y). assumption. now right.
+          right. inversion_clear H1.
+            contradiction.
+            repeat split.
+              assumption.
+              intros y p [Hin | Hin]; inversion Hin; subst y p; clear Hin. apply (H3 x').
+                intro Habs. subst x'. apply Hnin. apply (@InA_eqA _ _ _ _ (x, n)).
+                  reflexivity.
+                  revert H. apply InA_impl_compat; trivial. now intros ? ? [? ?].
+                now left.
+              intros y p Hxy Hin. apply (H3 y). assumption. now right.
+    - destruct (nat_compare n' n0) eqn:Hnn.
+        rewrite nat_compare_eq_iff in Hnn. subst n0.
+        assert (Hnn : (n' < n)%nat). { apply (H2 x). now right. }
+        right. repeat split.
+          inversion_clear H1.
+            compute in H; destruct H; subst x' n'. now elim (lt_irrefl n).
+            assumption.
+          intros y p [Hin | Hin]; inversion Hin; subst p; clear Hin. assumption.
+          intros y p Hxy Hin. apply (H3 y). assumption. now right.
+        rewrite <- nat_compare_lt in Hnn.
+        assert (Hlt : (n' < n)%nat). { transitivity n0. assumption. apply (H2 x). now right. }
+        right. repeat split.
+          inversion_clear H1.
+            compute in H; destruct H; subst x' n'. now elim (lt_irrefl n).
+            assumption.
+          intros y p [Hin | Hin]; inversion Hin; subst p; clear Hin. apply (H2 x). now right.
+          intros y p Hxy Hin. apply (H3 y). assumption. now right.
+        destruct (pair_dec (x, n) (x', n')) as [Heq | Hneq].
+          left. clear H1 H2. compute in Heq; destruct Heq; subst x' n'. split.
+            reflexivity.
+            intros y p Hin. destruct (Rdec x y).
+              subst y. elim Hnin. apply (@InA_eqA _ _ _ _ (x, p)).
+                reflexivity.
+                revert Hin. apply InA_impl_compat; trivial. now intros ? ? [? ?].
+              apply (H3 y). assumption. now right.
+          right. inversion_clear H1.
+            contradiction.
+            repeat split.
+              assumption.
+              intros y p [Hin | Hin]; inversion Hin; subst y p; clear Hin. apply (H3 x').
+                intro Habs. subst x'. apply Hnin. apply (@InA_eqA _ _ _ _ (x, n)).
+                  reflexivity.
+                  revert H. apply InA_impl_compat; trivial. now intros ? ? [? ?].
+                now left.
+              intros y p Hxy Hin. apply (H3 y). assumption. now right.
 Qed.
 
-Lemma has_dups_NoDup_Some : forall l, (exists pt, has_dups l = Some pt) <-> ~NoDup l.
+Corollary majority_stack_Valid_spec : forall l x n,
+  (majority_stack l = Valid x n
+   <-> (M.multiplicity x (multiset l) = n /\ forall y, x <> y -> M.multiplicity y (multiset l) < n)%nat).
 Proof.
-intro l. split; intro H.
-  intro Hl. rewrite <- has_dups_NoDup_None in Hl. rewrite Hl in H. destruct H as [pt H]. discriminate H.
-  rewrite <- has_dups_NoDup_None in H. destruct (has_dups l). now exists r. now elim H.
+intros l x n. destruct n.
++ split; intro H.
+  - apply majority_stack_Valid_0 in H. elim H.
+  - destruct H as [_ H]. specialize (H _ (succ_neq x)). omega.
++ unfold majority_stack. rewrite majority_stack_Valid_spec_aux. split; intro H.
+  - destruct H as [[Habs _] | [H1 [H2 H3]]].
+      discriminate Habs.
+      now split.
+  - destruct H as [H1 H2]. right. repeat split.
+      assumption.
+      intros ? ? [Habs | Habs]; discriminate Habs.
+      assumption.
+  - omega.
 Qed.
 
-Theorem has_dups_Stack : forall pos, Stack pos <-> exists pt, has_dups (nominal_spectrum pos) = Some pt.
+Theorem majority_stack_spec : forall pos,
+  (exists x n, majority_stack (nominal_spectrum pos) = Valid x n) <-> Stack pos.
+Proof. intro pos. setoid_rewrite majority_stack_Valid_spec. unfold Stack. reflexivity. Qed.
+
+Lemma majority_stack_Invalid_0_aux : forall m r, 
+  M.fold f_majority m r = Invalid 0 <-> M.Empty m /\ r = Invalid 0.
 Proof.
-intro pos. rewrite nominal_spectrum4. split.
-- intros [n1 [n2 [Hneq Heq]]]. unfold has_dups. simpl. repeat Rdec_full; try
-  match goal with |- exists pt : R, Some ?n = Some pt => now exists n end.
-  destruct n1, n2; (now elim Hneq) || contradiction || (symmetry in Heq; contradiction).
-- intros [pt Hpt]. revert Hpt. unfold has_dups. simpl. repeat Rdec_full; intro Hpt; try discriminate Hpt;
-  match goal with H : gp pos ?n = gp pos ?m |- _ => exists n; exists m end; split; discriminate || assumption.
+intros m r. rewrite M.fold_spec. rewrite <- M.elements_nil.
+assert (Hm : forall xn, InA M.eq_pair xn (M.elements m) -> M.multiplicity (fst xn) m = snd xn /\ (snd xn > 0)%nat)
+by (intro; apply M.elements_spec).
+revert r. induction (M.elements m); simpl; intro r.
+  now intuition.
+  rewrite IHl. clear IHl.
+    split; intros [H1 H2]; exfalso.
+      subst l. destruct a, r; simpl in H2.
+        discriminate H2.
+        destruct (nat_compare n n0) eqn:Hn; try discriminate H2.
+        inversion H2. rewrite nat_compare_eq_iff in Hn. subst. clear H2.
+        apply (gt_irrefl 0). apply (Hm (e, 0%nat)). now left.
+        destruct (nat_compare n n0) eqn:Hn.
+          inversion H2. rewrite nat_compare_eq_iff in Hn. subst. clear H2.
+          apply (gt_irrefl 0). apply (Hm (e, 0%nat)). now left.
+          inversion H2. rewrite <- nat_compare_lt in Hn. subst. now inversion Hn.
+          discriminate H2.
+      discriminate H1.
+    intros xn Hin. apply (Hm xn). now right.
 Qed.
 
-Corollary Stack_NoDup : forall pos, Stack pos <-> ~NoDup (nominal_spectrum pos).
-Proof. intro. rewrite has_dups_Stack. apply has_dups_NoDup_Some. Qed.
-(*
+Corollary majority_stack_Invalid_0 : forall m, majority_stack m <> Invalid 0.
 Proof.
-intro pos. split; intro H.
-+ intro Habs. rewrite nominal_spectrum4 in Habs. inversion_clear Habs.
-  inversion_clear H1. inversion_clear H3. inversion_clear H4. clear H5.
-  destruct H as [[] [[] [Hneq Heq]]]; (now elim Hneq) || rewrite Heq in *; intuition.
-+ rewrite <- has_dups_NoDup in H. SearchAbout None Some.
-  case_eq (has_dups (nominal_spectrum pos)); intros r Hr || intro; try contradiction.
-  rewrite has_dups_spec in Hr. destruct Hr as [l1 [l2 [Hl1 [Hn1 [Hin [Hl2 Heq]]]]]].
-  assert (Hlength : length (l1 ++ r :: l2) = 4%nat). { rewrite <- Heq. now rewrite nominal_spectrum4. }
-  rewrite app_length in Hlength. simpl in *.
-  destruct l1 as [| a [| b [| c [|]]]]; destruct l2 as [| a' [| b' [| c' [|]]]];
-  simpl in *; try discriminate Hlength; try (rewrite plus_comm in Hlength; discriminate Hlength); clear Hlength;
-  repeat (destruct Hl2 as [Hl2 | Hl2]); ((now elim Hl2) || subst);
-    rewrite nominal_spectrum4 in Heq; inversion Heq;
-    match goal with
-      | H : gp pos ?n = gp pos ?m |- _ => exists n; exists m
-    end; split; discriminate || assumption.
+unfold majority_stack. intros m H. rewrite majority_stack_Invalid_0_aux in H. destruct H as [_ H]. discriminate H.
 Qed.
-*)
 
-(* If the position is forbidden, we have two possible stacks. *)
-Lemma has_dups_None_invariant :
-  forall (s s' : spectrum), Permutation s s' -> (has_dups s = None <-> has_dups s' = None).
-Proof. intros. do 2 rewrite has_dups_NoDup_None. split; apply Permutation_NoDup; assumption || now symmetry. Qed.
-
-Lemma has_dups_map : forall pt f s, has_dups s = Some pt -> has_dups (map f s) = Some (f pt).
-Proof. Admitted.
-(* can be proven with a correct definition for has_dups *)
-
-Corollary has_dups_similarity : forall pt k t pos,
-  has_dups (nominal_spectrum pos) = Some pt -> has_dups (nominal_spectrum (⟦ k, t⟧ pos)) = Some (k * (pt - t)).
-Proof. intros. rewrite nominal_spectrum_similarity. now rewrite (@has_dups_map pt). Qed.
-
-Lemma has_dups_similarity_None : forall k t pos, k <> 0 ->
-  has_dups (nominal_spectrum pos) = None -> has_dups (nominal_spectrum (⟦ k, t⟧ pos)) = None.
+Lemma majority_stack_Invalid_spec_aux : forall l n r, n > 0 ->
+  List.fold_left (fun acc xn => f_majority (fst xn) (snd xn) acc) (M.elements (multiset l)) r = Invalid n ->
+  r = Invalid n /\ (forall z p, InA M.eq_pair (z, p) (M.elements (multiset l)) -> p < n)
+  \/ exists x y, InA M.eq_pair (x, n) (M.elements (multiset l))
+                /\ (r = Valid y n
+                    \/ r = Invalid n
+                    \/ InA M.eq_pair (y, n) (M.elements (multiset l))
+                       /\ (forall y m, (r = Valid y m \/ r = Invalid m) -> m < n)
+                       /\ x <> y)
+                /\ (forall z p, InA M.eq_pair (z, p) (M.elements (multiset l)) -> p <= n).
 Proof.
-intros k t pos Hk. do 2 rewrite nominal_spectrum4.
-simpl; repeat Rdec_full; intros Hnone; discriminate Hnone ||
-  now (rewrite local_invert in Heq) || idtac.
+intros l' n r Hn. revert r.
+assert (Hdup := M.elements_NoDupA (multiset l')).
+induction (M.elements (multiset l')) as [| [x' n'] l]; clear l'; simpl; intros r Hl.
+  left. split. assumption. intros ? ? Habs. now inversion Habs.
+  inversion_clear Hdup. apply IHl in Hl; trivial. clear IHl.
+  destruct r eqn:Hr.
+  * destruct Hl as [[Hl1 Hl2] | [x [y [Hx [Hy Hle]]]]]; simpl in *.
+    + discriminate Hl1.
+    + right. exists x. exists y. repeat split.
+        now right.
+        do 2 right. destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          inversion Hy. subst. clear Hy. repeat split.
+            now left.
+            intros z p [Habs | Habs]; discriminate Habs.
+            intro. subst y. apply H. revert Hx. now apply (InA_impl_compat _).
+          now inversion Hy.
+          repeat split.
+            now right.
+            intros z p [Habs | Habs]; discriminate Habs.
+            assumption.
+        intros z p Hin. inversion_clear Hin.
+          compute in H1; destruct H1; subst x' n'. destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+            now inversion_clear Hy.
+            now inversion_clear Hy.
+            apply lt_le_weak. apply (Hy2 z). now left.
+          now apply (Hle z).
+  * destruct Hl as [[Hl1 Hl2] | [x [y [Hx [Hy Hle]]]]]; simpl in *.
+    + destruct (nat_compare n' n0) eqn:Hnn; try discriminate Hl1.
+      rewrite nat_compare_eq_iff in Hnn. inversion Hl1. subst n0 n'. clear Hl1.
+      right. exists x'. exists l0. repeat split.
+        now left.
+        now left.
+        intros z p Hin. inversion_clear Hin.
+          compute in H1. now intuition.
+          apply lt_le_weak. now apply (Hl2 z).
+    + right. destruct (nat_compare n' n0) eqn:Hnn.
+      - rewrite nat_compare_eq_iff in Hnn. subst n0.
+        destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          discriminate Hy.
+          inversion Hy. subst n'. clear Hy. exists x. exists l0. repeat split.
+            now right.
+            now left.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1. destruct H1. subst. reflexivity.
+              now apply (Hle z).
+          exists x. exists y. repeat split.
+            now right.
+            do 2 right. repeat split.
+              now right.
+              intros z p [Habs | Habs].
+                apply (Hy2 z). right. now inversion Habs.
+                discriminate Habs.
+              assumption.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1; destruct H1; subst x' n'. apply lt_le_weak, (Hy2 z). now right.
+              now apply (Hle z).
+      - rewrite <- nat_compare_lt in Hnn. exists x. exists y.
+        destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          inversion Hy. subst n0 l0. clear Hy. repeat split.
+            now right.
+            now left.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1; destruct H1; subst. now apply lt_le_weak. 
+              now apply (Hle z).
+          discriminate Hy.
+          repeat split.
+            now right.
+            do 2 right. repeat split.
+              now right.
+              intros z p [Hin | Hin].
+                apply (Hy2 l0). left. now inversion Hin.
+                discriminate Hin.
+              assumption.
+              intros z p Hin. inversion_clear Hin.
+                compute in H1; destruct H1; subst x' n'. apply lt_le_weak. transitivity n0.
+                  assumption.
+                  apply (Hy2 l0). now left.
+            now apply (Hle z).
+      - rewrite <- nat_compare_gt in Hnn. exists x. exists y.
+        destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          inversion Hy. subst x' n'. clear Hy. repeat split.
+            now right.
+            do 2 right. repeat split.
+              now left.
+              intros z p [Hin | Hin].
+                inversion Hin. subst n0 l0. clear Hin. assumption.
+                discriminate Hin.
+              intro. subst y. apply H. revert Hx. now apply (InA_impl_compat _).
+            intros z p Hin. inversion_clear Hin.
+              compute in H1. now intuition.
+              now apply (Hle z).
+          discriminate Hy.
+          repeat split.
+            now right.
+            do 2 right. repeat split.
+              now right.
+              intros z p [Hin | Hin].
+                inversion Hin. subst n0 l0. clear Hin. transitivity n'.
+                  assumption.
+                  apply (Hy2 x'). now left.
+                discriminate Hin.
+              assumption.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1. destruct H1. subst. apply lt_le_weak, (Hy2 x'). now left.
+              now apply (Hle z).
+  * destruct Hl as [[Hl1 Hl2] | [x [y [Hx [Hy Hle]]]]]; simpl in *.
+    + destruct (nat_compare n' n0) eqn:Hnn; try discriminate Hl1.
+      - rewrite nat_compare_eq_iff in Hnn. inversion Hl1. subst n0 n'. clear Hl1.
+        right. exists x'. exists x'. repeat split.
+          now left.
+          now right; left.
+          intros z p Hin. inversion_clear Hin.
+            compute in H1. now intuition.
+            apply lt_le_weak. now apply (Hl2 z).
+      - rewrite <- nat_compare_lt in Hnn. inversion Hl1. subst n0. clear Hl1.
+        left. split. reflexivity.
+        intros z p Hin. inversion_clear Hin.
+          compute in H1. now intuition.
+          now apply (Hl2 z).
+    + right. exists x. exists y. destruct (nat_compare n' n0) eqn:Hnn.
+      - rewrite nat_compare_eq_iff in Hnn. subst n0.
+        destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          discriminate Hy.
+          inversion Hy. subst n'. clear Hy. repeat split.
+            now right.
+            now right; left.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1. destruct H1. subst. reflexivity.
+              now apply (Hle z).
+          repeat split.
+            now right.
+            do 2 right. repeat split.
+              now right.
+              intros z p [Habs | Habs].
+                discriminate Habs.
+                apply (Hy2 z). now right.
+              assumption.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1; destruct H1; subst x' n'. apply lt_le_weak, (Hy2 z). now right.
+              now apply (Hle z).
+      - rewrite <- nat_compare_lt in Hnn.
+        destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          discriminate Hy.
+          inversion Hy. subst n0. clear Hy. repeat split.
+            now right.
+            now right; left.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1; destruct H1; subst. now apply lt_le_weak. 
+              now apply (Hle z).
+          repeat split.
+            now right.
+            do 2 right. repeat split.
+              now right.
+              intros z p [Hin | Hin].
+                discriminate Hin.
+                apply (Hy2 y). now right.
+              assumption.
+              intros z p Hin. inversion_clear Hin.
+                compute in H1; destruct H1; subst x' n'. apply lt_le_weak. transitivity n0.
+                  assumption.
+                  apply (Hy2 y). now right.
+            now apply (Hle z).
+      - rewrite <- nat_compare_gt in Hnn.
+        destruct Hy as [Hy | [Hy | [Hy1 [Hy2 Hxy]]]].
+          inversion Hy. subst x' n'. clear Hy. repeat split.
+            now right.
+            do 2 right. repeat split.
+              now left.
+              intros z p [Hin | Hin].
+                discriminate Hin.
+                inversion Hin. subst n0. clear Hin. assumption.
+              intro. subst y. apply H. revert Hx. now apply (InA_impl_compat _).
+            intros z p Hin. inversion_clear Hin.
+              compute in H1. now intuition.
+              now apply (Hle z).
+          discriminate Hy.
+          repeat split.
+            now right.
+            do 2 right. repeat split.
+              now right.
+              intros z p [Hin | Hin].
+                discriminate Hin.
+                inversion Hin. subst n0. clear Hin. transitivity n'.
+                  assumption.
+                  apply (Hy2 x'). now left.
+              assumption.
+            intros z p Hin. inversion_clear Hin.
+              compute in H1. destruct H1. subst. apply lt_le_weak, (Hy2 x'). now left.
+              now apply (Hle z).
 Qed.
+
+Corollary majority_stack_Invalid_correct : forall l n,
+  majority_stack l = Invalid n ->
+  n > 0 /\ exists x, exists y, M.multiplicity x (multiset l) = n /\ M.multiplicity y (multiset l) = n
+                                /\ x <> y /\ forall z, M.multiplicity z (multiset l) <= n.
+Proof.
+intros l n H.
+assert (Hn : n > 0) by (destruct n; omega || elim (majority_stack_Invalid_0 H)).
+split. assumption.
+unfold majority_stack in H. rewrite M.fold_spec in H.
+apply (majority_stack_Invalid_spec_aux _ _ Hn) in H.
+destruct H as [[Habs _] | [x [y [Hx [Hy Hle]]]]].
+  discriminate Habs.
+  exists x. exists y. destruct Hy as [Habs | [Habs | [Hy [_ Hxy]]]]; try discriminate Habs.
+  rewrite M.elements_spec in *. simpl in *. destruct Hx, Hy. repeat split; trivial.
+  intros z. destruct (M.multiplicity z (multiset l)) eqn:Hz.
+    omega.
+    rewrite <- Hz. apply (Hle z). rewrite M.elements_spec. split. reflexivity. rewrite Hz. simpl. omega.
+Qed.
+
+Theorem majority_stack_Invalid_spec : forall l n,
+  majority_stack l = Invalid n <->
+  n > 0 /\ exists x, exists y, M.multiplicity x (multiset l) = n /\ M.multiplicity y (multiset l) = n
+                                /\ x <> y /\ forall z, M.multiplicity z (multiset l) <= n.
+Proof.
+intros l n. split; intro H.
++ now apply majority_stack_Invalid_correct.
++ destruct H as [Hn [x [ y [ H1 [H2 [H3 H4]]]]]]. destruct (majority_stack l) as [| pt p | p] eqn:Hmaj.
+  - rewrite majority_stack_NoResult_spec in Hmaj. subst l. rewrite multiset_nil in *.
+    rewrite M.empty_spec in H1. subst n. now elim (lt_irrefl 0).
+  - rewrite majority_stack_Valid_spec in Hmaj. destruct Hmaj as [Hmaj1 Hmaj2].
+    destruct (Rdec pt x).
+      subst pt. rewrite H1 in Hmaj1. subst p. elim (lt_irrefl n). rewrite <- H2 at 1. now apply (Hmaj2 y).
+      elim (lt_irrefl p). apply le_lt_trans with n.
+        rewrite <- Hmaj1. now apply H4.
+        rewrite <- H1. now apply (Hmaj2 x).
+  - f_equal. apply majority_stack_Invalid_correct in Hmaj. destruct Hmaj as [Hp [x' [y' [Hx [ Hy [_ Hle]]]]]].
+     apply le_antisym.
+       rewrite <- Hx. now apply H4.
+       rewrite <- H1. now apply Hle.
+Qed.
+
+Definition list_rect2 : forall A P, P nil -> (forall a : A, P (a :: nil)) ->
+                              (forall a b l, P l -> P (a :: b :: l)) ->
+                              forall l, P l :=
+  fun A P Pnil Pone Prec =>
+  fix F (l : list A) : P l :=
+  match l as l return (P l) with
+  | nil => Pnil
+  | x :: nil => Pone x
+  | x :: y :: l0 => Prec x y l0 (F l0)
+  end.
+
+Lemma majority_stack_Invalid_1 : forall l, majority_stack l = Invalid 1 -> NoDup l.
+Proof.
+intros l Hl. induction l using list_rect2.
+- constructor.
+- constructor. apply in_nil. constructor.
+- rewrite majority_stack_Invalid_spec in Hl. destruct Hl as [_ [x [y [Hx [Hy [Hxy Hle]]]]]].
+  do 2 rewrite multiset_cons in *.
+  assert (Hab : b <> a).
+  { intro. subst b. cut (2 <= 1). omega. transitivity (M.multiplicity a (M.add a 1 (M.add a 1 (multiset l)))).
+      do 2 rewrite M.add_spec. omega.
+      do 2 rewrite <- multiset_cons. apply Hle. }
+  assert (~In a l).
+  { specialize (Hle a). do 2 rewrite multiset_cons in Hle. rewrite M.add_spec, M.add_spec' in Hle; auto.
+    rewrite plus_comm in Hle. apply le_S_n in Hle. apply le_n_0_eq in Hle. rewrite <- multiset_In. omega. }
+  assert (~In b l).
+  { specialize (Hle b). do 2 rewrite multiset_cons in Hle. rewrite M.add_spec', M.add_spec in Hle; auto.
+    rewrite plus_comm in Hle. apply le_S_n in Hle. apply le_n_0_eq in Hle. rewrite <- multiset_In. omega. }
+  constructor.
+    intros [ | ]; contradiction.
+    constructor. assumption.
+Admitted.
+
 
 Ltac Rdec_aux H :=
   match type of H with
@@ -1234,7 +1542,7 @@ unfold is_forbidden at 1. simpl remove. Rdec. destruct (remove Rdec r l) as [| r
       destruct Habs; auto.
 Qed.
 
-
+Open Scope R_scope.
 Definition range b1 b2 (s : spectrum) :=
   List.Forall (fun x => b1 <= x <= b2) s.
 
@@ -1297,13 +1605,44 @@ intros x y ? s s' Hs. subst. unfold is_extremal.
 assert (Heq : sort s = sort s'). now rewrite Hs. now rewrite Heq.
 Qed.
 
-Lemma is_extremal_similarity_invariant : forall k t pos r, k <> 0 ->
+Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> B) :=
+  Proper (RA ==> RB) f \/ Proper (RA --> RB) f.
+
+Notation injective f := (forall x y, f x = f y -> x = y).
+
+Lemma similarity_monotonic : forall k t, monotonic Rleb Rleb (fun x => k * (x - t)).
+Proof.
+intros k t. destruct (total_order_T 0 k) as [[Hlt | H0] | Hlt].
++ left. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Rmult_le_compat_l; lra.
++ subst k. left. repeat intro. setoid_rewrite Rmult_0_l. hnf. rewrite Rleb_spec. apply Rle_refl.
++ right. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Ropp_le_cancel.
+  replace (- (k * (y - t))) with ((- k) * (y - t)) by ring.
+  replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
+  apply Rmult_le_compat_l; lra.
+Qed.
+
+Lemma similarity_injective : forall k t, k <> 0 -> injective (fun x => k * (x - t)).
+Proof. intros k t Hk x y. now rewrite local_invert. Qed.
+
+
+Lemma is_extremal_map_monotonic_invariant : forall f, monotonic Rleb Rleb f -> injective f -> 
+  forall x l, is_extremal (f x) (map f l) = is_extremal x l.
+Proof.
+intros f Hfmon Hfinj x l. unfold is_extremal. destruct Hfmon as [Hfinc | Hfdec].
++ rewrite (sort_map_increasing Hfinc). rewrite map_hd, map_last.
+  repeat Rdec_full; reflexivity || (apply Hfinj in Heq; contradiction)
+                     || (now rewrite Heq in Hneq at 1; auto) || (rewrite Heq in Hneq0 at 1; auto).
++ rewrite (sort_map_decreasing Hfdec). rewrite hd_rev_last, last_rev_hd, map_hd, map_last.
+  repeat Rdec_full; reflexivity || (apply Hfinj in Heq; contradiction)
+                     || (now rewrite Heq in Hneq at 1; auto) || (rewrite Heq in Hneq0 at 1; auto).
+Qed.
+
+Corollary is_extremal_similarity_invariant : forall k t pos r, k <> 0 ->
   is_extremal (k * (r - t)) (nominal_spectrum (⟦k, t⟧ pos)) = is_extremal r (nominal_spectrum pos).
 Proof.
-intros k t pos r Hk. unfold is_extremal.
-Admitted.
-(* it requires to notice that similairty is monotonous and therefore may only reverse the order *)
-
+intros k t pos r Hk. rewrite nominal_spectrum_similarity.
+now rewrite (is_extremal_map_monotonic_invariant (similarity_monotonic k t) (similarity_injective Hk)).
+Qed.
 
 Definition extreme_center (s : spectrum) :=
   (List.hd 0 (sort s) + List.last (sort s) 0) / 2.
@@ -1312,19 +1651,46 @@ Definition extreme_center (s : spectrum) :=
 Instance extreme_center_perm_invariant : Proper (@Permutation R ==> eq) extreme_center.
 Proof. intros s s' Hs. unfold extreme_center. now rewrite Hs. Qed.
 
+Lemma extreme_center_map_similarity_invariant : forall k t, k <> 0 ->
+  forall l, l <> nil -> extreme_center (map (fun x => k * (x - t)) l) = k * (extreme_center l - t).
+Proof.
+intros k t Hk l Hl. destruct (similarity_monotonic k t) as [Hinc | Hdec].
++ unfold extreme_center. rewrite (sort_map_increasing Hinc). generalize 0.
+  assert (Hperm := Permuted_sort l). destruct (sort l) as [| x l']; intro r.
+    symmetry in Hperm. apply Permutation_nil in Hperm. contradiction.
+    clear l Hl Hperm. simpl hd. cut (x :: l' <> nil). generalize (x :: l'). intro l.
+    revert r. induction l; intros r Hl.
+      now elim Hl.
+      simpl. destruct l.
+        simpl. field.
+        rewrite <- IHl. reflexivity. discriminate. discriminate.
++ unfold extreme_center. rewrite (sort_map_decreasing Hdec).
+  rewrite last_rev_hd, hd_rev_last. generalize 0.
+  assert (Hperm := Permuted_sort l). destruct (sort l) as [| x l']; intro r.
+    symmetry in Hperm. apply Permutation_nil in Hperm. contradiction.
+    clear l Hl Hperm. simpl hd. cut (x :: l' <> nil). generalize (x :: l'). intro l.
+    revert r. induction l; intros r Hl.
+      now elim Hl.
+      simpl. destruct l.
+        simpl. field.
+        rewrite <- IHl. reflexivity. discriminate. discriminate.
+Qed.
+
 Lemma extreme_center_similarity_invariant : forall k t pos, k <> 0 ->
   extreme_center (nominal_spectrum (⟦k, t⟧ pos)) = k * (extreme_center (nominal_spectrum pos) - t).
 Proof.
-intros k t pos Hk. unfold extreme_center.
-Admitted.
-(* it requires to notice that similairty is monotonous and therefore may only reverse the order *)
+intros k t pos Hk. rewrite nominal_spectrum_similarity, extreme_center_map_similarity_invariant; trivial.
+rewrite nominal_spectrum4. discriminate.
+Qed.
+(* it requires to notice that similarity is monotonous and therefore may only reverse the order *)
 
 
 Definition robogram (s : spectrum) : location :=
   if is_forbidden s then 0 else
-  match has_dups s with
-    | Some p => p
-    | None => if is_extremal 0 s then 0 else extreme_center s end.
+  match majority_stack s with
+    | NoResult => 0 (* there is no robots anyway in this case *)
+    | Valid p n => p
+    | Invalid n => if is_extremal 0 s then 0 else extreme_center s end.
 
 Print Assumptions robogram.
 
@@ -1334,9 +1700,7 @@ Proof.
 unfold robogram. intros s s' Hperm. rewrite Hperm.
 destruct (is_forbidden s') eqn:Hforbidden.
 - reflexivity.
-- rewrite (has_dups_invariant (symmetry Hperm)). destruct (has_dups s).
-    reflexivity.
-    now do 2 rewrite Hperm.
+- rewrite Hperm. destruct (majority_stack s'); trivial. now do 2 rewrite Hperm.
 Qed.
 Print Assumptions robogram_invariant.
 
@@ -1429,16 +1793,198 @@ assert (ExtEq (round robogram da (gp pos))
 rewrite H.
 Admitted.
 
-(*
+Definition equiv_by (f : R -> R) r r' :=
+  match r, r' with
+    | NoResult, NoResult => True
+    | Valid y m, Valid x n => y = f x /\ m = n
+    | Invalid m, Invalid n => m = n
+    | _, _ => False
+  end.
+
+Lemma majority_stack_inj_compat_aux : forall f l x n r r',
+  injective f -> equiv_by f r r' ->
+  (List.fold_left (fun acc xn => f_majority (fst xn) (snd xn) acc)
+                  (map (fun xn => (f (fst xn), snd xn)) l) r = Valid (f x) n
+  <-> List.fold_left (fun acc xn => f_majority (fst xn) (snd xn) acc) l r' = Valid x n).
+Proof.
+intros f l x n r r' Hf. revert r r'. induction l; intros r r' Hr; simpl.
++ split; intro; (subst r; destruct r') || (subst r'; destruct r); simpl in Hr; try now elim Hr.
+    destruct Hr as [Hr1 Hr2]. apply Hf in Hr1. now subst.
+    destruct Hr. now subst.
++ apply IHl. destruct a as [y m], r, r'; simpl; simpl in Hr; try now elim Hr.
+    destruct Hr. subst. now destruct (nat_compare m n1).
+    subst. now destruct (nat_compare m n1).
+Qed.
+
+Instance PermutationA_compat A eqA (HeqA : @Equivalence A eqA) :
+  Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (PermutationA eqA).
+Proof. intros l1 l2 Hl12 l3 l4 Hl34. now rewrite Hl12, Hl34. Qed.
+
+Lemma majority_stack_inj_map_Valid_compat : forall f l x n, injective f ->
+  (majority_stack (map f l) = Valid (f x) n <-> majority_stack l = Valid x n).
+Proof.
+intros f l x n Hf. do 2 rewrite majority_stack_Valid_spec. split; intros [Hn Hle]; split.
++ clear Hle. revert n Hn. induction l; simpl; intros n Hn.
+    now rewrite multiset_nil, M.empty_spec in *.
+    destruct (Rdec a x) as [| Hneq].
+      subst a. rewrite multiset_cons, M.add_spec in *. destruct n. omega.
+      rewrite plus_comm in *; simpl in *. f_equal. apply eq_add_S in Hn. now apply IHl.
+      assert (f a <> f x) by auto.
+      rewrite multiset_cons, M.add_spec' in *; trivial. now apply IHl.
++ clear Hn. intros y Hxy. assert (Hn : f x <> f y) by auto. apply Hle in Hn. revert Hn. clear Hle Hxy.
+  revert n y. induction l; simpl; intros n y Hin.
+    now rewrite multiset_nil, M.empty_spec in *.
+    rewrite multiset_cons in *. destruct (Rdec a y).
+      subst a. rewrite M.add_spec in *. destruct n. omega.
+      rewrite plus_comm in *; simpl in *. apply lt_n_S. apply lt_S_n in Hin. now apply IHl.
+      assert (f a <> f y) by auto. rewrite M.add_spec' in *; trivial. now apply IHl.
++ clear Hle. revert n Hn. induction l; simpl; intros n Hn.
+    now rewrite multiset_nil, M.empty_spec in *.
+    destruct (Rdec a x) as [| Hneq].
+      subst a. rewrite multiset_cons, M.add_spec in *. destruct n. omega.
+      rewrite plus_comm in *; simpl in *. f_equal. apply eq_add_S in Hn. now apply IHl.
+      assert (f a <> f x) by auto.
+      rewrite multiset_cons, M.add_spec' in *; trivial. now apply IHl.
++ clear Hn. intros y Hxy. destruct (in_dec Rdec y (map f l)) as [Hin | Hin].
+  - rewrite in_map_iff in Hin. destruct Hin as [z [Hyz Hin]]. subst y.
+    assert (Hxz : x <> z). { intro. subst z. now apply Hxy. }
+    apply Hle in Hxz. clear Hle Hxy Hin. revert n z Hxz. induction l; intros n z Hin.
+      now rewrite multiset_nil, M.empty_spec in *.
+      simpl. rewrite multiset_cons in *. destruct (Rdec a z).
+        subst a. rewrite M.add_spec in *. destruct n. omega.
+        rewrite plus_comm in *; simpl in *. apply lt_n_S. apply lt_S_n in Hin. now apply IHl.
+        assert (f a <> f z) by auto. rewrite M.add_spec' in *; trivial. now apply IHl.
+  - destruct n.
+      specialize (Hle _ (succ_neq x)). omega.
+      rewrite <- multiset_In in Hin. omega.
+Qed.
+
+Lemma majority_stack_Valid_similarity : forall k t pos x n, k <> 0 -> 
+  (majority_stack (nominal_spectrum ((⟦k, t⟧) pos)) = Valid (k * (x - t)) n
+  <-> majority_stack (nominal_spectrum pos) = Valid x n).
+Proof.
+intros k t pos x n Hk. rewrite nominal_spectrum_similarity.
+assert (Hf := fun x y => proj1 (@local_invert k t x y Hk)).
+now rewrite (majority_stack_inj_map_Valid_compat _ _ _ _ Hf).
+Qed.
+
+Lemma majority_stack_Invalid_similarity : forall k t pos n, k <> 0 -> 
+  (majority_stack (nominal_spectrum ((⟦k, t⟧) pos)) = Invalid n
+  <-> majority_stack (nominal_spectrum pos) = Invalid n).
+Proof.
+intros k t pos n Hk. rewrite nominal_spectrum_similarity. generalize (nominal_spectrum pos). clear pos.
+intro s. do 2 rewrite majority_stack_Invalid_spec. split; intros [Hn [x [y [Hx [Hy [Hxy Hle]]]]]].
+* split. assumption. exists (/k * x + t). exists (/k * y + t). repeat split.
+  + clear y Hxy Hy Hle. revert n Hn Hx. induction s; simpl; intros n Hn Hx.
+      now rewrite multiset_nil, M.empty_spec in *.
+      rewrite multiset_cons in *. destruct (Rdec (k * (a - t)) x) as [Heq | Hneq].
+      - subst x. assert (/k * (k * (a - t)) + t = a) by now field. rewrite H in *.
+        rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
+        f_equal. apply eq_add_S in Hx. destruct n.
+          assert (Hin : ~In (k * (a - t)) (map (fun x : R => k * (x - t)) s)). { rewrite <- multiset_In. omega. }
+          rewrite in_map_iff in Hin. destruct (in_dec Rdec a s) as [| Hnin].
+            elim Hin. exists a. now split.
+            rewrite <- multiset_In in Hnin. omega.
+          apply IHs. omega. assumption.
+      - assert (a <> /k * x + t). { intro. subst a. apply Hneq. admit. } (* PB pour avoir field sur M.elt = R *)
+        rewrite M.add_spec' in *; trivial. now apply IHs.
+  + clear x Hxy Hx Hle. revert n Hn Hy. induction s; simpl; intros n Hn Hy.
+      now rewrite multiset_nil, M.empty_spec in *.
+      rewrite multiset_cons in *. destruct (Rdec (k * (a - t)) y) as [Heq | Hneq].
+      - subst y. assert (/k * (k * (a - t)) + t = a) by now field. rewrite H in *.
+        rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
+        f_equal. apply eq_add_S in Hy. destruct n.
+          assert (Hin : ~In (k * (a - t)) (map (fun x : R => k * (x - t)) s)). { rewrite <- multiset_In. omega. }
+          rewrite in_map_iff in Hin. destruct (in_dec Rdec a s) as [| Hnin].
+            elim Hin. exists a. now split.
+            rewrite <- multiset_In in Hnin. omega.
+          apply IHs. omega. assumption.
+      - assert (a <> /k * y + t). { intro. subst a. apply Hneq. admit. } (* PB pour avoir field sur M.elt = R *)
+        rewrite M.add_spec' in *; trivial. now apply IHs.
+  + rewrite <- (local_invert t _ _ Hk). intro Heq. field_simplify in Heq; auto. apply Hxy.
+    assert (x / 1 = x) by field. rewrite <- H, Heq. now assert (y / 1 = y) by field.
+  + clear x y Hx Hy Hxy. intro z. specialize (Hle (k * (z - t))).
+    revert n Hn Hle. induction s; simpl; intros n Hn Hle.
+      rewrite multiset_nil, M.empty_spec. omega.
+      rewrite multiset_cons in *. destruct (Rdec a z).
+      - subst z. rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
+        apply le_n_S. apply le_S_n in Hle. destruct n.
+          assert (Hin : ~In (k * (a - t)) (map (fun x : R => k * (x - t)) s)). { rewrite <- multiset_In. omega. }
+          rewrite in_map_iff in Hin. destruct (in_dec Rdec a s) as [| Hnin].
+            elim Hin. exists a. now split.
+            rewrite <- multiset_In in Hnin. omega.
+          apply IHs. omega. assumption.
+      - assert (k * (a - t) <> k * (z - t)) by now rewrite local_invert.
+        rewrite M.add_spec' in *; trivial. now apply IHs.
+* split. assumption. exists (k * (x - t)). exists (k * (y - t)). repeat split.
+  + clear y Hxy Hy Hle. revert n Hn Hx. induction s; simpl; intros n Hn Hx.
+      now rewrite multiset_nil, M.empty_spec in *.
+      rewrite multiset_cons in *. destruct (Rdec a x) as [Heq | Hneq].
+      - subst x. rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
+        f_equal. apply eq_add_S in Hx. destruct n.
+          assert (Hnin : ~In a s). { rewrite <- multiset_In. omega. } 
+          assert (Hin : ~In (k * (a -t)) (map (fun x : R => k * (x - t)) s)).
+          { rewrite in_map_iff. intros [x [Heq Hin]]. apply Hnin. rewrite local_invert in Heq; trivial. now subst a. }
+          rewrite <- multiset_In in Hin. omega.
+          apply IHs. omega. assumption.
+      - assert (k * (a - t) <> k * (x - t)) by now rewrite local_invert.
+        rewrite M.add_spec' in *; trivial. now apply IHs.
+  + clear x Hxy Hx Hle. revert n Hn Hy. induction s; simpl; intros n Hn Hy.
+      now rewrite multiset_nil, M.empty_spec in *.
+      rewrite multiset_cons in *. destruct (Rdec a y) as [Heq | Hneq].
+      - subst y. rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
+        f_equal. apply eq_add_S in Hy. destruct n.
+          assert (Hnin : ~In a s). { rewrite <- multiset_In. omega. } 
+          assert (Hin : ~In (k * (a -t)) (map (fun x : R => k * (x - t)) s)).
+          { rewrite in_map_iff. intros [x [Heq Hin]]. apply Hnin. rewrite local_invert in Heq; trivial. now subst a. }
+          rewrite <- multiset_In in Hin. omega.
+          apply IHs. omega. assumption.
+      - assert (k * (a - t) <> k * (y - t)) by now rewrite local_invert.
+        rewrite M.add_spec' in *; trivial. now apply IHs.
+  + now rewrite (local_invert t _ _ Hk).
+  + clear x y Hx Hy Hxy. intro z. specialize (Hle (/k * z + t)).
+    revert n Hn Hle. induction s; simpl; intros n Hn Hle.
+      rewrite multiset_nil, M.empty_spec. omega.
+      rewrite multiset_cons in *. destruct (Rdec (k * (a - t)) z) as [| Hneq].
+      - subst z. assert (/ k * (k * (a - t)) + t = a) by now field. rewrite H in *.
+        rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
+        apply le_n_S. apply le_S_n in Hle. destruct n.
+          assert (Hnin : ~In a s). { rewrite <- multiset_In. omega. }
+          assert (Hin : ~In (k * (a -t)) (map (fun x : R => k * (x - t)) s)).
+          { rewrite in_map_iff. intros [x [Heq Hin]]. apply Hnin. rewrite local_invert in Heq; trivial. now subst a. }
+          rewrite <- multiset_In in Hin. omega.
+          apply IHs. omega. assumption.
+      - assert (a <> /k * z + t).
+        { intro Habs. rewrite <- (local_invert t _ _ Hk) in Habs. apply Hneq. rewrite Habs. now field. }
+        rewrite M.add_spec' in *; trivial. now apply IHs.
+Qed.
+
 Theorem robogram_similarity_invariant : forall k t pos, k <> 0 ->
-  robogram (nominal_spectrum (⟦k, t⟧ pos)) = k * (robogram (nominal_spectrum pos) - t).
+  robogram (nominal_spectrum (⟦k, t⟧ pos)) = k * (robogram (nominal_spectrum (⟦1, t⟧ pos))).
 Proof.
 intros k t pos Hk. unfold robogram.
 rewrite is_forbidden_similarity_invariant; trivial.
-destruct (has_dups (nominal_spectrum pos)) eqn:Hdup.
-  apply (has_dups_similarity k t) in Hdup. rewrite Hdup.
+rewrite is_forbidden_similarity_invariant; try now apply R1_neq_R0.
+destruct (is_forbidden (nominal_spectrum pos)). ring.
+destruct (majority_stack (nominal_spectrum  (⟦k, t⟧ pos))) eqn:Hmaj.
++ rewrite majority_stack_NoResult_spec, nominal_spectrum4 in Hmaj. discriminate Hmaj.
++ assert (Hl : l = k * ((/k * l + t) - t)) by now field.
+  rewrite Hl, majority_stack_Valid_similarity in Hmaj; trivial. clear Hl.
+  destruct (majority_stack (nominal_spectrum  (⟦1, t⟧ pos))) eqn:Hmaj1.
+  - rewrite majority_stack_NoResult_spec, nominal_spectrum4 in Hmaj1. discriminate Hmaj1.
+  - replace l0 with (1 * (l0 + t - t)) in Hmaj1 by ring. rewrite majority_stack_Valid_similarity in Hmaj1.
+    rewrite Hmaj1 in Hmaj. inversion Hmaj. subst n0. clear Hmaj1 Hmaj.
+    setoid_rewrite Rplus_comm in H0. apply Rplus_eq_reg_l in H0. subst l0. now field. apply R1_neq_R0.
+  - rewrite majority_stack_Invalid_similarity in Hmaj1; try exact R1_neq_R0.
+    rewrite Hmaj1 in Hmaj. discriminate Hmaj.
++ rewrite majority_stack_Invalid_similarity in Hmaj; trivial.
+  rewrite <- (@majority_stack_Invalid_similarity 1) in Hmaj; try exact R1_neq_R0. rewrite Hmaj.
+  assert (H0 : forall k, k * (t - t) = 0) by (intro; ring). rewrite <- (H0 k) at 1. rewrite <- (H0 1) at 2.
+  repeat rewrite is_extremal_similarity_invariant; exact R1_neq_R0 || trivial.
+  destruct (is_extremal t (nominal_spectrum pos)). ring.
+  repeat rewrite extreme_center_similarity_invariant; exact R1_neq_R0 || trivial. ring.
 Qed.
-*)
+Print Assumptions robogram_similarity_invariant.
 
 (*
 (* This inductive expresses that there will be a stack (in the sense of [Stack] and [has_dups]).
@@ -1455,42 +2001,123 @@ Theorem Will_stack : forall da pos, ~forbidden pos -> ~Stack pos ->
   Stack (lift_gp (round (B:=Zero) robogram da pos.(gp))).
 Proof.
 intros da pos Hok Hyet.
-destruct (has_dups (nominal_spectrum (lift_gp (round robogram da (gp pos))))) as [pt |] eqn:Hnom.
-+ rewrite nominal_spectrum4 in Hnom. revert Hnom. simpl. repeat Rdec_full; intro Hnom.
-  - exists Three4. exists Four4. simpl. now split.
-  - exists Two4. exists Four4. simpl. now split.
-  - exists One4. exists Four4. simpl. now split.
-  - exists Two4. exists Three4. simpl. now split.
-  - exists One4. exists Three4. simpl. now split.
-  - exists One4. exists Two4. simpl. now split.
-  - discriminate Hnom.
-+ rewrite nominal_spectrum4 in Hnom. revert Hnom. simpl. repeat Rdec_full; intro Hnom; try discriminate Hnom.
-  pose (s := nominal_spectrum pos).
-  assert (Hext : ExtEq (round robogram da (gp pos))
-                       (fun n => if is_extremal (gp pos n) s then gp pos n else extreme_center s)).
-  { intro n. 
-    rewrite <- is_forbidden_false, <- (@is_forbidden_similarity_invariant (frame da n) (gp pos n)) in Hok.
-    assert (Hdup : has_dups (nominal_spectrum ((⟦frame da n, gp pos n⟧) pos)) = None).
-    { rewrite has_dups_Stack in Hyet. destruct (has_dups (nominal_spectrum pos)) eqn:Hdups.
-      elim Hyet. now exists r. apply has_dups_similarity_None. now apply active. assumption. }
-    assert (Hpos : PosEq {| gp := gp pos; bp := locate_byz da |} pos) by (split; now intros []).
-    unfold round. destruct (Rdec (frame da n) 0) as [Habs | _]. now elim (active _ _ Habs).
-    rewrite spectrum_ok, Hpos. unfold robogram. rewrite Hok, Hdup.
-    replace 0 with (frame da n * (gp pos n - gp pos n)) by ring.
-    rewrite is_extremal_similarity_invariant, extreme_center_similarity_invariant.
-    fold s. destruct (is_extremal (gp pos n) s). field. now apply active. field. now apply active.
-    now apply active. now apply active. now apply active. }
-  rewrite Hext. unfold is_extremal, extreme_center. assert (Hperm := Permuted_sort s).
-  assert (Hl : length (sort s) = 4%nat).
-  { replace 4%nat with (length s). apply Permutation_length. now symmetry. unfold s. now rewrite nominal_spectrum4. }
-  assert (Hs := LocallySorted_sort s).
-  destruct (sort s) as [| a [| b [| c [| d [| ? ?]]]]]; try discriminate Hl. clear Hl.
-  assert (Hsort : a <= b /\ b <= c /\ c <= d).
-  { inversion_clear Hs. split. inversion_clear H0. now rewrite <- Rleb_spec.
-    inversion_clear H. split. inversion_clear H2. now rewrite <- Rleb_spec.
-    inversion_clear H1. inversion_clear H3. now rewrite <- Rleb_spec. }
-  (* We need to give the position of the minimum in s, therefore to consider the 24 possible permutations... *)
-Admitted.
+rewrite <- majority_stack_spec in Hyet.
+assert (exists n, majority_stack (nominal_spectrum pos) = Invalid n).
+{ destruct (majority_stack (nominal_spectrum pos)) eqn:Hpos.
+  - rewrite majority_stack_NoResult_spec in Hpos. rewrite nominal_spectrum4 in Hpos. discriminate Hpos.
+  - elim Hyet. exists l. exists n. reflexivity. 
+  - exists n. reflexivity. }
+destruct H as [n Hn]. clear Hyet.
+(* We express more directly the position after one round *)
+assert (Heq : ExtEq (round robogram da (gp pos))
+             (fun g => if is_extremal (gp pos g) (nominal_spectrum pos)
+                       then gp pos g else extreme_center (nominal_spectrum pos))).
+{ intro g. unfold round. destruct (Rdec (frame da g) 0) as [| Hframe]. now elim (active da g).
+  rewrite (spectrum_ok da). rewrite robogram_similarity_invariant; trivial. field_simplify; trivial. clear Hframe.
+  unfold robogram.
+  rewrite is_forbidden_similarity_invariant; try exact R1_neq_R0. rewrite <- is_forbidden_false in Hok.
+  rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
+  rewrite Hok.
+  rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
+  rewrite <- (@majority_stack_Invalid_similarity 1) in Hn; try exact R1_neq_R0. rewrite Hn.
+  assert (H0 : 1 * (gp pos g - gp pos g) = 0) by ring.
+  rewrite <- H0 at 1. rewrite is_extremal_similarity_invariant; try exact R1_neq_R0.
+  rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
+  destruct (is_extremal (gp pos g) (nominal_spectrum pos)). field.
+  rewrite extreme_center_similarity_invariant; try exact R1_neq_R0. field_simplify.
+  rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
+  reflexivity. }
+(* Because we have only four robots and the position is not forbidden, we have n = 1. *)
+assert (Heqn : n = 1%nat).
+{ destruct n as [| [| n]].
+  - elim (majority_stack_Invalid_0 Hn).
+  - reflexivity.
+  - rewrite majority_stack_Invalid_spec in Hn. destruct Hn as [_ [x [y [Hx [Hy [Hxy Hle]]]]]]. exfalso.
+    apply multiset_Permutation in Hx. destruct Hx as [l [Hinx Hpermx]].
+    rewrite Hpermx, multiset_app, M.union_spec, multiset_alls, M.singleton_spec in Hy; try omega.
+    destruct (Rdecidable.eq_dec y x). now elim Hxy. simpl in Hy.
+    apply multiset_Permutation in Hy. destruct Hy as [l' [Hiny Hpermy]].
+    assert (Hperm : Permutation (nominal_spectrum pos) (alls x (S (S n)) ++ (alls y (S (S n)) ++ l'))).
+    { transitivity (alls x (S (S n)) ++ l). assumption. now apply Permutation_app_head. }
+    assert (n = 0 /\ length l' = 0)%nat.
+    { apply Permutation_length in Hperm. do 2 rewrite app_length, alls_length in Hperm.
+      rewrite nominal_spectrum4 in Hperm. simpl in Hperm. omega. }
+      destruct H as [? Hl']. subst n.
+      elim Hok. exists x. exists y. exists 2%nat. split. assumption.
+      destruct l'. now rewrite app_nil_r in Hperm. simpl in Hl'. omega. }
+subst n.
+apply majority_stack_Invalid_1 in Hn. rename Hn into Hdup.
+assert (Hl : length (sort (nominal_spectrum pos)) = 4%nat).
+{ rewrite (Permutation_length (symmetry (Permuted_sort _))). now rewrite nominal_spectrum4. }
+assert (Hperm := Permuted_sort (nominal_spectrum pos)).
+assert (Hsort := Sorted_sort (nominal_spectrum pos)).
+destruct (sort (nominal_spectrum pos)) as [| x [| y [| z [| t [| ]]]]] eqn:Hs; try discriminate Hl. clear Hl.
+inversion_clear Hsort. inversion_clear H. inversion_clear H1. clear H. unfold is_true in *. rewrite Rleb_spec in *.
+assert (Hd := Hdup). rewrite Hperm in Hd. inversion_clear Hd. inversion_clear H1. inversion_clear H5.
+assert (Hxy : x < y). { apply Rle_neq_lt. assumption. intro. subst y. apply H. now left. }
+assert (Hyz : y < z). { apply Rle_neq_lt. assumption. intro. subst y. apply H4. now left. }
+assert (Hzt : z < t). { apply Rle_neq_lt. assumption. intro. subst z. apply H1. now left. }
+clear H H0 H1 H2 H3 H4 H6.
+assert (Hdiff : forall g1 g2, gp pos g1 = gp pos g2 -> g1 = g2).
+{ intros g1 g2 Hg. rewrite nominal_spectrum4 in Hperm, Hdup. inversion_clear Hdup.
+  assert (gp pos Four4 <> gp pos Three4 /\ gp pos Four4 <> gp pos Two4 /\ gp pos Four4 <> gp pos One4).
+  { repeat split; intro Habs; apply H; rewrite Habs; intuition. }
+  clear H. inversion_clear H0.
+  assert (gp pos Three4 <> gp pos Two4 /\ gp pos Three4 <> gp pos One4).
+  { repeat split; intro Habs; apply H; rewrite Habs; intuition. }
+  clear H. inversion_clear H2.
+  assert (gp pos Two4 <> gp pos One4). { intro Habs; apply H; rewrite Habs; intuition. }
+  clear H.
+  destruct g1, g2; reflexivity || contradict Hg; intuition. }
+assert (Hxt : x <> t). { apply Rlt_not_eq. apply Rlt_trans with y. assumption. now apply Rlt_trans with z. }
+assert (Permutation (nominal_spectrum (lift_gp (round robogram da (gp pos)))) (x :: (x+t)/2 :: (x+t)/2 :: t :: nil)).
+{ rewrite Heq. unfold is_extremal, extreme_center. rewrite Hs. simpl.
+  rewrite nominal_spectrum4 in Hperm |- *. simpl. repeat Rdec_full; subst;
+  try match goal with | H : gp pos ?X = gp pos ?Y |- _ => apply Hdiff in H; discriminate H end.
+  (* 21 cases to consider *)
+  - constructor 2. etransitivity. constructor 3. constructor 2. constructor 3.
+  - do 2 constructor 2. constructor 3.
+  - reflexivity.
+  - assert (Hin : In t (gp pos Four4 :: y :: z :: t :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - etransitivity. constructor 3. constructor 2. etransitivity. constructor 3. repeat constructor.
+  - etransitivity. apply Permutation_rev. simpl. etransitivity. constructor 3. reflexivity.
+  - etransitivity. apply Permutation_rev. reflexivity.
+  - assert (Hin : In x (x :: y :: z :: gp pos Four4 :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - etransitivity. constructor 3. repeat constructor.
+  - etransitivity. constructor 3. repeat constructor.
+  - assert (Hin : In t (gp pos Three4 :: y :: z :: t :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - symmetry. etransitivity. constructor 3. constructor 2. etransitivity. apply Permutation_rev. simpl.
+    repeat constructor.
+  - etransitivity. apply Permutation_rev. simpl. repeat constructor.
+  - assert (Hin : In x (x :: y :: z :: gp pos Three4 :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - symmetry. etransitivity. constructor 3. repeat constructor.
+  - assert (Hin : In t (gp pos Two4 :: y :: z :: t :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - etransitivity. apply Permutation_rev. simpl. repeat constructor. apply Permutation_rev.
+  - assert (Hin : In x (x :: y :: z :: gp pos Two4 :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - assert (Hin : In t (gp pos One4 :: y :: z :: t :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - assert (Hin : In x (x :: y :: z :: gp pos One4 :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction.
+  - assert (Hin : In x (x :: y :: z :: t :: nil)) by intuition.
+    rewrite <- Hperm in Hin. destruct Hin as [| [| [| [| ]]]]; contradiction. }
+assert (x <> (x + t) / 2) by lra. assert (t <> (x + t) / 2) by lra.
+exists (extreme_center (nominal_spectrum pos)). exists 2%nat. split.
++ unfold is_extremal, extreme_center. rewrite Hs, H. simpl. repeat rewrite multiset_cons.
+  now rewrite M.add_spec', M.add_spec, M.add_spec, M.add_spec', multiset_nil, M.empty_spec.
++ unfold is_extremal, extreme_center. intro pt. rewrite Hs, H. simpl. repeat rewrite multiset_cons.
+  intro Hy. destruct (Rdec x pt).
+    subst pt. now rewrite M.add_spec, M.add_spec', M.add_spec', M.add_spec', multiset_nil, M.empty_spec; auto.
+    destruct (Rdec t pt).
+      subst pt. now rewrite M.add_spec', M.add_spec', M.add_spec', M.add_spec, multiset_nil, M.empty_spec; auto.
+      now rewrite M.add_spec', M.add_spec', M.add_spec', M.add_spec', multiset_nil, M.empty_spec; auto.
+Qed.
+
 
 Lemma gathered_at_PosEq : forall (gp : Four -> R) pt, gathered_at gp pt -> ExtEq gp (fun _ => pt).
 Proof. intros gp pt Hgather. intro n. apply Hgather. Qed.
@@ -1507,7 +2134,8 @@ assert (spectrum_of g (lift_gp (fun _ => 0)) = alls 0 4) as Heq.
   transitivity (nominal_spectrum (lift_gp (fun _ : Four => 0))).
     apply spectrum_ok.
     now rewrite nominal_spectrum_alls. }
-rewrite Heq. rewrite is_forbidden_alls. simpl. now Rdec.
+rewrite Heq. rewrite is_forbidden_alls. unfold majority_stack.
+rewrite multiset_alls, M.fold_singleton; simpl; try omega. reflexivity. now repeat intro; subst.
 split; (now intros []) || intro x; simpl. rewrite Hgather, Rminus_diag_eq. now rewrite Rmult_0_r. reflexivity.
 Qed.
 
@@ -1524,23 +2152,23 @@ Theorem stack_sol : forall k (d : demon Four Zero), kFair k d ->
   exists pt, WillGather pt (execute robogram d gp).
 Proof.
 intros k [da d] Hfair gp Hok Hstack.
-assert (Hs := Hstack). rewrite has_dups_Stack in Hs. destruct Hs as [pt Hpt].
+assert (Hs := Hstack). rewrite <- majority_stack_spec in Hs. destruct Hs as [pt [n Hpt]].
 exists pt. constructor 2. constructor 1.
 rewrite execute_tail. cofix gathered. constructor. clear gathered. simpl. unfold gathered_at.
-intro n. unfold round.
-pose (s := spectrum_of da n ((⟦frame da n, gp n⟧) {| gp := gp; bp := locate_byz da |})). fold s.
-destruct (Rdec (frame da n) 0).
-  admit. (* Stalling case *)
+intro g. unfold round.
+pose (s := spectrum_of da g ((⟦frame da g, gp g⟧) {| gp := gp; bp := locate_byz da |})). fold s.
+destruct (Rdec (frame da g) 0).
+  now elim (active da g). (* Stalling case *)
   unfold robogram.
   assert (Hfor : is_forbidden s = false).
   { unfold s. rewrite spectrum_ok. rewrite is_forbidden_false. intro Habs. apply Hok.
     revert Habs. setoid_rewrite lift_gp_equiv at 2. simpl. apply forbidden_similarity_invariant. }
   rewrite Hfor. clear Hfor.
-  assert (Hperm : Permutation s (nominal_spectrum (⟦frame da n, gp n⟧ {| gp := gp; bp := locate_byz da |})))
+  assert (Hperm : Permutation s (nominal_spectrum (⟦frame da g, gp g⟧ {| gp := gp; bp := locate_byz da |})))
   by apply da.(spectrum_ok).
-  SearchAbout has_dups.
-  SearchAbout forbidden. rewrite <- is_forbidden_false in Hok. rewrite Hperm.
-  setoid_rewrite lift_gp_equiv at 2. simpl. rewrite (has_dups_similarity _ _ _ Hpt). now field.
+  rewrite <- is_forbidden_false in Hok. rewrite Hperm. setoid_rewrite lift_gp_equiv at 2.
+  simpl. rewrite <- (majority_stack_Valid_similarity (gp g) _ _ _ (active da g)) in Hpt.
+  rewrite Hpt. now field.
 (* back to coinduction *)
 apply gathered. (* je comprends toujours pas comment ça marche... ill-formed recursive definition *)
 Admitted.
@@ -1549,12 +2177,17 @@ Theorem meeting4 :
   forall d : demon Four Zero, forall k, kFair k d -> solGathering robogram d.
 Proof.
 intros d k Hfair gp Hok.
-destruct (has_dups (nominal_spectrum (lift_gp gp))) eqn:Hdup.
+destruct (majority_stack (nominal_spectrum (lift_gp gp))) as [| r n | n] eqn:Hdup.
+  (* there is no robot *)
+  rewrite majority_stack_NoResult_spec in Hdup. rewrite nominal_spectrum4 in Hdup. discriminate Hdup.
   (* there is a stack *)
-  apply (stack_sol Hfair Hok). rewrite has_dups_Stack. now exists r.
+  apply (stack_sol Hfair Hok). rewrite <- majority_stack_spec. now exists r; exists n.
   (* there is not stack, it will be created at the next step *)
   inversion_clear Hfair as [_ Htfair].
   destruct (stack_sol Htfair (@never_forbidden (demon_head d) _ Hok)) as [pt Hpt].
-    apply Will_stack. assumption. rewrite has_dups_Stack. rewrite Hdup. intros [? Habs]. discriminate Habs.
+    apply Will_stack. assumption. rewrite <- majority_stack_spec.
+    intros [x [m Habs]]. rewrite Hdup in Habs. discriminate Habs.
     exists pt. constructor 2. rewrite execute_tail. exact Hpt.
 Qed.
+Print Assumptions meeting4.
+

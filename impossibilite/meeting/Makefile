@@ -59,21 +59,6 @@ GALLINA?=$(COQBIN)gallina
 COQDOC?=$(COQBIN)coqdoc
 COQCHK?=$(COQBIN)coqchk
 
-##################
-#                #
-# Install Paths. #
-#                #
-##################
-
-ifdef USERINSTALL
-XDG_DATA_HOME?=$(HOME)/.local/share
-COQLIBINSTALL=$(XDG_DATA_HOME)/coq
-COQDOCINSTALL=$(XDG_DATA_HOME)/doc/coq
-else
-COQLIBINSTALL=${COQLIB}user-contrib
-COQDOCINSTALL=${DOCDIR}user-contrib
-endif
-
 ######################
 #                    #
 # Files dispatching. #
@@ -162,21 +147,6 @@ byte:
 
 opt:
 	$(MAKE) all "OPT:=-opt"
-
-userinstall:
-	+$(MAKE) USERINSTALL=true install
-
-install:
-	install -d $(DSTROOT)$(COQLIBINSTALL)/$(INSTALLDEFAULTROOT); \
-	for i in $(VOFILESINC); do \
-	 install -m 0644 $$i $(DSTROOT)$(COQLIBINSTALL)/$(INSTALLDEFAULTROOT)/`basename $$i`; \
-	done
-
-install-doc:
-	install -d $(DSTROOT)$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT)/html
-	for i in html/*; do \
-	 install -m 0644 $$i $(DSTROOT)$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT)/$$i;\
-	done
 
 clean:
 	rm -f $(VOFILES) $(VIFILES) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)
