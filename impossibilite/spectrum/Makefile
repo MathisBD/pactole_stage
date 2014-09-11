@@ -65,7 +65,8 @@ COQCHK?=$(COQBIN)coqchk
 #                    #
 ######################
 
-VFILES:=FMultisetMap.v\
+VFILES:=FMultisetFacts.v\
+  FMultisetMap.v\
   FMultisetInterface.v\
   EqualitiesR.v\
   FiniteSumR.v\

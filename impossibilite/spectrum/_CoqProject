@@ -6,5 +6,5 @@ FiniteSumR.v
 EqualitiesR.v
 FMultisetInterface.v
 FMultisetMap.v
-
+FMultisetFacts.v
 # noRDV Equalities EqualitiesR noRDVevenR noRDVR

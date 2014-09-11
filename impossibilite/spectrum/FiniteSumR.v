@@ -120,8 +120,7 @@ Definition fold_left (X:finite) Y (f: Y -> X.(name) -> Y) (init:Y) : Y :=
     | Some min => @fold_left_from X Y f min init
   end.
 
-
-
+Definition size X := fold_left X (fun n _ => S n) 0.
 
 (** * Chaining and flipping successor (and predecessor) functions *)
 
