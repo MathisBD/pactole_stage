@@ -2,7 +2,6 @@
 -I .
 Preliminary.v
 ConvergentFormalismR.v
-FiniteSumR.v
 EqualitiesR.v
 FMultisetInterface.v
 FMultisetMap.v

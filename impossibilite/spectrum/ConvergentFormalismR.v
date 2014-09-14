@@ -15,8 +15,9 @@ Require Import Reals.
 Open Scope R_scope.
 Require Import List.
 Open Scope list_scope.
-Require Import FiniteSumR.
+Require Import MSets.
 Require Export Preliminary.
+Require Vector.
 
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
@@ -28,17 +29,65 @@ Ltac coinduction proof :=
 (** ** Agents *)
 
 
-(* For clarity's sake we will write location for robots location, and Qc for
-   zooming factor and translation vectors. Obviously these ar all rationals and
+(* For clarity's sake we will write location for robots location, and R for
+   zooming factor and translation vectors. Obviously these ar all reals and
    we will:
  - multiply locations by zooming factor and obtain new locations
  - add locations and vectors and obtain new locations. *)
 Notation location := R (only parsing).
 
-Section goodbyz. (* Remove to have notations outside it *)
 
 (** We have finetely many robots. Some are good, other are evil. *)
-Variable G B : finite.
+
+Fixpoint Vfin_map n A (f : Fin.t n -> A) {struct n} : Vector.t A n :=
+  match n as n' return n = n' -> Vector.t A n' with
+    | 0 => fun _ => (Vector.nil _)
+    | S m => fun Heq => Vector.cons A (f (eq_rec_r _ Fin.F1 Heq)) m
+                                      (Vfin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
+  end (reflexivity n).
+
+Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
+  match n as n' return n = n' -> list A with
+    | 0 => fun _ => nil
+    | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
+  end (reflexivity n).
+
+Lemma Vfin_fin_map : forall n A (f : Fin.t n -> A), fin_map f = Vector.to_list (Vfin_map f).
+Proof.
+induction n; intros A f; simpl; unfold Vector.to_list.
+  reflexivity.
+  f_equal. rewrite IHn. reflexivity.
+Qed.
+
+Theorem In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
+Proof.
+intros n A g f. destruct n.
+  now apply Fin.case0.
+  revert n g f. apply (Fin.rectS (fun n g => ∀ f : Fin.t (S n) → A, In (f g) (fin_map f))).
+    intros n f. now left.
+    intros n g IHn f. right. apply (IHn (fun x => f (Fin.FS x))).
+Qed.
+
+Theorem map_fin_map : forall n A B (f : A -> B) (h : Fin.t n -> A),
+  fin_map (fun x => f (h x)) = List.map f (fin_map h).
+Proof.
+intros n A B f h. induction n.
+  reflexivity.
+  simpl. f_equal. now rewrite IHn.
+Qed.
+
+Lemma fin_map_length : forall n A (f : Fin.t n -> A), length (fin_map f) = n.
+Proof.
+intros n A f. induction n.
+  reflexivity.
+  simpl. now rewrite IHn.
+Qed.
+
+Section goodbyz. (* Remove to have notations outside it *)
+
+Variables nG nB : nat.
+Definition G : Set := Fin.t nG.
+Definition B := Fin.t nB.
 
 (** Disjoint union of both kinds of robots is obtained by a sum type. *)
 (* TODO: replace this by (G ⊎ B). *)
@@ -47,7 +96,7 @@ Inductive ident :=
  | Byz : B → ident.
 (* TODO: rename into robots? GB? *)
 
-Record automorphism (t : Set)  :=
+Record automorphism (t : Type) :=
  { section :> t → t
  ; retraction : t → t
  ; Inversion : ∀ x y, section x = y ↔ retraction y = x
@@ -82,27 +131,27 @@ Record position :=
 
 
 (** Locating a robot in a position. *)
-Definition locate p (id: ident): location :=
+Definition locate pos (id: ident): location :=
   match id with
-  | Good g => p.(gp) g
-  | Byz b => p.(bp) b
+  | Good g => pos.(gp) g
+  | Byz b => pos.(bp) b
   end.
 
 (** Extension of a robots substitution to a subtitution of robots locations in a
     position. *)
-Definition subst_pos σ (p:position) :=
-  {| gp := fun g => locate p (σ (Good g)) ;
-     bp := fun b => locate p (σ (Byz b)) |}.
+Definition subst_pos σ (pos : position) :=
+  {| gp := fun g => locate pos (σ (Good g)) ;
+     bp := fun b => locate pos (σ (Byz b)) |}.
 
 (** Notation of the paper *)
-Notation "p '∘' s" := (subst_pos s p) (at level 40, only parsing).
+Notation "pos '∘' s" := (subst_pos s pos) (at level 40, only parsing, left associativity).
 
 (** ** Similarities  *)
 
 (** Pointwise mapping of a function on a position *)
-Definition map_pos (f : location -> location) (p : position) :=
- {| gp := fun n => f (p.(gp) n)
-  ; bp := fun n => f (p.(bp) n)
+Definition map_pos (f : location -> location) (pos : position) :=
+ {| gp := fun g => f (pos.(gp) g)
+  ; bp := fun b => f (pos.(bp) b)
   |}.
 
 (** [similarity k t p] returns a position [p] centered in [t] and zoomed of
@@ -119,119 +168,39 @@ Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
 
 (** A position is a pair of location functions. Equality on positions is the
     extentional equality of the two location functions. *)
-Record PosEq (p q : position) : Prop := {
-  good_ext : ∀n, p.(gp) n = q.(gp) n;
-  byz_ext  : ∀n, p.(bp) n = q.(bp) n}.
+Record PosEq (pos₁ pos₂ : position) : Prop := {
+  good_ext : ∀g, pos₁.(gp) g = pos₂.(gp) g;
+  byz_ext  : ∀b, pos₁.(bp) b = pos₂.(bp) b}.
 
 Lemma map_inverse : forall (f g : location -> location) (pos : position),
   (forall x, f (g x) = x) -> PosEq (map_pos f (map_pos g pos)) pos.
-Proof. intros f g pos Hinv. now split; intro x; simpl; rewrite Hinv. Qed.
+Proof. intros f g pos Hinv. now split; intros; simpl; rewrite Hinv. Qed.
 
 Corollary similarity_inverse : forall k t pos, k <> 0 -> PosEq (⟦ /k, -k*t⟧ (⟦k, t⟧ pos)) pos.
-Proof. intros k t pos Hk. split; intro x; simpl; now field. Qed.
+Proof. intros k t pos Hk. split; intros; simpl; now field. Qed.
 
 Definition spectrum := list location.
 
-Definition iter_acc p := (fun (acc:list R) id =>
-                cons (match id with
-                          inl g => p.(gp) g
-                        | inr b => p.(bp) b
-                      end) acc).
+Definition nominal_spectrum (pos : position): spectrum := fin_map pos.(gp) ++ fin_map pos.(bp).
 
-Definition nominal_spectrum (p:position): spectrum :=
-  @fold_left (G ⊎ B) spectrum (iter_acc p) nil.
-
-Require Import Relation_Operators.
-
-(** Locating a robot in a position. *)
-Definition locate_GUB p (id: (G ⊎ B)): location :=
-  match id with
-  | inl g => p.(gp) g
-  | inr b => p.(bp) b
-  end.
-
-
-Lemma In_fold_left_from : forall (pos : position) (g : (G ⊎ B)) (min:(G ⊎ B)) init,
-                      List.In (locate_GUB pos g) init \/ clos_refl_trans_1n _ ((G ⊎ B).(NextRel)) min g
-                      -> List.In (locate_GUB pos g) (fold_left_from (G ⊎ B) (iter_acc pos) min init).
+Lemma In_spectrum : forall (pos : position) (r : ident), List.In (locate pos r) (nominal_spectrum pos).
 Proof.
-  intros pos g min.
-  revert g pos.
-  induction ((G ⊎ B).(RecPrev) min).
-  rename x into min.
-  intros g pos init [HIn | Htrans].
-  - rewrite fold_left_from_equation.
-    destruct (next (G ⊎ B) (Some min)) eqn:heq.
-    + apply H0.
-      * red.
-        apply (G ⊎ B).(NextPrev).
-        assumption.
-      * left.
-        apply in_cons.
-        assumption.
-    + apply in_cons.
-      assumption.
-  - destruct Htrans.
-    + rewrite fold_left_from_equation.
-      { destruct (next (G ⊎ B) (Some min)) eqn:heq.
-        + apply H0.
-          * red.
-            apply (G ⊎ B).(NextPrev).
-            assumption.
-          * left.
-            apply in_eq.
-        + apply in_eq. }
-    + rewrite fold_left_from_equation.
-      red in H1.
-      rewrite H1.
-      apply H0.
-      * red.
-        apply (G ⊎ B).(NextPrev).
-        assumption.
-      * right.
-        assumption.
-Qed.
-
-Lemma In_spectrum_fold_left : forall (pos : position) (r : G ⊎ B) l,
-                      List.In (locate_GUB pos r) (fold_left (G ⊎ B) (iter_acc pos) l).
-Proof.
-  intros pos g l.
-  unfold fold_left.
-  destruct (next (G ⊎ B) None) eqn:Heq.
-  - apply In_fold_left_from.
-    right.
-    apply min_prop.
-    assumption.
-  - (* contradiction à prouver sur finite: si None -> None alors name n'est pas habité *)
-    elim (onlyNone_emptyType (G ⊎ B));auto.
-Qed.
-
-
-Lemma In_spectrum : forall (pos : position) (r : G ⊎ B), List.In (locate_GUB pos r) (nominal_spectrum pos).
-Proof.
-  intros pos r.
-  unfold nominal_spectrum.
-  apply In_spectrum_fold_left.
+intros pos r. unfold nominal_spectrum. rewrite in_app_iff. destruct r as [g | b]; simpl.
+  left. now apply In_fin_map.
+  right. now apply In_fin_map.
 Qed.
 
 Lemma nominal_spectrum_map : forall f pos, nominal_spectrum (map_pos f pos) = List.map f (nominal_spectrum pos).
 Proof.
-intros f pos. unfold nominal_spectrum.
-Admitted.
+intros. unfold nominal_spectrum. simpl. rewrite map_fin_map. rewrite map_app. f_equal. now rewrite map_fin_map.
+Qed.
 
 Corollary nominal_spectrum_similarity : forall k t pos,
   nominal_spectrum (⟦ k, t⟧ pos) = List.map (fun x => k * (x - t)) (nominal_spectrum pos).
 Proof. intros. apply nominal_spectrum_map. Qed.
 
-(** Getting the identfier of the n-th robot. *)
-Definition get_nth (X : finite) : nat -> option X :=
-  (fix aux acc m :=
-    match m with
-      | 0 => acc
-      | S m' => aux (X.(next) acc) m'
-    end) None.
-
-
+Lemma size_nominal_spectrum : forall pos, length (nominal_spectrum pos) = (nG + nB)%nat.
+Proof. intro. unfold nominal_spectrum. rewrite app_length. now do 2 rewrite fin_map_length. Qed.
 
 Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
 
