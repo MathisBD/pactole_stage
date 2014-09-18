@@ -10,53 +10,58 @@
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Sorting.
-Import Permutation.
 Require Import Reals.
-Open Scope R_scope.
+Import Permutation.
 Require Import List.
 Open Scope list_scope.
-Require Import MSets.
 Require Export Preliminary.
 Require Vector.
+Require Import Arith_base.
+Require Import Morphisms.
+
 
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
 
 
-(** * Byzantine Robots *)
+Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
 
-(** ** Agents *)
+Lemma if_ExtEq : forall A B (cond : A -> bool) (f : A -> B), ExtEq (fun x => if cond x then f x else f x) f.
+Proof. intros ? ? cond ? x. now destruct (cond x). Qed.
 
-
-(* For clarity's sake we will write location for robots location, and R for
-   zooming factor and translation vectors. Obviously these ar all reals and
-   we will:
- - multiply locations by zooming factor and obtain new locations
- - add locations and vectors and obtain new locations. *)
-Notation location := R (only parsing).
+Lemma if_Rdec_ExtEq : forall A  B c f (l r : A -> B),
+  ExtEq (fun x => if Rdec (f x) c then l x else r x) (fun x => if Rdec_bool (f x) c then l x else r x).
+Proof. intros. intro. now rewrite if_Rdec. Qed.
 
 
-(** We have finetely many robots. Some are good, other are evil. *)
+(** **  Finite sets of names  **)
 
 Fixpoint Vfin_map n A (f : Fin.t n -> A) {struct n} : Vector.t A n :=
   match n as n' return n = n' -> Vector.t A n' with
     | 0 => fun _ => (Vector.nil _)
     | S m => fun Heq => Vector.cons A (f (eq_rec_r _ Fin.F1 Heq)) m
                                       (Vfin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
-  end (reflexivity n).
+  end (eq_refl n).
 
 Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
   match n as n' return n = n' -> list A with
     | 0 => fun _ => nil
     | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
-  end (reflexivity n).
+  end (eq_refl n).
 
 Lemma Vfin_fin_map : forall n A (f : Fin.t n -> A), fin_map f = Vector.to_list (Vfin_map f).
 Proof.
 induction n; intros A f; simpl; unfold Vector.to_list.
   reflexivity.
   f_equal. rewrite IHn. reflexivity.
+Qed.
+
+Instance fin_map_compat n A : Proper (ExtEq ==> eq) (@fin_map n A).
+Proof.
+intros f g Hext. induction n; simpl.
+  reflexivity.
+  rewrite Hext. f_equal. apply IHn. intros x. now rewrite Hext.
 Qed.
 
 Theorem In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
@@ -76,12 +81,120 @@ intros n A B f h. induction n.
   simpl. f_equal. now rewrite IHn.
 Qed.
 
+Corollary fin_map_id : forall n A (f : Fin.t n -> A), fin_map f = List.map f (fin_map (fun x => x)).
+Proof. intros. apply map_fin_map. Qed.
+
 Lemma fin_map_length : forall n A (f : Fin.t n -> A), length (fin_map f) = n.
 Proof.
 intros n A f. induction n.
   reflexivity.
   simpl. now rewrite IHn.
 Qed.
+
+Unset Implicit Arguments.
+
+Fixpoint Rinv n m (Hm : m <> 0) (x : Fin.t (n + m)) : Fin.t m.
+  refine (match n as n', x in Fin.t x' return n = n' -> x' = n + m -> Fin.t m with
+            | 0, _ => fun Hn _ => _
+            | S n', Fin.F1 _ => fun _ _ => _
+            | S n', Fin.FS _ x' => fun Hn Heq => Rinv n' m Hm _
+          end eq_refl eq_refl).
+- subst n. exact x.
+- destruct m. now elim Hm. now apply Fin.F1.
+- rewrite Hn in Heq. simpl in Heq. apply eq_add_S in Heq. rewrite <- Heq. exact x'.
+Defined.
+
+Theorem Rinv_R : forall n m (Hm : m <> 0) x, Rinv n m Hm (Fin.R n x) = x.
+Proof. now induction n. Qed.
+
+(*
+Fixpoint Linv n m (Hn : n <> 0) (x : Fin.t (n + m)) {struct n} : Fin.t n.
+  refine (match n as n' return n = n' -> Fin.t n' with
+    | 0 => fun Hn => _
+    | 1 => fun Hn => Fin.F1
+    | S (S n'' as rec) => fun Hn => 
+      match x in Fin.t x' return x' = n + m -> Fin.t (S rec) with
+        | Fin.F1 _ => fun Heq => Fin.F1
+        | Fin.FS _ x' => fun Heq => Fin.FS (Linv rec m _ _)
+      end eq_refl
+  end eq_refl).
+- apply False_rec. now apply Hn.
+- abstract (unfold rec0 in *; omega).
+- subst n. simpl in Heq. apply eq_add_S in Heq. rewrite Heq in x'. exact x'. (* bug *)
+Defined.
+*)
+Set Implicit Arguments.
+
+Definition combine n m A (f : Fin.t n -> A) (g : Fin.t m -> A) : Fin.t (n + m) -> A.
+  refine (fun x =>
+      if eq_nat_dec m 0 then f _ else
+      if (lt_dec (projS1 (Fin.to_nat x)) n) then f (Fin.of_nat_lt _) else g (Rinv n m _ x)).
+- subst m. rewrite plus_0_r in x. exact x.
+- eassumption.
+- assumption.
+Defined.
+
+Lemma combine_0_r : forall n A f g, ExtEq (@combine n 0 A f g) (fun x => f (eq_rec (n+0) Fin.t x n (plus_0_r n))).
+Proof. intros. intro x. unfold combine. destruct (Fin.to_nat x) eqn:Hx. simpl. reflexivity. Qed.
+
+Lemma combine_0_l : forall m A f g, ExtEq (@combine 0 m A f g) g.
+Proof.
+intros m *. intro x. unfold combine. destruct (eq_nat_dec m) as [Hm | Hm]; simpl.
+- apply Fin.case0. now rewrite Hm in x.
+- reflexivity.
+Qed.
+
+Instance combine_compat n m A : Proper (ExtEq ==> ExtEq ==> ExtEq) (@combine n m A).
+Proof.
+intros f₁ f₂ Hf g₁ g₂ Hg x. unfold combine.
+destruct (Fin.to_nat x). destruct m; simpl.
+- now rewrite Hf.
+- destruct (lt_dec x0 n). now rewrite Hf. now rewrite Hg.
+Qed.
+
+(* To illustrate
+Example ex_f := fun x : Fin.t 2 => 10 + projS1 (Fin.to_nat x).
+Example ex_g := fun x : Fin.t 3 => 20 + projS1 (Fin.to_nat x).
+
+Eval compute in combine ex_f ex_g (Fin.F1).
+Eval compute in combine ex_f ex_g (Fin.FS (Fin.F1)).
+Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.F1))).
+Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS Fin.F1))).
+Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.F1)))).
+Fail Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.FS (Fin.F1))))).
+*)
+
+Theorem fin_map_app : forall n m A (f : Fin.t n -> A) (g : Fin.t m -> A),
+  fin_map f ++ fin_map g = fin_map (combine f g).
+Proof.
+intros n m A f g. destruct m; simpl.
++ rewrite combine_0_r. rewrite app_nil_r. now rewrite plus_0_r.
++ induction n; simpl.
+  - reflexivity.
+  - f_equal. rewrite IHn. apply fin_map_compat. intro x. unfold eq_rec_r. simpl.
+    unfold combine. simpl. destruct (Fin.to_nat x). simpl.
+    destruct (lt_dec x0 n); destruct (lt_dec (S x0) (S n)); try omega.
+      now rewrite (le_unique _ _ (lt_S_n x0 n l1) l0).
+      reflexivity.
+Qed.
+
+
+(** * Byzantine Robots *)
+
+(** ** Agents *)
+
+Open Scope R_scope.
+
+(* For clarity's sake we will write location for robots location, and R for
+   zooming factor and translation vectors. Obviously these ar all reals and
+   we will:
+ - multiply locations by zooming factor and obtain new locations
+ - add locations and vectors and obtain new locations. *)
+Notation location := R (only parsing).
+
+
+(** We have finetely many robots. Some are good, other are evil. *)
+
 
 Section goodbyz. (* Remove to have notations outside it *)
 
@@ -117,6 +230,12 @@ Defined.
 (* [automorphism (ident good byz)] is a group (not worth proving it, I guess)
    and acts on positions (not worth proving it is an action group) *)
 
+(** Names of robots **)
+
+Definition Gnames : list G := fin_map (fun x : G => x).
+Definition Bnames : list B := fin_map (fun x : B => x).
+Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
+
 (** ** Positions *)
 
 (** We explicitely say that a permutation has a different treatment for good and
@@ -127,6 +246,7 @@ Record position :=
  { gp : G → location
  ; bp : B → location
  }.
+
 (* TODO rename it into gpbp? notation gp+bp? *)
 
 
@@ -164,8 +284,6 @@ Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k
 
 (** ** Equalities on positions *)
 
-Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
-
 (** A position is a pair of location functions. Equality on positions is the
     extentional equality of the two location functions. *)
 Record PosEq (pos₁ pos₂ : position) : Prop := {
@@ -179,9 +297,16 @@ Proof. intros f g pos Hinv. now split; intros; simpl; rewrite Hinv. Qed.
 Corollary similarity_inverse : forall k t pos, k <> 0 -> PosEq (⟦ /k, -k*t⟧ (⟦k, t⟧ pos)) pos.
 Proof. intros k t pos Hk. split; intros; simpl; now field. Qed.
 
+
+(** **  Spectra  **)
+
 Definition spectrum := list location.
 
-Definition nominal_spectrum (pos : position): spectrum := fin_map pos.(gp) ++ fin_map pos.(bp).
+Definition nominal_spectrum (pos : position) : spectrum := fin_map pos.(gp) ++ fin_map pos.(bp).
+
+Theorem nominal_spectrum_names : forall pos,
+  nominal_spectrum pos = List.map pos.(gp) Gnames ++ List.map pos.(bp) Bnames.
+Proof. intro. unfold nominal_spectrum. rewrite fin_map_id. f_equal. apply fin_map_id. Qed.
 
 Lemma In_spectrum : forall (pos : position) (r : ident), List.In (locate pos r) (nominal_spectrum pos).
 Proof.
@@ -203,6 +328,34 @@ Lemma size_nominal_spectrum : forall pos, length (nominal_spectrum pos) = (nG + 
 Proof. intro. unfold nominal_spectrum. rewrite app_length. now do 2 rewrite fin_map_length. Qed.
 
 Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
+
+Lemma nominal_spectrum_combineG : forall (cond : G -> bool) gp₁ gp₂ bp,
+  Permutation (nominal_spectrum {| gp := fun g => if cond g then gp₁ g else gp₂ g; bp := bp |})
+  ((let (G₁, G₂) := List.partition cond Gnames in
+  List.map gp₁ G₁ ++ List.map gp₂ G₂) ++ List.map bp Bnames).
+Proof.
+intros. rewrite nominal_spectrum_names. simpl. apply Permutation_app; trivial.
+rewrite partition_filter. apply map_cond_Permutation.
+Qed.
+
+Lemma nominal_spectrum_combineB : forall (cond : B -> bool) gp bp₁ bp₂,
+  Permutation (nominal_spectrum {| gp := gp; bp := fun b => if cond b then bp₁ b else bp₂ b |})
+  (List.map gp Gnames ++ (let (B₁, B₂) := List.partition cond Bnames in
+  List.map bp₁ B₁ ++ List.map bp₂ B₂)).
+Proof.
+intros. rewrite nominal_spectrum_names. simpl. apply Permutation_app; trivial.
+rewrite partition_filter. apply map_cond_Permutation.
+Qed.
+
+Corollary nominal_spectrum_combine : forall (condG : G -> bool) (condB : B -> bool) gp₁ gp₂ bp₁ bp₂,
+  Permutation (nominal_spectrum {| gp := fun g => if condG g then gp₁ g else gp₂ g;
+                                   bp := fun b => if condB b then bp₁ b else bp₂ b |})
+  (let (G₁, G₂) := List.partition condG Gnames in let (B₁, B₂) := List.partition condB Bnames in
+   List.map gp₁ G₁ ++ List.map gp₂ G₂ ++ List.map bp₁ B₁ ++ List.map bp₂ B₂).
+Proof.
+intros. rewrite nominal_spectrum_combineB, partition_filter, partition_filter.
+repeat rewrite app_assoc. do 2 (apply Permutation_app; trivial). apply map_cond_Permutation.
+Qed.
 
 (** ** The program of correct robots *)
 

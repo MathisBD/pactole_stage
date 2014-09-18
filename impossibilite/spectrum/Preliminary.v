@@ -621,6 +621,47 @@ Qed.
 Lemma length_0 : forall l : list A, length l = 0 -> l = nil.
 Proof. intros [|] H; reflexivity || discriminate H. Qed.
 
+Theorem partition_filter : forall (f : A -> bool) l, partition f l = (filter f l, filter (fun x => negb (f x)) l).
+Proof.
+intros f l. induction l as [| a l]; simpl.
+  reflexivity.
+  rewrite IHl. now destruct (f a).
+Qed.
+
+Corollary partition_fst_In : forall (x : A) f l, In x (fst (partition f l)) <-> In x l /\ f x = true.
+Proof. intros. rewrite partition_filter. apply filter_In. Qed.
+
+Corollary partition_snd_In : forall (x : A) f l, In x (snd (partition f l)) <-> In x l /\ f x = false.
+Proof. intros. rewrite partition_filter. rewrite <- negb_true_iff. apply filter_In. Qed.
+
+Theorem partition_length : forall f (l : list A),
+  length (fst (partition f l)) + length (snd (partition f l)) = length l.
+Proof.
+intros f l. rewrite partition_filter in *. induction l; simpl.
++ reflexivity.
++ destruct (f a); simpl.
+  - f_equal. apply IHl.
+  - rewrite <- plus_n_Sm. f_equal. apply IHl.
+Qed.
+
+Corollary filter_length : forall f (l : list A),
+  length (filter f l) = length l - length (filter (fun x => negb (f x)) l).
+Proof. intros. apply plus_minus. rewrite <- (partition_length f), partition_filter. simpl. apply plus_comm. Qed.
+
+Lemma map_cond_Permutation : forall (f : A -> bool) (g₁ g₂ : A -> B) l,
+  Permutation (map (fun x => if f x then g₁ x else g₂ x) l)
+              (map g₁ (filter f l) ++ map g₂ (filter (fun x => negb (f x)) l)).
+Proof.
+intros f * l. induction l; simpl.
++ reflexivity.
++ destruct (f a); simpl.
+  - apply Permutation_cons. apply IHl.
+  - rewrite IHl. apply Permutation_middle.
+Qed.
+
+Lemma map_cst : forall x (l : list B), map (fun y => x) l = alls x (length l).
+Proof. intros x l. now induction l; simpl; try f_equal. Qed.
+
 End List_results.
 
 Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : list A, {NoDup l} + {~NoDup l}.
@@ -638,6 +679,18 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
 
+Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
+
+Lemma Rdec_bool_true_iff : forall x y, Rdec_bool x y = true <-> x = y.
+Proof. intros. unfold Rdec_bool. destruct (Rdec x y); now split. Qed.
+
+Lemma Rdec_bool_false_iff : forall x y, Rdec_bool x y = false <-> x <> y.
+Proof. intros. unfold Rdec_bool. destruct (Rdec x y); now split. Qed.
+
+Lemma if_Rdec : forall A x y (l r : A), (if Rdec x y then l else r) = if Rdec_bool x y then l else r.
+Proof. intros. unfold Rdec_bool. now destruct Rdec. Qed.
+
+
 Definition count_occ_properR := count_occ_proper Rdec.
 Definition remove_Perm_properR := remove_Perm_proper Rdec.
 Existing Instance Permutation_length_compat.
@@ -652,20 +705,6 @@ Existing Instance PermutationA_length.
 Existing Instance fold_left_start.
 Existing Instance fold_left_symmetry_PermutationA.
 Existing Instance PermutationA_map.
-
-(** Small dedicated decision tactic for reals handling 1<>0 and r=r *)
-Ltac Rdec := repeat
-  match goal with
-    | |- context[Rdec ?x ?x] =>
-        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
-        [clear Heq | exfalso; elim Heq; reflexivity]
-    | |- context[Rdec 1 0] => 
-        let Heq := fresh "Heq" in destruct (Rdec 1 0) as [Heq | Heq];
-        [now elim R1_neq_R0 | clear Heq]
-    | H : context[Rdec ?x ?x] |- _ =>
-        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
-        [clear Heq | exfalso; elim Heq; reflexivity]
-  end.
 
 
 Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
