@@ -1,4 +1,3 @@
-Require Import Bool.
 Require Import Arith.Div2.
 Require Import Reals.
 Require Import List.
@@ -9,6 +8,7 @@ Require Import SetoidList.
 Require Export SetoidPermutation.
 
 Set Implicit Arguments.
+Require Import Bool.
 (* Seams useless…
 Global Instance NotRel_symmetric A (R : relation A) `(Symmetric A R) : Symmetric (fun x y => ~R x y).
 Proof. intros x y Hxy Habs. apply Hxy. now symmetry. Qed.
