@@ -53,6 +53,32 @@ intros l1 l2. split; intro Hl.
     now transitivity l'.
 Qed.
 
+Lemma NoDupA_2 : forall x y, ~eqA x y -> NoDupA eqA (x :: y :: nil).
+Proof.
+intros x y Hdiff. constructor.
+  intro Habs. inversion_clear Habs.
+    now elim Hdiff.
+    inversion H.
+  constructor.
+    intro Habs. inversion_clear Habs.
+    constructor.
+Qed.
+
+Instance PermutationA_eq_compat : Proper ((eq ==> eq ==> iff) ==> eq ==> eq ==> iff) (@PermutationA A).
+Proof.
+intros f g Hfg l1 l2 Hl12 l3 l4 Hl34. subst l4 l2. split; intro H.
++ induction H.
+  - constructor.
+  - constructor. now rewrite <- (Hfg _ _ (eq_refl x₁) _ _ (eq_refl x₂)). assumption.
+  - constructor 3.
+  - now constructor 4 with l₂.
++ induction H.
+  - constructor.
+  - constructor. now rewrite (Hfg _ _ (eq_refl x₁) _ _ (eq_refl x₂)). assumption.
+  - constructor 3.
+  - now constructor 4 with l₂.
+Qed.
+
 Instance Permutation_length_compat : Proper (@Permutation A ==> eq) (@length A).
 Proof. now intros ? ? ?; apply Permutation_length. Qed.
 

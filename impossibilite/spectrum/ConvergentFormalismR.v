@@ -324,7 +324,7 @@ Corollary nominal_spectrum_similarity : forall k t pos,
   nominal_spectrum (⟦ k, t⟧ pos) = List.map (fun x => k * (x - t)) (nominal_spectrum pos).
 Proof. intros. apply nominal_spectrum_map. Qed.
 
-Lemma size_nominal_spectrum : forall pos, length (nominal_spectrum pos) = (nG + nB)%nat.
+Lemma nominal_spectrum_length : forall pos, length (nominal_spectrum pos) = (nG + nB)%nat.
 Proof. intro. unfold nominal_spectrum. rewrite app_length. now do 2 rewrite fin_map_length. Qed.
 
 Definition is_spectrum s p: Prop := Permutation s (nominal_spectrum p).
