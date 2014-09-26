@@ -169,6 +169,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - repeat rewrite add_spec'; auto.
   Qed.
   
+  Lemma add_empty : forall x n, add x n empty [=] singleton x n.
+  Proof.
+  intros x n y. rewrite singleton_spec. destruct (E.eq_dec y x) as [Heq | Hneq].
+  - rewrite Heq. now rewrite add_spec, empty_spec.
+  - rewrite add_spec', empty_spec; auto.
+  Qed.
+  
   Lemma add_multiplicity_inf_bound : forall x n m, multiplicity x (add x n m) >= n.
   Proof. intros x n m. rewrite add_spec. omega. Qed.
   
@@ -274,7 +281,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Lemma elements_pos : forall xn m, InA eq_pair xn (elements m) -> snd xn > 0.
   Proof. intros [x n] m Hin. now rewrite elements_spec in Hin. Qed.
   
-  Theorem elements_eq : forall m₁ m₂, equivlistA eq_pair (elements m₁) (elements m₂) <-> m₁ [=] m₂.
+  Theorem elements_eq_equiv : forall m₁ m₂, equivlistA eq_pair (elements m₁) (elements m₂) <-> m₁ [=] m₂.
   Proof.
   intros m₁ m₂. split; intro H.
   + assert (Hdup₁ := NoDupA_strengthen subrelation_pair_key (elements_NoDupA m₁)).
@@ -291,6 +298,16 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       rewrite <- H in Hin. rewrite elements_spec in Hin. now destruct Hin.
   + intros [x n]. now rewrite H.
   Qed.
+  
+  Corollary elements_eq : forall m₁ m₂, PermutationA eq_pair (elements m₁) (elements m₂) <-> m₁ [=] m₂.
+  Proof.
+  intros m₁ m₂. rewrite <- elements_eq_equiv. split; intro H.
+    now apply (PermutationA_equivlistA _).
+    apply (NoDupA_equivlistA_PermutationA _).
+      apply (NoDupA_strengthen _ (elements_NoDupA _)).
+      apply (NoDupA_strengthen _ (elements_NoDupA _)).
+      assumption.
+    Qed.
     
   Lemma elements_nil : forall m, elements m = nil <-> Empty m.
   Proof.
@@ -368,7 +385,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   apply (PermutationA_length1 _) in Hy. destruct Hy as [[z p] [Heq Hl]].
   rewrite Hl. simpl. compute in Heq. destruct Heq. now rewrite H, H0.
   Qed.
-  
+  (*
+  Lemma union_fold_add : forall m₁ m₂, union m₁ m₂ [=] fold (fun x n acc => add x n acc) m₁ m₂.
+  Proof.
+  SearchAbout eq. intros m₁ m₂. rewrite <- elements_eq_equiv. intros [x n].
+  rewrite elements_union, fold_spec, elements_spec. simpl.
+  Qed.
+  *)
   Lemma support_empty : support empty = nil.
   Proof.
   destruct (support empty) eqn:Hl. reflexivity.
@@ -407,6 +430,25 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     assert (Hiny : In y m). { unfold In. rewrite Hy. omega. }
     rewrite <- support_spec, Hm in Hiny. inversion_clear Hiny. contradiction. inversion H.
   + destruct Hm as [Hm Hmult]. rewrite Hm. now apply support_singleton.
+  Qed.
+  
+  Lemma support_add : forall x n m, n > 0 ->
+    PermutationA E.eq (support (add x n m)) (if InA_dec E.eq_dec x (support m) then support m else x :: support m).
+  Proof.
+  intros x n m Hn. apply (NoDupA_equivlistA_PermutationA _).
+  + apply support_NoDupA. 
+  + destruct (InA_dec E.eq_dec x (support m)) as [Hin | Hin].
+    - apply support_NoDupA.
+    - constructor. assumption. apply support_NoDupA.
+  + intro z. destruct (InA_dec E.eq_dec x (support m)) as [Hin | Hin]; rewrite support_spec in Hin.
+    - do 2 rewrite support_spec. unfold In in *. destruct (E.eq_dec x z) as [Heq | Hneq].
+        rewrite <- Heq, M.add_spec. omega.
+        now rewrite M.add_spec'.
+    - rewrite support_spec. unfold In in *. destruct (E.eq_dec x z) as [Heq | Hneq].
+        rewrite <- Heq, M.add_spec. split; intro H. now left. omega.
+        rewrite M.add_spec'; trivial. split; intro H.
+          right. now rewrite support_spec.
+          inversion H; subst. now elim Hneq. now rewrite support_spec in H1.
   Qed.
   
   Lemma cardinal_lower_aux : forall (l : list (E.t * nat)) acc, acc <= fold_left (fun acc xn => snd xn + acc) l acc.
@@ -471,6 +513,27 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Corollary cardinal_add : forall x n m, cardinal (add x n m) = n + cardinal m.
   Proof. intros. now rewrite <- add_union_singleton, cardinal_union, cardinal_singleton. Qed.
   
+  Lemma support_map_elements : forall m, PermutationA E.eq (support m) (map (@fst E.t nat) (elements m)).
+  Proof.
+  intro m. apply (NoDupA_equivlistA_PermutationA _).
+  + apply support_NoDupA.
+  + assert (Hm := elements_NoDupA m).
+    induction Hm as [| [x n] l].
+    - constructor.
+    - simpl. constructor; trivial.
+      intro Habs. apply H. clear -Habs. induction l as [| [y p] l].
+        now inversion Habs.
+        inversion_clear Habs. now left. right. now apply IHl.
+  + intro x. rewrite support_elements. rewrite (InA_map_iff _ _). split; intro Hin.
+    - exists (x, multiplicity x m). now split.
+    - destruct Hin as [[y p] [Heq Hin]]. rewrite elements_spec in *. simpl in *.
+      split. reflexivity. destruct Hin. subst. now rewrite <- Heq.
+    - clear. intros [x n] [y p] [? ?]. apply H.
+  Qed.
+  
+  Lemma elements_length : forall m, length (elements m) = size m.
+  Proof. intro. now rewrite size_spec, support_map_elements, map_length. Qed.
+  
   (** *  Extra operations  **)
   
   Definition map f m := fold (fun x n acc => add (f x) n acc) m empty.
@@ -491,9 +554,24 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Lemma map_empty : forall f, map f empty [=] empty.
   Proof. intro f. unfold map. now rewrite fold_empty. Qed.
+  (*
+  Lemma map_In : forall x f m, In x (map f m) -> exists y, x = f y.
+  Proof.
+  intros x f m Hin. rewrite <- support_spec in Hin.
+  unfold map in Hin. rewrite fold_spec in Hin. revert Hin. generalize empty as acc.
+  induction (elements m); simpl in *; intros acc Hin.
+  - rewrite support_empty in Hin. inversion Hin.
+  - 
+  Qed.
+  *)
+  Lemma map_union : forall f m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
+  Proof.
+  intros f m₁ m₂ x.
+  Admitted.
   
   Lemma map_add : forall f x n m, map f (add x n m) [=] add (f x) n (map f m).
   Proof.
+  intros f x n m.
   Admitted.
   
   Lemma map_support : forall f m, PermutationA E.eq (support (map f m)) (List.map f (support m)).

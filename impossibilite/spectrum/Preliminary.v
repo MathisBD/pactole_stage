@@ -59,9 +59,14 @@ intros x y Hdiff. constructor.
   intro Habs. inversion_clear Habs.
     now elim Hdiff.
     inversion H.
-  constructor.
-    intro Habs. inversion_clear Habs.
-    constructor.
+  apply NoDupA_singleton.
+Qed.
+
+Lemma NoDupA_3 : forall x y z, ~eqA x y -> ~eqA y z -> ~eqA x z -> NoDupA eqA (x :: y :: z :: nil).
+Proof.
+intros x y z Hxy Hyz Hxz. constructor.
+  intro Habs. inversion_clear Habs. contradiction. inversion_clear H. contradiction. inversion_clear H0.
+  now apply NoDupA_2.
 Qed.
 
 Instance PermutationA_eq_compat : Proper ((eq ==> eq ==> iff) ==> eq ==> eq ==> iff) (@PermutationA A).
@@ -85,6 +90,9 @@ Proof. now intros ? ? ?; apply Permutation_length. Qed.
 Instance In_perm_compat : Proper (eq ==> @Permutation A ==> iff) (@In A).
 Proof. intros x y ? l l' Hl. subst. split; apply Permutation_in; assumption || now symmetry. Qed.
 
+Instance In_permA_compat : Proper (eq ==> @PermutationA A eq ==> iff) (@In A).
+Proof. repeat intro. rewrite PermutationA_Leibniz in *. now apply In_perm_compat. Qed.
+
 Lemma last_In : forall l (x : A), l <> List.nil -> List.In (List.last l x) l.
 Proof.
 induction l; intros x Hx. now elim Hx.
@@ -103,6 +111,22 @@ intros f l d. induction l; simpl.
   destruct l. simpl. reflexivity. apply IHl.
 Qed.
 
+Theorem InA_map_iff : forall f, Proper (eqA ==> eqB) f ->
+  forall l y, InA eqB y (map f l) <-> exists x, eqB (f x) y /\ InA eqA x l.
+Proof.
+intros f Hf l y. induction l.
++ split; intro Hin.
+  - inversion Hin.
+  - destruct Hin as [x [_ Hin]]. inversion Hin.
++ split; intro Hin.
+  - inversion_clear Hin.
+      exists a. split. now symmetry. now left.
+      rewrite IHl in H. destruct H as [x [Hx H]]. exists x; auto.
+  - destruct Hin as [x [Hx Hin]]. inversion_clear Hin.
+      left. now rewrite <- Hx, H.
+      simpl. right. rewrite IHl. exists x. now split.
+Qed.
+
 Fixpoint alls (x : A) n :=
   match n with
     | 0 => Datatypes.nil
@@ -112,15 +136,21 @@ Fixpoint alls (x : A) n :=
 Lemma alls_length : forall (x : A) n, length (alls x n) = n.
 Proof. intros x n. induction n; simpl; auto. Qed.
 
-Lemma alls_In : forall (x y : A) n, In y (alls x n) -> y = x.
+Lemma alls_In : forall x y n, In y (alls x n) -> y = x.
+Proof. intros x y n Hin. induction n; inversion Hin. auto. now apply IHn. Qed.
+
+Lemma alls_In_iff : forall (x y : A) n, n > 0 -> (In y (alls x n) <-> y = x).
 Proof.
-intros x y n Hin. induction n.
-  contradiction Hin.
-  destruct Hin. now symmetry. now apply IHn.
+intros x y n Hn. split; intro H.
++ eapply alls_In; eassumption.
++ induction n. now inversion Hn. left; auto.
 Qed.
 
 Corollary alls_not_In : forall (x y : A) n, x <> y -> ~In y (alls x n).
-Proof. intros x y n Hxy Habs. apply Hxy. symmetry. apply (alls_In _ _ _ Habs). Qed.
+Proof.
+intros x y n Hxy Habs. apply Hxy. symmetry.
+destruct n. now inversion Habs. rewrite alls_In_iff in Habs; assumption || omega.
+Qed.
 
 Lemma alls_inj1 : forall x1 x2 n1 n2, alls x1 (S n1) = alls x2 n2 -> x1 = x2.
 Proof. intros x1 x2 n1 [] Heq; simpl in *. discriminate Heq. now inversion Heq. Qed.
@@ -152,14 +182,16 @@ Lemma Forall_Permutation_compat : Proper ((eq ==> iff) ==> @Permutation A ==> if
 Proof. intros f g Hfg l1 l2 Hl. split; apply Forall_Perm_trans; easy || now symmetry. Qed.
 
 Lemma Permutation_alls : forall (x : A) n l,
-  Permutation l (alls x n) -> l = alls x n.
+  Permutation l (alls x n) <-> l = alls x n.
 Proof.
-intros x n. induction n; intros l Hl.
-  simpl in *. apply Permutation_nil. now symmetry.
-  destruct l.
-    apply Permutation_nil in Hl. discriminate Hl.
-    assert (a = x). { apply alls_In with (S n). simpl alls. rewrite <- Hl. now left. }
-    subst. simpl in *. f_equal. apply IHn. apply (Permutation_cons_inv Hl).
+intros x n l. split.
++ revert l. induction n; intros l Hl.
+  - simpl in *. apply Permutation_nil. now symmetry.
+  - destruct l.
+      apply Permutation_nil in Hl. discriminate Hl.
+      assert (a = x). { apply alls_In with (S n). simpl alls. rewrite <- Hl. now left. }
+      subst. simpl in *. f_equal. apply IHn. apply (Permutation_cons_inv Hl).
++ intro Hl. now rewrite Hl.
 Qed.
 
 Lemma map_alls : forall f pt n, map f (alls pt n) = alls (f pt) n.
@@ -225,6 +257,17 @@ simpl. destruct (eq_dec y a).
 Qed.
 Global Arguments remove_in_out eq_dec [x] y l _.
 
+Theorem remove_in_iff eq_dec : forall (x y : A) l, In x (remove eq_dec y l) <-> In x l /\ x <> y.
+Proof.
+intros x y l. induction l as [| a l].
++ split; intro Habs. inversion Habs. destruct Habs as [Habs _]. inversion Habs.
++ simpl. destruct (eq_dec y a). 
+  - subst a. rewrite IHl. intuition. now elim H3.
+  - simpl. rewrite IHl. split; intro Hin.
+      now destruct Hin; try subst a; intuition.
+      intuition.
+Qed.
+
 Lemma remove_alls eq_dec : forall x n, remove eq_dec x (alls x n) = nil.
 Proof.
 intros x n. induction n.
@@ -239,13 +282,15 @@ intros x y n Hxy. induction n.
   simpl. destruct (eq_dec x y) as [Heq | _]; contradiction || now rewrite IHn.
 Qed.
 
-Lemma remove_nil eq_dec : forall x l, remove eq_dec x l = nil -> exists n, l = alls x n.
+Lemma remove_nil eq_dec : forall x l, remove eq_dec x l = nil <-> l = alls x (length l).
 Proof.
-intros x l Hl. induction l.
-  now exists 0%nat.
-  simpl in Hl. destruct (eq_dec x a).
-    destruct (IHl Hl) as [n ?]. subst. now exists (S n).
-    discriminate Hl.
+intros x l. split; intro Hl.
++ induction l; simpl in *.
+  - reflexivity.
+  - destruct (eq_dec x a).
+      subst. now rewrite <- IHl.
+      discriminate Hl.
++ rewrite Hl. apply remove_alls.
 Qed.
 
 Instance remove_Perm_proper eq_dec : Proper (eq ==> @Permutation A ==> @Permutation A) (@remove A eq_dec).
@@ -290,6 +335,12 @@ intros x y l. induction l.
   try rewrite Hx; try rewrite Hy; simpl; now rewrite IHl.
 Qed.
 
+Lemma remove_length_le eq_dec : forall l (x : A), length (remove eq_dec x l) <= length l.
+Proof.
+intros l x. induction l; simpl.
+  reflexivity.
+  destruct (eq_dec x a); simpl; omega.
+Qed.
 
 Lemma count_occ_app eq_dec : forall l1 l2 (x : A),
   count_occ eq_dec (l1 ++ l2) x = (count_occ eq_dec l1 x + count_occ eq_dec l2 x)%nat.
@@ -353,6 +404,32 @@ intros x l. induction l.
       now apply Permutation_cons, IHl.
       now apply Permutation_cons_app.
 Qed.
+
+Lemma count_occ_length_le eq_dec : forall l (x : A), count_occ eq_dec l x <= length l.
+Proof.
+intros l x. induction l; simpl.
+  reflexivity.
+  destruct (eq_dec a x); omega.
+Qed.
+
+Lemma remove_count_occ_length eq_dec : forall (x : A) l,
+  length (remove eq_dec x l) + count_occ eq_dec l x = length l.
+Proof.
+intros x l. induction l; simpl.
++ reflexivity.
++ destruct (eq_dec x a); simpl.
+  - subst. destruct (eq_dec a a) as [_ | Habs]. rewrite <- plus_n_Sm, IHl. reflexivity. now elim Habs.
+  - destruct (eq_dec a x) as [Heq | Habs].
+      symmetry in Heq. contradiction.
+      now rewrite IHl.
+Qed.
+
+Corollary count_occ_length eq_dec : forall (x : A) l, count_occ eq_dec l x = length l - length (remove eq_dec x l).
+Proof. intros. apply plus_minus. symmetry. apply remove_count_occ_length. Qed.
+
+Corollary remove_length eq_dec : forall (x : A) l, length (remove eq_dec x l) = length l - count_occ eq_dec l x.
+Proof. intros. apply plus_minus. symmetry. rewrite plus_comm. apply remove_count_occ_length. Qed.
+
 
 Instance InA_impl_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@InA A).
 Proof.
@@ -480,7 +557,7 @@ intros l l' Hperm. induction Hperm; intro Hdup.
 + auto.
 Qed.
 
-Instance PermutationA_NoDupA_compar : Proper (PermutationA eqA ==> iff) (NoDupA eqA).
+Instance PermutationA_NoDupA_compat : Proper (PermutationA eqA ==> iff) (NoDupA eqA).
 Proof. now repeat intro; split; apply PermutationA_NoDupA. Qed.
 
 Lemma PermutationA_length1 : forall x l, PermutationA eqA l (x :: nil) -> exists y, eqA x y /\ l = y :: nil.
@@ -687,6 +764,17 @@ Qed.
 
 Lemma map_cst : forall x (l : list B), map (fun y => x) l = alls x (length l).
 Proof. intros x l. now induction l; simpl; try f_equal. Qed.
+
+Theorem Forall_dec : forall P (Pdec : forall x : A, {P x} + {~P x}), forall l, {Forall P l} + {~Forall P l}.
+Proof.
+intros P Pdec l. induction l; simpl.
++ left. constructor.
++ destruct (Pdec a) as [Ha | Ha].
+  - destruct IHl as [Hok | Hko].
+      left. now constructor.
+      right. intros Habs. inversion_clear Habs. contradiction.
+  - right. intros Habs. inversion_clear Habs. contradiction.
+Qed.
 
 End List_results.
 
