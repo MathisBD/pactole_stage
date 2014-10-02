@@ -488,7 +488,7 @@ Proof.
 intros f Hf l.
 assert (Hf2 : Proper (eq ==> eq) f) by now repeat intro; subst.
 induction l; simpl.
-   rewrite (M.map_compat f Hf2 (multiset nil)), multiset_nil. now rewrite M.map_empty. now apply multiset_nil.
+   rewrite (@M.map_compat f Hf2 (multiset nil)), multiset_nil. now rewrite M.map_empty. now apply multiset_nil.
    do 2 rewrite multiset_cons. now rewrite M.map_add, IHl.
 Qed.
 
@@ -1699,23 +1699,28 @@ destruct (majority_stack (nominal_spectrum  (⟦k, t⟧ pos))) eqn:Hmaj.
   repeat rewrite multiset_map; try apply similarity_injective; try (apply R1_neq_R0 || assumption).
   assert (Hlen : length (M.support (M.map (fun x : R => k * (x - t)) (multiset (nominal_spectrum pos))))
                = length (M.support (M.map (fun x : R => 1 * (x - t)) (multiset (nominal_spectrum pos))))).
-  { now do 2 rewrite M.map_support, map_length. }
+  { repeat rewrite M.map_support, map_length;
+    reflexivity || (now repeat intro; subst) || now apply similarity_injective; try apply R1_neq_R0. }
   setoid_rewrite Hlen at 1.
   destruct (beq_nat (length (M.support (M.map (fun x : R => 1 * (x - t)) (multiset (nominal_spectrum pos))))) 3)
   eqn:H3.
   assert (div2 3 = 1%nat) by reflexivity.
-  + repeat rewrite M.map_support.
+  + assert (Proper (eq ==> eq) (fun x : R => 1 * (x - t))) by now repeat intro; subst.
+    assert (Proper (eq ==> eq) (fun x : R => k * (x - t))) by now repeat intro; subst.
+    assert (injective eq eq (fun x : R => 1 * (x - t))) by (apply similarity_injective; apply R1_neq_R0).
+    assert (injective eq eq (fun x : R => k * (x - t))) by now apply similarity_injective.
+    repeat rewrite M.map_support; trivial.
     rewrite (@sort_map_increasing (fun x => 1 * (x - t))); try now apply similarity_increasing; lra.
     replace 0 with (1 * (t - t)) by ring. rewrite (map_nth (fun x => 1 * (x - t))). ring_simplify.
     symmetry in H3. apply beq_nat_eq in H3. rewrite <- Hlen in H3. rewrite <- H, <- H3.
-    rewrite M.map_support. rewrite (Permutation_length (Permuted_sort _)).
+    rewrite M.map_support; trivial. rewrite (Permutation_length (Permuted_sort _)).
     destruct (Rlt_le_dec k 0).
     - rewrite (@sort_map_decreasing (fun x => k * (x - t))); try now apply similarity_decreasing; lra.
       rewrite rev_length, odd_middle.
         rewrite map_length. replace (1 * (t - t)) with (k * (t - t)) by ring.
         rewrite (map_nth (fun x => k * (x - t))). now rewrite Rmult_minus_distr_l.
         rewrite map_length, <- (Permutation_length (Permuted_sort _)). SearchAbout List.map Proper.
-        rewrite M.map_support, map_length in H3. unfold M.elt in H3. rewrite H3. now exists 1%nat.
+        rewrite M.map_support, map_length in H3; trivial. unfold M.elt in H3. rewrite H3. now exists 1%nat.
     - rewrite (@sort_map_increasing (fun x => k * (x - t))); try now apply similarity_increasing; lra.
       rewrite map_length. replace (1 * (t - t)) with (k * (t - t)) by ring.
       rewrite (map_nth (fun x => k * (x - t))). now rewrite Rmult_minus_distr_l.
@@ -1751,9 +1756,11 @@ destruct (majority_stack (nominal_spectrum pos)) eqn:Hmaj.
 + rewrite <- majority_stack_Invalid_similarity in Hmaj; try exact R1_neq_R0. rewrite Hmaj.
   rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
   assert (Hinj : injective eq eq (fun x => 1 * (x - gp pos g))) by (apply similarity_injective; lra).
+  assert (Proper (eq ==> eq) (fun x => 1 * (x - gp pos g))) by now repeat intro; subst.
   rewrite nominal_spectrum_similarity, multiset_map, M.map_support, map_length; trivial.
   assert (H0 : 1 * (gp pos g - gp pos g) = 0) by ring.
-  destruct (beq_nat (length (M.support (multiset (nominal_spectrum pos)))) 3) eqn:H3.
+  unfold M.elt.
+  destruct (beq_nat (@length R (M.support (multiset (nominal_spectrum pos)))) 3) eqn:H3.
   - rewrite nominal_spectrum_similarity, multiset_map, M.map_support; trivial.
     rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
     rewrite sort_map_increasing; try now apply similarity_increasing; lra.

@@ -620,32 +620,23 @@ intros l HAB Hl. induction l.
     now apply IHl.
 Qed.
 
-Instance fold_left_start : forall f, Proper (eqB ==> eqA ==> eqB) f -> forall l, Proper (eqB ==> eqB) (fold_left f l).
+Instance fold_left_start : forall f, Proper (eqB ==> eqA ==> eqB) f ->
+  forall l, Proper (eqB ==> eqB) (fold_left f l).
 Proof.
 intros f Hf l. induction l; intros i1 i2 Hi; simpl.
   assumption.
   rewrite IHl. reflexivity. now rewrite Hi.
 Qed.
 
-Lemma fold_left_symmetry_swap : forall (f : B -> A -> B), (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
-  Proper (eqB ==> eqA ==> eqB) f ->
-  forall (l1 l2 : list A) (i : B), eqB (fold_left f (l1 ++ l2) i) (fold_left f (l2 ++ l1) i).
-Proof. Admitted.
-
 Instance fold_left_symmetry_PermutationA : forall (f : B -> A -> B),
   Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
   Proper (PermutationA eqA ==> eqB ==> eqB) (fold_left f).
 Proof.
-intros f Hfcomm Hf l1. induction l1; intros l2 Hperm i1 i2 Hi.
-  symmetry in Hperm. apply PermutationA_nil in Hperm. now subst.
-  assert (Hp := @PermutationA_InA_inside a _ _ Hperm). destruct Hp as [l21 [y [l22 [Heq Hl]]]]. now left.
-  subst l2. simpl. etransitivity.
-    apply (IHl1 (l21 ++ l22)).
-      apply PermutationA_cons_inv with a. etransitivity. eassumption.
-      transitivity (y :: l21 ++ l22). symmetry. now apply PermutationA_middle. now constructor.
-      rewrite Heq. reflexivity.
-      setoid_rewrite fold_left_symmetry_swap; try eassumption.
-      simpl. rewrite fold_left_start; try eassumption. reflexivity. now rewrite Hi.
+intros f Hfcomm Hf l1 l2 perm. induction perm; simpl.
+- now repeat intro.
+- intros ? ? Heq. rewrite H, Heq. now apply IHperm.
+- intros ? ? Heq. now rewrite Hf, Heq.
+- repeat intro. etransitivity. now apply IHperm1. now apply IHperm2.
 Qed.
 
 Instance PermutationA_map : forall f, Proper (eqA ==> eqB) f ->
@@ -665,13 +656,13 @@ Lemma sort_app : forall R,
   forall l1 l2 : list A, sort R l1 -> sort R l2 -> (forall x y, In x l1 -> In y l2 -> R x y) -> sort R (l1 ++ l2).
 Proof.
 induction l1; simpl in *; intuition. constructor.
-  apply IHl1.
-    now inversion_clear H.
-    assumption.
-    intros. apply H1. now right. assumption.
-  apply HdRel_app.
-    now inversion H.
-     destruct l2; constructor. apply H1; now left.
++ apply IHl1.
+  - now inversion_clear H.
+  - assumption.
+  - intros. apply H1. now right. assumption.
++ apply HdRel_app.
+  - now inversion H.
+  - destruct l2; constructor. apply H1; now left.
 Qed.
 
 Lemma NoDupA_dec : (forall x y : A, {eqA x y} + {~eqA x y}) -> forall l : list A, {NoDupA eqA l} + {~NoDupA eqA l}.
