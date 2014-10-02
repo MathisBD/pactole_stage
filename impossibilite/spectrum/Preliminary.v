@@ -31,6 +31,13 @@ Context (A B : Type).
 Context (eqA eqA' : relation A) (eqB : relation B).
 Context (HeqA : Equivalence eqA) (HeqB : Equivalence eqB).
 
+Lemma In_InA_weak : forall x l, In x l -> InA eqA x l.
+Proof.
+intros x l Hin. induction l.
+- inversion Hin.
+- destruct Hin. subst. now left. right. auto.
+Qed.
+
 Lemma InA_Leibniz : forall (x : A) l, InA Logic.eq x l <-> In x l.
 Proof.
 intros x l. split; intro Hl; induction l; inversion_clear Hl; (subst; now left) || (right; now apply IHl).  
@@ -42,6 +49,13 @@ intro l. split; intro Hl; induction l; inversion_clear Hl; constructor;
 (now rewrite <- InA_Leibniz in *) || now apply IHl.
 Qed.
 
+Lemma Permutation_PermutationA_weak : forall l1 l2, Permutation l1 l2 -> PermutationA eqA l1 l2.
+Proof.
+intros l1 l2 Heq. induction Heq; try now constructor.
+  now constructor 3.
+  now transitivity l'.
+Qed.
+
 Lemma PermutationA_Leibniz : forall l1 l2 : list A, PermutationA Logic.eq l1 l2 <-> Permutation l1 l2.
 Proof.
 intros l1 l2. split; intro Hl.
@@ -51,6 +65,15 @@ intros l1 l2. split; intro Hl.
   induction Hl; try now constructor.
     now constructor 3.
     now transitivity l'.
+Qed.
+
+Lemma PermutationA_subrelation_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@PermutationA A).
+Proof.
+intros eqA1 eqA2 Hrel l1 l2 H12 l3 l4 H34 Hperm. subst. induction Hperm.
+- constructor.
+- constructor. now apply Hrel. assumption.
+- constructor 3.
+- now constructor 4 with l₂.
 Qed.
 
 Lemma NoDupA_2 : forall x y, ~eqA x y -> NoDupA eqA (x :: y :: nil).
@@ -464,6 +487,14 @@ Lemma PermutationA_InA_inside : forall (x : A) l l',
   PermutationA eqA l l' -> InA eqA x l -> exists l1 y l2, eqA x y /\ l' = l1 ++ y :: l2.
 Proof. intros x l l' Hperm Hin. rewrite Hperm in Hin. apply (InA_split Hin). Qed.
 
+Lemma PermutationA_cons_split : forall (x : A) l l',
+  PermutationA eqA (x :: l) l' -> exists l'', PermutationA eqA l' (x :: l'').
+Proof.
+intros x l l' Hperm. assert (Hin : InA eqA x l'). { rewrite <- Hperm. now left. }
+symmetry in Hperm. destruct (PermutationA_InA_inside Hperm Hin) as [l1 [y [l2 [Heq Hll]]]].
+exists (l1 ++ l2). rewrite Hperm, Hll. etransitivity. symmetry. apply (PermutationA_middle _).
+constructor. now symmetry. reflexivity.
+Qed.
 
 Theorem PermutationA_ind_bis :
  forall P : list A -> list A -> Prop,
@@ -685,6 +716,9 @@ intros d l1 l2 Hl2. induction l1; simpl.
   assert (l1 ++ l2 <> nil). { intro Habs. apply Hl2. now destruct (app_eq_nil _ _ Habs). }
   destruct (l1 ++ l2). now elim H. assumption.
 Qed.
+
+Theorem PermutationA_rev : forall l, PermutationA eqA l (rev l).
+Proof. intro. apply Permutation_PermutationA_weak. apply Permutation_rev. Qed.
 
 Lemma last_rev_hd : forall (d : A) l, last (rev l) d = hd d l.
 Proof. intros d l. destruct l; simpl. reflexivity. rewrite app_last. reflexivity. discriminate. Qed.

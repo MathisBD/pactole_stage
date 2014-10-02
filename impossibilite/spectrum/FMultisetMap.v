@@ -481,8 +481,8 @@ Lemma fold_spec : forall (A : Type) s (i : A) (f : elt -> nat -> A -> A),
     fold f s i = fold_left (fun acc xn => f (fst xn) (snd xn) acc) (elements s) i.
 Proof. intros A i f s. unfold fold, elements. now rewrite M.fold_1, fold_left_map. Qed.
 
-Lemma cardinal_spec : forall s, cardinal s = fold_left (fun acc xn => snd xn + acc) (elements s) 0.
-Proof. intro s. unfold cardinal, elements. rewrite fold_left_map. rewrite M.fold_1. simpl. reflexivity. Qed.
+Lemma cardinal_spec : forall s, cardinal s = fold (fun x n acc => n + acc) s 0.
+Proof. intro. unfold cardinal. rewrite fold_spec. unfold elements. now rewrite fold_left_map, M.fold_1. Qed.
 
 Lemma size_spec : forall s, size s = length (support s).
 Proof. intro. unfold size, support. now rewrite M.fold_1, fold_left_length, M.fold_1, fold_left_cons_length. Qed.

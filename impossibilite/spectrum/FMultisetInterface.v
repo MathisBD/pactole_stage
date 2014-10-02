@@ -137,7 +137,7 @@ Module Type FMultisetsOn (E : DecidableType).
     fold f s i = fold_left (fun acc xn => f (fst xn) (snd xn) acc) (elements s) i.
 (*  Parameter fold_spec : forall (A : Type) s (i : A) (f : elt -> nat -> A -> A),
     fold f s i = fold_left (fun acc x => f x (multiplicity x s) acc) (support s) i.*)
-  Parameter cardinal_spec : forall s, cardinal s = fold_left (fun acc xn => snd xn + acc) (elements s) 0.
+  Parameter cardinal_spec : forall s, cardinal s = fold (fun x n acc => n + acc) s 0.
   Parameter size_spec : forall s, size s = length (support s).
   Parameter filter_spec : forall f x s, compatb f ->
     multiplicity x (filter f s) = if f x (multiplicity x s) then multiplicity x s else 0.
