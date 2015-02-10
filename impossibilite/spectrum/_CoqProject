@@ -1,5 +1,6 @@
+
 -install none
--I .
+-R . pactole
 Preliminary.v
 ConvergentFormalismR.v
 EqualitiesR.v
@@ -7,3 +8,4 @@ FMultisetInterface.v
 FMultisetMap.v
 FMultisetFacts.v
 # noRDV Equalities EqualitiesR noRDVevenR noRDVR
+
