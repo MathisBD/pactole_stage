@@ -10,27 +10,45 @@
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Sorting.
+Require Import Arith_base.
+Require Import Omega.
+Require Import Morphisms.
 Require Import Reals.
 Import Permutation.
 Require Import List.
 Open Scope list_scope.
 (* Require Export pactole.Preliminary. *)
 Require Vector.
-Require Import Arith_base.
-Require Import Omega.
-Require Import Morphisms.
 
 
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
 
-
+(* TODO: adapt it to setoid equality *)
 Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
 
 Lemma if_ExtEq : forall A B (cond : A -> bool) (f : A -> B), ExtEq (fun x => if cond x then f x else f x) f.
 Proof. intros ? ? cond ? x. now destruct (cond x). Qed.
 
+(** [location] is the metric space in which robots evolve.
+    It can be anything (discrete or continuous) as long as it is a metric space. *)
+
+Module Type MetricSpace.
+  Parameter t : Type.
+  Parameter origin : t.
+  Parameter eq : t -> t -> Prop.
+  Parameter dist : t -> t -> R.
+
+  Parameter eq_equiv : Equivalence eq.
+  Parameter dist_pos : forall x y, (dist x y <= 0)%R.
+  Parameter dist_defined : forall x y, dist x y = 0%R <-> eq x y.
+  Parameter dist_sym : forall y x, dist x y = dist y x.
+  Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
+End MetricSpace.
+
+
+Module ConvergentFormalism (Location : MetricSpace).
 
 (** **  Finite sets of names  **)
 
@@ -180,22 +198,7 @@ Qed.
 
 (** ** Agents *)
 
-(* For clarity's sake we will write location for robots location, and R for
-   zooming factor and translation vectors. Obviously these ar all reals and
-   we will:
- - multiply locations by zooming factor and obtain new locations
- - add locations and vectors and obtain new locations. *)
-Parameter location : Type.
-Parameter origin:location.
-Parameter dist : location -> location -> R.
-
-(* Should contain a location *)
-(* Parameter State:Type. *)
-
 (** We have finetely many robots. Some are good, other are evil. *)
-
-
-Section goodbyz. (* Remove to have notations outside it *)
 
 Variables nG nB : nat.
 Definition G : Set := Fin.t nG.
@@ -217,16 +220,16 @@ Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
 (** ** Positions *)
 
+
 (** We explicitely say that a permutation has a different treatment for good and
    byzantine robots, because later we will consider that byzantine positions are
    chosen by the demon whereas positions of good robots will be computed by its
    algorithm. *)
-Definition position := ident -> location.
+Definition position := ident -> Location.t.
 
 (** ** Equalities on positions *)
 
-(** A position is a pair of location functions. Equality on positions is the
-    extentional equality of the two location functions. *)
+(** A position mapping from identifiers to locations.  Equality is extensional. *)
 Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, pos₁ id = pos₂ id.
 
 
@@ -240,7 +243,7 @@ Parameter is_spectrum : spectrum -> position -> Prop.
 (** ** The program of correct robots *)
 
 (** ** Good robots have a common program, which we call a robogram *)
-Definition robogram := spectrum → location.
+Definition robogram := spectrum → Location.t.
 
 Record bijection (t : Type) :=
  { section :> t → t
@@ -250,10 +253,10 @@ Record bijection (t : Type) :=
 
 Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 
-(** A robot is either inactive (case [Off]) or activated and observing the [obs] *)
+(** A robot is either inactive (case [Off]) or activated and observing with the [obs]-applied local vision. *)
 Inductive phase :=
   | Off
-  | On (obs : location → bijection location).
+  | On (obs : Location.t → bijection Location.t).
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
@@ -265,9 +268,9 @@ Inductive phase :=
     computed result by the inverse of k (which is not defined in this case). *)
 Record demonic_action :=
   {
-    relocate_byz : B → location
+    relocate_byz : B → Location.t
     ; step : ident → phase
-    ; step_ok : forall pos r o, step r = On o -> o (pos r) (pos r) = origin
+    ; step_ok : forall pos r o, step r = On o -> o (pos r) (pos r) = Location.origin
     ; spectrum_of : G → (position → spectrum)
     ; spectrum_ok : forall g:G, forall p:position, is_spectrum (spectrum_of g p) p
     ; spectrum_exteq : forall g pos1 pos2, PosEq pos1 pos2 -> spectrum_of g pos1 = spectrum_of g pos2
@@ -424,7 +427,7 @@ Definition execution_tail (e : execution) : execution :=
   match e with NextExecution _ e => e end.
 
 (** Pointwise mapping of a function on a position *)
-Definition map_pos (f : location -> location) (pos : position) := fun id => f (pos id).
+Definition map_pos (f : Location.t -> Location.t) (pos : position) := fun id => f (pos id).
 
 (** [round r da pos] return the new position of robots (that is a function
     giving the position of each robot) from the previous one [pos] by applying
@@ -461,13 +464,13 @@ Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
 
 Open Scope R_scope.
 (** Expressing that all good robots are confined in a small disk. *)
-CoInductive imprisonned (center : location) (radius : R) (e : execution) : Prop
-:= InDisk : (∀ g : G, Rabs (dist center (execution_head e (Good g))) <= radius)
+CoInductive imprisonned (center : Location.t) (radius : R) (e : execution) : Prop
+:= InDisk : (∀ g : G, Rabs (Location.dist center (execution_head e (Good g))) <= radius)
             → imprisonned center radius (execution_tail e)
             → imprisonned center radius e.
 
 (** The execution will end in a small disk. *)
-Inductive attracted (center : location) (radius : R) (e : execution) : Prop :=
+Inductive attracted (center : Location.t) (radius : R) (e : execution) : Prop :=
   | Captured : imprisonned center radius e → attracted center radius e
   | WillBeCaptured : attracted center radius (execution_tail e) → attracted center radius e.
 
@@ -477,7 +480,7 @@ Definition solution (r : robogram) : Prop :=
   ∀ (pos : position),
   ∀ (d : demon), Fair d →
   ∀ (epsilon : R), 0 < epsilon →
-  exists (lim_app : location), attracted lim_app epsilon (execute r d pos).
+  exists (lim_app : Location.t), attracted lim_app epsilon (execute r d pos).
 
 
 (** Solution restricted to fully synchronous demons. *)
@@ -485,7 +488,7 @@ Definition solution_FSYNC (r : robogram) : Prop :=
   ∀ (pos : position),
   ∀ (d : demon), FullySynchronous d →
   ∀ (epsilon : R), 0 < epsilon →
-  exists (lim_app : location), attracted lim_app epsilon (execute r d pos).
+  exists (lim_app : Location.t), attracted lim_app epsilon (execute r d pos).
 
 
 (** A Solution is also a solution restricted to fully synchronous demons. *)
@@ -498,10 +501,7 @@ Proof.
   now apply fully_synchronous_implies_fair.
 Qed.
 
-End goodbyz.
-
-(** Exporting notations of section above. *)
-Notation "s ⁻¹" := (s.(retraction)) (at level 99).
+End ConvergentFormalism.
 
 (* 
  *** Local Variables: ***
