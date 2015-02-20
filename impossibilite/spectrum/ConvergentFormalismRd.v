@@ -10,12 +10,14 @@
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Sorting.
+Require Import Reals.
 Import Permutation.
 Require Import List.
 Open Scope list_scope.
-Require Export pactole.Preliminary.
+(* Require Export pactole.Preliminary. *)
 Require Vector.
 Require Import Arith_base.
+Require Import Omega.
 Require Import Morphisms.
 
 
@@ -185,6 +187,7 @@ Qed.
  - add locations and vectors and obtain new locations. *)
 Parameter location : Type.
 Parameter origin:location.
+Parameter dist : location -> location -> R.
 
 (* Should contain a location *)
 (* Parameter State:Type. *)
@@ -238,10 +241,6 @@ Parameter is_spectrum : spectrum -> position -> Prop.
 
 (** ** Good robots have a common program, which we call a robogram *)
 Definition robogram := spectrum → location.
-
-Section PhaseT.
-
-Parameter T : Type.
 
 Record bijection (t : Type) :=
  { section :> t → t
@@ -460,9 +459,10 @@ Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
 
 (** ** Properties of executions  *)
 
+Open Scope R_scope.
 (** Expressing that all good robots are confined in a small disk. *)
 CoInductive imprisonned (center : location) (radius : R) (e : execution) : Prop
-:= InDisk : (∀ g, Rabs (center - execution_head e g) <= radius)
+:= InDisk : (∀ g : G, Rabs (dist center (execution_head e (Good g))) <= radius)
             → imprisonned center radius (execution_tail e)
             → imprisonned center radius e.
 
@@ -474,18 +474,18 @@ Inductive attracted (center : location) (radius : R) (e : execution) : Prop :=
 (** [solution r] means that robogram [r] is a solution, i.e. is convergent
     ([attracted]) for any demon. *)
 Definition solution (r : robogram) : Prop :=
-  ∀ (gp : G → location),
+  ∀ (pos : position),
   ∀ (d : demon), Fair d →
   ∀ (epsilon : R), 0 < epsilon →
-  exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
+  exists (lim_app : location), attracted lim_app epsilon (execute r d pos).
 
 
 (** Solution restricted to fully synchronous demons. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
-  ∀ (gp : G → location),
+  ∀ (pos : position),
   ∀ (d : demon), FullySynchronous d →
   ∀ (epsilon : R), 0 < epsilon →
-  exists (lim_app : location), attracted lim_app epsilon (execute r d gp).
+  exists (lim_app : location), attracted lim_app epsilon (execute r d pos).
 
 
 (** A Solution is also a solution restricted to fully synchronous demons. *)
@@ -493,7 +493,7 @@ Lemma solution_FAIR_FSYNC : ∀ r, solution r → solution_FSYNC r.
 Proof.
   intros r H.
   unfold solution_FSYNC, solution in *.
-  intros gp d H0.
+  intros pos d H0.
   apply H.
   now apply fully_synchronous_implies_fair.
 Qed.
@@ -502,8 +502,6 @@ End goodbyz.
 
 (** Exporting notations of section above. *)
 Notation "s ⁻¹" := (s.(retraction)) (at level 99).
-Notation "p '∘' s" := (subst_pos s p) (at level 40, left associativity, only parsing).
-Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 40, format "'⟦' k ','  t '⟧'").
 
 (* 
  *** Local Variables: ***

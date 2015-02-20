@@ -3,6 +3,7 @@
 -R . pactole
 Preliminary.v
 ConvergentFormalismR.v
+ConvergentFormalismRd.v
 EqualitiesR.v
 FMultisetInterface.v
 FMultisetMap.v
