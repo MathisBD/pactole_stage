@@ -7,6 +7,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Sorting.
@@ -17,7 +18,6 @@ Require Import Reals.
 Import Permutation.
 Require Import List.
 Open Scope list_scope.
-(* Require Export pactole.Preliminary. *)
 Require Vector.
 
 
@@ -31,24 +31,16 @@ Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
 Lemma if_ExtEq : forall A B (cond : A -> bool) (f : A -> B), ExtEq (fun x => if cond x then f x else f x) f.
 Proof. intros ? ? cond ? x. now destruct (cond x). Qed.
 
-(** [location] is the metric space in which robots evolve.
-    It can be anything (discrete or continuous) as long as it is a metric space. *)
 
-Module Type MetricSpace.
-  Parameter t : Type.
-  Parameter origin : t.
-  Parameter eq : t -> t -> Prop.
-  Parameter dist : t -> t -> R.
+(** *  Identification of robots  **)
 
-  Parameter eq_equiv : Equivalence eq.
-  Parameter dist_pos : forall x y, (dist x y <= 0)%R.
-  Parameter dist_defined : forall x y, dist x y = 0%R <-> eq x y.
-  Parameter dist_sym : forall y x, dist x y = dist y x.
-  Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
-End MetricSpace.
+(** The number of good and byzantine robots *)
+Module Type Size.
+  Parameter nG : nat.
+  Parameter nB : nat.
+End Size.
 
-
-Module ConvergentFormalism (Location : MetricSpace).
+Module Names (N : Size).
 
 (** **  Finite sets of names  **)
 
@@ -194,15 +186,12 @@ intros n m A f g. destruct m; simpl.
 Qed.
 
 
-(** * Byzantine Robots *)
-
-(** ** Agents *)
+(** ** Byzantine Robots *)
 
 (** We have finetely many robots. Some are good, other are evil. *)
 
-Variables nG nB : nat.
-Definition G : Set := Fin.t nG.
-Definition B := Fin.t nB.
+Definition G : Set := Fin.t N.nG.
+Definition B := Fin.t N.nB.
 
 (** Disjoint union of both kinds of robots is obtained by a sum type. *)
 (* TODO: replace this by (G ⊎ B). *)
@@ -218,65 +207,100 @@ Definition Gnames : list G := fin_map (fun x : G => x).
 Definition Bnames : list B := fin_map (fun x : B => x).
 Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
-(** ** Positions *)
+End Names.
 
 
-(** We explicitely say that a permutation has a different treatment for good and
-   byzantine robots, because later we will consider that byzantine positions are
-   chosen by the demon whereas positions of good robots will be computed by its
-   algorithm. *)
-Definition position := ident -> Location.t.
+(** * Positions *)
 
-(** ** Equalities on positions *)
+(** This module signature represents the metric space in which robots evolve.
+    It can be anything (discrete or continuous) as long as it is a metric space. *)
+Module Type MetricSpace.
+  Parameter t : Type.
+  Parameter origin : t.
+  Parameter eq : t -> t -> Prop.
+  Parameter dist : t -> t -> R.
 
-(** A position mapping from identifiers to locations.  Equality is extensional. *)
-Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, pos₁ id = pos₂ id.
-
+  Parameter eq_equiv : Equivalence eq.
+  Parameter dist_pos : forall x y, (dist x y <= 0)%R.
+  Parameter dist_defined : forall x y, dist x y = 0%R <-> eq x y.
+  Parameter dist_sym : forall y x, dist x y = dist y x.
+  Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
+End MetricSpace.
 
 (** **  Spectra  **)
 
-Parameter spectrum : Type.
+Module Type Spectrum (Location : MetricSpace) (N : Size). (* <: DecidableType *)
+  Module Names := Names(N).
 
-(* A predicate characterizing correct spectra for a given local position *)
-Parameter is_spectrum : spectrum -> position -> Prop.
+  (** Spectra are a decidable type *)
+  Parameter t : Type.
+  Parameter eq : t -> t -> Prop.
+  Parameter eq_equiv : Equivalence eq.
 
-(** ** The program of correct robots *)
+  (** Positions *)
+  Definition position := Names.ident -> Location.t.
+
+  (** A predicate characterizing correct spectra for a given local position *)
+  Parameter is_ok : t -> position -> Prop.
+End Spectrum.
+
+
+Module ConvergentFormalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
+
+Module Import Names := Spec.Names.
+Definition position := Spec.position.
+
+(** ** Equalities on positions *)
+
+(** A position is a mapping from identifiers to locations.  Equality is extensional. *)
+Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, Location.eq (pos₁ id) (pos₂ id).
+
+
+(** ** Programs for good robots *)
 
 (** ** Good robots have a common program, which we call a robogram *)
-Definition robogram := spectrum → Location.t.
+Record robogram := {
+  pgm :> Spec.t → Location.t;
+  pgm_compat : Proper (Spec.eq ==> Location.eq) pgm}.
 
-Record bijection (t : Type) :=
- { section :> t → t
- ; retraction : t → t
- ; Inversion : ∀ x y, section x = y ↔ retraction y = x
- }.
+Record bijection (T : Type) eqT (Heq : @Equivalence T eqT) := {
+  section :> T → T;
+  retraction : T → T;
+  section_exteq : Proper (eqT ==> eqT) section;
+  Inversion : ∀ x y, eqT (section x) y ↔ eqT (retraction y) x}.
 
 Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 
+Definition bij_eq (bij1 bij2 : bijection Location.eq_equiv) := (Location.eq ==> Location.eq)%signature bij1.(section) bij2.
+
+Unset Implicit Arguments.
 (** A robot is either inactive (case [Off]) or activated and observing with the [obs]-applied local vision. *)
 Inductive phase :=
   | Off
-  | On (obs : Location.t → bijection Location.t).
+  | On (obs : Location.t → bijection Location.eq_equiv)
+       (Hobs : Proper (Location.eq ==> bij_eq) obs).
+Arguments On obs Hobs. (* does not seeem to have any effect *)
+
+Definition phase_eq (ph1 ph2 : phase) :=
+  match ph1, ph2 with 
+    | Off, Off => True
+    | Off, On _ _ => False
+    | On _ _, Off => False
+    | On obs1 Hobs1, On obs2 Hobs2 => (Location.eq ==> bij_eq)%signature obs1 obs2
+  end.
 
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
-    as it whishes, and sets the referential of all good robots it selects.
-    A reference of 0 is a special reference meaning that the robot will not
-    be activated. Any other reference gives a factor for zooming.
-    Note that we do not want the demon give a zoom factor k of 0,
-    since to compute the new position we then need to multiply the
-    computed result by the inverse of k (which is not defined in this case). *)
-Record demonic_action :=
-  {
-    relocate_byz : B → Location.t
-    ; step : ident → phase
-    ; step_ok : forall pos r o, step r = On o -> o (pos r) (pos r) = Location.origin
-    ; spectrum_of : G → (position → spectrum)
-    ; spectrum_ok : forall g:G, forall p:position, is_spectrum (spectrum_of g p) p
-    ; spectrum_exteq : forall g pos1 pos2, PosEq pos1 pos2 -> spectrum_of g pos1 = spectrum_of g pos2
-      (* can be omitted if we sort the spectra in [round]. *)
-  }.
-
+    as it whishes, and sets the referential of all good robots it selects. *)
+Record demonic_action := {
+  relocate_byz : B → Location.t;
+  step : ident → phase;
+  step_ok : forall pos r o Ho, step r = On o Ho -> o (pos r) (pos r) = Location.origin;
+  step_exteq : Proper (eq ==> phase_eq) step;
+  spectrum_of : G → (position → Spec.t);
+  spectrum_ok : forall g:G, forall p:position, Spec.is_ok (spectrum_of g p) p;
+  spectrum_exteq : Proper (eq ==> PosEq ==> Spec.eq) spectrum_of}.
+Set Implicit Arguments.
 
 
 (** A [demon] is just a stream of [demonic_action]s. *)
@@ -306,7 +330,6 @@ CoInductive Fair (d : demon) : Prop :=
 
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
-(* TODO: should we put byzantine robots in Between? *)
 Inductive Between g h (d : demon) : nat -> Prop :=
 | kReset : forall k, step (demon_head d) g <> Off -> Between g h d k
 | kReduce : forall k, step (demon_head d) g = Off -> step (demon_head d) h <> Off ->
@@ -439,7 +462,7 @@ Definition round (r : robogram) (da : demonic_action) (pos : position) : positio
     let t := pos id in (** t is the current position of g seen by the demon *)
     match da.(step) id with (** first see whether the robot is activated *)
       | Off => t (** If g is not activated, do nothing *)
-      | On f => (** g is activated and f is its frame (phase) *)
+      | On f _ => (** g is activated and f is its frame (phase) *)
         match id with
         | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
         | Good g => 

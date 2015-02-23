@@ -1,10 +1,11 @@
 
 -install none
--R . pactole
+-R . Pactole
 Preliminary.v
 ConvergentFormalismR.v
 ConvergentFormalismRd.v
 EqualitiesR.v
+EqualitiesRd.v
 FMultisetInterface.v
 FMultisetMap.v
 FMultisetFacts.v
