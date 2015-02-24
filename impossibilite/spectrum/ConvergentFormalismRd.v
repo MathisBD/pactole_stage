@@ -219,6 +219,7 @@ Module Type MetricSpace.
   Parameter origin : t.
   Parameter eq : t -> t -> Prop.
   Parameter dist : t -> t -> R.
+  Parameter eq_dec : forall x y, {eq x y} + {~eq x y}.
 
   Parameter eq_equiv : Equivalence eq.
   Parameter dist_pos : forall x y, (dist x y <= 0)%R.
@@ -231,15 +232,18 @@ End MetricSpace.
 
 Module Type Spectrum (Location : MetricSpace) (N : Size). (* <: DecidableType *)
   Module Names := Names(N).
-
+  
   (** Spectra are a decidable type *)
   Parameter t : Type.
   Parameter eq : t -> t -> Prop.
   Parameter eq_equiv : Equivalence eq.
-
+  
   (** Positions *)
   Definition position := Names.ident -> Location.t.
-
+  
+  (** A position is a mapping from identifiers to locations.  Equality is extensional. *)
+  Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, Location.eq (pos₁ id) (pos₂ id).
+  
   (** A predicate characterizing correct spectra for a given local position *)
   Parameter is_ok : t -> position -> Prop.
 End Spectrum.
@@ -248,13 +252,8 @@ End Spectrum.
 Module ConvergentFormalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
 
 Module Import Names := Spec.Names.
-Definition position := Spec.position.
-
-(** ** Equalities on positions *)
-
-(** A position is a mapping from identifiers to locations.  Equality is extensional. *)
-Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, Location.eq (pos₁ id) (pos₂ id).
-
+Notation position := Spec.position.
+Notation PosEq := Spec.PosEq.
 
 (** ** Programs for good robots *)
 

@@ -1,10 +1,10 @@
 Require Import Arith_base.
 Require Import PArith.
 Require Import Equalities.
+Require Import FMapInterface.
 Require Import Preliminary.
 Require Export FMultisetInterface.
 
-Require Import FMapInterface.
 
 Lemma fold_left_map : forall A B C (f : C -> B -> C) (g : A -> B) (l : list A) (x : C),
   fold_left f (map g l) x = fold_left (fun acc x => f acc (g x)) l x.
@@ -88,19 +88,32 @@ rewrite NoDupA_app_iff in *; trivial. destruct H1 as [H1 [H2 H3]]. repeat split.
     now apply (H3 a).
 Qed.
 
-Module FMultisets (FMap : WSfun) (E : DecidableType) : FMultisetsOn E.
+Module FMultisets (FMap : WSfun) (E : Equalities.DecidableType) : FMultisetsOn E.
 
-Module M := FMap(E).
+Hint Extern 1 (~E.eq ?x ?y) => let Heq := fresh "Heq" in
+  congruence || intro Heq; symmetry in Heq; revert Heq; assumption.
+
+Hint Extern 1 (E.eq ?x ?y) => symmetry; assumption.
+
+
+Module oldE : DecidableType with Definition t := E.t
+                            with Definition eq := E.eq
+                            with Definition eq_dec := E.eq_dec.
+  Definition t := E.t.
+  Definition eq := E.eq.
+  Definition eq_refl (x : t) := reflexivity x.
+  Definition eq_sym (x y : t) (Heq : eq x y) := symmetry Heq.
+  Lemma eq_trans (x y z : t) (Hxy : eq x y) (Hyz : eq y z) : eq x z.
+  Proof. rewrite Hxy. apply Hyz. Qed.
+  Definition eq_dec := E.eq_dec.
+End oldE.
+
+Module M := FMap(oldE).
 
 Definition eq_pair := RelProd E.eq (@Logic.eq nat).
 Definition eq_key := RelCompFun E.eq (@fst E.t nat).
 
-Instance Eeq_equiv : Equivalence E.eq.
-Proof. split.
-  exact E.eq_refl.
-  exact E.eq_sym.
-  exact E.eq_trans.
-Qed.
+Instance Eeq_equiv : Equivalence E.eq := E.eq_equiv.
 
 Instance Meq_equiv A : Equivalence (@M.eq_key_elt A).
 Proof. split.
@@ -381,7 +394,7 @@ intros x y n. unfold singleton, add. destruct (eq_nat_dec n 0).
   destruct (E.eq_dec y x) as [Heq | Hneq].
     rewrite (M.find_1 (M.add_1 _ _ (symmetry Heq))). now apply Nat2Pos.id.
     destruct (M.find y (M.add x (Pos.of_nat n) empty)) eqn:Hin.
-      apply M.find_2, M.add_3 in Hin. exfalso. apply (M.empty_1 Hin). now auto.
+      apply M.find_2, M.add_3 in Hin. exfalso. apply (M.empty_1 Hin). intro. apply Hneq. now symmetry.
       reflexivity.
 Qed.
 

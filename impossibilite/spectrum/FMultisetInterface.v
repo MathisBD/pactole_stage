@@ -1,6 +1,6 @@
 Require Export RelationPairs.
 Require Import MSetInterface.
-Require Export DecidableType.
+Require Export Equalities.
 Require Export SetoidPermutation.
 Require Import Preliminary.
 
@@ -87,16 +87,12 @@ Module Type FMOps (E : DecidableType).
       Which element is chosen is unspecified. Equal multisets could return different elements. *)
 End FMOps.
 
+
 Module Type FMultisetsOn (E : DecidableType).
   (** First, we ask for all the functions *)
   Include FMOps E.
 
-  Instance Eeq_equiv : Equivalence E.eq.
-  Proof. split.
-    exact E.eq_refl.
-    exact E.eq_sym.
-    exact E.eq_trans.
-  Qed.
+  Instance Eeq_equiv : Equivalence E.eq := E.eq_equiv.
   
   (** ** Logical predicates *)
 
@@ -157,7 +153,7 @@ Module Type FMultisetsOn (E : DecidableType).
   Proof. split.
   intros [x n]. now split; hnf.
   intros [x n] [y m] [H1 H2]; split; hnf in *; now auto.
-  intros ? ? ? [? ?] [? ?]. split. hnf in *. now apply E.eq_trans with (fst y). now transitivity (snd y).
+  intros ? ? ? [? ?] [? ?]. split. hnf in *. now transitivity (fst y). now transitivity (snd y).
   Qed.
   
   Parameter elements_spec : forall xn s,

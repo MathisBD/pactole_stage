@@ -32,7 +32,7 @@ Instance equiv_bisim (T : Type) (R : T -> T -> Prop) `{eqR : Equivalence T R} : 
 
 Module Equalities (Location : MetricSpace) (N : Size) (Spec : Spectrum(Location)(N)).
 
-Module Import Formalism := ConvergentFormalism(Location)(N)(Spec).
+Module Export Formalism := ConvergentFormalism(Location)(N)(Spec).
 
 (** **  Equality of positions  **)
 

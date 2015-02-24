@@ -9,5 +9,6 @@ EqualitiesRd.v
 FMultisetInterface.v
 FMultisetMap.v
 FMultisetFacts.v
+RDVinRd.v
 # noRDV Equalities EqualitiesR noRDVevenR noRDVR
 

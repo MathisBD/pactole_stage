@@ -1,16 +1,22 @@
 Require Import Omega.
 Require Import PArith.
+Require Import SetoidList.
 Require Import Preliminary.
 Require Export FMultisetInterface.
 
+
 Set Implicit Arguments.
+
 
 Module Make(E : DecidableType)(M : FMultisetsOn E).
   Include M.
   
+  Hint Extern 1 (~E.eq ?x ?y) => let Heq := fresh "Heq" in
+    congruence || intro Heq; symmetry in Heq; revert Heq; assumption.
+  
   Lemma subrelation_pair_key : subrelation eq_pair eq_key.
   Proof. now intros [x n] [y p] [H _]. Qed.
-  
+
   Lemma InA_pair_key : forall x n p l, InA eq_pair (x, n) l -> InA eq_key (x, p) l.
   Proof.
   intros x n p l Hin. induction l as [| [y q] l].
@@ -76,15 +82,15 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Proof.
   intros x y Hxy n m Hnm s1 s2 Hs12 z. subst m. destruct (E.eq_dec z x) as [Heq | Hneq].
     rewrite Heq. rewrite add_spec. rewrite Hxy. rewrite add_spec. now rewrite Hs12.
-    repeat rewrite add_spec'; apply Hs12 || eauto.
+    repeat rewrite add_spec'; apply Hs12 || intro; apply Hneq; rewrite Hxy in *; symmetry; assumption.
   Qed.
   
   Instance singleton_compat : Proper (E.eq ==> Logic.eq ==> eq) singleton.
   Proof.
   intros x y Hxy n m Hnm z. subst. do 2 rewrite singleton_spec. destruct (E.eq_dec z x), (E.eq_dec z y).
     reflexivity.
-    elim n. now apply E.eq_trans with x.
-    elim n. apply E.eq_trans with y. assumption. now auto.
+    elim n. now transitivity x.
+    elim n. transitivity y. assumption. now auto.
     reflexivity.
   Qed.
   
@@ -92,7 +98,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Proof.
   intros x y Hxy n m Hnm s1 s2 Hs12 z. subst m. destruct (E.eq_dec z x) as [Heq | Hneq].
     rewrite Heq. rewrite remove_spec. rewrite Hxy. rewrite remove_spec. now rewrite Hs12.
-    repeat rewrite remove_spec'; apply Hs12 || eauto.
+    repeat rewrite remove_spec'; apply Hs12 || auto. intro; apply Hneq; rewrite Hxy in *; symmetry; assumption.
   Qed.
   
   Instance union_compat : Proper (eq ==> eq ==> eq) union.
