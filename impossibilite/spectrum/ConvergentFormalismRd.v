@@ -255,12 +255,20 @@ Module Import Names := Spec.Names.
 Notation position := Spec.position.
 Notation PosEq := Spec.PosEq.
 
-(** ** Programs for good robots *)
+Instance dist_compat : Proper (Location.eq ==> Location.eq ==> eq) (Location.dist).
+Proof.
+intros x x' Hx y y' Hy. apply Rle_antisym.
++ replace (Location.dist x' y') with (0 + Location.dist x' y' + 0)%R by ring. symmetry in Hy.
+  rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
+  rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
+  rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
++ replace (Location.dist x y) with (0 + Location.dist x y + 0)%R by ring. symmetry in Hx.
+  rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
+  rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
+  rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
+Qed.
 
-(** ** Good robots have a common program, which we call a robogram *)
-Record robogram := {
-  pgm :> Spec.t → Location.t;
-  pgm_compat : Proper (Spec.eq ==> Location.eq) pgm}.
+(** ** Programs for good robots *)
 
 Record bijection (T : Type) eqT (Heq : @Equivalence T eqT) := {
   section :> T → T;
@@ -270,9 +278,15 @@ Record bijection (T : Type) eqT (Heq : @Equivalence T eqT) := {
 
 Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 
-Definition bij_eq (bij1 bij2 : bijection Location.eq_equiv) := (Location.eq ==> Location.eq)%signature bij1.(section) bij2.
+Definition bij_eq (bij1 bij2 : bijection Location.eq_equiv) :=
+  (Location.eq ==> Location.eq)%signature bij1.(section) bij2.
 
 Unset Implicit Arguments.
+(** ** Good robots have a common program, which we call a robogram *)
+Record robogram := {
+  pgm :> Spec.t → Location.t;
+  pgm_compat : Proper (Spec.eq ==> Location.eq) pgm}.
+
 (** A robot is either inactive (case [Off]) or activated and observing with the [obs]-applied local vision. *)
 Inductive phase :=
   | Off

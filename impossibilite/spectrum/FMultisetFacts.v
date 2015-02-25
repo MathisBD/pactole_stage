@@ -1014,6 +1014,30 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - rewrite H. apply empty_spec.
   Qed.
   
+  Lemma fold_extensionality_compat (A : Type) (eqA : relation A) `(Equivalence A eqA) :
+    forall f : elt -> nat -> A -> A, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f ->
+      (forall x y x' y' z, eqA (f x x' (f y y' z)) (f y y' (f x x' z))) ->
+    forall g, (forall x v acc, eqA (f x v acc) (g x v acc)) ->
+    forall m i, eqA (fold f m i) (fold g m i).
+  Proof.
+  intros f Hf Hf2 g Hext m i.
+  assert (Hg : Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) g).
+  { repeat intro. repeat rewrite <- Hext. apply Hf; assumption. }
+  assert (Hg2 : forall x y x' y' z, eqA (g y y' (g x x' z)) (g x x' (g y y' z))).
+  { repeat intro. repeat rewrite <- Hext. apply Hf2. }
+  apply fold_rect.
+  + intros m1 m2 acc Hm Heq. rewrite Heq. apply (fold_compat _ _ g Hg Hg2); assumption || reflexivity.
+  + rewrite fold_empty. reflexivity.
+  + intros x n m' acc Hin Hn Hout Heq. rewrite Hext, Heq. rewrite fold_add; reflexivity || assumption.
+  Qed.
+  
+  Lemma filter_extensionality_compat : forall f, compatb f ->
+    forall g m, (forall x n, g x n = f x n) -> filter f m [=] filter g m.
+  Proof.
+  intros f Hf g m Hext x.
+  assert (Hg : Proper (E.eq ==> Logic.eq ==> Logic.eq) g). { repeat intro. repeat rewrite Hext. now apply Hf. }
+  repeat rewrite filter_spec; trivial. rewrite Hext. reflexivity.
+  Qed.
   
   (** *  Extra operations  **)
   

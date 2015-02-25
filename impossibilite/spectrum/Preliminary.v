@@ -184,6 +184,13 @@ intros x1 x2 n1. induction n1; intros [] Heq; try reflexivity || discriminate He
 f_equal. apply IHn1. now inversion Heq.
 Qed.
 
+Lemma alls_app : forall x n1 n2, alls x n1 ++ alls x n2 = alls x (n1 + n2).
+Proof.
+intros x n1 n2. induction n1; simpl.
++ reflexivity.
++ f_equal. assumption.
+Qed.
+
 Lemma alls_carac : forall x l, (forall y, In y l -> y = x) <-> l = alls x (length l).
 Proof.
 intros x l. split; intro H.
@@ -219,6 +226,9 @@ Qed.
 
 Lemma map_alls : forall f pt n, map f (alls pt n) = alls (f pt) n.
 Proof. intros f pt n. induction n. reflexivity. simpl. now rewrite IHn. Qed.
+
+Lemma map_cst_alls : forall pt l, map (fun _ : B => pt) l = alls pt (length l).
+Proof. intros pt l. induction l; simpl; try rewrite IHl; reflexivity. Qed.
 
 Lemma In_nth : forall d x (l : list A), In x l -> exists n, (n < length l)%nat /\ nth n l d = x.
 Proof.
@@ -609,6 +619,48 @@ intros x l Hperm. destruct l as [| a [| b l]].
 - apply PermutationA_length in Hperm. simpl in Hperm. omega.
 Qed.
 
+Lemma PermutationA_1 : forall x x', PermutationA eqA (x :: nil) (x' :: nil) <-> eqA x x'.
+Proof.
+intros. split; intro Hperm.
++ apply PermutationA_length1 in Hperm. destruct Hperm as [y [Heq Hperm]]. inversion_clear Hperm. now symmetry.
++ rewrite Hperm. reflexivity.
+Qed.
+
+Lemma PermutationA_2 : forall x y x' y', PermutationA eqA (x :: y :: nil) (x' :: y' :: nil) <->
+  eqA x x' /\ eqA y y' \/ eqA x y' /\ eqA y x'.
+Proof.
+clear eqB HeqB. intros. split; intro Hperm.
++ inversion_clear Hperm.
+  - rewrite PermutationA_1 in H0. auto.
+  - right; split; reflexivity.
+  - admit.
++ destruct Hperm as [[Heq1 Heq2] | [Heq1 Heq2]]; rewrite Heq1, Heq2. reflexivity. now constructor 3.
+Qed.
+
+Lemma PermutationA_3 : forall x y z x' y' z',
+  PermutationA eqA (x :: y :: z :: nil) (x' :: y' :: z' :: nil) <->
+  eqA x x' /\ eqA y y' /\ eqA z z' \/ eqA x x' /\ eqA y z' /\ eqA z y' \/
+  eqA x y' /\ eqA y x' /\ eqA z z' \/ eqA x y' /\ eqA y z' /\ eqA z x' \/
+  eqA x z' /\ eqA y y' /\ eqA z x' \/ eqA x z' /\ eqA y x' /\ eqA z y'.
+Proof.
+clear eqB HeqB. intros. split; intro Hperm.
+* inversion_clear Hperm.
+  + rewrite PermutationA_2 in H0. intuition.
+  + intuition.
+  + admit.
+* repeat destruct Hperm as [Hperm | Hperm]; destruct Hperm as [Heq1 [Heq2 Heq3]].
+  + repeat apply PermutationA_cons; trivial. constructor.
+  + apply PermutationA_cons; trivial. rewrite PermutationA_2. intuition.
+  + etransitivity; [constructor 3 |].
+    repeat apply PermutationA_cons; trivial. constructor.
+  + etransitivity; [| constructor 3].
+    apply PermutationA_cons; trivial. rewrite Heq2, Heq3. constructor 3.
+  + etransitivity; [constructor 3 |]. etransitivity; [| constructor 3].
+    apply PermutationA_cons; trivial. rewrite Heq1, Heq3. constructor 3.
+  + etransitivity; [constructor 3 |].
+    apply PermutationA_cons; trivial. rewrite Heq1, Heq3. constructor 3.
+Qed.
+
 Lemma NoDupA_strengthen : forall l, subrelation eqA eqA' -> NoDupA eqA' l -> NoDupA eqA l.
 Proof.
 intros l HAB Hl. induction l.
@@ -819,6 +871,9 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
 Qed.
 
 Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
+
+Instance Rec_bool_compat : Proper (eq ==> eq ==> eq) Rdec_bool.
+Proof. repeat intro. subst. reflexivity. Qed.
 
 Lemma Rdec_bool_true_iff : forall x y, Rdec_bool x y = true <-> x = y.
 Proof. intros. unfold Rdec_bool. destruct (Rdec x y); now split. Qed.

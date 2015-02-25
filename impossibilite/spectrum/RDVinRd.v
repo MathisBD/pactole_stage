@@ -195,6 +195,10 @@ intros x l. split; intro Hl.
 Qed.
 *)  
   Definition is_ok s pos := eq s (from_pos pos).
+  
+  Instance smallest_enclosing_sphere_uniq :
+    Proper (PermutationA Location.eq ==> (Location.eq * Logic.eq)) Location.smallest_enclosing_sphere.
+  Proof. Admitted.
 End Multiset.
 
 (** *  The Gathering Problem  **)
@@ -299,321 +303,129 @@ Definition max_mult s := Spec.fold (fun _=> max) s 0.
 Definition max s := Spec.filter (fun _ => beq_nat (max_mult s)) s.
 
 Definition on_sphere c R x :=
-  if Rdec (Location.dist c x) R then true else
-  if Rdec (Location.dist c x) 0 then true else false.
+  if Rdec_bool (Location.dist c x) R then true else
+  if Rdec_bool (Location.dist c x) 0 then true else false.
 
-Lemma on_sphere_true_dec : forall c R x, {on_sphere c R x = true} +{~on_sphere c R x = true}.
-Proof. decide equality. Qed.
+Definition all_on_sphere c R := forallb (fun x => on_sphere c R x).
 
-Definition all_on_sphere c R :=
-  Forall_dec (fun x => on_sphere c R x = true) (on_sphere_true_dec c R).
-
-Definition robogram (s : Spec.t) : Location.t :=
+Definition robogram_pgm (s : Spec.t) : Location.t :=
   match Spec.support (max s) with
     | nil => Location.origin (* only happen with no robots *)
     | pt :: nil => pt (* case 1: one majority stack *)
     | _ => (* several majority stacks *)
       let '(c, R) := Location.smallest_enclosing_sphere (Spec.support s) in
       if all_on_sphere c R (Spec.support s) then (* case 4 *) c else (* case 3 *)
-      if Rdec (Location.dist c Location.origin) 0 then Location.origin else
-      if Rdec (Location.dist c Location.origin) R then Location.origin else c
+      if Rdec_bool (Location.dist c Location.origin) 0 then Location.origin else
+      if Rdec_bool (Location.dist c Location.origin) R then Location.origin else c
   end.
 
-Print Assumptions robogram.
+Print Assumptions robogram_pgm.
 
-(** The robogram is invariant by permutation of spectra. *)
-Instance robogram_invariant : Proper (Spec.eq ==> eq) robogram.
+(** **  The robogram is well-defined on spectra **)
+
+Instance max_mult_compat : Proper (Spec.eq ==> eq) max_mult.
 Proof.
-unfold robogram. intros s s' Heq. rewrite Heq.
-destruct (majority_stack s'); trivial. now repeat rewrite Hperm.
-Qed.
-Print Assumptions robogram_invariant.
-
-
-(* Actually, [n] does not depend on [pt] but it is easier to use this way. *)
-Lemma nominal_spectrum_alls : forall pt,
-  nominal_spectrum (@lift_gp nG (fun _ => pt)) = alls pt nG.
-Proof.
-intro. unfold nominal_spectrum. simpl. rewrite app_nil_r.
-induction nG. reflexivity. simpl. now rewrite <- IHn.
+intros s1 s2 Heq. unfold max_mult. apply Spec.fold_compat; auto; refine _.
++ repeat intro. auto.
++ repeat intro. rewrite Max.max_assoc. setoid_rewrite Max.max_comm at 2. rewrite <- Max.max_assoc. reflexivity.
 Qed.
 
-Lemma forbidden_similarity_invariant : forall pos k t, forbidden ((⟦k, t⟧) pos) -> forbidden pos.
+Instance max_compat : Proper (Spec.eq ==> Spec.eq) max.
 Proof.
-intros [gp bp] k t [p1 [p2 [Hneq Hperm]]]. destruct (Rdec k 0).
-+ subst. assert (Heq : PosEq (lift_gp (fun _ => 0)) (⟦0, t⟧ {| gp := gp; bp := bp |})).
-  { split; simpl. intro. now rewrite Rmult_0_l. intro. now apply Fin.case0. }
-  rewrite <- Heq in Hperm. clear Heq. rewrite nominal_spectrum_alls in Hperm.
-  symmetry in Hperm.
-  assert (p1 = 0).
-  { apply Permutation_alls in Hperm. destruct nG eqn:HG.
-      cut (0 >= 2)%nat. omega. rewrite <- HG at 1. now apply size_G.
-      destruct n as [| n]; simpl in Hperm.
-        discriminate Hperm.
-        now inversion Hperm. }
-  assert (p2 = 0).
-  { rewrite Permutation_app_comm in Hperm. apply Permutation_alls in Hperm. destruct nG eqn:HG.
-      cut (0 >= 2)%nat. omega. rewrite <- HG at 1. now apply size_G.
-      destruct n as [| n]; simpl in Hperm.
-        discriminate Hperm.
-        now inversion Hperm. }
-  subst p2. contradiction.
-+ exists (p1 / k + t). exists (p2 / k + t). split.
-  clear -Hneq n. intro Habs. apply Hneq. apply Rdiv_reg with k. assumption.
-  apply Rplus_eq_reg_l with t. now setoid_rewrite Rplus_comm.
-  clear Hneq. rewrite <- (@similarity_inverse _ _ k t); trivial. unfold similarity at 1.
-  replace (p1 / k + t) with (/k * (p1 - - k * t)) by now field.
-  change (/k * (p1 - - k * t)) with ((fun x => /k * (x - - k * t)) p1). rewrite <- map_alls.
-  replace (p2 / k + t) with (/k * (p2 - - k * t)) by now field.
-  change (/k * (p2 - - k * t)) with ((fun x => /k * (x - - k * t)) p2). rewrite <- map_alls.
-  rewrite nominal_spectrum_map. rewrite <- map_app. now apply Permutation_map.
+intros s1 s2 Heq x. unfold max. rewrite Spec.filter_extensionality_compat.
++ apply Spec.filter_compat; try assumption. repeat intro. auto.
++ repeat intro. auto.
++ intros. simpl. rewrite Heq. reflexivity.
 Qed.
 
-Corollary forbidden_similarity_iff : forall k t pos, k <> 0 -> (forbidden (⟦k, t⟧ pos) <-> forbidden pos).
+Lemma support_max_nil : forall s s', Spec.eq s s' -> Spec.support (max s) = nil -> Spec.support (max s') = nil.
+Proof. intros s s' Hs Hnil. apply (@PermutationA_nil _ Location.eq _). rewrite <- Hs, Hnil. reflexivity. Qed.
+
+Lemma support_max_singleton : forall s s' x, Spec.eq s s' ->
+  Spec.support (max s) = x :: nil -> exists y, Location.eq x y /\ Spec.support (max s') = y :: nil.
+Proof. intros s s' x Heq Hs. apply (PermutationA_length1 _). rewrite <- Heq, Hs. reflexivity. Qed.
+
+Instance on_sphere_compat : Proper (Location.eq ==> eq ==> Location.eq ==> eq) on_sphere.
 Proof.
-intros k t pos Hk. split.
-+ apply forbidden_similarity_invariant.
-+ rewrite <- (similarity_inverse t pos Hk) at 1. apply forbidden_similarity_invariant.
+intros c1 c2 Hc R1 R2 HR x1 x2 Hx. unfold on_sphere.
+rewrite Hc, Hx, HR. destruct (Rdec_bool (Location.dist c2 x2) R2); trivial.
+rewrite Hc, Hx. destruct (Rdec_bool (Location.dist c2 x2) 0); trivial.
 Qed.
 
-Definition equiv_by (f : R -> R) r r' :=
-  match r, r' with
-    | NoResult, NoResult => True
-    | Valid y m, Valid x n => y = f x /\ m = n
-    | Invalid m, Invalid n => m = n
-    | _, _ => False
-  end.
-
-Lemma majority_stack_inj_compat_aux : forall f l x n r r',
-  injective eq eq f -> equiv_by f r r' ->
-  (List.fold_left (fun acc xn => f_majority (fst xn) (snd xn) acc)
-                  (map (fun xn => (f (fst xn), snd xn)) l) r = Valid (f x) n
-  <-> List.fold_left (fun acc xn => f_majority (fst xn) (snd xn) acc) l r' = Valid x n).
+Instance forallb_compat {A} {eqA} `{Equivalence A eqA} (f : A -> bool) :
+  Proper (eqA ==> eq) f ->  Proper (PermutationA eqA ==> eq) (forallb f).
 Proof.
-intros f l x n r r' Hf. revert r r'. induction l; intros r r' Hr; simpl.
-+ split; intro; (subst r; destruct r') || (subst r'; destruct r); simpl in Hr; try now elim Hr.
-    destruct Hr as [Hr1 Hr2]. apply Hf in Hr1. now subst.
-    destruct Hr. now subst.
-+ apply IHl. destruct a as [y m], r, r'; simpl; simpl in Hr; try now elim Hr.
-    destruct Hr. subst. now destruct (nat_compare m n1).
-    subst. now destruct (nat_compare m n1).
+intros Hf l. revert l. apply (PermutationA_ind_bis _).
++ reflexivity.
++ intros x y l1 l2 Hxy Hl IHl. simpl. rewrite IHl, Hxy. reflexivity.
++ intros x y l1 l2 Hl IHl. simpl. rewrite IHl, andb_assoc, andb_assoc. now setoid_rewrite andb_comm at 4. 
++ intros l1 l2 l3 Hl12 IHl12 Hl23 IHl23. rewrite IHl12, IHl23. reflexivity.
 Qed.
 
+Instance all_on_sphere_compat : Proper (Location.eq ==> eq ==> PermutationA Location.eq ==> eq) all_on_sphere.
+Proof.
+intros c1 c2 Hc ? R ? l. subst. revert l. apply (PermutationA_ind_bis _).
++ reflexivity.
++ intros x y l1 l2 Hxy Hl IHl. simpl. rewrite IHl, Hc, Hxy. reflexivity.
++ intros x y l1 l2 Hl IHl. simpl. rewrite IHl, Hc, andb_assoc, andb_assoc. now setoid_rewrite andb_comm at 4. 
++ intros l1 l2 l3 Hl12 IHl12 Hl23 IHl23. rewrite IHl12. unfold all_on_sphere.
+  rewrite (forallb_compat _ (on_sphere_compat (reflexivity _) (reflexivity _)) _ _ Hl23). reflexivity.
+Qed.
+
+Instance robogram_compat : Proper (Spec.eq ==> Location.eq) robogram_pgm.
+Proof.
+unfold robogram_pgm. intros s s' Heq.
+destruct (Spec.support (max s)) as [| pt [| ? l]] eqn:Hs.
++ rewrite (support_max_nil Heq Hs). reflexivity.
++ assert (Hs' := support_max_singleton Heq Hs). destruct Hs' as [y [Hxy Hs']]. rewrite Hs'. assumption.
++ destruct (Spec.support (max s')) as [| pt' [| ? l']] eqn:Hs'.
+  - rewrite (support_max_nil (symmetry Heq) Hs') in Hs. discriminate Hs.
+  - apply (support_max_singleton (symmetry Heq)) in Hs'.
+    destruct Hs' as [? [_ Hs']]. rewrite Hs' in Hs. discriminate Hs.
+  - destruct (Location.smallest_enclosing_sphere (Spec.support s)) as [c1 R1] eqn:Heq1,
+              (Location.smallest_enclosing_sphere (Spec.support s')) as [c2 R2] eqn:Heq2.
+    assert (Hsphere : (Location.eq * eq)%signature (c1, R1) (c2, R2)).
+    { rewrite <- Heq1, <- Heq2. rewrite Heq. reflexivity. }
+    destruct Hsphere as [Hc HR]. hnf in Hc, HR; simpl in Hc, HR. rewrite Hc, HR, Heq.
+    destruct (all_on_sphere c2 R2 (Spec.support s')); trivial. rewrite Hc.
+    destruct (Rdec_bool (Location.dist c2 Location.origin) 0); try reflexivity. rewrite Hc.
+    destruct (Rdec_bool (Location.dist c2 Location.origin) R2); trivial; reflexivity.
+Qed.
+Print Assumptions robogram_compat.
+
+Definition GatheringRobogram := Build_robogram robogram_pgm robogram_compat.
+
+(*
 Instance PermutationA_compat A eqA (HeqA : @Equivalence A eqA) :
   Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (PermutationA eqA).
 Proof. intros l1 l2 Hl12 l3 l4 Hl34. now rewrite Hl12, Hl34. Qed.
-
-Lemma majority_stack_inj_map_Valid_compat : forall f l x n, injective eq eq f ->
-  (majority_stack (map f l) = Valid (f x) n <-> majority_stack l = Valid x n).
-Proof.
-intros f l x n Hf. do 2 rewrite majority_stack_Valid_spec. split; intros [Hn Hle]; split.
-+ clear Hle. revert n Hn. induction l; simpl; intros n Hn.
-    now rewrite multiset_nil, M.empty_spec in *.
-    destruct (Rdec a x) as [| Hneq].
-      subst a. rewrite multiset_cons, M.add_spec in *. destruct n. omega.
-      rewrite plus_comm in *; simpl in *. f_equal. apply eq_add_S in Hn. now apply IHl.
-      assert (f a <> f x) by auto.
-      rewrite multiset_cons, M.add_spec' in *; trivial. now apply IHl.
-+ clear Hn. intros y Hxy. assert (Hn : f x <> f y) by auto. apply Hle in Hn. revert Hn. clear Hle Hxy.
-  revert n y. induction l; simpl; intros n y Hin.
-    now rewrite multiset_nil, M.empty_spec in *.
-    rewrite multiset_cons in *. destruct (Rdec a y).
-      subst a. rewrite M.add_spec in *. destruct n. omega.
-      rewrite plus_comm in *; simpl in *. apply lt_n_S. apply lt_S_n in Hin. now apply IHl.
-      assert (f a <> f y) by auto. rewrite M.add_spec' in *; trivial. now apply IHl.
-+ clear Hle. revert n Hn. induction l; simpl; intros n Hn.
-    now rewrite multiset_nil, M.empty_spec in *.
-    destruct (Rdec a x) as [| Hneq].
-      subst a. rewrite multiset_cons, M.add_spec in *. destruct n. omega.
-      rewrite plus_comm in *; simpl in *. f_equal. apply eq_add_S in Hn. now apply IHl.
-      assert (f a <> f x) by auto.
-      rewrite multiset_cons, M.add_spec' in *; trivial. now apply IHl.
-+ clear Hn. intros y Hxy. destruct (in_dec Rdec y (map f l)) as [Hin | Hin].
-  - rewrite in_map_iff in Hin. destruct Hin as [z [Hyz Hin]]. subst y.
-    assert (Hxz : x <> z). { intro. subst z. now apply Hxy. }
-    apply Hle in Hxz. clear Hle Hxy Hin. revert n z Hxz. induction l; intros n z Hin.
-      now rewrite multiset_nil, M.empty_spec in *.
-      simpl. rewrite multiset_cons in *. destruct (Rdec a z).
-        subst a. rewrite M.add_spec in *. destruct n. omega.
-        rewrite plus_comm in *; simpl in *. apply lt_n_S. apply lt_S_n in Hin. now apply IHl.
-        assert (f a <> f z) by auto. rewrite M.add_spec' in *; trivial. now apply IHl.
-  - destruct n.
-      specialize (Hle _ (succ_neq x)). omega.
-      rewrite <- multiset_In in Hin. omega.
-Qed.
-
-Lemma majority_stack_Valid_similarity : forall k t pos x n, k <> 0 ->
-  (majority_stack (nominal_spectrum ((⟦k, t⟧) pos)) = Valid (k * (x - t)) n
-  <-> majority_stack (nominal_spectrum pos) = Valid x n).
-Proof.
-intros k t pos x n Hk. rewrite nominal_spectrum_similarity.
-assert (Hf := fun x y => proj1 (@local_invert k t x y Hk)).
-now rewrite (majority_stack_inj_map_Valid_compat _ _ _ Hf).
-Qed.
-
-Lemma majority_stack_Invalid_similarity : forall k t pos n, k <> 0 ->
-  (majority_stack (nominal_spectrum ((⟦k, t⟧) pos)) = Invalid n
-  <-> majority_stack (nominal_spectrum pos) = Invalid n).
-Proof.
-intros k t pos n Hk. rewrite nominal_spectrum_similarity. generalize (nominal_spectrum pos). clear pos.
-intro s. do 2 rewrite majority_stack_Invalid_spec. split; intros [Hn [x [y [Hx [Hy [Hxy Hle]]]]]].
-* split. assumption. exists (/k * x + t). exists (/k * y + t). repeat split.
-  + clear y Hxy Hy Hle. revert n Hn Hx. induction s; simpl; intros n Hn Hx.
-      now rewrite multiset_nil, M.empty_spec in *.
-      rewrite multiset_cons in *. destruct (Rdec (k * (a - t)) x) as [Heq | Hneq].
-      - subst x. assert (/k * (k * (a - t)) + t = a) by now field. rewrite H in *.
-        rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
-        f_equal. apply eq_add_S in Hx. destruct n.
-          assert (Hin : ~In (k * (a - t)) (map (fun x : R => k * (x - t)) s)). { rewrite <- multiset_In. omega. }
-          rewrite in_map_iff in Hin. destruct (in_dec Rdec a s) as [| Hnin].
-            elim Hin. exists a. now split.
-            rewrite <- multiset_In in Hnin. omega.
-          apply IHs. omega. assumption.
-      - assert (a <> /k * x + t). { intro. subst a. apply Hneq. clear -Hk. unfold M.elt in x. now field. }
-        rewrite M.add_spec' in *; trivial. now apply IHs.
-  + clear x Hxy Hx Hle. revert n Hn Hy. induction s; simpl; intros n Hn Hy.
-      now rewrite multiset_nil, M.empty_spec in *.
-      rewrite multiset_cons in *. destruct (Rdec (k * (a - t)) y) as [Heq | Hneq].
-      - subst y. assert (/k * (k * (a - t)) + t = a) by now field. rewrite H in *.
-        rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
-        f_equal. apply eq_add_S in Hy. destruct n.
-          assert (Hin : ~In (k * (a - t)) (map (fun x : R => k * (x - t)) s)). { rewrite <- multiset_In. omega. }
-          rewrite in_map_iff in Hin. destruct (in_dec Rdec a s) as [| Hnin].
-            elim Hin. exists a. now split.
-            rewrite <- multiset_In in Hnin. omega.
-          apply IHs. omega. assumption.
-      - assert (a <> /k * y + t). { intro. subst a. apply Hneq. clear -Hk. unfold M.elt in y. now field. }
-        rewrite M.add_spec' in *; trivial. now apply IHs.
-  + rewrite <- (local_invert t _ _ Hk). intro Heq. field_simplify in Heq; auto. apply Hxy.
-    assert (x / 1 = x) by field. rewrite <- H, Heq. now assert (y / 1 = y) by field.
-  + clear x y Hx Hy Hxy. intro z. specialize (Hle (k * (z - t))).
-    revert n Hn Hle. induction s; simpl; intros n Hn Hle.
-      rewrite multiset_nil, M.empty_spec. omega.
-      rewrite multiset_cons in *. destruct (Rdec a z).
-      - subst z. rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
-        apply le_n_S. apply le_S_n in Hle. destruct n.
-          assert (Hin : ~In (k * (a - t)) (map (fun x : R => k * (x - t)) s)). { rewrite <- multiset_In. omega. }
-          rewrite in_map_iff in Hin. destruct (in_dec Rdec a s) as [| Hnin].
-            elim Hin. exists a. now split.
-            rewrite <- multiset_In in Hnin. omega.
-          apply IHs. omega. assumption.
-      - assert (k * (a - t) <> k * (z - t)) by now rewrite local_invert.
-        rewrite M.add_spec' in *; trivial. now apply IHs.
-* split. assumption. exists (k * (x - t)). exists (k * (y - t)). repeat split.
-  + clear y Hxy Hy Hle. revert n Hn Hx. induction s; simpl; intros n Hn Hx.
-      now rewrite multiset_nil, M.empty_spec in *.
-      rewrite multiset_cons in *. destruct (Rdec a x) as [Heq | Hneq].
-      - subst x. rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
-        f_equal. apply eq_add_S in Hx. destruct n.
-          assert (Hnin : ~In a s). { rewrite <- multiset_In. omega. }
-          assert (Hin : ~In (k * (a -t)) (map (fun x : R => k * (x - t)) s)).
-          { rewrite in_map_iff. intros [x [Heq Hin]]. apply Hnin.
-            rewrite local_invert in Heq; trivial. now subst a. }
-          rewrite <- multiset_In in Hin. omega.
-          apply IHs. omega. assumption.
-      - assert (k * (a - t) <> k * (x - t)) by now rewrite local_invert.
-        rewrite M.add_spec' in *; trivial. now apply IHs.
-  + clear x Hxy Hx Hle. revert n Hn Hy. induction s; simpl; intros n Hn Hy.
-      now rewrite multiset_nil, M.empty_spec in *.
-      rewrite multiset_cons in *. destruct (Rdec a y) as [Heq | Hneq].
-      - subst y. rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
-        f_equal. apply eq_add_S in Hy. destruct n.
-          assert (Hnin : ~In a s). { rewrite <- multiset_In. omega. }
-          assert (Hin : ~In (k * (a -t)) (map (fun x : R => k * (x - t)) s)).
-          { rewrite in_map_iff. intros [x [Heq Hin]]. apply Hnin.
-            rewrite local_invert in Heq; trivial. now subst a. }
-          rewrite <- multiset_In in Hin. omega.
-          apply IHs. omega. assumption.
-      - assert (k * (a - t) <> k * (y - t)) by now rewrite local_invert.
-        rewrite M.add_spec' in *; trivial. now apply IHs.
-  + now rewrite (local_invert t _ _ Hk).
-  + clear x y Hx Hy Hxy. intro z. specialize (Hle (/k * z + t)).
-    revert n Hn Hle. induction s; simpl; intros n Hn Hle.
-      rewrite multiset_nil, M.empty_spec. omega.
-      rewrite multiset_cons in *. destruct (Rdec (k * (a - t)) z) as [| Hneq].
-      - subst z. assert (/ k * (k * (a - t)) + t = a) by now field. rewrite H in *.
-        rewrite M.add_spec in *. destruct n. omega. rewrite plus_comm in *. simpl in *.
-        apply le_n_S. apply le_S_n in Hle. destruct n.
-          assert (Hnin : ~In a s). { rewrite <- multiset_In. omega. }
-          assert (Hin : ~In (k * (a -t)) (map (fun x : R => k * (x - t)) s)).
-          { rewrite in_map_iff. intros [x [Heq Hin]]. apply Hnin.
-            rewrite local_invert in Heq; trivial. now subst a. }
-          rewrite <- multiset_In in Hin. omega.
-          apply IHs. omega. assumption.
-      - assert (a <> /k * z + t).
-        { intro Habs. rewrite <- (local_invert t _ _ Hk) in Habs. apply Hneq. rewrite Habs. now field. }
-        rewrite M.add_spec' in *; trivial. now apply IHs.
-Qed.
-
-Theorem robogram_homothecy_invariant : forall k t pos, k <> 0 ->
-  robogram (nominal_spectrum (⟦k, t⟧ pos)) = k * (robogram (nominal_spectrum (⟦1, t⟧ pos))).
-Proof.
-intros k t pos Hk. unfold robogram.
-destruct (majority_stack (nominal_spectrum  (⟦k, t⟧ pos))) eqn:Hmaj.
-* rewrite majority_stack_NoResult_spec in Hmaj. elim (nominal_spectrum_nil _ Hmaj).
-* assert (Hl : l = k * ((/k * l + t) - t)) by now field.
-  rewrite Hl, majority_stack_Valid_similarity in Hmaj; trivial. clear Hl.
-  destruct (majority_stack (nominal_spectrum  (⟦1, t⟧ pos))) eqn:Hmaj1.
-  - rewrite majority_stack_NoResult_spec in Hmaj1. elim (nominal_spectrum_nil _ Hmaj1).
-  - replace l0 with (1 * (l0 + t - t)) in Hmaj1 by ring. rewrite majority_stack_Valid_similarity in Hmaj1.
-    rewrite Hmaj1 in Hmaj. inversion Hmaj. subst n0. clear Hmaj1 Hmaj.
-    setoid_rewrite Rplus_comm in H0. apply Rplus_eq_reg_l in H0. subst l0. now field. apply R1_neq_R0.
-  - rewrite majority_stack_Invalid_similarity in Hmaj1; try exact R1_neq_R0.
-    rewrite Hmaj1 in Hmaj. discriminate Hmaj.
-* rewrite majority_stack_Invalid_similarity in Hmaj; trivial.
-  rewrite <- (@majority_stack_Invalid_similarity 1) in Hmaj; try exact R1_neq_R0. rewrite Hmaj.
-  repeat rewrite nominal_spectrum_similarity.
-  repeat rewrite multiset_map; try apply similarity_injective; try (apply R1_neq_R0 || assumption).
-  assert (Hlen : length (M.support (M.map (fun x : R => k * (x - t)) (multiset (nominal_spectrum pos))))
-               = length (M.support (M.map (fun x : R => 1 * (x - t)) (multiset (nominal_spectrum pos))))).
-  { repeat rewrite M.map_support, map_length;
-    reflexivity || (now repeat intro; subst) || now apply similarity_injective; try apply R1_neq_R0. }
-  setoid_rewrite Hlen at 1.
-  destruct (beq_nat (length (M.support (M.map (fun x : R => 1 * (x - t)) (multiset (nominal_spectrum pos))))) 3)
-  eqn:H3.
-  assert (div2 3 = 1%nat) by reflexivity.
-  + assert (Proper (eq ==> eq) (fun x : R => 1 * (x - t))) by now repeat intro; subst.
-    assert (Proper (eq ==> eq) (fun x : R => k * (x - t))) by now repeat intro; subst.
-    assert (injective eq eq (fun x : R => 1 * (x - t))) by (apply similarity_injective; apply R1_neq_R0).
-    assert (injective eq eq (fun x : R => k * (x - t))) by now apply similarity_injective.
-    repeat rewrite M.map_support; trivial.
-    rewrite (@sort_map_increasing (fun x => 1 * (x - t))); try now apply similarity_increasing; lra.
-    replace 0 with (1 * (t - t)) by ring. rewrite (map_nth (fun x => 1 * (x - t))). ring_simplify.
-    symmetry in H3. apply beq_nat_eq in H3. rewrite <- Hlen in H3. rewrite <- H, <- H3.
-    rewrite M.map_support; trivial. rewrite (Permutation_length (Permuted_sort _)).
-    destruct (Rlt_le_dec k 0).
-    - rewrite (@sort_map_decreasing (fun x => k * (x - t))); try now apply similarity_decreasing; lra.
-      rewrite rev_length, odd_middle.
-        rewrite map_length. replace (1 * (t - t)) with (k * (t - t)) by ring.
-        rewrite (map_nth (fun x => k * (x - t))). now rewrite Rmult_minus_distr_l.
-        rewrite map_length, <- (Permutation_length (Permuted_sort _)). SearchAbout List.map Proper.
-        rewrite M.map_support, map_length in H3; trivial. unfold M.elt in H3. rewrite H3. now exists 1%nat.
-    - rewrite (@sort_map_increasing (fun x => k * (x - t))); try now apply similarity_increasing; lra.
-      rewrite map_length. replace (1 * (t - t)) with (k * (t - t)) by ring.
-      rewrite (map_nth (fun x => k * (x - t))). now rewrite Rmult_minus_distr_l.
-  + do 2 rewrite <- nominal_spectrum_similarity.
-  assert (H0 : forall k, k * (t - t) = 0) by (intro; ring). rewrite <- (H0 k) at 1. rewrite <- (H0 1) at 2.
-  repeat rewrite is_extremal_similarity_invariant; exact R1_neq_R0 || trivial.
-  destruct (is_extremal t (nominal_spectrum pos)). ring.
-  repeat rewrite extreme_center_similarity_invariant; exact R1_neq_R0 || trivial. ring.
-Qed.
-Print Assumptions robogram_homothecy_invariant.
+*)
 
 (** **  General simplification lemmas for [round robogram da _] and [nominal_spectrum (round robogram da _)] **)
-
-Lemma round_simplify : forall (da : demonic_action nG 0) pos,
-  ExtEq (round robogram da (gp pos))
-        (fun g => if Rdec (frame da g) 0 then gp pos g else
-                  match majority_stack (nominal_spectrum pos) with
-                    | NoResult => 0
-                    | Valid pt n => pt
-                    | Invalid n => if beq_nat (length (M.support (multiset (nominal_spectrum pos)))) 3
-                                   then List.nth 1 (sort (M.support (multiset (nominal_spectrum pos)))) 0
-                                   else if is_extremal (gp pos g) (nominal_spectrum pos) then gp pos g
-                                        else extreme_center (nominal_spectrum pos)
-                  end).
+Locate Byz.
+Lemma round_simplify : forall (da : demonic_action) pos,
+  PosEq (round GatheringRobogram da pos)
+        (fun id => match da.(step) id with
+                     | Off => pos id
+                     | On f _ =>
+                       match id with
+                         | Names.Byz b => relocate_byz da b
+                         | Names.Good g =>
+                           match Spec.support (max (Spec.from_pos pos)) with
+                             | nil => Location.origin (* only happen with no robots *)
+                             | pt :: nil => pt (* case 1: one majority stack *)
+                             | _ => (* several majority stacks *)
+                               let '(c, R) := Location.smallest_enclosing_sphere
+                                                (Spec.support (Spec.from_pos pos)) in
+                               if all_on_sphere c R (Spec.support (Spec.from_pos pos)) then c else
+                               if Rdec_bool (Location.dist c Location.origin) 0 then Location.origin else
+                               if Rdec_bool (Location.dist c Location.origin) R then Location.origin else c
+                           end
+                       end
+                   end).
 Proof.
-intros da pos g. unfold round. destruct (Rdec (frame da g) 0) as [| Hframe]. reflexivity.
+intros da pos id. unfold round. destruct (step da id) as [| obs Hobs]. reflexivity.
+destruct id as [g | b]; try reflexivity.
 rewrite (spectrum_ok da). rewrite robogram_homothecy_invariant; trivial. field_simplify; trivial. clear Hframe.
 unfold robogram.
 rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
@@ -1369,7 +1181,7 @@ destruct (majority_stack (nominal_spectrum (lift_gp gp))) as [| r n | n] eqn:Hdu
   rewrite majority_stack_NoResult_spec in Hdup. rewrite nominal_spectrum4 in Hdup. discriminate Hdup.
   (* there is a stack *)
   apply (stack_sol Hfair Hok). rewrite <- majority_stack_spec. now exists r; exists n.
-  (* there is not stack, it will be created at the next step *)
+  (* there is no stack, it will be created at the next step *)
   inversion_clear Hfair as [_ Htfair].
   destruct (stack_sol Htfair (@never_forbidden (demon_head d) _ Hok)) as [pt Hpt].
     apply Will_stack. assumption. rewrite <- majority_stack_spec.
