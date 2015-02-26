@@ -41,6 +41,7 @@ Ltac Rdec := unfold Rdecidable.eq_dec; repeat
     | H : context[Rdec ?x ?x] |- _ =>
         let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
         [clear Heq | exfalso; elim Heq; reflexivity]
+    | H : ?x <> ?x |- _ => elim H; reflexivity
   end.
 
 Ltac Rdec_full := unfold Rdecidable.eq_dec;
@@ -534,7 +535,7 @@ intros x l. split; intro Hl.
       intro Heq. unfold M.elt in *. now rewrite <- Heq.
       apply Permutation_nil. now rewrite <- PermutationA_Leibniz, multiset_nil, M.support_empty.
   + rewrite multiset_cons in Hl. rewrite M.support_add in Hl; try omega. unfold Rdecidable.eq_dec in Hl.
-SearchAbout InA.    destruct (InA_dec Rdec a (M.support (multiset l))).
+    destruct (InA_dec Rdec a (M.support (multiset l))).
     - right. now apply IHl.
     - destruct Hl. now left. right. now apply IHl.    
 * induction l.
@@ -1739,7 +1740,7 @@ destruct (majority_stack (nominal_spectrum  (⟦k, t⟧ pos))) eqn:Hmaj.
       rewrite rev_length, odd_middle.
         rewrite map_length. replace (1 * (t - t)) with (k * (t - t)) by ring.
         rewrite (map_nth (fun x => k * (x - t))). now rewrite Rmult_minus_distr_l.
-        rewrite map_length, <- (Permutation_length (Permuted_sort _)). SearchAbout List.map Proper.
+        rewrite map_length, <- (Permutation_length (Permuted_sort _)).
         rewrite M.map_support, map_length in H3; trivial. unfold M.elt in H3. rewrite H3. now exists 1%nat.
     - rewrite (@sort_map_increasing (fun x => k * (x - t))); try now apply similarity_increasing; lra.
       rewrite map_length. replace (1 * (t - t)) with (k * (t - t)) by ring.
@@ -2068,10 +2069,10 @@ Lemma Generic_min : forall l n x t,
   majority_stack l = Invalid n -> range x t l -> In x l -> In t l -> forall d, hd d (sort l) = x.
 Proof.
 intros l n x t Hmaj Hrange Hx Ht d. destruct (sort l) eqn:Hl.
-- rewrite Permuted_sort, Hl in Hmaj. rewrite majority_stack_nil in Hmaj. discriminate Hmaj.
-- apply Rle_antisym.
-    rewrite <- Hl. now apply sort_min.
-    rewrite range_split in Hrange. destruct Hrange as [Hrange _]. rewrite Forall_forall in Hrange.
++ rewrite Permuted_sort, Hl in Hmaj. rewrite majority_stack_nil in Hmaj. discriminate Hmaj.
++ apply Rle_antisym.
+  - rewrite <- Hl. now apply sort_min.
+  - rewrite range_split in Hrange. destruct Hrange as [Hrange _]. rewrite Forall_forall in Hrange.
     apply Hrange. apply (Permutation_in _ (symmetry (Permuted_sort _))). rewrite Hl. now left.
 Qed.
 
@@ -2161,12 +2162,6 @@ rewrite (nominal_spectrum_simplify da), multiset_app, M.union_spec.
 (* Non activated robots are in the same locations in both positions so we can simplify them out *)
 apply plus_le_compat. reflexivity.
 (* Extremal robots are in the same locations in both positions so we can simplify them out *)
-(*
-SearchAbout Proper M.multiplicity M.eq.
-SearchAbout Proper multiset.
-SearchAbout Proper map Permutation.
-Check (if_ExtEq (fun g => is_extremal (gp pos g) (nominal_spectrum pos)) (gp pos)). (* BUG rewrite? *)
-*)
 rewrite <- (map_ExtEq_compat (if_ExtEq (fun g => is_extremal (gp pos g) (nominal_spectrum pos)) (gp pos))
                              (reflexivity (active da))).
 do 2 rewrite map_cond_Permutation, multiset_app, M.union_spec.
@@ -2193,12 +2188,6 @@ rewrite (nominal_spectrum_simplify da), multiset_app, M.union_spec.
 (* Non activated robots are in the same locations in both positions so we can simplify them out *)
 apply plus_le_compat. reflexivity.
 (* Extremal robots are in the same locations in both positions so we can simplify them out *)
-(*
-SearchAbout Proper M.multiplicity M.eq.
-SearchAbout Proper multiset.
-SearchAbout Proper map Permutation.
-Check (if_ExtEq (fun g => is_extremal (gp pos g) (nominal_spectrum pos)) (gp pos)). (* BUG rewrite? *)
-*)
 rewrite <- (map_ExtEq_compat (if_ExtEq (fun g => is_extremal (gp pos g) (nominal_spectrum pos)) (gp pos))
                              (reflexivity (active da))).
 do 2 rewrite map_cond_Permutation, multiset_app, M.union_spec.
@@ -2393,14 +2382,14 @@ Proof.
 intros da pos Hok.
 (* Three cases for the robogram *)
 destruct (majority_stack (nominal_spectrum pos)) eqn:Hs.
-+ (* Absurd case: no robot *)
+* (* Absurd case: no robot *)
   rewrite majority_stack_NoResult_spec in Hs. elim (nominal_spectrum_nil _ Hs).
-+ (* 1) There is a majority tower *)
+* (* 1) There is a majority tower *)
   apply Stack_at_forbidden with l. apply Stack_at_forever. rewrite <- majority_stack_spec. now exists n.
-+ (* We express more directly the position after one round *)
+* (* We express more directly the position after one round *)
   destruct (beq_nat (length (M.support (multiset (nominal_spectrum pos)))) 3) eqn:Hn.
-  - (* 2) There are exactly three towers *)
-    rewrite round_simplify, Hs, Hn. rewrite beq_nat_true_iff in Hn.
+  + (* 2) There are exactly three towers *)
+    rewrite beq_nat_true_iff in Hn. assert (Hwither := Three_wither da pos Hs Hn).
     destruct (nominal_spectrum_Three _ Hs Hn) as [pt1 [pt2 [pt3 [m [H12 [H23 [H13 [[Hlt Hle] Hperm]]]]]]]].
     assert (Hsup : Permutation (M.support (multiset ((nominal_spectrum pos)))) (pt1 :: pt2 :: pt3 :: nil)).
     { rewrite <- PermutationA_Leibniz. apply (NoDupA_equivlistA_PermutationA _).
@@ -2410,51 +2399,99 @@ destruct (majority_stack (nominal_spectrum pos)) eqn:Hs.
         do 2 rewrite in_app_iff. repeat rewrite alls_In_iff; try omega.
         split; intros [? | [? | ?]];  try (now left) || (now right; left) || (now do 2 right) || idtac.
         now do 2 right; left. destruct H. now do 2 right. inversion H. }
-    assert (Hext : ExtEq (fun g => if Rdec (frame da g) 0 then gp pos g
-                                   else nth 1 (sort (M.support (multiset (nominal_spectrum pos)))) 0)
-                         (fun g => if Rdec (frame da g) 0 then gp pos g
-                                   else nth 1 (sort (pt1 :: pt2 :: pt3 :: nil)) 0)).
-    { intro g. Rdec_full. reflexivity. now rewrite Hsup. }
-    rewrite Hext. clear Hext.
-    intros [x [y [Hxy Hperm']]].
     (* Let us sort the three locations *)
     assert (Hsortedsort := Sorted_sort (pt1 :: pt2 :: pt3 :: nil)).
     assert (Hpermsort := Permuted_sort (pt1 :: pt2 :: pt3 :: nil)).
     assert (Hlength : length (sort (pt1 :: pt2 :: pt3 :: nil)) = 3%nat) by now rewrite <- Hpermsort.
-    destruct (sort (pt1 :: pt2 :: pt3 :: nil)) as [| pt1' [| pt2' [| pt3' [| ? l]]]]; try discriminate Hlength.
-    clear Hlength. inversion_clear Hsortedsort. inversion_clear H. unfold is_true in *. rewrite Rleb_spec in *.
+    destruct (sort (pt1 :: pt2 :: pt3 :: nil)) as [| pt1' [| pt2' [| pt3' [| ? l]]]] eqn:Hsort;
+    try discriminate Hlength. clear Hlength.
+    inversion_clear Hsortedsort. inversion_clear H. unfold is_true in *. rewrite Rleb_spec in *.
     assert (Hlt12 : pt1' < pt2' /\ pt2' < pt3').
     { rewrite <- PermutationA_Leibniz, PermutationA_3 in Hpermsort; refine _. intuition subst; lra. }
     destruct Hlt12 as [Hlt1 Hlt2]. clear H0 H1 H2. simpl in *.
-    (* Let us isolate moving robots *)
-    rewrite if_Rdec_ExtEq in Hperm'. unfold lift_gp in Hperm'.
-    rewrite (nominal_spectrum_combineG (fun g => Rdec_bool (frame da g) 0) (gp pos) (fun _ => pt2')) in Hperm'.
-    simpl in *. rewrite app_nil_r, partition_filter, map_cst_alls in Hperm'.
-    fold (active da) in Hperm'. fold (idle da) in Hperm'.
+    rewrite <- Hsup in Hsort. rewrite Hsort in *. simpl in *.
+    (* Let us simplify the new position *)
+    assert (Hnewpos : ExtEq (round robogram da (gp pos))
+                            (fun x : G nG => if Rdec_bool (frame da x) 0 then gp pos x else pt2')).
+    { rewrite <- beq_nat_true_iff in Hn. rewrite round_simplify, Hs, Hn.
+      assert (Hext : ExtEq (fun g => if Rdec (frame da g) 0 then gp pos g
+                                     else nth 1 (sort (M.support (multiset (nominal_spectrum pos)))) 0)
+                           (fun g => if Rdec (frame da g) 0 then gp pos g
+                                     else nth 1 (sort (pt1 :: pt2 :: pt3 :: nil)) 0)).
+      { intro g. Rdec_full. reflexivity. now rewrite Hsup. }
+      rewrite Hsup in Hsort. rewrite Hext, Hsort. rewrite if_Rdec_ExtEq. simpl. reflexivity. }
+    (* Assume a forbidden state and derive a contradiction *)
+    intro Hforbidden. assert (NPeano.Even nG). { eapply forbidden_even; eassumption. }
+    destruct Hforbidden as [x [y [Hxy Hperm']]].
+    setoid_rewrite Hperm in Hwither. setoid_rewrite Hperm' in Hwither.
     assert (Hpt2' : x = pt2' \/ y = pt2').
     { assert (Hin : In pt2' (alls x (div2 nG) ++ alls y (div2 nG))).
-      { rewrite <- Hperm', in_app_iff. right. rewrite alls_In_iff; trivial. apply active_demon. }
+      { rewrite <- Hperm', Hnewpos. unfold lift_gp. 
+        rewrite (nominal_spectrum_combineG (fun g => Rdec_bool (frame da g) 0) (gp pos) (fun _ => pt2')).
+        rewrite app_nil_r, partition_filter, map_cst_alls, in_app_iff.
+        right. rewrite alls_In_iff; trivial. fold (active da). apply active_demon. }
       rewrite in_app_iff in Hin. destruct Hin as [Hin | Hin]; apply alls_In in Hin; auto. }
-
-  - (* 3) We are in the Generic case *)
+    (* The first half of the contradiction: n < div2 nG *)
+    assert (HnG : (nG = n + n + m)%nat).
+    { replace nG with (nG + 0)%nat by omega. rewrite <- (nominal_spectrum_length pos), Hperm.
+      repeat rewrite app_length, alls_length. rewrite alls_length. omega. }
+    assert (Hm : (m >= 2)%nat).
+    { assert (Hm : NPeano.even m = true).
+      { rewrite <- (NPeano.Nat.even_add_even m (n + n)).
+        + replace (m + (n + n))%nat with nG by omega. rewrite NPeano.even_spec. assumption.
+        + rewrite <- NPeano.even_spec, NPeano.Nat.even_add. apply eqb_reflx. }
+      destruct m as [| [| m]]; omega || discriminate Hm. }
+    assert (Hn_lt_nG : (n < div2 nG)%nat).
+    { rewrite HnG. apply lt_le_trans with (div2 (2 + 2 * n))%nat.
+      + change (n < S (div2 (2 * n)))%nat. rewrite div2_double. apply lt_n_Sn.
+      + apply div2_le_compat. omega. }
+    (* The second half *)
+    repeat setoid_rewrite multiset_app in Hwither. repeat setoid_rewrite M.union_spec in Hwither.
+    setoid_rewrite multiset_alls in Hwither. setoid_rewrite M.singleton_spec in Hwither.
+    unfold Rdecidable.eq_dec in Hwither.
+    destruct Hpt2'; subst.
+    - (* x = pt2' *)
+      assert (Hyx : y <> pt2') by auto. specialize (Hwither y Hyx).
+      destruct (Rdec y pt2') as [? | _]; try contradiction.
+      destruct (Rdec y y) as [_ | Habs]; try now elim Habs. simpl in Hwither.
+      assert (Hy : y = pt1 \/ y = pt2 \/ y = pt3).
+      { assert (Hpos : (0 < div2 nG)%nat). { unfold lt. change 1%nat with (div2 2). apply div2_le_compat. omega. }
+        revert Hwither. repeat Rdec_full; intuition omega. }
+      { destruct Hy as [Hy | [Hy | Hy]]; subst y; revert Hwither; Rdec.
+        + do 2 Rdec_full; try contradiction. intro. omega.
+        + do 2 Rdec_full; try contradiction; subst; Rdec. intro. omega.
+        + do 2 Rdec_full; try contradiction; subst; Rdec. intro. omega. }
+    - (* y = pt2' *)
+      specialize (Hwither x Hxy).
+      destruct (Rdec x pt2') as [? | _]; try contradiction.
+      destruct (Rdec x x) as [_ | Habs]; try now elim Habs. simpl in Hwither.
+      assert (Hx : x = pt1 \/ x = pt2 \/ x = pt3).
+      { assert (Hpos : (0 < div2 nG)%nat). { unfold lt. change 1%nat with (div2 2). apply div2_le_compat. omega. }
+        revert Hwither. repeat Rdec_full; intuition omega. }
+      { destruct Hx as [Hx | [Hx | Hx]]; subst x; revert Hwither; Rdec.
+        + do 2 Rdec_full; try contradiction. intro. omega.
+        + do 2 Rdec_full; try contradiction; subst; Rdec. intro. omega.
+        + do 2 Rdec_full; try contradiction; subst; Rdec. intro. omega. }
+  + (* 3) We are in the Generic case *)
+    
 Qed.
 
-Theorem Will_stack : forall da pos, ~forbidden pos -> (forall pt, ~Stack_at pt pos) ->
-  Stack_at (lift_gp (round robogram da pos.(gp))).
+Theorem Will_stack : forall (da : demonic_action nG 0) pos, ~forbidden pos -> (forall pt, ~Stack_at pt pos) ->
+  Stack_at (extreme_center (nominal_spectrum pos)) (lift_gp (round robogram da pos.(gp))).
 Proof.
 intros da pos Hok Hyet.
-rewrite <- majority_stack_spec in Hyet.
+setoid_rewrite <- majority_stack_spec in Hyet.
 assert (exists n, majority_stack (nominal_spectrum pos) = Invalid n).
 { destruct (majority_stack (nominal_spectrum pos)) eqn:Hpos.
-  - rewrite majority_stack_NoResult_spec in Hpos. rewrite nominal_spectrum4 in Hpos. discriminate Hpos.
-  - elim Hyet. exists l. exists n. reflexivity.
+  - rewrite majority_stack_NoResult_spec in Hpos. apply nominal_spectrum_nil in Hpos. elim Hpos.
+  - elim (Hyet l). exists n. reflexivity.
   - exists n. reflexivity. }
 destruct H as [n Hn]. clear Hyet.
 (* We express more directly the position after one round *)
 assert (Heq : ExtEq (round robogram da (gp pos))
              (fun g => if is_extremal (gp pos g) (nominal_spectrum pos)
                        then gp pos g else extreme_center (nominal_spectrum pos))).
-{ etransitivity. apply round_simplify. assumption.
+{ etransitivity. apply round_simplify. rewrite Hn. assumption.
   intro g. destruct (Rdec (frame da g) 0) as [| Hframe]. now elim (active da g).
   now rewrite Hn. }
 assert (Hl : length (sort (nominal_spectrum pos)) = 4%nat).

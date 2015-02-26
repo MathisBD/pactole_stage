@@ -6,13 +6,12 @@ Require Import Sorting.Permutation.
 Require Import Psatz.
 Require Import SetoidList.
 Require Export SetoidPermutation.
+Require Import Bool.
+
 
 Set Implicit Arguments.
-Require Import Bool.
-(* Seams useless…
-Global Instance NotRel_symmetric A (R : relation A) `(Symmetric A R) : Symmetric (fun x y => ~R x y).
-Proof. intros x y Hxy Habs. apply Hxy. now symmetry. Qed.
-*)
+
+
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
 Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.
 
@@ -20,6 +19,24 @@ Lemma nat_compare_Lt_Gt : forall n m, nat_compare n m = Lt <-> nat_compare m n =
 Proof. intros n m. rewrite <- nat_compare_lt, <- nat_compare_gt. now split. Qed.
 
 Definition injective {A B : Type} eqA eqB (f : A -> B) := (forall x y, eqB (f x) (f y) -> eqA x y).
+(*
+Lemma div2_lt : forall n m, n < div2 m -> n + n < m.
+Proof.
+intros n m Hlt. induction m using ind_0_1_SS.
++ inversion Hlt.
++ destruct n; auto; inversion Hlt.
++ simpl in *. destruct (eq_nat_dec n (div2 m)) as [Heq | Heq].
+  - subst. simpl. clear. induction m using ind_0_1_SS; auto.
+    simpl. rewrite <- plus_n_Sm. omega.
+  - transitivity m; auto. apply IHm. omega.
+Qed.
+*)
+Lemma div2_le_compat : Proper (le ==> le) div2.
+Proof.
+intro n. induction n using ind_0_1_SS; intros m Heq; auto with arith.
+destruct m as [| [| m]]; try now inversion Heq.
+simpl. do 2 apply le_S_n in Heq. apply IHn in Heq. omega.
+Qed.
 
 
 (* ************************************ *)
@@ -859,7 +876,9 @@ Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : lis
 Proof. intros eq_dec l. destruct (NoDupA_dec _ eq_dec l); rewrite NoDupA_Leibniz in *; auto. Qed.
 
 
+(* ******************************** *)
 (** *  The same for real unumbers. **)
+(* ******************************** *)
 
 
 Lemma Rdec : forall x y : R, {x = y} + {x <> y}.
