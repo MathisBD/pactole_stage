@@ -7,4 +7,5 @@ FMultisetFacts.v
 ConvergentFormalismRd.v
 EqualitiesRd.v
 MultisetSpectrum.v
+SetSpectrum.v
 RDVinRd.v
