@@ -4,6 +4,6 @@ Preliminary.v
 FMultisetInterface.v
 FMultisetMap.v
 FMultisetFacts.v
-ConvergentFormalismR.v
-EqualitiesR.v
-generalRDV.v
+ConvergentFormalismRd.v
+EqualitiesRd.v
+RDVinRd.v

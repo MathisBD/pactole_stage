@@ -186,8 +186,6 @@ Qed.
 (** *  Some result about sorting  *)
 
 Import Mergesort.
-Print Module Mergesort.
-Print Module Type Orders.TotalLeBool.
 
 Definition Rleb (x y : R) := if Rle_lt_dec x y then true else false.
 
@@ -216,7 +214,6 @@ End Rletot.
 
 Import Sorted.
 Module Rsort := Mergesort.Sort(Rletot).
-Print Module Rsort.
 Import Rsort.
 
 Ltac Rle_dec :=
