@@ -16,7 +16,7 @@ Require Import Omega.
 Require Import Morphisms.
 Require Import Reals.
 Import Permutation.
-Require Import List.
+Require Import SetoidList.
 Open Scope list_scope.
 Require Vector.
 
@@ -64,12 +64,30 @@ induction n; intros A f; simpl; unfold Vector.to_list.
   f_equal. rewrite IHn. reflexivity.
 Qed.
 
-Instance fin_map_compat n A : Proper (ExtEq ==> eq) (@fin_map n A).
+Instance fin_map_compatA n A eqA : Proper ((eq ==> eqA) ==> eqlistA eqA) (@fin_map n A).
 Proof.
 intros f g Hext. induction n; simpl.
-  reflexivity.
-  rewrite Hext. f_equal. apply IHn. intros x. now rewrite Hext.
++ constructor.
++ constructor.
+  - apply Hext. reflexivity.
+  - apply IHn. repeat intro. apply Hext. subst. reflexivity.
 Qed.
+
+Lemma eqlistA_Leibniz A : forall (l1 l2 : list A), eqlistA eq l1 l2 <-> l1 = l2.
+Proof.
+intro l1. induction l1 as [| x1 l1]; intros l2.
+* destruct l2.
+  + split; intro; reflexivity.
+  + split; intro Habs; inversion Habs.
+* destruct l2.
+  + split; intro Habs; inversion Habs.
+  + split; intro Heq; inversion_clear Heq.
+    - subst. f_equal. rewrite <- IHl1. assumption.
+    - reflexivity.
+Qed.
+
+Instance fin_map_compat n A : Proper (ExtEq ==> eq) (@fin_map n A).
+Proof. intros f g Hext. rewrite <- eqlistA_Leibniz. apply fin_map_compatA. repeat intro. subst. apply Hext. Qed.
 
 Theorem In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
 Proof.
@@ -175,7 +193,7 @@ Theorem fin_map_app : forall n m A (f : Fin.t n -> A) (g : Fin.t m -> A),
   fin_map f ++ fin_map g = fin_map (combine f g).
 Proof.
 intros n m A f g. destruct m; simpl.
-+ rewrite combine_0_r. rewrite app_nil_r. now rewrite plus_0_r.
++ rewrite (combine_0_r f g). rewrite app_nil_r. now rewrite plus_0_r.
 + induction n; simpl.
   - reflexivity.
   - f_equal. rewrite IHn. apply fin_map_compat. intro x. unfold eq_rec_r. simpl.
@@ -245,6 +263,8 @@ Module Type Spectrum (Location : MetricSpace) (N : Size). (* <: DecidableType *)
   Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, Location.eq (pos₁ id) (pos₂ id).
   
   (** A predicate characterizing correct spectra for a given local position *)
+  (* TODO: maybe a function [from_pos : position -> t] is a better idea as the demon will need it. 
+           Then this [is_ok] is simply the specification of [from_pos]. *)
   Parameter is_ok : t -> position -> Prop.
 End Spectrum.
 
@@ -288,6 +308,8 @@ Record robogram := {
   pgm_compat : Proper (Spec.eq ==> Location.eq) pgm}.
 
 (** A robot is either inactive (case [Off]) or activated and observing with the [obs]-applied local vision. *)
+(* TODO: We need to parametrize the type of bijection, to express assumptions about them.
+         Otherwise robots cannot detect spheres as not all bijetions are isometric! *)
 Inductive phase :=
   | Off
   | On (obs : Location.t → bijection Location.eq_equiv)

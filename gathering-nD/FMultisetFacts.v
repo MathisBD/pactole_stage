@@ -49,24 +49,24 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Instance InA_key_compat : Proper (eq_key ==> PermutationA eq_pair ==> iff) (InA eq_key).
   Proof.
-  intros [x n] [y p] Hxy l1 l2 Hperm. compute in Hxy. rewrite Hxy. clear Hxy x.
-  revert l1 Hperm. induction l2 as [| [z q] l]; intros l1 Hperm.
+  intros [x n] [y p] Hxy l1. compute in Hxy. setoid_rewrite Hxy. clear Hxy x.
+  induction l1 as [| [z q] l]; intros l2 Hperm.
   + apply (PermutationA_nil _) in Hperm. subst. split; intro Hin; rewrite InA_nil in Hin; elim Hin.
   + assert (Hl : InA eq_pair (z, q) ((z, q) :: l)) by now left.
-    rewrite <- Hperm in Hl. apply InA_split in Hl.
-    destruct Hl as [l1' [[w r] [l2' [Heq ?]]]]. subst l1. rewrite <- Heq in Hperm.
+    rewrite Hperm in Hl. apply InA_split in Hl.
+    destruct Hl as [l1' [[w r] [l2' [Heq ?]]]]. subst l2. rewrite <- Heq in Hperm.
     assert (Hl : PermutationA eq_pair (l1' ++ l2') l).
-    { eapply (PermutationA_cons_inv _). etransitivity. apply (PermutationA_middle _). apply Hperm. }
-    apply IHl in Hl. split; intro H.
-    - rewrite (InA_app_iff _) in H. destruct H.
-        right. rewrite <- Hl. rewrite (InA_app_iff _). now left.
-        inversion_clear H. left. destruct Heq as [Heq _]. now rewrite Heq.
-        right. rewrite <- Hl. rewrite (InA_app_iff _). now right.
+    { eapply (PermutationA_cons_inv _). etransitivity. apply (PermutationA_middle _). symmetry. apply Hperm. }
+    symmetry in Hl. apply IHl in Hl. split; intro H.
     - rewrite (InA_app_iff _). inversion_clear H.
         right. left. destruct Heq as [Heq _]. now rewrite <- Heq.
-        rewrite <- Hl in H0. rewrite (InA_app_iff _) in H0. destruct H0.
+        rewrite Hl in H0. rewrite (InA_app_iff _) in H0. destruct H0.
           now left.
           now do 2 right.
+    - rewrite (InA_app_iff _) in H. destruct H.
+        right. rewrite Hl. rewrite (InA_app_iff _). now left.
+        inversion_clear H. left. destruct Heq as [Heq _]. now rewrite Heq.
+        right. rewrite Hl. rewrite (InA_app_iff _). now right.
   Qed.
   
   Instance is_empty_compat : Proper (eq ==> Logic.eq) is_empty.

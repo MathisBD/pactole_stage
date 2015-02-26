@@ -66,6 +66,9 @@ intro l. split; intro Hl; induction l; inversion_clear Hl; constructor;
 (now rewrite <- InA_Leibniz in *) || now apply IHl.
 Qed.
 
+Instance eqlistA_PermutationA_subrelation : subrelation (eqlistA eqA) (PermutationA eqA).
+Proof. intros ? ? Heq. induction Heq; constructor; auto. Qed.
+
 Lemma Permutation_PermutationA_weak : forall l1 l2, Permutation l1 l2 -> PermutationA eqA l1 l2.
 Proof.
 intros l1 l2 Heq. induction Heq; try now constructor.
@@ -392,95 +395,6 @@ intros l x. induction l; simpl.
   destruct (eq_dec x a); simpl; omega.
 Qed.
 
-Lemma count_occ_app eq_dec : forall l1 l2 (x : A),
-  count_occ eq_dec (l1 ++ l2) x = (count_occ eq_dec l1 x + count_occ eq_dec l2 x)%nat.
-Proof.
-intros l1. induction l1; intros l2 x; simpl.
-  reflexivity.
-  destruct (eq_dec a x); now rewrite IHl1.
-Qed.
-
-Instance count_occ_proper eq_dec : Proper (@Permutation A ==> eq ==> eq) (@count_occ A eq_dec).
-Proof.
-intro l. induction l as [| x l]; intros [| x' l'] Hl ? ? ?; subst.
-  reflexivity.
-  apply Permutation_nil in Hl. discriminate Hl.
-  symmetry in Hl. apply Permutation_nil in Hl. discriminate Hl.
-  destruct (eq_dec x x') as [? | Hx].
-  + subst x'. apply Permutation_cons_inv in Hl. apply IHl in Hl.
-    simpl. now rewrite (Hl _ _ (eq_refl y)).
-  + destruct (Permutation_cons_inside Hl) as [l1 [l2 [Hperm Heql]]].
-    rewrite Heql. simpl. rewrite (IHl _ Hperm _ _ (eq_refl y)). do 2 rewrite count_occ_app.
-    simpl. destruct (eq_dec x y). now apply plus_n_Sm. reflexivity.
-Qed.
-
-Lemma count_occ_remove_in eq_dec : forall (x : A) l, count_occ eq_dec (remove eq_dec x l) x = 0%nat.
-Proof.
-intros x l. induction l. reflexivity. simpl.
-destruct (eq_dec x a) as [| Hneq]. assumption. simpl.
-destruct (eq_dec a x). now elim Hneq. assumption. 
-Qed.
-
-Lemma count_occ_remove_out eq_dec :
-  forall (x y : A) l, x <> y -> count_occ eq_dec (remove eq_dec x l) y = count_occ eq_dec l y.
-Proof.
-intros x y l Hxy. induction l. reflexivity. simpl.
-destruct (eq_dec x a); simpl; destruct (eq_dec a y).
-  subst. now elim Hxy.
-  assumption.
-  now f_equal.
-  assumption.
-Qed.
-Global Arguments count_occ_remove_out [eq_dec] x [y] [l] _.
-
-Lemma count_occ_alls_in eq_dec : forall x n, count_occ eq_dec (alls x n) x = n.
-Proof.
-intros x n. induction n; simpl.
-  reflexivity.
-  destruct (eq_dec x x) as [| Hneq]. now rewrite IHn. now elim Hneq. 
-Qed.
-
-Lemma count_occ_alls_out eq_dec : forall x y n, x <> y -> count_occ eq_dec (alls x n) y = 0%nat.
-Proof. intros x y n Hxy. induction n; simpl; trivial; now destruct (eq_dec x y). Qed.
-
-Theorem remove_count_occ_restore eq_dec : forall x l,
-  Permutation l (alls x (count_occ eq_dec l x) ++ (remove eq_dec x l)).
-Proof.
-intros x l. induction l.
-+ reflexivity.
-+ simpl. destruct (eq_dec a x) as [| Hneq]. subst.
-  - simpl. apply Permutation_cons. destruct (eq_dec x x) as [| Hneq]. assumption. now elim Hneq.
-  - destruct (eq_dec x a). subst. now elim Hneq. etransitivity.
-      now apply Permutation_cons, IHl.
-      now apply Permutation_cons_app.
-Qed.
-
-Lemma count_occ_length_le eq_dec : forall l (x : A), count_occ eq_dec l x <= length l.
-Proof.
-intros l x. induction l; simpl.
-  reflexivity.
-  destruct (eq_dec a x); omega.
-Qed.
-
-Lemma remove_count_occ_length eq_dec : forall (x : A) l,
-  length (remove eq_dec x l) + count_occ eq_dec l x = length l.
-Proof.
-intros x l. induction l; simpl.
-+ reflexivity.
-+ destruct (eq_dec x a); simpl.
-  - subst. destruct (eq_dec a a) as [_ | Habs]. rewrite <- plus_n_Sm, IHl. reflexivity. now elim Habs.
-  - destruct (eq_dec a x) as [Heq | Habs].
-      symmetry in Heq. contradiction.
-      now rewrite IHl.
-Qed.
-
-Corollary count_occ_length eq_dec : forall (x : A) l, count_occ eq_dec l x = length l - length (remove eq_dec x l).
-Proof. intros. apply plus_minus. symmetry. apply remove_count_occ_length. Qed.
-
-Corollary remove_length eq_dec : forall (x : A) l, length (remove eq_dec x l) = length l - count_occ eq_dec l x.
-Proof. intros. apply plus_minus. symmetry. rewrite plus_comm. apply remove_count_occ_length. Qed.
-
-
 Instance InA_impl_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@InA A).
 Proof.
 intros R1 R2 HR x y Hxy l l2 Hl Hin. subst y l2. induction l.
@@ -490,13 +404,13 @@ intros R1 R2 HR x y Hxy l l2 Hl Hin. subst y l2. induction l.
     constructor 2. now apply IHl.
 Qed.
 
-Lemma PermutationA_nil : forall l, PermutationA eqA l nil -> l = nil.
+Lemma PermutationA_nil : forall l, PermutationA eqA nil l -> l = nil.
 Proof.
 intros l Hl. destruct l.
   reflexivity.
   exfalso. rewrite <- InA_nil. rewrite (PermutationA_equivlistA HeqA).
     now left.
-    symmetry. eassumption.
+    eassumption.
 Qed.
 
 Instance InA_compat : Proper (eqA ==> equivlistA eqA ==> iff) (InA eqA).
@@ -593,7 +507,7 @@ Proof. intros; exact (PermutationA_app_inv nil l nil l' a H). Qed.
 Instance PermutationA_length : Proper (PermutationA eqA ==> Logic.eq) (@length A).
 Proof.
 intro l. induction l; intros l' Hperm.
-  symmetry in Hperm. apply PermutationA_nil in Hperm. now subst.
+  apply PermutationA_nil in Hperm. now subst.
   assert (Hp := @PermutationA_InA_inside a _ _ Hperm).
   destruct Hp as [l1 [y [l2 [Heq1 Heq2]]]]. now left. subst l'.
   rewrite app_length. simpl. rewrite <- plus_n_Sm. f_equal. rewrite <- app_length.
@@ -621,7 +535,7 @@ Proof. now repeat intro; split; apply PermutationA_NoDupA. Qed.
 Lemma PermutationA_length1 : forall x l, PermutationA eqA l (x :: nil) -> exists y, eqA x y /\ l = y :: nil.
 Proof.
 intros x l Hperm. destruct l as [| a [| b l]].
-- symmetry in Hperm. apply PermutationA_nil in Hperm. discriminate Hperm.
+- apply PermutationA_nil in Hperm. discriminate Hperm.
 - exists a. assert (Hlength := PermutationA_length Hperm).
   apply PermutationA_InA_inside with a _ _ in Hperm.
     destruct Hperm as [l1 [y [l2 [Heq Hl]]]].
@@ -870,6 +784,106 @@ intros P Pdec l. induction l; simpl.
   - right. intros Habs. inversion_clear Habs. contradiction.
 Qed.
 
+Section CountA.
+
+Variable eq_dec : forall x y : A, {eqA x y} + {~eqA x y}.
+
+Fixpoint countA_occ (x : A) l :=
+  match l with
+    | Datatypes.nil => 0
+    | y :: l' => let n := countA_occ x l' in if eq_dec y x then S n else n
+  end.
+
+Lemma countA_occ_app : forall l1 l2 (x : A),
+  countA_occ x (l1 ++ l2) = (countA_occ x l1 + countA_occ x l2)%nat.
+Proof.
+intros l1. induction l1; intros l2 x; simpl.
+- reflexivity.
+- destruct (eq_dec a x); now rewrite IHl1.
+Qed.
+
+Instance count_occ_proper : Proper (eq ==> PermutationA eqA ==> eq) (countA_occ).
+Proof.
+intros a b Hab l. induction l as [| x l]; intros [| x' l'] Hl; subst.
++ reflexivity.
++ apply PermutationA_nil in Hl. discriminate Hl.
++ symmetry in Hl. apply PermutationA_nil in Hl. discriminate Hl.
++ assert (Hperm := @PermutationA_InA_inside x _ _ Hl). destruct Hperm as [l1 [y [l2 [Hxy Heql]]]]; try now left.
+  rewrite Heql in *. rewrite Hxy, <- (PermutationA_middle _) in Hl. apply PermutationA_cons_inv in Hl.
+  apply IHl in Hl. simpl. rewrite Hl. repeat rewrite countA_occ_app. simpl.
+  destruct (eq_dec x b) as [Hx | Hx], (eq_dec y b) as [Hy | Hy]; try omega.
+  - elim Hy. rewrite <- Hxy. assumption.
+  - elim Hx. rewrite Hxy. assumption.
+Qed.
+(*
+Lemma countA_occ_remove_in eq_dec : forall (x : A) l, count_occ eq_dec (remove eq_dec x l) x = 0%nat.
+Proof.
+intros x l. induction l. reflexivity. simpl.
+destruct (eq_dec x a) as [| Hneq]. assumption. simpl.
+destruct (eq_dec a x). now elim Hneq. assumption. 
+Qed.
+
+Lemma count_occ_remove_out eq_dec :
+  forall (x y : A) l, x <> y -> count_occ eq_dec (remove eq_dec x l) y = count_occ eq_dec l y.
+Proof.
+intros x y l Hxy. induction l. reflexivity. simpl.
+destruct (eq_dec x a); simpl; destruct (eq_dec a y).
+  subst. now elim Hxy.
+  assumption.
+  now f_equal.
+  assumption.
+Qed.
+Global Arguments count_occ_remove_out [eq_dec] x [y] [l] _.
+*)
+Lemma countA_occ_alls_in : forall x n, countA_occ x (alls x n) = n.
+Proof.
+intros x n. induction n; simpl.
+  reflexivity.
+  destruct (eq_dec x x) as [| Hneq]. now rewrite IHn. now elim Hneq. 
+Qed.
+
+Lemma countA_occ_alls_out : forall x y n, ~eqA x y -> countA_occ y (alls x n) = 0%nat.
+Proof. intros x y n Hxy. induction n; simpl; trivial; now destruct (eq_dec x y). Qed.
+(*
+Theorem remove_count_occ_restore eq_dec : forall x l,
+  Permutation l (alls x (count_occ eq_dec l x) ++ (remove eq_dec x l)).
+Proof.
+intros x l. induction l.
++ reflexivity.
++ simpl. destruct (eq_dec a x) as [| Hneq]. subst.
+  - simpl. apply Permutation_cons. destruct (eq_dec x x) as [| Hneq]. assumption. now elim Hneq.
+  - destruct (eq_dec x a). subst. now elim Hneq. etransitivity.
+      now apply Permutation_cons, IHl.
+      now apply Permutation_cons_app.
+Qed.
+*)
+Lemma countA_occ_length_le : forall l (x : A), countA_occ x l <= length l.
+Proof.
+intros l x. induction l; simpl.
+  reflexivity.
+  destruct (eq_dec a x); omega.
+Qed.
+(*
+Lemma remove_count_occ_length eq_dec : forall (x : A) l,
+  length (remove eq_dec x l) + count_occ eq_dec l x = length l.
+Proof.
+intros x l. induction l; simpl.
++ reflexivity.
++ destruct (eq_dec x a); simpl.
+  - subst. destruct (eq_dec a a) as [_ | Habs]. rewrite <- plus_n_Sm, IHl. reflexivity. now elim Habs.
+  - destruct (eq_dec a x) as [Heq | Habs].
+      symmetry in Heq. contradiction.
+      now rewrite IHl.
+Qed.
+
+Corollary count_occ_length eq_dec : forall (x : A) l, count_occ eq_dec l x = length l - length (remove eq_dec x l).
+Proof. intros. apply plus_minus. symmetry. apply remove_count_occ_length. Qed.
+
+Corollary remove_length eq_dec : forall (x : A) l, length (remove eq_dec x l) = length l - count_occ eq_dec l x.
+Proof. intros. apply plus_minus. symmetry. rewrite plus_comm. apply remove_count_occ_length. Qed.
+*)
+End CountA.
+
 End List_results.
 
 Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : list A, {NoDup l} + {~NoDup l}.
@@ -904,11 +918,11 @@ Lemma if_Rdec : forall A x y (l r : A), (if Rdec x y then l else r) = if Rdec_bo
 Proof. intros. unfold Rdec_bool. now destruct Rdec. Qed.
 
 
-Definition count_occ_properR := count_occ_proper Rdec.
+(*Definition count_occ_properR := count_occ_proper Rdec.*)
 Definition remove_Perm_properR := remove_Perm_proper Rdec.
 Existing Instance Permutation_length_compat.
 Existing Instance Permutation_NoDup_compat.
-Existing Instance count_occ_properR.
+(*Existing Instance count_occ_properR.*)
 Existing Instance remove_Perm_properR.
 Existing Instance In_perm_compat.
 Existing Instance InA_impl_compat.

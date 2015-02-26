@@ -1,18 +1,17 @@
 Require Import Utf8_core.
 Require Import Bool.
+Require Import RelationPairs.
 Require Import Arith.Div2.
 Require Import Rbase.
 Require Import SetoidList.
-Require Import FMultisetFacts.
-Require Import FMultisetMap.
 Require Import Preliminary.
 Require Import ConvergentFormalismRd.
 Require Import EqualitiesRd.
+Require MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
 Import Permutation.
 Import Datatypes. (* to overshadow Rlist and its constructors [nil] and [cons] *)
-Require FMapWeakList. (* to build an actual implementation of multisets *)
 
 Set Implicit Arguments.
 Close Scope R_scope.
@@ -31,175 +30,6 @@ Module Type GatheringLocation <: MetricSpace.
     (forall x, InA eq x l -> (dist c x <= R)%R) /\ exists x, InA eq x l /\ dist x c = R.
 End GatheringLocation.
 
-Module Multiset(Location : GatheringLocation)(N : Size) <: Spectrum (Location)(N).
-  Module Names := Names(N).
-  
-  Module Mraw : FMultisetsOn Location := FMultisets FMapWeakList.Make Location.
-  Module M := FMultisetFacts.Make Location Mraw.
-  Include M.
-  
-  Notation "m1  [=]  m2" := (eq m1 m2) (at level 70).
-  Notation "m1  [<=]  m2" := (M.Subset m1 m2) (at level 70).
-  
-  Definition position := Names.ident -> Location.t.
-  Definition PosEq (pos₁ pos₂ : position) : Prop := forall id, Location.eq (pos₁ id) (pos₂ id).
-  
-  Definition from_pos pos : t := fold_left (fun acc x => M.add x 1 acc)
-                                           (Names.fin_map (fun g => pos (Names.Good g)))
-                                           M.empty.
-  Instance from_pos_compat : Proper (PosEq ==> eq) from_pos.
-  Proof. Admitted.
-(*
-Lemma multiset_nil : multiset nil [=] M.empty.
-Proof. reflexivity. Qed.
-
-Lemma multiset_cons_aux : forall s x m,
-  List.fold_left (fun acc y => M.add y 1 acc) (x :: s) m [=]
-  M.add x 1 (List.fold_left (fun acc x => M.add x 1 acc) s m).
-Proof.
-intro s. induction s; intros x m.
-  reflexivity.
-  simpl. intro.
-  assert (Hf : Proper (M.eq ==> eq ==> M.eq) (fun (acc : M.t) (y : M.elt) => M.add y 1 acc)).
-  { clear. intros s1 s2 Hs x y Hxy. now rewrite Hxy, Hs. }
-  rewrite (@fold_left_start _ _ Logic.eq M.eq _ _ _ Hf s _ (M.add x 1 (M.add a 1 m)) (M.add_comm _ _ _ _ _)).
-  apply IHs.
-Qed.
-
-Lemma multiset_cons : forall x s, multiset (x :: s) [=] M.add x 1 (multiset s).
-Proof. intros x s y. unfold multiset. now rewrite multiset_cons_aux. Qed.
-
-Lemma multiset_empty : forall l, multiset l [=] M.empty <-> l = nil.
-Proof.
-intro l. split; intro H.
-  destruct l. reflexivity. rewrite multiset_cons in H.
-  specialize (H r). rewrite M.add_spec, M.empty_spec in H. omega.
-  subst l. apply multiset_nil.
-Qed.
-
-Lemma multiset_app : forall s s', multiset (s ++ s') [=] M.union (multiset s) (multiset s').
-Proof.
-induction s; intros s'; simpl.
-  now rewrite M.union_empty_l.
-  do 2 rewrite multiset_cons. intro x. destruct (Rdec x a).
-    subst a. rewrite M.add_spec. rewrite IHs. repeat rewrite M.union_spec. rewrite M.add_spec. omega.
-    rewrite M.add_spec'. rewrite IHs. repeat rewrite M.union_spec. rewrite M.add_spec'. reflexivity. auto. auto.
-Qed.
-
-Instance multiset_compat : Proper (@Permutation R ==> M.eq) multiset.
-Proof.
-intro s1. induction s1 as [| x s1]; intros s2 Hperm.
-  apply Permutation_nil in Hperm. now subst.
-  assert (Hx := Permutation_in_inside x Hperm). destruct Hx as [l1 [l2 Heq]]. now left. subst s2.
-  intro y. rewrite multiset_app, M.union_spec. do 2 rewrite multiset_cons.
-  destruct (Rdec x y) as [Heq | Hneq].
-    subst y. repeat rewrite M.add_spec. rewrite plus_assoc. f_equal. rewrite <- M.union_spec, <- multiset_app.
-    apply IHs1. now apply Permutation_cons_app_inv with x.
-    repeat rewrite M.add_spec'; trivial. rewrite <- M.union_spec, <- multiset_app.
-    apply IHs1. now apply Permutation_cons_app_inv with x.
-Qed.
-
-Lemma multiset_Permutation :
-  forall x l n, M.multiplicity x (multiset l) = n -> exists l', ~In x l' /\ Permutation l (alls x n ++ l').
-Proof.
-intros x l. induction l; intros n Hin.
-  exists nil. split. now auto. rewrite multiset_nil, M.empty_spec in Hin. subst n. simpl. reflexivity.
-  rewrite multiset_cons in Hin. destruct (Rdec a x).
-  - subst a. rewrite M.add_spec in Hin. destruct n. omega.
-    rewrite plus_comm in Hin. simpl in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
-    exists l'. split. assumption. simpl. now constructor.
-  - rewrite M.add_spec' in Hin; trivial. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
-    exists (a :: l'). split. intros [|]; contradiction.
-    transitivity (a :: alls x n ++ l'); now constructor || apply Permutation_middle.
-Qed.
-
-Lemma multiset_alls : forall x n, multiset (alls x n) [=] M.singleton x n.
-Proof.
-intros x n. induction n; simpl.
-+ now rewrite M.singleton_0, multiset_nil.
-+ rewrite multiset_cons. rewrite IHn. intro y. rewrite M.singleton_spec. Rdec_full.
-    subst y. rewrite M.add_spec, M.singleton_spec. Rdec. omega.
-    rewrite M.add_spec'. rewrite M.singleton_spec. now Rdec_full. auto.
-Qed.
-
-Corollary multiset_In : forall x l, M.multiplicity x (multiset l) > 0 <-> In x l.
-Proof.
-intros x l. split; intro Hl.
-- destruct (multiset_Permutation _ (eq_refl (M.multiplicity x (multiset l)))) as [l' [Hl' Hperm]].
-  rewrite Hperm. rewrite in_app_iff. left. destruct (M.multiplicity x (multiset l)). omega. now left.
-- induction l. now inversion Hl. rewrite multiset_cons. destruct (Rdec a x).
-    subst a. rewrite M.add_spec. omega.
-    rewrite M.add_spec'; trivial. apply IHl. now inversion_clear Hl.
-Qed.
-
-Theorem multiset_map : forall f, injective eq eq f -> forall l, multiset (map f l) [=] M.map f (multiset l).
-Proof.
-intros f Hf l.
-assert (Hf2 : Proper (eq ==> eq) f) by now repeat intro; subst.
-induction l; simpl.
-   rewrite (@M.map_compat f Hf2 (multiset nil)), multiset_nil. now rewrite M.map_empty. now apply multiset_nil.
-   do 2 rewrite multiset_cons. now rewrite M.map_add, IHl.
-Qed.
-
-Theorem multiset_spec : forall x l, M.multiplicity x (multiset l) = count_occ Rdec l x.
-Proof.
-intros x l. induction l; simpl.
-  rewrite multiset_nil. now apply M.empty_spec.
-  rewrite multiset_cons. destruct (Rdec a x).
-    subst a. rewrite M.add_spec. rewrite IHl. omega.
-    rewrite M.add_spec'. now apply IHl. assumption.
-Qed.
-
-Theorem cardinal_multiset : forall l, M.cardinal (multiset l) = length l.
-Proof.
-induction l; simpl.
-+ now rewrite multiset_nil, M.cardinal_empty.
-+ rewrite multiset_cons, M.cardinal_add. apply f_equal, IHl.
-Qed.
-
-Lemma multiset_remove : forall x l,
-  multiset (remove Rdec x l) [=] M.remove x (M.multiplicity x (multiset l)) (multiset l).
-Proof.
-intros x l y. induction l as[| a l]; simpl.
-+ rewrite multiset_nil. do 2 rewrite M.empty_spec. now rewrite M.remove_0, M.empty_spec.
-+ rewrite multiset_cons. destruct (Rdec y x). 
-  - subst y. Rdec_full.
-      subst a. rewrite IHl. rewrite M.add_spec. do 2 rewrite M.remove_spec. rewrite M.add_spec. omega.
-      rewrite multiset_cons. rewrite M.add_spec'; auto. rewrite IHl. do 2 rewrite M.remove_spec. omega.
-  - Rdec_full.
-      subst a. rewrite IHl. rewrite M.add_spec. repeat rewrite M.remove_spec'; auto. rewrite M.add_spec'; auto.
-      rewrite multiset_cons. rewrite M.remove_spec'; auto. destruct (Rdec a y).
-        subst a. do 2 rewrite M.add_spec. rewrite IHl. now rewrite M.remove_spec'.
-        repeat rewrite M.add_spec'; trivial. rewrite IHl. rewrite M.remove_spec'; auto.
-Qed.
-
-Existing Instance In_permA_compat.
-
-Lemma multiset_support : forall x l, In x (M.support (multiset l)) <-> In x l.
-Proof.
-intros x l. split; intro Hl.
-* induction l.
-  + cut (M.support (multiset nil) = nil).
-      intro Heq. unfold M.elt in *. now rewrite <- Heq.
-      apply Permutation_nil. now rewrite <- PermutationA_Leibniz, multiset_nil, M.support_empty.
-  + rewrite multiset_cons in Hl. rewrite M.support_add in Hl; try omega. unfold Rdecidable.eq_dec in Hl.
-    destruct ( InA_dec Rdec a (M.support (multiset l))).
-    - right. now apply IHl.
-    - destruct Hl. now left. right. now apply IHl.    
-* induction l.
-  + inversion Hl.
-  + rewrite <- InA_Leibniz. rewrite M.support_spec. unfold M.In. rewrite multiset_cons. destruct (Rdec a x).
-    - subst a. rewrite M.add_spec. omega.
-    - rewrite M.add_spec'. change (M.In x (multiset l)). rewrite <- M.support_spec, InA_Leibniz. apply IHl.
-      now inversion_clear Hl. assumption.
-Qed.
-*)  
-  Definition is_ok s pos := eq s (from_pos pos).
-  
-  Instance smallest_enclosing_sphere_uniq :
-    Proper (PermutationA Location.eq ==> (Location.eq * Logic.eq)) Location.smallest_enclosing_sphere.
-  Proof. Admitted.
-End Multiset.
 
 (** *  The Gathering Problem  **)
 
@@ -212,8 +42,13 @@ End Multiset.
 
 Module GeneralGathering (Location : GatheringLocation) (N : Size).
 
+(* TODO: The spec of ses should enforce this property.  Change the definition to get it. *)
+Instance smallest_enclosing_sphere_uniq :
+  Proper (PermutationA Location.eq ==> (Location.eq * Logic.eq)) Location.smallest_enclosing_sphere.
+Proof. Admitted.
+
 (** The spectrum is a multiset of positions *)
-Module Spec := Multiset(Location)(N).
+Module Spec := MultisetSpectrum.Make(Location)(N).
 
 (* Importing the previous results *)
 Module Export Eq := Equalities(Location)(N)(Spec).

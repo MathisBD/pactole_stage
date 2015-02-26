@@ -6,4 +6,5 @@ FMultisetMap.v
 FMultisetFacts.v
 ConvergentFormalismRd.v
 EqualitiesRd.v
+MultisetSpectrum.v
 RDVinRd.v
