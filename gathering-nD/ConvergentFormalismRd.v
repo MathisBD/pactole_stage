@@ -17,6 +17,7 @@ Require Import Morphisms.
 Require Import Reals.
 Import Permutation.
 Require Import SetoidList.
+Require Import Preliminary.
 Open Scope list_scope.
 Require Vector.
 
@@ -56,7 +57,13 @@ Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
     | 0 => fun _ => nil
     | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
   end (eq_refl n).
-
+(*
+Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
+  match n as n' return n = n' -> list A with
+    | 0 => fun _ => nil
+    | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (Fin.FS x)))
+  end (eq_refl n).
+*)
 Lemma Vfin_fin_map : forall n A (f : Fin.t n -> A), fin_map f = Vector.to_list (Vfin_map f).
 Proof.
 induction n; intros A f; simpl; unfold Vector.to_list.
@@ -89,14 +96,41 @@ Qed.
 Instance fin_map_compat n A : Proper (ExtEq ==> eq) (@fin_map n A).
 Proof. intros f g Hext. rewrite <- eqlistA_Leibniz. apply fin_map_compatA. repeat intro. subst. apply Hext. Qed.
 
-Theorem In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
+Theorem InA_fin_map : forall n A eqA `(Equivalence A eqA) g (f : Fin.t n -> A), InA eqA (f g) (fin_map f).
 Proof.
-intros n A g f. destruct n.
-  now apply Fin.case0.
-  revert n g f. apply (Fin.rectS (fun n g => ∀ f : Fin.t (S n) → A, In (f g) (fin_map f))).
-    intros n f. now left.
-    intros n g IHn f. right. apply (IHn (fun x => f (Fin.FS x))).
+intros n A eqA HeqA g f. destruct n.
++ now apply Fin.case0.
++ revert n g f. apply (Fin.rectS (fun n g => ∀ f : Fin.t (S n) → A, InA eqA (f g) (fin_map f))).
+  - intros n f. now left.
+  - intros n g IHn f. right. apply (IHn (fun x => f (Fin.FS x))).
 Qed.
+
+Corollary In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
+Proof. intros. rewrite <- InA_Leibniz. apply (InA_fin_map _). Qed.
+
+Theorem fin_map_InA : forall A eqA `(Equivalence A eqA) (eq_dec : forall x y : A, {eqA x y} + {~eqA x y}),
+  forall n (f : Fin.t n -> A) x, InA eqA x (fin_map f) <-> exists id : Fin.t n, eqA x (f id).
+Proof.
+intros A eqA HeqA eq_dec n. induction n; intros f x.
+* simpl. rewrite InA_nil. split; intro Habs; try elim Habs. destruct Habs. now apply Fin.case0.
+* destruct (eq_dec x (f Fin.F1)) as [Heq | Heq].
+  + subst. split; intro Hin. 
+    - firstorder.
+    - rewrite Heq. apply (InA_fin_map _).
+  + simpl. unfold eq_rec_r. simpl. split; intro Hin.
+    - inversion_clear Hin; try contradiction. rewrite (IHn (fun id => f (Fin.FS id)) x) in H.
+      destruct H as [id Hin]; subst; try now elim Heq. now exists (Fin.FS id).
+    - right. destruct Hin as [id Hin]. rewrite Hin in *. clear Hin.
+      rewrite (IHn (fun id => f (Fin.FS id)) (f id)). revert f Heq.
+      apply (Fin.caseS  (λ n (t : Fin.t (S n)), ∀ f : Fin.t (S n) → A,
+                         ~eqA (f t) (f Fin.F1) → ∃ id0 : Fin.t n, eqA (f t) (f (Fin.FS id0)))).
+        clear -HeqA. intros n f Hn. elim Hn. reflexivity.
+        clear -HeqA. intros n id f Hn. exists id. reflexivity.
+Qed.
+
+Corollary fin_map_In : forall A (eq_dec : forall x y : A, {x =  y} + {x <> y}),
+  forall n (f : Fin.t n -> A) x, In x (fin_map f) <-> exists id : Fin.t n, x = (f id).
+Proof. intros. rewrite <- InA_Leibniz. rewrite (fin_map_InA _); trivial. reflexivity. Qed.
 
 Theorem map_fin_map : forall n A B (f : A -> B) (h : Fin.t n -> A),
   fin_map (fun x => f (h x)) = List.map f (fin_map h).
@@ -238,12 +272,15 @@ Module Type MetricSpace.
   Parameter eq : t -> t -> Prop.
   Parameter dist : t -> t -> R.
   Parameter eq_dec : forall x y, {eq x y} + {~eq x y}.
-
+  
   Parameter eq_equiv : Equivalence eq.
-  Parameter dist_pos : forall x y, (dist x y <= 0)%R.
   Parameter dist_defined : forall x y, dist x y = 0%R <-> eq x y.
   Parameter dist_sym : forall y x, dist x y = dist y x.
   Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
+  
+  (* These properties can be actually derived *)
+  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Parameter dist_pos : forall x y, (0 <= dist x y)%R.
 End MetricSpace.
 
 (** **  Spectra  **)
@@ -275,7 +312,8 @@ Module Import Names := Spec.Names.
 Notation position := Spec.position.
 Notation PosEq := Spec.PosEq.
 
-Instance dist_compat : Proper (Location.eq ==> Location.eq ==> eq) (Location.dist).
+(** Proofs of the two derivable properties in MertricSpace *)
+Instance dist_compat2 : Proper (Location.eq ==> Location.eq ==> eq) (Location.dist).
 Proof.
 intros x x' Hx y y' Hy. apply Rle_antisym.
 + replace (Location.dist x' y') with (0 + Location.dist x' y' + 0)%R by ring. symmetry in Hy.
@@ -286,6 +324,15 @@ intros x x' Hx y y' Hy. apply Rle_antisym.
   rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
   rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
   rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
+Qed.
+
+Lemma dist_pos : forall x y, (0 <= Location.dist x y)%R.
+Proof.
+intros x y. apply Rmult_le_reg_l with 2%R.
++ apply Rlt_R0_R2.
++ do 2 rewrite double. rewrite Rplus_0_r.
+  assert (Hx : Location.eq x x) by reflexivity. rewrite <- Location.dist_defined in Hx. rewrite <- Hx.
+  setoid_rewrite Location.dist_sym at 3. apply Location.triang_ineq.
 Qed.
 
 (** ** Programs for good robots *)

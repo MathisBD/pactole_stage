@@ -8,4 +8,5 @@ ConvergentFormalismRd.v
 EqualitiesRd.v
 MultisetSpectrum.v
 SetSpectrum.v
+LimitedSetSpectrum.v
 RDVinRd.v

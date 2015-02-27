@@ -917,6 +917,14 @@ Proof. intros. unfold Rdec_bool. destruct (Rdec x y); now split. Qed.
 Lemma if_Rdec : forall A x y (l r : A), (if Rdec x y then l else r) = if Rdec_bool x y then l else r.
 Proof. intros. unfold Rdec_bool. now destruct Rdec. Qed.
 
+Definition Rle_bool x y :=
+  match Rle_dec x y with
+    | left _ => true
+    | right _ => false
+  end.
+
+Lemma Rle_bool_spec : forall x y, Rle_bool x y = true <-> Rle x y.
+Proof. intros x y. unfold Rle_bool. destruct (Rle_dec x y); intuition discriminate. Qed.
 
 (*Definition count_occ_properR := count_occ_proper Rdec.*)
 Definition remove_Perm_properR := remove_Perm_proper Rdec.

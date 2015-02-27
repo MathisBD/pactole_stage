@@ -122,6 +122,7 @@ Qed.
 Definition t := M.t.
 Definition eq := M.eq.
 Definition eq_equiv := M.eq_equiv.
+Definition In := M.In.
 
 Definition from_pos pos : M.t := set (Names.fin_map (fun g => pos (Names.Good g))).
 
@@ -133,6 +134,9 @@ assert (Heq : (Logic.eq ==> Location.eq)%signature
                 (λ g : Fin.t N.nG, pos2 (Names.Good g))). { intros g1 g ?. subst. apply Hpos. }
 do 2 f_equiv. apply eqlistA_PermutationA_subrelation. apply (Names.fin_map_compatA Heq).
 Qed.
+
+Theorem from_pos_spec : forall pos l, In l (from_pos pos) <-> exists g, Location.eq l (pos (Names.Good g)).
+Proof. intros. unfold from_pos. rewrite set_spec, (Names.fin_map_InA _ Location.eq_dec). reflexivity. Qed.
 
 Definition is_ok s pos := eq s (from_pos pos).
 

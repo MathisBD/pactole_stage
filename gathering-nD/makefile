@@ -66,6 +66,9 @@ COQCHK?="$(COQBIN)coqchk"
 ######################
 
 VFILES:=RDVinRd.v\
+  LimitedSetSpectrum.v\
+  SetSpectrum.v\
+  MultisetSpectrum.v\
   EqualitiesRd.v\
   ConvergentFormalismRd.v\
   FMultisetFacts.v\
