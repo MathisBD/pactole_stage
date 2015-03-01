@@ -47,6 +47,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   intros m1 m2 m3 H1 H2 x. now transitivity (multiplicity x m2).
   Qed.
   
+  Theorem eq_dec : forall m1 m2 : t, {eq m1 m2} + {~eq m1 m2}.
+  Proof.
+  intros m1 m2. destruct (M.equal m1 m2) eqn:Heq.
+  - left. now rewrite <- M.equal_spec.
+  - right. rewrite <- M.equal_spec, Heq. discriminate.
+  Qed.
+  
   Instance InA_key_compat : Proper (eq_key ==> PermutationA eq_pair ==> iff) (InA eq_key).
   Proof.
   intros [x n] [y p] Hxy l1. compute in Hxy. setoid_rewrite Hxy. clear Hxy x.

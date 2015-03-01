@@ -1,20 +1,18 @@
 Require Import Utf8_core.
-Require Import Bool.
-Require Import Arith.Div2.
-Require Import Rbase.
+Require Import Arith_base.
 Require Import SetoidList.
-Require Import Sorting.Permutation.
 Require Import FMultisetFacts.
 Require Import FMultisetMap.
-Require Import Preliminary.
-Require Import ConvergentFormalismRd.
-Require Import EqualitiesRd.
 Require FMapWeakList. (* to build an actual implementation of multisets *)
+Require Import Preliminary.
+Require Robots.
+Require Import Positions.
 
 
-Module Make(Location : MetricSpace)(N : Size) <: Spectrum (Location)(N).
+Module Make(Location : MetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
 
-Module Names := Names(N).
+Module Names := Robots.Make(N).
+Module Pos := Positions.Make(Location)(N)(Names).
 
 (** Definition of spectra as multisets of locations. *)
 Module Mraw : FMultisetsOn Location := FMultisets FMapWeakList.Make Location.
@@ -22,9 +20,6 @@ Module M := FMultisetFacts.Make Location Mraw.
 
 Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70).
 Notation "m1  [<=]  m2" := (M.Subset m1 m2) (at level 70).
-
-Definition position := Names.ident -> Location.t.
-Definition PosEq (pos₁ pos₂ : position) : Prop := forall id, Location.eq (pos₁ id) (pos₂ id).
 
 (** **  Building multisets from lists  **)
 
@@ -179,16 +174,18 @@ Qed.
 
 (** Building a spectrum from a position *)
 Include M.
-Definition from_pos pos : t := multiset (Names.fin_map (fun g => pos (Names.Good g))).
 
-Instance from_pos_compat : Proper (PosEq ==> eq) from_pos.
+Definition from_pos pos : t := multiset (Pos.list pos).
+
+Instance from_pos_compat : Proper (Pos.eq ==> eq) from_pos.
 Proof.
-intros pos1 pos2 Hpos x. unfold from_pos.
-assert (Heq : (Logic.eq ==> Location.eq)%signature
-                (λ g : Fin.t N.nG, pos1 (Names.Good g))
-                (λ g : Fin.t N.nG, pos2 (Names.Good g))). { intros g1 g ?. subst. apply Hpos. }
-do 2 f_equiv. apply eqlistA_PermutationA_subrelation. apply (Names.fin_map_compatA Heq).
+intros pos1 pos2 Hpos x. unfold from_pos. do 2 f_equiv.
+apply eqlistA_PermutationA_subrelation, Pos.list_compat. assumption.
 Qed.
+
+Theorem from_pos_spec : forall pos l,
+  M.multiplicity l (from_pos pos) = countA_occ _ Location.eq_dec l (Pos.list pos).
+Proof. intros. unfold from_pos. apply multiset_spec. Qed.
 
 Definition is_ok s pos := eq s (from_pos pos).
 

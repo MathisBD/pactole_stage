@@ -69,11 +69,12 @@ VFILES:=RDVinRd.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\
   MultisetSpectrum.v\
-  EqualitiesRd.v\
   ConvergentFormalismRd.v\
   FMultisetFacts.v\
   FMultisetMap.v\
   FMultisetInterface.v\
+  Positions.v\
+  RobotNames.v\
   Preliminary.v
 
 -include $(addsuffix .d,$(VFILES))

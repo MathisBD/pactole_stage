@@ -10,330 +10,20 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
-Require Import Sorting.
-Require Import Arith_base.
-Require Import Omega.
 Require Import Morphisms.
 Require Import Reals.
-Import Permutation.
-Require Import SetoidList.
-Require Import Preliminary.
-Open Scope list_scope.
-Require Vector.
-
+Require Import Robots.
+Require Import Positions.
 
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
 
-(* TODO: adapt it to setoid equality *)
-Definition ExtEq {T U} (f g : T -> U) := forall x, f x = g x.
-
-Lemma if_ExtEq : forall A B (cond : A -> bool) (f : A -> B), ExtEq (fun x => if cond x then f x else f x) f.
-Proof. intros ? ? cond ? x. now destruct (cond x). Qed.
-
-
-(** *  Identification of robots  **)
-
-(** The number of good and byzantine robots *)
-Module Type Size.
-  Parameter nG : nat.
-  Parameter nB : nat.
-End Size.
-
-Module Names (N : Size).
-
-(** **  Finite sets of names  **)
-
-Fixpoint Vfin_map n A (f : Fin.t n -> A) {struct n} : Vector.t A n :=
-  match n as n' return n = n' -> Vector.t A n' with
-    | 0 => fun _ => (Vector.nil _)
-    | S m => fun Heq => Vector.cons A (f (eq_rec_r _ Fin.F1 Heq)) m
-                                      (Vfin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
-  end (eq_refl n).
-
-Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
-  match n as n' return n = n' -> list A with
-    | 0 => fun _ => nil
-    | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
-  end (eq_refl n).
-(*
-Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
-  match n as n' return n = n' -> list A with
-    | 0 => fun _ => nil
-    | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (Fin.FS x)))
-  end (eq_refl n).
-*)
-Lemma Vfin_fin_map : forall n A (f : Fin.t n -> A), fin_map f = Vector.to_list (Vfin_map f).
-Proof.
-induction n; intros A f; simpl; unfold Vector.to_list.
-  reflexivity.
-  f_equal. rewrite IHn. reflexivity.
-Qed.
-
-Instance fin_map_compatA n A eqA : Proper ((eq ==> eqA) ==> eqlistA eqA) (@fin_map n A).
-Proof.
-intros f g Hext. induction n; simpl.
-+ constructor.
-+ constructor.
-  - apply Hext. reflexivity.
-  - apply IHn. repeat intro. apply Hext. subst. reflexivity.
-Qed.
-
-Lemma eqlistA_Leibniz A : forall (l1 l2 : list A), eqlistA eq l1 l2 <-> l1 = l2.
-Proof.
-intro l1. induction l1 as [| x1 l1]; intros l2.
-* destruct l2.
-  + split; intro; reflexivity.
-  + split; intro Habs; inversion Habs.
-* destruct l2.
-  + split; intro Habs; inversion Habs.
-  + split; intro Heq; inversion_clear Heq.
-    - subst. f_equal. rewrite <- IHl1. assumption.
-    - reflexivity.
-Qed.
-
-Instance fin_map_compat n A : Proper (ExtEq ==> eq) (@fin_map n A).
-Proof. intros f g Hext. rewrite <- eqlistA_Leibniz. apply fin_map_compatA. repeat intro. subst. apply Hext. Qed.
-
-Theorem InA_fin_map : forall n A eqA `(Equivalence A eqA) g (f : Fin.t n -> A), InA eqA (f g) (fin_map f).
-Proof.
-intros n A eqA HeqA g f. destruct n.
-+ now apply Fin.case0.
-+ revert n g f. apply (Fin.rectS (fun n g => ∀ f : Fin.t (S n) → A, InA eqA (f g) (fin_map f))).
-  - intros n f. now left.
-  - intros n g IHn f. right. apply (IHn (fun x => f (Fin.FS x))).
-Qed.
-
-Corollary In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
-Proof. intros. rewrite <- InA_Leibniz. apply (InA_fin_map _). Qed.
-
-Theorem fin_map_InA : forall A eqA `(Equivalence A eqA) (eq_dec : forall x y : A, {eqA x y} + {~eqA x y}),
-  forall n (f : Fin.t n -> A) x, InA eqA x (fin_map f) <-> exists id : Fin.t n, eqA x (f id).
-Proof.
-intros A eqA HeqA eq_dec n. induction n; intros f x.
-* simpl. rewrite InA_nil. split; intro Habs; try elim Habs. destruct Habs. now apply Fin.case0.
-* destruct (eq_dec x (f Fin.F1)) as [Heq | Heq].
-  + subst. split; intro Hin. 
-    - firstorder.
-    - rewrite Heq. apply (InA_fin_map _).
-  + simpl. unfold eq_rec_r. simpl. split; intro Hin.
-    - inversion_clear Hin; try contradiction. rewrite (IHn (fun id => f (Fin.FS id)) x) in H.
-      destruct H as [id Hin]; subst; try now elim Heq. now exists (Fin.FS id).
-    - right. destruct Hin as [id Hin]. rewrite Hin in *. clear Hin.
-      rewrite (IHn (fun id => f (Fin.FS id)) (f id)). revert f Heq.
-      apply (Fin.caseS  (λ n (t : Fin.t (S n)), ∀ f : Fin.t (S n) → A,
-                         ~eqA (f t) (f Fin.F1) → ∃ id0 : Fin.t n, eqA (f t) (f (Fin.FS id0)))).
-        clear -HeqA. intros n f Hn. elim Hn. reflexivity.
-        clear -HeqA. intros n id f Hn. exists id. reflexivity.
-Qed.
-
-Corollary fin_map_In : forall A (eq_dec : forall x y : A, {x =  y} + {x <> y}),
-  forall n (f : Fin.t n -> A) x, In x (fin_map f) <-> exists id : Fin.t n, x = (f id).
-Proof. intros. rewrite <- InA_Leibniz. rewrite (fin_map_InA _); trivial. reflexivity. Qed.
-
-Theorem map_fin_map : forall n A B (f : A -> B) (h : Fin.t n -> A),
-  fin_map (fun x => f (h x)) = List.map f (fin_map h).
-Proof.
-intros n A B f h. induction n.
-  reflexivity.
-  simpl. f_equal. now rewrite IHn.
-Qed.
-
-Corollary fin_map_id : forall n A (f : Fin.t n -> A), fin_map f = List.map f (fin_map (fun x => x)).
-Proof. intros. apply map_fin_map. Qed.
-
-Lemma fin_map_length : forall n A (f : Fin.t n -> A), length (fin_map f) = n.
-Proof.
-intros n A f. induction n.
-  reflexivity.
-  simpl. now rewrite IHn.
-Qed.
-
-Unset Implicit Arguments.
-
-Fixpoint Rinv n m (Hm : m <> 0) (x : Fin.t (n + m)) : Fin.t m.
-  refine (match n as n', x in Fin.t x' return n = n' -> x' = n + m -> Fin.t m with
-            | 0, _ => fun Hn _ => _
-            | S n', Fin.F1 _ => fun _ _ => _
-            | S n', Fin.FS _ x' => fun Hn Heq => Rinv n' m Hm _
-          end eq_refl eq_refl).
-- subst n. exact x.
-- destruct m. now elim Hm. now apply Fin.F1.
-- rewrite Hn in Heq. simpl in Heq. apply eq_add_S in Heq. rewrite <- Heq. exact x'.
-Defined.
-
-Theorem Rinv_R : forall n m (Hm : m <> 0) x, Rinv n m Hm (Fin.R n x) = x.
-Proof. now induction n. Qed.
-
-(*
-Fixpoint Linv n m (Hn : n <> 0) (x : Fin.t (n + m)) {struct n} : Fin.t n.
-  refine (match n as n' return n = n' -> Fin.t n' with
-    | 0 => fun Hn => _
-    | 1 => fun Hn => Fin.F1
-    | S (S n'' as rec) => fun Hn => 
-      match x in Fin.t x' return x' = n + m -> Fin.t (S rec) with
-        | Fin.F1 _ => fun Heq => Fin.F1
-        | Fin.FS _ x' => fun Heq => Fin.FS (Linv rec m _ _)
-      end eq_refl
-  end eq_refl).
-- apply False_rec. now apply Hn.
-- abstract (unfold rec0 in *; omega).
-- subst n. simpl in Heq. apply eq_add_S in Heq. rewrite Heq in x'. exact x'. (* bug *)
-Defined.
-*)
-Set Implicit Arguments.
-
-Definition combine n m A (f : Fin.t n -> A) (g : Fin.t m -> A) : Fin.t (n + m) -> A.
-  refine (fun x =>
-      if eq_nat_dec m 0 then f _ else
-      if (lt_dec (projS1 (Fin.to_nat x)) n) then f (Fin.of_nat_lt _) else g (Rinv n m _ x)).
-- subst m. rewrite plus_0_r in x. exact x.
-- eassumption.
-- assumption.
-Defined.
-
-Lemma combine_0_r : forall n A f g, ExtEq (@combine n 0 A f g) (fun x => f (eq_rec (n+0) Fin.t x n (plus_0_r n))).
-Proof. intros. intro x. unfold combine. destruct (Fin.to_nat x) eqn:Hx. simpl. reflexivity. Qed.
-
-Lemma combine_0_l : forall m A f g, ExtEq (@combine 0 m A f g) g.
-Proof.
-intros m *. intro x. unfold combine. destruct (eq_nat_dec m) as [Hm | Hm]; simpl.
-- apply Fin.case0. now rewrite Hm in x.
-- reflexivity.
-Qed.
-
-Instance combine_compat n m A : Proper (ExtEq ==> ExtEq ==> ExtEq) (@combine n m A).
-Proof.
-intros f₁ f₂ Hf g₁ g₂ Hg x. unfold combine.
-destruct (Fin.to_nat x). destruct m; simpl.
-- now rewrite Hf.
-- destruct (lt_dec x0 n). now rewrite Hf. now rewrite Hg.
-Qed.
-
-(* To illustrate
-Example ex_f := fun x : Fin.t 2 => 10 + projS1 (Fin.to_nat x).
-Example ex_g := fun x : Fin.t 3 => 20 + projS1 (Fin.to_nat x).
-
-Eval compute in combine ex_f ex_g (Fin.F1).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.F1)).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.F1))).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS Fin.F1))).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.F1)))).
-Fail Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.FS (Fin.F1))))).
-*)
-
-Theorem fin_map_app : forall n m A (f : Fin.t n -> A) (g : Fin.t m -> A),
-  fin_map f ++ fin_map g = fin_map (combine f g).
-Proof.
-intros n m A f g. destruct m; simpl.
-+ rewrite (combine_0_r f g). rewrite app_nil_r. now rewrite plus_0_r.
-+ induction n; simpl.
-  - reflexivity.
-  - f_equal. rewrite IHn. apply fin_map_compat. intro x. unfold eq_rec_r. simpl.
-    unfold combine. simpl. destruct (Fin.to_nat x). simpl.
-    destruct (lt_dec x0 n); destruct (lt_dec (S x0) (S n)); try omega.
-      now rewrite (le_unique _ _ (lt_S_n x0 n l1) l0).
-      reflexivity.
-Qed.
-
-
-(** ** Byzantine Robots *)
-
-(** We have finetely many robots. Some are good, other are evil. *)
-
-Definition G : Set := Fin.t N.nG.
-Definition B := Fin.t N.nB.
-
-(** Disjoint union of both kinds of robots is obtained by a sum type. *)
-(* TODO: replace this by (G ⊎ B). *)
-Inductive ident :=
- | Good : G → ident
- | Byz : B → ident.
-(* TODO: rename into robots? GB? *)
-
-
-(** Names of robots **)
-
-Definition Gnames : list G := fin_map (fun x : G => x).
-Definition Bnames : list B := fin_map (fun x : B => x).
-Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
-
-End Names.
-
-
-(** * Positions *)
-
-(** This module signature represents the metric space in which robots evolve.
-    It can be anything (discrete or continuous) as long as it is a metric space. *)
-Module Type MetricSpace.
-  Parameter t : Type.
-  Parameter origin : t.
-  Parameter eq : t -> t -> Prop.
-  Parameter dist : t -> t -> R.
-  Parameter eq_dec : forall x y, {eq x y} + {~eq x y}.
-  
-  Parameter eq_equiv : Equivalence eq.
-  Parameter dist_defined : forall x y, dist x y = 0%R <-> eq x y.
-  Parameter dist_sym : forall y x, dist x y = dist y x.
-  Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
-  
-  (* These properties can be actually derived *)
-  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
-  Parameter dist_pos : forall x y, (0 <= dist x y)%R.
-End MetricSpace.
-
-(** **  Spectra  **)
-
-Module Type Spectrum (Location : MetricSpace) (N : Size). (* <: DecidableType *)
-  Module Names := Names(N).
-  
-  (** Spectra are a decidable type *)
-  Parameter t : Type.
-  Parameter eq : t -> t -> Prop.
-  Parameter eq_equiv : Equivalence eq.
-  
-  (** Positions *)
-  Definition position := Names.ident -> Location.t.
-  
-  (** A position is a mapping from identifiers to locations.  Equality is extensional. *)
-  Definition PosEq (pos₁ pos₂ : position) : Prop := ∀id, Location.eq (pos₁ id) (pos₂ id).
-  
-  (** A predicate characterizing correct spectra for a given local position *)
-  (* TODO: maybe a function [from_pos : position -> t] is a better idea as the demon will need it. 
-           Then this [is_ok] is simply the specification of [from_pos]. *)
-  Parameter is_ok : t -> position -> Prop.
-End Spectrum.
-
 
 Module ConvergentFormalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
 
-Module Import Names := Spec.Names.
-Notation position := Spec.position.
-Notation PosEq := Spec.PosEq.
-
-(** Proofs of the two derivable properties in MertricSpace *)
-Instance dist_compat2 : Proper (Location.eq ==> Location.eq ==> eq) (Location.dist).
-Proof.
-intros x x' Hx y y' Hy. apply Rle_antisym.
-+ replace (Location.dist x' y') with (0 + Location.dist x' y' + 0)%R by ring. symmetry in Hy.
-  rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
-  rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
-  rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
-+ replace (Location.dist x y) with (0 + Location.dist x y + 0)%R by ring. symmetry in Hx.
-  rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
-  rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
-  rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
-Qed.
-
-Lemma dist_pos : forall x y, (0 <= Location.dist x y)%R.
-Proof.
-intros x y. apply Rmult_le_reg_l with 2%R.
-+ apply Rlt_R0_R2.
-+ do 2 rewrite double. rewrite Rplus_0_r.
-  assert (Hx : Location.eq x x) by reflexivity. rewrite <- Location.dist_defined in Hx. rewrite <- Hx.
-  setoid_rewrite Location.dist_sym at 3. apply Location.triang_ineq.
-Qed.
+Module Names := Spec.Names.
+Module Pos := Spec.Pos.
 
 (** ** Programs for good robots *)
 
@@ -348,11 +38,33 @@ Notation "s ⁻¹" := (s.(retraction)) (at level 99).
 Definition bij_eq (bij1 bij2 : bijection Location.eq_equiv) :=
   (Location.eq ==> Location.eq)%signature bij1.(section) bij2.
 
+Instance bij_eq_equiv : Equivalence bij_eq.
+Proof. split.
++ intros f x y Hxy. apply section_exteq. assumption.
++ intros f g Heq x y Hxy. symmetry. apply Heq. symmetry. assumption.
++ intros f g h Hfg Hgh x y Hxy. rewrite (Hfg _ _ Hxy). apply Hgh. reflexivity.
+Qed.
+
+Instance retraction_compat : Proper (bij_eq ==> (Location.eq ==> Location.eq)) (@retraction _ _ Location.eq_equiv).
+Proof.
+intros f g Hfg x y Hxy. rewrite <- f.(Inversion), (Hfg _ _ (reflexivity _)), Hxy, g.(Inversion). reflexivity.
+Qed.
+
 Unset Implicit Arguments.
 (** ** Good robots have a common program, which we call a robogram *)
 Record robogram := {
   pgm :> Spec.t → Location.t;
   pgm_compat : Proper (Spec.eq ==> Location.eq) pgm}.
+
+Definition req (r1 r2 : robogram) := (Spec.eq ==> Location.eq)%signature r1 r2.
+
+Instance req_equiv : Equivalence req.
+Proof. split.
++ intros [robogram Hrobogram] x y Heq; simpl. rewrite Heq. reflexivity.
++ intros r1 r2 H x y Heq. rewrite <- (H _ _ (reflexivity _)). now apply (pgm_compat r1).
++ intros r1 r2 r3 H1 H2 x y Heq.
+  rewrite (H1 _ _ (reflexivity _)), (H2 _ _ (reflexivity _)). now apply (pgm_compat r3).
+Qed.
 
 (** A robot is either inactive (case [Off]) or activated and observing with the [obs]-applied local vision. *)
 (* TODO: We need to parametrize the type of bijection, to express assumptions about them.
@@ -371,19 +83,53 @@ Definition phase_eq (ph1 ph2 : phase) :=
     | On obs1 Hobs1, On obs2 Hobs2 => (Location.eq ==> bij_eq)%signature obs1 obs2
   end.
 
+Instance phase_eq_equiv : Equivalence phase_eq.
+Proof. split.
++ intros [| obs]; repeat intro. reflexivity. apply (Hobs _ _ H). assumption.
++ intros [| obs1] [| obs2]; auto. intros Hobs2 Heq; repeat intro. symmetry. apply Heq; symmetry; assumption.
++ intros [| obs1] [| obs2] [| obs3] Heq1 Heq2; simpl in *; intuition. intros x y Hxy.
+  rewrite (Heq1 _ _ (reflexivity x)). apply Heq2. assumption.
+Qed.
+
 (** ** Demonic schedulers *)
 (** A [demonic_action] moves all byz robots
     as it whishes, and sets the referential of all good robots it selects. *)
 Record demonic_action := {
-  relocate_byz : B → Location.t;
-  step : ident → phase;
+  relocate_byz : Names.B → Location.t;
+  step : Names.ident → phase;
   step_ok : forall pos r o Ho, step r = On o Ho -> o (pos r) (pos r) = Location.origin;
   step_exteq : Proper (eq ==> phase_eq) step;
-  spectrum_of : G → (position → Spec.t);
-  spectrum_ok : forall g:G, forall p:position, Spec.is_ok (spectrum_of g p) p;
-  spectrum_exteq : Proper (eq ==> PosEq ==> Spec.eq) spectrum_of}.
+  spectrum_of : Names.G → (Pos.t → Spec.t);
+  spectrum_ok : forall g, forall pos : Pos.t, Spec.is_ok (spectrum_of g pos) pos;
+  spectrum_exteq : Proper (eq ==> Pos.eq ==> Spec.eq) spectrum_of}.
 Set Implicit Arguments.
 
+Definition da_eq (da1 da2 : demonic_action) :=
+  (forall r : Names.ident, phase_eq (da1.(step) r) (da2.(step) r)) /\
+  (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)) /\
+  (forall g, (Pos.eq ==> Spec.eq)%signature (da1.(spectrum_of) g) (da2.(spectrum_of) g)).
+
+Instance da_eq_equiv : Equivalence da_eq.
+Proof. split.
++ split; intuition. apply (spectrum_exteq _ _ g eq_refl).
++ intros d1 d2 [H1 [H2 H3]]. repeat split; repeat intro; try symmetry; auto. apply H3. now symmetry in H.
++ intros d1 d2 d3 [H1 [H2 H3]] [H4 [H5 H6]]. repeat split; intros; etransitivity; eauto.
+Qed.
+
+Instance step_compat : Proper (da_eq ==> eq ==> phase_eq) step.
+Proof. intros [] [] [Hd1 Hd2] p1 p2 Hp. subst. simpl in *. apply (Hd1 p2). Qed.
+
+Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
+Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 [H2 H3]]. simpl in *. apply (H2 p2). Qed.
+
+Instance spectrum_of_compat : Proper (da_eq ==> Logic.eq ==> Pos.eq ==> Spec.eq) spectrum_of. 
+Proof.
+intros [? ? da1 ?] [? ? da2 ?] [Hda1 [Hda2 Hda3]] g1 g2 Hg p1 p2 Hp. simpl in *. subst. apply Hda3. assumption.
+Qed.
+
+(** Definitions of two subsets of robots: active and idle ones. *)
+Definition idle da := List.filter (fun id => match step da id with On _ _ => true | Off => false end) Names.names.
+Definition active da := List.filter (fun id => match step da id with On _ _ => true | Off => false end) Names.names.
 
 (** A [demon] is just a stream of [demonic_action]s. *)
 CoInductive demon :=
@@ -397,6 +143,23 @@ Definition demon_head (d : demon) : demonic_action :=
 
 Definition demon_tail (d : demon) : demon :=
   match d with NextDemon _ d => d end.
+
+CoInductive deq (d1 d2 : demon) : Prop :=
+  | Cdeq : da_eq (demon_head d1) (demon_head d2) -> deq (demon_tail d1) (demon_tail d2) -> deq d1 d2.
+
+Instance deq_equiv : Equivalence deq.
+Proof. split.
++ coinduction deq_refl. reflexivity.
++ coinduction deq_sym. symmetry. now inversion H. now inversion H.
++ coinduction deq_trans.
+  - inversion H. inversion H0. now transitivity (demon_head y).
+  - apply (deq_trans (demon_tail x) (demon_tail y) (demon_tail z)).
+      now inversion H.
+      now inversion H0.
+Qed.
+
+Instance deq_bisim : Bisimulation demon.
+Proof. exists deq. apply deq_equiv. Qed.
 
 (** ** Fairness *)
 
@@ -521,24 +284,45 @@ Qed.
 
 (** Now we can [execute] some robogram from a given position with a [demon] *)
 CoInductive execution :=
-  NextExecution : position → execution → execution.
+  NextExecution : Pos.t → execution → execution.
+
 
 (** *** Destructors for demons *)
 
-Definition execution_head (e : execution) : position :=
+Definition execution_head (e : execution) : Pos.t :=
   match e with NextExecution pos _ => pos end.
 
 Definition execution_tail (e : execution) : execution :=
   match e with NextExecution _ e => e end.
 
-(** Pointwise mapping of a function on a position *)
-Definition map_pos (f : Location.t -> Location.t) (pos : position) := fun id => f (pos id).
+CoInductive eeq (e1 e2 : execution) : Prop :=
+  | Ceeq : Pos.eq (execution_head e1) (execution_head e2) ->
+           eeq (execution_tail e1) (execution_tail e2) -> eeq e1 e2.
+
+Instance eeq_equiv : Equivalence eeq.
+Proof. split.
++ coinduction eeq_refl. reflexivity.
++ coinduction eeq_sym. symmetry. now inversion H. now inversion H.
++ coinduction eeq_trans. intro.
+  - inversion H. inversion H0. now transitivity (execution_head y id).
+  - apply (eeq_trans (execution_tail x) (execution_tail y) (execution_tail z)).
+    now inversion H. now inversion H0.
+Qed.
+
+Instance eeq_bisim : Bisimulation execution.
+Proof. exists eeq. apply eeq_equiv. Qed.
+
+Instance execution_head_compat : Proper (eeq ==> Pos.eq) execution_head.
+Proof. intros e1 e2 He id. subst. inversion He. intuition. Qed.
+
+Instance execution_tail_compat : Proper (eeq ==> eeq) execution_tail.
+Proof. intros e1 e2 He. now inversion He. Qed.
 
 (** [round r da pos] return the new position of robots (that is a function
     giving the position of each robot) from the previous one [pos] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
     is used for byzantine robots. *)
-Definition round (r : robogram) (da : demonic_action) (pos : position) : position :=
+Definition round (r : robogram) (da : demonic_action) (pos : Pos.t) : Pos.t :=
   (** for a given robot, we compute the new position *)
   fun id => 
     let t := pos id in (** t is the current position of g seen by the demon *)
@@ -549,28 +333,48 @@ Definition round (r : robogram) (da : demonic_action) (pos : position) : positio
         | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
         | Good g => 
           let spectr := da.(spectrum_of) g in (* spectrum function chosen by the demon *)
-          let pos_seen_by_r := map_pos (f t) pos in (* position expressed in the frame of g *)
+          let pos_seen_by_r := Pos.map (f t) pos in (* position expressed in the frame of g *)
           (f t) ⁻¹ (r (spectr pos_seen_by_r)) (* apply r on spectrum + back to demon ref. *)
         end
     end.
 
+Instance round_compat : Proper (req ==> da_eq ==> Pos.eq ==> Pos.eq) round.
+Proof.
+intros r1 r2 Hr da1 da2 Hd pos1 pos2 Hpos id.
+unfold req in Hr. unfold round. simpl in *.
+assert (Hstep := step_compat Hd (reflexivity id)). assert (Hda1 := da1.(step_exteq) _ _ (reflexivity id)).
+destruct (step da1 id), (step da2 id), id; try now elim Hstep.
++ simpl in Hstep. f_equiv.
+  - intros x y Hxy. rewrite Hobs; eassumption || trivial. apply Hstep; reflexivity.
+  - apply Hr. apply spectrum_of_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
++ rewrite Hd. reflexivity.
+Qed.
+
 (** [execute r d pos] returns an (infinite) execution from an initial global
     position [pos], a demon [d] and a robogram [r] running on each good robot. *)
-Definition execute (r : robogram): demon → position → execution :=
+Definition execute (r : robogram): demon → Pos.t → execution :=
   cofix execute d pos :=
   NextExecution pos (execute (demon_tail d) (round r (demon_head d) pos)).
 
 (** Decomposition lemma for [execute]. *)
-Lemma execute_tail : forall (r : robogram) (d : demon) (pos:position),
+Lemma execute_tail : forall (r : robogram) (d : demon) (pos : Pos.t),
   execution_tail (execute r d pos) = execute r (demon_tail d) (round r (demon_head d) pos).
 Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
+
+Theorem execute_compat : Proper (req ==> deq ==> Pos.eq ==> eeq) execute.
+Proof.
+intros r1 r2 Hr.
+cofix proof. constructor. simpl. assumption.
+apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
+Qed.
+
 
 (** ** Properties of executions  *)
 
 Open Scope R_scope.
 (** Expressing that all good robots are confined in a small disk. *)
 CoInductive imprisonned (center : Location.t) (radius : R) (e : execution) : Prop
-:= InDisk : (∀ g : G, Rabs (Location.dist center (execution_head e (Good g))) <= radius)
+:= InDisk : (∀ g : Names.G, Rabs (Location.dist center (execution_head e (Good g))) <= radius)
             → imprisonned center radius (execution_tail e)
             → imprisonned center radius e.
 
@@ -582,7 +386,7 @@ Inductive attracted (center : Location.t) (radius : R) (e : execution) : Prop :=
 (** [solution r] means that robogram [r] is a solution, i.e. is convergent
     ([attracted]) for any demon. *)
 Definition solution (r : robogram) : Prop :=
-  ∀ (pos : position),
+  ∀ (pos : Pos.t),
   ∀ (d : demon), Fair d →
   ∀ (epsilon : R), 0 < epsilon →
   exists (lim_app : Location.t), attracted lim_app epsilon (execute r d pos).
@@ -590,7 +394,7 @@ Definition solution (r : robogram) : Prop :=
 
 (** Solution restricted to fully synchronous demons. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
-  ∀ (pos : position),
+  ∀ (pos : Pos.t),
   ∀ (d : demon), FullySynchronous d →
   ∀ (epsilon : R), 0 < epsilon →
   exists (lim_app : Location.t), attracted lim_app epsilon (execute r d pos).
