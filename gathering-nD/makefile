@@ -66,6 +66,7 @@ COQCHK?="$(COQBIN)coqchk"
 ######################
 
 VFILES:=RDVinRd.v\
+  LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\
   MultisetSpectrum.v\
@@ -74,7 +75,7 @@ VFILES:=RDVinRd.v\
   FMultisetMap.v\
   FMultisetInterface.v\
   Positions.v\
-  RobotNames.v\
+  Robots.v\
   Preliminary.v
 
 -include $(addsuffix .d,$(VFILES))

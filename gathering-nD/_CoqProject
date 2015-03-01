@@ -1,7 +1,7 @@
 -install none
 -R . Pactole
 Preliminary.v
-RobotNames.v
+Robots.v
 Positions.v
 FMultisetInterface.v
 FMultisetMap.v
@@ -10,4 +10,5 @@ ConvergentFormalismRd.v
 MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v
+LimitedMultisetSpectrum.v
 RDVinRd.v
