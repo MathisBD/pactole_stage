@@ -1,21 +1,17 @@
 Require Import Utf8_core.
 Require Import Bool.
 Require Import RelationPairs.
-Require Import Arith.Div2.
-Require Import Rbase.
+Require Import Reals.
 Require Import SetoidList.
 Require Import Preliminary.
 Require Import Robots.
 Require Import Positions.
 Require Import ConvergentFormalismRd.
 Require MultisetSpectrum.
-Require Import Morphisms.
-Require Import Psatz.
-Import Permutation.
-Import Datatypes. (* to overshadow Rlist and its constructors [nil] and [cons] *)
+
 
 Set Implicit Arguments.
-Close Scope R_scope.
+
 
 (**  [Location] can be any decidable metric space where we can recognize spheres *)
 
@@ -26,9 +22,19 @@ Module Type GatheringLocation <: MetricSpace.
   
   (** Required geometric primitives *)
   Parameter smallest_enclosing_sphere : list t -> t * R.
-  Parameter smallest_enclosing_sphere_spec : forall l, 
+  Parameter smallest_enclosing_sphere_spec : ∀ l, 
     let (c, R) := smallest_enclosing_sphere l in
-    (forall x, InA eq x l -> (dist c x <= R)%R) /\ exists x, InA eq x l /\ dist x c = R.
+    (∀ x, InA eq x l -> (dist c x <= R)%R) (* upper bound *)
+    ∧ ∀ c', exists x, InA eq x l ∧ (R <= dist c' x)%R. (* smallest one *)
+  
+  (** RMK: The center may not be unique if we use non-euclidian distances:
+           for instance d(x, y) = 1 <-> x <> y.
+           This is a problem for the algorithm as we cannot find a common point toward which robots move,
+           hence the following hypothesis.
+           Maybe we should restrict to euclidian distances instead? *)
+  Parameter smallest_enclosing_sphere_center_uniq :
+    Proper (PermutationA eq ==> eq@@1) smallest_enclosing_sphere.
+  
 End GatheringLocation.
 
 
@@ -43,10 +49,59 @@ End GatheringLocation.
 
 Module GeneralGathering (Loc : GatheringLocation) (N : Size).
 
-(* TODO: The spec of ses should enforce this property.  Change the definition to get it. *)
+Instance smallest_enclosing_sphere_radius_uniq :
+  Proper (PermutationA Loc.eq ==> Logic.eq@@2) Loc.smallest_enclosing_sphere.
+Proof.
+intros l1 l2 Hperm.
+assert (Heq1 := Loc.smallest_enclosing_sphere_spec l1). assert (Heq2 := Loc.smallest_enclosing_sphere_spec l2).
+destruct (Loc.smallest_enclosing_sphere l1) as [c1 R1]. destruct Heq1 as [Hup1 Hdown1].
+destruct (Loc.smallest_enclosing_sphere l2) as [c2 R2]. destruct Heq2 as [Hup2 Hdown2].
+compute. apply Rle_antisym.
+- destruct (Hdown1 c2) as [x [Hin Hle]]. apply Rle_trans with (Loc.dist c2 x); trivial.
+  apply Hup2. rewrite <- Hperm. assumption.
+- destruct (Hdown2 c1) as [x [Hin Hle]]. apply Rle_trans with (Loc.dist c1 x); trivial.
+  apply Hup1. rewrite Hperm. assumption.
+Qed.
+
 Instance smallest_enclosing_sphere_uniq :
-  Proper (PermutationA Loc.eq ==> (Loc.eq * Logic.eq)) Loc.smallest_enclosing_sphere.
-Proof. Admitted.
+  Proper (PermutationA Loc.eq ==> Loc.eq * Logic.eq) Loc.smallest_enclosing_sphere.
+Proof.
+intros l1 l2 Hperm. split.
+- apply Loc.smallest_enclosing_sphere_center_uniq. assumption.
+- apply smallest_enclosing_sphere_radius_uniq. assumption.
+Qed.
+
+Lemma smallest_enclosing_sphere_reached : ∀ l, let (c, R) := Loc.smallest_enclosing_sphere l in
+  ∃ pt, InA Loc.eq pt l ∧ Loc.dist c pt = R.
+Proof.
+intro l. assert (Heq := Loc.smallest_enclosing_sphere_spec l).
+destruct (Loc.smallest_enclosing_sphere l) as [c R]. destruct Heq as [Hup Hdown].
+destruct (Hdown c) as [pt [Hin Hle]]. exists pt. split; try apply Rle_antisym; trivial. apply Hup. assumption.
+Qed.
+
+(* Can we do the proof without exluded middle? *)
+Lemma smallest_enclosing_sphere_reached_twice : forall l, let (c, R) := Loc.smallest_enclosing_sphere l in
+  exists pt1 pt2, InA Loc.eq pt1 l ∧ InA Loc.eq pt2 l ∧ ¬Loc.eq pt1 pt2 ∧ Loc.dist c pt1 = R ∧ Loc.dist c pt2 = R.
+Proof.
+intro l. assert (Heq := Loc.smallest_enclosing_sphere_spec l).
+assert (Hpt1 := smallest_enclosing_sphere_reached l).
+destruct (Loc.smallest_enclosing_sphere l) as [c R].
+destruct Heq as [Hup Hdown]. destruct Hpt1 as [pt1 [Hin1 Heq1]].
+exists pt1.
+destruct (Exists_dec (fun x => ¬Loc.eq x pt1 ∧ Loc.dist c x = R)) with l as [HOK | Hsmall].
++ intro x. destruct (Loc.eq_dec x pt1) as [Heq | Heq].
+  - right. intuition.
+  - destruct (Rdec (Loc.dist c x) R). left; auto. right; intuition.
++ (* If there is another point on the sphere *)
+  rewrite Exists_exists in HOK. destruct HOK as [pt2 [Hin2 Heq2]].
+  exists pt2; intuition. apply (In_InA _). assumption.
++ (* If all other points are inside the sphere, we can slightly reduce its radius by moving the center *)
+  pose (x := fold_left (fun acc x => if Rle_dec (Loc.dist c x) (Loc.dist c acc) then acc else x) l c).
+  pose (d := Loc.dist c x). (* the room we have *)
+  pose (R' := Rdiv (R + d) 2). (* the new radius *)
+(*  pose (c' := c + (R - R') (c - x)). (* the new center *) *)
+
+Qed.
 
 (** The spectrum is a multiset of positions *)
 Module Spec := MultisetSpectrum.Make(Loc)(N).
@@ -105,16 +160,14 @@ Module Import Gathering := GeneralGathering(Loc)(N).
 
 Close Scope R_scope.
 
-Corollary half_size_pos : (div2 nG > 0)%nat.
-Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
-
 Definition g1 : Spec.Names.G.
 unfold Spec.Names.G, Spec.Names.Internals.G, N.nG. destruct nG eqn:HnG. abstract (generalize size_G; omega).
 apply (@Fin.F1 n).
 Defined.
 
 Definition g2 : Spec.Names.G.
-unfold Spec.Names.G, Spec.Names.Internals.G, N.nG. destruct nG as [| [| n]] eqn:HnG; try (abstract (generalize size_G; omega)).
+unfold Spec.Names.G, Spec.Names.Internals.G, N.nG.
+destruct nG as [| [| n]] eqn:HnG; try (abstract (generalize size_G; omega)).
 apply (Fin.FS Fin.F1).
 Defined.
 

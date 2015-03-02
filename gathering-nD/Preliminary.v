@@ -48,12 +48,13 @@ Context (A B : Type).
 Context (eqA eqA' : relation A) (eqB : relation B).
 Context (HeqA : Equivalence eqA) (HeqB : Equivalence eqB).
 
+(* Found in SetoidList
 Lemma In_InA_weak : forall x l, In x l -> InA eqA x l.
 Proof.
 intros x l Hin. induction l.
 - inversion Hin.
 - destruct Hin. subst. now left. right. auto.
-Qed.
+Qed. *)
 
 Lemma InA_Leibniz : forall (x : A) l, InA Logic.eq x l <-> In x l.
 Proof.
@@ -883,6 +884,17 @@ Corollary remove_length eq_dec : forall (x : A) l, length (remove eq_dec x l) = 
 Proof. intros. apply plus_minus. symmetry. rewrite plus_comm. apply remove_count_occ_length. Qed.
 *)
 End CountA.
+
+Theorem Exists_dec : forall P, (forall x : A, {P x} + {~P x}) -> forall l, {Exists P l} + {~Exists P l}.
+Proof.
+intros P Pdec l. induction l as [| x l].
+* right. intro Habs. inversion Habs.
+* destruct IHl.
+  + left. now constructor 2.
+  + destruct (Pdec x).
+    - left. now constructor.
+    - right. intro Habs. inversion_clear Habs; contradiction.
+Qed.
 
 End List_results.
 
