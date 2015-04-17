@@ -128,7 +128,7 @@ intros [? ? da1 ?] [? ? da2 ?] [Hda1 [Hda2 Hda3]] g1 g2 Hg p1 p2 Hp. simpl in *.
 Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
-Definition idle da := List.filter (fun id => match step da id with On _ _ => true | Off => false end) Names.names.
+Definition idle da := List.filter (fun id => match step da id with On _ _ => false | Off => true end) Names.names.
 Definition active da := List.filter (fun id => match step da id with On _ _ => true | Off => false end) Names.names.
 
 (** A [demon] is just a stream of [demonic_action]s. *)
