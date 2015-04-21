@@ -1747,7 +1747,7 @@ intros k t pos Hk. destruct (is_forbidden (nominal_spectrum pos)) eqn:Hpos.
   now rewrite is_forbidden_false, forbidden_similarity_iff, <- is_forbidden_false.
 Qed.
 
-(** If [k = 0], then all robots are collapsed on a single location and any position ⟦k, t⟧ pos is not fobidden. **)
+(** If [k = 0], then all robots are collapsed on a single location and any position ⟦k, t⟧ pos is not forbidden. **)
 
 Lemma forbidden_still : forall (da : demonic_action Four Zero) pos,
   forbidden pos -> PosEq (lift_gp (round robogram da pos.(gp))) pos.

@@ -1437,7 +1437,7 @@ intro Habs. rewrite Habs in Hin. inversion Hin.
 Qed.
 
 (** The robogram works as follows:
-    1) if there is a mojority stack, everyone goes there;
+    1) if there is a majority stack, everyone goes there;
     2) if there are three stacks, everyone goes on the middle one;
     3) otherwise, robots located at non extremal locations go to the middle of the extremal locations.
     The last case will necessarily end into one of the first two, ensuring termination.
@@ -2470,7 +2470,7 @@ destruct (majority_stack (nominal_spectrum pos)) eqn:Hs.
         + do 2 Rdec_full; try contradiction; subst; Rdec. intro. omega.
         + do 2 Rdec_full; try contradiction; subst; Rdec. intro. omega. }
   + (* 3) We are in the Generic case *)
-    
+    (* Idea: there are at least four stacks and after evolution, there will be at least three stacks. *)
 Qed.
 
 Theorem Will_stack : forall (da : demonic_action nG 0) pos, ~forbidden pos -> (forall pt, ~Stack_at pt pos) ->

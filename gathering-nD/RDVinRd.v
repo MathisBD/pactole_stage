@@ -100,8 +100,7 @@ destruct (Exists_dec (fun x => ¬Loc.eq x pt1 ∧ Loc.dist c x = R)) with l as [
   pose (d := Loc.dist c x). (* the room we have *)
   pose (R' := Rdiv (R + d) 2). (* the new radius *)
 (*  pose (c' := c + (R - R') (c - x)). (* the new center *) *)
-
-Qed.
+Abort.
 
 (** The spectrum is a multiset of positions *)
 Module Spec := MultisetSpectrum.Make(Loc)(N).
