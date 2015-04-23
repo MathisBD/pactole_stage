@@ -1,4 +1,5 @@
 Require Import Arith.Div2.
+Require Import Omega.
 Require Import Reals.
 Require Import List.
 Require Import Morphisms.
@@ -71,11 +72,7 @@ Instance eqlistA_PermutationA_subrelation : subrelation (eqlistA eqA) (Permutati
 Proof. intros ? ? Heq. induction Heq; constructor; auto. Qed.
 
 Lemma Permutation_PermutationA_weak : forall l1 l2, Permutation l1 l2 -> PermutationA eqA l1 l2.
-Proof.
-intros l1 l2 Heq. induction Heq; try now constructor.
-  now constructor 3.
-  now transitivity l'.
-Qed.
+Proof. intros ? ? Heq. induction Heq; try now constructor. now transitivity l'. Qed.
 
 Lemma PermutationA_Leibniz : forall l1 l2 : list A, PermutationA Logic.eq l1 l2 <-> Permutation l1 l2.
 Proof.
@@ -83,9 +80,7 @@ intros l1 l2. split; intro Hl.
   induction Hl; try now constructor.
     subst. now constructor.
     now transitivity l₂.
-  induction Hl; try now constructor.
-    now constructor 3.
-    now transitivity l'.
+  induction Hl; try now constructor. now transitivity l'.
 Qed.
 
 Lemma PermutationA_subrelation_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@PermutationA A).
@@ -229,8 +224,8 @@ rewrite List.Forall_forall in *. intros. rewrite <- (HPQ _ _ eq_refl).
 apply Hfor. revert H. apply Permutation_in. now symmetry.
 Qed.
 
-Lemma Forall_Permutation_compat : Proper ((eq ==> iff) ==> @Permutation A ==> iff) List.Forall.
-Proof. intros f g Hfg l1 l2 Hl. split; apply Forall_Perm_trans; easy || now symmetry. Qed.
+Lemma Forall_Permutation_compat : Proper ((eq ==> iff) ==> @Permutation A ==> iff) (@List.Forall A).
+Proof. repeat intro. split; apply Forall_Perm_trans; easy || (repeat intro; symmetry; auto). Qed.
 
 Lemma Permutation_alls : forall (x : A) n l,
   Permutation l (alls x n) <-> l = alls x n.
@@ -495,7 +490,7 @@ Proof.
 + (*trans*)
   intros.
   destruct (@InA_split _ eqA l' a) as [l'1 [y [l'2 [H7 H6]]]].
-  - rewrite <- H. subst l. rewrite InA_app_iff. now right; left. refine _.
+  - rewrite <- H. subst l. rewrite InA_app_iff. now right; left.
   - apply permA_trans with (l'1++l'2).
       apply (H0 _ _ _ _ _ _ H7 H4 H6).
       rewrite H7 in H3. apply (H2 _ _ _ _ _ _ H3 H6 H5).
@@ -561,13 +556,18 @@ Qed.
 Lemma PermutationA_2 : forall x y x' y', PermutationA eqA (x :: y :: nil) (x' :: y' :: nil) <->
   eqA x x' /\ eqA y y' \/ eqA x y' /\ eqA y x'.
 Proof.
-clear eqB HeqB. intros. split; intro Hperm.
-+ inversion_clear Hperm.
-  - rewrite PermutationA_1 in H0. auto.
-  - right; split; reflexivity.
-  - admit.
-+ destruct Hperm as [[Heq1 Heq2] | [Heq1 Heq2]]; rewrite Heq1, Heq2. reflexivity. now constructor 3.
-Qed.
+intros. split.
++ generalize (eq_refl (x :: y :: nil)). generalize (x :: y :: nil) at -2. intros l1 Hl1.
+  generalize (eq_refl (x' :: y' :: nil)). generalize (x' :: y' :: nil) at -2. intros l2 Hl2 perm.
+  revert Hl1 Hl2. pattern l1, l2. revert l1 l2 perm.
+  apply PermutationA_ind_bis.
+  - intros Hl1 Hl2. inversion Hl1.
+  - intros x1 x2 l1 l2 Hx Hperm _ Hl1 Hl2. inversion Hl1. inversion Hl2. subst.
+    rewrite PermutationA_1 in Hperm. auto.
+  - intros x1 x2 l1 l2 Hperm Hind Hl1 Hl2. inversion Hl1. inversion Hl2. do 2 subst. right; split; reflexivity.
+  - intros l1 l2 l3 Hperm12 Hin12 Hperm23 Hin23 Hl1 Hl2. subst. admit.
++ intros [[Heq1 Heq2] | [Heq1 Heq2]]; rewrite Heq1, Heq2. reflexivity. now constructor 3.
+Admitted.
 
 Lemma PermutationA_3 : forall x y z x' y' z',
   PermutationA eqA (x :: y :: z :: nil) (x' :: y' :: z' :: nil) <->
@@ -575,7 +575,7 @@ Lemma PermutationA_3 : forall x y z x' y' z',
   eqA x y' /\ eqA y x' /\ eqA z z' \/ eqA x y' /\ eqA y z' /\ eqA z x' \/
   eqA x z' /\ eqA y y' /\ eqA z x' \/ eqA x z' /\ eqA y x' /\ eqA z y'.
 Proof.
-clear eqB HeqB. intros. split; intro Hperm.
+intros. split; intro Hperm.
 * inversion_clear Hperm.
   + rewrite PermutationA_2 in H0. intuition.
   + intuition.
@@ -591,7 +591,7 @@ clear eqB HeqB. intros. split; intro Hperm.
     apply PermutationA_cons; trivial. rewrite Heq1, Heq3. constructor 3.
   + etransitivity; [constructor 3 |].
     apply PermutationA_cons; trivial. rewrite Heq1, Heq3. constructor 3.
-Qed.
+Admitted.
 
 Lemma NoDupA_strengthen : forall l, subrelation eqA eqA' -> NoDupA eqA' l -> NoDupA eqA l.
 Proof.
@@ -709,7 +709,7 @@ Definition nat_ind2 P P0 P1 PSS :=
       | S (S m) => PSS m (F m)
     end.
 
-Lemma odd_middle : forall l (d : A), NPeano.Odd (length l) ->
+Lemma odd_middle : forall l (d : A), Nat.Odd (length l) ->
   nth (div2 (length l)) (rev l) d = nth (div2 (length l)) l d.
 Proof.
 intros l d. generalize (eq_refl (length l)). generalize (length l) at 2 3 4 5. intro n. revert l.
@@ -764,10 +764,10 @@ Lemma map_cond_Permutation : forall (f : A -> bool) (g₁ g₂ : A -> B) l,
   Permutation (map (fun x => if f x then g₁ x else g₂ x) l)
               (map g₁ (filter f l) ++ map g₂ (filter (fun x => negb (f x)) l)).
 Proof.
-intros f * l. induction l; simpl.
+intros f ? ? l. induction l; simpl.
 + reflexivity.
 + destruct (f a); simpl.
-  - apply Permutation_cons. apply IHl.
+  - apply Permutation_cons; trivial.
   - rewrite IHl. apply Permutation_middle.
 Qed.
 

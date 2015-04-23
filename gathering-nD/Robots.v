@@ -1,6 +1,7 @@
 Require Import Utf8.
 Require Import Morphisms.
 Require Import Arith_base.
+Require Import Omega.
 Require Import SetoidList.
 Require Import Preliminary.
 Open Scope list_scope.
@@ -182,8 +183,8 @@ Unset Implicit Arguments.
 Fixpoint Rinv n m (Hm : m <> 0) (x : Fin.t (n + m)) : Fin.t m.
   refine (match n as n', x in Fin.t x' return n = n' -> x' = n + m -> Fin.t m with
             | 0, _ => fun Hn _ => _
-            | S n', Fin.F1 _ => fun _ _ => _
-            | S n', Fin.FS _ x' => fun Hn Heq => Rinv n' m Hm _
+            | S n', Fin.F1 => fun _ _ => _
+            | S n', Fin.FS x' => fun Hn Heq => Rinv n' m Hm _
           end eq_refl eq_refl).
 - subst n. exact x.
 - destruct m. now elim Hm. now apply Fin.F1.
@@ -214,9 +215,10 @@ Set Implicit Arguments.
 Definition combine n m A (f : Fin.t n -> A) (g : Fin.t m -> A) : Fin.t (n + m) -> A.
   refine (fun x =>
       if eq_nat_dec m 0 then f _ else
-      if (lt_dec (projS1 (Fin.to_nat x)) n) then f (Fin.of_nat_lt _) else g (Rinv n m _ x)).
+      if (lt_dec (proj1_sig (Fin.to_nat x)) n) then f (Fin.of_nat_lt _) else g (Rinv n m _ x)).
 - subst m. rewrite plus_0_r in x. exact x.
-- eassumption.
+- exact (proj1_sig (Fin.to_nat x)).
+- assumption.
 - assumption.
 Defined.
 
@@ -240,8 +242,8 @@ destruct (Fin.to_nat x). destruct m; simpl.
 Qed.
 
 (* To illustrate
-Example ex_f := fun x : Fin.t 2 => 10 + projS1 (Fin.to_nat x).
-Example ex_g := fun x : Fin.t 3 => 20 + projS1 (Fin.to_nat x).
+Example ex_f := fun x : Fin.t 2 => 10 + proj1_sig (Fin.to_nat x).
+Example ex_g := fun x : Fin.t 3 => 20 + proj1_sig (Fin.to_nat x).
 
 Eval compute in combine ex_f ex_g (Fin.F1).
 Eval compute in combine ex_f ex_g (Fin.FS (Fin.F1)).
@@ -259,9 +261,9 @@ intros n m A f g. destruct m; simpl.
 + induction n; simpl.
   - reflexivity.
   - f_equal. rewrite IHn. apply fin_map_compat. intros x y ?. subst y. unfold eq_rec_r. simpl.
-    unfold combine. simpl. destruct (Fin.to_nat x). simpl.
-    destruct (lt_dec x0 n); destruct (lt_dec (S x0) (S n)); try omega.
-      now rewrite (le_unique _ _ (lt_S_n x0 n l1) l0).
+    unfold combine. simpl. destruct (Fin.to_nat x) as [x0 Hx0]. simpl.
+    destruct (lt_dec x0 n) as [Hle | Hle], (lt_dec (S x0) (S n)) as [HleS | HleS]; try omega.
+      now rewrite (le_unique _ _ (lt_S_n x0 n HleS) Hle).
       reflexivity.
 Qed.
 

@@ -10,6 +10,7 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
+Require Import Omega.
 Require Import Morphisms.
 Require Import Reals.
 Require Import Robots.
@@ -113,7 +114,8 @@ Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
 + split; intuition. apply (spectrum_exteq _ _ g eq_refl).
 + intros d1 d2 [H1 [H2 H3]]. repeat split; repeat intro; try symmetry; auto. apply H3. now symmetry in H.
-+ intros d1 d2 d3 [H1 [H2 H3]] [H4 [H5 H6]]. repeat split; intros; etransitivity; eauto.
++ intros d1 d2 d3 [H1 [H2 H3]] [H4 [H5 H6]]. repeat split; intros; try etransitivity; eauto.
+  intros ? ? Heq. rewrite (H3 g x x); try reflexivity. now apply H6.
 Qed.
 
 Instance step_compat : Proper (da_eq ==> eq ==> phase_eq) step.
@@ -211,7 +213,7 @@ Qed.
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
 Proof.
   coinduction kfair_is_fair.
-  destruct H. intro. apply Between_LocallyFair with g k. now apply b.
+  destruct H as [Hbetween H]. intro. apply Between_LocallyFair with g k. now apply Hbetween.
   apply (kfair_is_fair k). now destruct H.
 Qed.
 
