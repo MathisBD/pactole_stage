@@ -504,8 +504,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Proof.
   intros xn m₁ m₂. rewrite elements_spec, inter_spec. unfold In.
   split; intros [Heq Hpos]; split; try (now symmetry).
-    rewrite <- Heq in *. unfold gt in *. now rewrite NPeano.Nat.min_glb_lt_iff in *.
-    rewrite Hpos. unfold gt in *. now rewrite NPeano.Nat.min_glb_lt_iff in *.
+    rewrite <- Heq in *. unfold gt in *. now rewrite Nat.min_glb_lt_iff in *.
+    rewrite Hpos. unfold gt in *. now rewrite Nat.min_glb_lt_iff in *.
   Qed.
   
   Lemma elements_add : forall y p m xn, InA eq_pair xn (elements (add y p m))

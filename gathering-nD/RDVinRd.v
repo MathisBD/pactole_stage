@@ -1,4 +1,5 @@
 Require Import Utf8_core.
+Require Import Omega.
 Require Import Bool.
 Require Import RelationPairs.
 Require Import Reals.

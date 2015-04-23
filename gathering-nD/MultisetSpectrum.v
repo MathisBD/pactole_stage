@@ -1,5 +1,6 @@
 Require Import Utf8_core.
 Require Import Arith_base.
+Require Import Omega.
 Require Import SetoidList.
 Require Import FMultisetFacts.
 Require Import FMultisetMap.
