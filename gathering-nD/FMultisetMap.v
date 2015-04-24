@@ -573,8 +573,6 @@ Qed.
 Lemma support_elements : forall x s, InA E.eq x (support s) <-> InA eq_pair (x, multiplicity x s) (elements s).
 Proof. Admitted.
 (* Un bug dans Coq « Error: Cannot create self-referring hypothesis Hn » et reproductible pour une fois !
-   Si quelqu'un veut bien faire un rapport de bug... j'en ai déjà fait un aujourd'hui donc moi c'est bon merci.
-
 intros x s. unfold support, elements. rewrite M.fold_1.
 change nil with (map (@fst E.t nat) nil). rewrite (support_elements_aux x (M.elements s) nil); rewrite app_nil_r.
 split; intro H.
