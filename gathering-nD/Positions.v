@@ -1,3 +1,4 @@
+Require Import Equalities.
 Require Import SetoidList.
 Require Import Reals.
 Require Import Robots.
@@ -6,8 +7,11 @@ Require Import Robots.
 (** * Positions *)
 
 (** This module signature represents the metric space in which robots evolve.
-    It can be anything (discrete or continuous) as long as it is a metric space. *)
-Module Type MetricSpace.
+    It can be anything (discrete or continuous) as long as it is a metric space.
+
+    The framework for robots should be more general as for instance a ring is not a metric space.
+    It seems that we only need a decidable type for locations and a notion of distance.  *)
+Module Type MetricSpace <: DecidableType.
   Parameter t : Type.
   Parameter origin : t.
   Parameter eq : t -> t -> Prop.

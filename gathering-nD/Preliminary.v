@@ -559,15 +559,19 @@ Proof.
 intros. split.
 + generalize (eq_refl (x :: y :: nil)). generalize (x :: y :: nil) at -2. intros l1 Hl1.
   generalize (eq_refl (x' :: y' :: nil)). generalize (x' :: y' :: nil) at -2. intros l2 Hl2 perm.
-  revert Hl1 Hl2. pattern l1, l2. revert l1 l2 perm.
-  apply PermutationA_ind_bis.
-  - intros Hl1 Hl2. inversion Hl1.
-  - intros x1 x2 l1 l2 Hx Hperm _ Hl1 Hl2. inversion Hl1. inversion Hl2. subst.
-    rewrite PermutationA_1 in Hperm. auto.
-  - intros x1 x2 l1 l2 Hperm Hind Hl1 Hl2. inversion Hl1. inversion Hl2. do 2 subst. right; split; reflexivity.
-  - intros l1 l2 l3 Hperm12 Hin12 Hperm23 Hin23 Hl1 Hl2. subst. admit.
+  revert x y x' y' Hl1 Hl2. induction perm.
+  - intros * Hl1 Hl2. inversion Hl1.
+  - intros x x' y y' Hl1 Hl2. inversion Hl1. inversion Hl2. subst.
+    rewrite PermutationA_1 in perm. auto.
+  - intros x' x'' y' y'' Hl1 Hl2. inversion Hl1. inversion Hl2. do 2 subst. right; split; reflexivity.
+  - intros x x' y y' Hl1 Hl2. subst.
+    assert (Hlength : length l₂ = length (y :: y' :: nil)) by now rewrite perm2.
+    destruct l₂ as [| x'' [| y'' [| ? ?]]]; discriminate Hlength || clear Hlength.
+    destruct (IHperm1 _ _ _ _ $(reflexivity)$ $(reflexivity)$) as [[H11 H12] | [H11 H12]],
+             (IHperm2 _ _ _ _ $(reflexivity)$ $(reflexivity)$) as [[H21 H22] | [H21 H22]];
+    rewrite H11, H12, <- H21, <- H22; intuition.
 + intros [[Heq1 Heq2] | [Heq1 Heq2]]; rewrite Heq1, Heq2. reflexivity. now constructor 3.
-Admitted.
+Qed.
 
 Lemma PermutationA_3 : forall x y z x' y' z',
   PermutationA eqA (x :: y :: z :: nil) (x' :: y' :: z' :: nil) <->
@@ -575,23 +579,32 @@ Lemma PermutationA_3 : forall x y z x' y' z',
   eqA x y' /\ eqA y x' /\ eqA z z' \/ eqA x y' /\ eqA y z' /\ eqA z x' \/
   eqA x z' /\ eqA y y' /\ eqA z x' \/ eqA x z' /\ eqA y x' /\ eqA z y'.
 Proof.
-intros. split; intro Hperm.
-* inversion_clear Hperm.
-  + rewrite PermutationA_2 in H0. intuition.
-  + intuition.
-  + admit.
-* repeat destruct Hperm as [Hperm | Hperm]; destruct Hperm as [Heq1 [Heq2 Heq3]].
-  + repeat apply PermutationA_cons; trivial. constructor.
-  + apply PermutationA_cons; trivial. rewrite PermutationA_2. intuition.
-  + etransitivity; [constructor 3 |].
+intros. split.
++ generalize (eq_refl (x :: y :: z :: nil)). generalize (x :: y :: z :: nil) at -2. intros l1 Hl1.
+  generalize (eq_refl (x' :: y' :: z' :: nil)). generalize (x' :: y' :: z' :: nil) at -2. intros l2 Hl2 perm.
+  revert x y z x' y' z' Hl1 Hl2. induction perm; intros.
+  - discriminate Hl1.
+  - inversion Hl1. inversion Hl2. subst. rewrite PermutationA_2 in perm. intuition.
+  - inversion Hl1. inversion Hl2. do 2 subst. inversion H5. intuition.
+  - subst. assert (Hlength : length l₂ = length (x' :: y' :: z' :: nil)) by now rewrite perm2.
+    destruct l₂ as [| x'' [| y'' [| z'' [| ? ?]]]]; discriminate Hlength || clear Hlength.
+    specialize (IHperm1 _ _ _ _ _ _ $(reflexivity)$ $(reflexivity)$).
+    specialize (IHperm2 _ _ _ _ _ _ $(reflexivity)$ $(reflexivity)$).
+    repeat destruct IHperm1 as [IHperm1 | IHperm1]; destruct IHperm1 as [H11 [H12 H13]];
+    repeat destruct IHperm2 as [IHperm2 | IHperm2]; destruct IHperm2 as [H21 [H22 H23]];
+    rewrite H11, H12, H13, <- H21, <- H22, <-H23; intuition.
++ intro Hperm. repeat destruct Hperm as [Hperm | Hperm]; destruct Hperm as [Heq1 [Heq2 Heq3]].
+  - repeat apply PermutationA_cons; trivial. constructor.
+  - apply PermutationA_cons; trivial. rewrite PermutationA_2. intuition.
+  - etransitivity; [constructor 3 |].
     repeat apply PermutationA_cons; trivial. constructor.
-  + etransitivity; [| constructor 3].
+  - etransitivity; [| constructor 3].
     apply PermutationA_cons; trivial. rewrite Heq2, Heq3. constructor 3.
-  + etransitivity; [constructor 3 |]. etransitivity; [| constructor 3].
+  - etransitivity; [constructor 3 |]. etransitivity; [| constructor 3].
     apply PermutationA_cons; trivial. rewrite Heq1, Heq3. constructor 3.
-  + etransitivity; [constructor 3 |].
+  - etransitivity; [constructor 3 |].
     apply PermutationA_cons; trivial. rewrite Heq1, Heq3. constructor 3.
-Admitted.
+Qed.
 
 Lemma NoDupA_strengthen : forall l, subrelation eqA eqA' -> NoDupA eqA' l -> NoDupA eqA l.
 Proof.

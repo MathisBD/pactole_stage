@@ -16,6 +16,7 @@ Require Import Reals.
 Require Import Robots.
 Require Import Positions.
 
+
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
