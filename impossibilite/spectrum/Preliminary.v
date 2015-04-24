@@ -870,15 +870,25 @@ intros P Pdec l. induction l; simpl.
   - right. intros Habs. inversion_clear Habs. contradiction.
 Qed.
 
+Theorem existsb_forallb : forall (f : A -> bool) l,
+  existsb (fun x => negb (f x)) l = negb (forallb f l).
+Proof.
+intros f l. induction l as [| x l].
++ reflexivity.
++ simpl. destruct (f x) eqn:Hfx; simpl.
+  - simpl. apply IHl.
+  - reflexivity.
+Qed.
+
 End List_results.
 
 Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : list A, {NoDup l} + {~NoDup l}.
 Proof. intros eq_dec l. destruct (NoDupA_dec _ eq_dec l); rewrite NoDupA_Leibniz in *; auto. Qed.
 
 
-(* ******************************** *)
-(** *  The same for real unumbers. **)
-(* ******************************** *)
+(* ******************************* *)
+(** *  The same for real numbers. **)
+(* ******************************* *)
 
 
 Lemma Rdec : forall x y : R, {x = y} + {x <> y}.

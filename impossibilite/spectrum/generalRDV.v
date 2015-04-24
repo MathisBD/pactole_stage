@@ -2370,6 +2370,60 @@ do 2 Rdec_full; try subst pt.
 - simpl. intro. subst. intro H. specialize (H pt1 Hneq). revert H. Rdec. intro. omega.
 Qed.
 
+(* Other proof for never_forbidden *)
+
+Hypothesis same_destination : forall da pos g1 g2, In g1 (@active nG da) -> In g2 (active da) ->
+  round robogram da pos.(gp) g1 = round robogram da pos.(gp) g2.
+
+Lemma no_active_same_conf :
+  forall da conf, @active nG da = nil -> PosEq (lift_gp (round robogram da conf.(gp))) conf.
+Proof.
+intros da conf Hactive. rewrite (lift_gp_equiv conf) at 2. apply lift_gp_compat.
+rewrite round_simplify. intro r.
+destruct (Rdec (frame da r) 0) as [Heq | Heq]; trivial.
+assert (Hin : In r (active da)).
+{ unfold active. rewrite filter_In. split.
+  - unfold Gnames. change r with (id r). apply In_fin_map.
+  - destruct (Rdec_bool (frame da r) 0) eqn:Habs; trivial.
+    rewrite Rdec_bool_true_iff in Habs. contradiction. }
+rewrite Hactive in Hin. elim Hin.
+Qed.
+
+Theorem never_forbidden_alt_proof : forall (da : demonic_action nG 0) pos,
+  ~forbidden pos -> ~forbidden (lift_gp (round robogram da pos.(gp))).
+Proof.
+intros da conf Hok.
+(* A robot has moved otherwise we have the same configuration before nad it is forbidden. *)
+assert (Hnil := no_active_same_conf da conf).
+destruct (active da) eqn:Hneq.
+* now rewrite Hnil.
+* intro Habs.
+  (* there is a robot that moves *)
+  assert (Hex : List.existsb (fun g => negb (Rdec_bool (conf.(gp) g) (round robogram da conf.(gp) g))) (active da)).
+  { rewrite existsb_forallb. unfold is_true. rewrite negb_true_iff. apply not_true_is_false.
+    rewrite forallb_forall. setoid_rewrite Rdec_bool_true_iff. intro Hall.
+    assert (Hconf : PosEq (lift_gp (round robogram da conf.(gp))) conf).
+    { rewrite (lift_gp_equiv conf) at 2. apply lift_gp_compat.
+      intro r. destruct (Rdec (frame da r) 0) as [Heq | Heq].
+      + rewrite round_simplify, Heq. Rdec. reflexivity.
+      + symmetry. apply Hall. unfold active. change r with (id r). rewrite filter_In. split.
+        - unfold Gnames. apply In_fin_map.
+        - now rewrite negb_true_iff, Rdec_bool_false_iff. }
+    apply Hok. rewrite <- Hconf. assumption. }
+  unfold is_true in Hex. rewrite existsb_exists in Hex. destruct Hex as [rmove [Hin Hrmove]].
+  rewrite negb_true_iff, Rdec_bool_false_iff in Hrmove.
+  (* the robot moves to one fo the two locations in round robogram conf.(gp) *)
+  destruct Habs as [p1 [p2 [Hdiff Hperm]]].
+  assert (round robogram da (gp conf) rmove = p1 \/ round robogram da (gp conf) rmove = p2).
+  (*
+  Any non-forbidden config without a majority tower contains at least three towers.
+  All robots move toward the same place (same_destination), wlog p1.
+  |\before(p2)| >= |\after(p2)| = nG / 2
+  As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
+  thus each of these towers has less than nG/2.
+  *)
+Qed.
+
 (* We can remove this assumption if we wait long enough because of fairness. *)
 Axiom active_demon : forall da, (length (@active nG da) > 0)%nat.
 
