@@ -145,8 +145,37 @@ End GeneralGathering.
 
 
 (** **  Framework of the impossibility proof: a finite set with at leasts two elements  **)
+Section foo.
+Variable nG : nat.
+Hypothesis size_G : nG >= 2.
 
-Parameter nG : nat.
+
+
+Definition g1' : Fin.t nG.
+destruct nG eqn:HnG. abstract (omega).
+apply (@Fin.F1 n).
+Defined.
+
+Definition g2' : Fin.t nG.
+destruct nG as [| [| n]] eqn:HnG; try (abstract (omega)).
+apply (Fin.FS Fin.F1).
+Defined.
+
+End foo.
+Require Import Coq.Program.Equality.
+Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
+Proof.
+  dependent destruction nG;intros.
+  - exfalso;omega.
+  - dependent destruction nG.
+    + exfalso;omega.
+    + simpl.
+      intro abs.
+      inversion abs.
+Qed.
+
+
+Parameter nG: nat.
 Axiom size_G : nG >= 2.
 
 Module N : Size with Definition nG := nG.
@@ -154,25 +183,37 @@ Module N : Size with Definition nG := nG.
   Definition nB := 0.
 End N.
 
+
+
 Module GatheringinRd(Loc : GatheringLocation).
 
 Module Import Gathering := GeneralGathering(Loc)(N).
 
 Close Scope R_scope.
 
-Definition g1 : Spec.Names.G.
-unfold Spec.Names.G, Spec.Names.Internals.G, N.nG. destruct nG eqn:HnG. abstract (generalize size_G; omega).
-apply (@Fin.F1 n).
+(*
+Program Definition g1 : Spec.Names.G := (@Fin.F1 (nG - 1)).
+Next Obligation.
+  abstract(assert  (nG >= 2) by apply size_G;unfold N.nG;omega).
 Defined.
 
-Definition g2 : Spec.Names.G.
-unfold Spec.Names.G, Spec.Names.Internals.G, N.nG.
-destruct nG as [| [| n]] eqn:HnG; try (abstract (generalize size_G; omega)).
-apply (Fin.FS Fin.F1).
+Program Definition g2 : Spec.Names.G := (@Fin.FS (nG - 1) (@Fin.F1 (nG - 2))).
+Next Obligation.
+  abstract(assert  (nG >= 2) by apply size_G;unfold N.nG;omega).
 Defined.
+Next Obligation.
+  abstract(assert  (nG >= 2) by apply size_G;unfold N.nG;omega).
+Defined.
+*)
+
+Definition g1 : Spec.Names.G := @g1' nG size_G.
+Definition g2 : Spec.Names.G := @g2' nG size_G.
+
 
 Lemma g1_g2 : g1 <> g2.
-Proof. Admitted.
+Proof.
+  apply g1'_g2'.
+Qed.
 
 
 (** *  Gathering robogram  **)
@@ -313,7 +354,16 @@ Lemma round_simplify : forall (da : demonic_action) pos,
 Proof.
 intros da pos id. unfold round. destruct (step da id) as [| obs Hobs]. reflexivity.
 destruct id as [g | b]; try reflexivity.
-rewrite (spectrum_ok da). rewrite robogram_homothecy_invariant; trivial. field_simplify; trivial. clear Hframe.
+(* rewrite does not perform enough unfolding here. otherwise rewrite (spectrum_ok da) would be enough.
+workaround: *)
+assert (h_isok:∀ (g : Names.G) (pos : Pos.t), Spec.is_ok (spectrum_of da g pos) pos). {
+  apply (spectrum_ok da). }
+unfold Spec.is_ok in h_isok.
+rewrite h_isok.
+clear h_isok.
+(* end of workaround *)
+(* xxx rewrite (spectrum_ok da). *)
+rewrite robogram_homothecy_invariant; trivial. field_simplify; trivial. clear Hframe.
 unfold robogram.
 rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
 destruct (majority_stack (nominal_spectrum pos)) eqn:Hmaj.
