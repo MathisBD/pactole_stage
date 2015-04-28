@@ -157,24 +157,51 @@ Qed.
 
 (** * Framework of the impossibility proof: a finite set with at leasts two elements.  **)
 
+(** **  Framework of the impossibility proof: a finite set with at leasts two elements  **)
+Section foo.
+Variable nG : nat.
+Hypothesis size_G : nG >= 2.
+
+
+
+Definition g1' : Fin.t nG.
+destruct nG eqn:HnG. abstract (omega).
+apply (@Fin.F1 n).
+Defined.
+
+Definition g2' : Fin.t nG.
+destruct nG as [| [| n]] eqn:HnG; try (abstract (omega)).
+apply (Fin.FS Fin.F1).
+Defined.
+
+End foo.
+
+Require Import Coq.Program.Equality.
+Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
+Proof.
+  dependent destruction nG;intros.
+  - exfalso;omega.
+  - dependent destruction nG.
+    + exfalso;omega.
+    + simpl.
+      intro abs.
+      inversion abs.
+Qed.
+
 Parameter nG : nat.
 Hypothesis size_G : nG >= 2.
 
 Corollary half_size_pos : div2 nG > 0.
 Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
 
-Definition g1 : G nG.
-destruct nG eqn:HnG. generalize size_G. abstract omega.
-rewrite S_pred with (S n) 0. apply (@Fin.F1 n). abstract omega.
-Defined.
+Definition g1 : G nG := @g1' nG size_G.
 
-Definition g2 : G nG.
-destruct nG as [| [| n]] eqn:HnG; try (abstract (generalize size_G; omega)).
-rewrite S_pred with (S n) 0. apply (Fin.FS Fin.F1). abstract omega.
-Defined.
+Definition g2 : G nG := @g2' nG size_G.
 
 Lemma g1_g2 : g1 <> g2.
-Proof. Admitted.
+Proof.
+  apply g1'_g2'.
+Qed.
 
 Corollary nominal_spectrum_nil : forall pos : position nG 0, ~nominal_spectrum pos = nil.
 Proof.
@@ -1924,7 +1951,7 @@ intro pos. split; intro H.
     apply Permutation_app. now rewrite count_occ_remove_out.
     assert (Hin : forall x, In x (nominal_spectrum pos) -> x = pt1 \/ x = pt2 \/ x = pt3).
     { intros x Hin. cut (In x (M.support (multiset (nominal_spectrum pos)))).
-        rewrite Hl. intros [| [| [|]]]; intuition. now inversion H. now apply multiset_support. }
+        rewrite Hl. intros [| [| [|]]]; intuition.  now apply multiset_support. }
     assert (Hrem : forall x, In x (remove Rdec pt2 (remove Rdec pt1 (nominal_spectrum pos))) -> x = pt3).
     { intros x H'. rewrite (remove_in_iff _ _) in H'. destruct H' as [H' ?].
       rewrite (remove_in_iff _ _) in H'. destruct H' as [H' ?]. apply Hin in H'. intuition. }
@@ -2389,16 +2416,64 @@ assert (Hin : In r (active da)).
 rewrite Hactive in Hin. elim Hin.
 Qed.
 
+(* TODO *)
+Lemma nominal_spectrum_3_stacks_beaucoup_mieux:
+  forall pos,
+    (length (M.support (multiset (nominal_spectrum pos))) >= 3)%nat ->
+    exists (pt1 pt2 pt3 : R) l,
+      pt1 <> pt2 /\
+      pt2 <> pt3 /\
+      pt1 <> pt3 /\
+      Permutation (nominal_spectrum pos) (pt1::pt2::pt3::l).
+Proof.
+Admitted.
+
+(* TODO *)
+Corollary nominal_spectrum_3_stacks_beaucoup_mieux_mieux:
+  forall pos pt3,
+    (length (M.support (multiset (nominal_spectrum pos))) >= 3)%nat ->
+    M.In pt3 (multiset (nominal_spectrum pos)) ->
+    exists (pt1 pt2 : R) l,
+        pt1 <> pt2 /\
+        pt2 <> pt3 /\
+        pt1 <> pt3 /\
+      Permutation (nominal_spectrum pos) (pt1::pt2::l).
+Proof.
+  intros pos pt3 H H0.
+  decompose [and ex] (nominal_spectrum_3_stacks_beaucoup_mieux _ H).
+  destruct (Rdec x pt3), (Rdec x0 pt3), (Rdec x1 pt3); subst;Rdec;eauto 10.
+  - exists x0, x1,(pt3::x2);repeat split;auto.
+    rewrite H5.
+    clear -H5.
+    change (Permutation ((pt3 :: x0 :: x1::nil) ++ x2) ((x0 :: x1 :: pt3 ::nil) ++ x2)).
+    apply Permutation_app;try reflexivity.
+    etransitivity.
+    + eapply perm_swap.
+    + eapply perm_skip.
+      eapply perm_swap.
+  - exists x, x1,(pt3::x2);repeat split;auto.
+    rewrite H5.
+    eapply perm_skip.
+    eapply perm_swap.
+Qed.
+
 Theorem never_forbidden_alt_proof : forall (da : demonic_action nG 0) pos,
   ~forbidden pos -> ~forbidden (lift_gp (round robogram da pos.(gp))).
 Proof.
 intros da conf Hok.
+(* Three cases for the robogram *)
+destruct (majority_stack (nominal_spectrum conf)) eqn:Hs.
+{ (* Absurd case: no robot *)
+  rewrite majority_stack_NoResult_spec in Hs. elim (nominal_spectrum_nil _ Hs). }
+{ (* 1) There is a majority tower *)
+  apply Stack_at_forbidden with l. apply Stack_at_forever. rewrite <- majority_stack_spec. now exists n. }
 (* A robot has moved otherwise we have the same configuration before nad it is forbidden. *)
 assert (Hnil := no_active_same_conf da conf).
 destruct (active da) eqn:Hneq.
 * now rewrite Hnil.
 * intro Habs.
-  (* there is a robot that moves *)
+  assert (Heven:=forbidden_even Habs).
+  (* since we suppose (forbidden (round robogram)) there must be a robot that moves *)
   assert (Hex : List.existsb (fun g => negb (Rdec_bool (conf.(gp) g) (round robogram da conf.(gp) g))) (active da)).
   { rewrite existsb_forallb. unfold is_true. rewrite negb_true_iff. apply not_true_is_false.
     rewrite forallb_forall. setoid_rewrite Rdec_bool_true_iff. intro Hall.
@@ -2412,9 +2487,187 @@ destruct (active da) eqn:Hneq.
     apply Hok. rewrite <- Hconf. assumption. }
   unfold is_true in Hex. rewrite existsb_exists in Hex. destruct Hex as [rmove [Hin Hrmove]].
   rewrite negb_true_iff, Rdec_bool_false_iff in Hrmove.
-  (* the robot moves to one fo the two locations in round robogram conf.(gp) *)
+  (* the robot moves to one of the two locations in round robogram conf.(gp) *)
   destruct Habs as [p1 [p2 [Hdiff Hperm]]].
   assert (round robogram da (gp conf) rmove = p1 \/ round robogram da (gp conf) rmove = p2).
+  { admit. }
+  assert (forall pos n, majority_stack (nominal_spectrum pos) = Invalid n
+                        -> ~forbidden pos
+                        -> (length (M.support (multiset (nominal_spectrum pos))) >= 3)%nat).
+  { admit. }
+  destruct H.
+  - assert (h:forall g, In g (active da) -> round robogram da (gp conf) g = p1).
+    { intros g0 h.
+      rewrite <- H.
+      apply same_destination;auto. }
+    assert (((div2 nG)%nat <= M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat).
+    { transitivity (M.multiplicity p2 (multiset (nominal_spectrum (lift_gp (round robogram da (gp conf)))))%nat).
+      - rewrite Hperm.
+        rewrite multiset_app.
+        rewrite M.union_spec.
+        rewrite multiset_alls, multiset_alls.
+        rewrite M.singleton_spec, M.singleton_spec.
+        do 2 Rdec_full.
+        + symmetry in Heq.
+          contradiction.
+        + Rdec.
+        + reflexivity.
+        + Rdec.
+      - assert (forall r (conf: position nG 0) da pt,
+                   ((M.multiplicity pt (multiset (nominal_spectrum conf)))
+                   < (M.multiplicity
+                        pt
+                        (multiset (nominal_spectrum (lift_gp
+                                                       (round r da (gp conf)))))))%nat ->
+               exists g, (In g (active da))
+                         /\ round r da (gp conf) g = pt
+                         /\ (gp conf) g <> pt).
+        { admit. }
+        
+        Lemma Lionel_ruleZZZ: (forall (X Y:Prop), (X -> Y) -> (~Y -> ~X)).
+        Proof.
+          tauto.
+        Qed.
+        specialize (H1 robogram conf da p2).
+        apply (Lionel_ruleZZZ ) in H1.
+        + omega.
+        + intros (r ,(abs1, (abs2, abs3))).
+          apply Hdiff.
+          rewrite <- abs2.
+          symmetry.
+          apply h.
+          assumption. }
+    assert (forall p, p<>p2
+                      -> (M.multiplicity p (multiset (nominal_spectrum conf))) < div2 nG)%nat.
+    {
+      assert (h_dedicace_lionel:M.In p2 (multiset (nominal_spectrum conf))).
+      { unfold M.In.
+        eapply lt_le_trans; try eassumption.
+        apply half_size_pos.
+      }
+      specialize (H0 _ _ Hs Hok).
+      decompose [ex and] (@nominal_spectrum_3_stacks_beaucoup_mieux_mieux _ p2 H0 h_dedicace_lionel).
+      rename x1 into lr.
+      setoid_rewrite H6.
+      intros p h_diff.
+      rewrite multiset_cons,multiset_cons.
+      destruct (Rdec p x), (Rdec p x0);repeat subst.
+      + now elim H3.
+      + rewrite M.add_spec, M.add_spec';auto.
+        destruct (@multiset_Permutation p2 lr _ eq_refl)
+          as (lr', (h1, h2)).
+        assert ((M.multiplicity p2 (multiset lr)) = M.multiplicity p2 (multiset (nominal_spectrum conf))).
+        { rewrite H6.
+          rewrite multiset_cons,multiset_cons.
+          rewrite M.add_spec', M.add_spec';auto. }
+        rewrite H in h2.
+        rewrite h2.
+        rewrite multiset_app.
+        rewrite M.union_spec.
+        rewrite multiset_alls.
+        rewrite M.singleton_spec.
+        Rdec_full;try contradiction.
+        simpl.
+        assert (div2 nG > 0)%nat by exact half_size_pos.
+        apply le_lt_trans with (div2 nG - 1)%nat;try omega.
+        transitivity (M.cardinal (multiset lr') + 1)%nat.
+        * assert (htmp:=M.cardinal_lower x (multiset lr')).
+          omega.
+        * rewrite cardinal_multiset.
+          assert (hlgth:=nominal_spectrum_length conf).
+          rewrite H6 in hlgth.
+          simpl in hlgth.
+          rewrite h2 in hlgth.
+          rewrite app_length in hlgth.
+          rewrite alls_length in hlgth.
+          assert 
+            (hlgth2:((length lr') + 1)%nat = (nG - 1 - M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat). {
+            omega. }
+          setoid_rewrite hlgth2.
+          rewrite (NPeano.Nat.div2_odd nG) at 1.
+          rewrite <- NPeano.Nat.negb_even.
+          rewrite <- NPeano.even_spec in Heven.
+          rewrite Heven.
+          simpl.
+          omega.
+      + destruct (@multiset_Permutation p2 lr _ eq_refl)
+          as (lr', (h1, h2)).
+        assert ((M.multiplicity p2 (multiset lr)) = M.multiplicity p2 (multiset (nominal_spectrum conf))).
+        { rewrite H6.
+          rewrite multiset_cons,multiset_cons.
+          rewrite M.add_spec', M.add_spec';auto. }
+        rewrite H in h2.
+        rewrite h2.
+        rewrite multiset_app.
+        rewrite M.add_spec', M.add_spec;auto.
+        rewrite M.union_spec.
+        rewrite multiset_alls.
+        rewrite M.singleton_spec.
+        Rdec_full;try contradiction.
+        simpl.
+        assert (div2 nG > 0)%nat by exact half_size_pos.
+        apply le_lt_trans with (div2 nG - 1)%nat;try omega.
+        transitivity (M.cardinal (multiset lr') + 1)%nat.
+        * assert (htmp:=M.cardinal_lower x0 (multiset lr')).
+          omega.
+        * rewrite cardinal_multiset.
+          assert (hlgth:=nominal_spectrum_length conf).
+          rewrite H6 in hlgth.
+          simpl in hlgth.
+          rewrite h2 in hlgth.
+          rewrite app_length in hlgth.
+          rewrite alls_length in hlgth.
+          assert 
+            (hlgth2:((length lr') + 1)%nat = (nG - 1 - M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat). {
+            omega. }
+          setoid_rewrite hlgth2.
+          rewrite (NPeano.Nat.div2_odd nG) at 1.
+          rewrite <- NPeano.Nat.negb_even.
+          rewrite <- NPeano.even_spec in Heven.
+          rewrite Heven.
+          simpl.
+          omega.
+      + destruct (@multiset_Permutation p2 lr _ eq_refl)
+          as (lr', (h1, h2)).
+        assert ((M.multiplicity p2 (multiset lr)) = M.multiplicity p2 (multiset (nominal_spectrum conf))).
+        { rewrite H6.
+          rewrite multiset_cons,multiset_cons.
+          rewrite M.add_spec', M.add_spec';auto. }
+        rewrite H in h2.
+        rewrite h2.
+        rewrite multiset_app.
+        rewrite M.add_spec', M.add_spec';auto.
+        rewrite M.union_spec.
+        rewrite multiset_alls.
+        rewrite M.singleton_spec.
+        Rdec_full;try contradiction.
+        simpl.
+        assert (div2 nG > 0)%nat by exact half_size_pos.
+        apply le_lt_trans with (div2 nG - 1)%nat;try omega.
+        transitivity (M.cardinal (multiset lr') + 1)%nat.
+        * assert (htmp:=M.cardinal_lower p (multiset lr')).
+          omega.
+        * rewrite cardinal_multiset.
+          assert (hlgth:=nominal_spectrum_length conf).
+          rewrite H6 in hlgth.
+          simpl in hlgth.
+          rewrite h2 in hlgth.
+          rewrite app_length in hlgth.
+          rewrite alls_length in hlgth.
+          assert 
+            (hlgth2:((length lr') + 1)%nat = (nG - 1 - M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat). {
+            omega. }
+          setoid_rewrite hlgth2.
+          rewrite (NPeano.Nat.div2_odd nG) at 1.
+          rewrite <- NPeano.Nat.negb_even.
+          rewrite <- NPeano.even_spec in Heven.
+          rewrite Heven.
+          simpl.
+          omega.
+    }
+    rewrite majority_stack_Invalid_spec in Hs.
+    decompose [and ex] Hs.
+        
   (*
   Any non-forbidden config without a majority tower contains at least three towers.
   All robots move toward the same place (same_destination), wlog p1.
@@ -2422,7 +2675,8 @@ destruct (active da) eqn:Hneq.
   As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
   thus each of these towers has less than nG/2.
   *)
-Qed.
+ Admitted.
+
 
 (* We can remove this assumption if we wait long enough because of fairness. *)
 Axiom active_demon : forall da, (length (@active nG da) > 0)%nat.
