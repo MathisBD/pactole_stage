@@ -605,7 +605,8 @@ intros x y n m [| l r | r]; unfold f_majority.
         rewrite <- nat_compare_lt in Hnr. rewrite <- nat_compare_gt in Hmr.
         assert (Hnm : (n < m)%nat) by (now transitivity r). rewrite nat_compare_lt in Hnm. now rewrite Hnm.
     - destruct (nat_compare m r) eqn: Hmr.
-        rewrite nat_compare_eq_iff in Hmr. subst r. rewrite Hnr. rewrite <- nat_compare_Lt_Gt in Hnr. now rewrite Hnr.
+        rewrite nat_compare_eq_iff in Hmr. subst r. rewrite Hnr.
+        rewrite <- nat_compare_Lt_Gt in Hnr. now rewrite Hnr.
         rewrite Hnr. rewrite <- nat_compare_gt in Hnr. rewrite <- nat_compare_lt in Hmr.
         assert (Hmn : (m < n)%nat) by (now transitivity r). rewrite nat_compare_lt in Hmn. now rewrite Hmn.
         destruct (nat_compare n m) eqn:Hnm.
@@ -623,7 +624,8 @@ intros x y n m [| l r | r]; unfold f_majority.
         rewrite <- nat_compare_lt in Hnr. rewrite <- nat_compare_gt in Hmr.
         assert (Hnm : (n < m)%nat) by (now transitivity r). rewrite nat_compare_lt in Hnm. now rewrite Hnm.
     - destruct (nat_compare m r) eqn: Hmr.
-        rewrite nat_compare_eq_iff in Hmr. subst r. rewrite Hnr. rewrite <- nat_compare_Lt_Gt in Hnr. now rewrite Hnr.
+        rewrite nat_compare_eq_iff in Hmr. subst r. rewrite Hnr.
+        rewrite <- nat_compare_Lt_Gt in Hnr. now rewrite Hnr.
         rewrite Hnr. rewrite <- nat_compare_gt in Hnr. rewrite <- nat_compare_lt in Hmr.
         assert (Hmn : (m < n)%nat) by (now transitivity r). rewrite nat_compare_lt in Hmn. now rewrite Hmn.
         destruct (nat_compare n m) eqn:Hnm.
@@ -2472,7 +2474,7 @@ assert (Hnil := no_active_same_conf da conf).
 destruct (active da) eqn:Hneq.
 * now rewrite Hnil.
 * intro Habs.
-  assert (Heven:=forbidden_even Habs).
+  assert (Heven:=forbidden_even Habs). rewrite <- NPeano.even_spec in Heven.
   (* since we suppose (forbidden (round robogram)) there must be a robot that moves *)
   assert (Hex : List.existsb (fun g => negb (Rdec_bool (conf.(gp) g) (round robogram da conf.(gp) g))) (active da)).
   { rewrite existsb_forallb. unfold is_true. rewrite negb_true_iff. apply not_true_is_false.
@@ -2537,8 +2539,8 @@ destruct (active da) eqn:Hneq.
           symmetry.
           apply h.
           assumption. }
-    assert (forall p, p<>p2
-                      -> (M.multiplicity p (multiset (nominal_spectrum conf))) < div2 nG)%nat.
+    assert (Hlt : forall p, p<>p2
+                      -> (M.multiplicity p (multiset (nominal_spectrum conf)) < div2 nG)%nat).
     {
       assert (h_dedicace_lionel:M.In p2 (multiset (nominal_spectrum conf))).
       { unfold M.In.
@@ -2547,126 +2549,50 @@ destruct (active da) eqn:Hneq.
       }
       specialize (H0 _ _ Hs Hok).
       decompose [ex and] (@nominal_spectrum_3_stacks_beaucoup_mieux_mieux _ p2 H0 h_dedicace_lionel).
-      rename x1 into lr.
+      rename x1 into lr'.
       setoid_rewrite H6.
       intros p h_diff.
-      rewrite multiset_cons,multiset_cons.
+      assert (Hp2 : M.multiplicity p2 (multiset lr') = M.multiplicity p2 (multiset (nominal_spectrum conf))).
+      { rewrite H6, multiset_cons, multiset_cons, M.add_spec', M.add_spec'; auto. }
+      destruct (@multiset_Permutation p2 lr' _ eq_refl) as [lr [Hlr1 Hlr2]].
+      rewrite Hp2 in Hlr2. rewrite Hlr2 in H6.
+      assert (Hlen := nominal_spectrum_length conf).
+      rewrite H6 in Hlen. simpl in Hlen. rewrite app_length, alls_length in Hlen.
+      rewrite (NPeano.Nat.div2_odd nG) in Hlen at 2. rewrite <- NPeano.Nat.negb_even, Heven in Hlen.
+      simpl in Hlen.
+      assert (length lr <= div2 nG -2)%nat by omega.
+      rewrite multiset_cons, multiset_cons, Hlr2, multiset_app, multiset_alls.
+      apply le_lt_trans with (length lr + 1)%nat; try omega.
       destruct (Rdec p x), (Rdec p x0);repeat subst.
       + now elim H3.
       + rewrite M.add_spec, M.add_spec';auto.
-        destruct (@multiset_Permutation p2 lr _ eq_refl)
-          as (lr', (h1, h2)).
-        assert ((M.multiplicity p2 (multiset lr)) = M.multiplicity p2 (multiset (nominal_spectrum conf))).
-        { rewrite H6.
-          rewrite multiset_cons,multiset_cons.
-          rewrite M.add_spec', M.add_spec';auto. }
-        rewrite H in h2.
-        rewrite h2.
-        rewrite multiset_app.
-        rewrite M.union_spec.
-        rewrite multiset_alls.
-        rewrite M.singleton_spec.
-        Rdec_full;try contradiction.
-        simpl.
-        assert (div2 nG > 0)%nat by exact half_size_pos.
-        apply le_lt_trans with (div2 nG - 1)%nat;try omega.
-        transitivity (M.cardinal (multiset lr') + 1)%nat.
-        * assert (htmp:=M.cardinal_lower x (multiset lr')).
-          omega.
-        * rewrite cardinal_multiset.
-          assert (hlgth:=nominal_spectrum_length conf).
-          rewrite H6 in hlgth.
-          simpl in hlgth.
-          rewrite h2 in hlgth.
-          rewrite app_length in hlgth.
-          rewrite alls_length in hlgth.
-          assert 
-            (hlgth2:((length lr') + 1)%nat = (nG - 1 - M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat). {
-            omega. }
-          setoid_rewrite hlgth2.
-          rewrite (NPeano.Nat.div2_odd nG) at 1.
-          rewrite <- NPeano.Nat.negb_even.
-          rewrite <- NPeano.even_spec in Heven.
-          rewrite Heven.
-          simpl.
-          omega.
-      + destruct (@multiset_Permutation p2 lr _ eq_refl)
-          as (lr', (h1, h2)).
-        assert ((M.multiplicity p2 (multiset lr)) = M.multiplicity p2 (multiset (nominal_spectrum conf))).
-        { rewrite H6.
-          rewrite multiset_cons,multiset_cons.
-          rewrite M.add_spec', M.add_spec';auto. }
-        rewrite H in h2.
-        rewrite h2.
-        rewrite multiset_app.
-        rewrite M.add_spec', M.add_spec;auto.
-        rewrite M.union_spec.
-        rewrite multiset_alls.
-        rewrite M.singleton_spec.
-        Rdec_full;try contradiction.
-        simpl.
-        assert (div2 nG > 0)%nat by exact half_size_pos.
-        apply le_lt_trans with (div2 nG - 1)%nat;try omega.
-        transitivity (M.cardinal (multiset lr') + 1)%nat.
-        * assert (htmp:=M.cardinal_lower x0 (multiset lr')).
-          omega.
-        * rewrite cardinal_multiset.
-          assert (hlgth:=nominal_spectrum_length conf).
-          rewrite H6 in hlgth.
-          simpl in hlgth.
-          rewrite h2 in hlgth.
-          rewrite app_length in hlgth.
-          rewrite alls_length in hlgth.
-          assert 
-            (hlgth2:((length lr') + 1)%nat = (nG - 1 - M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat). {
-            omega. }
-          setoid_rewrite hlgth2.
-          rewrite (NPeano.Nat.div2_odd nG) at 1.
-          rewrite <- NPeano.Nat.negb_even.
-          rewrite <- NPeano.even_spec in Heven.
-          rewrite Heven.
-          simpl.
-          omega.
-      + destruct (@multiset_Permutation p2 lr _ eq_refl)
-          as (lr', (h1, h2)).
-        assert ((M.multiplicity p2 (multiset lr)) = M.multiplicity p2 (multiset (nominal_spectrum conf))).
-        { rewrite H6.
-          rewrite multiset_cons,multiset_cons.
-          rewrite M.add_spec', M.add_spec';auto. }
-        rewrite H in h2.
-        rewrite h2.
-        rewrite multiset_app.
-        rewrite M.add_spec', M.add_spec';auto.
-        rewrite M.union_spec.
-        rewrite multiset_alls.
-        rewrite M.singleton_spec.
-        Rdec_full;try contradiction.
-        simpl.
-        assert (div2 nG > 0)%nat by exact half_size_pos.
-        apply le_lt_trans with (div2 nG - 1)%nat;try omega.
-        transitivity (M.cardinal (multiset lr') + 1)%nat.
-        * assert (htmp:=M.cardinal_lower p (multiset lr')).
-          omega.
-        * rewrite cardinal_multiset.
-          assert (hlgth:=nominal_spectrum_length conf).
-          rewrite H6 in hlgth.
-          simpl in hlgth.
-          rewrite h2 in hlgth.
-          rewrite app_length in hlgth.
-          rewrite alls_length in hlgth.
-          assert 
-            (hlgth2:((length lr') + 1)%nat = (nG - 1 - M.multiplicity p2 (multiset (nominal_spectrum conf)))%nat). {
-            omega. }
-          setoid_rewrite hlgth2.
-          rewrite (NPeano.Nat.div2_odd nG) at 1.
-          rewrite <- NPeano.Nat.negb_even.
-          rewrite <- NPeano.even_spec in Heven.
-          rewrite Heven.
-          simpl.
-          omega.
+        rewrite M.union_spec, M.singleton_spec. Rdec_full; try contradiction.
+        simpl. apply plus_le_compat_r. rewrite <- cardinal_multiset. apply M.cardinal_lower.
+      + rewrite M.add_spec', M.add_spec;auto.
+        rewrite M.union_spec, M.singleton_spec. Rdec_full; try contradiction.
+        simpl. apply plus_le_compat_r. rewrite <- cardinal_multiset. apply M.cardinal_lower.
+      + rewrite M.add_spec', M.add_spec';auto.
+        rewrite M.union_spec, M.singleton_spec. Rdec_full; try contradiction.
+        simpl. rewrite <- cardinal_multiset. etransitivity; apply M.cardinal_lower || omega.
     }
     rewrite majority_stack_Invalid_spec in Hs.
     decompose [and ex] Hs.
+    assert (n = div2 nG).
+    { apply le_antisym.
+      + destruct (multiset_Permutation _ H4) as [lr' [Hlrx Hlr']].
+        rewrite Hlr', multiset_app, multiset_alls, M.union_spec, M.singleton_spec in H3.
+        destruct (Rdecidable.eq_dec x0 x) as [? | _]; try now elim H5.
+        destruct (multiset_Permutation _ H3) as [lr [Hlrx0 Hlr]].
+        assert (Hlen := nominal_spectrum_length conf).
+        rewrite Hlr', app_length, Hlr, alls_length, app_length, alls_length in Hlen.
+        rewrite (NPeano.Nat.div2_odd nG) in Hlen. rewrite <- NPeano.Nat.negb_even, Heven in Hlen.
+        simpl in Hlen. omega.
+      + etransitivity; eauto. }
+    rewrite H6 in *. apply (lt_irrefl (div2 nG)).
+    destruct (Rdec x p2).
+    + subst. rewrite <- H3 at 1. apply Hlt. auto.
+    + rewrite <- H4 at 1. now apply Hlt.
+  - (* reste à faire le cas symetrique *)
         
   (*
   Any non-forbidden config without a majority tower contains at least three towers.
