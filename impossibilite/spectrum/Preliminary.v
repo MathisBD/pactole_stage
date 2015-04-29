@@ -11,6 +11,10 @@ Require Import Bool.
 
 Set Implicit Arguments.
 
+Lemma Lionel_ruleZZZ: (forall (X Y:Prop), (X -> Y) -> (~Y -> ~X)).
+Proof.
+  tauto.
+Qed.
 
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
 Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.
