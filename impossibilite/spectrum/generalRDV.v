@@ -2669,13 +2669,13 @@ Section WfLexicographic_Product.
 End WfLexicographic_Product.
 
 
-Definition conf_to_NxN (conf: position nG 0) :=
-let s := nominal_spectrum  conf in
-let ms := multiset s in
-match majority_stack s with
-| NoResult => (0,0)
-| Valid p n => (1,nG-n)
-| Invalid _ =>
+Function conf_to_NxN (conf: position nG 0) :=
+  let s := nominal_spectrum conf in
+  let ms := multiset s in
+  match majority_stack s with
+  | NoResult => (0,0)
+  | Valid p n => (1,nG-n)
+  | Invalid _ =>
     if beq_nat (length (M.support ms)) 3
     then (2,nG - (M.multiplicity (nth 1 (sort (M.support ms)) 0%R)) ms)
     else (3,
@@ -2683,7 +2683,7 @@ match majority_stack s with
           (M.multiplicity (extreme_center s) ms
            + M.multiplicity (hd 0%R (sort s)) ms
            + M.multiplicity (last (sort s) 0%R) ms))
-end.
+  end.
 
 Require Import Inverse_Image.
 
@@ -2694,6 +2694,145 @@ Proof.
   unfold lt_conf.
   apply wf_inverse_image.
   apply wf_lexprod;apply lt_wf.
+Qed.
+
+Instance conf_to_NxN_compat: Proper (@PosEq nG 0 ==> eq*eq) conf_to_NxN.
+Proof.
+  intros pos1 pos2 heq.
+  unfold conf_to_NxN at 2.
+  functional induction (conf_to_NxN pos1).
+  - rewrite <- heq.
+    rewrite e.
+    reflexivity.
+  - rewrite <- heq.
+    rewrite e.
+    reflexivity.
+  - rewrite <- heq, e, <- heq, e0 , <- heq.
+    reflexivity.
+  - rewrite <- heq, e, <- heq, e0 , <- heq.
+    reflexivity.
+Qed.
+
+Instance lexprod_compat: Proper (eq*eq ==> eq*eq ==> iff) (lexprod lt lt).
+Proof.
+  intros (a,b) (a',b') (heqa , heqb) (c,d) (c',d') (heqc , heqd) .
+  hnf in *|-.
+  simpl in *|-.
+  subst.
+  reflexivity.
+Qed.
+
+Instance lt_conf_compat: Proper (@PosEq nG 0 ==> @PosEq nG 0 ==> iff) lt_conf.
+Proof.
+  intros pos1 pos1' heq1 pos2 pos2' heq2.
+  unfold lt_conf.
+  rewrite <- heq1, <- heq2.
+  reflexivity.
+Qed.
+
+Lemma conf_to_NxN_NoResult : forall conf, majority_stack (nominal_spectrum conf) = NoResult->
+  conf_to_NxN conf = (0, 0).
+Proof.
+intros conf Heq. unfold conf_to_NxN. rewrite Heq. reflexivity.
+Qed.
+
+Lemma conf_to_NxN_spec_Valid :
+  forall conf l n,
+    majority_stack (nominal_spectrum conf) = Valid l n ->
+    conf_to_NxN conf = (1,(nG - n)).
+Proof.
+  intros conf l n H.
+  unfold conf_to_NxN.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Lemma conf_to_NxN_spec_Three :
+  forall conf n,
+    majority_stack (nominal_spectrum conf) = Invalid n ->
+    (length (M.support (multiset (nominal_spectrum conf)))) = 3 ->
+    conf_to_NxN conf = (2, nG - M.multiplicity (nth 1 (sort (M.support (multiset (nominal_spectrum conf)))) 0%R) (multiset (nominal_spectrum conf))).
+Proof.
+  intros conf n H H'.
+  unfold conf_to_NxN.
+  rewrite H, H'.
+  rewrite <- beq_nat_refl.
+  reflexivity.
+Qed.
+
+Lemma conf_to_NxN_spec_Generic :
+  forall conf n,
+    majority_stack (nominal_spectrum conf) = Invalid n ->
+    (length (M.support (multiset (nominal_spectrum conf)))) <> 3 ->
+    conf_to_NxN conf = (3,
+     nG -
+     (M.multiplicity (extreme_center (nominal_spectrum conf)) (multiset (nominal_spectrum conf)) +
+      M.multiplicity (hd 0%R (sort (nominal_spectrum conf))) (multiset (nominal_spectrum conf)) +
+      M.multiplicity (last (sort (nominal_spectrum conf)) 0%R) (multiset (nominal_spectrum conf)))).
+Proof.
+  intros conf n H H'.
+  unfold conf_to_NxN.
+  rewrite <- beq_nat_false_iff in H'.
+  rewrite H,H'.
+  reflexivity.
+Qed.
+
+
+Lemma foo : forall (da : demonic_action nG 0) conf,
+  ~forbidden conf ->
+  (exists gmove, (round robogram da (gp conf) gmove) <> (gp conf) gmove) ->
+  lt_conf (lift_gp (round robogram da (gp conf))) conf.
+Proof.
+  intros da conf Hvalid Hcabouge.
+  destruct Hcabouge as [gmove Hg].
+  destruct (majority_stack (nominal_spectrum conf)) eqn:Heq.
+  - apply majority_stack_NoResult_spec in Heq.
+    assert (h:=nominal_spectrum_length conf).
+    rewrite Heq in h.
+    simpl in h.
+    assert (h':=size_G);omega.
+  - destruct (Rdec (frame da gmove) 0) eqn:heq.
+    { unfold round in Hg.
+      rewrite heq in Hg.
+      elim Hg.
+      reflexivity.
+    }
+    assert (exists n',
+               majority_stack (nominal_spectrum (lift_gp (round robogram da (gp conf))))
+               = Valid l n'
+               /\ n' > n).
+    { admit. }
+    decompose [ex and] H.
+    red.
+    rewrite (conf_to_NxN_spec_Valid _ H1).
+    rewrite (conf_to_NxN_spec_Valid _ Heq).
+    apply right_lex.
+    assert (nG >= x).
+    { admit. }
+    omega.
+    
+  - destruct (eq_nat_dec (length (M.support (multiset (nominal_spectrum conf)))) 3).
+    + red.
+      rewrite (conf_to_NxN_spec_Three _ Heq e).
+      destruct (majority_stack (nominal_spectrum (lift_gp (round robogram da conf.(gp))))) eqn:Hround.
+      * rewrite (conf_to_NxN_NoResult _ Hround). apply left_lex. omega.
+      * 
+      assert (M.multiplicity
+                (nth 1 (sort (M.support (multiset (nominal_spectrum conf)))) 0%R)
+                (multiset (nominal_spectrum (lift_gp (round robogram da (gp conf)))))
+              >
+              M.multiplicity
+                (nth 1 (sort (M.support (multiset (nominal_spectrum conf)))) 0%R)
+                (multiset (nominal_spectrum conf))).
+    { admit. }
+    apply right_lex.
+    assert (nG >= x).
+    { admit. }
+    omega.
+      rewrite round_simplify_Three;try eassumption.
+    
+
+
 Qed.
 
 
