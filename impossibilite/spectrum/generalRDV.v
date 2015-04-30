@@ -1926,7 +1926,99 @@ rewrite Hmaj, H3. rewrite <- beq_nat_refl.
 apply nth_indep. unfold M.elt in H3. rewrite <- (Permutation_length (Permuted_sort _)), H3. omega.
 Qed.
 
-Lemma nominal_spectrum_3_stacks : forall pos, length (M.support (multiset (nominal_spectrum pos))) = 3%nat <->
+Lemma nominal_spectrum_3_stacks : forall pos,
+    (length (M.support (multiset (nominal_spectrum pos))) >= 3%nat)%nat <->
+    exists pt1 pt2 pt3 l, exists n1 n2 n3,
+        pt1 <> pt2 /\ pt2 <> pt3 /\ pt1 <> pt3 /\
+        (0 < n1)%nat /\ (0 < n2)%nat /\ (0 < n3)%nat /\
+        Permutation (nominal_spectrum pos) (alls pt1 n1 ++ alls pt2 n2 ++ alls pt3 n3++l).
+Proof.
+intro pos. split; intro H.
+- assert (Hl : exists pt1 pt2 pt3 l, M.support (multiset (nominal_spectrum pos)) =  pt1 :: pt2 :: pt3 :: l).
+  { destruct (M.support (multiset (nominal_spectrum pos))) as [| a [| b [| c [| d l]]]]; inversion H; try (exfalso;omega).
+    - exists a. exists b. exists c. exists nil. reflexivity.
+    - exists a. exists b. exists c. exists (d::l). reflexivity. } clear H.
+  destruct Hl as [pt1 [pt2 [pt3 [ l Hl]]]]. exists pt1. exists pt2. exists pt3.
+  exists (remove Rdec pt3 (remove Rdec pt2 (remove Rdec pt1 (nominal_spectrum pos)))).
+  exists (M.multiplicity pt1 (multiset (nominal_spectrum pos))).
+  exists (M.multiplicity pt2 (multiset (nominal_spectrum pos))).
+  exists (M.multiplicity pt3 (multiset (nominal_spectrum pos))).
+  assert (Hdup := M.support_NoDupA (multiset (nominal_spectrum pos))).
+  rewrite Hl in Hdup. inversion_clear Hdup. inversion_clear H0. clear H2.
+  assert (H12 : pt1 <> pt2). { intro Habs. apply H. now left. }
+  assert (H13 : pt1 <> pt3). { intro Habs. apply H. now right; left. }
+  assert (H23 : pt2 <> pt3). { intro Habs. apply H1. now left. }
+  clear H H1. repeat split; trivial.
+  + change (M.In pt1 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now left.
+  + change (M.In pt2 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now right; left.
+  + change (M.In pt3 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now do 2 right; left.
+  + do 3 rewrite multiset_spec. etransitivity. apply (remove_count_occ_restore Rdec pt1).
+    apply Permutation_app. reflexivity. etransitivity. apply (remove_count_occ_restore Rdec pt2).
+    apply Permutation_app. now rewrite count_occ_remove_out.
+    etransitivity.  apply (remove_count_occ_restore Rdec pt3).
+    apply Permutation_app. rewrite count_occ_remove_out;auto.
+    now rewrite count_occ_remove_out.
+    reflexivity.
+
+- destruct H as [pt1 [pt2 [pt3 [l [n1 [n2 [n3 [H12 [H23 [H13 [Hn1 [Hn2 [Hn3 Hperm]]]]]]]]]]]]].
+  rewrite Hperm. do 3 rewrite multiset_app. repeat rewrite multiset_alls.
+  do 3 rewrite M.add_union_singleton.
+  unfold ge.
+
+  assert (In pt1 (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l)))))).
+  { rewrite <- InA_Leibniz.
+    rewrite M.support_spec.
+    unfold M.In.
+    rewrite M.add_spec.
+    omega. }
+  assert (In pt2 (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l)))))).
+  { rewrite <- InA_Leibniz.
+    rewrite M.support_spec.
+    unfold M.In.
+    rewrite M.add_spec';auto.
+    unfold M.In.
+    rewrite M.add_spec;auto.
+    omega. }
+  assert (In pt3 (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l)))))).
+  { rewrite <- InA_Leibniz.
+    rewrite M.support_spec.
+    unfold M.In.
+    rewrite M.add_spec';auto.
+    unfold M.In.
+    rewrite M.add_spec';auto.
+    unfold M.In.
+    rewrite M.add_spec;auto.
+    omega. }
+  remember (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l))))) as lst.
+  clear -H H0 H1 H12 H23 H13.
+  rewrite <- InA_Leibniz in *.
+  apply (PermutationA_split _) in H.
+  destruct H.
+  rewrite H in *.
+  simpl.
+  apply le_n_S.
+  rewrite -> InA_Leibniz in *.
+  simpl in H0, H1.
+  destruct H0, H1; try contradiction.
+  rewrite <- InA_Leibniz in *.
+  apply (PermutationA_split _) in H0.
+  destruct H0.
+  rewrite H0 in *.
+  simpl.
+  apply le_n_S.
+  rewrite -> InA_Leibniz in *.
+  simpl in H1.
+  destruct H1; try contradiction.
+  rewrite <- InA_Leibniz in *.
+  apply (PermutationA_split _) in H1.
+  destruct H1.
+  rewrite H1 in *.
+  simpl.
+  apply le_n_S.
+  auto with arith.
+Qed.
+
+Lemma nominal_spectrum_3_stacks_nil : forall pos, length (M.support (multiset (nominal_spectrum pos))) = 3%nat <->
   exists pt1 pt2 pt3, exists n1 n2 n3, pt1 <> pt2 /\ pt2 <> pt3 /\ pt1 <> pt3 /\
     (0 < n1)%nat /\ (0 < n2)%nat /\ (0 < n3)%nat /\
     Permutation (nominal_spectrum pos) (alls pt1 n1 ++ alls pt2 n2 ++ alls pt3 n3).
@@ -1990,13 +2082,13 @@ Ltac Rabs :=
     | _ => contradiction
   end.
 
-Corollary nominal_spectrum_Three : forall pos n, 
+Corollary nominal_spectrum_Three : forall pos n,
   majority_stack (nominal_spectrum pos) = Invalid n ->
   length (M.support (multiset (nominal_spectrum pos))) = 3%nat ->
   exists pt1 pt2 pt3, exists m, pt1 <> pt2 /\ pt2 <> pt3 /\ pt1 <> pt3 /\ (0 < m <= n)%nat /\
     Permutation (nominal_spectrum pos) (alls pt1 n ++ alls pt2 n ++ alls pt3 m).
 Proof.
-intros pos n Hmaj H3. rewrite nominal_spectrum_3_stacks in H3.
+intros pos n Hmaj H3. rewrite nominal_spectrum_3_stacks_nil in H3.
 destruct H3 as [pt1 [pt2 [pt3 [n1 [n2 [n3 [H12 [H23 [H13 [Hn1 [Hn2 [Hn3 Hperm]]]]]]]]]]]].
 rewrite Hperm in Hmaj. rewrite majority_stack_Invalid_spec in Hmaj.
 destruct Hmaj as [Hn [x [y [Hx [Hy [Hxy Hother]]]]]].
@@ -2428,9 +2520,26 @@ Lemma nominal_spectrum_3_stacks_beaucoup_mieux:
       pt1 <> pt3 /\
       Permutation (nominal_spectrum pos) (pt1::pt2::pt3::l).
 Proof.
-Admitted.
+  intros pos H.
+  rewrite (nominal_spectrum_3_stacks pos) in H.
+  decompose [ex and] H; clear H.
+  destruct x3; [exfalso; omega|].
+  destruct x4; [exfalso; omega|].
+  destruct x5; [exfalso; omega|].
+  simpl in H7.
+  exists x, x0 , x1 , (alls x x3 ++ alls x0 x4 ++ alls x1 x5 ++ x2);repeat split;auto.
+  rewrite H7.
+  rewrite <- Permutation_middle.
+  apply perm_skip, perm_skip.
+  transitivity ((alls x x3 ++ x1 :: alls x0 x4 ++ alls x1 x5 ++ x2)).
+  - apply Permutation_app_head.
+    symmetry.
+    apply Permutation_middle.
+  - symmetry.
+    apply Permutation_middle.
+Qed.
 
-(* TODO *)
+
 Corollary nominal_spectrum_3_stacks_beaucoup_mieux_mieux:
   forall pos pt3,
     (length (M.support (multiset (nominal_spectrum pos))) >= 3)%nat ->
