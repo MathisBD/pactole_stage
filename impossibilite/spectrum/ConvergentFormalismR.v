@@ -236,6 +236,19 @@ Definition Gnames : list G := fin_map (fun x : G => x).
 Definition Bnames : list B := fin_map (fun x : B => x).
 Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
+Lemma In_Gnames : forall g : G, In g Gnames.
+Proof. intro g. unfold Gnames. change g with (Datatypes.id g). apply In_fin_map. Qed.
+
+Lemma In_Bnames : forall b : B, In b Bnames.
+Proof. intro b. unfold Bnames. change b with (Datatypes.id b). apply In_fin_map. Qed.
+
+Lemma In_names : forall r : ident, In r names.
+Proof.
+intro r. unfold names. rewrite in_app_iff. destruct r as [g | b].
+- left. apply in_map, In_Gnames.
+- right. apply in_map, In_Bnames.
+Qed.
+
 (** ** Positions *)
 
 (** We explicitely say that a permutation has a different treatment for good and

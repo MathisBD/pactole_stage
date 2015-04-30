@@ -2698,21 +2698,22 @@ Lemma increase_move :
      < M.multiplicity pt (multiset (nominal_spectrum (lift_gp (round r da (gp conf))))))%nat ->
     exists g, round r da (gp conf) g = pt /\ round r da (gp conf) g <> (gp conf) g.
 Proof.
-  intros.
+  intros r conf da pt Hlt.
   destruct (existsb (fun x =>
                        (andb (Rdec_bool ((round r da (gp conf) x))  pt)
-                             (negb (Rdec_bool ((gp conf) x) pt)))) (active da)) eqn:Hex.
+                             (negb (Rdec_bool ((gp conf) x) pt)))) (Gnames nG)) eqn:Hex.
   - apply (existsb_exists) in Hex.
     destruct Hex as [g [Hin Heq_bool]].
     exists g.
     rewrite andb_true_iff, negb_true_iff, Rdec_bool_true_iff, Rdec_bool_false_iff in Heq_bool.
     destruct Heq_bool; subst; auto.
-  - rewrite <- negb_true_iff in Hex. rewrite forallb_existsb in Hex.
-    rewrite forallb_forall in Hex.
-    setoid_rewrite negb_andb in Hex.
-    setoid_rewrite orb_true_iff in Hex.
-    setoid_rewrite negb_true_iff in Hex.
-    setoid_rewrite negb_false_iff in Hex.
+  - exfalso. rewrite <- negb_true_iff, forallb_existsb, forallb_forall in Hex.
+    (* Let us remove the In x (Gnames nG) and perform some rewriting. *)
+    assert (Hg : forall g, round r da (gp conf) g <> pt \/ gp conf g = pt).
+    { intro g. specialize (Hex g). rewrite negb_andb, orb_true_iff, negb_true_iff, negb_involutive in Hex.
+      rewrite <- Rdec_bool_false_iff, <- Rdec_bool_true_iff. apply Hex, In_Gnames. }
+    (** We prove a contradiction by showing that the opposite inequality of Hlt holds. *)
+    clear Hex. revert Hlt. apply le_not_lt. SearchAbout M.filter.
 Admitted.
 
 Lemma not_forbidden_Invalid_length : forall pos n,
