@@ -890,14 +890,35 @@ intros P Pdec l. induction l; simpl.
   - right. intros Habs. inversion_clear Habs. contradiction.
 Qed.
 
+Global Instance forallb_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@forallb A).
+Proof.
+intros f f' Hf l l' Hl. subst l'. induction l.
+- reflexivity.
+- simpl. destruct (f a) eqn:Hfa; rewrite <- (Hf a), <- IHl, Hfa; reflexivity.
+Qed.
+
+Global Instance existsb_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@existsb A).
+Proof.
+intros f f' Hf l l' Hl. subst l'. induction l.
+- reflexivity.
+- simpl. destruct (f a) eqn:Hfa; rewrite <- (Hf a), <- IHl, Hfa; reflexivity.
+Qed.
+
 Theorem existsb_forallb : forall (f : A -> bool) l,
-  existsb (fun x => negb (f x)) l = negb (forallb f l).
+  negb (forallb f l) = existsb (fun x => negb (f x)) l.
 Proof.
 intros f l. induction l as [| x l].
 + reflexivity.
 + simpl. destruct (f x) eqn:Hfx; simpl.
   - simpl. apply IHl.
   - reflexivity.
+Qed.
+
+Lemma forallb_existsb : forall (f : A -> bool) l,
+  negb (existsb f l) = forallb (fun x : A => negb (f x)) l.
+Proof.
+intros. rewrite <- negb_involutive, existsb_forallb. f_equal. f_equiv.
+repeat intro. subst. now rewrite negb_involutive.
 Qed.
 
 Global Instance inclA_compat : Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (inclA eqA).

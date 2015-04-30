@@ -2692,15 +2692,27 @@ Proof.
     eapply perm_swap.
 Qed.
 
-
-Lemma increase_move : forall r conf da pt,
-    ((M.multiplicity pt (multiset (nominal_spectrum conf)))
-     < (M.multiplicity
-          pt
-          (multiset (nominal_spectrum (lift_gp
-                                         (@round nG 0 r da (gp conf)))))))%nat <->
-    exists g, round r da (gp conf) g = pt /\ (gp conf) g <> pt.
+Lemma increase_move :
+  forall r conf da pt,
+    (M.multiplicity pt (multiset (nominal_spectrum conf))
+     < M.multiplicity pt (multiset (nominal_spectrum (lift_gp (round r da (gp conf))))))%nat ->
+    exists g, round r da (gp conf) g = pt /\ round r da (gp conf) g <> (gp conf) g.
 Proof.
+  intros.
+  destruct (existsb (fun x =>
+                       (andb (Rdec_bool ((round r da (gp conf) x))  pt)
+                             (negb (Rdec_bool ((gp conf) x) pt)))) (active da)) eqn:Hex.
+  - apply (existsb_exists) in Hex.
+    destruct Hex as [g [Hin Heq_bool]].
+    exists g.
+    rewrite andb_true_iff, negb_true_iff, Rdec_bool_true_iff, Rdec_bool_false_iff in Heq_bool.
+    destruct Heq_bool; subst; auto.
+  - rewrite <- negb_true_iff in Hex. rewrite forallb_existsb in Hex.
+    rewrite forallb_forall in Hex.
+    setoid_rewrite negb_andb in Hex.
+    setoid_rewrite orb_true_iff in Hex.
+    setoid_rewrite negb_true_iff in Hex.
+    setoid_rewrite negb_false_iff in Hex.
 Admitted.
 
 Lemma not_forbidden_Invalid_length : forall pos n,
@@ -3138,9 +3150,10 @@ Proof.
             split; trivial. rewrite <- Heq. auto. }
 Qed.
 
-
-Lemma gathered_at_PosEq : forall (gp : Four -> R) pt, gathered_at gp pt -> ExtEq gp (fun _ => pt).
+(*
+Lemma gathered_at_PosEq : forall gp pt, gathered_at pt gp -> ExtEq gp (fun _ => pt).
 Proof. intros gp pt Hgather. intro n. apply Hgather. Qed.
+*)
 
 Lemma gathered_at_Gather : forall pt (d : demon Four Zero) gp, gathered_at gp pt ->
   Gather pt (execute robogram d gp).
