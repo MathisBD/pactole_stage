@@ -70,6 +70,9 @@ intro l. split; intro Hl; induction l; inversion_clear Hl; constructor;
 (now rewrite <- InA_Leibniz in *) || now apply IHl.
 Qed.
 
+Lemma inclA_Leibniz : forall l1 l2 : list A, inclA Logic.eq l1 l2 <-> incl l1 l2.
+Proof. intros. unfold inclA, incl. setoid_rewrite InA_Leibniz. reflexivity. Qed.
+
 Lemma Permutation_PermutationA_weak : forall l1 l2, Permutation l1 l2 -> PermutationA eqA l1 l2.
 Proof.
 intros l1 l2 Heq. induction Heq; try now constructor.
@@ -784,6 +787,19 @@ Qed.
 Theorem PermutationA_rev : forall l, PermutationA eqA l (rev l).
 Proof. intro. apply Permutation_PermutationA_weak. apply Permutation_rev. Qed.
 
+Lemma hd_invariant : forall d d' (l : list A), l <> nil -> hd d l = hd d' l.
+Proof.
+intros d d' [| x l] Hl; simpl; reflexivity || now elim Hl.
+Qed.
+
+Lemma last_invariant : forall d d' (l : list A), l <> nil -> last l d = last l d'.
+Proof.
+intros d d' l Hl. induction l as [| x [| y l]].
+- now elim Hl.
+- reflexivity.
+- apply IHl. discriminate.
+Qed.
+
 Lemma last_rev_hd : forall (d : A) l, last (rev l) d = hd d l.
 Proof. intros d l. destruct l; simpl. reflexivity. rewrite app_last. reflexivity. discriminate. Qed.
 
@@ -882,6 +898,39 @@ intros f l. induction l as [| x l].
 + simpl. destruct (f x) eqn:Hfx; simpl.
   - simpl. apply IHl.
   - reflexivity.
+Qed.
+
+Global Instance inclA_compat : Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (inclA eqA).
+Proof. intros ? ? Hl1 ? ? Hl2. unfold inclA. setoid_rewrite Hl1. setoid_rewrite Hl2. reflexivity. Qed.
+
+Lemma inclA_cons_inv : forall x l1 l2, ~InA eqA x l1 ->
+  inclA eqA (x :: l1) (x :: l2) -> inclA eqA l1 l2.
+Proof.
+intros x l1 l2 Hx Hincl y Hin1.
+assert (Hin2 : InA eqA y (x :: l2)). { apply Hincl. now right. }
+inversion_clear Hin2; trivial. rewrite <- H in Hx. contradiction.
+Qed.
+
+Lemma NoDupA_inclA_length : forall l1 l2 : list A, NoDupA eqA l1 -> inclA eqA l1 l2 -> length l1 <= length l2.
+Proof.
+intro l1. induction l1 as [| a l1]; intros l2 Hnodup Hincl.
++ simpl. omega.
++ assert (Hin : InA eqA a l2). { apply Hincl. now left. }
+  apply PermutationA_split in Hin. destruct Hin as [l2' Heql2]. 
+  rewrite Heql2 in *. inversion_clear Hnodup.
+  apply inclA_cons_inv in Hincl; trivial. simpl. apply le_n_S. now apply IHl1.
+Qed.
+
+Lemma NoDupA_inclA_length_PermutationA : forall l1 l2,
+  NoDupA eqA l1 -> NoDupA eqA l2 -> inclA eqA l1 l2 -> length l1 = length l2 -> PermutationA eqA l1 l2.
+Proof.
+intro l1. induction l1 as [| x l1]; intros l2 Hnodup1 Hnodup2 Hincl Hlen.
++ destruct l2. reflexivity. discriminate Hlen.
++ assert (Hin : InA eqA x l2). { apply Hincl. now left. }
+  apply PermutationA_split in Hin. destruct Hin as [l2' Heql2]. 
+  rewrite Heql2 in *. constructor; try reflexivity.
+  inversion_clear Hnodup1. inversion_clear Hnodup2.
+  apply inclA_cons_inv in Hincl; trivial. apply IHl1; auto.
 Qed.
 
 End List_results.
