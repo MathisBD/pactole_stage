@@ -55,6 +55,7 @@ Module MakeMetricSpace (Def : MetricSpaceDef) : MetricSpace
     with Definition eq := Def.eq
     with Definition eq_dec := Def.eq_dec
     with Definition origin := Def.origin
+    with Definition dist := Def.dist
     with Definition add := Def.add
     with Definition mul := Def.mul
     with Definition opp := Def.opp.

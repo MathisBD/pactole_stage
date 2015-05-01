@@ -25,7 +25,13 @@ Close Scope R_scope.
 
 Module Rdef : MetricSpaceDef with Definition t := R
                              with Definition eq := @Logic.eq R
-                             with Definition eq_dec := Rdec.
+                             with Definition eq_dec := Rdec
+                             with Definition origin := 0%R
+                             with Definition dist := fun x y => Rabs (x - y)
+                             with Definition add := Rplus
+                             with Definition mul := Rmult
+                             with Definition opp := Ropp.
+  
   Definition t := R.
   Definition origin := 0%R.
   Definition eq := @Logic.eq R.
@@ -87,6 +93,7 @@ Module Rdef : MetricSpaceDef with Definition t := R
   
   (* The multiplicative identity is missing *)
 End Rdef.
+
 
 Module R := MakeMetricSpace(Rdef).
 
@@ -212,11 +219,69 @@ Definition g2 : Names.G := @g2' nG size_G.
 Lemma g1_g2 : g1 <> g2.
 Proof. apply g1'_g2'. Qed.
 
-(* Temporary while we look for the best way to state what is a similarity *)
-Theorem similarity_in_R : forall sim c x, (sim.(f) c x = sim.(ratio) * (x - c))%R.
+Open Scope R_scope.
+
+(* A location is determined by distances to 2 points. *)
+Lemma dist_case : forall x y, R.dist x y = x - y \/ R.dist x y = y - x.
 Proof.
-intros [f ratio Hf Hdist] c x; simpl in *.
+unfold R.dist, Rdef.dist. intros x y. destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
+- apply Rabs_pos_eq in Hle. lra.
+- apply Rabs_left in Hlt. lra.
 Qed.
+
+Lemma dist_locate : forall x y k, R.dist x y = k -> x = y + k \/ x = y - k.
+Proof. intros x y k ?. subst. assert (Hcase := dist_case x y). lra. Qed.
+
+Lemma GPS : forall x y z1 z2, x <> y -> R.dist z1 x = R.dist z2 x -> R.dist z1 y = R.dist z2 y -> z1 = z2.
+Proof.
+intros x y z1 z2 Hneq Hx Hy.
+assert (Hcase1 := dist_case z1 x). assert (Hcase2 := dist_case z2 x).
+assert (Hcase3 := dist_case z1 y). assert (Hcase4 := dist_case z2 y).
+lra.
+Qed.
+Arguments GPS x y z1 z2 _ _ _ : clear implicits.
+
+(* Not true when the metric space has dimension 0, we need at least 2 different points. *)
+Lemma sim_ratio_pos : forall sim, (0 <= sim.(ratio))%R.
+Proof.
+intros [f k c Hc Hk]. simpl. clear c Hc. specialize (Hk R1 R0).
+assert (H1 : R.dist 1 0 = 1). { unfold R.dist, Rdef.dist. rewrite Rminus_0_r. apply Rabs_pos_eq. lra. }
+rewrite H1, Rmult_1_r in Hk. subst. apply R.dist_pos.
+Qed.
+
+(* A similarity in R is described by its ratio and its center. *)
+Theorem similarity_in_R : forall sim,
+  (forall x, sim.(f) x = sim.(ratio) * (x - sim.(center)) + sim.(center)) \/
+  (forall x, sim.(f) x = - sim.(ratio) * (x - sim.(center)) + sim.(center)).
+Proof.
+intro sim. assert (Hkpos : 0 <= sim.(ratio)) by apply sim_ratio_pos.
+destruct sim as [f k c Hc Hk]. simpl in *. destruct (Rdec k 0) as [Hk0 | Hk0].
+* (* if the ratio is 0, the similarity is a constant function. *)
+  left. intro x. subst k. rewrite Rmult_0_l, Rplus_0_l.
+  rewrite <- R.dist_defined. rewrite <- Hc, Hk. ring.
+* assert (Hc1 : f (c + 1) = c + k \/ f (c + 1) = c - k).
+  { specialize (Hk (c + 1) c). rewrite Hc in Hk.
+    assert (H1 : R.dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
+    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) c) as [Heq | Heq]; rewrite Heq in Hk; lra. }
+  destruct Hc1 as [Hc1 | Hc1].
+  + left. intro x. apply (GPS (f c) (f (c + 1))).
+    - lra.
+    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
+      replace (k * (x - c) + c - c) with (k * (x - c)) by ring.
+      now rewrite Rabs_mult, (Rabs_pos_eq k Hkpos).
+    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
+      replace (k * (x - c) + c - (c + k)) with (k * (x - (c + 1))) by ring.
+      now rewrite Rabs_mult, (Rabs_pos_eq k Hkpos).
+  + right. intro x. apply (GPS (f c) (f (c + 1))).
+    - lra.
+    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
+      replace (- k * (x - c) + c - c) with (- k * (x - c)) by ring.
+      rewrite Rabs_mult, (Rabs_left (- k)); lra.
+    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
+      replace (- k * (x - c) + c - (c - k)) with (- k * (x - (c + 1))) by ring.
+      rewrite Rabs_mult, (Rabs_left (- k)); lra.
+Qed.
+
 (* Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'"). *)
 
 Corollary spec_nil : forall conf, ~Spec.eq (Spec.from_config conf) Spec.empty.

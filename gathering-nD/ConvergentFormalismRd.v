@@ -56,7 +56,7 @@ Qed.
 
 (** Similarities are functions that multiply distance by a constant ratio.
     For convenience, we also add their center. *)
-(* I assume that similarities are bijections but it is probably provable. *)
+(* I assume that similarities are bijections but it is probably provable, provided k <> 0. *)
 Record similarity := {
   f :> @bijection Location.t _ _;
   ratio : R;
@@ -78,6 +78,7 @@ Proof. unfold sim_eq. split.
 + intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] Hfg. simpl in *. now symmetry.
 + intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] [h kh ch Hch Hkh] ? ?. simpl in *. etransitivity; eassumption.
 Qed.
+
 
 Unset Implicit Arguments.
 
