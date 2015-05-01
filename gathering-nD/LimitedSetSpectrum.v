@@ -11,6 +11,7 @@ Module Type Radius.
   Parameter radius : R.
 End Radius.
 
+
 Module Make(Loc : MetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
 
 Module M := SetSpectrum.Make(Loc)(N).
@@ -30,27 +31,26 @@ Definition eq_dec := M.eq_dec.
 Definition In := M.In.
 
 
-Definition from_pos pos : M.t :=
+Definition from_config pos : M.t :=
   M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.set (Pos.list pos)).
 
-Instance from_pos_compat : Proper (Pos.eq ==> eq) from_pos.
+Instance from_config_compat : Proper (Pos.eq ==> eq) from_config.
 Proof.
-intros pos1 pos2 Hpos x. unfold from_pos.
+intros pos1 pos2 Hpos x. unfold from_config.
 f_equiv. apply M.MProp.MP.Dec.F.filter_ext.
 + intros y z Hyz. rewrite Hyz. reflexivity.
 + intro. reflexivity.
 + now apply M.set_compat, eqlistA_PermutationA_subrelation, Pos.list_compat.
 Qed.
 
-Theorem from_pos_spec : forall pos l,
-  In l (from_pos pos) <-> (Loc.dist l Loc.origin <= R.radius)%R
-                          /\ exists id, Loc.eq l (pos id).
-Proof.
-intros pos l. unfold from_pos. rewrite M.M.filter_spec, Rle_bool_spec.
-+ rewrite M.set_spec, Pos.list_spec. intuition.
-+ intros x y Hxy. now rewrite Hxy.
-Qed.
+Definition is_ok s pos := forall l,
+  In l s <-> (Loc.dist l Loc.origin <= R.radius)%R /\ exists id : Names.ident, Loc.eq l (pos id).
 
-Definition is_ok s pos := eq s (from_pos pos).
+Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
+Proof.
+unfold from_config, is_ok. intros. rewrite M.M.filter_spec, Rle_bool_spec.
+- rewrite M.set_spec, Pos.list_spec. intuition.
+- intros x y Hxy. now rewrite Hxy.
+Qed.
 
 End Make.

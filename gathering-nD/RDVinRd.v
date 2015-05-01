@@ -42,8 +42,8 @@ End GatheringLocation.
 (** *  The Gathering Problem  **)
 
 (** Vocabulary: we call a [location] the coordinate of a robot. We
-    call a [position] a function from robots to position. An
-    [execution] is an infinite (coinductive) stream of [position]s. A
+    call a [configuration] a function from robots to position. An
+    [execution] is an infinite (coinductive) stream of [configuration]s. A
     [demon] is an infinite stream of [demonic_action]s. *)
 
 (** **  Some general properties related to the gathering problem  *)
@@ -107,6 +107,7 @@ Abort.
 Module Spec := MultisetSpectrum.Make(Loc)(N).
 
 Module Export Formalism := ConvergentFormalism(Loc)(N)(Spec).
+Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots
     are at the same location [pt] (exactly). *)
@@ -126,13 +127,13 @@ Inductive WillGather (pt : Loc.t) (e : execution) : Prop :=
     there is no solution to the gathering problem.
     Therefore, we define these positions as [forbidden]. *)
 Definition forbidden (pos : Pos.t) :=
-  let m := Spec.from_pos(pos) in
-  exists p1 p2, ~Loc.eq p1 p2 /\ Spec.multiplicity p1 m = N.nG /\ Spec.multiplicity p2 m = N.nG.
+  Nat.Even N.nG /\ let m := Spec.from_config(pos) in
+  exists p1 p2, ~Loc.eq p1 p2 /\ Spec.multiplicity p1 m = N.nG / 2 /\ Spec.multiplicity p2 m = N.nG / 2.
 
 Instance forbidden_invariant : Proper (Pos.eq ==> iff) forbidden.
 Proof.
-intros ? ? Heq. split; intros [pt1 [pt2 [Hneq Hpt]]];
-exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
+intros ? ? Heq. split; intros [HnG [pt1 [pt2 [Hneq Hpt]]]];
+split; assumption || exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
 
 (** [solGathering r d] means that any possible (infinite)
@@ -145,10 +146,9 @@ End GeneralGathering.
 
 
 (** **  Framework of the impossibility proof: a finite set with at leasts two elements  **)
-Section foo.
+Section HypRobots.
 Variable nG : nat.
 Hypothesis size_G : nG >= 2.
-
 
 
 Definition g1' : Fin.t nG.
@@ -161,7 +161,8 @@ destruct nG as [| [| n]] eqn:HnG; try (abstract (omega)).
 apply (Fin.FS Fin.F1).
 Defined.
 
-End foo.
+End HypRobots.
+
 Require Import Coq.Program.Equality.
 Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
 Proof.
@@ -190,21 +191,6 @@ Module GatheringinRd(Loc : GatheringLocation).
 Module Import Gathering := GeneralGathering(Loc)(N).
 
 Close Scope R_scope.
-
-(*
-Program Definition g1 : Spec.Names.G := (@Fin.F1 (nG - 1)).
-Next Obligation.
-  abstract(assert  (nG >= 2) by apply size_G;unfold N.nG;omega).
-Defined.
-
-Program Definition g2 : Spec.Names.G := (@Fin.FS (nG - 1) (@Fin.F1 (nG - 2))).
-Next Obligation.
-  abstract(assert  (nG >= 2) by apply size_G;unfold N.nG;omega).
-Defined.
-Next Obligation.
-  abstract(assert  (nG >= 2) by apply size_G;unfold N.nG;omega).
-Defined.
-*)
 
 Definition g1 : Spec.Names.G := @g1' nG size_G.
 Definition g2 : Spec.Names.G := @g2' nG size_G.
@@ -339,13 +325,13 @@ Lemma round_simplify : forall (da : demonic_action) pos,
                        match id with
                          | Byz b => relocate_byz da b
                          | Good g =>
-                           match Spec.support (max (Spec.from_pos pos)) with
+                           match Spec.support (max (Spec.from_config pos)) with
                              | nil => Loc.origin (* only happen with no robots *)
                              | pt :: nil => pt (* case 1: one majority stack *)
                              | _ => (* several majority stacks *)
                                let '(c, R) := Loc.smallest_enclosing_sphere
-                                                (Spec.support (Spec.from_pos pos)) in
-                               if all_on_sphere c R (Spec.support (Spec.from_pos pos)) then c else
+                                                (Spec.support (Spec.from_config pos)) in
+                               if all_on_sphere c R (Spec.support (Spec.from_config pos)) then c else
                                if Rdec_bool (Loc.dist c Loc.origin) 0 then Loc.origin else
                                if Rdec_bool (Loc.dist c Loc.origin) R then Loc.origin else c
                            end

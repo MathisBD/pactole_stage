@@ -176,18 +176,18 @@ Qed.
 (** Building a spectrum from a position *)
 Include M.
 
-Definition from_pos pos : t := multiset (Pos.list pos).
+Definition from_config pos : t := multiset (Pos.list pos).
 
-Instance from_pos_compat : Proper (Pos.eq ==> eq) from_pos.
+Instance from_config_compat : Proper (Pos.eq ==> eq) from_config.
 Proof.
-intros pos1 pos2 Hpos x. unfold from_pos. do 2 f_equiv.
+intros pos1 pos2 Hpos x. unfold from_config. do 2 f_equiv.
 apply eqlistA_PermutationA_subrelation, Pos.list_compat. assumption.
 Qed.
 
-Theorem from_pos_spec : forall pos l,
-  M.multiplicity l (from_pos pos) = countA_occ _ Location.eq_dec l (Pos.list pos).
-Proof. intros. unfold from_pos. apply multiset_spec. Qed.
+Definition is_ok s pos := forall l,
+  M.multiplicity l s = countA_occ _ Location.eq_dec l (Pos.list pos).
 
-Definition is_ok s pos := eq s (from_pos pos).
+Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
+Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
 End Make.

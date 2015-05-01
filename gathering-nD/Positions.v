@@ -11,23 +11,64 @@ Require Import Robots.
 
     The framework for robots should be more general as for instance a ring is not a metric space.
     It seems that we only need a decidable type for locations and a notion of distance.  *)
-Module Type MetricSpace <: DecidableType.
+Module Type MetricSpaceDef <: DecidableType.
   Parameter t : Type.
   Parameter origin : t.
   Parameter eq : t -> t -> Prop.
   Parameter dist : t -> t -> R.
   Parameter eq_dec : forall x y, {eq x y} + {~eq x y}.
   
+  Parameter add : t -> t -> t.
+  Parameter mul : R -> t -> t.
+  Parameter opp : t -> t.
+  
+  Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
+  Declare Instance mul_compat : Proper (Logic.eq ==> eq ==> eq) mul.
+  Declare Instance opp_compat : Proper (eq ==> eq) opp.
+  
   Parameter eq_equiv : Equivalence eq.
   Parameter dist_defined : forall x y, dist x y = 0%R <-> eq x y.
   Parameter dist_sym : forall y x, dist x y = dist y x.
   Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
+  
+  Parameter plus_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Parameter add_comm : forall u v, eq (add u v) (add v u).
+  Parameter add_origin : forall u, eq (add u origin) u.
+  Parameter add_opp : forall u, eq (add u (opp u)) origin.
+  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Parameter add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
+  Parameter plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
+  (* The multiplicative identity is missing *)
+End MetricSpaceDef.
+
+Module MetricSpace (Def : MetricSpaceDef).
+  Export Def.
+
+  (** Proofs of two derivable properties about MetricSpace *)
+  Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Proof.
+  intros x x' Hx y y' Hy. apply Rle_antisym.
+  + replace (dist x' y') with (0 + dist x' y' + 0)%R by ring. symmetry in Hy.
+    rewrite <- dist_defined in Hx. rewrite <- dist_defined in Hy.
+    rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply triang_ineq.
+    rewrite Rplus_assoc. apply Rplus_le_compat_l, triang_ineq.
+  + replace (dist x y) with (0 + dist x y + 0)%R by ring. symmetry in Hx.
+    rewrite <- dist_defined in Hx. rewrite <- dist_defined in Hy.
+    rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply triang_ineq.
+    rewrite Rplus_assoc. apply Rplus_le_compat_l, triang_ineq.
+  Qed.
+  
+  Lemma dist_pos : forall x y, (0 <= dist x y)%R.
+  Proof.
+  intros x y. apply Rmult_le_reg_l with 2%R.
+  + apply Rlt_R0_R2.
+  + do 2 rewrite double. rewrite Rplus_0_r.
+    assert (Hx : eq x x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
+    setoid_rewrite dist_sym at 3. apply triang_ineq.
+  Qed.
 End MetricSpace.
 
-
-Module Type Position(Location:MetricSpace)(N:Size)(Names : Robots(N)).
-  Parameter dist_compat : Proper (Location.eq ==> Location.eq ==> Logic.eq) Location.dist.
-  Parameter dist_pos : forall x y : Location.t, (0 <= Location.dist x y)%R.
+Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   Definition t := Names.ident -> Location.t.
   Definition eq pos₁ pos₂ := forall id : Names.ident, Location.eq (pos₁ id) (pos₂ id).
   Declare Instance eq_equiv : Equivalence eq.
@@ -49,34 +90,10 @@ Module Type Position(Location:MetricSpace)(N:Size)(Names : Robots(N)).
 End Position.
 
 
-Module Make(Location : MetricSpace)(N : Size)(Names : Robots(N)) : Position(Location)(N)(Names)
+Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Position(Location)(N)(Names)
   with Definition t := Names.ident -> Location.t.
 
-(** Proofs of two derivable properties about MetricSpace *)
-Instance dist_compat : Proper (Location.eq ==> Location.eq ==> eq) (Location.dist).
-Proof.
-intros x x' Hx y y' Hy. apply Rle_antisym.
-+ replace (Location.dist x' y') with (0 + Location.dist x' y' + 0)%R by ring. symmetry in Hy.
-  rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
-  rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
-  rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
-+ replace (Location.dist x y) with (0 + Location.dist x y + 0)%R by ring. symmetry in Hx.
-  rewrite <- Location.dist_defined in Hx. rewrite <- Location.dist_defined in Hy.
-  rewrite <- Hx at 1. rewrite <- Hy. eapply Rle_trans. apply Location.triang_ineq.
-  rewrite Rplus_assoc. apply Rplus_le_compat_l, Location.triang_ineq.
-Qed.
-
-Lemma dist_pos : forall x y, (0 <= Location.dist x y)%R.
-Proof.
-intros x y. apply Rmult_le_reg_l with 2%R.
-+ apply Rlt_R0_R2.
-+ do 2 rewrite double. rewrite Rplus_0_r.
-  assert (Hx : Location.eq x x) by reflexivity. rewrite <- Location.dist_defined in Hx. rewrite <- Hx.
-  setoid_rewrite Location.dist_sym at 3. apply Location.triang_ineq.
-Qed.
-
 (** A position is a mapping from identifiers to locations.  Equality is extensional. *)
-
 Definition t := Names.ident -> Location.t.
 Definition eq (pos₁ pos₂ : t) : Prop := forall id, Location.eq (pos₁ id) (pos₂ id).
 
@@ -128,7 +145,7 @@ End Make.
 
 (** **  Spectra  **)
 
-Module Type Spectrum(Location : MetricSpace)(N : Size). (* <: DecidableType *)
+Module Type Spectrum(Location : DecidableType)(N : Size). (* <: DecidableType *)
   Module Names := Robots.Make(N).
   Module Pos := Make(Location)(N)(Names).
   
@@ -139,7 +156,8 @@ Module Type Spectrum(Location : MetricSpace)(N : Size). (* <: DecidableType *)
   Parameter eq_dec : forall x y : t, {eq x y} + {~eq x y}.
   
   (** A predicate characterizing correct spectra for a given local position *)
-  (* TODO: maybe a function [from_pos : position -> t] is a better idea as the demon will need it. 
-           Then this [is_ok] is simply the specification of [from_pos]. *)
+  Parameter from_config : Pos.t -> t.
+  Declare Instance from_config_compat : Proper (Pos.eq ==> eq) from_config.
   Parameter is_ok : t -> Pos.t -> Prop.
+  Parameter from_config_spec : forall config, is_ok (from_config config) config.
 End Spectrum.

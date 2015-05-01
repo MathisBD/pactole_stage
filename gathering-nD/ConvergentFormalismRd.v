@@ -11,6 +11,7 @@
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
+Require Import Equalities.
 Require Import Morphisms.
 Require Import Reals.
 Require Import Robots.
@@ -22,13 +23,23 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module ConvergentFormalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
+Module ConvergentFormalism (Location : MetricSpaceDef)(N : Size)(Spec : Spectrum(Location)(N)).
 
 Module Names := Spec.Names.
 Module Pos := Spec.Pos.
 
 (** ** Programs for good robots *)
 
+Record similarity := {
+  f :> Location.t → Location.t;
+  dist_preserve : forall x y, Location.dist (f x) (f y) = Location.dist x y}.
+
+Instance similarity_compat : forall sim, Proper (Location.eq ==> Location.eq) sim.(f).
+Proof. repeat intro. now rewrite <- Location.dist_defined, dist_preserve, Location.dist_defined. Qed.
+
+(* Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'"). *)
+
+(*
 Record bijection (T : Type) eqT (Heq : @Equivalence T eqT) := {
   section :> T → T;
   retraction : T → T;
@@ -51,6 +62,7 @@ Instance retraction_compat : Proper (bij_eq ==> (Location.eq ==> Location.eq)) (
 Proof.
 intros f g Hfg x y Hxy. rewrite <- f.(Inversion), (Hfg _ _ (reflexivity _)), Hxy, g.(Inversion). reflexivity.
 Qed.
+*)
 
 Unset Implicit Arguments.
 (** ** Good robots have a common program, which we call a robogram *)
@@ -68,46 +80,44 @@ Proof. split.
   rewrite (H1 _ _ (reflexivity _)), (H2 _ _ (reflexivity _)). now apply (pgm_compat r3).
 Qed.
 
-(** A robot is either inactive (case [Off]) or activated and observing with the [obs]-applied local vision. *)
-(* TODO: We need to parametrize the type of bijection, to express assumptions about them.
-         Otherwise robots cannot detect spheres as not all bijetions are isometric! *)
-Inductive phase :=
-  | Off
-  | On (obs : Location.t → bijection Location.eq_equiv)
-       (Hobs : Proper (Location.eq ==> bij_eq) obs).
-Arguments On obs Hobs. (* does not seeem to have any effect *)
-
-Definition phase_eq (ph1 ph2 : phase) :=
-  match ph1, ph2 with 
-    | Off, Off => True
-    | Off, On _ _ => False
-    | On _ _, Off => False
-    | On obs1 Hobs1, On obs2 Hobs2 => (Location.eq ==> bij_eq)%signature obs1 obs2
+Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
+  match xo, yo with
+    | None, None => True
+    | None, Some _ | Some _, None => False
+    | Some x, Some y => eq x y
   end.
 
-Instance phase_eq_equiv : Equivalence phase_eq.
+Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split.
-+ intros [| obs]; repeat intro. reflexivity. apply (Hobs _ _ H). assumption.
-+ intros [| obs1] [| obs2]; auto. intros Hobs2 Heq; repeat intro. symmetry. apply Heq; symmetry; assumption.
-+ intros [| obs1] [| obs2] [| obs3] Heq1 Heq2; simpl in *; intuition. intros x y Hxy.
-  rewrite (Heq1 _ _ (reflexivity x)). apply Heq2. assumption.
++ intros [x |]; reflexivity.
++ intros [x |] [y |]; simpl; trivial; now symmetry.
++ intros [x |] [y |] [z |]; simpl; tauto || etransitivity; eassumption.
+Qed.
+
+Definition sim_eq sim1 sim2 := (Location.eq ==> Location.eq)%signature sim1.(f) sim2.(f).
+
+Instance sim_eq_equiv : Equivalence sim_eq.
+Proof. split.
++ intros [f Hf] x y Heq. simpl. now rewrite <- Location.dist_defined, Hf, Location.dist_defined.
++ intros [f Hf] [g Hg] Hfg x y Heq. simpl. symmetry in Heq. now rewrite (Hfg y x Heq).
++ intros [f Hf] [g Hg] [h Hh] Hfg Hgh x y Heq. rewrite (Hfg _ _ (reflexivity x)). now apply Hgh.
 Qed.
 
 (** ** Demonic schedulers *)
+
 (** A [demonic_action] moves all byz robots
     as it whishes, and sets the referential of all good robots it selects. *)
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
-  step : Names.ident → phase;
-  step_ok : forall pos r o Ho, step r = On o Ho -> o (pos r) (pos r) = Location.origin;
-  step_exteq : Proper (eq ==> phase_eq) step;
+  step : Names.ident → option similarity;
+  step_compat : Proper (eq ==> opt_eq sim_eq) step;
   spectrum_of : Names.G → (Pos.t → Spec.t);
   spectrum_ok : forall g, forall pos : Pos.t, Spec.is_ok (spectrum_of g pos) pos;
   spectrum_exteq : Proper (eq ==> Pos.eq ==> Spec.eq) spectrum_of}.
 Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall r : Names.ident, phase_eq (da1.(step) r) (da2.(step) r)) /\
+  (forall r : Names.ident, opt_eq sim_eq (da1.(step) r) (da2.(step) r)) /\
   (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)) /\
   (forall g, (Pos.eq ==> Spec.eq)%signature (da1.(spectrum_of) g) (da2.(spectrum_of) g)).
 
@@ -119,7 +129,7 @@ Proof. split.
   intros ? ? Heq. rewrite (H3 g x x); try reflexivity. now apply H6.
 Qed.
 
-Instance step_compat : Proper (da_eq ==> eq ==> phase_eq) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq sim_eq) step.
 Proof. intros [] [] [Hd1 Hd2] p1 p2 Hp. subst. simpl in *. apply (Hd1 p2). Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
@@ -131,8 +141,8 @@ intros [? ? da1 ?] [? ? da2 ?] [Hda1 [Hda2 Hda3]] g1 g2 Hg p1 p2 Hp. simpl in *.
 Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
-Definition idle da := List.filter (fun id => match step da id with On _ _ => false | Off => true end) Names.names.
-Definition active da := List.filter (fun id => match step da id with On _ _ => true | Off => false end) Names.names.
+Definition idle da := List.filter (fun id => match step da id with Some _ => false | None => true end) Names.names.
+Definition active da := List.filter (fun id => match step da id with Some _ => true | NOne => false end) Names.names.
 
 (** A [demon] is just a stream of [demonic_action]s. *)
 CoInductive demon :=
@@ -168,8 +178,8 @@ Proof. exists deq. apply deq_equiv. Qed.
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : step (demon_head d) g ≠ Off → LocallyFairForOne g d
-  | LaterFair : step (demon_head d) g = Off → 
+  | ImmediatelyFair : step (demon_head d) g ≠ None → LocallyFairForOne g d
+  | LaterFair : step (demon_head d) g = None → 
                 LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
 
 CoInductive Fair (d : demon) : Prop :=
@@ -179,10 +189,10 @@ CoInductive Fair (d : demon) : Prop :=
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k, step (demon_head d) g <> Off -> Between g h d k
-| kReduce : forall k, step (demon_head d) g = Off -> step (demon_head d) h <> Off ->
+| kReset : forall k, step (demon_head d) g <> None -> Between g h d k
+| kReduce : forall k, step (demon_head d) g = None -> step (demon_head d) h <> None ->
                       Between g h (demon_tail d) k -> Between g h d (S k)
-| kStall : forall k, step (demon_head d) g = Off -> step (demon_head d) h = Off ->
+| kStall : forall k, step (demon_head d) g = None -> step (demon_head d) h = None ->
                      Between g h (demon_tail d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
@@ -240,7 +250,7 @@ Proof.
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (demon_head d).(step) g = Off <-> (demon_head d).(step) h = Off.
+  forall g h, (demon_head d).(step) g = None <-> (demon_head d).(step) h = None.
 Proof.
 intros d Hd g h. destruct Hd as [Hd _]. split; intro H.
   assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
@@ -258,7 +268,7 @@ Qed.
     step. *)
 Inductive FullySynchronousForOne g d:Prop :=
   ImmediatelyFair2:
-    (step (demon_head d) g) ≠ Off → 
+    (step (demon_head d) g) ≠ None → 
                       FullySynchronousForOne g d.
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
@@ -327,17 +337,18 @@ Proof. intros e1 e2 He. now inversion He. Qed.
     is used for byzantine robots. *)
 Definition round (r : robogram) (da : demonic_action) (pos : Pos.t) : Pos.t :=
   (** for a given robot, we compute the new position *)
-  fun id => 
+  fun id =>
     let t := pos id in (** t is the current position of g seen by the demon *)
     match da.(step) id with (** first see whether the robot is activated *)
-      | Off => t (** If g is not activated, do nothing *)
-      | On f _ => (** g is activated and f is its frame (phase) *)
+      | None => t (** If g is not activated, do nothing *)
+      | Some sim => (** g is activated and sim is its similarity *)
         match id with
         | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
         | Good g => 
           let spectr := da.(spectrum_of) g in (* spectrum function chosen by the demon *)
-          let pos_seen_by_r := Pos.map (f t) pos in (* position expressed in the frame of g *)
-          (f t) ⁻¹ (r (spectr pos_seen_by_r)) (* apply r on spectrum + back to demon ref. *)
+          (* position expressed in the frame of g *)
+          let pos_seen_by_r := Pos.map (fun x => sim (Location.add x (Location.opp t))) pos in
+          Location.add t (sim (r (spectr pos_seen_by_r))) (* apply r on spectrum + back to demon ref. *)
         end
     end.
 
@@ -345,11 +356,12 @@ Instance round_compat : Proper (req ==> da_eq ==> Pos.eq ==> Pos.eq) round.
 Proof.
 intros r1 r2 Hr da1 da2 Hd pos1 pos2 Hpos id.
 unfold req in Hr. unfold round. simpl in *.
-assert (Hstep := step_compat Hd (reflexivity id)). assert (Hda1 := da1.(step_exteq) _ _ (reflexivity id)).
+assert (Hstep := step_da_compat Hd (reflexivity id)). assert (Hda1 := da1.(step_compat) _ _ (reflexivity id)).
 destruct (step da1 id), (step da2 id), id; try now elim Hstep.
 + simpl in Hstep. f_equiv.
-  - intros x y Hxy. rewrite Hobs; eassumption || trivial. apply Hstep; reflexivity.
-  - apply Hr. apply spectrum_of_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
+  - apply Hpos.
+  - symmetry in Hstep. subst. apply similarity_compat, Hr, spectrum_of_compat, Pos.map_compat; trivial.
+    intros x y Heq. apply similarity_compat. rewrite Heq. do 2 f_equiv. apply Hpos.
 + rewrite Hd. reflexivity.
 Qed.
 

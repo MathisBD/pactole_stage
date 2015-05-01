@@ -19,7 +19,7 @@ Module MProp := EqProperties(M).
 Export Mdec.
 
 Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70).
-Notation "m1  [<=]  m2" := (M.Subset m1 m2) (at level 70).
+Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70).
 
 (** **  Building sets from lists  **)
 
@@ -120,17 +120,17 @@ Definition eq_equiv := M.eq_equiv.
 Definition eq_dec := M.eq_dec.
 Definition In := M.In.
 
-Definition from_pos pos : M.t := set (Pos.list pos).
+Definition from_config pos : M.t := set (Pos.list pos).
 
-Instance from_pos_compat : Proper (Pos.eq ==> M.eq) from_pos.
+Instance from_config_compat : Proper (Pos.eq ==> M.eq) from_config.
 Proof.
-repeat intro. unfold from_pos. do 2 f_equiv.
+repeat intro. unfold from_config. do 2 f_equiv.
 apply eqlistA_PermutationA_subrelation, Pos.list_compat. assumption.
 Qed.
 
-Theorem from_pos_spec : forall pos l, In l (from_pos pos) <-> exists id, Loc.eq l (pos id).
-Proof. intros. unfold from_pos. rewrite set_spec, Pos.list_spec. reflexivity. Qed.
+Definition is_ok s pos := forall l, In l s <-> exists id : Names.ident, Loc.eq l (pos id).
 
-Definition is_ok s pos := eq s (from_pos pos).
+Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
+Proof. unfold from_config, is_ok. intros. rewrite set_spec, Pos.list_spec. reflexivity. Qed.
 
 End Make.

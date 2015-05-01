@@ -11,4 +11,6 @@ MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v
 LimitedMultisetSpectrum.v
+SortingR.v
+RDVinR.v
 RDVinRd.v
