@@ -55,13 +55,13 @@ intros f g Hfg x y Hxy. rewrite <- f.(Inversion), (Hfg _ _ (reflexivity _)), Hxy
 Qed.
 
 (** Similarities are functions that multiply distance by a constant ratio.
-    For convenience, we also add their center. *)
+    For convenience, we also add their center, that is the location from which robots locally observe. *)
 (* I assume that similarities are bijections but it is probably provable, provided k <> 0. *)
 Record similarity := {
   f :> @bijection Location.t _ _;
   ratio : R;
   center : Location.t;
-  center_prop : f center = center;
+  center_prop : f center = Location.origin;
   dist_prop : forall x y, Location.dist (f x) (f y) = (ratio * Location.dist x y)%R}.
 
 Definition sim_eq sim1 sim2 := bij_eq sim1.(f) sim2.(f).
