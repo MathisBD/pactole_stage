@@ -33,7 +33,7 @@ Module Type GatheringLocation <: MetricSpace.
            This is a problem for the algorithm as we cannot find a common point toward which robots move,
            hence the following hypothesis.
            Maybe we should restrict to euclidian distances instead? *)
-  Parameter smallest_enclosing_sphere_center_uniq :
+  Parameter smallest_enclosing_sphere_center_compat :
     Proper (PermutationA eq ==> eq@@1) smallest_enclosing_sphere.
   
 End GatheringLocation.
@@ -50,7 +50,7 @@ End GatheringLocation.
 
 Module GeneralGathering (Loc : GatheringLocation) (N : Size).
 
-Instance smallest_enclosing_sphere_radius_uniq :
+Instance smallest_enclosing_sphere_radius_compat :
   Proper (PermutationA Loc.eq ==> Logic.eq@@2) Loc.smallest_enclosing_sphere.
 Proof.
 intros l1 l2 Hperm.
@@ -64,12 +64,12 @@ compute. apply Rle_antisym.
   apply Hup1. rewrite Hperm. assumption.
 Qed.
 
-Instance smallest_enclosing_sphere_uniq :
+Instance smallest_enclosing_sphere_compat :
   Proper (PermutationA Loc.eq ==> Loc.eq * Logic.eq) Loc.smallest_enclosing_sphere.
 Proof.
 intros l1 l2 Hperm. split.
-- apply Loc.smallest_enclosing_sphere_center_uniq. assumption.
-- apply smallest_enclosing_sphere_radius_uniq. assumption.
+- apply Loc.smallest_enclosing_sphere_center_compat. assumption.
+- apply smallest_enclosing_sphere_radius_compat. assumption.
 Qed.
 
 Lemma smallest_enclosing_sphere_reached : ∀ l, let (c, R) := Loc.smallest_enclosing_sphere l in
@@ -97,10 +97,13 @@ destruct (Exists_dec (fun x => ¬Loc.eq x pt1 ∧ Loc.dist c x = R)) with l as [
   rewrite Exists_exists in HOK. destruct HOK as [pt2 [Hin2 Heq2]].
   exists pt2; intuition. apply (In_InA _). assumption.
 + (* If all other points are inside the sphere, we can slightly reduce its radius by moving the center *)
+  exfalso.
+  (* the farthest point from c (except for pt1) *)
   pose (x := fold_left (fun acc x => if Rle_dec (Loc.dist c x) (Loc.dist c acc) then acc else x) l c).
   pose (d := Loc.dist c x). (* the room we have *)
   pose (R' := Rdiv (R + d) 2). (* the new radius *)
-(*  pose (c' := c + (R - R') (c - x)). (* the new center *) *)
+  pose (c' := Loc.add c (Loc.mul (R - R') (Loc.add c (Loc.opp x)))). (* the new center *)
+  
 Abort.
 
 (** The spectrum is a multiset of positions *)
@@ -320,8 +323,8 @@ Proof. intros l1 l2 Hl12 l3 l4 Hl34. now rewrite Hl12, Hl34. Qed.
 Lemma round_simplify : forall (da : demonic_action) pos,
   Pos.eq (round GatheringRobogram da pos)
         (fun id => match da.(step) id with
-                     | Off => pos id
-                     | On f _ =>
+                     | None => pos id
+                     | Some f =>
                        match id with
                          | Byz b => relocate_byz da b
                          | Good g =>

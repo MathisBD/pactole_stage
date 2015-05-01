@@ -19,7 +19,10 @@ Module M := MultisetSpectrum.Make(Loc)(N).
 Module Names := M.Names.
 Module Pos := M.Pos.
 
-Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70).
+Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
+Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
+Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
+Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
 
 
 (** Building a spectrum from a position *)

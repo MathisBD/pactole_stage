@@ -41,8 +41,25 @@ Module Type MetricSpaceDef <: DecidableType.
   (* The multiplicative identity is missing *)
 End MetricSpaceDef.
 
-Module MetricSpace (Def : MetricSpaceDef).
-  Export Def.
+
+Module Type MetricSpace.
+  Include MetricSpaceDef.
+  
+  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Parameter dist_pos : forall x y, (0 <= dist x y)%R.
+End MetricSpace.
+
+
+Module MakeMetricSpace (Def : MetricSpaceDef) : MetricSpace
+    with Definition t := Def.t
+    with Definition eq := Def.eq
+    with Definition eq_dec := Def.eq_dec
+    with Definition origin := Def.origin
+    with Definition add := Def.add
+    with Definition mul := Def.mul
+    with Definition opp := Def.opp.
+  
+  Include Def.
 
   (** Proofs of two derivable properties about MetricSpace *)
   Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
@@ -66,7 +83,8 @@ Module MetricSpace (Def : MetricSpaceDef).
     assert (Hx : eq x x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
     setoid_rewrite dist_sym at 3. apply triang_ineq.
   Qed.
-End MetricSpace.
+End MakeMetricSpace.
+
 
 Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   Definition t := Names.ident -> Location.t.

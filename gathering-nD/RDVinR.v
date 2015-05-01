@@ -21,13 +21,28 @@ Set Implicit Arguments.
 Close Scope R_scope.
 
 
-Module R : MetricSpace with Definition t := R
-                       with Definition eq := @Logic.eq R
-                       with Definition eq_dec := Rdec.
+(** R as a vector space over itself. *)
+
+Module Rdef : MetricSpaceDef with Definition t := R
+                             with Definition eq := @Logic.eq R
+                             with Definition eq_dec := Rdec.
   Definition t := R.
   Definition origin := 0%R.
   Definition eq := @Logic.eq R.
   Definition dist x y := Rabs (x - y).
+  
+  Definition add := Rplus.
+  Definition mul := Rmult.
+  Definition opp := Ropp.
+  
+  Instance add_compat : Proper (eq ==> eq ==> eq) add.
+  Proof. unfold eq. repeat intro. now subst. Qed.
+  
+  Instance mul_compat : Proper (Logic.eq ==> eq ==> eq) mul.
+  Proof. unfold eq. repeat intro. now subst. Qed.
+  
+  Instance opp_compat : Proper (eq ==> eq) opp.
+  Proof. unfold eq. repeat intro. now subst. Qed.
   
   Definition eq_equiv := @eq_equivalence R.
   Definition eq_dec : forall x y : t, {eq x y} + {~ eq x y} := Rdec.
@@ -48,7 +63,55 @@ Module R : MetricSpace with Definition t := R
   Proof.
   intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.
   Qed.
-End R.
+  
+  Lemma plus_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Proof. unfold eq, add. intros. lra. Qed.
+  
+  Lemma add_comm : forall u v, eq (add u v) (add v u).
+  Proof. unfold eq, add. intros. lra. Qed.
+  
+  Lemma add_origin : forall u, eq (add u origin) u.
+  Proof. unfold eq, add, origin. intros. lra. Qed.
+  
+  Lemma add_opp : forall u, eq (add u (opp u)) origin.
+  Proof. unfold eq, add, opp, origin. intros. lra. Qed.
+  
+  Lemma mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Proof. unfold eq, mul. intros. lra. Qed.
+  
+  Lemma add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
+  Proof. unfold eq, add, mul. intros. lra. Qed.
+  
+  Lemma plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
+  Proof. unfold eq, add, mul. intros. lra. Qed.
+  
+  (* The multiplicative identity is missing *)
+End Rdef.
+
+Module R := MakeMetricSpace(Rdef).
+
+(** Small dedicated decision tactic for reals handling 1<>0 and r=r *)
+Ltac Rdec := repeat
+  match goal with
+    | |- context[Rdec ?x ?x] =>
+        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
+        [clear Heq | exfalso; elim Heq; reflexivity]
+    | |- context[Rdec 1 0] =>
+        let Heq := fresh "Heq" in destruct (Rdec 1 0) as [Heq | Heq];
+        [now elim R1_neq_R0 | clear Heq]
+    | H : context[Rdec ?x ?x] |- _ =>
+        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
+        [clear Heq | exfalso; elim Heq; reflexivity]
+    | H : ?x <> ?x |- _ => elim H; reflexivity
+  end.
+
+Ltac Rdec_full :=
+  match goal with
+    | |- context[Rdec ?x ?y] =>
+      let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
+      destruct (Rdec x y) as [Heq | Hneq]
+    | _ => fail
+  end.
 
 
 (** *  The Gathering Problem  **)
@@ -149,8 +212,12 @@ Definition g2 : Names.G := @g2' nG size_G.
 Lemma g1_g2 : g1 <> g2.
 Proof. apply g1'_g2'. Qed.
 
-
-Close Scope R_scope.
+(* Temporary while we look for the best way to state what is a similarity *)
+Theorem similarity_in_R : forall sim c x, (sim.(f) c x = sim.(ratio) * (x - c))%R.
+Proof.
+intros [f ratio Hf Hdist] c x; simpl in *.
+Qed.
+(* Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'"). *)
 
 Corollary spec_nil : forall conf, ~Spec.eq (Spec.from_config conf) Spec.empty.
 Proof.
@@ -232,21 +299,23 @@ destruct (Rdec x (last (sort (Spec.support s)) x)), (Rdec x (last (sort (Spec.su
 try rewrite Hs in *; contradiction || reflexivity.
 Qed.
 
+Coercion is_true : bool >-> Sortclass.
+
 Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> B) :=
   Proper (RA ==> RB) f \/ Proper (RA --> RB) f.
 Locate Rle.
-Lemma similarity_increasing : forall k t, k >= 0 -> Proper (Rle ==> Rle) (fun x => k * (x - t)).
-Proof. repeat intro. hnf in *. apply Rmult_le_compat_l; lra. Qed.
+Lemma similarity_increasing : forall k t, k >= 0 -> Proper (Rleb ==> Rleb) (fun x => k * (x - t)).
+Proof. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Rmult_le_compat_l; lra. Qed.
 
-Lemma similarity_decreasing : forall k t, k <= 0 -> Proper (Rle --> Rle) (fun x => k * (x - t)).
+Lemma similarity_decreasing : forall k t, k <= 0 -> Proper (Rleb --> Rleb) (fun x => k * (x - t)).
 Proof.
-repeat intro. hnf in *. apply Ropp_le_cancel.
+repeat intro. hnf in *. unfold flip in *. rewrite Rleb_spec in *. apply Ropp_le_cancel.
 replace (- (k * (y - t))) with ((- k) * (y - t)) by ring.
 replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
 apply Rmult_le_compat_l; lra.
 Qed.
 
-Corollary similarity_monotonic : forall k t, monotonic Rle Rle (fun x => k * (x - t)).
+Corollary similarity_monotonic : forall k t, monotonic Rleb Rleb (fun x => k * (x - t)).
 Proof.
 intros k t. destruct (Rle_lt_dec 0 k) as [Hlt | Hle].
 + left. apply similarity_increasing. lra.
@@ -257,16 +326,22 @@ Lemma similarity_injective : forall k t, k <> 0 -> injective eq eq (fun x => k *
 Proof. intros k t Hk x y. now rewrite local_invert. Qed.
 
 
-Lemma is_extremal_map_monotonic_invariant : forall f, monotonic Rle Rle f -> injective eq eq f ->
-  forall x l, is_extremal (f x) (map f l) = is_extremal x l.
+Lemma is_extremal_map_monotonic_invariant : forall f, monotonic Rleb Rleb f -> injective eq eq f ->
+  forall x l, is_extremal (f x) (Spec.map f l) = is_extremal x l.
 Proof.
-intros f Hfmon Hfinj x l. unfold is_extremal. destruct Hfmon as [Hfinc | Hfdec].
-+ rewrite (sort_map_increasing Hfinc). rewrite map_hd, map_last.
-  repeat Rdec_full; reflexivity || (apply Hfinj in Heq; contradiction)
-                     || (now rewrite Heq in Hneq at 1; auto) || (rewrite Heq in Hneq0 at 1; auto).
-+ rewrite (sort_map_decreasing Hfdec). rewrite hd_rev_last, last_rev_hd, map_hd, map_last.
-  repeat Rdec_full; reflexivity || (apply Hfinj in Heq; contradiction)
-                     || (now rewrite Heq in Hneq at 1; auto) || (rewrite Heq in Hneq0 at 1; auto).
+intros f Hfmon Hfinj x l. unfold is_extremal.
+assert (Hf : Proper (R.eq ==> R.eq) f). { unfold R.eq, Rdef.eq. repeat intro. now subst. }
+destruct Hfmon as [Hfinc | Hfdec].
++ repeat Rdec_full; trivial;rewrite Spec.map_support, (sort_map_increasing Hfinc) in *; trivial.
+  - rewrite map_hd in Heq. apply Hfinj in Heq. contradiction.
+  - rewrite map_last in Heq. apply Hfinj in Heq. contradiction.
+  - elim Hneq. rewrite map_hd. now f_equal.
+  - elim Hneq0. rewrite map_last. now f_equal.
++ repeat Rdec_full; trivial;rewrite Spec.map_support, (sort_map_decreasing Hfdec) in *; trivial.
+  - rewrite hd_rev_last, map_last in Heq. apply Hfinj in Heq. contradiction.
+  - rewrite last_rev_hd, map_hd in Heq. apply Hfinj in Heq. contradiction.
+  - elim Hneq0. rewrite last_rev_hd, map_hd. now f_equal.
+  - elim Hneq. rewrite hd_rev_last, map_last. now f_equal.
 Qed.
 
 Corollary is_extremal_similarity_invariant : forall k t pos r, k <> 0 ->

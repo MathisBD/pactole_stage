@@ -930,7 +930,7 @@ Qed.
 
 Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
 
-Instance Rec_bool_compat : Proper (eq ==> eq ==> eq) Rdec_bool.
+Global Instance Rdec_bool_compat : Proper (eq ==> eq ==> eq) Rdec_bool.
 Proof. repeat intro. subst. reflexivity. Qed.
 
 Lemma Rdec_bool_true_iff : forall x y, Rdec_bool x y = true <-> x = y.
