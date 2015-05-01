@@ -74,6 +74,10 @@ Proof. intros ? ? Heq. induction Heq; constructor; auto. Qed.
 Lemma Permutation_PermutationA_weak : forall l1 l2, Permutation l1 l2 -> PermutationA eqA l1 l2.
 Proof. intros ? ? Heq. induction Heq; try now constructor. now transitivity l'. Qed.
 
+Global Instance PermutationA_compat A eqA (HeqA : @Equivalence A eqA) :
+  Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (PermutationA eqA).
+Proof. intros l1 l2 Hl12 l3 l4 Hl34. now rewrite Hl12, Hl34. Qed.
+
 Lemma PermutationA_Leibniz : forall l1 l2 : list A, PermutationA Logic.eq l1 l2 <-> Permutation l1 l2.
 Proof.
 intros l1 l2. split; intro Hl.

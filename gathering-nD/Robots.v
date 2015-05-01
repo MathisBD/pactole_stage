@@ -63,9 +63,9 @@ Module Type RobotInternals(N : Size).
   Definition G : Set := Fin.t N.nG.
   Definition B := Fin.t N.nB.
   Definition ident : Type := @identifier G B.
-  Parameter Gnames : list G.
-  Parameter Bnames : list B.
-  Parameter names : list ident.
+  Definition Gnames : list G := fin_map (fun x : G => x).
+  Definition Bnames : list B := fin_map (fun x : B => x).
+  Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 End RobotInternals.
 
 
@@ -303,6 +303,10 @@ Module Type Robots(N : Size).
   Definition Gnames := Internals.Gnames.
   Definition Bnames := Internals.Bnames.
   Definition names := Internals.names.
+  
+  Parameter In_Gnames : forall g : G, In g Gnames.
+  Parameter In_Bnames : forall b : B, In b Bnames.
+  Parameter In_names : forall r : ident, In r names.
 End Robots.
 
 Module Make(N : Size) : Robots(N).
@@ -314,4 +318,17 @@ Module Make(N : Size) : Robots(N).
   Definition Gnames := Internals.Gnames.
   Definition Bnames := Internals.Bnames.
   Definition names := Internals.names.
+  
+  Lemma In_Gnames : forall g : G, In g Gnames.
+  Proof. intro g. unfold Gnames. change g with (Datatypes.id g). apply Internals.In_fin_map. Qed.
+  
+  Lemma In_Bnames : forall b : B, In b Bnames.
+  Proof. intro b. unfold Bnames. change b with (Datatypes.id b). apply Internals.In_fin_map. Qed.
+  
+  Lemma In_names : forall r : ident, In r names.
+  Proof.
+  intro r. unfold names, Internals.names. rewrite in_app_iff. destruct r as [g | b].
+  - left. apply in_map, In_Gnames.
+  - right. apply in_map, In_Bnames.
+  Qed.
 End Make.

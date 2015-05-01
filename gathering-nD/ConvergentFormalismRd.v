@@ -165,6 +165,7 @@ Definition active da := List.filter
   (fun id => match step da id with Some _ => true | None => false end)
   Names.names.
 
+
 (** A [demon] is just a stream of [demonic_action]s. *)
 CoInductive demon :=
   NextDemon : demonic_action → demon → demon.
@@ -382,6 +383,16 @@ destruct (step da1 id), (step da2 id), id; try now elim Hstep.
   - apply Hstep, Hpos.
   - apply Hr, Spec.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
 + rewrite Hd. reflexivity.
+Qed.
+
+
+Lemma move_active : forall r conf da id, round r da conf id <> conf id -> List.In id (active da).
+Proof.
+intros r conf da id Hmove. unfold active. rewrite List.filter_In. split.
++ apply Names.In_names.
++ unfold round in Hmove. destruct (step da id).
+  - reflexivity.
+  - now elim Hmove.
 Qed.
 
 (** [execute r d pos] returns an (infinite) execution from an initial global
