@@ -121,6 +121,7 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → option (Location.t → similarity);
   step_compat : Proper (eq ==> opt_eq (Location.eq ==> sim_eq)) step;
+  step_ratio :  forall id sim c, step id = Some sim -> (sim c).(ratio) <> R0;
   step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(center) c}.
 (*  spectrum_of : Names.G → (Pos.t → Spec.t);
   spectrum_ok : forall g, forall pos : Pos.t, Spec.is_ok (spectrum_of g pos) pos;

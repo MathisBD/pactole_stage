@@ -1,6 +1,7 @@
 Require Import Equalities.
 Require Import SetoidList.
 Require Import Reals.
+Require Import Preliminary.
 Require Import Robots.
 
 
@@ -92,20 +93,23 @@ Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   Definition eq pos₁ pos₂ := forall id : Names.ident, Location.eq (pos₁ id) (pos₂ id).
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_bisim : Bisimulation t.
-
+  
   Definition map (f : Location.t -> Location.t) (pos : t) := fun id => f (pos id).
   Declare Instance map_compat : Proper ((Location.eq ==> Location.eq) ==> eq ==> eq) map.
-
+  
   Parameter Gpos : t -> list Location.t.
   Parameter Bpos : t -> list Location.t.
   Parameter list : t -> list Location.t.
   Declare Instance Gpos_compat : Proper (eq ==> eqlistA Location.eq) Gpos.
   Declare Instance Bpos_compat : Proper (eq ==> eqlistA Location.eq) Bpos.
   Declare Instance list_compat : Proper (eq ==> eqlistA Location.eq) list.
-
+  
   Parameter Gpos_spec : forall l pos, InA Location.eq l (Gpos pos) <-> exists g, Location.eq l (pos (Good g)).
   Parameter Bpos_spec : forall l pos, InA Location.eq l (Bpos pos) <-> exists b, Location.eq l (pos (Byz b)).
   Parameter list_spec : forall l pos, InA Location.eq l (list pos) <-> exists id, Location.eq l (pos id).
+  
+  Parameter list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
+    forall pos, list (map f pos) = List.map f (list pos).
 End Position.
 
 
@@ -157,6 +161,13 @@ Proof.
 intros. unfold list. rewrite (InA_app_iff _). split; intro Hin.
 + destruct Hin as [Hin | Hin]; rewrite Gpos_spec in Hin || rewrite Bpos_spec in Hin; destruct Hin; eauto.
 + rewrite Gpos_spec, Bpos_spec. destruct Hin as [[g | b] Hin]; eauto.
+Qed.
+
+Lemma list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
+  forall pos, list (map f pos) = List.map f (list pos).
+Proof.
+intros f Hf pos. unfold list, map, Gpos, Bpos.
+repeat rewrite Names.Internals.map_fin_map. rewrite List.map_app. reflexivity.
 Qed.
 
 End Make.

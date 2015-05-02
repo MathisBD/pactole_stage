@@ -253,7 +253,7 @@ Transparent R.origin.
 Transparent Rdef.origin.
 
 (* A similarity in R is described by its ratio and its center. *)
-Theorem similarity_in_R : forall sim,
+Theorem similarity_in_R_case : forall sim,
   (forall x, sim.(f) x = sim.(ratio) * (x - sim.(center))) \/
   (forall x, sim.(f) x = - sim.(ratio) * (x - sim.(center))).
 Proof.
@@ -286,10 +286,18 @@ destruct (Rdec k 0) as [Hk0 | Hk0].
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
 Qed.
 
+Corollary similarity_in_R : forall sim, exists k, (k = sim.(ratio) \/ k = - sim.(ratio))
+  /\ forall x, sim.(f) x = k * (x - sim.(center)).
+Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
+
+Corollary inverse_similarity_in_R : forall (sim : similarity) k, k <> 0 -> 
+  (forall x, sim x = k * (x - sim.(center))) -> forall x, (sim ⁻¹) x = x / k + sim.(center).
+Proof. intros sim k Hk Hdirect x. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
+
 (* Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'"). *)
 
 (** Some simplifications due to having no byzantine robots *)
-SearchAbout Fin.t.
+
 (** [lift_function f g] lifts two renaming functions, one for good and
     one for bad robots, into a renaming function for any robot. *)
 Definition lift_pos (f : Names.G -> R) : (Names.ident -> R) :=
@@ -301,7 +309,7 @@ Definition lift_pos (f : Names.G -> R) : (Names.ident -> R) :=
 (* It would be great to have it as a coercion between G → R and Pos.t,
    but I do not know how to make it work. *)
 
-Instance lift_gp_compat : Proper ((eq ==> eq) ==> Pos.eq) lift_pos.
+Instance lift_pos_compat : Proper ((eq ==> eq) ==> Pos.eq) lift_pos.
 Proof. intros f g Hfg id. hnf. unfold lift_pos. destruct id; try reflexivity. now apply Hfg. Qed.
 
 (** As there is no byzantine robots, a position is caracterized by the locations of good robots only. *)
@@ -407,7 +415,7 @@ Qed.
 
 Corollary similarity_monotonic : forall sim, monotonic Rleb Rleb sim.(f).
 Proof.
-intro sim. destruct (similarity_in_R sim) as [Hinc | Hdec].
+intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
 + left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial. apply sim_ratio_pos.
 + right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
   assert (Hratio := sim_ratio_pos sim). lra.
@@ -415,14 +423,13 @@ Qed.
 
 Lemma similarity_injective : forall sim, sim.(ratio) <> 0 -> injective eq eq sim.
 Proof.
-intros sim Hk x y. destruct (similarity_in_R sim) as [Hsim | Hsim]; setoid_rewrite Hsim.
-- intro Heq. now rewrite local_invert in Heq.
-- intro Heq. rewrite local_invert in Heq; lra.
+intros sim Hk x y. destruct (similarity_in_R sim) as [k [Hk' Hsim]]; setoid_rewrite Hsim.
+rewrite local_invert; lra.
 Qed.
 
 Lemma similarity_middle : forall (sim : similarity) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
 Proof.
-intros sim x y. destruct (similarity_in_R sim) as [Hsim | Hsim];
+intros sim x y. destruct (similarity_in_R_case sim) as [Hsim | Hsim];
 repeat rewrite Hsim; unfold R.t, Rdef.t in *; field.
 Qed.
 
@@ -456,10 +463,10 @@ Qed.
 Definition extreme_center (s : Spec.t) :=
   (List.hd 0 (sort (Spec.support s)) + List.last (sort (Spec.support s)) 0) / 2.
 
-Instance extreme_center_perm_invariant : Proper (Spec.eq ==> eq) extreme_center.
+Instance extreme_center_compat : Proper (Spec.eq ==> eq) extreme_center.
 Proof. intros s s' Hs. unfold extreme_center. now rewrite Hs. Qed.
 
-Lemma extreme_center_map_similarity_invariant : forall sim, sim.(ratio) <> 0 ->
+Lemma extreme_center_similarity : forall sim, sim.(ratio) <> 0 ->
   forall s, ~Spec.eq s Spec.empty -> extreme_center (Spec.map sim s) = sim (extreme_center s).
 Proof.
 intros sim Hk s Hs.
@@ -492,7 +499,7 @@ Qed.
 
 Lemma extreme_center_similarity_invariant : forall sim pos, sim.(ratio) <> 0 ->
   extreme_center (Spec.map sim (Spec.from_config pos)) = sim (extreme_center (Spec.from_config pos)).
-Proof. intros. apply extreme_center_map_similarity_invariant. assumption. apply spec_nil. Qed.
+Proof. intros. apply extreme_center_similarity. assumption. apply spec_nil. Qed.
 
 (** The robogram works as follows:
     1) if there is a majority stack, everyone goes there;
@@ -508,10 +515,10 @@ unfold Smax_mult. intros s1 s2 Heq. apply Spec.fold_compat; trivial; refine _.
 intros _ _ n m p. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
 Qed.
 
-Lemma Smax_mult_similarity_invariant : forall sim, sim.(ratio) <> 0 ->
-  forall s, Smax_mult (Spec.map sim s) = Smax_mult s.
+Lemma Smax_mult_map_injective_invariant : forall f, injective eq eq f ->
+  forall s, Smax_mult (Spec.map f s) = Smax_mult s.
 Proof.
-intros sim Hsim. apply Spec.ind.
+intros f Hf. apply Spec.ind.
 + intros s1 s2 Hs. now rewrite Hs.
 + intros s x n Hout Hn Hrec. rewrite Spec.map_add; try now intros ? ? Heq; rewrite Heq.
   assert (Haux : Spec.elt -> Spec.elt ->
@@ -520,9 +527,13 @@ intros sim Hsim. apply Spec.ind.
   unfold Smax_mult in *. repeat rewrite Spec.fold_add; trivial; refine _.
   - now rewrite Hrec.
   - intro Habs. apply Hout. apply Spec.map_In in Habs. destruct Habs as [y [Heq Hin]].
-    apply similarity_injective in Heq; subst; assumption.
+    apply Hf in Heq; subst; assumption.
 + now rewrite Spec.map_empty.
 Qed.
+
+Corollary Smax_mult_similarity_invariant : forall sim, sim.(ratio) <> 0 ->
+  forall s, Smax_mult (Spec.map sim s) = Smax_mult s.
+Proof. intros. now apply Smax_mult_map_injective_invariant, similarity_injective. Qed.
 
 Definition Smax s := Spec.filter (fun _ => beq_nat (Smax_mult s)) s.
 
@@ -533,18 +544,23 @@ intros s1 s2 Heq. unfold Smax. rewrite Heq. apply Spec.filter_extensionality_com
 - intros _ n. now rewrite Heq.
 Qed.
 
-Lemma Smax_similarity : forall sim, sim.(ratio) <> 0 ->
-  forall s, Spec.eq (Smax (Spec.map sim s)) (Spec.map sim (Smax s)).
+Lemma Smax_map_injective : forall f, injective eq eq f ->
+  forall s, Spec.eq (Smax (Spec.map f s)) (Spec.map f (Smax s)).
 Proof.
-intros sim Hsim s. unfold Smax. rewrite Spec.map_injective_filter.
+intros f Hf s. unfold Smax. rewrite Spec.map_injective_filter.
 + apply Spec.map_compat.
   - intros ? ? Heq. now rewrite Heq.
   - apply Spec.filter_extensionality_compat; repeat intro; subst; trivial.
-    now rewrite Smax_mult_similarity_invariant.
+    now rewrite Smax_mult_map_injective_invariant.
 + repeat intro. now subst.
 + intros ? ? Heq. now rewrite Heq.
-+ now apply similarity_injective.
++ assumption.
 Qed.
+
+Corollary Smax_similarity : forall sim, sim.(ratio) <> 0 ->
+  forall s, Spec.eq (Smax (Spec.map sim s)) (Spec.map sim (Smax s)).
+Proof. intros. now apply Smax_map_injective, similarity_injective. Qed.
+
 
 Definition robogram_pgm (s : Spec.t) : R.t :=
   match Spec.support (Smax s) with
@@ -579,8 +595,8 @@ destruct (Spec.support (Smax s)) as [| pt [| pt2 l]].
   destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
 Qed.
 
-Definition Grobogram := Build_robogram robogram_pgm robogram_pgm_compat.
-Print Assumptions Grobogram.
+Definition robogram := Build_robogram robogram_pgm robogram_pgm_compat.
+Print Assumptions robogram.
 
 
 Lemma nominal_spectrum_alls : forall pt,
@@ -652,13 +668,18 @@ Qed.
 *)
 
 Theorem robogram_homothecy_invariant : forall sim s, sim.(ratio) <> 0 ->
-  Grobogram (Spec.map sim s) = sim.(ratio) * (Grobogram s - sim.(center)) \/
-  Grobogram (Spec.map sim s) = - sim.(ratio) * (Grobogram s - sim.(center)).
-Proof.
+  exists k, (k = sim.(ratio) \/ k = - sim.(ratio))
+         /\ robogram (Spec.map sim s) = k * (robogram (Spec.map (fun x => x - sim.(center)) s)).
+Proof. Admitted.
+(*
 intros sim s Hk. unfold Grobogram, robogram_pgm. simpl.
-assert (Hperm := Smax_similarity sim Hk s). apply Spec.support_compat in Hperm. rewrite Spec.map_support in Hperm.
-* destruct (Spec.support (Smax s)) as [| pt [| pt2 l]].
-  + simpl in Hperm. symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm. lra.
+destruct (similarity_in_R sim) as [k [Hcasek Hsim]]. exists k. split; try assumption.
+assert (Hperm : PermutationA R.eq (Spec.support (Smax (Spec.map sim s))) (map sim (Spec.support (Smax s)))).
+{ rewrite <- Spec.map_support. }
+= Smax_similarity sim Hk s).
+apply Spec.support_compat in Hperm. rewrite Spec.map_support in Hperm.
+* destruct (Spec.support (Smax (Spec.map sim s))) as [| pt [| pt2 l]].
+  + simpl in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm. lra.
   + simpl in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Heq]].
     rewrite Heq. unfold R.eq, Rdef.eq in Hy. subst.
     destruct (similarity_in_R sim) as [Hsim | Hsim]; rewrite Hsim.
@@ -718,47 +739,85 @@ destruct (majority_stack (nominal_spectrum  (⟦k, t⟧ pos))) eqn:Hmaj.
   repeat rewrite extreme_center_similarity_invariant; exact R1_neq_R0 || trivial. ring.
 Qed.
 Print Assumptions robogram_homothecy_invariant.
+*)
 
 (** **  General simplification lemmas for [round robogram da _] and [nominal_spectrum (round robogram da _)] **)
 
-Lemma round_simplify : forall (da : demonic_action nG 0) pos,
-  ExtEq (round robogram da (gp pos))
-        (fun g => if Rdec (frame da g) 0 then gp pos g else
-                  match majority_stack (nominal_spectrum pos) with
-                    | NoResult => 0
-                    | Valid pt n => pt
-                    | Invalid n => if beq_nat (length (M.support (multiset (nominal_spectrum pos)))) 3
-                                   then List.nth 1 (sort (M.support (multiset (nominal_spectrum pos)))) 0
-                                   else if is_extremal (gp pos g) (nominal_spectrum pos) then gp pos g
-                                        else extreme_center (nominal_spectrum pos)
-                  end).
+Lemma round_simplify : forall da pos,
+  Pos.eq (round robogram da pos)
+         (fun id => match da.(step) id with
+                      | None => pos id
+                      | Some f =>
+                        match id with
+                          | Byz b => relocate_byz da b
+                          | Good g => let s := Spec.from_config pos in
+                            match Spec.support (Smax s) with
+                              | nil => pos id (* only happen with no robots *)
+                              | pt :: nil => pt (* case 1: one majority stack *)
+                              | _ => (* several majority stacks *)
+                                     if beq_nat (length (Spec.support s)) 3
+                                     then List.nth 1 (sort (Spec.support s)) 0 else
+                                     if is_extremal (pos id) s then (pos id) else extreme_center s
+                            end
+                        end
+                    end).
 Proof.
-intros da pos g. unfold round. destruct (Rdec (frame da g) 0) as [| Hframe]. reflexivity.
-rewrite (spectrum_ok da). rewrite robogram_homothecy_invariant; trivial. field_simplify; trivial. clear Hframe.
-unfold robogram.
-rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
-destruct (majority_stack (nominal_spectrum pos)) eqn:Hmaj.
-+ rewrite majority_stack_NoResult_spec in Hmaj. elim (nominal_spectrum_nil _ Hmaj).
-+ rewrite <- majority_stack_Valid_similarity in Hmaj; try exact R1_neq_R0. rewrite Hmaj. field.
-+ rewrite <- majority_stack_Invalid_similarity in Hmaj; try exact R1_neq_R0. rewrite Hmaj.
-  rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
-  assert (Hinj : injective eq eq (fun x => 1 * (x - gp pos g))) by (apply similarity_injective; lra).
-  assert (Proper (eq ==> eq) (fun x => 1 * (x - gp pos g))) by now repeat intro; subst.
-  rewrite nominal_spectrum_similarity, multiset_map, M.map_support, map_length; trivial.
-  assert (H0 : 1 * (gp pos g - gp pos g) = 0) by ring.
-  unfold M.elt.
-  destruct (beq_nat (@length R (M.support (multiset (nominal_spectrum pos)))) 3) eqn:H3.
-  - rewrite nominal_spectrum_similarity, multiset_map, M.map_support; trivial.
-    rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
-    rewrite sort_map_increasing; try now apply similarity_increasing; lra.
-    rewrite <- H0 at 1. rewrite (map_nth (fun x => 1 * (x - gp pos g))). field_simplify.
-    rewrite (nth_indep _ _ 0). reflexivity. rewrite beq_nat_true_iff in H3.
-    rewrite <- Permuted_sort. unfold M.elt in H3. rewrite H3. omega.
-  - rewrite <- H0 at 1. rewrite is_extremal_similarity_invariant; try exact R1_neq_R0.
-    rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. rewrite <- lift_gp_equiv.
-    destruct (is_extremal (gp pos g) (nominal_spectrum pos)). field.
-    rewrite extreme_center_similarity_invariant; try exact R1_neq_R0. field_simplify.
-    rewrite (lift_gp_equiv {| gp := gp pos; bp := locate_byz da |}). simpl. now rewrite <- lift_gp_equiv.
+intros da pos id. unfold round.
+destruct (step da id) as [simc |] eqn:Hstep, id as [g | b]; try reflexivity.
+remember (pos (Good g)) as pt.
+(* Simplify the similarity *)
+assert (Hratio : (simc pt).(ratio) <> 0). { eapply da.(step_ratio). eassumption. }
+destruct (similarity_in_R (simc pt)) as [k [Hk Hsim]].
+assert (Hinvsim : forall x, (simc pt ⁻¹) x = x / k + center (simc pt)).
+{ apply inverse_similarity_in_R; trivial. destruct Hk; lra. }
+rewrite Hinvsim.
+assert(Hsimccompat : Proper (R.eq ==> R.eq) (simc pt)). { intros ? ? Heq. now rewrite Heq. }
+assert (Hsim_inj : injective R.eq R.eq (simc pt)) by now apply similarity_injective.
+(* Unfold the robogram *)
+unfold robogram, robogram_pgm. simpl.
+assert (Hperm : PermutationA R.eq (Spec.support (Smax (Spec.from_config (Pos.map (simc pt) pos))))
+                                  (List.map (simc pt) (Spec.support (Smax (Spec.from_config pos))))).
+{ rewrite <- Spec.map_support; trivial. f_equiv.
+  rewrite <- Smax_similarity, Spec.from_config_map; auto. reflexivity. }
+destruct (Spec.support (Smax (Spec.from_config pos))) as [| pt' [| pt2' l']].
+* (* Empty support *)
+  simpl in Hperm. symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm.
+  rewrite da.(step_center); try eassumption. hnf. field. lra.
+* (* A majority stack *)
+  simpl in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]]. rewrite Hperm.
+  hnf in Hy |- *. subst y. rewrite Hsim. field. lra.
+* (* No majority stack *)
+  apply (PermutationA_length _) in Hperm.
+  destruct (Spec.support (Smax (Spec.from_config (Pos.map (simc pt) pos)))) as [| pt'' [| pt2'' l'']];
+  try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
+  assert (Hlength : length (Spec.support (Spec.from_config (Pos.map (simc pt) pos)))
+          = length (Spec.support (Spec.from_config pos))).
+  { now rewrite <- Spec.from_config_map, Spec.map_support, map_length. }
+  rewrite Hlength. destruct (length (Spec.support (Spec.from_config pos)) =? 3) eqn:Hlen.
+  + (* There are three towers *)
+    rewrite <- Spec.from_config_map, Spec.map_support; trivial.
+    destruct (Spec.support (Spec.from_config pos)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
+    destruct (similarity_monotonic (simc pt)) as [Hinc | Hdec].
+    - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (simc pt 0)),
+              map_nth, <- Hinvsim, <- (simc pt).(Inversion); try reflexivity.
+      rewrite map_length, <- Permuted_sort. simpl. omega.
+    - { rewrite (sort_map_decreasing Hdec).
+        assert (Heq1 : Nat.div2 (length (map (simc pt) (sort (pt1 :: pt2 :: pt3 :: nil)))) = 1%nat).
+        { now rewrite map_length, <- Permuted_sort. }
+        rewrite <- Heq1 at 1. rewrite odd_middle, (nth_indep _ 0 (simc pt 0)).
+        + rewrite map_nth, <- Hinvsim, <- (simc pt).(Inversion), <- Heq1; reflexivity.
+        + rewrite map_length, <- Permuted_sort. simpl. omega.
+        + rewrite map_length, <- Permuted_sort. simpl. exists 1%nat. omega. }
+  + (* Generic case *)
+    SearchAbout is_extremal.
+    change 0 with R.origin. rewrite <- (simc pt).(center_prop) at 1.
+    rewrite <- Spec.from_config_map, is_extremal_similarity_invariant, da.(step_center); try eassumption.
+    destruct (is_extremal pt (Spec.from_config pos)).
+    - (* The current robot is exremal *)
+      hnf. unfold R.origin, Rdef.origin. field. lra.
+    - (* The current robot is not exremal *)
+      rewrite <- Spec.from_config_map, extreme_center_similarity; apply spec_nil || trivial.
+      hnf. rewrite <- (da.(step_center) _ _ pt Hstep) at 2. now rewrite <- Hinvsim, <- (simc pt).(Inversion).
 Qed.
 Print Assumptions round_simplify.
 
@@ -872,7 +931,8 @@ Lemma nominal_spectrum_3_stacks : forall pos,
 Proof.
 intro pos. split; intro H.
 - assert (Hl : exists pt1 pt2 pt3 l, M.support (multiset (nominal_spectrum pos)) =  pt1 :: pt2 :: pt3 :: l).
-  { destruct (M.support (multiset (nominal_spectrum pos))) as [| a [| b [| c [| d l]]]]; inversion H; try (exfalso;omega).
+  { destruct (M.support (multiset (nominal_spectrum pos))) as [| a [| b [| c [| d l]]]];
+    inversion H; try (exfalso;omega).
     - exists a. exists b. exists c. exists nil. reflexivity.
     - exists a. exists b. exists c. exists (d::l). reflexivity. } clear H.
   destruct Hl as [pt1 [pt2 [pt3 [ l Hl]]]]. exists pt1. exists pt2. exists pt3.
@@ -1983,7 +2043,8 @@ Proof.
       destruct (majority_stack (nominal_spectrum (lift_gp (round robogram da conf.(gp))))) eqn:Hround.
       * rewrite (conf_to_NxN_NoResult_spec _ Hround). apply left_lex. omega.
       * rewrite (conf_to_NxN_Valid_spec _ Hround). apply left_lex. omega.
-      * assert (Hlen' : length (M.support (multiset (nominal_spectrum (lift_gp (round robogram da conf.(gp)))))) = 3).
+      * assert (Hlen' : length (M.support (multiset (nominal_spectrum
+                          (lift_gp (round robogram da conf.(gp)))))) = 3).
         { apply le_antisym.
           + apply (support_decrease _ _ Hmaj Hlen).
           + apply (not_forbidden_Invalid_length Hround). now apply never_forbidden. }

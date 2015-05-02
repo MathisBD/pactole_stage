@@ -192,4 +192,8 @@ Definition is_ok s pos := forall l,
 Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
 Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
+Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall pos, eq (map f (from_config pos)) (from_config (Pos.map f pos)).
+Proof. repeat intro. unfold from_config. now rewrite Pos.list_map, multiset_map. Qed.
+
 End Make.

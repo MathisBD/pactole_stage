@@ -1135,9 +1135,9 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Lemma map_injective_filter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
     forall m, filter f (map g m) [=] map g (filter (fun x => f (g x)) m).
   Proof. Admitted. (* proved in the bigger library *)
-
+  
   Lemma map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
     (forall x, g x = f x) -> forall m, map g m [=] map f m.
   Proof. Admitted. (* proved in the bigger library *)
-
+  
 End Make.

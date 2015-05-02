@@ -322,24 +322,24 @@ Proof. intros l1 l2 Hl12 l3 l4 Hl34. now rewrite Hl12, Hl34. Qed.
 (** **  General simplification lemmas for [round robogram da _] and [nominal_spectrum (round robogram da _)] **)
 Lemma round_simplify : forall (da : demonic_action) pos,
   Pos.eq (round GatheringRobogram da pos)
-        (fun id => match da.(step) id with
-                     | None => pos id
-                     | Some f =>
-                       match id with
-                         | Byz b => relocate_byz da b
-                         | Good g =>
-                           match Spec.support (max (Spec.from_config pos)) with
-                             | nil => Loc.origin (* only happen with no robots *)
-                             | pt :: nil => pt (* case 1: one majority stack *)
-                             | _ => (* several majority stacks *)
-                               let '(c, R) := Loc.smallest_enclosing_sphere
-                                                (Spec.support (Spec.from_config pos)) in
-                               if all_on_sphere c R (Spec.support (Spec.from_config pos)) then c else
-                               if Rdec_bool (Loc.dist c Loc.origin) 0 then Loc.origin else
-                               if Rdec_bool (Loc.dist c Loc.origin) R then Loc.origin else c
-                           end
-                       end
-                   end).
+         (fun id => match da.(step) id with
+                      | None => pos id
+                      | Some f =>
+                        match id with
+                          | Byz b => relocate_byz da b
+                          | Good g =>
+                            match Spec.support (max (Spec.from_config pos)) with
+                              | nil => Loc.origin (* only happen with no robots *)
+                              | pt :: nil => pt (* case 1: one majority stack *)
+                              | _ => (* several majority stacks *)
+                                let '(c, R) := Loc.smallest_enclosing_sphere
+                                                 (Spec.support (Spec.from_config pos)) in
+                                if all_on_sphere c R (Spec.support (Spec.from_config pos)) then c else
+                                if Rdec_bool (Loc.dist c Loc.origin) 0 then Loc.origin else
+                                if Rdec_bool (Loc.dist c Loc.origin) R then Loc.origin else c
+                            end
+                        end
+                    end).
 Proof.
 intros da pos id. unfold round. destruct (step da id) as [| obs Hobs]. reflexivity.
 destruct id as [g | b]; try reflexivity.
