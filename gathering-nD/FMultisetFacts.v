@@ -1145,4 +1145,22 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Lemma support_filter : forall f, compatb f -> forall m, inclA E.eq (support (filter f m)) (support m).
   Proof. Admitted. (* proved in the bigger library *)
+  
+  Lemma filter_empty : forall f, compatb f -> filter f empty [=] empty.
+  Proof. repeat intro. rewrite filter_spec, empty_spec; trivial. now destruct (f x 0). Qed.
+  
+  Lemma filter_none : forall f, compatb f ->
+    forall m, filter f m [=] empty <-> for_all (fun x n => negb (f x n)) m = true.
+  Proof. Admitted. (* proved in the bigger library *)
+  
+  Lemma empty_or_In_dec : forall m : t, {m [=] empty} + {(exists x : elt, In x m)}.
+  Proof. Admitted. (* proved in the bigger library *)
+  
+  Lemma filter_In : forall f, compatb f ->
+    forall x m, In x (filter f m) <-> In x m /\ f x (multiplicity x m) = true.
+  Proof.
+  intros f Hf x m. unfold In. rewrite filter_spec; trivial.
+  destruct (f x (multiplicity x m)); intuition; discriminate.
+  Qed.
+  
 End Make.

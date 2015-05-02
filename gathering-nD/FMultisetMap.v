@@ -268,7 +268,7 @@ intros s s'. split.
   - reflexivity.
 Qed.
 
-Lemma mutiplicity_spec : forall x s, multiplicity x s > 0 <-> In x s.
+Lemma multiplicity_spec : forall x s, multiplicity x s > 0 <-> In x s.
 Proof. reflexivity. Qed.
 
 Lemma multiplicity_find_in : forall x s, In x s -> M.find x s = Some (Pos.of_nat (multiplicity x s)).

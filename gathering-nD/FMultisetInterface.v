@@ -116,7 +116,7 @@ Module Type FMultisetsOn (E : DecidableType).
   (forall x y n m a, eqA (f y m (f x n a)) (f x n (f y m a))) ->
   Proper (eq ==> eqA ==> eqA) (fold f).
 
-  Parameter mutiplicity_spec : forall x s, multiplicity x s > 0 <-> In x s.
+  Parameter multiplicity_spec : forall x s, multiplicity x s > 0 <-> In x s.
   Parameter equal_spec : forall s s', equal s s' = true <-> s [=] s'.
   Parameter subset_spec : forall s s', subset s s' = true <-> s [<=] s'.
   Parameter empty_spec : Empty empty.
