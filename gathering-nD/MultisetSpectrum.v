@@ -196,4 +196,7 @@ Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall pos, eq (map f (from_config pos)) (from_config (Pos.map f pos)).
 Proof. repeat intro. unfold from_config. now rewrite Pos.list_map, multiset_map. Qed.
 
+Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.
+Proof. intro. unfold from_config. now rewrite cardinal_multiset, Pos.list_length. Qed.
+
 End Make.

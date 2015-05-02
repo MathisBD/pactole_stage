@@ -108,6 +108,10 @@ Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   Parameter Bpos_spec : forall l pos, InA Location.eq l (Bpos pos) <-> exists b, Location.eq l (pos (Byz b)).
   Parameter list_spec : forall l pos, InA Location.eq l (list pos) <-> exists id, Location.eq l (pos id).
   
+  Parameter Gpos_length : forall pos, length (Gpos pos) = N.nG.
+  Parameter Bpos_length : forall pos, length (Bpos pos) = N.nB.
+  Parameter list_length : forall pos, length (list pos) = N.nG + N.nB.
+  
   Parameter list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
     forall pos, list (map f pos) = List.map f (list pos).
 End Position.
@@ -162,6 +166,15 @@ intros. unfold list. rewrite (InA_app_iff _). split; intro Hin.
 + destruct Hin as [Hin | Hin]; rewrite Gpos_spec in Hin || rewrite Bpos_spec in Hin; destruct Hin; eauto.
 + rewrite Gpos_spec, Bpos_spec. destruct Hin as [[g | b] Hin]; eauto.
 Qed.
+
+Lemma Gpos_length : forall pos, length (Gpos pos) = N.nG.
+Proof. intro. unfold Gpos. apply Names.Internals.fin_map_length. Qed.
+
+Lemma Bpos_length : forall pos, length (Bpos pos) = N.nB.
+Proof. intro. unfold Bpos. apply Names.Internals.fin_map_length. Qed.
+
+Lemma list_length : forall pos, length (list pos) = N.nG + N.nB.
+Proof. intro. unfold list. now rewrite app_length, Gpos_length, Bpos_length. Qed.
 
 Lemma list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
   forall pos, list (map f pos) = List.map f (list pos).

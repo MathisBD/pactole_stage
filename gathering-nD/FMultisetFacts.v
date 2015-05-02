@@ -1140,4 +1140,9 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     (forall x, g x = f x) -> forall m, map g m [=] map f m.
   Proof. Admitted. (* proved in the bigger library *)
   
+  Lemma cardinal_total_sub_eq : forall m1 m2, m1 [<=] m2 -> cardinal m1 = cardinal m2 -> m1 [=] m2.
+  Proof. Admitted. (* proved in the bigger library *)
+  
+  Lemma support_filter : forall f, compatb f -> forall m, inclA E.eq (support (filter f m)) (support m).
+  Proof. Admitted. (* proved in the bigger library *)
 End Make.
