@@ -835,29 +835,26 @@ Qed.
 Print Assumptions robogram_homothecy_invariant.
 *)
 
-(** **  General simplification lemmas for [round robogram da _] and [nominal_spectrum (round robogram da _)] **)
+(** **  General simplification lemmas for [round robogram da _] **)
 
 Lemma round_simplify : forall da pos,
   Pos.eq (round robogram da pos)
          (fun id => match da.(step) id with
                       | None => pos id
                       | Some f =>
-                        match id with
-                          | Byz b => relocate_byz da b
-                          | Good g => let s := Spec.from_config pos in
-                            match Spec.support (Smax s) with
-                              | nil => pos id (* only happen with no robots *)
-                              | pt :: nil => pt (* case 1: one majority stack *)
-                              | _ => (* several majority stacks *)
-                                     if beq_nat (length (Spec.support s)) 3
-                                     then List.nth 1 (sort (Spec.support s)) 0 else
-                                     if is_extremal (pos id) s then (pos id) else extreme_center s
-                            end
-                        end
+                          let s := Spec.from_config pos in
+                          match Spec.support (Smax s) with
+                            | nil => pos id (* only happen with no robots *)
+                            | pt :: nil => pt (* case 1: one majority stack *)
+                            | _ => (* several majority stacks *)
+                                   if beq_nat (length (Spec.support s)) 3
+                                   then List.nth 1 (sort (Spec.support s)) 0 else
+                                   if is_extremal (pos id) s then (pos id) else extreme_center s
+                          end
                     end).
 Proof.
 intros da pos id. unfold round.
-destruct (step da id) as [simc |] eqn:Hstep, id as [g | b]; try reflexivity.
+destruct (step da id) as [simc |] eqn:Hstep, id as [g | b]; try reflexivity || now eapply Fin.case0; exact b.
 remember (pos (Good g)) as pt.
 (* Simplify the similarity *)
 assert (Hratio : (simc pt).(ratio) <> 0). { eapply da.(step_ratio). eassumption. }
@@ -923,15 +920,11 @@ Lemma round_simplify_Majority : forall da conf pt,
   Pos.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
-                      | Some _ =>
-                          match id with
-                            | Byz b => relocate_byz da b
-                            | Good _ => pt
-                          end
+                      | Some _ => pt
                     end).
 Proof.
 intros da conf pt Hmaj id. rewrite round_simplify.
-destruct (step da id), id; try reflexivity. cbv zeta.
+destruct (step da id); try reflexivity. cbv zeta.
 destruct (Spec.support (Smax (Spec.from_config conf))) as [| ? [| ? ?]]; try discriminate Hmaj.
 inversion Hmaj. reflexivity.
 Qed.
@@ -943,15 +936,11 @@ Lemma round_simplify_Three : forall da conf,
   Pos.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
-                      | Some _ =>
-                          match id with
-                            | Byz b => relocate_byz da b
-                            | Good _ => nth 1 (sort (Spec.support (Spec.from_config  conf))) 0
-                          end
+                      | Some _ => nth 1 (sort (Spec.support (Spec.from_config  conf))) 0
                     end).
 Proof.
 intros da pos Hmaj H3 id. rewrite round_simplify.
-destruct (step da id), id; try reflexivity. cbv zeta.
+destruct (step da id); try reflexivity. cbv zeta.
 destruct (Spec.support (Smax (Spec.from_config pos))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_eq in H3. rewrite H3. reflexivity.
 Qed.
@@ -963,20 +952,17 @@ Lemma round_simplify_Generic : forall da conf,
   Pos.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
-                      | Some _ =>
-                          match id with
-                            | Byz b => relocate_byz da b
-                            | Good _ => if is_extremal (conf id) (Spec.from_config conf)
-                                        then conf id else extreme_center (Spec.from_config conf)
-                          end
+                      | Some _ => if is_extremal (conf id) (Spec.from_config conf)
+                                  then conf id else extreme_center (Spec.from_config conf)
                     end).
 Proof.
 intros da pos Hmaj H3 id. rewrite round_simplify.
-destruct (step da id), id; try reflexivity. cbv zeta.
+destruct (step da id); try reflexivity. cbv zeta.
 destruct (Spec.support (Smax (Spec.from_config pos))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_neq in H3. rewrite H3. reflexivity.
 Qed.
 
+Close Scope R_scope.
 
 (*
 Theorem nominal_spectrum_simplify : forall (da : demonic_action nG 0) pos,
@@ -1007,16 +993,19 @@ Proof.
 intros da pos. rewrite round_simplify. unfold lift_gp. rewrite (if_Rdec_ExtEq 0 (frame da)).
 rewrite nominal_spectrum_combineG. simpl. rewrite app_nil_r, partition_filter. reflexivity.
 Qed.
+*)
 
 (** ** Simplification of the global position in the three cases of the robogram **)
-
+(*
 (** When there is a majority stack, it grows and all other stacks wither. **)
-Theorem Stack_at_grow :  forall pt pos (da : demonic_action nG 0),
-  Stack_at pt pos -> (M.multiplicity pt (multiset (nominal_spectrum (lift_gp (round robogram da (gp pos)))))
-                     >= M.multiplicity pt (multiset (nominal_spectrum pos)))%nat.
+Theorem Majority_grow :  forall pt config da,
+  Spec.support (Smax (!! config)) = pt :: nil -> 
+  (!! config)[pt] <= (!! (round robogram da config))[pt].
 Proof.
-intros pt pos da Hstack.
-(* we first simplify the lhs *)
+intros pt pos da Hmaj.
+(* we first simplify the rhs *)
+rewrite (round_simplify_Majority _ _ Hmaj).
+
 rewrite <- majority_stack_spec in Hstack. destruct Hstack as [m Hstack].
 rewrite nominal_spectrum_round_simplify, Hstack. rewrite multiset_app, M.union_spec.
 (* Same thing for the rhs *)
@@ -1028,6 +1017,7 @@ rewrite map_cst, multiset_alls, M.singleton_spec.
 Rdec. rewrite <- (map_length (gp pos)), <- cardinal_multiset. apply M.cardinal_lower.
 Qed.
 Print Assumptions Stack_at_grow.
+
 
 (* This proof follows the exact same structure.
    It is simpler because among robots that are activated, none goes to pt' <> pt *)
@@ -1597,8 +1587,42 @@ Qed.
 *)
 (* Other proof for never_forbidden *)
 
-Hypothesis same_destination : forall da pos g1 g2, In (Good g1) (active da) -> In (Good g2) (active da) ->
-  round robogram da pos (Good g1) = round robogram da pos (Good g2).
+Theorem same_destination : forall da config id1 id2,
+  In id1 (moving robogram da config) -> In id2 (moving robogram da config) ->
+  round robogram da config id1 = round robogram da config id2.
+Proof.
+intros da config id1 id2 Hid1 Hid2. do 2 rewrite round_simplify.
+destruct (step da id1) eqn:Hmove1; [destruct (step da id2) eqn:Hmove2 |].
+* (* the real case *)
+  cbv zeta.
+  destruct (Spec.support (Smax (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
+  + (* no robots *)
+    rewrite Spec.support_nil, Smax_empty in Hmaj. elim (spec_nil _ Hmaj).
+  + (* a majority tower *)
+    reflexivity.
+  + destruct (length (Spec.support (!! config)) =? 3) eqn:Hlen.
+    - (* three towers *)
+      reflexivity.
+    - { (* generic case *)
+        rewrite Nat.eqb_neq in Hlen. rename Hmaj into Hmaj'.
+        assert (Hmaj : length (Spec.support (Smax (!! config))) > 1).
+        { rewrite Hmaj'. simpl. omega. } clear Hmaj'.
+        destruct (is_extremal (config id1) (!! config)) eqn:Hextreme1.
+        + exfalso. unfold moving in Hid1. rewrite filter_In in Hid1. destruct Hid1 as [_ Hid1].
+          destruct (R.eq_dec (round robogram da config id1) (config id1)) as [_ | Hneq]; try discriminate.
+          apply Hneq. rewrite round_simplify_Generic; trivial.
+          destruct (step da id1); try reflexivity. now rewrite Hextreme1.
+        + destruct (is_extremal (config id2) (!! config)) eqn:Hextreme2.
+          - exfalso. unfold moving in Hid2. rewrite filter_In in Hid2. destruct Hid2 as [_ Hid2].
+            destruct (R.eq_dec (round robogram da config id2) (config id2)) as [_ | Hneq]; try discriminate.
+            apply Hneq. rewrite round_simplify_Generic; trivial.
+            destruct (step da id2); try reflexivity. now rewrite Hextreme2.
+          - reflexivity. }
+* apply moving_active in Hid2. unfold active in Hid2.
+  rewrite filter_In, Hmove2 in Hid2. destruct Hid2; discriminate.
+* apply moving_active in Hid1. unfold active in Hid1.
+  rewrite filter_In, Hmove1 in Hid1. destruct Hid1; discriminate.
+Qed.
 
 Lemma no_active_same_conf :
   forall da conf, active da = nil -> Pos.eq (round robogram da conf) conf.
@@ -2113,68 +2137,23 @@ destruct (Spec.support (Smax (Spec.from_config conf))) as [| pt [| ? ?]] eqn:Hma
           omega.
           rewrite increase_move. exists gmove. split; trivial.
           admit.
-Qed.
-
-(*
-Lemma gathered_at_PosEq : forall gp pt, gathered_at pt gp -> ExtEq gp (fun _ => pt).
-Proof. intros gp pt Hgather. intro n. apply Hgather. Qed.
-*)
-
-Lemma gathered_at_Gather : forall pt (d : demon Four Zero) gp, gathered_at gp pt ->
-  Gather pt (execute robogram d gp).
-Proof.
-intro pt. cofix gather. intros d gp Hgather. constructor. apply Hgather.
-rewrite execute_tail. apply gather. now apply gathered_at_forever.
-Qed.
-
-Theorem stack_gathered_at : forall (da : demonic_action Four Zero) gp pt n, ~forbidden (lift_gp gp) ->
-  majority_stack (nominal_spectrum (lift_gp gp)) = Valid pt n ->
-  gathered_at (round robogram da gp) pt.
-Proof.
-intros da gp pt n Hok Hstack g. unfold round.
-pose (s := spectrum_of da g ((⟦frame da g, gp g⟧) {| gp := gp; bp := locate_byz da |})). fold s.
-destruct (Rdec (frame da g) 0).
-  now elim (active da g). (* Stalling case *)
-  unfold robogram.
-  assert (Hfor : is_forbidden s = false).
-  { unfold s. rewrite spectrum_ok. rewrite is_forbidden_false. intro Habs. apply Hok.
-    revert Habs. setoid_rewrite lift_gp_equiv at 2. simpl. apply forbidden_similarity_invariant. }
-  rewrite Hfor. clear Hfor.
-  assert (Hperm : Permutation s (nominal_spectrum (⟦frame da g, gp g⟧ {| gp := gp; bp := locate_byz da |})))
-  by apply da.(spectrum_ok).
-  rewrite <- is_forbidden_false in Hok. rewrite Hperm. setoid_rewrite lift_gp_equiv at 2.
-  simpl. rewrite <- (majority_stack_Valid_similarity (gp g) _ _ _ (active da g)) in Hstack.
-  rewrite Hstack. now field.
-Qed.
-
-Corollary stack_sol : forall k (d : demon Four Zero), kFair k d ->
-  forall gp : Four -> R, ~forbidden (lift_gp gp) ->
-  Stack (lift_gp gp) ->
-  exists pt, WillGather pt (execute robogram d gp).
-Proof.
-intros k [da d] Hfair gp Hok Hstack.
-assert (Hs := Hstack). rewrite <- majority_stack_spec in Hs. destruct Hs as [pt [n Hpt]].
-exists pt. constructor 2. constructor 1.
-rewrite execute_tail. cofix gathered. constructor. clear gathered. simpl. now apply stack_gathered_at with n.
-(* back to coinduction *)
-apply gathered. (* ill-formed recursive definition: we cannot use stack_gathered *)
 Admitted.
 
-Theorem meeting4 :
-  forall d : demon Four Zero, forall k, kFair k d -> solGathering robogram d.
+(** Given a k-fair demon, a non-gathered position, then some robot will move some day *)
+
+
+Theorem Gathering_in_R :
+  forall d k, kFair k d -> solGathering robogram d.
 Proof.
-intros d k Hfair gp Hok.
-destruct (majority_stack (nominal_spectrum (lift_gp gp))) as [| r n | n] eqn:Hdup.
-  (* there is no robot *)
-  rewrite majority_stack_NoResult_spec in Hdup. rewrite nominal_spectrum4 in Hdup. discriminate Hdup.
-  (* there is a stack *)
-  apply (stack_sol Hfair Hok). rewrite <- majority_stack_spec. now exists r; exists n.
-  (* there is not stack, it will be created at the next step *)
-  inversion_clear Hfair as [_ Htfair].
-  destruct (stack_sol Htfair (@never_forbidden (demon_head d) _ Hok)) as [pt Hpt].
-    apply Will_stack. assumption. rewrite <- majority_stack_spec.
-    intros [x [m Habs]]. rewrite Hdup in Habs. discriminate Habs.
-    exists pt. constructor 2. rewrite execute_tail. exact Hpt.
+intros d k Hfair conf. revert d k Hfair. pattern conf.
+apply (well_founded_ind wf_lt_conf). clear conf.
+intros conf Hind d k Hfair Hok.
+destruct (Hind (round robogram (demon_head d) conf)) with (demon_tail d) k as [pt Hpt].
++ apply round_lt_conf. assumption.
+  remember (demon_head d) as da. admit.
++ now inversion_clear Hfair.
++ now apply never_forbidden.
++ exists pt. apply Later. rewrite execute_tail. apply Hpt.
 Qed.
-Print Assumptions meeting4.
+Print Assumptions Gathering_in_R.
 

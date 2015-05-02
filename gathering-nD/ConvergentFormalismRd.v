@@ -162,10 +162,10 @@ Qed.
 Definition idle da := List.filter
   (fun id => match step da id with Some _ => false | None => true end)
   Names.names.
+
 Definition active da := List.filter
   (fun id => match step da id with Some _ => true | None => false end)
   Names.names.
-
 
 (** A [demon] is just a stream of [demonic_action]s. *)
 CoInductive demon :=
@@ -386,15 +386,22 @@ destruct (step da1 id), (step da2 id), id; try now elim Hstep.
 + rewrite Hd. reflexivity.
 Qed.
 
+(** A third subset of robots, moving ones *)
+Definition moving r da config := List.filter
+  (fun id => if Location.eq_dec (round r da config id) (config id) then false else true)
+  Names.names.
 
-Lemma move_active : forall r conf da id, round r da conf id <> conf id -> List.In id (active da).
+Lemma moving_active : forall r config da id, List.In id (moving r da config) -> List.In id (active da).
 Proof.
-intros r conf da id Hmove. unfold active. rewrite List.filter_In. split.
-+ apply Names.In_names.
-+ unfold round in Hmove. destruct (step da id).
-  - reflexivity.
-  - now elim Hmove.
+intros r config da id. unfold moving, active. do 2 rewrite List.filter_In.
+intros [Hin Hmoving].
+destruct (Location.eq_dec (round r da config id) (config id)) as [_ | Hmove]; try discriminate.
+clear Hmoving. split; trivial.
+unfold round in Hmove. destruct (step da id).
+- reflexivity.
+- now elim Hmove.
 Qed.
+
 
 (** [execute r d pos] returns an (infinite) execution from an initial global
     position [pos], a demon [d] and a robogram [r] running on each good robot. *)
