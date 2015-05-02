@@ -812,12 +812,12 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   (** **  Generic induction principles on multisets  **)
   
   Definition rect : forall P, (forall m1 m2, m1 [=] m2 -> P m1 -> P m2) ->
-    (forall m x n, ~In x m -> P m -> P (add x n m)) ->
+    (forall m x n, ~In x m -> n > 0 -> P m -> P (add x n m)) ->
     P empty -> forall m, P m.
   Proof. intros P HP ? ? ?. apply (@fold_rect _ (fun _ _ _ => tt) (fun m _ => P m) tt); eauto. Defined.
   
   Definition ind : forall P, Proper (eq ==> iff) P ->
-    (forall m x n, ~In x m -> P m -> P (add x n m)) ->
+    (forall m x n, ~In x m -> n > 0 -> P m -> P (add x n m)) ->
     P empty -> forall m, P m.
   Proof. intros. apply rect; trivial. intros ? ? Heq. now rewrite Heq. Qed.
   (*  
@@ -1052,7 +1052,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Definition map f m := fold (fun x n acc => add (f x) n acc) m empty.
   
-  Instance map_compat : forall f, Proper (E.eq ==> E.eq) f -> Proper (eq ==> eq) (map f).
+  Global Instance map_compat : forall f, Proper (E.eq ==> E.eq) f -> Proper (eq ==> eq) (map f).
   Proof.
   intros f Hf m1 m2 Hm. unfold map. apply (fold_compat _ _).
   - clear -Hf. intros x y Hxy n m Hnm m1 m2 Hm. now rewrite Hxy, Hnm, Hm.
@@ -1075,7 +1075,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Lemma map_empty : forall f, map f empty [=] empty.
   Proof. intro f. unfold map. now rewrite fold_empty. Qed.
   
-  Lemma map_In : forall x f m, In x (map f m) -> exists y, E.eq x (f y).
+  Lemma map_In : forall x f m, In x (map f m) -> exists y, E.eq x (f y) /\ In y m.
   Proof.
   intros x f m. unfold In, map. apply fold_rect_nodep.
   + rewrite empty_spec. omega.
@@ -1131,5 +1131,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
           simpl. now apply PermutationA_cons.
   + now rewrite map_empty, support_empty.
   Qed.
+  
+  Lemma map_injective_filter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, filter f (map g m) [=] map g (filter (fun x => f (g x)) m).
+  Proof. Admitted. (* proved in the bigger library *)
+
+  Lemma map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
+    (forall x, g x = f x) -> forall m, map g m [=] map f m.
+  Proof. Admitted. (* proved in the bigger library *)
 
 End Make.
