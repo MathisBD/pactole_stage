@@ -167,6 +167,20 @@ Definition active da := List.filter
   (fun id => match step da id with Some _ => true | None => false end)
   Names.names.
 
+Lemma idle_spec : forall da id, List.In id (idle da) <-> step da id = None.
+Proof.
+intros da id. unfold idle. rewrite List.filter_In.
+destruct (step da id); intuition; try discriminate.
+apply Names.In_names.
+Qed.
+
+Lemma active_spec : forall da id, List.In id (active da) <-> step da id <> None.
+Proof.
+intros da id. unfold active. rewrite List.filter_In.
+destruct (step da id); intuition; try discriminate.
+apply Names.In_names.
+Qed.
+
 (** A [demon] is just a stream of [demonic_action]s. *)
 CoInductive demon :=
   NextDemon : demonic_action → demon → demon.
@@ -391,14 +405,23 @@ Definition moving r da config := List.filter
   (fun id => if Location.eq_dec (round r da config id) (config id) then false else true)
   Names.names.
 
-Lemma moving_active : forall r config da id, List.In id (moving r da config) -> List.In id (active da).
+Lemma moving_spec : forall r da config id,
+  List.In id (moving r da config) <-> ~Location.eq (round r da config id) (config id).
 Proof.
-intros r config da id. unfold moving, active. do 2 rewrite List.filter_In.
-intros [Hin Hmoving].
-destruct (Location.eq_dec (round r da config id) (config id)) as [_ | Hmove]; try discriminate.
-clear Hmoving. split; trivial.
-unfold round in Hmove. destruct (step da id).
-- reflexivity.
+intros r da config id. unfold moving. rewrite List.filter_In.
+split; intro H.
++ destruct H as [_ H].
+  destruct (Location.eq_dec (round r da config id) (config id)) as [_ | Hneq]; intuition.
++ split.
+  - apply Names.In_names.
+  - destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | _]; intuition.
+Qed.
+
+Lemma moving_active : forall r da config id, List.In id (moving r da config) -> List.In id (active da).
+Proof.
+intros r config da id. rewrite moving_spec, active_spec. intro Hmove.
+unfold round in Hmove. destruct (step config id).
+- discriminate.
 - now elim Hmove.
 Qed.
 

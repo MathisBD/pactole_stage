@@ -57,6 +57,16 @@ intros x l Hin. induction l.
 - destruct Hin. subst. now left. right. auto.
 Qed. *)
 
+Lemma nil_or_In_dec : forall l : list A, {l = nil} + {exists x, In x l}.
+Proof. intros [| x l]; auto. right. exists x. now left. Qed.
+
+Lemma not_nil_In : forall l : list A, l <> nil -> exists x, In x l.
+Proof.
+intros [| x l] Hl.
+- now elim Hl.
+- exists x. now left.
+Qed.
+
 Lemma InA_Leibniz : forall (x : A) l, InA Logic.eq x l <-> In x l.
 Proof.
 intros x l. split; intro Hl; induction l; inversion_clear Hl; (subst; now left) || (right; now apply IHl).  
@@ -145,6 +155,16 @@ induction l; intros x Hx. now elim Hx.
 destruct l. now left. 
 change (List.In (List.last (a0 :: l) x) (a :: a0 :: l)).
 right. apply IHl. discriminate.
+Qed.
+
+Lemma hd_last_diff : forall l d d', length l > 1 -> NoDupA eqA l ->
+  ~eqA (hd d l) (last l d').
+Proof.
+intros l d d' Hl Hnodup Heq.
+destruct l as [| x [| y l]]; simpl in Hl; try omega.
+inversion_clear Hnodup. change (eqA x (last (y :: l) d')) in Heq.
+apply H. rewrite Heq. rewrite InA_alt. eexists; split; try reflexivity.
+apply last_In. discriminate.
 Qed.
 
 Lemma map_hd : forall (f : A -> B) l d, List.hd (f d) (map f l) = f (List.hd d l).
@@ -986,9 +1006,9 @@ Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : lis
 Proof. intros eq_dec l. destruct (NoDupA_dec _ eq_dec l); rewrite NoDupA_Leibniz in *; auto. Qed.
 
 
-(* ******************************** *)
-(** *  The same for real unumbers. **)
-(* ******************************** *)
+(* ******************************* *)
+(** *  The same for real numbers. **)
+(* ******************************* *)
 
 
 Lemma Rdec : forall x y : R, {x = y} + {x <> y}.
