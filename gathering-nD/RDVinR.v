@@ -355,8 +355,15 @@ Proof. unfold lift_pos. intros pos [g | b]; hnf. reflexivity. now apply Fin.case
 Corollary spec_nil : forall conf, ~Spec.eq (Spec.from_config conf) Spec.empty.
 Proof.
 intros conf Heq.
-SearchAbout Spec.empty.
-Admitted.
+unfold Spec.from_config in Heq.
+rewrite Spec.multiset_empty in Heq.
+assert (Hlgth:= Spec.Pos.list_length conf).
+rewrite Heq in Hlgth.
+simpl in *.
+unfold N.nG in *.
+assert (hnG:=size_G).
+omega.
+Qed.
 
 
 Definition Stack_at x pos :=
@@ -1655,7 +1662,7 @@ assert (Hin : In (Good g) (active da)).
   - now rewrite Heq. }
 rewrite Hactive in Hin. elim Hin.
 Qed.
-(*
+
 (* TODO *)
 Lemma nominal_spectrum_3_stacks_beaucoup_mieux:
   forall pos,
