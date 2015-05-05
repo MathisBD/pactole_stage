@@ -365,17 +365,15 @@ assert (hnG:=size_G).
 omega.
 Qed.
 
-
+(* Renommer en Major_stack_at? *)
 Definition Stack_at x pos :=
-  exists n, (Spec.from_config pos)[x] = n
-  /\ forall y, x <> y -> ((Spec.from_config pos)[y] < n).
+  forall y, x <> y -> ((!! pos)[y] < (!! pos)[x]).
 
 Instance Stack_at_compat : Proper (Logic.eq ==> Pos.eq ==> iff) Stack_at.
 Proof. intros ? ? ? ? ? Hpos. subst. unfold Stack_at. now setoid_rewrite Hpos. Qed.
 
 
 Ltac Rdec_aux H :=
-
   match type of H with
     | context[Rdec ?x ?y] =>
       let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
@@ -551,6 +549,8 @@ Proof. intros. apply extreme_center_similarity. assumption. apply spec_nil. Qed.
     3) otherwise, robots located at non extremal locations go to the middle of the extremal locations.
     The last case will necessarily end into one of the first two, ensuring termination.
 **)
+
+(** [Smax_mult s] returns the maximal multiplicity of configutation [s]. *)
 Definition Smax_mult s := Spec.fold (fun _ => max) s 0%nat.
 
 Instance Smax_mult_compat : Proper (Spec.eq ==> eq) Smax_mult.
@@ -612,6 +612,8 @@ intro s. split; intro Heq.
 + rewrite Heq. unfold Smax_mult. now rewrite Spec.fold_empty.
 Qed.
 
+(** [Smax s] return the configuration [s] where all non maximal positions
+    have been removed. *)
 Definition Smax s := Spec.filter (fun _ => beq_nat (Smax_mult s)) s.
 
 Instance Smax_compat : Proper (Spec.eq ==> Spec.eq) Smax.
@@ -639,19 +641,116 @@ Corollary Smax_similarity : forall sim, sim.(ratio) <> 0 ->
 Proof. intros. now apply Smax_map_injective, similarity_injective. Qed.
 
 
+Instance eqb_Smax_mult_compat s:
+  Proper (R.eq ==> eq ==> eq)
+         (fun _ : Spec.elt => Nat.eqb (Smax_mult s)).
+Proof.
+  repeat intro. now subst.
+Qed.
+
 Lemma Smax_subset : forall s x, ((Smax s)[x] <= s[x])%nat.
+Proof.
+  intros s x.
+  unfold Smax.
+  setoid_rewrite Spec.filter_spec.
+  2: apply eqb_Smax_mult_compat.
+  destruct (Smax_mult s =? s[x]);auto.
+  omega.
+Qed.
 
 Theorem Smax_spec : forall s x y, Spec.In y (Smax s) -> (s[x] <= (Smax s)[y])%nat.
 Proof.
 intros s x y Hy. unfold Smax in *.
-assert (Hf : Proper (R.eq ==> eq ==> eq) (fun _ : Spec.elt => Nat.eqb (Smax_mult s))). { repeat intro. now subst. }
+assert (Hf := eqb_Smax_mult_compat s).
 rewrite <- Spec.multiplicity_spec in Hy. rewrite Spec.filter_spec in *; trivial.
 destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
 rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
 Qed.
 
+Theorem Smax_spec_2 : forall s x y, (s[x] <= (Smax s)[y])%nat -> Spec.In y (Smax s).
+Proof.
+  admit.
+Admitted.
+
+
+Close Scope R_scope.
+
+Theorem Smax_spec_non_nil : forall s x, Spec.In x s
+                                         -> exists y, Spec.In y (Smax s).
+Proof.
+  intro s.
+  pattern s.
+  eapply (Spec.ind).
+  { intros m1 m2 Hm1m2.
+    setoid_rewrite Hm1m2.
+    reflexivity. }
+  - intros m x n Hxnotinm hpos HI x' hx'.
+    destruct (Spec.empty_or_In_dec m).
+    + exists x.
+      unfold Smax.
+      rewrite Spec.filter_In.
+      split.
+      * admit.
+      * rewrite Nat.eqb_eq.
+        rewrite Smax_mult_spec_aux;trivial.
+        rewrite e at 2.
+        rewrite Spec.M.add_empty.
+        rewrite Spec.singleton_spec.
+        unfold R.eq_dec,Rdef.eq_dec.
+        Rdec.
+        rewrite <- Smax_mult_0 in e.
+        rewrite e.
+        apply Max.max_0_r.
+      * apply eqb_Smax_mult_compat.
+    + destruct e as [x'' hx''].
+      specialize (HI x'' hx'').
+      destruct HI as [y hy].
+      destruct (le_lt_dec n (m[y])).
+      * exists y.
+        admit.
+      * exists x.
+        admit.
+  - intros x H.
+    admit.
+Admitted.
+
+
+Lemma Smax_empty_1 : forall s,  Spec.eq s Spec.empty -> Spec.eq (Smax s) Spec.empty.
+Proof.
+  intros s h.
+  rewrite h.
+  unfold Smax.
+  rewrite Spec.filter_empty.
+  + reflexivity.
+  + intros r1 r2 Hr1r2 x1 x2 hx1x2.
+    subst.
+    reflexivity.
+Qed.
+
 (* BUG HERE *)
-Hypothesis Smax_empty : forall s, Spec.eq (Smax s) Spec.empty <-> Spec.eq s Spec.empty.
+Lemma Smax_empty_2 : forall s, Spec.eq (Smax s) Spec.empty -> Spec.eq s Spec.empty.
+Proof.
+  unfold Spec.eq.
+  intros s H.
+  destruct (Spec.empty_or_In_dec s).
+  - intros x.
+    rewrite e.
+    reflexivity.
+  - destruct e as [x hx].
+    destruct (Smax_spec_non_nil hx).
+    unfold Spec.In in H0.
+    rewrite H in H0.
+    admit.
+Admitted.
+
+Lemma Smax_empty : forall s, Spec.eq (Smax s) Spec.empty <-> Spec.eq s Spec.empty.
+Proof.
+  split.
+  - apply Smax_empty_2.
+  - apply Smax_empty_1.
+Qed.
+
+Open Scope R_scope.
 
 Lemma support_Smax_nil : forall config, Spec.support (Smax (!! config)) <> nil.
 Proof. intros config Habs. rewrite Spec.support_nil, Smax_empty in Habs. apply (spec_nil _ Habs). Qed.
@@ -721,8 +820,31 @@ intros pt1 pt2 f. destruct (Rdec pt1 pt2) as [Heq | Hneq].
 Qed.
 *)
 
-Lemma forbidden_similarity_invariant : forall (sim : similarity) pos, forbidden (Pos.map sim pos) -> forbidden pos.
-Proof. Admitted.
+Lemma sim_compat (sim:similarity) : Proper (R.eq ==> R.eq) sim.
+Proof.
+  repeat intro.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Lemma forbidden_similarity_invariant : forall (sim : similarity) pos, forbidden pos -> forbidden (Pos.map sim pos).
+Proof.
+  unfold forbidden.
+  intros sim pos H.
+  destruct H as [hnG [pt1 [pt2 [hdiff [hpt1 hptt2]]]]].
+  split;trivial.
+  exists (sim pt1), (sim pt2).
+  split.
+  - admit. (* Lioneeeeeeel *)
+  - split.
+    all: rewrite <- Spec.from_config_map, Spec.map_spec.
+    all: try assumption.
+    all: try apply sim_compat.
+    all: apply similarity_injective.
+    all: admit.
+Admitted.
+
+
 (* intros [gp bp] k t [p1 [p2 [Hneq Hperm]]]. destruct (Rdec k 0).
 + subst. assert (Heq : PosEq (lift_gp (fun _ => 0)) (⟦0, t⟧ {| gp := gp; bp := bp |})).
   { split; simpl. intro. now rewrite Rmult_0_l. intro. now apply Fin.case0. }
@@ -1666,14 +1788,14 @@ Qed.
 (* TODO *)
 Lemma nominal_spectrum_3_stacks_beaucoup_mieux:
   forall pos,
-    (length (M.support (multiset (nominal_spectrum pos))) >= 3)%nat ->
+    (length (Spec.support (!! pos)) >= 3)%nat ->
     exists (pt1 pt2 pt3 : R) l,
       pt1 <> pt2 /\
       pt2 <> pt3 /\
       pt1 <> pt3 /\
-      Permutation (nominal_spectrum pos) (pt1::pt2::pt3::l).
+      Permutation (Spec.support (!! pos)) (pt1::pt2::pt3::l).
 Proof.
-  intros pos H.
+(*  intros pos H.
   rewrite (nominal_spectrum_3_stacks pos) in H.
   decompose [ex and] H; clear H.
   destruct x3; [exfalso; omega|].
@@ -1689,21 +1811,21 @@ Proof.
     symmetry.
     apply Permutation_middle.
   - symmetry.
-    apply Permutation_middle.
-Qed.
+    apply Permutation_middle. *)
+Admitted.
 
 
 Corollary nominal_spectrum_3_stacks_beaucoup_mieux_mieux:
   forall pos pt3,
-    (length (M.support (multiset (nominal_spectrum pos))) >= 3)%nat ->
-    M.In pt3 (multiset (nominal_spectrum pos)) ->
+    (length (Spec.support (!! pos)) >= 3)%nat ->
+    Spec.In pt3 (!! pos) ->
     exists (pt1 pt2 : R) l,
         pt1 <> pt2 /\
         pt2 <> pt3 /\
         pt1 <> pt3 /\
-      Permutation (nominal_spectrum pos) (pt1::pt2::l).
+      Permutation (Spec.support (!! pos)) (pt1::pt2::l).
 Proof.
-  intros pos pt3 H H0.
+(*  intros pos pt3 H H0.
   decompose [and ex] (nominal_spectrum_3_stacks_beaucoup_mieux _ H).
   destruct (Rdec x pt3), (Rdec x0 pt3), (Rdec x1 pt3); subst;Rdec;eauto 10.
   - exists x0, x1,(pt3::x2);repeat split;auto.
@@ -1718,9 +1840,8 @@ Proof.
   - exists x, x1,(pt3::x2);repeat split;auto.
     rewrite H5.
     eapply perm_skip.
-    eapply perm_swap.
-Qed.
-*)
+    eapply perm_swap. *)
+Admitted.
 
 Lemma increase_move1 :
   forall r conf da pt,
