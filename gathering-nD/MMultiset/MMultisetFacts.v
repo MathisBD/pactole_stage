@@ -2960,7 +2960,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     rewrite for_all_false_exists, exists_spec in Hforall; trivial.
     destruct Hforall as [x [Hin Hfx]]. rewrite negb_involutive in Hfx.
     elim (@In_empty x). rewrite <- Hall, filter_In; auto.
-  + rewrite for_all_spec in Hall; trivial. SearchAbout empty In.
+  + rewrite for_all_spec in Hall; trivial.
     destruct (empty_or_In_dec (filter f m)) as [? | [x Hin]]; trivial.
     rewrite filter_In in Hin; trivial. destruct Hin as [Hin Hfx]. apply Hall in Hin.
     rewrite Hfx in Hin. discriminate.
