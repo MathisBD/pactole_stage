@@ -1,0 +1,9 @@
+* add extensionality_compat
+* add filtern vs. filter
+* add max/min: elt with max/min multiplicity
+* add remove_all
+* prove global lemmas with elements, like elements_remove1/2
+* see CoLoR for more things to add
+* mid-term goal: add operations using order on elements
+  (better implementation, max/min, ...)
+* long-term goal: add ordering
