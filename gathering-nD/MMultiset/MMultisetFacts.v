@@ -3,8 +3,8 @@ Require Import Omega.
 Require Import PArith.
 Require Import RelationPairs.
 Require Import DecidableType.
-Require Import FMultisets.Preliminary.
-Require Import FMultisets.FMultisetInterface.
+Require Import MMultiset.Preliminary.
+Require Import MMultisetInterface.
 
 
 Set Implicit Arguments.

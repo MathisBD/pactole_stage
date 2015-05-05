@@ -4,7 +4,7 @@ Require Import Relations.
 Require Import Morphisms.
 Require Import SetoidPermutation.
 Import Permutation List.
-Require Import Preliminary.
+Require Import Pactole.Preliminary.
 
 
 Set Implicit Arguments.

@@ -1,14 +1,13 @@
+Require Import FMapInterface.
 Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
-Require Import Equalities.
-Require Import FMapInterface.
 Require Import RelationPairs.
-Require Import FMultisets.Preliminary.
-Require Import FMultisets.FMultisetInterface.
+Require Import MMultiset.Preliminary.
+Require Import MMultisetInterface.
+Require Import Equalities.
 
-
-Module FMultisets (FMap : WSfun) (E : DecidableType) : FMultisetsOn E.
+Module FMultisets (FMap : WSfun) (E : DecidableType.DecidableType) : FMultisetsOn E.
 
 Module M := FMap(E).
 

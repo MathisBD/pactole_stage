@@ -5,8 +5,8 @@ Require Import Rbase Rbasic_fun.
 Require Import List.
 Require Import SetoidList.
 Require Import Relations.
-Require Import FMultisetFacts FMultisetMap.
-Require Import Preliminary.
+Require Import MMultisetFacts MMultisetMap.
+Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
 Require Import ConvergentFormalismRd.
@@ -219,19 +219,20 @@ intros conf [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
 rewrite <- (@Spec.cardinal_total_sub_eq (Spec.add pt2 (Nat.div2 N.nG) (Spec.singleton pt1 (Nat.div2 N.nG)))
                                         (Spec.from_config conf)).
 + rewrite Spec.support_add; try now apply half_size_pos.
-  destruct (InA_dec (eqA:=R.eq) R.eq_dec pt2 (Spec.support (Spec.singleton pt1 (Nat.div2 N.nG)))) as [Hin | Hin].
-  - exfalso. rewrite Spec.support_singleton in Hin.
-      inversion_clear Hin. hnf in *. auto. now inversion H.
-      pose (lt_0_neq (Nat.div2 N.nG) half_size_pos). auto.
-  - rewrite Spec.support_singleton; trivial. pose (lt_0_neq (Nat.div2 N.nG) half_size_pos). auto.
+  destruct (Spec.In_dec pt2 (Spec.singleton pt1 (Nat.div2 N.nG))) as [Hin | Hin].
+  - exfalso. rewrite Spec.In_singleton in Hin.
+    destruct Hin. elim Hdiff. rewrite H.
+    reflexivity.
+  - rewrite Spec.support_singleton; trivial. apply half_size_pos.
 + intro pt. destruct (Rdec pt pt2), (Rdec pt pt1); subst.
   - now elim Hdiff.
   - rewrite Spec.add_spec, Spec.singleton_spec.
-    unfold R.eq_dec, Rdef.eq_dec in *. Rdec_full; contradiction || omega.
-  - rewrite Spec.add_spec', Spec.singleton_spec.
+    unfold R.eq_dec, Rdef.eq_dec in *.
+    do 2 Rdec_full; contradiction || omega.
+  - rewrite Spec.add_other, Spec.singleton_spec.
       now unfold R.eq_dec, Rdef.eq_dec in *; Rdec_full; contradiction || omega.
       now unfold R.eq, Rdef.eq; auto.
-  - rewrite Spec.add_spec', Spec.singleton_spec.
+  - rewrite Spec.add_other, Spec.singleton_spec.
       now unfold R.eq_dec, Rdef.eq_dec in *; Rdec_full; contradiction || omega.
       now unfold R.eq, Rdef.eq; auto.
 + rewrite Spec.cardinal_add, Spec.cardinal_singleton, Spec.cardinal_from_config.
@@ -480,12 +481,12 @@ Proof.
 intros f Hfmon Hfinj x l. unfold is_extremal.
 assert (Hf : Proper (R.eq ==> R.eq) f). { unfold R.eq, Rdef.eq. repeat intro. now subst. }
 destruct Hfmon as [Hfinc | Hfdec].
-+ repeat Rdec_full; trivial;rewrite Spec.map_support, (sort_map_increasing Hfinc) in *; trivial.
++ repeat Rdec_full; trivial; rewrite Spec.map_injective_support, (sort_map_increasing Hfinc) in *; trivial.
   - rewrite map_hd in Heq. apply Hfinj in Heq. contradiction.
   - rewrite map_last in Heq. apply Hfinj in Heq. contradiction.
   - elim Hneq. rewrite map_hd. now f_equal.
   - elim Hneq0. rewrite map_last. now f_equal.
-+ repeat Rdec_full; trivial;rewrite Spec.map_support, (sort_map_decreasing Hfdec) in *; trivial.
++ repeat Rdec_full; trivial;rewrite Spec.map_injective_support, (sort_map_decreasing Hfdec) in *; trivial.
   - rewrite hd_rev_last, map_last in Heq. apply Hfinj in Heq. contradiction.
   - rewrite last_rev_hd, map_hd in Heq. apply Hfinj in Heq. contradiction.
   - elim Hneq0. rewrite last_rev_hd, map_hd. now f_equal.
@@ -514,7 +515,7 @@ intros sim Hk s Hs.
 assert (Hsim1 : Proper (R.eq ==> R.eq) sim). { intros x y Hxy. now rewrite Hxy. }
 assert (Hsim2 : injective R.eq R.eq sim). { now apply similarity_injective. }
 destruct (similarity_monotonic sim) as [Hinc | Hdec].
-* unfold extreme_center. rewrite Spec.map_support, (sort_map_increasing Hinc); trivial.
+* unfold extreme_center. rewrite Spec.map_injective_support, (sort_map_increasing Hinc); trivial.
   assert (Hperm := Permuted_sort (Spec.support s)). destruct (sort (Spec.support s)) as [| x l'].
   + symmetry in Hperm. apply Permutation_nil in Hperm. elim Hs. now rewrite <- Spec.support_nil.
   + clear s Hs Hperm. simpl hd. cut (x :: l' <> nil). generalize (x :: l'). intro l.
@@ -524,7 +525,7 @@ destruct (similarity_monotonic sim) as [Hinc | Hdec].
         simpl. symmetry. now apply similarity_middle.
         rewrite <- IHl. reflexivity. discriminate.
     - discriminate.
-* unfold extreme_center. rewrite Spec.map_support, (sort_map_decreasing Hdec); trivial.
+* unfold extreme_center. rewrite Spec.map_injective_support, (sort_map_decreasing Hdec); trivial.
   rewrite last_rev_hd, hd_rev_last.
   assert (Hperm := Permuted_sort (Spec.support s)). destruct (sort (Spec.support s)) as [| x l'].
   + symmetry in Hperm. apply Permutation_nil in Hperm. elim Hs. now rewrite <- Spec.support_nil.
@@ -568,10 +569,13 @@ intros f Hf. apply Spec.ind.
   assert (Haux : Spec.elt -> Spec.elt ->
             forall n m a : nat, Init.Nat.max m (Init.Nat.max n a) = Init.Nat.max n (Init.Nat.max m a)).
   { intros _ _ n' m' p'. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2. }
-  unfold Smax_mult in *. repeat rewrite Spec.fold_add; trivial; refine _.
-  - now rewrite Hrec.
-  - intro Habs. apply Hout. apply Spec.map_In in Habs. destruct Habs as [y [Heq Hin]].
-    apply Hf in Heq; subst; assumption.
+  unfold Smax_mult in *. repeat rewrite Spec.fold_add; trivial; refine _;try now (hnf;auto).
+  - intro Habs. apply Hout. apply Spec.map_In in Habs.
+    * destruct Habs as [y [Heq Hin]].
+      apply Hf in Heq; subst; assumption.
+    * repeat intro.
+      rewrite H0.
+      reflexivity.
 + now rewrite Spec.map_empty.
 Qed.
 
@@ -593,10 +597,10 @@ Proof.
 intro s. pattern s. apply Spec.ind; clear s.
 * intros s1 s2 Hs. now setoid_rewrite Hs.
 * intros m x n Hout Hn Hrec y. rewrite Smax_mult_spec_aux; trivial.
-  assert (Hx : m[x] = 0%nat). { rewrite <- Spec.multiplicity_spec in Hout. omega. }
+  assert (Hx : m[x] = 0%nat). { rewrite Spec.not_In in Hout. assumption. }
   destruct (Rdec y x) as [Hxy | Hxy].
-  + subst. rewrite Spec.add_spec, Hx. apply Max.le_max_l.
-  + rewrite Spec.add_spec'; auto. transitivity (Smax_mult m).
+  + subst. rewrite Spec.add_spec, Hx. rewrite Spec.eq_refl_left. apply Max.le_max_l.
+  + rewrite Spec.add_other; auto. transitivity (Smax_mult m).
     - apply Hrec.
     - apply Max.le_max_r.
 * intro x. rewrite Spec.empty_spec. omega.
@@ -607,7 +611,7 @@ Proof.
 intro s. split; intro Heq.
 + destruct (Spec.empty_or_In_dec s) as [? | [x Hin]]; trivial.
   elim (lt_irrefl 0). apply lt_le_trans with s[x].
-  - now rewrite <- Spec.multiplicity_spec in Hin.
+  - exact Hin.
   - rewrite <- Heq. apply Smax_mult_spec.
 + rewrite Heq. unfold Smax_mult. now rewrite Spec.fold_empty.
 Qed.
@@ -662,7 +666,7 @@ Theorem Smax_spec : forall s x y, Spec.In y (Smax s) -> (s[x] <= (Smax s)[y])%na
 Proof.
 intros s x y Hy. unfold Smax in *.
 assert (Hf := eqb_Smax_mult_compat s).
-rewrite <- Spec.multiplicity_spec in Hy. rewrite Spec.filter_spec in *; trivial.
+unfold Spec.In in Hy. rewrite Spec.filter_spec in *; trivial.
 destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
 rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
 Qed.

@@ -2,11 +2,11 @@ Require Import RelationPairs.
 Require Import MSetInterface.
 Require Import DecidableType.
 Require Import SetoidPermutation.
-Require Import FMultisets.Preliminary.
+Require Import MMultiset.Preliminary.
 
 (* based on MSets *)
 
-Module Type FMOps (E : DecidableType).
+Module Type FMOps (E : DecidableType.DecidableType).
 
   Definition elt := E.t.
   Parameter t : Type.

@@ -3,9 +3,10 @@
 Preliminary.v
 Robots.v
 Positions.v
-FMultisetInterface.v
-FMultisetMap.v
-FMultisetFacts.v
+MMultiset/MMultisetInterface.v
+MMultiset/MMultisetMap.v
+MMultiset/MMultisetFacts.v
+MMultiset/Preliminary.v
 ConvergentFormalismRd.v
 MultisetSpectrum.v
 SetSpectrum.v

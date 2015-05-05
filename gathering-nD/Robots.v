@@ -3,7 +3,7 @@ Require Import Morphisms.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
-Require Import Preliminary.
+Require Import Pactole.Preliminary.
 Open Scope list_scope.
 Require Vector.
 

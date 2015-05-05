@@ -1,11 +1,12 @@
+Require FMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
-Require Import FMultisetFacts.
-Require Import FMultisetMap.
-Require FMapWeakList. (* to build an actual implementation of multisets *)
-Require Import Preliminary.
+Require Import MMultisetInterface.
+Require Import MMultisetFacts.
+Require Import MMultisetMap.
+Require Import Pactole.Preliminary.
 Require Robots.
 Require Import Positions.
 
@@ -14,15 +15,27 @@ Module Make(Location : MetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
 
 Module Names := Robots.Make(N).
 Module Pos := Positions.Make(Location)(N)(Names).
+(* To be removed once Multiset lib ported to MMap. *)
+Module Locations := Equalities.Backport_DT Location.
 
 (** Definition of spectra as multisets of locations. *)
-Module Mraw : FMultisetsOn Location := FMultisets FMapWeakList.Make Location.
-Module M := FMultisetFacts.Make Location Mraw.
+Module Mraw := MMultisetMap.FMultisets FMapWeakList.Make Locations.
+Module M := MMultisetFacts.Make Locations Mraw.
 
 Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
 Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
 Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
 Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
+
+Lemma eq_refl_left : forall e A (a b:A), (if Locations.eq_dec e e then a else b) = a.
+Proof.
+  intros e A a b.
+  destruct (Locations.eq_dec e e).
+  - reflexivity.
+  - elim n.
+    reflexivity.
+Qed.
+  
 
 (** **  Building multisets from lists  **)
 
@@ -51,7 +64,9 @@ Lemma multiset_empty : forall l, multiset l [=] M.empty <-> l = nil.
 Proof.
 intro l. split; intro H.
 + destruct l as [| x l]. reflexivity. rewrite multiset_cons in H.
-  specialize (H x). rewrite M.add_spec, M.empty_spec in H. omega.
+  specialize (H x). rewrite M.add_spec, M.empty_spec in H.
+  rewrite eq_refl_left in H.
+  exfalso;omega.
 + subst l. apply multiset_nil.
 Qed.
 
@@ -60,8 +75,18 @@ Proof.
 induction l as [| e l]; intros l'; simpl.
 + now rewrite M.union_empty_l.
 + do 2 rewrite multiset_cons. intro x. destruct (Location.eq_dec x e) as [Heq | Heq].
-  - rewrite Heq, M.add_spec, IHl. repeat rewrite M.union_spec. rewrite M.add_spec. omega.
-  - rewrite M.add_spec', IHl; auto. repeat rewrite M.union_spec. rewrite M.add_spec'; auto.
+  - rewrite Heq, M.add_spec, IHl. repeat rewrite M.union_spec. rewrite M.add_spec.
+    repeat rewrite eq_refl_left.
+    omega.
+  - rewrite M.add_other, IHl; auto. repeat rewrite M.union_spec. rewrite M.add_other; auto.
+Qed.
+
+Lemma location_neq_sym: forall x y, ~ Location.eq x y -> ~ Location.eq y x.
+Proof.
+  intros x y H.
+  intro abs.
+  symmetry in abs.
+  contradiction.
 Qed.
 
 Instance multiset_compat : Proper (PermutationA Location.eq ==> M.eq) multiset.
@@ -72,10 +97,13 @@ intro l1. induction l1 as [| x l1]; intros l2 Hperm.
   destruct Hx as [l1' [y [l2' [Hxy Heq]]]]. now left. subst l2.
   intro z. rewrite multiset_app, M.union_spec. do 2 rewrite multiset_cons.
   destruct (Location.eq_dec x z) as [Heq | Hneq].
-  - rewrite <- Heq, <- Hxy. repeat rewrite M.add_spec. rewrite plus_assoc. f_equal.
+  - rewrite <- Heq, <- Hxy. repeat rewrite M.add_spec.
+    repeat rewrite eq_refl_left.
+    rewrite plus_assoc. f_equal.
     rewrite <- M.union_spec, <- multiset_app. apply IHl1.
     rewrite <- (PermutationA_middle _), Hxy in Hperm. revert Hperm. apply (PermutationA_cons_inv _).
-  - rewrite <- Hxy. repeat rewrite M.add_spec'; trivial. rewrite <- M.union_spec, <- multiset_app.
+  - apply location_neq_sym in Hneq.
+    rewrite <- Hxy. repeat rewrite M.add_other; trivial. rewrite <- M.union_spec, <- multiset_app.
     apply IHl1. rewrite <- (PermutationA_middle _), Hxy in Hperm. revert Hperm. apply (PermutationA_cons_inv _).
 Qed.
 
@@ -85,10 +113,13 @@ Proof.
 intros x l. induction l; intros n Hin.
   exists nil. split. now auto. rewrite multiset_nil, M.empty_spec in Hin. subst n. simpl. reflexivity.
   rewrite multiset_cons in Hin. destruct (Location.eq_dec x a) as [Heq | Heq].
-  - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite M.add_spec in Hin. destruct n. omega.
-    rewrite plus_comm in Hin. simpl in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+  - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite M.add_spec in Hin. destruct n.
+    + rewrite eq_refl_left in Hin.
+      omega.
+    + rewrite eq_refl_left in Hin.
+      rewrite plus_comm in Hin. simpl in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
     exists l'. split. assumption. simpl. now constructor.
-  - rewrite M.add_spec' in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+  - rewrite M.add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
     exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
     transitivity (a :: alls x n ++ l'); now constructor || apply (PermutationA_middle _).
 Qed.
@@ -100,7 +131,7 @@ intros x n. induction n; simpl.
 + rewrite multiset_cons. rewrite IHn. intro y. rewrite M.singleton_spec.
   destruct (Location.eq_dec y x) as [Heq | Heq].
   - rewrite Heq, M.add_spec, M.singleton_spec. destruct (Location.eq_dec x x) as [_ | Helim]. omega. now elim Helim.
-  - rewrite M.add_spec'; auto. rewrite M.singleton_spec. destruct (Location.eq_dec y x); trivial. contradiction.
+  - rewrite M.add_other; auto. rewrite M.singleton_spec. destruct (Location.eq_dec y x); trivial. contradiction.
 Qed.
 
 Corollary multiset_In : forall x l, M.multiplicity x (multiset l) > 0 <-> InA Location.eq x l.
@@ -108,9 +139,12 @@ Proof.
 intros x l. split; intro Hl.
 + destruct (multiset_PermutationA _ _ _ (eq_refl (M.multiplicity x (multiset l)))) as [l' [Hl' Hperm]].
   rewrite Hperm. rewrite (InA_app_iff _). left. destruct (M.multiplicity x (multiset l)). omega. now left.
-+ induction l. now inversion Hl. rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Heq].
-  - rewrite Heq. rewrite M.add_spec. omega.
-  - rewrite M.add_spec'; trivial. apply IHl. inversion_clear Hl; auto. now elim Heq.
++ induction l. now inversion Hl. rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Hneq].
+  - rewrite Heq. rewrite M.add_spec. 
+    rewrite eq_refl_left.
+    omega.
+  - apply location_neq_sym in Hneq.
+    rewrite M.add_other; trivial. apply IHl. inversion_clear Hl; auto. now elim Hneq.
 Qed.
 
 Theorem multiset_map : forall f, Proper (Location.eq ==> Location.eq) f ->
@@ -133,9 +167,11 @@ Theorem multiset_spec : forall x l, M.multiplicity x (multiset l) = countA_occ _
 Proof.
 intros x l. induction l; simpl.
 + rewrite multiset_nil. now apply M.empty_spec.
-+ rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Heq].
-  - rewrite Heq. rewrite M.add_spec. rewrite IHl. omega.
-  - rewrite M.add_spec'. now apply IHl. assumption.
++ rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Hneq].
+  - rewrite Heq. rewrite M.add_spec. rewrite IHl.
+    rewrite eq_refl_left.
+    omega.
+  - apply location_neq_sym in Hneq. rewrite M.add_other. now apply IHl. assumption.
 Qed.
 (*
 Lemma multiset_remove : forall x l,
@@ -146,12 +182,12 @@ intros x l y. induction l as[| a l]; simpl.
 + rewrite multiset_cons. destruct (Rdec y x). 
   - subst y. Rdec_full.
       subst a. rewrite IHl. rewrite M.add_spec. do 2 rewrite M.remove_spec. rewrite M.add_spec. omega.
-      rewrite multiset_cons. rewrite M.add_spec'; auto. rewrite IHl. do 2 rewrite M.remove_spec. omega.
+      rewrite multiset_cons. rewrite M.add_other; auto. rewrite IHl. do 2 rewrite M.remove_spec. omega.
   - Rdec_full.
-      subst a. rewrite IHl. rewrite M.add_spec. repeat rewrite M.remove_spec'; auto. rewrite M.add_spec'; auto.
+      subst a. rewrite IHl. rewrite M.add_spec. repeat rewrite M.remove_spec'; auto. rewrite M.add_other; auto.
       rewrite multiset_cons. rewrite M.remove_spec'; auto. destruct (Rdec a y).
         subst a. do 2 rewrite M.add_spec. rewrite IHl. now rewrite M.remove_spec'.
-        repeat rewrite M.add_spec'; trivial. rewrite IHl. rewrite M.remove_spec'; auto.
+        repeat rewrite M.add_other; trivial. rewrite IHl. rewrite M.remove_spec'; auto.
 Qed.
 *)
 
@@ -163,15 +199,17 @@ intros x l. split; intro Hl.
     - intro Heq. unfold M.elt in *. now rewrite <- Heq.
     - apply (PermutationA_nil Location.eq_equiv). now rewrite multiset_nil, M.support_empty.
   + rewrite multiset_cons in Hl. rewrite M.support_add in Hl; try omega.
-    destruct (InA_dec Location.eq_dec a (M.support (multiset l))).
+    destruct (M.In_dec a (multiset l)).
     - right. now apply IHl.
     - inversion_clear Hl. now left. right. now apply IHl.
 * induction l.
   + inversion Hl.
-  + rewrite M.support_spec. unfold M.In. rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Heq].
-    - rewrite Heq. rewrite M.add_spec. omega.
-    - rewrite M.add_spec'; trivial. change (M.In x (multiset l)).
-      rewrite <- M.support_spec. apply IHl. inversion_clear Hl; trivial. elim Heq. now symmetry.
+  + rewrite M.support_spec. unfold M.In. rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Hneq].
+    - rewrite Heq. rewrite M.add_spec.
+      rewrite eq_refl_left. omega.
+    - apply location_neq_sym in Hneq.
+      rewrite M.add_other; trivial. change (M.In x (multiset l)).
+      rewrite <- M.support_spec. apply IHl. inversion_clear Hl; trivial. elim Hneq. now symmetry.
 Qed.
 
 

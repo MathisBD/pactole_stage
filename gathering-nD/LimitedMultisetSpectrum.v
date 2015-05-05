@@ -2,7 +2,7 @@ Require Import Utf8_core.
 Require Import SetoidList.
 Require Import MSets.
 Require Import Rbase.
-Require Import Preliminary.
+Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
 Require MultisetSpectrum.

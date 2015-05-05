@@ -4,7 +4,7 @@ Require Import Bool.
 Require Import RelationPairs.
 Require Import Reals.
 Require Import SetoidList.
-Require Import Preliminary.
+Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
 Require Import ConvergentFormalismRd.
