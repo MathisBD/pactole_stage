@@ -7,7 +7,7 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
-Require Import ConvergentFormalismRd.
+Require Import FormalismRd.
 Require MultisetSpectrum.
 
 

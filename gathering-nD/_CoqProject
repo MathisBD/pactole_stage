@@ -7,7 +7,7 @@ MMultiset/MMultisetInterface.v
 MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/Preliminary.v
-ConvergentFormalismRd.v
+FormalismRd.v
 MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v

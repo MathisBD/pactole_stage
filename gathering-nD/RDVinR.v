@@ -9,7 +9,7 @@ Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
-Require Import ConvergentFormalismRd.
+Require Import FormalismRd.
 Require Import SortingR.
 Require MultisetSpectrum.
 Require Import Morphisms.
