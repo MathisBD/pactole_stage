@@ -835,18 +835,66 @@ Lemma forbidden_similarity_invariant : forall (sim : similarity) pos, forbidden 
 Proof.
   unfold forbidden.
   intros sim pos H.
-  destruct H as [hnG [pt1 [pt2 [hdiff [hpt1 hptt2]]]]].
+  destruct H as [hnG [pt1 [pt2 [hdiff [hpt1 hpt2]]]]].
   split;trivial.
   exists (sim pt1), (sim pt2).
   split.
-  - admit. (* Lioneeeeeeel *)
+  - rewrite (sim.(Inversion)).
+    intro abs.
+    rewrite <- abs in hdiff.
+    rewrite <- (sim.(Inversion)) in hdiff.
+    elim hdiff;reflexivity.
   - split.
     all: rewrite <- Spec.from_config_map, Spec.map_spec.
     all: try assumption.
     all: try apply sim_compat.
-    all: apply similarity_injective.
-    all: admit.
-Admitted.
+    + rewrite <- hpt1.
+      transitivity (Spec.cardinal
+     (Spec.filter
+        (fun (y : Spec.elt) (_ : nat) =>
+         if Spec.Locations.eq_dec y pt1 then true else false)
+        (!! pos))).
+      2:now apply Spec.cardinal_filter_is_multiplicity.
+      apply Spec.M.cardinal_compat.
+      apply Spec.filter_extensionality_compat.
+      * repeat intro.
+        rewrite H.
+        reflexivity.
+      * intros x n.
+        destruct (Spec.Locations.eq_dec x pt1) as [heq | hneq] ,
+                 (Spec.Locations.eq_dec (sim x) (sim pt1)) as [heq' | hneq'];auto.
+        -- rewrite heq in hneq'.
+           elim hneq'.
+           reflexivity.
+        -- rewrite (sim.(Inversion)) in heq'.
+           rewrite <- heq' in hneq.
+           unfold Spec.Locations.eq,Rdef.eq in *.
+           rewrite <- (sim.(Inversion)) in hneq.
+           elim hneq;reflexivity.
+    + rewrite <- hpt2.
+      transitivity (Spec.cardinal
+     (Spec.filter
+        (fun (y : Spec.elt) (_ : nat) =>
+         if Spec.Locations.eq_dec y pt2 then true else false)
+        (!! pos))).
+      2:now apply Spec.cardinal_filter_is_multiplicity.
+      apply Spec.M.cardinal_compat.
+      apply Spec.filter_extensionality_compat.
+      * repeat intro.
+        rewrite H.
+        reflexivity.
+      * intros x n.
+        destruct (Spec.Locations.eq_dec x pt2) as [heq | hneq] ,
+                 (Spec.Locations.eq_dec (sim x) (sim pt2)) as [heq' | hneq'];auto.
+        -- rewrite heq in hneq'.
+           elim hneq'.
+           reflexivity.
+        -- rewrite (sim.(Inversion)) in heq'.
+           rewrite <- heq' in hneq.
+           unfold Spec.Locations.eq,Rdef.eq in *.
+           rewrite <- (sim.(Inversion)) in hneq.
+           elim hneq;reflexivity.
+Qed.
 
 
 (* intros [gp bp] k t [p1 [p2 [Hneq Hperm]]]. destruct (Rdec k 0).
