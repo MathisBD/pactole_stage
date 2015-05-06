@@ -176,8 +176,8 @@ End N.
 (** The spectrum is a multiset of positions *)
 Module Spec := MultisetSpectrum.Make(R)(N).
 
-Notation "s [ pt ]" := (Spec.multiplicity pt s) (at level 1, format "s [ pt ]").
-Notation "!!" := Spec.from_config.
+Notation "s [ pt ]" := (Spec.multiplicity pt s) (at level 5, format "s [ pt ]").
+Notation "!!" := Spec.from_config (at level 1).
 
 Module Export Formalism := ConvergentFormalism(R)(N)(Spec).
 Close Scope R_scope.
@@ -839,16 +839,140 @@ Qed.
 
 Definition no_Majority conf := (Spec.size (Smax (!! conf)) > 1)%nat.
 
+Add Search Blacklist "Spec.M".
 
+Close Scope R_scope.
+
+(* forbidden_support_length already proves the <- direction *)
 Lemma no_majority_support_2_forbidden : forall conf,
   no_Majority conf ->
   Spec.size (Spec.from_config conf) = 2%nat <-> forbidden conf.
 Proof.
-intros conf Hlen. unfold no_Majority in Hlen. split; intro H2.
-* rewrite Spec.size_spec in *.
-  destruct (Spec.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try now simpl in H2; omega.
-  admit.
-* now apply forbidden_support_length.
+  intros conf Hlen. unfold no_Majority in Hlen. split; intro H2.
+  - rewrite Spec.size_spec in *.
+    destruct (Spec.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try now simpl in H2; omega.
+    red.
+    assert (Hlen':(length (Spec.support (Smax (!! conf))) = 2)%nat).
+    { assert (length (Spec.support (Smax (!! conf))) <= 2)%nat.
+      { unfold Smax.
+        rewrite <- H2.
+        rewrite <- Hsupp.
+        repeat rewrite <- Spec.size_spec.
+        apply Spec.size_filter.
+        repeat intro.
+        rewrite H0.
+        reflexivity. }
+      omega. }
+    clear Hlen.
+    (* let us reformulate this in a more convenient way *)
+   cut (exists pt0 pt3 : Spec.elt,
+      pt0 <> pt3 /\
+      (!! conf)[pt0] = Nat.div2 N.nG /\ (!! conf)[pt3] = Nat.div2 N.nG /\ Nat.Even N.nG).
+   { intros h.
+     decompose [ex and] h; split; try assumption.
+     exists x, x0; intuition. }
+   exists pt1, pt2.
+   split.
+    * assert (hnodup:NoDupA R.eq (pt1 :: pt2 :: nil)). {
+        rewrite <- Hsupp.
+        apply Spec.support_NoDupA. }
+      intro abs.
+      subst.
+      inversion hnodup;subst.
+      elim H1.
+      constructor.
+      reflexivity.
+    * assert (h:=@Spec.support_filter _ (eqb_Smax_mult_compat (!!conf)) (!! conf)).
+      change (Spec.filter (fun _ : Spec.elt => Nat.eqb (Smax_mult (!! conf))) (!! conf))
+      with (Smax (!!conf)) in h.
+      assert (Hlen'':length (Spec.support (Smax (!! conf))) = length (Spec.support (!! conf))).
+      { rewrite Hsupp.
+        simpl.
+        assumption. }
+      assert (h2:=@NoDupA_inclA_length_PermutationA
+                    _ R.eq _
+                    (Spec.support (Smax (!! conf)))
+                    (Spec.support (!! conf))
+                    (Spec.support_NoDupA _)
+                    (Spec.support_NoDupA _)
+                    h Hlen'').
+      assert (toto:=@Spec.cardinal_from_config conf).
+      unfold N.nB in toto.
+      rewrite <- plus_n_O in toto.
+      assert (Spec.eq (!!conf)
+                      (Spec.add pt1 ((!! conf)[pt1])
+                                (Spec.add pt2 ((!! conf)[pt2]) Spec.empty))).
+      { admit. }
+      rewrite  H in toto.
+      rewrite Spec.cardinal_fold_elements in toto.
+      assert (fold_left (fun (acc : nat) (xn : Spec.elt * nat) => snd xn + acc)
+                        ((pt1, (!! conf)[pt1])
+                           :: (pt2, (!! conf)[pt2])
+                           :: nil) 0
+              = N.nG).
+      { admit. }
+      simpl in H0.
+      rewrite <- plus_n_O in H0.
+
+      assert ((!! conf)[pt2] = (!! conf)[pt1]).
+      { assert (hfilter:= @Spec.filter_In _ (eqb_Smax_mult_compat (!! conf))).
+        transitivity (Smax_mult (!! conf)).
+        + specialize (hfilter pt2 (!!conf)).
+          replace (Spec.filter (fun _ : Spec.elt => Nat.eqb (Smax_mult (!! conf))) (!!conf))
+          with (Smax (!!conf)) in hfilter.
+          * destruct hfilter as [hfilter1 hfilter2].
+            destruct hfilter1.
+            -- apply Spec.support_In.
+               rewrite h2.
+               rewrite Hsupp.
+               constructor 2; constructor 1.
+               reflexivity.
+            -- symmetry.
+               rewrite <- Nat.eqb_eq.
+               assumption.
+          * trivial.
+        + specialize (hfilter pt1 (!!conf)).
+          replace (Spec.filter (fun _ : Spec.elt => Nat.eqb (Smax_mult (!! conf))) (!!conf))
+          with (Smax (!!conf)) in hfilter.
+          * destruct hfilter as [hfilter1 hfilter2].
+            destruct hfilter1.
+            -- apply Spec.support_In.
+               rewrite h2.
+               rewrite Hsupp.
+               constructor 1.
+               reflexivity.
+            -- rewrite <- Nat.eqb_eq.
+               assumption.
+          * trivial. }
+      rewrite H1 in *|-*.
+      assert ( 0 + 2 *(!! conf)[pt1] = N.nG).
+      { omega. }
+      assert (Nat.even N.nG).
+      { rewrite <- H3.
+        rewrite (Nat.even_add_mul_2 0 ((!! conf)[pt1])).
+        apply Nat.even_0. }
+      split;[| split].
+      -- rewrite Nat.div2_odd in H3.
+         rewrite <- Nat.negb_even in H3.
+         rewrite H4 in H3.
+         simpl negb in H3.
+         simpl  Nat.b2n in H3.
+         repeat rewrite <- plus_n_O,plus_O_n in H3.
+         omega.
+      -- rewrite Nat.div2_odd in H3.
+         rewrite <- Nat.negb_even in H3.
+         rewrite H4 in H3.
+         simpl negb in H3.
+         simpl  Nat.b2n in H3.
+         repeat rewrite <- plus_n_O,plus_O_n in H3.
+         omega.
+      -- apply Even.even_equiv.
+         apply Even.even_equiv.
+         apply Nat.even_spec.
+         assumption.
+  - apply forbidden_support_length.
+    assumption.
+  
 Admitted.
 
 Theorem robogram_homothecy_invariant : forall sim s, sim.(ratio) <> 0 ->
