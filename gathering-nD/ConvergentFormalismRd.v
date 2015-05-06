@@ -120,10 +120,10 @@ intros x y Hxy sim. apply Preliminary.Rle_neq_lt.
 - destruct sim as [f k c Hc Hk]. simpl. clear c Hc. specialize (Hk x y).
   rewrite <- Location.dist_defined in Hxy.
   assert (Hdist := Location.dist_pos x y).
-  assert (Hfdist := Location.dist_pos (f x) (f y)).
-  admit.
+  generalize (Location.dist_pos (f x) (f y)).
+  rewrite <- (Rmult_0_l (Location.dist x y)) at 1. rewrite Hk. apply Rmult_le_reg_r. lra.
 - intro. now apply (sim_ratio_non_null Hxy sim).
-Admitted.
+Qed.
 
 Corollary similarity_injective : forall x y : Location.t, ~Location.eq x y ->
   forall sim : similarity, Preliminary.injective Location.eq Location.eq sim.
