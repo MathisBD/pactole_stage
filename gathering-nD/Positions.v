@@ -114,6 +114,10 @@ Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   
   Parameter list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
     forall pos, list (map f pos) = List.map f (list pos).
+  Parameter map_merge : forall f g, Proper (Location.eq ==> Location.eq) f ->
+    Proper (Location.eq ==> Location.eq) g ->
+    forall pos, eq (map g (map f pos)) (map (fun x => g (f x)) pos).
+  Parameter map_id : forall pos, eq (map Datatypes.id pos) pos.
 End Position.
 
 
@@ -182,6 +186,13 @@ Proof.
 intros f Hf pos. unfold list, map, Gpos, Bpos.
 repeat rewrite Names.Internals.map_fin_map. rewrite List.map_app. reflexivity.
 Qed.
+
+Lemma map_merge : forall f g, Proper (Location.eq ==> Location.eq) f -> Proper (Location.eq ==> Location.eq) g ->
+  forall pos, eq (map g (map f pos)) (map (fun x => g (f x)) pos).
+Proof. repeat intro. reflexivity. Qed.
+
+Lemma map_id : forall pos, eq (map Datatypes.id pos) pos.
+Proof. repeat intro. reflexivity. Qed.
 
 End Make.
 

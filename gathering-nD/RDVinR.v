@@ -213,22 +213,20 @@ Lemma forbidden_even : forall pos, forbidden pos -> Nat.Even nG.
 Proof. now intros pos [? _]. Qed.
 
 Lemma forbidden_support_length : forall config, forbidden config ->
-  length (Spec.support (Spec.from_config config)) = 2.
+  Spec.size (!! config) = 2.
 Proof.
 intros conf [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
 rewrite <- (@Spec.cardinal_total_sub_eq (Spec.add pt2 (Nat.div2 N.nG) (Spec.singleton pt1 (Nat.div2 N.nG)))
                                         (Spec.from_config conf)).
-+ rewrite Spec.support_add; try now apply half_size_pos.
++ rewrite Spec.size_add; try now apply half_size_pos.
   destruct (Spec.In_dec pt2 (Spec.singleton pt1 (Nat.div2 N.nG))) as [Hin | Hin].
   - exfalso. rewrite Spec.In_singleton in Hin.
-    destruct Hin. elim Hdiff. rewrite H.
-    reflexivity.
-  - rewrite Spec.support_singleton; trivial. apply half_size_pos.
+    destruct Hin. now elim Hdiff.
+  - rewrite Spec.size_singleton; trivial. apply half_size_pos.
 + intro pt. destruct (Rdec pt pt2), (Rdec pt pt1); subst.
   - now elim Hdiff.
   - rewrite Spec.add_spec, Spec.singleton_spec.
-    unfold R.eq_dec, Rdef.eq_dec in *.
-    do 2 Rdec_full; contradiction || omega.
+    unfold R.eq_dec, Rdef.eq_dec in *. do 2 Rdec_full; contradiction || omega.
   - rewrite Spec.add_other, Spec.singleton_spec.
       now unfold R.eq_dec, Rdef.eq_dec in *; Rdec_full; contradiction || omega.
       now unfold R.eq, Rdef.eq; auto.
@@ -276,13 +274,15 @@ lra.
 Qed.
 Arguments GPS x y z1 z2 _ _ _ : clear implicits.
 
+Lemma sim_ratio_non_null : forall sim, sim.(ratio) <> 0%R.
+Proof. apply (sim_ratio_non_null R1_neq_R0). Qed.
+
 (* Not true when the metric space has dimension 0, we need at least 2 different points. *)
-Lemma sim_ratio_pos : forall sim, (0 <= sim.(ratio))%R.
-Proof.
-intros [f k c Hc Hk]. simpl. clear c Hc. specialize (Hk R1 R0).
-assert (H1 : R.dist 1 0 = 1). { unfold R.dist, Rdef.dist. rewrite Rminus_0_r. apply Rabs_pos_eq. lra. }
-rewrite H1, Rmult_1_r in Hk. subst. apply R.dist_pos.
-Qed.
+Lemma sim_ratio_pos : forall sim, (0 < sim.(ratio))%R.
+Proof. apply (sim_ratio_pos R1_neq_R0). Qed.
+
+Lemma similarity_injective : forall sim : similarity, injective eq eq sim.
+Proof. apply (similarity_injective R1_neq_R0). Qed.
 
 Transparent R.origin.
 Transparent Rdef.origin.
@@ -292,7 +292,7 @@ Theorem similarity_in_R_case : forall sim,
   (forall x, sim.(f) x = sim.(ratio) * (x - sim.(center))) \/
   (forall x, sim.(f) x = - sim.(ratio) * (x - sim.(center))).
 Proof.
-intro sim. assert (Hkpos : 0 <= sim.(ratio)) by apply sim_ratio_pos.
+intro sim. assert (Hkpos : 0 < sim.(ratio)) by apply sim_ratio_pos.
 destruct sim as [f k c Hc Hk]. simpl in *. unfold R.origin, Rdef.origin in Hc.
 destruct (Rdec k 0) as [Hk0 | Hk0].
 * (* if the ratio is 0, the similarity is a constant function. *)
@@ -307,10 +307,10 @@ destruct (Rdec k 0) as [Hk0 | Hk0].
     - lra.
     - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
-      now rewrite Rabs_mult, (Rabs_pos_eq k Hkpos).
+      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
     - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
       replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
-      now rewrite Rabs_mult, (Rabs_pos_eq k Hkpos).
+      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
   + right. intro x. apply (GPS (f c) (f (c + 1))).
     - lra.
     - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
@@ -325,7 +325,8 @@ Corollary similarity_in_R : forall sim, exists k, (k = sim.(ratio) \/ k = - sim.
   /\ forall x, sim.(f) x = k * (x - sim.(center)).
 Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 
-Corollary inverse_similarity_in_R : forall (sim : similarity) k, k <> 0 -> 
+
+Corollary inverse_similarity_in_R : forall (sim : similarity) k, k <> 0 ->
   (forall x, sim x = k * (x - sim.(center))) -> forall x, (sim ⁻¹) x = x / k + sim.(center).
 Proof. intros sim k Hk Hdirect x. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
 
@@ -458,15 +459,10 @@ Qed.
 Corollary similarity_monotonic : forall sim, monotonic Rleb Rleb sim.(f).
 Proof.
 intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
-+ left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial. apply sim_ratio_pos.
++ left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial.
+  pose (Hratio := sim_ratio_pos sim). lra.
 + right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
   assert (Hratio := sim_ratio_pos sim). lra.
-Qed.
-
-Lemma similarity_injective : forall sim, sim.(ratio) <> 0 -> injective eq eq sim.
-Proof.
-intros sim Hk x y. destruct (similarity_in_R sim) as [k [Hk' Hsim]]; setoid_rewrite Hsim.
-rewrite local_invert; lra.
 Qed.
 
 Lemma similarity_middle : forall (sim : similarity) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
@@ -493,12 +489,12 @@ destruct Hfmon as [Hfinc | Hfdec].
   - elim Hneq. rewrite hd_rev_last, map_last. now f_equal.
 Qed.
 
-Corollary is_extremal_similarity_invariant : forall sim pos r, sim.(ratio) <> 0 ->
+Corollary is_extremal_similarity_invariant : forall (sim : similarity) pos r,
   is_extremal (sim r) (Spec.map sim (Spec.from_config pos)) = is_extremal r (Spec.from_config pos).
 Proof.
-intros sim pos r Hk. apply is_extremal_map_monotonic_invariant.
+intros sim pos r. apply is_extremal_map_monotonic_invariant.
 - apply similarity_monotonic.
-- now apply similarity_injective.
+- apply similarity_injective.
 Qed.
 
 (* When there is no robot (s is empty), the center is 0. *)
@@ -508,12 +504,12 @@ Definition extreme_center (s : Spec.t) :=
 Instance extreme_center_compat : Proper (Spec.eq ==> eq) extreme_center.
 Proof. intros s s' Hs. unfold extreme_center. now rewrite Hs. Qed.
 
-Lemma extreme_center_similarity : forall sim, sim.(ratio) <> 0 ->
-  forall s, ~Spec.eq s Spec.empty -> extreme_center (Spec.map sim s) = sim (extreme_center s).
+Lemma extreme_center_similarity : forall (sim : similarity) s, ~Spec.eq s Spec.empty ->
+  extreme_center (Spec.map sim s) = sim (extreme_center s).
 Proof.
-intros sim Hk s Hs.
+intros sim s Hs.
 assert (Hsim1 : Proper (R.eq ==> R.eq) sim). { intros x y Hxy. now rewrite Hxy. }
-assert (Hsim2 : injective R.eq R.eq sim). { now apply similarity_injective. }
+assert (Hsim2 := similarity_injective sim).
 destruct (similarity_monotonic sim) as [Hinc | Hdec].
 * unfold extreme_center. rewrite Spec.map_injective_support, (sort_map_increasing Hinc); trivial.
   assert (Hperm := Permuted_sort (Spec.support s)). destruct (sort (Spec.support s)) as [| x l'].
@@ -541,7 +537,7 @@ Qed.
 
 Lemma extreme_center_similarity_invariant : forall sim pos, sim.(ratio) <> 0 ->
   extreme_center (Spec.map sim (Spec.from_config pos)) = sim (extreme_center (Spec.from_config pos)).
-Proof. intros. apply extreme_center_similarity. assumption. apply spec_nil. Qed.
+Proof. intros. apply extreme_center_similarity. apply spec_nil. Qed.
 
 
 (** The robogram works as follows:
@@ -583,7 +579,7 @@ Corollary Smax_mult_similarity_invariant : forall sim, sim.(ratio) <> 0 ->
   forall s, Smax_mult (Spec.map sim s) = Smax_mult s.
 Proof. intros. now apply Smax_mult_map_injective_invariant, similarity_injective. Qed.
 
-Lemma Smax_mult_spec_aux : forall s x n, (n > 0)%nat -> ~Spec.In x s ->
+Lemma Smax_mult_add : forall s x n, (n > 0)%nat -> ~Spec.In x s ->
   Smax_mult (Spec.add x n s) = Nat.max n (Smax_mult s).
 Proof.
 intros s x n Hn. unfold Smax_mult. apply Spec.fold_add; trivial.
@@ -596,7 +592,7 @@ Theorem Smax_mult_spec : forall s x, (s[x] <= Smax_mult s)%nat.
 Proof.
 intro s. pattern s. apply Spec.ind; clear s.
 * intros s1 s2 Hs. now setoid_rewrite Hs.
-* intros m x n Hout Hn Hrec y. rewrite Smax_mult_spec_aux; trivial.
+* intros m x n Hout Hn Hrec y. rewrite Smax_mult_add; trivial.
   assert (Hx : m[x] = 0%nat). { rewrite Spec.not_In in Hout. assumption. }
   destruct (Rdec y x) as [Hxy | Hxy].
   + subst. rewrite Spec.add_spec, Hx. rewrite Spec.eq_refl_left. apply Max.le_max_l.
@@ -652,6 +648,8 @@ Proof.
   repeat intro. now subst.
 Qed.
 
+Local Hint Immediate eqb_Smax_mult_compat.
+
 Lemma Smax_subset : forall s x, ((Smax s)[x] <= s[x])%nat.
 Proof.
   intros s x.
@@ -665,58 +663,48 @@ Qed.
 Theorem Smax_spec : forall s x y, Spec.In y (Smax s) -> (s[x] <= (Smax s)[y])%nat.
 Proof.
 intros s x y Hy. unfold Smax in *.
-assert (Hf := eqb_Smax_mult_compat s).
-unfold Spec.In in Hy. rewrite Spec.filter_spec in *; trivial.
+(* assert (Hf := eqb_Smax_mult_compat s). *)
+unfold Spec.In in Hy. rewrite Spec.filter_spec in *; auto.
 destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
 rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
 Qed.
 
-Theorem Smax_spec_2 : forall s x y, (s[x] <= (Smax s)[y])%nat -> Spec.In y (Smax s).
-Proof.
-  admit.
-Admitted.
-
-
 Close Scope R_scope.
 
-Theorem Smax_spec_non_nil : forall s x, Spec.In x s
-                                         -> exists y, Spec.In y (Smax s).
+Theorem Smax_spec_non_nil : forall s x, Spec.In x s-> exists y, Spec.In y (Smax s).
 Proof.
   intro s.
   pattern s.
-  eapply (Spec.ind).
-  { intros m1 m2 Hm1m2.
-    setoid_rewrite Hm1m2.
-    reflexivity. }
-  - intros m x n Hxnotinm hpos HI x' hx'.
+  apply Spec.ind.
+  - intros m1 m2 Hm1m2. now setoid_rewrite Hm1m2.
+  - intros m x n Hxnotinm Hpos HI x' Hx'.
     destruct (Spec.empty_or_In_dec m).
-    + exists x.
-      unfold Smax.
-      rewrite Spec.filter_In.
-      split.
-      * admit.
-      * rewrite Nat.eqb_eq.
-        rewrite Smax_mult_spec_aux;trivial.
+    + exists x. unfold Smax. rewrite Spec.filter_In; auto. split.
+      * rewrite Spec.add_In. right. split; reflexivity || omega.
+      * rewrite Nat.eqb_eq, Smax_mult_add; trivial.
         rewrite e at 2.
-        rewrite Spec.M.add_empty.
-        rewrite Spec.singleton_spec.
-        unfold R.eq_dec,Rdef.eq_dec.
-        Rdec.
-        rewrite <- Smax_mult_0 in e.
-        rewrite e.
+        rewrite Spec.add_empty, Spec.singleton_spec.
+        unfold R.eq_dec,Rdef.eq_dec. Rdec.
+        rewrite <- Smax_mult_0 in e. rewrite e.
         apply Max.max_0_r.
-      * apply eqb_Smax_mult_compat.
-    + destruct e as [x'' hx''].
-      specialize (HI x'' hx'').
-      destruct HI as [y hy].
+    + destruct e as [x'' Hx''].
+      specialize (HI x'' Hx'').
+      destruct HI as [y Hy]. unfold Smax.
+      setoid_rewrite Spec.filter_In; try now repeat intro; subst.
+      rewrite Smax_mult_add; trivial.
+      unfold Smax in Hy. rewrite Spec.filter_In in Hy; auto.
+      destruct Hy as [Hy Heq]. rewrite Nat.eqb_eq in Heq.
       destruct (le_lt_dec n (m[y])).
-      * exists y.
-        admit.
-      * exists x.
-        admit.
-  - intros x H.
-    admit.
-Admitted.
+      * { exists y. split.
+          - now rewrite Spec.add_In; auto.
+          - rewrite Nat.eqb_eq, Heq, Spec.add_other, Max.max_r; trivial.
+            intro Habs. apply Hxnotinm. now rewrite <- Habs. }
+      * { exists x. split.
+          - rewrite Spec.add_In. right. split; reflexivity || omega.
+          - rewrite Nat.eqb_eq, Max.max_l; try omega.
+            rewrite Spec.not_In in Hxnotinm. now rewrite Spec.add_same, Hxnotinm. }
+  - intros x H. elim (Spec.In_empty H).
+Qed.
 
 
 Lemma Smax_empty_1 : forall s,  Spec.eq s Spec.empty -> Spec.eq (Smax s) Spec.empty.
@@ -734,18 +722,14 @@ Qed.
 (* BUG HERE *)
 Lemma Smax_empty_2 : forall s, Spec.eq (Smax s) Spec.empty -> Spec.eq s Spec.empty.
 Proof.
-  unfold Spec.eq.
   intros s H.
-  destruct (Spec.empty_or_In_dec s).
-  - intros x.
-    rewrite e.
-    reflexivity.
-  - destruct e as [x hx].
-    destruct (Smax_spec_non_nil hx).
-    unfold Spec.In in H0.
-    rewrite H in H0.
-    admit.
-Admitted.
+  destruct (Spec.empty_or_In_dec s) as [Hs | Hs].
+  - intro. now rewrite Hs.
+  - destruct Hs as [x Hx].
+    destruct (Smax_spec_non_nil Hx) as [y Hy].
+    unfold Spec.In in Hy.
+    rewrite H in Hy. rewrite Spec.empty_spec in Hy. omega.
+Qed.
 
 Lemma Smax_empty : forall s, Spec.eq (Smax s) Spec.empty <-> Spec.eq s Spec.empty.
 Proof.
@@ -831,115 +815,38 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma forbidden_similarity_invariant : forall (sim : similarity) pos, forbidden pos -> forbidden (Pos.map sim pos).
+Lemma forbidden_injective_invariant : forall f, injective eq eq f ->
+  forall pos, forbidden pos -> forbidden (Pos.map f pos).
 Proof.
-  unfold forbidden.
-  intros sim pos H.
-  destruct H as [hnG [pt1 [pt2 [hdiff [hpt1 hpt2]]]]].
-  split;trivial.
-  exists (sim pt1), (sim pt2).
-  split.
-  - rewrite (sim.(Inversion)).
-    intro abs.
-    rewrite <- abs in hdiff.
-    rewrite <- (sim.(Inversion)) in hdiff.
-    elim hdiff;reflexivity.
-  - split.
-    all: rewrite <- Spec.from_config_map, Spec.map_spec.
-    all: try assumption.
-    all: try apply sim_compat.
-    + rewrite <- hpt1.
-      transitivity (Spec.cardinal
-     (Spec.filter
-        (fun (y : Spec.elt) (_ : nat) =>
-         if Spec.Locations.eq_dec y pt1 then true else false)
-        (!! pos))).
-      2:now apply Spec.cardinal_filter_is_multiplicity.
-      apply Spec.M.cardinal_compat.
-      apply Spec.filter_extensionality_compat.
-      * repeat intro.
-        rewrite H.
-        reflexivity.
-      * intros x n.
-        destruct (Spec.Locations.eq_dec x pt1) as [heq | hneq] ,
-                 (Spec.Locations.eq_dec (sim x) (sim pt1)) as [heq' | hneq'];auto.
-        -- rewrite heq in hneq'.
-           elim hneq'.
-           reflexivity.
-        -- rewrite (sim.(Inversion)) in heq'.
-           rewrite <- heq' in hneq.
-           unfold Spec.Locations.eq,Rdef.eq in *.
-           rewrite <- (sim.(Inversion)) in hneq.
-           elim hneq;reflexivity.
-    + rewrite <- hpt2.
-      transitivity (Spec.cardinal
-     (Spec.filter
-        (fun (y : Spec.elt) (_ : nat) =>
-         if Spec.Locations.eq_dec y pt2 then true else false)
-        (!! pos))).
-      2:now apply Spec.cardinal_filter_is_multiplicity.
-      apply Spec.M.cardinal_compat.
-      apply Spec.filter_extensionality_compat.
-      * repeat intro.
-        rewrite H.
-        reflexivity.
-      * intros x n.
-        destruct (Spec.Locations.eq_dec x pt2) as [heq | hneq] ,
-                 (Spec.Locations.eq_dec (sim x) (sim pt2)) as [heq' | hneq'];auto.
-        -- rewrite heq in hneq'.
-           elim hneq'.
-           reflexivity.
-        -- rewrite (sim.(Inversion)) in heq'.
-           rewrite <- heq' in hneq.
-           unfold Spec.Locations.eq,Rdef.eq in *.
-           rewrite <- (sim.(Inversion)) in hneq.
-           elim hneq;reflexivity.
+unfold forbidden.
+intros f Hf pos [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+split;trivial.
+exists (f pt1), (f pt2). split.
+- intro Heq. apply Hdiff. now apply Hf in Heq.
+- split; rewrite <- Spec.from_config_map, Spec.map_injective_spec;
+  assumption || (now intros ? ? Heq; rewrite Heq) || apply Hf.
 Qed.
 
-
-(* intros [gp bp] k t [p1 [p2 [Hneq Hperm]]]. destruct (Rdec k 0).
-+ subst. assert (Heq : PosEq (lift_gp (fun _ => 0)) (⟦0, t⟧ {| gp := gp; bp := bp |})).
-  { split; simpl. intro. now rewrite Rmult_0_l. intro. now apply Fin.case0. }
-  rewrite <- Heq in Hperm. clear Heq. rewrite nominal_spectrum_alls in Hperm.
-  symmetry in Hperm.
-  assert (p1 = 0).
-  { apply Permutation_alls in Hperm. destruct nG eqn:HG.
-      cut (0 >= 2)%nat. omega. rewrite <- HG at 1. now apply size_G.
-      destruct n as [| n]; simpl in Hperm.
-        discriminate Hperm.
-        now inversion Hperm. }
-  assert (p2 = 0).
-  { rewrite Permutation_app_comm in Hperm. apply Permutation_alls in Hperm. destruct nG eqn:HG.
-      cut (0 >= 2)%nat. omega. rewrite <- HG at 1. now apply size_G.
-      destruct n as [| n]; simpl in Hperm.
-        discriminate Hperm.
-        now inversion Hperm. }
-  subst p2. contradiction.
-+ exists (p1 / k + t). exists (p2 / k + t). split.
-  clear -Hneq n. intro Habs. apply Hneq. apply Rdiv_reg with k. assumption.
-  apply Rplus_eq_reg_l with t. now setoid_rewrite Rplus_comm.
-  clear Hneq. rewrite <- (@similarity_inverse _ _ k t); trivial. unfold similarity at 1.
-  replace (p1 / k + t) with (/k * (p1 - - k * t)) by now field.
-  change (/k * (p1 - - k * t)) with ((fun x => /k * (x - - k * t)) p1). rewrite <- map_alls.
-  replace (p2 / k + t) with (/k * (p2 - - k * t)) by now field.
-  change (/k * (p2 - - k * t)) with ((fun x => /k * (x - - k * t)) p2). rewrite <- map_alls.
-  rewrite nominal_spectrum_map. rewrite <- map_app. now apply Permutation_map.
-Qed.
-
-Corollary forbidden_similarity_iff : forall sim pos, sim.(ratio) <> 0 ->
-  (forbidden (Pos.map sim pos) <-> forbidden pos).
+Theorem forbidden_similarity_iff : forall (sim : similarity) pos,
+  forbidden (Pos.map sim pos) <-> forbidden pos.
 Proof.
-intros sim pos Hk. split.
-+ apply forbidden_similarity_invariant.
-+ rewrite <- (similarity_inverse t pos Hk) at 1. apply forbidden_similarity_invariant.
+intros sim pos. split.
+- setoid_rewrite <- Pos.map_id at 3. rewrite <- (bij_inv_bij_id sim).
+  setoid_rewrite <- Pos.map_merge at 2; try now intros ? ? Heq; rewrite Heq.
+  apply forbidden_injective_invariant, injective_retraction, similarity_injective.
+- apply forbidden_injective_invariant, similarity_injective.
 Qed.
-*)
+
+Definition no_Majority conf := (Spec.size (Smax (!! conf)) > 1)%nat.
+
+
 Lemma no_majority_support_2_forbidden : forall conf,
-  (length (Spec.support (Smax (Spec.from_config conf))) > 1)%nat ->
-  length (Spec.support (Spec.from_config conf)) = 2%nat <-> forbidden conf.
+  no_Majority conf ->
+  Spec.size (Spec.from_config conf) = 2%nat <-> forbidden conf.
 Proof.
-intros conf Hlen. split; intro H2.
-* destruct (Spec.support (Spec.from_config conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try discriminate H2.
+intros conf Hlen. unfold no_Majority in Hlen. split; intro H2.
+* rewrite Spec.size_spec in *.
+  destruct (Spec.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try now simpl in H2; omega.
   admit.
 * now apply forbidden_support_length.
 Admitted.
