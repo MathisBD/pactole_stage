@@ -35,10 +35,11 @@ Proof.
   - elim n.
     reflexivity.
 Qed.
-  
+
 
 (** **  Building multisets from lists  **)
 
+(* TODO: should be replaced by M.from_elements *)
 Definition multiset l := fold_left (fun acc x => M.add x 1 acc) l M.empty.
 
 Lemma multiset_nil : multiset nil [=] M.empty.

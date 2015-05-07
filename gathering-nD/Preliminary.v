@@ -167,6 +167,20 @@ apply H. rewrite Heq. rewrite InA_alt. eexists; split; try reflexivity.
 apply last_In. discriminate.
 Qed.
 
+Lemma map_singleton : forall (f : A -> B) l x, map f l = x :: nil <-> exists y, l = y :: nil /\ x = f y.
+Proof.
+intros f l x. destruct l as [| y [| ? ?]]; simpl.
++ split; intro Heq.
+  - inversion Heq.
+  - destruct Heq as [? [Heq _]]. inversion Heq.
++ split; intro Heq.
+  - exists y. inversion Heq. auto.
+  - destruct Heq as [? [Heq ?]]. subst. now inversion Heq.
++ split; intro Heq.
+  - inversion Heq.
+  - destruct Heq as [? [Heq _]]. inversion Heq.
+Qed.
+
 Lemma map_hd : forall (f : A -> B) l d, List.hd (f d) (map f l) = f (List.hd d l).
 Proof. intros f l d. now destruct l. Qed.
 
