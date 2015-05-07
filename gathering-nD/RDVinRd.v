@@ -109,7 +109,7 @@ Abort.
 (** The spectrum is a multiset of positions *)
 Module Spec := MultisetSpectrum.Make(Loc)(N).
 
-Module Export Formalism := ConvergentFormalism(Loc)(N)(Spec).
+Module Export Formalism := Formalism(Loc)(N)(Spec).
 Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots

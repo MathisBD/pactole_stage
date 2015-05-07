@@ -25,7 +25,7 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module ConvergentFormalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
+Module Formalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
 
 Module Names := Spec.Names.
 Module Pos := Spec.Pos.
@@ -540,7 +540,7 @@ Proof.
   now apply fully_synchronous_implies_fair.
 Qed.
 
-End ConvergentFormalism.
+End Formalism.
 
 (* 
  *** Local Variables: ***

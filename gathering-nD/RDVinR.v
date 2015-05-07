@@ -179,7 +179,7 @@ Notation "s [ pt ]" := (Spec.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spec.from_config (at level 1).
 Add Search Blacklist "Spec.M".
 
-Module Export Formalism := ConvergentFormalism(R)(N)(Spec).
+Module Export Formalism := Formalism(R)(N)(Spec).
 Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots
@@ -1841,7 +1841,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
     { rewrite <- existsb_forallb. unfold is_true. rewrite negb_true_iff. apply not_true_is_false.
       rewrite forallb_forall. setoid_rewrite Rdec_bool_true_iff. intro Hall.
       assert (Hconf : Pos.eq (round robogram da conf) conf).
-      { intro r. rewrite round_simplify. destruct (step da r). Rdec. reflexivity.
+      { intro r. rewrite round_simplify. destruct (step da r). reflexivity.
         + symmetry. apply Hall. unfold active. change r with (id r). rewrite filter_In. split.
           - unfold Gnames. apply In_fin_map.
           - now rewrite negb_true_iff, Rdec_bool_false_iff. }
@@ -2012,7 +2012,7 @@ Definition conf_to_NxN conf :=
     | nil => (0,0)
     | pt :: nil => (1, N.nG - s[pt])
     | _ :: _ :: _ =>
-        if beq_nat (Spec.size s)) 3
+        if beq_nat (Spec.size s) 3
         then (2, N.nG - s[nth 1 (sort (Spec.support s)) 0%R])
         else (3, N.nG - (s[extreme_center s]
                          + s[hd 0%R (sort  (Spec.support s))]
@@ -2045,7 +2045,7 @@ destruct (Spec.support (Smax (Spec.from_config pos2))) as [| pt [| ? ?]] eqn:Hsu
   rewrite Heq. destruct (Spec.size (Spec.from_config pos2)) =? 3); rewrite Heq; reflexivity.
 Qed.
 
-Instance lexprod_compat: Proper (eq*eq ==> eq*eq ==> iff) (lexprod lt lt).
+Instance lexprod_compat: Proper (eq * eq ==> eq * eq ==> iff) (lexprod lt lt).
 Proof.
   intros (a,b) (a',b') (heqa , heqb) (c,d) (c',d') (heqc , heqd) .
   hnf in *|-.
