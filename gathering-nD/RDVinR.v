@@ -650,7 +650,7 @@ Qed.
 
 Local Hint Immediate eqb_Smax_mult_compat.
 
-Lemma Smax_subset : forall s x, ((Smax s)[x] <= s[x])%nat.
+Lemma Smax_subset : forall s, Spec.Subset (Smax s) s.
 Proof.
   intros s x.
   unfold Smax.
@@ -660,13 +660,39 @@ Proof.
   omega.
 Qed.
 
-Theorem Smax_spec : forall s x y, Spec.In y (Smax s) -> (s[x] <= (Smax s)[y])%nat.
+Theorem Smax_spec1 : forall s x y, Spec.In y (Smax s) -> (s[x] <= (Smax s)[y])%nat.
 Proof.
 intros s x y Hy. unfold Smax in *.
 (* assert (Hf := eqb_Smax_mult_compat s). *)
 unfold Spec.In in Hy. rewrite Spec.filter_spec in *; auto.
 destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
 rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
+Qed.
+
+Lemma Smax_In_mult : forall s x, Spec.In x (Smax s) -> (Smax s)[x] = s[x].
+Proof.
+intros s x Hin. apply le_antisym.
+- apply Smax_subset.
+- now apply Smax_spec1.
+Qed.
+
+Lemma Smax_spec_mult : forall s x y, Spec.In x (Smax s) -> (Spec.In y (Smax s) <-> (Smax s)[y] = (Smax s)[x]).
+Proof.
+intros s x y Hx. split.
++ intro Hy. apply le_antisym.
+  - apply Smax_In_mult in Hy. rewrite Hy. now apply Smax_spec1.
+  - apply Smax_In_mult in Hx. rewrite Hx. now apply Smax_spec1.
++ intro Heq. unfold Spec.In in *. now rewrite Heq.
+Qed.
+
+Theorem Smax_spec2 : forall s x y,
+  Spec.In x (Smax s) -> ~Spec.In y (Smax s) -> (s[y] < s[x])%nat.
+Proof.
+intros s x y Hx Hy. apply le_neq_lt.
++ rewrite <- (Smax_In_mult Hx). now apply Smax_spec1.
++ intro Habs. apply Hy. unfold Smax. rewrite Spec.filter_In; try now repeat intro; subst. split.
+  - unfold Spec.In in *. rewrite Habs. now rewrite <- Smax_In_mult.
+  - rewrite Habs. unfold Smax in Hx. rewrite Spec.filter_In in Hx; try now repeat intro; subst.
 Qed.
 
 Close Scope R_scope.
@@ -742,6 +768,39 @@ Open Scope R_scope.
 
 Lemma support_Smax_nil : forall config, Spec.support (Smax (!! config)) <> nil.
 Proof. intros config Habs. rewrite Spec.support_nil, Smax_empty in Habs. apply (spec_nil _ Habs). Qed.
+
+Lemma support_Smax_1_not_forbidden : forall config pt,
+  Spec.support (Smax (!! config)) = pt :: nil -> ~forbidden config.
+Proof.
+intros config pt Hmaj.
+assert (Hmax : forall x, Spec.In x (Smax (!! config)) <-> x = pt).
+{ intro x. rewrite <- Spec.support_spec, Hmaj. split.
+  - intro Hin. inversion_clear Hin. assumption. inversion H.
+  - intro. subst x. now left. }
+intro Hforbidden.
+assert (Hsuplen := forbidden_support_length Hforbidden).
+destruct Hforbidden as [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+assert (Hsup : Permutation (Spec.support (!! config)) (pt1 :: pt2 :: nil)).
+{ assert (Hin1 : InA eq pt1 (Spec.support (!! config))).
+  { rewrite Spec.support_spec. unfold Spec.In. rewrite Hpt1. apply half_size_pos. }
+  assert (Hin2 : InA eq pt2 (Spec.support (!! config))).
+  { rewrite Spec.support_spec. unfold Spec.In. rewrite Hpt2. apply half_size_pos. }
+  apply (PermutationA_split _) in Hin1. destruct Hin1 as [l Hl]. rewrite Hl in Hin2.
+  inversion_clear Hin2; try now subst; elim Hdiff.
+  rewrite Spec.size_spec, Hl in Hsuplen. destruct l as [| x [| ? ?]]; simpl in Hsuplen; try omega.
+  inversion_clear H; (now inversion H0) || subst. now rewrite <- PermutationA_Leibniz. }
+assert (Hpt : pt = pt1 \/ pt = pt2).
+{ assert (Hin : In pt (pt1 :: pt2 :: nil)).
+  { rewrite <- Hsup, <- InA_Leibniz, Spec.support_spec,
+            <- (Smax_subset (!! config)), <- Spec.support_spec, Hmaj.
+    now left. }
+inversion_clear Hin; auto. inversion_clear H; auto. inversion H0. }
+apply (lt_irrefl (Nat.div2 N.nG)). destruct Hpt; subst pt.
+- rewrite <- Hpt1 at 2. rewrite <- Hpt2. apply Smax_spec2; try now rewrite Hmax.
+  rewrite Hmax. auto.
+- rewrite <- Hpt1 at 1. rewrite <- Hpt2. apply Smax_spec2; now rewrite Hmax.
+Qed.
+
 
 Definition robogram_pgm (s : Spec.t) : R.t :=
   match Spec.support (Smax s) with
@@ -845,11 +904,10 @@ Close Scope R_scope.
 
 (* forbidden_support_length already proves the <- direction *)
 Lemma no_majority_support_2_forbidden : forall conf,
-  no_Majority conf ->
-  Spec.size (Spec.from_config conf) = 2%nat <-> forbidden conf.
+  no_Majority conf /\ Spec.size (Spec.from_config conf) = 2%nat <-> forbidden conf.
 Proof.
-  intros conf Hlen. unfold no_Majority in Hlen. split; intro H2.
-  - rewrite Spec.size_spec in *.
+  intros conf. unfold no_Majority. split.
+  - intros [Hlen H2]. rewrite Spec.size_spec in *.
     destruct (Spec.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try now simpl in H2; omega.
     red.
     assert (Hlen':(Spec.size (Smax (!! conf)) = 2)%nat).
@@ -968,9 +1026,12 @@ Proof.
          apply Even.even_equiv.
          apply Nat.even_spec.
          assumption.
-  - apply forbidden_support_length.
-    assumption.
-  
+  - intro Hforbidden. split.
+    + rewrite Spec.size_spec. destruct (Spec.support (Smax (!! conf))) as [| pt1 [| pt2 l]] eqn:Hmax.
+      * exfalso. revert Hmax. apply support_Smax_nil.
+      * exfalso. revert Hmax Hforbidden. apply support_Smax_1_not_forbidden.
+      * simpl. omega.
+    + now apply forbidden_support_length.
 Admitted.
 
 Open Scope R_scope.
