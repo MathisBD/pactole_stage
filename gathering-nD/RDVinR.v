@@ -897,11 +897,47 @@ Proof.
       assert (toto:=@Spec.cardinal_from_config conf).
       unfold N.nB in toto.
       rewrite <- plus_n_O in toto.
-      assert (Spec.eq (!!conf)
-                      (Spec.add pt1 ((!! conf)[pt1])
-                                (Spec.add pt2 ((!! conf)[pt2]) Spec.empty))).
-      { admit. }
-      rewrite  H in toto.
+      assert (~ R.eq pt1 pt2). {
+        intro abs.
+        repeat red in abs.
+        rewrite abs in Hsupp.
+        assert (hnodup:=Spec.support_NoDupA (!! conf)).
+        rewrite  Hsupp in hnodup.
+        inversion hnodup;subst.
+        match goal with
+        | H: ~ InA R.eq pt2 (pt2 :: nil) |- _ => elim H
+        end.
+        constructor 1.
+        reflexivity. }
+      assert (heq_conf:Spec.eq (!!conf)
+                               (Spec.add pt1 ((!! conf)[pt1])
+                                         (Spec.add pt2 ((!! conf)[pt2]) Spec.empty))).
+      { red.
+        intros x.
+        destruct (R.eq_dec x pt1) as [heqxpt1 | hneqxpt1].
+        - rewrite heqxpt1.
+          rewrite Spec.add_same.
+          rewrite (Spec.add_other pt2 pt1).
+          + rewrite Spec.empty_spec.
+            omega.
+          + assumption.
+        - rewrite Spec.add_other;auto.
+          destruct (R.eq_dec x pt2) as [heqxpt2 | hneqxpt2].
+          + rewrite heqxpt2.
+            rewrite Spec.add_same.
+            rewrite Spec.empty_spec.
+            omega.
+          + rewrite Spec.add_other;auto.
+            rewrite Spec.empty_spec.
+            rewrite <- Spec.not_In.
+            rewrite <- Spec.support_spec.
+            rewrite Hsupp.
+            intro abs.
+            inversion abs;try contradiction;subst.
+            inversion H1;try contradiction;subst.
+            rewrite InA_nil in H3.
+            assumption. }
+      rewrite heq_conf in toto.
       rewrite Spec.cardinal_fold_elements in toto.
       assert (fold_left (fun (acc : nat) (xn : Spec.elt * nat) => snd xn + acc)
                         ((pt1, (!! conf)[pt1])
@@ -924,15 +960,7 @@ Proof.
             rewrite Spec.In_singleton.
             intro abs.
             destruct abs as [abs1 abs2].
-            repeat red in abs1.
-            (* absurd: pt1 is not equal to pt2 *)
-            subst.
-            assert (hnodup:=Spec.support_NoDupA (!! conf)).
-            rewrite  Hsupp in hnodup.
-            inversion hnodup.
-            elim H3.
-            constructor 1.
-            reflexivity.
+            contradiction.
           + apply permA_skip.
             * reflexivity.
             * transitivity ((pt2, (!! conf)[pt2]) :: Spec.elements Spec.empty).
