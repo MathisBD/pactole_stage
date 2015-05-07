@@ -908,7 +908,39 @@ Proof.
                            :: (pt2, (!! conf)[pt2])
                            :: nil) 0
               = N.nG).
-      { admit. }
+      { rewrite <- toto.
+        eapply MMultiset.Preliminary.fold_left_symmetry_PermutationA with (eqA := Spec.eq_pair);auto.
+        - apply Spec.eq_pair_equiv.
+        - apply eq_equivalence.
+        - repeat intro;subst.
+          rewrite H1.
+          reflexivity.
+        - intros x y z. omega.
+        - symmetry.
+          transitivity ((pt1, (!! conf)[pt1]) :: (Spec.elements (Spec.add pt2 (!! conf)[pt2] Spec.empty))).
+          eapply Spec.elements_add_out;auto.
+          + admit.
+          + rewrite Spec.add_empty.
+            rewrite Spec.In_singleton.
+            intro abs.
+            destruct abs as [abs1 abs2].
+            repeat red in abs1.
+            (* absurd: pt1 is not equal to pt2 *)
+            subst.
+            assert (hnodup:=Spec.support_NoDupA (!! conf)).
+            rewrite  Hsupp in hnodup.
+            inversion hnodup.
+            elim H3.
+            constructor 1.
+            reflexivity.
+          + apply permA_skip.
+            * reflexivity.
+            * transitivity ((pt2, (!! conf)[pt2]) :: Spec.elements Spec.empty).
+              eapply Spec.elements_add_out;auto.
+              -- admit.
+              -- apply Spec.In_empty.
+              -- rewrite Spec.elements_empty.
+                 reflexivity. }
       simpl in H0.
       rewrite <- plus_n_O in H0.
 
