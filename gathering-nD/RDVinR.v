@@ -1677,6 +1677,21 @@ Qed.
 *)
 (* Other proof for never_forbidden *)
 
+Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1 <> pt3 ->
+  (!! config)[pt1] + (!! config)[pt2] + (!! config)[pt3] <= N.nG.
+Proof.
+intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
+replace N.nG with (N.nG + N.nB) by (unfold N.nB; omega).
+rewrite <- (Spec.cardinal_from_config config).
+rewrite <- (@Spec.add_remove_id pt1 _ (!! config) (reflexivity _)) at 4.
+rewrite Spec.cardinal_add.
+rewrite <- (@Spec.add_remove_id pt2 _ (!! config) (reflexivity _)) at 6.
+rewrite Spec.remove_add_comm, Spec.cardinal_add; trivial.
+rewrite <- (@Spec.add_remove_id pt3 _ (!! config) (reflexivity _)) at 8.
+rewrite Spec.remove_add_comm, Spec.remove_add_comm, Spec.cardinal_add; trivial.
+omega.
+Qed.
+
 Theorem same_destination : forall da config id1 id2,
   In id1 (moving robogram da config) -> In id2 (moving robogram da config) ->
   round robogram da config id1 = round robogram da config id2.
@@ -1758,14 +1773,10 @@ Admitted.
 
 
 Corollary nominal_spectrum_3_stacks_beaucoup_mieux_mieux:
-  forall pos pt3,
+  forall pos pt1 pt2,
     (Spec.size (!! pos) >= 3)%nat ->
-    Spec.In pt3 (!! pos) ->
-    exists (pt1 pt2 : R) l,
-        pt1 <> pt2 /\
-        pt2 <> pt3 /\
-        pt1 <> pt3 /\
-      Permutation (Spec.support (!! pos)) (pt1::pt2::l).
+    Spec.In pt1 (!! pos) -> Spec.In pt2 (!! pos) -> pt1 <> pt2 ->
+    exists pt3, pt1 <> pt3 /\ pt2 <> pt3 /\ Spec.In pt3 (!! pos).
 Proof.
 (*  intros pos pt3 H H0.
   decompose [and ex] (nominal_spectrum_3_stacks_beaucoup_mieux _ H).
@@ -1824,13 +1835,16 @@ Theorem never_forbidden : forall da conf, ~forbidden conf -> ~forbidden (round r
 Proof.
 intros da conf Hok.
 (* Three cases for the robogram *)
-destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
+destruct (Spec.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
 { (* Absurd case: no robot *)
   intros _. apply (support_Smax_nil _ Hmaj). }
 { (* There is a majority tower *)
   rewrite <- MajTower_at_equiv in Hmaj.
   apply Majority_not_forbidden with pt. now apply MajTower_at_forever. }
-{ (* A robot has moved otherwise we have the same configuration before and it is forbidden. *)
+{ rename Hmaj into Hmaj'.
+  assert (Hmaj : no_Majority conf). { unfold no_Majority. rewrite Spec.size_spec, Hmaj'. simpl. omega. }
+  clear pt pt' l' Hmaj'.
+  (* A robot has moved otherwise we have the same configuration before and it is forbidden. *)
   assert (Hnil := no_active_same_conf da conf).
   destruct (active da) eqn:Hneq.
   * now rewrite Hnil.
@@ -1841,105 +1855,52 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
     { rewrite <- existsb_forallb. unfold is_true. rewrite negb_true_iff. apply not_true_is_false.
       rewrite forallb_forall. setoid_rewrite Rdec_bool_true_iff. intro Hall.
       assert (Hconf : Pos.eq (round robogram da conf) conf).
-      { intro r. rewrite round_simplify. destruct (step da r). reflexivity.
-        + symmetry. apply Hall. unfold active. change r with (id r). rewrite filter_In. split.
-          - unfold Gnames. apply In_fin_map.
-          - now rewrite negb_true_iff, Rdec_bool_false_iff. }
+      { intro r. destruct (step da r) eqn:Hstep.
+        - symmetry. hnf. apply Hall. rewrite active_spec, Hstep. discriminate.
+        - rewrite round_simplify, Hstep. reflexivity. }
       apply Hok. rewrite <- Hconf. assumption. }
     unfold is_true in Hex. rewrite existsb_exists in Hex. destruct Hex as [rmove [Hin Hrmove]].
     rewrite negb_true_iff, Rdec_bool_false_iff in Hrmove.
-    (* the robot moves to one of the two locations in round robogram conf.(gp) *)
-    destruct Habs as [p1 [p2 [Hdiff Hperm]]].
-    assert (exists pt pt', ((pt = p1 /\ pt'=p2) \/ (pt = p2  /\ pt'=p1)) /\ round robogram da (gp conf) rmove = pt).
+    (* the robot moves to one of the two locations in round robogram conf *)
+    assert (Hforbidden := Habs). destruct Habs as [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+    assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
+                                  /\ round robogram da conf rmove = pt).
     { admit. }
-    destruct H as [pt [pt' [h_pt h_rmove_pt]]].
-    assert (Hdiff2:pt<>pt').
-    { decompose [and or] h_pt;auto. }
-    assert (h:forall g, In g (active da) -> round robogram da (gp conf) g = pt).
-    { intros g0 h.
-      rewrite <- h_rmove_pt.
-      apply same_destination;auto. }
-    assert (((div2 nG)%nat <= M.multiplicity pt' (multiset (nominal_spectrum conf)))%nat).
-      { transitivity (M.multiplicity pt' (multiset (nominal_spectrum (lift_gp (round robogram da (gp conf)))))%nat).
-        - rewrite Hperm.
-          rewrite multiset_app.
-          rewrite M.union_spec.
-          rewrite multiset_alls, multiset_alls.
-          rewrite M.singleton_spec, M.singleton_spec.
-          do 2 Rdec_full.
-          + subst.
-            contradiction.
-          + omega.
-          + subst.
-            omega.
-          + decompose [and or] h_pt; contradiction.
-        - 
-          generalize (@increase_move robogram conf da pt').
-          intro H1.
-          cut (~(M.multiplicity pt' (multiset (nominal_spectrum conf))
-               < M.multiplicity pt' (multiset (nominal_spectrum (lift_gp (round robogram da (gp conf))))))%nat).
-          + omega.
-          + rewrite H1. intros (r ,(abs2, abs3)).
-            apply Hdiff2.
-            rewrite <- abs2.
-            symmetry.
-            apply h.
-            subst. eapply move_active; eauto. }
-      assert (Hlt : forall p, p<>pt'
-                              -> (M.multiplicity p (multiset (nominal_spectrum conf)) < div2 nG)%nat).
-      {
-        assert (h_dedicace_lionel:M.In pt' (multiset (nominal_spectrum conf))).
-        { unfold M.In.
-          eapply lt_le_trans; try eassumption.
-          apply half_size_pos.
-        }
-        assert (Hle := not_forbidden_Invalid_length Hs Hok).
-        decompose [ex and] (@nominal_spectrum_3_stacks_beaucoup_mieux_mieux _ pt' Hle h_dedicace_lionel).
-        rename x1 into lr'.
-        setoid_rewrite H4.
-        intros p h_diff.
-        assert (Hpt' : M.multiplicity pt' (multiset lr') = M.multiplicity pt' (multiset (nominal_spectrum conf))).
-        { rewrite H4, multiset_cons, multiset_cons, M.add_spec', M.add_spec'; auto. }
-        destruct (@multiset_Permutation pt' lr' _ eq_refl) as [lr [Hlr1 Hlr2]].
-        rewrite Hpt' in Hlr2. rewrite Hlr2 in H4.
-        assert (Hlen := nominal_spectrum_length conf).
-        rewrite H4 in Hlen. simpl in Hlen. rewrite app_length, alls_length in Hlen.
-        rewrite (NPeano.Nat.div2_odd nG) in Hlen at 2. rewrite <- NPeano.Nat.negb_even, Heven in Hlen.
-        simpl in Hlen.
-        assert (length lr <= div2 nG -2)%nat by omega.
-        rewrite multiset_cons, multiset_cons, Hlr2, multiset_app, multiset_alls.
-        apply le_lt_trans with (length lr + 1)%nat; try omega.
-        destruct (Rdec p x), (Rdec p x0);repeat subst.
-        + now elim H1.
-        + rewrite M.add_spec, M.add_spec';auto.
-          rewrite M.union_spec, M.singleton_spec. Rdec_full; try contradiction.
-          simpl. apply plus_le_compat_r. rewrite <- cardinal_multiset. apply M.cardinal_lower.
-        + rewrite M.add_spec', M.add_spec;auto.
-          rewrite M.union_spec, M.singleton_spec. Rdec_full; try contradiction.
-          simpl. apply plus_le_compat_r. rewrite <- cardinal_multiset. apply M.cardinal_lower.
-        + rewrite M.add_spec', M.add_spec';auto.
-          rewrite M.union_spec, M.singleton_spec. Rdec_full; try contradiction.
-          simpl. rewrite <- cardinal_multiset. etransitivity; apply M.cardinal_lower || omega.
-      }
-      rewrite majority_stack_Invalid_spec in Hs.
-      decompose [and ex] Hs.
-      assert (n = div2 nG).
-      { apply le_antisym.
-        + destruct (multiset_Permutation _ H2) as [lr' [Hlrx Hlr']].
-          rewrite Hlr', multiset_app, multiset_alls, M.union_spec, M.singleton_spec in H1.
-          destruct (Rdecidable.eq_dec x0 x) as [? | _]; try now elim H3.
-          destruct (multiset_Permutation _ H1) as [lr [Hlrx0 Hlr]].
-          assert (Hlen := nominal_spectrum_length conf).
-          rewrite Hlr', app_length, Hlr, alls_length, app_length, alls_length in Hlen.
-          rewrite (NPeano.Nat.div2_odd nG) in Hlen. rewrite <- NPeano.Nat.negb_even, Heven in Hlen.
-          simpl in Hlen. omega.
-        + etransitivity; eauto. }
-      rewrite H4 in *. apply (lt_irrefl (div2 nG)).
-      destruct (Rdec x pt').
-      + subst. rewrite <- H1 at 1. apply Hlt. auto.
-      + rewrite <- H2 at 1. now apply Hlt.
+    destruct Hpt as [pt [pt' [Hpt Hrmove_pt]]].
+    assert (Hdiff2 : pt <> pt').
+    { decompose [and or] Hpt; congruence. }
+    assert (Hdest : forall g, In g (moving robogram da conf) -> round robogram da conf g = pt).
+    { intros id Hid.
+      rewrite <- Hrmove_pt.
+      apply same_destination; auto. rewrite moving_spec. congruence. }
+    assert ((div2 N.nG) <= (!! conf)[pt']).
+    { transitivity ((!! (round robogram da conf))[pt']).
+      - decompose [and or] Hpt; subst; omega.
+      - generalize (@increase_move robogram conf da pt').
+        intro H1. apply Nat.nlt_ge.
+        rewrite H1. intros [id [Hid1 Hid2]].
+        apply Hdiff2.
+        rewrite <- Hid1.
+        symmetry.
+        apply Hdest. rewrite moving_spec. assumption. }
+    assert (Hlt : forall p, p <> pt' -> (!! conf)[p] < div2 N.nG).
+    { assert (Hpt'_in : Spec.In pt' (!! conf)).
+      { unfold Spec.In. eapply lt_le_trans; try eassumption. apply half_size_pos. }
+      SearchAbout forbidden.
+      assert (Hle := not_forbidden_not_majority_length Hmaj Hok).
+      intros p Hp. apply Nat.nle_gt. intro Habs. apply (lt_irrefl N.nG).
+      destruct (@nominal_spectrum_3_stacks_beaucoup_mieux_mieux conf pt' p Hle Hpt'_in)
+        as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
+      + apply lt_le_trans with (div2 N.nG); try assumption. apply half_size_pos.
+      + auto.
+      + eapply lt_le_trans; try apply (sum3_le_total conf Hp Hdiff13 Hdiff23); [].
+        unfold Spec.In in Hpt3_in. rewrite (even_double N.nG), Nat.double_twice. omega.
+        now rewrite Even.even_equiv. }
+    assert (Hmaj' : MajTower_at pt' conf).
+    { intros x Hx. apply lt_le_trans with (div2 N.nG); trivial. now apply Hlt. }
+    apply (MajTower_at_forever da), Majority_not_forbidden in Hmaj'. contradiction.
 Qed.
-  
+
 Close Scope R_scope.
 
 
@@ -2123,21 +2084,6 @@ Proof.
 intros conf da Hmaj Hlen. rewrite <- Hlen.
 generalize (support_round_Three_incl _ da Hmaj Hlen).
 rewrite <- inclA_Leibniz. apply (NoDupA_inclA_length _). apply Spec.support_NoDupA.
-Qed.
-
-Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1 <> pt3 ->
-  (!! config)[pt1] + (!! config)[pt2] + (!! config)[pt3] <= N.nG.
-Proof.
-intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
-replace N.nG with (N.nG + N.nB) by (unfold N.nB; omega).
-rewrite <- (Spec.cardinal_from_config config).
-rewrite <- (@Spec.add_remove_id _ pt1 (!! config) (reflexivity _)) at 4.
-rewrite Spec.cardinal_add.
-rewrite <- (@Spec.add_remove_id _ pt2 (!! config) (reflexivity _)) at 6.
-rewrite Spec.remove_add_comm, Spec.cardinal_add; trivial.
-rewrite <- (@Spec.add_remove_id _ pt3 (!! config) (reflexivity _)) at 8.
-rewrite Spec.remove_add_comm, Spec.remove_add_comm, Spec.cardinal_add; trivial.
-omega.
 Qed.
 
 Theorem round_lt_conf : forall da conf,
