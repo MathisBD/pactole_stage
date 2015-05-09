@@ -1865,7 +1865,21 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
     assert (Hforbidden := Habs). destruct Habs as [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
     assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
                                   /\ round robogram da conf rmove = pt).
-    { admit. }
+    { assert (Hperm : Permutation (Spec.support (!! (round robogram da conf))) (pt1 :: pt2 :: nil)).
+      { symmetry. apply NoDup_Permutation_bis.
+        + repeat constructor.
+          - intro Habs. inversion Habs. now elim Hdiff. now inversion H.
+          - intro Habs. now inversion Habs.
+        + rewrite <- NoDupA_Leibniz. apply Spec.support_NoDupA.
+        + simpl. now rewrite <- Spec.size_spec, forbidden_support_length.
+        + intros pt Hpt. inversion_clear Hpt.
+          - subst. rewrite <- InA_Leibniz, Spec.support_spec. unfold Spec.In. rewrite Hpt1. apply half_size_pos.
+          - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz, Spec.support_spec.
+            unfold Spec.In. rewrite Hpt2. apply half_size_pos. }
+      assert (Hpt : In (round robogram da conf rmove) (pt1 :: pt2 :: nil)).
+      { rewrite <- Hperm. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config. }
+      inversion_clear Hpt; try (now exists pt1, pt2; eauto); [].
+      inversion_clear H; now exists pt2, pt1; eauto. }
     destruct Hpt as [pt [pt' [Hpt Hrmove_pt]]].
     assert (Hdiff2 : pt <> pt').
     { decompose [and or] Hpt; congruence. }
@@ -1898,7 +1912,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
         now rewrite Even.even_equiv. }
     assert (Hmaj' : MajTower_at pt' conf).
     { intros x Hx. apply lt_le_trans with (div2 N.nG); trivial. now apply Hlt. }
-    apply (MajTower_at_forever da), Majority_not_forbidden in Hmaj'. contradiction.
+    apply (MajTower_at_forever da), Majority_not_forbidden in Hmaj'. contradiction. }
 Qed.
 
 Close Scope R_scope.

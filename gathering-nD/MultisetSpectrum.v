@@ -238,4 +238,10 @@ Proof. repeat intro. unfold from_config. now rewrite Pos.list_map, multiset_map.
 Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.
 Proof. intro. unfold from_config. now rewrite cardinal_multiset, Pos.list_length. Qed.
 
+Property pos_in_config : forall conf id, In (conf id) (from_config conf).
+Proof.
+intros conf id. unfold from_config.
+unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
+rewrite Pos.list_spec. now exists id.
+Qed.
 End Make.

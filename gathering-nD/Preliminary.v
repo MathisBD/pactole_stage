@@ -899,6 +899,19 @@ Qed.
 
 Lemma countA_occ_alls_out : forall x y n, ~eqA x y -> countA_occ y (alls x n) = 0%nat.
 Proof. intros x y n Hxy. induction n; simpl; trivial; now destruct (eq_dec x y). Qed.
+
+Lemma countA_occ_pos : forall x l, countA_occ x l > 0 <-> InA eqA x l.
+Proof.
+intros x l. induction l as [| a l]; simpl.
++ split; intro Habs.
+  - omega.
+  - rewrite InA_nil in Habs. elim Habs.
++ destruct (eq_dec a x) as [Heq | Heq].
+  - split; intro; omega || now left.
+  - rewrite IHl. split; intro Hin; try now right; [].
+    inversion_clear Hin; trivial. now elim Heq.
+Qed.
+
 (*
 Theorem remove_count_occ_restore eq_dec : forall x l,
   Permutation l (alls x (count_occ eq_dec l x) ++ (remove eq_dec x l)).
