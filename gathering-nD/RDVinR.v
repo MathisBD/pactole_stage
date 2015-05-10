@@ -98,7 +98,7 @@ End Rdef.
 Module R := MakeMetricSpace(Rdef).
 
 (** Small dedicated decision tactic for reals handling 1<>0 and r=r *)
-Ltac Rdec := repeat
+Ltac Rdec := unfold R.eq_dec, Rdef.eq_dec; repeat
   match goal with
     | |- context[Rdec ?x ?x] =>
         let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
@@ -113,6 +113,7 @@ Ltac Rdec := repeat
   end.
 
 Ltac Rdec_full :=
+  unfold R.eq_dec, Rdef.eq_dec;
   match goal with
     | |- context[Rdec ?x ?y] =>
       let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
@@ -544,34 +545,6 @@ destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
 rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
 Qed.
 
-Lemma Smax_In_mult : forall s x, Spec.In x (Smax s) -> (Smax s)[x] = s[x].
-Proof.
-intros s x Hin. apply le_antisym.
-- apply Smax_subset.
-- now apply Smax_spec1.
-Qed.
-
-Lemma Smax_spec_mult : forall s x y, Spec.In x (Smax s) -> (Spec.In y (Smax s) <-> (Smax s)[y] = (Smax s)[x]).
-Proof.
-intros s x y Hx. split.
-+ intro Hy. apply le_antisym.
-  - apply Smax_In_mult in Hy. rewrite Hy. now apply Smax_spec1.
-  - apply Smax_In_mult in Hx. rewrite Hx. now apply Smax_spec1.
-+ intro Heq. unfold Spec.In in *. now rewrite Heq.
-Qed.
-
-Theorem Smax_spec2 : forall s x y,
-  Spec.In x (Smax s) -> ~Spec.In y (Smax s) -> (s[y] < s[x])%nat.
-Proof.
-intros s x y Hx Hy. apply le_neq_lt.
-+ rewrite <- (Smax_In_mult Hx). now apply Smax_spec1.
-+ intro Habs. apply Hy. unfold Smax. rewrite Spec.filter_In; try now repeat intro; subst. split.
-  - unfold Spec.In in *. rewrite Habs. now rewrite <- Smax_In_mult.
-  - rewrite Habs. unfold Smax in Hx. rewrite Spec.filter_In in Hx; try now repeat intro; subst.
-Qed.
-
-Close Scope R_scope.
-
 Theorem Smax_spec_non_nil : forall s x, Spec.In x s -> exists y, Spec.In y (Smax s).
 Proof.
   intro s.
@@ -607,23 +580,17 @@ Proof.
   - intros x H. elim (Spec.In_empty H).
 Qed.
 
-Corollary Smax_spec1_iff : forall s, ~Spec.eq s Spec.empty ->
-  (forall x, Spec.In x (Smax s) <-> forall y, (s[y] <= s[x])%nat).
-Proof.
-intros s Hs x.
-destruct (Spec.empty_or_In_dec s) as [? | [z Hz]]; try contradiction.
-apply Smax_spec_non_nil in Hz. clear z. destruct Hz as [z Hz].
-split; intro Hx.
-+ intro y. rewrite <- (Smax_In_mult Hx). now apply Smax_spec1.
-+ rewrite (Smax_spec_mult _ Hz). apply le_antisym.
-  - etransitivity; try apply Smax_subset. now apply Smax_spec1.
-  - 
-Admitted.
 
-Lemma Smax_empty_1 : forall s,  Spec.eq s Spec.empty -> Spec.eq (Smax s) Spec.empty.
+Lemma Smax_empty : forall s, Spec.eq (Smax s) Spec.empty <-> Spec.eq s Spec.empty.
 Proof.
-  intros s h.
-  rewrite h.
+intro s. split; intro H.
+- destruct (Spec.empty_or_In_dec s) as [Hs | Hs].
+  + intro. now rewrite Hs.
+  + destruct Hs as [x Hx].
+    destruct (Smax_spec_non_nil Hx) as [y Hy].
+    unfold Spec.In in Hy.
+    rewrite H in Hy. rewrite Spec.empty_spec in Hy. omega.
+- rewrite H.
   unfold Smax.
   rewrite Spec.filter_empty.
   + reflexivity.
@@ -632,24 +599,64 @@ Proof.
     reflexivity.
 Qed.
 
-(* BUG HERE *)
-Lemma Smax_empty_2 : forall s, Spec.eq (Smax s) Spec.empty -> Spec.eq s Spec.empty.
+Lemma Smax_2_mult : forall s x, (Smax s)[x] = 0 \/ (Smax s)[x] = s[x].
 Proof.
-  intros s H.
-  destruct (Spec.empty_or_In_dec s) as [Hs | Hs].
-  - intro. now rewrite Hs.
-  - destruct Hs as [x Hx].
-    destruct (Smax_spec_non_nil Hx) as [y Hy].
-    unfold Spec.In in Hy.
-    rewrite H in Hy. rewrite Spec.empty_spec in Hy. omega.
+intros s x. destruct (Spec.empty_or_In_dec s) as [Hs | Hs].
++ left. rewrite <- Smax_empty in Hs. rewrite (Hs x). apply Spec.empty_spec.
++ unfold Smax. rewrite Spec.filter_spec.
+  destruct (Smax_mult s =? s[x]) as [Heq | Heq]; auto.
+  repeat intro. now subst.
+Qed.
+(*
+Lemma Smax_val : forall s x, Spec.In x (Smax s) -> s[x] = Smax_mult s.
+Proof.
+intros s x Hin.
+Qed.
+*)
+Lemma Smax_In_mult : forall s x, Spec.In x s -> (Spec.In x (Smax s) <-> (Smax s)[x] = s[x]).
+Proof. intros s x Hin. unfold Spec.In in *. destruct (Smax_2_mult s x); omega. Qed.
+
+Lemma Smax_spec_mult : forall s x y, Spec.In x (Smax s) -> (Spec.In y (Smax s) <-> (Smax s)[y] = (Smax s)[x]).
+Proof.
+intros s x y Hx. split.
++ intro Hy. destruct (Smax_2_mult s x) as [Hx' | Hx'], (Smax_2_mult s y) as [Hy' | Hy'];
+  (unfold Spec.In in *; omega) || (try congruence); [].
+  apply le_antisym.
+  - rewrite Hy'. now apply Smax_spec1.
+  - rewrite Hx'. now apply Smax_spec1.
++ intro Heq. unfold Spec.In in *. now rewrite Heq.
 Qed.
 
-Lemma Smax_empty : forall s, Spec.eq (Smax s) Spec.empty <-> Spec.eq s Spec.empty.
+Theorem Smax_spec2 : forall s x y,
+  Spec.In x (Smax s) -> ~Spec.In y (Smax s) -> (s[y] < s[x])%nat.
 Proof.
-  split.
-  - apply Smax_empty_2.
-  - apply Smax_empty_1.
+intros s x y Hx Hy. apply le_neq_lt.
++ assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
+  - rewrite <- Hx. now apply Smax_spec1.
+  - now rewrite <- Smax_subset.
++ intro Habs. apply Hy. unfold Smax. rewrite Spec.filter_In; try now repeat intro; subst. split.
+  - unfold Spec.In in *. rewrite Habs. apply lt_le_trans with (Smax s)[x]; trivial. apply Smax_subset.
+  - rewrite Habs. unfold Smax in Hx. rewrite Spec.filter_In in Hx; try now repeat intro; subst.
 Qed.
+
+Close Scope R_scope.
+
+Corollary Smax_spec1_iff : forall s, ~Spec.eq s Spec.empty ->
+  (forall x, Spec.In x (Smax s) <-> forall y, (s[y] <= s[x])%nat).
+Proof.
+intros s Hs x.
+destruct (Spec.empty_or_In_dec s) as [? | [z Hz]]; try contradiction.
+apply Smax_spec_non_nil in Hz. clear z. destruct Hz as [z Hz].
+split; intro Hx.
++ intro y. assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
+  - rewrite <- Hx. now apply Smax_spec1.
+  - now rewrite <- Smax_subset.
++ rewrite (Smax_spec_mult _ Hz). apply le_antisym.
+  - etransitivity; try apply Smax_subset. now apply Smax_spec1.
+  - transitivity (s[z]). apply Smax_subset.
+    transitivity (s[x]). apply Hx.
+    
+Admitted.
 
 Lemma support_Smax_nil : forall config, Spec.support (Smax (!! config)) <> nil.
 Proof. intros config Habs. rewrite Spec.support_nil, Smax_empty in Habs. apply (spec_nil _ Habs). Qed.
@@ -1244,13 +1251,27 @@ Theorem Majority_grow :  forall pt config da, MajTower_at pt config ->
 Proof.
 intros pt pos da Hmaj.
 rewrite (round_simplify_Majority _ Hmaj).
-Admitted.
+do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
+induction Spec.Names.names as [| id l]; simpl.
++ reflexivity.
++ destruct (step da id).
+  - Rdec. Rdec_full; apply le_n_S + apply le_S; apply IHl.
+  - Rdec_full; try apply le_n_S; apply IHl.
+Qed.
 
 (* This proof follows the exact same structure. *)
 Theorem Majority_wither : forall pt pt' pos da, pt <> pt' ->
   MajTower_at pt pos -> (!! (round robogram da pos))[pt'] <= (!! pos)[pt'].
 Proof.
-Admitted.
+intros pt pt' pos da Hdiff Hmaj.
+rewrite (round_simplify_Majority _ Hmaj).
+do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
+induction Spec.Names.names as [| id l]; simpl.
++ reflexivity.
++ destruct (step da id).
+  - Rdec_full; try contradiction. Rdec_full; try apply le_S; apply IHl.
+  - Rdec_full; try apply le_n_S; apply IHl.
+Qed.
 
 (** Whenever there is a majority stack, it remains forever so. **)
 Theorem MajTower_at_forever : forall pt pos da, MajTower_at pt pos -> MajTower_at pt (round robogram da pos).
