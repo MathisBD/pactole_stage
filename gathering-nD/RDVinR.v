@@ -211,43 +211,6 @@ Definition forbidden (config : Pos.t) :=
 Definition solGathering (r : robogram) (d : demon) :=
   forall pos, ~forbidden pos -> exists pt : R, WillGather pt (execute r d pos).
 
-(*
-Section HypRobots.
-Variable nG : nat.
-Hypothesis size_G : nG >= 2.
-
-
-Definition g1' : Fin.t nG.
-destruct nG eqn:HnG. abstract (omega).
-apply (@Fin.F1 n).
-Defined.
-
-Definition g2' : Fin.t nG.
-destruct nG as [| [| n]] eqn:HnG; try (abstract (omega)).
-apply (Fin.FS Fin.F1).
-Defined.
-
-End HypRobots.
-
-Require Import Coq.Program.Equality.
-Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
-Proof.
-  dependent destruction nG;intros.
-  - exfalso;omega.
-  - dependent destruction nG.
-    + exfalso;omega.
-    + simpl.
-      intro abs.
-      inversion abs.
-Qed.
-
-Definition g1 : Names.G := @g1' nG size_G.
-
-Definition g2 : Names.G := @g2' nG size_G.
-
-Lemma g1_g2 : g1 <> g2.
-Proof. apply g1'_g2'. Qed.
-*)
 
 (** **  Some results about R with respect to distance and similarities  **)
 
@@ -1985,8 +1948,118 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
           admit.
 Admitted.
 
-(** Given a k-fair demon, a non-gathered position, then some robot will move some day *)
 
+(* A variant of kFair that looks for groups of robots *)
+Print kFair.
+Print Between.
+(*
+Inductive GBetween 
+
+CoInductive kFair_group 
+*)
+
+(** Given a k-fair demon, a non-gathered position, then some robot will move some day *)
+Inductive FirstMove r d config :=
+  | MoveNow : forall id, round r (demon_head d) config id <> config id -> FirstMove r d config
+  | MoveLater : Pos.eq (round r (demon_head d) config) config ->
+                FirstMove r (demon_tail d) (round r (demon_head d) config) -> FirstMove r d config.
+
+Theorem kFair_FirstMove : forall k d, kFair k d ->
+  forall config id, ~gathered_at (config id) config -> FirstMove robogram d config.
+Proof.
+(*
+intros k [da d] Hfair config Hgathered.
+destruct (Spec.support (Smax (!! config))) as [| pt [| pt2 l]] eqn:Hmaj.
+* (* No Robots *)
+  now elim (support_Smax_nil config).
+* (* A majority tower *) Check active.
+  destruct (forallb (fun id => Rdec_bool (config id) pt) (active da)) eqn:Hactive.
+  + rewrite forallb_forall in Hactive.
+    apply MoveLater; simpl.
+    - intro id. rewrite <- MajTower_at_equiv in Hmaj. rewrite (round_simplify_Majority _ Hmaj).
+      destruct (step da id) eqn:Hstep.
+      -- symmetry. rewrite <- Rdec_bool_true_iff. apply Hactive. rewrite active_spec, Hstep. discriminate.
+      -- reflexivity.
+    - 
+
+
+  simpl in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]]. rewrite Hperm.
+  hnf in Hy |- *. subst y. rewrite Hsim. field. lra.
+* (* No majority tower *)
+  apply (PermutationA_length _) in Hperm.
+  destruct (Spec.support (Smax (!! (Pos.map (simc pt) pos)))) as [| pt'' [| pt2'' l'']];
+  try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
+  assert (Hlength : Spec.size (!! (Pos.map (simc pt) pos)) = Spec.size (!! pos)).
+  { rewrite <- Spec.from_config_map; trivial. now apply Spec.map_injective_size. }
+  rewrite Hlength. destruct (Spec.size (!! pos) =? 3) eqn:Hlen.
+  + (* There are three towers *)
+    rewrite <- Spec.from_config_map, Spec.map_injective_support; trivial.
+    rewrite Spec.size_spec in Hlen.
+*)
+Admitted.
+
+(*
+Section HypRobots.
+Variable nG : nat.
+Hypothesis size_G : nG >= 2.
+
+
+Definition g1' : Fin.t nG.
+destruct nG eqn:HnG. abstract (omega).
+apply (@Fin.F1 n).
+Defined.
+
+Definition g2' : Fin.t nG.
+destruct nG as [| [| n]] eqn:HnG; try (abstract (omega)).
+apply (Fin.FS Fin.F1).
+Defined.
+
+End HypRobots.
+
+Require Import Coq.Program.Equality.
+Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
+Proof.
+  dependent destruction nG;intros.
+  - exfalso;omega.
+  - dependent destruction nG.
+    + exfalso;omega.
+    + simpl.
+      intro abs.
+      inversion abs.
+Qed.
+
+Definition g1 : Names.G := @g1' nG size_G.
+
+Definition g2 : Names.G := @g2' nG size_G.
+
+Lemma g1_g2 : g1 <> g2.
+Proof. apply g1'_g2'. Qed.
+*)
+
+Definition g1 : Names.G.
+unfold Names.G, Names.Internals.G.
+destruct N.nG eqn:HnG.
+- unfold N.nG in HnG. assert (Hsize := size_G). abstract (omega).
+- apply (@Fin.F1 n).
+Defined.
+
+Lemma gathered_at_forever : forall da conf pt, gathered_at pt conf -> gathered_at pt (round robogram da conf).
+Proof.
+intros da conf pt Hgather.
+Admitted.
+
+Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
+Proof.
+intros conf pt.
+destruct (forallb (fun id => Rdec_bool (conf id) (conf (Good g1))) Names.names) eqn:Hall.
+Admitted.
+
+Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> Gather pt (execute robogram d conf).
+Proof.
+cofix Hind. intros d conf pt Hgather. constructor.
++ clear Hind. simpl. assumption.
++ rewrite execute_tail. apply Hind. now apply gathered_at_forever.
+Qed.
 
 Theorem Gathering_in_R :
   forall d k, kFair k d -> solGathering robogram d.
@@ -1994,12 +2067,26 @@ Proof.
 intros d k Hfair conf. revert d k Hfair. pattern conf.
 apply (well_founded_ind wf_lt_conf). clear conf.
 intros conf Hind d k Hfair Hok.
-destruct (Hind (round robogram (demon_head d) conf)) with (demon_tail d) k as [pt Hpt].
-+ apply round_lt_conf. assumption.
-  remember (demon_head d) as da. admit.
-+ now inversion_clear Hfair.
-+ now apply never_forbidden.
-+ exists pt. apply Later. rewrite execute_tail. apply Hpt.
+(* Are we already gathered? *)
+destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
+* (* If so, not much to do *)
+  exists (conf (Good g1)). apply Now. apply gathered_at_OK. assumption.
+* (* Otherwise, we need to make an induction on the first robot moving *)
+  apply (kFair_FirstMove Hfair (Good g1)) in Hmove.
+  induction Hmove as [d conf id Hmove | d conf Heq Hmove Hrec].
+  + (* If one robot moves, so we can use our well-founded induction hypothesis. *)
+    destruct (Hind (round robogram (demon_head d) conf)) with (demon_tail d) k as [pt Hpt].
+    - apply round_lt_conf; trivial.
+      intro Habs. rewrite <- moving_spec, Habs in Hmove. now inversion Hmove.
+    - now destruct Hfair.
+    - now apply never_forbidden.
+    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+  + (* Otherwise, the induction hypothesis on the first robot moving ensures that it will terminate *)
+    destruct Hrec as [pt Hpt].
+    - setoid_rewrite Heq. apply Hind.
+    - now destruct Hfair.
+    - rewrite Heq. assumption.
+    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
 Qed.
 Print Assumptions Gathering_in_R.
 
