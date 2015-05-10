@@ -242,6 +242,6 @@ Property pos_in_config : forall conf id, In (conf id) (from_config conf).
 Proof.
 intros conf id. unfold from_config.
 unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
-rewrite Pos.list_spec. now exists id.
+rewrite Pos.list_InA. now exists id.
 Qed.
 End Make.

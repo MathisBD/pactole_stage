@@ -1263,157 +1263,9 @@ Qed.
 
 Theorem Majority_not_forbidden : forall pt config, MajTower_at pt config -> ~forbidden config.
 Proof.
-Admitted.
-
-Lemma nominal_spectrum_3_stacks : forall s,
-    (Spec.size s >= 3)%nat <->
-    exists pt1 pt2 pt3, pt1 <> pt2 /\ pt2 <> pt3 /\ pt1 <> pt3
-                     /\ Spec.In pt1 s /\ Spec.In pt2 s /\ Spec.In pt3 s.
-Proof. Admitted.
-(*
-intro s. split; intro H.
-- assert (Hl : exists pt1 pt2 pt3 l, M.support (multiset (nominal_spectrum pos)) =  pt1 :: pt2 :: pt3 :: l).
-  { destruct (M.support (multiset (nominal_spectrum pos))) as [| a [| b [| c [| d l]]]];
-    inversion H; try (exfalso;omega).
-    - exists a. exists b. exists c. exists nil. reflexivity.
-    - exists a. exists b. exists c. exists (d::l). reflexivity. } clear H.
-  destruct Hl as [pt1 [pt2 [pt3 [ l Hl]]]]. exists pt1. exists pt2. exists pt3.
-  exists (remove Rdec pt3 (remove Rdec pt2 (remove Rdec pt1 (nominal_spectrum pos)))).
-  exists (M.multiplicity pt1 (multiset (nominal_spectrum pos))).
-  exists (M.multiplicity pt2 (multiset (nominal_spectrum pos))).
-  exists (M.multiplicity pt3 (multiset (nominal_spectrum pos))).
-  assert (Hdup := M.support_NoDupA (multiset (nominal_spectrum pos))).
-  rewrite Hl in Hdup. inversion_clear Hdup. inversion_clear H0. clear H2.
-  assert (H12 : pt1 <> pt2). { intro Habs. apply H. now left. }
-  assert (H13 : pt1 <> pt3). { intro Habs. apply H. now right; left. }
-  assert (H23 : pt2 <> pt3). { intro Habs. apply H1. now left. }
-  clear H H1. repeat split; trivial.
-  + change (M.In pt1 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now left.
-  + change (M.In pt2 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now right; left.
-  + change (M.In pt3 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now do 2 right; left.
-  + do 3 rewrite multiset_spec. etransitivity. apply (remove_count_occ_restore Rdec pt1).
-    apply Permutation_app. reflexivity. etransitivity. apply (remove_count_occ_restore Rdec pt2).
-    apply Permutation_app. now rewrite count_occ_remove_out.
-    etransitivity.  apply (remove_count_occ_restore Rdec pt3).
-    apply Permutation_app. rewrite count_occ_remove_out;auto.
-    now rewrite count_occ_remove_out.
-    reflexivity.
-
-- destruct H as [pt1 [pt2 [pt3 [l [n1 [n2 [n3 [H12 [H23 [H13 [Hn1 [Hn2 [Hn3 Hperm]]]]]]]]]]]]].
-  rewrite Hperm. do 3 rewrite multiset_app. repeat rewrite multiset_alls.
-  do 3 rewrite M.add_union_singleton.
-  unfold ge.
-
-  assert (In pt1 (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l)))))).
-  { rewrite <- InA_Leibniz.
-    rewrite M.support_spec.
-    unfold M.In.
-    rewrite M.add_spec.
-    omega. }
-  assert (In pt2 (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l)))))).
-  { rewrite <- InA_Leibniz.
-    rewrite M.support_spec.
-    unfold M.In.
-    rewrite M.add_spec';auto.
-    unfold M.In.
-    rewrite M.add_spec;auto.
-    omega. }
-  assert (In pt3 (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l)))))).
-  { rewrite <- InA_Leibniz.
-    rewrite M.support_spec.
-    unfold M.In.
-    rewrite M.add_spec';auto.
-    unfold M.In.
-    rewrite M.add_spec';auto.
-    unfold M.In.
-    rewrite M.add_spec;auto.
-    omega. }
-  remember (M.support (M.add pt1 n1 (M.add pt2 n2 (M.add pt3 n3 (multiset l))))) as lst.
-  clear -H H0 H1 H12 H23 H13.
-  rewrite <- InA_Leibniz in *.
-  apply (PermutationA_split _) in H.
-  destruct H.
-  rewrite H in *.
-  simpl.
-  apply le_n_S.
-  rewrite -> InA_Leibniz in *.
-  simpl in H0, H1.
-  destruct H0, H1; try contradiction.
-  rewrite <- InA_Leibniz in *.
-  apply (PermutationA_split _) in H0.
-  destruct H0.
-  rewrite H0 in *.
-  simpl.
-  apply le_n_S.
-  rewrite -> InA_Leibniz in *.
-  simpl in H1.
-  destruct H1; try contradiction.
-  rewrite <- InA_Leibniz in *.
-  apply (PermutationA_split _) in H1.
-  destruct H1.
-  rewrite H1 in *.
-  simpl.
-  apply le_n_S.
-  auto with arith.
+intros pt config Hmaj. rewrite forbidden_equiv. unfold no_Majority. intros [Hmaj' _].
+rewrite MajTower_at_equiv in Hmaj. rewrite Spec.size_spec, Hmaj in Hmaj'. simpl in *. omega.
 Qed.
-*)
-(*
-Lemma nominal_spectrum_3_stacks_nil : forall pos, length (M.support (multiset (nominal_spectrum pos))) = 3%nat <->
-  exists pt1 pt2 pt3, exists n1 n2 n3, pt1 <> pt2 /\ pt2 <> pt3 /\ pt1 <> pt3 /\
-    (0 < n1)%nat /\ (0 < n2)%nat /\ (0 < n3)%nat /\
-    Permutation (nominal_spectrum pos) (alls pt1 n1 ++ alls pt2 n2 ++ alls pt3 n3).
-Proof.
-intro pos. split; intro H.
-+ assert (Hl : exists pt1 pt2 pt3, M.support (multiset (nominal_spectrum pos)) =  pt1 :: pt2 :: pt3 :: nil).
-  { destruct (M.support (multiset (nominal_spectrum pos))) as [| a [| b [| c [| d l]]]]; inversion H.
-    exists a. exists b. exists c. reflexivity. } clear H.
-  destruct Hl as [pt1 [pt2 [pt3 Hl]]]. exists pt1. exists pt2. exists pt3.
-  exists (M.multiplicity pt1 (multiset (nominal_spectrum pos))).
-  exists (M.multiplicity pt2 (multiset (nominal_spectrum pos))).
-  exists (M.multiplicity pt3 (multiset (nominal_spectrum pos))).
-  assert (Hdup := M.support_NoDupA (multiset (nominal_spectrum pos))).
-  rewrite Hl in Hdup. inversion_clear Hdup. inversion_clear H0. clear H2.
-  assert (H12 : pt1 <> pt2). { intro Habs. apply H. now left. }
-  assert (H13 : pt1 <> pt3). { intro Habs. apply H. now right; left. }
-  assert (H23 : pt2 <> pt3). { intro Habs. apply H1. now left. }
-  clear H H1. repeat split; trivial.
-  - change (M.In pt1 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now left.
-  - change (M.In pt2 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now right; left.
-  - change (M.In pt3 (multiset (nominal_spectrum pos))). rewrite <- M.support_spec, Hl. now do 2 right; left.
-  - do 3 rewrite multiset_spec. etransitivity. apply (remove_count_occ_restore Rdec pt1).
-    apply Permutation_app. reflexivity. etransitivity. apply (remove_count_occ_restore Rdec pt2).
-    apply Permutation_app. now rewrite count_occ_remove_out.
-    assert (Hin : forall x, In x (nominal_spectrum pos) -> x = pt1 \/ x = pt2 \/ x = pt3).
-    { intros x Hin. cut (In x (M.support (multiset (nominal_spectrum pos)))).
-        rewrite Hl. intros [| [| [|]]]; intuition.  now apply multiset_support. }
-    assert (Hrem : forall x, In x (remove Rdec pt2 (remove Rdec pt1 (nominal_spectrum pos))) -> x = pt3).
-    { intros x H'. rewrite (remove_in_iff _ _) in H'. destruct H' as [H' ?].
-      rewrite (remove_in_iff _ _) in H'. destruct H' as [H' ?]. apply Hin in H'. intuition. }
-    rewrite alls_carac in Hrem. rewrite Hrem. f_equiv.
-    clear Hrem Hl. induction (nominal_spectrum pos).
-      reflexivity.
-      simpl. repeat Rdec_full; try subst a.
-        contradiction.
-        apply IHs. intros x Hx. apply Hin. now right.
-        simpl. Rdec_full. contradiction. simpl. f_equal. apply IHs. intros x Hx. apply Hin. now right.
-        simpl. Rdec_full.
-          subst a. apply IHs. intros x Hx. apply Hin. now right.
-          exfalso. assert (Ha : In a (a :: s)) by now left. apply Hin in Ha. destruct Ha as [ | [|]]; auto.
-+ destruct H as [pt1 [pt2 [pt3 [n1 [n2 [n3 [H12 [H23 [H13 [Hn1 [Hn2 [Hn3 Hperm]]]]]]]]]]]].
-  rewrite Hperm. do 2 rewrite multiset_app. do 3 rewrite multiset_alls.
-  do 2 rewrite M.add_union_singleton. rewrite M.support_add; trivial. unfold Rdecidable.eq_dec.
-  destruct (InA_dec Rdec pt1 (M.support (M.add pt2 n2 (M.singleton pt3 n3)))) as [Hin | Hin].
-  - rewrite M.support_add in Hin; trivial. unfold Rdecidable.eq_dec in Hin.
-    destruct (InA_dec (eqA:=eq) Rdec pt2 (M.support (M.singleton pt3 n3))) as [Hin2 | Hin2].
-      rewrite M.support_singleton in Hin; try omega. inversion_clear Hin. contradiction. now inversion H.
-      inversion_clear Hin. contradiction. rewrite M.support_singleton in H; try omega.
-      inversion_clear H. contradiction. now inversion H0.
-  - simpl. f_equal. clear Hin. rewrite M.support_add; trivial. unfold Rdecidable.eq_dec.
-    destruct (InA_dec Rdec pt2 (M.support (M.singleton pt3 n3))) as [Hin | Hin].
-      rewrite M.support_singleton in Hin; try omega. inversion_clear Hin. contradiction. now inversion H.
-      simpl. f_equal. rewrite M.support_singleton; simpl; omega.
-Qed.
-*)
 
 (** **  Properties in the generic case  **)
 
@@ -1737,36 +1589,6 @@ assert (Hin : In (Good g) (active da)).
 rewrite Hactive in Hin. elim Hin.
 Qed.
 
-(* TODO *)
-Lemma nominal_spectrum_3_stacks_beaucoup_mieux:
-  forall pos,
-    (Spec.size (!! pos) >= 3)%nat ->
-    exists (pt1 pt2 pt3 : R) l,
-      pt1 <> pt2 /\
-      pt2 <> pt3 /\
-      pt1 <> pt3 /\
-      Permutation (Spec.support (!! pos)) (pt1::pt2::pt3::l).
-Proof.
-(*  intros pos H.
-  rewrite (nominal_spectrum_3_stacks pos) in H.
-  decompose [ex and] H; clear H.
-  destruct x3; [exfalso; omega|].
-  destruct x4; [exfalso; omega|].
-  destruct x5; [exfalso; omega|].
-  simpl in H7.
-  exists x, x0 , x1 , (alls x x3 ++ alls x0 x4 ++ alls x1 x5 ++ x2);repeat split;auto.
-  rewrite H7.
-  rewrite <- Permutation_middle.
-  apply perm_skip, perm_skip.
-  transitivity ((alls x x3 ++ x1 :: alls x0 x4 ++ alls x1 x5 ++ x2)).
-  - apply Permutation_app_head.
-    symmetry.
-    apply Permutation_middle.
-  - symmetry.
-    apply Permutation_middle. *)
-Admitted.
-
-
 Lemma towers_elements_3 : forall config pt1 pt2,
   (Spec.size (!! config) >= 3)%nat ->
   Spec.In pt1 (!! config) -> Spec.In pt2 (!! config) -> pt1 <> pt2 ->
@@ -1787,7 +1609,8 @@ rewrite Hperm in *. inversion_clear Hnodup. inversion_clear H0. repeat split.
 - now right; right; left.
 Qed.
 
-Lemma increase_move1 :
+(* TODO: move it in FormalismRd.v *)
+Lemma increase_move :
   forall r conf da pt,
     ((!! conf)[pt] < (!! (round r da conf))[pt])%nat ->
     exists id, round r da conf id = pt /\ round r da conf id <> conf id.
@@ -1808,13 +1631,42 @@ Proof.
       rewrite <- Rdec_bool_false_iff, <- Rdec_bool_true_iff. apply Hex, Names.In_names. }
     (** We prove a contradiction by showing that the opposite inequality of Hlt holds. *)
     clear Hex. revert Hlt. apply le_not_lt. SearchAbout Spec.filter.
-Admitted.
+    do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
+    induction Spec.Names.names as [| id l]; simpl; trivial.
+    destruct (R.eq_dec (round r da conf id) pt) as [Heq | Heq].
+    + destruct (R.eq_dec (conf id) pt); try omega. specialize (Hg id). intuition.
+    + destruct (R.eq_dec (conf id) pt); omega.
+Qed.
 
-Lemma increase_move :
-  forall r conf da pt,
-    ((!! conf)[pt] < (!! (round r da conf))[pt])%nat <->
-    exists id, round r da conf id = pt /\ round r da conf id <> conf id.
-Proof. Admitted.
+(* Because of same_destination, we can strengthen the previous result as a equivalence. *)
+Lemma increase_move_iff :
+  forall conf da pt,
+    ((!! conf)[pt] < (!! (round robogram da conf))[pt])%nat <->
+    exists id, round robogram da conf id = pt /\ round robogram da conf id <> conf id.
+Proof.
+intros conf da pt. split.
+* apply increase_move.
+* intros [id [Hid Hroundid]].
+  assert (Hdest : forall id', round robogram da conf id' <> conf id' -> round robogram da conf id' = pt).
+  { intros. rewrite <- Hid. apply same_destination; rewrite moving_spec; auto. }
+  do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
+  assert (Hnil : Spec.Names.names <> nil).
+  { intro Habs. assert (Hin := Spec.Names.In_names id). rewrite Habs in Hin. inversion Hin. }
+  induction Spec.Names.names as [| id' l]; try (now elim Hnil); [].
+  simpl. destruct (R.eq_dec (conf id') pt) as [Heq | Heq].
+  + destruct (R.eq_dec (round robogram da conf id') pt ) as [Hok | Hko].
+    - destruct l.
+      -- simpl. admit.
+      -- apply lt_n_S, IHl. discriminate.
+    - elim Hko. apply Hdest. now rewrite Heq.
+  + destruct (R.eq_dec (round robogram da conf id') pt ) as [Hok | Hko].
+    - destruct l.
+      -- simpl. omega.
+      -- apply lt_S, IHl. discriminate.
+    - destruct l.
+      -- simpl. admit.
+      -- apply IHl. discriminate.
+Admitted.
 
 
 (* Any non-forbidden config without a majority tower contains at least three towers.

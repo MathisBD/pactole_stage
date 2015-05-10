@@ -133,6 +133,6 @@ Qed.
 Definition is_ok s pos := forall l, In l s <-> exists id : Names.ident, Loc.eq l (pos id).
 
 Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
-Proof. unfold from_config, is_ok. intros. rewrite set_spec, Pos.list_spec. reflexivity. Qed.
+Proof. unfold from_config, is_ok. intros. rewrite set_spec, Pos.list_InA. reflexivity. Qed.
 
 End Make.

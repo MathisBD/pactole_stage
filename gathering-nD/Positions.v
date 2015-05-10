@@ -104,9 +104,13 @@ Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   Declare Instance Bpos_compat : Proper (eq ==> eqlistA Location.eq) Bpos.
   Declare Instance list_compat : Proper (eq ==> eqlistA Location.eq) list.
   
-  Parameter Gpos_spec : forall l pos, InA Location.eq l (Gpos pos) <-> exists g, Location.eq l (pos (Good g)).
-  Parameter Bpos_spec : forall l pos, InA Location.eq l (Bpos pos) <-> exists b, Location.eq l (pos (Byz b)).
-  Parameter list_spec : forall l pos, InA Location.eq l (list pos) <-> exists id, Location.eq l (pos id).
+  Parameter Gpos_spec : forall pos, Gpos pos = List.map (fun g => pos (Good g)) Names.Gnames.
+  Parameter Bpos_spec : forall pos, Bpos pos = List.map (fun g => pos (Byz g)) Names.Bnames.
+  Parameter list_spec : forall pos, list pos = List.map pos Names.names.
+
+  Parameter Gpos_InA : forall l pos, InA Location.eq l (Gpos pos) <-> exists g, Location.eq l (pos (Good g)).
+  Parameter Bpos_InA : forall l pos, InA Location.eq l (Bpos pos) <-> exists b, Location.eq l (pos (Byz b)).
+  Parameter list_InA : forall l pos, InA Location.eq l (list pos) <-> exists id, Location.eq l (pos id).
   
   Parameter Gpos_length : forall pos, length (Gpos pos) = N.nG.
   Parameter Bpos_length : forall pos, length (Bpos pos) = N.nB.
@@ -158,17 +162,29 @@ Proof. repeat intro. unfold Bpos. apply Names.Internals.fin_map_compatA. repeat 
 Instance list_compat : Proper (eq ==> eqlistA Location.eq) list.
 Proof. repeat intro. unfold list. now apply (eqlistA_app _); apply Gpos_compat || apply Bpos_compat. Qed.
 
-Lemma Gpos_spec : forall l pos, InA Location.eq l (Gpos pos) <-> exists g, Location.eq l (pos (Good g)).
+Lemma Gpos_spec : forall pos, Gpos pos = List.map (fun g => pos (Good g)) Names.Gnames.
+Proof. intros. unfold Gpos, Names.Gnames, Names.Internals.Gnames. now rewrite <- Names.Internals.map_fin_map. Qed.
+
+Lemma Bpos_spec : forall pos, Bpos pos = List.map (fun g => pos (Byz g)) Names.Bnames.
+Proof. intros. unfold Bpos, Names.Bnames, Names.Internals.Bnames. now rewrite <- Names.Internals.map_fin_map. Qed.
+
+Lemma list_spec : forall pos, list pos = List.map pos Names.names.
+Proof.
+intros. unfold list. unfold Names.names, Names.Internals.names.
+rewrite map_app, Gpos_spec, Bpos_spec. now do 2 rewrite map_map.
+Qed.
+
+Lemma Gpos_InA : forall l pos, InA Location.eq l (Gpos pos) <-> exists g, Location.eq l (pos (Good g)).
 Proof. intros. unfold Gpos. rewrite (Names.Internals.fin_map_InA _ Location.eq_dec). reflexivity. Qed.
 
-Lemma Bpos_spec : forall l pos, InA Location.eq l (Bpos pos) <-> exists b, Location.eq l (pos (Byz b)).
+Lemma Bpos_InA : forall l pos, InA Location.eq l (Bpos pos) <-> exists b, Location.eq l (pos (Byz b)).
 Proof. intros. unfold Bpos. rewrite (Names.Internals.fin_map_InA _ Location.eq_dec). reflexivity. Qed.
 
-Lemma list_spec : forall l pos, InA Location.eq l (list pos) <-> exists id, Location.eq l (pos id).
+Lemma list_InA : forall l pos, InA Location.eq l (list pos) <-> exists id, Location.eq l (pos id).
 Proof.
 intros. unfold list. rewrite (InA_app_iff _). split; intro Hin.
-+ destruct Hin as [Hin | Hin]; rewrite Gpos_spec in Hin || rewrite Bpos_spec in Hin; destruct Hin; eauto.
-+ rewrite Gpos_spec, Bpos_spec. destruct Hin as [[g | b] Hin]; eauto.
++ destruct Hin as [Hin | Hin]; rewrite Gpos_InA in Hin || rewrite Bpos_InA in Hin; destruct Hin; eauto.
++ rewrite Gpos_InA, Bpos_InA. destruct Hin as [[g | b] Hin]; eauto.
 Qed.
 
 Lemma Gpos_length : forall pos, length (Gpos pos) = N.nG.

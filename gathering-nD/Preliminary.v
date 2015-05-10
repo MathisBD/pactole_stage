@@ -800,15 +800,19 @@ Proof. intros. rewrite partition_filter. apply filter_In. Qed.
 Corollary partition_snd_In : forall (x : A) f l, In x (snd (partition f l)) <-> In x l /\ f x = false.
 Proof. intros. rewrite partition_filter. rewrite <- negb_true_iff. apply filter_In. Qed.
 
-Theorem partition_length : forall f (l : list A),
-  length (fst (partition f l)) + length (snd (partition f l)) = length l.
+Theorem partition_Permutation : forall f (l : list A),
+  Permutation (fst (partition f l) ++ snd (partition f l)) l.
 Proof.
-intros f l. rewrite partition_filter in *. induction l; simpl.
+intros f l. induction l as [| x l].
 + reflexivity.
-+ destruct (f a); simpl.
-  - f_equal. apply IHl.
-  - rewrite <- plus_n_Sm. f_equal. apply IHl.
++ simpl. destruct (partition f l) as [lg ld] eqn:Hpart. destruct (f x); simpl in *.
+  - now rewrite IHl.
+  - now rewrite <- Permutation_middle, IHl.
 Qed.
+
+Corollary partition_length : forall f (l : list A),
+  length (fst (partition f l)) + length (snd (partition f l)) = length l.
+Proof. intros. now rewrite <- app_length, partition_Permutation. Qed.
 
 Corollary filter_length : forall f (l : list A),
   length (filter f l) = length l - length (filter (fun x => negb (f x)) l).
@@ -950,6 +954,23 @@ Proof. intros. apply plus_minus. symmetry. apply remove_count_occ_length. Qed.
 Corollary remove_length eq_dec : forall (x : A) l, length (remove eq_dec x l) = length l - count_occ eq_dec l x.
 Proof. intros. apply plus_minus. symmetry. rewrite plus_comm. apply remove_count_occ_length. Qed.
 *)
+
+Lemma countA_occ_partition : forall f, Proper (eqA ==> eq) f ->
+  forall l x, countA_occ x l = countA_occ x (fst (partition f l)) + countA_occ x (snd (partition f l)).
+Proof.
+intros f Hf l. induction l as [| a l].
+* intro. reflexivity.
+* intro x. destruct (f a) eqn:Hfa.
+  + apply (partition_cons1 f a l (surjective_pairing (partition f l))) in Hfa. rewrite Hfa. simpl.
+    destruct (eq_dec a x) as [Heq | Heq].
+    - rewrite IHl. omega.
+    - apply IHl.
+  + apply (partition_cons2 f a l (surjective_pairing (partition f l))) in Hfa. rewrite Hfa. simpl.
+    destruct (eq_dec a x) as [Heq | Heq].
+    - rewrite IHl. omega.
+    - apply IHl.
+Qed.
+
 End CountA.
 
 Theorem Exists_dec : forall P, (forall x : A, {P x} + {~P x}) -> forall l, {Exists P l} + {~Exists P l}.
