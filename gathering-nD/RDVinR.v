@@ -396,7 +396,7 @@ Lemma lift_pos_equiv : forall pos : Pos.t, Pos.eq pos (lift_pos (fun g => pos (G
 Proof. unfold lift_pos. intros pos [g | b]; hnf. reflexivity. now apply Fin.case0. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
-Corollary spec_nil : forall conf, ~Spec.eq (Spec.from_config conf) Spec.empty.
+Corollary spec_nil : forall conf, ~Spec.eq (!! conf) Spec.empty.
 Proof.
 intros conf Heq.
 unfold Spec.from_config in Heq.
@@ -615,9 +615,9 @@ destruct (Spec.empty_or_In_dec s) as [? | [z Hz]]; try contradiction.
 apply Smax_spec_non_nil in Hz. clear z. destruct Hz as [z Hz].
 split; intro Hx.
 + intro y. rewrite <- (Smax_In_mult Hx). now apply Smax_spec1.
-+ rewrite (Smax_spec_mult _ Hz). apply le_antisym; etransitivity; try apply Smax_subset.
-  - now apply Smax_spec1.
-  - admit.
++ rewrite (Smax_spec_mult _ Hz). apply le_antisym.
+  - etransitivity; try apply Smax_subset. now apply Smax_spec1.
+  - 
 Admitted.
 
 Lemma Smax_empty_1 : forall s,  Spec.eq s Spec.empty -> Spec.eq (Smax s) Spec.empty.
@@ -703,7 +703,7 @@ Lemma forbidden_support_length : forall config, forbidden config ->
 Proof.
 intros conf [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
 rewrite <- (@Spec.cardinal_total_sub_eq (Spec.add pt2 (Nat.div2 N.nG) (Spec.singleton pt1 (Nat.div2 N.nG)))
-                                        (Spec.from_config conf)).
+                                        (!! conf)).
 + rewrite Spec.size_add; try now apply half_size_pos.
   destruct (Spec.In_dec pt2 (Spec.singleton pt1 (Nat.div2 N.nG))) as [Hin | Hin].
   - exfalso. rewrite Spec.In_singleton in Hin.
@@ -785,7 +785,7 @@ Definition no_Majority conf := (Spec.size (Smax (!! conf)) > 1)%nat.
 Lemma forbidden_equiv : forall conf,
   forbidden conf <-> no_Majority conf /\ Spec.size (!! conf) = 2%nat.
 Proof.
-  intros conf. unfold no_Majority. split.
+  intro conf. unfold no_Majority. split.
   - intro Hforbidden. split.
     + rewrite Spec.size_spec. destruct (Spec.support (Smax (!! conf))) as [| pt1 [| pt2 l]] eqn:Hmax.
       * exfalso. revert Hmax. apply support_Smax_nil.
@@ -793,18 +793,14 @@ Proof.
       * simpl. omega.
     + now apply forbidden_support_length.
   - intros [Hlen H2]. rewrite Spec.size_spec in *.
-    destruct (Spec.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try now simpl in H2; omega.
+    destruct (Spec.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try (now simpl in H2; omega); [].
     red.
     assert (Hlen':(Spec.size (Smax (!! conf)) = 2)%nat).
     { assert (Spec.size (Smax (!! conf)) <= 2)%nat.
       { unfold Smax.
-        rewrite <- H2.
-        rewrite <- Hsupp.
-        repeat rewrite <- Spec.size_spec.
+        rewrite <- H2, <- Hsupp, <- Spec.size_spec.
         apply Spec.size_filter.
-        repeat intro.
-        rewrite H0.
-        reflexivity. }
+        now repeat intro; subst. }
       rewrite <- Spec.size_spec in Hlen. omega. }
     clear Hlen.
     (* let us reformulate this in a more convenient way *)
@@ -898,20 +894,19 @@ Proof.
         - symmetry.
           transitivity ((pt1, (!! conf)[pt1]) :: (Spec.elements (Spec.add pt2 (!! conf)[pt2] Spec.empty))).
           eapply Spec.elements_add_out;auto.
-          + admit.
+          + rewrite heq_conf, Spec.add_same. cut ((!! conf)[pt1] > 0). omega.
+            change (Spec.In pt1 (!! conf)). rewrite <- Spec.support_In, Hsupp. now left.
           + rewrite Spec.add_empty.
             rewrite Spec.In_singleton.
-            intro abs.
-            destruct abs as [abs1 abs2].
+            intros [abs _].
             contradiction.
           + apply permA_skip.
             * reflexivity.
             * transitivity ((pt2, (!! conf)[pt2]) :: Spec.elements Spec.empty).
               eapply Spec.elements_add_out;auto.
-              -- admit.
+              -- change (Spec.In pt2 (!! conf)). rewrite <- Spec.support_In, Hsupp. now right; left.
               -- apply Spec.In_empty.
-              -- rewrite Spec.elements_empty.
-                 reflexivity. }
+              -- now rewrite Spec.elements_empty. }
       simpl in H0.
       rewrite <- plus_n_O in H0.
 
@@ -971,7 +966,7 @@ Proof.
          apply Even.even_equiv.
          apply Nat.even_spec.
          assumption.
-Admitted.
+Qed.
 
 Lemma not_forbidden_not_majority_length : forall conf,
   no_Majority conf -> ~forbidden conf -> (Spec.size (!! conf) >= 3)%nat.
@@ -1118,7 +1113,7 @@ Lemma round_simplify : forall da pos,
          (fun id => match da.(step) id with
                       | None => pos id
                       | Some f =>
-                          let s := Spec.from_config pos in
+                          let s := !! pos in
                           match Spec.support (Smax s) with
                             | nil => pos id (* only happen with no robots *)
                             | pt :: nil => pt (* case 1: one majority stack *)
@@ -1142,11 +1137,11 @@ assert(Hsimccompat : Proper (R.eq ==> R.eq) (simc pt)). { intros ? ? Heq. now re
 assert (Hsim_inj : injective R.eq R.eq (simc pt)) by now apply similarity_injective.
 (* Unfold the robogram *)
 unfold robogram, robogram_pgm. simpl.
-assert (Hperm : PermutationA R.eq (Spec.support (Smax (Spec.from_config (Pos.map (simc pt) pos))))
-                                  (List.map (simc pt) (Spec.support (Smax (Spec.from_config pos))))).
+assert (Hperm : PermutationA R.eq (Spec.support (Smax (!! (Pos.map (simc pt) pos))))
+                                  (List.map (simc pt) (Spec.support (Smax (!! pos))))).
 { rewrite <- Spec.map_injective_support; trivial. f_equiv.
   rewrite <- Smax_similarity, Spec.from_config_map; auto. reflexivity. }
-destruct (Spec.support (Smax (Spec.from_config pos))) as [| pt' [| pt2' l']].
+destruct (Spec.support (Smax (!! pos))) as [| pt' [| pt2' l']].
 * (* Empty support *)
   simpl in Hperm. symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm.
   rewrite da.(step_center); try eassumption. hnf. field. lra.
@@ -1155,11 +1150,11 @@ destruct (Spec.support (Smax (Spec.from_config pos))) as [| pt' [| pt2' l']].
   hnf in Hy |- *. subst y. rewrite Hsim. field. lra.
 * (* No majority stack *)
   apply (PermutationA_length _) in Hperm.
-  destruct (Spec.support (Smax (Spec.from_config (Pos.map (simc pt) pos)))) as [| pt'' [| pt2'' l'']];
+  destruct (Spec.support (Smax (!! (Pos.map (simc pt) pos)))) as [| pt'' [| pt2'' l'']];
   try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
   assert (Hlength : Spec.size (!! (Pos.map (simc pt) pos)) = Spec.size (!! pos)).
   { rewrite <- Spec.from_config_map; trivial. now apply Spec.map_injective_size. }
-  rewrite Hlength. destruct (Spec.size (Spec.from_config pos) =? 3) eqn:Hlen.
+  rewrite Hlength. destruct (Spec.size (!! pos) =? 3) eqn:Hlen.
   + (* There are three towers *)
     rewrite <- Spec.from_config_map, Spec.map_injective_support; trivial.
     rewrite Spec.size_spec in Hlen.
@@ -1178,7 +1173,7 @@ destruct (Spec.support (Smax (Spec.from_config pos))) as [| pt' [| pt2' l']].
   + (* Generic case *)
     change 0 with R.origin. rewrite <- (simc pt).(center_prop) at 1.
     rewrite <- Spec.from_config_map, is_extremal_similarity_invariant, da.(step_center); try eassumption.
-    destruct (is_extremal pt (Spec.from_config pos)).
+    destruct (is_extremal pt (!! pos)).
     - (* The current robot is exremal *)
       hnf. unfold R.origin, Rdef.origin. field. lra.
     - (* The current robot is not exremal *)
@@ -1201,7 +1196,7 @@ Proof.
 intros da conf pt Hmaj id. rewrite round_simplify.
 rewrite MajTower_at_equiv in Hmaj.
 destruct (step da id); try reflexivity. cbv zeta.
-destruct (Spec.support (Smax (Spec.from_config conf))) as [| ? [| ? ?]]; try discriminate Hmaj.
+destruct (Spec.support (Smax (!! conf))) as [| ? [| ? ?]]; try discriminate Hmaj.
 inversion Hmaj. reflexivity.
 Qed.
 
@@ -1212,7 +1207,7 @@ Lemma round_simplify_Three : forall da conf,
   Pos.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
-                      | Some _ => nth 1 (sort (Spec.support (Spec.from_config  conf))) 0
+                      | Some _ => nth 1 (sort (Spec.support (!!  conf))) 0
                     end).
 Proof.
 intros da pos Hmaj H3 id. rewrite round_simplify.
@@ -1225,18 +1220,18 @@ Qed.
 (** In the general case, all non extremal robots go to the middle of the extreme. *)
 Lemma round_simplify_Generic : forall da conf,
   no_Majority conf ->
-  (Spec.size (Spec.from_config conf) <> 3)%nat ->
+  (Spec.size (!! conf) <> 3)%nat ->
   Pos.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
-                      | Some _ => if is_extremal (conf id) (Spec.from_config conf)
-                                  then conf id else extreme_center (Spec.from_config conf)
+                      | Some _ => if is_extremal (conf id) (!! conf)
+                                  then conf id else extreme_center (!! conf)
                     end).
 Proof.
 intros da pos Hmaj H3 id. rewrite round_simplify.
 destruct (step da id); try reflexivity. cbv zeta.
 unfold no_Majority in Hmaj. rewrite Spec.size_spec in Hmaj.
-destruct (Spec.support (Smax (Spec.from_config pos))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
+destruct (Spec.support (Smax (!! pos))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_neq in H3. rewrite H3. reflexivity.
 Qed.
 
@@ -1437,7 +1432,7 @@ Lemma Generic_min_max_diff : forall config,
   hd 0%R (sort (Spec.support (!! config))) <> last (sort (Spec.support (!! config))) 0%R.
 Proof.
 intros config Hmaj. apply Generic_min_max_diff_aux.
-+ apply lt_le_trans with (Spec.size (Smax (Spec.from_config config))); trivial.
++ apply lt_le_trans with (Spec.size (Smax (!! config))); trivial.
   rewrite Spec.size_spec. apply (NoDupA_inclA_length _).
   - apply Spec.support_NoDupA.
   - apply Spec.support_filter. repeat intro. now subst.
@@ -1465,8 +1460,8 @@ Admitted.
 Theorem Generic_max_same : forall da conf,
   no_Majority conf ->
   (Spec.size (!! conf) <> 3)%nat ->
-    last (sort (Spec.support (Spec.from_config (round robogram da conf)))) 0%R
-    = last (sort (Spec.support (Spec.from_config conf))) 0%R.
+    last (sort (Spec.support (!! (round robogram da conf)))) 0%R
+    = last (sort (Spec.support (!! conf))) 0%R.
 Proof.
 Admitted.
 
@@ -1489,7 +1484,7 @@ Theorem Generic_min_mult_same : forall da conf,
 Proof. Admitted.
 (*
 intros da conf Hmaj Hlen.
-remember (hd 0%R (sort (Spec.support (Spec.from_config conf)))) as pt.
+remember (hd 0%R (sort (Spec.support (!! conf)))) as pt.
 (* We simplify the lhs *)
 rewrite <- beq_nat_false_iff in Hlen.
 rewrite round_simplify. , Hmaj, Hlen, multiset_app, M.union_spec.
@@ -1772,29 +1767,25 @@ Proof.
 Admitted.
 
 
-Corollary nominal_spectrum_3_stacks_beaucoup_mieux_mieux:
-  forall pos pt1 pt2,
-    (Spec.size (!! pos) >= 3)%nat ->
-    Spec.In pt1 (!! pos) -> Spec.In pt2 (!! pos) -> pt1 <> pt2 ->
-    exists pt3, pt1 <> pt3 /\ pt2 <> pt3 /\ Spec.In pt3 (!! pos).
+Lemma towers_elements_3 : forall config pt1 pt2,
+  (Spec.size (!! config) >= 3)%nat ->
+  Spec.In pt1 (!! config) -> Spec.In pt2 (!! config) -> pt1 <> pt2 ->
+  exists pt3, pt1 <> pt3 /\ pt2 <> pt3 /\ Spec.In pt3 (!! config).
 Proof.
-(*  intros pos pt3 H H0.
-  decompose [and ex] (nominal_spectrum_3_stacks_beaucoup_mieux _ H).
-  destruct (Rdec x pt3), (Rdec x0 pt3), (Rdec x1 pt3); subst;Rdec;eauto 10.
-  - exists x0, x1,(pt3::x2);repeat split;auto.
-    rewrite H5.
-    clear -H5.
-    change (Permutation ((pt3 :: x0 :: x1::nil) ++ x2) ((x0 :: x1 :: pt3 ::nil) ++ x2)).
-    apply Permutation_app;try reflexivity.
-    etransitivity.
-    + eapply perm_swap.
-    + eapply perm_skip.
-      eapply perm_swap.
-  - exists x, x1,(pt3::x2);repeat split;auto.
-    rewrite H5.
-    eapply perm_skip.
-    eapply perm_swap. *)
-Admitted.
+intros config pt1 pt2 Hlen Hpt1 Hpt2 Hdiff12.
+rewrite <- Spec.support_In in *. rewrite Spec.size_spec in Hlen.
+apply (PermutationA_split _) in Hpt1. destruct Hpt1 as [supp1 Hperm].
+rewrite Hperm in Hpt2. inversion_clear Hpt2; try (now elim Hdiff12); []. rename H into Hpt2.
+apply (PermutationA_split _) in Hpt2. destruct Hpt2 as [supp2 Hperm2].
+rewrite Hperm2 in Hperm. rewrite Hperm in Hlen.
+destruct supp2 as [| pt3 supp]; try (now simpl in Hlen; omega); [].
+exists pt3.
+rewrite <- Spec.support_In. assert (Hnodup := Spec.support_NoDupA (!! config)).
+rewrite Hperm in *. inversion_clear Hnodup. inversion_clear H0. repeat split.
+- intro Habs. subst. apply H. now right; left.
+- intro Habs. subst. apply H1. now left.
+- now right; right; left.
+Qed.
 
 Lemma increase_move1 :
   forall r conf da pt,
@@ -1903,8 +1894,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
       SearchAbout forbidden.
       assert (Hle := not_forbidden_not_majority_length Hmaj Hok).
       intros p Hp. apply Nat.nle_gt. intro Habs. apply (lt_irrefl N.nG).
-      destruct (@nominal_spectrum_3_stacks_beaucoup_mieux_mieux conf pt' p Hle Hpt'_in)
-        as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
+      destruct (@towers_elements_3 conf pt' p Hle Hpt'_in) as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
       + apply lt_le_trans with (div2 N.nG); try assumption. apply half_size_pos.
       + auto.
       + eapply lt_le_trans; try apply (sum3_le_total conf Hp Hdiff13 Hdiff23); [].
@@ -1982,7 +1972,7 @@ Section WfLexicographic_Product.
 End WfLexicographic_Product.
 
 Definition conf_to_NxN conf :=
-  let s := Spec.from_config conf in
+  let s := !! conf in
   match Spec.support (Smax s) with
     | nil => (0,0)
     | pt :: nil => (1, N.nG - s[pt])
@@ -2009,15 +1999,15 @@ Qed.
 Instance conf_to_NxN_compat: Proper (Pos.eq ==> eq * eq) conf_to_NxN.
 Proof.
 intros pos1 pos2 Heq. unfold conf_to_NxN.
-assert (Hperm : PermutationA R.eq (Spec.support (Smax (Spec.from_config pos1)))
-                                  (Spec.support (Smax (Spec.from_config pos2)))) by now rewrite Heq.
-destruct (Spec.support (Smax (Spec.from_config pos2))) as [| pt [| ? ?]] eqn:Hsupp.
+assert (Hperm : PermutationA R.eq (Spec.support (Smax (!! pos1)))
+                                  (Spec.support (Smax (!! pos2)))) by now rewrite Heq.
+destruct (Spec.support (Smax (!! pos2))) as [| pt [| ? ?]] eqn:Hsupp.
 + symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm. reflexivity.
 + apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
   rewrite Hperm, <- Hy, Heq. reflexivity.
 + apply (PermutationA_length _) in Hperm.
-  destruct (Spec.support (Smax (Spec.from_config pos1))) as [| ? [| ? ?]]; try discriminate Hperm.
-  rewrite Heq. destruct (Spec.size (Spec.from_config pos2)) =? 3); rewrite Heq; reflexivity.
+  destruct (Spec.support (Smax (!! pos1))) as [| ? [| ? ?]]; try discriminate Hperm.
+  rewrite Heq. destruct (Spec.size (!! pos2)) =? 3); rewrite Heq; reflexivity.
 Qed.
 
 Instance lexprod_compat: Proper (eq * eq ==> eq * eq ==> iff) (lexprod lt lt).
@@ -2038,12 +2028,12 @@ Proof.
 Qed.
 
 Lemma conf_to_NxN_nil_spec : forall conf,
-  Spec.support (Smax (Spec.from_config conf)) = nil -> conf_to_NxN conf = (0, 0).
+  Spec.support (Smax (!! conf)) = nil -> conf_to_NxN conf = (0, 0).
 Proof. intros conf Heq. unfold conf_to_NxN. rewrite Heq. reflexivity. Qed.
 Locate "_ [ _ ]".
 Lemma conf_to_NxN_Majority_spec : forall conf pt,
-  Spec.support (Smax (Spec.from_config conf)) = pt :: nil ->
-  conf_to_NxN conf = (1, N.nG - (Spec.from_config conf)[pt]).
+  Spec.support (Smax (!! conf)) = pt :: nil ->
+  conf_to_NxN conf = (1, N.nG - (!! conf)[pt]).
 Proof.
   intros conf pt H.
   unfold conf_to_NxN.
@@ -2052,29 +2042,29 @@ Proof.
 Qed.
 
 Lemma conf_to_NxN_Three_spec : forall conf,
-  Spec.size (Smax (Spec.from_config conf))) > 1 ->
-  Spec.size (Spec.from_config  conf)) = 3 ->
-  conf_to_NxN conf = (2, N.nG - (Spec.from_config conf)[nth 1 (sort (Spec.support (Spec.from_config conf))) 0%R]).
+  Spec.size (Smax (!! conf))) > 1 ->
+  Spec.size (!! conf)) = 3 ->
+  conf_to_NxN conf = (2, N.nG - (!! conf)[nth 1 (sort (Spec.support (!! conf))) 0%R]).
 Proof.
 intros conf Hmaj Hlen. unfold conf_to_NxN.
-destruct (Spec.support (Smax (Spec.from_config conf))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
+destruct (Spec.support (Smax (!! conf))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_eq in Hlen. rewrite Hlen. reflexivity.
 Qed.
 
 Lemma conf_to_NxN_Generic_spec : forall conf,
-  Spec.size (Smax (Spec.from_config conf))) > 1 ->
-  Spec.size (Spec.from_config  conf)) <> 3 ->
+  no_Majority conf ->
+  Spec.size (!!  conf)) <> 3 ->
     conf_to_NxN conf = 
-    (3, N.nG - ((Spec.from_config conf)[extreme_center (Spec.from_config conf)]
-                + (Spec.from_config conf)[hd 0%R (sort (Spec.support (Spec.from_config conf)))]
-                + (Spec.from_config conf)[last (sort (Spec.support (Spec.from_config conf))) 0%R])).
+    (3, N.nG - ((!! conf)[extreme_center (!! conf)]
+                + (!! conf)[hd 0%R (sort (Spec.support (!! conf)))]
+                + (!! conf)[last (sort (Spec.support (!! conf))) 0%R])).
 Proof.
 intros conf Hmaj Hlen. unfold conf_to_NxN.
-destruct (Spec.support (Smax (Spec.from_config conf))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
+destruct (Spec.support (Smax (!! conf))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_neq in Hlen. rewrite Hlen. reflexivity.
 Qed.
 
-Lemma multiplicity_le_nG : forall pt conf, (Spec.from_config conf)[pt] <= N.nG.
+Lemma multiplicity_le_nG : forall pt conf, (!! conf)[pt] <= N.nG.
 Proof.
 intros pt conf. etransitivity.
 - apply Spec.cardinal_lower.
@@ -2083,17 +2073,17 @@ Qed.
 
 (* When we only have three towers, the new configuration does not create new positions. *)
 Lemma support_round_Three_incl : forall conf da,
-  Spec.size (Smax (Spec.from_config conf))) > 1 ->
-  Spec.size (Spec.from_config  conf)) = 3 ->
-  incl (Spec.support (Spec.from_config (round robogram da conf)))
-       (Spec.support (Spec.from_config conf)).
+  no_Majority conf ->
+  Spec.size (!!  conf)) = 3 ->
+  incl (Spec.support (!! (round robogram da conf)))
+       (Spec.support (!! conf)).
 Proof.
 Admitted.
 
 Corollary support_decrease : forall conf da,
-  Spec.size (Smax (Spec.from_config conf))) > 1 ->
-  Spec.size (Spec.from_config  conf)) = 3 ->
-  Spec.size (Spec.from_config (round robogram da conf))) <= 3.
+  Spec.size (Smax (!! conf))) > 1 ->
+  Spec.size (!! conf)) = 3 ->
+  Spec.size (!! (round robogram da conf))) <= 3.
 Proof.
 intros conf da Hmaj Hlen. rewrite <- Hlen.
 generalize (support_round_Three_incl _ da Hmaj Hlen).
@@ -2109,53 +2099,53 @@ apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
 assert (Hstep : step da gmove <> None).
 { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
 rewrite moving_spec in Hmove.
-destruct (Spec.support (Smax (Spec.from_config conf))) as [| pt [| ? ?]] eqn:Hmaj.
+destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
 * (* No robots *)
   elim (support_Smax_nil _ Hmaj).
 * (* A majority tower *)
-  assert (Hmaj' : Spec.support (Smax (Spec.from_config (round robogram da conf))) = pt :: nil).
-  { admit. }
+  assert (Hmaj' : Spec.support (Smax (!! (round robogram da conf))) = pt :: nil).
+  { Check MajTower_at_forever. admit. }
   red.
   rewrite (conf_to_NxN_Majority_spec _ Hmaj), (conf_to_NxN_Majority_spec _ Hmaj').
   apply right_lex.
-  assert ((Spec.from_config (round robogram da conf))[pt] <= N.nG) by apply multiplicity_le_nG.
-  cut ((Spec.from_config conf)[pt] < (Spec.from_config (round robogram da conf))[pt]). omega.
+  assert ((!! (round robogram da conf))[pt] <= N.nG) by apply multiplicity_le_nG.
+  cut ((!! conf)[pt] < (!! (round robogram da conf))[pt]). omega.
   admit.
 * rename Hmaj into Hmaj'.
-  assert (Hmaj : Spec.size (Smax (Spec.from_config conf))) > 1).
+  assert (Hmaj : Spec.size (Smax (!! conf))) > 1).
   { rewrite Hmaj'. simpl. omega. } clear Hmaj'.
-  destruct (eq_nat_dec (Spec.size (Spec.from_config conf))) 3) as [Hlen | Hlen].
+  destruct (eq_nat_dec (Spec.size (!! conf))) 3) as [Hlen | Hlen].
   + (* Three towers case *)
     red. rewrite (conf_to_NxN_Three_spec _ Hmaj Hlen).
-    destruct (Spec.support (Smax (Spec.from_config (round robogram da conf)))) as [| pt' [| ? ?]] eqn:Hmaj'.
+    destruct (Spec.support (Smax (!! (round robogram da conf)))) as [| pt' [| ? ?]] eqn:Hmaj'.
     - rewrite (conf_to_NxN_nil_spec _ Hmaj'). apply left_lex. omega.
     - rewrite (conf_to_NxN_Majority_spec _ Hmaj'). apply left_lex. omega.
     - rename Hmaj' into Hmaj''.
-      assert (Hmaj' : Spec.size (Smax (Spec.from_config (round robogram da conf)))) > 1).
+      assert (Hmaj' : Spec.size (Smax (!! (round robogram da conf)))) > 1).
       { rewrite Hmaj''. simpl. omega. } clear Hmaj''.
-      assert (Hlen' : Spec.size (Spec.from_config (round robogram da conf))) = 3).
+      assert (Hlen' : Spec.size (!! (round robogram da conf))) = 3).
       { apply le_antisym.
         + apply (support_decrease _ _ Hmaj Hlen).
         + apply (not_forbidden_not_majority_length Hmaj'). now apply never_forbidden. }
       rewrite (conf_to_NxN_Three_spec _ Hmaj' Hlen'). apply right_lex.
       rewrite <- Hlen in Hlen'.
-      assert (Hperm : Permutation (Spec.support (Spec.from_config (round robogram da conf)))
-                                  (Spec.support (Spec.from_config conf))).
+      assert (Hperm : Permutation (Spec.support (!! (round robogram da conf)))
+                                  (Spec.support (!! conf))).
       { rewrite <- PermutationA_Leibniz. apply (NoDupA_inclA_length_PermutationA _).
         - apply Spec.support_NoDupA.
         - apply Spec.support_NoDupA.
         - rewrite inclA_Leibniz. eapply support_round_Three_incl; eassumption.
         - assumption. }
       rewrite Hperm.
-      assert (Hup := multiplicity_le_nG (nth 1 (sort (Spec.support (Spec.from_config conf))) 0%R)
+      assert (Hup := multiplicity_le_nG (nth 1 (sort (Spec.support (!! conf))) 0%R)
                                         (round robogram da conf)).
       cut (Spec.multiplicity
-              (nth 1 (sort (Spec.support (Spec.from_config conf))) 0%R)
-              (Spec.from_config (round robogram da conf))
+              (nth 1 (sort (Spec.support (!! conf))) 0%R)
+              (!! (round robogram da conf))
             >
             Spec.multiplicity
-              (nth 1 (sort (Spec.support (Spec.from_config conf))) 0%R)
-              (Spec.from_config conf)). omega.
+              (nth 1 (sort (Spec.support (!! conf))) 0%R)
+              (!! conf)). omega.
       unfold gt. rewrite increase_move.
       exists gmove. split; trivial.
       erewrite round_simplify_Three; try eassumption.
@@ -2163,13 +2153,13 @@ destruct (Spec.support (Smax (Spec.from_config conf))) as [| pt [| ? ?]] eqn:Hma
       destruct gmove eqn:Hid; trivial.
   + (* Generic case *)
     red. rewrite (conf_to_NxN_Generic_spec _ Hmaj Hlen).
-    destruct (Spec.support (Smax (Spec.from_config (round robogram da conf)))) as [| pt' [| ? ?]] eqn:Hmaj'.
+    destruct (Spec.support (Smax (!! (round robogram da conf)))) as [| pt' [| ? ?]] eqn:Hmaj'.
     - rewrite (conf_to_NxN_nil_spec _ Hmaj'). apply left_lex. omega.
     - rewrite (conf_to_NxN_Majority_spec _ Hmaj'). apply left_lex. omega.
     - { rename Hmaj' into Hmaj''.
-        assert (Hmaj' : Spec.size (Smax (Spec.from_config (round robogram da conf)))) > 1).
+        assert (Hmaj' : Spec.size (Smax (!! (round robogram da conf)))) > 1).
         { rewrite Hmaj''. simpl. omega. } clear Hmaj''.
-        destruct (eq_nat_dec (Spec.size (Spec.from_config (round robogram da conf)))) 3)
+        destruct (eq_nat_dec (Spec.size (!! (round robogram da conf)))) 3)
         as [Hlen' | Hlen'].
         + rewrite (conf_to_NxN_Three_spec _ Hmaj' Hlen'). apply left_lex. omega.
         + rewrite (conf_to_NxN_Generic_spec _ Hmaj' Hlen'). apply right_lex.
