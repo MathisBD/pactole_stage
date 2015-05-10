@@ -767,6 +767,16 @@ intros d l1 l2 Hl2. induction l1; simpl.
   destruct (l1 ++ l2). now elim H. assumption.
 Qed.
 
+Lemma rev_nil : forall l : list A, rev l = nil <-> l = nil.
+Proof.
+intros [| x l].
++ reflexivity.
++ simpl. split; intro Habs.
+  - assert (Hlen : length (rev l ++ x :: nil) = length (@nil A)) by now rewrite Habs.
+    rewrite app_length in Hlen. simpl in Hlen. omega.
+  - discriminate.
+Qed.
+
 Theorem PermutationA_rev : forall l, PermutationA eqA l (rev l).
 Proof. intro. apply Permutation_PermutationA_weak. apply Permutation_rev. Qed.
 

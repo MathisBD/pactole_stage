@@ -996,41 +996,60 @@ Qed.
 
 (** **  Functions for the generic case  **)
 
+Open Scope R_scope.
+
+Definition mini s := List.hd 0 (sort (Spec.support s)).
+Definition maxi s := List.last (sort (Spec.support s)) 0.
+
 Definition is_extremal r (s : Spec.t) :=
-  if Rdec r (List.hd r (sort (Spec.support s))) then true else
-  if Rdec r (List.last (sort (Spec.support s)) r) then true else false.
+  if Rdec r (mini s) then true else
+  if Rdec r (maxi s) then true else false.
 
 Instance is_extremal_compat : Proper (eq ==> Spec.eq ==> eq) is_extremal.
 Proof.
-intros x y ? s s' Hs. subst y. unfold is_extremal.
-destruct (Rdec x (hd x (sort (Spec.support s)))), (Rdec x (hd x (sort (Spec.support s'))));
+intros x y ? s s' Hs. subst y. unfold is_extremal, mini, maxi.
+destruct (Rdec x (hd 0 (sort (Spec.support s)))), (Rdec x (hd 0 (sort (Spec.support s'))));
 try rewrite Hs in *; contradiction || trivial.
-destruct (Rdec x (last (sort (Spec.support s)) x)), (Rdec x (last (sort (Spec.support s')) x));
+destruct (Rdec x (last (sort (Spec.support s)) 0)), (Rdec x (last (sort (Spec.support s')) 0));
 try rewrite Hs in *; contradiction || reflexivity.
 Qed.
 
-Open Scope R_scope.
-
 Lemma is_extremal_map_monotonic_invariant : forall f, monotonic Rleb Rleb f -> injective eq eq f ->
-  forall x l, is_extremal (f x) (Spec.map f l) = is_extremal x l.
+  forall x config, is_extremal (f x) (Spec.map f (!! config)) = is_extremal x (!! config).
 Proof.
-intros f Hfmon Hfinj x l. unfold is_extremal.
+intros f Hfmon Hfinj x config. unfold is_extremal, mini, maxi.
 assert (Hf : Proper (R.eq ==> R.eq) f). { unfold R.eq, Rdef.eq. repeat intro. now subst. }
 destruct Hfmon as [Hfinc | Hfdec].
-+ repeat Rdec_full; trivial; rewrite Spec.map_injective_support, (sort_map_increasing Hfinc) in *; trivial.
-  - rewrite map_hd in Heq. apply Hfinj in Heq. contradiction.
-  - rewrite map_last in Heq. apply Hfinj in Heq. contradiction.
-  - elim Hneq. rewrite map_hd. now f_equal.
-  - elim Hneq0. rewrite map_last. now f_equal.
-+ repeat Rdec_full; trivial;rewrite Spec.map_injective_support, (sort_map_decreasing Hfdec) in *; trivial.
-  - rewrite hd_rev_last, map_last in Heq. apply Hfinj in Heq. contradiction.
-  - rewrite last_rev_hd, map_hd in Heq. apply Hfinj in Heq. contradiction.
-  - elim Hneq0. rewrite last_rev_hd, map_hd. now f_equal.
-  - elim Hneq. rewrite hd_rev_last, map_last. now f_equal.
+* repeat Rdec_full; trivial; rewrite Spec.map_injective_support, (sort_map_increasing Hfinc) in *; trivial.
+  + rewrite (hd_indep _ (f 0)) in Heq.
+    - rewrite map_hd in Heq. apply Hfinj in Heq. contradiction.
+    - intro Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+  + rewrite (last_indep _ (f 0)) in Heq.
+    - rewrite map_last in Heq. apply Hfinj in Heq. contradiction.
+    - intro Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+  + rewrite (hd_indep _ (f 0)) in Hneq.
+    - elim Hneq. rewrite map_hd. now f_equal.
+    - intro Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+  + rewrite (last_indep _ (f 0)) in Hneq0.
+    - elim Hneq0. rewrite map_last. now f_equal.
+    - intro Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+* repeat Rdec_full; trivial;rewrite Spec.map_injective_support, (sort_map_decreasing Hfdec) in *; trivial.
+  + rewrite (hd_indep _ (f 0)) in Heq.
+    - rewrite hd_rev_last, map_last in Heq. apply Hfinj in Heq. contradiction.
+    - intro Habs. rewrite rev_nil in Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+  + rewrite (last_indep _ (f 0)) in Heq.
+    - rewrite last_rev_hd, map_hd in Heq. apply Hfinj in Heq. contradiction.
+    - intro Habs. rewrite rev_nil in Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+  + rewrite (last_indep _ (f 0)) in Hneq0.
+    - elim Hneq0. rewrite last_rev_hd, map_hd. now f_equal.
+    - intro Habs. rewrite rev_nil in Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
+  + rewrite (hd_indep _ (f 0)) in Hneq.
+    - elim Hneq. rewrite hd_rev_last, map_last. now f_equal.
+    - intro Habs. rewrite rev_nil in Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
 Qed.
 
-Corollary is_extremal_similarity_invariant : forall (sim : similarity) s r,
-  is_extremal (sim r) (Spec.map sim s) = is_extremal r s.
+Corollary is_extremal_similarity_invariant : forall (sim : similarity) config r,
+  is_extremal (sim r) (Spec.map sim (!! config)) = is_extremal r (!! config).
 Proof.
 intros sim pos r. apply is_extremal_map_monotonic_invariant.
 - apply similarity_monotonic.
@@ -1038,11 +1057,10 @@ intros sim pos r. apply is_extremal_map_monotonic_invariant.
 Qed.
 
 (* When there is no robot (s is empty), the center is 0. *)
-Definition extreme_center (s : Spec.t) :=
-  (List.hd 0 (sort (Spec.support s)) + List.last (sort (Spec.support s)) 0) / 2.
+Definition extreme_center (s : Spec.t) := (mini s + maxi s) / 2.
 
 Instance extreme_center_compat : Proper (Spec.eq ==> eq) extreme_center.
-Proof. intros s s' Hs. unfold extreme_center. now rewrite Hs. Qed.
+Proof. intros s s' Hs. unfold extreme_center, mini, maxi. now rewrite Hs. Qed.
 
 Lemma extreme_center_similarity : forall (sim : similarity) s, ~Spec.eq s Spec.empty ->
   extreme_center (Spec.map sim s) = sim (extreme_center s).
@@ -1050,8 +1068,9 @@ Proof.
 intros sim s Hs.
 assert (Hsim1 : Proper (R.eq ==> R.eq) sim). { intros x y Hxy. now rewrite Hxy. }
 assert (Hsim2 := similarity_injective sim).
+unfold extreme_center, mini, maxi.
 destruct (similarity_monotonic sim) as [Hinc | Hdec].
-* unfold extreme_center. rewrite Spec.map_injective_support, (sort_map_increasing Hinc); trivial.
+* rewrite Spec.map_injective_support, (sort_map_increasing Hinc); trivial.
   assert (Hperm := Permuted_sort (Spec.support s)). destruct (sort (Spec.support s)) as [| x l'].
   + symmetry in Hperm. apply Permutation_nil in Hperm. elim Hs. now rewrite <- Spec.support_nil.
   + clear s Hs Hperm. simpl hd. cut (x :: l' <> nil). generalize (x :: l'). intro l.
@@ -1061,7 +1080,7 @@ destruct (similarity_monotonic sim) as [Hinc | Hdec].
         simpl. symmetry. now apply similarity_middle.
         rewrite <- IHl. reflexivity. discriminate.
     - discriminate.
-* unfold extreme_center. rewrite Spec.map_injective_support, (sort_map_decreasing Hdec); trivial.
+* rewrite Spec.map_injective_support, (sort_map_decreasing Hdec); trivial.
   rewrite last_rev_hd, hd_rev_last.
   assert (Hperm := Permuted_sort (Spec.support s)). destruct (sort (Spec.support s)) as [| x l'].
   + symmetry in Hperm. apply Permutation_nil in Hperm. elim Hs. now rewrite <- Spec.support_nil.
@@ -1296,21 +1315,24 @@ Qed.
 
 (** **  Properties in the generic case  **)
 
+Open Scope R_scope.
 (** If we have no majority stack (hence more than one stack), then the extreme locations are different. **)
-Lemma Generic_min_max_diff_aux : forall l, (length l > 1)%nat -> NoDupA eq l ->
-  hd 0%R (sort l) <> last (sort l) 0%R.
+Lemma Generic_min_max_lt_aux : forall l, (length l > 1)%nat -> NoDupA eq l ->
+  hd 0 (sort l) < last (sort l) 0.
 Proof.
 intros l Hl Hnodup. rewrite Permuted_sort in Hl.
 apply (@PermutationA_NoDupA _ eq _ l (sort l)) in Hnodup.
-- apply (hd_last_diff _); auto.
-- rewrite PermutationA_Leibniz. apply Permuted_sort.
++ apply Rle_neq_lt.
+  - apply sort_min. setoid_rewrite Permuted_sort at 3. apply last_In.
+    destruct (sort l); discriminate || simpl in Hl; omega.
+  - apply (hd_last_diff _); auto.
++ rewrite PermutationA_Leibniz. apply Permuted_sort.
 Qed.
 
-Lemma Generic_min_max_diff : forall config,
-  no_Majority config ->
-  hd 0%R (sort (Spec.support (!! config))) <> last (sort (Spec.support (!! config))) 0%R.
+Lemma Generic_min_max_lt : forall config,
+  no_Majority config -> mini (!! config) < maxi (!! config).
 Proof.
-intros config Hmaj. apply Generic_min_max_diff_aux.
+intros config Hmaj. apply Generic_min_max_lt_aux.
 + apply lt_le_trans with (Spec.size (Smax (!! config))); trivial.
   rewrite Spec.size_spec. apply (NoDupA_inclA_length _).
   - apply Spec.support_NoDupA.
@@ -1318,21 +1340,17 @@ intros config Hmaj. apply Generic_min_max_diff_aux.
 + apply Spec.support_NoDupA.
 Qed.
 
-Corollary Generic_min_mid_diff : forall config,
-  no_Majority config ->
-  hd 0%R (sort (Spec.support (!! config))) <> extreme_center (!! config).
-Proof. intros ? H. unfold extreme_center. apply Generic_min_max_diff in H. lra. Qed.
+Corollary Generic_min_mid_lt : forall config,
+  no_Majority config -> mini (!! config) < extreme_center (!! config).
+Proof. intros ? H. unfold extreme_center. apply Generic_min_max_lt in H. lra. Qed.
 
-Corollary Generic_mid_max_diff : forall config,
-  no_Majority config ->
-  extreme_center (!! config) <> last (sort (Spec.support (!! config))) 0%R.
-Proof. intros ? H. unfold extreme_center. apply Generic_min_max_diff in H. lra. Qed.
+Corollary Generic_mid_max_lt : forall config,
+  no_Majority config -> extreme_center (!! config) < maxi (!! config).
+Proof. intros ? H. unfold extreme_center. apply Generic_min_max_lt in H. lra. Qed.
 
 Theorem Generic_min_same : forall da conf,
-  no_Majority conf ->
-  (Spec.size (!! conf) <> 3)%nat ->
-    hd 0%R (sort (Spec.support (!! (round robogram da conf))))
-    = hd 0%R (sort (Spec.support (!! conf))).
+  no_Majority conf -> (Spec.size (!! conf) <> 3)%nat ->
+  mini (!! (round robogram da conf)) = mini (!! conf).
 Proof.
 intros da config Hmaj Hlen.
 (* We have a robot [id] at the minimal position in the original config. *)
@@ -1361,17 +1379,13 @@ apply Rle_antisym.
     - unfold is_extremal. repeat Rdec_full.
       -- apply sort_min. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
       -- apply sort_min. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
-      -- assert (Hlastin := sort_non_nil config). apply (last_In 0%R) in Hlastin.
-         rewrite <- Permuted_sort in Hlastin at 2.
-         apply (sort_min _ 0) in Hlastin. unfold extreme_center. lra.
+      -- apply Rlt_le. change (mini (!! config) < extreme_center (!! config)). now apply Generic_min_mid_lt.
     - apply sort_min. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
 Qed.
 
 Theorem Generic_max_same : forall da conf,
-  no_Majority conf ->
-  (Spec.size (!! conf) <> 3)%nat ->
-    last (sort (Spec.support (!! (round robogram da conf)))) 0%R
-    = last (sort (Spec.support (!! conf))) 0%R.
+  no_Majority conf -> (Spec.size (!! conf) <> 3)%nat ->
+  maxi (!! (round robogram da conf)) = maxi (!! conf).
 Proof.
 intros da config Hmaj Hlen.
 (* We have a robot [id] at the minimal position in the original config. *)
@@ -1398,9 +1412,7 @@ apply Rle_antisym.
     - unfold is_extremal. repeat Rdec_full.
       -- apply sort_max. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
       -- apply sort_max. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
-      -- assert (Hlastin := sort_non_nil config). apply (hd_In 0%R) in Hlastin.
-         rewrite <- Permuted_sort in Hlastin at 2.
-         apply (sort_max _ 0) in Hlastin. unfold extreme_center. lra.
+      -- apply Rlt_le. change (extreme_center (!! config) < maxi (!! config)). now apply Generic_mid_max_lt.
     - apply sort_max. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
 * apply sort_max.
   rewrite <- Hid, <- InA_Leibniz, Spec.support_In, H. apply Spec.pos_in_config.
@@ -1408,210 +1420,56 @@ Qed.
 
 
 Corollary Generic_extreme_center_same : forall da conf,
-  no_Majority conf ->
-  (Spec.size (!! conf) <> 3)%nat ->
-  extreme_center (!! (round robogram da conf))
-  = extreme_center (!! conf).
+  no_Majority conf -> (Spec.size (!! conf) <> 3)%nat ->
+  extreme_center (!! (round robogram da conf)) = extreme_center (!! conf).
 Proof.
 intros da conf Hmaj Hlen. unfold extreme_center.
 now rewrite (Generic_min_same _ Hmaj Hlen), (Generic_max_same _ Hmaj Hlen).
 Qed.
 
 Theorem Generic_min_mult_same : forall da conf,
-  no_Majority conf ->
-  (Spec.size (!! conf) <> 3)%nat ->
-    Spec.multiplicity (hd 0%R (sort (Spec.support (!! conf)))) (!! (round robogram da conf))
-  = Spec.multiplicity (hd 0%R (sort (Spec.support (!! conf)))) (!! conf).
-Proof. Admitted.
-(*
+  no_Majority conf -> (Spec.size (!! conf) <> 3)%nat ->
+  (!! (round robogram da conf))[mini (!! conf)] = (!! conf)[mini (!! conf)].
+Proof. 
 intros da conf Hmaj Hlen.
-remember (hd 0%R (sort (Spec.support (!! conf)))) as pt.
 (* We simplify the lhs *)
-rewrite <- beq_nat_false_iff in Hlen.
-rewrite round_simplify. , Hmaj, Hlen, multiset_app, M.union_spec.
-(* Same thing for the rhs *)
-rewrite (nominal_spectrum_simplify da), multiset_app, M.union_spec.
-(* Non activated robots are in the same locations in both positions so we can simplify them out *)
-f_equal.
-(* Extremal robots are in the same locations in both positions so we can simplify them out *)
-rewrite <- (map_ExtEq_compat (if_ExtEq (fun g => is_extremal (gp conf g) (nominal_spectrum conf)) (gp conf))
-                             (reflexivity (active da))).
-do 2 rewrite map_cond_Permutation, multiset_app, M.union_spec.
-f_equal.
-(* Among those that are activated, at most all can be at position pt *)
-rewrite map_cst, multiset_alls, M.singleton_spec.
-Rdec_full.
-+ exfalso. subst. unfold extreme_center in Heq. assert (Hdiff := min_max_diff Hmaj). lra.
-+ rewrite multiset_spec.
-  cut (~ count_occ Rdec
-    (map (gp conf)
-       (filter (fun g => negb (is_extremal (gp conf g) (nominal_spectrum conf))) (active da)))
-       pt > 0)%nat. omega.
-  rewrite <- count_occ_In. intro Hin. rewrite in_map_iff in Hin. destruct Hin as [g [Heq Hin]].
-  rewrite filter_In in Hin. destruct Hin as [_ Hin]. revert Hin.  unfold is_extremal.
-  rewrite negb_true_iff. repeat Rdec_full; try discriminate. subst. elim Hneq0.
-  rewrite Heq at 1. apply hd_invariant. apply sort_nil.
+rewrite round_simplify_Generic; trivial.
+do 2 rewrite Spec.from_config_spec, Pos.list_spec.
+induction Spec.Names.names as [| id l]; simpl.
+* reflexivity.
+* destruct (step da id).
+  + repeat Rdec_full.
+    - f_equal. apply IHl.
+    - destruct (is_extremal (conf id) (!! conf)); try contradiction; [].
+      elim (Rlt_irrefl (mini (!! conf))). rewrite <- Heq at 2. now apply Generic_min_mid_lt.
+    - revert Hneq. rewrite Heq. unfold is_extremal. Rdec. intro Habs. now elim Habs.
+    - apply IHl.
+  + Rdec_full.
+    - f_equal. apply IHl.
+    - apply IHl.
 Qed.
-*)
 
 Theorem Generic_max_mult_same : forall da conf,
-  no_Majority conf ->
-  (Spec.size (!! conf) <> 3)%nat ->
-    Spec.multiplicity (last (sort (Spec.support (!! conf))) 0%R) (!! (round robogram da conf))
-  = Spec.multiplicity (last (sort (Spec.support (!! conf))) 0%R) (!! conf).
-Proof.
-Admitted.
-
-(*
-Theorem Stack_at_meeting : forall pos pt (d : demon nG 0) k,
-  kFair k d -> Stack_at pt pos -> WillGather pt (execute robogram d (gp pos)).
-Proof.
-Admitted.
-
-Lemma Permutation_eq_pair_equiv : forall l1 l2, Permutation l1 l2 <-> PermutationA M.eq_pair l1 l2.
-Proof.
-assert (HeqA : (eq ==> eq ==> iff)%signature Logic.eq M.eq_pair).
-{ intros [? ?] ? ? [? ?] ? ?. subst. now split; intro H; inversion H; reflexivity || hnf in *; simpl in *; subst. }
-intros l1 l2. rewrite <- PermutationA_Leibniz. now apply (PermutationA_eq_compat HeqA).
+  no_Majority conf -> (Spec.size (!! conf) <> 3)%nat ->
+  (!! (round robogram da conf))[maxi (!! conf)] = (!! conf)[maxi (!! conf)].
+Proof. 
+intros da conf Hmaj Hlen.
+(* We simplify the lhs *)
+rewrite round_simplify_Generic; trivial.
+do 2 rewrite Spec.from_config_spec, Pos.list_spec.
+induction Spec.Names.names as [| id l]; simpl.
+* reflexivity.
+* destruct (step da id).
+  + repeat Rdec_full.
+    - f_equal. apply IHl.
+    - destruct (is_extremal (conf id) (!! conf)); try contradiction; [].
+      elim (Rlt_irrefl (maxi (!! conf))). rewrite <- Heq at 1. now apply Generic_mid_max_lt.
+    - revert Hneq. rewrite Heq. unfold is_extremal. Rdec. Rdec_full; intro Habs; now elim Habs.
+    - apply IHl.
+  + Rdec_full.
+    - f_equal. apply IHl.
+    - apply IHl.
 Qed.
-
-Lemma forbidden_elements_perm : forall pos,
-  forbidden pos <-> exists pt1 pt2, pt1 <> pt2 /\ Permutation (M.elements (multiset (nominal_spectrum pos)))
-                                                              ((pt1, div2 nG) :: (pt2, div2 nG) :: nil).
-Proof.
-intro pos. split; intros [pt1 [pt2 [Hneq Hpos]]]; exists pt1; exists pt2; split; trivial.
-+ rewrite Permutation_eq_pair_equiv, Hpos, multiset_app, multiset_alls, multiset_alls, M.add_union_singleton.
-  apply (NoDupA_equivlistA_PermutationA _).
-  - apply (NoDupA_strengthen _ (M.elements_NoDupA _)).
-  - apply NoDupA_2. intros [Habs _]. apply Hneq. apply Habs.
-  - intros [x n]. rewrite M.elements_add. simpl. split; intro H.
-      destruct H as [[? [? H]] | [_ H]].
-        subst. rewrite M.singleton_spec. Rdec_full. contradiction. rewrite plus_0_r. now left.
-        right. rewrite M.elements_spec in H. destruct H as [H Hn]. simpl in H. rewrite M.singleton_spec in H.
-        revert H. Rdec_full; intro H. subst. now left. simpl in Hn. omega.
-      rewrite M.singleton_spec. inversion_clear H.
-        left. destruct H0. hnf in *; simpl in *. subst. repeat split.
-          Rdec_full. contradiction. symmetry. now apply plus_0_r.
-          now apply half_size_pos.
-        right. inversion_clear H0.
-          split.
-            destruct H as [H _]. hnf in H. simpl in H. subst. now auto.
-            rewrite M.elements_singleton. now left. now apply half_size_pos.
-          inversion H.
-+ assert (Hin : forall xn, InA M.eq_pair xn (M.elements (multiset (nominal_spectrum pos)))
-                           <-> (fst xn = pt1 \/ fst xn = pt2) /\ snd xn = div2 nG).
-  { intros [x n]. rewrite Permutation_eq_pair_equiv in Hpos. rewrite Hpos.
-    split; intro H.
-    + inversion H.
-      - destruct H1. hnf in *; simpl in *. subst. auto.
-      - inversion H1.
-          destruct H4. hnf in *; simpl in *. subst. auto.
-          inversion H4.
-    + simpl in H. destruct H as [[? | ? ] ?]; subst.
-        now left.
-        now right; left. }
-  (* If (x, n) belongs to elements l, then Permutation l alls x n ++ l' for some l' not containg x.
-     Let do this twice to remove all elements of elements l. *)
-  assert (Hmul1 : M.multiplicity pt1 (multiset (nominal_spectrum pos)) = div2 nG).
-  { apply proj1 with (div2 nG > 0)%nat. rewrite <- (M.elements_spec (pt1, div2 nG)).
-    rewrite Hin. now split; try left. }
-  assert (Hmul2 : M.multiplicity pt2 (multiset (nominal_spectrum pos)) = div2 nG).
-  { apply proj1 with (div2 nG > 0)%nat. rewrite <- (M.elements_spec (pt2, div2 nG)).
-    rewrite Hin. now split; try right. }
-  apply multiset_Permutation in Hmul1. destruct Hmul1 as [l [Hl Hperm]].
-  rewrite Hperm. apply Permutation_app. reflexivity.
-  rewrite Hperm, multiset_app, M.union_spec, multiset_alls, M.singleton_spec in Hmul2.
-  revert Hmul2. Rdec_full. symmetry in Heq. contradiction. clear Hneq0. simpl. intro Hmul2.
-  apply multiset_Permutation in Hmul2. destruct Hmul2 as [l' [Hl' Hperm']].
-  rewrite <- app_nil_r, Hperm'. apply Permutation_app. reflexivity.
-  (* Now we must prove that there is no other element in the spectrum because there is none in its multiset. *)
-  destruct l'. reflexivity. exfalso. cut (e = pt1 \/ e = pt2).
-  - intros [? | ?]; subst e.
-      apply Hl. rewrite Hperm'. apply in_app_iff. now right; left.
-      apply Hl'. now left.
-  - apply proj1 with (M.multiplicity e (multiset l) = div2 nG).
-    rewrite <- (Hin (e, M.multiplicity e (multiset l))). rewrite Hperm.
-    rewrite multiset_app, multiset_alls, M.elements_union. simpl. unfold M.In.
-    rewrite M.singleton_spec. Rdec_full.
-      elim Hl. subst e. rewrite Hperm'. rewrite in_app_iff. now right; left.
-      split.
-        right. rewrite Hperm', multiset_app, multiset_alls, multiset_cons, M.union_spec, M.add_spec. simpl. omega.
-        reflexivity.
-Qed.
-
-Corollary forbidden_elements : forall pos,
-  forbidden pos <-> exists pt1 pt2, pt1 <> pt2
-                    /\ M.elements (multiset (nominal_spectrum pos)) = (pt1, div2 nG) :: (pt2, div2 nG) :: nil.
-Proof.
-intro pos. rewrite forbidden_elements_perm. split; intros [pt1 [pt2 [Hdiff H]]].
-+ symmetry in H. apply Permutation_length_2_inv in H. destruct H as [H | H].
-  - exists pt1. exists pt2. auto.
-  - exists pt2. exists pt1. auto.
-+ exists pt1. exists pt2. rewrite H. auto.
-Qed.
-
-Corollary forbidden_multiplicity : forall pos,
-  forbidden pos <-> exists pt1 pt2, pt1 <> pt2
-              /\ M.multiplicity pt1 (multiset (nominal_spectrum pos)) = div2 nG
-              /\ M.multiplicity pt2 (multiset (nominal_spectrum pos)) = div2 nG
-              /\ forall pt, pt <> pt1 -> pt <> pt2 -> M.multiplicity pt (multiset (nominal_spectrum pos)) = 0%nat.
-Proof.
-intro pos. split; intros [pt1 [pt2 [Hdiff H]]].
-+ exists pt1. exists pt2. repeat split.
-  - assumption.
-  - apply proj1 with (div2 nG > 0)%nat. rewrite H, multiset_app, M.union_spec.
-    do 2 rewrite multiset_alls, M.singleton_spec. Rdec. Rdec_full. contradiction. split.
-      now apply plus_0_r.
-      now apply half_size_pos.
-  - apply proj1 with (div2 nG > 0)%nat. rewrite H, multiset_app, M.union_spec.
-    do 2 rewrite multiset_alls, M.singleton_spec. Rdec. Rdec_full. symmetry in Heq. contradiction. split.
-      reflexivity.
-      now apply half_size_pos.
-  - intros pt Hdiff1 Hdiff2. rewrite H, multiset_app, M.union_spec.
-    do 2 rewrite multiset_alls, M.singleton_spec. now do 2 Rdec_full.
-+ rewrite forbidden_elements_perm. exists pt1. exists pt2. split; trivial.
-  apply Permutation_eq_pair_equiv. apply (NoDupA_equivlistA_PermutationA _).
-  - apply (NoDupA_strengthen _ (M.elements_NoDupA _)).
-  - apply NoDupA_2. intros [Habs _]. apply Hdiff. apply Habs.
-  - intros [x n]. destruct H as [Hin1 [Hin2 Hin]]. destruct (Rdec x pt1).
-      subst. rewrite M.elements_spec. simpl. rewrite Hin1. split; intro H.
-        now left.
-        inversion_clear H.
-          destruct H0 as [_ H]. hnf in H; simpl in H. subst n. split. reflexivity. now apply half_size_pos.
-          inversion_clear H0. destruct H as [Habs _]. elim Hdiff. now apply Habs. now inversion H.
-      destruct (Rdec x pt2).
-        subst. rewrite M.elements_spec. simpl. rewrite Hin2. split; intro H.
-          now right; left.
-          inversion_clear H.
-            destruct H0 as [Habs _]. elim Hdiff. symmetry. now apply Habs.
-            inversion_clear H0.
-              destruct H as [_ H]. hnf in H; simpl in H. subst n. split. reflexivity. now apply half_size_pos.
-              now inversion H.
-        split; intro H.
-          rewrite M.elements_spec in H. rewrite Hin in H; try assumption. simpl in H. omega.
-          inversion_clear H.
-            destruct H0 as [H _]. hnf in H; simpl in H. contradiction.
-            inversion_clear H0.
-              destruct H as [H _]. hnf in H; simpl in H. contradiction.
-              now inversion H.
-Qed.
-*)
-
-(*
-Lemma Stack_at_forbidden : forall pt pos, Stack_at pt pos -> ~forbidden pos.
-Proof.
-intros pt pos [n [Hstack Hother]] [pt1 [pt2 [Hdiff Habs]]]. revert Hstack Hother.
-setoid_rewrite Habs.
-setoid_rewrite multiset_app. setoid_rewrite M.union_spec.
-setoid_rewrite multiset_alls. setoid_rewrite M.singleton_spec.
-do 2 Rdec_full; try subst pt.
-- contradiction.
-- rewrite plus_0_r. intro. subst. intro H. specialize (H pt2 Hdiff). revert H. Rdec. intro. omega.
-- simpl. intro. subst. intro H. specialize (H pt1 Hneq). revert H. Rdec. intro. omega.
-- simpl. intro. subst. intro H. specialize (H pt1 Hneq). revert H. Rdec. intro. omega.
-Qed.
-*)
-(* Other proof for never_forbidden *)
 
 Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1 <> pt3 ->
   (!! config)[pt1] + (!! config)[pt2] + (!! config)[pt3] <= N.nG.
