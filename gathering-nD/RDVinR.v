@@ -178,7 +178,7 @@ Module Spec := MultisetSpectrum.Make(R)(N).
 
 Notation "s [ pt ]" := (Spec.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spec.from_config (at level 1).
-Add Search Blacklist "Spec.M".
+Add Search Blacklist "Spec.M" "Ring".
 
 Module Export Formalism := Formalism(R)(N)(Spec).
 Close Scope R_scope.
@@ -397,7 +397,7 @@ Lemma lift_pos_equiv : forall pos : Pos.t, Pos.eq pos (lift_pos (fun g => pos (G
 Proof. unfold lift_pos. intros pos [g | b]; hnf. reflexivity. now apply Fin.case0. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
-Corollary spec_nil : forall conf, ~Spec.eq (!! conf) Spec.empty.
+Lemma spec_non_nil : forall conf, ~Spec.eq (!! conf) Spec.empty.
 Proof.
 intros conf Heq.
 unfold Spec.from_config in Heq.
@@ -408,6 +408,12 @@ simpl in *.
 unfold N.nG in *.
 assert (hnG:=size_G).
 omega.
+Qed.
+
+Corollary sort_non_nil : forall config, sort (Spec.support (!! config)) <> nil.
+Proof.
+intros config Habs. apply (spec_non_nil config). rewrite <- Spec.support_nil.
+apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
 
 (** **  Property expressing the existence of a majority tower  **)
@@ -659,7 +665,7 @@ split; intro Hx.
 Admitted.
 
 Lemma support_Smax_nil : forall config, Spec.support (Smax (!! config)) <> nil.
-Proof. intros config Habs. rewrite Spec.support_nil, Smax_empty in Habs. apply (spec_nil _ Habs). Qed.
+Proof. intros config Habs. rewrite Spec.support_nil, Smax_empty in Habs. apply (spec_non_nil _ Habs). Qed.
 
 (** ***  Computational equivalent of having a majority tower  **)
 
@@ -680,7 +686,7 @@ intros config pt. split; intro Hmaj.
   + apply NoDupA_singleton.
   + apply Spec.support_NoDupA.
   + intro y. rewrite InA_singleton.
-    rewrite Spec.support_In, Smax_spec1_iff; try apply spec_nil; [].
+    rewrite Spec.support_In, Smax_spec1_iff; try apply spec_non_nil; [].
     split; intro Hpt.
     - subst y. intro x. destruct (Rdec x pt).
       -- subst x. reflexivity.
@@ -1071,7 +1077,7 @@ Qed.
 
 Lemma extreme_center_similarity_invariant : forall (sim : similarity) config,
   extreme_center (Spec.map sim (!! config)) = sim (extreme_center (!! config)).
-Proof. intros. apply extreme_center_similarity. apply spec_nil. Qed.
+Proof. intros. apply extreme_center_similarity. apply spec_non_nil. Qed.
 
 
 (** *  The robogram solving the gathering **)
@@ -1184,7 +1190,7 @@ destruct (Spec.support (Smax (!! pos))) as [| pt' [| pt2' l']].
     - (* The current robot is exremal *)
       hnf. unfold R.origin, Rdef.origin. field. lra.
     - (* The current robot is not exremal *)
-      rewrite <- Spec.from_config_map, extreme_center_similarity; apply spec_nil || trivial.
+      rewrite <- Spec.from_config_map, extreme_center_similarity; apply spec_non_nil || trivial.
       hnf. rewrite <- (da.(step_center) _ _ pt Hstep) at 2. now rewrite <- Hinvsim, <- (simc pt).(Inversion).
 Qed.
 Print Assumptions round_simplify.
@@ -1328,7 +1334,38 @@ Theorem Generic_min_same : forall da conf,
     hd 0%R (sort (Spec.support (!! (round robogram da conf))))
     = hd 0%R (sort (Spec.support (!! conf))).
 Proof.
-Admitted.
+intros da config Hmaj Hlen.
+(* We have a robot [id] at the minimal position in the original config. *)
+assert (Hhdin := sort_non_nil config). apply (hd_In 0%R) in Hhdin.
+rewrite <- Permuted_sort in Hhdin at 2.
+rewrite <- InA_Leibniz, Spec.support_In, Spec.from_config_In in Hhdin.
+destruct Hhdin as [id Hid].
+(* Its position before and after are the same *)
+assert (config id = round robogram da config id).
+{ rewrite round_simplify_Generic; trivial; [].
+  destruct (step da id); trivial; [].
+  unfold is_extremal. Rdec_full; try reflexivity; [].
+  elim Hneq. rewrite Hid. apply hd_indep. apply sort_non_nil. }
+(** Main proof *)
+apply Rle_antisym.
+* apply sort_min.
+  rewrite <- Hid, <- InA_Leibniz, Spec.support_In, H. apply Spec.pos_in_config.
+* apply sort_min.
+  rewrite <- InA_Leibniz, Spec.support_In. apply Spec.from_config_In.
+  exists id. apply min_sort.
+  + rewrite H, <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+  + intros y Hy. rewrite <- InA_Leibniz, Spec.support_In, Spec.from_config_In in Hy.
+    destruct Hy as [id' Hid']. rewrite <- Hid', Hid.
+    rewrite round_simplify_Generic; trivial; [].
+    destruct (step da id').
+    - unfold is_extremal. repeat Rdec_full.
+      -- apply sort_min. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+      -- apply sort_min. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+      -- assert (Hlastin := sort_non_nil config). apply (last_In 0%R) in Hlastin.
+         rewrite <- Permuted_sort in Hlastin at 2.
+         apply (sort_min _ 0) in Hlastin. unfold extreme_center. lra.
+    - apply sort_min. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+Qed.
 
 Theorem Generic_max_same : forall da conf,
   no_Majority conf ->
@@ -1336,7 +1373,38 @@ Theorem Generic_max_same : forall da conf,
     last (sort (Spec.support (!! (round robogram da conf)))) 0%R
     = last (sort (Spec.support (!! conf))) 0%R.
 Proof.
-Admitted.
+intros da config Hmaj Hlen.
+(* We have a robot [id] at the minimal position in the original config. *)
+assert (Hlastin := sort_non_nil config). apply (last_In 0%R) in Hlastin.
+rewrite <- Permuted_sort in Hlastin at 2.
+rewrite <- InA_Leibniz, Spec.support_In, Spec.from_config_In in Hlastin.
+destruct Hlastin as [id Hid].
+(* Its position before and after are the same *)
+assert (config id = round robogram da config id).
+{ rewrite round_simplify_Generic; trivial; [].
+  destruct (step da id); trivial; [].
+  unfold is_extremal. repeat Rdec_full; try reflexivity; [].
+  elim Hneq0. rewrite Hid. apply last_indep. apply sort_non_nil. }
+(** Main proof *)
+apply Rle_antisym.
+* apply sort_max.
+  rewrite <- InA_Leibniz, Spec.support_In. apply Spec.from_config_In.
+  exists id. apply max_sort.
+  + rewrite H, <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+  + intros y Hy. rewrite <- InA_Leibniz, Spec.support_In, Spec.from_config_In in Hy.
+    destruct Hy as [id' Hid']. rewrite <- Hid', Hid.
+    rewrite round_simplify_Generic; trivial; [].
+    destruct (step da id').
+    - unfold is_extremal. repeat Rdec_full.
+      -- apply sort_max. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+      -- apply sort_max. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+      -- assert (Hlastin := sort_non_nil config). apply (hd_In 0%R) in Hlastin.
+         rewrite <- Permuted_sort in Hlastin at 2.
+         apply (sort_max _ 0) in Hlastin. unfold extreme_center. lra.
+    - apply sort_max. rewrite <- InA_Leibniz, Spec.support_In. apply Spec.pos_in_config.
+* apply sort_max.
+  rewrite <- Hid, <- InA_Leibniz, Spec.support_In, H. apply Spec.pos_in_config.
+Qed.
 
 
 Corollary Generic_extreme_center_same : forall da conf,
@@ -1570,7 +1638,7 @@ destruct (step da id1) eqn:Hmove1; [destruct (step da id2) eqn:Hmove2 |].
   cbv zeta.
   destruct (Spec.support (Smax (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
   + (* no robots *)
-    rewrite Spec.support_nil, Smax_empty in Hmaj. elim (spec_nil _ Hmaj).
+    rewrite Spec.support_nil, Smax_empty in Hmaj. elim (spec_non_nil _ Hmaj).
   + (* a majority tower *)
     reflexivity.
   + destruct (Spec.size (!! config) =? 3) eqn:Hlen.
@@ -1754,7 +1822,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
     assert ((div2 N.nG) <= (!! conf)[pt']).
     { transitivity ((!! (round robogram da conf))[pt']).
       - decompose [and or] Hpt; subst; omega.
-      - generalize (@increase_move robogram conf da pt').
+      - generalize (@increase_move_iff conf da pt').
         intro H1. apply Nat.nlt_ge.
         rewrite H1. intros [id [Hid1 Hid2]].
         apply Hdiff2.

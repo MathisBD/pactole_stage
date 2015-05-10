@@ -143,18 +143,39 @@ Qed.
 Instance Permutation_length_compat : Proper (@Permutation A ==> eq) (@length A).
 Proof. now intros ? ? ?; apply Permutation_length. Qed.
 
+(* Already exists as Permutation.Permutation_in' *)
 Instance In_perm_compat : Proper (eq ==> @Permutation A ==> iff) (@In A).
 Proof. intros x y ? l l' Hl. subst. split; apply Permutation_in; assumption || now symmetry. Qed.
 
 Instance In_permA_compat : Proper (eq ==> @PermutationA A eq ==> iff) (@In A).
 Proof. repeat intro. rewrite PermutationA_Leibniz in *. now apply In_perm_compat. Qed.
 
-Lemma last_In : forall l (x : A), l <> List.nil -> List.In (List.last l x) l.
+Lemma hd_indep : forall l (d d' : A), l <> nil -> hd d l = hd d' l.
 Proof.
-induction l; intros x Hx. now elim Hx.
-destruct l. now left. 
-change (List.In (List.last (a0 :: l) x) (a :: a0 :: l)).
-right. apply IHl. discriminate.
+intros [| x l] d d' Hl.
+- now elim Hl.
+- reflexivity.
+Qed.
+
+Lemma last_indep : forall l (d d' : A), l <> nil -> last l d = last l d'.
+Proof.
+induction l as [| x l]; intros d d' Hl.
+- now elim Hl.
+- destruct l; trivial. apply IHl. discriminate.
+Qed.
+
+Lemma hd_In : forall (d : A) l, l <> nil -> In (hd d l) l.
+Proof.
+intros d [| x l] Hl.
+- now elim Hl.
+- now left.
+Qed.
+
+Lemma last_In : forall l (d : A), l <> List.nil -> List.In (List.last l d) l.
+Proof.
+induction l as [| x l]; intros d Hl.
+- now elim Hl.
+- destruct l; try now left. right. apply IHl. discriminate.
 Qed.
 
 Lemma hd_last_diff : forall l d d', length l > 1 -> NoDupA eqA l ->

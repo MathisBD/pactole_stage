@@ -107,17 +107,27 @@ Proof. intros. apply StronglySorted_sort_identity. apply StronglySorted_alls. Qe
 
 Open Scope R_scope.
 
-Theorem sort_min : forall (s : list R) (d x : R), List.In x s ->
-  (List.hd d (sort s) <= x)%R.
+Theorem sort_min : forall (l : list R) (d x : R), List.In x l ->
+  (List.hd d (sort l) <= x)%R.
 Proof.
-intros s d x Hin.
-assert (Hsort := StronglySorted_sort s Rleb_trans).
-assert (Hperm := Permuted_sort s).
-destruct (sort s).
+intros l d x Hin.
+assert (Hsort := StronglySorted_sort l Rleb_trans).
+assert (Hperm := Permuted_sort l).
+destruct (sort l).
 - symmetry in Hperm. apply Permutation_nil in Hperm. subst. now inversion Hin.
 - simpl. rewrite Hperm in Hin. destruct Hin. subst. apply Rle_refl.
   apply StronglySorted_inv in Hsort. destruct Hsort as [Hsort Hmin].
   rewrite List.Forall_forall in Hmin. rewrite <- Rleb_spec. now apply Hmin.
+Qed.
+
+Theorem min_sort : forall l d x, List.In x l -> (forall y, In y l -> x <= y) -> x = List.hd d (sort l).
+Proof.
+intros l d x Hin Hmin. apply Rle_antisym.
++ apply Hmin. setoid_rewrite Permuted_sort at 3. apply hd_In. destruct l as [| r l].
+  - inversion Hin.
+  - intro Habs. cut (r :: l = nil); try discriminate; [].
+    apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
++ now apply sort_min.
 Qed.
 
 Theorem sort_max : forall (s : list R) (d x : R), List.In x s ->
@@ -133,6 +143,16 @@ intros a l Hsorted HP Hle x Hin. destruct Hin.
 - subst. destruct l. simpl. apply Rle_refl.
   apply Rle_trans with r. inversion_clear Hle. now rewrite <- Rleb_spec. apply HP. now left.
 - destruct l. inversion H. now apply HP.
+Qed.
+
+Theorem max_sort : forall l d x, List.In x l -> (forall y, In y l -> y <= x) -> x = last (sort l) d.
+Proof.
+intros l d x Hin Hmax. apply Rle_antisym.
++ now apply sort_max.
++ apply Hmax. setoid_rewrite Permuted_sort at 3. apply last_In. destruct l as [| r l].
+  - inversion Hin.
+  - intro Habs. cut (r :: l = nil); try discriminate; [].
+    apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
 
 (* Existing Instance Permutation_map_aux_Proper. *)

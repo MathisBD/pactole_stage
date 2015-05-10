@@ -244,4 +244,14 @@ intros conf id. unfold from_config.
 unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
 rewrite Pos.list_InA. now exists id.
 Qed.
+
+Property from_config_In : forall config l, In l (from_config config) <-> exists id, Location.eq (config id) l.
+Proof.
+intros config l. split; intro Hin.
++ unfold In in Hin. rewrite from_config_spec, (countA_occ_pos _), Pos.list_spec in Hin.
+  rewrite (InA_map_iff _ _) in Hin.
+  - firstorder.
+  - repeat intro. now subst.
++ destruct Hin as [id Hid]. rewrite <- Hid. apply pos_in_config.
+Qed.
 End Make.
