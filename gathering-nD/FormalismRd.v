@@ -471,7 +471,7 @@ split; intro H.
   - destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | _]; intuition.
 Qed.
 
-Lemma moving_active : forall r da config id, List.In id (moving r da config) -> List.In id (active da).
+Lemma moving_active : forall r da config, List.incl (moving r da config) (active da).
 Proof.
 intros r config da id. rewrite moving_spec, active_spec. intro Hmove.
 unfold round in Hmove. destruct (step config id).
@@ -479,6 +479,21 @@ unfold round in Hmove. destruct (step config id).
 - now elim Hmove.
 Qed.
 
+Lemma no_moving_same_conf : forall r da config,
+  moving r da config = List.nil -> Pos.eq (round r da config) config.
+Proof.
+intros r da config Hmove id.
+destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | Heq]; trivial.
+rewrite <- moving_spec, Hmove in Heq. inversion Heq.
+Qed.
+
+Corollary no_active_same_conf :
+  forall r da conf, active da = List.nil -> Pos.eq (round r da conf) conf.
+Proof.
+intros r da conf Hactive.
+assert (moving r da conf = List.nil). { apply incl_nil. rewrite <- Hactive. apply moving_active. }
+now apply no_moving_same_conf.
+Qed.
 
 (** [execute r d pos] returns an (infinite) execution from an initial global
     position [pos], a demon [d] and a robogram [r] running on each good robot. *)

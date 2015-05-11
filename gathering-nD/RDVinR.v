@@ -1489,19 +1489,6 @@ destruct (step da id1) eqn:Hmove1; [destruct (step da id2) eqn:Hmove2 |].
   rewrite filter_In, Hmove1 in Hid1. destruct Hid1; discriminate.
 Qed.
 
-Lemma no_active_same_conf :
-  forall da conf, active da = nil -> Pos.eq (round robogram da conf) conf.
-Proof.
-intros da conf Hactive. setoid_rewrite lift_pos_equiv. apply lift_pos_compat.
-intros g' g ?. subst g'. rewrite round_simplify.
-destruct (step da (Good g)) eqn:Heq; trivial.
-assert (Hin : In (Good g) (active da)).
-{ unfold active. rewrite filter_In. split.
-  - apply Names.In_names.
-  - now rewrite Heq. }
-rewrite Hactive in Hin. elim Hin.
-Qed.
-
 Lemma towers_elements_3 : forall config pt1 pt2,
   (Spec.size (!! config) >= 3)%nat ->
   Spec.In pt1 (!! config) -> Spec.In pt2 (!! config) -> pt1 <> pt2 ->
@@ -1601,22 +1588,12 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
   assert (Hmaj : no_Majority conf). { unfold no_Majority. rewrite Spec.size_spec, Hmaj'. simpl. omega. }
   clear pt pt' l' Hmaj'.
   (* A robot has moved otherwise we have the same configuration before and it is forbidden. *)
-  assert (Hnil := no_active_same_conf da conf).
-  destruct (active da) eqn:Hneq.
+  assert (Hnil := no_moving_same_conf robogram da conf).
+  destruct (moving robogram da conf) as [| rmove l] eqn:Heq.
   * now rewrite Hnil.
   * intro Habs.
-    assert (Heven:=forbidden_even Habs). (* SearchAbout Nat.Even. rewrite <- NPeano.even_spec in Heven. *)
-    (* since we suppose (forbidden (round robogram)) there must be a robot that moves *)
-    assert (Hex : List.existsb (fun g => negb (Rdec_bool (conf g) (round robogram da conf g))) (active da)).
-    { rewrite <- existsb_forallb. unfold is_true. rewrite negb_true_iff. apply not_true_is_false.
-      rewrite forallb_forall. setoid_rewrite Rdec_bool_true_iff. intro Hall.
-      assert (Hconf : Pos.eq (round robogram da conf) conf).
-      { intro r. destruct (step da r) eqn:Hstep.
-        - symmetry. hnf. apply Hall. rewrite active_spec, Hstep. discriminate.
-        - rewrite round_simplify, Hstep. reflexivity. }
-      apply Hok. rewrite <- Hconf. assumption. }
-    unfold is_true in Hex. rewrite existsb_exists in Hex. destruct Hex as [rmove [Hin Hrmove]].
-    rewrite negb_true_iff, Rdec_bool_false_iff in Hrmove.
+    assert (Hmove : In rmove (moving robogram da conf)). { rewrite Heq. now left. }
+    rewrite moving_spec in Hmove.
     (* the robot moves to one of the two locations in round robogram conf *)
     assert (Hforbidden := Habs). destruct Habs as [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
     assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
@@ -1945,7 +1922,11 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
           cut ((!! conf)[extreme_center (!! conf)] < (!! (round robogram da conf))[extreme_center (!! conf)]).
           omega.
           rewrite increase_move_iff. exists gmove. split; trivial.
-          admit.
+          rewrite round_simplify_Generic in Hmove |- *; trivial.
+          destruct (step da gmove); try (now elim Hstep); [].
+          destruct (is_extremal (conf gmove) (!! conf)).
+          - now elim Hmove.
+          - reflexivity.
 Admitted.
 
 
@@ -1960,8 +1941,8 @@ CoInductive kFair_group
 
 (** Given a k-fair demon, a non-gathered position, then some robot will move some day *)
 Inductive FirstMove r d config :=
-  | MoveNow : forall id, round r (demon_head d) config id <> config id -> FirstMove r d config
-  | MoveLater : Pos.eq (round r (demon_head d) config) config ->
+  | MoveNow : moving r (demon_head d) config <> nil -> FirstMove r d config
+  | MoveLater : moving r (demon_head d) config = nil ->
                 FirstMove r (demon_tail d) (round r (demon_head d) config) -> FirstMove r d config.
 
 Theorem kFair_FirstMove : forall k d, kFair k d ->
@@ -2093,15 +2074,15 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
   exists (conf (Good g1)). apply Now. apply gathered_at_OK. assumption.
 * (* Otherwise, we need to make an induction on the first robot moving *)
   apply (kFair_FirstMove Hfair (Good g1)) in Hmove.
-  induction Hmove as [d conf id Hmove | d conf Heq Hmove Hrec].
+  induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
   + (* If one robot moves, so we can use our well-founded induction hypothesis. *)
     destruct (Hind (round robogram (demon_head d) conf)) with (demon_tail d) k as [pt Hpt].
-    - apply round_lt_conf; trivial.
-      intro Habs. rewrite <- moving_spec, Habs in Hmove. now inversion Hmove.
+    - apply round_lt_conf; assumption.
     - now destruct Hfair.
     - now apply never_forbidden.
     - exists pt. apply Later. rewrite execute_tail. apply Hpt.
   + (* Otherwise, the induction hypothesis on the first robot moving ensures that it will terminate *)
+    apply no_moving_same_conf in Heq.
     destruct Hrec as [pt Hpt].
     - setoid_rewrite Heq. apply Hind.
     - now destruct Hfair.

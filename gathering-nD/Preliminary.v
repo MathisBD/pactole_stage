@@ -1049,6 +1049,12 @@ Qed.
 Global Instance inclA_compat : Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (inclA eqA).
 Proof. intros ? ? Hl1 ? ? Hl2. unfold inclA. setoid_rewrite Hl1. setoid_rewrite Hl2. reflexivity. Qed.
 
+Lemma inclA_nil : forall l, inclA eqA l nil -> l = nil.
+Proof.
+intros [| x l] Hin; trivial.
+specialize (Hin x $(now left)$). inversion Hin.
+Qed.
+
 Lemma inclA_cons_inv : forall x l1 l2, ~InA eqA x l1 ->
   inclA eqA (x :: l1) (x :: l2) -> inclA eqA l1 l2.
 Proof.
@@ -1080,6 +1086,9 @@ intro l1. induction l1 as [| x l1]; intros l2 Hnodup1 Hnodup2 Hincl Hlen.
 Qed.
 
 End List_results.
+
+Corollary incl_nil : forall {A} (l : list A), incl l nil -> l = nil.
+Proof. intros A l. rewrite <- inclA_Leibniz. apply (inclA_nil _). Qed.
 
 Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : list A, {NoDup l} + {~NoDup l}.
 Proof. intros eq_dec l. destruct (NoDupA_dec _ eq_dec l); rewrite NoDupA_Leibniz in *; auto. Qed.
