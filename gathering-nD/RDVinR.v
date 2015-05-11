@@ -1822,7 +1822,14 @@ Lemma support_round_Three_incl : forall conf da,
   incl (Spec.support (!! (round robogram da conf)))
        (Spec.support (!! conf)).
 Proof.
-Admitted.
+intros config da Hmaj Hlen pt Hin.
+rewrite <- InA_Leibniz, Spec.support_In, Spec.from_config_In in Hin.
+destruct Hin as [id Hid]. rewrite round_simplify_Three in Hid; trivial.
+destruct (step da id).
++ rewrite <- Hid. setoid_rewrite Permuted_sort at 3. apply nth_In.
+  rewrite <- Permuted_sort, <- Spec.size_spec, Hlen. omega.
++ rewrite <- InA_Leibniz, Spec.support_In, <- Hid. apply Spec.pos_in_config.
+Qed.
 
 Corollary support_decrease : forall conf da,
   no_Majority conf ->
