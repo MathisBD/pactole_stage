@@ -1774,12 +1774,12 @@ Lemma conf_to_NxN_nil_spec : forall conf,
 Proof. intros conf Heq. unfold conf_to_NxN. rewrite Heq. reflexivity. Qed.
 
 Lemma conf_to_NxN_Majority_spec : forall conf pt,
-  Spec.support (Smax (!! conf)) = pt :: nil ->
+  MajTower_at pt conf ->
   conf_to_NxN conf = (1, N.nG - (!! conf)[pt]).
 Proof.
   intros conf pt H.
   unfold conf_to_NxN.
-  rewrite H.
+  rewrite MajTower_at_equiv in H. rewrite H.
   reflexivity.
 Qed.
 
@@ -1848,13 +1848,15 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
 * (* No robots *)
   elim (support_Smax_nil _ Hmaj).
 * (* A majority tower *)
-  assert (Hmaj' : Spec.support (Smax (!! (round robogram da conf))) = pt :: nil).
-  { Check MajTower_at_forever. admit. }
+  rewrite <- MajTower_at_equiv in Hmaj.
+  assert (Hmaj' : MajTower_at pt (round robogram da conf)) by now apply MajTower_at_forever.
   red.
-  rewrite (conf_to_NxN_Majority_spec _ Hmaj), (conf_to_NxN_Majority_spec _ Hmaj').
+  rewrite (conf_to_NxN_Majority_spec Hmaj), (conf_to_NxN_Majority_spec Hmaj').
   apply right_lex.
-  assert ((!! (round robogram da conf))[pt] <= N.nG) by apply multiplicity_le_nG.
+  assert (Hle : (!! (round robogram da conf))[pt] <= N.nG) by apply multiplicity_le_nG.
   cut ((!! conf)[pt] < (!! (round robogram da conf))[pt]). omega.
+  assert (Hdestg : round robogram da conf gmove = pt).
+  { rewrite (round_simplify_Majority _ Hmaj). destruct (step da gmove); trivial. now elim Hstep. }
   admit.
 * rename Hmaj into Hmaj'.
   assert (Hmaj : no_Majority conf).
@@ -1864,7 +1866,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
     red. rewrite (conf_to_NxN_Three_spec Hmaj Hlen).
     destruct (Spec.support (Smax (!! (round robogram da conf)))) as [| pt' [| ? ?]] eqn:Hmaj'.
     - rewrite (conf_to_NxN_nil_spec _ Hmaj'). apply left_lex. omega.
-    - rewrite (conf_to_NxN_Majority_spec _ Hmaj'). apply left_lex. omega.
+    - rewrite <- MajTower_at_equiv in Hmaj'. rewrite (conf_to_NxN_Majority_spec Hmaj'). apply left_lex. omega.
     - rename Hmaj' into Hmaj''.
       assert (Hmaj' : no_Majority (round robogram da conf)).
       { unfold no_Majority. rewrite Spec.size_spec, Hmaj''. simpl. omega. } clear Hmaj''.
@@ -1900,7 +1902,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
     red. rewrite (conf_to_NxN_Generic_spec Hmaj Hlen).
     destruct (Spec.support (Smax (!! (round robogram da conf)))) as [| pt' [| ? ?]] eqn:Hmaj'.
     - rewrite (conf_to_NxN_nil_spec _ Hmaj'). apply left_lex. omega.
-    - rewrite (conf_to_NxN_Majority_spec _ Hmaj'). apply left_lex. omega.
+    - rewrite <- MajTower_at_equiv in Hmaj'. rewrite (conf_to_NxN_Majority_spec Hmaj'). apply left_lex. omega.
     - { rename Hmaj' into Hmaj''.
         assert (Hmaj' : no_Majority (round robogram da conf)).
         { unfold no_Majority. rewrite Spec.size_spec, Hmaj''. simpl. omega. } clear Hmaj''.
