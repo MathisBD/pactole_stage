@@ -98,6 +98,9 @@ End Rdef.
 
 Module R := MakeMetricSpace(Rdef).
 
+Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec.
+
+
 (** Small dedicated decision tactic for reals handling 1<>0 and r=r *)
 Ltac Rdec := unfold R.eq_dec, Rdef.eq_dec; repeat
   match goal with
@@ -245,9 +248,6 @@ Proof. apply (sim_ratio_pos R1_neq_R0). Qed.
 
 Lemma similarity_injective : forall sim : similarity, injective eq eq sim.
 Proof. apply (similarity_injective R1_neq_R0). Qed.
-
-Transparent R.origin.
-Transparent Rdef.origin.
 
 (* A similarity in R is described by its ratio and its center. *)
 Theorem similarity_in_R_case : forall sim,
@@ -2043,16 +2043,36 @@ destruct N.nG eqn:HnG.
 - apply (@Fin.F1 n).
 Defined.
 
+Instance gathered_at_compat : Proper (eq ==> Pos.eq ==> iff) gathered_at.
+Proof.
+intros ? pt ? config1 config2 Hconfig. subst. unfold gathered_at.
+split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
+Qed.
+
 Lemma gathered_at_forever : forall da conf pt, gathered_at pt conf -> gathered_at pt (round robogram da conf).
 Proof.
-intros da conf pt Hgather.
-Admitted.
+intros da conf pt Hgather. rewrite (round_simplify_Majority).
++ intro g. destruct (step da (Good g)); reflexivity || apply Hgather.
++ intros pt' Hdiff.
+  assert (H0 : (!! conf)[pt'] = 0).
+  { rewrite Spec.from_config_spec, Spec.Pos.list_spec.
+    induction Spec.Names.names as [| id l].
+    + reflexivity.
+    + unfold R.eq_dec, Rdef.eq_dec in *. simpl. Rdec_full.
+      - elim Hdiff. rewrite <- Heq. destruct id as [g | b]. apply Hgather. apply Fin.case0. exact b.
+      - apply IHl. }
+  rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply Spec.pos_in_config.
+Qed.
 
 Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
 Proof.
 intros conf pt.
-destruct (forallb (fun id => Rdec_bool (conf id) (conf (Good g1))) Names.names) eqn:Hall.
-Admitted.
+destruct (forallb (fun id => Rdec_bool (conf id) pt) Names.names) eqn:Hall.
++ left. rewrite forallb_forall in Hall. intro g. rewrite <- Rdec_bool_true_iff. apply Hall. apply Names.In_names.
++ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
+  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  rewrite negb_true_iff, Rdec_bool_false_iff in Heq. contradiction.
+Qed.
 
 Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> Gather pt (execute robogram d conf).
 Proof.
