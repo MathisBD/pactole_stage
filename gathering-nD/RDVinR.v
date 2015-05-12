@@ -2061,9 +2061,10 @@ End HypRobots.
 Require Import Coq.Program.Equality.
 Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
 Proof.
+  intro nG.
   dependent destruction nG; intros.
   - exfalso;omega.
-  - dependent destruction nG.
+  - dependent destruction nG0.
     + exfalso;omega.
     + simpl.
       intro abs.
