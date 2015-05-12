@@ -15,6 +15,7 @@ Require Import Equalities.
 Require Import Morphisms.
 Require Import Reals.
 Require Import Psatz.
+Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
@@ -221,6 +222,32 @@ Definition active da := List.filter
   (fun id => match step da id with Some _ => true | None => false end)
   Names.names.
 
+Instance idle_compat : Proper (da_eq ==> eq) idle.
+Proof.
+intros da1 da2 Hda. unfold idle. induction Names.names as [| id l]; simpl.
++ reflexivity.
++ destruct (step da1 id) eqn:Hstep1, (step da2 id) eqn:Hstep2.
+  - apply IHl.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - f_equal. apply IHl.
+Qed.
+
+Instance active_compat : Proper (da_eq ==> eq) active.
+Proof.
+intros da1 da2 Hda. unfold active. induction Names.names as [| id l]; simpl.
++ reflexivity.
++ destruct (step da1 id) eqn:Hstep1, (step da2 id) eqn:Hstep2.
+  - f_equal. apply IHl.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - apply IHl.
+Qed.
+
 Lemma idle_spec : forall da id, List.In id (idle da) <-> step da id = None.
 Proof.
 intros da id. unfold idle. rewrite List.filter_In.
@@ -234,6 +261,7 @@ intros da id. unfold active. rewrite List.filter_In.
 destruct (step da id); intuition; try discriminate.
 apply Names.In_names.
 Qed.
+
 
 (** A [demon] is just a stream of [demonic_action]s. *)
 CoInductive demon :=
@@ -264,6 +292,12 @@ Qed.
 
 Instance deq_bisim : Bisimulation demon.
 Proof. exists deq. apply deq_equiv. Qed.
+
+Instance demon_head_compat : Proper (deq ==> da_eq) demon_head.
+Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
+
+Instance demon_tail_compat : Proper (deq ==> deq) demon_tail.
+Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
 
 (** ** Fairness *)
 
@@ -444,20 +478,37 @@ Definition round (r : robogram) (da : demonic_action) (pos : Pos.t) : Pos.t :=
 
 Instance round_compat : Proper (req ==> da_eq ==> Pos.eq ==> Pos.eq) round.
 Proof.
-intros r1 r2 Hr da1 da2 Hd pos1 pos2 Hpos id.
+intros r1 r2 Hr da1 da2 Hda pos1 pos2 Hpos id.
 unfold req in Hr. unfold round.
-assert (Hstep := step_da_compat Hd (reflexivity id)). assert (Hda1 := da1.(step_compat) _ _ (reflexivity id)).
+assert (Hstep := step_da_compat Hda (reflexivity id)). assert (Hda1 := da1.(step_compat) _ _ (reflexivity id)).
 destruct (step da1 id), (step da2 id), id; try now elim Hstep.
 + simpl in Hstep. f_equiv.
   - apply Hstep, Hpos.
   - apply Hr, Spec.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
-+ rewrite Hd. reflexivity.
++ rewrite Hda. reflexivity.
 Qed.
 
 (** A third subset of robots, moving ones *)
 Definition moving r da config := List.filter
   (fun id => if Location.eq_dec (round r da config id) (config id) then false else true)
   Names.names.
+
+Instance moving_compat : Proper (req ==> da_eq ==> Pos.eq ==> eq) moving.
+Proof.
+intros r1 r2 Hr da1 da2 Hda c1 c2 Hc. unfold moving.
+induction Names.names as [| id l]; simpl.
+* reflexivity.
+* destruct (Location.eq_dec (round r1 da1 c1 id) (c1 id)) as [Heq1 | Heq1],
+           (Location.eq_dec (round r2 da2 c2 id) (c2 id)) as [Heq2 | Heq2].
+  + apply IHl.
+  + elim Heq2. transitivity (round r1 da1 c1 id).
+    - symmetry. now apply round_compat.
+    - rewrite Heq1. apply Hc.
+  + elim Heq1. transitivity (round r2 da2 c2 id).
+    - now apply round_compat.
+    - rewrite Heq2. symmetry. apply Hc.
+  + f_equal. apply IHl.
+Qed.
 
 Lemma moving_spec : forall r da config id,
   List.In id (moving r da config) <-> ~Location.eq (round r da config id) (config id).

@@ -93,6 +93,7 @@ Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
   Definition eq pos₁ pos₂ := forall id : Names.ident, Location.eq (pos₁ id) (pos₂ id).
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_bisim : Bisimulation t.
+  Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> Location.eq)%signature.
   
   Definition map (f : Location.t -> Location.t) (pos : t) := fun id => f (pos id).
   Declare Instance map_compat : Proper ((Location.eq ==> Location.eq) ==> eq ==> eq) map.
@@ -141,6 +142,9 @@ Qed.
 
 Instance eq_bisim : Bisimulation t.
 Proof. exists eq. apply eq_equiv. Defined.
+
+Instance eq_subrelation : subrelation eq (Logic.eq ==> Location.eq)%signature.
+Proof. intros ? ? Hpos ? id ?. subst. apply Hpos. Qed.
 
 (** Pointwise mapping of a function on a position *)
 Definition map (f : Location.t -> Location.t) (pos : t) := fun id => f (pos id).
