@@ -610,23 +610,113 @@ intros s x y Hx Hy. apply le_neq_lt.
 Qed.
 
 Close Scope R_scope.
-
-Corollary Smax_spec1_iff : forall s, ~Spec.eq s Spec.empty ->
-  (forall x, Spec.In x (Smax s) <-> forall y, (s[y] <= s[x])%nat).
+  
+Lemma Smax_max_mult : forall s x, ~Spec.eq s Spec.empty -> Spec.In x (Smax s) <-> s[x] = Smax_mult s.
 Proof.
-intros s Hs x.
-destruct (Spec.empty_or_In_dec s) as [? | [z Hz]]; try contradiction.
-apply Smax_spec_non_nil in Hz. clear z. destruct Hz as [z Hz].
-split; intro Hx.
-+ intro y. assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
-  - rewrite <- Hx. now apply Smax_spec1.
-  - now rewrite <- Smax_subset.
-+ rewrite (Smax_spec_mult _ Hz). apply le_antisym.
-  - etransitivity; try apply Smax_subset. now apply Smax_spec1.
-  - transitivity (s[z]). apply Smax_subset.
-    transitivity (s[x]). apply Hx.
-    
-Admitted.
+  intros s x hnonempty.
+  split.
+  - intros H.
+    apply Spec.filter_In in H;auto.
+    destruct H.
+    symmetry.
+    apply beq_nat_true.
+    assumption.
+  - intro H.
+    unfold Smax.
+    rewrite Spec.filter_In;auto.
+    split.
+    + assert (s[x]<>0).
+      { intro abs.
+        rewrite H in abs.
+        rewrite Smax_mult_0 in abs.
+        contradiction. }
+      red.
+      omega.
+    + rewrite H.
+      symmetry.
+      apply beq_nat_refl.
+Qed.
+
+Lemma Smax_max_mult_ex : forall s, ~Spec.eq s Spec.empty -> exists x, Smax_mult s = s[x].
+Proof.
+  intros s.
+  pattern s.
+  apply Spec.ind.
+  - repeat intro.
+    setoid_rewrite H.
+    reflexivity.
+  - intros m x n H H0 H1 H2.
+    clear H2.
+    destruct (Spec.empty_or_In_dec m).
+    exists x.
+    rewrite e.
+    rewrite Spec.add_empty.
+    unfold Smax_mult.
+    + rewrite Spec.fold_singleton;auto.
+      * rewrite Max.max_0_r.
+        symmetry.
+        apply Spec.singleton_same.
+      * repeat intro.
+        subst;auto.
+    + assert (~ Spec.eq m Spec.empty).
+      { rewrite Spec.not_empty_In.
+        assumption. }
+      specialize (H1 H2).
+      clear e H2.
+      destruct H1 as [max_m h_max_m].
+      rewrite Smax_mult_add;auto.
+      destruct (Max.max_spec n (Smax_mult m)) as [[h_max1 h_max2]|[h_max1 h_max2]].
+      * exists max_m.
+        rewrite Spec.add_other.
+        -- rewrite <- h_max_m.
+           assumption.
+        -- intro abs.
+           rewrite abs in *.
+           rewrite Spec.not_In in H.
+           exfalso;omega.
+      * exists x.
+        rewrite h_max2.
+        rewrite Spec.add_same.
+        rewrite Spec.not_In in H.
+        omega.
+  - intro abs.
+    elim abs.
+    reflexivity.
+Qed.
+
+
+Lemma Smax_spec_max :
+  forall s x,
+    ~Spec.eq s Spec.empty ->
+    (forall y, (s[y] <= s[x])) -> Smax_mult s = s[x].
+Proof.
+  intros s x hnonempty h.
+  apply le_antisym.
+  - destruct (@Smax_max_mult_ex s);auto.
+    rewrite H.
+    apply h.
+  - apply Smax_mult_spec.
+Qed.
+
+
+Corollary Smax_spec1_iff : forall s,
+    ~Spec.eq s Spec.empty ->
+    forall x,
+      Spec.In x (Smax s) <-> forall y, (s[y] <= s[x]).
+Proof.
+  intros s Hs x.
+  assert (h_empty:=Hs).
+  rewrite <- Smax_empty in Hs.
+  rewrite Spec.not_empty_In in Hs.
+  destruct Hs as [z Hz].
+  split; intro Hx.
+  - intro y. assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
+    + rewrite <- Hx. now apply Smax_spec1.
+    + now rewrite <- Smax_subset.
+  - assert (h:=@Smax_spec_max s x h_empty Hx).
+    rewrite Smax_max_mult;auto.
+Qed.
+
 
 Lemma support_Smax_non_nil : forall config, Spec.support (Smax (!! config)) <> nil.
 Proof. intros config Habs. rewrite Spec.support_nil, Smax_empty in Habs. apply (spec_non_nil _ Habs). Qed.
@@ -1991,9 +2081,10 @@ End HypRobots.
 Require Import Coq.Program.Equality.
 Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
 Proof.
+  intro nG.
   dependent destruction nG; intros.
   - exfalso;omega.
-  - dependent destruction nG.
+  - dependent destruction nG0.
     + exfalso;omega.
     + simpl.
       intro abs.
