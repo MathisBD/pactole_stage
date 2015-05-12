@@ -228,6 +228,17 @@ intros f Hf l y. induction l.
       simpl. right. rewrite IHl. exists x. now split.
 Qed.
 
+Theorem map_injective_NoDupA : forall f, Proper (eqA ==> eqB) f -> injective eqA eqB f ->
+  forall l, NoDupA eqA l -> NoDupA eqB (map f l).
+Proof.
+intros f Hf Hinj l Hnodup. induction Hnodup.
++ constructor.
++ simpl. constructor.
+  - rewrite InA_map_iff; trivial. intros [y [Heq Hin]].
+    apply Hinj in Heq. rewrite Heq in Hin. contradiction.
+  - assumption.
+Qed.
+
 Fixpoint alls (x : A) n :=
   match n with
     | 0 => Datatypes.nil

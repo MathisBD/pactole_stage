@@ -49,6 +49,8 @@ Module Type RobotInternals(N : Size).
     fin_map (λ x : Fin.t n, f (h x)) = map f (fin_map h).
   Parameter fin_map_id : ∀ (n : nat) (A : Type) (f : Fin.t n → A), fin_map f = map f (fin_map (fun x => x)).
   Parameter fin_map_length : ∀ (n : nat) (A : Type) (f : Fin.t n → A), length (fin_map f) = n.
+  Parameter fin_map_NoDup : forall n A (f : Fin.t n -> A),
+    (forall x y : A, {x = y} + {x <> y}) -> injective eq eq f -> NoDup (fin_map f).
   Parameter Rinv : ∀ n m : nat, m ≠ 0 → Fin.t (n + m) → Fin.t m.
   Parameter Rinv_R : ∀ (n m : nat) (Hm : m ≠ 0) (x : Fin.t m), Rinv n Hm (Fin.R n x) = x.
   Parameter combine : ∀ (n m : nat) (A : Type), (Fin.t n → A) → (Fin.t m → A) → Fin.t (n + m) → A.
@@ -176,6 +178,19 @@ Proof.
 intros n A f. induction n.
   reflexivity.
   simpl. now rewrite IHn.
+Qed.
+
+Lemma fin_map_NoDup : forall n A (f : Fin.t n -> A),
+  (forall x y : A, {x = y} + {x <> y}) -> injective eq eq f -> NoDup (fin_map f).
+Proof.
+intros n A f HeqA Hinj. induction n.
+* assert (Heq : fin_map f = nil). { rewrite <- length_zero_iff_nil. apply fin_map_length. }
+  rewrite Heq. constructor.
+* simpl. constructor.
+  + rewrite <- InA_Leibniz, (fin_map_InA _).
+    - intros [id Heq]. apply Hinj in Heq. inversion Heq.
+    - apply HeqA.
+  + apply IHn. intros x y Heq. apply Hinj in Heq. compute in Heq. now apply Fin.FS_inj.
 Qed.
 
 Unset Implicit Arguments.
@@ -307,6 +322,10 @@ Module Type Robots(N : Size).
   Parameter In_Gnames : forall g : G, In g Gnames.
   Parameter In_Bnames : forall b : B, In b Bnames.
   Parameter In_names : forall r : ident, In r names.
+  
+  Parameter Gnames_NoDup : NoDup Gnames.
+  Parameter Bnames_NoDup : NoDup Bnames.
+  Parameter names_NoDup : NoDup names.
 End Robots.
 
 Module Make(N : Size) : Robots(N).
@@ -330,5 +349,36 @@ Module Make(N : Size) : Robots(N).
   intro r. unfold names, Internals.names. rewrite in_app_iff. destruct r as [g | b].
   - left. apply in_map, In_Gnames.
   - right. apply in_map, In_Bnames.
+  Qed.
+  
+  Lemma Gnames_NoDup : NoDup Gnames.
+  Proof.
+  unfold Gnames. apply Internals.fin_map_NoDup.
+  - apply Fin.eq_dec.
+  - now intro.
+  Qed.
+  
+  Lemma Bnames_NoDup : NoDup Bnames.
+  Proof.
+  unfold Bnames. apply Internals.fin_map_NoDup.
+  - apply Fin.eq_dec.
+  - now intro.
+  Qed.
+  
+  Lemma names_NoDup : NoDup names.
+  Proof.
+  unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
+  + apply (map_injective_NoDupA _ _).
+    - now repeat intro; subst.
+    - intros ? ? H. now inversion H.
+    - rewrite NoDupA_Leibniz. apply Gnames_NoDup.
+  + apply (map_injective_NoDupA _ _).
+    - now repeat intro; subst.
+    - intros ? ? H. now inversion H.
+    - rewrite NoDupA_Leibniz. apply Bnames_NoDup.
+  + intros id HinA HinB. rewrite (InA_map_iff _ _) in HinA. rewrite (InA_map_iff _ _) in HinB.
+    - destruct HinA as [? [? ?]], HinB as [? [? ?]]. subst. discriminate.
+    - now repeat intro; subst.
+    - now repeat intro; subst.
   Qed.
 End Make.

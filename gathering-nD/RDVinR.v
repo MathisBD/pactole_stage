@@ -1876,7 +1876,27 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
   cut ((!! conf)[pt] < (!! (round robogram da conf))[pt]). omega.
   assert (Hdestg : round robogram da conf gmove = pt).
   { rewrite (round_simplify_Majority _ Hmaj). destruct (step da gmove); trivial. now elim Hstep. }
-  admit.
+  assert (Hactive : forall id, In id (active da) -> round robogram da conf id = pt).
+  { intros id Hid. rewrite (round_simplify_Majority _ Hmaj).
+    rewrite active_spec in Hid. destruct (step da id); tauto. }
+  assert (Hstay : forall id, conf id = pt -> round robogram da conf id = pt).
+  { intros id Hid. rewrite (round_simplify_Majority _ Hmaj). destruct (step da id); tauto. }
+  do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
+  assert (Hgmove := Spec.Names.In_names gmove).
+  induction Spec.Names.names; simpl.
+  + inversion Hgmove.
+  + inversion_clear Hgmove.
+    - unfold R.eq, Rdef.eq in *. subst.
+      repeat (Rdec || Rdec_full); simpl; try (now elim Hmove).
+      remember (round robogram da conf gmove) as pt.
+      apply le_n_S. clear IHl.
+      induction l; simpl.
+      -- reflexivity.
+      -- repeat Rdec_full; try now idtac + apply le_n_S + apply le_S; apply IHl.
+         elim Hneq0. now apply Hstay.
+    - apply IHl in H. unfold R.eq_dec, Rdef.eq_dec in *.
+      repeat Rdec_full; try omega.
+      elim Hneq. now apply Hstay.
 * rename Hmaj into Hmaj'.
   assert (Hmaj : no_Majority conf).
   { unfold no_Majority. rewrite Spec.size_spec, Hmaj'. simpl. omega. } clear Hmaj'.
@@ -1948,7 +1968,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
           destruct (is_extremal (conf gmove) (!! conf)).
           - now elim Hmove.
           - reflexivity.
-Admitted.
+Qed.
 
 
 Section HypRobots.
