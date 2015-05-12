@@ -2139,7 +2139,12 @@ Lemma not_forbidden_gathered_Majority_size : forall config id,
   ~forbidden config -> ~gathered_at (config id) config -> no_Majority config ->
   Spec.size (!! config) >= 3.
 Proof.
-Admitted.
+intros config id Hforbidden Hgather Hmaj.
+assert (Spec.size (!! config) > 1).
+{ unfold no_Majority in Hmaj. eapply lt_le_trans; try eassumption; []. now rewrite Smax_subset. }
+rewrite forbidden_equiv in Hforbidden.
+destruct (Spec.size (!! config)) as [| [| [| n]]]; omega || tauto.
+Qed.
 
 Theorem OneMustMove : forall config id, ~ forbidden config -> ~gathered_at (config id) config ->
   exists gmove, forall da, In gmove (active da) -> In gmove (moving robogram da config).
@@ -2193,23 +2198,23 @@ Proof.
 intros k d Hfair config id Hforbidden Hgathered.
 destruct (OneMustMove id Hforbidden Hgathered) as [gmove Hmove].
 destruct Hfair as [locallyfair Hfair].
-revert config Hforbidden Hgathered Hmove Hfair.
+revert config Hforbidden Hgathered Hmove Hfair. generalize k.
 specialize (locallyfair gmove id).
-induction locallyfair; intros config Hforbidden Hgathered Hmove Hfair.
+induction locallyfair; intros k' config Hforbidden Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H. apply Hmove in H. rewrite Habs in H. inversion H.
 + destruct (moving robogram (demon_head d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
     rewrite (no_moving_same_conf _ _ _ Hnil).
-    apply IHlocallyfair; trivial.
-    admit.
+    apply (IHlocallyfair k'); trivial.
+    now destruct Hfair.
   - apply MoveNow. rewrite Hnil. discriminate.
 + destruct (moving robogram (demon_head d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
     rewrite (no_moving_same_conf _ _ _ Hnil).
-    apply IHlocallyfair; trivial.
+    apply (IHlocallyfair k'); trivial.
     now destruct Hfair.
   - apply MoveNow. rewrite Hnil. discriminate.
-Admitted.
+Qed.
 
 
 Lemma gathered_at_forever : forall da conf pt, gathered_at pt conf -> gathered_at pt (round robogram da conf).
