@@ -1,4 +1,4 @@
-  Require Import Bool.
+Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
 Require Import Rbase Rbasic_fun.
@@ -2057,7 +2057,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
           destruct (step da gmove); try (now elim Hstep); [].
           destruct (is_extremal (conf gmove) (!! conf)).
           - now elim Hmove.
-          - reflexivity.
+          - reflexivity. }
 Qed.
 
 
