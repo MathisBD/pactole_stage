@@ -1649,26 +1649,25 @@ Proof.
 intros conf da pt. split.
 * apply increase_move.
 * intros [id [Hid Hroundid]].
-  assert (Hdest : forall id', round robogram da conf id' <> conf id' -> round robogram da conf id' = pt).
-  { intros. rewrite <- Hid. apply same_destination; rewrite moving_spec; auto. }
+  assert (Hdest : forall id', In id' (moving robogram da conf) -> round robogram da conf id' = pt).
+  { intros. rewrite <- Hid. apply same_destination; trivial; rewrite moving_spec; auto. }
+  assert (Hstay : forall id, conf id = pt -> round robogram da conf id = pt).
+  { intros id' Hid'. destruct (Rdec (round robogram da conf id') pt) as [Heq | Heq]; trivial.
+    assert (Habs := Heq). rewrite <- Hid', <- moving_spec in Habs. apply Hdest in Habs. contradiction. }
   do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
-  assert (Hnil : Spec.Names.names <> nil).
-  { intro Habs. assert (Hin := Spec.Names.In_names id). rewrite Habs in Hin. inversion Hin. }
-  induction Spec.Names.names as [| id' l]; try (now elim Hnil); [].
-  simpl. destruct (R.eq_dec (conf id') pt) as [Heq | Heq].
-  + destruct (R.eq_dec (round robogram da conf id') pt ) as [Hok | Hko].
-    - destruct l.
-      -- simpl. admit.
-      -- apply lt_n_S, IHl. discriminate.
-    - elim Hko. apply Hdest. now rewrite Heq.
-  + destruct (R.eq_dec (round robogram da conf id') pt ) as [Hok | Hko].
-    - destruct l.
-      -- simpl. omega.
-      -- apply lt_S, IHl. discriminate.
-    - destruct l.
-      -- simpl. admit.
-      -- apply IHl. discriminate.
-Admitted.
+  assert (Hin : In id Spec.Names.names) by apply Names.In_names.
+  induction Spec.Names.names as [| id' l]; try (now inversion Hin); [].
+  inversion_clear Hin.
+  + subst id'. clear IHl. simpl. destruct (R.eq_dec (conf id) pt) as [Heq | Heq].
+    - rewrite <- Hid in Heq. now elim Hroundid.
+    - destruct (R.eq_dec (round robogram da conf id) pt ) as [Hok | Hko]; try contradiction; [].
+      apply le_n_S. induction l; simpl.
+      -- reflexivity.
+      -- repeat Rdec_full; try now idtac + apply le_n_S + apply le_S; apply IHl.
+         elim Hneq. now apply Hstay.
+  + apply IHl in H. simpl. unfold R.eq_dec, Rdef.eq_dec in *. repeat Rdec_full; try omega.
+    elim Hneq. apply Hdest. now rewrite moving_spec, Heq.
+Qed.
 
 
 (* Any non-forbidden config without a majority tower contains at least three towers.
@@ -1966,27 +1965,7 @@ destruct (Spec.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
   cut ((!! conf)[pt] < (!! (round robogram da conf))[pt]). omega.
   assert (Hdestg : round robogram da conf gmove = pt).
   { rewrite (round_simplify_Majority _ Hmaj). destruct (step da gmove); trivial. now elim Hstep. }
-  assert (Hactive : forall id, In id (active da) -> round robogram da conf id = pt).
-  { intros id Hid. rewrite (round_simplify_Majority _ Hmaj).
-    rewrite active_spec in Hid. destruct (step da id); tauto. }
-  assert (Hstay : forall id, conf id = pt -> round robogram da conf id = pt).
-  { intros id Hid. rewrite (round_simplify_Majority _ Hmaj). destruct (step da id); tauto. }
-  do 2 rewrite Spec.from_config_spec, Spec.Pos.list_spec.
-  assert (Hgmove := Spec.Names.In_names gmove).
-  induction Spec.Names.names; simpl.
-  + inversion Hgmove.
-  + inversion_clear Hgmove.
-    - unfold R.eq, Rdef.eq in *. subst.
-      repeat (Rdec || Rdec_full); simpl; try (now elim Hmove).
-      remember (round robogram da conf gmove) as pt.
-      apply le_n_S. clear IHl.
-      induction l; simpl.
-      -- reflexivity.
-      -- repeat Rdec_full; try now idtac + apply le_n_S + apply le_S; apply IHl.
-         elim Hneq0. now apply Hstay.
-    - apply IHl in H. unfold R.eq_dec, Rdef.eq_dec in *.
-      repeat Rdec_full; try omega.
-      elim Hneq. now apply Hstay.
+  rewrite increase_move_iff. eauto.
 * rename Hmaj into Hmaj'.
   assert (Hmaj : no_Majority conf).
   { unfold no_Majority. rewrite Spec.size_spec, Hmaj'. simpl. omega. } clear Hmaj'.
