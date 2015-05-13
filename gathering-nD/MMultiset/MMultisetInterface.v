@@ -1,3 +1,14 @@
+(******************************************)
+(*   Finite multiset library              *)
+(*   Developped for the PACTOLE project   *)
+(*   L. Rieg                              *)
+(*                                        *)
+(*   This file is distributed under       *)
+(*   the terms of the CeCILL-C licence    *)
+(*                                        *)
+(******************************************)
+
+
 Require Import RelationPairs.
 Require Import MSetInterface.
 Require Import DecidableType.

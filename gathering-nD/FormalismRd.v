@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, X. Urbain, L. Rieg                            *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence     *)

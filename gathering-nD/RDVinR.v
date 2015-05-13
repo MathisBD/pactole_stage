@@ -1,3 +1,13 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
@@ -2279,3 +2289,4 @@ Qed.
 Print Assumptions Gathering_in_R.
 
 End GatheringinR.
+
