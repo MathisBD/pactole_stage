@@ -338,7 +338,7 @@ Module Type Robots(N : Size).
   Parameter names_NoDup : NoDup names.
 End Robots.
 
-Module Make(N : Size) : Robots(N).
+Module Make(N : Size) <: Robots(N).
   Module Internals := Names(N).
   
   Definition G := Internals.G.
