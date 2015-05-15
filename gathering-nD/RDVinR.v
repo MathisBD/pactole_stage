@@ -2240,16 +2240,16 @@ intros conf Hind d Hfair Hok.
 destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 * (* If so, not much to do *)
   exists (conf (Good g1)). apply Now. apply gathered_at_OK. assumption.
-* (* Otherwise, we need to make an induction on the first robot moving *)
+* (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
-  + (* If one robot moves, so we can use our well-founded induction hypothesis. *)
+  + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
     destruct (Hind (round robogram (demon_head d) conf)) with (demon_tail d) as [pt Hpt].
     - apply round_lt_conf; assumption.
     - now destruct Hfair.
     - now apply never_forbidden.
     - exists pt. apply Later. rewrite execute_tail. apply Hpt.
-  + (* Otherwise, the induction hypothesis on the first robot moving ensures that it will terminate *)
+  + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_conf in Heq.
     destruct Hrec as [pt Hpt].
     - setoid_rewrite Heq. apply Hind.
