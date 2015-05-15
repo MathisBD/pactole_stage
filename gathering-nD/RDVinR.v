@@ -102,7 +102,7 @@ Module Rdef : MetricSpaceDef with Definition t := R
   Lemma plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
-  (* The multiplicative identity is missing *)
+  (** The multiplicative identity is omitted. *)
 End Rdef.
 
 
@@ -111,7 +111,7 @@ Module R := MakeMetricSpace(Rdef).
 Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec.
 
 
-(** Small dedicated decision tactic for reals handling 1<>0 and and r=r *)
+(** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
 Ltac Rdec := unfold R.eq_dec, Rdef.eq_dec; repeat
   match goal with
     | |- context[Rdec ?x ?x] =>
