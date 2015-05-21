@@ -8,7 +8,7 @@
 (**************************************************************************)
 
 
-Require FMapWeakList. (* to build an actual implementation of multisets *)
+Require MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.
@@ -25,22 +25,20 @@ Module Make(Location : MetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
 
 Module Names := Robots.Make(N).
 Module Pos := Positions.Make(Location)(N)(Names).
-(* To be removed once Multiset lib ported to MMap. *)
-Module Locations := Equalities.Backport_DT Location.
 
 (** Definition of spectra as multisets of locations. *)
-Module Mraw := MMultisetMap.FMultisets FMapWeakList.Make Locations.
-Module M := MMultisetFacts.Make Locations Mraw.
+Module Mraw := MMultisetMap.FMultisets MMapWeakList.Make Location.
+Module M := MMultisetFacts.Make Location Mraw.
 
 Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
 Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
 Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
 Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
 
-Lemma eq_refl_left : forall e A (a b:A), (if Locations.eq_dec e e then a else b) = a.
+Lemma eq_refl_left : forall e A (a b:A), (if Location.eq_dec e e then a else b) = a.
 Proof.
   intros e A a b.
-  destruct (Locations.eq_dec e e).
+  destruct (Location.eq_dec e e).
   - reflexivity.
   - elim n.
     reflexivity.

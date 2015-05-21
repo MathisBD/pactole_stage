@@ -4,7 +4,7 @@ Preliminary.v
 Robots.v
 Positions.v
 MMultiset/MMultisetInterface.v
-MMultiset/MMultisetMMap.v
+MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/Preliminary.v
 FormalismRd.v

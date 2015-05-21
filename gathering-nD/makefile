@@ -89,7 +89,7 @@ VFILES:=RDVinRd.v\
   FormalismRd.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
-  MMultiset/MMultisetMMap.v\
+  MMultiset/MMultisetMap.v\
   MMultiset/MMultisetInterface.v\
   Positions.v\
   Robots.v\
