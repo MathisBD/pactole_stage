@@ -11,13 +11,13 @@
 
 Require Import RelationPairs.
 Require Import MSetInterface.
-Require Import DecidableType.
+Require Import Equalities.
 Require Import SetoidPermutation.
 Require Import MMultiset.Preliminary.
 
 (* based on MSets *)
 
-Module Type FMOps (E : DecidableType.DecidableType).
+Module Type FMOps (E : DecidableType).
 
   Definition elt := E.t.
   Parameter t : Type.
@@ -106,13 +106,6 @@ Module Type FMultisetsOn (E : DecidableType).
   (** First, we ask for all the functions *)
   Include FMOps E.
 
-  Instance Eeq_equiv : Equivalence E.eq.
-  Proof. split.
-    exact E.eq_refl.
-    exact E.eq_sym.
-    exact E.eq_trans.
-  Qed.
-
   (** ** Logical predicates *)
 
   Definition In := fun x s => multiplicity x s > 0.
@@ -169,7 +162,7 @@ Module Type FMultisetsOn (E : DecidableType).
   Proof. split.
   intros [x n]. now split; hnf.
   intros [x n] [y m] [H1 H2]; split; hnf in *; now auto.
-  intros ? ? ? [? ?] [? ?]. split. hnf in *. now apply E.eq_trans with (fst y). now transitivity (snd y).
+  intros ? ? ? [? ?] [? ?]. split. hnf in *. now transitivity (fst y). now transitivity (snd y).
   Qed.
 
   Parameter elements_spec : forall x n s,

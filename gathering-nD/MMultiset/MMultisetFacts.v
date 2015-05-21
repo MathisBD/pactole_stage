@@ -13,7 +13,8 @@ Require Import Bool.
 Require Import Omega.
 Require Import PArith.
 Require Import RelationPairs.
-Require Import DecidableType.
+Require Import Equalities.
+Require Import SetoidList.
 Require Import MMultiset.Preliminary.
 Require Import MMultisetInterface.
 
@@ -517,7 +518,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   assert (p > 0) by (destruct p; try rewrite singleton_0, singleton_empty in Heq; omega).
   assert (Hel := elements_singleton x Hn). apply eqlistA_PermutationA_subrelation in Hel.
   rewrite Heq in Hel. apply (PermutationA_length1 _) in Hel. rewrite elements_singleton in Hel; trivial.
-  inversion_clear Hel. destruct H0. auto.
+  inversion_clear Hel. now destruct H0.
   Qed.
   
   Lemma fold_singleton : forall A eqA, Reflexive eqA -> forall f, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f ->
@@ -570,7 +571,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     (for_all f (singleton x n) = true <-> f x n = true).
   Proof.
   intros f x n Hf Hn. rewrite for_all_spec; trivial. split; intro H.
-  - unfold For_all in H. setoid_rewrite In_singleton in H. specialize (H x). msetdec. auto.
+  - unfold For_all in H. setoid_rewrite In_singleton in H. specialize (H x). msetdec. now apply H.
   - intro. msetdec.
   Qed.
   
@@ -1235,7 +1236,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Lemma elements_key_subset : forall xn m₁ m₂,
     m₁ [<=] m₂ -> InA eq_key xn (elements m₁) -> InA eq_key xn (elements m₂).
-  Proof. intros [? ?] * ?. do 2 rewrite elements_In. apply In_sub_compat; auto. Qed.
+  Proof. intros [? ?] * ?. do 2 rewrite elements_In. now apply In_sub_compat. Qed.
   
   Lemma elements_nil : forall m, elements m = nil <-> m [=] empty.
   Proof.
@@ -1487,7 +1488,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - symmetry in Hin. rewrite singleton_empty in Hin. omega.
     - inversion_clear Hin.
   + rewrite add_empty. split; intro Heq.
-    - symmetry in Heq. apply singleton_injective in Heq; trivial. destruct Heq. repeat constructor; auto.
+    - symmetry in Heq. apply singleton_injective in Heq; trivial. destruct Heq. now repeat constructor.
     - inversion_clear Heq. compute in H. destruct H as [Heq1 Heq2]. now rewrite Heq1, Heq2.
   + split; intro Hin.
     - assert (Heq : E.eq y x /\ E.eq z x).
@@ -1548,7 +1549,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + msetdec.
   + destruct (E.eq_dec y x) as [Heq | Heq].
     - rewrite Heq, add_same, <- Nat.add_assoc, IHl. reflexivity.
-    - rewrite add_other; auto.
+    - rewrite add_other; msetdec.
   Qed.
   
   Lemma from_elements_In : forall l x, In x (from_elements l) <-> exists n, InA eq_pair (x, n) l /\ n > 0.
@@ -1897,7 +1898,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       - split; intro H. now left. omega.
       - split; intro H.
           right. now rewrite support_spec.
-          inversion H; subst. now elim Hneq. now rewrite support_spec in H1.
+          inversion H; subst. contradiction. now rewrite support_spec in H1.
   Qed.
   
   Lemma support_remove : forall x n m,
@@ -2404,7 +2405,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + intros m1 m2 Hm. now setoid_rewrite Hm.
   + intros m y n Hm Hn Hrec. rewrite filter_add; trivial. destruct (E.eq_dec y x) as [Heq | Heq].
     - rewrite cardinal_add, Hrec, Heq, add_same. apply plus_comm.
-    - rewrite add_other; auto.
+    - rewrite add_other; msetdec.
   + now rewrite filter_empty, cardinal_empty, empty_spec.
   Qed.
   
@@ -2764,7 +2765,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     rewrite elements_spec in Hin. destruct Hin as [? _]. simpl in *. subst. now apply Hall.
   + intros x Hin. rewrite <- (elements_In x 0) in Hin. apply InA_key_pair in Hin. destruct Hin as [n Hin].
     assert (Hin' : exists y, List.In (y, n) (elements m) /\ E.eq y x).
-    { rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]]. compute in Heqx, Heqn. subst. eauto. }
+    { rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]]. compute in Heqx, Heqn. subst. now exists y. }
     rewrite elements_spec in Hin. destruct Hin as [Heq Hpos]. simpl in *. subst.
     destruct Hin' as [y [Hin' Heq]]. rewrite <- Heq at 1. now apply (Hall (y, multiplicity x m)).
   Qed.
@@ -3217,7 +3218,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       Proof.
       intros x m. rewrite map_In; trivial. split; intro Hin.
       + destruct Hin as [y [Heq Hin]]. apply Hf2 in Heq. now rewrite Heq.
-      + eauto.
+      + now exists x.
       Qed.
       
       Lemma map_injective_remove : forall x n m, map f (remove x n m) [=] remove (f x) n (map f m).

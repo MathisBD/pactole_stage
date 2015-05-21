@@ -66,7 +66,7 @@ OPT?=
 COQDEP?="$(COQBIN)coqdep" -c
 COQFLAGS?=-q $(OPT) $(COQLIBS) $(OTHERFLAGS) $(COQ_XML)
 COQCHKFLAGS?=-silent -o
-COQDOCFLAGS?=-interpolate -utf8 -g
+COQDOCFLAGS?=-interpolate -utf8
 COQC?=$(TIMER) "$(COQBIN)coqc"
 GALLINA?="$(COQBIN)gallina"
 COQDOC?="$(COQBIN)coqdoc"
@@ -89,7 +89,7 @@ VFILES:=RDVinRd.v\
   FormalismRd.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
-  MMultiset/MMultisetMap.v\
+  MMultiset/MMultisetMMap.v\
   MMultiset/MMultisetInterface.v\
   Positions.v\
   Robots.v\
