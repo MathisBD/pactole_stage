@@ -459,11 +459,11 @@ Qed.
 
 (** [Smax s] return the configuration [s] where all non maximal positions
     have been removed. *)
-Definition Smax s := Spect.filter (fun _ => beq_nat (Smax_mult s)) s.
+Definition Smax s := Spect.nfilter (fun _ => beq_nat (Smax_mult s)) s.
 
 Instance Smax_compat : Proper (Spect.eq ==> Spect.eq) Smax.
 Proof.
-intros s1 s2 Heq. unfold Smax. rewrite Heq. apply Spect.filter_extensionality_compat.
+intros s1 s2 Heq. unfold Smax. rewrite Heq. apply Spect.nfilter_extensionality_compat.
 - repeat intro. now subst.
 - intros _ n. now rewrite Heq.
 Qed.
@@ -471,10 +471,10 @@ Qed.
 Lemma Smax_map_injective : forall f, injective eq eq f ->
   forall s, Spect.eq (Smax (Spect.map f s)) (Spect.map f (Smax s)).
 Proof.
-intros f Hf s. unfold Smax. rewrite Spect.map_injective_filter.
+intros f Hf s. unfold Smax. rewrite Spect.map_injective_nfilter.
 + apply Spect.map_compat.
   - intros ? ? Heq. now rewrite Heq.
-  - apply Spect.filter_extensionality_compat; repeat intro; subst; trivial.
+  - apply Spect.nfilter_extensionality_compat; repeat intro; subst; trivial.
     now rewrite Smax_mult_map_injective_invariant.
 + repeat intro. now subst.
 + intros ? ? Heq. now rewrite Heq.
@@ -499,7 +499,7 @@ Lemma Smax_subset : forall s, Spect.Subset (Smax s) s.
 Proof.
   intros s x.
   unfold Smax.
-  setoid_rewrite Spect.filter_spec.
+  setoid_rewrite Spect.nfilter_spec.
   2: apply eqb_Smax_mult_compat.
   destruct (Smax_mult s =? s[x]);auto.
   omega.
@@ -509,7 +509,7 @@ Theorem Smax_spec1 : forall s x y, Spect.In y (Smax s) -> (s[x] <= (Smax s)[y])%
 Proof.
 intros s x y Hy. unfold Smax in *.
 (* assert (Hf := eqb_Smax_mult_compat s). *)
-unfold Spect.In in Hy. rewrite Spect.filter_spec in *; auto.
+unfold Spect.In in Hy. rewrite Spect.nfilter_spec in *; auto.
 destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
 rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
 Qed.
@@ -522,7 +522,7 @@ Proof.
   - intros m1 m2 Hm1m2. now setoid_rewrite Hm1m2.
   - intros m x n Hxnotinm Hpos HI x' Hx'.
     destruct (Spect.empty_or_In_dec m).
-    + exists x. unfold Smax. rewrite Spect.filter_In; auto. split.
+    + exists x. unfold Smax. rewrite Spect.nfilter_In; auto. split.
       * rewrite Spect.add_In. right. split; reflexivity || omega.
       * rewrite Nat.eqb_eq, Smax_mult_add; trivial.
         rewrite e at 2.
@@ -533,9 +533,9 @@ Proof.
     + destruct e as [x'' Hx''].
       specialize (HI x'' Hx'').
       destruct HI as [y Hy]. unfold Smax.
-      setoid_rewrite Spect.filter_In; try now repeat intro; subst.
+      setoid_rewrite Spect.nfilter_In; try now repeat intro; subst.
       rewrite Smax_mult_add; trivial.
-      unfold Smax in Hy. rewrite Spect.filter_In in Hy; auto.
+      unfold Smax in Hy. rewrite Spect.nfilter_In in Hy; auto.
       destruct Hy as [Hy Heq]. rewrite Nat.eqb_eq in Heq.
       destruct (le_lt_dec n (m[y])).
       * { exists y. split.
@@ -561,7 +561,7 @@ intro s. split; intro H.
     rewrite H in Hy. rewrite Spect.empty_spec in Hy. omega.
 - rewrite H.
   unfold Smax.
-  rewrite Spect.filter_empty.
+  rewrite Spect.nfilter_empty.
   + reflexivity.
   + intros r1 r2 Hr1r2 x1 x2 hx1x2.
     subst.
@@ -572,7 +572,7 @@ Lemma Smax_2_mult : forall s x, (Smax s)[x] = 0 \/ (Smax s)[x] = s[x].
 Proof.
 intros s x. destruct (Spect.empty_or_In_dec s) as [Hs | Hs].
 + left. rewrite <- Smax_empty in Hs. rewrite (Hs x). apply Spect.empty_spec.
-+ unfold Smax. rewrite Spect.filter_spec.
++ unfold Smax. rewrite Spect.nfilter_spec.
   destruct (Smax_mult s =? s[x]) as [Heq | Heq]; auto.
   repeat intro. now subst.
 Qed.
@@ -603,9 +603,9 @@ intros s x y Hx Hy. apply le_neq_lt.
 + assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
   - rewrite <- Hx. now apply Smax_spec1.
   - now rewrite <- Smax_subset.
-+ intro Habs. apply Hy. unfold Smax. rewrite Spect.filter_In; try now repeat intro; subst. split.
++ intro Habs. apply Hy. unfold Smax. rewrite Spect.nfilter_In; try now repeat intro; subst. split.
   - unfold Spect.In in *. rewrite Habs. apply lt_le_trans with (Smax s)[x]; trivial. apply Smax_subset.
-  - rewrite Habs. unfold Smax in Hx. rewrite Spect.filter_In in Hx; try now repeat intro; subst.
+  - rewrite Habs. unfold Smax in Hx. rewrite Spect.nfilter_In in Hx; try now repeat intro; subst.
 Qed.
 
 Close Scope R_scope.
@@ -615,14 +615,14 @@ Proof.
   intros s x hnonempty.
   split.
   - intros H.
-    apply Spect.filter_In in H;auto.
+    apply Spect.nfilter_In in H;auto.
     destruct H.
     symmetry.
     apply beq_nat_true.
     assumption.
   - intro H.
     unfold Smax.
-    rewrite Spect.filter_In;auto.
+    rewrite Spect.nfilter_In;auto.
     split.
     + assert (s[x]<>0).
       { intro abs.
@@ -865,7 +865,7 @@ Proof.
     { assert (Spect.size (Smax (!! conf)) <= 2)%nat.
       { unfold Smax.
         rewrite <- H2, <- Hsupp, <- Spect.size_spec.
-        apply Spect.size_filter.
+        apply Spect.size_nfilter.
         now repeat intro; subst. }
       rewrite <- Spect.size_spec in Hlen. omega. }
     clear Hlen.
@@ -887,8 +887,8 @@ Proof.
       elim H1.
       constructor.
       reflexivity.
-    * assert (h:=@Spect.support_filter _ (eqb_Smax_mult_compat (!!conf)) (!! conf)).
-      change (Spect.filter (fun _ : Spect.elt => Nat.eqb (Smax_mult (!! conf))) (!! conf))
+    * assert (h:=@Spect.support_nfilter _ (eqb_Smax_mult_compat (!!conf)) (!! conf)).
+      change (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Smax_mult (!! conf))) (!! conf))
       with (Smax (!!conf)) in h.
       assert (Hlen'': length (Spect.support (Smax (!! conf))) = length (Spect.support (!! conf))).
       { rewrite Spect.size_spec in Hlen'. now rewrite Hsupp. }
@@ -977,10 +977,10 @@ Proof.
       rewrite <- plus_n_O in H0.
 
       assert ((!! conf)[pt2] = (!! conf)[pt1]).
-      { assert (hfilter:= @Spect.filter_In _ (eqb_Smax_mult_compat (!! conf))).
+      { assert (hfilter:= @Spect.nfilter_In _ (eqb_Smax_mult_compat (!! conf))).
         transitivity (Smax_mult (!! conf)).
         + specialize (hfilter pt2 (!!conf)).
-          replace (Spect.filter (fun _ : Spect.elt => Nat.eqb (Smax_mult (!! conf))) (!!conf))
+          replace (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Smax_mult (!! conf))) (!!conf))
           with (Smax (!!conf)) in hfilter.
           * destruct hfilter as [hfilter1 hfilter2].
             destruct hfilter1.
@@ -994,7 +994,7 @@ Proof.
                assumption.
           * trivial.
         + specialize (hfilter pt1 (!!conf)).
-          replace (Spect.filter (fun _ : Spect.elt => Nat.eqb (Smax_mult (!! conf))) (!!conf))
+          replace (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Smax_mult (!! conf))) (!!conf))
           with (Smax (!!conf)) in hfilter.
           * destruct hfilter as [hfilter1 hfilter2].
             destruct hfilter1.
@@ -1042,7 +1042,7 @@ assert (Spect.size (!! conf) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption.
   do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length _).
   - apply Spect.support_NoDupA.
-  - unfold Smax. apply Spect.support_filter. repeat intro. now subst. }
+  - unfold Smax. apply Spect.support_nfilter. repeat intro. now subst. }
  destruct (Spect.size (!! conf)) as [| [| [| ?]]] eqn:Hlen; try omega.
 exfalso. apply H2. now rewrite forbidden_equiv.
 Qed.
@@ -1326,8 +1326,6 @@ destruct (Spect.support (Smax (!! pos))) as [| ? [| ? ?]]; simpl in Hmaj; try om
 rewrite <- Nat.eqb_neq in H3. rewrite H3. reflexivity.
 Qed.
 
-
-(* TODO: make a case analysis theorem about robogram *)
 Close Scope R_scope.
 
 
@@ -1397,7 +1395,7 @@ intros config Hmaj. apply Generic_min_max_lt_aux.
 + apply lt_le_trans with (Spect.size (Smax (!! config))); trivial.
   rewrite Spect.size_spec. apply (NoDupA_inclA_length _).
   - apply Spect.support_NoDupA.
-  - apply Spect.support_filter. repeat intro. now subst.
+  - apply Spect.support_nfilter. repeat intro. now subst.
 + apply Spect.support_NoDupA.
 Qed.
 
@@ -1606,10 +1604,10 @@ rewrite Hperm in *. inversion_clear Hnodup. inversion_clear H0. repeat split.
 - now right; right; left.
 Qed.
 
-(* TODO: move it in FormalismRd.v *)
+(** Generic result of robograms using multiset spectra. *)
 Lemma increase_move :
   forall r conf da pt,
-    ((!! conf)[pt] < (!! (round r da conf))[pt])%nat ->
+    ((Spect.from_config conf)[pt] < (!! (round r da conf))[pt])%nat ->
     exists id, round r da conf id = pt /\ round r da conf id <> conf id.
 Proof.
   intros r conf da pt Hlt.

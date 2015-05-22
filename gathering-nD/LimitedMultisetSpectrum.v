@@ -46,13 +46,13 @@ Definition In := M.In.
 
 
 Definition from_config pos : M.t :=
-  M.M.filter (fun x _ => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.multiset (Pos.list pos)).
+  M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.multiset (Pos.list pos)).
 
 Instance from_config_compat : Proper (Pos.eq ==> eq) from_config.
 Proof.
 intros pos1 pos2 Hpos x. unfold from_config.
 f_equiv. apply M.M.filter_compat, M.multiset_compat, eqlistA_PermutationA_subrelation, Pos.list_compat; trivial.
-intros ? ? Heq ? ? ?. subst. rewrite Heq. reflexivity.
+intros ? ? Heq. rewrite Heq. reflexivity.
 Qed.
 
 Definition is_ok s pos := forall l,
@@ -63,8 +63,8 @@ Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
 Proof.
 unfold from_config, is_ok, Rle_bool. intros pos l. rewrite M.filter_spec.
 - destruct (Rle_dec (Loc.dist l Loc.origin)); trivial. apply M.from_config_spec.
-- intros x y Heq _ _ _. destruct (Rle_dec (Loc.dist x Loc.origin) R.radius),
-                                          (Rle_dec (Loc.dist y Loc.origin) R.radius);
+- intros x y Heq. destruct (Rle_dec (Loc.dist x Loc.origin) R.radius),
+                                    (Rle_dec (Loc.dist y Loc.origin) R.radius);
    reflexivity || rewrite Heq in *; contradiction.
 Qed.
 

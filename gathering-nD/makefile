@@ -79,8 +79,7 @@ COQMKTOP?="$(COQBIN)coqmktop"
 #                    #
 ######################
 
-VFILES:=RDVinRd.v\
-  RDVinR.v\
+VFILES:=RDVinR.v\
   SortingR.v\
   LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\
@@ -90,6 +89,7 @@ VFILES:=RDVinRd.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
   MMultiset/MMultisetMap.v\
+  MMultiset/MMultisetWMap.v\
   MMultiset/MMultisetInterface.v\
   Positions.v\
   Robots.v\

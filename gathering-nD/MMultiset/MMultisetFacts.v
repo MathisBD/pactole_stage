@@ -27,8 +27,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   (** An experimental tactic that superficially ressembles [fsetdec]. It is by no mean as general. **)
   Hint Rewrite empty_spec add_same remove_same diff_spec union_spec inter_spec lub_spec singleton_same : MFsetdec.
-  Hint Rewrite is_empty_spec filter_spec partition_spec_fst partition_spec_snd : MFsetdec.
-  Hint Rewrite for_all_spec exists_spec : MFsetdec.
+  Hint Rewrite is_empty_spec nfilter_spec filter_spec npartition_spec_fst npartition_spec_snd : MFsetdec.
+  Hint Rewrite partition_spec_fst partition_spec_snd for_all_spec exists_spec : MFsetdec.
   Hint Unfold In : MFsetdec.
   
   Ltac saturate_Einequalities :=
@@ -93,10 +93,10 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     do n (autorewrite with MFsetdec in *; unfold In in *; trivial; saturate_Einequalities;
             msetdec_step; easy || (try omega)).
   
-  Lemma subrelation_pair_key : subrelation eq_pair eq_key.
+  Lemma subrelation_pair_key : subrelation eq_pair eq_elt.
   Proof. now intros [x n] [y p] [H _]. Qed.
   
-  Lemma InA_pair_key : forall x n p l, InA eq_pair (x, n) l -> InA eq_key (x, p) l.
+  Lemma InA_pair_key : forall x n p l, InA eq_pair (x, n) l -> InA eq_elt (x, p) l.
   Proof.
   intros x n p l Hin. induction l as [| [y q] l].
   + rewrite InA_nil in Hin. elim Hin.
@@ -105,7 +105,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - right. now apply IHl.
   Qed.
   
-  Lemma InA_key_pair : forall x n l, InA eq_key (x, n) l -> exists n', InA eq_pair (x, n') l.
+  Lemma InA_key_pair : forall x n l, InA eq_elt (x, n) l -> exists n', InA eq_pair (x, n') l.
   Proof.
   intros x n l Hin. induction l as [| [y p] l].
   + rewrite InA_nil in Hin. elim Hin.
@@ -123,7 +123,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + right. intros [Habs _]. contradiction.
   Qed.
   
-  Lemma key_dec : forall xn yp, {eq_key xn yp} + {~eq_key xn yp}.
+  Lemma key_dec : forall xn yp, {eq_elt xn yp} + {~eq_elt xn yp}.
   Proof. intros [? ?] [? ?]. apply E.eq_dec. Qed.
   
   
@@ -153,7 +153,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   (** **  Compatibility with respect to [eq]  **)
   
-  Instance InA_key_compat : Proper (eq_key ==> PermutationA eq_pair ==> iff) (InA eq_key).
+  Instance InA_key_compat : Proper (eq_elt ==> PermutationA eq_pair ==> iff) (InA eq_elt).
   Proof.
   intros ? ? ? ? ? Hperm. apply (InA_perm_compat _). assumption.
   revert Hperm. apply PermutationA_subrelation_compat; trivial. apply subrelation_pair_key.
@@ -195,10 +195,20 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
 (*  Instance subset_compat : Proper (eq ==> eq ==> iff) Subset.
   Proof. intros m1 m1' Heq1 m2 m2' Heq2. now rewrite Heq1, Heq2. Qed.*)
   
-  Instance filter_compat f : compatb f -> Proper (eq ==> eq) (filter f).
+  Instance nfilter_compat f : compatb f -> Proper (eq ==> eq) (nfilter f).
   Proof. repeat intro. msetdec. Qed.
   
-  Instance partition_compat f : compatb f -> Proper (eq ==> eq * eq) (partition f).
+  Instance filter_compat f : Proper (E.eq ==> Logic.eq) f -> Proper (eq ==> eq) (filter f).
+  Proof. repeat intro. msetdec. Qed.
+  
+  Instance npartition_compat f : compatb f -> Proper (eq ==> eq * eq) (npartition f).
+  Proof.
+  intros Hf s1 s2 Hs. split; intro x.
+  - msetdec.
+  - msetdec; repeat intro; now rewrite Hf.
+  Qed.
+  
+  Instance partition_compat f : Proper (E.eq ==> Logic.eq) f -> Proper (eq ==> eq * eq) (partition f).
   Proof.
   intros Hf s1 s2 Hs. split; intro x.
   - msetdec.
@@ -436,8 +446,11 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Corollary size_empty : size empty = 0.
   Proof. now rewrite size_spec, support_empty. Qed.
   
-  Lemma filter_empty : forall f, compatb f -> filter f empty [=] empty.
+  Lemma nfilter_empty : forall f, compatb f -> nfilter f empty [=] empty.
   Proof. repeat intro. msetdec. now destruct (f x 0). Qed.
+  
+  Lemma filter_empty : forall f, Proper (E.eq ==> Logic.eq) f -> filter f empty [=] empty.
+  Proof. repeat intro. msetdec. now destruct (f x). Qed.
   
   Lemma for_all_empty : forall f, compatb f -> for_all f empty = true.
   Proof. repeat intro. msetdec. intro. msetdec. Qed.
@@ -448,10 +461,16 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   rewrite exists_spec in Habs; trivial. destruct Habs. msetdec.
   Qed.
   
-  Lemma partition_empty_fst : forall f, compatb f -> fst (partition f empty) [=] empty.
+  Lemma npartition_empty_fst : forall f, compatb f -> fst (npartition f empty) [=] empty.
+  Proof. intros. msetdec. now apply nfilter_empty. Qed.
+  
+  Lemma npartition_empty_snd : forall f, compatb f -> snd (npartition f empty) [=] empty.
+  Proof. intros f Hf. msetdec. apply nfilter_empty. repeat intro. now rewrite Hf. Qed.
+  
+  Lemma partition_empty_fst : forall f, Proper (E.eq ==> Logic.eq) f -> fst (partition f empty) [=] empty.
   Proof. intros. msetdec. now apply filter_empty. Qed.
   
-  Lemma partition_empty_snd : forall f, compatb f -> snd (partition f empty) [=] empty.
+  Lemma partition_empty_snd : forall f, Proper (E.eq ==> Logic.eq) f -> snd (partition f empty) [=] empty.
   Proof. intros f Hf. msetdec. apply filter_empty. repeat intro. now rewrite Hf. Qed.
   
   Lemma choose_empty : choose empty = None.
@@ -503,7 +522,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Theorem elements_singleton : forall x n, n > 0 -> eqlistA eq_pair (elements (singleton x n)) ((x, n) :: nil).
   Proof.
   intros x n Hn. apply (PermutationA_length1 _). apply (NoDupA_equivlistA_PermutationA _).
-  + apply (NoDupA_strengthen (eqA' := eq_key) _). apply elements_NoDupA.
+  + apply (NoDupA_strengthen (eqA' := eq_elt) _). apply elements_NoDupA.
   + apply NoDupA_singleton.
   + intros [y p]. rewrite elements_spec. simpl. split; intro H.
     - destruct H as [H1 H2]. msetdec. now left.
@@ -551,20 +570,36 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Corollary size_singleton : forall x n, n > 0 -> size (singleton x n) = 1.
   Proof. intros. now rewrite size_spec, support_singleton. Qed.
   
-  Lemma filter_singleton_true : forall f x n, compatb f -> n > 0 ->
-    (filter f (singleton x n) [=] singleton x n <-> f x n = true).
+  Lemma nfilter_singleton_true : forall f x n, compatb f -> n > 0 ->
+    (nfilter f (singleton x n) [=] singleton x n <-> f x n = true).
   Proof.
   intros f x n Hf Hn. split; intro H.
   - specialize (H x). msetdec. destruct (f x n); reflexivity || omega.
   - intro y. msetdec. now rewrite H. now destruct (f y 0).
   Qed.
   
-  Lemma filter_singleton_false : forall f x n, compatb f -> n > 0 -> 
-    (filter f (singleton x n) [=] empty <-> f x n = false).
+  Lemma nfilter_singleton_false : forall f x n, compatb f -> n > 0 -> 
+    (nfilter f (singleton x n) [=] empty <-> f x n = false).
   Proof.
   intros f x n Hf Hn. split; intro H.
   - specialize (H x). msetdec. destruct (f x n); reflexivity || omega.
   - intro y. msetdec. now rewrite H. now destruct (f y 0).
+  Qed.
+  
+  Lemma filter_singleton_true : forall f x n, Proper (E.eq ==> Logic.eq) f -> n > 0 ->
+    (filter f (singleton x n) [=] singleton x n <-> f x = true).
+  Proof.
+  intros f x n Hf Hn. split; intro H.
+  - specialize (H x). msetdec. destruct (f x); reflexivity || omega.
+  - intro y. msetdec. now rewrite H. now destruct (f y).
+  Qed.
+  
+  Lemma filter_singleton_false : forall f x n, Proper (E.eq ==> Logic.eq) f -> n > 0 -> 
+    (filter f (singleton x n) [=] empty <-> f x = false).
+  Proof.
+  intros f x n Hf Hn. split; intro H.
+  - specialize (H x). msetdec. destruct (f x); reflexivity || omega.
+  - intro y. msetdec. now rewrite H. now destruct (f y).
   Qed.
   
   Lemma for_all_singleton_true : forall f x n, compatb f -> n > 0 ->
@@ -602,28 +637,52 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   (exists_ f (singleton x n) = false <-> f x n = false).
   Proof. intros. now rewrite for_all_exists_singleton, for_all_singleton_false. Qed.
   
-  Lemma partition_singleton_true_fst : forall f x n, compatb f -> n > 0 ->
-    (fst (partition f (singleton x n)) [=] singleton x n <-> f x n = true).
-  Proof. intros. msetdec. now rewrite filter_singleton_true. Qed.
+  Lemma npartition_singleton_true_fst : forall f x n, compatb f -> n > 0 ->
+    (fst (npartition f (singleton x n)) [=] singleton x n <-> f x n = true).
+  Proof. intros. msetdec. now rewrite nfilter_singleton_true. Qed.
   
-  Lemma partition_singleton_true_snd : forall f x n, compatb f -> n > 0 ->
-    (snd (partition f (singleton x n)) [=] empty <-> f x n = true).
+  Lemma npartition_singleton_true_snd : forall f x n, compatb f -> n > 0 ->
+    (snd (npartition f (singleton x n)) [=] empty <-> f x n = true).
   Proof.
-  intros. msetdec. rewrite filter_singleton_false; trivial.
+  intros. msetdec. rewrite nfilter_singleton_false; trivial.
   - apply negb_false_iff.
   - intros ? ? Heq1 ? ? Heq2. now rewrite Heq1, Heq2.
   Qed.
   
-  Lemma partition_singleton_false_fst : forall f x n, compatb f -> n > 0 ->
-    (fst (partition f (singleton x n)) [=] empty <-> f x n = false).
+  Lemma npartition_singleton_false_fst : forall f x n, compatb f -> n > 0 ->
+    (fst (npartition f (singleton x n)) [=] empty <-> f x n = false).
+  Proof. intros. msetdec. now rewrite nfilter_singleton_false. Qed.
+  
+  Lemma npartition_singleton_false_snd : forall f x n, compatb f -> n > 0 ->
+    (snd (npartition f (singleton x n)) [=] singleton x n <-> f x n = false).
+  Proof.
+  intros. msetdec. rewrite nfilter_singleton_true; trivial.
+  - apply negb_true_iff.
+  - intros ? ? Heq1 ? ? Heq2. now rewrite Heq1, Heq2.
+  Qed.
+  
+  Lemma partition_singleton_true_fst : forall f x n, Proper (E.eq ==> Logic.eq) f -> n > 0 ->
+    (fst (partition f (singleton x n)) [=] singleton x n <-> f x = true).
+  Proof. intros. msetdec. now rewrite filter_singleton_true. Qed.
+  
+  Lemma partition_singleton_true_snd : forall f x n, Proper (E.eq ==> Logic.eq) f -> n > 0 ->
+    (snd (partition f (singleton x n)) [=] empty <-> f x = true).
+  Proof.
+  intros. msetdec. rewrite filter_singleton_false; trivial.
+  - apply negb_false_iff.
+  - intros ? ? Heq. now rewrite Heq.
+  Qed.
+  
+  Lemma partition_singleton_false_fst : forall f x n, Proper (E.eq ==> Logic.eq) f -> n > 0 ->
+    (fst (partition f (singleton x n)) [=] empty <-> f x = false).
   Proof. intros. msetdec. now rewrite filter_singleton_false. Qed.
   
-  Lemma partition_singleton_false_snd : forall f x n, compatb f -> n > 0 ->
-    (snd (partition f (singleton x n)) [=] singleton x n <-> f x n = false).
+  Lemma partition_singleton_false_snd : forall f x n, Proper (E.eq ==> Logic.eq) f -> n > 0 ->
+    (snd (partition f (singleton x n)) [=] singleton x n <-> f x = false).
   Proof.
   intros. msetdec. rewrite filter_singleton_true; trivial.
   - apply negb_true_iff.
-  - intros ? ? Heq1 ? ? Heq2. now rewrite Heq1, Heq2.
+  - intros ? ? Heq. now rewrite Heq.
   Qed.
   
   Lemma choose_singleton : forall x n, n > 0 -> exists y, E.eq x y /\ choose (singleton x n) = Some y.
@@ -1189,7 +1248,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Lemma elements_pos : forall x n m, InA eq_pair (x, n) (elements m) -> n > 0.
   Proof. intros x n m Hin. now rewrite elements_spec in Hin. Qed.
   
-  Theorem elements_In : forall x n m, InA eq_key (x, n) (elements m) <-> In x m.
+  Theorem elements_In : forall x n m, InA eq_elt (x, n) (elements m) <-> In x m.
   Proof.
   intros x n m. split; intro H.
   + apply InA_key_pair in H. destruct H as [p Hp]. simpl in Hp. rewrite elements_spec in Hp.
@@ -1198,7 +1257,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Lemma elements_key_strengthen : forall x n m,
-    InA eq_key (x, n) (elements m) -> InA eq_pair (x, multiplicity x m) (elements m).
+    InA eq_elt (x, n) (elements m) -> InA eq_pair (x, multiplicity x m) (elements m).
   Proof. intros ? ? ? Hin. rewrite elements_spec. simpl. rewrite elements_In in Hin. intuition. Qed.
   
   Theorem elements_eq_equiv : forall m₁ m₂, equivlistA eq_pair (elements m₁) (elements m₂) <-> m₁ [=] m₂.
@@ -1235,7 +1294,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Lemma elements_key_subset : forall xn m₁ m₂,
-    m₁ [<=] m₂ -> InA eq_key xn (elements m₁) -> InA eq_key xn (elements m₂).
+    m₁ [<=] m₂ -> InA eq_elt xn (elements m₁) -> InA eq_elt xn (elements m₂).
   Proof. intros [? ?] * ?. do 2 rewrite elements_In. now apply In_sub_compat. Qed.
   
   Lemma elements_nil : forall m, elements m = nil <-> m [=] empty.
@@ -1363,12 +1422,12 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   (** [is_elements] tests wether a given list can be the elements of a multiset **)
-  Definition is_elements l := NoDupA eq_key l /\ Forall (fun xn => snd xn > 0) l.
+  Definition is_elements l := NoDupA eq_elt l /\ Forall (fun xn => snd xn > 0) l.
   
   Lemma is_elements_nil : is_elements nil.
   Proof. split; constructor. Qed.
   
-  Lemma is_elements_cons : forall xn l, is_elements l -> ~InA eq_key xn l -> snd xn > 0 -> is_elements (xn :: l).
+  Lemma is_elements_cons : forall xn l, is_elements l -> ~InA eq_elt xn l -> snd xn > 0 -> is_elements (xn :: l).
   Proof.
   unfold is_elements. setoid_rewrite Forall_forall. intros xn l [Hdup Hpos] Hx Hn. split.
   - now constructor.
@@ -1501,7 +1560,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - inversion_clear Hin. inversion_clear H0.
   Qed.
   
-  Lemma from_elements_out : forall x n l, ~InA eq_key (x, n) l -> multiplicity x (from_elements l) = 0.
+  Lemma from_elements_out : forall x n l, ~InA eq_elt (x, n) l -> multiplicity x (from_elements l) = 0.
   Proof.
   intros x n l Hin. induction l as [| [y p] l]; simpl.
   + apply empty_spec.
@@ -1511,7 +1570,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Lemma from_elements_in : forall x n l,
-    NoDupA eq_key l -> InA eq_pair (x, n) l -> multiplicity x (from_elements l) = n.
+    NoDupA eq_elt l -> InA eq_pair (x, n) l -> multiplicity x (from_elements l) = n.
   Proof.
   intros x n l Hl Hin. induction l as [| [y p] l].
   + rewrite InA_nil in Hin. elim Hin.
@@ -1568,7 +1627,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Corollary from_elements_In_valid : forall x l, is_elements l ->
-    In x (from_elements l) <-> forall n, InA eq_key (x, n) l.
+    In x (from_elements l) <-> forall n, InA eq_elt (x, n) l.
   Proof.
   intros x l Hl. rewrite from_elements_In. split; intro Hin.
   + destruct Hin as [n [Hin Hn]]. intro m. revert Hin. apply InA_pair_key.
@@ -1578,7 +1637,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     compute in Hnp. subst. change p with (snd (y, p)). now apply Hl.
   Qed.
   
-  Theorem from_elements_nodup_spec : forall l x n, n > 0 -> NoDupA eq_key l ->
+  Theorem from_elements_nodup_spec : forall l x n, n > 0 -> NoDupA eq_elt l ->
     multiplicity x (from_elements l) = n <-> InA eq_pair (x, n) l.
   Proof.
   induction l as [| [y p] l]; intros x n Hn Hnodup.
@@ -1628,7 +1687,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   rewrite <- (elements_In x 0) in Hin. apply elements_key_strengthen, PermutationA_split in Hin; refine _.
   destruct Hin as [l' Hin]. rewrite <- (from_elements_elements m), Hin at 1.
   assert (Hl' : is_elements ((x, multiplicity x m) :: l')). { rewrite <- Hin. apply elements_is_elements. }
-  assert (Hout : ~InA eq_key (x, (multiplicity x m)) l'). { apply proj1 in Hl'. now inversion_clear Hl'. }
+  assert (Hout : ~InA eq_elt (x, (multiplicity x m)) l'). { apply proj1 in Hl'. now inversion_clear Hl'. }
   rewrite from_elements_cons, add_merge. rewrite elements_add_out.
   + constructor; try reflexivity. apply is_elements_cons_inv in Hl'.
     rewrite Hin, elements_from_elements; trivial. simpl.
@@ -1700,7 +1759,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       P i -> (forall x n acc, In x m -> P acc -> P (f x n acc)) -> P (fold f m i).
     Proof.
     intros P ff i m H0 Hrec. rewrite fold_spec.
-    assert (Hrec' : forall x n k acc, InA eq_key (x, k) (rev (elements m)) -> P acc -> P (ff x n acc)).
+    assert (Hrec' : forall x n k acc, InA eq_elt (x, k) (rev (elements m)) -> P acc -> P (ff x n acc)).
     { intros ? ? ? ? Hin. apply Hrec. change x with (fst (x, k)).
       rewrite <- elements_In, <- (InA_rev _). eassumption. }
     rewrite <- fold_left_rev_right. induction (rev (elements m)) as [| [x n] l]; simpl.
@@ -1823,7 +1882,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     { repeat intro. now rewrite H1, H. }
     apply Heq. apply (@fold_left_symmetry_PermutationA _ _ eq_pair eq _ _ _ Hf); reflexivity || trivial.
     intros [x n] [y p] acc. simpl. apply add_comm. }
-  assert (Hadd' : forall l x n, is_elements l -> n > 0 -> ~InA eq_key (x, n) l -> P' l -> P' ((x, n) :: l)).
+  assert (Hadd' : forall l x n, is_elements l -> n > 0 -> ~InA eq_elt (x, n) l -> P' l -> P' ((x, n) :: l)).
   { intros l x n Hl Hn Hin. apply is_elements_build in Hl. destruct Hl as [m Hm]. rewrite Hm in Hin.
     assert (Hx : ~In x m).
     { rewrite <- support_spec, support_elements. intro Habs. apply Hin. eapply InA_pair_key. eassumption. }
@@ -2220,55 +2279,55 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + rewrite size_empty, cardinal_empty. reflexivity.
   Qed.
   
-  (** **  Results about [filter]  **)
+  (** **  Results about [nfilter]  **)
   
-  Section Filter_results.
+  Section nFilter_results.
     Variable f : E.t -> nat -> bool.
     Hypothesis Hf : compatb f.
     
-    Lemma filter_In : forall x m, In x (filter f m) <-> In x m /\ f x (multiplicity x m) = true.
+    Lemma nfilter_In : forall x m, In x (nfilter f m) <-> In x m /\ f x (multiplicity x m) = true.
     Proof.
-    intros x m. unfold In. rewrite filter_spec; trivial.
+    intros x m. unfold In. rewrite nfilter_spec; trivial.
     destruct (f x (multiplicity x m)); intuition; discriminate.
     Qed.
     
-    Corollary In_filter : forall x m, In x (filter f m) -> In x m.
-    Proof. intros x m Hin. rewrite filter_In in Hin; intuition. Qed.
+    Corollary In_nfilter : forall x m, In x (nfilter f m) -> In x m.
+    Proof. intros x m Hin. rewrite nfilter_In in Hin; intuition. Qed.
     
-    Lemma filter_subset : forall m, filter f m [<=] m.
-    Proof. intros m x. rewrite filter_spec; trivial. destruct (f x (multiplicity x m)); omega. Qed.
+    Lemma nfilter_subset : forall m, nfilter f m [<=] m.
+    Proof. intros m x. rewrite nfilter_spec; trivial. destruct (f x (multiplicity x m)); omega. Qed.
     
-    Lemma filter_add_true : forall x n m, ~In x m -> n > 0 ->
-      (filter f (add x n m) [=] add x n (filter f m) <-> f x n = true).
+    Lemma nfilter_add_true : forall x n m, ~In x m -> n > 0 ->
+      (nfilter f (add x n m) [=] add x n (nfilter f m) <-> f x n = true).
     Proof.
     intros x n m Hin Hn. assert (Hm : multiplicity x m = 0) by (unfold In in Hin; omega). split; intro H.
-    + specialize (H x). rewrite filter_spec, add_same, add_same, filter_spec in H; trivial.
+    + specialize (H x). rewrite nfilter_spec, add_same, add_same, nfilter_spec in H; trivial.
       rewrite Hm in H. simpl in H. destruct (f x n). reflexivity. omega.
     + intro y. msetdec. rewrite Hm. simpl. rewrite H. now destruct (f x 0).
     Qed.
     
-    Lemma filter_add_false : forall x n m, ~In x m -> n > 0 ->
-      (filter f (add x n m) [=] filter f m <-> f x n = false).
+    Lemma nfilter_add_false : forall x n m, ~In x m -> n > 0 ->
+      (nfilter f (add x n m) [=] nfilter f m <-> f x n = false).
     Proof.
     intros x n m Hin Hn. assert (Hm : multiplicity x m = 0) by (unfold In in Hin; omega). split; intro H.
-    + specialize (H x). rewrite filter_spec, add_same, filter_spec in H; trivial.
+    + specialize (H x). rewrite nfilter_spec, add_same, nfilter_spec in H; trivial.
       rewrite Hm in H. simpl in H. destruct (f x n). destruct (f x 0); omega. reflexivity.
     + intro y. msetdec. rewrite Hm. simpl. rewrite H. now destruct (f x 0).
     Qed.
     
-    Theorem filter_add : forall x n m, ~In x m -> n > 0 ->
-      filter f (add x n m) [=] if f x n then add x n (filter f m) else filter f m.
+    Theorem nfilter_add : forall x n m, ~In x m -> n > 0 ->
+      nfilter f (add x n m) [=] if f x n then add x n (nfilter f m) else nfilter f m.
     Proof.
     intros x n m Hin Hn. destruct (f x n) eqn:Hfxn.
-    - now rewrite filter_add_true.
-    - now rewrite filter_add_false.
+    - now rewrite nfilter_add_true.
+    - now rewrite nfilter_add_false.
     Qed.
     
-    Instance filter_sub_compat : Proper (E.eq ==> le ==> Bool.leb) f -> Proper (Subset ==> Subset) (filter f).
+    Instance nfilter_sub_compat : Proper (E.eq ==> le ==> Bool.leb) f -> Proper (Subset ==> Subset) (nfilter f).
     Proof.
     intros Hf2 m1 m2. revert m1. pattern m2. apply ind; clear m2.
     + intros ? ? Hm. now setoid_rewrite Hm.
-    + intros m x n Hm Hn Hrec m' Hsub. rewrite filter_add; trivial. intro y. specialize (Hsub y).
+    + intros m x n Hm Hn Hrec m' Hsub. rewrite nfilter_add; trivial. intro y. specialize (Hsub y).
       assert (multiplicity x m = 0) by msetdec. assert (Hbool := Hf2 y y (reflexivity _) _ _ Hsub).
       destruct (f x n) eqn:Hfxn.
     - msetdec; try rewrite H in *.
@@ -2280,16 +2339,16 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     + intros m Hm. rewrite subset_empty_r in Hm. now rewrite Hm.
     Qed.
     
-    Lemma filter_extensionality_compat : forall g, (forall x n, g x n = f x n) ->
-      forall m, filter f m [=] filter g m.
+    Lemma nfilter_extensionality_compat : forall g, (forall x n, g x n = f x n) ->
+      forall m, nfilter f m [=] nfilter g m.
     Proof.
     intros g Hext m x.
     assert (Hg : Proper (E.eq ==> Logic.eq ==> Logic.eq) g). { repeat intro. repeat rewrite Hext. now apply Hf. }
-    repeat rewrite filter_spec; trivial. rewrite Hext. reflexivity.
+    repeat rewrite nfilter_spec; trivial. rewrite Hext. reflexivity.
     Qed.
     
-    Lemma elements_filter : forall m,
-      PermutationA eq_pair (elements (filter f m)) (List.filter (fun xn => f (fst xn) (snd xn)) (elements m)).
+    Lemma elements_nfilter : forall m,
+      PermutationA eq_pair (elements (nfilter f m)) (List.filter (fun xn => f (fst xn) (snd xn)) (elements m)).
     Proof.
     intro m. apply NoDupA_equivlistA_PermutationA; refine _.
     * eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_key.
@@ -2299,19 +2358,19 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     * intros [x n]. split; intro Hin.
       + rewrite elements_spec in Hin. destruct Hin as [Hin Hpos]. simpl in *. subst.
       rewrite filter_InA; simpl in *.
-        - rewrite filter_spec in *; trivial. destruct (f x (multiplicity x m)) eqn:Hfx; trivial; try omega.
+        - rewrite nfilter_spec in *; trivial. destruct (f x (multiplicity x m)) eqn:Hfx; trivial; try omega.
           split; trivial. rewrite elements_spec; intuition.
         - intros [? ?] [? ?] [? ?]. compute in *. auto.
       + rewrite filter_InA in Hin.
         - rewrite elements_spec in *. destruct Hin as [[Hin Hpos] Hfx]. simpl in *. split; trivial.
-          rewrite filter_spec; trivial. subst. now rewrite Hfx.
+          rewrite nfilter_spec; trivial. subst. now rewrite Hfx.
         - intros [? ?] [? ?] [? ?]. compute in *. auto.
     Qed.
     
-    Lemma filter_from_elements : forall l, is_elements l ->
-      filter f (from_elements l) [=] from_elements (List.filter (fun xn => f (fst xn) (snd xn)) l).
+    Lemma nfilter_from_elements : forall l, is_elements l ->
+      nfilter f (from_elements l) [=] from_elements (List.filter (fun xn => f (fst xn) (snd xn)) l).
     Proof.
-    intros l Hl. rewrite <- elements_eq. rewrite elements_filter; trivial.
+    intros l Hl. rewrite <- elements_eq. rewrite elements_nfilter; trivial.
     setoid_rewrite elements_from_elements at 2.
     * apply filter_PermutationA_compat; refine _.
       + intros [] [] []. compute in *. auto.
@@ -2327,6 +2386,169 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       + destruct (f x n); trivial. now constructor.
     Qed.
     
+    Lemma support_nfilter : forall m, inclA E.eq (support (nfilter f m)) (support m).
+    Proof. intro. apply support_sub_compat, nfilter_subset. Qed.
+    
+    Lemma cardinal_nfilter : forall m, cardinal (nfilter f m) <= cardinal m.
+    Proof. intro. apply cardinal_sub_compat, nfilter_subset. Qed.
+    
+    Lemma size_nfilter : forall m, size (nfilter f m) <= size m.
+    Proof. intro. apply size_sub_compat, nfilter_subset. Qed.
+  End nFilter_results.
+  
+  Lemma nfilter_merge : forall f g, compatb f -> compatb g ->
+    forall m, nfilter f (nfilter g m) [=] nfilter (fun x n => f x n && g x n) m.
+  Proof.
+  intros f g Hf Hg m x. repeat rewrite nfilter_spec; trivial.
+  + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+  + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+  Qed.
+  
+  Lemma nfilter_comm : forall f g, compatb f -> compatb g ->
+    forall m, nfilter f (nfilter g m) [=] nfilter g (nfilter f m).
+  Proof.
+  intros. repeat rewrite nfilter_merge; trivial. apply nfilter_extensionality_compat.
+  + intros x y Hxy ? n ?. subst. now rewrite Hxy.
+  + intros. apply andb_comm.
+  Qed.
+  
+  Lemma fold_nfilter_fold_left A eqA `{Equivalence A eqA} :
+    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> compatb g ->
+    forall m i, eqA (fold f (nfilter g m) i)
+                    (fold_left (fun acc xn => f (fst xn) (snd xn) acc)
+                               (List.filter (fun xn => g (fst xn) (snd xn)) (elements m))
+                               i).
+  Proof.
+  intros. rewrite fold_spec, fold_left_symmetry_PermutationA; refine _; try reflexivity.
+  + intros ? ? ? [] [] []. compute in *. auto.
+  + auto.
+  + now apply elements_nfilter.
+  Qed.
+  
+  Lemma fold_nfilter A eqA `{Equivalence A eqA} :
+    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> compatb g ->
+    forall m i, eqA (fold f (nfilter g m) i) (fold (fun x n acc => if g x n then f x n acc else acc) m i).
+  Proof.
+  intros f g Hf Hf2 Hg m.
+  assert (Hf' : Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) (fun x n acc => if g x n then f x n acc else acc)).
+  { clear -Hf Hg. intros x1 x2 Hx n1 n2 Hn m1 m2 Hm. subst.
+    destruct (g x1 n2) eqn:Hgx; rewrite Hx in Hgx; rewrite Hgx; trivial. apply Hf; trivial. }
+  assert (Hf2' : transpose2 eqA (fun x n acc => if g x n then f x n acc else acc)).
+  { intros x1 x2 y1 y2 z. now destruct (g x1 y1), (g x2 y2); trivial. }
+  pattern m. apply ind.
+  * intros m1 m2 Hm. split; intros Heq i.
+    + rewrite <- (fold_compat _ _ _ _ Hf2 _ _ (nfilter_compat Hg Hm) _ _ (reflexivity i)), Heq.
+      apply fold_compat; trivial. reflexivity.
+    + rewrite (fold_compat _ _ _ _ Hf2 _ _ (nfilter_compat Hg Hm) _ _ (reflexivity i)), Heq.
+      apply fold_compat; trivial.
+      - now symmetry.
+      - reflexivity.
+  * clear m. intros m x n Hin Hn Hrec i.
+    assert (Hadd := nfilter_add Hg Hin Hn). rewrite fold_compat; try eassumption || reflexivity.
+    rewrite fold_add; trivial. destruct (g x n); trivial. rewrite fold_add; trivial.
+    + now apply Hf.
+    + intro Hx. apply Hin. now apply In_nfilter in Hx.
+  * intro i. rewrite fold_empty. rewrite fold_compat; trivial.
+    + rewrite fold_empty. reflexivity.
+    + now apply nfilter_empty.
+    + reflexivity.
+  Qed.
+  
+  Lemma cardinal_nfilter_is_multiplicity : forall x m,
+    cardinal (nfilter (fun y _ => if E.eq_dec y x then true else false) m) = multiplicity x m.
+  Proof.
+  intros x m.
+  assert (Hf : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun y (_ : nat) => if E.eq_dec y x then true else false)).
+  { intros y1 y2 Hy ? ? ?. subst. destruct (E.eq_dec y1 x), (E.eq_dec y2 x); auto; rewrite Hy in *; contradiction. }
+  pattern m. apply ind; clear m.
+  + intros m1 m2 Hm. now setoid_rewrite Hm.
+  + intros m y n Hm Hn Hrec. rewrite nfilter_add; trivial. destruct (E.eq_dec y x) as [Heq | Heq].
+    - rewrite cardinal_add, Hrec, Heq, add_same. apply plus_comm.
+    - rewrite add_other; msetdec.
+  + now rewrite nfilter_empty, cardinal_empty, empty_spec.
+  Qed.
+  
+  Lemma nfilter_mono_compat : forall f g, compatb f -> compatb g -> (forall x n, Bool.leb (f x n) (g x n)) ->
+    forall m, nfilter f m [<=] nfilter g m.
+  Proof.
+  intros f g Hf Hg Hfg. apply ind.
+  + intros m1 m2 Hm. now rewrite Hm.
+  + intros m x n Hm Hn Hrec. repeat rewrite nfilter_add; trivial. destruct (f x n) eqn:Hfx.
+    - specialize (Hfg x n). rewrite Hfx in Hfg. simpl in Hfg. rewrite Hfg. now f_equiv.
+    - destruct (g x n); trivial. etransitivity; try eassumption. apply add_subset.
+  + repeat rewrite nfilter_empty; trivial. reflexivity.
+  Qed.
+  
+  (** **  Results about [nfilter]  **)
+  
+  Section Filter_results.
+    Variable f : E.t -> bool.
+    Hypothesis Hf : Proper (E.eq ==> Logic.eq) f.
+    
+    Theorem filter_nfilter : forall m, filter f m [=] nfilter (fun x _ => f x) m.
+    Proof. repeat intro. rewrite nfilter_spec, filter_spec; trivial. repeat intro. now apply Hf. Qed.
+    
+    Lemma filter_In : forall x m, In x (filter f m) <-> In x m /\ f x = true.
+    Proof. intros x m. unfold In. rewrite filter_spec; trivial. destruct (f x); intuition; discriminate. Qed.
+    
+    Corollary In_filter : forall x m, In x (filter f m) -> In x m.
+    Proof. intros x m Hin. rewrite filter_In in Hin; intuition. Qed.
+    
+    Lemma filter_subset : forall m, filter f m [<=] m.
+    Proof. intros m x. rewrite filter_spec; trivial. destruct (f x); omega. Qed.
+    
+    Lemma filter_add_true : forall x n m, ~In x m -> n > 0 ->
+      (filter f (add x n m) [=] add x n (filter f m) <-> f x = true).
+    Proof.
+    repeat intro. do 2 rewrite filter_nfilter. apply nfilter_add_true; trivial. repeat intro. now apply Hf.
+    Qed.
+    
+    Lemma filter_add_false : forall x n m, ~In x m -> n > 0 ->
+      (filter f (add x n m) [=] filter f m <-> f x = false).
+    Proof.
+    repeat intro. do 2 rewrite filter_nfilter. apply nfilter_add_false; trivial. repeat intro. now apply Hf.
+    Qed.
+    
+    Theorem filter_add : forall x n m, ~In x m -> n > 0 ->
+      filter f (add x n m) [=] if f x then add x n (filter f m) else filter f m.
+    Proof.
+    intros x n m Hin Hn. destruct (f x) eqn:Hfxn.
+    - now rewrite filter_add_true.
+    - now rewrite filter_add_false.
+    Qed.
+    
+    Instance filter_sub_compat : Proper (Subset ==> Subset) (filter f).
+    Proof.
+    repeat intro. do 2 rewrite filter_nfilter. apply nfilter_sub_compat.
+    - repeat intro. now apply Hf.
+    - repeat intro. rewrite Hf; try eassumption. apply Bleb_refl.
+    - assumption.
+    Qed.
+    
+    Lemma filter_extensionality_compat : forall g, (forall x, g x = f x) -> forall m, filter f m [=] filter g m.
+    Proof.
+    intros g Hext m x.
+    assert (Hg : Proper (E.eq ==> Logic.eq) g). { repeat intro. repeat rewrite Hext. now apply Hf. }
+    repeat rewrite filter_spec; trivial. rewrite Hext. reflexivity.
+    Qed.
+    
+    Lemma elements_filter : forall m,
+      PermutationA eq_pair (elements (filter f m)) (List.filter (fun xn => f (fst xn)) (elements m)).
+    Proof.
+    intro m. rewrite filter_nfilter, elements_nfilter.
+    - reflexivity.
+    - repeat intro. now apply Hf.
+    Qed.
+    
+    Lemma filter_from_elements : forall l, is_elements l ->
+      filter f (from_elements l) [=] from_elements (List.filter (fun xn => f (fst xn)) l).
+    Proof.
+    intros l Hl. rewrite filter_nfilter, nfilter_from_elements.
+    - reflexivity.
+    - repeat intro. now apply Hf.
+    - assumption.
+    Qed.
+    
     Lemma support_filter : forall m, inclA E.eq (support (filter f m)) (support m).
     Proof. intro. apply support_sub_compat, filter_subset. Qed.
     
@@ -2337,27 +2559,50 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Proof. intro. apply size_sub_compat, filter_subset. Qed.
   End Filter_results.
   
-  Lemma filter_merge : forall f g, compatb f -> compatb g ->
-    forall m, filter f (filter g m) [=] filter (fun x n => f x n && g x n) m.
+  Lemma filter_merge : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
+    forall m, filter f (filter g m) [=] filter (fun x => f x && g x) m.
   Proof.
   intros f g Hf Hg m x. repeat rewrite filter_spec; trivial.
-  + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+  + now destruct (f x).
+  + clear x m. intros x y Hxy. now rewrite Hxy.
+  Qed.
+  
+  Lemma filter_filtern_merge : forall f g, Proper (E.eq ==> Logic.eq) f -> compatb g ->
+    forall m, filter f (nfilter g m) [=] nfilter (fun x n => f x && g x n) m.
+  Proof.
+  intros f g Hf Hg m x. rewrite filter_spec, nfilter_spec, nfilter_spec; trivial.
+  + now destruct (f x).
   + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
   Qed.
   
-  Lemma filter_comm : forall f g, compatb f -> compatb g ->
+  Lemma nfilter_filter_merge : forall f g, compatb f -> Proper (E.eq ==> Logic.eq) g ->
+    forall m, nfilter f (filter g m) [=] nfilter (fun x n => f x n && g x) m.
+  Proof.
+  intros f g Hf Hg m x. rewrite nfilter_spec, nfilter_spec, filter_spec; trivial.
+  + destruct (g x), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+  + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+  Qed.
+  
+  Lemma filter_comm : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
     forall m, filter f (filter g m) [=] filter g (filter f m).
   Proof.
   intros. repeat rewrite filter_merge; trivial. apply filter_extensionality_compat.
-  + intros x y Hxy ? n ?. subst. now rewrite Hxy.
+  + intros x y Hxy. subst. now rewrite Hxy.
   + intros. apply andb_comm.
   Qed.
   
+  Lemma nfilter_filter_comm : forall f g, compatb f -> Proper (E.eq ==> Logic.eq) g ->
+    forall m, nfilter f (filter g m) [=] filter g (nfilter f m).
+  Proof.
+  intros ** x. repeat rewrite filter_spec, nfilter_spec; trivial.
+  destruct (g x), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+  Qed.
+  
   Lemma fold_filter_fold_left A eqA `{Equivalence A eqA} :
-    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> compatb g ->
+    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> Proper (E.eq ==> Logic.eq) g ->
     forall m i, eqA (fold f (filter g m) i)
                     (fold_left (fun acc xn => f (fst xn) (snd xn) acc)
-                               (List.filter (fun xn => g (fst xn) (snd xn)) (elements m))
+                               (List.filter (fun xn => g (fst xn)) (elements m))
                                i).
   Proof.
   intros. rewrite fold_spec, fold_left_symmetry_PermutationA; refine _; try reflexivity.
@@ -2367,75 +2612,285 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Lemma fold_filter A eqA `{Equivalence A eqA} :
-    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> compatb g ->
-    forall m i, eqA (fold f (filter g m) i) (fold (fun x n acc => if g x n then f x n acc else acc) m i).
+    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> Proper (E.eq ==> Logic.eq) g ->
+    forall m i, eqA (fold f (filter g m) i) (fold (fun x n acc => if g x then f x n acc else acc) m i).
   Proof.
-  intros f g Hf Hf2 Hg m.
-  assert (Hf' : Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) (fun x n acc => if g x n then f x n acc else acc)).
-  { clear -Hf Hg. intros x1 x2 Hx n1 n2 Hn m1 m2 Hm. subst.
-    destruct (g x1 n2) eqn:Hgx; rewrite Hx in Hgx; rewrite Hgx; trivial. apply Hf; trivial. }
-  assert (Hf2' : transpose2 eqA (fun x n acc => if g x n then f x n acc else acc)).
-  { intros x1 x2 y1 y2 z. now destruct (g x1 y1), (g x2 y2); trivial. }
-  pattern m. apply ind.
-  * intros m1 m2 Hm. split; intros Heq i.
-    + rewrite <- (fold_compat _ _ _ _ Hf2 _ _ (filter_compat Hg Hm) _ _ (reflexivity i)), Heq.
-      apply fold_compat; trivial. reflexivity.
-    + rewrite (fold_compat _ _ _ _ Hf2 _ _ (filter_compat Hg Hm) _ _ (reflexivity i)), Heq.
-      apply fold_compat; trivial.
-      - now symmetry.
-      - reflexivity.
-  * clear m. intros m x n Hin Hn Hrec i.
-    assert (Hadd := filter_add Hg Hin Hn). rewrite fold_compat; try eassumption || reflexivity.
-    rewrite fold_add; trivial. destruct (g x n); trivial. rewrite fold_add; trivial.
-    + now apply Hf.
-    + intro Hx. apply Hin. now apply In_filter in Hx.
-  * intro i. rewrite fold_empty. rewrite fold_compat; trivial.
-    + rewrite fold_empty. reflexivity.
-    + now apply filter_empty.
-    + reflexivity.
+  intros f g Hf Hf2 Hg m i. rewrite (fold_compat _ _ f Hf Hf2 _ _ (filter_nfilter Hg m) i i (reflexivity i)).
+  apply fold_nfilter; trivial. repeat intro. now apply Hg.
   Qed.
   
   Lemma cardinal_filter_is_multiplicity : forall x m,
-    cardinal (filter (fun y _ => if E.eq_dec y x then true else false) m) = multiplicity x m.
+    cardinal (filter (fun y => if E.eq_dec y x then true else false) m) = multiplicity x m.
   Proof.
-  intros x m.
-  assert (Hf : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun y (_ : nat) => if E.eq_dec y x then true else false)).
-  { intros y1 y2 Hy ? ? ?. subst. destruct (E.eq_dec y1 x), (E.eq_dec y2 x); auto; rewrite Hy in *; contradiction. }
-  pattern m. apply ind; clear m.
-  + intros m1 m2 Hm. now setoid_rewrite Hm.
-  + intros m y n Hm Hn Hrec. rewrite filter_add; trivial. destruct (E.eq_dec y x) as [Heq | Heq].
-    - rewrite cardinal_add, Hrec, Heq, add_same. apply plus_comm.
-    - rewrite add_other; msetdec.
-  + now rewrite filter_empty, cardinal_empty, empty_spec.
+  intros x m. rewrite filter_nfilter.
+  - apply cardinal_nfilter_is_multiplicity.
+  - intros x' y' Heq. destruct (E.eq_dec x' x), (E.eq_dec y' x); trivial; rewrite Heq in *; contradiction.
   Qed.
   
-  Lemma filter_mono_compat : forall f g, compatb f -> compatb g -> (forall x n, Bool.leb (f x n) (g x n)) ->
-    forall m, filter f m [<=] filter g m.
+  Lemma filter_mono_compat : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
+    (forall x, Bool.leb (f x) (g x)) -> forall m, filter f m [<=] filter g m.
   Proof.
-  intros f g Hf Hg Hfg. apply ind.
-  + intros m1 m2 Hm. now rewrite Hm.
-  + intros m x n Hm Hn Hrec. repeat rewrite filter_add; trivial. destruct (f x n) eqn:Hfx.
-    - specialize (Hfg x n). rewrite Hfx in Hfg. simpl in Hfg. rewrite Hfg. now f_equiv.
-    - destruct (g x n); trivial. etransitivity; try eassumption. apply add_subset.
-  + repeat rewrite filter_empty; trivial. reflexivity.
+  intros f g Hf Hg Hfg m. repeat rewrite filter_nfilter; trivial. apply nfilter_mono_compat.
+  - repeat intro. now apply Hf.
+  - repeat intro. now apply Hg.
+  - repeat intro. apply Hfg.
   Qed.
   
-  (** **  Results about [partition]  **)
+  (** **  Results about [npartition]  **)
   
-  Section Partition_results.
+  Section nPartition_results.
     Variable f : E.t -> nat -> bool.
     Hypothesis Hf : compatb f.
     
     Lemma negf_compatb : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun x n => negb (f x n)).
     Proof. repeat intro. now rewrite Hf. Qed.
     
-    Lemma partition_In_fst : forall x m, In x (fst (partition f m)) <-> In x m /\ f x (multiplicity x m) = true.
+    Lemma npartition_In_fst : forall x m, In x (fst (npartition f m)) <-> In x m /\ f x (multiplicity x m) = true.
+    Proof. intros. rewrite npartition_spec_fst; trivial. now apply nfilter_In. Qed.
+    
+    Lemma npartition_In_snd : forall x m, In x (snd (npartition f m)) <-> In x m /\ f x (multiplicity x m) = false.
+    Proof.
+    intros. rewrite npartition_spec_snd, <- negb_true_iff; trivial. apply nfilter_In.
+    repeat intro. now rewrite Hf.
+    Qed.
+    
+    Corollary In_npartition_fst : forall x m, In x (fst (npartition f m)) -> In x m.
+    Proof. intros x m Hin. rewrite npartition_In_fst in Hin; intuition. Qed.
+    
+    Corollary In_npartition_snd : forall x m, In x (snd (npartition f m)) -> In x m.
+    Proof. intros x m Hin. rewrite npartition_In_snd in Hin; intuition. Qed.
+    
+    Lemma npartition_subset_fst : forall m, fst (npartition f m) [<=] m.
+    Proof. intro. rewrite npartition_spec_fst; trivial. now apply nfilter_subset. Qed.
+    
+    Lemma npartition_subset_snd : forall m, snd (npartition f m) [<=] m.
+    Proof. intro. rewrite npartition_spec_snd; trivial. apply nfilter_subset, negf_compatb. Qed.
+    
+    Lemma npartition_add_true_fst : forall x n m, ~In x m -> n > 0 ->
+      (fst (npartition f (add x n m)) [=] add x n (fst (npartition f m)) <-> f x n = true).
+    Proof. intros. repeat rewrite npartition_spec_fst; trivial. now apply nfilter_add_true. Qed.
+    
+    Lemma npartition_add_true_snd : forall x n m, ~In x m -> n > 0 ->
+      (snd (npartition f (add x n m)) [=] snd (npartition f m) <-> f x n = true).
+    Proof.
+    intros. repeat rewrite npartition_spec_snd; trivial. rewrite nfilter_add_false; trivial.
+    apply negb_false_iff. repeat intro. f_equal. now apply Hf.
+    Qed.
+    
+    Lemma npartition_add_false_fst : forall x n m, ~In x m -> n > 0 ->
+      (fst (npartition f (add x n m)) [=] fst (npartition f m) <-> f x n = false).
+    Proof. intros. repeat rewrite npartition_spec_fst; trivial. now apply nfilter_add_false. Qed.
+    
+    Lemma npartition_add_false_snd : forall x n m, ~In x m -> n > 0 ->
+      (snd (npartition f (add x n m)) [=] add x n (snd (npartition f m)) <-> f x n = false).
+    Proof.
+    intros. repeat rewrite npartition_spec_snd; trivial. rewrite nfilter_add_true; trivial.
+    apply negb_true_iff. repeat intro. f_equal. now apply Hf.
+    Qed.
+  
+    Theorem npartition_add_fst : forall x n m, ~In x m -> n > 0 ->
+      fst (npartition f (add x n m)) [=] if f x n then add x n (fst (npartition f m)) else fst (npartition f m).
+    Proof.
+    intros x n m Hin Hn. destruct (f x n) eqn:Hfn.
+    - now rewrite npartition_add_true_fst.
+    - now rewrite npartition_add_false_fst.
+    Qed.
+    
+    Theorem npartition_add_snd : forall x n m, ~In x m -> n > 0 ->
+      snd (npartition f (add x n m)) [=] if f x n then snd (npartition f m) else add x n (snd (npartition f m)).
+    Proof.
+    intros x n m Hin Hn. destruct (f x n) eqn:Hfn.
+    - now rewrite npartition_add_true_snd.
+    - now rewrite npartition_add_false_snd.
+    Qed.
+    
+    Lemma npartition_swap_fst : forall m, fst (npartition (fun x n => negb (f x n)) m) [=] snd (npartition f m).
+    Proof.
+    intros m x. rewrite npartition_spec_fst, npartition_spec_snd; trivial.
+    repeat intro. rewrite Hf; try eassumption. reflexivity.
+    Qed.
+    
+    Lemma npartition_swap_snd : forall m, snd (npartition (fun x n => negb (f x n)) m) [=] fst (npartition f m).
+    Proof.
+    intros m x. rewrite npartition_spec_fst, npartition_spec_snd; trivial.
+    - symmetry. rewrite nfilter_extensionality_compat; trivial. setoid_rewrite negb_involutive. reflexivity.
+    - repeat intro. rewrite Hf; try eassumption. reflexivity.
+    Qed.
+    
+    Lemma npartition_sub_compat_fst :
+      Proper (E.eq ==> le ==> Bool.leb) f -> Proper (Subset ==> Subset@@1) (npartition f).
+    Proof. repeat intro. repeat rewrite npartition_spec_fst; trivial. now apply nfilter_sub_compat. Qed.
+    
+    Lemma npartition_sub_compat_snd :
+      Proper (E.eq ==> le --> Bool.leb) f -> Proper (Subset ==> Subset@@2) (npartition f).
+    Proof.
+    repeat intro. repeat rewrite npartition_spec_snd; trivial. apply nfilter_sub_compat.
+    - repeat intro. f_equal. now apply Hf.
+    - clear -H Hf. intros x y Hxy n p Hnp. destruct (f x n) eqn:Hfxn, (f y p) eqn:Hfyp; simpl; auto.
+      assert (Himpl := H _ _ (symmetry Hxy) _ _ Hnp). rewrite Hfyp, Hfxn in Himpl. discriminate.
+    - assumption.
+    Qed.
+    
+    Lemma npartition_extensionality_compat_fst : forall g, (forall x n, g x n = f x n) ->
+      forall m, fst (npartition g m) [=] fst (npartition f m).
+    Proof.
+    intros ? Hext ? ?. setoid_rewrite npartition_spec_fst at 2; trivial.
+    rewrite nfilter_extensionality_compat; trivial. apply npartition_spec_fst.
+    repeat intro. repeat rewrite Hext. apply Hf; assumption.
+    Qed.
+    
+    Lemma npartition_extensionality_compat_snd : forall g, (forall x n, g x n = f x n) ->
+      forall m, snd (npartition g m) [=] snd (npartition f m).
+    Proof.
+    intros g Hext m. intro. repeat rewrite npartition_spec_snd; trivial.
+    + apply nfilter_extensionality_compat; trivial.
+      - repeat intro. f_equal. repeat rewrite Hext. apply Hf; assumption.
+      - repeat intro. f_equal. symmetry. apply Hext.
+    + repeat intro. repeat rewrite Hext. apply Hf; assumption.
+    Qed.
+    
+    Lemma elements_npartition_fst : forall m,
+      PermutationA eq_pair (elements (fst (npartition f m)))
+                           (List.filter (fun xn => f (fst xn) (snd xn)) (elements m)).
+    Proof. intro. rewrite npartition_spec_fst; trivial. now apply elements_nfilter. Qed.
+    
+    Lemma elements_npartition_snd : forall m,
+      PermutationA eq_pair (elements (snd (npartition f m)))
+                           (List.filter (fun xn => negb (f (fst xn) (snd xn))) (elements m)).
+    Proof. intro. rewrite npartition_spec_snd; trivial. apply elements_nfilter, negf_compatb. Qed.
+    
+    Lemma npartition_from_elements_fst : forall l, is_elements l ->
+      fst (npartition f (from_elements l)) [=] from_elements (List.filter (fun xn => f (fst xn) (snd xn)) l).
+    Proof. intros. rewrite npartition_spec_fst; trivial. now apply nfilter_from_elements. Qed.
+    
+    Lemma npartition_from_elements_snd : forall l, is_elements l ->
+      snd (npartition f (from_elements l)) [=] from_elements (List.filter (fun xn => negb (f (fst xn) (snd xn))) l).
+    Proof. intros. rewrite npartition_spec_snd; auto. now apply nfilter_from_elements; try apply negf_compatb. Qed.
+    
+    Lemma support_npartition_fst : forall m, inclA E.eq (support (fst (npartition f m))) (support m).
+    Proof. intro. apply support_sub_compat, npartition_subset_fst. Qed.
+    
+    Lemma support_npartition_snd : forall m, inclA E.eq (support (snd (npartition f m))) (support m).
+    Proof. intro. apply support_sub_compat, npartition_subset_snd. Qed.
+    
+    Lemma cardinal_npartition_fst : forall m, cardinal (fst (npartition f m)) <= cardinal m.
+    Proof. intro. apply cardinal_sub_compat, npartition_subset_fst. Qed.
+    
+    Lemma cardinal_npartition_snd : forall m, cardinal (snd (npartition f m)) <= cardinal m.
+    Proof. intro. apply cardinal_sub_compat, npartition_subset_snd. Qed.
+    
+    Lemma npartition_nfilter_fst : forall m, size (fst (npartition f m)) <= size m.
+    Proof. intro. apply size_sub_compat, npartition_subset_fst. Qed.
+    
+    Lemma npartition_nfilter_snd : forall m, size (snd (npartition f m)) <= size m.
+    Proof. intro. apply size_sub_compat, npartition_subset_snd. Qed.
+    
+    Lemma npartition_injective : injective eq (eq * eq)%signature (npartition f).
+    Proof.
+    intros m1 m2 [Heq1 Heq2] x. specialize (Heq1 x). specialize (Heq2 x).
+    do 2 rewrite npartition_spec_fst, nfilter_spec in *; trivial.
+    do 2 rewrite npartition_spec_snd, nfilter_spec in *; trivial; try now apply negf_compatb.
+    destruct (f x (multiplicity x m1)), (f x (multiplicity x m2)); simpl in *; omega.
+    Qed.
+  End nPartition_results.
+  
+  Section nPartition2_results.
+    Variable f g : E.t -> nat -> bool.
+    Hypothesis (Hf : compatb f) (Hg : compatb g).
+    
+    Lemma npartition_nfilter_merge_fst :
+      forall m, fst (npartition f (nfilter g m)) [=] nfilter (fun x n => f x n && g x n) m.
+    Proof.
+    intros m x. rewrite npartition_spec_fst; trivial. repeat rewrite nfilter_spec; trivial.
+    + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+    Qed.
+    
+    Lemma npartition_nfilter_merge_snd :
+      forall m, snd (npartition f (nfilter g m)) [=] nfilter (fun x n => negb (f x n) && g x n) m.
+    Proof.
+    intros m x. rewrite npartition_spec_snd; trivial. repeat rewrite nfilter_spec; trivial.
+      + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+    + now apply negf_compatb.
+    Qed.
+    
+    Lemma nfilter_npartition_merge_fst :
+      forall m, nfilter f (fst (npartition g m)) [=] nfilter (fun x n => f x n && g x n) m.
+    Proof.
+    intros m x. rewrite npartition_spec_fst; trivial. repeat rewrite nfilter_spec; trivial.
+    + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
+    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+    Qed.
+    
+    Lemma nfilter_npartition_merge_snd :
+      forall m, nfilter f (snd (npartition g m)) [=] nfilter  (fun x n => f x n && negb (g x n)) m.
+    Proof.
+    intros m x. rewrite npartition_spec_snd; trivial. repeat rewrite nfilter_spec; trivial.
+    + destruct (f x (multiplicity x m)) eqn:Hfx, (g x (multiplicity x m));
+      simpl; trivial; now rewrite Hfx || destruct (f x 0).
+    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+    + now apply negf_compatb.
+    Qed.
+    
+    Lemma npartition_merge_fst_fst :
+      forall m, fst (npartition f (fst (npartition g m))) [=] nfilter (fun x n => f x n && g x n) m.
+    Proof. intro. repeat rewrite npartition_spec_fst; trivial. now apply nfilter_merge. Qed.
+    
+    Lemma npartition_merge_fst_snd :
+      forall m, snd (npartition f (fst (npartition g m))) [=] nfilter (fun x n => negb (f x n) && g x n) m.
+    Proof.
+    intro. repeat rewrite npartition_spec_fst, npartition_spec_snd; trivial.
+    apply negf_compatb in Hf. now rewrite nfilter_merge.
+    Qed.
+    
+    Lemma npartition_merge_snd_fst :
+      forall m, fst (npartition f (snd (npartition g m))) [=] nfilter (fun x n => f x n && negb (g x n)) m.
+    Proof.
+    intro. repeat rewrite npartition_spec_fst, npartition_spec_snd; trivial.
+    apply negf_compatb in Hg. now rewrite nfilter_merge.
+    Qed.
+  End nPartition2_results.
+    
+  Lemma npartition_merge_snd_snd : forall f g, compatb f -> compatb g ->
+    forall m, snd (npartition f (snd (npartition g m))) [=] nfilter (fun x n => negb (f x n) && negb (g x n)) m.
+  Proof.
+  intros f g Hf Hg m. repeat rewrite npartition_spec_snd; trivial. rewrite nfilter_npartition_merge_snd; trivial.
+  - reflexivity.
+  - now apply negf_compatb.
+  Qed.
+  
+  Lemma npartition_comm_fst : forall f g, compatb f -> compatb g ->
+    forall m, fst (npartition f (fst (npartition g m))) [=] fst (npartition g (fst (npartition f m))).
+  Proof.
+  intros. repeat rewrite npartition_merge_fst_fst; trivial. apply nfilter_extensionality_compat.
+  - intros x y Hxy ? n ?. subst. now rewrite Hxy.
+  - intros. apply andb_comm.
+  Qed.
+  
+  Lemma npartition_comm_snd : forall f g, compatb f -> compatb g ->
+    forall m, snd (npartition f (snd (npartition g m))) [=] snd (npartition g (snd (npartition f m))).
+  Proof.
+  intros. repeat rewrite npartition_merge_snd_snd; trivial. apply nfilter_extensionality_compat.
+  - intros x y Hxy ? n ?. subst. now rewrite Hxy.
+  - intros. apply andb_comm.
+  Qed.
+  
+  (** **  Results about [partition]  **)
+  
+  Section Partition_results.
+    Variable f : E.t -> bool.
+    Hypothesis Hf : Proper (E.eq ==> Logic.eq) f.
+    
+    Lemma negf_proper : Proper (E.eq ==> Logic.eq) (fun x => negb (f x)).
+    Proof. repeat intro. now rewrite Hf. Qed.
+    
+    Lemma partition_In_fst : forall x m, In x (fst (partition f m)) <-> In x m /\ f x = true.
     Proof. intros. rewrite partition_spec_fst; trivial. now apply filter_In. Qed.
     
-    Lemma partition_In_snd : forall x m, In x (snd (partition f m)) <-> In x m /\ f x (multiplicity x m) = false.
+    Lemma partition_In_snd : forall x m, In x (snd (partition f m)) <-> In x m /\ f x = false.
     Proof.
-    intros. rewrite partition_spec_snd, <- negb_true_iff; trivial. apply filter_In.
-    repeat intro. now rewrite Hf.
+    intros. rewrite partition_spec_snd, <- negb_true_iff; trivial. apply filter_In. repeat intro. now rewrite Hf.
     Qed.
     
     Corollary In_partition_fst : forall x m, In x (fst (partition f m)) -> In x m.
@@ -2448,53 +2903,53 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Proof. intro. rewrite partition_spec_fst; trivial. now apply filter_subset. Qed.
     
     Lemma partition_subset_snd : forall m, snd (partition f m) [<=] m.
-    Proof. intro. rewrite partition_spec_snd; trivial. apply filter_subset, negf_compatb. Qed.
+    Proof. intro. rewrite partition_spec_snd; trivial. apply filter_subset, negf_proper. Qed.
     
     Lemma partition_add_true_fst : forall x n m, ~In x m -> n > 0 ->
-      (fst (partition f (add x n m)) [=] add x n (fst (partition f m)) <-> f x n = true).
+      (fst (partition f (add x n m)) [=] add x n (fst (partition f m)) <-> f x = true).
     Proof. intros. repeat rewrite partition_spec_fst; trivial. now apply filter_add_true. Qed.
     
     Lemma partition_add_true_snd : forall x n m, ~In x m -> n > 0 ->
-      (snd (partition f (add x n m)) [=] snd (partition f m) <-> f x n = true).
+      (snd (partition f (add x n m)) [=] snd (partition f m) <-> f x = true).
     Proof.
     intros. repeat rewrite partition_spec_snd; trivial. rewrite filter_add_false; trivial.
     apply negb_false_iff. repeat intro. f_equal. now apply Hf.
     Qed.
     
     Lemma partition_add_false_fst : forall x n m, ~In x m -> n > 0 ->
-      (fst (partition f (add x n m)) [=] fst (partition f m) <-> f x n = false).
+      (fst (partition f (add x n m)) [=] fst (partition f m) <-> f x = false).
     Proof. intros. repeat rewrite partition_spec_fst; trivial. now apply filter_add_false. Qed.
     
     Lemma partition_add_false_snd : forall x n m, ~In x m -> n > 0 ->
-      (snd (partition f (add x n m)) [=] add x n (snd (partition f m)) <-> f x n = false).
+      (snd (partition f (add x n m)) [=] add x n (snd (partition f m)) <-> f x = false).
     Proof.
     intros. repeat rewrite partition_spec_snd; trivial. rewrite filter_add_true; trivial.
     apply negb_true_iff. repeat intro. f_equal. now apply Hf.
     Qed.
   
     Theorem partition_add_fst : forall x n m, ~In x m -> n > 0 ->
-      fst (partition f (add x n m)) [=] if f x n then add x n (fst (partition f m)) else fst (partition f m).
+      fst (partition f (add x n m)) [=] if f x then add x n (fst (partition f m)) else fst (partition f m).
     Proof.
-    intros x n m Hin Hn. destruct (f x n) eqn:Hfn.
+    intros x n m Hin Hn. destruct (f x) eqn:Hfn.
     - now rewrite partition_add_true_fst.
     - now rewrite partition_add_false_fst.
     Qed.
     
     Theorem partition_add_snd : forall x n m, ~In x m -> n > 0 ->
-      snd (partition f (add x n m)) [=] if f x n then snd (partition f m) else add x n (snd (partition f m)).
+      snd (partition f (add x n m)) [=] if f x then snd (partition f m) else add x n (snd (partition f m)).
     Proof.
-    intros x n m Hin Hn. destruct (f x n) eqn:Hfn.
+    intros x n m Hin Hn. destruct (f x) eqn:Hfn.
     - now rewrite partition_add_true_snd.
     - now rewrite partition_add_false_snd.
     Qed.
     
-    Lemma partition_swap_fst : forall m, fst (partition (fun x n => negb (f x n)) m) [=] snd (partition f m).
+    Lemma partition_swap_fst : forall m, fst (partition (fun x => negb (f x)) m) [=] snd (partition f m).
     Proof.
     intros m x. rewrite partition_spec_fst, partition_spec_snd; trivial.
     repeat intro. rewrite Hf; try eassumption. reflexivity.
     Qed.
     
-    Lemma partition_swap_snd : forall m, snd (partition (fun x n => negb (f x n)) m) [=] fst (partition f m).
+    Lemma partition_swap_snd : forall m, snd (partition (fun x => negb (f x)) m) [=] fst (partition f m).
     Proof.
     intros m x. rewrite partition_spec_fst, partition_spec_snd; trivial.
     - symmetry. rewrite filter_extensionality_compat; trivial. setoid_rewrite negb_involutive. reflexivity.
@@ -2502,14 +2957,18 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Qed.
     
     Lemma partition_sub_compat_fst :
-      Proper (E.eq ==> le ==> Bool.leb) f -> Proper (Subset ==> Subset@@1) (partition f).
+      Proper (E.eq ==> Bool.leb) f -> Proper (Subset ==> Subset@@1) (partition f).
     Proof. repeat intro. repeat rewrite partition_spec_fst; trivial. now apply filter_sub_compat. Qed.
-    (*
+    
     Lemma partition_sub_compat_snd :
-      Proper (E.eq ==> le ==> Bool.leb) f -> Proper (Subset --> Subset@@2) (partition f).
-    Proof. repeat intro. repeat rewrite partition_spec_snd; trivial. apply filter_sub_compat. Qed.
-    *)
-    Lemma partition_extensionality_compat_fst : forall g, (forall x n, g x n = f x n) ->
+      Proper (E.eq --> Bool.leb) f -> Proper (Subset ==> Subset@@2) (partition f).
+    Proof.
+    repeat intro. repeat rewrite partition_spec_snd; trivial. apply filter_sub_compat.
+    - repeat intro. f_equal. now apply Hf.
+    - assumption.
+    Qed.
+    
+    Lemma partition_extensionality_compat_fst : forall g, (forall x, g x = f x) ->
       forall m, fst (partition g m) [=] fst (partition f m).
     Proof.
     intros ? Hext ? ?. setoid_rewrite partition_spec_fst at 2; trivial.
@@ -2517,7 +2976,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     repeat intro. repeat rewrite Hext. apply Hf; assumption.
     Qed.
     
-    Lemma partition_extensionality_compat_snd : forall g, (forall x n, g x n = f x n) ->
+    Lemma partition_extensionality_compat_snd : forall g, (forall x, g x = f x) ->
       forall m, snd (partition g m) [=] snd (partition f m).
     Proof.
     intros g Hext m. intro. repeat rewrite partition_spec_snd; trivial.
@@ -2529,21 +2988,21 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     
     Lemma elements_partition_fst : forall m,
       PermutationA eq_pair (elements (fst (partition f m)))
-                           (List.filter (fun xn => f (fst xn) (snd xn)) (elements m)).
+                           (List.filter (fun xn => f (fst xn)) (elements m)).
     Proof. intro. rewrite partition_spec_fst; trivial. now apply elements_filter. Qed.
     
     Lemma elements_partition_snd : forall m,
       PermutationA eq_pair (elements (snd (partition f m)))
-                           (List.filter (fun xn => negb (f (fst xn) (snd xn))) (elements m)).
-    Proof. intro. rewrite partition_spec_snd; trivial. apply elements_filter, negf_compatb. Qed.
+                           (List.filter (fun xn => negb (f (fst xn))) (elements m)).
+    Proof. intro. rewrite partition_spec_snd; trivial. apply elements_filter, negf_proper. Qed.
     
     Lemma partition_from_elements_fst : forall l, is_elements l ->
-      fst (partition f (from_elements l)) [=] from_elements (List.filter (fun xn => f (fst xn) (snd xn)) l).
+      fst (partition f (from_elements l)) [=] from_elements (List.filter (fun xn => f (fst xn)) l).
     Proof. intros. rewrite partition_spec_fst; trivial. now apply filter_from_elements. Qed.
     
     Lemma partition_from_elements_snd : forall l, is_elements l ->
-      snd (partition f (from_elements l)) [=] from_elements (List.filter (fun xn => negb (f (fst xn) (snd xn))) l).
-    Proof. intros. rewrite partition_spec_snd; trivial. now apply filter_from_elements; try apply negf_compatb. Qed.
+      snd (partition f (from_elements l)) [=] from_elements (List.filter (fun xn => negb (f (fst xn))) l).
+    Proof. intros. rewrite partition_spec_snd; auto. now apply filter_from_elements; try apply negf_proper. Qed.
     
     Lemma support_partition_fst : forall m, inclA E.eq (support (fst (partition f m))) (support m).
     Proof. intro. apply support_sub_compat, partition_subset_fst. Qed.
@@ -2557,100 +3016,99 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Lemma cardinal_partition_snd : forall m, cardinal (snd (partition f m)) <= cardinal m.
     Proof. intro. apply cardinal_sub_compat, partition_subset_snd. Qed.
     
-    Lemma partition_filter_fst : forall m, size (fst (partition f m)) <= size m.
+    Lemma partition_nfilter_fst : forall m, size (fst (partition f m)) <= size m.
     Proof. intro. apply size_sub_compat, partition_subset_fst. Qed.
     
-    Lemma partition_filter_snd : forall m, size (snd (partition f m)) <= size m.
+    Lemma partition_nfilter_snd : forall m, size (snd (partition f m)) <= size m.
     Proof. intro. apply size_sub_compat, partition_subset_snd. Qed.
     
     Lemma partition_injective : injective eq (eq * eq)%signature (partition f).
     Proof.
     intros m1 m2 [Heq1 Heq2] x. specialize (Heq1 x). specialize (Heq2 x).
     do 2 rewrite partition_spec_fst, filter_spec in *; trivial.
-    do 2 rewrite partition_spec_snd, filter_spec in *; trivial; try now apply negf_compatb.
-    destruct (f x (multiplicity x m1)), (f x (multiplicity x m2)); simpl in *; omega.
+    do 2 rewrite partition_spec_snd, filter_spec in *; trivial; try now apply negf_proper.
+    destruct (f x); simpl in *; omega.
     Qed.
   End Partition_results.
   
   Section Partition2_results.
-    Variable f g : E.t -> nat -> bool.
-    Hypothesis (Hf : compatb f) (Hg : compatb g).
+    Variable f g : E.t -> bool.
+    Hypothesis (Hf : Proper (E.eq ==> Logic.eq) f) (Hg : Proper (E.eq ==> Logic.eq) g).
     
     Lemma partition_filter_merge_fst :
-      forall m, fst (partition f (filter g m)) [=] filter (fun x n => f x n && g x n) m.
+      forall m, fst (partition f (filter g m)) [=] filter (fun x => f x && g x) m.
     Proof.
     intros m x. rewrite partition_spec_fst; trivial. repeat rewrite filter_spec; trivial.
-    + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
-    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+    - now destruct (g x), (f x).
+    - clear x m. intros x y Hxy. now rewrite Hxy.
     Qed.
     
     Lemma partition_filter_merge_snd :
-      forall m, snd (partition f (filter g m)) [=] filter (fun x n => negb (f x n) && g x n) m.
+      forall m, snd (partition f (filter g m)) [=] filter (fun x => negb (f x) && g x) m.
     Proof.
     intros m x. rewrite partition_spec_snd; trivial. repeat rewrite filter_spec; trivial.
-      + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
-    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
-    + now apply negf_compatb.
+    - now destruct (g x), (f x).
+    - clear x m. intros x y Hxy. now rewrite Hxy.
+    - now apply negf_proper.
     Qed.
     
     Lemma filter_partition_merge_fst :
-      forall m, filter f (fst (partition g m)) [=] filter (fun x n => f x n && g x n) m.
+      forall m, filter f (fst (partition g m)) [=] filter (fun x => f x && g x) m.
     Proof.
     intros m x. rewrite partition_spec_fst; trivial. repeat rewrite filter_spec; trivial.
-    + destruct (g x (multiplicity x m)), (f x (multiplicity x m)); simpl; trivial; now destruct (f x 0).
-    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
+    - now destruct (g x), (f x).
+    - clear x m. intros x y Hxy. now rewrite Hxy.
     Qed.
     
     Lemma filter_partition_merge_snd :
-      forall m, filter f (snd (partition g m)) [=] filter  (fun x n => f x n && negb (g x n)) m.
+      forall m, filter f (snd (partition g m)) [=] filter  (fun x => f x && negb (g x)) m.
     Proof.
     intros m x. rewrite partition_spec_snd; trivial. repeat rewrite filter_spec; trivial.
-    + destruct (f x (multiplicity x m)) eqn:Hfx, (g x (multiplicity x m));
-      simpl; trivial; now rewrite Hfx || destruct (f x 0).
-    + clear x m. intros x y Hxy n m Hnm. subst. now rewrite Hxy.
-    + now apply negf_compatb.
+    - now destruct (f x), (g x).
+    - clear x m. intros x y Hxy. now rewrite Hxy.
+    - now apply negf_proper.
     Qed.
     
     Lemma partition_merge_fst_fst :
-      forall m, fst (partition f (fst (partition g m))) [=] filter (fun x n => f x n && g x n) m.
+      forall m, fst (partition f (fst (partition g m))) [=] filter (fun x => f x && g x) m.
     Proof. intro. repeat rewrite partition_spec_fst; trivial. now apply filter_merge. Qed.
     
     Lemma partition_merge_fst_snd :
-      forall m, snd (partition f (fst (partition g m))) [=] filter (fun x n => negb (f x n) && g x n) m.
+      forall m, snd (partition f (fst (partition g m))) [=] filter (fun x => negb (f x) && g x) m.
     Proof.
     intro. repeat rewrite partition_spec_fst, partition_spec_snd; trivial.
-    apply negf_compatb in Hf. now rewrite filter_merge.
+    apply negf_proper in Hf. now rewrite filter_merge.
     Qed.
     
     Lemma partition_merge_snd_fst :
-      forall m, fst (partition f (snd (partition g m))) [=] filter (fun x n => f x n && negb (g x n)) m.
+      forall m, fst (partition f (snd (partition g m))) [=] filter (fun x => f x && negb (g x)) m.
     Proof.
     intro. repeat rewrite partition_spec_fst, partition_spec_snd; trivial.
-    apply negf_compatb in Hg. now rewrite filter_merge.
+    apply negf_proper in Hg. now rewrite filter_merge.
     Qed.
   End Partition2_results.
-    
-  Lemma partition_merge_snd_snd : forall f g, compatb f -> compatb g ->
-    forall m, snd (partition f (snd (partition g m))) [=] filter (fun x n => negb (f x n) && negb (g x n)) m.
+  
+  Lemma partition_merge_snd_snd : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
+    forall m, snd (partition f (snd (partition g m))) [=] filter (fun x => negb (f x) && negb (g x)) m.
   Proof.
-  intros f g Hf Hg m. repeat rewrite partition_spec_snd; trivial. rewrite filter_partition_merge_snd; trivial.
+  intros f g Hf Hg m. rewrite partition_spec_snd, filter_partition_merge_snd; trivial.
   - reflexivity.
-  - now apply negf_compatb.
+  - now apply negf_proper.
   Qed.
   
-  Lemma partition_comm_fst : forall f g, compatb f -> compatb g ->
+  Lemma partition_comm_fst : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
     forall m, fst (partition f (fst (partition g m))) [=] fst (partition g (fst (partition f m))).
   Proof.
   intros. repeat rewrite partition_merge_fst_fst; trivial. apply filter_extensionality_compat.
-  - intros x y Hxy ? n ?. subst. now rewrite Hxy.
+  - intros x y Hxy. now rewrite Hxy.
   - intros. apply andb_comm.
   Qed.
   
-  Lemma partition_comm_snd : forall f g, compatb f -> compatb g ->
+  Lemma partition_comm_snd : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
     forall m, snd (partition f (snd (partition g m))) [=] snd (partition g (snd (partition f m))).
   Proof.
   intros. repeat rewrite partition_merge_snd_snd; trivial. apply filter_extensionality_compat.
-  - intros x y Hxy ? n ?. subst. now rewrite Hxy.
+  - intros x y Hxy. now rewrite Hxy.
   - intros. apply andb_comm.
   Qed.
   
@@ -2794,32 +3252,32 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - intro Habs. apply Hfm. intros x Hin. apply Habs in Hin. now rewrite andb_true_iff in Hin.
     Qed.
     
-    Lemma for_all_filter : forall m, for_all f m = true -> for_all f (filter g m) = true.
+    Lemma for_all_nfilter : forall m, for_all f m = true -> for_all f (nfilter g m) = true.
     Proof.
     intros m Hm. rewrite for_all_spec in *; trivial. intros x Hin. unfold In in Hin.
-    rewrite filter_spec in *; trivial. now destruct (g x (multiplicity x m)); apply Hm || omega.
+    rewrite nfilter_spec in *; trivial. now destruct (g x (multiplicity x m)); apply Hm || omega.
     Qed.
     
-    Lemma for_all_filter_merge : forall m,
-      for_all f (filter g m) = for_all (fun x n => if g x n then f x n else true) m.
+    Lemma for_all_nfilter_merge : forall m,
+      for_all f (nfilter g m) = for_all (fun x n => if g x n then f x n else true) m.
     Proof.
     assert (Hfg : compatb (fun x n => if g x n then f x n else true)).
     { intros x y Hxy n p Hnp. subst. rewrite Hxy. destruct (g y p); trivial. now rewrite Hxy. }
-    intro m. destruct (for_all f (filter g m)) eqn:Hfgm; symmetry.
+    intro m. destruct (for_all f (nfilter g m)) eqn:Hfgm; symmetry.
     + rewrite for_all_spec in *; trivial. intros x Hin. destruct (g x (multiplicity x m)) eqn:Hgm; trivial.
-      specialize (Hfgm x).  rewrite filter_spec, Hgm in Hfgm; trivial. apply Hfgm. rewrite filter_In; auto.
-    + rewrite for_all_false in *; trivial. intros Habs. apply Hfgm. intros x Hin. rewrite filter_In in Hin; trivial.
-      destruct Hin as [Hin Hgm]. apply Habs in Hin. rewrite filter_spec; trivial. now rewrite Hgm in *.
+      specialize (Hfgm x).  rewrite nfilter_spec, Hgm in Hfgm; trivial. apply Hfgm. rewrite nfilter_In; auto.
+    + rewrite for_all_false in *; trivial. intros Habs. apply Hfgm. intros x Hin. rewrite nfilter_In in Hin; auto.
+      destruct Hin as [Hin Hgm]. apply Habs in Hin. rewrite nfilter_spec; trivial. now rewrite Hgm in *.
     Qed.
   End for_all2_results.
   
 (*
   Lemma for_all_partition_fst : forall m, for_all f m = true -> for_all f (fst (partition g m)) = true.
-  Proof. intros. setoid_rewrite partition_spec_fst; trivial. now apply for_all_filter. Qed.
+  Proof. intros. setoid_rewrite partition_spec_fst; trivial. now apply for_all_nfilter. Qed.
   
   Lemma for_all_partition_snd : forall f g, compatb f -> compatb g ->
     forall m, for_all f m = true -> for_all f (snd (partition g m)) = true.
-  Proof. intros. rewrite partition_spec_snd; trivial. apply for_all_filter; trivial. now apply negf_compatb. Qed.
+  Proof. intros. rewrite partition_spec_snd; trivial. apply for_all_nfilter; trivial. now apply negf_compatb. Qed.
 *)
   
   (** **  Results about [exists_] and [Exists]  **)
@@ -2959,8 +3417,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   rewrite <- (elements_from_elements Hl) at 2. now apply Exists_elements.
   Qed.
   
-  Lemma filter_none : forall f, compatb f ->
-    forall m, filter f m [=] empty <-> for_all (fun x n => negb (f x n)) m = true.
+  Lemma nfilter_none : forall f, compatb f ->
+    forall m, nfilter f m [=] empty <-> for_all (fun x n => negb (f x n)) m = true.
   Proof.
   intros f Hf m.
   assert (Hf2 : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun x n => negb (f x n))).
@@ -2971,10 +3429,10 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + destruct (for_all (fun (x : elt) (n : nat) => negb (f x n)) m) eqn:Hforall; trivial.
     rewrite for_all_false_exists, exists_spec in Hforall; trivial.
     destruct Hforall as [x [Hin Hfx]]. rewrite negb_involutive in Hfx.
-    elim (@In_empty x). rewrite <- Hall, filter_In; auto.
+    elim (@In_empty x). rewrite <- Hall, nfilter_In; auto.
   + rewrite for_all_spec in Hall; trivial.
-    destruct (empty_or_In_dec (filter f m)) as [? | [x Hin]]; trivial.
-    rewrite filter_In in Hin; trivial. destruct Hin as [Hin Hfx]. apply Hall in Hin.
+    destruct (empty_or_In_dec (nfilter f m)) as [? | [x Hin]]; trivial.
+    rewrite nfilter_In in Hin; trivial. destruct Hin as [Hin Hfx]. apply Hall in Hin.
     rewrite Hfx in Hin. discriminate.
   Qed.
   
@@ -2993,30 +3451,30 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - intros [x [Hin Habs]]. rewrite orb_true_iff in Habs. destruct Habs; apply Hfm + apply Hgm; now exists x.
     Qed.
     
-    Lemma exists_filter : forall m, exists_ f (filter g m) = true -> exists_ f m = true.
+    Lemma exists_nfilter : forall m, exists_ f (nfilter g m) = true -> exists_ f m = true.
     Proof.
-    intros m Hm. rewrite exists_spec in *; trivial. destruct Hm as [x [Hin Hfm]]. rewrite filter_In in *; trivial.
-    destruct Hin as [HIn Hgm]. rewrite filter_spec, Hgm in Hfm; trivial. now exists x.
+    intros m Hm. rewrite exists_spec in *; trivial. destruct Hm as [x [Hin Hfm]]. rewrite nfilter_In in *; trivial.
+    destruct Hin as [HIn Hgm]. rewrite nfilter_spec, Hgm in Hfm; trivial. now exists x.
     Qed.
     
-    Lemma exists_filter_merge : forall m, exists_ f (filter g m) = exists_ (fun x n => f x n && g x n) m.
+    Lemma exists_nfilter_merge : forall m, exists_ f (nfilter g m) = exists_ (fun x n => f x n && g x n) m.
     Proof.
     assert (Hfg : compatb (fun x n => f x n && g x n)). { intros ? ? Heq ? ? ?. subst. now rewrite Heq. }
-    intro m. destruct (exists_ f (filter g m)) eqn:Hfgm; symmetry.
-    + rewrite exists_spec in *; trivial. destruct Hfgm as [x [Hin Hfm]]. rewrite filter_spec in Hfm; trivial.
-      rewrite filter_In in *; trivial. destruct Hin as [Hin Hgm]. exists x. rewrite Hgm, Hfm in *. now split.
+    intro m. destruct (exists_ f (nfilter g m)) eqn:Hfgm; symmetry.
+    + rewrite exists_spec in *; trivial. destruct Hfgm as [x [Hin Hfm]]. rewrite nfilter_spec in Hfm; trivial.
+      rewrite nfilter_In in *; trivial. destruct Hin as [Hin Hgm]. exists x. rewrite Hgm, Hfm in *. now split.
     + rewrite exists_false in *; trivial. intros [x [Hin Hm]]. rewrite andb_true_iff in Hm.
-      destruct Hm as [? Hm]. apply Hfgm. exists x. rewrite filter_In, filter_spec, Hm; auto.
+      destruct Hm as [? Hm]. apply Hfgm. exists x. rewrite nfilter_In, nfilter_spec, Hm; auto.
     Qed.
   End exists2_results.
   
 (*
     Lemma exists_partition_fst : forall m, for_all f m = true -> for_all f (fst (partition g m)) = true.
-    Proof. intros. setoid_rewrite partition_spec_fst; trivial. now apply for_all_filter. Qed.
+    Proof. intros. setoid_rewrite partition_spec_fst; trivial. now apply for_all_nfilter. Qed.
   
   Lemma for_all_partition_snd : forall f g, compatb f -> compatb g ->
     forall m, for_all f m = true -> for_all f (snd (partition g m)) = true.
-  Proof. intros. rewrite partition_spec_snd; trivial. apply for_all_filter; trivial. now apply negf_compatb. Qed.
+  Proof. intros. rewrite partition_spec_snd; trivial. apply for_all_nfilter; trivial. now apply negf_compatb. Qed.
 *)
   
   (** *  Extra operations  **)
@@ -3066,14 +3524,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Qed.
     
     Lemma map_spec : forall x m, multiplicity x (map f m) =
-      cardinal (filter (fun y _ => if E.eq_dec (f y) x then true else false) m).
+      cardinal (nfilter (fun y _ => if E.eq_dec (f y) x then true else false) m).
     Proof.
     intros x m. pose (g := fun y (_ : nat) => if E.eq_dec (f y) x then true else false). unfold elt. fold g.
     assert (Hg : Proper (E.eq ==> @Logic.eq nat ==> Logic.eq) g). { repeat intro. unfold g. msetdec. }
     pattern m. apply ind; clear m.
     + intros ? ? Hm. now rewrite Hm.
-    + intros * Hin Hrec. rewrite map_add, filter_add; trivial. unfold g at 2. msetdec. rewrite cardinal_add. omega.
-    + now rewrite map_empty, filter_empty, cardinal_empty, empty_spec.
+    + intros * Hin Hrec. rewrite map_add, nfilter_add; trivial. unfold g at 2. msetdec. rewrite cardinal_add. omega.
+    + now rewrite map_empty, nfilter_empty, cardinal_empty, empty_spec.
     Qed.
     
     Global Instance map_sub_compat : Proper (Subset ==> Subset) (map f).
@@ -3083,7 +3541,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     + intros m x n Hin Hn Hrec m' Hsub y. setoid_rewrite <- (@add_remove_cancel x n m').
       - do 2 rewrite (map_add _). msetdec.
           apply plus_le_compat; trivial. repeat rewrite map_spec; trivial. apply add_subset_remove in Hsub.
-          apply cardinal_sub_compat, filter_sub_compat, Hsub; repeat intro; msetdec.
+          apply cardinal_sub_compat, nfilter_sub_compat, Hsub; repeat intro; msetdec.
           now apply Hrec, add_subset_remove.
       - specialize (Hsub x). msetdec.
     + intros ? _. rewrite map_empty. apply subset_empty_l.
@@ -3325,7 +3783,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Proof.
   intros f g Hf Hext m x.
   assert (Hg : Proper (E.eq ==> E.eq) g). { intros ? ? Heq. do 2 rewrite Hext. now apply Hf. }
-  repeat rewrite map_spec; trivial. f_equiv. apply filter_extensionality_compat.
+  repeat rewrite map_spec; trivial. f_equiv. apply nfilter_extensionality_compat.
   - intros y z Heq _ _ _. destruct (E.eq_dec (g y) x), (E.eq_dec (g z) x); trivial; rewrite Heq in *; contradiction.
   - intros y _. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); trivial; rewrite Hext in *; contradiction.
   Qed.
@@ -3358,28 +3816,28 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   (* BUG with typeclass resolution? [rewrite Hm] should work *)
   Qed.
   
-  Lemma map_injective_filter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
-    forall m, filter f (map g m) [=] map g (filter (fun x => f (g x)) m).
+  Lemma map_injective_nfilter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, nfilter f (map g m) [=] map g (nfilter (fun x => f (g x)) m).
   Proof.
   intros f g Hf Hg Hg2. apply ind.
   + repeat intro. msetdec.
-  + intros m x n Hin Hn Hrec. rewrite (map_add _). repeat rewrite filter_add; trivial.
+  + intros m x n Hin Hn Hrec. rewrite (map_add _). repeat rewrite nfilter_add; trivial.
     - destruct (f (g x) n).
         now rewrite map_add, Hrec.
         apply Hrec.
     - refine _. 
     - rewrite (map_In _). intros [y [Heq Hy]]. apply Hg2 in Heq. apply Hin. now rewrite Heq.
-  + rewrite map_empty. now rewrite filter_empty, filter_empty, map_empty; refine _.
+  + rewrite map_empty. now rewrite nfilter_empty, nfilter_empty, map_empty; refine _.
   Qed.
   
-  Lemma map_injective_partition_fst : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
-    forall m, fst (partition f (map g m)) [=] map g (fst (partition (fun x => f (g x)) m)).
-  Proof. intros. repeat rewrite partition_spec_fst; refine _. now apply map_injective_filter. Qed.
+  Lemma map_injective_npartition_fst : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, fst (npartition f (map g m)) [=] map g (fst (npartition (fun x => f (g x)) m)).
+  Proof. intros. repeat rewrite npartition_spec_fst; refine _. now apply map_injective_nfilter. Qed.
   
-  Lemma map_partition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
-    forall m, snd (partition f (map g m)) [=] map g (snd (partition (fun x => f (g x)) m)).
+  Lemma map_npartition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, snd (npartition f (map g m)) [=] map g (snd (npartition (fun x => f (g x)) m)).
   Proof.
-  intros. repeat rewrite partition_spec_snd; refine _. apply map_injective_filter; trivial. repeat intro. msetdec.
+  intros. repeat rewrite npartition_spec_snd; refine _. apply map_injective_nfilter; trivial. repeat intro. msetdec.
   Qed.
   
   Lemma map_injective_for_all : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->

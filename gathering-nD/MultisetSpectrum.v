@@ -15,7 +15,7 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import MMultisetInterface.
 Require Import MMultisetFacts.
-Require Import MMultisetMap.
+Require Import MMultisetWMap.
 Require Import Pactole.Preliminary.
 Require Robots.
 Require Import Positions.
@@ -27,7 +27,7 @@ Module Names := Robots.Make(N).
 Module Pos := Positions.Make(Location)(N)(Names).
 
 (** Definition of spectra as multisets of locations. *)
-Module Mraw := MMultisetMap.FMultisets MMapWeakList.Make Location.
+Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
 Module M := MMultisetFacts.Make Location Mraw.
 
 Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).

@@ -26,10 +26,10 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module Formalism (Location : MetricSpace)(N : Size)(Spec : Spectrum(Location)(N)).
+Module Formalism (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
 
-Module Names := Spec.Names.
-Module Pos := Spec.Pos.
+Module Names := Spect.Names.
+Module Pos := Spect.Pos.
 
 (** ** Programs for good robots *)
 
@@ -140,10 +140,10 @@ Unset Implicit Arguments.
 (** ** Good robots have a common program, which we call a robogram *)
 
 Record robogram := {
-  pgm :> Spec.t → Location.t;
-  pgm_compat : Proper (Spec.eq ==> Location.eq) pgm}.
+  pgm :> Spect.t → Location.t;
+  pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
 
-Definition req (r1 r2 : robogram) := (Spec.eq ==> Location.eq)%signature r1 r2.
+Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
 
 Instance req_equiv : Equivalence req.
 Proof. split.
@@ -472,7 +472,7 @@ Definition round (r : robogram) (da : demonic_action) (pos : Pos.t) : Pos.t :=
         | Good g => (* position expressed in the frame of g *)
           let pos_seen_by_g := Pos.map (sim (pos (Good g))) pos in
           (* apply r on spectrum + back to demon ref. *)
-          (sim (pos (Good g)))⁻¹ (r (Spec.from_config pos_seen_by_g))
+          (sim (pos (Good g)))⁻¹ (r (Spect.from_config pos_seen_by_g))
         end
     end.
 
@@ -484,7 +484,7 @@ assert (Hstep := step_da_compat Hda (reflexivity id)). assert (Hda1 := da1.(step
 destruct (step da1 id), (step da2 id), id; try now elim Hstep.
 + simpl in Hstep. f_equiv.
   - apply Hstep, Hpos.
-  - apply Hr, Spec.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
+  - apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
 + rewrite Hda. reflexivity.
 Qed.
 
@@ -530,6 +530,8 @@ unfold round in Hmove. destruct (step config id).
 - now elim Hmove.
 Qed.
 
+(** Some results *)
+
 Lemma no_moving_same_conf : forall r da config,
   moving r da config = List.nil -> Pos.eq (round r da config) config.
 Proof.
@@ -545,6 +547,7 @@ intros r da conf Hactive.
 assert (moving r da conf = List.nil). { apply incl_nil. rewrite <- Hactive. apply moving_active. }
 now apply no_moving_same_conf.
 Qed.
+
 
 (** [execute r d pos] returns an (infinite) execution from an initial global
     position [pos], a demon [d] and a robogram [r] running on each good robot. *)

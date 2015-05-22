@@ -4,6 +4,7 @@ Preliminary.v
 Robots.v
 Positions.v
 MMultiset/MMultisetInterface.v
+MMultiset/MMultisetWMap.v
 MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/Preliminary.v
@@ -14,4 +15,3 @@ LimitedSetSpectrum.v
 LimitedMultisetSpectrum.v
 SortingR.v
 RDVinR.v
-RDVinRd.v

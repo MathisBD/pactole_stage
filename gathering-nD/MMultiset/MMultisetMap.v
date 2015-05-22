@@ -18,12 +18,12 @@ Require Import MMultiset.Preliminary.
 Require Import MMultisetInterface.
 Require Import Equalities.
 
-Module FMultisets (MMap : WSfun) (E : DecidableType) : FMultisetsOn E.
+Module FMultisets (MMap : Sfun) (E : OrderedType) : Sord E.
 
 Module M := MMap(E).
 
 Definition eq_pair := RelProd E.eq (@Logic.eq nat).
-Definition eq_key := RelCompFun E.eq (@fst E.t nat).
+Definition eq_elt := RelCompFun E.eq (@fst E.t nat).
 
 
 Instance Meq_equiv A : Equivalence (@M.eq_key_elt A).
@@ -107,11 +107,13 @@ Definition subset s s' := is_empty (diff s s').
 Definition fold {A} f (s : t) := @M.fold positive A (fun x y => f x (Pos.to_nat y)) s.
 Definition for_all f (s : t) := M.fold (fun x n b => b && f x (Pos.to_nat n)) s true.
 Definition exists_ f (s : t) := M.fold (fun x n b => b || f x (Pos.to_nat n)) s false.
-Definition filter f (s : t) :=
+Definition nfilter f (s : t) :=
   M.fold (fun x n acc => if f x (Pos.to_nat n) : bool then add x (Pos.to_nat n) acc else acc) s empty.
-Definition partition f (s : t) :=
+Definition filter f (s : t) := nfilter (fun x _ => f x) s.
+Definition npartition f (s : t) :=
   M.fold (fun x n acc => if f x (Pos.to_nat n) : bool then (add x (Pos.to_nat n) (fst acc), snd acc)
                                                       else (fst acc, add x (Pos.to_nat n) (snd acc))) s (empty,empty).
+Definition partition f (s : t) := npartition (fun x _ => f x) s.
 Definition cardinal (s : t) := M.fold (fun _ n acc => Pos.to_nat n + acc) s 0.
 Definition size (s : t) := M.fold (fun _ _ n => S n) s 0.
 Definition elements (s : t) := List.map (fun xy => (fst xy, Pos.to_nat (snd xy))) (M.bindings s).
@@ -504,7 +506,7 @@ rewrite NoDupA_inj_map; (now apply M.bindings_spec2w) || (now auto with typeclas
 Qed.
 
 
-Lemma fold_filter_out_list : forall f x n l s, ~InA (@M.eq_key positive) (x, n) l -> NoDupA (@M.eq_key _) l ->
+Lemma fold_nfilter_out_list : forall f x n l s, ~InA (@M.eq_key positive) (x, n) l -> NoDupA (@M.eq_key _) l ->
   multiplicity x (fold_left (fun acc xn => if f (fst xn) (snd xn) : bool
                                            then add (fst xn) (Pos.to_nat (snd xn)) acc else acc) l s)
   = multiplicity x s.
@@ -517,7 +519,7 @@ intros f x n l s Hin Hdup. revert s. induction l as [| [y m] l]; intro s; simpl.
     now inversion_clear Hdup.
 Qed.
 
-Lemma filter_spec_In : forall f s s' x, compatb f -> In x s ->
+Lemma nfilter_spec_In : forall f s s' x, compatb f -> In x s ->
   multiplicity x
     (M.fold
        (fun (x0 : M.key) (n : positive) (acc : t) =>
@@ -533,7 +535,7 @@ induction (M.bindings s); simpl; intro s'; simpl in Hs.
 * destruct a as [y m].
   destruct (Meq_dec (x, Pos.of_nat (multiplicity x s)) (y, m)) as [Heq | Hneq].
   + destruct Heq as [H1 H2]. simpl in H1, H2 |- *. rewrite H1 in *. subst m.
-    rewrite (fold_filter_out_list (fun x y => f x (Pos.to_nat y)) _ (Pos.of_nat (multiplicity y s))).
+    rewrite (fold_nfilter_out_list (fun x y => f x (Pos.to_nat y)) _ (Pos.of_nat (multiplicity y s))).
     - rewrite Nat2Pos.id; try omega.
       destruct (f y (multiplicity y s)) eqn:Htest.
         rewrite add_same, H1. now apply plus_comm.
@@ -558,7 +560,7 @@ induction (M.bindings s); simpl; intro s'; simpl in Hs.
       reflexivity || rewrite add_other; reflexivity || now auto.
 Qed.
 
-Lemma filter_spec_out : forall f s s' x, ~In x s ->
+Lemma nfilter_spec_out : forall f s s' x, ~In x s ->
   multiplicity x
     (M.fold
        (fun (x0 : M.key) (n : positive) (acc : t) =>
@@ -576,18 +578,30 @@ revert s'. induction (M.bindings s) as [| [y m] l]; intro s'; simpl.
   intros n Habs. apply (Hs n). now right.
 Qed.
 
-Corollary filter_spec : forall f x s, compatb f ->
-    multiplicity x (filter f s) = if f x (multiplicity x s) then multiplicity x s else 0.
+Corollary nfilter_spec : forall f x s, compatb f ->
+    multiplicity x (nfilter f s) = if f x (multiplicity x s) then multiplicity x s else 0.
 Proof.
-intros f x s Hf. unfold filter.
+intros f x s Hf. unfold nfilter.
 destruct (multiplicity x s) eqn:Hin.
-  rewrite filter_spec_out.
+  rewrite nfilter_spec_out.
     now destruct (f x 0); apply empty_spec.
     unfold In. omega.
-  rewrite filter_spec_In.
+  rewrite nfilter_spec_In.
     now rewrite empty_spec, Hin, plus_0_r.
     assumption.
     unfold In. rewrite Hin. omega.
+Qed.
+
+
+Theorem filter_nfilter : forall f s, filter f s [=] nfilter (fun x _ => f x) s.
+Proof. now unfold filter. Qed.
+
+Corollary filter_spec : forall f x s, Proper (E.eq ==> Logic.eq) f ->
+    multiplicity x (filter f s) = if f x then multiplicity x s else 0.
+Proof.
+intros f x s Hf. rewrite filter_nfilter, nfilter_spec.
+- reflexivity.
+- repeat intro. now apply Hf.
 Qed.
 
 
@@ -699,12 +713,12 @@ Corollary exists_spec : forall f s, compatb f ->
 Proof. intros. unfold exists_. rewrite exists_spec_aux; intuition discriminate. Qed.
 
 
-Definition partition_fun f := fun x n acc =>
+Definition npartition_fun f := fun x n acc =>
          if f x (Pos.to_nat n) : bool
          then (add x (Pos.to_nat n) (fst acc), snd acc)
          else (fst acc, add x (Pos.to_nat n) (snd acc)).
 
-Lemma fold_partition_fst_out_list : forall f x n l s12,
+Lemma fold_npartition_fst_out_list : forall f x n l s12,
   ~InA (@M.eq_key positive) (x, n) l -> NoDupA (@M.eq_key _) l ->
   multiplicity x
   (fst
@@ -722,7 +736,7 @@ intros f x n l s12 Hin Hdup. revert s12. induction l as [| [y m] l]; intros s12;
     now inversion_clear Hdup.
 Qed.
 
-Lemma partition_spec_fst_In : forall f (s : t) (s12 : t * t) x, compatb f -> In x s ->
+Lemma npartition_spec_fst_In : forall f (s : t) (s12 : t * t) x, compatb f -> In x s ->
   multiplicity x (fst (M.fold (fun x n acc =>
          if f x (Pos.to_nat n) : bool
          then (add x (Pos.to_nat n) (fst acc), snd acc)
@@ -738,8 +752,8 @@ induction (M.bindings s); simpl; intros [s1 s2]; simpl in Hs.
 * destruct a as [y m].
   destruct (Meq_dec (x, Pos.of_nat (multiplicity x s)) (y, m)) as [Heq | Hneq].
   + destruct Heq as [H1 H2]. simpl in H1, H2 |- *. rewrite H1 in *. subst m.
-    rewrite (fold_partition_fst_out_list f _ (Pos.of_nat (multiplicity y s))).
-    - unfold partition_fun. rewrite Nat2Pos.id; try omega.
+    rewrite (fold_npartition_fst_out_list f _ (Pos.of_nat (multiplicity y s))).
+    - unfold npartition_fun. rewrite Nat2Pos.id; try omega.
       destruct (f y (multiplicity y s)) eqn:Htest; simpl.
         rewrite add_same, H1. now apply plus_comm.
         now rewrite H1.
@@ -758,12 +772,12 @@ induction (M.bindings s); simpl; intros [s1 s2]; simpl in Hs.
     - elim Hneq. destruct H. split. assumption. simpl in *. now rewrite H0, Pos2Nat.id.
     - inversion_clear Hdup. assert (Hxy : ~E.eq x y).
       { intro Habs. apply H0. now apply (eq_key_elt_eq_key_weak_In _ x y (multiplicity x s)). }
-      rewrite IHl; try assumption. simpl. unfold partition_fun.
+      rewrite IHl; try assumption. simpl. unfold npartition_fun.
       destruct (f x (multiplicity x s)), (f y (Pos.to_nat m));
       reflexivity || simpl; rewrite add_other; reflexivity || now auto.
 Qed.
 
-Lemma partition_spec_fst_out : forall f s s12 x, ~In x s ->
+Lemma npartition_spec_fst_out : forall f s s12 x, ~In x s ->
   multiplicity x (fst (M.fold (fun x n acc =>
          if f x (Pos.to_nat n) : bool
          then (add x (Pos.to_nat n) (fst acc), snd acc)
@@ -776,24 +790,24 @@ assert (Hs : forall n, ~(InA (@M.eq_key_elt _) (x, n) (M.bindings s))).
 revert s'. induction (M.bindings s) as [| [y m] l]; intro s'; simpl.
   reflexivity.
   assert ( Hxy : ~E.eq x y). { intro Habs. apply (Hs m). left. now split. }
-  rewrite IHl. unfold partition_fun. destruct (f y (Pos.to_nat m)). apply add_other. now auto. reflexivity.
+  rewrite IHl. unfold npartition_fun. destruct (f y (Pos.to_nat m)). apply add_other. now auto. reflexivity.
   intros n Habs. apply (Hs n). now right.
 Qed.
 
-Corollary partition_spec_fst : forall f s, compatb f -> fst (partition f s) [=] filter f s.
+Corollary npartition_spec_fst : forall f s, compatb f -> fst (npartition f s) [=] nfilter f s.
 Proof.
-intros f s Hf x. unfold partition. rewrite filter_spec; trivial.
+intros f s Hf x. unfold npartition. rewrite nfilter_spec; trivial.
 destruct (multiplicity x s) eqn:Hin.
-  fold partition_fun. rewrite partition_spec_fst_out.
+  rewrite npartition_spec_fst_out.
     now destruct (f x 0); apply empty_spec.
     unfold In. omega.
-  rewrite partition_spec_fst_In.
+  rewrite npartition_spec_fst_In.
     now rewrite empty_spec, Hin, plus_0_r.
     assumption.
     unfold In. rewrite Hin. omega.
 Qed.
 
-Lemma fold_partition_snd_out_list : forall f x n l s12,
+Lemma fold_npartition_snd_out_list : forall f x n l s12,
   ~InA (@M.eq_key positive) (x, n) l -> NoDupA (@M.eq_key _) l ->
   multiplicity x
   (snd
@@ -812,7 +826,7 @@ intros f x n l s12 Hin Hdup. revert s12. induction l as [| [y m] l]; intros s12;
     now inversion_clear Hdup.
 Qed.
 
-Lemma partition_spec_snd_In : forall f (s : t) (s12 : t * t) x, compatb f -> In x s ->
+Lemma npartition_spec_snd_In : forall f (s : t) (s12 : t * t) x, compatb f -> In x s ->
   multiplicity x
   (snd
      (M.fold
@@ -831,7 +845,7 @@ induction (M.bindings s); simpl; intros [s1 s2]; simpl in Hs.
 * destruct a as [y m].
   destruct (Meq_dec (x, Pos.of_nat (multiplicity x s)) (y, m)) as [Heq | Hneq].
   + destruct Heq as [H1 H2]. simpl in H1, H2 |- *. rewrite H1 in *. subst m.
-    rewrite (fold_partition_snd_out_list f _ (Pos.of_nat (multiplicity y s))).
+    rewrite (fold_npartition_snd_out_list f _ (Pos.of_nat (multiplicity y s))).
     - rewrite Nat2Pos.id; try omega.
       destruct (f y (multiplicity y s)) eqn:Htest; simpl.
         now rewrite H1.
@@ -856,7 +870,7 @@ induction (M.bindings s); simpl; intros [s1 s2]; simpl in Hs.
       reflexivity || simpl; rewrite add_other; reflexivity || now auto.
 Qed.
 
-Lemma partition_spec_snd_out : forall f s s12 x, ~In x s ->
+Lemma npartition_spec_snd_out : forall f s s12 x, ~In x s ->
   multiplicity x
   (snd
      (M.fold
@@ -877,18 +891,39 @@ revert s'. induction (M.bindings s) as [| [y m] l]; intro s'; simpl.
   intros n Habs. apply (Hs n). now right.
 Qed.
 
-Corollary partition_spec_snd : forall f s, compatb f -> snd (partition f s) [=] filter (fun x n => negb (f x n)) s.
+Corollary npartition_spec_snd : forall f s, compatb f -> snd (npartition f s) [=] nfilter (fun x n => negb (f x n)) s.
 Proof.
-intros f s Hf x. unfold partition. rewrite filter_spec.
+intros f s Hf x. unfold npartition. rewrite nfilter_spec.
 destruct (multiplicity x s) eqn:Hin.
-  rewrite partition_spec_snd_out.
+  rewrite npartition_spec_snd_out.
     now destruct (f x 0); apply empty_spec.
     unfold In. omega.
-  rewrite partition_spec_snd_In.
+  rewrite npartition_spec_snd_In.
     rewrite empty_spec, Hin, plus_0_r. now destruct (f x (S n)).
     assumption.
     unfold In. rewrite Hin. omega.
     intros ? ? Heq ? ? ?. subst. now rewrite Heq.
+Qed.
+
+Theorem partition_npartition_fst : forall f s, fst (partition f s) [=] fst (npartition (fun x _ => f x) s).
+Proof. now unfold partition. Qed.
+
+Theorem partition_npartition_snd : forall f s, snd (partition f s) [=] snd (npartition (fun x _ => f x) s).
+Proof. now unfold partition. Qed.
+
+Corollary partition_spec_fst : forall f s, Proper (E.eq ==> Logic.eq) f -> fst (partition f s) [=] filter f s.
+Proof.
+intros f s Hf. rewrite partition_npartition_fst, npartition_spec_fst.
+- reflexivity.
+- repeat intro. now apply Hf.
+Qed.
+
+Corollary partition_spec_snd : forall f s, Proper (E.eq ==> Logic.eq) f ->
+  snd (partition f s) [=] filter (fun x => negb (f x)) s.
+Proof.
+intros f s Hf. rewrite partition_npartition_snd, npartition_spec_snd.
+- reflexivity.
+- repeat intro. now apply Hf.
 Qed.
 
 Instance fold_compat A (eqA : A -> A -> Prop) `{Equivalence A eqA} : forall f,
@@ -908,6 +943,20 @@ rewrite fold_left_symmetry_PermutationA.
   - eapply NoDupA_strengthen; try apply M.bindings_spec2w. now intros [? ?] [? ?] [? ?].
   - clear -Hs. intros [x n]. do 2 rewrite Melements_multiplicity. now rewrite Hs.
 + assumption.
+Qed.
+
+
+(** Specifics about ordering of elements *)
+Definition lt_elt (xn yp : elt * nat) := E.lt (fst xn) (fst yp).
+
+Theorem elements_Sorted : forall s, Sorted lt_elt (elements s).
+Proof.
+intros s. unfold elements. assert (Hsorted := M.bindings_spec2 s).
+induction (M.bindings s).
++ constructor.
++ simpl. inversion_clear Hsorted. constructor.
+  - now apply IHl.
+  - induction H0; constructor; assumption.
 Qed.
 
 End FMultisets.

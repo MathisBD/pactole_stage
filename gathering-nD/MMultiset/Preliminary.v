@@ -708,3 +708,6 @@ Proof. intros [| n] [| m]; intuition. discriminate. Qed.
 
 Lemma max_is_0 : forall n m, max n m = 0 <-> n = 0 /\ m = 0.
 Proof. intros [| n] [| m]; intuition; discriminate. Qed.
+
+Lemma Bleb_refl : forall x, Bool.leb x x.
+Proof. intros [|]; simpl; auto. Qed.
