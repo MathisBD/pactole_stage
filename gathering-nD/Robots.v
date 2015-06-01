@@ -336,6 +336,10 @@ Module Type Robots(N : Size).
   Parameter Gnames_NoDup : NoDup Gnames.
   Parameter Bnames_NoDup : NoDup Bnames.
   Parameter names_NoDup : NoDup names.
+  
+  Parameter Gnames_length : length Gnames = N.nG.
+  Parameter Bnames_length : length Bnames = N.nB.
+  Parameter names_length : length names = N.nG + N.nB.
 End Robots.
 
 Module Make(N : Size) <: Robots(N).
@@ -390,5 +394,17 @@ Module Make(N : Size) <: Robots(N).
     - destruct HinA as [? [? ?]], HinB as [? [? ?]]. subst. discriminate.
     - now repeat intro; subst.
     - now repeat intro; subst.
+  Qed.
+  
+  Lemma Gnames_length : length Gnames = N.nG.
+  Proof. unfold Gnames, Internals.Gnames. apply Internals.fin_map_length. Qed.
+  
+  Lemma Bnames_length : length Bnames = N.nB.
+  Proof. unfold Bnames, Internals.Bnames. apply Internals.fin_map_length. Qed.
+  
+  Lemma names_length : length names = N.nG + N.nB.
+  Proof.
+  unfold names, Internals.names. rewrite app_length, map_length, map_length.
+  fold Gnames Bnames. now rewrite Gnames_length, Bnames_length.
   Qed.
 End Make.

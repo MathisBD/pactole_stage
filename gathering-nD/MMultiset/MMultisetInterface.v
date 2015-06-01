@@ -123,10 +123,11 @@ Module Type FMultisetsOn (E : DecidableType).
   Definition For_all (P : elt -> nat -> Prop) s := forall x, In x s -> P x (multiplicity x s).
   Definition Exists (P : elt -> nat -> Prop) s := exists x, In x s /\ P x (multiplicity x s).
 
-  Global Notation "s  [=]  t" := (eq s t) (at level 70, no associativity).
-  Global Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity).
+  Global Notation "s  [=]  t" := (eq s t) (at level 70, no associativity, only parsing).
+  Global Notation "m1  ≡  m2" := (eq m1 m2) (at level 70).
+  Global Notation "s  [<=]  t" := (Subset s t) (at level 70, no associativity, only parsing).
+  Global Notation "m1  ⊆  m2" := (Subset m1 m2) (at level 70).
   Global Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-  (* TODO: add utf8 notations *)
 
   (** ** Specifications of set operators *)
 
@@ -148,8 +149,8 @@ Module Type FMultisetsOn (E : DecidableType).
   Parameter singleton_other : forall x y n, ~E.eq y x -> (singleton x n)[y] = 0.
   Parameter union_spec : forall x s s', (union s s')[x] = s[x] + s'[x].
   Parameter inter_spec : forall x s s', (inter s s')[x] = min s[x] s'[x].
-  Parameter diff_spec : forall x s s', multiplicity x (diff s s') = s[x] - s'[x].
-  Parameter lub_spec : forall x s s', multiplicity x (lub s s') = max s[x] s'[x].
+  Parameter diff_spec : forall x s s', (diff s s')[x] = s[x] - s'[x].
+  Parameter lub_spec : forall x s s', (lub s s')[x] = max s[x] s'[x].
   Parameter fold_spec : forall (A : Type) s (i : A) (f : elt -> nat -> A -> A),
     fold f s i = fold_left (fun acc xn => f (fst xn) (snd xn) acc) (elements s) i.
   Parameter cardinal_spec : forall s, cardinal s = fold (fun x n acc => n + acc) s 0.
@@ -205,5 +206,3 @@ Module Type Sord (E : OrderedType).
   Parameter compare_spec : forall m1 m2, CompSpec eq lt m1 m2 (compare m1 m2).
 *)
 End Sord.
-
-Print Module Type Sord.

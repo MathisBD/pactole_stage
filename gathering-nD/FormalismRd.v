@@ -33,7 +33,8 @@ Module Pos := Spect.Pos.
 
 (** ** Programs for good robots *)
 
-
+(* TODO: put similarities into a separate file, with definition for the usual ones:
+   translation, homothecy, rotation, symmetry, ... *)
 Record bijection (T : Type) eqT (Heq : @Equivalence T eqT) := {
   section :> T → T;
   retraction : T → T;
@@ -143,6 +144,8 @@ Record robogram := {
   pgm :> Spect.t → Location.t;
   pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
 
+Global Existing Instance pgm_compat.
+
 Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
 
 Instance req_equiv : Equivalence req.
@@ -162,6 +165,9 @@ Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
     | None, Some _ | Some _, None => False
     | Some x, Some y => eqT x y
   end.
+
+Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
+Proof. intros T R HR [x |]; simpl; auto. Qed.
 
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split.
@@ -560,7 +566,7 @@ Lemma execute_tail : forall (r : robogram) (d : demon) (pos : Pos.t),
   execution_tail (execute r d pos) = execute r (demon_tail d) (round r (demon_head d) pos).
 Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
 
-Theorem execute_compat : Proper (req ==> deq ==> Pos.eq ==> eeq) execute.
+Instance execute_compat : Proper (req ==> deq ==> Pos.eq ==> eeq) execute.
 Proof.
 intros r1 r2 Hr.
 cofix proof. constructor. simpl. assumption.

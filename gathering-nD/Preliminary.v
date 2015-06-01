@@ -1114,6 +1114,26 @@ Proof. intros A l. rewrite <- inclA_Leibniz. apply (inclA_nil _). Qed.
 Corollary NoDup_dec {A} : (forall x y : A, {x = y} + {~x = y}) -> forall l : list A, {NoDup l} + {~NoDup l}.
 Proof. intros eq_dec l. destruct (NoDupA_dec _ eq_dec l); rewrite NoDupA_Leibniz in *; auto. Qed.
 
+(** Induction on first and last elements of a list. *)
+
+Lemma first_last_ind_aux {A} : forall P : list A -> Prop, P nil -> (forall x, P (x :: nil)) ->
+  (forall x y l, P l -> P ((x :: l) ++ (y :: nil))) -> forall l l' : list A, length l' <= length l -> P l'.
+Proof.
+intros P Pnil Pone Prec l. induction l as [| x l]; intros l' Hlength.
+* destruct l'. apply Pnil. simpl in Hlength. omega.
+* destruct l as [| x' l].
+  + destruct l' as [| ? [| ? ?]]; apply Pnil || apply Pone || simpl in Hlength; omega.
+  + destruct l' as [| ? [| ? ?]]; try apply Pnil || apply Pone.
+    destruct (@exists_last _ (a0 :: l0)) as [l2 [ y Hy]]; try discriminate.
+    rewrite Hy. apply Prec. apply IHl. transitivity (length (l2 ++ y :: nil)).
+    - rewrite app_length. omega.
+    - rewrite Hy in Hlength. simpl in *. omega.
+Qed.
+
+Theorem first_last_ind {A} : forall P : list A -> Prop, P nil -> (forall x, P (x :: nil)) ->
+  (forall x y l, P l -> P ((x :: l) ++ (y :: nil))) -> forall l : list A, P l.
+Proof. intros P Pnil Pone Prec l. now apply first_last_ind_aux with l. Qed.
+
 
 (* ******************************* *)
 (** *  The same for real numbers. **)

@@ -93,10 +93,10 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     do n (autorewrite with MFsetdec in *; unfold In in *; trivial; saturate_Einequalities;
             msetdec_step; easy || (try omega)).
   
-  Lemma subrelation_pair_key : subrelation eq_pair eq_elt.
+  Lemma subrelation_pair_elt : subrelation eq_pair eq_elt.
   Proof. now intros [x n] [y p] [H _]. Qed.
   
-  Lemma InA_pair_key : forall x n p l, InA eq_pair (x, n) l -> InA eq_elt (x, p) l.
+  Lemma InA_pair_elt : forall x n p l, InA eq_pair (x, n) l -> InA eq_elt (x, p) l.
   Proof.
   intros x n p l Hin. induction l as [| [y q] l].
   + rewrite InA_nil in Hin. elim Hin.
@@ -105,7 +105,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - right. now apply IHl.
   Qed.
   
-  Lemma InA_key_pair : forall x n l, InA eq_elt (x, n) l -> exists n', InA eq_pair (x, n') l.
+  Lemma InA_elt_pair : forall x n l, InA eq_elt (x, n) l -> exists n', InA eq_pair (x, n') l.
   Proof.
   intros x n l Hin. induction l as [| [y p] l].
   + rewrite InA_nil in Hin. elim Hin.
@@ -123,7 +123,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + right. intros [Habs _]. contradiction.
   Qed.
   
-  Lemma key_dec : forall xn yp, {eq_elt xn yp} + {~eq_elt xn yp}.
+  Lemma elt_dec : forall xn yp, {eq_elt xn yp} + {~eq_elt xn yp}.
   Proof. intros [? ?] [? ?]. apply E.eq_dec. Qed.
   
   
@@ -153,10 +153,10 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   (** **  Compatibility with respect to [eq]  **)
   
-  Instance InA_key_compat : Proper (eq_elt ==> PermutationA eq_pair ==> iff) (InA eq_elt).
+  Instance InA_elt_compat : Proper (eq_elt ==> PermutationA eq_pair ==> iff) (InA eq_elt).
   Proof.
   intros ? ? ? ? ? Hperm. apply (InA_perm_compat _). assumption.
-  revert Hperm. apply PermutationA_subrelation_compat; trivial. apply subrelation_pair_key.
+  revert Hperm. apply PermutationA_subrelation_compat; trivial. apply subrelation_pair_elt.
   Qed.
   
   Instance In_compat : Proper (E.eq ==> eq ==> iff) In.
@@ -1251,20 +1251,20 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Theorem elements_In : forall x n m, InA eq_elt (x, n) (elements m) <-> In x m.
   Proof.
   intros x n m. split; intro H.
-  + apply InA_key_pair in H. destruct H as [p Hp]. simpl in Hp. rewrite elements_spec in Hp.
+  + apply InA_elt_pair in H. destruct H as [p Hp]. simpl in Hp. rewrite elements_spec in Hp.
     destruct Hp as [Heq Hpos]. unfold In. simpl in *. now subst.
-  + apply InA_pair_key with (multiplicity x m). rewrite elements_spec. split; trivial.
+  + apply InA_pair_elt with (multiplicity x m). rewrite elements_spec. split; trivial.
   Qed.
   
-  Lemma elements_key_strengthen : forall x n m,
+  Lemma elements_elt_strengthen : forall x n m,
     InA eq_elt (x, n) (elements m) -> InA eq_pair (x, multiplicity x m) (elements m).
   Proof. intros ? ? ? Hin. rewrite elements_spec. simpl. rewrite elements_In in Hin. intuition. Qed.
   
   Theorem elements_eq_equiv : forall m₁ m₂, equivlistA eq_pair (elements m₁) (elements m₂) <-> m₁ [=] m₂.
   Proof.
   intros m₁ m₂. split; intro H.
-  + assert (Hdup₁ := NoDupA_strengthen subrelation_pair_key (elements_NoDupA m₁)).
-    assert (Hdup₂ := NoDupA_strengthen subrelation_pair_key (elements_NoDupA m₂)).
+  + assert (Hdup₁ := NoDupA_strengthen subrelation_pair_elt (elements_NoDupA m₁)).
+    assert (Hdup₂ := NoDupA_strengthen subrelation_pair_elt (elements_NoDupA m₂)).
     apply (NoDupA_equivlistA_PermutationA _) in H; trivial. clear Hdup₁ Hdup₂.
     intro x. destruct (multiplicity x m₂) eqn:Hm₂.
     - assert (Hin : forall n, ~InA eq_pair (x, n) (elements m₂)).
@@ -1293,7 +1293,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - specialize (Hm x). omega.
   Qed.
   
-  Lemma elements_key_subset : forall xn m₁ m₂,
+  Lemma elements_elt_subset : forall xn m₁ m₂,
     m₁ [<=] m₂ -> InA eq_elt xn (elements m₁) -> InA eq_elt xn (elements m₂).
   Proof. intros [? ?] * ?. do 2 rewrite elements_In. now apply In_sub_compat. Qed.
   
@@ -1399,14 +1399,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Lemma elements_remove2 : forall x n m, n < multiplicity x m ->
     PermutationA eq_pair (elements (remove x n m))
-                         ((x, multiplicity x m - n) :: removeA key_dec (x, multiplicity x m) (elements m)).
+                         ((x, multiplicity x m - n) :: removeA elt_dec (x, multiplicity x m) (elements m)).
   Proof.
   intros x n m Hn. apply (NoDupA_equivlistA_PermutationA _).
   + apply (NoDupA_strengthen _ (elements_NoDupA _)).
   + constructor.
-    - intro Habs. eapply InA_pair_key in Habs. rewrite removeA_InA_iff in Habs; refine _.
+    - intro Habs. eapply InA_pair_elt in Habs. rewrite removeA_InA_iff in Habs; refine _.
       destruct Habs as [_ Habs]. now elim Habs.
-    - eapply (NoDupA_strengthen subrelation_pair_key). apply removeA_NoDupA, elements_NoDupA; refine _.
+    - eapply (NoDupA_strengthen subrelation_pair_elt). apply removeA_NoDupA, elements_NoDupA; refine _.
   + intros [y p]. rewrite elements_remove, elements_spec. simpl. intuition.
     - rewrite H. left. split. compute. reflexivity. assumption.
     - right. rewrite removeA_InA_iff_strong; refine _. split; trivial.
@@ -1414,7 +1414,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - { destruct (E.eq_dec y x) as [Heq | Heq].
         + inversion_clear H.
           - left. destruct H0. repeat split; auto. hnf in *. simpl in *. omega.
-          - apply (InA_pair_key (multiplicity x m)) in H0. rewrite Heq, removeA_InA in H0; refine _.
+          - apply (InA_pair_elt (multiplicity x m)) in H0. rewrite Heq, removeA_InA in H0; refine _.
             destruct H0 as [_ Habs]. elim Habs. reflexivity.
         + right. split; trivial. inversion_clear H.
           - elim Heq. destruct H0. auto.
@@ -1486,7 +1486,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       rewrite IHl in Hel. destruct Hel as [m Hm]. exists (add x n m). symmetry. rewrite Hm. apply elements_add_out.
         now inversion_clear Hpos.
         inversion_clear Hdup. rewrite <- support_spec, support_elements. intro Habs. apply H.
-        rewrite <- Hm in Habs. eapply InA_pair_key. apply Habs.
+        rewrite <- Hm in Habs. eapply InA_pair_elt. apply Habs.
     - destruct H as [m Hperm]. rewrite Hperm. apply elements_is_elements.
   Qed.
   
@@ -1500,7 +1500,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     apply IHl in Hel. destruct Hel as [m Hm]. exists (add x n m). symmetry. rewrite Hm. apply elements_add_out.
     - now inversion_clear Hpos.
     - inversion_clear Hdup. rewrite <- support_spec, support_elements. intro Habs. apply H.
-      rewrite <- Hm in Habs. eapply InA_pair_key. apply Habs.
+      rewrite <- Hm in Habs. eapply InA_pair_elt. apply Habs.
   Defined.
   
   (** [from_elements] builds back a multiset from its elements **)
@@ -1577,13 +1577,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + simpl. inversion_clear Hin.
     - destruct H as [Hx Hn]. compute in Hx, Hn. inversion Hl. now rewrite Hx, add_same, (@from_elements_out y p).
     - inversion_clear Hl. rewrite add_other. now apply IHl.
-      intro Habs. apply H0. apply InA_pair_key with n. now rewrite <- Habs.
+      intro Habs. apply H0. apply InA_pair_elt with n. now rewrite <- Habs.
   Qed.
   
   Lemma from_elements_elements : forall m, from_elements (elements m) [=] m.
   Proof.
   intros m x. destruct (multiplicity x m) eqn:Hn.
-  - apply from_elements_out with 0. intro Habs. apply InA_key_pair in Habs.
+  - apply from_elements_out with 0. intro Habs. apply InA_elt_pair in Habs.
     destruct Habs as [n Habs]. rewrite elements_spec in Habs. simpl in Habs. omega.
   - apply from_elements_in. apply elements_NoDupA. rewrite elements_spec. simpl. omega.
   Qed.
@@ -1630,8 +1630,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     In x (from_elements l) <-> forall n, InA eq_elt (x, n) l.
   Proof.
   intros x l Hl. rewrite from_elements_In. split; intro Hin.
-  + destruct Hin as [n [Hin Hn]]. intro m. revert Hin. apply InA_pair_key.
-  + specialize (Hin 0). apply InA_key_pair in Hin. destruct Hin as [n Hin].
+  + destruct Hin as [n [Hin Hn]]. intro m. revert Hin. apply InA_pair_elt.
+  + specialize (Hin 0). apply InA_elt_pair in Hin. destruct Hin as [n Hin].
     exists n. split; trivial. destruct Hl as [_ Hl]. rewrite Forall_forall in Hl.
     rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heq Hnp] Hin]].
     compute in Hnp. subst. change p with (snd (y, p)). now apply Hl.
@@ -1646,12 +1646,12 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     + assert (Hin : multiplicity y (from_elements l) = 0).
       { setoid_replace (multiplicity y (from_elements l) = 0) with (~In y (from_elements l)) by (unfold In; omega).
         destruct l as [| z l]; try apply In_empty. inversion_clear Hnodup.
-        rewrite from_elements_In; trivial. intros [q [Hin Hq]]. apply H. revert Hin. apply InA_pair_key. }
+        rewrite from_elements_In; trivial. intros [q [Hin Hq]]. apply H. revert Hin. apply InA_pair_elt. }
       rewrite Heq, add_same, Hin. simpl. split; intro H.
         subst. now repeat left.
         inversion_clear H.
           destruct H0; auto.
-          inversion_clear Hnodup. elim H. revert H0. apply InA_pair_key.
+          inversion_clear Hnodup. elim H. revert H0. apply InA_pair_elt.
     + rewrite add_other; trivial. destruct l as [| z l].
       - simpl. rewrite empty_spec. intuition; try omega.
         inversion_clear H. destruct H0; try contradiction. rewrite InA_nil in H0. elim H0.
@@ -1684,7 +1684,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
                          ((x, n + multiplicity x m) :: removeA pair_dec (x, multiplicity x m) (elements m)).
   Proof.
   intros x n m Hin.
-  rewrite <- (elements_In x 0) in Hin. apply elements_key_strengthen, PermutationA_split in Hin; refine _.
+  rewrite <- (elements_In x 0) in Hin. apply elements_elt_strengthen, PermutationA_split in Hin; refine _.
   destruct Hin as [l' Hin]. rewrite <- (from_elements_elements m), Hin at 1.
   assert (Hl' : is_elements ((x, multiplicity x m) :: l')). { rewrite <- Hin. apply elements_is_elements. }
   assert (Hout : ~InA eq_elt (x, (multiplicity x m)) l'). { apply proj1 in Hl'. now inversion_clear Hl'. }
@@ -1694,7 +1694,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     destruct (pair_dec (x, multiplicity x m) (x, multiplicity x m)) as [? | Habs] eqn:Hcase; try now elim Habs.
     Fail rewrite Hcase. (* BUG: pair_dec does not reduce *)
     rewrite (make_me_succeed Hcase).
-    rewrite removeA_out; try reflexivity. intro Habs. apply Hout. revert Habs. apply InA_pair_key.
+    rewrite removeA_out; try reflexivity. intro Habs. apply Hout. revert Habs. apply InA_pair_elt.
   + apply proj2 in Hl'. inversion_clear Hl'. simpl in *. omega.
   + apply is_elements_cons_inv in Hl'. rewrite <- elements_In, elements_from_elements; eauto.
   Qed.
@@ -1711,7 +1711,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Lemma from_elements_remove_all : forall x n l,
-    from_elements (removeA key_dec (x, n) l) [=] remove_all x (from_elements l)
+    from_elements (removeA elt_dec (x, n) l) [=] remove_all x (from_elements l)
   *)
   
   (** **  Results about [fold]  **)
@@ -1885,7 +1885,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   assert (Hadd' : forall l x n, is_elements l -> n > 0 -> ~InA eq_elt (x, n) l -> P' l -> P' ((x, n) :: l)).
   { intros l x n Hl Hn Hin. apply is_elements_build in Hl. destruct Hl as [m Hm]. rewrite Hm in Hin.
     assert (Hx : ~In x m).
-    { rewrite <- support_spec, support_elements. intro Habs. apply Hin. eapply InA_pair_key. eassumption. }
+    { rewrite <- support_spec, support_elements. intro Habs. apply Hin. eapply InA_pair_elt. eassumption. }
     intro Hl. apply (HP' _ _ Hm), Pequiv2, Hadd with m x n, Pequiv1 in Hl; trivial. revert Hl.
     apply HP'. etransitivity. now apply elements_add_out. now apply PermutationA_cons. }
   (* The real proof starts. *)
@@ -2351,10 +2351,10 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       PermutationA eq_pair (elements (nfilter f m)) (List.filter (fun xn => f (fst xn) (snd xn)) (elements m)).
     Proof.
     intro m. apply NoDupA_equivlistA_PermutationA; refine _.
-    * eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_key.
+    * eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_elt.
     * apply NoDupA_filter_compat.
       + intros [x n] [y p] [? ?]; compute in *. auto.
-      + eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_key.
+      + eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_elt.
     * intros [x n]. split; intro Hin.
       + rewrite elements_spec in Hin. destruct Hin as [Hin Hpos]. simpl in *. subst.
       rewrite filter_InA; simpl in *.
@@ -2380,8 +2380,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     (* BUG?: why does _ not do the job here? (rather than $(assumption)$) *)
       split; simpl.
       + destruct (f x n); trivial. constructor; trivial. intro Hin. apply H.
-        apply InA_key_pair in Hin. destruct Hin as [n' Hin]. simpl in *. rewrite filter_InA in Hin.
-        - destruct Hin. eapply InA_pair_key; eassumption.
+        apply InA_elt_pair in Hin. destruct Hin as [n' Hin]. simpl in *. rewrite filter_InA in Hin.
+        - destruct Hin. eapply InA_pair_elt; eassumption.
         - intros [] [] []. compute in *. auto.
       + destruct (f x n); trivial. now constructor.
     Qed.
@@ -3219,9 +3219,9 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Proof.
   intros f Hf m. rewrite List.Forall_forall. split; intro Hall.
   + intros [x n] Hin. simpl. apply (@In_InA _ eq_pair _) in Hin.
-    assert (In x m). { rewrite <- (elements_In x 0). eapply InA_pair_key; eassumption. }
+    assert (In x m). { rewrite <- (elements_In x 0). eapply InA_pair_elt; eassumption. }
     rewrite elements_spec in Hin. destruct Hin as [? _]. simpl in *. subst. now apply Hall.
-  + intros x Hin. rewrite <- (elements_In x 0) in Hin. apply InA_key_pair in Hin. destruct Hin as [n Hin].
+  + intros x Hin. rewrite <- (elements_In x 0) in Hin. apply InA_elt_pair in Hin. destruct Hin as [n Hin].
     assert (Hin' : exists y, List.In (y, n) (elements m) /\ E.eq y x).
     { rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]]. compute in Heqx, Heqn. subst. now exists y. }
     rewrite elements_spec in Hin. destruct Hin as [Heq Hpos]. simpl in *. subst.
@@ -3399,7 +3399,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Proof.
   intros f Hf m. rewrite List.Exists_exists. split; intro Hm.
   + destruct Hm as [x [Hin Hfx]]. rewrite <- (elements_In x 0) in Hin.
-    apply InA_key_pair in Hin. destruct Hin as [n Hin].
+    apply InA_elt_pair in Hin. destruct Hin as [n Hin].
     assert (n = multiplicity x m). { rewrite elements_spec in Hin. intuition. }
     rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]].
     compute in Heqx, Heqn. subst. rewrite Heqx in *. clear Heqx x. subst.

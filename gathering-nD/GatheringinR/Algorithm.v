@@ -26,338 +26,27 @@ Require Import MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
 Import Permutation.
+Require Import Definitions.
 
 
 Set Implicit Arguments.
-Close Scope R_scope.
 
 
-(** R as a vector space over itself. *)
-
-Module Rdef : MetricSpaceDef with Definition t := R
-                             with Definition eq := @Logic.eq R
-                             with Definition eq_dec := Rdec
-                             with Definition origin := 0%R
-                             with Definition dist := fun x y => Rabs (x - y)
-                             with Definition add := Rplus
-                             with Definition mul := Rmult
-                             with Definition opp := Ropp.
-  
-  Definition t := R.
-  Definition origin := 0%R.
-  Definition eq := @Logic.eq R.
-  Definition dist x y := Rabs (x - y).
-  
-  Definition add := Rplus.
-  Definition mul := Rmult.
-  Definition opp := Ropp.
-  
-  Instance add_compat : Proper (eq ==> eq ==> eq) add.
-  Proof. unfold eq. repeat intro. now subst. Qed.
-  
-  Instance mul_compat : Proper (Logic.eq ==> eq ==> eq) mul.
-  Proof. unfold eq. repeat intro. now subst. Qed.
-  
-  Instance opp_compat : Proper (eq ==> eq) opp.
-  Proof. unfold eq. repeat intro. now subst. Qed.
-  
-  Definition eq_equiv := @eq_equivalence R.
-  Definition eq_dec : forall x y : t, {eq x y} + {~ eq x y} := Rdec.
-  
-  Lemma dist_defined : forall x y : t, dist x y = 0%R <-> eq x y.
-  Proof.
-  intros x y. unfold eq, dist. split; intro Heq.
-  + apply Rminus_diag_uniq. destruct (Rcase_abs (x - y)) as [Hcase | Hcase].
-    - apply Rlt_not_eq in Hcase. apply Rabs_no_R0 in Hcase. contradiction.
-    - rewrite <- Heq. symmetry. now apply Rabs_pos_eq, Rge_le.
-  + rewrite (Rminus_diag_eq _ _ Heq). apply Rabs_R0.
-  Qed.
-
-  Lemma dist_sym : forall y x : t, dist x y = dist y x.
-  Proof. intros. unfold dist. apply Rabs_minus_sym. Qed.
-  
-  Lemma triang_ineq : forall x y z : t, (dist x z <= dist x y + dist y z)%R.
-  Proof.
-  intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.
-  Qed.
-  
-  Lemma plus_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
-  Proof. unfold eq, add. intros. lra. Qed.
-  
-  Lemma add_comm : forall u v, eq (add u v) (add v u).
-  Proof. unfold eq, add. intros. lra. Qed.
-  
-  Lemma add_origin : forall u, eq (add u origin) u.
-  Proof. unfold eq, add, origin. intros. lra. Qed.
-  
-  Lemma add_opp : forall u, eq (add u (opp u)) origin.
-  Proof. unfold eq, add, opp, origin. intros. lra. Qed.
-  
-  Lemma mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
-  Proof. unfold eq, mul. intros. lra. Qed.
-  
-  Lemma add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Proof. unfold eq, add, mul. intros. lra. Qed.
-  
-  Lemma plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
-  Proof. unfold eq, add, mul. intros. lra. Qed.
-  
-  (** The multiplicative identity is omitted. *)
-End Rdef.
-
-
-Module R := MakeMetricSpace(Rdef).
-
-Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec.
-
-
-(** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
-Ltac Rdec := unfold R.eq_dec, Rdef.eq_dec; repeat
-  match goal with
-    | |- context[Rdec ?x ?x] =>
-        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
-        [clear Heq | exfalso; elim Heq; reflexivity]
-    | |- context[Rdec 1 0] =>
-        let Heq := fresh "Heq" in destruct (Rdec 1 0) as [Heq | Heq];
-        [now elim R1_neq_R0 | clear Heq]
-    | H : context[Rdec ?x ?x] |- _ =>
-        let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
-        [clear Heq | exfalso; elim Heq; reflexivity]
-    | H : ?x <> ?x |- _ => elim H; reflexivity
-  end.
-
-Ltac Rdec_full :=
-  unfold R.eq_dec, Rdef.eq_dec;
-  match goal with
-    | |- context[Rdec ?x ?y] =>
-      let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
-      destruct (Rdec x y) as [Heq | Hneq]
-    | _ => fail
-  end.
-
-Ltac Rabs :=
-  match goal with
-    | Hx : ?x <> ?x |- _ => now elim Hx
-    | Heq : ?x = ?y, Hneq : ?y <> ?x |- _ => symmetry in Heq; contradiction
-    | _ => contradiction
-  end.
-
-
-Ltac Rdec_aux H :=
-  match type of H with
-    | context[Rdec ?x ?y] =>
-      let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
-      destruct (Rdec x y) as [Heq | Hneq]
-    | _ => fail
-  end.
-
-
-(** *  The Gathering Problem  **)
-
-(** Vocabulary: we call a [location] the coordinate of a robot. We
-    call a [configuration] a function from robots to position. An
-    [execution] is an infinite (coinductive) stream of [configuration]s. A
-    [demon] is an infinite stream of [demonic_action]s. *)
-
-Module GatheringinR.
-
-(** **  Framework of the correctness proof: a finite set with at least two elements  **)
-
-Parameter nG: nat.
-Axiom size_G : nG >= 2.
-
-Corollary half_size_pos : div2 nG > 0.
-Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
-
-(** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := nG with Definition nB := 0.
-  Definition nG := nG.
-  Definition nB := 0.
-End N.
-
-
-(** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(R)(N).
-
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
-Notation "!!" := Spect.from_config (at level 1).
-Add Search Blacklist "Spect.M" "Ring".
-
-Module Export Formalism := Formalism(R)(N)(Spect).
-Close Scope R_scope.
-
-(** [gathered_at pos pt] means that in position [pos] all good robots
-    are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : R) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
-
-(** [Gather pt e] means that at all rounds of (infinite) execution
-    [e], robots are gathered at the same position [pt]. *)
-CoInductive Gather (pt: R) (e : execution) : Prop :=
-  Gathering : gathered_at pt (execution_head e) -> Gather pt (execution_tail e) -> Gather pt e.
-
-(** [WillGather pt e] means that (infinite) execution [e] is *eventually* [Gather]ed. *)
-Inductive WillGather (pt : R) (e : execution) : Prop :=
-  | Now : Gather pt e -> WillGather pt e
-  | Later : WillGather pt (execution_tail e) -> WillGather pt e.
-
-(** When all robots are on two towers of the same height,
-    there is no solution to the gathering problem.
-    Therefore, we define these positions as [forbidden]. *)
-Definition forbidden (config : Pos.t) :=
-  Nat.Even N.nG /\ let m := Spect.from_config(config) in
-  exists pt1 pt2, ~pt1 = pt2 /\ m[pt1] = Nat.div2 N.nG /\ m[pt2] = Nat.div2 N.nG.
-
-(** [solGathering r d] means that any possible (infinite)
-    execution, generated by demon [d] and robogram [r] and any intial
-    position not [forbidden], will *eventually* be [Gather]ed. *)
-Definition solGathering (r : robogram) (d : demon) :=
-  forall pos, ~forbidden pos -> exists pt : R, WillGather pt (execute r d pos).
-
-
-(** **  Some results about R with respect to distance and similarities  **)
-
-Open Scope R_scope.
-
-(* A location is determined by distances to 2 points. *)
-Lemma dist_case : forall x y, R.dist x y = x - y \/ R.dist x y = y - x.
-Proof.
-unfold R.dist, Rdef.dist. intros x y. destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
-- apply Rabs_pos_eq in Hle. lra.
-- apply Rabs_left in Hlt. lra.
-Qed.
-
-Lemma dist_locate : forall x y k, R.dist x y = k -> x = y + k \/ x = y - k.
-Proof. intros x y k ?. subst. assert (Hcase := dist_case x y). lra. Qed.
-
-Lemma GPS : forall x y z1 z2, x <> y -> R.dist z1 x = R.dist z2 x -> R.dist z1 y = R.dist z2 y -> z1 = z2.
-Proof.
-intros x y z1 z2 Hneq Hx Hy.
-assert (Hcase1 := dist_case z1 x). assert (Hcase2 := dist_case z2 x).
-assert (Hcase3 := dist_case z1 y). assert (Hcase4 := dist_case z2 y).
-lra.
-Qed.
-Arguments GPS x y z1 z2 _ _ _ : clear implicits.
-
-Lemma sim_ratio_non_null : forall sim, sim.(ratio) <> 0%R.
-Proof. apply (sim_ratio_non_null R1_neq_R0). Qed.
-
-(* Not true when the metric space has dimension 0, we need at least 2 different points. *)
-Lemma sim_ratio_pos : forall sim, (0 < sim.(ratio))%R.
-Proof. apply (sim_ratio_pos R1_neq_R0). Qed.
-
-Lemma similarity_injective : forall sim : similarity, injective eq eq sim.
-Proof. apply (similarity_injective R1_neq_R0). Qed.
-
-(* A similarity in R is described by its ratio and its center. *)
-Theorem similarity_in_R_case : forall sim,
-  (forall x, sim.(f) x = sim.(ratio) * (x - sim.(center))) \/
-  (forall x, sim.(f) x = - sim.(ratio) * (x - sim.(center))).
-Proof.
-intro sim. assert (Hkpos : 0 < sim.(ratio)) by apply sim_ratio_pos.
-destruct sim as [f k c Hc Hk]. simpl in *. unfold R.origin, Rdef.origin in Hc.
-destruct (Rdec k 0) as [Hk0 | Hk0].
-* (* if the ratio is 0, the similarity is a constant function. *)
-  left. intro x. subst k. rewrite Rmult_0_l.
-  rewrite <- R.dist_defined. rewrite <- Hc, Hk at 1. ring.
-* assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
-  { specialize (Hk (c + 1) c). rewrite Hc in Hk.
-    assert (H1 : R.dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
-    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) 0) as [Heq | Heq]; rewrite Heq in Hk; lra. }
-  destruct Hc1 as [Hc1 | Hc1].
-  + left. intro x. apply (GPS (f c) (f (c + 1))).
-    - lra.
-    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
-      replace (k * (x - c) - 0) with (k * (x - c)) by ring.
-      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
-      replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
-      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-  + right. intro x. apply (GPS (f c) (f (c + 1))).
-    - lra.
-    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
-      replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
-      rewrite Rabs_mult, (Rabs_left (- k)); lra.
-    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
-      replace (- k * (x - c) - - k) with (- k * (x - (c + 1))) by ring.
-      rewrite Rabs_mult, (Rabs_left (- k)); lra.
-Qed.
-
-Corollary similarity_in_R : forall sim, exists k, (k = sim.(ratio) \/ k = - sim.(ratio))
-  /\ forall x, sim.(f) x = k * (x - sim.(center)).
-Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
-
-
-Corollary inverse_similarity_in_R : forall (sim : similarity) k, k <> 0 ->
-  (forall x, sim x = k * (x - sim.(center))) -> forall x, (sim ⁻¹) x = x / k + sim.(center).
-Proof. intros sim k Hk Hdirect x. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
-
-Lemma sim_compat (sim:similarity) : Proper (R.eq ==> R.eq) sim.
-Proof.
-  repeat intro.
-  rewrite H.
-  reflexivity.
-Qed.
-
-Lemma sim_Minjective : forall (sim : similarity), MMultiset.Preliminary.injective R.eq R.eq sim.
-Proof. apply similarity_injective. Qed.
-
-Hint Immediate sim_compat similarity_injective sim_Minjective.
-
-
-Coercion is_true : bool >-> Sortclass.
-
-Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> B) :=
-  Proper (RA ==> RB) f \/ Proper (RA --> RB) f.
-
-Lemma similarity_increasing : forall k t, 0 <= k -> Proper (Rleb ==> Rleb) (fun x => k * (x - t)).
-Proof. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Rmult_le_compat_l; lra. Qed.
-
-Lemma similarity_decreasing : forall k t, k <= 0 -> Proper (Rleb --> Rleb) (fun x => k * (x - t)).
-Proof.
-repeat intro. hnf in *. unfold flip in *. rewrite Rleb_spec in *. apply Ropp_le_cancel.
-replace (- (k * (y - t))) with ((- k) * (y - t)) by ring.
-replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
-apply Rmult_le_compat_l; lra.
-Qed.
-
-Corollary similarity_monotonic : forall sim, monotonic Rleb Rleb sim.(f).
-Proof.
-intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
-+ left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial.
-  pose (Hratio := sim_ratio_pos sim). lra.
-+ right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
-  assert (Hratio := sim_ratio_pos sim). lra.
-Qed.
+Import GatheringinR.
 
 Lemma similarity_middle : forall (sim : similarity) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
 Proof.
 intros sim x y. destruct (similarity_in_R_case sim) as [Hsim | Hsim];
 repeat rewrite Hsim; unfold R.t, Rdef.t in *; field.
 Qed.
-
-
-(* Notation "'⟦' k ',' t '⟧'" := (similarity k t) (at level 99, format "'⟦' k ','  t '⟧'"). *)
 Close Scope R_scope.
 
-(** **  Some simplifications due to having no byzantine robots  **)
 
-(** [lift_function f g] lifts two renaming functions, one for good and
-    one for bad robots, into a renaming function for any robot. *)
-Definition lift_pos (f : Names.G -> R) : (Names.ident -> R) :=
-  fun id => match id with
-              | Good g => f g
-              | Byz b => Fin.case0 (fun _ => R) b
-            end.
+(* We assume that we have at least two robots. *)
+Axiom size_G : nG >= 2.
 
-(* It would be great to have it as a coercion between G → R and Pos.t,
-   but I do not know how to make it work. *)
-
-Instance lift_pos_compat : Proper ((eq ==> eq) ==> Pos.eq) lift_pos.
-Proof. intros f g Hfg id. hnf. unfold lift_pos. destruct id; try reflexivity. now apply Hfg. Qed.
-
-(** As there is no byzantine robots, a position is caracterized by the locations of good robots only. *)
-Lemma lift_pos_equiv : forall pos : Pos.t, Pos.eq pos (lift_pos (fun g => pos (Good g))).
-Proof. unfold lift_pos. intros pos [g | b]; hnf. reflexivity. now apply Fin.case0. Qed.
+Corollary half_size_pos : div2 nG > 0.
+Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spec_non_nil : forall conf, ~Spect.eq (!! conf) Spect.empty.
@@ -755,12 +444,6 @@ Qed.
 
 (** **  Some properties of [forbidden]  **)
 
-Instance forbidden_invariant : Proper (Pos.eq ==> iff) forbidden.
-Proof.
-intros ? ? Heq. split; intros [HnG [pt1 [pt2 [Hneq Hpt]]]]; split; trivial ||
-exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
-Qed.
-
 Lemma forbidden_even : forall pos, forbidden pos -> Nat.Even nG.
 Proof. now intros pos [? _]. Qed.
 
@@ -786,9 +469,7 @@ rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.s
       now unfold R.eq_dec, Rdef.eq_dec in *; Rdec_full; contradiction || omega.
       now unfold R.eq, Rdef.eq; auto.
 + rewrite Spect.cardinal_add, Spect.cardinal_singleton, Spect.cardinal_from_config.
-  unfold N.nB.
-  replace (Nat.div2 N.nG + Nat.div2 N.nG) with (2 * Nat.div2 N.nG) by lia.
-  rewrite <- Nat.double_twice, plus_0_r. symmetry. apply even_double. now rewrite Even.even_equiv.
+  unfold N.nB. rewrite plus_0_r. now apply even_div2.
 Qed.
 
 Lemma forbidden_injective_invariant : forall f, injective eq eq f ->
@@ -1733,8 +1414,7 @@ destruct (Spect.support (Smax (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
       + apply lt_le_trans with (div2 N.nG); try assumption. apply half_size_pos.
       + auto.
       + eapply lt_le_trans; try apply (sum3_le_total conf Hp Hdiff13 Hdiff23); [].
-        unfold Spect.In in Hpt3_in. rewrite (even_double N.nG), Nat.double_twice. omega.
-        now rewrite Even.even_equiv. }
+        unfold Spect.In in Hpt3_in. rewrite <- (even_div2 HnG). omega. }
     assert (Hmaj' : MajTower_at pt' conf).
     { intros x Hx. apply lt_le_trans with (div2 N.nG); trivial. now apply Hlt. }
     apply (MajTower_at_forever da), Majority_not_forbidden in Hmaj'. contradiction. }
@@ -2229,7 +1909,7 @@ cofix Hind. intros d conf pt Hgather. constructor.
 Qed.
 
 Theorem Gathering_in_R :
-  forall d, Fair d -> solGathering robogram d.
+  forall d, Fair d -> ValidSolGathering robogram d.
 Proof.
 intros d Hfair conf. revert d Hfair. pattern conf.
 apply (well_founded_ind wf_lt_conf). clear conf.
