@@ -114,6 +114,20 @@ induction l; intros n x Hin.
 + destruct n; try now elim Hin. simpl in Hin. apply IHl in Hin. now right.
 Qed.
 
+Lemma In_skipn : forall {A} l l' (pt : A) n, n <= length l -> In pt (skipn n (l ++ pt :: l')).
+Proof.
+intros A l l' pt. generalize (le_refl (length l)). generalize l at -2. induction l; simpl.
+* intros [| x l] Hl [| n] ?; simpl in *; try tauto || omega.
+* intros [| x l''] Hl'' n Hn; simpl in *; try tauto.
+  + destruct n; simpl; tauto || omega.
+  + destruct n; simpl.
+    - right. change (In pt (skipn 0 (l'' ++ pt :: l'))). apply IHl; omega.
+    - apply IHl; omega.
+Qed.
+
+Corollary In_skipn_half : forall {A} l (pt : A), In pt (skipn (Nat.div2 (length l)) (l ++ pt :: nil)).
+Proof. intros. apply In_skipn. apply Nat.div2_decr. omega. Qed.
+
 Lemma right_NoDup : NoDup right.
 Proof.
 unfold right. assert (Hnodup := Names.Gnames_NoDup).
@@ -173,7 +187,7 @@ Definition lift_pos {A} (pos : Names.G -> A) : Names.ident -> A := fun id =>
   end.
 
 (** Names of robots only contains good robots. *)
-Lemma names_Gnames : Spect.Names.names = map Good Spect.Names.Gnames.
+Lemma names_Gnames : Spect.Names.names = map (@Good Spect.Names.G Spect.Names.B) Spect.Names.Gnames.
 Proof.
 unfold Spect.Names.names, Spect.Names.Internals.names, Spect.Names.Gnames.
 cut (Spect.Names.Internals.Bnames = nil).
@@ -217,7 +231,33 @@ Proof. Admitted.
    that is, one in left and one in right.*)
 
 Theorem spect_pos1 : Spect.eq (!! pos1) spectrum.
-Proof. Admitted.
+Proof.
+intro pt. unfold spectrum. assert (Hlength := Names.Gnames_length).
+assert (Hleft := eq_refl left). unfold left at 2 in Hleft.
+assert (Hright := eq_refl right). unfold right at 2 in Hright.
+rewrite Spect.from_config_spec, Spect.Pos.list_spec. rewrite names_Gnames. rewrite <- Hlength in *.
+change Names.Gnames with Spect.Names.Gnames in *.
+induction Spect.Names.Gnames using first_last_ind.
+* elim nG_non_0. now symmetry.
+* elim even_nG. intros ? Habs. change nG with N.nG in Habs.
+  rewrite <- Hlength in Habs. simpl in Habs. omega.
+* rewrite app_length, plus_comm in *. cbn in *.
+  assert (Hx : In x left). { rewrite Hleft. now left. }
+  assert (Hy : In y right). { rewrite Hright. apply In_skipn_half. }
+  repeat rewrite map_app. cbn.
+  destruct (left_right_dec x); try now elim (left_right_exclusive x).
+  destruct (left_right_dec y); try now elim (left_right_exclusive y).
+  change identifier with Spect.Names.ident in *. change (Spect.Names.Internals.G) with (Spect.Names.G).
+  rewrite countA_occ_app. rewrite IHl.
+  + Rdec_full; cbn; subst; Rdec || Rdec_full; subst.
+    - subst. repeat rewrite Spect.add_same, Spect.singleton_other; try now intro Habs; apply R1_neq_R0.
+      simpl. Rdec. now ring_simplify.
+    - repeat rewrite Spect.add_other, Spect.singleton_same; try now intro; apply Hneq. now ring_simplify.
+    - repeat rewrite Spect.add_other, Spect.singleton_other; try intro; auto.
+  + admit. (* Induction hypothesis is not well written *)
+  + admit.
+  + admit.
+Admitted.
 
 Corollary pos1_forbidden : forbidden pos1.
 Proof.
@@ -600,18 +640,18 @@ induction Spect.Names.Gnames as [| pt' | pt1 pt2 l] using first_last_ind; simpl.
     - (* absurd case: first and last elements are the same *)
       exfalso. rewrite <- Heq0 in Heq. symmetry in Heq. apply Rminus_diag_eq in Heq. rewrite Hconfig in Heq.
       -- contradiction.
-      -- simpl. rewrite app_length, plus_comm. simpl. admit.
+      -- simpl. rewrite app_length, plus_comm. simpl. apply In_skipn_half.
       -- simpl. rewrite app_length, plus_comm. simpl. now left.
     - (* pt ∈ left *)
-      unfold R.eq_dec, Rdef.eq_dec, Spect.Names.ident, Spect.Names.Internals.ident in Heven'.
-      rewrite Heven'. subst pt. rewrite Hleft.
+      unfold R.eq_dec, Rdef.eq_dec in Heven'. change identifier with Spect.Names.ident in *.
+      change Spect.Names.Internals.G with Spect.Names.G. rewrite Heven'. subst pt. rewrite Hleft.
       -- now repeat rewrite Spect.add_same, Spect.singleton_other.
       -- simpl. rewrite app_length, plus_comm. simpl. now left.
     - (* pt ∈ right *)
-      unfold R.eq_dec, Rdef.eq_dec, Spect.Names.ident, Spect.Names.Internals.ident in Heven'.
-      rewrite Heven'. subst pt. rewrite Hright.
+      unfold R.eq_dec, Rdef.eq_dec in Heven'. change identifier with Spect.Names.ident in *.
+      change Spect.Names.Internals.G with Spect.Names.G. rewrite Heven'. subst pt. rewrite Hright.
       -- repeat rewrite Spect.add_other, Spect.singleton_same; auto; intro; apply Hdiff; now symmetry.
-      -- simpl. rewrite app_length, plus_comm. simpl. admit.
+      -- simpl. rewrite app_length, plus_comm. simpl. apply In_skipn_half.
     - (* absurd case: pt <> left, right *)
       exfalso. admit.
   + 
@@ -680,7 +720,7 @@ Proof.
 intros ρ Hρ config Hconfig.
 Check dist_forbidden.
 apply (dist_forbidden (d := (1 - move) / ρ)).
-- admit.
+- admit. (* [lra] should be enough *)
 - intros. now apply round_dist2_left.
 Admitted.
 
@@ -876,10 +916,8 @@ destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
 * unfold bad_demon.
   destruct (Rdec move 1) as [Hmove | Hmove].
   + now apply Always_forbidden1.
-  + replace 1 with (/ (pos1 (Good gright) - (pos1 (Good gleft)))).
-    - apply (Always_forbidden2 Hmove R1_neq_R0 pos1); try reflexivity.
-      intros. simpl. destruct (left_right_dec g1), (left_right_dec g2); field || exfalso; eauto.
-    - simpl. destruct (left_right_dec gleft), (left_right_dec gright); field || exfalso; eauto.
+  + apply (Always_forbidden2 Hmove R1_neq_R0 pos1); try reflexivity.
+    intros. simpl. destruct (left_right_dec g1), (left_right_dec g2); field || exfalso; eauto.
 Qed.
 
 End GatheringEven.
