@@ -2,3 +2,8 @@
 *.glob
 *.v.d
 .*.aux
+.coq-native/
+*.v.crashcoqide
+
+makefile.bak
+Makefile.bak
