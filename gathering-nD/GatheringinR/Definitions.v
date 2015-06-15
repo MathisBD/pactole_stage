@@ -241,8 +241,8 @@ Proof.
 intros x y z1 z2 Hneq Hx Hy.
 assert (Hcase1 := dist_case z1 x). assert (Hcase2 := dist_case z2 x).
 assert (Hcase3 := dist_case z1 y). assert (Hcase4 := dist_case z2 y).
-admit.
-Admitted.
+lra.
+Qed.
 Arguments GPS x y z1 z2 _ _ _ : clear implicits.
 
 Lemma sim_ratio_non_null : forall sim, sim.(ratio) <> 0%R.

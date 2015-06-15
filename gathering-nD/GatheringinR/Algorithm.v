@@ -1937,4 +1937,3 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 Qed.
 Print Assumptions Gathering_in_R.
 
-End GatheringinR.
