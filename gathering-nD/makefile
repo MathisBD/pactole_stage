@@ -78,7 +78,8 @@ COQMKTOP?="$(COQBIN)coqmktop"
 #                    #
 ######################
 
-VFILES:=GatheringinR/Algorithm.v\
+VFILES:=GatheringinR2/AlgorithmR2.v\
+  GatheringinR/Algorithm.v\
   GatheringinR/Impossibility.v\
   GatheringinR/SortingR.v\
   GatheringinR/Definitions.v\
