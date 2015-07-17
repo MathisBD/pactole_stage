@@ -13,6 +13,7 @@ Require Import Utf8.
 Require Import Omega.
 Require Import Equalities.
 Require Import Morphisms.
+Require Import RelationPairs.
 Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
@@ -20,7 +21,7 @@ Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import Positions.
 
-
+  
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
@@ -178,46 +179,44 @@ Qed.
 
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
+
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
-  step : Names.ident → option (Location.t → similarity);
-  step_compat : Proper (eq ==> opt_eq (Location.eq ==> sim_eq)) step;
-  step_ratio :  forall id sim c, step id = Some sim -> (sim c).(ratio) <> R0;
-  step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(center) c}.
-(*  spectrum_of : Names.G → (Pos.t → Spec.t);
-  spectrum_ok : forall g, forall pos : Pos.t, Spec.is_ok (spectrum_of g pos) pos;
-  spectrum_exteq : Proper (eq ==> Pos.eq ==> Spec.eq) spectrum_of}. *)
+  step : Names.ident → option ((Location.t → similarity) (* ref change *)
+                               * R); (* travel ratio (rigid or flexible moves) *)
+  step_compat : Proper (eq ==> opt_eq ((Location.eq ==> sim_eq) * eq)) step;
+  step_ratio :  forall id sim c, step id = Some sim -> (fst sim c).(ratio) <> 0%R;
+  step_center : forall id sim c, step id = Some sim -> Location.eq (fst sim c).(center) c;
+  step_flexibility : forall id sim, step id = Some sim ->
+    (0 <= snd sim <= 1)%R}.
 Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id, opt_eq (Location.eq ==> sim_eq)%signature (da1.(step) id) (da2.(step) id)) /\
+  (forall id, opt_eq ((Location.eq ==> sim_eq) * eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
-(* /\
-  (forall g, (Pos.eq ==> Spec.eq)%signature (da1.(spectrum_of) g) (da2.(spectrum_of) g)). *)
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
 + split; intuition. now apply step_compat.
 + intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
-  specialize (H1 id). destruct (step d1 id), (step d2 id); trivial.
-  intros x y Hxy. simpl in H1. symmetry. apply H1. now symmetry.
+  specialize (H1 id). destruct (step d1 id) as [[f1 mvr1] |], (step d2 id) as [[f2 mvr2] |]; trivial.
+  destruct H1 as [H1 ?]. split; auto.
+  intros x y Hxy. simpl in *. symmetry. apply H1. now symmetry.
 + intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
-  specialize (H1 id). specialize (H3 id). destruct (step d1 id), (step d2 id), (step d3 id); simpl in *; trivial.
-  - simpl in *. intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
+  specialize (H1 id). specialize (H3 id).
+  destruct (step d1 id) as [[f1 mvr1] |], (step d2 id) as [[f2 mvr2] |], (step d3 id) as [[f3 mvr3] |];
+  simpl in *; trivial.
+  - destruct H1 as [H1 H1']. split.
+    * intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
+    * rewrite H1'. now destruct H3.
   - elim H1.
 Qed.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> sim_eq)) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq ((Location.eq ==> sim_eq) * eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
-(*
-Instance spectrum_of_compat : Proper (da_eq ==> Logic.eq ==> Pos.eq ==> Spec.eq) spectrum_of. 
-Proof.
-intros [? ? da1 ?] [? ? da2 ?] [Hda1 [Hda2 Hda3]] g1 g2 Hg p1 p2 Hp. simpl in *. subst. apply Hda3. assumption.
-Qed.
-*)
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition idle da := List.filter
@@ -466,31 +465,65 @@ Proof. intros e1 e2 He. now inversion He. Qed.
     giving the position of each robot) from the previous one [pos] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
     is used for byzantine robots. *)
-Definition round (r : robogram) (da : demonic_action) (pos : Pos.t) : Pos.t :=
+Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Pos.t) : Pos.t :=
   (** for a given robot, we compute the new position *)
   fun id =>
-    let t := pos id in (** t is the current position of g seen by the demon *)
+    let pos := config id in (** t is the current position of g seen by the demon *)
     match da.(step) id with (** first see whether the robot is activated *)
-      | None => t (** If g is not activated, do nothing *)
-      | Some sim => (** g is activated and [sim (pos g)] is its similarity *)
+      | None => pos (** If g is not activated, do nothing *)
+      | Some (sim, mv_ratio) => (** g is activated with similarity [sim (pos g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
         | Good g => (* position expressed in the frame of g *)
-          let pos_seen_by_g := Pos.map (sim (pos (Good g))) pos in
+          let config_seen_by_g := Pos.map (sim (config (Good g))) config in
           (* apply r on spectrum + back to demon ref. *)
-          (sim (pos (Good g)))⁻¹ (r (Spect.from_config pos_seen_by_g))
+          let target := (sim (config (Good g)))⁻¹ (r (Spect.from_config config_seen_by_g)) in
+          (* the demon chooses a point on the line from the target by mv_ratio *)
+          let chosen_target := Location.mul mv_ratio target in
+          if Rle_bool δ (Location.dist chosen_target pos) then chosen_target else target
         end
     end.
 
-Instance round_compat : Proper (req ==> da_eq ==> Pos.eq ==> Pos.eq) round.
+Instance round_compat : Proper (eq ==> req ==> da_eq ==> Pos.eq ==> Pos.eq) round.
 Proof.
-intros r1 r2 Hr da1 da2 Hda pos1 pos2 Hpos id.
+intros ? δ ? r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id. subst.
 unfold req in Hr. unfold round.
-assert (Hstep := step_da_compat Hda (reflexivity id)). assert (Hda1 := da1.(step_compat) _ _ (reflexivity id)).
-destruct (step da1 id), (step da2 id), id; try now elim Hstep.
-+ simpl in Hstep. f_equiv.
-  - apply Hstep, Hpos.
-  - apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
+assert (Hstep := step_da_compat Hda (reflexivity id)).
+assert (Hda1 := da1.(step_compat) _ _ (reflexivity id)).
+destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try now elim Hstep.
++ destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
+(* we lack some instances to ba able to perform directly the correct rewrites
+SearchAbout Proper Spect.from_config.
+SearchAbout Proper Pos.map.
+SearchAbout Proper Location.eq.
+Print bij_eq.
+assert (Spect.eq (Spect.from_config (Pos.map (f1 (conf1 (Good g))) conf1))
+                   (Spect.from_config (Pos.map (f2 (conf2 (Good g))) conf2))).
+{  f_equiv. f_equiv; trivial. rewrite Hstep1.
+  f_equiv. f_equiv; trivial. apply Hda1. f_equiv. Print section. now apply Hstep1, Hconf. }
+ *)
+  assert (Heq : Location.eq
+            (Location.mul mvr2
+               ((f1 (conf1 (Good g)) ⁻¹)
+                  (r1
+                     (Spect.from_config (Pos.map (f1 (conf1 (Good g))) conf1)))))
+            (Location.mul mvr2
+               ((f2 (conf2 (Good g)) ⁻¹)
+                  (r2
+                     (Spect.from_config (Pos.map (f2 (conf2 (Good g))) conf2)))))).
+  { f_equiv. admit. }
+  rewrite Heq. clear Heq. rewrite (Hconf (Good g)) at 1.
+  destruct (Rle_bool δ (Location.dist
+            (Location.mul mvr2
+               ((f2 (conf2 (Good g)) ⁻¹)
+                  (r2 (Spect.from_config (Pos.map (f2 (conf2 (Good g))) conf2)))))
+            (conf2 (Good g)))) eqn:Heq.
+  * f_equiv. f_equiv.
+    -- apply Hstep, Hconf.
+    -- apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hconf.
+  * f_equiv.
+    -- apply Hstep, Hconf.
+    -- apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hconf.
 + rewrite Hda. reflexivity.
 Qed.
 
