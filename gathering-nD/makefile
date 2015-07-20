@@ -89,7 +89,10 @@ VFILES:=GatheringinR2/AlgorithmR2.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\
   MultisetSpectrum.v\
+  RigidEquivalence.v\
+  RigidFormalism.v\
   FormalismRd.v\
+  CommonFormalism.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
   MMultiset/MMultisetMap.v\
@@ -197,8 +200,7 @@ archclean::
 
 printenv:
 	@"$(COQBIN)coqtop" -config
-	@echo 'CAMLC =	$(CAMLC)'
-	@echo 'CAMLOPTC =	$(CAMLOPTC)'
+	@echo 'OCAMLFIND =	$(OCAMLFIND)'
 	@echo 'PP =	$(PP)'
 	@echo 'COQFLAGS =	$(COQFLAGS)'
 	@echo 'COQLIBINSTALL =	$(COQLIBINSTALL)'

@@ -19,6 +19,7 @@ Require Import Robots.
 
 (** This module signature represents the metric space in which robots evolve.
     It can be anything (discrete or continuous) as long as it is a metric space.
+    Here, the underlying field is R.
 
     The framework for robots should be more general as for instance a ring is not a metric space.
     It seems that we only need a decidable type for locations and a notion of distance.  *)
@@ -30,7 +31,7 @@ Module Type MetricSpaceDef <: DecidableType.
   Parameter eq_dec : forall x y, {eq x y} + {~eq x y}.
   
   Parameter add : t -> t -> t.
-  Parameter mul : R -> t -> t.
+  Parameter mul : R -> t -> t. (* underlying field is R *)
   Parameter opp : t -> t.
   
   Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
@@ -49,7 +50,9 @@ Module Type MetricSpaceDef <: DecidableType.
   Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
   Parameter add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
   Parameter plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
-  (* The multiplicative identity is missing *)
+  
+  (* The multiplicative identity is missing (actually, it is 1 as we are on R) *)
+  Parameter mul_one : forall u, eq (mul 1 u) u.
 End MetricSpaceDef.
 
 

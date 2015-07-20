@@ -18,11 +18,11 @@ Require Import Relations.
 Require Import RelationPairs.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require Import FormalismRd.
-Require Import SortingR.
-Require Import MultisetSpectrum.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Pactole.FormalismRd.
+Require Import Pactole.SortingR.
+Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
 Import Permutation.
@@ -103,6 +103,9 @@ Module Rdef : MetricSpaceDef with Definition t := R
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
   (** The multiplicative identity is omitted. *)
+  
+  Lemma mul_one : forall u, eq (mul 1 u) u.
+  Proof. unfold eq, mul. intros. lra. Qed.
 End Rdef.
 
 
@@ -182,7 +185,10 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Formalism := Formalism(R)(N)(Spect).
+Module Export Formalism := FormalismRd.Make(R)(N)(Spect).
+
+Module Names := Spect.Names.
+
 Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots

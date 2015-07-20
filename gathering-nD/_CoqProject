@@ -8,7 +8,10 @@ MMultiset/MMultisetWMap.v
 MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/Preliminary.v
+CommonFormalism.v
 FormalismRd.v
+RigidFormalism.v
+RigidEquivalence.v
 MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v
