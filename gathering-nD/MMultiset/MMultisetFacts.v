@@ -1671,14 +1671,6 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - rewrite IHl. symmetry. apply union_add_comm_l.
   Qed.
   
-  (* A hack to solve the next bug. *)
-  Lemma make_me_succeed : forall {x m l' e}, pair_dec (x, multiplicity x m) (x, multiplicity x m) = left e ->
-    (if pair_dec (x, multiplicity x m) (x, multiplicity x m)
-    then removeA (eqA:=eq_pair) pair_dec (x, multiplicity x m) l'
-    else (x, multiplicity x m) :: removeA (eqA:=eq_pair) pair_dec (x, multiplicity x m) l')
-    = removeA (eqA:=eq_pair) pair_dec (x, multiplicity x m) l'.
-  Proof. intros * H. rewrite H. reflexivity. Qed.
-
   Lemma elements_add_in : forall x n m, In x m ->
     PermutationA eq_pair (elements (add x n m))
                          ((x, n + multiplicity x m) :: removeA pair_dec (x, multiplicity x m) (elements m)).
@@ -1691,9 +1683,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   rewrite from_elements_cons, add_merge. rewrite elements_add_out.
   + constructor; try reflexivity. apply is_elements_cons_inv in Hl'.
     rewrite Hin, elements_from_elements; trivial. simpl.
-    destruct (pair_dec (x, multiplicity x m) (x, multiplicity x m)) as [? | Habs] eqn:Hcase; try now elim Habs.
-    Fail rewrite Hcase. (* BUG: pair_dec does not reduce *)
-    rewrite (make_me_succeed Hcase).
+    destruct pair_dec as [? | Habs]; try now elim Habs.
     rewrite removeA_out; try reflexivity. intro Habs. apply Hout. revert Habs. apply InA_pair_elt.
   + apply proj2 in Hl'. inversion_clear Hl'. simpl in *. omega.
   + apply is_elements_cons_inv in Hl'. rewrite <- elements_In, elements_from_elements; eauto.
