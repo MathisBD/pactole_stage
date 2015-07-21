@@ -23,6 +23,12 @@ Require Import Bool.
 Set Implicit Arguments.
 
 
+(** A tactic simplifying coinduction proofs. *)
+Global Ltac coinduction proof :=
+  cofix proof; intros; constructor;
+   [ clear proof | try (apply proof; clear proof) ].
+
+
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
 Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.
 

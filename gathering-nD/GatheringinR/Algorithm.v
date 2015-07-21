@@ -18,11 +18,10 @@ Require Import Relations.
 Require Import RelationPairs.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require Import FormalismRd.
-Require Import SortingR.
-Require Import MultisetSpectrum.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Import Pactole.GatheringinR.SortingR.
+Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
 Import Permutation.
@@ -33,6 +32,7 @@ Set Implicit Arguments.
 
 
 Import GatheringinR.
+
 
 Lemma similarity_middle : forall (sim : similarity) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
 Proof.
@@ -876,7 +876,7 @@ destruct (Spect.support (Smax s)) as [| pt [| pt2 l]].
   destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
 Qed.
 
-Definition robogram := Build_robogram robogram_pgm robogram_pgm_compat.
+Definition robogram := @Build_robogram robogram_pgm robogram_pgm_compat.
 
 
 (** **  General simplification lemmas for [round robogram da _] **)
@@ -951,7 +951,7 @@ destruct (Spect.support (Smax (!! pos))) as [| pt' [| pt2' l']].
       hnf. unfold R.origin, Rdef.origin. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
     - (* The current robot is not exremal *)
       rewrite <- Spect.from_config_map, extreme_center_similarity; apply spec_non_nil || trivial.
-      hnf. rewrite <- (da.(step_center) _ _ pt Hstep) at 2. now rewrite <- Hinvsim, <- (simc pt).(Inversion).
+      hnf. rewrite <- (da.(step_center) _ pt Hstep) at 2. now rewrite <- Hinvsim, <- (simc pt).(Inversion).
 Qed.
 
 (** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)

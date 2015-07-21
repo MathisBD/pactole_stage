@@ -84,7 +84,6 @@ VFILES:=GatheringinR2/AlgorithmR2.v\
   GatheringinR/SortingR.v\
   GatheringinR/Definitions.v\
   RDVinR.v\
-  SortingR.v\
   LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\

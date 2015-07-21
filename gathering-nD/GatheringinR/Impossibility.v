@@ -5,9 +5,8 @@ Require Import Arith.Div2.
 Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import FormalismRd.
-Require Import Definitions.
+Require Import Pactole.Robots.
+Require Import Pactole.GatheringinR.Definitions.
 
 
 Set Implicit Arguments.
@@ -429,7 +428,7 @@ intros [g | b]; unfold round; simpl.
     assert (Heq : Pos.eq (Pos.map (fun x : R.t => x) pos1) pos1) by apply Pos.map_id.
     apply Spect.from_config_compat, (pgm_compat r) in Heq. rewrite Heq.
     fold move. apply Hmove.
-  - Rdec. rewrite swap_pos1. simpl. replace 0 with (1 - 1) by ring. hnf. f_equal.
+  - Rdec. setoid_rewrite swap_pos1. simpl. replace 0 with (1 - 1) by ring. hnf. f_equal.
     rewrite <- pos1_pos2_spect_eq. apply Hmove.
 + apply Fin.case0. exact b.
 Qed.

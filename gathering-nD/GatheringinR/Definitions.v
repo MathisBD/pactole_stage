@@ -20,8 +20,9 @@ Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
-Require Pactole.FormalismRd.
-Require Import Pactole.SortingR.
+Require Pactole.CommonFormalism.
+Require Pactole.RigidFormalism.
+Require Import Pactole.GatheringinR.SortingR.
 Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
@@ -103,7 +104,6 @@ Module Rdef : MetricSpaceDef with Definition t := R
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
   (** The multiplicative identity is omitted. *)
-  
   Lemma mul_one : forall u, eq (mul 1 u) u.
   Proof. unfold eq, mul. intros. lra. Qed.
 End Rdef.
@@ -185,15 +185,14 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Formalism := FormalismRd.Make(R)(N)(Spect).
-
-Module Names := Spect.Names.
+Module Export Common := CommonFormalism.Make(R)(N)(Spect).
+Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
 
 Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots
     are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : R) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
+Definition gathered_at (pt : R) (pos : Pos.t) := forall g : Common.Names.G, pos (Good g) = pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)

@@ -22,11 +22,6 @@ Require Import Robots.
 Require Import Positions.
 
 
-Ltac coinduction proof :=
-  cofix proof; intros; constructor;
-   [ clear proof | try (apply proof; clear proof) ].
-
-
 Module Type Sig (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
   Module Names := Spect.Names.
   Module Pos := Spect.Pos.
@@ -81,6 +76,7 @@ Module Type Sig (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N)
   Record robogram := {
     pgm :> Spect.t → Location.t;
     pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
+  Existing Instance pgm_compat.
   
   Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
   Declare Instance req_equiv : Equivalence req.

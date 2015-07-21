@@ -18,9 +18,10 @@ Require Import Relations.
 Require Import RelationPairs.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require Import FormalismRd.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Pactole.CommonFormalism.
+Require Pactole.RigidFormalism.
 Require Import SortingR.
 Require Import MultisetSpectrum.
 Require Import Morphisms.
@@ -108,6 +109,8 @@ Module R2def : MetricSpaceDef with Definition t := (R * R)%type
   Proof. Admitted.
   
   (** The multiplicative identity is omitted. *)
+  Lemma mul_one : forall u, eq (mul 1 u) u.
+  Proof. Admitted.
 End R2def.
 
 
@@ -186,7 +189,8 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Formalism := Formalism(R2)(N)(Spect).
+Module Export Common := CommonFormalism.Make(R2)(N)(Spect).
+Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
 Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots
@@ -263,15 +267,15 @@ Proof. apply (similarity_injective diff_0_1). Qed.
 
 Definition rotate (theta : R) (r : R2.t) := r. (* TODO *)
 
-(* A similarity in R is described by its ratio and its center. *)
-Theorem similarity_in_R_case : forall sim, exists theta,
+(* A similarity in R2 is described by its ratio, center and rotation angle. *)
+Theorem similarity_in_R2_case : forall sim, exists theta,
   forall x, sim.(f) x = R2.mul sim.(ratio) (rotate theta (R2.add x (R2.opp sim.(center)))).
 Proof.
 intro sim. assert (Hkpos : 0 < sim.(ratio)) by apply sim_ratio_pos.
-destruct sim as [f k c Hc Hk]. simpl in *. unfold R.origin, Rdef.origin in Hc.
+destruct sim as [f k c Hc Hk]. simpl in *. unfold R2.origin, R2def.origin in Hc.
 destruct (Rdec k 0) as [Hk0 | Hk0].
 * (* if the ratio is 0, the similarity is a constant function. *)
-  left. intro x. subst k. rewrite Rmult_0_l.
+  exists 0. intro x. subst k. rewrite Rmult_0_l.
   rewrite <- R.dist_defined. rewrite <- Hc, Hk at 1. ring.
 * assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
   { specialize (Hk (c + 1) c). rewrite Hc in Hk.

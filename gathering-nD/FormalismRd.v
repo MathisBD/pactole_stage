@@ -41,7 +41,7 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → option ((Location.t → similarity) (* change of referential *)
                                * R); (* travel ratio (rigid or flexible moves) *)
-  step_compat : Proper (eq ==> opt_eq ((Location.eq ==> sim_eq) * eq)) step;
+  step_compat : Proper (eq ==> opt_eq ((Location.eq ==> sim_eq) * (@eq R))) step;
   step_ratio :  forall id sim c, step id = Some sim -> (fst sim c).(ratio) <> 0%R;
   step_center : forall id sim c, step id = Some sim -> Location.eq (fst sim c).(center) c;
   step_flexibility : forall id sim, step id = Some sim ->
