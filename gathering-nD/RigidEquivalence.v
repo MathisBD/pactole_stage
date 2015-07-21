@@ -10,14 +10,14 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
-Require Import Pactole.FormalismRd.
+Require Import Pactole.FlexibleFormalism.
 Require Import Pactole.RigidFormalism.
 
 
 Module RigidEquivalence (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
 
 Module Common := CommonFormalism.Make(Location)(N)(Spect).
-Module Flex := FormalismRd.Make(Location)(N)(Spect)(Common).
+Module Flex := FlexibleFormalism.Make(Location)(N)(Spect)(Common).
 Module Rigid := RigidFormalism.Make(Location)(N)(Spect)(Common).
 
 Definition rigid da := forall id sim r, da.(Flex.step) id = Some (sim, r) -> r = 1%R.

@@ -717,7 +717,6 @@ Corollary round2_left_forbidden : forall ρ (Hρ : ρ <> 0) config,
   forbidden (round r (da2_left Hρ) config).
 Proof.
 intros ρ Hρ config Hconfig.
-Check dist_forbidden.
 apply (dist_forbidden (d := (1 - move) / ρ)).
 - admit. (* [lra] should be enough *)
 - intros. now apply round_dist2_left.
@@ -921,5 +920,4 @@ Qed.
 
 End GatheringEven.
 
-Check noGathering.
 Print Assumptions noGathering.

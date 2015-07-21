@@ -83,14 +83,13 @@ VFILES:=GatheringinR2/AlgorithmR2.v\
   GatheringinR/Impossibility.v\
   GatheringinR/SortingR.v\
   GatheringinR/Definitions.v\
-  RDVinR.v\
   LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\
   MultisetSpectrum.v\
   RigidEquivalence.v\
   RigidFormalism.v\
-  FormalismRd.v\
+  FlexibleFormalism.v\
   CommonFormalism.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
