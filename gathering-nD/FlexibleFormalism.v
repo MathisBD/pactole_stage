@@ -75,6 +75,13 @@ Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
+Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id, step da1 id = None <-> step da2 id = None.
+Proof.
+intros da1 da2 Hda id.
+assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
+split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
+Qed.
+
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition idle da := List.filter
   (fun id => match step da id with Some _ => false | None => true end)
@@ -186,6 +193,55 @@ Inductive Between g h (d : demon) : nat -> Prop :=
 CoInductive kFair k (d : demon) :=
   AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
                 kFair k d.
+
+Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
+Proof.
+intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
++ constructor 1. rewrite da_eq_step_None; try eassumption. now f_equiv.
++ constructor 2.
+  - rewrite da_eq_step_None; try eassumption. now f_equiv.
+  - apply IHHfair. now f_equiv.
+Qed.
+
+Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> iff) LocallyFairForOne.
+Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
+
+Lemma Fair_compat_aux : forall d1 d2, deq d1 d2 -> Fair d1 -> Fair d2.
+Proof.
+cofix be_fair. intros d1 d2 Heq Hfair. destruct Hfair as [Hnow Hlater]. constructor.
++ intro. now rewrite <- Heq.
++ eapply be_fair; try eassumption. now f_equiv.
+Qed.
+
+Instance Fair_compat : Proper (deq ==> iff) Fair.
+Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
+
+Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
+Proof.
+intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
++ constructor 1. rewrite <- da_eq_step_None; try eassumption. now f_equiv.
++ constructor 2.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - apply IHbet. now f_equiv.
++ constructor 3.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - apply IHbet. now f_equiv.
+Qed.
+
+Instance Between_compat : Proper (eq ==> eq ==> deq ==> eq ==> iff) Between.
+Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
+
+Lemma kFair_compat_aux : forall k d1 d2, deq d1 d2 -> kFair k d1 -> kFair k d2.
+Proof.
+cofix be_fair. intros k d1 d2 Heq Hkfair. destruct Hkfair as [Hnow Hlater]. constructor.
++ intros. now rewrite <- Heq.
++ eapply be_fair; try eassumption. now f_equiv.
+Qed.
+
+Instance kFair_compat : Proper (eq ==> deq ==> iff) kFair.
+Proof. repeat intro. subst. split; intro; now eapply kFair_compat_aux; eauto. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
@@ -419,9 +475,6 @@ intros ? δ ? r1 r2 Hr. subst.
 cofix proof. constructor. simpl. assumption.
 apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
 Qed.
-
-(* Definitions of imprisonned, attracted, solution, solution_FSYNC, solution_FAIR_FSYNC
-   (for the convergence problem) are removed. *)
 
 End Make.
 

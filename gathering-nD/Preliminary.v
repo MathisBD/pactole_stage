@@ -1140,6 +1140,16 @@ Theorem first_last_ind {A} : forall P : list A -> Prop, P nil -> (forall x, P (x
   (forall x y l, P l -> P ((x :: l) ++ (y :: nil))) -> forall l : list A, P l.
 Proof. intros P Pnil Pone Prec l. now apply first_last_ind_aux with l. Qed.
 
+Corollary first_last_even_ind {A} : forall P : list A -> Prop, P nil ->
+  (forall x y l, P l -> P ((x :: l) ++ (y :: nil))) -> forall l, Nat.Even (length l) -> P l.
+Proof.
+intros P Pnil Prec l. pattern l. apply first_last_ind; clear l.
++ auto.
++ simpl. intros x Habs. inversion Habs. omega.
++ intros x y l Hrec Hlen. apply Prec, Hrec. rewrite app_length, plus_comm in Hlen.
+  simpl in Hlen. destruct Hlen as [n Hlen]. exists (pred n). omega.
+Qed.
+
 
 (* ******************************* *)
 (** *  The same for real numbers. **)
