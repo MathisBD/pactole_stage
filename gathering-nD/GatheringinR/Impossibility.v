@@ -181,12 +181,52 @@ intro g. destruct (List.in_dec Fin.eq_dec g left) as [? | Hg].
                    apply List.in_app_or in Hin; tauto).
 Defined.
 
-Definition gleft : Names.G.
+
+(*
+Section foo.
+Variable nG : nat.
+Hypothesis nG_non_0 : nG <> 0.
+
+Definition gleft' : Fin.t nG :=
+  match nG as n0 return (nG = n0 -> Fin.t n0) with
+    | 0 => fun Habs : nG = 0 => False_rec (Fin.t 0) (nG_non_0 Habs)
+    | S n0 => fun _ => Fin.F1
+  end (reflexivity nG).
+
+Definition gright' : Fin.t nG :=
+  match nG as n return (nG = n -> Fin.t n) with
+    | 0 => fun Habs : nG = 0 => False_rec _ (nG_non_0 Habs)
+    | S n => fun _ => nat_rec _ Fin.F1 (fun m (IHn : Fin.t (S m)) => Fin.FS IHn) n
+  end (reflexivity nG).
+End foo.
+
+Require Import Coq.Program.Equality.
+Lemma gleft'_in : forall nG nG_non_0 (even_nG : Nat.Even nG),
+  In (@gleft' nG nG_non_0) (firstn (Nat.div2 nG) (Names.Internals.fin_map (fun x => x))).
 Proof.
-unfold Names.G, Names.Internals.G.
-destruct N.nG eqn:HnG. assert (HnG0 := nG_non_0). contradiction.
-apply (@Fin.F1 n).
-Defined.
+intros nG nG_non_0.
+dependent destruction nG; intros.
++ exfalso; omega.
++ dependent destruction nG0.
+  - exfalso; destruct even_nG0; omega.
+  - simpl. compute. Print Spect.Names.Internals.fin_map.
+      intro abs.
+      inversion abs.
+Qed.
+*)
+
+(* First and last elements are resp. on the left and on the right. *)
+Definition gleft : Names.G :=
+  match N.nG as n0 return (N.nG = n0 -> Fin.t n0) with
+    | 0 => fun Habs : N.nG = 0 => False_rec (Fin.t 0) (nG_non_0 Habs)
+    | S n0 => fun _ => Fin.F1
+  end (reflexivity N.nG).
+
+Definition gright :=
+  match N.nG as n return (N.nG = n -> Fin.t n) with
+    | 0 => fun Habs : N.nG = 0 => False_rec _ (nG_non_0 Habs)
+    | S n => fun _ => nat_rec _ Fin.F1 (fun m (IHn : Fin.t (S m)) => Fin.FS IHn) n
+  end (reflexivity N.nG).
 
 Lemma gleft_left : In gleft left.
 Proof.
@@ -195,11 +235,9 @@ destruct N.nG as [| [| nG]] eqn:HnG.
 + unfold left, gleft, Names.Gnames.
 Admitted.
 
-(* Take the last element *)
-Definition gright : Names.G. Admitted.
-
 Lemma gright_right : In gright right.
-Proof. Admitted.
+Proof.
+Admitted.
 
 Hint Immediate gleft_left gright_right.
 
