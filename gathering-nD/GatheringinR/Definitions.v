@@ -111,11 +111,15 @@ End Rdef.
 
 Module R := MakeMetricSpace(Rdef).
 
-Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec.
+Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec R.eq Rdef.eq.
 
+Ltac unfoldR := unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t.
+
+Tactic Notation "unfoldR" "in" hyp(H) :=
+  unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t in H.
 
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
-Ltac Rdec := unfold R.eq_dec, Rdef.eq_dec; repeat
+Ltac Rdec := unfoldR; repeat
   match goal with
     | |- context[Rdec ?x ?x] =>
         let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
@@ -133,7 +137,7 @@ Ltac Rdec := unfold R.eq_dec, Rdef.eq_dec; repeat
   end.
 
 Ltac Rdec_full :=
-  unfold R.eq_dec, Rdef.eq_dec;
+  unfoldR;
   match goal with
     | |- context[Rdec ?x ?y] =>
       let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in

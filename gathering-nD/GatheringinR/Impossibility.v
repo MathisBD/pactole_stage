@@ -71,22 +71,13 @@ Qed.
 
 (** We split robots into two halves. *)
 
-Definition left := firstn (Nat.div2 N.nG) Names.Gnames.
-Definition right := skipn (Nat.div2 N.nG) Names.Gnames.
+(** ***  Results about [firstn] and [skipn]  **)
 
-Lemma left_length : length left = div2 N.nG.
-Proof. apply firstn_length_le. rewrite Names.Gnames_length. apply Nat.div2_decr. omega. Qed.
-
-Theorem skipn_length : forall {A} (l : list A) n, length (skipn n l) = length l - n.
+Theorem skipn_length {A} : forall (l : list A) n, length (skipn n l) = length l - n.
 Proof.
 induction l.
 + now intros [| n].
 + intros [| n]; trivial. simpl. apply IHl.
-Qed.
-
-Lemma right_length : length right = div2 N.nG.
-Proof.
-unfold right. rewrite skipn_length, Names.Gnames_length. rewrite <- (even_div2 even_nG) at 1. omega.
 Qed.
 
 Lemma firstn_In : forall {A} (l : list A) n, incl (firstn n l) l.
@@ -98,23 +89,33 @@ induction l; intros n x Hin.
   - right. now apply IHl in H.
 Qed.
 
-Lemma firstn_add_hd {A} : forall n l (x a : A), In x (firstn n l) -> In x (firstn (S n) (a :: l)).
-Proof. intros. simpl. tauto. Qed.
+Lemma firstn_add_hd {A} : forall n l (a : A), firstn (S n) (a :: l) =  a :: firstn n l.
+Proof. reflexivity. Qed.
 
-Lemma firstn_add_tl {A} : forall n l (x a : A), In x (firstn n l) -> In x (firstn n (l ++ a :: nil)).
+Lemma firstn_add_tl_In {A} : forall n l (x a : A), In x (firstn n l) -> In x (firstn n (l ++ a :: nil)).
 Proof.
 induction n; intros l x a Hin; simpl in *.
 - assumption.
 - destruct l as [| b l]; simpl in *; solve [elim Hin | intuition].
 Qed.
 
-Lemma left_NoDup : NoDup left.
+Lemma firstn_add_tl {A} : forall l n (a : A), n <= length l -> firstn n (l ++ a :: nil) = firstn n l.
 Proof.
-unfold left. assert (Hnodup := Names.Gnames_NoDup).
-generalize (Nat.div2 N.nG). induction Names.Gnames as [| e l].
-- intros [| n]; simpl; constructor.
-- inversion_clear Hnodup. intros [| n]; simpl; constructor; auto.
-  intro Hin. apply firstn_In in Hin. contradiction.
+intro l. induction l as [| e l]; intros n a Hle.
++ now inversion_clear Hle.
++ destruct n; simpl in *.
+  - reflexivity.
+  - f_equal. apply IHl. omega.
+Qed.
+
+Lemma firstn_NoDup {A} : forall (l : list A) n, NoDup l -> NoDup (firstn n l).
+Proof.
+intros l. induction l as [| e l]; intros n Hnodup.
++ now destruct n; compute.
++ destruct n; try now constructor. simpl.
+  inversion_clear Hnodup as [| ? ? Helt Hnodup']. constructor.
+  - intro Hin. apply Helt. apply (firstn_In l n e Hin).
+  - auto.
 Qed.
 
 Lemma skipn_In : forall {A} (l : list A) n, incl (skipn n l) l.
@@ -135,65 +136,131 @@ intros A l l' pt. generalize (le_refl (length l)). generalize l at -2. induction
     - apply IHl; omega.
 Qed.
 
-Corollary In_skipn_half {A} : forall l (pt : A), In pt (skipn (Nat.div2 (length l)) (l ++ pt :: nil)).
-Proof. intros. apply In_skipn. apply Nat.div2_decr. omega. Qed.
+Lemma skipn_add_hd {A} : forall n l (a : A), skipn (S n) (a :: l) = skipn n l.
+Proof. reflexivity. Qed.
 
-Lemma skipn_add_hd {A} : forall n l (x a : A), In x (skipn n l) -> In x (skipn (S n) (a :: l)).
-Proof. now intros. Qed.
-
-Lemma skipn_add_tl {A} : forall n l (x a : A), In x (skipn n l) -> In x (skipn n (l ++ a :: nil)).
+Lemma skipn_add_tl_In {A} : forall n l (x a : A), In x (skipn n l) -> In x (skipn n (l ++ a :: nil)).
 Proof.
 induction n; intros l x a Hin; simpl in *.
 - rewrite in_app_iff. now left.
 - destruct l as [| b l]; simpl in *; solve [elim Hin | auto].
 Qed.
 
-Lemma right_NoDup : NoDup right.
+Lemma In_skipn_add {A} : forall l (pt : A), In pt (skipn (Nat.div2 (length l)) (l ++ pt :: nil)).
+Proof. intros. apply In_skipn. apply Nat.div2_decr. omega. Qed.
+
+Lemma skipn_add_tl {A} : forall l n (a : A), n <= length l -> skipn n (l ++ a :: nil) = skipn n l ++ a :: nil.
 Proof.
-unfold right. assert (Hnodup := Names.Gnames_NoDup).
-generalize (Nat.div2 N.nG). induction Names.Gnames as [| e l].
-- intros [| n]; simpl; constructor.
-- intros [| n]; simpl; trivial. apply IHl. now inversion Hnodup.
+intro l. induction l as [| e l]; intros n a Hle; simpl in *.
++ now inversion_clear Hle.
++ destruct n; simpl in *.
+  - reflexivity.
+  - apply IHl. omega.
 Qed.
 
-
-Lemma left_right_exclusive : forall g, In g left -> In g right -> False.
+Lemma skipn_NoDup {A} : forall (l : list A) n, NoDup l -> NoDup (skipn n l).
 Proof.
-assert (Hnodup := Names.Gnames_NoDup). rewrite <- (firstn_skipn (Nat.div2 N.nG)) in Hnodup.
+intro l. induction l as [| e l]; intros n Hnodup.
+- destruct n; constructor.
+- destruct n; auto. simpl. apply IHl. now inversion_clear Hnodup.
+Qed.
+
+Lemma firstn_skipn_nodup_exclusive {A} : forall l : list A, NoDup l ->
+  forall n e, In e (firstn n l) -> In e (skipn n l) -> False.
+Proof.
+intros l Hnodup n. rewrite <- (firstn_skipn n) in Hnodup.
 rewrite <- NoDupA_Leibniz, Preliminary.NoDupA_app_iff in Hnodup; refine _.
 destruct Hnodup as [Hleft [Hright Hboth]]. now setoid_rewrite InA_Leibniz in Hboth.
 Qed.
 
-Hint Resolve left_right_exclusive.
+(** ***  [half1] and [half2]  **)
 
-Definition in_left (id : Names.ident) :=
-  match id with
-    | Good g => if List.in_dec Fin.eq_dec g left then true else false
-    | Byz b => false
-  end.
+Definition half1 {A} (l : list A) := firstn (Nat.div2 (length l)) l.
+Definition half2 {A} (l : list A) := skipn  (Nat.div2 (length l)) l.
 
-Theorem left_right_dec : forall g, {In g left} + {In g right}.
+Lemma half1_length {A} : forall l : list A, length (half1 l) = div2 (length l).
+Proof. intros. apply firstn_length_le. apply Nat.div2_decr. omega. Qed.
+
+Corollary half2_length {A} : forall l : list A, length (half2 l) = length l - div2 (length l).
+Proof. intros. unfold half2. now rewrite skipn_length. Qed.
+
+Lemma merge_halves {A} : forall l : list A, half1 l ++ half2 l = l.
+Proof. intro. apply firstn_skipn. Qed.
+
+Lemma half1_incl {A} : forall l : list A, incl (half1 l) l.
+Proof. intros ? ? ?. rewrite <- merge_halves. apply in_app_iff. tauto. Qed.
+
+Lemma half2_incl {A} : forall l : list A, incl (half2 l) l.
+Proof. intros ? ? ?. rewrite <- merge_halves. apply in_app_iff. tauto. Qed.
+
+Lemma half1_cons2 {A} : forall (e e' : A) l, half1 (e :: l ++ e' :: nil) = e :: half1 l.
 Proof.
-intro g. destruct (List.in_dec Fin.eq_dec g left) as [? | Hg].
-+ now left.
-+ right. abstract (assert (Hin : List.In g (left ++ right)) by
-                          (unfold left, right; rewrite List.firstn_skipn; apply Names.In_Gnames);
-                   apply List.in_app_or in Hin; tauto).
+intros e e' l. unfold half1 at 1. simpl. rewrite app_length, plus_comm. simpl.
+f_equal. apply firstn_add_tl. apply Nat.div2_decr. omega.
+Qed.
+
+Lemma half2_cons2 {A} : forall (e e' : A) l, half2 (e :: l ++ e' :: nil) = half2 l ++ e' :: nil.
+Proof.
+intros e e' l. unfold half2 at 1. simpl. rewrite app_length, plus_comm. simpl.
+apply skipn_add_tl. apply Nat.div2_decr. omega.
+Qed.
+
+Lemma half1_dec {A} : (forall x y : A, {x = y} + {x <> y}) ->
+  forall (e : A) l, {In e (half1 l)} + {~In e (half1 l)}.
+Proof. intros. now apply List.In_dec. Qed.
+
+Lemma half2_dec {A} : (forall x y : A, {x = y} + {x <> y}) ->
+  forall (e : A) l, {In e (half2 l)} + {~In e (half2 l)}.
+Proof. intros. now apply List.In_dec. Qed.
+
+Theorem half_dec {A} : (forall x y : A, {x = y} + {x <> y}) ->
+  forall l : list A, NoDup l -> forall e, In e l -> {In e (half1 l)} + {In e (half2 l)}.
+Proof.
+intros HeqA l Hnodup e Hin. destruct (half1_dec HeqA e l) as [? | Hg].
++ left. assumption.
++ right. abstract (rewrite <- merge_halves in Hin; apply List.in_app_or in Hin; tauto).
 Defined.
 
+(** ***  Specilization of [half1] and [half2] for robots  **)
+
+Definition left  := half1 Names.Gnames.
+Definition right := half2 Names.Gnames.
+
+Definition left_dec (e : Names.G) := List.in_dec Fin.eq_dec e left.
+
+Lemma not_left_is_right : forall g : Names.G, ~In g left -> In g right.
+Proof.
+intros g Hleft.
+assert (Hin : In g Names.Gnames) by apply Names.In_Gnames.
+rewrite <- merge_halves, in_app_iff in Hin.
+destruct Hin; contradiction || assumption.
+Qed.
+
+Lemma left_right_exclusive : forall g, In g left -> In g right -> False.
+Proof.
+unfold left, right, half1, half2. intros.
+eapply firstn_skipn_nodup_exclusive; try eassumption.
+apply Names.Gnames_NoDup.
+Qed.
+
+(* Seems like a bad idea because it hides some properties.
+Definition left_right_dec (g : Names.G) := half_dec Fin.eq_dec Names.Gnames_NoDup g (Names.In_Gnames g).
+*)
+
+(** First and last robots are resp. in the first and in the second half. *)
 
 (*
 Section foo.
 Variable nG : nat.
 Hypothesis nG_non_0 : nG <> 0.
 
-Definition gleft' : Fin.t nG :=
+Definition gfirst' : Fin.t nG :=
   match nG as n0 return (nG = n0 -> Fin.t n0) with
     | 0 => fun Habs : nG = 0 => False_rec (Fin.t 0) (nG_non_0 Habs)
     | S n0 => fun _ => Fin.F1
   end (reflexivity nG).
 
-Definition gright' : Fin.t nG :=
+Definition glast' : Fin.t nG :=
   match nG as n return (nG = n -> Fin.t n) with
     | 0 => fun Habs : nG = 0 => False_rec _ (nG_non_0 Habs)
     | S n => fun _ => nat_rec _ Fin.F1 (fun m (IHn : Fin.t (S m)) => Fin.FS IHn) n
@@ -201,8 +268,8 @@ Definition gright' : Fin.t nG :=
 End foo.
 
 Require Import Coq.Program.Equality.
-Lemma gleft'_in : forall nG nG_non_0 (even_nG : Nat.Even nG),
-  In (@gleft' nG nG_non_0) (firstn (Nat.div2 nG) (Names.Internals.fin_map (fun x => x))).
+Lemma gfirst'_in : forall nG nG_non_0 (even_nG : Nat.Even nG),
+  In (@gfirst' nG nG_non_0) (firstn (Nat.div2 nG) (Names.Internals.fin_map (fun x => x))).
 Proof.
 intros nG nG_non_0.
 dependent destruction nG; intros.
@@ -215,31 +282,38 @@ dependent destruction nG; intros.
 Qed.
 *)
 
-(* First and last elements are resp. on the left and on the right. *)
-Definition gleft : Names.G :=
+Definition gfirst : Names.G :=
   match N.nG as n0 return (N.nG = n0 -> Fin.t n0) with
     | 0 => fun Habs : N.nG = 0 => False_rec (Fin.t 0) (nG_non_0 Habs)
     | S n0 => fun _ => Fin.F1
   end (reflexivity N.nG).
 
-Definition gright :=
+Definition glast :=
   match N.nG as n return (N.nG = n -> Fin.t n) with
     | 0 => fun Habs : N.nG = 0 => False_rec _ (nG_non_0 Habs)
     | S n => fun _ => nat_rec _ Fin.F1 (fun m (IHn : Fin.t (S m)) => Fin.FS IHn) n
   end (reflexivity N.nG).
 
-Lemma gleft_left : In gleft left.
+Lemma gfirst_left : In gfirst left.
 Proof.
 destruct N.nG as [| [| nG]] eqn:HnG.
 + now elim nG_non_0.
-+ unfold left, gleft, Names.Gnames.
++ elim even_nG. intros. omega.
++ unfold left, gfirst.
 Admitted.
 
-Lemma gright_right : In gright right.
+Lemma glast_right : In glast right.
 Proof.
 Admitted.
 
-Hint Immediate gleft_left gright_right.
+Corollary gfirst_glast : gfirst <> glast.
+Proof.
+intro Habs. apply (firstn_skipn_nodup_exclusive Names.Gnames_NoDup (Nat.div2 (length Names.Gnames)) gfirst).
+- apply gfirst_left.
+- rewrite Habs. apply glast_right.
+Qed.
+
+Hint Immediate gfirst_left glast_right left_right_exclusive.
 
 (* As there is no byzantine robot, we can lift positions for good robots as a full configuration.  *)
 Definition lift_pos {A} (pos : Names.G -> A) : Names.ident -> A := fun id =>
@@ -274,14 +348,14 @@ Open Scope R_scope.
 (** The reference starting position **)
 Definition pos1 : Pos.t := fun id =>
   match id with
-    | Good g => if left_right_dec g then 0 else 1
+    | Good g => if left_dec g then 0 else 1
     | Byz b => 0
   end.
 
 (** The symmetrical position of the starting position **)
 Definition pos2 : Pos.t := fun id =>
   match id with
-    | Good g => if left_right_dec g then 1 else 0
+    | Good g => if left_dec g then 1 else 0
     | Byz b => 0
   end.
 
@@ -291,47 +365,86 @@ Theorem pos1_pos2_spect_eq : Spect.eq (!! pos1) (!! pos2).
 Proof.
 intro pt. unfold pos1, pos2.
 do 2 rewrite Spect.from_config_spec, Spect.Pos.list_spec. rewrite names_Gnames. do 2 rewrite map_map.
-(* unfold left_right_dec, left. change Names.Gnames with Spect.Names.Gnames. *)
-pattern Spect.Names.Gnames. apply first_last_even_ind.
+unfold left_dec, left. generalize (Names.Gnames_NoDup).
+apply (@first_last_even_ind _
+(fun l => NoDup l ->
+          countA_occ eq Rdec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l) =
+          countA_occ eq Rdec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then 1 else 0) l))).
 * reflexivity.
-* intros gl gr l Hrec. do 2 rewrite map_app. simpl. repeat rewrite countA_occ_app. simpl.
-  destruct (left_right_dec gl) as [Hgl | Hgl], (left_right_dec gr) as [Hgr | Hgr].
-  + exfalso. (* Both gl and gr are in left *) admit.
-  + Rdec_full; subst; Rdec; try Rdec_full; subst; setoid_rewrite plus_comm; simpl; auto.
-  + Rdec_full; subst; Rdec; try Rdec_full; subst; setoid_rewrite plus_comm; simpl; auto.
-  + exfalso. (* Both gl and gr are in right *) admit.
-* rewrite Names.Gnames_length. apply even_nG.
-Admitted.
-(* This proof should decompose the list names by one element on the front and one in the back,
-   that is, one in left and one in right.*)
+* intros gl gr l Heven Hrec Hnodup.
+  (* Inversing the NoDup property *)
+  inversion_clear Hnodup as [| ? ? Helt Hnodup'].
+  assert (Hneq : gl <> gr). { intro Habs. subst. intuition. }
+  assert (Hgl : ~In gl l) by intuition.
+  rewrite <- NoDupA_Leibniz, PermutationA_app_comm, NoDupA_Leibniz in Hnodup'; refine _.
+  simpl in Hnodup'. inversion_clear Hnodup' as [| ? ? Hgr Hnodup]. specialize (Hrec Hnodup). clear Helt.
+  (* Rewriting in the goal *)
+  do 2 rewrite map_app. simpl. repeat rewrite countA_occ_app. simpl. rewrite half1_cons2.
+  destruct (in_dec Fin.eq_dec gl (gl :: half1 l)) as [_ | Habs].
+  destruct (in_dec Fin.eq_dec gr (gl :: half1 l)) as [Habs | _].
+  + (* absurd case : gr ∈ gl :: half1 l *)
+    exfalso. destruct Habs.
+    - contradiction.
+    - apply Hgr. now apply half1_incl.
+  + (* valid case *)
+    assert (Heq : forall a b : R,
+                  map (fun x : Fin.t N.nG => if in_dec Fin.eq_dec x (gl :: half1 l) then a else b) l
+                = map (fun x : Fin.t N.nG => if in_dec Fin.eq_dec x (half1 l) then a else b) l).
+    { intros a b. apply map_f_dependent_compat. intros g Hg.
+      destruct (in_dec Fin.eq_dec g (gl :: half1 l)) as [Hin | Hout].
+      - destruct Hin; try now subst; contradiction.
+        destruct (in_dec Fin.eq_dec g (half1 l)); reflexivity || contradiction.
+      - destruct (in_dec Fin.eq_dec g (half1 l)); trivial. elim Hout. intuition. }
+    do 2 rewrite Heq.
+    Rdec_full; subst; Rdec; try Rdec_full; subst; Rdec; setoid_rewrite plus_comm; simpl; auto.
+  + (* absurd case : gr ∉ gl :: half1 l *)
+    elim Habs. intuition.
+* change (Fin.t N.nG) with Spect.Names.Internals.G. rewrite Spect.Names.Gnames_length. apply even_nG.
+Qed.
 
 Theorem spect_pos1 : Spect.eq (!! pos1) spectrum.
 Proof.
-intro pt. unfold spectrum. assert (Heven := even_nG). assert (HnG := nG_non_0).
-assert (Hleft := eq_refl left). unfold left at 2 in Hleft.
-assert (Hright := eq_refl right). unfold right at 2 in Hright.
-rewrite Spect.from_config_spec, Spect.Pos.list_spec, names_Gnames. rewrite <- Names.Gnames_length in *.
-change Names.Gnames with Spect.Names.Gnames in *.
-induction Spect.Names.Gnames using first_last_ind.
-* now elim HnG.
-* simpl in Heven. destruct Heven. omega.
-* rewrite app_length, plus_comm in *. cbn in *. clear HnG.
-  assert (Hx : In x left). { rewrite Hleft. now left. }
-  assert (Hy : In y right). { rewrite Hright. apply In_skipn_half. }
-  repeat rewrite map_app. cbn.
-  destruct (left_right_dec x); try now elim (left_right_exclusive x).
-  destruct (left_right_dec y); try now elim (left_right_exclusive y).
-  change identifier with Spect.Names.ident in *. change (Spect.Names.Internals.G) with (Spect.Names.G).
-  rewrite countA_occ_app. rewrite IHl.
-  + Rdec_full; cbn; subst; Rdec || Rdec_full; subst.
-    - subst. repeat rewrite Spect.add_same, Spect.singleton_other; try now intro Habs; apply R1_neq_R0.
-      simpl. Rdec. now ring_simplify.
-    - repeat rewrite Spect.add_other, Spect.singleton_same; try now intro; apply Hneq. now ring_simplify.
-    - repeat rewrite Spect.add_other, Spect.singleton_other; try intro; auto.
-  + destruct Heven as [n ?]. exists (pred n). omega.
-  + admit.
-  + admit.
-Admitted.
+intro pt. unfold pos1, spectrum.
+rewrite Spect.from_config_spec, Spect.Pos.list_spec. rewrite names_Gnames, map_map.
+unfold left_dec, left. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
+apply (@first_last_even_ind _
+(fun l => NoDup l ->
+          countA_occ eq Rdec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l)
+        = (Spect.add 0 (Nat.div2 (length l)) (Spect.singleton 1 (Nat.div2 (length l))))[pt])).
+* intros _. simpl. rewrite Spect.add_0, Spect.singleton_0, Spect.empty_spec. reflexivity.
+* intros gl gr l Heven Hrec Hnodup.
+  (* Inversing the NoDup property *)
+  inversion_clear Hnodup as [| ? ? Helt Hnodup'].
+  assert (Hneq : gl <> gr). { intro Habs. subst. intuition. }
+  assert (Hgl : ~In gl l) by intuition.
+  rewrite <- NoDupA_Leibniz, PermutationA_app_comm, NoDupA_Leibniz in Hnodup'; refine _.
+  simpl in Hnodup'. inversion_clear Hnodup' as [| ? ? Hgr Hnodup]. specialize (Hrec Hnodup). clear Helt.
+  (* Rewriting in the goal *)
+  rewrite app_length, plus_comm.
+  simpl. repeat rewrite map_app, countA_occ_app. simpl. rewrite half1_cons2.
+  destruct (in_dec Fin.eq_dec gl (gl :: half1 l)) as [_ | Habs].
+  destruct (in_dec Fin.eq_dec gr (gl :: half1 l)) as [Habs | _].
+  + (* absurd case : gr ∈ gl :: half1 l *)
+    exfalso. destruct Habs.
+    - contradiction.
+    - apply Hgr. now apply half1_incl.
+  + (* valid case *)
+    assert (Heq : map (fun x => if in_dec Fin.eq_dec x (gl :: half1 l) then 0 else 1) l
+                = map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l).
+    { apply map_f_dependent_compat. intros g Hg.
+      destruct (in_dec Fin.eq_dec g (gl :: half1 l)) as [Hin | Hout].
+      - destruct Hin; try now subst; contradiction.
+        destruct (in_dec Fin.eq_dec g (half1 l)); reflexivity || contradiction.
+      - destruct (in_dec Fin.eq_dec g (half1 l)); trivial. elim Hout. intuition. }
+    rewrite Heq, Hrec.
+    assert (~R.eq 0 1) by auto using R1_neq_R0. assert (~R.eq 1 0) by auto using R1_neq_R0.
+    Rdec_full; subst; Rdec; try Rdec_full; subst; Rdec;
+    repeat rewrite ?Spect.add_same, ?Spect.add_other, ?Spect.singleton_same, ?Spect.singleton_other; trivial;
+    omega || unfoldR; auto.
+  + (* absurd case : gr ∉ gl :: half1 l *)
+    elim Habs. intuition.
+* change (Fin.t N.nG) with Spect.Names.Internals.G. rewrite Spect.Names.Gnames_length. apply even_nG.
+Qed.
 
 Corollary pos1_forbidden : forbidden pos1.
 Proof.
@@ -434,14 +547,14 @@ Defined.
 Lemma swap_pos1 : Pos.eq (Pos.map (swap 1) pos1) pos2.
 Proof.
 intros [g | b].
-- unfold Pos.map. simpl. destruct (left_right_dec g); hnf; ring.
+- unfold Pos.map. simpl. destruct (left_dec g); hnf; ring.
 - apply Fin.case0. exact b.
 Qed.
 
 Lemma swap_pos2 : Pos.eq (Pos.map (swap 1) pos2) pos1.
 Proof.
 intros [g | b].
-- unfold Pos.map. simpl. destruct (left_right_dec g); hnf; ring.
+- unfold Pos.map. simpl. destruct (left_dec g); hnf; ring.
 - apply Fin.case0. exact b.
 Qed.
 
@@ -497,7 +610,7 @@ Qed.
 Lemma round_simplify_1_1 : Pos.eq (round r da1 pos1) pos2.
 Proof.
 intros [g | b]; unfold round; simpl.
-+ destruct (left_right_dec g) as [Hleft | Hright].
++ destruct (left_dec g) as [Hleft | Hright].
   - Rdec. simpl.
   (* BUG?: rewrite Pos.map_id should be enough. *)
     assert (Heq : Pos.eq (Pos.map (fun x : R.t => x) pos1) pos1) by apply Pos.map_id.
@@ -511,7 +624,7 @@ Qed.
 Lemma round_simplify_1_2 : Pos.eq (round r da1 pos2) pos1.
 Proof.
 intros [g | b]; unfold round; simpl.
-+ destruct (left_right_dec g) as [Hleft | Hright].
++ destruct (left_dec g) as [Hleft | Hright].
   - Rdec. rewrite swap_pos2. simpl. replace 0 with (1 - 1) by ring. hnf. f_equal. apply Hmove.
   - Rdec. simpl.
   (* BUG?: rewrite Pos.map_id should be enough. *)
@@ -560,22 +673,22 @@ Proof.
 Qed.
 
 Lemma homothecy_ratio_1 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_pos (fun g => if left_right_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
+  lift_pos (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
   ratio (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
-+ simpl. destruct (left_right_dec g).
++ simpl. destruct (left_dec g).
   - intro H. inversion_clear H. simpl. now apply Rabs_no_R0.
   - discriminate.
 + apply Fin.case0. exact b.
 Qed.
 
 Lemma homothecy_center_1 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_pos (fun g => if left_right_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
+  lift_pos (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
   R.eq (center (sim c)) c.
 Proof.
 intros ρ Hρ [g | b] sim c.
-+ simpl. destruct (left_right_dec g).
++ simpl. destruct (left_dec g).
   - intro H. inversion_clear H. reflexivity.
   - discriminate.
 + apply Fin.case0. exact b.
@@ -584,31 +697,31 @@ Qed.
 Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
-  step := lift_pos (fun g => if left_right_dec g then Some (fun c => homothecy c Hρ) else None) |}.
+  step := lift_pos (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) |}.
 Proof.
 + apply homothecy_ratio_1.
 + apply homothecy_center_1.
 Defined.
 
 Lemma homothecy_ratio_2 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_pos (fun g => if left_right_dec g 
+  lift_pos (fun g => if left_dec g 
                      then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
   ratio (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
-+ simpl. destruct (left_right_dec g).
++ simpl. destruct (left_dec g).
   - discriminate.
   - intro H. inversion_clear H. simpl. now apply Rabs_no_R0, Ropp_neq_0_compat.
 + apply Fin.case0. exact b.
 Qed.
 
 Lemma homothecy_center_2 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_pos (fun g => if left_right_dec g 
+  lift_pos (fun g => if left_dec g 
                      then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
   R.eq (center (sim c)) c.
 Proof.
 intros ρ Hρ [g | b] sim c.
-+ simpl. destruct (left_right_dec g).
++ simpl. destruct (left_dec g).
   - discriminate.
   - intro H. inversion_clear H. reflexivity.
 + apply Fin.case0. exact b.
@@ -617,7 +730,7 @@ Qed.
 Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
-  step := lift_pos (fun g => if left_right_dec g
+  step := lift_pos (fun g => if left_dec g
                              then None else Some (fun c => homothecy c (Ropp_neq_0_compat _ Hρ))) |}.
 Proof.
 + apply homothecy_ratio_2.
@@ -656,30 +769,30 @@ cofix fair_demon. intros ρ Hρ d Heq.
 constructor; [| constructor].
 * setoid_rewrite Heq.
   intros [g1 | b1] [g2 | b2]; try now apply Fin.case0; assumption.
-  destruct (left_right_dec g1).
-  + constructor 1. rewrite bad_demon_head2_1. simpl. destruct (left_right_dec g1); eauto. discriminate.
-  + destruct (left_right_dec g2).
+  destruct (left_dec g1).
+  + constructor 1. rewrite bad_demon_head2_1. simpl. destruct (left_dec g1); eauto. discriminate.
+  + destruct (left_dec g2).
     - constructor 2.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_right_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_right_dec g2); eauto. discriminate.
-      -- constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g1); eauto. discriminate.
+      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
+      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g2); eauto. discriminate.
+      -- constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. discriminate.
     - constructor 3.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_right_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_right_dec g2); eauto. exfalso. eauto.
-      -- constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g1); eauto. discriminate.
+      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
+      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g2); eauto. exfalso. eauto.
+      -- constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. discriminate.
 * setoid_rewrite Heq.
   intros [g1 | b1] [g2 | b2]; try now apply Fin.case0; assumption.
-  destruct (left_right_dec g1).
-  + destruct (left_right_dec g2).
+  destruct (left_dec g1).
+  + destruct (left_dec g2).
     - constructor 3.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g2); eauto. exfalso. eauto.
-      -- rewrite bad_demon_tail2. constructor 1. simpl. destruct (left_right_dec g1); eauto. discriminate.
+      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
+      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g2); eauto. exfalso. eauto.
+      -- rewrite bad_demon_tail2. constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
     - constructor 2.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g2); eauto. discriminate.
-      -- rewrite bad_demon_tail2. constructor 1. simpl. destruct (left_right_dec g1); eauto. discriminate.
-  + constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_right_dec g1); eauto. discriminate.
+      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
+      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g2); eauto. discriminate.
+      -- rewrite bad_demon_tail2. constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+  + constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. discriminate.
 * eapply fair_demon. now rewrite Heq, bad_demon_tail2.
 Qed.
 
@@ -689,83 +802,25 @@ Proof. intros. eapply kFair_bad_demon2_by_eq. reflexivity. Qed.
 (* In a bivalent position, half of the robots are in the same place. *)
 Lemma dist_left : forall d (Hd : d <> 0) (config : Pos.t),
   (forall gr gl, In gr right -> In gl left -> config (Good gr) - config (Good gl) = d) ->
-  forall g, In g left -> config (Good g) = config (Good gleft).
+  forall g, In g left -> config (Good g) = config (Good gfirst).
 Proof.
 intros d Hd config Hconfig g Hg.
-cut (config (Good gright) - config (Good g) = config (Good gright) - config (Good gleft)).
+cut (config (Good glast) - config (Good g) = config (Good glast) - config (Good gfirst)).
 + intro Heq. unfold Rminus in Heq. apply Rplus_eq_reg_l in Heq. setoid_rewrite <- Ropp_involutive.
   now apply Ropp_eq_compat.
-+ assert (Hright := gright_right). repeat rewrite Hconfig; auto.
++ assert (Hright := glast_right). repeat rewrite Hconfig; auto.
 Qed.
 
 Lemma dist_right : forall d (Hd : d <> 0) (config : Pos.t),
   (forall gr gl, In gr right -> In gl left -> config (Good gr) - config (Good gl) = d) ->
-  forall g, In g right -> config (Good g) = config (Good gright).
+  forall g, In g right -> config (Good g) = config (Good glast).
 Proof.
 intros d Hd config Hconfig g Hg.
-cut (config (Good g) - config (Good gleft) = config (Good gright) - config (Good gleft)).
+cut (config (Good g) - config (Good gfirst) = config (Good glast) - config (Good gfirst)).
 + intro Heq. unfold Rminus in Heq. now apply Rplus_eq_reg_r in Heq.
-+ assert (Hleft := gleft_left). repeat rewrite Hconfig; auto.
++ assert (Hleft := gfirst_left). repeat rewrite Hconfig; auto.
 Qed.
 
-Lemma dist_spectrum : forall d (Hd : d <> 0) (config : Pos.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) ->
-  Spect.eq (!! config) (Spect.add (config (Good gleft)) (Nat.div2 N.nG)
-                 (Spect.singleton (config (Good gright)) (Nat.div2 N.nG))).
-Proof.
-intros d Hd config Hconfig pt. assert (Heven := even_nG).
-assert (Hleft := dist_left Hd _ Hconfig). assert (Hright := dist_right Hd _ Hconfig).
-remember (config (Good gleft)) as ptl. remember (config (Good gright)) as ptr.
-assert (Hdiff : ~R.eq ptl ptr). { rewrite Heqptl, Heqptr. apply Rminus_not_eq_right. rewrite Hconfig; auto. }
-unfold left, right in *.
-rewrite <- Spect.Names.Gnames_length, Spect.from_config_spec, Spect.Pos.list_spec in *. rewrite names_Gnames.
-change Names.Gnames with Spect.Names.Gnames in *.
-induction Spect.Names.Gnames as [| g | g1 g2 l] using first_last_ind; simpl.
-* now rewrite Spect.singleton_0, Spect.add_0, Spect.empty_spec.
-* simpl in Heven. inversion_clear Heven. omega.
-* assert (Hg1 : config (Good g1) = ptl).
-  { subst. apply Hleft. simpl. rewrite app_length, plus_comm. simpl. now left. }
-  assert (Hg2 : config (Good g2) = ptr).
-  { subst. apply Hright. simpl. rewrite app_length, plus_comm. simpl. apply In_skipn_half. }
-  rewrite app_length, plus_comm. simpl. repeat rewrite map_app. rewrite countA_occ_app, plus_comm. simpl.
-  assert (Heven' : Nat.Even (length l)).
-  { destruct Heven as [n Heq]. exists (pred n). rewrite app_length in Heq. simpl in Heq. omega. }
-  apply IHl in Heven'.
-  + clear IHl. rename Heven' into IHl. unfold R.eq_dec, Rdef.eq_dec in IHl.
-    change identifier with Spect.Names.ident in *. change Spect.Names.Internals.G with Spect.Names.G.
-    do 2 Rdec_full; simpl.
-    - (* absurd case: first and last elements are the same *)
-      exfalso. apply Hdiff. subst. now rewrite <- Hg2, <- Hg1.
-    - (* pt ∈ left *)
-      rewrite IHl. subst pt. rewrite Hleft.
-      -- now repeat rewrite Spect.add_same, Spect.singleton_other.
-      -- simpl. rewrite app_length, plus_comm. simpl. now left.
-    - (* pt ∈ right *)
-      rewrite IHl. subst pt. rewrite Hright.
-      -- repeat rewrite Spect.add_other, Spect.singleton_same; auto; intro; apply Hdiff; now symmetry.
-      -- simpl. rewrite app_length, plus_comm. simpl. apply In_skipn_half.
-    - (* pt <> left, right *)
-      assert (~R.eq pt ptl). { subst. rewrite <- Hg1. auto. }
-      assert (~R.eq pt ptr). { subst. rewrite <- Hg2. auto. }
-      rewrite IHl. repeat rewrite Spect.add_other, Spect.singleton_other; trivial.
-  + intros gr gl Hgr Hgl. apply Hconfig.
-    - apply skipn_add_tl. rewrite app_length, plus_comm. simpl. assumption.
-    - apply firstn_add_tl. rewrite app_length, plus_comm. simpl. tauto.
-  + intros gl Hgl. apply Hleft. apply firstn_add_tl. rewrite app_length, plus_comm. simpl. tauto.
-  + intros gr Hgr. apply Hright. apply skipn_add_tl. rewrite app_length, plus_comm. simpl. assumption.
-Qed.
-
-Lemma dist_forbidden : forall d (Hd : d <> 0) (config : Pos.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) -> forbidden config.
-Proof.
-intros d Hd config Hconfig. unfold forbidden. split; try apply even_nG; [].
-assert (Hdiff : config (Good gleft) <> config (Good gright)).
-{ apply Rminus_not_eq_right. rewrite Hconfig; auto. }
-exists (config (Good gleft)), (config (Good gright)). repeat split.
-- assumption.
-- rewrite dist_spectrum; try eassumption. rewrite Spect.add_same, Spect.singleton_other; auto.
-- rewrite dist_spectrum; try eassumption. rewrite Spect.add_other, Spect.singleton_same; auto.
-Qed.
 
 Lemma dist_homothecy_spectrum_centered_left : forall ρ (Hρ : ρ <> 0) (config : Pos.t),
   (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
@@ -773,9 +828,40 @@ Lemma dist_homothecy_spectrum_centered_left : forall ρ (Hρ : ρ <> 0) (config 
 Proof.
 intros ρ Hρ config Hconfig g Hg. f_equiv. intro id. unfold Pos.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold pos1. destruct (left_right_dec id).
+unfold pos1. destruct (left_dec id).
 - setoid_rewrite (dist_left (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial. ring_simplify. reflexivity.
-- rewrite Hconfig; trivial. now rewrite Rinv_r.
+- rewrite Hconfig; trivial. now rewrite Rinv_r. now apply not_left_is_right.
+Qed.
+
+(* To prove this equality, we use !! pos1. *)
+Lemma dist_spectrum : forall d (Hd : d <> 0) (config : Pos.t),
+  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) ->
+  Spect.eq (!! config) (Spect.add (config (Good gfirst)) (Nat.div2 N.nG)
+                 (Spect.singleton (config (Good glast)) (Nat.div2 N.nG))).
+Proof.
+intros d Hd config Hconfig.
+rewrite <- (Rinv_involutive d) in Hconfig; trivial.
+assert (Hd' := Rinv_neq_0_compat _ Hd).
+rewrite <- Pos.map_id at 1.
+rewrite <- (bij_inv_bij_id (homothecy (config (Good gfirst)) Hd')).
+rewrite <- Pos.map_merge, <- Spect.from_config_map; refine _. simpl.
+rewrite dist_homothecy_spectrum_centered_left; auto.
+rewrite spect_pos1. unfold spectrum. rewrite Spect.map_add, Spect.map_singleton; refine _.
+replace (0 //d) with 0 by now field. rewrite Rplus_0_l.
+unfold Rdiv. rewrite <- (Hconfig glast gfirst); auto.
+f_equiv. f_equiv. compute; field.
+Qed.
+
+Lemma dist_forbidden : forall d (Hd : d <> 0) (config : Pos.t),
+  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) -> forbidden config.
+Proof.
+intros d Hd config Hconfig. unfold forbidden. split; try apply even_nG; [].
+assert (Hdiff : config (Good gfirst) <> config (Good glast)).
+{ apply Rminus_not_eq_right. rewrite Hconfig; auto. }
+exists (config (Good gfirst)), (config (Good glast)). repeat split.
+- assumption.
+- rewrite dist_spectrum; try eassumption. rewrite Spect.add_same, Spect.singleton_other; auto.
+- rewrite dist_spectrum; try eassumption. rewrite Spect.add_other, Spect.singleton_same; auto.
 Qed.
 
 Lemma round_dist2_left : forall ρ (Hρ : ρ <> 0) (config : Pos.t),
@@ -784,12 +870,14 @@ Lemma round_dist2_left : forall ρ (Hρ : ρ <> 0) (config : Pos.t),
                                              - round r (da2_left Hρ) config (Good g2) = (1 - move) / ρ.
 Proof.
 intros ρ Hρ config Hconfig g1 g2 Hg1 Hg2. unfold round. simpl.
-destruct (left_right_dec g1), (left_right_dec g2); try now exfalso; eauto.
-cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
-rewrite <- (Hconfig _ _ Hg1 Hg2). ring_simplify.
-replace (config (Good g1) - config (Good g2) - move / ρ)
-   with (config (Good g1) - move / ρ - config (Good g2)) by ring.
-do 3 f_equal. unfold move. apply pgm_compat. now apply dist_homothecy_spectrum_centered_left.
+destruct (left_dec g1), (left_dec g2); try now exfalso.
+(* TODO: correct the type conversion problem, the first case should diseappear with eauto *)
+- change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
+- cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
+  rewrite <- (Hconfig _ _ Hg1 Hg2). ring_simplify.
+  replace (config (Good g1) - config (Good g2) - move / ρ)
+    with (config (Good g1) - move / ρ - config (Good g2)) by ring.
+  do 3 f_equal. unfold move. apply pgm_compat. now apply dist_homothecy_spectrum_centered_left.
 Qed.
 
 Corollary round2_left_right : forall ρ (Hρ : ρ <> 0) config,
@@ -797,7 +885,7 @@ Corollary round2_left_right : forall ρ (Hρ : ρ <> 0) config,
   forall g1 g2, In g1 right -> In g2 right ->
     round r (da2_left Hρ) config (Good g1) = round r (da2_left Hρ) config (Good g2).
 Proof.
-intros. apply Rplus_eq_reg_l with (- round r (da2_left Hρ) config (Good gleft)).
+intros. apply Rplus_eq_reg_l with (- round r (da2_left Hρ) config (Good gfirst)).
 setoid_rewrite Rplus_comm. setoid_rewrite round_dist2_left; auto.
 Qed.
 
@@ -807,7 +895,7 @@ Corollary round2_left_left : forall ρ (Hρ : ρ <> 0) config,
     round r (da2_left Hρ) config (Good g1) = round r (da2_left Hρ) config (Good g2).
 Proof.
 intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
-apply Rplus_eq_reg_r with (round r (da2_left Hρ) config (Good gright)).
+apply Rplus_eq_reg_r with (round r (da2_left Hρ) config (Good glast)).
 setoid_rewrite Rplus_comm. setoid_rewrite round_dist2_left; auto.
 Qed.
 
@@ -827,10 +915,11 @@ Lemma dist_homothecy_spectrum_centered_right : forall ρ (Hρ : ρ <> 0) (config
 Proof.
 intros ρ Hρ config Hconfig g Hg. f_equiv. intro id. unfold Pos.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold pos2. destruct (left_right_dec id).
+unfold pos2. destruct (left_dec id).
 - replace (- ρ * (config (Good id) - config (Good g))) with (ρ * (config (Good g) - config (Good id))) by ring.
   rewrite Hconfig; trivial. now rewrite Rinv_r.
-- setoid_rewrite (dist_right (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial. ring_simplify. reflexivity.
+- setoid_rewrite (dist_right (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial.
+  ring_simplify. reflexivity. now apply not_left_is_right.
 Qed.
 
 Lemma round_dist2_right : forall ρ (Hρ : ρ <> 0) (config : Pos.t),
@@ -839,13 +928,15 @@ Lemma round_dist2_right : forall ρ (Hρ : ρ <> 0) (config : Pos.t),
                                              - round r (da2_right Hρ) config (Good g2) = (1 - move) / ρ.
 Proof.
 intros ρ Hρ config Hconfig g1 g2 Hg1 Hg2. unfold round. simpl.
-destruct (left_right_dec g1), (left_right_dec g2); try now exfalso; eauto.
-cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
-rewrite <- (Hconfig _ _ Hg1 Hg2).
-replace (config (Good g1) - config (Good g2) - move / ρ)
-   with ((move / -ρ) + config (Good g1) - config (Good g2)) by now field.
-do 3 f_equal. unfold move. apply pgm_compat. rewrite pos1_pos2_spect_eq.
-now apply dist_homothecy_spectrum_centered_right.
+destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
+(* TODO: correct the type conversion problem, the first case should diseappear with eauto *)
+- change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
+- cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
+  rewrite <- (Hconfig _ _ Hg1 Hg2).
+  replace (config (Good g1) - config (Good g2) - move / ρ)
+    with ((move / -ρ) + config (Good g1) - config (Good g2)) by now field.
+  do 3 f_equal. unfold move. apply pgm_compat. rewrite pos1_pos2_spect_eq.
+  now apply dist_homothecy_spectrum_centered_right.
 Qed.
 
 Ltac shift := let Hm := fresh "Hm" in intro Hm; apply Rminus_diag_uniq in Hm;
@@ -916,7 +1007,9 @@ destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
   destruct (Rdec move 1) as [Hmove | Hmove].
   + now apply Always_forbidden1.
   + apply (Always_forbidden2 Hmove R1_neq_R0 pos1); try reflexivity.
-    intros. simpl. destruct (left_right_dec g1), (left_right_dec g2); field || exfalso; eauto.
+    intros. simpl. destruct (left_dec g1), (left_dec g2); field || exfalso; eauto.
+(* TODO: correct the type conversion problem, eauto should solve this goal *)
+change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 Qed.
 
 End GatheringEven.
