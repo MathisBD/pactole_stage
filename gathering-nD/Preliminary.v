@@ -23,6 +23,12 @@ Require Import Bool.
 Set Implicit Arguments.
 
 
+(** A tactic simplifying coinduction proofs. *)
+Global Ltac coinduction proof :=
+  cofix proof; intros; constructor;
+   [ clear proof | try (apply proof; clear proof) ].
+
+
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
 Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.
 
@@ -249,6 +255,14 @@ intros f Hf Hinj l Hnodup. induction Hnodup.
   - assumption.
 Qed.
 
+(* Version without setoid compatibility (I'm lazy) *)
+Theorem map_f_dependent_compat : forall (f g : A -> B) l, (forall e, In e l -> f e = g e) -> map f l = map g l.
+Proof.
+intros f g l Hfg. induction l; trivial. simpl. f_equal.
+- apply Hfg. intuition.
+- apply IHl. intros. apply Hfg. intuition.
+Qed.
+
 Fixpoint alls (x : A) n :=
   match n with
     | 0 => Datatypes.nil
@@ -377,6 +391,7 @@ intros l l' Hperm. induction Hperm; intro Hdup.
 + auto.
 Qed.
 
+(* Already exists as [Permutation.Permutation_NoDup'] *)
 Instance Permutation_NoDup_compat : Proper (@Permutation A ==> iff) (@NoDup A).
 Proof. repeat intro. now split; apply Permutation_NoDup. Qed.
 
@@ -1133,6 +1148,16 @@ Qed.
 Theorem first_last_ind {A} : forall P : list A -> Prop, P nil -> (forall x, P (x :: nil)) ->
   (forall x y l, P l -> P ((x :: l) ++ (y :: nil))) -> forall l : list A, P l.
 Proof. intros P Pnil Pone Prec l. now apply first_last_ind_aux with l. Qed.
+
+Corollary first_last_even_ind {A} : forall P : list A -> Prop, P nil ->
+  (forall x y l, Nat.Even (length l) -> P l -> P ((x :: l) ++ (y :: nil))) -> forall l, Nat.Even (length l) -> P l.
+Proof.
+intros P Pnil Prec l. pattern l. apply first_last_ind; clear l.
++ auto.
++ simpl. intros x Habs. inversion Habs. omega.
++ intros x y l Hrec Hlen. rewrite app_length, plus_comm in Hlen. simpl in Hlen. destruct Hlen as [n Hlen].
+  apply Prec, Hrec; exists (pred n); omega.
+Qed.
 
 
 (* ******************************* *)

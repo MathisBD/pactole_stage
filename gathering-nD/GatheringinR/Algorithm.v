@@ -18,11 +18,10 @@ Require Import Relations.
 Require Import RelationPairs.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require Import FormalismRd.
-Require Import SortingR.
-Require Import MultisetSpectrum.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Import Pactole.GatheringinR.SortingR.
+Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
 Import Permutation.
@@ -33,8 +32,10 @@ Set Implicit Arguments.
 
 
 Import GatheringinR.
+Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
+Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
-Lemma similarity_middle : forall (sim : similarity) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
+Lemma similarity_middle : forall (sim : Sim.t) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
 Proof.
 intros sim x y. destruct (similarity_in_R_case sim) as [Hsim | Hsim];
 repeat rewrite Hsim; unfold R.t, Rdef.t in *; field.
@@ -108,7 +109,7 @@ intros f Hf. apply Spect.ind.
 + now rewrite Spect.map_empty.
 Qed.
 
-Corollary Smax_mult_similarity_invariant : forall (sim : similarity) s, Smax_mult (Spect.map sim s) = Smax_mult s.
+Corollary Smax_mult_similarity_invariant : forall (sim : Sim.t) s, Smax_mult (Spect.map sim s) = Smax_mult s.
 Proof. intros. apply Smax_mult_map_injective_invariant. auto. Qed.
 
 Lemma Smax_mult_add : forall s x n, (n > 0)%nat -> ~Spect.In x s ->
@@ -170,7 +171,7 @@ intros f Hf s. unfold Smax. rewrite Spect.map_injective_nfilter.
 + assumption.
 Qed.
 
-Corollary Smax_similarity : forall (sim : similarity),
+Corollary Smax_similarity : forall (sim : Sim.t),
   forall s, Spect.eq (Smax (Spect.map sim s)) (Spect.map sim (Smax s)).
 Proof. intros. apply Smax_map_injective. auto. Qed.
 
@@ -484,14 +485,15 @@ exists (f pt1), (f pt2). split.
   assumption || (now intros ? ? Heq; rewrite Heq) || apply Hf.
 Qed.
 
-Theorem forbidden_similarity_iff : forall (sim : similarity) pos,
+Theorem forbidden_similarity_iff : forall (sim : Sim.t) pos,
   forbidden (Pos.map sim pos) <-> forbidden pos.
 Proof.
 intros sim pos. split.
-- setoid_rewrite <- Pos.map_id at 3. rewrite <- (bij_inv_bij_id sim).
+- setoid_rewrite <- Pos.map_id at 3. change id with (Similarity.section Sim.id).
+  rewrite <- Sim.compose_inverse_l. simpl.
   setoid_rewrite <- Pos.map_merge at 2; try now intros ? ? Heq; rewrite Heq.
-  apply forbidden_injective_invariant, injective_retraction, similarity_injective.
-- apply forbidden_injective_invariant, similarity_injective.
+  eapply forbidden_injective_invariant, Similarity.injective_retraction, Sim.injective.
+- apply forbidden_injective_invariant, Sim.injective.
 Qed.
 
 Lemma support_Smax_1_not_forbidden : forall config pt,
@@ -792,12 +794,12 @@ destruct Hfmon as [Hfinc | Hfdec].
     - intro Habs. rewrite rev_nil in Habs. apply map_eq_nil in Habs. now apply (sort_non_nil config).
 Qed.
 
-Corollary is_extremal_similarity_invariant : forall (sim : similarity) config r,
+Corollary is_extremal_similarity_invariant : forall (sim : Sim.t) config r,
   is_extremal (sim r) (Spect.map sim (!! config)) = is_extremal r (!! config).
 Proof.
 intros sim pos r. apply is_extremal_map_monotonic_invariant.
 - apply similarity_monotonic.
-- apply similarity_injective.
+- apply Sim.injective.
 Qed.
 
 (* When there is no robot (s is empty), the center is 0. *)
@@ -806,12 +808,12 @@ Definition extreme_center (s : Spect.t) := (mini s + maxi s) / 2.
 Instance extreme_center_compat : Proper (Spect.eq ==> eq) extreme_center.
 Proof. intros s s' Hs. unfold extreme_center, mini, maxi. now rewrite Hs. Qed.
 
-Lemma extreme_center_similarity : forall (sim : similarity) s, ~Spect.eq s Spect.empty ->
+Lemma extreme_center_similarity : forall (sim : Sim.t) s, ~Spect.eq s Spect.empty ->
   extreme_center (Spect.map sim s) = sim (extreme_center s).
 Proof.
 intros sim s Hs.
 assert (Hsim1 : Proper (R.eq ==> R.eq) sim). { intros x y Hxy. now rewrite Hxy. }
-assert (Hsim2 := similarity_injective sim).
+assert (Hsim2 := Sim.injective sim).
 unfold extreme_center, mini, maxi.
 destruct (similarity_monotonic sim) as [Hinc | Hdec].
 * rewrite Spect.map_injective_support, (sort_map_increasing Hinc); trivial.
@@ -838,7 +840,7 @@ destruct (similarity_monotonic sim) as [Hinc | Hdec].
 (* Anomaly: error with no safe_id attached: Uncaught exception Stm.Vcs_aux.Expired.. *)
 Qed.
 
-Lemma extreme_center_similarity_invariant : forall (sim : similarity) config,
+Lemma extreme_center_similarity_invariant : forall (sim : Sim.t) config,
   extreme_center (Spect.map sim (!! config)) = sim (extreme_center (!! config)).
 Proof. intros. apply extreme_center_similarity. apply spec_non_nil. Qed.
 
@@ -876,7 +878,7 @@ destruct (Spect.support (Smax s)) as [| pt [| pt2 l]].
   destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
 Qed.
 
-Definition robogram := Build_robogram robogram_pgm robogram_pgm_compat.
+Definition robogram := @Build_robogram robogram_pgm robogram_pgm_compat.
 
 
 (** **  General simplification lemmas for [round robogram da _] **)
@@ -901,13 +903,13 @@ intros da pos id. unfold round.
 destruct (step da id) as [simc |] eqn:Hstep, id as [g | b]; try reflexivity || now eapply Fin.case0; exact b.
 remember (pos (Good g)) as pt.
 (* Simplify the similarity *)
-assert (Hratio : (simc pt).(ratio) <> 0). { eapply da.(step_ratio). eassumption. }
+assert (Hratio : (simc pt).(Sim.zoom) <> 0). { eapply da.(step_zoom). eassumption. }
 destruct (similarity_in_R (simc pt)) as [k [Hk Hsim]].
-assert (Hinvsim : forall x, (simc pt ⁻¹) x = x / k + center (simc pt)).
+assert (Hinvsim : forall x, (simc pt ⁻¹) x = x / k + Sim.center (simc pt)).
 { apply inverse_similarity_in_R; trivial. destruct Hk; subst; now try apply Ropp_neq_0_compat. }
 rewrite Hinvsim.
 assert(Hsimccompat : Proper (R.eq ==> R.eq) (simc pt)). { intros ? ? Heq. now rewrite Heq. }
-assert (Hsim_inj : injective R.eq R.eq (simc pt)) by now apply similarity_injective.
+assert (Hsim_inj : injective R.eq R.eq (simc pt)) by now apply Sim.injective.
 (* Unfold the robogram *)
 unfold robogram, robogram_pgm. simpl.
 assert (Hperm : PermutationA R.eq (Spect.support (Smax (!! (Pos.map (simc pt) pos))))
@@ -933,25 +935,26 @@ destruct (Spect.support (Smax (!! pos))) as [| pt' [| pt2' l']].
     rewrite Spect.size_spec in Hlen.
     destruct (Spect.support (!! pos)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
     destruct (similarity_monotonic (simc pt)) as [Hinc | Hdec].
-    - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (simc pt 0)),
-              map_nth, <- Hinvsim, <- (simc pt).(Inversion); try reflexivity.
+    - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (simc pt 0)), map_nth, <- Hinvsim.
+      simpl. rewrite <- (simc pt).(Similarity.Inversion); try reflexivity.
       rewrite map_length, <- Permuted_sort. simpl. omega.
     - { rewrite (sort_map_decreasing Hdec).
         assert (Heq1 : Nat.div2 (length (map (simc pt) (sort (pt1 :: pt2 :: pt3 :: nil)))) = 1%nat).
         { now rewrite map_length, <- Permuted_sort. }
         rewrite <- Heq1 at 1. rewrite odd_middle, (nth_indep _ 0 (simc pt 0)).
-        + rewrite map_nth, <- Hinvsim, <- (simc pt).(Inversion), <- Heq1; reflexivity.
+        + rewrite map_nth, <- Hinvsim. simpl. rewrite <- (simc pt).(Similarity.Inversion), <- Heq1; reflexivity.
         + rewrite map_length, <- Permuted_sort. simpl. omega.
         + rewrite map_length, <- Permuted_sort. simpl. exists 1%nat. omega. }
   + (* Generic case *)
-    change 0 with R.origin. rewrite <- (simc pt).(center_prop) at 1.
+    change 0 with R.origin. rewrite <- (simc pt).(Sim.center_prop) at 1.
     rewrite <- Spect.from_config_map, is_extremal_similarity_invariant, da.(step_center); try eassumption.
     destruct (is_extremal pt (!! pos)).
     - (* The current robot is exremal *)
       hnf. unfold R.origin, Rdef.origin. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
     - (* The current robot is not exremal *)
       rewrite <- Spect.from_config_map, extreme_center_similarity; apply spec_non_nil || trivial.
-      hnf. rewrite <- (da.(step_center) _ _ pt Hstep) at 2. now rewrite <- Hinvsim, <- (simc pt).(Inversion).
+      hnf. rewrite <- (da.(step_center) _ pt Hstep) at 2.
+      rewrite <- Hinvsim. simpl. now rewrite <- (simc pt).(Similarity.Inversion).
 Qed.
 
 (** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)
@@ -1339,7 +1342,7 @@ intros conf da pt. split.
       -- reflexivity.
       -- repeat Rdec_full; try now idtac + apply le_n_S + apply le_S; apply IHl.
          elim Hneq. now apply Hstay.
-  + apply IHl in H. simpl. unfold R.eq_dec, Rdef.eq_dec in *. repeat Rdec_full; try omega.
+  + apply IHl in H. simpl. unfoldR in H. repeat Rdec_full; try omega.
     elim Hneq. apply Hdest. now rewrite moving_spec, Heq.
 Qed.
 

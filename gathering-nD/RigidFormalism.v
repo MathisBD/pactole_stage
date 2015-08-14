@@ -8,6 +8,7 @@
 (**************************************************************************)
 
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
@@ -17,8 +18,9 @@ Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Pactole.CommonRealFormalism.
 
 
 Ltac coinduction proof :=
@@ -26,174 +28,26 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module Formalism (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
+Module Make (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N))
+            (Common : CommonRealFormalism.Sig(Location)(N)(Spect)).
 
-Module Names := Spect.Names.
-Module Pos := Spect.Pos.
-
-(** ** Programs for good robots *)
-
-(* TODO: put similarities into a separate file, with definition for the usual ones:
-   translation, homothecy, rotation, symmetry, ... *)
-Record bijection (T : Type) eqT (Heq : @Equivalence T eqT) := {
-  section :> T → T;
-  retraction : T → T;
-  section_compat : Proper (eqT ==> eqT) section;
-  Inversion : ∀ x y, eqT (section x) y ↔ eqT (retraction y) x}.
-
-Notation "s ⁻¹" := (s.(retraction)) (at level 99).
-
-Definition bij_eq (bij1 bij2 : bijection Location.eq_equiv) :=
-  (Location.eq ==> Location.eq)%signature bij1.(section) bij2.
-
-Instance bij_eq_equiv : Equivalence bij_eq.
-Proof. split.
-+ intros f x y Hxy. apply section_compat. assumption.
-+ intros f g Heq x y Hxy. symmetry. apply Heq. symmetry. assumption.
-+ intros f g h Hfg Hgh x y Hxy. rewrite (Hfg _ _ Hxy). apply Hgh. reflexivity.
-Qed.
-
-(** Properties about inverse functions *)
-Instance retraction_compat : Proper (bij_eq ==> (Location.eq ==> Location.eq)) (@retraction _ _ Location.eq_equiv).
-Proof.
-intros f g Hfg x y Hxy. rewrite <- f.(Inversion), (Hfg _ _ (reflexivity _)), Hxy, g.(Inversion). reflexivity.
-Qed.
-
-Lemma bij_inv_bij : forall (bij : bijection Location.eq_equiv) x, Location.eq (bij ⁻¹ (bij x)) x.
-Proof. intros bij x. rewrite <- bij.(Inversion). now apply section_compat. Qed.
-
-Corollary inv_bij_bij : forall (bij : bijection Location.eq_equiv) x, Location.eq (bij (bij ⁻¹ x)) x.
-Proof. intros bij x. rewrite bij.(Inversion). now apply retraction_compat. Qed.
-
-Corollary bij_inv_bij_id : forall (bij : bijection Location.eq_equiv),
-  (Location.eq ==> Location.eq)%signature (fun x => bij ⁻¹ (bij x)) Datatypes.id.
-Proof. repeat intro. now rewrite bij_inv_bij. Qed.
-
-Corollary inv_bij_bij_id : forall (bij : bijection Location.eq_equiv),
-  (Location.eq ==> Location.eq)%signature (fun x => bij (bij ⁻¹ x)) Datatypes.id.
-Proof. repeat intro. now rewrite inv_bij_bij. Qed.
-
-Lemma injective_retraction : forall bij : bijection Location.eq_equiv,
-  injective Location.eq Location.eq bij -> injective Location.eq Location.eq (bij ⁻¹).
-Proof.
-intros bij Hinj x y Heq. apply Hinj. rewrite bij.(Inversion), bij_inv_bij.
-now rewrite <- bij.(Inversion), inv_bij_bij in Heq.
-Qed.
-
-(** Similarities are functions that multiply distance by a constant ratio.
-    For convenience, we also add their center, that is the location from which robots locally observe. *)
-Record similarity := {
-  f :> @bijection Location.t _ _;
-  ratio : R;
-  center : Location.t;
-  center_prop : f center = Location.origin;
-  dist_prop : forall x y, Location.dist (f x) (f y) = (ratio * Location.dist x y)%R}.
-
-Definition sim_eq sim1 sim2 := bij_eq sim1.(f) sim2.(f).
-
-Instance similarity_f_compat : forall sim, Proper bij_eq sim.(f).
-Proof.
-intros sim ? ? Heq. rewrite <- Location.dist_defined in Heq |- *.
-rewrite <- (Rmult_0_r sim.(ratio)), <- Heq. now apply dist_prop.
-Qed.
-
-Instance sim_eq_equiv : Equivalence sim_eq.
-Proof. unfold sim_eq. split.
-+ intros [f k c Hc Hk]. simpl. reflexivity.
-+ intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] Hfg. simpl in *. now symmetry.
-+ intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] [h kh ch Hch Hkh] ? ?. simpl in *. etransitivity; eassumption.
-Qed.
-
-(** As similarities are defined as bijections, we can prove that k <> 0
-    as soon as we have 2 points, that is when the metric space has dimension > 0. *)
-Lemma sim_ratio_non_null : forall x y : Location.t, ~Location.eq x y ->
-  forall sim, sim.(ratio) <> 0%R.
-Proof.
-intros x y Hxy sim Heq. apply Hxy.
-assert (Heqsim : Location.eq (sim x) (sim y)).
-{ now rewrite <- Location.dist_defined, sim.(dist_prop), Heq, Rmult_0_l. }
-rewrite sim.(Inversion) in Heqsim. rewrite <- Heqsim, <- sim.(Inversion). reflexivity.
-Qed.
-
-Lemma sim_ratio_pos : forall x y : Location.t, ~Location.eq x y ->
-  forall sim, (0 < sim.(ratio))%R.
-Proof.
-intros x y Hxy sim. apply Preliminary.Rle_neq_lt.
-- destruct sim as [f k c Hc Hk]. simpl. clear c Hc. specialize (Hk x y).
-  rewrite <- Location.dist_defined in Hxy.
-  assert (Hdist := Location.dist_pos x y).
-  generalize (Location.dist_pos (f x) (f y)).
-  rewrite <- (Rmult_0_l (Location.dist x y)) at 1. rewrite Hk. apply Rmult_le_reg_r. lra.
-- intro. now apply (sim_ratio_non_null Hxy sim).
-Qed.
-
-Corollary similarity_injective : forall x y : Location.t, ~Location.eq x y ->
-  forall sim : similarity, Preliminary.injective Location.eq Location.eq sim.
-Proof.
-intros x y Hxy sim z t Heqf.
-rewrite <- Location.dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
-apply Rmult_integral in Heqf. destruct Heqf; trivial.
-assert (Hsim := sim_ratio_non_null Hxy sim). contradiction.
-Qed.
-
-Unset Implicit Arguments.
-
-(** ** Good robots have a common program, which we call a robogram *)
-
-Record robogram := {
-  pgm :> Spect.t → Location.t;
-  pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
-
-Global Existing Instance pgm_compat.
-
-Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
-
-Instance req_equiv : Equivalence req.
-Proof. split.
-+ intros [robogram Hrobogram] x y Heq; simpl. rewrite Heq. reflexivity.
-+ intros r1 r2 H x y Heq. rewrite <- (H _ _ (reflexivity _)). now apply (pgm_compat r1).
-+ intros r1 r2 r3 H1 H2 x y Heq.
-  rewrite (H1 _ _ (reflexivity _)), (H2 _ _ (reflexivity _)). now apply (pgm_compat r3).
-Qed.
+Import Common.
+Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
 (** ** Demonic schedulers *)
-
-(** Lifting an equivalence relation to an option type. *)
-Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
-  match xo, yo with
-    | None, None => True
-    | None, Some _ | Some _, None => False
-    | Some x, Some y => eqT x y
-  end.
-
-Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
-Proof. intros T R HR [x |]; simpl; auto. Qed.
-
-Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
-Proof. split.
-+ intros [x |]; simpl; reflexivity || auto.
-+ intros [x |] [y |]; simpl; trivial; now symmetry.
-+ intros [x |] [y |] [z |]; simpl; tauto || etransitivity; eassumption.
-Qed.
 
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
-  step : Names.ident → option (Location.t → similarity);
-  step_compat : Proper (eq ==> opt_eq (Location.eq ==> sim_eq)) step;
-  step_ratio :  forall id sim c, step id = Some sim -> (sim c).(ratio) <> R0;
-  step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(center) c}.
-(*  spectrum_of : Names.G → (Pos.t → Spec.t);
-  spectrum_ok : forall g, forall pos : Pos.t, Spec.is_ok (spectrum_of g pos) pos;
-  spectrum_exteq : Proper (eq ==> Pos.eq ==> Spec.eq) spectrum_of}. *)
-Set Implicit Arguments.
+  step : Names.ident → option (Location.t → Sim.t);
+  step_compat : Proper (eq ==> opt_eq (Location.eq ==> Sim.eq)) step;
+  step_zoom :  forall id sim c, step id = Some sim -> (sim c).(Sim.zoom) <> R0;
+  step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(Sim.center) c}.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id, opt_eq (Location.eq ==> sim_eq)%signature (da1.(step) id) (da2.(step) id)) /\
+  (forall id, opt_eq (Location.eq ==> Sim.eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
-(* /\
-  (forall g, (Pos.eq ==> Spec.eq)%signature (da1.(spectrum_of) g) (da2.(spectrum_of) g)). *)
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
@@ -207,11 +61,19 @@ Proof. split.
   - elim H1.
 Qed.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> sim_eq)) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> Sim.eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
+
+Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id, step da1 id = None <-> step da2 id = None.
+Proof.
+intros da1 da2 Hda id.
+assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
+split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
+Qed.
+
 (*
 Instance spectrum_of_compat : Proper (da_eq ==> Logic.eq ==> Pos.eq ==> Spec.eq) spectrum_of. 
 Proof.
@@ -331,6 +193,55 @@ CoInductive kFair k (d : demon) :=
   AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
                 kFair k d.
 
+Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
+Proof.
+intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
++ constructor 1. rewrite da_eq_step_None; try eassumption. now f_equiv.
++ constructor 2.
+  - rewrite da_eq_step_None; try eassumption. now f_equiv.
+  - apply IHHfair. now f_equiv.
+Qed.
+
+Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> iff) LocallyFairForOne.
+Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
+
+Lemma Fair_compat_aux : forall d1 d2, deq d1 d2 -> Fair d1 -> Fair d2.
+Proof.
+cofix be_fair. intros d1 d2 Heq Hfair. destruct Hfair as [Hnow Hlater]. constructor.
++ intro. now rewrite <- Heq.
++ eapply be_fair; try eassumption. now f_equiv.
+Qed.
+
+Instance Fair_compat : Proper (deq ==> iff) Fair.
+Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
+
+Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
+Proof.
+intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
++ constructor 1. rewrite <- da_eq_step_None; try eassumption. now f_equiv.
++ constructor 2.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - apply IHbet. now f_equiv.
++ constructor 3.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - apply IHbet. now f_equiv.
+Qed.
+
+Instance Between_compat : Proper (eq ==> eq ==> deq ==> eq ==> iff) Between.
+Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
+
+Lemma kFair_compat_aux : forall k d1 d2, deq d1 d2 -> kFair k d1 -> kFair k d2.
+Proof.
+cofix be_fair. intros k d1 d2 Heq Hkfair. destruct Hkfair as [Hnow Hlater]. constructor.
++ intros. now rewrite <- Heq.
++ eapply be_fair; try eassumption. now f_equiv.
+Qed.
+
+Instance kFair_compat : Proper (eq ==> deq ==> iff) kFair.
+Proof. repeat intro. subst. split; intro; now eapply kFair_compat_aux; eauto. Qed.
+
 Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
 Proof.
@@ -424,43 +335,7 @@ Proof.
   - now inversion H.
 Qed.
 
-(** ** Executions *)
-
-(** Now we can [execute] some robogram from a given position with a [demon] *)
-CoInductive execution :=
-  NextExecution : Pos.t → execution → execution.
-
-
-(** *** Destructors for demons *)
-
-Definition execution_head (e : execution) : Pos.t :=
-  match e with NextExecution pos _ => pos end.
-
-Definition execution_tail (e : execution) : execution :=
-  match e with NextExecution _ e => e end.
-
-CoInductive eeq (e1 e2 : execution) : Prop :=
-  | Ceeq : Pos.eq (execution_head e1) (execution_head e2) ->
-           eeq (execution_tail e1) (execution_tail e2) -> eeq e1 e2.
-
-Instance eeq_equiv : Equivalence eeq.
-Proof. split.
-+ coinduction eeq_refl. reflexivity.
-+ coinduction eeq_sym. symmetry. now inversion H. now inversion H.
-+ coinduction eeq_trans. intro.
-  - inversion H. inversion H0. now transitivity (execution_head y id).
-  - apply (eeq_trans (execution_tail x) (execution_tail y) (execution_tail z)).
-    now inversion H. now inversion H0.
-Qed.
-
-Instance eeq_bisim : Bisimulation execution.
-Proof. exists eeq. apply eeq_equiv. Qed.
-
-Instance execution_head_compat : Proper (eeq ==> Pos.eq) execution_head.
-Proof. intros e1 e2 He id. subst. inversion He. intuition. Qed.
-
-Instance execution_tail_compat : Proper (eeq ==> eeq) execution_tail.
-Proof. intros e1 e2 He. now inversion He. Qed.
+(** ** One step executions *)
 
 (** [round r da pos] return the new position of robots (that is a function
     giving the position of each robot) from the previous one [pos] by applying
@@ -486,10 +361,10 @@ Instance round_compat : Proper (req ==> da_eq ==> Pos.eq ==> Pos.eq) round.
 Proof.
 intros r1 r2 Hr da1 da2 Hda pos1 pos2 Hpos id.
 unfold req in Hr. unfold round.
-assert (Hstep := step_da_compat Hda (reflexivity id)). assert (Hda1 := da1.(step_compat) _ _ (reflexivity id)).
+assert (Hstep := step_da_compat Hda (reflexivity id)).
 destruct (step da1 id), (step da2 id), id; try now elim Hstep.
-+ simpl in Hstep. f_equiv.
-  - apply Hstep, Hpos.
++ f_equiv.
+  - do 2 f_equiv. apply Hstep, Hpos.
   - apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
 + rewrite Hda. reflexivity.
 Qed.
@@ -573,49 +448,10 @@ cofix proof. constructor. simpl. assumption.
 apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
 Qed.
 
+(* Definitions of imprisonned, attracted, solution, solution_FSYNC, solution_FAIR_FSYNC
+   (for the convergence problem) are removed. *)
 
-(** ** Properties of executions  *)
-
-Open Scope R_scope.
-(** Expressing that all good robots are confined in a small disk. *)
-CoInductive imprisonned (center : Location.t) (radius : R) (e : execution) : Prop
-:= InDisk : (∀ g : Names.G, Rabs (Location.dist center (execution_head e (Good g))) <= radius)
-            → imprisonned center radius (execution_tail e)
-            → imprisonned center radius e.
-
-(** The execution will end in a small disk. *)
-Inductive attracted (center : Location.t) (radius : R) (e : execution) : Prop :=
-  | Captured : imprisonned center radius e → attracted center radius e
-  | WillBeCaptured : attracted center radius (execution_tail e) → attracted center radius e.
-
-(** [solution r] means that robogram [r] is a solution, i.e. is convergent
-    ([attracted]) for any demon. *)
-Definition solution (r : robogram) : Prop :=
-  ∀ (pos : Pos.t),
-  ∀ (d : demon), Fair d →
-  ∀ (epsilon : R), 0 < epsilon →
-  exists (lim_app : Location.t), attracted lim_app epsilon (execute r d pos).
-
-
-(** Solution restricted to fully synchronous demons. *)
-Definition solution_FSYNC (r : robogram) : Prop :=
-  ∀ (pos : Pos.t),
-  ∀ (d : demon), FullySynchronous d →
-  ∀ (epsilon : R), 0 < epsilon →
-  exists (lim_app : Location.t), attracted lim_app epsilon (execute r d pos).
-
-
-(** A Solution is also a solution restricted to fully synchronous demons. *)
-Lemma solution_FAIR_FSYNC : ∀ r, solution r → solution_FSYNC r.
-Proof.
-  intros r H.
-  unfold solution_FSYNC, solution in *.
-  intros pos d H0.
-  apply H.
-  now apply fully_synchronous_implies_fair.
-Qed.
-
-End Formalism.
+End Make.
 
 (* 
  *** Local Variables: ***

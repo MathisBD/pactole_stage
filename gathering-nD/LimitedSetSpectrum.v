@@ -12,9 +12,9 @@ Require Import Utf8_core.
 Require Import SetoidList.
 Require Import Rbase.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require SetSpectrum.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Pactole.SetSpectrum.
 
 
 Module Type Radius.
@@ -22,7 +22,7 @@ Module Type Radius.
 End Radius.
 
 
-Module Make(Loc : MetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
+Module Make(Loc : RealMetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
 
 Module M := SetSpectrum.Make(Loc)(N).
 Module Names := M.Names.

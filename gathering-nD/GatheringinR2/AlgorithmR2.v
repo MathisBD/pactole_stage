@@ -11,16 +11,17 @@
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
-Require Import Rbase Rbasic_fun R_sqrt.
+Require Import Rbase Rbasic_fun R_sqrt Rtrigo_def.
 Require Import List.
 Require Import SetoidList.
 Require Import Relations.
 Require Import RelationPairs.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require Import FormalismRd.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Pactole.CommonFormalism.
+Require Pactole.RigidFormalism.
 Require Import SortingR.
 Require Import MultisetSpectrum.
 Require Import Morphisms.
@@ -36,15 +37,15 @@ Close Scope R_scope.
 
 (** R² as a vector space over R. *)
 
-Module R2def : MetricSpaceDef with Definition t := (R * R)%type
-                             with Definition eq := @Logic.eq (R * R)
-(*                              with Definition eq_dec := Rdec *)
-                             with Definition origin := (0, 0)%R
-                             with Definition dist := fun x y => sqrt ((fst x - fst y)² + (snd x - snd y)²)
-                             with Definition add := fun x y => let '(x1, x2) := x in
-                                                               let '(y1, y2) := y in (x1 + y1, x2 + y2)%R
-                             with Definition mul := fun k r => let '(x, y) := r in (k * x, k * y)%R
-                             with Definition opp := fun r => let '(x, y) := r in (-x, -y)%R.
+Module R2def : RealMetricSpaceDef with Definition t := (R * R)%type
+                                  with Definition eq := @Logic.eq (R * R)
+(*                                  with Definition eq_dec := Rdec *)
+                                  with Definition origin := (0, 0)%R
+                                  with Definition dist := fun x y => sqrt ((fst x - fst y)² + (snd x - snd y)²)
+                                  with Definition add := fun x y => let '(x1, x2) := x in
+                                                                    let '(y1, y2) := y in (x1 + y1, x2 + y2)%R
+                                  with Definition mul := fun k r => let '(x, y) := r in (k * x, k * y)%R
+                                  with Definition opp := fun r => let '(x, y) := r in (-x, -y)%R.
   
   Definition t := (R * R)%type.
   Definition origin := (0, 0)%R.
@@ -86,7 +87,7 @@ Module R2def : MetricSpaceDef with Definition t := (R * R)%type
   Lemma triang_ineq : forall x y z : t, (dist x z <= dist x y + dist y z)%R.
   Proof. Admitted.
   
-  Lemma plus_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Lemma add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
   Proof. Admitted.
   
   Lemma add_comm : forall u v, eq (add u v) (add v u).
@@ -104,16 +105,32 @@ Module R2def : MetricSpaceDef with Definition t := (R * R)%type
   Lemma add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
   Proof. Admitted.
   
-  Lemma plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
+  Lemma plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   Proof. Admitted.
   
-  (** The multiplicative identity is omitted. *)
+  Lemma mul_1 : forall u, eq (mul 1 u) u.
+  Proof. Admitted.
+
+  Lemma non_trivial : exists u v, ~eq u v.
+  Proof. Admitted.
 End R2def.
 
 
-Module R2 := MakeMetricSpace(R2def).
+Module R2 := MakeRealMetricSpace(R2def).
 
-Transparent R2.origin R2def.origin R2.eq_dec R2def.eq_dec.
+Delimit Scope R2_scope with R2.
+Bind Scope R2_scope with R2.t.
+Notation "u + v" := (R2.add u v) : R2_scope.
+Notation "k * u" := (R2.mul k u) : R2_scope.
+Notation "- u" := (R2.opp u) : R2_scope.
+
+
+Transparent R2.origin R2def.origin R2.eq_dec R2.eq R2def.eq R2.dist R2def.dist.
+
+Ltac unfoldR2 := unfold R2.origin, R2def.origin, R2.eq_dec, R2.eq, R2def.eq, R2.dist, R2def.dist.
+
+Lemma R2mul_0 : forall u, R2.eq (R2.mul 0 u) R2.origin.
+Proof. intros [x y]. compute. now do 2 rewrite Rmult_0_l. Qed.
 
 
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
@@ -148,7 +165,6 @@ Ltac Rabs :=
     | Heq : ?x = ?y, Hneq : ?y <> ?x |- _ => symmetry in Heq; contradiction
     | _ => contradiction
   end.
-
 
 Ltac Rdec_aux H :=
   match type of H with
@@ -186,7 +202,8 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Formalism := Formalism(R2)(N)(Spect).
+Module Export Common := CommonFormalism.Make(R2)(N)(Spect).
+Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
 Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots
@@ -251,61 +268,57 @@ Arguments GPS x y z t1 t2 _ _ _ _ _ _ : clear implicits.
 Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
 Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
 
-Lemma sim_ratio_non_null : forall sim, sim.(ratio) <> 0%R.
-Proof. apply (sim_ratio_non_null diff_0_1). Qed.
+(** Definition of rotations *)
 
-(* Not true when the metric space has dimension 0, we need at least 2 different points. *)
-Lemma sim_ratio_pos : forall sim, (0 < sim.(ratio))%R.
-Proof. apply (sim_ratio_pos diff_0_1). Qed.
+Definition rotate_bij (θ : R) : bijection R2.eq_equiv.
+refine {|
+  section := fun r => (cos θ * fst r - sin θ * snd r, sin θ * fst r + cos θ * snd r);
+  retraction := fun r => (cos (-θ) * fst r - sin (-θ) * snd r, sin (-θ) * fst r + cos (-θ) * snd r) |}.
+Proof.
+unfold R2.eq, R2def.eq.
+abstract (intros xy xy'; split; intro; subst; destruct xy as [x y] || destruct xy' as [x y]; simpl;
+rewrite Rtrigo1.cos_neg, Rtrigo1.sin_neg; f_equal; ring_simplify ; do 2 rewrite <- Rfunctions.Rsqr_pow2;
+rewrite <- (Rmult_1_l x) at 3 || rewrite <- (Rmult_1_l y) at 3; rewrite <- (Rtrigo1.sin2_cos2 θ); ring).
+Defined.
 
-Lemma similarity_injective : forall sim : similarity, injective eq eq sim.
-Proof. apply (similarity_injective diff_0_1). Qed.
+Definition rotate (θ : R) : similarity.
+refine {|
+  f := rotate_bij θ;
+  ratio := 1;
+  center := (0,0) |}.
+Proof.
++ simpl. unfoldR2. abstract(f_equal; field).
++ unfoldR2. intros. rewrite Rmult_1_l. f_equal. simpl.
+repeat rewrite Rfunctions.Rsqr_pow2; ring_simplify; repeat rewrite <- Rfunctions.Rsqr_pow2.
+(* AACtactics should help with rewriting by sin2_cos2 here *)
+admit.
+Admitted.
 
-Definition rotate (theta : R) (r : R2.t) := r. (* TODO *)
 
-(* A similarity in R is described by its ratio and its center. *)
-Theorem similarity_in_R_case : forall sim, exists theta,
-  forall x, sim.(f) x = R2.mul sim.(ratio) (rotate theta (R2.add x (R2.opp sim.(center)))).
+
+Lemma rotate_inverse : forall θ, bij_eq ((rotate θ)⁻¹) rotate (-θ).
+(** A similarity in R2 is described by its ratio, center and rotation angle. *)
+Theorem similarity_in_R2 : forall sim, exists θ,
+  forall x, sim.(f) x = R2.mul sim.(ratio) (rotate θ (R2.add x (R2.opp sim.(center)))).
 Proof.
 intro sim. assert (Hkpos : 0 < sim.(ratio)) by apply sim_ratio_pos.
-destruct sim as [f k c Hc Hk]. simpl in *. unfold R.origin, Rdef.origin in Hc.
+destruct sim as [f k c Hc Hk]. simpl in *. unfold R2.origin, R2def.origin in Hc.
 destruct (Rdec k 0) as [Hk0 | Hk0].
 * (* if the ratio is 0, the similarity is a constant function. *)
-  left. intro x. subst k. rewrite Rmult_0_l.
-  rewrite <- R.dist_defined. rewrite <- Hc, Hk at 1. ring.
-* assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
-  { specialize (Hk (c + 1) c). rewrite Hc in Hk.
-    assert (H1 : R.dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
-    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) 0) as [Heq | Heq]; rewrite Heq in Hk.
-    - ring_simplify in Hk. now left.
-    - ring_simplify in Hk. right. now rewrite <- Hk, Ropp_involutive. }
-  destruct Hc1 as [Hc1 | Hc1].
-  + left. intro x. apply (GPS (f c) (f (c + 1))).
-    - lra.
-    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
-      replace (k * (x - c) - 0) with (k * (x - c)) by ring.
-      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
-      replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
-      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-  + right. intro x. apply (GPS (f c) (f (c + 1))).
-    - lra.
-    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
-      replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
-      rewrite Rabs_mult, (Rabs_left (- k)); lra.
-    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
-      replace (- k * (x - c) - - k) with (- k * (x - (c + 1))) by ring.
-      rewrite Rabs_mult, (Rabs_left (- k)); lra.
+  exists 0. intro x. subst k. do 2 rewrite Rmult_0_l.
+  rewrite <- R2.dist_defined. rewrite <- Hc, Hk at 1. ring.
+* 
+Admitted.
+
+Corollary inverse_similarity_in_R2 : forall (sim : similarity) θ,
+  (forall x, sim x = sim.(ratio) * (rotate θ (x + (- sim.(center)))))%R2 ->
+  (forall x, (sim ⁻¹) x = (/sim.(ratio)) * (rotate (-θ) (x + (- (rotate θ sim.(center))))))%R2.
+Proof.
+intros sim θ Hdirect x.
+rewrite <- sim.(Inversion). rewrite Hdirect.
+Check surjective_pairing.
+ destruct sim as [f ρ [cx cy] ? ?]. destruct x as [x y]; compute in *.
 Qed.
-
-Corollary similarity_in_R : forall sim, exists k, (k = sim.(ratio) \/ k = - sim.(ratio))
-  /\ forall x, sim.(f) x = k * (x - sim.(center)).
-Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
-
-
-Corollary inverse_similarity_in_R : forall (sim : similarity) k, k <> 0 ->
-  (forall x, sim x = k * (x - sim.(center))) -> forall x, (sim ⁻¹) x = x / k + sim.(center).
-Proof. intros sim k Hk Hdirect x. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
 
 Lemma sim_compat (sim:similarity) : Proper (R.eq ==> R.eq) sim.
 Proof.

@@ -13,11 +13,11 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import MSets.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
 
 
-Module Make(Loc : MetricSpace)(N : Size) <: Spectrum (Loc)(N).
+Module Make(Loc : RealMetricSpace)(N : Size) <: Spectrum (Loc)(N).
 
 Module Names := Robots.Make(N).
 Module Pos := Positions.Make(Loc)(N)(Names).

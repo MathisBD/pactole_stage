@@ -83,13 +83,14 @@ VFILES:=GatheringinR2/AlgorithmR2.v\
   GatheringinR/Impossibility.v\
   GatheringinR/SortingR.v\
   GatheringinR/Definitions.v\
-  RDVinR.v\
-  SortingR.v\
   LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\
   MultisetSpectrum.v\
-  FormalismRd.v\
+  RigidEquivalence.v\
+  RigidFormalism.v\
+  FlexibleFormalism.v\
+  CommonFormalism.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
   MMultiset/MMultisetMap.v\
@@ -197,8 +198,7 @@ archclean::
 
 printenv:
 	@"$(COQBIN)coqtop" -config
-	@echo 'CAMLC =	$(CAMLC)'
-	@echo 'CAMLOPTC =	$(CAMLOPTC)'
+	@echo 'OCAMLFIND =	$(OCAMLFIND)'
 	@echo 'PP =	$(PP)'
 	@echo 'COQFLAGS =	$(COQFLAGS)'
 	@echo 'COQLIBINSTALL =	$(COQLIBINSTALL)'
