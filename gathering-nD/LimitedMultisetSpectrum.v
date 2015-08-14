@@ -13,9 +13,9 @@ Require Import SetoidList.
 Require Import MSets.
 Require Import Rbase.
 Require Import Pactole.Preliminary.
-Require Import Robots.
-Require Import Positions.
-Require MultisetSpectrum.
+Require Import Pactole.Robots.
+Require Import Pactole.Positions.
+Require Pactole.MultisetSpectrum.
 
 
 Module Type Radius.
@@ -23,7 +23,7 @@ Module Type Radius.
 End Radius.
 
 
-Module Make(Loc : MetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
+Module Make(Loc : RealMetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
 
 Module M := MultisetSpectrum.Make(Loc)(N).
 Module Names := M.Names.

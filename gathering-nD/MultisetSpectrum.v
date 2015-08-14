@@ -17,11 +17,11 @@ Require Import MMultisetInterface.
 Require Import MMultisetFacts.
 Require Import MMultisetWMap.
 Require Import Pactole.Preliminary.
-Require Robots.
-Require Import Positions.
+Require Pactole.Robots.
+Require Import Pactole.Positions.
 
 
-Module Make(Location : MetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
+Module Make(Location : RealMetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
 
 Module Names := Robots.Make(N).
 Module Pos := Positions.Make(Location)(N)(Names).

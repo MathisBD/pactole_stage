@@ -17,13 +17,12 @@ Require Import Robots.
 
 (** * Positions *)
 
-(** This module signature represents the metric space in which robots evolve.
-    It can be anything (discrete or continuous) as long as it is a metric space.
-    Here, the underlying field is R.
+(** This module signature represents the space in which robots evolve.
+    It can be anything as long as it is a non-trivial real metric space.
 
     The framework for robots should be more general as for instance a ring is not a metric space.
     It seems that we only need a decidable type for locations and a notion of distance.  *)
-Module Type MetricSpaceDef <: DecidableType.
+Module Type RealMetricSpaceDef <: DecidableType.
   Parameter t : Type.
   Parameter origin : t.
   Parameter eq : t -> t -> Prop.
@@ -43,28 +42,32 @@ Module Type MetricSpaceDef <: DecidableType.
   Parameter dist_sym : forall y x, dist x y = dist y x.
   Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R.
   
-  Parameter plus_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
   Parameter add_comm : forall u v, eq (add u v) (add v u).
   Parameter add_origin : forall u, eq (add u origin) u.
   Parameter add_opp : forall u, eq (add u (opp u)) origin.
-  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
   Parameter add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Parameter plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
+  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Parameter plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   
-  (* The multiplicative identity is missing (actually, it is 1 as we are on R) *)
-  Parameter mul_one : forall u, eq (mul 1 u) u.
-End MetricSpaceDef.
+  (* TODO: adds the missing properties *)
+  Parameter mul_1 : forall u, eq (mul 1 u) u.
+  Parameter non_trivial : exists u v, ~eq u v.
+End RealMetricSpaceDef.
 
-
-Module Type MetricSpace.
-  Include MetricSpaceDef.
+Module Type RealMetricSpace.
+  Include RealMetricSpaceDef.
   
   Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
   Parameter dist_pos : forall x y, (0 <= dist x y)%R.
-End MetricSpace.
+  Parameter mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  Parameter mul_origin : forall a, eq (mul a origin) origin.
+End RealMetricSpace.
 
 
-Module MakeMetricSpace (Def : MetricSpaceDef) : MetricSpace
+Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
     with Definition t := Def.t
     with Definition eq := Def.eq
     with Definition eq_dec := Def.eq_dec
@@ -98,7 +101,25 @@ Module MakeMetricSpace (Def : MetricSpaceDef) : MetricSpace
     assert (Hx : eq x x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
     setoid_rewrite dist_sym at 3. apply triang_ineq.
   Qed.
-End MakeMetricSpace.
+  
+  Lemma add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  Proof.
+  intros w u v Heq. setoid_rewrite <- add_origin.
+  now rewrite <- (add_opp w), add_assoc, Heq, <- add_assoc.
+  Qed.
+  
+  Lemma add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Proof. setoid_rewrite add_comm. apply add_reg_r. Qed.
+  
+  Lemma mul_origin : forall a, eq (mul a origin) origin.
+  Proof. Admitted.
+  
+  Lemma mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Proof.
+  intros a u. apply (add_reg_l (mul a u)). rewrite <- add_distr.
+  setoid_rewrite add_opp. now rewrite mul_origin.
+  Qed.
+End MakeRealMetricSpace.
 
 
 Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).

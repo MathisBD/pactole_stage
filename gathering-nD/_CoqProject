@@ -8,7 +8,9 @@ MMultiset/MMultisetWMap.v
 MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/Preliminary.v
+Similarity.v
 CommonFormalism.v
+CommonRealFormalism.v
 FlexibleFormalism.v
 RigidFormalism.v
 RigidEquivalence.v

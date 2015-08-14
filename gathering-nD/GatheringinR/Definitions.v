@@ -20,7 +20,8 @@ Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
-Require Pactole.CommonFormalism.
+Require Import Pactole.Similarity.
+Require Pactole.CommonRealFormalism.
 Require Pactole.RigidFormalism.
 Require Import Pactole.GatheringinR.SortingR.
 Require Import Pactole.MultisetSpectrum.
@@ -29,20 +30,21 @@ Require Import Psatz.
 Import Permutation.
 
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Close Scope R_scope.
 
 
 (** R as a vector space over itself. *)
 
-Module Rdef : MetricSpaceDef with Definition t := R
-                             with Definition eq := @Logic.eq R
-                             with Definition eq_dec := Rdec
-                             with Definition origin := 0%R
-                             with Definition dist := fun x y => Rabs (x - y)
-                             with Definition add := Rplus
-                             with Definition mul := Rmult
-                             with Definition opp := Ropp.
+Module Rdef : RealMetricSpaceDef with Definition t := R
+                                 with Definition eq := @Logic.eq R
+                                 with Definition eq_dec := Rdec
+                                 with Definition origin := 0%R
+                                 with Definition dist := fun x y => Rabs (x - y)
+                                 with Definition add := Rplus
+                                 with Definition mul := Rmult
+                                 with Definition opp := Ropp.
   
   Definition t := R.
   Definition origin := 0%R.
@@ -82,7 +84,7 @@ Module Rdef : MetricSpaceDef with Definition t := R
   intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.
   Qed.
   
-  Lemma plus_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Lemma add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
   Proof. unfold eq, add. intros. lra. Qed.
   
   Lemma add_comm : forall u v, eq (add u v) (add v u).
@@ -100,23 +102,28 @@ Module Rdef : MetricSpaceDef with Definition t := R
   Lemma add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
-  Lemma plus_distr : forall a b u, eq (mul (a + b) u) (add (mul a u) (mul b u)).
+  Lemma plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
   (** The multiplicative identity is omitted. *)
-  Lemma mul_one : forall u, eq (mul 1 u) u.
+  Lemma mul_1 : forall u, eq (mul 1 u) u.
   Proof. unfold eq, mul. intros. lra. Qed.
+  
+  Lemma non_trivial : exists u v, ~eq u v.
+  Proof. exists 1%R, 0%R. apply R1_neq_R0. Qed.
 End Rdef.
 
 
-Module R := MakeMetricSpace(Rdef).
+Module R := MakeRealMetricSpace(Rdef).
 
 Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec R.eq Rdef.eq.
 
-Ltac unfoldR := unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t.
+Ltac unfoldR := unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t,
+                       R.add, Rdef.add, R.opp, Rdef.opp, R.mul, Rdef.mul.
 
 Tactic Notation "unfoldR" "in" hyp(H) :=
-  unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t in H.
+  unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t,
+         R.add, Rdef.add, R.opp, Rdef.opp, R.mul, Rdef.mul in H.
 
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
 Ltac Rdec := unfoldR; repeat
@@ -184,12 +191,13 @@ End N.
 
 (** The spectrum is a multiset of positions *)
 Module Spect := MultisetSpectrum.Make(R)(N).
+Module Sim := Similarity.Make(R).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Common := CommonFormalism.Make(R)(N)(Spect).
+Module Export Common := CommonRealFormalism.Make(R)(N)(Spect).
 Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
 
 Close Scope R_scope.
@@ -254,22 +262,12 @@ lra.
 Qed.
 Arguments GPS x y z1 z2 _ _ _ : clear implicits.
 
-Lemma sim_ratio_non_null : forall sim, sim.(ratio) <> 0%R.
-Proof. apply (sim_ratio_non_null R1_neq_R0). Qed.
-
-(* Not true when the metric space has dimension 0, we need at least 2 different points. *)
-Lemma sim_ratio_pos : forall sim, (0 < sim.(ratio))%R.
-Proof. apply (sim_ratio_pos R1_neq_R0). Qed.
-
-Lemma similarity_injective : forall sim : similarity, injective eq eq sim.
-Proof. apply (similarity_injective R1_neq_R0). Qed.
-
 (* A similarity in R is described by its ratio and its center. *)
-Theorem similarity_in_R_case : forall sim,
-  (forall x, sim.(f) x = sim.(ratio) * (x - sim.(center))) \/
-  (forall x, sim.(f) x = - sim.(ratio) * (x - sim.(center))).
+Theorem similarity_in_R_case : forall sim : Sim.t,
+  (forall x : R, sim x = sim.(Sim.zoom) * (x - sim.(Sim.center))) \/
+  (forall x, sim x = - sim.(Sim.zoom) * (x - sim.(Sim.center))).
 Proof.
-intro sim. assert (Hkpos : 0 < sim.(ratio)) by apply sim_ratio_pos.
+intro sim. assert (Hkpos : 0 < sim.(Sim.zoom)) by apply Sim.zoom_pos.
 destruct sim as [f k c Hc Hk]. simpl in *. unfold R.origin, Rdef.origin in Hc.
 destruct (Rdec k 0) as [Hk0 | Hk0].
 * (* if the ratio is 0, the similarity is a constant function. *)
@@ -283,7 +281,7 @@ destruct (Rdec k 0) as [Hk0 | Hk0].
     - ring_simplify in Hk. right. now rewrite <- Hk, Ropp_involutive. }
   destruct Hc1 as [Hc1 | Hc1].
   + left. intro x. apply (GPS (f c) (f (c + 1))).
-    - lra.
+    - rewrite Hc, Hc1. lra.
     - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
@@ -291,7 +289,7 @@ destruct (Rdec k 0) as [Hk0 | Hk0].
       replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
   + right. intro x. apply (GPS (f c) (f (c + 1))).
-    - lra.
+    - rewrite Hc, Hc1. lra.
     - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
       replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
@@ -300,26 +298,26 @@ destruct (Rdec k 0) as [Hk0 | Hk0].
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
 Qed.
 
-Corollary similarity_in_R : forall sim, exists k, (k = sim.(ratio) \/ k = - sim.(ratio))
-  /\ forall x, sim.(f) x = k * (x - sim.(center)).
+Corollary similarity_in_R : forall sim, exists k, (k = sim.(Sim.zoom) \/ k = - sim.(Sim.zoom))
+  /\ forall x, sim x = k * (x - sim.(Sim.center)).
 Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 
 
-Corollary inverse_similarity_in_R : forall (sim : similarity) k, k <> 0 ->
-  (forall x, sim x = k * (x - sim.(center))) -> forall x, (sim ⁻¹) x = x / k + sim.(center).
-Proof. intros sim k Hk Hdirect x. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
-
+Corollary inverse_similarity_in_R : forall (sim : Sim.t) k, k <> 0 ->
+  (forall x, sim x = k * (x - sim.(Sim.center))) -> forall x, (sim ⁻¹) x = x / k + sim.(Sim.center).
+Proof. intros sim k Hk Hdirect x. simpl. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
+(*
 Lemma sim_compat (sim:similarity) : Proper (R.eq ==> R.eq) sim.
 Proof.
   repeat intro.
   rewrite H.
   reflexivity.
 Qed.
+*)
+Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R.eq R.eq sim.
+Proof. apply Sim.injective. Qed.
 
-Lemma sim_Minjective : forall (sim : similarity), MMultiset.Preliminary.injective R.eq R.eq sim.
-Proof. apply similarity_injective. Qed.
-
-Hint Immediate sim_compat similarity_injective sim_Minjective.
+Hint Immediate Sim.injective sim_Minjective.
 
 
 Coercion is_true : bool >-> Sortclass.
@@ -338,13 +336,13 @@ replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
 apply Rmult_le_compat_l; lra.
 Qed.
 
-Corollary similarity_monotonic : forall sim, monotonic Rleb Rleb sim.(f).
+Corollary similarity_monotonic : forall sim : Sim.t, monotonic Rleb Rleb sim.
 Proof.
 intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
 + left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial.
-  pose (Hratio := sim_ratio_pos sim). lra.
+  pose (Hratio := Sim.zoom_pos sim). lra.
 + right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
-  assert (Hratio := sim_ratio_pos sim). lra.
+  assert (Hratio := Sim.zoom_pos sim). lra.
 Qed.
 
 Instance forbidden_compat : Proper (Pos.eq ==> iff) forbidden.
@@ -352,7 +350,6 @@ Proof.
 intros ? ? Heq. split; intros [HnG [pt1 [pt2 [Hneq Hpt]]]]; split; trivial ||
 exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
-
 
 End GatheringinR.
 

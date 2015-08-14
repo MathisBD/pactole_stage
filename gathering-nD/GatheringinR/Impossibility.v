@@ -13,6 +13,8 @@ Set Implicit Arguments.
 
 
 Import GatheringinR.
+Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
+Coercion Similarity.section : Similarity.bijection >-> Funclass.
 Close Scope R_scope.
 
 
@@ -460,30 +462,11 @@ Proof. split; try exact even_nG. cbn. setoid_rewrite <- pos1_pos2_spect_eq. appl
 
 (** Two similarities used: the identity and the symmetry wrt a point c. *)
 
-(** The identity similarity *)
-Definition bij_id : bijection R.eq_equiv.
-refine {|
-  section := fun x => x;
-  retraction := fun x => x |}.
-Proof.
-abstract (now split; intro; symmetry).
-Defined.
-
-Definition identity : similarity.
-refine {|
-  f := bij_id;
-  ratio := 1;
-  center := 0 |}.
-Proof.
-+ reflexivity.
-+ abstract (intros; rewrite Rmult_1_l; reflexivity).
-Defined.
-
 (** The swapping similarity *)
-Definition bij_swap (c : R) : bijection R.eq_equiv.
+Definition bij_swap (c : R) : Similarity.bijection R.eq.
 refine {|
-  section := fun x => c - x;
-  retraction := fun x => c - x |}.
+  Similarity.section := fun x => c - x;
+  Similarity.retraction := fun x => c - x |}.
 Proof.
 abstract (intros; unfold R.eq, Rdef.eq; split; intro; subst; field).
 Defined.
@@ -495,54 +478,15 @@ destruct (Rcase_abs (x + - y)), (Rcase_abs (c + - x + - (c + - y))); lra.
 Qed.
 
 (* We need to define it with a general center although only 1 will be used. *)
-Definition swap (c : R) : similarity.
+Definition swap (c : R) : Sim.t.
 refine {|
-  f := bij_swap c;
-  ratio := 1;
-  center := c |}.
+  Sim.sim_f := bij_swap c;
+  Sim.zoom := 1;
+  Sim.center := c |}.
 Proof.
 - abstract (compute; field).
 - exact (bij_swap_ratio c).
 Defined.
-
-(** The homothetic similarity *)
-Definition bij_homothecy (c ρ : R) (Hρ : ρ <> 0) : bijection R.eq_equiv.
-refine {|
-  section := fun x => ρ * (x - c);
-  retraction := fun x => x / ρ + c |}.
-Proof.
-abstract (now intros; compute; split; intro Heq; rewrite <- Heq; field).
-Defined.
-
-Lemma bij_homothecy_ratio : forall c ρ (Hρ : ρ <> 0) (x y : R.t),
-R.dist ((bij_homothecy c Hρ) x) ((bij_homothecy c Hρ) y) = Rabs ρ * R.dist x y.
-Proof.
-intros c ρ Hρ x y. cbn. compute.
-destruct (Rcase_abs (ρ * (x + - c) + - (ρ * (y + - c)))), (Rcase_abs (x + - y)), (Rcase_abs ρ); try field.
-+ ring_simplify in r0. exfalso. revert r0. apply Rle_not_lt.
-  replace (ρ * x - ρ * y) with (-ρ * - (x + -y)) by ring.
-  rewrite <- Rmult_0_r with (-ρ). apply Rmult_le_compat_l; lra.
-+ ring_simplify in r0. exfalso. revert r0. apply Rle_not_lt.
-  replace (ρ * x - ρ * y) with (ρ * (x + -y)) by ring. rewrite <- Rmult_0_r with ρ. apply Rmult_le_compat_l; lra.
-+ ring_simplify in r0. exfalso. revert r0. apply Rlt_not_ge.
-  replace (ρ * x - ρ * y) with (ρ * (x + -y)) by ring. rewrite <- Rmult_0_r with ρ. apply Rmult_lt_compat_l; lra.
-+ destruct (Rdec x y).
-  - subst. ring.
-  - ring_simplify in r0. exfalso. revert r0. apply Rlt_not_ge.
-    replace (ρ * x - ρ * y) with (ρ * (x + -y)) by ring.
-    rewrite <- Rmult_0_l with (x + - y). apply Rmult_lt_compat_r; lra.
-Qed.
-
-Definition homothecy (c ρ : R) (Hρ : ρ <> 0) : similarity.
-refine {|
-  f := bij_homothecy c Hρ;
-  ratio := Rabs ρ;
-  center := c |}.
-Proof.
-- abstract (compute; field).
-- exact (bij_homothecy_ratio c Hρ).
-Defined.
-
 
 Lemma swap_pos1 : Pos.eq (Pos.map (swap 1) pos1) pos2.
 Proof.
@@ -568,7 +512,7 @@ Section Move1.
 Hypothesis Hmove : move = 1.
 
 Lemma da1_ratio : forall id sim c,
-  lift_pos (fun _ => Some (fun c => if Rdec c 0 then identity else swap c)) id = Some sim -> ratio (sim c) <> 0.
+  lift_pos (fun _ => Some (fun c => if Rdec c 0 then Sim.id else swap c)) id = Some sim -> Sim.zoom (sim c) <> 0.
 Proof.
 intros id sim c Heq. destruct id; simpl in Heq.
 - inversion_clear Heq. Rdec_full; simpl; apply R1_neq_R0.
@@ -576,8 +520,8 @@ intros id sim c Heq. destruct id; simpl in Heq.
 Qed.
 
 Lemma da1_center : forall id sim c,
-  lift_pos (fun _ => Some (fun c => if Rdec c 0 then identity else swap c)) id = Some sim ->
-  R.eq (center (sim c)) c.
+  lift_pos (fun _ => Some (fun c => if Rdec c 0 then Sim.id else swap c)) id = Some sim ->
+  R.eq (Sim.center (sim c)) c.
 Proof.
 intros id sim c Heq. destruct id; simpl in Heq.
 - inversion_clear Heq. Rdec_full; simpl; subst; reflexivity.
@@ -587,7 +531,7 @@ Qed.
 Definition da1 : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
-  step := lift_pos (fun g => Some (fun c => if Rdec c 0 then identity else swap c)) |}.
+  step := lift_pos (fun g => Some (fun c => if Rdec c 0 then Sim.id else swap c)) |}.
 Proof.
 + exact da1_ratio.
 + exact da1_center.
@@ -673,8 +617,8 @@ Proof.
 Qed.
 
 Lemma homothecy_ratio_1 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_pos (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
-  ratio (sim c) <> 0.
+  lift_pos (fun g => if left_dec g then Some (fun c => Sim.homothecy c Hρ) else None) id = Some sim ->
+  Sim.zoom (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
 + simpl. destruct (left_dec g).
@@ -684,8 +628,8 @@ intros ρ Hρ [g | b] sim c.
 Qed.
 
 Lemma homothecy_center_1 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_pos (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
-  R.eq (center (sim c)) c.
+  lift_pos (fun g => if left_dec g then Some (fun c => Sim.homothecy c Hρ) else None) id = Some sim ->
+  R.eq (Sim.center (sim c)) c.
 Proof.
 intros ρ Hρ [g | b] sim c.
 + simpl. destruct (left_dec g).
@@ -697,7 +641,7 @@ Qed.
 Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
-  step := lift_pos (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) |}.
+  step := lift_pos (fun g => if left_dec g then Some (fun c => Sim.homothecy c Hρ) else None) |}.
 Proof.
 + apply homothecy_ratio_1.
 + apply homothecy_center_1.
@@ -705,8 +649,8 @@ Defined.
 
 Lemma homothecy_ratio_2 : forall ρ (Hρ : ρ <> 0) id sim c,
   lift_pos (fun g => if left_dec g 
-                     then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
-  ratio (sim c) <> 0.
+                     then None else Some (fun c => Sim.homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
+  Sim.zoom (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
 + simpl. destruct (left_dec g).
@@ -717,8 +661,8 @@ Qed.
 
 Lemma homothecy_center_2 : forall ρ (Hρ : ρ <> 0) id sim c,
   lift_pos (fun g => if left_dec g 
-                     then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
-  R.eq (center (sim c)) c.
+                     then None else Some (fun c => Sim.homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
+  R.eq (Sim.center (sim c)) c.
 Proof.
 intros ρ Hρ [g | b] sim c.
 + simpl. destruct (left_dec g).
@@ -731,7 +675,7 @@ Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
   step := lift_pos (fun g => if left_dec g
-                             then None else Some (fun c => homothecy c (Ropp_neq_0_compat _ Hρ))) |}.
+                             then None else Some (fun c => Sim.homothecy c (Ropp_neq_0_compat _ Hρ))) |}.
 Proof.
 + apply homothecy_ratio_2.
 + apply homothecy_center_2.
@@ -757,7 +701,7 @@ Lemma da_eq_step_None : forall d1 d2, deq d1 d2 ->
   forall g, step (demon_head d1) (Good g) = None <-> step (demon_head d2) (Good g) = None.
 Proof.
 intros d1 d2 Hd g.
-assert (Hopt_eq : opt_eq (R.eq ==> sim_eq)%signature
+assert (Hopt_eq : opt_eq (R.eq ==> Sim.eq)%signature
                     (step (demon_head d1) (Good g)) (step (demon_head d2) (Good g))).
 { apply step_da_compat; trivial. now rewrite Hd. }
   split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
@@ -842,13 +786,13 @@ Proof.
 intros d Hd config Hconfig.
 rewrite <- (Rinv_involutive d) in Hconfig; trivial.
 assert (Hd' := Rinv_neq_0_compat _ Hd).
-rewrite <- Pos.map_id at 1.
-rewrite <- (bij_inv_bij_id (homothecy (config (Good gfirst)) Hd')).
-rewrite <- Pos.map_merge, <- Spect.from_config_map; refine _. simpl.
-rewrite dist_homothecy_spectrum_centered_left; auto.
+rewrite <- Pos.map_id at 1. change Datatypes.id with (Similarity.section Sim.id).
+rewrite <- (Sim.compose_inverse_l (Sim.homothecy (config (Good gfirst)) Hd')). cbn -[Sim.homothecy].
+rewrite <- Pos.map_merge, <- Spect.from_config_map; refine _. simpl. unfoldR.
+change (fun x : R => / d * (x + - config (Good gfirst))) with (fun x : R => / d * (x - config (Good gfirst))).
+rewrite (dist_homothecy_spectrum_centered_left Hd'); auto.
 rewrite spect_pos1. unfold spectrum. rewrite Spect.map_add, Spect.map_singleton; refine _.
-replace (0 //d) with 0 by now field. rewrite Rplus_0_l.
-unfold Rdiv. rewrite <- (Hconfig glast gfirst); auto.
+ring_simplify (// d * 0). rewrite Rplus_0_l. rewrite <- (Hconfig glast gfirst); auto.
 f_equiv. f_equiv. compute; field.
 Qed.
 
@@ -874,10 +818,11 @@ destruct (left_dec g1), (left_dec g2); try now exfalso.
 (* TODO: correct the type conversion problem, the first case should diseappear with eauto *)
 - change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 - cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
-  rewrite <- (Hconfig _ _ Hg1 Hg2). ring_simplify.
+  rewrite <- (Hconfig _ _ Hg1 Hg2) at 2. unfoldR. ring_simplify.
   replace (config (Good g1) - config (Good g2) - move / ρ)
     with (config (Good g1) - move / ρ - config (Good g2)) by ring.
-  do 3 f_equal. unfold move. apply pgm_compat. now apply dist_homothecy_spectrum_centered_left.
+   field_simplify; trivial. do 2 f_equal.
+   unfold move. apply pgm_compat. now apply dist_homothecy_spectrum_centered_left.
 Qed.
 
 Corollary round2_left_right : forall ρ (Hρ : ρ <> 0) config,
@@ -932,9 +877,7 @@ destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
 (* TODO: correct the type conversion problem, the first case should diseappear with eauto *)
 - change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 - cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
-  rewrite <- (Hconfig _ _ Hg1 Hg2).
-  replace (config (Good g1) - config (Good g2) - move / ρ)
-    with ((move / -ρ) + config (Good g1) - config (Good g2)) by now field.
+  rewrite <- (Hconfig _ _ Hg1 Hg2). unfoldR. rewrite <- Ropp_inv_permute; trivial. field_simplify; trivial.
   do 3 f_equal. unfold move. apply pgm_compat. rewrite pos1_pos2_spect_eq.
   now apply dist_homothecy_spectrum_centered_right.
 Qed.

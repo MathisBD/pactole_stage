@@ -8,6 +8,7 @@
 (**************************************************************************)
 
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
@@ -20,7 +21,8 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
-Require Pactole.CommonFormalism.
+Require Pactole.CommonRealFormalism.
+(* Require Pactole.Similarity. *)
 
 
 Ltac coinduction proof :=
@@ -28,10 +30,11 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module Make (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N))
-            (Common : CommonFormalism.Sig(Location)(N)(Spect)).
+Module Make (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N))
+            (Common : CommonRealFormalism.Sig(Location)(N)(Spect)).
 
 Import Common.
+Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
 (** ** Demonic schedulers *)
 
@@ -39,17 +42,17 @@ Import Common.
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
-  step : Names.ident → option ((Location.t → similarity) (* change of referential *)
+  step : Names.ident → option ((Location.t → Sim.t) (* change of referential *)
                                * R); (* travel ratio (rigid or flexible moves) *)
-  step_compat : Proper (eq ==> opt_eq ((Location.eq ==> sim_eq) * (@eq R))) step;
-  step_ratio :  forall id sim c, step id = Some sim -> (fst sim c).(ratio) <> 0%R;
-  step_center : forall id sim c, step id = Some sim -> Location.eq (fst sim c).(center) c;
+  step_compat : Proper (eq ==> opt_eq ((Location.eq ==> Sim.eq) * (@eq R))) step;
+  step_zoom :  forall id sim c, step id = Some sim -> (fst sim c).(Sim.zoom) <> 0%R;
+  step_center : forall id sim c, step id = Some sim -> Location.eq (fst sim c).(Sim.center) c;
   step_flexibility : forall id sim, step id = Some sim ->
     (0 <= snd sim <= 1)%R}.
 Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id, opt_eq ((Location.eq ==> sim_eq) * eq)%signature (da1.(step) id) (da2.(step) id)) /\
+  (forall id, opt_eq ((Location.eq ==> Sim.eq) * eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
 Instance da_eq_equiv : Equivalence da_eq.
@@ -69,7 +72,7 @@ Proof. split.
   - elim H1.
 Qed.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq ((Location.eq ==> sim_eq) * eq)) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq ((Location.eq ==> Sim.eq) * eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
@@ -374,11 +377,6 @@ destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try
 SearchAbout Proper Spect.from_config.
 SearchAbout Proper Pos.map.
 SearchAbout Proper Location.eq.
-Print bij_eq.
-assert (Spect.eq (Spect.from_config (Pos.map (f1 (conf1 (Good g))) conf1))
-                   (Spect.from_config (Pos.map (f2 (conf2 (Good g))) conf2))).
-{  f_equiv. f_equiv; trivial. rewrite Hstep1.
-  f_equiv. f_equiv; trivial. apply Hda1. f_equiv. Print section. now apply Hstep1, Hconf. }
  *)
   assert (Heq : Location.eq
             (Location.mul mvr2 (r1 (Spect.from_config (Pos.map (f1 (conf1 (Good g))) conf1))))
@@ -389,10 +387,10 @@ assert (Spect.eq (Spect.from_config (Pos.map (f1 (conf1 (Good g))) conf1))
               (Location.mul mvr2 (r2 (Spect.from_config (Pos.map (f2 (conf2 (Good g))) conf2))))
               (conf2 (Good g)))) eqn:Heq.
   * f_equiv.
-    -- apply Hstep, Hconf.
+    -- do 2 f_equiv. apply Hstep, Hconf.
     -- f_equiv. apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hconf.
   * f_equiv.
-    -- apply Hstep, Hconf.
+    -- do 2 f_equiv. apply Hstep, Hconf.
     -- apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hconf.
 + rewrite Hda. reflexivity.
 Qed.

@@ -8,6 +8,7 @@
 (**************************************************************************)
 
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
@@ -19,7 +20,7 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
-Require Pactole.CommonFormalism.
+Require Pactole.CommonRealFormalism.
 
 
 Ltac coinduction proof :=
@@ -27,10 +28,11 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module Make (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N))
-            (Common : CommonFormalism.Sig(Location)(N)(Spect)).
+Module Make (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N))
+            (Common : CommonRealFormalism.Sig(Location)(N)(Spect)).
 
 Import Common.
+Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
 (** ** Demonic schedulers *)
 
@@ -38,13 +40,13 @@ Import Common.
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
-  step : Names.ident → option (Location.t → similarity);
-  step_compat : Proper (eq ==> opt_eq (Location.eq ==> sim_eq)) step;
-  step_ratio :  forall id sim c, step id = Some sim -> (sim c).(ratio) <> R0;
-  step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(center) c}.
+  step : Names.ident → option (Location.t → Sim.t);
+  step_compat : Proper (eq ==> opt_eq (Location.eq ==> Sim.eq)) step;
+  step_zoom :  forall id sim c, step id = Some sim -> (sim c).(Sim.zoom) <> R0;
+  step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(Sim.center) c}.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id, opt_eq (Location.eq ==> sim_eq)%signature (da1.(step) id) (da2.(step) id)) /\
+  (forall id, opt_eq (Location.eq ==> Sim.eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
 Instance da_eq_equiv : Equivalence da_eq.
@@ -59,7 +61,7 @@ Proof. split.
   - elim H1.
 Qed.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> sim_eq)) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> Sim.eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
@@ -361,8 +363,8 @@ intros r1 r2 Hr da1 da2 Hda pos1 pos2 Hpos id.
 unfold req in Hr. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
 destruct (step da1 id), (step da2 id), id; try now elim Hstep.
-+ simpl in Hstep. f_equiv.
-  - apply Hstep, Hpos.
++ f_equiv.
+  - do 2 f_equiv. apply Hstep, Hpos.
   - apply Hr, Spect.from_config_compat, Pos.map_compat; trivial. apply Hstep, Hpos.
 + rewrite Hda. reflexivity.
 Qed.

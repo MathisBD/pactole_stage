@@ -14,9 +14,9 @@ Require Import Pactole.FlexibleFormalism.
 Require Import Pactole.RigidFormalism.
 
 
-Module RigidEquivalence (Location : MetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
+Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
 
-Module Common := CommonFormalism.Make(Location)(N)(Spect).
+Module Common := CommonRealFormalism.Make(Location)(N)(Spect).
 Module Flex := FlexibleFormalism.Make(Location)(N)(Spect)(Common).
 Module Rigid := RigidFormalism.Make(Location)(N)(Spect)(Common).
 
@@ -39,7 +39,7 @@ Lemma the_chosen_one {A} eqA (HeqA : Reflexive eqA) :
   let chosen_target := Location.mul 1%R local_target in
   eqA (f (if Rle_bool δ (Location.dist chosen_target pos) then chosen_target else local_target))
       (f local_target).
-Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_one; reflexivity. Qed.
+Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_1; reflexivity. Qed.
 
 (** **  Conversion at the level of demonic_actions  **)
 
@@ -54,7 +54,7 @@ refine (@Flex.Build_demonic_action
   intros x y Hxy. simpl. assert (Heq := rda.(Rigid.step_compat) (reflexivity id)).
   rewrite Hstep in Heq. now apply Heq.
 + intros id [sim r] c Heq. destruct (Rigid.step rda id) as [s |] eqn:Hstep.
-  - inversion Heq. subst. simpl. eapply Rigid.step_ratio; eassumption.
+  - inversion Heq. subst. simpl. eapply Rigid.step_zoom; eassumption.
   - discriminate.
 + intros id [sim r] c Heq. destruct (Rigid.step rda id) as [s |] eqn:Hstep.
   - inversion Heq. subst. simpl. eapply Rigid.step_center; eassumption.
@@ -74,7 +74,7 @@ refine (@Rigid.Build_demonic_action
   intros x y Hxy. simpl. assert (Heq := fda.(Flex.step_compat) (reflexivity id)).
   rewrite Hstep in Heq. now apply Heq.
 + intros id sim c Heq. destruct (Flex.step fda id) eqn:Hstep.
-  - inversion Heq. subst. eapply Flex.step_ratio; eassumption.
+  - inversion Heq. subst. eapply Flex.step_zoom; eassumption.
   - discriminate.
 + intros id sim c Heq. destruct (Flex.step fda id) eqn:Hstep.
   - inversion Heq. subst. simpl. eapply Flex.step_center; eassumption.
