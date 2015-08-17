@@ -204,7 +204,7 @@ Close Scope R_scope.
 
 (** [gathered_at pos pt] means that in position [pos] all good robots
     are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : R) (pos : Pos.t) := forall g : Common.Names.G, pos (Good g) = pt.
+Definition gathered_at (pt : R) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)

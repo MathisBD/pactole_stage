@@ -79,6 +79,7 @@ COQMKTOP?="$(COQBIN)coqmktop"
 ######################
 
 VFILES:=GatheringinR2/AlgorithmR2.v\
+  Convergence/Impossibility_2G_1B.v\
   GatheringinR/Algorithm.v\
   GatheringinR/Impossibility.v\
   GatheringinR/SortingR.v\
@@ -90,7 +91,9 @@ VFILES:=GatheringinR2/AlgorithmR2.v\
   RigidEquivalence.v\
   RigidFormalism.v\
   FlexibleFormalism.v\
+  CommonRealFormalism.v\
   CommonFormalism.v\
+  Similarity.v\
   MMultiset/Preliminary.v\
   MMultiset/MMultisetFacts.v\
   MMultiset/MMultisetMap.v\

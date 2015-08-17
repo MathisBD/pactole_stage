@@ -208,6 +208,49 @@ Proof.
 - exact (bij_homothecy_zoom c Hρ).
 Defined.
 
+Global Instance homothecy_compat :
+  Proper (Loc.eq ==> @forall_relation _ _ (fun _ => full_relation ==> eq)) homothecy.
+Proof. intros c1 c2 Hc ρ ? ? ? x y Hxy. simpl. now rewrite Hxy, Hc. Qed.
+
+(** The translation similarity *)
+Lemma bij_translation_Inversion : forall v x y : Loc.t, Loc.eq (Loc.add x v) y ↔ Loc.eq (Loc.add y (Loc.opp v)) x.
+Proof.
+intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- Loc.add_assoc.
+- now rewrite Loc.add_opp, Loc.add_origin.
+- setoid_rewrite Loc.add_comm at 2. now rewrite Loc.add_opp, Loc.add_origin.
+Qed.
+
+Definition bij_translation (v : Loc.t) : bijection Loc.eq.
+refine {|
+  section := fun x => Loc.add x v;
+  retraction := fun x => Loc.add x (Loc.opp v) |}.
+Proof.
++ abstract (intros x y Hxy; now rewrite Hxy).
++ apply bij_translation_Inversion.
+Defined.
+
+Lemma translation_zoom : forall v x y : Loc.t, Loc.dist (Loc.add x v) (Loc.add y v) = 1 * Loc.dist x y.
+Proof.
+Admitted.
+
+Definition translation (v : Loc.t) : t.
+refine {| sim_f := bij_translation v;
+          zoom := 1;
+          center := Loc.opp v |}.
+Proof.
++ simpl. abstract (now rewrite Loc.add_comm, Loc.add_opp).
++ simpl. apply translation_zoom.
+Defined.
+
+Global Instance translation_compat : Proper (Loc.eq ==> eq) translation.
+Proof. intros u v Huv x y Hxy. simpl. now rewrite Huv, Hxy. Qed.
+
+Lemma translation_origin : eq (translation Loc.origin) id.
+Proof. intros x y Hxy. simpl. now rewrite Loc.add_origin. Qed.
+
+Lemma homothecy_translation : forall c (H10 : 1 <> 0), eq (homothecy c H10) (translation (Loc.opp c)).
+Proof. intros c H10 x y Hxy. rewrite Hxy. simpl. now rewrite Loc.mul_1. Qed.
+
 (** Composition of similarity *)
 
 Definition compose (f g : t) : t.
