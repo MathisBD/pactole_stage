@@ -16,23 +16,32 @@ Require Import List.
 Require Import SetoidList.
 Require Import Relations.
 Require Import RelationPairs.
+Require Import Morphisms.
+Require Import Psatz.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
 Require Pactole.CommonFormalism.
 Require Pactole.RigidFormalism.
-Require Import SortingR.
-Require Import MultisetSpectrum.
-Require Import Morphisms.
-Require Import Psatz.
+Require Import Pactole.GatheringinR.SortingR.
+Require Import Pactole.MultisetSpectrum.
+
+
 Import Permutation.
-
-
 Set Implicit Arguments.
-Close Scope R_scope.
 
 
+Lemma sqrt_subadditive : forall x y, 0 <= x -> 0 <= y -> sqrt (x + y) <= sqrt x + sqrt y.
+Proof.
+intros x y Hx Hy. apply R_sqr.Rsqr_incr_0.
+- repeat rewrite Rsqr_sqrt, ?R_sqr.Rsqr_plus; try lra.
+  assert (0 <= 2 * sqrt x * sqrt y).
+  { repeat apply Rmult_le_pos; try lra; now apply sqrt_positivity. }
+  lra.
+- apply sqrt_positivity. lra.
+- apply Rplus_le_le_0_compat; now apply sqrt_positivity.
+Qed.
 
 
 (** R² as a vector space over R. *)
@@ -56,6 +65,8 @@ Module R2def : RealMetricSpaceDef with Definition t := (R * R)%type
   Definition mul k r := let '(x, y) := r in (k * x, k * y)%R.
   Definition opp r := let '(x, y) := r in (-x, -y)%R.
   
+  Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
+  
   Instance add_compat : Proper (eq ==> eq ==> eq) add.
   Proof. unfold eq. repeat intro. now subst. Qed.
   
@@ -72,47 +83,50 @@ Module R2def : RealMetricSpaceDef with Definition t := (R * R)%type
   Lemma dist_defined : forall x y : t, dist x y = 0%R <-> eq x y.
   Proof.
   intros x y. unfold eq, dist. split; intro Heq.
-  +
-    SearchAbout R0 sqrt "²". admit.
-(* apply sqrt_eq_0 in Heq.
- apply Rminus_diag_uniq. destruct (Rcase_abs (x - y)) as [Hcase | Hcase].
-    - apply Rlt_not_eq in Hcase. apply Rabs_no_R0 in Hcase. contradiction.
-    - rewrite <- Heq. symmetry. now apply Rabs_pos_eq, Rge_le.*)
+  + apply sqrt_eq_0 in Heq.
+    - apply Rplus_eq_R0 in Heq; try apply Rle_0_sqr; [].
+      destruct Heq as [Hx Hy].
+      apply Rsqr_0_uniq, Rminus_diag_uniq in Hx.
+      apply Rsqr_0_uniq, Rminus_diag_uniq in Hy.
+      destruct x, y; simpl in *; subst; reflexivity.
+    - replace 0%R with (0 + 0)%R by ring. apply Rplus_le_compat; apply Rle_0_sqr.
   + subst. do 2 rewrite (Rminus_diag_eq _ _ (reflexivity _)). rewrite Rsqr_0, Rplus_0_l. apply sqrt_0.
-  Admitted.
-
+  Qed.
+  
   Lemma dist_sym : forall y x : t, dist x y = dist y x.
   Proof. intros. unfold dist. now setoid_rewrite R_sqr.Rsqr_neg_minus at 1 2. Qed.
   
   Lemma triang_ineq : forall x y z : t, (dist x z <= dist x y + dist y z)%R.
-  Proof. Admitted.
+  Proof.
+  intros [? ?] [? ?] [? ?]. unfold dist. simpl.
+  Admitted.
   
   Lemma add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
-  Proof. Admitted.
+  Proof. solve_R. Qed.
   
   Lemma add_comm : forall u v, eq (add u v) (add v u).
-  Proof. Admitted.
+  Proof. solve_R. Qed.
   
   Lemma add_origin : forall u, eq (add u origin) u.
-  Proof. Admitted.
+  Proof. solve_R. Qed.
   
   Lemma add_opp : forall u, eq (add u (opp u)) origin.
-  Proof. Admitted.
+  Proof. solve_R. Qed.
   
-  Lemma mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
-  Proof. Admitted.
+  Lemma mult_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Proof. solve_R. Qed.
   
   Lemma add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Proof. Admitted.
+  Proof. solve_R. Qed.
   
   Lemma plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
-  Proof. Admitted.
+  Proof. solve_R. Qed.
   
   Lemma mul_1 : forall u, eq (mul 1 u) u.
-  Proof. Admitted.
-
+  Proof. solve_R. Qed.
+  
   Lemma non_trivial : exists u v, ~eq u v.
-  Proof. Admitted.
+  Proof. exists (0, 0), (0, 1). compute. injection. auto using R1_neq_R0. Qed.
 End R2def.
 
 
@@ -128,6 +142,9 @@ Notation "- u" := (R2.opp u) : R2_scope.
 Transparent R2.origin R2def.origin R2.eq_dec R2.eq R2def.eq R2.dist R2def.dist.
 
 Ltac unfoldR2 := unfold R2.origin, R2def.origin, R2.eq_dec, R2.eq, R2def.eq, R2.dist, R2def.dist.
+
+Tactic Notation "unfoldR2" "in" ident(H) :=
+  unfold R2.origin, R2def.origin, R2.eq_dec, R2.eq, R2def.eq, R2.dist, R2def.dist in H.
 
 Lemma R2mul_0 : forall u, R2.eq (R2.mul 0 u) R2.origin.
 Proof. intros [x y]. compute. now do 2 rewrite Rmult_0_l. Qed.
@@ -182,16 +199,16 @@ Ltac Rdec_aux H :=
     [execution] is an infinite (coinductive) stream of [configuration]s. A
     [demon] is an infinite stream of [demonic_action]s. *)
 
-Module GatheringinR.
+Module GatheringinR2.
 
 (** **  Framework of the correctness proof: a finite set with at least two elements  **)
 
 Parameter nG: nat.
 
 (** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := nG with Definition nB := 0.
+Module N : Size with Definition nG := nG with Definition nB := 0%nat.
   Definition nG := nG.
-  Definition nB := 0.
+  Definition nB := 0%nat.
 End N.
 
 
@@ -202,23 +219,23 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Common := CommonFormalism.Make(R2)(N)(Spect).
+Module Export Common := CommonRealFormalism.Make(R2)(N)(Spect).
 Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
 Close Scope R_scope.
+Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
+Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
-(** [gathered_at pos pt] means that in position [pos] all good robots
+(** [gathered_at pos pt] means that in configuration [pos] all good robots
     are at the same location [pt] (exactly). *)
 Definition gathered_at (pt : R2.t) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
-CoInductive Gather (pt: R2.t) (e : execution) : Prop :=
-  Gathering : gathered_at pt (execution_head e) -> Gather pt (execution_tail e) -> Gather pt e.
+Definition gather (pt: R2.t) (e : execution) : Prop :=
+  Stream.forever (Stream.instant (gathered_at pt)) e.
 
 (** [WillGather pt e] means that (infinite) execution [e] is *eventually* [Gather]ed. *)
-Inductive WillGather (pt : R2.t) (e : execution) : Prop :=
-  | Now : Gather pt e -> WillGather pt e
-  | Later : WillGather pt (execution_tail e) -> WillGather pt e.
+Definition willGather (pt : R2.t) (e : execution) : Prop := Stream.eventually (gather pt) e.
 
 (** When all robots are on two towers of the same height,
     there is no solution to the gathering problem.
@@ -232,14 +249,14 @@ Definition forbidden (config : Pos.t) :=
     position, will *eventually* be [Gather]ed.
     This is the statement used for the impossiblity proof. *)
 Definition FullSolGathering (r : robogram) (d : demon) :=
-  forall config, exists pt : R2.t, WillGather pt (execute r d config).
+  forall config, exists pt : R2.t, willGather pt (execute r d config).
 
 (** [ValidsolGathering r d] means that any possible (infinite)
     execution, generated by demon [d] and robogram [r] and any intial
     position not [forbidden], will *eventually* be [Gather]ed.
     This is the statement used for the correctness proof of the algorithm. *)
 Definition ValidSolGathering (r : robogram) (d : demon) :=
-  forall config, ~forbidden config -> exists pt : R2.t, WillGather pt (execute r d config).
+  forall config, ~forbidden config -> exists pt : R2.t, willGather pt (execute r d config).
 
 
 (** **  Some results about R with respect to distance and similarities  **)
@@ -268,12 +285,28 @@ Arguments GPS x y z t1 t2 _ _ _ _ _ _ : clear implicits.
 Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
 Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
 
+Lemma three_fixpoints_is_id : forall sim : Sim.t,
+  (exists pt1 pt2 pt3 : R2.t, pt1 <> pt2 /\ pt1 <> pt3 /\ pt2 <> pt3
+                           /\ sim pt1 = pt1 /\ sim pt2 = pt2 /\ sim pt3 = pt3) ->
+  Sim.eq sim Sim.id.
+Proof.
+intros sim [pt1 [pt2 [pt3 [Hneq12 [Hneq23 [Hneq13 [Hpt1 [Hpt2 Hpt3]]]]]]]] x y Hxy.
+assert (Hzoom : sim.(Sim.zoom) = 1).
+{ apply (Rmult_eq_reg_r (R2.dist pt1 pt2)). rewrite <- sim.(Sim.dist_prop).
+  - rewrite Hpt1, Hpt2. ring.
+  - rewrite R2.dist_defined. assumption. }
+rewrite Hxy. apply (GPS pt1 pt2 pt3); trivial.
+- rewrite <- Hpt1 at 1. rewrite sim.(Sim.dist_prop). rewrite Hzoom. simpl. ring.
+- rewrite <- Hpt2 at 1. rewrite sim.(Sim.dist_prop). rewrite Hzoom. simpl. ring.
+- rewrite <- Hpt3 at 1. rewrite sim.(Sim.dist_prop). rewrite Hzoom. simpl. ring.
+Qed.
+
 (** Definition of rotations *)
 
-Definition rotate_bij (θ : R) : bijection R2.eq_equiv.
+Definition rotate_bij (θ : R) : Similarity.bijection R2.eq.
 refine {|
-  section := fun r => (cos θ * fst r - sin θ * snd r, sin θ * fst r + cos θ * snd r);
-  retraction := fun r => (cos (-θ) * fst r - sin (-θ) * snd r, sin (-θ) * fst r + cos (-θ) * snd r) |}.
+  Similarity.section := fun r => (cos θ * fst r - sin θ * snd r, sin θ * fst r + cos θ * snd r);
+  Similarity.retraction := fun r => (cos (-θ) * fst r - sin (-θ) * snd r, sin (-θ) * fst r + cos (-θ) * snd r) |}.
 Proof.
 unfold R2.eq, R2def.eq.
 abstract (intros xy xy'; split; intro; subst; destruct xy as [x y] || destruct xy' as [x y]; simpl;
@@ -281,82 +314,75 @@ rewrite Rtrigo1.cos_neg, Rtrigo1.sin_neg; f_equal; ring_simplify ; do 2 rewrite 
 rewrite <- (Rmult_1_l x) at 3 || rewrite <- (Rmult_1_l y) at 3; rewrite <- (Rtrigo1.sin2_cos2 θ); ring).
 Defined.
 
-Definition rotate (θ : R) : similarity.
+Lemma arith : forall (θ : R) (x y : R2.t),
+  (cos θ)² * (fst x)² - 2 * (cos θ)² * fst x * fst y + (cos θ)² * (snd x)² -
+  2 * (cos θ)² * snd x * snd y + (cos θ)² * (fst y)² + (cos θ)² * (snd y)² +
+  (fst x)² * (sin θ)² - 2 * fst x * (sin θ)² * fst y + (sin θ)² * (snd x)² -
+  2 * (sin θ)² * snd x * snd y + (sin θ)² * (fst y)² + (sin θ)² * (snd y)² =
+  (fst x)² - 2 * fst x * fst y + (snd x)² - 2 * snd x * snd y + (fst y)² + (snd y)².
+Proof.
+(* AACtactics should help with rewriting by sin2_cos2 here *)
+Admitted.
+
+
+Definition rotate (θ : R) : Sim.t.
 refine {|
-  f := rotate_bij θ;
-  ratio := 1;
-  center := (0,0) |}.
+  Sim.sim_f := rotate_bij θ;
+  Sim.zoom := 1;
+  Sim.center := (0,0) |}.
 Proof.
 + simpl. unfoldR2. abstract(f_equal; field).
 + unfoldR2. intros. rewrite Rmult_1_l. f_equal. simpl.
 repeat rewrite Rfunctions.Rsqr_pow2; ring_simplify; repeat rewrite <- Rfunctions.Rsqr_pow2.
-(* AACtactics should help with rewriting by sin2_cos2 here *)
-admit.
-Admitted.
+apply arith.
+Defined.
 
+Lemma rotate_inverse : forall θ, Sim.eq ((rotate θ)⁻¹) (rotate (-θ)).
+Proof. intros θ x y Hxy. now rewrite Hxy. Qed.
 
+Lemma rotate_mul_comm : forall θ k u, R2.eq (rotate θ (R2.mul k u)) (R2.mul k (rotate θ u)).
+Proof. intros θ k [x y]. unfoldR2. simpl. f_equal; field. Qed.
 
-Lemma rotate_inverse : forall θ, bij_eq ((rotate θ)⁻¹) rotate (-θ).
+Lemma rotate_opp_comm : forall θ u, R2.eq (rotate θ (R2.opp u)) (R2.opp (rotate θ u)).
+Proof. intros θ [? ?]. unfoldR2. simpl. f_equal; field. Qed.
+
+Lemma rotate_add_distr : forall θ u v, R2.eq (rotate θ (R2.add u v)) (R2.add (rotate θ u) (rotate θ v)).
+Proof. intros θ [? ?] [? ?]. unfoldR2. simpl. f_equal; field. Qed.
+
 (** A similarity in R2 is described by its ratio, center and rotation angle. *)
-Theorem similarity_in_R2 : forall sim, exists θ,
-  forall x, sim.(f) x = R2.mul sim.(ratio) (rotate θ (R2.add x (R2.opp sim.(center)))).
+Theorem similarity_in_R2 : forall sim : Sim.t, exists θ,
+  forall x, sim x = R2.mul sim.(Sim.zoom) (rotate θ (R2.add x (R2.opp sim.(Sim.center)))).
 Proof.
-intro sim. assert (Hkpos : 0 < sim.(ratio)) by apply sim_ratio_pos.
-destruct sim as [f k c Hc Hk]. simpl in *. unfold R2.origin, R2def.origin in Hc.
-destruct (Rdec k 0) as [Hk0 | Hk0].
-* (* if the ratio is 0, the similarity is a constant function. *)
-  exists 0. intro x. subst k. do 2 rewrite Rmult_0_l.
-  rewrite <- R2.dist_defined. rewrite <- Hc, Hk at 1. ring.
-* 
+intro sim. assert (Hkpos : 0 < sim.(Sim.zoom)) by apply Sim.zoom_pos.
+destruct sim as [f k c Hc Hk]. simpl in *. unfoldR2 in Hc.
+
 Admitted.
 
-Corollary inverse_similarity_in_R2 : forall (sim : similarity) θ,
-  (forall x, sim x = sim.(ratio) * (rotate θ (x + (- sim.(center)))))%R2 ->
-  (forall x, (sim ⁻¹) x = (/sim.(ratio)) * (rotate (-θ) (x + (- (rotate θ sim.(center))))))%R2.
+Corollary inverse_similarity_in_R2 : forall (sim : Sim.t) θ,
+  (forall x, sim x = sim.(Sim.zoom) * (rotate θ (x + (- sim.(Sim.center)))))%R2 ->
+  (forall x, R2.eq ((sim ⁻¹) x) ((/sim.(Sim.zoom)) *
+                                  (rotate (-θ) (x + (sim.(Sim.zoom) * rotate θ sim.(Sim.center)))))%R2).
 Proof.
-intros sim θ Hdirect x.
-rewrite <- sim.(Inversion). rewrite Hdirect.
-Check surjective_pairing.
- destruct sim as [f ρ [cx cy] ? ?]. destruct x as [x y]; compute in *.
+intros sim θ Hdirect x. cbn -[rotate].
+rewrite <- sim.(Similarity.Inversion). rewrite Hdirect. clear Hdirect.
+assert (Sim.zoom sim <> 0) by apply Sim.zoom_non_null.
+setoid_rewrite <- rotate_mul_comm. rewrite R2.add_distr. rewrite R2.mult_morph.
+replace (Sim.zoom sim * / Sim.zoom sim) with 1 by (now field). rewrite R2.mul_1.
+repeat rewrite rotate_add_distr. rewrite <- rotate_inverse.
+(* Does not work! Sniff...
+match goal with |- context[(rotate θ) ((rotate θ ⁻¹) ?x)] => idtac "found";
+change ((rotate θ) ((rotate θ ⁻¹) x)) with (Sim.compose (rotate θ) (rotate θ ⁻¹) x) end *)
+change ((rotate θ) ((rotate θ ⁻¹) x)) with (Sim.compose (rotate θ) (rotate θ ⁻¹) x).
+change ((rotate θ) ((rotate θ ⁻¹) (Sim.zoom sim *  (rotate θ) (Sim.center sim))%R2))
+  with (Sim.compose (rotate θ) (rotate θ ⁻¹) (Sim.zoom sim * (rotate θ) (Sim.center sim))%R2).
+rewrite Sim.compose_inverse_r.
+unfoldR2. destruct x as [x1 x2], sim as [f k [c1 c2] ? ?]; simpl in *. f_equal; field.
 Qed.
 
-Lemma sim_compat (sim:similarity) : Proper (R.eq ==> R.eq) sim.
-Proof.
-  repeat intro.
-  rewrite H.
-  reflexivity.
-Qed.
+Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R2.eq R2.eq sim.
+Proof. apply Sim.injective. Qed.
 
-Lemma sim_Minjective : forall (sim : similarity), MMultiset.Preliminary.injective R.eq R.eq sim.
-Proof. apply similarity_injective. Qed.
-
-Hint Immediate sim_compat similarity_injective sim_Minjective.
-
-
-Coercion is_true : bool >-> Sortclass.
-
-Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> B) :=
-  Proper (RA ==> RB) f \/ Proper (RA --> RB) f.
-
-Lemma similarity_increasing : forall k t, 0 <= k -> Proper (Rleb ==> Rleb) (fun x => k * (x - t)).
-Proof. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Rmult_le_compat_l; lra. Qed.
-
-Lemma similarity_decreasing : forall k t, k <= 0 -> Proper (Rleb --> Rleb) (fun x => k * (x - t)).
-Proof.
-repeat intro. hnf in *. unfold flip in *. rewrite Rleb_spec in *. apply Ropp_le_cancel.
-replace (- (k * (y - t))) with ((- k) * (y - t)) by ring.
-replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
-apply Rmult_le_compat_l; lra.
-Qed.
-
-Corollary similarity_monotonic : forall sim, monotonic Rleb Rleb sim.(f).
-Proof.
-intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
-+ left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial.
-  pose (Hratio := sim_ratio_pos sim). lra.
-+ right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
-  assert (Hratio := sim_ratio_pos sim). lra.
-Qed.
+Hint Immediate sim_Minjective.
 
 Instance forbidden_compat : Proper (Pos.eq ==> iff) forbidden.
 Proof.
@@ -365,15 +391,4 @@ exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
 
 
-End GatheringinR.
-
-(* Other results *)
-
-Lemma even_div2 : forall n, Nat.Even n -> Nat.div2 n + Nat.div2 n = n.
-Proof.
-intros n Hn. replace (Nat.div2 n + Nat.div2 n) with (2 * Nat.div2 n) by lia.
-rewrite <- Nat.double_twice. symmetry. apply even_double. now rewrite Even.even_equiv.
-Qed.
-
-Global Instance Leibniz_fun_compat : forall f, Proper (R.eq ==> R.eq) f.
-Proof. intros f ? ? Heq. now rewrite Heq. Qed.
+End GatheringinR2.

@@ -197,13 +197,6 @@ Lemma glast_right : In glast right.
 Proof.
 Admitted.
 
-Corollary gfirst_glast : gfirst <> glast.
-Proof.
-intro Habs. apply (firstn_skipn_nodup_exclusive Names.Gnames_NoDup (Nat.div2 (length Names.Gnames)) gfirst).
-- apply gfirst_left.
-- rewrite Habs. apply glast_right.
-Qed.
-
 Hint Immediate gfirst_left glast_right left_right_exclusive.
 
 
@@ -451,35 +444,122 @@ Section PropRobogram.
 Variable r : robogram.
 Hypothesis sol : solution r.
 
+(** In any spectrum containing a tower of size at least [N.nG], the robogram does not make robots move.
+    Indeed, otherwise they all go to the same location and we can build a demon that shift byzantine robots
+    by the same amount in order to get the same translated position. *)
 
-(** Idea: If all robots are gathered at the same position, then the robogram cannot make them move.
-          Indeed, otherwise, the convergence would not be valid for ε = half the move. *)
-Definition gathered_at (pt : R) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
-
-Theorem gathered_at_no_move : forall pt config, gathered_at pt config -> r (!! config) = pt.
-Proof. Admitted.
-
-(** Any spectrum containing a tower of size at least [N.nG] could be the previous configuration,
-    hence the robogram does not make robots move. *)
-Theorem no_move : forall spectrum pt, (spectrum[pt] >= N.nG)%nat -> r spectrum = pt.
+Definition shifting_da (pt : R) : demonic_action.
+refine {| step := fun _ => Some (fun c => Sim.translation (R.opp c));
+          relocate_byz := fun _ => pt |}.
 Proof.
-intros spectrum pt Hpt.
-pose (config := (fun _ => pt) : Pos.t).
-assert (Spect.eq (!! config) spectrum).
-Admitted.
++ abstract (intros _ sim c Heq; inversion_clear Heq; simpl; apply R1_neq_R0).
++ abstract (intros _ sim c Heq; inversion_clear Heq; simpl; now rewrite R.opp_opp).
+Defined.
 
-Corollary no_move1 : r spectrum1 = 0.
+(** A demon that shifts byzantine robots by d each round. *)
+CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
+
+Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
-assert (0 <> 1) by auto using R1_neq_R0.
-apply no_move. unfold spectrum1.
-rewrite Spect.add_same, Spect.singleton_other; trivial. omega.
+intros d pt. apply fully_synchronous_implies_fair. revert pt.
+cofix shift_fair. intro pt. constructor.
++ intro. discriminate.
++ cbn. apply shift_fair.
 Qed.
 
-Corollary no_move2 : r spectrum2 = 1.
+(** The position which will be shifted **)
+Definition config0 pt : Pos.t := fun id =>
+  match id with
+    | Good _ => pt
+    | Byz b => pt + 1
+  end.
+
+(* An execution that shifts by [d] at each round, starting from [pt]. *)
+CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
+
+Lemma spectrum_config0 : forall pt, Spect.eq (!! (Pos.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
+Proof.
+intros pt x. unfold config0, spectrum1.
+rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
+rewrite map_app, map_map, map_map, countA_occ_app. simpl.
+rewrite (map_f_dependent_compat _ (fun _ : Spect.Names.Internals.G => 0)).
+rewrite (map_f_dependent_compat _ (fun _ : Spect.Names.Internals.B => 1)).
++ do 2 rewrite map_cst. destruct (Rdec x 0); [| destruct (Rdec x 1)]; subst.
+  - rewrite countA_occ_alls_in, Names.Gnames_length; refine _.
+    rewrite countA_occ_alls_out; auto.
+    rewrite Spect.add_same, Spect.singleton_other; auto.
+  - rewrite countA_occ_alls_in, Names.Bnames_length; refine _.
+    rewrite countA_occ_alls_out; auto.
+    rewrite Spect.add_other, Spect.singleton_same; auto.
+  - repeat rewrite countA_occ_alls_out; auto.
+    rewrite Spect.add_other, Spect.singleton_other; auto.
++ intros b Hin. unfold Pos.map. unfoldR. ring.
++ intros g Hin. unfold Pos.map. unfoldR. ring.
+Qed.
+
+Corollary spect_config0_0 : Spect.eq (!! (config0 0)) spectrum1.
+Proof. rewrite <- (spectrum_config0 0). f_equiv. intro. compute. ring. Qed.
+
+Section AbsurdMove.
+Definition move := r spectrum1.
+Hypothesis absurdmove : move <> 0.
+
+Lemma round_move : forall pt, Pos.eq (round r (shifting_da (pt + move + 1)) (config0 pt)) (config0 (pt + move)).
+Proof.
+intros pt id. unfold round. cbn.
+destruct id as [g | b].
+- rewrite spectrum_config0. simpl. unfoldR. fold move. ring.
+- simpl. now unfoldR.
+Qed.
+
+Lemma keep_moving_by_eq : forall pt config,
+  Pos.eq config (config0 pt) -> eeq (execute r (shifting_demon move pt) config) (shifting_execution move pt).
+Proof.
+cofix shift_exec. intros pt config Heq.
+constructor.
++ simpl. assumption.
++ cbn. apply shift_exec. now rewrite Heq, round_move.
+Qed.
+
+Theorem keep_moving : forall pt, eeq (execute r (shifting_demon move pt) (config0 pt)) (shifting_execution move pt).
+Proof. intro. apply keep_moving_by_eq. reflexivity. Qed.
+
+Theorem absurd : False.
+Proof.
+assert (Hthird_move : 0 < Rabs (move / 3)). { apply Rabs_pos_lt. lra. }
+specialize (sol (config0 0) (Fair_shifting_demon move 0) Hthird_move).
+destruct sol as [pt Hpt]. rewrite keep_moving in Hpt.
+remember (shifting_execution move 0) as e. remember (Rabs (move / 3)) as ε.
+revert Heqe. generalize 0.
+induction Hpt as [e IHpt | e IHpt]; intros start Hstart.
++ subst e ε. destruct IHpt as [Hnow1 [Hnow2 Hlater]]. unfold Stream.instant in *. cbn in *.
+  clear -absurdmove Hnow1 Hnow2. specialize (Hnow1 gfirst). specialize (Hnow2 gfirst).
+  unfold R.dist, Rdef.dist in *.
+  cut (Rabs move <= Rabs (move / 3) + Rabs (move / 3)).
+  - assert (Hpos : 0 < Rabs move) by now apply Rabs_pos_lt.
+    unfold Rdiv. rewrite Rabs_mult, Rabs_Rinv; try lra.
+    assert (Habs3 : Rabs 3 = 3). { apply Rabs_pos_eq. lra. } rewrite Habs3 in *.
+    lra.
+  - replace move with ((pt - start) - (pt - (start + move))) at 1 by ring.
+    unfold Rminus at 1. eapply Rle_trans; try (now apply Rabs_triang); [].
+    apply Rplus_le_compat; trivial; []. now rewrite Rabs_Ropp.
++ apply (IHIHpt (start + move)). subst e. simpl. reflexivity.
+Qed.
+
+End AbsurdMove.
+
+Theorem no_move1 : r spectrum1 = 0.
+Proof.
+destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
+exfalso. apply absurd. assumption.
+Qed.
+
+Corollary no_move2 : r (!! (Pos.map (Sim.homothecy 1 minus_1) config2 )) = 0.
 Proof.
 assert (1 <> 0) by apply R1_neq_R0.
-apply no_move. unfold spectrum2.
-rewrite Spect.add_other, Spect.singleton_same; trivial. omega.
+rewrite <- Spect.from_config_map; refine _.
+rewrite spect_pos2. rewrite swap_spect2_spect1. apply no_move1.
 Qed.
 
 Lemma round_config1 : Pos.eq (round r bad_da1 config1) config2.
@@ -494,8 +574,7 @@ Lemma round_config2 : Pos.eq (round r bad_da2 config2) config1.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-rewrite <- Spect.from_config_map; refine _. rewrite spect_pos2, swap_spect2_spect1.
-simpl. unfoldR. rewrite no_move1. ring.
+rewrite no_move2. simpl. unfoldR. field.
 Qed.
 
 Lemma execute_bad_demon_aux : forall e, eeq (execute r bad_demon config1) e -> eeq e exec.

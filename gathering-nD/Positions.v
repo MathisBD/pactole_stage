@@ -47,7 +47,7 @@ Module Type RealMetricSpaceDef <: DecidableType.
   Parameter add_origin : forall u, eq (add u origin) u.
   Parameter add_opp : forall u, eq (add u (opp u)) origin.
   Parameter add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Parameter mult_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
   Parameter plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   
   (* TODO: adds the missing properties *)
@@ -65,7 +65,11 @@ Module Type RealMetricSpace.
   Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
   Parameter opp_origin : eq (opp origin) origin.
   Parameter opp_opp : forall u, eq (opp (opp u)) u.
+  Parameter mul_0 : forall u, eq (mul 0 u) origin.
   Parameter mul_origin : forall a, eq (mul a origin) origin.
+  Parameter mul_reg_l : forall k u v, k <> 0%R -> eq (mul k u) (mul k v) -> eq u v.
+  Parameter mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
+  Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
 End RealMetricSpace.
 
 
@@ -119,6 +123,20 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   Lemma opp_opp : forall u, eq (opp (opp u)) u.
   Proof. intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.
   
+  Lemma mul_0 : forall u, eq (mul 0 u) origin.
+  Proof.
+  intro u. apply (add_reg_l u).
+  rewrite add_origin. rewrite <- (mul_1 u) at 1. rewrite plus_morph.
+  ring_simplify (1 + 0)%R. now rewrite mul_1.
+  Qed.
+  
+  Lemma minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+  Proof.
+  intros k u. apply (add_reg_l (mul k u)).
+  rewrite add_opp. rewrite plus_morph. ring_simplify (k + - k)%R.
+  apply mul_0.
+  Qed.
+  
   Lemma mul_origin : forall a, eq (mul a origin) origin.
   Proof. Admitted.
   
@@ -127,10 +145,24 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   intros a u. apply (add_reg_l (mul a u)). rewrite <- add_distr.
   setoid_rewrite add_opp. now rewrite mul_origin.
   Qed.
+  
+  Lemma mul_reg_l : forall k u v, k <> 0%R -> eq (mul k u) (mul k v) -> eq u v.
+  Proof.
+  intros k u v Hk Heq. setoid_rewrite <- mul_1.
+  replace 1%R with (/k * k)%R by now field.
+  setoid_rewrite <- mult_morph. rewrite Heq.
+  reflexivity.
+  Qed.
+  
+  Lemma mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
+  Proof.
+  intros k k' u Hu Heq.
+  Admitted.
+  
 End MakeRealMetricSpace.
 
 
-Module Type Position(Location : DecidableType)(N:Size)(Names : Robots(N)).
+Module Type Position(Location : DecidableType)(N : Size)(Names : Robots(N)).
   Definition t := Names.ident -> Location.t.
   Definition eq pos₁ pos₂ := forall id : Names.ident, Location.eq (pos₁ id) (pos₂ id).
   Declare Instance eq_equiv : Equivalence eq.
