@@ -457,13 +457,13 @@ Proof.
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
-CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
+CoFixpoint shifting_demon d pt := NextDemon (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
 intros d pt. apply fully_synchronous_implies_fair. revert pt.
 cofix shift_fair. intro pt. constructor.
-+ intro. discriminate.
++ intro. constructor. simpl. discriminate.
 + cbn. apply shift_fair.
 Qed.
 
@@ -475,7 +475,7 @@ Definition config0 pt : Pos.t := fun id =>
   end.
 
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
-CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
+CoFixpoint shifting_execution d pt := NextExecution (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt, Spect.eq (!! (Pos.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
 Proof.
@@ -533,7 +533,7 @@ destruct sol as [pt Hpt]. rewrite keep_moving in Hpt.
 remember (shifting_execution move 0) as e. remember (Rabs (move / 3)) as ε.
 revert Heqe. generalize 0.
 induction Hpt as [e IHpt | e IHpt]; intros start Hstart.
-+ subst e ε. destruct IHpt as [Hnow1 [Hnow2 Hlater]]. unfold Stream.instant in *. cbn in *.
++ subst e ε. destruct IHpt as [Hnow1 [Hnow2 Hlater]]. cbn in *.
   clear -absurdmove Hnow1 Hnow2. specialize (Hnow1 gfirst). specialize (Hnow2 gfirst).
   unfold R.dist, Rdef.dist in *.
   cut (Rabs move <= Rabs (move / 3) + Rabs (move / 3)).
