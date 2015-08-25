@@ -1267,7 +1267,14 @@ Definition half1 (l : list A) := firstn (Nat.div2 (length l)) l.
 Definition half2 (l : list A) := skipn  (Nat.div2 (length l)) l.
 
 Lemma half1_length : forall l : list A, length (half1 l) = div2 (length l).
-Proof. intros. apply firstn_length_le. apply Nat.div2_decr. omega. Qed.
+Proof.
+  intros.
+  unfold half1.
+  rewrite firstn_length.
+  rewrite min_l;auto.
+  apply Nat.div2_decr.
+  omega.
+Qed.
 
 Corollary half2_length : forall l : list A, length (half2 l) = length l - div2 (length l).
 Proof. intros. unfold half2. now rewrite skipn_length. Qed.
