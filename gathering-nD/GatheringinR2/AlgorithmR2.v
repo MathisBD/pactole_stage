@@ -229,6 +229,7 @@ Coercion Similarity.section : Similarity.bijection >-> Funclass.
     are at the same location [pt] (exactly). *)
 Definition gathered_at (pt : R2.t) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
 
+Require Import Streams.
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
 Definition gather (pt: R2.t) (e : execution) : Prop :=
@@ -392,3 +393,48 @@ Qed.
 
 
 End GatheringinR2.
+
+
+(** The proofs of soundness and termination uses a decreasing measure
+    given below according to 6 different kinds of configuration:
+    0) All robots are gathered
+    1) There is a mjority tower (ie a tower containing strictly more robots that any ohter tower)
+    2) There are three aligned towers
+    3) There are two critical points and other non-critical ones + center of circle.
+        -> not present on the algorithm
+    4) There are three critical points and no other points except on the center of the circle
+    5) All robots are on the encosing circle (or its center) (exactly 3 critical), but some towers are non critical
+    6) General case: some robots are not on the enclosing circle.
+
+
+Robogram:
+
+\begin{enumerate}
+\item \label{algo:majo} If there is a unique location with highest
+  multiplicity, the destination is that location,
+\item If there are three aligned towers, then go to the middle one,
+\item\label{algo:notsecmaj}Otherwise, if not on \secmaj nor at its
+  center nor of highest multiplicity, then the center of \secmaj is
+  the destination,
+\item\label{algo:allsecmajnoncrit}Otherwise, if all towers are on
+  \secmaj or at its center and if at a non-critical location, the
+  destination is the center of \secmaj,\marginote{fusion 2 et 3
+    possible mais plus compliqué à montrer (non max hors SEC peut
+    devenir max)}
+\item\label{algo:allsecmajcrit}Otherwise, if all towers are at
+  critical locations, go to the center of \secmaj.
+\item Otherwise, the destination is the origin (do not
+  move).
+\end{enumerate}
+
+Global measure: lexicgraphic order on the index of the type of config + some specific measure:
+  0) done
+  1) 
+  2) 
+  3) 
+  4) 
+  5) 
+  6) 
+
+
+*)
