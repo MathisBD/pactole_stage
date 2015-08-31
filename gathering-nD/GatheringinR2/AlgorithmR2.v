@@ -214,7 +214,7 @@ Axiom SEC_spec2 : forall l c, enclosing_circle c l -> radius (SEC l) <= radius c
 Inductive triangle_type :=
   | Equilateral
   | Isosceles (vertex : R2.t)
-  | General.
+  | Scalene.
 
 Definition max_side (pt1 pt2 pt3 : R2.t) : R2.t :=
   let len12 := R2.dist pt1 pt2 in
@@ -231,7 +231,7 @@ Definition classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
        else Isosceles pt2
   else if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3) then Isosceles pt3
   else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
-  else General.
+  else Scalene.
 
 Lemma max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
   Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
@@ -466,7 +466,7 @@ Definition target (s : Spect.t) : R2.t :=
           match classify_triangle pt1 pt2 pt3 with
             | Equilateral => R2.mul (1/3) (R2.add (R2.add pt1 pt2) pt3)
             | Isosceles vertex => vertex
-            | General => max_side pt1 pt2 pt3
+            | Scalene => max_side pt1 pt2 pt3
           end
         | _ => (* General case *) center (SEC l)
       end
@@ -617,7 +617,7 @@ Definition measure (s : Spect.t) : nat * nat :=
           match classify_triangle pt1 pt2 pt3 with
             | Equilateral => if is_clean s then (6, measure_reduce s) else (7, measure_clean s)
             | Isosceles vertex => if is_clean s then (4, measure_reduce s) else (5, measure_clean s)
-            | General => if is_clean s then (4, measure_reduce s) else (5, measure_clean s)
+            | Scalene => if is_clean s then (4, measure_reduce s) else (5, measure_clean s)
           end
         | _ => (* General case *) if is_clean s then (8, measure_reduce s) else (9, measure_clean s)
       end
@@ -667,8 +667,6 @@ Qed.
 Require Pactole.GatheringinR.Algorithm.
 
 Definition lt_config x y := GatheringinR.Algorithm.lexprod lt lt (measure (!! x)) (measure (!! y)).
-
-
 
 
 End GatheringinR2.
