@@ -191,13 +191,69 @@ Ltac Rdec_aux H :=
     | _ => fail
   end.
 
+Record circle := {
+  center : R2.t;
+  radius : R}.
+
+Definition enclosing_circle (c : circle) l := List.Forall (fun x => R2.dist x (center c) <= (radius c)) l.
+Definition on_circle (c : circle) x := Rdec_bool (R2.dist (center c) x) (radius c).
+
+Instance enclosing_circle_compat : forall c, Proper (@Permutation _ ==> iff) (enclosing_circle c).
+Proof. intro. unfold enclosing_circle. apply Forall_Permutation_compat. intros ? ? ?. now subst. Qed.
+
+(** We assume the existence of a primitive SEC computing the smallest enclosing circle,
+    given by center and radius. *)
+Parameter SEC : list R2.t -> circle.
+(** Its definition does not depend on the representation of points. *)
+Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
+(** The SEC is an enclosing circle. *)
+Axiom SEC_spec1 : forall l, enclosing_circle (SEC l) l.
+(** The SEC is the smallest one. *)
+Axiom SEC_spec2 : forall l c, enclosing_circle c l -> radius (SEC l) <= radius c.
+
+Inductive triangle_type :=
+  | Equilateral
+  | Isosceles (vertex : R2.t)
+  | General.
+
+Definition max_side (pt1 pt2 pt3 : R2.t) : R2.t :=
+  let len12 := R2.dist pt1 pt2 in
+  let len23 := R2.dist pt2 pt3 in
+  let len13 := R2.dist pt1 pt3 in
+  if Rle_dec len12 len23
+  then if Rle_dec len23 len13 then pt2 else pt1
+  else if Rle_dec len12 len13 then pt2 else pt3.
+
+Definition classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
+  if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt2 pt3)
+  then if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3)
+       then Equilateral
+       else Isosceles pt2
+  else if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3) then Isosceles pt3
+  else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
+  else General.
+
+Lemma max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+  Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+  max_side pt1 pt2 pt3 = max_side pt1' pt2' pt3'.
+Proof.
+(* TODO *)
+Admitted.
+
+Lemma classify_triangle_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+  Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+  classify_triangle pt1 pt2 pt3 = classify_triangle pt1' pt2' pt3'.
+Proof.
+(* TODO *)
+Admitted.
+
 
 (** *  The Gathering Problem  **)
 
-(** Vocabulary: we call a [location] the coordinate of a robot. We
-    call a [configuration] a function from robots to position. An
-    [execution] is an infinite (coinductive) stream of [configuration]s. A
-    [demon] is an infinite stream of [demonic_action]s. *)
+(** Vocabulary: we call a [location] the coordinate of a robot.
+    We call a [configuration] a function from robots to position.
+    An [execution] is an infinite (coinductive) stream of [configuration]s.
+    A [demon] is an infinite stream of [demonic_action]s. *)
 
 Module GatheringinR2.
 
@@ -215,7 +271,7 @@ End N.
 (** The spectrum is a multiset of positions *)
 Module Spect := MultisetSpectrum.Make(R2)(N).
 
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
+Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 2, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
@@ -229,14 +285,15 @@ Coercion Similarity.section : Similarity.bijection >-> Funclass.
     are at the same location [pt] (exactly). *)
 Definition gathered_at (pt : R2.t) (pos : Pos.t) := forall g : Names.G, pos (Good g) = pt.
 
-Require Import Streams.
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
-Definition gather (pt: R2.t) (e : execution) : Prop :=
-  Stream.forever (Stream.instant (gathered_at pt)) e.
+CoInductive gather (pt: R2.t) (e : execution) : Prop :=
+  Gathering : gathered_at pt (execution_head e) -> gather pt (execution_tail e) -> gather pt e.
 
 (** [WillGather pt e] means that (infinite) execution [e] is *eventually* [Gather]ed. *)
-Definition willGather (pt : R2.t) (e : execution) : Prop := Stream.eventually (gather pt) e.
+Inductive willGather (pt : R2.t) (e : execution) : Prop :=
+  | Now : gather pt e -> willGather pt e
+  | Later : willGather pt (execution_tail e) -> willGather pt e.
 
 (** When all robots are on two towers of the same height,
     there is no solution to the gathering problem.
@@ -391,50 +448,227 @@ intros ? ? Heq. split; intros [HnG [pt1 [pt2 [Hneq Hpt]]]]; split; trivial ||
 exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
 
+(* cf algo in 1D, should be in the multiset library *)
+Parameter Smax : Spect.t -> Spect.t.
+Declare Instance Smax_compat : Proper (Spect.eq ==> Spect.eq) Smax.
+
+Definition target (s : Spect.t) : R2.t :=
+  match Spect.support (Smax s) with
+    | nil => (0, 0)
+    | pt :: nil => pt
+    | _ :: _ :: _ => 
+      let l := Spect.support s in
+      let sec := List.filter (on_circle (SEC l)) l in
+      match sec with
+        | nil | _ :: nil => (0, 0) (* impossible cases *)
+        | pt1 :: pt2 :: nil => R2.middle pt1 pt2
+        | pt1 :: pt2 :: pt3 :: nil =>
+          match classify_triangle pt1 pt2 pt3 with
+            | Equilateral => R2.mul (1/3) (R2.add (R2.add pt1 pt2) pt3)
+            | Isosceles vertex => vertex
+            | General => max_side pt1 pt2 pt3
+          end
+        | _ => (* General case *) center (SEC l)
+      end
+  end.
+
+Instance target_compat : Proper (Spect.eq ==> Logic.eq) target.
+Proof.
+intros s1 s2 Hs. unfold target.
+assert (Hsize : length (Spect.support (Smax s1)) = length (Spect.support (Smax s2))).
+{ f_equiv. rewrite <- PermutationA_Leibniz. now do 2 f_equiv. }
+destruct (Spect.support (Smax s1)) as [| a1 [| ? ?]] eqn:Hs1; simpl in Hsize.
+* rewrite Spect.support_nil, Hs, <- Spect.support_nil in Hs1. now rewrite Hs1.
+* destruct (Spect.support (Smax s2)) as [| a2 [| ? ?]] eqn:Hs2; simpl in Hsize; try omega.
+  apply Smax_compat, Spect.support_compat in Hs. rewrite Hs1, Hs2 in Hs.
+  rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
+* destruct (Spect.support (Smax s2)) as [| a2 [| b2 l2]]; simpl in Hsize; try omega.
+  clear -Hs.
+  assert (Hperm : Permutation (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1))
+                              (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))).
+  { rewrite <- PermutationA_Leibniz. etransitivity.
+    - apply (filter_PermutationA_compat _); refine _. now rewrite Hs.
+    - rewrite filter_extensionality_compat; try reflexivity.
+      intros x y Hxy. subst. f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs. }
+  destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| a1 [| a2 [| a3 [| ? ?]]]] eqn:Hs1.
+  + apply Permutation_nil in Hperm. now rewrite Hperm.
+  + apply Permutation_length_1_inv in Hperm. now rewrite Hperm.
+  + apply Permutation_length_2_inv in Hperm.
+    destruct Hperm as [Hperm | Hperm]; rewrite Hperm; trivial.
+    unfold R2.middle. now rewrite R2.add_comm.
+  + assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) =3%nat) by now rewrite <- Hperm.
+    destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
+      as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
+    rewrite (classify_triangle_compat Hperm).
+    destruct (classify_triangle b1 b2 b3).
+    - clear -Hperm. f_equal. admit. (* TODO *)
+    - reflexivity.
+    - now apply max_side_compat.
+  + assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) = 4 + length l)%nat
+      by now rewrite <- Hperm.
+    destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
+      as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
+    f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs.
+Admitted.
+
+Definition SECT (s : Spect.t) : list R2.t :=
+  let l := Spect.support s in
+  target s :: List.filter (on_circle (SEC l)) l.
+
+Instance SECT_compat : Proper (Spect.eq ==> @Permutation _) SECT.
+Proof.
+intros s1 s2 Hs. unfold SECT. rewrite Hs at 1. constructor.
+etransitivity.
+- rewrite <- PermutationA_Leibniz. apply (filter_PermutationA_compat _); refine _. rewrite Hs. reflexivity.
+- rewrite filter_extensionality_compat; try reflexivity.
+  intros ? ? ?. subst. f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs.
+Qed.
+
+Definition SECT_cardinal s :=
+  Spect.cardinal (Spect.filter (fun x => if List.in_dec R2.eq_dec x (SECT s) then true else false) s).
+
+Instance SECT_cardinal_compat : Proper (Spect.eq ==> Logic.eq) SECT_cardinal.
+Proof.
+intros s1 s2 Hs. unfold SECT_cardinal. f_equiv. rewrite Hs.
+apply Spect.filter_extensionality_compat.
+- intros x y Hxy. now rewrite Hxy.
+- intro x. destruct (in_dec R2.eq_dec x (SECT s1)), (in_dec R2.eq_dec x (SECT s2));
+  trivial; rewrite Hs in *; contradiction.
+Qed.
+
+Definition is_clean (s : Spect.t) : bool :=
+  if inclA_dec _ R2.eq_dec (Spect.support s) (SECT s) then true else false.
+
+Instance is_clean_compat : Proper (Spect.eq ==> Logic.eq) is_clean.
+Proof.
+intros ? ? Heq. unfold is_clean.
+destruct (inclA_dec _ R2.eq_dec (Spect.support x) (SECT x)) as [Hx | Hx],
+         (inclA_dec _ R2.eq_dec (Spect.support y) (SECT y)) as [Hy | Hy]; trivial.
++ elim Hy. intros e Hin. rewrite <- Heq in Hin.
+  apply SECT_compat in Heq. rewrite <- PermutationA_Leibniz in Heq.
+  rewrite <- Heq. now apply Hx.
++ elim Hx. intros e Hin. rewrite Heq in Hin.
+  apply SECT_compat in Heq. rewrite <- PermutationA_Leibniz in Heq.
+  rewrite Heq. now apply Hy.
+Qed.
+
+Definition gatherR2_pgm (s : Spect.t) : R2.t :=
+  match Spect.support (Smax s) with
+    | nil => (0, 0) (* impossible *)
+    | pt :: nil => pt (* majority *)
+    | _ :: _ :: _ =>
+      if is_clean s then target s (* reduce *)
+      else if List.in_dec R2.eq_dec (0, 0) (SECT s) then (0, 0) else target s (* clean *)
+  end.
+
+Instance gatherR2_pgm_compat : Proper (Spect.eq ==> R2.eq) gatherR2_pgm.
+Proof.
+intros s1 s2 Hs. unfold gatherR2_pgm.
+assert (Hsize : length (Spect.support (Smax s1)) = length (Spect.support (Smax s2))).
+{ f_equiv. rewrite <- PermutationA_Leibniz. now do 2 f_equiv. }
+destruct (Spect.support (Smax s1)) as [| pt1 [| ? ?]] eqn:Hs1,
+         (Spect.support (Smax s2)) as [| pt2 [| ? ?]] eqn:Hs2;
+simpl in Hsize; omega || clear Hsize.
++ reflexivity.
++ apply Smax_compat, Spect.support_compat in Hs. rewrite Hs1, Hs2 in Hs.
+  rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
++ rewrite Hs. destruct (is_clean s2).
+  - now f_equiv.
+  - destruct (in_dec R2.eq_dec (0, 0) (SECT s1)) as [Hin | Hin],
+             (in_dec R2.eq_dec (0, 0) (SECT s2)); 
+    try (reflexivity || (rewrite Hs in Hin; contradiction)). now f_equiv.
+Qed.
+
+Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
+
+(** **  Decreasing measure ensuring termination  **)
+
+(** Global measure: lexicgraphic order on the index of the type of config + some specific measure:
+   0]  Gathered: no need
+   1]  Majority tower: \# robots not on majority tower -> OK 1
+   2]  3 aligned towers: \# robots not on the middle location -> OK 2
+   3]  Diameter ($|\SEC| = 2$) but not aligned: \# robots not on $\SEC ∪ \DEST$ -> OK 3
+   4]  Non-isosceles triangle and $c = \SEC ∪ \DEST$: \# robots not on the segment containing $\DEST$ -> OK 4
+   5]  Non-isosceles triangle and $c \neq \SEC ∪ \DEST$: \# robots not on $\SEC ∪ \DEST$ -> OK 5
+   4'] Isosceles triangle not equilateral and c = SEC ∪ DEST: # robots on the vertex angle (not on the base) -> OK 4
+   5'] Isosceles triangle not equilateral and $c \neq \SEC ∪ \DEST$: \# robots not on $\SEC ∪ \DEST$ -> OK 5
+   6]  Equilateral triangle and $c = \SEC ∪ \DEST$: \# robots not on $\DEST$ -> OK 1
+   7]  Equilateral triangle and $c \neq \SEC ∪ \DEST$: \# robots not on $\SEC ∪ \DEST$ -> OK 5
+   8]  General case ($|\SEC| \geq 4$) and $c = \SEC ∪ \DEST$: \# robots not on $\DEST$ -> OK 1
+   9]  General case ($|\SEC| \geq 4$) and $c \neq \SECC$: \# robots not on $\SEC ∪ \DEST$ -> TODO
+*)
+
+Close Scope R_scope.
+
+Definition measure_reduce (s : Spect.t) := N.nG - s[target s].
+Definition measure_clean (s : Spect.t) := N.nG - SECT_cardinal s.
+
+Definition measure (s : Spect.t) : nat * nat :=
+  match Spect.support (Smax s) with
+    | nil => (0, 0)
+    | pt :: nil => (1, measure_reduce s)
+    | _ :: _ :: _ =>
+      let l := Spect.support s in
+      let sec := List.filter (on_circle (SEC l)) l in
+      match sec with
+        | nil | _ :: nil => (0, 0) (* impossible cases *)
+        | pt1 :: pt2 :: nil => if is_clean s then (2, measure_reduce s) else (3, measure_clean s)
+        | pt1 :: pt2 :: pt3 :: nil =>
+          match classify_triangle pt1 pt2 pt3 with
+            | Equilateral => if is_clean s then (6, measure_reduce s) else (7, measure_clean s)
+            | Isosceles vertex => if is_clean s then (4, measure_reduce s) else (5, measure_clean s)
+            | General => if is_clean s then (4, measure_reduce s) else (5, measure_clean s)
+          end
+        | _ => (* General case *) if is_clean s then (8, measure_reduce s) else (9, measure_clean s)
+      end
+  end.
+
+Instance measure_reduce_compat : Proper (Spect.eq ==> Logic.eq) measure_reduce.
+Proof. intros ? ? Heq. unfold measure_reduce. now rewrite Heq. Qed.
+
+Instance measure_clean_compat : Proper (Spect.eq ==> Logic.eq) measure_clean.
+Proof. intros ? ? Heq. unfold measure_clean. now rewrite Heq. Qed.
+
+Instance measure_compat : Proper (Spect.eq ==> Logic.eq) measure.
+Proof.
+intros s1 s2 Hs. unfold measure.
+assert (Hsize : length (Spect.support (Smax s1)) = length (Spect.support (Smax s2))).
+{ f_equiv. rewrite <- PermutationA_Leibniz. now do 2 f_equiv. }
+destruct (Spect.support (Smax s1)) as [| pt1 [| ? ?]] eqn:Hs1,
+         (Spect.support (Smax s2)) as [| pt2 [| ? ?]] eqn:Hs2;
+simpl in Hsize; omega || clear Hsize.
++ reflexivity.
++ f_equal. now rewrite Hs.
++ clear -Hs.
+  assert (Hperm : Permutation (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1))
+                              (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))).
+  { rewrite <- PermutationA_Leibniz. etransitivity.
+    - apply (filter_PermutationA_compat _); refine _. now rewrite Hs.
+    - rewrite filter_extensionality_compat; try reflexivity.
+      intros x y Hxy. subst. f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs. }
+  destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| a1 [| a2 [| a3 [| ? ?]]]] eqn:Hs1.
+  - apply Permutation_nil in Hperm. now rewrite Hperm.
+  - apply Permutation_length_1_inv in Hperm. now rewrite Hperm.
+  - apply Permutation_length_2_inv in Hperm.
+    destruct Hperm as [Hperm | Hperm]; rewrite Hperm; trivial;
+    rewrite Hs; destruct (is_clean s2); f_equal; now rewrite Hs.
+  - assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) =3%nat) by now rewrite <- Hperm.
+    destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
+      as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
+    rewrite (classify_triangle_compat Hperm).
+    destruct (classify_triangle b1 b2 b3); rewrite Hs; destruct (is_clean s2); f_equal; now rewrite Hs.
+  - assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) = 4 + length l)%nat
+      by now rewrite <- Hperm.
+    destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
+      as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
+    rewrite Hs; destruct (is_clean s2); f_equal; now rewrite Hs.
+Qed.
+
+Require Pactole.GatheringinR.Algorithm.
+
+Definition lt_config x y := GatheringinR.Algorithm.lexprod lt lt (measure (!! x)) (measure (!! y)).
+
+
+
 
 End GatheringinR2.
-
-
-(** The proofs of soundness and termination uses a decreasing measure
-    given below according to 6 different kinds of configuration:
-    0) All robots are gathered
-    1) There is a mjority tower (ie a tower containing strictly more robots that any ohter tower)
-    2) There are three aligned towers
-    3) There are two critical points and other non-critical ones + center of circle.
-        -> not present on the algorithm
-    4) There are three critical points and no other points except on the center of the circle
-    5) All robots are on the encosing circle (or its center) (exactly 3 critical), but some towers are non critical
-    6) General case: some robots are not on the enclosing circle.
-
-
-Robogram:
-
-\begin{enumerate}
-\item \label{algo:majo} If there is a unique location with highest
-  multiplicity, the destination is that location,
-\item If there are three aligned towers, then go to the middle one,
-\item\label{algo:notsecmaj}Otherwise, if not on \secmaj nor at its
-  center nor of highest multiplicity, then the center of \secmaj is
-  the destination,
-\item\label{algo:allsecmajnoncrit}Otherwise, if all towers are on
-  \secmaj or at its center and if at a non-critical location, the
-  destination is the center of \secmaj,\marginote{fusion 2 et 3
-    possible mais plus compliqué à montrer (non max hors SEC peut
-    devenir max)}
-\item\label{algo:allsecmajcrit}Otherwise, if all towers are at
-  critical locations, go to the center of \secmaj.
-\item Otherwise, the destination is the origin (do not
-  move).
-\end{enumerate}
-
-Global measure: lexicgraphic order on the index of the type of config + some specific measure:
-  0) done
-  1) 
-  2) 
-  3) 
-  4) 
-  5) 
-  6) 
-
-
-*)

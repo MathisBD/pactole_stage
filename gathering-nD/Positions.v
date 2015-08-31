@@ -70,6 +70,8 @@ Module Type RealMetricSpace.
   Parameter mul_reg_l : forall k u v, k <> 0%R -> eq (mul k u) (mul k v) -> eq u v.
   Parameter mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
   Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+
+  Definition middle u v := mul (1/2)%R (add u v).
 End RealMetricSpace.
 
 
@@ -158,6 +160,8 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   Proof.
   intros k k' u Hu Heq.
   Admitted.
+  
+  Definition middle u v := mul (1/2)%R (add u v).
   
 End MakeRealMetricSpace.
 
