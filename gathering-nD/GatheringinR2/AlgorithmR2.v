@@ -216,7 +216,7 @@ Inductive triangle_type :=
   | Isosceles (vertex : R2.t)
   | Scalene.
 
-Definition classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
+Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt2 pt3)
   then if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3)
        then Equilateral
@@ -307,12 +307,15 @@ Proof.
           ; try destruct n1;try injection_absurd;simpl in *; autoinv; auto 7).
 Qed.
 
+Ltac normalize_R2dist pt1' pt2' pt3' :=
+  rewrite ?Rdec_bool_false_iff
+  , ?Rdec_bool_true_iff , ?(R2.dist_sym pt2' pt1')
+  , ?(R2.dist_sym pt3' pt1'), ?(R2.dist_sym pt3' pt2') in *.
 
 
-(* FAUX: Seuleemnt si pas isocèle ni equilaterale *)
-Lemma max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
-  Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-  opposite_of_max_side pt1 pt2 pt3 = opposite_of_max_side pt1' pt2' pt3'.
+Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
 Proof.
   intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
   remember (pt1 :: pt2 :: pt3 :: nil) as l.
@@ -322,7 +325,61 @@ Proof.
   decompose [or] h; clear h;
   match goal with
   | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
+  end;clear hpermut;try reflexivity;
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | |- classify_triangle ?a ?b ?c = classify_triangle ?a' ?b' ?c'
+    =>
+    functional induction (classify_triangle a b c);auto;
+    functional induction (classify_triangle a' b' c');auto
+  end;
+  normalize_R2dist pt1' pt2' pt3';try contradiction;
+  try match goal with
+      | H1:?A <> ?B, H2: ?B = ?A |- _ => symmetry in H2;contradiction
+      | H1:?A <> ?B, H2: ?A = ?C , H3: ?C = ?B  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;contradiction
+      | H1:?A <> ?B, H2: ?A = ?C , H3: ?B = ?C  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      | H1:?A <> ?B, H2: ?C = ?A , H3: ?C = ?B  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      | H1:?A <> ?B, H2: ?C = ?A , H3: ?B = ?C  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      end.
+Qed.
+
+Lemma opposite_of_max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+    classify_triangle pt1 pt2 pt3 = Scalene ->
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    opposite_of_max_side pt1 pt2 pt3 = opposite_of_max_side pt1' pt2' pt3'.
+Proof.
+(* TODO *)
+  intros pt1 pt2 pt3 pt1' pt2' pt3' scalene hpermut.
+  remember (pt1 :: pt2 :: pt3 :: nil) as l.
+  remember (pt1' :: pt2' :: pt3' :: nil) as l'.
+  specialize (@enum_permut_three _ _ _ pt1' pt2' pt3' hpermut Heql').
+  intros h.
+  decompose [or] h; clear h;
+  match goal with
+  | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
   end;clear hpermut.
+  - functional inversion scalene. clear scalene.
+    unfold opposite_of_max_side.
+    rewrite Rdec_bool_false_iff in H, H0, H1.
+    destruct (Rdichotomy _ _ H);  destruct (Rdichotomy _ _ H0); destruct (Rdichotomy _ _ H1)
+    ; clear H  H0 H1.
+    destruct (Rle_dec (R2.dist pt1' pt2') (R2.dist pt2' pt3')).
+    + reflexivity.
+    + absurd (R2.dist pt1' pt2' <= R2.dist pt2' pt3');auto.
+      apply Rlt_le. assumption.
+
+    assert ((R2.dist pt1' pt2') <= (R2.dist pt2' pt3')).
+    { apply Rlt_le. assumption. }
+    
+    
   admit.
 
 (* TODO *)
