@@ -225,8 +225,8 @@ Definition classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
   else Scalene.
 
-
-Definition center_of pt1 pt2 pt3 := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
+(* Baricenter is the center of SEC for an equilateral triangle *)
+Definition baricenter pt1 pt2 pt3 := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
 
 Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   let len12 := R2.dist pt1 pt2 in
@@ -237,12 +237,10 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   else if Rle_dec len12 len13 then pt2 else pt3.
 
 
-(* Version fausse, manque le cas isaocele et equilateral (ou on
-retourne la pointe et le cntre respectivement. *)
 Function dest (pt1 pt2 pt3 : R2.t) : R2.t :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
-  | Equilateral => center_of pt1 pt2 pt3
+  | Equilateral => baricenter pt1 pt2 pt3
   | Isosceles p => p
   | Scalene => opposite_of_max_side pt1 pt2 pt3
   end.
@@ -259,6 +257,10 @@ Ltac injection_absurd :=
   | _ => try omega
   end.
 
+Ltac autoinv :=
+  repeat match goal with
+         | H:Some _ = Some _ |- _ => inversion_clear H
+         end.
 
 Lemma enum_permut_three : forall A (l l':list A) x1 x2 x3,
     Permutation l l'
@@ -275,24 +277,15 @@ Proof.
   intros H.
   destruct H as [H _].
   specialize (H hpermut).
-  decompose [and ex] H; clear H.
-  rename x into f.
-  rename H1 into f_inject.
-  rename H0 into f_bound.
-  rename H3 into f_permut.
+  destruct H as [f [f_inject [f_bound f_permut]]].
   assert (h_lgth:length l = 3%nat).
   { rewrite (Permutation_length hpermut).
     rewrite heql'.
     reflexivity. }
   assert (exists a1 a2 a3, l = a1::a2::a3::nil). {
-    destruct l;simpl in *;try discriminate.
-    destruct l;simpl in *;try discriminate.
-    destruct l;simpl in *;try discriminate.
-    destruct l;simpl in *;try discriminate.
-    exists a. exists a0. exists a1. reflexivity. }
-  decompose [ex] H.
-  clear H.
-  rename H0 into heql.
+    repeat (destruct l;simpl in *;try discriminate).
+    eauto. }
+  destruct H as [a1 [a2 [a3 heql]]].
   rewrite h_lgth in f_bound.
   unfold FinFun.bFun in  f_bound.
   assert (h_ltf0:(f 0 < 3)%nat).
@@ -301,107 +294,17 @@ Proof.
   { apply f_bound;auto. }
   assert (h_ltf2:(f 2 < 3)%nat).
   { apply f_bound;auto. }
-  destruct (f O) eqn:heq0.
-  - destruct (f (S O)) eqn:heq1; try injection_absurd.
-    destruct (f (S (S O))) eqn:heq2;try injection_absurd.
-    destruct n;destruct n0; try injection_absurd.
-    + destruct n0; try injection_absurd.
-      * match goal with
-        | H1: f _ = _, H2: f _ = _, H3: f _ = _  |- _ =>
-          generalize (f_permut 0%nat) ; generalize (f_permut 1%nat); generalize (f_permut 2%nat);intros h2 h1 h0;
-          subst l'; subst l;simpl in *
-        end.
-        rewrite heq0 in h0.
-        rewrite heq1 in h1.
-        rewrite heq2 in h2.
-        simpl in *.
-        inversion_clear h0.
-        inversion_clear h1.
-        inversion_clear h2.
-        left;reflexivity.
-    + destruct n;try injection_absurd.
-      match goal with
-        | H1: f _ = _, H2: f _ = _, H3: f _ = _  |- _ =>
-          generalize (f_permut 0%nat) ; generalize (f_permut 1%nat); generalize (f_permut 2%nat);intros h2 h1 h0;
-          subst l'; subst l;simpl in *
-        end.
-        rewrite heq0 in h0.
-        rewrite heq1 in h1.
-        rewrite heq2 in h2.
-        simpl in *.
-        inversion_clear h0.
-        inversion_clear h1.
-        inversion_clear h2.
-        right;left;reflexivity.
-    + destruct n;destruct n0; try injection_absurd.
-  - destruct (f (S O)) eqn:heq1; try injection_absurd.
-    + destruct (f (S (S O))) eqn:heq2;try injection_absurd.
-      destruct n;destruct n0; try injection_absurd.
-      * destruct n0; try injection_absurd.
-      match goal with
-        | H1: f _ = _, H2: f _ = _, H3: f _ = _  |- _ =>
-          generalize (f_permut 0%nat) ; generalize (f_permut 1%nat); generalize (f_permut 2%nat);intros h2 h1 h0;
-          subst l'; subst l;simpl in *
-        end.
-        rewrite heq0 in h0.
-        rewrite heq1 in h1.
-        rewrite heq2 in h2.
-        simpl in *.
-        inversion_clear h0.
-        inversion_clear h1.
-        inversion_clear h2.
-        right;right;left;reflexivity.
-      * destruct n;try injection_absurd.
-        match goal with
-        | H1: f _ = _, H2: f _ = _, H3: f _ = _  |- _ =>
-          generalize (f_permut 0%nat) ; generalize (f_permut 1%nat); generalize (f_permut 2%nat);intros h2 h1 h0;
-          subst l'; subst l;simpl in *
-        end.
-        rewrite heq0 in h0.
-        rewrite heq1 in h1.
-        rewrite heq2 in h2.
-        simpl in *.
-        inversion_clear h0.
-        inversion_clear h1.
-        inversion_clear h2.
-        right;right;right;left;reflexivity.
-      * destruct n;destruct n0; try injection_absurd.
-    + destruct (f (S (S O))) eqn:heq2;try injection_absurd.
-      * destruct n;destruct n0; try injection_absurd.
-        -- destruct n0; try injection_absurd.
-           match goal with
-           | H1: f _ = _, H2: f _ = _, H3: f _ = _  |- _ =>
-             generalize (f_permut 0%nat) ; generalize (f_permut 1%nat); generalize (f_permut 2%nat);intros h2 h1 h0;
-             subst l'; subst l;simpl in *
-           end.
-           rewrite heq0 in h0.
-           rewrite heq1 in h1.
-           rewrite heq2 in h2.
-           simpl in *.
-           inversion_clear h0.
-           inversion_clear h1.
-           inversion_clear h2.
-           right;right;right;right;right;reflexivity.
-        -- destruct n;try injection_absurd.
-           match goal with
-           | H1: f _ = _, H2: f _ = _, H3: f _ = _  |- _ =>
-             generalize (f_permut 0%nat) ; generalize (f_permut 1%nat); generalize (f_permut 2%nat);intros h2 h1 h0;
-             subst l'; subst l;simpl in *
-           end.
-           rewrite heq0 in h0.
-           rewrite heq1 in h1.
-           rewrite heq2 in h2.
-           simpl in *.
-           inversion_clear h0.
-           inversion_clear h1.
-           inversion_clear h2.
-           right;right;right;right;left;reflexivity.
-        -- destruct n;destruct n0; try injection_absurd.
-      * destruct n; destruct n0; destruct n1;try injection_absurd.
-        -- destruct n0; destruct n1;try injection_absurd.
-        -- destruct n; destruct n1;try injection_absurd.
-        -- destruct n; destruct n0;try injection_absurd.
-        -- destruct n; destruct n0;try injection_absurd.
+  generalize (f_permut 0%nat).
+  generalize (f_permut 1%nat).
+  generalize (f_permut 2%nat).
+  intros hpermut2 hpermut1 hpermut0.
+  subst l'; subst l;simpl in *.
+  destruct (f O) eqn:heq0; try injection_absurd
+  ; destruct (f (S O)) eqn:heq1; try injection_absurd
+  ; destruct (f (S (S O))) eqn:heq2;try injection_absurd;simpl in *; autoinv; auto 7
+  ;repeat (try destruct n;try injection_absurd;simpl in *; autoinv; auto 7
+          ; try destruct n0;try injection_absurd;simpl in *; autoinv; auto 7
+          ; try destruct n1;try injection_absurd;simpl in *; autoinv; auto 7).
 Qed.
 
 
