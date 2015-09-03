@@ -308,10 +308,12 @@ Proof.
 Qed.
 
 Ltac normalize_R2dist pt1' pt2' pt3' :=
-  rewrite ?Rdec_bool_false_iff
-  , ?Rdec_bool_true_iff , ?(R2.dist_sym pt2' pt1')
-  , ?(R2.dist_sym pt3' pt1'), ?(R2.dist_sym pt3' pt2') in *.
-
+  (repeat progress (rewrite ?Rdec_bool_false_iff
+                    , ?Rdec_bool_true_iff , ?(R2.dist_sym pt2' pt1')
+                    , ?(R2.dist_sym pt3' pt1'), ?(R2.dist_sym pt3' pt2') in *));
+    try match goal with
+        | H: ~( _ <= _) |- _ => apply Rnot_le_lt in H
+        end.
 
 Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
@@ -358,6 +360,14 @@ Lemma opposite_of_max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
 Proof.
 (* TODO *)
   intros pt1 pt2 pt3 pt1' pt2' pt3' scalene hpermut.
+  generalize (classify_triangle_compat hpermut).
+  intro scalene'.
+  rewrite scalene in scalene'. symmetry in scalene'.
+  functional inversion scalene.
+  functional inversion scalene'.
+  clear scalene' scalene.
+  normalize_R2dist pt1 pt2 pt3.
+  normalize_R2dist pt1' pt2' pt3'.
   remember (pt1 :: pt2 :: pt3 :: nil) as l.
   remember (pt1' :: pt2' :: pt3' :: nil) as l'.
   specialize (@enum_permut_three _ _ _ pt1' pt2' pt3' hpermut Heql').
@@ -365,32 +375,32 @@ Proof.
   decompose [or] h; clear h;
   match goal with
   | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
-  end;clear hpermut.
-  - functional inversion scalene. clear scalene.
-    unfold opposite_of_max_side.
-    rewrite Rdec_bool_false_iff in H, H0, H1.
-    destruct (Rdichotomy _ _ H);  destruct (Rdichotomy _ _ H0); destruct (Rdichotomy _ _ H1)
-    ; clear H  H0 H1.
-    destruct (Rle_dec (R2.dist pt1' pt2') (R2.dist pt2' pt3')).
-    + reflexivity.
-    + absurd (R2.dist pt1' pt2' <= R2.dist pt2' pt3');auto.
-      apply Rlt_le. assumption.
-
-    assert ((R2.dist pt1' pt2') <= (R2.dist pt2' pt3')).
-    { apply Rlt_le. assumption. }
-    
-    
-  admit.
-
-(* TODO *)
-Admitted.
-
-Lemma classify_triangle_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
-  Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-  classify_triangle pt1 pt2 pt3 = classify_triangle pt1' pt2' pt3'.
-Proof.
-(* TODO *)
-Admitted.
+  end ;clear hpermut;try reflexivity;
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | |- opposite_of_max_side ?a ?b ?c = opposite_of_max_side ?a' ?b' ?c'
+    =>
+    functional induction (opposite_of_max_side a b c);auto;
+    functional induction (opposite_of_max_side a' b' c');auto
+  end
+  ;repeat match reverse goal with
+          | H: _ = left _ |- _ => clear H
+          | H: _ = right _ |- _ => clear H
+          end
+  ; repeat progress normalize_R2dist pt1' pt2' pt3' ;try contradiction;
+  repeat match goal with
+         | H1: ?A < ?A |- _ => elim (Rlt_irrefl _ h_ltxx)
+         | H1: ?A < ?B, H2: ?B < ?A |- _ =>
+           assert (h_ltxx:A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx)
+         | H1: ?A < ?B, H2: ?B < ?C, H3: ?C < ?A |- _ =>
+           assert (h_ltxx:A<C) by (eapply Rlt_trans;eauto);
+           assert (h_ltxx':A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx')
+         | H1:?A <> ?B, H2: ?A <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;auto);clear H2
+         | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
+(*          | H1:?A <> ?B, H2: ?A <= ?C, H3: ?C <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;transitivity C;auto);clear H2 *)
+(*          | H1:?B <> ?A, H2: ?A <= ?C, H3: ?C <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt; transitivity C;auto);clear H2 *)
+         end.
+Qed.
 
 
 (** *  The Gathering Problem  **)
