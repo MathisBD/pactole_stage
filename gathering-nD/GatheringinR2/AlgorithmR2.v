@@ -226,7 +226,7 @@ Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   else Scalene.
 
 (* Baricenter is the center of SEC for an equilateral triangle *)
-Definition baricenter pt1 pt2 pt3 := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
+Definition baricenter (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
 
 Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   let len12 := R2.dist pt1 pt2 in
@@ -315,6 +315,38 @@ Ltac normalize_R2dist pt1' pt2' pt3' :=
         | H: ~( _ <= _) |- _ => apply Rnot_le_lt in H
         end.
 
+Lemma baricenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    baricenter pt1 pt2 pt3 =  baricenter pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
+  remember (pt1 :: pt2 :: pt3 :: nil) as l.
+  remember (pt1' :: pt2' :: pt3' :: nil) as l'.
+  specialize (@enum_permut_three _ _ _ pt1' pt2' pt3' hpermut Heql').
+  intros h.
+  decompose [or] h; clear h;
+  match goal with
+  | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
+  end;clear hpermut;try reflexivity;unfold baricenter;
+  (* FIXME: find a better way to normalize the sum? field? *)
+  repeat progress
+         match goal with
+         | |- context C [ (R2.add pt1' (R2.add pt3' pt2')) ] => rewrite (@R2.add_comm pt3')
+         | |- context C [ (R2.add pt2' (R2.add pt1' pt3')) ] =>
+           rewrite (@R2.add_assoc pt2' pt1' pt3'); rewrite (@R2.add_comm pt2' pt1');
+           rewrite <- (@R2.add_assoc pt1' pt2' pt3')
+         | |- context C [ (R2.add pt2' (R2.add pt3' pt1')) ] =>
+           rewrite (@R2.add_comm pt3' pt1')
+         | |- context C [ (R2.add pt3' (R2.add pt1' pt2')) ] =>
+           rewrite (@R2.add_comm pt3' (R2.add pt1' pt2'));
+             rewrite <- (@R2.add_assoc pt1' pt2' pt3')
+         | |- context C [ (R2.add pt3' (R2.add pt2' pt1')) ] =>
+           rewrite (@R2.add_comm pt2' pt1')
+         end
+  ;auto.
+Qed.
+
+
 Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
@@ -401,6 +433,23 @@ Proof.
 (*          | H1:?B <> ?A, H2: ?A <= ?C, H3: ?C <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt; transitivity C;auto);clear H2 *)
          end.
 Qed.
+
+Lemma dest_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    dest pt1 pt2 pt3 = dest pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
+  generalize (classify_triangle_compat hpermut).
+  intro h_classify.
+  functional induction (dest pt1 pt2 pt3)
+  ;generalize h_classify; intro h_classify'
+  ;symmetry in h_classify';rewrite e in h_classify';unfold dest
+  ;rewrite h_classify';auto.
+  
+  - apply baricenter_compat;auto.
+  - apply opposite_of_max_side_compat;auto.
+Qed.
+
 
 
 (** *  The Gathering Problem  **)
