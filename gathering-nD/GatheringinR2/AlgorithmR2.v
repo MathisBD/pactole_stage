@@ -237,7 +237,7 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   else if Rle_dec len12 len13 then pt2 else pt3.
 
 
-Function dest (pt1 pt2 pt3 : R2.t) : R2.t :=
+Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
   | Equilateral => baricenter pt1 pt2 pt3
@@ -429,23 +429,20 @@ Proof.
            assert (h_ltxx':A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx')
          | H1:?A <> ?B, H2: ?A <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;auto);clear H2
          | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
-(*          | H1:?A <> ?B, H2: ?A <= ?C, H3: ?C <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;transitivity C;auto);clear H2 *)
-(*          | H1:?B <> ?A, H2: ?A <= ?C, H3: ?C <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt; transitivity C;auto);clear H2 *)
          end.
 Qed.
 
-Lemma dest_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+Lemma target_triangle_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-    dest pt1 pt2 pt3 = dest pt1' pt2' pt3'.
+    target_triangle pt1 pt2 pt3 = target_triangle pt1' pt2' pt3'.
 Proof.
   intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
   generalize (classify_triangle_compat hpermut).
   intro h_classify.
-  functional induction (dest pt1 pt2 pt3)
+  functional induction (target_triangle pt1 pt2 pt3)
   ;generalize h_classify; intro h_classify'
-  ;symmetry in h_classify';rewrite e in h_classify';unfold dest
+  ;symmetry in h_classify';rewrite e in h_classify';unfold target_triangle
   ;rewrite h_classify';auto.
-  
   - apply baricenter_compat;auto.
   - apply opposite_of_max_side_compat;auto.
 Qed.
@@ -484,6 +481,14 @@ Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
 Close Scope R_scope.
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
+
+(* FIXME: These three definitions: gathered_at, gather and WillGather
+   should be shared by all our proofs about gathering (on Q, R, R2,
+   for impossibility and possibility proofs). Shouldn't they be in a
+   module? We could even add a generic notion of forbidden
+   configurations.
+
+ TODO: "position" should be renamed into "configuration".*)
 
 (** [gathered_at pos pt] means that in configuration [pos] all good robots
     are at the same location [pt] (exactly). *)
@@ -657,20 +662,18 @@ Parameter Smax : Spect.t -> Spect.t.
 Declare Instance Smax_compat : Proper (Spect.eq ==> Spect.eq) Smax.
 
 (* Safe to use only when SEC is well-defined, ie when robots are not gathered. *)
-Definition target (s : Spect.t) : R2.t :=
+Function target (s : Spect.t) : R2.t :=
   let l := Spect.support s in
   let sec := List.filter (on_circle (SEC l)) l in
   match sec with
     | nil | _ :: nil => (0, 0) (* no robot or gathered *)
     | pt1 :: pt2 :: nil => R2.middle pt1 pt2
     | pt1 :: pt2 :: pt3 :: nil => (* triangle cases *)
-        match classify_triangle pt1 pt2 pt3 with
-          | Equilateral => R2.mul (1/3) (R2.add (R2.add pt1 pt2) pt3)
-          | Isosceles vertex => vertex
-          | Scalene => max_side pt1 pt2 pt3
-        end
+      target_triangle pt1 pt2 pt3
     | _ => (* general case *) center (SEC l)
   end.
+
+
 
 Instance target_compat : Proper (Spect.eq ==> Logic.eq) target.
 Proof.
@@ -690,17 +693,13 @@ destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| 
 + assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) =3%nat) by now rewrite <- Hperm.
   destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
     as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
-  rewrite (classify_triangle_compat Hperm).
-  destruct (classify_triangle b1 b2 b3).
-  - clear -Hperm. f_equal. admit. (* TODO *)
-  - reflexivity.
-  - now apply max_side_compat.
+  apply target_triangle_compat;assumption.
 + assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) = 4 + length l)%nat
     by now rewrite <- Hperm.
   destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
     as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
   f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs.
-Admitted.
+Qed.
 
 Definition SECT (s : Spect.t) : list R2.t :=
   let l := Spect.support s in
