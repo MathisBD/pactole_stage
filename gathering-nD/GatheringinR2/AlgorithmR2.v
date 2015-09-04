@@ -855,5 +855,105 @@ Require Pactole.GatheringinR.Algorithm.
 
 Definition lt_config x y := GatheringinR.Algorithm.lexprod lt lt (measure (!! x)) (measure (!! y)).
 
+Definition sim_triangle_type sim t :=
+  match t with
+  | Isosceles p => Isosceles (sim p)
+  | _ => t
+  end.
+
+Definition sim_circle (sim:Sim.t) c :=
+  {| center := sim c.(center) ; radius := sim.(Sim.zoom) * (c.(radius)) |}.
+
+Lemma Rdec_bool_mul : forall k r r', (k <> 0)%R -> Rdec_bool (k * r) (k * r') = Rdec_bool r r'.
+Proof.
+  intros k r r' H.
+  destruct (Rdec_bool r r') eqn:heq1 , (Rdec_bool (k * r) (k * r')) eqn:heq2;auto
+  ; rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *.
+  - subst.
+    auto.
+  - exfalso.
+    apply Rmult_eq_reg_l in heq2.
+    + contradiction.
+    + assumption.
+Qed.
+
+Lemma classify_triangle_morph :
+  forall pt1 pt2 pt3 (sim:Sim.t), classify_triangle (sim pt1) (sim pt2) (sim pt3)
+                                  = sim_triangle_type sim (classify_triangle pt1 pt2 pt3).
+Proof.
+  intros pt1 pt2 pt3 sim.
+  unfold classify_triangle at 1.
+  setoid_rewrite (sim.(Sim.dist_prop)).
+  rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
+  functional induction (classify_triangle pt1 pt2 pt3)
+  ; repeat rewrite ?e, ?e0, ?e1, ?(sim.(Sim.dist_prop)), ?Rdec_bool_mul; try reflexivity
+  ; try apply Sim.zoom_non_null.
+Qed.
+
+Lemma on_circle_morph :
+  forall pt c (sim:Sim.t), on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
+Proof.
+  intros pt c sim.
+  unfold on_circle at 1.
+  unfold sim_circle.
+  simpl.
+  setoid_rewrite (sim.(Sim.dist_prop)).
+  rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
+  reflexivity.
+Qed.
+
+Lemma enclosing_circle_morph :
+  forall c l (sim:Sim.t), enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
+Proof.
+  intros c l sim.
+  unfold enclosing_circle.
+  unfold sim_circle.
+  simpl.
+  setoid_rewrite Forall_forall.
+  setoid_rewrite in_map_iff.
+  split;intro h.
+  - intros x h'.
+    specialize (h (sim x)).
+    setoid_rewrite (sim.(Sim.dist_prop)) in h.
+    apply Rmult_le_reg_l in h;auto.
+    + apply Sim.zoom_pos.
+    + eauto.
+  - intros x H.
+    destruct H as [x' [hsim hIn]].
+    subst.
+    rewrite (sim.(Sim.dist_prop)).
+    eapply Rmult_le_compat_l in h;eauto.
+    apply Rlt_le, Sim.zoom_pos.
+Qed.
+
+Axiom SEC_unicity: forall l c,
+    enclosing_circle c l
+    -> (radius c <= radius (SEC l))%R
+    -> c = SEC l.
+
+(*
+Lemma SEC_morph :
+  forall l (sim:Sim.t), SEC (List.map sim l) = sim_circle sim (SEC l).
+Proof.
+  intros l sim.
+  generalize (SEC_spec1 l);intro hspec1.
+  symmetry.
+  apply SEC_unicity.
+  - rewrite enclosing_circle_morph.
+    assumption.
+  -
+*)
+
+(*  target_triangle *)
+
+(*
+Lemma target_morph :
+  forall s (sim:Sim.t), target (Spect.map sim s) = sim (target s).
+Proof.
+  intros s sim.
+  unfold target at 1.
+
+Qed.
+*)
 
 End GatheringinR2.
