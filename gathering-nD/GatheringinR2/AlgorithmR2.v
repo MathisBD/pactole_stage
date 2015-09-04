@@ -225,8 +225,8 @@ Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
   else Scalene.
 
-(* Baricenter is the center of SEC for an equilateral triangle *)
-Definition baricenter (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
+(* Barycenter is the center of SEC for an equilateral triangle *)
+Definition barycenter (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
 
 Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   let len12 := R2.dist pt1 pt2 in
@@ -240,7 +240,7 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
 Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
-  | Equilateral => baricenter pt1 pt2 pt3
+  | Equilateral => barycenter pt1 pt2 pt3
   | Isosceles p => p
   | Scalene => opposite_of_max_side pt1 pt2 pt3
   end.
@@ -315,9 +315,9 @@ Ltac normalize_R2dist pt1' pt2' pt3' :=
         | H: ~( _ <= _) |- _ => apply Rnot_le_lt in H
         end.
 
-Lemma baricenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+Lemma barycenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-    baricenter pt1 pt2 pt3 =  baricenter pt1' pt2' pt3'.
+    barycenter pt1 pt2 pt3 =  barycenter pt1' pt2' pt3'.
 Proof.
   intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
   remember (pt1 :: pt2 :: pt3 :: nil) as l.
@@ -327,7 +327,7 @@ Proof.
   decompose [or] h; clear h;
   match goal with
   | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
-  end;clear hpermut;try reflexivity;unfold baricenter;
+  end;clear hpermut;try reflexivity;unfold barycenter;
   (* FIXME: find a better way to normalize the sum? field? *)
   repeat progress
          match goal with
@@ -443,7 +443,7 @@ Proof.
   ;generalize h_classify; intro h_classify'
   ;symmetry in h_classify';rewrite e in h_classify';unfold target_triangle
   ;rewrite h_classify';auto.
-  - apply baricenter_compat;auto.
+  - apply barycenter_compat;auto.
   - apply opposite_of_max_side_compat;auto.
 Qed.
 
@@ -926,34 +926,42 @@ Proof.
     apply Rlt_le, Sim.zoom_pos.
 Qed.
 
+(* TODO? *)
 Axiom SEC_unicity: forall l c,
     enclosing_circle c l
     -> (radius c <= radius (SEC l))%R
     -> c = SEC l.
 
-(*
-Lemma SEC_morph :
-  forall l (sim:Sim.t), SEC (List.map sim l) = sim_circle sim (SEC l).
+(* TODO *)
+Axiom SEC_morph : forall l (sim:Sim.t), SEC (List.map sim l) = sim_circle sim (SEC l).
+
+Lemma barycenter_morph:
+  forall pt1 pt2 pt3 (sim:Sim.t),
+    barycenter (sim pt1) (sim pt2) (sim pt3)
+    = sim (barycenter pt1 pt2 pt3).
 Proof.
-  intros l sim.
-  generalize (SEC_spec1 l);intro hspec1.
-  symmetry.
-  apply SEC_unicity.
-  - rewrite enclosing_circle_morph.
-    assumption.
-  -
-*)
+  intros pt1 pt2 pt3 sim.
+  unfold barycenter.
+Admitted.
 
-(*  target_triangle *)
+Lemma target_triangle_morph:
+  forall pt1 pt2 pt3 (sim:Sim.t), target_triangle (sim pt1) (sim pt2) (sim pt3)
+                                  = sim (target_triangle pt1 pt2 pt3).
+Proof.
+  intros pt1 pt2 pt3 sim.
+  unfold target_triangle.
+  rewrite classify_triangle_morph.
+  destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
+Admitted.
 
-(*
+
 Lemma target_morph :
   forall s (sim:Sim.t), target (Spect.map sim s) = sim (target s).
 Proof.
   intros s sim.
   unfold target at 1.
+  
+Admitted.
 
-Qed.
-*)
 
 End GatheringinR2.
