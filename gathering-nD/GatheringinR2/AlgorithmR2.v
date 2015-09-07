@@ -571,16 +571,16 @@ Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
 (** **  Decreasing measure ensuring termination  **)
 
 (** Global measure: lexicgraphic order on the index of the type of config + some specific measure:
-   0]  Gathered: no need
-   1]  Majority tower: # robots not on majority tower
-   2]  Non-isosceles triangle and c = SEC ∪ DEST: # robots not on DEST
-   3]  Non-isosceles triangle and c <> SEC ∪ DEST: # robots not on SEC ∪ DEST
-   2'] Isosceles triangle not equilateral and c = SEC ∪ DEST: # robots not on DEST
-   3'] Isosceles triangle not equilateral and c <> SEC ∪ DEST: # robots not on SEC ∪ DEST
-   4]  Equilateral triangle and c = SEC ∪ DEST: # robots not on DEST
-   5]  Equilateral triangle and c <> SEC ∪ DEST: # robots not on SEC ∪ DEST
-   6]  General case ($|\SEC| \geq 4$) and c = SEC ∪ DEST: # robots not on DEST
-   7]  General case ($|\SEC| \geq 4$) and c <> SECT$: # robots not on SEC ∪ DEST
+    ]  Gathered: no need
+   0]  Majority tower: # robots not on majority tower
+   1]  Non-isosceles triangle and c = SEC ∪ DEST: # robots not on DEST
+   2]  Non-isosceles triangle and c <> SEC ∪ DEST: # robots not on SEC ∪ DEST
+   1'] Isosceles triangle not equilateral and c = SEC ∪ DEST: # robots not on DEST
+   2'] Isosceles triangle not equilateral and c <> SEC ∪ DEST: # robots not on SEC ∪ DEST
+   3]  Equilateral triangle and c = SEC ∪ DEST: # robots not on DEST
+   4]  Equilateral triangle and c <> SEC ∪ DEST: # robots not on SEC ∪ DEST
+   5]  General case ($|\SEC| \geq 4$) and c = SEC ∪ DEST: # robots not on DEST
+   6]  General case ($|\SEC| \geq 4$) and c <> SECT$: # robots not on SEC ∪ DEST
 *)
 
 Close Scope R_scope.
@@ -591,7 +591,7 @@ Definition measure_clean (s : Spect.t) := N.nG - SECT_cardinal s.
 Definition measure (s : Spect.t) : nat * nat :=
   match Spect.support (Smax s) with
     | nil => (0, 0) (* no robot *)
-    | pt :: nil => (1, measure_reduce s) (* majority *)
+    | pt :: nil => (0, measure_reduce s) (* majority *)
     | _ :: _ :: _ =>
       let l := Spect.support s in
       let sec := List.filter (on_circle (SEC l)) l in
@@ -599,11 +599,11 @@ Definition measure (s : Spect.t) : nat * nat :=
         | nil | _ :: nil => (0, 0) (* impossible cases *)
         | pt1 :: pt2 :: pt3 :: nil =>
           match classify_triangle pt1 pt2 pt3 with (* triangle cases *)
-            | Equilateral => if is_clean s then (4, measure_reduce s) else (5, measure_clean s)
-            | Isosceles vertex => if is_clean s then (2, measure_reduce s) else (3, measure_clean s)
-            | Scalene => if is_clean s then (2, measure_reduce s) else (3, measure_clean s)
+            | Equilateral => if is_clean s then (3, measure_reduce s) else (4, measure_clean s)
+            | Isosceles vertex => if is_clean s then (1, measure_reduce s) else (2, measure_clean s)
+            | Scalene => if is_clean s then (1, measure_reduce s) else (2, measure_clean s)
           end
-        | _ => (* general case *) if is_clean s then (6, measure_reduce s) else (7, measure_clean s)
+        | _ => (* general case *) if is_clean s then (5, measure_reduce s) else (6, measure_clean s)
       end
   end.
 
