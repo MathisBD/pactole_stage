@@ -216,15 +216,7 @@ Inductive triangle_type :=
   | Isosceles (vertex : R2.t)
   | Scalene.
 
-Definition max_side (pt1 pt2 pt3 : R2.t) : R2.t :=
-  let len12 := R2.dist pt1 pt2 in
-  let len23 := R2.dist pt2 pt3 in
-  let len13 := R2.dist pt1 pt3 in
-  if Rle_dec len12 len23
-  then if Rle_dec len23 len13 then pt2 else pt1
-  else if Rle_dec len12 len13 then pt2 else pt3.
-
-Definition classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
+Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt2 pt3)
   then if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3)
        then Equilateral
@@ -233,19 +225,228 @@ Definition classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
   else Scalene.
 
-Lemma max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
-  Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-  max_side pt1 pt2 pt3 = max_side pt1' pt2' pt3'.
-Proof.
-(* TODO *)
-Admitted.
+(* Barycenter is the center of SEC for an equilateral triangle *)
+Definition barycenter (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
 
-Lemma classify_triangle_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
-  Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-  classify_triangle pt1 pt2 pt3 = classify_triangle pt1' pt2' pt3'.
+Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
+  let len12 := R2.dist pt1 pt2 in
+  let len23 := R2.dist pt2 pt3 in
+  let len13 := R2.dist pt1 pt3 in
+  if Rle_dec len12 len23
+  then if Rle_dec len23 len13 then pt2 else pt1
+  else if Rle_dec len12 len13 then pt2 else pt3.
+
+
+Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
+  let typ := classify_triangle pt1 pt2 pt3 in
+  match typ with
+  | Equilateral => barycenter pt1 pt2 pt3
+  | Isosceles p => p
+  | Scalene => opposite_of_max_side pt1 pt2 pt3
+  end.
+
+
+Ltac injection_absurd :=
+  match goal with
+  | H: FinFun.Injective ?f,
+       H1: ?f ?a = ?x,
+           H2: ?f ?b = ?x |- _ =>
+    let h := fresh "habs" in
+    assert (h:f a = f b) by (transitivity x;auto);
+      apply H in h;discriminate
+  | _ => try omega
+  end.
+
+Ltac autoinv :=
+  repeat match goal with
+         | H:Some _ = Some _ |- _ => inversion_clear H
+         end.
+
+Lemma enum_permut_three : forall A (l l':list A) x1 x2 x3,
+    Permutation l l'
+    -> l' = (x1 :: x2 :: x3 :: nil)
+    -> l = x1 :: x2 :: x3 :: nil
+       \/ l = x1 :: x3 :: x2 :: nil
+       \/ l = x2::x1::x3::nil
+       \/ l = x2 :: x3 :: x1 :: nil
+       \/ l = x3::x2::x1::nil
+       \/  l = x3::x1::x2::nil.
+Proof.
+  intros A l l' x1 x2 x3 hpermut heql'.
+  specialize (Permutation_nth_error_bis l l').
+  intros H.
+  destruct H as [H _].
+  specialize (H hpermut).
+  destruct H as [f [f_inject [f_bound f_permut]]].
+  assert (h_lgth:length l = 3%nat).
+  { rewrite (Permutation_length hpermut).
+    rewrite heql'.
+    reflexivity. }
+  assert (exists a1 a2 a3, l = a1::a2::a3::nil). {
+    repeat (destruct l;simpl in *;try discriminate).
+    eauto. }
+  destruct H as [a1 [a2 [a3 heql]]].
+  rewrite h_lgth in f_bound.
+  unfold FinFun.bFun in  f_bound.
+  assert (h_ltf0:(f 0 < 3)%nat).
+  { apply f_bound;auto. }
+  assert (h_ltf1:(f 1 < 3)%nat).
+  { apply f_bound;auto. }
+  assert (h_ltf2:(f 2 < 3)%nat).
+  { apply f_bound;auto. }
+  generalize (f_permut 0%nat).
+  generalize (f_permut 1%nat).
+  generalize (f_permut 2%nat).
+  intros hpermut2 hpermut1 hpermut0.
+  subst l'; subst l;simpl in *.
+  destruct (f O) eqn:heq0; try injection_absurd
+  ; destruct (f (S O)) eqn:heq1; try injection_absurd
+  ; destruct (f (S (S O))) eqn:heq2;try injection_absurd;simpl in *; autoinv; auto 7
+  ;repeat (try destruct n;try injection_absurd;simpl in *; autoinv; auto 7
+          ; try destruct n0;try injection_absurd;simpl in *; autoinv; auto 7
+          ; try destruct n1;try injection_absurd;simpl in *; autoinv; auto 7).
+Qed.
+
+Ltac normalize_R2dist pt1' pt2' pt3' :=
+  (repeat progress (rewrite ?Rdec_bool_false_iff
+                    , ?Rdec_bool_true_iff , ?(R2.dist_sym pt2' pt1')
+                    , ?(R2.dist_sym pt3' pt1'), ?(R2.dist_sym pt3' pt2') in *));
+    try match goal with
+        | H: ~( _ <= _) |- _ => apply Rnot_le_lt in H
+        end.
+
+Lemma barycenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    barycenter pt1 pt2 pt3 =  barycenter pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
+  remember (pt1 :: pt2 :: pt3 :: nil) as l.
+  remember (pt1' :: pt2' :: pt3' :: nil) as l'.
+  specialize (@enum_permut_three _ _ _ pt1' pt2' pt3' hpermut Heql').
+  intros h.
+  decompose [or] h; clear h;
+  match goal with
+  | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
+  end;clear hpermut;try reflexivity;unfold barycenter;
+  (* FIXME: find a better way to normalize the sum? field? *)
+  repeat progress
+         match goal with
+         | |- context C [ (R2.add pt1' (R2.add pt3' pt2')) ] => rewrite (@R2.add_comm pt3')
+         | |- context C [ (R2.add pt2' (R2.add pt1' pt3')) ] =>
+           rewrite (@R2.add_assoc pt2' pt1' pt3'); rewrite (@R2.add_comm pt2' pt1');
+           rewrite <- (@R2.add_assoc pt1' pt2' pt3')
+         | |- context C [ (R2.add pt2' (R2.add pt3' pt1')) ] =>
+           rewrite (@R2.add_comm pt3' pt1')
+         | |- context C [ (R2.add pt3' (R2.add pt1' pt2')) ] =>
+           rewrite (@R2.add_comm pt3' (R2.add pt1' pt2'));
+             rewrite <- (@R2.add_assoc pt1' pt2' pt3')
+         | |- context C [ (R2.add pt3' (R2.add pt2' pt1')) ] =>
+           rewrite (@R2.add_comm pt2' pt1')
+         end
+  ;auto.
+Qed.
+
+
+Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
+  remember (pt1 :: pt2 :: pt3 :: nil) as l.
+  remember (pt1' :: pt2' :: pt3' :: nil) as l'.
+  specialize (@enum_permut_three _ _ _ pt1' pt2' pt3' hpermut Heql').
+  intros h.
+  decompose [or] h; clear h;
+  match goal with
+  | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
+  end;clear hpermut;try reflexivity;
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | |- classify_triangle ?a ?b ?c = classify_triangle ?a' ?b' ?c'
+    =>
+    functional induction (classify_triangle a b c);auto;
+    functional induction (classify_triangle a' b' c');auto
+  end;
+  normalize_R2dist pt1' pt2' pt3';try contradiction;
+  try match goal with
+      | H1:?A <> ?B, H2: ?B = ?A |- _ => symmetry in H2;contradiction
+      | H1:?A <> ?B, H2: ?A = ?C , H3: ?C = ?B  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;contradiction
+      | H1:?A <> ?B, H2: ?A = ?C , H3: ?B = ?C  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      | H1:?A <> ?B, H2: ?C = ?A , H3: ?C = ?B  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      | H1:?A <> ?B, H2: ?C = ?A , H3: ?B = ?C  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      end.
+Qed.
+
+Lemma opposite_of_max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+    classify_triangle pt1 pt2 pt3 = Scalene ->
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    opposite_of_max_side pt1 pt2 pt3 = opposite_of_max_side pt1' pt2' pt3'.
 Proof.
 (* TODO *)
-Admitted.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' scalene hpermut.
+  generalize (classify_triangle_compat hpermut).
+  intro scalene'.
+  rewrite scalene in scalene'. symmetry in scalene'.
+  functional inversion scalene.
+  functional inversion scalene'.
+  clear scalene' scalene.
+  normalize_R2dist pt1 pt2 pt3.
+  normalize_R2dist pt1' pt2' pt3'.
+  remember (pt1 :: pt2 :: pt3 :: nil) as l.
+  remember (pt1' :: pt2' :: pt3' :: nil) as l'.
+  specialize (@enum_permut_three _ _ _ pt1' pt2' pt3' hpermut Heql').
+  intros h.
+  decompose [or] h; clear h;
+  match goal with
+  | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
+  end ;clear hpermut;try reflexivity;
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | |- opposite_of_max_side ?a ?b ?c = opposite_of_max_side ?a' ?b' ?c'
+    =>
+    functional induction (opposite_of_max_side a b c);auto;
+    functional induction (opposite_of_max_side a' b' c');auto
+  end
+  ;repeat match reverse goal with
+          | H: _ = left _ |- _ => clear H
+          | H: _ = right _ |- _ => clear H
+          end
+  ; repeat progress normalize_R2dist pt1' pt2' pt3' ;try contradiction;
+  repeat match goal with
+         | H1: ?A < ?A |- _ => elim (Rlt_irrefl _ h_ltxx)
+         | H1: ?A < ?B, H2: ?B < ?A |- _ =>
+           assert (h_ltxx:A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx)
+         | H1: ?A < ?B, H2: ?B < ?C, H3: ?C < ?A |- _ =>
+           assert (h_ltxx:A<C) by (eapply Rlt_trans;eauto);
+           assert (h_ltxx':A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx')
+         | H1:?A <> ?B, H2: ?A <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;auto);clear H2
+         | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
+         end.
+Qed.
+
+Lemma target_triangle_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    target_triangle pt1 pt2 pt3 = target_triangle pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
+  generalize (classify_triangle_compat hpermut).
+  intro h_classify.
+  functional induction (target_triangle pt1 pt2 pt3)
+  ;generalize h_classify; intro h_classify'
+  ;symmetry in h_classify';rewrite e in h_classify';unfold target_triangle
+  ;rewrite h_classify';auto.
+  - apply barycenter_compat;auto.
+  - apply opposite_of_max_side_compat;auto.
+Qed.
+
 
 
 (** *  The Gathering Problem  **)
@@ -280,6 +481,14 @@ Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
 Close Scope R_scope.
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
+
+(* FIXME: These three definitions: gathered_at, gather and WillGather
+   should be shared by all our proofs about gathering (on Q, R, R2,
+   for impossibility and possibility proofs). Shouldn't they be in a
+   module? We could even add a generic notion of forbidden
+   configurations.
+
+ TODO: "position" should be renamed into "configuration".*)
 
 (** [gathered_at pos pt] means that in configuration [pos] all good robots
     are at the same location [pt] (exactly). *)
@@ -453,20 +662,18 @@ Parameter Smax : Spect.t -> Spect.t.
 Declare Instance Smax_compat : Proper (Spect.eq ==> Spect.eq) Smax.
 
 (* Safe to use only when SEC is well-defined, ie when robots are not gathered. *)
-Definition target (s : Spect.t) : R2.t :=
+Function target (s : Spect.t) : R2.t :=
   let l := Spect.support s in
   let sec := List.filter (on_circle (SEC l)) l in
   match sec with
     | nil | _ :: nil => (0, 0) (* no robot or gathered *)
     | pt1 :: pt2 :: nil => R2.middle pt1 pt2
     | pt1 :: pt2 :: pt3 :: nil => (* triangle cases *)
-        match classify_triangle pt1 pt2 pt3 with
-          | Equilateral => R2.mul (1/3) (R2.add (R2.add pt1 pt2) pt3)
-          | Isosceles vertex => vertex
-          | Scalene => max_side pt1 pt2 pt3
-        end
+      target_triangle pt1 pt2 pt3
     | _ => (* general case *) center (SEC l)
   end.
+
+
 
 Instance target_compat : Proper (Spect.eq ==> Logic.eq) target.
 Proof.
@@ -486,17 +693,13 @@ destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| 
 + assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) =3%nat) by now rewrite <- Hperm.
   destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
     as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
-  rewrite (classify_triangle_compat Hperm).
-  destruct (classify_triangle b1 b2 b3).
-  - clear -Hperm. f_equal. admit. (* TODO *)
-  - reflexivity.
-  - now apply max_side_compat.
+  apply target_triangle_compat;assumption.
 + assert (length (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2)) = 4 + length l)%nat
     by now rewrite <- Hperm.
   destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
     as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
   f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs.
-Admitted.
+Qed.
 
 Definition SECT (s : Spect.t) : list R2.t :=
   let l := Spect.support s in
@@ -651,6 +854,114 @@ Qed.
 Require Pactole.GatheringinR.Algorithm.
 
 Definition lt_config x y := GatheringinR.Algorithm.lexprod lt lt (measure (!! x)) (measure (!! y)).
+
+Definition sim_triangle_type sim t :=
+  match t with
+  | Isosceles p => Isosceles (sim p)
+  | _ => t
+  end.
+
+Definition sim_circle (sim:Sim.t) c :=
+  {| center := sim c.(center) ; radius := sim.(Sim.zoom) * (c.(radius)) |}.
+
+Lemma Rdec_bool_mul : forall k r r', (k <> 0)%R -> Rdec_bool (k * r) (k * r') = Rdec_bool r r'.
+Proof.
+  intros k r r' H.
+  destruct (Rdec_bool r r') eqn:heq1 , (Rdec_bool (k * r) (k * r')) eqn:heq2;auto
+  ; rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *.
+  - subst.
+    auto.
+  - exfalso.
+    apply Rmult_eq_reg_l in heq2.
+    + contradiction.
+    + assumption.
+Qed.
+
+Lemma classify_triangle_morph :
+  forall pt1 pt2 pt3 (sim:Sim.t), classify_triangle (sim pt1) (sim pt2) (sim pt3)
+                                  = sim_triangle_type sim (classify_triangle pt1 pt2 pt3).
+Proof.
+  intros pt1 pt2 pt3 sim.
+  unfold classify_triangle at 1.
+  setoid_rewrite (sim.(Sim.dist_prop)).
+  rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
+  functional induction (classify_triangle pt1 pt2 pt3)
+  ; repeat rewrite ?e, ?e0, ?e1, ?(sim.(Sim.dist_prop)), ?Rdec_bool_mul; try reflexivity
+  ; try apply Sim.zoom_non_null.
+Qed.
+
+Lemma on_circle_morph :
+  forall pt c (sim:Sim.t), on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
+Proof.
+  intros pt c sim.
+  unfold on_circle at 1.
+  unfold sim_circle.
+  simpl.
+  setoid_rewrite (sim.(Sim.dist_prop)).
+  rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
+  reflexivity.
+Qed.
+
+Lemma enclosing_circle_morph :
+  forall c l (sim:Sim.t), enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
+Proof.
+  intros c l sim.
+  unfold enclosing_circle.
+  unfold sim_circle.
+  simpl.
+  setoid_rewrite Forall_forall.
+  setoid_rewrite in_map_iff.
+  split;intro h.
+  - intros x h'.
+    specialize (h (sim x)).
+    setoid_rewrite (sim.(Sim.dist_prop)) in h.
+    apply Rmult_le_reg_l in h;auto.
+    + apply Sim.zoom_pos.
+    + eauto.
+  - intros x H.
+    destruct H as [x' [hsim hIn]].
+    subst.
+    rewrite (sim.(Sim.dist_prop)).
+    eapply Rmult_le_compat_l in h;eauto.
+    apply Rlt_le, Sim.zoom_pos.
+Qed.
+
+(* TODO? *)
+Axiom SEC_unicity: forall l c,
+    enclosing_circle c l
+    -> (radius c <= radius (SEC l))%R
+    -> c = SEC l.
+
+(* TODO *)
+Axiom SEC_morph : forall l (sim:Sim.t), SEC (List.map sim l) = sim_circle sim (SEC l).
+
+Lemma barycenter_morph:
+  forall pt1 pt2 pt3 (sim:Sim.t),
+    barycenter (sim pt1) (sim pt2) (sim pt3)
+    = sim (barycenter pt1 pt2 pt3).
+Proof.
+  intros pt1 pt2 pt3 sim.
+  unfold barycenter.
+Admitted.
+
+Lemma target_triangle_morph:
+  forall pt1 pt2 pt3 (sim:Sim.t), target_triangle (sim pt1) (sim pt2) (sim pt3)
+                                  = sim (target_triangle pt1 pt2 pt3).
+Proof.
+  intros pt1 pt2 pt3 sim.
+  unfold target_triangle.
+  rewrite classify_triangle_morph.
+  destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
+Admitted.
+
+
+Lemma target_morph :
+  forall s (sim:Sim.t), target (Spect.map sim s) = sim (target s).
+Proof.
+  intros s sim.
+  unfold target at 1.
+  
+Admitted.
 
 
 End GatheringinR2.
