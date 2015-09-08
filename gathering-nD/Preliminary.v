@@ -253,6 +253,15 @@ intros f g l Hfg. induction l; trivial. simpl. f_equal.
 - apply IHl. intros. apply Hfg. intuition.
 Qed.
 
+Lemma filter_map : forall f (g : A -> B) l, filter f (map g l) = map g (filter (fun x => f (g x)) l).
+Proof.
+intros f g l. induction l as [| e l]; simpl in *.
++ reflexivity.
++ destruct (f (g e)); simpl.
+  - f_equal. apply IHl.
+  - apply IHl.
+Qed.
+
 (** ***  Function [alls x n] creating a list of size [n] containing only [x]  **)
 
 Fixpoint alls (x : A) n :=
@@ -1435,8 +1444,26 @@ Definition Rle_bool x y :=
     | right _ => false
   end.
 
-Lemma Rle_bool_spec : forall x y, Rle_bool x y = true <-> Rle x y.
+Lemma Rle_bool_true_iff : forall x y, Rle_bool x y = true <-> Rle x y.
 Proof. intros x y. unfold Rle_bool. destruct (Rle_dec x y); intuition discriminate. Qed.
+
+Lemma Rle_bool_false_iff : forall x y, Rle_bool x y = false <-> ~Rle x y.
+Proof. intros x y. unfold Rle_bool. destruct (Rle_dec x y); intuition discriminate. Qed.
+
+Lemma Rle_bool_mult : forall k x y, (0 < k)%R -> Rle_bool (k * x) (k * y) = Rle_bool x y.
+Proof.
+intros k x y Hk. destruct (Rle_bool x y) eqn:Hle.
+- rewrite Rle_bool_true_iff in *. now apply Rmult_le_compat_l; trivial; apply Rlt_le.
+- rewrite Rle_bool_false_iff in *. intro Habs. apply Hle. eapply Rmult_le_reg_l; eassumption.
+Qed.
+
+Lemma Rle_bool_plus : forall k x y, Rle_bool (k + x) (k + y) = Rle_bool x y.
+Proof.
+intros k x y. destruct (Rle_bool x y) eqn:Hle.
+- rewrite Rle_bool_true_iff in *. now apply Rplus_le_compat_l.
+- rewrite Rle_bool_false_iff in *. intro Habs. apply Hle. eapply Rplus_le_reg_l; eassumption.
+Qed.
+
 
 (*Definition count_occ_properR := count_occ_proper Rdec.*)
 Definition remove_Perm_properR := remove_Perm_proper Rdec.

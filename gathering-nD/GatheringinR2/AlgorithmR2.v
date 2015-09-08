@@ -232,9 +232,9 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   let len12 := R2.dist pt1 pt2 in
   let len23 := R2.dist pt2 pt3 in
   let len13 := R2.dist pt1 pt3 in
-  if Rle_dec len12 len23
-  then if Rle_dec len23 len13 then pt2 else pt1
-  else if Rle_dec len12 len13 then pt2 else pt3.
+  if Rle_bool len12 len23
+  then if Rle_bool len23 len13 then pt2 else pt1
+  else if Rle_bool len12 len13 then pt2 else pt3.
 
 
 Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
@@ -261,6 +261,9 @@ Ltac autoinv :=
   repeat match goal with
          | H:Some _ = Some _ |- _ => inversion_clear H
          end.
+
+(* Sans vouloir vous vexer... *)
+Check Preliminary.PermutationA_3.
 
 Lemma enum_permut_three : forall A (l l':list A) x1 x2 x3,
     Permutation l l'
@@ -414,11 +417,8 @@ Proof.
     =>
     functional induction (opposite_of_max_side a b c);auto;
     functional induction (opposite_of_max_side a' b' c');auto
-  end
-  ;repeat match reverse goal with
-          | H: _ = left _ |- _ => clear H
-          | H: _ = right _ |- _ => clear H
-          end
+  end;
+  repeat rewrite ?Rle_bool_true_iff, ?Rle_bool_false_iff in *
   ; repeat progress normalize_R2dist pt1' pt2' pt3' ;try contradiction;
   repeat match goal with
          | H1: ?A < ?A |- _ => elim (Rlt_irrefl _ h_ltxx)
@@ -461,6 +461,7 @@ Module GatheringinR2.
 (** **  Framework of the correctness proof: a finite set with at least two elements  **)
 
 Parameter nG: nat.
+Hypothesis nG_pos : (3 <= nG)%nat.
 
 (** There are nG good robots and no byzantine ones. *)
 Module N : Size with Definition nG := nG with Definition nB := 0%nat.
@@ -666,7 +667,8 @@ Function target (s : Spect.t) : R2.t :=
   let l := Spect.support s in
   let sec := List.filter (on_circle (SEC l)) l in
   match sec with
-    | nil | _ :: nil => (0, 0) (* no robot or gathered *)
+    | nil => (0, 0) (* no robot *)
+    | pt :: nil => pt (* gathered *)
     | pt1 :: pt2 :: nil => R2.middle pt1 pt2
     | pt1 :: pt2 :: pt3 :: nil => (* triangle cases *)
       target_triangle pt1 pt2 pt3
@@ -944,24 +946,58 @@ Proof.
   unfold barycenter.
 Admitted.
 
+Lemma opposite_of_max_side_morph : forall pt1 pt2 pt3 (sim:Sim.t),
+  opposite_of_max_side (sim pt1) (sim pt2) (sim pt3) = sim (opposite_of_max_side pt1 pt2 pt3).
+Proof.
+intros pt1 pt2 pt3 sim. unfold opposite_of_max_side.
+repeat rewrite (sim.(Sim.dist_prop)).
+assert (Hpos : (0 < Sim.zoom sim)%R) by apply Sim.zoom_pos.
+repeat rewrite Rle_bool_mult; trivial.
+repeat match goal with
+  | |- context[Rle_bool ?x ?y] => destruct (Rle_bool x y)
+end; reflexivity.
+Qed.
+
 Lemma target_triangle_morph:
   forall pt1 pt2 pt3 (sim:Sim.t), target_triangle (sim pt1) (sim pt2) (sim pt3)
                                   = sim (target_triangle pt1 pt2 pt3).
 Proof.
-  intros pt1 pt2 pt3 sim.
-  unfold target_triangle.
-  rewrite classify_triangle_morph.
-  destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
-Admitted.
+intros pt1 pt2 pt3 sim. unfold target_triangle.
+rewrite classify_triangle_morph.
+destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
+- apply barycenter_morph.
+- apply opposite_of_max_side_morph.
+Qed.
 
 
 Lemma target_morph :
   forall s (sim:Sim.t), target (Spect.map sim s) = sim (target s).
 Proof.
-  intros s sim.
-  unfold target at 1.
-  
+intros s sim. unfold target.
+assert (Proper (R2.eq ==> R2.eq) sim) by (intros ? ? H; now rewrite H).
+assert (injective R2.eq R2.eq sim) by apply Sim.injective.
+assert (Hperm : Permutation (List.map sim (filter (on_circle (SEC (Spect.support s))) (Spect.support s)))
+                  (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (Spect.support (Spect.map sim s)))).
+{ assert (Heq : filter (on_circle (SEC (Spect.support s))) (Spect.support s)
+              = filter (fun x => on_circle (sim_circle sim (SEC (Spect.support s))) (sim x)) (Spect.support s)).
+  { apply filter_extensionality_compat; trivial. repeat intro. subst. now rewrite on_circle_morph. }
+  rewrite Heq. rewrite <- filter_map.
+  rewrite <- PermutationA_Leibniz. rewrite <- Spect.map_injective_support; trivial.
+  + rewrite filter_extensionality_compat; try reflexivity.
+    repeat intro. subst. f_equal. symmetry. rewrite <- SEC_morph.
+    apply SEC_compat. rewrite <- PermutationA_Leibniz. now apply Spect.map_injective_support. }
+rewrite <- PermutationA_Leibniz in Hperm.
+assert (Hlen := PermutationA_length _ Hperm).
+destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]],
+         (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (Spect.support (Spect.map sim s)))
+         as [| pt1' [| pt2' [| pt3' [| ? ?]]]]; simpl in *; try (omega || reflexivity); clear Hlen.
++ admit. (* we need the hypothesis that there are robots *)
++ now rewrite (PermutationA_1 _) in Hperm.
++ rewrite (PermutationA_2 _) in Hperm.
+  destruct Hperm as [[H1 H2] | [H1 H2]]; subst; admit. (* sim is a morphism for R2.add and R2.mul *)
++ rewrite PermutationA_Leibniz in Hperm. rewrite <- (target_triangle_compat Hperm). apply target_triangle_morph.
++ change (sim (center (SEC (Spect.support s)))) with (center (sim_circle sim (SEC (Spect.support s)))).
+  f_equal. rewrite <- SEC_morph. f_equiv. rewrite <- PermutationA_Leibniz. now apply Spect.map_injective_support.
 Admitted.
-
 
 End GatheringinR2.
