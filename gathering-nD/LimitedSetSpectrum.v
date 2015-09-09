@@ -59,7 +59,7 @@ Definition is_ok s pos := forall l,
 
 Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
 Proof.
-unfold from_config, is_ok. intros. rewrite M.M.filter_spec, Rle_bool_spec.
+unfold from_config, is_ok. intros. rewrite M.M.filter_spec, Rle_bool_true_iff.
 - rewrite M.set_spec, Pos.list_InA. intuition.
 - intros x y Hxy. now rewrite Hxy.
 Qed.

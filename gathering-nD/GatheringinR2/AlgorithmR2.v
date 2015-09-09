@@ -183,13 +183,14 @@ Ltac Rabs :=
     | _ => contradiction
   end.
 
-Ltac Rdec_aux H :=
+Ltac Rdec_full_in H :=
   match type of H with
     | context[Rdec ?x ?y] =>
       let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
       destruct (Rdec x y) as [Heq | Hneq]
     | _ => fail
   end.
+Tactic Notation "Rdec_full" "in" ident(H) := Rdec_full_in H.
 
 Record circle := {
   center : R2.t;
@@ -483,6 +484,28 @@ Close Scope R_scope.
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
+Lemma map_sim_support : forall (sim : Sim.t) s,
+  Permutation (Spect.support (Spect.map sim s)) (map sim (Spect.support s)).
+Proof.
+intros sim s. rewrite <- PermutationA_Leibniz. apply Spect.map_injective_support.
+- intros ? ? Heq. now rewrite Heq.
+- apply Sim.injective.
+Qed.
+
+(** Spectra can never be empty as the number of robots is non null. *)
+Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.empty.
+Proof.
+intros conf Heq.
+unfold Spect.from_config in Heq.
+rewrite Spect.multiset_empty in Heq.
+assert (Hlgth:= Spect.Pos.list_length conf).
+rewrite Heq in Hlgth.
+simpl in *.
+unfold N.nB, N.nG in *.
+cut (3 <= 0). omega.
+rewrite Hlgth at 2. rewrite plus_0_r. apply nG_pos.
+Qed.
+
 (* FIXME: These three definitions: gathered_at, gather and WillGather
    should be shared by all our proofs about gathering (on Q, R, R2,
    for impossibility and possibility proofs). Shouldn't they be in a
@@ -597,7 +620,7 @@ Definition rotate (θ : R) : Sim.t.
 refine {|
   Sim.sim_f := rotate_bij θ;
   Sim.zoom := 1;
-  Sim.center := (0,0) |}.
+  Sim.center := (0, 0) |}.
 Proof.
 + simpl. unfoldR2. abstract(f_equal; field).
 + unfoldR2. intros. rewrite Rmult_1_l. f_equal. simpl.
@@ -661,6 +684,8 @@ Qed.
 (* cf algo in 1D, should be in the multiset library *)
 Parameter Smax : Spect.t -> Spect.t.
 Declare Instance Smax_compat : Proper (Spect.eq ==> Spect.eq) Smax.
+Axiom Smax_morph : forall f s, Spect.eq (Smax (Spect.map f s)) (Spect.map f (Smax s)).
+Axiom Smax_empty : forall s, Spect.eq (Smax s) Spect.empty <-> Spect.eq s Spect.empty.
 
 (* Safe to use only when SEC is well-defined, ie when robots are not gathered. *)
 Function target (s : Spect.t) : R2.t :=
@@ -729,13 +754,14 @@ apply Spect.filter_extensionality_compat.
 Qed.
 
 Definition is_clean (s : Spect.t) : bool :=
-  if inclA_dec _ R2.eq_dec (Spect.support s) (SECT s) then true else false.
+  if inclA_bool _ R2.eq_dec (Spect.support s) (SECT s) then true else false.
 
 Instance is_clean_compat : Proper (Spect.eq ==> Logic.eq) is_clean.
 Proof.
 intros ? ? Heq. unfold is_clean.
-destruct (inclA_dec _ R2.eq_dec (Spect.support x) (SECT x)) as [Hx | Hx],
-         (inclA_dec _ R2.eq_dec (Spect.support y) (SECT y)) as [Hy | Hy]; trivial.
+destruct (inclA_bool _ R2.eq_dec (Spect.support x) (SECT x)) eqn:Hx,
+         (inclA_bool _ R2.eq_dec (Spect.support y) (SECT y)) eqn:Hy;
+  trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff in *.
 + elim Hy. intros e Hin. rewrite <- Heq in Hin.
   apply SECT_compat in Heq. rewrite <- PermutationA_Leibniz in Heq.
   rewrite <- Heq. now apply Hx.
@@ -750,7 +776,7 @@ Definition gatherR2_pgm (s : Spect.t) : R2.t :=
     | pt :: nil => pt (* majority *)
     | _ :: _ :: _ =>
       if is_clean s then target s (* reduce *)
-      else if List.in_dec R2.eq_dec (0, 0) (SECT s) then (0, 0) else target s (* clean *)
+      else if mem R2.eq_dec (0, 0) (SECT s) then (0, 0) else target s (* clean *)
   end.
 
 Instance gatherR2_pgm_compat : Proper (Spect.eq ==> R2.eq) gatherR2_pgm.
@@ -766,8 +792,9 @@ simpl in Hsize; omega || clear Hsize.
   rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
 + rewrite Hs. destruct (is_clean s2).
   - now f_equiv.
-  - destruct (in_dec R2.eq_dec (0, 0) (SECT s1)) as [Hin | Hin],
-             (in_dec R2.eq_dec (0, 0) (SECT s2)); 
+  - destruct (mem R2.eq_dec (0, 0) (SECT s1)) eqn:Hin,
+             (mem R2.eq_dec (0, 0) (SECT s2)) eqn:Hin';
+    rewrite ?mem_true_iff, ?mem_false_iff, ?InA_Leibniz in *;
     try (reflexivity || (rewrite Hs in Hin; contradiction)). now f_equiv.
 Qed.
 
@@ -880,10 +907,10 @@ Proof.
 Qed.
 
 Lemma classify_triangle_morph :
-  forall pt1 pt2 pt3 (sim:Sim.t), classify_triangle (sim pt1) (sim pt2) (sim pt3)
+  forall (sim : Sim.t) pt1 pt2 pt3, classify_triangle (sim pt1) (sim pt2) (sim pt3)
                                   = sim_triangle_type sim (classify_triangle pt1 pt2 pt3).
 Proof.
-  intros pt1 pt2 pt3 sim.
+  intros sim pt1 pt2 pt3.
   unfold classify_triangle at 1.
   setoid_rewrite (sim.(Sim.dist_prop)).
   rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
@@ -893,9 +920,9 @@ Proof.
 Qed.
 
 Lemma on_circle_morph :
-  forall pt c (sim:Sim.t), on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
+  forall (sim : Sim.t) pt c, on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
 Proof.
-  intros pt c sim.
+  intros sim pt c.
   unfold on_circle at 1.
   unfold sim_circle.
   simpl.
@@ -905,9 +932,9 @@ Proof.
 Qed.
 
 Lemma enclosing_circle_morph :
-  forall c l (sim:Sim.t), enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
+  forall (sim : Sim.t) c l, enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
 Proof.
-  intros c l sim.
+  intros sim c l.
   unfold enclosing_circle.
   unfold sim_circle.
   simpl.
@@ -935,21 +962,19 @@ Axiom SEC_unicity: forall l c,
     -> c = SEC l.
 
 (* TODO *)
-Axiom SEC_morph : forall l (sim:Sim.t), SEC (List.map sim l) = sim_circle sim (SEC l).
+Axiom SEC_morph : forall (sim:Sim.t) l, SEC (List.map sim l) = sim_circle sim (SEC l).
 
-Lemma barycenter_morph:
-  forall pt1 pt2 pt3 (sim:Sim.t),
-    barycenter (sim pt1) (sim pt2) (sim pt3)
-    = sim (barycenter pt1 pt2 pt3).
+Lemma barycenter_morph: forall (sim : Sim.t) pt1 pt2 pt3,
+  barycenter (sim pt1) (sim pt2) (sim pt3) = sim (barycenter pt1 pt2 pt3).
 Proof.
-  intros pt1 pt2 pt3 sim.
+  intros sim pt1 pt2 pt3.
   unfold barycenter.
 Admitted.
 
-Lemma opposite_of_max_side_morph : forall pt1 pt2 pt3 (sim:Sim.t),
+Lemma opposite_of_max_side_morph : forall (sim : Sim.t) pt1 pt2 pt3,
   opposite_of_max_side (sim pt1) (sim pt2) (sim pt3) = sim (opposite_of_max_side pt1 pt2 pt3).
 Proof.
-intros pt1 pt2 pt3 sim. unfold opposite_of_max_side.
+intros sim pt1 pt2 pt3. unfold opposite_of_max_side.
 repeat rewrite (sim.(Sim.dist_prop)).
 assert (Hpos : (0 < Sim.zoom sim)%R) by apply Sim.zoom_pos.
 repeat rewrite Rle_bool_mult; trivial.
@@ -959,23 +984,19 @@ end; reflexivity.
 Qed.
 
 Lemma target_triangle_morph:
-  forall pt1 pt2 pt3 (sim:Sim.t), target_triangle (sim pt1) (sim pt2) (sim pt3)
+  forall (sim : Sim.t) pt1 pt2 pt3, target_triangle (sim pt1) (sim pt2) (sim pt3)
                                   = sim (target_triangle pt1 pt2 pt3).
 Proof.
-intros pt1 pt2 pt3 sim. unfold target_triangle.
+intros sim pt1 pt2 pt3. unfold target_triangle.
 rewrite classify_triangle_morph.
 destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
 - apply barycenter_morph.
 - apply opposite_of_max_side_morph.
 Qed.
 
-
-Lemma target_morph :
-  forall s (sim:Sim.t), target (Spect.map sim s) = sim (target s).
+Lemma target_morph : forall (sim : Sim.t) s, target (Spect.map sim s) = sim (target s).
 Proof.
-intros s sim. unfold target.
-assert (Proper (R2.eq ==> R2.eq) sim) by (intros ? ? H; now rewrite H).
-assert (injective R2.eq R2.eq sim) by apply Sim.injective.
+intros sim s. unfold target.
 assert (Hperm : Permutation (List.map sim (filter (on_circle (SEC (Spect.support s))) (Spect.support s)))
                   (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (Spect.support (Spect.map sim s)))).
 { assert (Heq : filter (on_circle (SEC (Spect.support s))) (Spect.support s)
@@ -983,9 +1004,11 @@ assert (Hperm : Permutation (List.map sim (filter (on_circle (SEC (Spect.support
   { apply filter_extensionality_compat; trivial. repeat intro. subst. now rewrite on_circle_morph. }
   rewrite Heq. rewrite <- filter_map.
   rewrite <- PermutationA_Leibniz. rewrite <- Spect.map_injective_support; trivial.
-  + rewrite filter_extensionality_compat; try reflexivity.
+  - rewrite filter_extensionality_compat; try reflexivity.
     repeat intro. subst. f_equal. symmetry. rewrite <- SEC_morph.
-    apply SEC_compat. rewrite <- PermutationA_Leibniz. now apply Spect.map_injective_support. }
+    apply SEC_compat. apply map_sim_support.
+  - intros ? ? H. now rewrite H.
+  - apply Sim.injective. }
 rewrite <- PermutationA_Leibniz in Hperm.
 assert (Hlen := PermutationA_length _ Hperm).
 destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]],
@@ -997,7 +1020,65 @@ destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| 
   destruct Hperm as [[H1 H2] | [H1 H2]]; subst; admit. (* sim is a morphism for R2.add and R2.mul *)
 + rewrite PermutationA_Leibniz in Hperm. rewrite <- (target_triangle_compat Hperm). apply target_triangle_morph.
 + change (sim (center (SEC (Spect.support s)))) with (center (sim_circle sim (SEC (Spect.support s)))).
-  f_equal. rewrite <- SEC_morph. f_equiv. rewrite <- PermutationA_Leibniz. now apply Spect.map_injective_support.
+  f_equal. rewrite <- SEC_morph. f_equiv. apply map_sim_support.
 Admitted.
+
+Corollary SECT_morph : forall (sim : Sim.t) s, Permutation (SECT (Spect.map sim s)) (map sim (SECT s)).
+Proof.
+intros sim s. unfold SECT.
+rewrite target_morph. simpl. constructor.
+transitivity (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (map sim (Spect.support s))).
++ rewrite <- PermutationA_Leibniz. apply (filter_PermutationA_compat _).
+  - repeat intro. now subst.
+  - rewrite PermutationA_Leibniz. apply map_sim_support.
++ rewrite filter_map.
+  cut (map sim (filter (fun x => on_circle (SEC (Spect.support (Spect.map sim s))) (sim x)) (Spect.support s))
+       = (map sim (filter (on_circle (SEC (Spect.support s))) (Spect.support s)))).
+  - intro Heq. now rewrite Heq.
+  - f_equal. apply filter_extensionality_compat; trivial.
+    repeat intro. subst. now rewrite map_sim_support, SEC_morph, on_circle_morph.
+Qed.
+
+Lemma is_clean_morph : forall (sim : Sim.t) s, is_clean (Spect.map sim s) = is_clean s.
+Proof.
+intros sim s. unfold is_clean.
+destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support (Spect.map sim s)) (SECT (Spect.map sim s))) eqn:Hx,
+         (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support s) (SECT s)) eqn:Hy;
+trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff, ?inclA_Leibniz in *.
+- elim Hy. intros x Hin. apply (in_map sim) in Hin. rewrite <- map_sim_support in Hin.
+  apply Hx in Hin. rewrite SECT_morph, in_map_iff in Hin.
+  destruct Hin as [x' [Heq ?]]. apply Sim.injective in Heq. now rewrite <- Heq.
+- elim Hx. intros x Hin. rewrite SECT_morph. rewrite map_sim_support in Hin.
+  rewrite in_map_iff in *. destruct Hin as [x' [? Hin]]. subst. exists x'. repeat split. now apply Hy.
+Qed.
+
+(* If the center of the similarity is not the origin, we need to adapt the change of referential. *)
+Lemma gatherR2_pgm_morph : forall (sim : Sim.t), Sim.center sim = (0, 0)%R ->
+  forall conf, gatherR2 (Spect.map sim (!! conf)) = sim (gatherR2 (!! conf)).
+Proof.
+intros sim Hcenter conf. simpl. unfold gatherR2_pgm.
+assert (Hperm : Permutation (map sim (Spect.support (Smax (!! conf))))
+                            (Spect.support (Smax (Spect.map sim (!! conf))))).
+{ rewrite <- map_sim_support. rewrite <- PermutationA_Leibniz. f_equiv. now rewrite Smax_morph. }
+assert (Hlen := Permutation_length Hperm).
+destruct (Spect.support (Smax (!! conf))) as [| pt [| pt2 l]] eqn:Hmax,
+         (Spect.support (Smax (Spect.map sim (!! conf)))) as [| pt' [| pt2' l']];
+simpl in Hlen; discriminate || clear Hlen.
+* rewrite Spect.support_nil, Smax_empty in Hmax. elim (spect_non_nil _ Hmax).
+* simpl in Hperm. now rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
+* clear Hmax Hperm pt pt' pt2 pt2' l l'.
+  rewrite is_clean_morph. destruct (is_clean (!! conf)).
+  + apply target_morph.
+  + destruct (mem R2.eq_dec (0, 0)%R (SECT (Spect.map sim (!! conf)))) eqn:Heq,
+             (mem R2.eq_dec (0%R, 0%R) (SECT (!! conf))) eqn:Heq';
+    rewrite ?mem_true_iff, ?mem_false_iff in *.
+    - rewrite <- Hcenter at 2. now rewrite Sim.center_prop.
+    - rewrite <- (Sim.center_prop sim), Hcenter in Heq. exfalso. apply Heq'.
+      rewrite InA_Leibniz in *. rewrite SECT_morph, in_map_iff in Heq.
+      destruct Heq as [x [Heq Hin]]. apply Sim.injective in Heq. now rewrite <- Heq.
+    - rewrite <- (Sim.center_prop sim), Hcenter in Heq. exfalso. apply Heq.
+      rewrite InA_Leibniz in *. rewrite SECT_morph, in_map_iff. eauto.
+    - apply target_morph.
+Qed.
 
 End GatheringinR2.

@@ -254,7 +254,7 @@ intros A eq_dec pt1 pt2 Hdiff pt n. induction n; simpl; intros l Hnodup Hlen.
   cbn [map]. rewrite map_app. cbn [map].
    destruct (in_dec eq_dec a (a :: half1 l)) as [_ | Habs]. destruct (in_dec eq_dec z (a :: half1 l)) as [Habs | _].
   + inversion_clear Habs; try contradiction. exfalso. now apply Hzl, half1_incl.
-  + rewrite (map_f_dependent_compat _ (fun x => if in_dec eq_dec x (half1 l) then pt1 else pt2)).
+  + rewrite (map_ext_in _ (fun x => if in_dec eq_dec x (half1 l) then pt1 else pt2)).
     - cbn [countA_occ]. rewrite countA_occ_app. rewrite IHn; trivial.
       assert (pt2 <> pt1) by auto.
       cbn. Rdec_full; subst; Rdec; try Rdec_full; subst; Rdec;
@@ -483,8 +483,8 @@ intros pt x. unfold config0, spectrum1.
 rewrite Spect.from_config_spec, Spect.Pos.list_spec.
 change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
 rewrite map_app, map_map, map_map, countA_occ_app. simpl.
-rewrite (map_f_dependent_compat _ (fun _ : Spect.Names.Internals.G => 0)).
-rewrite (map_f_dependent_compat _ (fun _ : Spect.Names.Internals.B => 1)).
+rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.G => 0)).
+rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.B => 1)).
 + do 2 rewrite map_cst. destruct (Rdec x 0); [| destruct (Rdec x 1)]; subst.
   - rewrite countA_occ_alls_in, Names.Gnames_length; refine _.
     rewrite countA_occ_alls_out; auto.

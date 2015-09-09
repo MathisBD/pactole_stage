@@ -240,7 +240,7 @@ apply (@first_last_even_ind _
     assert (Heq : forall a b : R,
                   map (fun x : Fin.t N.nG => if in_dec Fin.eq_dec x (gl :: half1 l) then a else b) l
                 = map (fun x : Fin.t N.nG => if in_dec Fin.eq_dec x (half1 l) then a else b) l).
-    { intros a b. apply map_f_dependent_compat. intros g Hg.
+    { intros a b. apply map_ext_in. intros g Hg.
       destruct (in_dec Fin.eq_dec g (gl :: half1 l)) as [Hin | Hout].
       - destruct Hin; try now subst; contradiction.
         destruct (in_dec Fin.eq_dec g (half1 l)); reflexivity || contradiction.
@@ -281,7 +281,7 @@ apply (@first_last_even_ind _
   + (* valid case *)
     assert (Heq : map (fun x => if in_dec Fin.eq_dec x (gl :: half1 l) then 0 else 1) l
                 = map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l).
-    { apply map_f_dependent_compat. intros g Hg.
+    { apply map_ext_in. intros g Hg.
       destruct (in_dec Fin.eq_dec g (gl :: half1 l)) as [Hin | Hout].
       - destruct Hin; try now subst; contradiction.
         destruct (in_dec Fin.eq_dec g (half1 l)); reflexivity || contradiction.
