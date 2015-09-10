@@ -3854,4 +3854,246 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + rewrite map_empty. now repeat rewrite exists_empty; refine _.
   Qed.
   
+  (** **  Function [max] and its properties  **)
+
+  (** ***  Function [max_mult] computing the maximal multiplicity  **)
+  
+  Definition max_mult s := fold (fun _ => max) s 0%nat.
+  
+  Instance max_mult_compat : Proper (eq ==> Logic.eq) max_mult.
+  Proof.
+  unfold max_mult. intros s1 s2 Heq. apply fold_compat; trivial; refine _.
+  - repeat intro. now subst.
+  - intros _ _ n m p. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
+  Qed.
+  
+  Lemma max_mult_empty : max_mult empty = 0.
+  Proof. unfold max_mult. now rewrite fold_empty. Qed.
+  
+  Lemma max_mult_singleton : forall x n, max_mult (singleton x n) = n.
+  Proof.
+  intros x n. destruct n.
+  - rewrite singleton_0. apply max_mult_empty.
+  - unfold max_mult. rewrite fold_singleton; auto with arith.
+    repeat intro. now subst.
+  Qed.
+  
+  Lemma max_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall s, max_mult (map f s) = max_mult s.
+  Proof.
+  intros f Hf Hinj. apply ind.
+  + intros s1 s2 Hs. now rewrite Hs.
+  + intros s x n Hout Hn Hrec. rewrite map_add; try now intros ? ? Heq; rewrite Heq.
+    assert (Haux : elt -> elt ->
+              forall n m a : nat, Init.Nat.max m (Init.Nat.max n a) = Init.Nat.max n (Init.Nat.max m a)).
+    { intros _ _ n' m' p'. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2. }
+    unfold max_mult in *. repeat rewrite fold_add; trivial; refine _; try now (hnf; auto).
+    intro Habs. apply Hout. apply map_In in Habs.
+    - destruct Habs as [y [Heq Hin]]. apply Hinj in Heq. now rewrite Heq.
+    - intros ? ? Heq. now rewrite Heq.
+  + now rewrite map_empty.
+  Qed.
+  
+  Lemma max_mult_add : forall s x n, (n > 0)%nat -> ~In x s ->
+    max_mult (add x n s) = Nat.max n (max_mult s).
+  Proof.
+  intros s x n Hn. unfold max_mult. apply fold_add; trivial.
+  - refine _.
+  - repeat intro. now subst.
+  - repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
+  Qed.
+  
+  Theorem max_mult_spec : forall s x, (s[x] <= max_mult s)%nat.
+  Proof.
+  intro s. pattern s. apply ind; clear s.
+  * intros s1 s2 Hs. now setoid_rewrite Hs.
+  * intros m x n Hout Hn Hrec y. rewrite max_mult_add; trivial.
+    assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
+    destruct (E.eq_dec y x) as [Hxy | Hxy].
+    + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
+    + rewrite add_other; auto. transitivity (max_mult m).
+      - apply Hrec.
+      - apply Max.le_max_r.
+  * intro x. rewrite empty_spec. omega.
+  Qed.
+  
+  Lemma max_mult_0 : forall s, max_mult s = 0%nat <-> s [=] empty.
+  Proof.
+  intro s. split; intro Heq.
+  + destruct (empty_or_In_dec s) as [? | [x Hin]]; trivial.
+    elim (lt_irrefl 0). apply lt_le_trans with s[x].
+    - exact Hin.
+    - rewrite <- Heq. apply max_mult_spec.
+  + rewrite Heq. apply max_mult_empty.
+  Qed.
+  
+  (** The function [max s] returns the elements of a multiset with maximal multiplicity. *)
+  
+  Definition max s := nfilter (fun _ => beq_nat (max_mult s)) s.
+  
+  Instance eqb_max_mult_compat s : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult s)).
+  Proof. repeat intro. now subst. Qed.
+  
+  Instance eqb_max_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.max).
+  Proof. repeat intro. now subst. Qed.
+  
+  Local Hint Immediate eqb_max_mult_compat eqb_max_compat.
+  
+  Instance max_compat : Proper (eq ==> eq) max.
+  Proof.
+  intros s1 s2 Heq. unfold max.
+  rewrite Heq. apply nfilter_extensionality_compat.
+  - repeat intro. now subst.
+  - intros _ n. now rewrite Heq.
+  Qed.
+  
+  Lemma max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall s, (max (map f s)) [=] (map f (max s)).
+  Proof.
+  intros f Hf Hinj s. unfold max. rewrite map_injective_nfilter; auto.
+  apply map_compat.
+  - intros ? ? Heq. now rewrite Heq.
+  - apply nfilter_extensionality_compat; repeat intro; subst; trivial.
+    now rewrite max_mult_map_injective_invariant.
+  Qed.
+  
+  Lemma max_subset : forall s, max s [<=] s.
+  Proof.
+  intros s x. unfold max.
+  setoid_rewrite nfilter_spec; try now repeat intro; subst.
+  destruct (max_mult s =? s[x]); auto. omega.
+  Qed.
+  
+  Theorem max_spec1 : forall s x y, In y (max s) -> s[x] <= (max s)[y].
+  Proof.
+  intros s x y Hy. unfold max in *.
+  unfold In in Hy. rewrite nfilter_spec in *; auto.
+  destruct (max_mult s =? s[y]) eqn:Heq; try omega.
+  rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply max_mult_spec.
+  Qed.
+  
+  Theorem max_spec_non_nil : forall s x, In x s -> exists y, In y (max s).
+  Proof.
+  intro s. pattern s. apply ind.
+  * intros m1 m2 Hm1m2. now setoid_rewrite Hm1m2.
+  * intros m x n Hxnotinm Hpos HI x' Hx'.
+    destruct (empty_or_In_dec m) as [Hm | [x'' Hx'']].
+    + exists x. unfold max. rewrite nfilter_In; auto. split.
+      - rewrite add_In. right. split; reflexivity || omega.
+      - rewrite Nat.eqb_eq, max_mult_add; trivial.
+        rewrite Hm at 2.
+        rewrite add_empty, singleton_spec.
+        msetdec. rewrite max_mult_empty. apply Max.max_0_r.
+    + specialize (HI x'' Hx'').
+      destruct HI as [y Hy]. unfold max.
+      setoid_rewrite nfilter_In; auto; [].
+      rewrite max_mult_add; trivial.
+      unfold max in Hy. rewrite nfilter_In in Hy; auto.
+      destruct Hy as [Hy Heq]. rewrite Nat.eqb_eq in Heq.
+      destruct (le_lt_dec n (m[y])).
+      - exists y. split.
+        -- msetdec.
+        -- rewrite Nat.eqb_eq, Heq, add_other, Max.max_r; trivial. msetdec.
+      - exists x. split.
+        -- msetdec.
+        -- rewrite Nat.eqb_eq, Max.max_l; try omega. msetdec.
+  * intros x H. elim (In_empty H).
+  Qed.
+  
+  Lemma max_empty : forall s, max s [=] empty <-> s [=] empty.
+  Proof.
+  intro s. split; intro H.
+  + destruct (empty_or_In_dec s) as [Hs | Hs].
+    - intro. now rewrite Hs.
+    - destruct Hs as [x Hx].
+      destruct (max_spec_non_nil Hx) as [y Hy].
+      unfold In in Hy. rewrite H, empty_spec in Hy. omega.
+  + rewrite H. unfold max.
+    apply nfilter_empty; auto.
+  Qed.
+  
+  Lemma max_2_mult : forall s x, (max s)[x] = 0 \/ (max s)[x] = s[x].
+  Proof.
+  intros s x. destruct (empty_or_In_dec s) as [Hs | Hs].
+  + left. rewrite <- max_empty in Hs. rewrite (Hs x). apply empty_spec.
+  + unfold max. rewrite nfilter_spec.
+    destruct (max_mult s =? s[x]) as [Heq | Heq]; auto.
+    repeat intro. now subst.
+  Qed.
+  (*
+  Lemma max_val : forall s x, In x (max s) -> s[x] = max_mult s.
+  Proof.
+  intros s x Hin.
+  Qed.
+  *)
+  Lemma max_In_mult : forall s x, In x s -> (In x (max s) <-> (max s)[x] = s[x]).
+  Proof. intros s x Hin. unfold In in *. destruct (max_2_mult s x); omega. Qed.
+  
+  Lemma max_spec_mult : forall s x y, In x (max s) -> (In y (max s) <-> (max s)[y] = (max s)[x]).
+  Proof.
+  intros s x y Hx. split.
+  + intro Hy. destruct (max_2_mult s x) as [Hx' | Hx'], (max_2_mult s y) as [Hy' | Hy'];
+    (unfold In in *; omega) || (try congruence); [].
+    apply le_antisym; rewrite Hy' + rewrite Hx'; now apply max_spec1.
+  + intro Heq. unfold In in *. now rewrite Heq.
+  Qed.
+  
+  Theorem max_spec2 : forall s x y,
+    In x (max s) -> ~In y (max s) -> (s[y] < s[x])%nat.
+  Proof.
+  intros s x y Hx Hy. apply le_neq_lt.
+  + assert (Hx' := Hx). rewrite max_In_mult in Hx.
+    - rewrite <- Hx. now apply max_spec1.
+    - now rewrite <- max_subset.
+  + intro Habs. apply Hy. unfold max. rewrite nfilter_In; try now repeat intro; subst. split.
+    - unfold In in *. rewrite Habs. apply lt_le_trans with (max s)[x]; trivial. apply max_subset.
+    - rewrite Habs. unfold max in Hx. rewrite nfilter_In in Hx; try now repeat intro; subst.
+  Qed.
+  
+  Lemma max_max_mult : forall s x, ~s [=] empty -> In x (max s) <-> s[x] = max_mult s.
+  Proof.
+  intros s x Hs. split; intro H.
+  + apply nfilter_In in H; auto.
+    symmetry. apply beq_nat_true. now destruct H.
+  + unfold max. rewrite nfilter_In; auto.
+    split.
+    - red. cut (s[x]<>0). omega.
+      intro Habs. now rewrite H, max_mult_0 in Habs.
+    - now rewrite H, <- beq_nat_refl.
+  Qed.
+  
+  Lemma max_max_mult_ex : forall s, ~s [=] empty -> exists x, max_mult s = s[x].
+  Proof.
+  intros s. pattern s. apply ind.
+  * intros ? ? Heq. now setoid_rewrite Heq.
+  * intros m x n Hout Hn Hrec _.
+    destruct (empty_or_In_dec m) as [Hm | Hm].
+    + exists x. rewrite Hm, add_empty. rewrite max_mult_singleton. msetdec.
+    + assert (Hempty : ~m [=] empty) by now rewrite not_empty_In.
+      destruct (Hrec Hempty) as [max_m Hmax_m]. rewrite max_mult_add; trivial.
+      destruct (Max.max_spec n (max_mult m)) as [[Hmax1 Hmax2] | [Hmax1 Hmax2]].
+      - exists max_m. msetdec.
+      - exists x. msetdec.
+  * intro. msetdec.
+  Qed.
+  
+  Lemma max_spec_max : forall s x, ~s [=] empty -> (forall y, (s[y] <= s[x])) -> max_mult s = s[x].
+  Proof.
+  intros s x Hm H. apply le_antisym.
+  - destruct (@max_max_mult_ex s) as [y Hy]; auto.
+    rewrite Hy. apply H.
+  - apply max_mult_spec.
+  Qed.
+  
+  Corollary max_spec1_iff : forall s, ~s [=] empty -> forall x, In x (max s) <-> forall y, (s[y] <= s[x]).
+  Proof.
+  intros s Hs x. assert (Hempty := Hs).
+  rewrite <- max_empty, not_empty_In in Hs. destruct Hs as [z Hz].
+  split; intro Hx.
+  + intro y. assert (Hx' := Hx). rewrite max_In_mult in Hx.
+    - rewrite <- Hx. now apply max_spec1.
+    - now rewrite <- max_subset.
+  + assert (H := max_spec_max Hempty Hx). rewrite max_max_mult; auto.
+  Qed.
+  
 End Make.

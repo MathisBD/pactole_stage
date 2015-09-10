@@ -1098,4 +1098,37 @@ simpl in Hlen; discriminate || clear Hlen.
     - simpl. rewrite <- sim.(Similarity.Inversion), <- target_morph. f_equiv. now apply Spect.from_config_map.
 Qed.
 
+(** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)
+
+(** If we have a majority tower, everyone goes there. **)
+Lemma round_simplify_Majority : forall da conf pt,
+  Spect.support (Smax (!! conf)) = pt :: nil ->
+  Pos.eq (round gatherR2 da conf)
+         (fun id => match step da id with
+                      | None => conf id
+                      | Some _ => pt
+                    end).
+Proof.
+intros da conf pt Hmaj id. rewrite round_simplify.
+destruct (step da id); try reflexivity. cbv zeta. now rewrite Hmaj.
+Qed.
+
+
+Theorem round_lt_config : forall da conf,
+  ~forbidden conf -> moving gatherR2 da conf <> nil ->
+  lt_config (round gatherR2 da conf) conf.
+Proof.
+intros da conf Hforbidden Hmove.
+apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
+assert (Hstep : step da gmove <> None).
+{ apply moving_active in Hmove. now rewrite active_spec in Hmove. }
+rewrite moving_spec in Hmove.
+destruct (Spect.support (Smax (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
+* (* No robots *)
+  rewrite Spect.support_nil, Smax_empty in Hmaj. elim (spect_non_nil _ Hmaj).
+* (* A majority tower *)
+  admit.
+* admit.
+Admitted.
+
 End GatheringinR2.
