@@ -18,6 +18,7 @@ MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v
 LimitedMultisetSpectrum.v
+Lexprod.v
 GatheringinR/Definitions.v
 GatheringinR/SortingR.v
 GatheringinR/Impossibility.v

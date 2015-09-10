@@ -1069,6 +1069,24 @@ intros eq_dec x y Hxy l1 l2 Hl. unfold mem.
 destruct (InA_dec eq_dec x l1), (InA_dec eq_dec y l2); trivial; rewrite Hl, Hxy in *; contradiction.
 Qed.
 
+Lemma mem_map : forall eq_dec f, Proper (eqA ==> eqA) f ->
+  forall x l, mem eq_dec x l = true -> mem eq_dec (f x) (map f l) = true.
+Proof.
+intros eq_dec f Hf x l Hin.
+rewrite mem_true_iff in *. rewrite (InA_map_iff _); trivial.
+exists x. now split.
+Qed.
+
+Lemma mem_injective_map : forall eq_dec f, Proper (eqA ==> eqA) f -> injective eqA eqA f ->
+  forall x l, mem eq_dec (f x) (map f l) = mem eq_dec x l.
+Proof.
+intros eq_dec f Hf Hinj x l.
+destruct (mem eq_dec x l) eqn:Hmem.
+- now apply mem_map.
+- rewrite mem_false_iff in *. intro Hin. apply Hmem. rewrite (InA_map_iff _ _ _) in Hin.
+  destruct Hin as [x' [Heq Hin]]. apply Hinj in Heq. now rewrite <- Heq.
+Qed.
+
 Lemma odd_middle : forall l (d : A), Nat.Odd (length l) ->
   nth (div2 (length l)) (rev l) d = nth (div2 (length l)) l d.
 Proof.
@@ -1499,6 +1517,7 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
 
+(** A boolean equality test. *)
 Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
 
 Global Instance Rdec_bool_compat : Proper (eq ==> eq ==> eq) Rdec_bool.
@@ -1513,6 +1532,31 @@ Proof. intros. unfold Rdec_bool. destruct (Rdec x y); now split. Qed.
 Lemma if_Rdec : forall A x y (l r : A), (if Rdec x y then l else r) = if Rdec_bool x y then l else r.
 Proof. intros. unfold Rdec_bool. now destruct Rdec. Qed.
 
+Lemma Rdec_bool_plus_l : forall k r r', Rdec_bool (k + r) (k + r') = Rdec_bool r r'.
+Proof.
+intros k r r'.
+destruct (Rdec_bool (k + r) (k + r')) eqn:Heq1, (Rdec_bool r r') eqn:Heq2; trivial;
+rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *.
+- elim Heq2. eapply Rplus_eq_reg_l; eassumption.
+- subst. auto.
+Qed.
+
+Lemma Rdec_bool_mult_l : forall k r r', (k <> 0)%R -> Rdec_bool (k * r) (k * r') = Rdec_bool r r'.
+Proof.
+intros k r r' Hk.
+destruct (Rdec_bool r r') eqn:Heq1, (Rdec_bool (k * r) (k * r')) eqn:Heq2; trivial;
+rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *.
+- subst. auto.
+- elim Heq1. eapply Rmult_eq_reg_l; eassumption.
+Qed.
+
+Corollary Rdec_bool_plus_r : forall k r r', Rdec_bool (r + k) (r' + k) = Rdec_bool r r'.
+Proof. intros. setoid_rewrite Rplus_comm. apply Rdec_bool_plus_l. Qed.
+
+Corollary Rdec_bool_mult_r : forall k r r', (k <> 0)%R -> Rdec_bool (r * k) (r' * k) = Rdec_bool r r'.
+Proof. intros. setoid_rewrite Rmult_comm. now apply Rdec_bool_mult_l. Qed.
+
+(** A boolean inequality test. *)
 Definition Rle_bool x y :=
   match Rle_dec x y with
     | left _ => true
@@ -1525,26 +1569,30 @@ Proof. intros x y. unfold Rle_bool. destruct (Rle_dec x y); intuition discrimina
 Lemma Rle_bool_false_iff : forall x y, Rle_bool x y = false <-> ~Rle x y.
 Proof. intros x y. unfold Rle_bool. destruct (Rle_dec x y); intuition discriminate. Qed.
 
-Lemma Rle_bool_mult : forall k x y, (0 < k)%R -> Rle_bool (k * x) (k * y) = Rle_bool x y.
+Lemma Rle_bool_mult_l : forall k x y, (0 < k)%R -> Rle_bool (k * x) (k * y) = Rle_bool x y.
 Proof.
 intros k x y Hk. destruct (Rle_bool x y) eqn:Hle.
 - rewrite Rle_bool_true_iff in *. now apply Rmult_le_compat_l; trivial; apply Rlt_le.
 - rewrite Rle_bool_false_iff in *. intro Habs. apply Hle. eapply Rmult_le_reg_l; eassumption.
 Qed.
 
-Lemma Rle_bool_plus : forall k x y, Rle_bool (k + x) (k + y) = Rle_bool x y.
+Lemma Rle_bool_plus_l : forall k x y, Rle_bool (k + x) (k + y) = Rle_bool x y.
 Proof.
 intros k x y. destruct (Rle_bool x y) eqn:Hle.
 - rewrite Rle_bool_true_iff in *. now apply Rplus_le_compat_l.
 - rewrite Rle_bool_false_iff in *. intro Habs. apply Hle. eapply Rplus_le_reg_l; eassumption.
 Qed.
 
+Corollary Rle_bool_plus_r : forall k r r', Rle_bool (r + k) (r' + k) = Rle_bool r r'.
+Proof. intros. setoid_rewrite Rplus_comm. apply Rle_bool_plus_l. Qed.
 
-(*Definition count_occ_properR := count_occ_proper Rdec.*)
+Corollary Rle_bool_mult_r : forall k r r', (0 < k)%R -> Rle_bool (r * k) (r' * k) = Rle_bool r r'.
+Proof. intros. setoid_rewrite Rmult_comm. now apply Rle_bool_mult_l. Qed.
+
+
 Definition remove_Perm_properR := remove_Perm_proper Rdec.
 Existing Instance Permutation_length_compat.
 Existing Instance Permutation_NoDup_compat.
-(*Existing Instance count_occ_properR.*)
 Existing Instance remove_Perm_properR.
 Existing Instance In_perm_compat.
 Existing Instance InA_impl_compat.

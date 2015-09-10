@@ -84,6 +84,7 @@ VFILES:=GatheringinR2/AlgorithmR2.v\
   GatheringinR/Impossibility.v\
   GatheringinR/SortingR.v\
   GatheringinR/Definitions.v\
+  Lexprod.v\
   LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\
   SetSpectrum.v\

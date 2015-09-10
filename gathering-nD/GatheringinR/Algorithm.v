@@ -14,18 +14,19 @@ Require Import Omega.
 Require Import Rbase Rbasic_fun.
 Require Import List.
 Require Import SetoidList.
-Require Import Relations.
 Require Import RelationPairs.
+Require Import Morphisms.
+Require Import Psatz.
+Require Import Inverse_Image.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
 Require Import Pactole.GatheringinR.SortingR.
 Require Import Pactole.MultisetSpectrum.
-Require Import Morphisms.
-Require Import Psatz.
+Require Import Pactole.Lexprod.
 Import Permutation.
-Require Import Definitions.
+Require Import Pactole.GatheringinR.Definitions.
 
 
 Set Implicit Arguments.
@@ -1425,70 +1426,6 @@ Qed.
 
 Close Scope R_scope.
 
-
-Section WfLexicographic_Product.
-  Variable A : Type.
-  Variable B : Type.
-  Variable leA : A -> A -> Prop.
-  Variable leB : B -> B -> Prop.
-
-  Inductive lexprod : A*B -> A*B -> Prop :=
-  | left_lex :
-      forall (x x':A) (y y':B), leA x x' -> lexprod (x, y) (x', y')
-  | right_lex :
-      forall (x:A) (y y':B), leB y y' -> lexprod (x, y) (x, y').
-
-  Notation LexProd := (lexprod leA leB).
-
-  Lemma acc_A_B_lexprod :
-    forall x:A,
-      Acc leA x ->
-      (forall x0:A, clos_trans A leA x0 x -> well_founded leB) ->
-      forall y:B, Acc leB y -> @Acc (A*B) lexprod (x, y).
-  Proof.
-    induction 1 as [x _ IHAcc]; intros H2 y.
-    induction 1 as [x0 H IHAcc0]; intros.
-    apply Acc_intro.
-    destruct y as [x2 y1]; intro H6.
-    simple inversion H6; intro.
-    cut (leA x2 x); intros.
-    apply IHAcc; auto with sets.
-    intros.
-    eapply H2.
-    apply t_trans with x2; auto with sets.
-    eassumption.
-
-    red in H2.
-    eapply H2.
-    eauto with sets.
-
-    injection H1.
-    destruct 2.
-    injection H3.
-    destruct 2; auto with sets.
-
-    rewrite <- H1.
-    injection H3; intros _ Hx1.
-    subst x1.
-    apply IHAcc0.
-    inversion H1.
-    inversion H3.
-    subst.
-    assumption.
-  Defined.
-
-  Theorem wf_lexprod :
-    well_founded leA ->
-    well_founded leB -> well_founded lexprod.
-  Proof.
-    intros wfA wfB; unfold well_founded.
-    destruct a.
-    apply acc_A_B_lexprod; auto with sets; intros.
-  Defined.
-
-
-End WfLexicographic_Product.
-
 Definition conf_to_NxN conf :=
   let s := !! conf in
   match Spect.support (Smax s) with
@@ -1501,17 +1438,6 @@ Definition conf_to_NxN conf :=
                          + s[hd 0%R (sort  (Spect.support s))]
                          + s[last (sort  (Spect.support s)) 0%R]))
   end.
-
-Require Import Inverse_Image.
-
-Let lt_conf x y := lexprod lt lt (conf_to_NxN x) (conf_to_NxN y).
-
-Lemma wf_lt_conf: well_founded lt_conf.
-Proof.
-  unfold lt_conf.
-  apply wf_inverse_image.
-  apply wf_lexprod;apply lt_wf.
-Qed.
 
 
 Instance conf_to_NxN_compat: Proper (Pos.eq ==> eq * eq) conf_to_NxN.
@@ -1528,13 +1454,13 @@ destruct (Spect.support (Smax (!! pos2))) as [| pt [| ? ?]] eqn:Hsupp.
   rewrite Heq. destruct (Spect.size (!! pos2) =? 3); rewrite Heq; reflexivity.
 Qed.
 
-Instance lexprod_compat: Proper (eq * eq ==> eq * eq ==> iff) (lexprod lt lt).
+Let lt_conf x y := lexprod lt lt (conf_to_NxN x) (conf_to_NxN y).
+
+Lemma wf_lt_conf: well_founded lt_conf.
 Proof.
-  intros (a,b) (a',b') (heqa , heqb) (c,d) (c',d') (heqc , heqd) .
-  hnf in *|-.
-  simpl in *|-.
-  subst.
-  reflexivity.
+  unfold lt_conf.
+  apply wf_inverse_image.
+  apply wf_lexprod;apply lt_wf.
 Qed.
 
 Instance lt_conf_compat: Proper (Pos.eq ==> Pos.eq ==> iff) lt_conf.

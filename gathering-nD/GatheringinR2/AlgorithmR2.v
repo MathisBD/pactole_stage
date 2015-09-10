@@ -10,7 +10,7 @@
 
 Require Import Bool.
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Omega Field.
 Require Import Rbase Rbasic_fun R_sqrt Rtrigo_def.
 Require Import List.
 Require Import SetoidList.
@@ -18,6 +18,7 @@ Require Import Relations.
 Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
+Require Import Inverse_Image.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
@@ -26,6 +27,7 @@ Require Pactole.CommonFormalism.
 Require Pactole.RigidFormalism.
 Require Import Pactole.GatheringinR.SortingR.
 Require Import Pactole.MultisetSpectrum.
+Require Import Pactole.Lexprod.
 
 
 Import Permutation.
@@ -331,7 +333,7 @@ Proof.
   decompose [or] h; clear h;
   match goal with
   | H1:l = _ , H2:l = _ |- _ => rewrite H1 in H2; inversion H2; clear H1 H2;subst
-  end;clear hpermut;try reflexivity;unfold barycenter;
+  end;clear hpermut;try reflexivity;unfold barycenter; f_equal;
   (* FIXME: find a better way to normalize the sum? field? *)
   repeat progress
          match goal with
@@ -347,7 +349,7 @@ Proof.
          | |- context C [ (R2.add pt3' (R2.add pt2' pt1')) ] =>
            rewrite (@R2.add_comm pt2' pt1')
          end
-  ;auto.
+  ; reflexivity.
 Qed.
 
 
@@ -882,41 +884,43 @@ Qed.
 
 Require Pactole.GatheringinR.Algorithm.
 
-Definition lt_config x y := GatheringinR.Algorithm.lexprod lt lt (measure (!! x)) (measure (!! y)).
+Definition lt_config x y := lexprod lt lt (measure (!! x)) (measure (!! y)).
 
-Definition sim_triangle_type sim t :=
+Lemma wf_lt_conf: well_founded lt_config.
+Proof.
+  unfold lt_config.
+  apply wf_inverse_image.
+  apply wf_lexprod;apply lt_wf.
+Qed.
+
+Instance lt_conf_compat: Proper (Pos.eq ==> Pos.eq ==> iff) lt_config.
+Proof.
+  intros pos1 pos1' heq1 pos2 pos2' heq2.
+  unfold lt_config.
+  rewrite <- heq1, <- heq2.
+  reflexivity.
+Qed.
+
+Definition map_triangle_type f t :=
   match t with
-  | Isosceles p => Isosceles (sim p)
+  | Isosceles p => Isosceles (f p)
   | _ => t
   end.
 
 Definition sim_circle (sim:Sim.t) c :=
   {| center := sim c.(center) ; radius := sim.(Sim.zoom) * (c.(radius)) |}.
 
-Lemma Rdec_bool_mul : forall k r r', (k <> 0)%R -> Rdec_bool (k * r) (k * r') = Rdec_bool r r'.
-Proof.
-  intros k r r' H.
-  destruct (Rdec_bool r r') eqn:heq1 , (Rdec_bool (k * r) (k * r')) eqn:heq2;auto
-  ; rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *.
-  - subst.
-    auto.
-  - exfalso.
-    apply Rmult_eq_reg_l in heq2.
-    + contradiction.
-    + assumption.
-Qed.
-
 Lemma classify_triangle_morph :
   forall (sim : Sim.t) pt1 pt2 pt3, classify_triangle (sim pt1) (sim pt2) (sim pt3)
-                                  = sim_triangle_type sim (classify_triangle pt1 pt2 pt3).
+                                  = map_triangle_type sim (classify_triangle pt1 pt2 pt3).
 Proof.
   intros sim pt1 pt2 pt3.
   unfold classify_triangle at 1.
   setoid_rewrite (sim.(Sim.dist_prop)).
-  rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
-  functional induction (classify_triangle pt1 pt2 pt3)
-  ; repeat rewrite ?e, ?e0, ?e1, ?(sim.(Sim.dist_prop)), ?Rdec_bool_mul; try reflexivity
-  ; try apply Sim.zoom_non_null.
+  rewrite Rdec_bool_mult_l in *; try apply Sim.zoom_non_null.
+  functional induction (classify_triangle pt1 pt2 pt3);
+  repeat rewrite ?e, ?e0, ?e1, ?(sim.(Sim.dist_prop)), ?Rdec_bool_mult_l; try reflexivity;
+  try apply Sim.zoom_non_null.
 Qed.
 
 Lemma on_circle_morph :
@@ -927,7 +931,7 @@ Proof.
   unfold sim_circle.
   simpl.
   setoid_rewrite (sim.(Sim.dist_prop)).
-  rewrite Rdec_bool_mul in *;try apply Sim.zoom_non_null.
+  rewrite Rdec_bool_mult_l in *;try apply Sim.zoom_non_null.
   reflexivity.
 Qed.
 
@@ -977,7 +981,7 @@ Proof.
 intros sim pt1 pt2 pt3. unfold opposite_of_max_side.
 repeat rewrite (sim.(Sim.dist_prop)).
 assert (Hpos : (0 < Sim.zoom sim)%R) by apply Sim.zoom_pos.
-repeat rewrite Rle_bool_mult; trivial.
+repeat rewrite Rle_bool_mult_l; trivial.
 repeat match goal with
   | |- context[Rle_bool ?x ?y] => destruct (Rle_bool x y)
 end; reflexivity.
@@ -1011,7 +1015,7 @@ assert (Hperm : Permutation (List.map sim (filter (on_circle (SEC (Spect.support
   - apply Sim.injective. }
 rewrite <- PermutationA_Leibniz in Hperm.
 assert (Hlen := PermutationA_length _ Hperm).
-destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]],
+destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hn,
          (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (Spect.support (Spect.map sim s)))
          as [| pt1' [| pt2' [| pt3' [| ? ?]]]]; simpl in *; try (omega || reflexivity); clear Hlen.
 + admit. (* we need the hypothesis that there are robots *)
@@ -1052,33 +1056,46 @@ trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff, ?inclA_Leibniz in 
   rewrite in_map_iff in *. destruct Hin as [x' [? Hin]]. subst. exists x'. repeat split. now apply Hy.
 Qed.
 
-(* If the center of the similarity is not the origin, we need to adapt the change of referential. *)
-Lemma gatherR2_pgm_morph : forall (sim : Sim.t), Sim.center sim = (0, 0)%R ->
-  forall conf, gatherR2 (Spect.map sim (!! conf)) = sim (gatherR2 (!! conf)).
+Theorem round_simplify : forall da conf,
+  Pos.eq (round gatherR2 da conf)
+         (fun id => match da.(step) id with
+                      | None => conf id
+                      | Some f =>
+                          let s := !! conf in
+                          match Spect.support (Smax s) with
+                            | nil => conf id (* only happen with no robots *)
+                            | pt :: nil => pt (* majority stack *)
+                            | _ => if is_clean s then target s else
+                                   if mem R2.eq_dec (conf id) (SECT s) then conf id else target s
+                          end
+                    end).
 Proof.
-intros sim Hcenter conf. simpl. unfold gatherR2_pgm.
+intros da conf id. hnf. unfold round.
+destruct (step da id) as [f |] eqn:Hstep; trivial.
+destruct id as [g | b]; try now eapply Fin.case0; exact b.
+remember (conf (Good g)) as pt. remember (f pt) as sim.
+assert (Hsim : Proper (R2.eq ==> R2.eq) sim). { intros ? ? Heq. now rewrite Heq. }
+simpl pgm. unfold gatherR2_pgm.
 assert (Hperm : Permutation (map sim (Spect.support (Smax (!! conf))))
-                            (Spect.support (Smax (Spect.map sim (!! conf))))).
-{ rewrite <- map_sim_support. rewrite <- PermutationA_Leibniz. f_equiv. now rewrite Smax_morph. }
+                            (Spect.support (Smax (!! (Pos.map sim conf)))))
+  by (now rewrite <- map_sim_support, <- PermutationA_Leibniz, <- Smax_morph, Spect.from_config_map).
 assert (Hlen := Permutation_length Hperm).
-destruct (Spect.support (Smax (!! conf))) as [| pt [| pt2 l]] eqn:Hmax,
-         (Spect.support (Smax (Spect.map sim (!! conf)))) as [| pt' [| pt2' l']];
+destruct (Spect.support (Smax (!! conf))) as [| pt1 [| pt2 l]] eqn:Hmax,
+         (Spect.support (Smax (!! (Pos.map sim conf)))) as [| pt1' [| pt2' l']];
 simpl in Hlen; discriminate || clear Hlen.
 * rewrite Spect.support_nil, Smax_empty in Hmax. elim (spect_non_nil _ Hmax).
-* simpl in Hperm. now rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
-* clear Hmax Hperm pt pt' pt2 pt2' l l'.
-  rewrite is_clean_morph. destruct (is_clean (!! conf)).
-  + apply target_morph.
-  + destruct (mem R2.eq_dec (0, 0)%R (SECT (Spect.map sim (!! conf)))) eqn:Heq,
-             (mem R2.eq_dec (0%R, 0%R) (SECT (!! conf))) eqn:Heq';
-    rewrite ?mem_true_iff, ?mem_false_iff in *.
-    - rewrite <- Hcenter at 2. now rewrite Sim.center_prop.
-    - rewrite <- (Sim.center_prop sim), Hcenter in Heq. exfalso. apply Heq'.
-      rewrite InA_Leibniz in *. rewrite SECT_morph, in_map_iff in Heq.
-      destruct Heq as [x [Heq Hin]]. apply Sim.injective in Heq. now rewrite <- Heq.
-    - rewrite <- (Sim.center_prop sim), Hcenter in Heq. exfalso. apply Heq.
-      rewrite InA_Leibniz in *. rewrite SECT_morph, in_map_iff. eauto.
-    - apply target_morph.
+* simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
+  subst pt1'. now apply Sim.compose_inverse_l.
+* rewrite <- Spect.from_config_map, is_clean_morph; trivial.
+  destruct (is_clean (!! conf)).
+  + rewrite <- Spect.from_config_map, target_morph; trivial. now apply Sim.compose_inverse_l.
+  + rewrite <- (Sim.center_prop sim). rewrite Heqsim at 3. rewrite (step_center da _ _ Hstep).
+    assert (Hperm' : PermutationA eq (SECT (!! (Pos.map sim conf))) (map sim (SECT (!! conf)))).
+    { rewrite PermutationA_Leibniz, <- SECT_morph. f_equiv. now rewrite Spect.from_config_map. }
+    rewrite Hperm'. rewrite (mem_injective_map _); trivial; try (now apply Sim.injective); [].
+    destruct (mem R2.eq_dec pt (SECT (!! conf))).
+    - rewrite <- (Sim.center_prop sim), Heqsim, (step_center _ _ _ Hstep). now apply Sim.compose_inverse_l.
+    - simpl. rewrite <- sim.(Similarity.Inversion), <- target_morph. f_equiv. now apply Spect.from_config_map.
 Qed.
 
 End GatheringinR2.
