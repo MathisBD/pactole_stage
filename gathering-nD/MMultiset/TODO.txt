@@ -1,4 +1,4 @@
-* add extensionality_compat
+* add extensionality_compat + dependent version (cf. map)
 * add filtern vs. filter + npartition vs. partition
 * add max/min: elt with max/min multiplicity
 * add remove_all

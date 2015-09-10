@@ -51,7 +51,7 @@ Corollary half_size_pos : div2 nG > 0.
 Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
-Lemma spec_non_nil : forall conf, ~Spect.eq (!! conf) Spect.empty.
+Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.empty.
 Proof.
 intros conf Heq.
 unfold Spect.from_config in Heq.
@@ -66,7 +66,7 @@ Qed.
 
 Corollary sort_non_nil : forall config, sort (Spect.support (!! config)) <> nil.
 Proof.
-intros config Habs. apply (spec_non_nil config). rewrite <- Spect.support_nil.
+intros config Habs. apply (spect_non_nil config). rewrite <- Spect.support_nil.
 apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
 
@@ -98,338 +98,7 @@ intros. apply Spect.max_map_injective.
 Qed.
 
 Lemma support_max_non_nil : forall config, Spect.support (Spect.max (!! config)) <> nil.
-Proof. intros config Habs. rewrite Spect.support_nil, Spect.max_empty in Habs. apply (spec_non_nil _ Habs). Qed.
-
-(*
-(** [Smax_mult s] returns the maximal multiplicity of configutation [s]. *)
-Definition Smax_mult s := Spect.fold (fun _ => max) s 0%nat.
-
-Instance Smax_mult_compat : Proper (Spect.eq ==> eq) Smax_mult.
-Proof.
-unfold Smax_mult. intros s1 s2 Heq. apply Spect.fold_compat; trivial; refine _.
-intros _ _ n m p. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
-Qed.
-
-Lemma Smax_mult_map_injective_invariant : forall f, injective eq eq f ->
-  forall s, Smax_mult (Spect.map f s) = Smax_mult s.
-Proof.
-intros f Hf. apply Spect.ind.
-+ intros s1 s2 Hs. now rewrite Hs.
-+ intros s x n Hout Hn Hrec. rewrite Spect.map_add; try now intros ? ? Heq; rewrite Heq.
-  assert (Haux : Spect.elt -> Spect.elt ->
-            forall n m a : nat, Init.Nat.max m (Init.Nat.max n a) = Init.Nat.max n (Init.Nat.max m a)).
-  { intros _ _ n' m' p'. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2. }
-  unfold Smax_mult in *. repeat rewrite Spect.fold_add; trivial; refine _;try now (hnf;auto).
-  - intro Habs. apply Hout. apply Spect.map_In in Habs.
-    * destruct Habs as [y [Heq Hin]].
-      apply Hf in Heq; subst; assumption.
-    * repeat intro.
-      rewrite H0.
-      reflexivity.
-+ now rewrite Spect.map_empty.
-Qed.
-
-Corollary Smax_mult_similarity_invariant : forall (sim : Sim.t) s, Smax_mult (Spect.map sim s) = Smax_mult s.
-Proof. intros. apply Smax_mult_map_injective_invariant. auto. Qed.
-
-Lemma Smax_mult_add : forall s x n, (n > 0)%nat -> ~Spect.In x s ->
-  Smax_mult (Spect.add x n s) = Nat.max n (Smax_mult s).
-Proof.
-intros s x n Hn. unfold Smax_mult. apply Spect.fold_add; trivial.
-- refine _.
-- repeat intro. now subst.
-- repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
-Qed.
-
-Theorem Smax_mult_spec : forall s x, (s[x] <= Smax_mult s)%nat.
-Proof.
-intro s. pattern s. apply Spect.ind; clear s.
-* intros s1 s2 Hs. now setoid_rewrite Hs.
-* intros m x n Hout Hn Hrec y. rewrite Smax_mult_add; trivial.
-  assert (Hx : m[x] = 0%nat). { rewrite Spect.not_In in Hout. assumption. }
-  destruct (Rdec y x) as [Hxy | Hxy].
-  + subst. rewrite Spect.add_spec, Hx. rewrite Spect.eq_refl_left. apply Max.le_max_l.
-  + rewrite Spect.add_other; auto. transitivity (Smax_mult m).
-    - apply Hrec.
-    - apply Max.le_max_r.
-* intro x. rewrite Spect.empty_spec. omega.
-Qed.
-
-Lemma Smax_mult_0 : forall s, Smax_mult s = 0%nat <-> Spect.eq s Spect.empty.
-Proof.
-intro s. split; intro Heq.
-+ destruct (Spect.empty_or_In_dec s) as [? | [x Hin]]; trivial.
-  elim (lt_irrefl 0). apply lt_le_trans with s[x].
-  - exact Hin.
-  - rewrite <- Heq. apply Smax_mult_spec.
-+ rewrite Heq. unfold Smax_mult. now rewrite Spect.fold_empty.
-Qed.
-
-(** ***  Elements of a multiset with maximal multiplciity  **)
-
-(** [Smax s] return the configuration [s] where all non maximal positions
-    have been removed. *)
-Definition Smax s := Spect.nfilter (fun _ => beq_nat (Smax_mult s)) s.
-
-Instance Smax_compat : Proper (Spect.eq ==> Spect.eq) Smax.
-Proof.
-intros s1 s2 Heq. unfold Smax. rewrite Heq. apply Spect.nfilter_extensionality_compat.
-- repeat intro. now subst.
-- intros _ n. now rewrite Heq.
-Qed.
-
-Lemma Smax_map_injective : forall f, injective eq eq f ->
-  forall s, Spect.eq (Smax (Spect.map f s)) (Spect.map f (Smax s)).
-Proof.
-intros f Hf s. unfold Smax. rewrite Spect.map_injective_nfilter.
-+ apply Spect.map_compat.
-  - intros ? ? Heq. now rewrite Heq.
-  - apply Spect.nfilter_extensionality_compat; repeat intro; subst; trivial.
-    now rewrite Smax_mult_map_injective_invariant.
-+ repeat intro. now subst.
-+ intros ? ? Heq. now rewrite Heq.
-+ assumption.
-Qed.
-
-Corollary Smax_similarity : forall (sim : Sim.t),
-  forall s, Spect.eq (Smax (Spect.map sim s)) (Spect.map sim (Smax s)).
-Proof. intros. apply Smax_map_injective. auto. Qed.
-
-
-Instance eqb_Smax_mult_compat s:
-  Proper (R.eq ==> eq ==> eq)
-         (fun _ : Spect.elt => Nat.eqb (Smax_mult s)).
-Proof.
-  repeat intro. now subst.
-Qed.
-
-Local Hint Immediate eqb_Smax_mult_compat.
-
-Lemma Smax_subset : forall s, Spect.Subset (Smax s) s.
-Proof.
-  intros s x.
-  unfold Smax.
-  setoid_rewrite Spect.nfilter_spec.
-  2: apply eqb_Smax_mult_compat.
-  destruct (Smax_mult s =? s[x]);auto.
-  omega.
-Qed.
-
-Theorem Smax_spec1 : forall s x y, Spect.In y (Smax s) -> (s[x] <= (Smax s)[y])%nat.
-Proof.
-intros s x y Hy. unfold Smax in *.
-(* assert (Hf := eqb_Smax_mult_compat s). *)
-unfold Spect.In in Hy. rewrite Spect.nfilter_spec in *; auto.
-destruct (Smax_mult s =? s[y]) eqn:Heq; try omega.
-rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply Smax_mult_spec.
-Qed.
-
-Theorem Smax_spec_non_nil : forall s x, Spect.In x s -> exists y, Spect.In y (Smax s).
-Proof.
-  intro s.
-  pattern s.
-  apply Spect.ind.
-  - intros m1 m2 Hm1m2. now setoid_rewrite Hm1m2.
-  - intros m x n Hxnotinm Hpos HI x' Hx'.
-    destruct (Spect.empty_or_In_dec m).
-    + exists x. unfold Smax. rewrite Spect.nfilter_In; auto. split.
-      * rewrite Spect.add_In. right. split; reflexivity || omega.
-      * rewrite Nat.eqb_eq, Smax_mult_add; trivial.
-        rewrite e at 2.
-        rewrite Spect.add_empty, Spect.singleton_spec.
-        unfold R.eq_dec,Rdef.eq_dec. Rdec.
-        rewrite <- Smax_mult_0 in e. rewrite e.
-        apply Max.max_0_r.
-    + destruct e as [x'' Hx''].
-      specialize (HI x'' Hx'').
-      destruct HI as [y Hy]. unfold Smax.
-      setoid_rewrite Spect.nfilter_In; try now repeat intro; subst.
-      rewrite Smax_mult_add; trivial.
-      unfold Smax in Hy. rewrite Spect.nfilter_In in Hy; auto.
-      destruct Hy as [Hy Heq]. rewrite Nat.eqb_eq in Heq.
-      destruct (le_lt_dec n (m[y])).
-      * { exists y. split.
-          - now rewrite Spect.add_In; auto.
-          - rewrite Nat.eqb_eq, Heq, Spect.add_other, Max.max_r; trivial.
-            intro Habs. apply Hxnotinm. now rewrite <- Habs. }
-      * { exists x. split.
-          - rewrite Spect.add_In. right. split; reflexivity || omega.
-          - rewrite Nat.eqb_eq, Max.max_l; try omega.
-            rewrite Spect.not_In in Hxnotinm. now rewrite Spect.add_same, Hxnotinm. }
-  - intros x H. elim (Spect.In_empty H).
-Qed.
-
-
-Lemma Smax_empty : forall s, Spect.eq (Smax s) Spect.empty <-> Spect.eq s Spect.empty.
-Proof.
-intro s. split; intro H.
-- destruct (Spect.empty_or_In_dec s) as [Hs | Hs].
-  + intro. now rewrite Hs.
-  + destruct Hs as [x Hx].
-    destruct (Smax_spec_non_nil Hx) as [y Hy].
-    unfold Spect.In in Hy.
-    rewrite H in Hy. rewrite Spect.empty_spec in Hy. omega.
-- rewrite H.
-  unfold Smax.
-  rewrite Spect.nfilter_empty.
-  + reflexivity.
-  + intros r1 r2 Hr1r2 x1 x2 hx1x2.
-    subst.
-    reflexivity.
-Qed.
-
-Lemma Smax_2_mult : forall s x, (Smax s)[x] = 0 \/ (Smax s)[x] = s[x].
-Proof.
-intros s x. destruct (Spect.empty_or_In_dec s) as [Hs | Hs].
-+ left. rewrite <- Smax_empty in Hs. rewrite (Hs x). apply Spect.empty_spec.
-+ unfold Smax. rewrite Spect.nfilter_spec.
-  destruct (Smax_mult s =? s[x]) as [Heq | Heq]; auto.
-  repeat intro. now subst.
-Qed.
-(*
-Lemma Smax_val : forall s x, Spect.In x (Smax s) -> s[x] = Smax_mult s.
-Proof.
-intros s x Hin.
-Qed.
-*)
-Lemma Smax_In_mult : forall s x, Spect.In x s -> (Spect.In x (Smax s) <-> (Smax s)[x] = s[x]).
-Proof. intros s x Hin. unfold Spect.In in *. destruct (Smax_2_mult s x); omega. Qed.
-
-Lemma Smax_spec_mult : forall s x y, Spect.In x (Smax s) -> (Spect.In y (Smax s) <-> (Smax s)[y] = (Smax s)[x]).
-Proof.
-intros s x y Hx. split.
-+ intro Hy. destruct (Smax_2_mult s x) as [Hx' | Hx'], (Smax_2_mult s y) as [Hy' | Hy'];
-  (unfold Spect.In in *; omega) || (try congruence); [].
-  apply le_antisym.
-  - rewrite Hy'. now apply Smax_spec1.
-  - rewrite Hx'. now apply Smax_spec1.
-+ intro Heq. unfold Spect.In in *. now rewrite Heq.
-Qed.
-
-Theorem Smax_spec2 : forall s x y,
-  Spect.In x (Smax s) -> ~Spect.In y (Smax s) -> (s[y] < s[x])%nat.
-Proof.
-intros s x y Hx Hy. apply le_neq_lt.
-+ assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
-  - rewrite <- Hx. now apply Smax_spec1.
-  - now rewrite <- Smax_subset.
-+ intro Habs. apply Hy. unfold Smax. rewrite Spect.nfilter_In; try now repeat intro; subst. split.
-  - unfold Spect.In in *. rewrite Habs. apply lt_le_trans with (Smax s)[x]; trivial. apply Smax_subset.
-  - rewrite Habs. unfold Smax in Hx. rewrite Spect.nfilter_In in Hx; try now repeat intro; subst.
-Qed.
-
-Close Scope R_scope.
-  
-Lemma Smax_max_mult : forall s x, ~Spect.eq s Spect.empty -> Spect.In x (Smax s) <-> s[x] = Smax_mult s.
-Proof.
-  intros s x hnonempty.
-  split.
-  - intros H.
-    apply Spect.nfilter_In in H;auto.
-    destruct H.
-    symmetry.
-    apply beq_nat_true.
-    assumption.
-  - intro H.
-    unfold Smax.
-    rewrite Spect.nfilter_In;auto.
-    split.
-    + assert (s[x]<>0).
-      { intro abs.
-        rewrite H in abs.
-        rewrite Smax_mult_0 in abs.
-        contradiction. }
-      red.
-      omega.
-    + rewrite H.
-      symmetry.
-      apply beq_nat_refl.
-Qed.
-
-Lemma Smax_max_mult_ex : forall s, ~Spect.eq s Spect.empty -> exists x, Smax_mult s = s[x].
-Proof.
-  intros s.
-  pattern s.
-  apply Spect.ind.
-  - repeat intro.
-    setoid_rewrite H.
-    reflexivity.
-  - intros m x n H H0 H1 H2.
-    clear H2.
-    destruct (Spect.empty_or_In_dec m).
-    exists x.
-    rewrite e.
-    rewrite Spect.add_empty.
-    unfold Smax_mult.
-    + rewrite Spect.fold_singleton;auto.
-      * rewrite Max.max_0_r.
-        symmetry.
-        apply Spect.singleton_same.
-      * repeat intro.
-        subst;auto.
-    + assert (~ Spect.eq m Spect.empty).
-      { rewrite Spect.not_empty_In.
-        assumption. }
-      specialize (H1 H2).
-      clear e H2.
-      destruct H1 as [max_m h_max_m].
-      rewrite Smax_mult_add;auto.
-      destruct (Max.max_spec n (Smax_mult m)) as [[h_max1 h_max2]|[h_max1 h_max2]].
-      * exists max_m.
-        rewrite Spect.add_other.
-        -- rewrite <- h_max_m.
-           assumption.
-        -- intro abs.
-           rewrite abs in *.
-           rewrite Spect.not_In in H.
-           exfalso;omega.
-      * exists x.
-        rewrite h_max2.
-        rewrite Spect.add_same.
-        rewrite Spect.not_In in H.
-        omega.
-  - intro abs.
-    elim abs.
-    reflexivity.
-Qed.
-
-
-Lemma Smax_spec_max :
-  forall s x,
-    ~Spect.eq s Spect.empty ->
-    (forall y, (s[y] <= s[x])) -> Smax_mult s = s[x].
-Proof.
-  intros s x hnonempty h.
-  apply le_antisym.
-  - destruct (@Smax_max_mult_ex s);auto.
-    rewrite H.
-    apply h.
-  - apply Smax_mult_spec.
-Qed.
-
-
-Corollary Smax_spec1_iff : forall s,
-    ~Spect.eq s Spect.empty ->
-    forall x,
-      Spect.In x (Smax s) <-> forall y, (s[y] <= s[x]).
-Proof.
-  intros s Hs x.
-  assert (h_empty:=Hs).
-  rewrite <- Smax_empty in Hs.
-  rewrite Spect.not_empty_In in Hs.
-  destruct Hs as [z Hz].
-  split; intro Hx.
-  - intro y. assert (Hx' := Hx). rewrite Smax_In_mult in Hx.
-    + rewrite <- Hx. now apply Smax_spec1.
-    + now rewrite <- Smax_subset.
-  - assert (h:=@Smax_spec_max s x h_empty Hx).
-    rewrite Smax_max_mult;auto.
-Qed.
-
-
-Lemma support_Smax_non_nil : forall config, Spect.support (Smax (!! config)) <> nil.
-Proof. intros config Habs. rewrite Spect.support_nil, Smax_empty in Habs. apply (spec_non_nil _ Habs). Qed.
-*)
+Proof. intros config Habs. rewrite Spect.support_nil, Spect.max_empty in Habs. apply (spect_non_nil _ Habs). Qed.
 
 (** ***  Computational equivalent of having a majority tower  **)
 
@@ -450,7 +119,7 @@ intros config pt. split; intro Hmaj.
   + apply NoDupA_singleton.
   + apply Spect.support_NoDupA.
   + intro y. rewrite InA_singleton.
-    rewrite Spect.support_In, Spect.max_spec1_iff; try apply spec_non_nil; [].
+    rewrite Spect.support_In, Spect.max_spec1_iff; try apply spect_non_nil; [].
     split; intro Hpt.
     - subst y. intro x. destruct (Rdec x pt).
       -- subst x. reflexivity.
@@ -863,7 +532,7 @@ Qed.
 
 Lemma extreme_center_similarity_invariant : forall (sim : Sim.t) config,
   extreme_center (Spect.map sim (!! config)) = sim (extreme_center (!! config)).
-Proof. intros. apply extreme_center_similarity. apply spec_non_nil. Qed.
+Proof. intros. apply extreme_center_similarity. apply spect_non_nil. Qed.
 
 
 (** *  The robogram solving the gathering **)
@@ -973,7 +642,7 @@ destruct (Spect.support (Spect.max (!! pos))) as [| pt' [| pt2' l']].
     - (* The current robot is exremal *)
       hnf. unfold R.origin, Rdef.origin. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
     - (* The current robot is not exremal *)
-      rewrite <- Spect.from_config_map, extreme_center_similarity; apply spec_non_nil || trivial.
+      rewrite <- Spect.from_config_map, extreme_center_similarity; apply spect_non_nil || trivial.
       hnf. rewrite <- (da.(step_center) _ pt Hstep) at 2.
       rewrite <- Hinvsim. simpl. now rewrite <- (simc pt).(Similarity.Inversion).
 Qed.
@@ -1262,7 +931,7 @@ destruct (step da id1) eqn:Hmove1; [destruct (step da id2) eqn:Hmove2 |].
   cbv zeta.
   destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
   + (* no robots *)
-    rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spec_non_nil _ Hmaj).
+    rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
   + (* a majority tower *)
     reflexivity.
   + destruct (Spect.size (!! config) =? 3) eqn:Hlen.
