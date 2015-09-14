@@ -1379,11 +1379,6 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
 Qed.
 
 
-Lemma Majority_measure : forall pt config, MajTower_at pt config ->
-  measure (!! config) = (0, N.nG - (!! config)[pt]).
-Proof. intros pt config Hmaj. rewrite MajTower_at_equiv in Hmaj. unfold measure. now rewrite Hmaj. Qed.
-
-
 Theorem round_lt_config : forall da conf,
   ~forbidden conf -> moving gatherR2 da conf <> nil ->
   lt_config (round gatherR2 da conf) conf.
@@ -1397,17 +1392,17 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmaj.
 * (* No robots *)
   rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
 * (* A majority tower *)
-  repeat rewrite Majority_measure with pt _.
-  + apply right_lex.
-    assert ((!! (round gatherR2 da conf))[pt] <= N.nG).
-    { rewrite <- plus_0_r. change 0 with N.nB.
-      rewrite <- (Spect.cardinal_from_config (round gatherR2 da conf)).
-      apply Spect.cardinal_lower. }
-    cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]). omega.
-    rewrite increase_move_iff. exists gmove. split; trivial.
-    rewrite (round_simplify_Majority _ _ Hmaj). destruct (step da gmove); trivial. now elim Hstep.
-  + now rewrite MajTower_at_equiv.
-  + apply MajTower_at_forever. now rewrite MajTower_at_equiv.
+  assert (Hmajnext : Spect.support (Spect.max (!! (round gatherR2 da conf))) = pt :: nil).
+  { rewrite <- MajTower_at_equiv. apply (MajTower_at_forever da). now rewrite MajTower_at_equiv. }
+  unfold measure. rewrite Hmaj, Hmajnext.
+  apply right_lex.
+  assert ((!! (round gatherR2 da conf))[pt] <= N.nG).
+  { rewrite <- plus_0_r. change 0 with N.nB.
+    rewrite <- (Spect.cardinal_from_config (round gatherR2 da conf)).
+    apply Spect.cardinal_lower. }
+  cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]). omega.
+  rewrite increase_move_iff. exists gmove. split; trivial.
+  rewrite (round_simplify_Majority _ _ Hmaj). destruct (step da gmove); trivial. now elim Hstep.
 * (* Computing the SEC *)
   assert (Hlen : 2 <= length (Spect.support (Spect.max (!! conf)))).
   { rewrite Hmaj. simpl. omega. }
