@@ -24,4 +24,5 @@ GatheringinR/SortingR.v
 GatheringinR/Impossibility.v
 GatheringinR/Algorithm.v
 Convergence/Impossibility_2G_1B.v
-GatheringinR2/AlgorithmR2.v
+GatheringinR2/R2geometry.v
+GatheringinR2/Algorithm.v

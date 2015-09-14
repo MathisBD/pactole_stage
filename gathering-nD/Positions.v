@@ -50,7 +50,7 @@ Module Type RealMetricSpaceDef <: DecidableType.
   Parameter mult_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
   Parameter plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   
-  (* TODO: adds the missing properties *)
+  (* TODO: add the missing properties *)
   Parameter mul_1 : forall u, eq (mul 1 u) u.
   Parameter non_trivial : exists u v, ~eq u v.
 End RealMetricSpaceDef.
@@ -158,8 +158,13 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   
   Lemma mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
   Proof.
-  intros k k' u Hu Heq.
-  Admitted.
+  intros k k' u Hu Heq. destruct (Rdec k k') as [| Hneq]; trivial.
+  assert (Heq0 : eq (mul (k -k') u)  origin).
+  { unfold Rminus. rewrite <- plus_morph, minus_morph, Heq. apply add_opp. }
+  elim Hu. rewrite <- mul_1. rewrite <- (Rinv_l (k - k')).
+  - rewrite <- mult_morph. rewrite Heq0. apply mul_origin.
+  - intro Habs. apply Hneq. now apply Rminus_diag_uniq.
+  Qed.
   
   Definition middle u v := mul (1/2)%R (add u v).
   
