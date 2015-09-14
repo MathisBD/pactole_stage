@@ -834,7 +834,7 @@ Definition measure_clean (s : Spect.t) := N.nG - SECT_cardinal s.
 Definition measure (s : Spect.t) : nat * nat :=
   match Spect.support (Spect.max s) with
     | nil => (0, 0) (* no robot *)
-    | pt :: nil => (0, measure_reduce s) (* majority *)
+    | pt :: nil => (0, N.nG -  s[pt]) (* majority *)
     | _ :: _ :: _ =>
       let l := Spect.support s in
       let sec := List.filter (on_circle (SEC l)) l in
@@ -865,7 +865,8 @@ destruct (Spect.support (Spect.max s1)) as [| pt1 [| ? ?]] eqn:Hs1,
          (Spect.support (Spect.max s2)) as [| pt2 [| ? ?]] eqn:Hs2;
 simpl in Hsize; omega || clear Hsize.
 + reflexivity.
-+ f_equal. now rewrite Hs.
++ rewrite Hs. repeat f_equal.
+  rewrite <- (PermutationA_1 _). rewrite <- Hs1, <- Hs2. rewrite Hs. reflexivity.
 + clear -Hs.
   assert (Hperm : Permutation (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1))
                               (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))).
@@ -1249,7 +1250,7 @@ intros config pt. split; intro Hmaj.
 Qed.
 
 
-(** Whenever there is a majority stack, it remains forever so. **)
+(** Whenever there is a majority stack, it remains forever so. *)
 Theorem MajTower_at_forever : forall pt pos da, MajTower_at pt pos -> MajTower_at pt (round gatherR2 da pos).
 Proof.
 intros pt pos da Hmaj x Hx. assert (Hs := Hmaj x Hx).
@@ -1561,7 +1562,7 @@ Qed.
 (** Generic result of robograms using multiset spectra. *)
 Lemma increase_move :
   forall r conf da pt,
-    ((Spect.from_config conf)[pt] < (!! (round r da conf))[pt])%nat ->
+    ((!! conf)[pt] < (!! (round r da conf))[pt])%nat ->
     exists id, round r da conf id = pt /\ round r da conf id <> conf id.
 Proof.
   intros r conf da pt Hlt.
@@ -1762,21 +1763,63 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
 Qed.
 
 
+Lemma Majority_measure : forall pt config, MajTower_at pt config ->
+  measure (!! config) = (0, N.nG - (!! config)[pt]).
+Proof. intros pt config Hmaj. rewrite MajTower_at_equiv in Hmaj. unfold measure. now rewrite Hmaj. Qed.
+
+
 Theorem round_lt_config : forall da conf,
   ~forbidden conf -> moving gatherR2 da conf <> nil ->
   lt_config (round gatherR2 da conf) conf.
 Proof.
-intros da conf Hforbidden Hmove.
+intros da conf Hforbidden Hmove. unfold lt_config.
 apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
 assert (Hstep : step da gmove <> None).
 { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
 rewrite moving_spec in Hmove.
-destruct (Spect.support (Spect.max (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
+destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmaj.
 * (* No robots *)
   rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
 * (* A majority tower *)
-  
+  repeat rewrite Majority_measure with pt _.
+  + apply right_lex.
+    assert ((!! (round gatherR2 da conf))[pt] <= N.nG).
+    { rewrite <- plus_0_r. change 0 with N.nB.
+      rewrite <- (Spect.cardinal_from_config (round gatherR2 da conf)).
+      apply Spect.cardinal_lower. }
+    cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]). omega.
+    rewrite increase_move_iff. exists gmove. split; trivial.
+    rewrite (round_simplify_Majority _ _ Hmaj). destruct (step da gmove); trivial. now elim Hstep.
+  + now rewrite MajTower_at_equiv.
+  + apply MajTower_at_forever. now rewrite MajTower_at_equiv.
 * (* Computing the SEC *)
+  assert (Hlen : 2 <= length (Spect.support (Spect.max (!! conf)))).
+  { rewrite Hmaj. simpl. omega. }
+  destruct (is_clean (!! conf)) eqn:Hclean.
+  (** Clean case *)
+  + rewrite round_simplify_clean; trivial.
+    pose (l := Spect.support (!! conf)).
+    destruct (filter (on_circle (SEC (l))) l) as [| pt1 [| pt2 [| pt3 [| pt4 sec]]]] eqn:Hsec;
+        unfold measure at 2; rewrite Hmaj; unfold l in Hsec; rewrite Hsec, ?Hclean.
+    (* TODO: There must be at least two point on the SEC, so the first two cases are absurd.
+             cf RDVinRd.v for the sketch of the proof (but it may require more than a metric space) *)
+    - admit.
+    - admit.
+    - (** Three aligned towers *)
+      admit.
+    - destruct (classify_triangle pt1 pt2 pt3) as [| v |] eqn:Htriangle.
+      { (** Equilateral triangle *)
+        admit. }
+      { (** Isosceles triangle *)
+        admit. }
+      { (** Scalene triangle *)
+        admit. }
+    - (** General case *)
+      admit.
+  (** Dirty case *)
+  + rewrite round_simplify_dirty; trivial.
+    (* TODO: same decomposition as before *)
+    admit.
 Admitted.
 
 End GatheringinR2.
