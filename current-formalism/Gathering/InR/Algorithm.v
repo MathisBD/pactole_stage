@@ -22,11 +22,11 @@ Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Positions.
-Require Import Pactole.GatheringinR.SortingR.
+Require Import Pactole.Gathering.InR.SortingR.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
 Import Permutation.
-Require Import Pactole.GatheringinR.Definitions.
+Require Import Pactole.Gathering.InR.Definitions.
 
 
 Set Implicit Arguments.

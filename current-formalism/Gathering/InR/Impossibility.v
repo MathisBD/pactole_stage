@@ -6,7 +6,7 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.GatheringinR.Definitions.
+Require Import Pactole.Gathering.InR.Definitions.
 
 
 Set Implicit Arguments.

@@ -19,10 +19,10 @@ SetSpectrum.v
 LimitedSetSpectrum.v
 LimitedMultisetSpectrum.v
 Lexprod.v
-GatheringinR/Definitions.v
-GatheringinR/SortingR.v
-GatheringinR/Impossibility.v
-GatheringinR/Algorithm.v
 Convergence/Impossibility_2G_1B.v
-GatheringinR2/R2geometry.v
-GatheringinR2/Algorithm.v
+Gathering/InR/Definitions.v
+Gathering/InR/SortingR.v
+Gathering/InR/Impossibility.v
+Gathering/InR/Algorithm.v
+Gathering/InR2/R2geometry.v
+Gathering/InR2/Algorithm.v

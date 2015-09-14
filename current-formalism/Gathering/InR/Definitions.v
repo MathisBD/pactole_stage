@@ -23,7 +23,7 @@ Require Import Pactole.Positions.
 Require Import Pactole.Similarity.
 Require Pactole.CommonRealFormalism.
 Require Pactole.RigidFormalism.
-Require Import Pactole.GatheringinR.SortingR.
+Require Import Pactole.Gathering.InR.SortingR.
 Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
@@ -322,9 +322,6 @@ Hint Immediate Sim.injective sim_Minjective.
 
 Coercion is_true : bool >-> Sortclass.
 
-Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> B) :=
-  Proper (RA ==> RB) f \/ Proper (RA --> RB) f.
-
 Lemma similarity_increasing : forall k t, 0 <= k -> Proper (Rleb ==> Rleb) (fun x => k * (x - t)).
 Proof. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Rmult_le_compat_l; lra. Qed.
 
@@ -351,15 +348,7 @@ intros ? ? Heq. split; intros [HnG [pt1 [pt2 [Hneq Hpt]]]]; split; trivial ||
 exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
 
-End GatheringinR.
-
-(* Other results *)
-
-Lemma even_div2 : forall n, Nat.Even n -> Nat.div2 n + Nat.div2 n = n.
-Proof.
-intros n Hn. replace (Nat.div2 n + Nat.div2 n) with (2 * Nat.div2 n) by lia.
-rewrite <- Nat.double_twice. symmetry. apply even_double. now rewrite Even.even_equiv.
-Qed.
-
 Global Instance Leibniz_fun_compat : forall f, Proper (R.eq ==> R.eq) f.
 Proof. intros f ? ? Heq. now rewrite Heq. Qed.
+
+End GatheringinR.

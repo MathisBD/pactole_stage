@@ -51,7 +51,16 @@ destruct m as [| [| m]]; try now inversion Heq.
 simpl. do 2 apply le_S_n in Heq. apply IHn in Heq. omega.
 Qed.
 
+Lemma even_div2 : forall n, Nat.Even n -> Nat.div2 n + Nat.div2 n = n.
+Proof.
+intros n Hn. replace (Nat.div2 n + Nat.div2 n) with (2 * Nat.div2 n) by lia.
+rewrite <- Nat.double_twice. symmetry. apply even_double. now rewrite Even.even_equiv.
+Qed.
+
 Definition injective {A B : Type} eqA eqB (f : A -> B) := (forall x y, eqB (f x) (f y) -> eqA x y).
+
+Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> B) :=
+  Proper (RA ==> RB) f \/ Proper (RA --> RB) f.
 
 Definition full_relation {A : Type} := fun _ _ : A => True.
 

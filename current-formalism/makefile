@@ -78,13 +78,13 @@ COQMKTOP?="$(COQBIN)coqmktop"
 #                    #
 ######################
 
-VFILES:=GatheringinR2/Algorithm.v\
-  GatheringinR2/R2geometry.v\
+VFILES:=Gathering/InR2/Algorithm.v\
+  Gathering/InR2/R2geometry.v\
+  Gathering/InR/Algorithm.v\
+  Gathering/InR/Impossibility.v\
+  Gathering/InR/SortingR.v\
+  Gathering/InR/Definitions.v\
   Convergence/Impossibility_2G_1B.v\
-  GatheringinR/Algorithm.v\
-  GatheringinR/Impossibility.v\
-  GatheringinR/SortingR.v\
-  GatheringinR/Definitions.v\
   Lexprod.v\
   LimitedMultisetSpectrum.v\
   LimitedSetSpectrum.v\

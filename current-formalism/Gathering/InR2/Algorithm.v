@@ -25,10 +25,10 @@ Require Import Pactole.Robots.
 Require Import Pactole.Positions.
 Require Pactole.CommonFormalism.
 Require Pactole.RigidFormalism.
-Require Import Pactole.GatheringinR.SortingR.
+Require Import Pactole.Gathering.InR.SortingR.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
-Require Import Pactole.GatheringinR2.R2geometry.
+Require Import Pactole.Gathering.InR2.R2geometry.
 
 
 Import Permutation.
@@ -508,7 +508,6 @@ simpl in Hsize; omega || clear Hsize.
     rewrite Hs; destruct (is_clean s2); f_equal; now rewrite Hs.
 Qed.
 
-Require Pactole.GatheringinR.Algorithm.
 
 Definition lt_config x y := lexprod lt lt (measure (!! x)) (measure (!! y)).
 
@@ -908,8 +907,7 @@ rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.s
     destruct (R2.eq_dec pt pt1); try contradiction.
     auto with arith.
 + rewrite Spect.cardinal_add, Spect.cardinal_singleton, Spect.cardinal_from_config.
-  unfold N.nB. rewrite plus_0_r.
-  now apply Definitions.even_div2.
+  unfold N.nB. rewrite plus_0_r. now apply even_div2.
 Qed.
 
 
