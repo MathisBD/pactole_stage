@@ -313,3 +313,8 @@ Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
 Axiom SEC_spec1 : forall l, enclosing_circle (SEC l) l.
 (** The SEC is the smallest one. *)
 Axiom SEC_spec2 : forall l c, enclosing_circle c l -> radius (SEC l) <= radius c.
+(** FACILE À PROUVER? If there is at least one point in l, then [SEC l] contains at least one point *)
+Axiom SEC_contains_1 : forall l, l <> nil -> exists p, In p l /\ on_circle (SEC l) p = true.
+(** FACILE À PROUVER? If there are more than one point in l, then [SEC l] contains at least two points *)
+Axiom SEC_contains_2 : forall l, (List.length l >= 2)%nat -> exists p q, In p l /\ on_circle (SEC l) p = true
+                                                           /\ on_circle (SEC l) q = true.

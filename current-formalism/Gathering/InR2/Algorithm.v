@@ -622,7 +622,14 @@ destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
 - apply opposite_of_max_side_morph.
 Qed.
 
-Lemma target_morph : forall (sim : Sim.t) s, target (Spect.map sim s) = sim (target s).
+Lemma R2middle_morph : forall x y (sim:Sim.t), (R2.middle (sim x) (sim y))%R2 = sim ((R2.middle x y))%R2.
+Proof.
+  intros x y sim.
+  
+Admitted.
+
+
+Lemma target_morph : forall (sim : Sim.t) s,target (Spect.map sim s) = sim (target s).
 Proof.
 intros sim s. unfold target.
 assert (Hperm : Permutation (List.map sim (filter (on_circle (SEC (Spect.support s))) (Spect.support s)))
@@ -642,10 +649,20 @@ assert (Hlen := PermutationA_length _ Hperm).
 destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hn,
          (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (Spect.support (Spect.map sim s)))
          as [| pt1' [| pt2' [| pt3' [| ? ?]]]]; simpl in *; try (omega || reflexivity); clear Hlen.
-+ admit. (* we need the hypothesis that there are robots *)
++ destruct (@SEC_contains_1 (Spect.support s)) as [x hx].
+  * admit. (* we need the hypothesis that there is one robots *)
+  * rewrite <- filter_In in hx.
+    rewrite Hn in hx.
+    elim (in_nil hx).
 + now rewrite (PermutationA_1 _) in Hperm.
 + rewrite (PermutationA_2 _) in Hperm.
-  destruct Hperm as [[H1 H2] | [H1 H2]]; subst; admit. (* sim is a morphism for R2.add and R2.mul *)
+  destruct Hperm as [[H1 H2] | [H1 H2]]; subst.
+  * rewrite R2middle_morph.
+    reflexivity.
+  * rewrite R2middle_morph.
+    unfold R2.middle.
+    rewrite R2.add_comm at 1.
+    reflexivity.
 + rewrite PermutationA_Leibniz in Hperm. rewrite <- (target_triangle_compat Hperm). apply target_triangle_morph.
 + change (sim (center (SEC (Spect.support s)))) with (center (sim_circle sim (SEC (Spect.support s)))).
   f_equal. rewrite <- SEC_morph. f_equiv. apply map_sim_support.
