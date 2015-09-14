@@ -1,7 +1,7 @@
 (* This file extends the common formalism for real metric spaces and contains a common notion of similarity. *)
 
 Require Import Pactole.Robots.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 Require Export Similarity.
 Require Pactole.CommonFormalism.
 

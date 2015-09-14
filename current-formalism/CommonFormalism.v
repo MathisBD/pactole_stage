@@ -19,12 +19,12 @@ Require Import Psatz.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 
 
 Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)).
   Module Names := Spect.Names.
-  Module Pos := Spect.Pos.
+  Module Config := Spect.Config.
   
   (** ** Good robots have a common program, which we call a robogram *)
   
@@ -48,25 +48,25 @@ Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(
   
   (** ** Executions *)
   
-  (** Now we can [execute] some robogram from a given position with a [demon] *)
+  (** Now we can [execute] some robogram from a given configuration with a [demon] *)
   CoInductive execution :=
-    NextExecution : Pos.t → execution → execution.
+    NextExecution : Config.t → execution → execution.
   
   (** *** Destructors for demons *)
   
-  Definition execution_head (e : execution) : Pos.t :=
-    match e with NextExecution pos _ => pos end.
+  Definition execution_head (e : execution) : Config.t :=
+    match e with NextExecution conf _ => conf end.
   
   Definition execution_tail (e : execution) : execution :=
     match e with NextExecution _ e => e end.
   
   CoInductive eeq (e1 e2 : execution) : Prop :=
-    | Ceeq : Pos.eq (execution_head e1) (execution_head e2) ->
+    | Ceeq : Config.eq (execution_head e1) (execution_head e2) ->
              eeq (execution_tail e1) (execution_tail e2) -> eeq e1 e2.
   
   Declare Instance eeq_equiv : Equivalence eeq.
   Declare Instance eeq_bisim : Bisimulation execution.
-  Declare Instance execution_head_compat : Proper (eeq ==> Pos.eq) execution_head.
+  Declare Instance execution_head_compat : Proper (eeq ==> Config.eq) execution_head.
   Declare Instance execution_tail_compat : Proper (eeq ==> eeq) execution_tail.
 End Sig.
 
@@ -74,7 +74,7 @@ End Sig.
 Module Make (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)) : Sig (Location)(N)(Spect).
 
 Module Names := Spect.Names.
-Module Pos := Spect.Pos.
+Module Config := Spect.Config.
 
 (** ** Programs for good robots *)
 
@@ -122,21 +122,21 @@ Proof. split; auto with typeclass_instances. Qed.
 
 (** ** Executions *)
 
-(** Now we can [execute] some robogram from a given position with a [demon] *)
+(** Now we can [execute] some robogram from a given configuration with a [demon] *)
 CoInductive execution :=
-  NextExecution : Pos.t → execution → execution.
+  NextExecution : Config.t → execution → execution.
 
 
 (** *** Destructors for demons *)
 
-Definition execution_head (e : execution) : Pos.t :=
-  match e with NextExecution pos _ => pos end.
+Definition execution_head (e : execution) : Config.t :=
+  match e with NextExecution conf _ => conf end.
 
 Definition execution_tail (e : execution) : execution :=
   match e with NextExecution _ e => e end.
 
 CoInductive eeq (e1 e2 : execution) : Prop :=
-  | Ceeq : Pos.eq (execution_head e1) (execution_head e2) ->
+  | Ceeq : Config.eq (execution_head e1) (execution_head e2) ->
            eeq (execution_tail e1) (execution_tail e2) -> eeq e1 e2.
 
 Instance eeq_equiv : Equivalence eeq.
@@ -152,7 +152,7 @@ Qed.
 Instance eeq_bisim : Bisimulation execution.
 Proof. exists eeq. apply eeq_equiv. Qed.
 
-Instance execution_head_compat : Proper (eeq ==> Pos.eq) execution_head.
+Instance execution_head_compat : Proper (eeq ==> Config.eq) execution_head.
 Proof. intros e1 e2 He id. subst. inversion He. intuition. Qed.
 
 Instance execution_tail_compat : Proper (eeq ==> eeq) execution_tail.

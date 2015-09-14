@@ -9,7 +9,7 @@ Require Import Psatz.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 Require Import Pactole.FlexibleFormalism.
 Require Import Pactole.RigidFormalism.
 
@@ -35,9 +35,9 @@ Import Common.
 
 Lemma the_chosen_one {A} eqA (HeqA : Reflexive eqA) :
   forall f : Location.t -> A, Proper (Location.eq ==> eqA) f ->
-  forall δ pos local_target,
+  forall δ conf local_target,
   let chosen_target := Location.mul 1%R local_target in
-  eqA (f (if Rle_bool δ (Location.dist chosen_target pos) then chosen_target else local_target))
+  eqA (f (if Rle_bool δ (Location.dist chosen_target conf) then chosen_target else local_target))
       (f local_target).
 Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_1; reflexivity. Qed.
 
@@ -131,7 +131,7 @@ Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 (** **  Equalities on one round  **)
 
 Lemma Rigid_Flex_round : forall δ r rda conf,
-  Pos.eq (Rigid.round r rda conf) (Flex.round δ r (Rigid_Flex_da rda) conf).
+  Config.eq (Rigid.round r rda conf) (Flex.round δ r (Rigid_Flex_da rda) conf).
 Proof.
 unfold Rigid_Flex_da, Rigid.round, Flex.round.
 intros δ r [] conf [g | b]; simpl.
@@ -142,7 +142,7 @@ intros δ r [] conf [g | b]; simpl.
 Qed.
 
 Lemma Flex_Rigid_round : forall δ r fda conf, rigid fda ->
-  Pos.eq (Flex.round δ r fda conf) (Rigid.round r (Flex_Rigid_da fda) conf).
+  Config.eq (Flex.round δ r fda conf) (Rigid.round r (Flex_Rigid_da fda) conf).
 Proof.
 unfold Flex_Rigid_da, Rigid.round, Flex.round, rigid.
 intros δ r [] conf Hda [g | b]; simpl in *.
@@ -156,7 +156,7 @@ Qed.
 
 (** A rigid demon can be turned into a flexible one (that satifties the [rigid] predicate). *)
 Theorem Rigid_Flex_preserves_eq : forall δ r conf1 conf2 (rd : Rigid.demon),
-  Pos.eq conf1 conf2 -> Common.eeq (Rigid.execute r rd conf1) (Flex.execute δ r (Rigid_Flex_d rd) conf2).
+  Config.eq conf1 conf2 -> Common.eeq (Rigid.execute r rd conf1) (Flex.execute δ r (Rigid_Flex_d rd) conf2).
 Proof.
 intros δ r. cofix next_exec. intros conf1 conf2 rd. constructor; trivial.
 rewrite Rigid.execute_tail, Flex.execute_tail. simpl.
@@ -169,7 +169,7 @@ Proof. intros. now apply Rigid_Flex_preserves_eq. Qed.
 
 (** A flexible demon that satisfies the [rigid] predicate can be turned into a rigid one. *)
 Theorem Flex_Rigid_preserves_eq : forall δ r conf1 conf2 (fd : Flex.demon), drigid fd ->
-  Pos.eq conf1 conf2 -> Common.eeq (Flex.execute δ r fd conf1) (Rigid.execute r (Flex_Rigid_d fd) conf2).
+  Config.eq conf1 conf2 -> Common.eeq (Flex.execute δ r fd conf1) (Rigid.execute r (Flex_Rigid_d fd) conf2).
 Proof.
 intros δ r. cofix next_exec. intros conf1 conf2 fd Hfd. constructor; trivial.
 rewrite Rigid.execute_tail, Flex.execute_tail. simpl.

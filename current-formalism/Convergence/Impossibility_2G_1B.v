@@ -54,7 +54,7 @@ Proof. exists N.nB. apply nG_nB. Qed.
 Corollary nG_non_0 : N.nG <> 0.
 Proof. rewrite nG_nB. assert (H0 := nB_non_0). unfold N.nB. omega. Qed.
 
-Corollary half_size_pos : Nat.div2 N.nG > 0.
+Corollary half_size_conf : Nat.div2 N.nG > 0.
 Proof.
 assert (H0 := nB_non_0). rewrite nG_nB. unfold N.nB.
 destruct nB as [| n].
@@ -94,12 +94,12 @@ Qed.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
-  forall (config : Pos.t) (d : demon), Fair d →
+  forall (config : Config.t) (d : demon), Fair d →
   forall (ε : R), 0 < ε → exists (lim_app : R.t), attracted lim_app ε (execute r d config).
 
 (** A solution is just convergence property for any demon. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
-  forall (config : Pos.t) (d : demon), FullySynchronous d →
+  forall (config : Config.t) (d : demon), FullySynchronous d →
   forall (ε : R), 0 < ε → exists (lim_app : R.t), attracted lim_app ε (execute r d config).
 
 
@@ -209,15 +209,15 @@ Hint Immediate gfirst_left glast_right left_right_exclusive.
      and you can scale it back on the next round. *)
 
 Open Scope R_scope.
-(** The reference starting position **)
-Definition config1 : Pos.t := fun id =>
+(** The reference starting configuration **)
+Definition config1 : Config.t := fun id =>
   match id with
     | Good g => if left_dec g then 0 else 1
     | Byz b => 0
   end.
 
-(** The second position **)
-Definition config2 : Pos.t := fun id =>
+(** The second configuration **)
+Definition config2 : Config.t := fun id =>
   match id with
     | Good g => if left_dec g then 0 else 1
     | Byz b => 1
@@ -230,7 +230,7 @@ Definition spectrum1 := Spect.add 0 N.nG (Spect.singleton 1 N.nB).
 Definition spectrum2 := Spect.add 0 N.nB (Spect.singleton 1 N.nG).
 
 (* An auxiliary lemma to avoid trouble with dependent types. *)
-Lemma spect_pos_aux : forall A (eq_dec : forall x y : A, {x = y} + {x <> y}) pt1 pt2, pt1 <> pt2 ->
+Lemma spect_conf_aux : forall A (eq_dec : forall x y : A, {x = y} + {x <> y}) pt1 pt2, pt1 <> pt2 ->
   forall pt n (l : list A), NoDup l -> length l = (2 * n)%nat ->
   countA_occ R.eq R.eq_dec pt (map (fun x  => if in_dec eq_dec x (half1 l) then pt1 else pt2) l)
   = (Spect.add pt1 n (Spect.singleton pt2 n))[pt].
@@ -268,14 +268,14 @@ intros A eq_dec pt1 pt2 Hdiff pt n. induction n; simpl; intros l Hnodup Hlen.
   + elim Habs. intuition.
 Qed.
 
-Theorem spect_pos1 : Spect.eq (!! config1) spectrum1.
+Theorem spect_conf1 : Spect.eq (!! config1) spectrum1.
 Proof.
 intro pt. unfold config1, spectrum1.
-rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+rewrite Spect.from_config_spec, Spect.Config.list_spec.
 change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
 rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
-unfold left_dec, left. rewrite (spect_pos_aux _ H01 _ nB).
+unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | ?]].
   - unfoldR in Heq. subst. rewrite countA_occ_alls_in; refine _.
     repeat rewrite Spect.add_same, Spect.singleton_other; trivial.
@@ -289,14 +289,14 @@ unfold left_dec, left. rewrite (spect_pos_aux _ H01 _ nB).
 + rewrite Names.Gnames_length. reflexivity.
 Qed.
 
-Theorem spect_pos2 : Spect.eq (!! config2) spectrum2.
+Theorem spect_conf2 : Spect.eq (!! config2) spectrum2.
 Proof.
 intro pt. unfold config2, spectrum2.
-rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+rewrite Spect.from_config_spec, Spect.Config.list_spec.
 change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
 rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
-unfold left_dec, left. rewrite (spect_pos_aux _ H01 _ nB).
+unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | Hneq']].
   - unfoldR in Heq. subst. rewrite countA_occ_alls_out; auto.
     repeat rewrite Spect.add_same, Spect.singleton_other; trivial.
@@ -446,7 +446,7 @@ Hypothesis sol : solution r.
 
 (** In any spectrum containing a tower of size at least [N.nG], the robogram does not make robots move.
     Indeed, otherwise they all go to the same location and we can build a demon that shift byzantine robots
-    by the same amount in order to get the same translated position. *)
+    by the same amount in order to get the same translated configuration. *)
 
 Definition shifting_da (pt : R) : demonic_action.
 refine {| step := fun _ => Some (fun c => Sim.translation (R.opp c));
@@ -467,8 +467,8 @@ cofix shift_fair. intro pt. constructor.
 + cbn. apply shift_fair.
 Qed.
 
-(** The position which will be shifted **)
-Definition config0 pt : Pos.t := fun id =>
+(** The configuration that will be shifted **)
+Definition config0 pt : Config.t := fun id =>
   match id with
     | Good _ => pt
     | Byz b => pt + 1
@@ -477,10 +477,10 @@ Definition config0 pt : Pos.t := fun id =>
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
 CoFixpoint shifting_execution d pt := NextExecution (config0 pt) (shifting_execution d (pt + d)).
 
-Lemma spectrum_config0 : forall pt, Spect.eq (!! (Pos.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
+Lemma spectrum_config0 : forall pt, Spect.eq (!! (Config.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
-rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+rewrite Spect.from_config_spec, Spect.Config.list_spec.
 change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
 rewrite map_app, map_map, map_map, countA_occ_app. simpl.
 rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.G => 0)).
@@ -494,8 +494,8 @@ rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.B => 1)).
     rewrite Spect.add_other, Spect.singleton_same; auto.
   - repeat rewrite countA_occ_alls_out; auto.
     rewrite Spect.add_other, Spect.singleton_other; auto.
-+ intros b Hin. unfold Pos.map. unfoldR. ring.
-+ intros g Hin. unfold Pos.map. unfoldR. ring.
++ intros b Hin. unfold Config.map. unfoldR. ring.
++ intros g Hin. unfold Config.map. unfoldR. ring.
 Qed.
 
 Corollary spect_config0_0 : Spect.eq (!! (config0 0)) spectrum1.
@@ -505,7 +505,7 @@ Section AbsurdMove.
 Definition move := r spectrum1.
 Hypothesis absurdmove : move <> 0.
 
-Lemma round_move : forall pt, Pos.eq (round r (shifting_da (pt + move + 1)) (config0 pt)) (config0 (pt + move)).
+Lemma round_move : forall pt, Config.eq (round r (shifting_da (pt + move + 1)) (config0 pt)) (config0 (pt + move)).
 Proof.
 intros pt id. unfold round. cbn.
 destruct id as [g | b].
@@ -514,7 +514,7 @@ destruct id as [g | b].
 Qed.
 
 Lemma keep_moving_by_eq : forall pt config,
-  Pos.eq config (config0 pt) -> eeq (execute r (shifting_demon move pt) config) (shifting_execution move pt).
+  Config.eq config (config0 pt) -> eeq (execute r (shifting_demon move pt) config) (shifting_execution move pt).
 Proof.
 cofix shift_exec. intros pt config Heq.
 constructor.
@@ -555,22 +555,22 @@ destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (Pos.map (Sim.homothecy 1 minus_1) config2 )) = 0.
+Corollary no_move2 : r (!! (Config.map (Sim.homothecy 1 minus_1) config2 )) = 0.
 Proof.
 assert (1 <> 0) by apply R1_neq_R0.
 rewrite <- Spect.from_config_map; refine _.
-rewrite spect_pos2. rewrite swap_spect2_spect1. apply no_move1.
+rewrite spect_conf2. rewrite swap_spect2_spect1. apply no_move1.
 Qed.
 
-Lemma round_config1 : Pos.eq (round r bad_da1 config1) config2.
+Lemma round_config1 : Config.eq (round r bad_da1 config1) config2.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-rewrite R.opp_origin, Sim.translation_origin, Pos.map_id, spect_pos1.
+rewrite R.opp_origin, Sim.translation_origin, Config.map_id, spect_conf1.
 simpl. apply no_move1.
 Qed.
 
-Lemma round_config2 : Pos.eq (round r bad_da2 config2) config1.
+Lemma round_config2 : Config.eq (round r bad_da2 config2) config1.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].

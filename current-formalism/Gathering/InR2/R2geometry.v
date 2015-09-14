@@ -6,7 +6,7 @@ Require Import SetoidPermutation.
 Import List Permutation.
 (*  Rbasic_fun  *)
 Require Import Pactole.Preliminary.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 
 
 Set Implicit Arguments.

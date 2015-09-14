@@ -4,7 +4,7 @@ Require Import Equalities.
 Require Import Morphisms.
 Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 
 
 Set Implicit Arguments.

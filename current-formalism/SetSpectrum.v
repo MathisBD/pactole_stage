@@ -14,13 +14,13 @@ Require Import SetoidList.
 Require Import MSets.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 
 
 Module Make(Loc : RealMetricSpace)(N : Size) <: Spectrum (Loc)(N).
 
 Module Names := Robots.Make(N).
-Module Pos := Positions.Make(Loc)(N)(Names).
+Module Config := Configurations.Make(Loc)(N)(Names).
 
 (** Definition of spectra as sets of locations. *)
 Module M := MSetWeakList.Make(Loc).
@@ -123,7 +123,7 @@ induction l as [| x l]; simpl.
   - apply MProp.add_cardinal_2 in Hmem. omega.
 Qed.
 
-(** Building a spectrum from a position *)
+(** Building a spectrum from a configuration *)
 
 (** Inclusion is not possible because M already contains a function [is_ok]. *)
 Definition t := M.t.
@@ -132,17 +132,17 @@ Definition eq_equiv := M.eq_equiv.
 Definition eq_dec := M.eq_dec.
 Definition In := M.In.
 
-Definition from_config pos : M.t := set (Pos.list pos).
+Definition from_config conf : M.t := set (Config.list conf).
 
-Instance from_config_compat : Proper (Pos.eq ==> M.eq) from_config.
+Instance from_config_compat : Proper (Config.eq ==> M.eq) from_config.
 Proof.
 repeat intro. unfold from_config. do 2 f_equiv.
-apply eqlistA_PermutationA_subrelation, Pos.list_compat. assumption.
+apply eqlistA_PermutationA_subrelation, Config.list_compat. assumption.
 Qed.
 
-Definition is_ok s pos := forall l, In l s <-> exists id : Names.ident, Loc.eq l (pos id).
+Definition is_ok s conf := forall l, In l s <-> exists id : Names.ident, Loc.eq l (conf id).
 
-Theorem from_config_spec : forall pos, is_ok (from_config pos) pos.
-Proof. unfold from_config, is_ok. intros. rewrite set_spec, Pos.list_InA. reflexivity. Qed.
+Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
+Proof. unfold from_config, is_ok. intros. rewrite set_spec, Config.list_InA. reflexivity. Qed.
 
 End Make.

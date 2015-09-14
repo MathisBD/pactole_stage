@@ -101,7 +101,7 @@ VFILES:=Gathering/InR2/Algorithm.v\
   MMultiset/MMultisetMap.v\
   MMultiset/MMultisetWMap.v\
   MMultiset/MMultisetInterface.v\
-  Positions.v\
+  Configurations.v\
   Robots.v\
   Preliminary.v
 

@@ -21,7 +21,7 @@ Require Import Inverse_Image.
 Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.Positions.
+Require Import Pactole.Configurations.
 Require Import Pactole.Gathering.InR.SortingR.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
@@ -47,7 +47,7 @@ Close Scope R_scope.
 (* We assume that we have at least two robots. *)
 Axiom size_G : nG >= 2.
 
-Corollary half_size_pos : div2 nG > 0.
+Corollary half_size_conf : div2 nG > 0.
 Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
@@ -56,7 +56,7 @@ Proof.
 intros conf Heq.
 unfold Spect.from_config in Heq.
 rewrite Spect.multiset_empty in Heq.
-assert (Hlgth:= Spect.Pos.list_length conf).
+assert (Hlgth:= Spect.Config.list_length conf).
 rewrite Heq in Hlgth.
 simpl in *.
 unfold N.nG in *.
@@ -72,11 +72,11 @@ Qed.
 
 (** **  Property expressing the existence of a majority tower  **)
 
-Definition MajTower_at x pos :=
-  forall y, y <> x -> ((!! pos)[y] < (!! pos)[x]).
+Definition MajTower_at x conf :=
+  forall y, y <> x -> ((!! conf)[y] < (!! conf)[x]).
 
-Instance MajTower_at_compat : Proper (Logic.eq ==> Pos.eq ==> iff) MajTower_at.
-Proof. intros ? ? ? ? ? Hpos. subst. unfold MajTower_at. now setoid_rewrite Hpos. Qed.
+Instance MajTower_at_compat : Proper (Logic.eq ==> Config.eq ==> iff) MajTower_at.
+Proof. intros ? ? ? ? ? Hconf. subst. unfold MajTower_at. now setoid_rewrite Hconf. Qed.
 
 (** Computationally, it is equivalent to having only one tower with maximum multiplicity. *)
 
@@ -135,8 +135,8 @@ Qed.
 
 (** **  Some properties of [forbidden]  **)
 
-Lemma forbidden_even : forall pos, forbidden pos -> Nat.Even nG.
-Proof. now intros pos [? _]. Qed.
+Lemma forbidden_even : forall conf, forbidden conf -> Nat.Even nG.
+Proof. now intros conf [? _]. Qed.
 
 Lemma forbidden_support_length : forall config, forbidden config ->
   Spect.size (!! config) = 2.
@@ -144,11 +144,11 @@ Proof.
 intros conf [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
 rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.singleton pt1 (Nat.div2 N.nG)))
                                         (!! conf)).
-+ rewrite Spect.size_add; try now apply half_size_pos.
++ rewrite Spect.size_add; try now apply half_size_conf.
   destruct (Spect.In_dec pt2 (Spect.singleton pt1 (Nat.div2 N.nG))) as [Hin | Hin].
   - exfalso. rewrite Spect.In_singleton in Hin.
     destruct Hin. now elim Hdiff.
-  - rewrite Spect.size_singleton; trivial. apply half_size_pos.
+  - rewrite Spect.size_singleton; trivial. apply half_size_conf.
 + intro pt. destruct (Rdec pt pt2), (Rdec pt pt1); subst.
   - now elim Hdiff.
   - rewrite Spect.add_spec, Spect.singleton_spec.
@@ -164,10 +164,10 @@ rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.s
 Qed.
 
 Lemma forbidden_injective_invariant : forall f, injective eq eq f ->
-  forall pos, forbidden pos -> forbidden (Pos.map f pos).
+  forall conf, forbidden conf -> forbidden (Config.map f conf).
 Proof.
 unfold forbidden.
-intros f Hf pos [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+intros f Hf conf [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
 split;trivial.
 exists (f pt1), (f pt2). split.
 - intro Heq. apply Hdiff. now apply Hf in Heq.
@@ -175,13 +175,13 @@ exists (f pt1), (f pt2). split.
   assumption || (now intros ? ? Heq; rewrite Heq) || apply Hf.
 Qed.
 
-Theorem forbidden_similarity_iff : forall (sim : Sim.t) pos,
-  forbidden (Pos.map sim pos) <-> forbidden pos.
+Theorem forbidden_similarity_iff : forall (sim : Sim.t) conf,
+  forbidden (Config.map sim conf) <-> forbidden conf.
 Proof.
-intros sim pos. split.
-- setoid_rewrite <- Pos.map_id at 3. change id with (Similarity.section Sim.id).
+intros sim conf. split.
+- setoid_rewrite <- Config.map_id at 3. change id with (Similarity.section Sim.id).
   rewrite <- Sim.compose_inverse_l. simpl.
-  setoid_rewrite <- Pos.map_merge at 2; try now intros ? ? Heq; rewrite Heq.
+  setoid_rewrite <- Config.map_merge at 2; try now intros ? ? Heq; rewrite Heq.
   eapply forbidden_injective_invariant, Similarity.injective_retraction, Sim.injective.
 - apply forbidden_injective_invariant, Sim.injective.
 Qed.
@@ -199,9 +199,9 @@ assert (Hsuplen := forbidden_support_length Hforbidden).
 destruct Hforbidden as [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
 assert (Hsup : Permutation (Spect.support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA eq pt1 (Spect.support (!! config))).
-  { rewrite Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_pos. }
+  { rewrite Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_conf. }
   assert (Hin2 : InA eq pt2 (Spect.support (!! config))).
-  { rewrite Spect.support_spec. unfold Spect.In. rewrite Hpt2. apply half_size_pos. }
+  { rewrite Spect.support_spec. unfold Spect.In. rewrite Hpt2. apply half_size_conf. }
   apply (PermutationA_split _) in Hin1. destruct Hin1 as [l Hl]. rewrite Hl in Hin2.
   inversion_clear Hin2; try now subst; elim Hdiff.
   rewrite Spect.size_spec, Hl in Hsuplen. destruct l as [| x [| ? ?]]; simpl in Hsuplen; try omega.
@@ -487,7 +487,7 @@ Qed.
 Corollary is_extremal_similarity_invariant : forall (sim : Sim.t) config r,
   is_extremal (sim r) (Spect.map sim (!! config)) = is_extremal r (!! config).
 Proof.
-intros sim pos r. apply is_extremal_map_monotonic_invariant.
+intros sim conf r. apply is_extremal_map_monotonic_invariant.
 - apply similarity_monotonic.
 - apply Sim.injective.
 Qed.
@@ -573,25 +573,25 @@ Definition robogram := @Build_robogram robogram_pgm robogram_pgm_compat.
 
 (** **  General simplification lemmas for [round robogram da _] **)
 
-Lemma round_simplify : forall da pos,
-  Pos.eq (round robogram da pos)
+Lemma round_simplify : forall da conf,
+  Config.eq (round robogram da conf)
          (fun id => match da.(step) id with
-                      | None => pos id
+                      | None => conf id
                       | Some f =>
-                          let s := !! pos in
+                          let s := !! conf in
                           match Spect.support (Spect.max s) with
-                            | nil => pos id (* only happen with no robots *)
+                            | nil => conf id (* only happen with no robots *)
                             | pt :: nil => pt (* case 1: one majority stack *)
                             | _ => (* several majority stacks *)
                                    if beq_nat (Spect.size s) 3
                                    then List.nth 1 (sort (Spect.support s)) 0 else
-                                   if is_extremal (pos id) s then (pos id) else extreme_center s
+                                   if is_extremal (conf id) s then (conf id) else extreme_center s
                           end
                     end).
 Proof.
-intros da pos id. unfold round.
+intros da conf id. unfold round.
 destruct (step da id) as [simc |] eqn:Hstep, id as [g | b]; try reflexivity || now eapply Fin.case0; exact b.
-remember (pos (Good g)) as pt.
+remember (conf (Good g)) as pt.
 (* Simplify the similarity *)
 assert (Hratio : (simc pt).(Sim.zoom) <> 0). { eapply da.(step_zoom). eassumption. }
 destruct (similarity_in_R (simc pt)) as [k [Hk Hsim]].
@@ -602,11 +602,11 @@ assert(Hsimccompat : Proper (R.eq ==> R.eq) (simc pt)). { intros ? ? Heq. now re
 assert (Hsim_inj : injective R.eq R.eq (simc pt)) by now apply Sim.injective.
 (* Unfold the robogram *)
 unfold robogram, robogram_pgm. simpl.
-assert (Hperm : PermutationA R.eq (Spect.support (Spect.max (!! (Pos.map (simc pt) pos))))
-                                  (List.map (simc pt) (Spect.support (Spect.max (!! pos))))).
+assert (Hperm : PermutationA R.eq (Spect.support (Spect.max (!! (Config.map (simc pt) conf))))
+                                  (List.map (simc pt) (Spect.support (Spect.max (!! conf))))).
 { rewrite <- Spect.map_injective_support; trivial. f_equiv.
   rewrite <- max_similarity, Spect.from_config_map; auto. reflexivity. }
-destruct (Spect.support (Spect.max (!! pos))) as [| pt' [| pt2' l']].
+destruct (Spect.support (Spect.max (!! conf))) as [| pt' [| pt2' l']].
 * (* Empty support *)
   simpl in Hperm. symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm.
   rewrite da.(step_center); try eassumption. hnf. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
@@ -615,15 +615,15 @@ destruct (Spect.support (Spect.max (!! pos))) as [| pt' [| pt2' l']].
   hnf in Hy |- *. subst y. rewrite Hsim. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
 * (* No majority stack *)
   apply (PermutationA_length _) in Hperm.
-  destruct (Spect.support (Spect.max (!! (Pos.map (simc pt) pos)))) as [| pt'' [| pt2'' l'']];
+  destruct (Spect.support (Spect.max (!! (Config.map (simc pt) conf)))) as [| pt'' [| pt2'' l'']];
   try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
-  assert (Hlength : Spect.size (!! (Pos.map (simc pt) pos)) = Spect.size (!! pos)).
+  assert (Hlength : Spect.size (!! (Config.map (simc pt) conf)) = Spect.size (!! conf)).
   { rewrite <- Spect.from_config_map; trivial. now apply Spect.map_injective_size. }
-  rewrite Hlength. destruct (Spect.size (!! pos) =? 3) eqn:Hlen.
+  rewrite Hlength. destruct (Spect.size (!! conf) =? 3) eqn:Hlen.
   + (* There are three towers *)
     unfold middle. rewrite <- Spect.from_config_map, Spect.map_injective_support; trivial.
     rewrite Spect.size_spec in Hlen.
-    destruct (Spect.support (!! pos)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
+    destruct (Spect.support (!! conf)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
     destruct (similarity_monotonic (simc pt)) as [Hinc | Hdec].
     - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (simc pt 0)), map_nth, <- Hinvsim.
       simpl. rewrite <- (simc pt).(Similarity.Inversion); try reflexivity.
@@ -638,7 +638,7 @@ destruct (Spect.support (Spect.max (!! pos))) as [| pt' [| pt2' l']].
   + (* Generic case *)
     change 0 with R.origin. rewrite <- (simc pt).(Sim.center_prop) at 1.
     rewrite <- Spect.from_config_map, is_extremal_similarity_invariant, da.(step_center); try eassumption.
-    destruct (is_extremal pt (!! pos)).
+    destruct (is_extremal pt (!! conf)).
     - (* The current robot is exremal *)
       hnf. unfold R.origin, Rdef.origin. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
     - (* The current robot is not exremal *)
@@ -652,7 +652,7 @@ Qed.
 (** If we have a majority tower, everyone goes there. **)
 Lemma round_simplify_Majority : forall da conf pt,
   MajTower_at pt conf ->
-  Pos.eq (round robogram da conf)
+  Config.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
                       | Some _ => pt
@@ -669,16 +669,16 @@ Qed.
 Lemma round_simplify_Three : forall da conf,
   no_Majority conf ->
   (Spect.size (!! conf) = 3)%nat ->
-  Pos.eq (round robogram da conf)
+  Config.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
                       | Some _ => nth 1 (sort (Spect.support (!!  conf))) 0
                     end).
 Proof.
-intros da pos Hmaj H3 id. rewrite round_simplify.
+intros da conf Hmaj H3 id. rewrite round_simplify.
 destruct (step da id); try reflexivity. cbv zeta.
 unfold no_Majority in Hmaj. rewrite Spect.size_spec in Hmaj.
-destruct (Spect.support (Spect.max (!! pos))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
+destruct (Spect.support (Spect.max (!! conf))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_eq in H3. rewrite H3. reflexivity.
 Qed.
 
@@ -686,17 +686,17 @@ Qed.
 Lemma round_simplify_Generic : forall da conf,
   no_Majority conf ->
   (Spect.size (!! conf) <> 3)%nat ->
-  Pos.eq (round robogram da conf)
+  Config.eq (round robogram da conf)
          (fun id => match step da id with
                       | None => conf id
                       | Some _ => if is_extremal (conf id) (!! conf)
                                   then conf id else extreme_center (!! conf)
                     end).
 Proof.
-intros da pos Hmaj H3 id. rewrite round_simplify.
+intros da conf Hmaj H3 id. rewrite round_simplify.
 destruct (step da id); try reflexivity. cbv zeta.
 unfold no_Majority in Hmaj. rewrite Spect.size_spec in Hmaj.
-destruct (Spect.support (Spect.max (!! pos))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
+destruct (Spect.support (Spect.max (!! conf))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
 rewrite <- Nat.eqb_neq in H3. rewrite H3. reflexivity.
 Qed.
 
@@ -707,9 +707,9 @@ Close Scope R_scope.
 Theorem Majority_grow :  forall pt config da, MajTower_at pt config ->
   (!! config)[pt] <= (!! (round robogram da config))[pt].
 Proof.
-intros pt pos da Hmaj.
+intros pt conf da Hmaj.
 rewrite (round_simplify_Majority _ Hmaj).
-do 2 rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
 induction Spect.Names.names as [| id l]; simpl.
 + reflexivity.
 + destruct (step da id).
@@ -718,12 +718,12 @@ induction Spect.Names.names as [| id l]; simpl.
 Qed.
 
 (* This proof follows the exact same structure. *)
-Theorem Majority_wither : forall pt pt' pos da, pt <> pt' ->
-  MajTower_at pt pos -> (!! (round robogram da pos))[pt'] <= (!! pos)[pt'].
+Theorem Majority_wither : forall pt pt' conf da, pt <> pt' ->
+  MajTower_at pt conf -> (!! (round robogram da conf))[pt'] <= (!! conf)[pt'].
 Proof.
-intros pt pt' pos da Hdiff Hmaj.
+intros pt pt' conf da Hdiff Hmaj.
 rewrite (round_simplify_Majority _ Hmaj).
-do 2 rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
 induction Spect.Names.names as [| id l]; simpl.
 + reflexivity.
 + destruct (step da id).
@@ -732,10 +732,10 @@ induction Spect.Names.names as [| id l]; simpl.
 Qed.
 
 (** Whenever there is a majority stack, it remains forever so. **)
-Theorem MajTower_at_forever : forall pt pos da, MajTower_at pt pos -> MajTower_at pt (round robogram da pos).
+Theorem MajTower_at_forever : forall pt conf da, MajTower_at pt conf -> MajTower_at pt (round robogram da conf).
 Proof.
-intros pt pos da Hmaj x Hx. assert (Hs := Hmaj x Hx).
-apply le_lt_trans with ((!! pos)[x]); try eapply lt_le_trans; try eassumption; [|].
+intros pt conf da Hmaj x Hx. assert (Hs := Hmaj x Hx).
+apply le_lt_trans with ((!! conf)[x]); try eapply lt_le_trans; try eassumption; [|].
 - eapply Majority_wither; eauto.
 - eapply Majority_grow; eauto.
 Qed.
@@ -867,7 +867,7 @@ Proof.
 intros da conf Hmaj Hlen.
 (* We simplify the lhs *)
 rewrite round_simplify_Generic; trivial.
-do 2 rewrite Spect.from_config_spec, Pos.list_spec.
+do 2 rewrite Spect.from_config_spec, Config.list_spec.
 induction Spect.Names.names as [| id l]; simpl.
 * reflexivity.
 * destruct (step da id).
@@ -889,7 +889,7 @@ Proof.
 intros da conf Hmaj Hlen.
 (* We simplify the lhs *)
 rewrite round_simplify_Generic; trivial.
-do 2 rewrite Spect.from_config_spec, Pos.list_spec.
+do 2 rewrite Spect.from_config_spec, Config.list_spec.
 induction Spect.Names.names as [| id l]; simpl.
 * reflexivity.
 * destruct (step da id).
@@ -1000,7 +1000,7 @@ Proof.
       rewrite <- Rdec_bool_false_iff, <- Rdec_bool_true_iff. apply Hex, Names.In_names. }
     (** We prove a contradiction by showing that the opposite inequality of Hlt holds. *)
     clear Hex. revert Hlt. apply le_not_lt.
-    do 2 rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+    do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
     induction Spect.Names.names as [| id l]; simpl; trivial.
     destruct (R.eq_dec (round r da conf id) pt) as [Heq | Heq].
     + destruct (R.eq_dec (conf id) pt); try omega. specialize (Hg id). intuition.
@@ -1021,7 +1021,7 @@ intros conf da pt. split.
   assert (Hstay : forall id, conf id = pt -> round robogram da conf id = pt).
   { intros id' Hid'. destruct (Rdec (round robogram da conf id') pt) as [Heq | Heq]; trivial.
     assert (Habs := Heq). rewrite <- Hid', <- moving_spec in Habs. apply Hdest in Habs. contradiction. }
-  do 2 rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+  do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
   assert (Hin : In id Spect.Names.names) by apply Names.In_names.
   induction Spect.Names.names as [| id' l]; try (now inversion Hin); [].
   inversion_clear Hin.
@@ -1074,9 +1074,9 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
         + rewrite <- NoDupA_Leibniz. apply Spect.support_NoDupA.
         + simpl. now rewrite <- Spect.size_spec, forbidden_support_length.
         + intros pt Hpt. inversion_clear Hpt.
-          - subst. rewrite <- InA_Leibniz, Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_pos.
+          - subst. rewrite <- InA_Leibniz, Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_conf.
           - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz, Spect.support_spec.
-            unfold Spect.In. rewrite Hpt2. apply half_size_pos. }
+            unfold Spect.In. rewrite Hpt2. apply half_size_conf. }
       assert (Hpt : In (round robogram da conf rmove) (pt1 :: pt2 :: nil)).
       { rewrite <- Hperm. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config. }
       inversion_clear Hpt; try (now exists pt1, pt2; eauto); [].
@@ -1100,11 +1100,11 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
         apply Hdest. rewrite moving_spec. assumption. }
     assert (Hlt : forall p, p <> pt' -> (!! conf)[p] < div2 N.nG).
     { assert (Hpt'_in : Spect.In pt' (!! conf)).
-      { unfold Spect.In. eapply lt_le_trans; try eassumption. apply half_size_pos. }
+      { unfold Spect.In. eapply lt_le_trans; try eassumption. apply half_size_conf. }
       assert (Hle := not_forbidden_not_majority_length Hmaj Hok).
       intros p Hp. apply Nat.nle_gt. intro Habs. apply (lt_irrefl N.nG).
       destruct (@towers_elements_3 conf pt' p Hle Hpt'_in) as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
-      + apply lt_le_trans with (div2 N.nG); try assumption. apply half_size_pos.
+      + apply lt_le_trans with (div2 N.nG); try assumption. apply half_size_conf.
       + auto.
       + eapply lt_le_trans; try apply (sum3_le_total conf Hp Hdiff13 Hdiff23); [].
         unfold Spect.In in Hpt3_in. rewrite <- (even_div2 HnG). omega. }
@@ -1128,18 +1128,18 @@ Definition conf_to_NxN conf :=
                          + s[last (sort  (Spect.support s)) 0%R]))
   end.
 
-Instance conf_to_NxN_compat: Proper (Pos.eq ==> eq * eq) conf_to_NxN.
+Instance conf_to_NxN_compat: Proper (Config.eq ==> eq * eq) conf_to_NxN.
 Proof.
-intros pos1 pos2 Heq. unfold conf_to_NxN.
-assert (Hperm : PermutationA R.eq (Spect.support (Spect.max (!! pos1)))
-                                  (Spect.support (Spect.max (!! pos2)))) by now rewrite Heq.
-destruct (Spect.support (Spect.max (!! pos2))) as [| pt [| ? ?]] eqn:Hsupp.
+intros conf1 conf2 Heq. unfold conf_to_NxN.
+assert (Hperm : PermutationA R.eq (Spect.support (Spect.max (!! conf1)))
+                                  (Spect.support (Spect.max (!! conf2)))) by now rewrite Heq.
+destruct (Spect.support (Spect.max (!! conf2))) as [| pt [| ? ?]] eqn:Hsupp.
 + symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm. reflexivity.
 + apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
   rewrite Hperm, <- Hy, Heq. reflexivity.
 + apply (PermutationA_length _) in Hperm.
-  destruct (Spect.support (Spect.max (!! pos1))) as [| ? [| ? ?]]; try discriminate Hperm.
-  rewrite Heq. destruct (Spect.size (!! pos2) =? 3); rewrite Heq; reflexivity.
+  destruct (Spect.support (Spect.max (!! conf1))) as [| ? [| ? ?]]; try discriminate Hperm.
+  rewrite Heq. destruct (Spect.size (!! conf2) =? 3); rewrite Heq; reflexivity.
 Qed.
 
 Definition lt_conf x y := lexprod lt lt (conf_to_NxN x) (conf_to_NxN y).
@@ -1151,9 +1151,9 @@ Proof.
   apply wf_lexprod;apply lt_wf.
 Qed.
 
-Instance lt_conf_compat: Proper (Pos.eq ==> Pos.eq ==> iff) lt_conf.
+Instance lt_conf_compat: Proper (Config.eq ==> Config.eq ==> iff) lt_conf.
 Proof.
-  intros pos1 pos1' heq1 pos2 pos2' heq2.
+  intros conf1 conf1' heq1 conf2 conf2' heq2.
   unfold lt_conf.
   rewrite <- heq1, <- heq2.
   reflexivity.
@@ -1366,7 +1366,7 @@ Lemma g1_g2 : g1 <> g2.
 Proof. apply g1'_g2'. Qed.
 
 
-Instance gathered_at_compat : Proper (eq ==> Pos.eq ==> iff) gathered_at.
+Instance gathered_at_compat : Proper (eq ==> Config.eq ==> iff) gathered_at.
 Proof.
 intros ? pt ? config1 config2 Hconfig. subst. unfold gathered_at.
 split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
@@ -1400,7 +1400,7 @@ Inductive FirstMove r d config : Prop :=
   | MoveLater : moving r (demon_head d) config = nil ->
                 FirstMove r (demon_tail d) (round r (demon_head d) config) -> FirstMove r d config.
 
-Instance FirstMove_compat : Proper (req ==> deq ==> Pos.eq ==> iff) FirstMove.
+Instance FirstMove_compat : Proper (req ==> deq ==> Config.eq ==> iff) FirstMove.
 Proof.
 intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
 * revert r2 d2 c2 Hr Hd Hc. induction Hfirst; intros r2 d2 c2 Hr Hd Hc.
@@ -1426,7 +1426,7 @@ rewrite forbidden_equiv in Hforbidden.
 destruct (Spect.size (!! config)) as [| [| [| n]]]; omega || tauto.
 Qed.
 
-(** Given a non-gathered, non forbidden position, then some robot will move some day *)
+(** Given a non-gathered, non forbidden configuration, then some robot will move some day *)
 Theorem OneMustMove : forall config id, ~ forbidden config -> ~gathered_at (config id) config ->
   exists gmove, forall da, In gmove (active da) -> In gmove (moving robogram da config).
 Proof.
@@ -1473,7 +1473,7 @@ destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
     unfold is_extremal. repeat Rdec_full; intuition.
 Qed.
 
-(* Given a k-fair demon, in any non gathered, non forbidden position, a robot will be the first to move. *)
+(* Given a k-fair demon, in any non gathered, non forbidden configuration, a robot will be the first to move. *)
 Theorem Fair_FirstMove : forall d, Fair d ->
   forall config id, ~forbidden config -> ~gathered_at (config id) config -> FirstMove robogram d config.
 Proof.
@@ -1499,7 +1499,7 @@ intros da conf pt Hgather. rewrite (round_simplify_Majority).
 + intro g. destruct (step da (Good g)); reflexivity || apply Hgather.
 + intros pt' Hdiff.
   assert (H0 : (!! conf)[pt'] = 0).
-  { rewrite Spect.from_config_spec, Spect.Pos.list_spec.
+  { rewrite Spect.from_config_spec, Spect.Config.list_spec.
     induction Spect.Names.names as [| id l].
     + reflexivity.
     + unfold R.eq_dec, Rdef.eq_dec in *. simpl. Rdec_full.
