@@ -157,7 +157,6 @@ Definition FullSolGathering (r : robogram) (d : demon) :=
 Definition ValidSolGathering (r : robogram) (d : demon) :=
   forall config, ~forbidden config -> exists pt : R2.t, willGather pt (execute r d config).
 
-
 (** **  Some results about R with respect to distance and similarities  **)
 
 Open Scope R_scope.
@@ -248,7 +247,7 @@ Proof. intros θ [? ?]. unfoldR2. simpl. f_equal; field. Qed.
 Lemma rotate_add_distr : forall θ u v, R2.eq (rotate θ (R2.add u v)) (R2.add (rotate θ u) (rotate θ v)).
 Proof. intros θ [? ?] [? ?]. unfoldR2. simpl. f_equal; field. Qed.
 
-(** A similarity in R2 is described by its ratio, center and rotation angle. *)
+(** A similarity in R² is described by its ratio, center and rotation angle. *)
 Theorem similarity_in_R2 : forall sim : Sim.t, exists θ,
   forall x, sim x = R2.mul sim.(Sim.zoom) (rotate θ (R2.add x (R2.opp sim.(Sim.center)))).
 Proof.
@@ -277,6 +276,7 @@ change ((rotate θ) ((rotate θ ⁻¹) (Sim.zoom sim *  (rotate θ) (Sim.center 
 rewrite Sim.compose_inverse_r.
 unfoldR2. destruct x as [x1 x2], sim as [f k [c1 c2] ? ?]; simpl in *. f_equal; field.
 Qed.
+
 
 Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R2.eq R2.eq sim.
 Proof. apply Sim.injective. Qed.
@@ -566,7 +566,6 @@ Proof.
   unfold enclosing_circle.
   unfold sim_circle.
   simpl.
-  setoid_rewrite Forall_forall.
   setoid_rewrite in_map_iff.
   split;intro h.
   - intros x h'.
@@ -582,12 +581,6 @@ Proof.
     eapply Rmult_le_compat_l in h;eauto.
     apply Rlt_le, Sim.zoom_pos.
 Qed.
-
-(* TODO? *)
-Axiom SEC_unicity: forall l c,
-    enclosing_circle c l
-    -> (radius c <= radius (SEC l))%R
-    -> c = SEC l.
 
 (* TODO *)
 Axiom SEC_morph : forall (sim:Sim.t) l, SEC (List.map sim l) = sim_circle sim (SEC l).
@@ -649,7 +642,7 @@ assert (Hlen := PermutationA_length _ Hperm).
 destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hn,
          (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (Spect.support (Spect.map sim s)))
          as [| pt1' [| pt2' [| pt3' [| ? ?]]]]; simpl in *; try (omega || reflexivity); clear Hlen.
-+ destruct (@SEC_contains_1 (Spect.support s)) as [x hx].
++ destruct (@SEC_reached (Spect.support s)) as [x hx].
   * admit. (* we need the hypothesis that there is one robots *)
   * rewrite <- filter_In in hx.
     rewrite Hn in hx.

@@ -405,11 +405,6 @@ apply Rle_antisym.
     rewrite <- Heq. now apply SEC_spec1.
 Qed.
 
-(** FACILE À PROUVER? If there is at least one point in l, then [SEC l] contains at least one point *)
-Axiom SEC_contains_1 : forall l, l <> nil -> exists p, In p l /\ on_circle (SEC l) p = true.
-(** FACILE À PROUVER? If there are more than one point in l, then [SEC l] contains at least two points *)
-Axiom SEC_contains_2 : forall l, (List.length l >= 2)%nat -> exists p q, In p l /\ on_circle (SEC l) p = true
-                                                           /\ on_circle (SEC l) q = true.
 Lemma SEC_reached : forall l, l <> nil ->
   exists pt, In pt l /\ on_circle (SEC l) pt = true.
 Proof.
@@ -467,3 +462,9 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   - unfold r'. cut (d < r). lra.
     
 Abort.
+
+(* TODO? *)
+Axiom SEC_unicity: forall l c,
+    enclosing_circle c l
+    -> (radius c <= radius (SEC l))%R
+    -> c = SEC l.
