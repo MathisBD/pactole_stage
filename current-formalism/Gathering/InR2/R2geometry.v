@@ -1,10 +1,10 @@
-Require Import Rbase R_sqrt.
+Require Import Rbase R_sqrt Rbasic_fun.
 Require Import Psatz.
 Require Import RelationPairs.
 Require Import Morphisms.
 Require Import SetoidPermutation.
+Require Import Omega.
 Import List Permutation.
-(*  Rbasic_fun  *)
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
 
@@ -298,23 +298,172 @@ Record circle := {
   center : R2.t;
   radius : R}.
 
-Definition enclosing_circle (c : circle) l := List.Forall (fun x => R2.dist x (center c) <= (radius c)) l.
-Definition on_circle (c : circle) x := Rdec_bool (R2.dist (center c) x) (radius c).
-Locate Permutation.
+Definition enclosing_circle (c : circle) l := forall x, In x l -> R2.dist x (center c) <= (radius c).
+Definition on_circle (c : circle) x := Rdec_bool (R2.dist x (center c)) (radius c).
+
 Instance enclosing_circle_compat : forall c, Proper (@Permutation _ ==> iff) (enclosing_circle c).
-Proof. intro. unfold enclosing_circle. apply Forall_Permutation_compat. intros ? ? ?. now subst. Qed.
+Proof.
+repeat intro. unfold enclosing_circle.
+do 2 rewrite <- Forall_forall. apply Forall_Permutation_compat; trivial.
+intros ? ? ?. now subst.
+Qed.
 
 (** We assume the existence of a primitive SEC computing the smallest enclosing circle,
     given by center and radius. *)
 Parameter SEC : list R2.t -> circle.
-(** Its definition does not depend on the representation of points. *)
-Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
 (** The SEC is an enclosing circle. *)
 Axiom SEC_spec1 : forall l, enclosing_circle (SEC l) l.
 (** The SEC is the smallest one. *)
 Axiom SEC_spec2 : forall l c, enclosing_circle c l -> radius (SEC l) <= radius c.
+(** Extra specification in the degenerate case. *)
+Axiom SEC_nil : radius (SEC nil) = 0.
+(** Its definition does not depend on the representation of points. *)
+Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
+
+(* The last axiom is useful because of the following degeneracy fact. *)
+Lemma enclosing_circle_nil : forall pt r, enclosing_circle {| center := pt; radius := r |} nil.
+Proof. intros. unfold enclosing_circle. intros x Hin. elim Hin. Qed.
+
+Definition center_eq c1 c2 := c1.(center) = c2.(center).
+Definition radius_eq c1 c2 := c1.(radius) = c2.(radius).
+
+(** Unicity proof of the radius of the SEC *)
+Lemma SEC_radius_compat :
+  Proper (@Permutation _ ==> center_eq) SEC -> Proper (@Permutation _ ==> radius_eq) SEC.
+Proof.
+intros Hspec l1 l2 Hperm.
+assert (Hup1 := SEC_spec1 l1). assert (Hdown1 := @SEC_spec2 l1).
+assert (Hup2 := SEC_spec1 l2). assert (Hdown2 := @SEC_spec2 l2).
+apply Rle_antisym.
+- apply Hdown1. now rewrite Hperm.
+- apply Hdown2. now rewrite <- Hperm.
+Qed.
+
+
+
+Definition max_dist pt l := List.fold_left (fun r x => Rmax r (R2.dist x pt)) l 0%R.
+
+Lemma max_dist_le_acc : forall pt l acc, acc <= List.fold_left (fun r x => Rmax r (R2.dist x pt)) l acc.
+Proof.
+intros pt l. induction l as [| e l]; intro acc; simpl.
++ apply Rle_refl.
++ apply Rle_trans with (Rmax acc (R2.dist e pt)).
+  - apply Rmax_l.
+  - apply IHl.
+Qed.
+(*
+Lemma max_dist_le_mono : forall pt l, Proper (Rle ==> Rle) (List.fold_left (fun r x => Rmax r (R2.dist x pt)) l).
+Proof.
+intros pt l. induction l; intros acc1 acc2 Hle; simpl.
++ assumption.
++ apply IHl. now apply Rle_max_compat_r.
+Qed.
+*)
+Lemma max_dist_cons : forall pt x l, max_dist pt (x :: l) = Rmax (R2.dist x pt) (max_dist pt l).
+Proof.
+intros. unfold max_dist. simpl. generalize 0%R. induction l; intro acc; simpl.
++ apply Rmax_comm.
++ rewrite <- IHl. f_equal. setoid_rewrite <- Rmax_assoc. f_equal. apply Rmax_comm.
+Qed.
+
+Lemma max_dist_le : forall pt x l, In x l -> R2.dist x pt <= max_dist pt l.
+Proof.
+intros pt x l Hin.
+unfold max_dist. generalize 0. induction l as [| e l]; intro acc; simpl.
+* elim Hin.
+* destruct Hin as [? | Hin]; subst.
+  + apply Rle_trans with (Rmax acc (R2.dist x pt)).
+    - apply Rmax_r.
+    - apply max_dist_le_acc.
+  + now apply IHl.
+Qed.
+
+Lemma max_dist_exists : forall pt l, l <> nil -> exists x, In x l /\ R2.dist x pt = max_dist pt l.
+Proof.
+intros pt l Hl. induction l as [| e1 l].
+* now elim Hl.
+* destruct l as [| e2 l].
+  + exists e1. split; try now left. unfold max_dist. simpl. symmetry. apply Rmax_right. apply R2.dist_pos.
+  + destruct (Rle_dec (R2.dist e1 pt) (max_dist pt (e2 :: l))).
+    - destruct IHl as [x [Hin Heq]]; try discriminate; [].
+      exists x. split; try now right. rewrite max_dist_cons, Heq. symmetry. now apply Rmax_right.
+    - exists e1. split; try now left. rewrite max_dist_cons. symmetry.
+      apply Rmax_left. apply Rlt_le. now apply Rnot_le_lt.
+Qed.
+
+Lemma radius_is_max_dist : forall l, radius (SEC l) = max_dist (center (SEC l)) l.
+Proof.
+intro l.
+apply Rle_antisym.
++ pose (c := {| center := center (SEC l); radius := max_dist (center (SEC l)) l |}).
+  assert (Hcircle : enclosing_circle c l). { unfold enclosing_circle. intros. now apply max_dist_le. }
+  change (max_dist (center (SEC l)) l) with (radius c).
+  now apply SEC_spec2.
++ destruct l as [| e l].
+  - rewrite SEC_nil. compute; auto.
+  - destruct (@max_dist_exists (center (SEC (e :: l))) (e :: l)) as [pt [Hin Heq]]; try discriminate; [].
+    rewrite <- Heq. now apply SEC_spec1.
+Qed.
+
 (** FACILE À PROUVER? If there is at least one point in l, then [SEC l] contains at least one point *)
 Axiom SEC_contains_1 : forall l, l <> nil -> exists p, In p l /\ on_circle (SEC l) p = true.
 (** FACILE À PROUVER? If there are more than one point in l, then [SEC l] contains at least two points *)
 Axiom SEC_contains_2 : forall l, (List.length l >= 2)%nat -> exists p q, In p l /\ on_circle (SEC l) p = true
                                                            /\ on_circle (SEC l) q = true.
+Lemma SEC_reached : forall l, l <> nil ->
+  exists pt, In pt l /\ on_circle (SEC l) pt = true.
+Proof.
+intros. unfold on_circle. rewrite radius_is_max_dist.
+setoid_rewrite Rdec_bool_true_iff. now apply max_dist_exists.
+Qed.
+
+
+(* Idea:
+   We already know that there is one point on the circle.
+   If there is no other, we take the furthest point from c strictly inside the disk.
+   We decrease the center and radius to make it end up on the circle.
+   Thus, the original SEC was not minimal, a contradiction. *)
+Lemma SEC_reached_twice : forall l, (2 <= length l)%nat ->
+  exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
+    /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
+Proof.
+intros l Hl.
+assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; omega. }
+destruct (SEC_reached Hnil) as [pt1 [Hin1 Hon1]].
+exists pt1.
+(* Put [pt1] at the front of [l] to have easier manipulations. *)
+assert (Hl' : exists l', Permutation l (pt1 :: l')).
+{ rewrite <- InA_Leibniz in Hin1. apply (PermutationA_split _) in Hin1.
+   setoid_rewrite PermutationA_Leibniz in Hin1. assumption. }
+destruct Hl' as [l' Hl']. rewrite Hl' in *. setoid_rewrite Hl'. clear Hnil Hl' l.
+simpl in Hl. apply le_S_n in Hl. rename l' into l.
+destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true)) with (pt1 :: l) as [HOK | Hsmall].
++ intro x. destruct (R2.eq_dec x pt1) as [Heq | Heq].
+  - right. intuition.
+  - destruct (on_circle (SEC (pt1 :: l)) x); intuition.
++ (* If there is another point on the sphere *)
+  rewrite Exists_exists in HOK. destruct HOK as [pt2 [Hin2 Heq2]].
+  exists pt2; intuition.
++ (* If all other points are inside the sphere, we can slightly reduce its radius by moving the center *)
+  exfalso.
+  pose (c := center (SEC l)).
+  pose (r := radius (SEC l)).
+  (* the farthest point of l from c (excluding pt1) *)
+  pose (pt := fold_left (fun acc x => if R2.eq_dec x pt1 then acc else
+                                      if Rle_dec (R2.dist x c) (R2.dist c acc) then acc else x) l c).
+  pose (d := R2.dist c pt). (* the room we have *)
+  pose (r' := Rdiv (r + d) 2). (* the new radius *)
+  pose (c' := R2.add c (R2.mul (r - r') (R2.add c (R2.opp pt)))). (* the new center *)
+  assert (Hin : In pt l).
+  { admit. }
+  assert (Hmax : forall x, In x l -> x <> pt1 -> R2.dist x c <= d).
+  { admit. }
+  assert (Hnew : enclosing_circle {| center := c'; radius := r' |} l).
+  { admit. }
+  (* The final proof *)
+  apply (Rle_not_lt r' r).
+  - unfold r. change r' with (radius {| center := c'; radius := r' |}).
+    now apply SEC_spec2.
+  - unfold r'. cut (d < r). lra.
+    
+Abort.
