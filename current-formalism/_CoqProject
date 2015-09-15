@@ -2,7 +2,7 @@
 -R . Pactole
 Preliminary.v
 Robots.v
-Positions.v
+Configurations.v
 MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
 MMultiset/MMultisetMap.v
