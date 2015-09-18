@@ -37,7 +37,7 @@ Set Implicit Arguments.
 Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
-  | Equilateral => barycenter pt1 pt2 pt3
+  | Equilateral => barycenter_3_pts pt1 pt2 pt3
   | Isosceles p => p
   | Scalene => opposite_of_max_side pt1 pt2 pt3
   end.
@@ -585,11 +585,11 @@ Qed.
 (* TODO *)
 Axiom SEC_morph : forall (sim:Sim.t) l, SEC (List.map sim l) = sim_circle sim (SEC l).
 
-Lemma barycenter_morph: forall (sim : Sim.t) pt1 pt2 pt3,
-  barycenter (sim pt1) (sim pt2) (sim pt3) = sim (barycenter pt1 pt2 pt3).
+Lemma barycenter_3_morph: forall (sim : Sim.t) pt1 pt2 pt3,
+  barycenter_3_pts (sim pt1) (sim pt2) (sim pt3) = sim (barycenter_3_pts pt1 pt2 pt3).
 Proof.
   intros sim pt1 pt2 pt3.
-  unfold barycenter.
+  unfold barycenter_3_pts.
 Admitted.
 
 Lemma opposite_of_max_side_morph : forall (sim : Sim.t) pt1 pt2 pt3,
@@ -611,7 +611,7 @@ Proof.
 intros sim pt1 pt2 pt3. unfold target_triangle.
 rewrite classify_triangle_morph.
 destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
-- apply barycenter_morph.
+- apply barycenter_3_morph.
 - apply opposite_of_max_side_morph.
 Qed.
 
@@ -624,10 +624,10 @@ Ltac solve_ineq_0 :=
 
 
 Lemma middle_is_barycenter_3:
-  forall x y , (barycenter x y (/ 2%R * (x+y)) = (/ 2)%R * (x + y))%R2.
+  forall x y , (barycenter_3_pts x y (/ 2%R * (x+y)) = (/ 2)%R * (x + y))%R2.
 Proof.
   intros x y.
-  unfold barycenter.
+  unfold barycenter_3_pts.
   repeat rewrite R2.add_distr.
   repeat rewrite R2.mult_morph.
   (*repeat rewrite R2.add_assoc.

@@ -188,9 +188,6 @@ Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
   else Scalene.
 
-(* Barycenter is the center of SEC for an equilateral triangle *)
-Definition barycenter_3_pts (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
-
 Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   let len12 := R2.dist pt1 pt2 in
   let len23 := R2.dist pt2 pt3 in
@@ -198,31 +195,6 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   if Rle_bool len12 len23
   then if Rle_bool len23 len13 then pt2 else pt1
   else if Rle_bool len12 len13 then pt2 else pt3.
-
-
-Lemma barycenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
-    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-    barycenter_3_pts pt1 pt2 pt3 =  barycenter_3_pts pt1' pt2' pt3'.
-Proof.
-  intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
-  rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
-  decompose [or and] Hperm; clear Hperm; subst;
-  reflexivity || unfold barycenter_3_pts; f_equal;
-  (* FIXME: find a better way to normalize the sum? field? *)
-  repeat match goal with
-         | |- context C [ (R2.add pt1' (R2.add pt3' pt2')) ] => rewrite (@R2.add_comm pt3')
-         | |- context C [ (R2.add pt2' (R2.add pt1' pt3')) ] =>
-           rewrite (@R2.add_assoc pt2' pt1' pt3'); rewrite (@R2.add_comm pt2' pt1');
-           rewrite <- (@R2.add_assoc pt1' pt2' pt3')
-         | |- context C [ (R2.add pt2' (R2.add pt3' pt1')) ] =>
-           rewrite (@R2.add_comm pt3' pt1')
-         | |- context C [ (R2.add pt3' (R2.add pt1' pt2')) ] =>
-           rewrite (@R2.add_comm pt3' (R2.add pt1' pt2'));
-             rewrite <- (@R2.add_assoc pt1' pt2' pt3')
-         | |- context C [ (R2.add pt3' (R2.add pt2' pt1')) ] =>
-           rewrite (@R2.add_comm pt2' pt1')
-         end; reflexivity.
-Qed.
 
 Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
@@ -292,6 +264,55 @@ Proof.
          | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
          end.
 Qed.
+
+(** ** Barycenter *)
+
+(* Barycenter is the center of SEC for an equilateral triangle *)
+
+Definition barycenter_3_pts (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
+
+Lemma barycenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    barycenter_3_pts pt1 pt2 pt3 =  barycenter_3_pts pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
+  rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
+  decompose [or and] Hperm; clear Hperm; subst;
+  reflexivity || unfold barycenter_3_pts; f_equal;
+  (* FIXME: find a better way to normalize the sum? field? *)
+  repeat match goal with
+         | |- context C [ (R2.add pt1' (R2.add pt3' pt2')) ] => rewrite (@R2.add_comm pt3')
+         | |- context C [ (R2.add pt2' (R2.add pt1' pt3')) ] =>
+           rewrite (@R2.add_assoc pt2' pt1' pt3'); rewrite (@R2.add_comm pt2' pt1');
+           rewrite <- (@R2.add_assoc pt1' pt2' pt3')
+         | |- context C [ (R2.add pt2' (R2.add pt3' pt1')) ] =>
+           rewrite (@R2.add_comm pt3' pt1')
+         | |- context C [ (R2.add pt3' (R2.add pt1' pt2')) ] =>
+           rewrite (@R2.add_comm pt3' (R2.add pt1' pt2'));
+             rewrite <- (@R2.add_assoc pt1' pt2' pt3')
+         | |- context C [ (R2.add pt3' (R2.add pt2' pt1')) ] =>
+           rewrite (@R2.add_comm pt2' pt1')
+         end; reflexivity.
+Qed.
+
+Axiom Barycenter_spec: forall pt1 pt2 pt3 B: R2.t,
+    barycenter_3_pts pt1 pt2 pt3 = B -> 
+    forall p,
+      (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)²
+      <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
+
+Axiom Barycenter_spec_unicity: forall pt1 pt2 pt3 B: R2.t,
+    barycenter_3_pts pt1 pt2 pt3 = B <-> 
+    forall p, p <> B ->
+              (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)²
+              < (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
+
+Definition is_middle pt1 pt2 B := forall p, (R2.dist B pt1)² + (R2.dist B pt2)² <= (R2.dist p pt1)² + (R2.dist p pt2)².
+
+Axiom middle_spec: forall pt1 pt2 B: R2.t, R2.middle pt1 pt2 = B -> is_middle pt1 pt2 B.
+
+
+
 
 (** **  Circles and SEC  *)
 
