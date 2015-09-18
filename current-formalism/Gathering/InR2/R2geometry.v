@@ -308,8 +308,15 @@ Axiom Barycenter_spec_unicity: forall pt1 pt2 pt3 B: R2.t,
               < (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
 Definition is_middle pt1 pt2 B := forall p, (R2.dist B pt1)² + (R2.dist B pt2)² <= (R2.dist p pt1)² + (R2.dist p pt2)².
+Definition is_barycenter_3_pt pt1 pt2 pt3 B :=
+  forall p, (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
-Axiom middle_spec: forall pt1 pt2 B: R2.t, R2.middle pt1 pt2 = B -> is_middle pt1 pt2 B.
+Axiom middle_spec: forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
+Axiom bary3_spec: forall pt1 pt2 pt3,
+    is_barycenter_3_pt pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
+Axiom middle_unique: forall x y a b, is_middle x y a -> is_middle x y b ->  R2.eq a b.
+Axiom bary3_unique: forall x y z a b,
+    is_barycenter_3_pt x y z a -> is_barycenter_3_pt x y z b ->  R2.eq a b.
 
 
 
