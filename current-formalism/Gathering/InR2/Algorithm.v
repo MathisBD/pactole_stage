@@ -615,10 +615,65 @@ destruct (classify_triangle pt1 pt2 pt3);simpl;auto.
 - apply opposite_of_max_side_morph.
 Qed.
 
-Lemma R2middle_morph : forall x y (sim:Sim.t), (R2.middle (sim x) (sim y))%R2 = sim ((R2.middle x y))%R2.
+Ltac solve_ineq_0 :=
+  repeat progress match goal with
+                  | |- not(eq _ R0) => apply not_eq_sym ; apply Rlt_not_eq
+                  | |- (0 < _)%R => apply Rlt_0_1
+                  | |- (0 < _)%R => apply Rplus_lt_0_compat
+                  end.
+
+
+Lemma middle_is_barycenter_3:
+  forall x y , (barycenter x y (/ 2%R * (x+y)) = (/ 2)%R * (x + y))%R2.
 Proof.
-  intros x y sim.
-  
+  intros x y.
+  unfold barycenter.
+  repeat rewrite R2.add_distr.
+  repeat rewrite R2.mult_morph.
+  (*repeat rewrite R2.add_assoc.
+   *)  rewrite <- (Rinv_r_simpl_r 2 (/ 3)) at 1;solve_ineq_0.
+  rewrite <- (Rinv_r_simpl_r 2 (/ 3)) at 2;solve_ineq_0.
+  rewrite <- Rinv_mult_distr;solve_ineq_0.
+  repeat rewrite Rmult_assoc.
+  rewrite <- Rinv_mult_distr;solve_ineq_0.
+  setoid_rewrite R2.add_comm at 2.
+  repeat rewrite R2.add_assoc.
+  repeat rewrite R2.plus_morph.
+  rewrite <- R2.add_assoc.
+  rewrite R2.plus_morph.
+  setoid_rewrite Rmult_comm at 3.
+  setoid_rewrite Rmult_comm at 4.
+  setoid_rewrite <- (Rmult_1_r (/ 6)) at 2 3.
+  rewrite (Rmult_comm (/ 6) 1).
+  repeat rewrite <- Rmult_plus_distr_r.
+  rewrite (Rplus_comm).
+  repeat rewrite <- R2.add_distr.
+  rewrite <- (Rinv_r_simpl_r 3 (/ 2));solve_ineq_0.
+  repeat rewrite Rmult_assoc.
+  rewrite <- Rinv_mult_distr;solve_ineq_0.
+  setoid_rewrite Rmult_comm at 2.
+  reflexivity.
+Qed.
+
+
+Lemma R2middle_morph : forall x y (sim:Sim.t), (R2.middle (sim x) (sim y))%R2 = sim ((R2.middle x y))%R2.
+  Proof.
+  (*   intros x y sim.     *)
+  (*   unfold R2.middle. *)
+  (*   assert (hrinv:(Rinv 2 = Rdiv 1 2)%R). *)
+  (*   { field_simplify.  reflexivity. } *)
+  (*   setoid_rewrite <- hrinv. *)
+  (*   setoid_rewrite <- middle_is_barycenter_3. *)
+  (*   apply barycenter_morph. *)
+  (* unfold R2.middle. *)
+  (* assert (Rinv 2 = Rdiv 1 2)%R. *)
+  (* { field_simplify.  reflexivity. } *)
+  (* rewrite ?H0 in *. *)
+  (* rewrite <- H. *)
+  (* rewrite <- barycenter_morph. *)
+  (* assert ((/ 2 * (x + y))%R2 = (1 / 2 * (x + y))%R2). *)
+  (* destruct x, y;cbn. *)
+
 Admitted.
 
 
