@@ -82,7 +82,8 @@ Module R2def : RealMetricSpaceDef with Definition t := (R * R)%type
   Lemma triang_ineq : forall x y z : t, (dist x z <= dist x y + dist y z)%R.
   Proof.
   intros [? ?] [? ?] [? ?]. unfold dist. simpl.
-  Admitted.
+  apply (Rgeom.triangle r r0 r3 r4 r1 r2).
+  Qed.
   
   Lemma add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
   Proof. solve_R. Qed.
@@ -188,7 +189,7 @@ Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
   else Scalene.
 
 (* Barycenter is the center of SEC for an equilateral triangle *)
-Definition barycenter (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
+Definition barycenter_3_pts (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
 
 Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
   let len12 := R2.dist pt1 pt2 in
@@ -201,12 +202,12 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
 
 Lemma barycenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-    barycenter pt1 pt2 pt3 =  barycenter pt1' pt2' pt3'.
+    barycenter_3_pts pt1 pt2 pt3 =  barycenter_3_pts pt1' pt2' pt3'.
 Proof.
   intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
   rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
   decompose [or and] Hperm; clear Hperm; subst;
-  reflexivity || unfold barycenter; f_equal;
+  reflexivity || unfold barycenter_3_pts; f_equal;
   (* FIXME: find a better way to normalize the sum? field? *)
   repeat match goal with
          | |- context C [ (R2.add pt1' (R2.add pt3' pt2')) ] => rewrite (@R2.add_comm pt3')
@@ -413,16 +414,191 @@ setoid_rewrite Rdec_bool_true_iff. now apply max_dist_exists.
 Qed.
 
 
+Lemma max_dist_singleton: forall pt x, max_dist pt (x::nil) = R2.dist x pt.
+Proof.
+  intros pt x.
+  rewrite max_dist_cons.
+  cbn.
+  apply Rmax_left.
+  apply R2.dist_pos.
+Qed.
+
+Lemma enclosing_singleton : forall x, enclosing_circle {| center := x; radius :=0 |} (x::nil).
+Proof.
+  intros x.
+  red.
+  intros x0 H.
+  cbn.
+  inversion H.
+  - subst.
+    destruct (R2.dist_defined x0 x0).
+    apply Req_le_sym.
+    symmetry.
+    apply H1.
+    reflexivity.
+  - inversion H0.
+Qed.
+
+(*
+(* If there is a enclosing circle strictly smaller than all other, then this is SEC. *)
+Lemma SEC_spec_det:
+  forall l sec,
+    enclosing_circle sec l ->
+    (forall (c : circle), enclosing_circle c l -> radius sec < radius c)
+    -> SEC l =sec.
+Proof.
+  intros l sec henclos hrad.
+  
+
+Qed.
+*)
+
+(*
+Lemma SEC_singleton_radius : forall x, radius (SEC (x::nil)) = 0.
+Proof.
+  intros x.
+  
+  rewrite radius_is_max_dist.
+  rewrite max_dist_singleton.
+  
+  assert (max_dist (center (SEC (x::nil))) (x::nil) = 0).
+  { cbn.
+    assert (R2.dist x (center (SEC (x :: nil))) = 0).
+    { apply R2.dist_defined.
+
+Lemma SEC_singleton_center : forall x, center (SEC (x::nil)) = x.
+Proof.
+  intros x.
+  assert (max_dist (center (SEC (x::nil))) (x::nil) = 0).
+  { cbn.
+    assert (R2.dist x (center (SEC (x :: nil))) = 0).
+    { apply R2.dist_defined.
+*)
+    
+  
+
+(*
+Lemma SEC_singleton : forall x, SEC (x::nil) = {| center := x; radius :=0 |}.
+Proof.
+  intros x.
+  generalize (radius_is_max_dist (x::nil));intro hrad.
+  cbn in hrad.
+  destruct (SEC (x::nil)) eqn:heq_SEC.
+  apply f_equal2.
+  cbn in *.
+  max_dist_exists.
+Qed.
+*)
+Function farthest_from_in c acc inl :=
+match inl with
+| nil => c
+| cons x inl' =>
+  if Rle_dec (R2.dist x c) (R2.dist c acc)
+  then farthest_from_in c acc inl' else farthest_from_in c x inl'
+end.
+
+
+
+Lemma farthest_In: forall c acc inl,
+    farthest_from_in c acc inl = c \/
+    farthest_from_in c acc inl = acc \/
+    In (farthest_from_in c acc inl) inl.
+Proof.
+  intros c acc inl.
+  functional induction (farthest_from_in c acc inl);auto.
+  - destruct IHt as [IHt1 | [IHt2 | IHt3]];auto.
+    cbn;auto.
+  - destruct IHt as [IHt1 | [IHt2 | IHt3]];cbn;auto.
+Qed.
+
+Lemma farthest_In_c: forall c inl,
+    farthest_from_in c c inl = c \/
+    In (farthest_from_in c c inl) inl.
+Proof.
+  intros c inl.
+  generalize (farthest_In c c inl).
+  intros H.
+  intuition.
+Qed.
+
+Function farthest_from_in_except (except c acc:R2.t) inl :=
+match inl with
+| nil => c
+| cons x inl' =>
+  if R2.eq_dec x except then farthest_from_in_except except c acc inl'
+  else if Rle_dec (R2.dist x c) (R2.dist c acc)
+  then farthest_from_in_except except c acc inl' else farthest_from_in_except except c x inl'
+end.
+
+Lemma farthest_from_in_exc_In: forall except c acc inl,
+    farthest_from_in_except except c acc inl = c \/
+    farthest_from_in_except except c acc inl = acc \/
+    In (farthest_from_in_except except c acc inl) inl.
+Proof.
+  intros except c acc inl.
+  functional induction (farthest_from_in_except except c acc inl);auto.
+  - destruct IHt as [IHt1 | [IHt2 | IHt3]];auto.
+    cbn;auto.
+  - destruct IHt as [IHt1 | [IHt2 | IHt3]];auto.
+    cbn;auto.
+  - destruct IHt as [IHt1 | [IHt2 | IHt3]]; cbn;auto.
+Qed.
+
+Lemma farthest_from_in_exc_In_c: forall except c inl,
+    farthest_from_in_except except c c inl = c \/
+    In (farthest_from_in_except except c c inl) inl.
+Proof.
+  intros except c inl.
+  generalize (farthest_from_in_exc_In except c c inl).
+  intros H.
+  intuition.
+Qed.
+
+Lemma R2_dist_defined_2: forall pt, R2.dist pt pt = 0.
+Proof.
+  intros pt.
+  rewrite R2.dist_defined.
+  reflexivity.  
+Qed.
+
+(* If the radius of SEC is not zero then the center is not part of it. *)
+Lemma SEC_non_zero_radius_center : forall l,
+    radius (SEC l)<> 0%R
+    <-> on_circle (SEC l) (center (SEC l)) = false.
+Proof.
+  intros l.
+  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
+  - apply Rdec_bool_false_iff.
+    auto.
+  - rewrite ?Rdec_bool_false_iff in *.
+    auto.
+Qed.
+
+Lemma SEC_zero_radius_center : forall l,
+    on_circle (SEC l) (center (SEC l)) = true
+    <-> radius (SEC l) = 0%R.
+Proof.
+  intros l.
+  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
+  - rewrite ?Rdec_bool_true_iff in *.
+    auto.
+  - apply Rdec_bool_true_iff.
+    auto.
+Qed.
+
 (* Idea:
    We already know that there is one point on the circle.
    If there is no other, we take the furthest point from c strictly inside the disk.
    We decrease the center and radius to make it end up on the circle.
    Thus, the original SEC was not minimal, a contradiction. *)
 Lemma SEC_reached_twice : forall l, (2 <= length l)%nat ->
+                                    radius (SEC l) <> 0%R -> (* + NoDup? *)
   exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
 Proof.
-intros l Hl.
+intros l Hl Hnozero.
+assert (on_circle (SEC l) (center (SEC l)) = false).
+{ now apply SEC_non_zero_radius_center. }
 assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; omega. }
 destruct (SEC_reached Hnil) as [pt1 [Hin1 Hon1]].
 exists pt1.
@@ -444,13 +620,11 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   pose (c := center (SEC l)).
   pose (r := radius (SEC l)).
   (* the farthest point of l from c (excluding pt1) *)
-  pose (pt := fold_left (fun acc x => if R2.eq_dec x pt1 then acc else
-                                      if Rle_dec (R2.dist x c) (R2.dist c acc) then acc else x) l c).
+  pose (pt := farthest_from_in_except pt1 c c l).
   pose (d := R2.dist c pt). (* the room we have *)
   pose (r' := Rdiv (r + d) 2). (* the new radius *)
   pose (c' := R2.add c (R2.mul (r - r') (R2.add c (R2.opp pt)))). (* the new center *)
-  assert (Hin : In pt l).
-  { admit. }
+  assert (Hin : In pt l) by admit.
   assert (Hmax : forall x, In x l -> x <> pt1 -> R2.dist x c <= d).
   { admit. }
   assert (Hnew : enclosing_circle {| center := c'; radius := r' |} l).
