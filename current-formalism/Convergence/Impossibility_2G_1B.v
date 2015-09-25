@@ -68,17 +68,17 @@ Qed.
 Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
-CoInductive imprisonned (center : R.t) (radius : R) (e : execution) : Prop
+CoInductive imprisoned (center : R.t) (radius : R) (e : execution) : Prop
 := InDisk : (forall g, R.dist center (execution_head e (Good g)) <= radius)
-            → imprisonned center radius (execution_tail e)
-            → imprisonned center radius e.
+            → imprisoned center radius (execution_tail e)
+            → imprisoned center radius e.
 
 (** The execution will end in a small disk. *)
 Inductive attracted (c : R.t) (r : R) (e : execution) : Prop :=
-  | Captured : imprisonned c r e → attracted c r e
+  | Captured : imprisoned c r e → attracted c r e
   | WillBeCaptured : attracted c r (execution_tail e) → attracted c r e.
 
-Instance imprisonned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisonned.
+Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
 Proof. Admitted.
 
 Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
@@ -597,8 +597,8 @@ End PropRobogram.
 
 (** A 2-step induction scheme for attracted. *)
 Definition attracted_ind2 (c : R.t) (r : R) (P : execution → Prop)
-  (P0 : ∀ e : execution, imprisonned c r e → P e)
-  (P1 : ∀ e : execution, imprisonned c r (execution_tail e) → P e)
+  (P0 : ∀ e : execution, imprisoned c r e → P e)
+  (P1 : ∀ e : execution, imprisoned c r (execution_tail e) → P e)
   (Ps : ∀ e : execution, attracted c r (execution_tail (execution_tail e)) →
                          P (execution_tail (execution_tail e)) → P e)
   := fix F (e : execution) (a : attracted c r e) {struct a} : P e :=
