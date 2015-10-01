@@ -1270,6 +1270,51 @@ Proof.
          assumption. }
 Qed.
 
+(* A third formulation of forbidden. *)
+Lemma forbidden_spec_2: forall conf,
+    forbidden conf <->
+    (length (Spect.support (!! conf)) = 2) /\ (length (Spect.support (Spect.max(!! conf))) = 2).
+Proof.
+  intros conf.
+  rewrite forbidden_equiv.
+  split.
+  - intros H.
+    decompose [and] H;clear H.
+    split.
+    + red in H0.
+      apply Nat.le_antisymm.
+      rewrite <- Spect.size_spec.
+      * rewrite H1. reflexivity.
+      * transitivity (Spect.size (Spect.max (!! conf)));auto with arith.
+        rewrite Spect.size_spec.
+        apply Preliminary.inclA_length with (eqA:=R2.eq).
+        -- apply R2.eq_equiv.
+        -- apply Spect.support_NoDupA.
+        -- apply Spect.support_nfilter.
+           apply Spect.eqb_max_mult_compat.
+    + red in H0.
+      apply Nat.le_antisymm.
+      rewrite <- Spect.size_spec.
+      * transitivity (Spect.size (!! conf));auto with arith.
+        setoid_rewrite Spect.size_spec.
+        apply Preliminary.inclA_length with (eqA:=R2.eq).
+        -- apply R2.eq_equiv.
+        -- apply Spect.support_NoDupA.
+        -- apply Spect.support_nfilter.
+           apply Spect.eqb_max_mult_compat.
+        -- rewrite H1. reflexivity.
+      * rewrite <- Spect.size_spec. auto with arith.
+  - intros H.
+    decompose [and] H;clear H.
+    split.
+    + red.
+      rewrite Spect.size_spec.
+      omega.
+    + rewrite Spect.size_spec.
+      assumption.
+Qed.
+
+
 Theorem Majority_not_forbidden : forall pt config,
   Spect.support (Spect.max (!! config)) = pt :: nil -> ~forbidden config.
 Proof.
@@ -1504,54 +1549,123 @@ Theorem round_lt_config : forall da conf,
   ~forbidden conf -> moving gatherR2 da conf <> nil ->
   lt_config (round gatherR2 da conf) conf.
 Proof.
-intros da conf Hforbidden Hmove. unfold lt_config.
-apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
-assert (Hstep : step da gmove <> None).
-{ apply moving_active in Hmove. now rewrite active_spec in Hmove. }
-rewrite moving_spec in Hmove.
-destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmaj.
-* (* No robots *)
-  rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
-* (* A majority tower *)
-  assert (Hmajnext : Spect.support (Spect.max (!! (round gatherR2 da conf))) = pt :: nil).
-  { rewrite <- MajTower_at_equiv. apply (MajTower_at_forever da). now rewrite MajTower_at_equiv. }
-  unfold measure. rewrite Hmaj, Hmajnext.
-  apply right_lex.
-  assert ((!! (round gatherR2 da conf))[pt] <= N.nG).
-  { rewrite <- plus_0_r. change 0 with N.nB.
-    rewrite <- (Spect.cardinal_from_config (round gatherR2 da conf)).
-    apply Spect.cardinal_lower. }
-  cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]). omega.
-  rewrite increase_move_iff. exists gmove. split; trivial.
-  rewrite (round_simplify_Majority _ _ Hmaj). destruct (step da gmove); trivial. now elim Hstep.
-* (* Computing the SEC *)
-  assert (Hlen : 2 <= length (Spect.support (Spect.max (!! conf)))).
-  { rewrite Hmaj. simpl. omega. }
-  destruct (is_clean (!! conf)) eqn:Hclean.
-  (** Clean case *)
-  + rewrite round_simplify_clean; trivial.
-    pose (l := Spect.support (!! conf)).
-    destruct (filter (on_circle (SEC (l))) l) as [| pt1 [| pt2 [| pt3 [| pt4 sec]]]] eqn:Hsec;
+  intros da conf Hforbidden Hmove. unfold lt_config.
+  apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
+  assert (Hstep : step da gmove <> None).
+  { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
+  rewrite moving_spec in Hmove.
+  destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmaj.
+  - (* No robots *)
+    rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
+  - (* A majority tower *)
+    assert (Hmajnext : Spect.support (Spect.max (!! (round gatherR2 da conf))) = pt :: nil).
+    { rewrite <- MajTower_at_equiv. apply (MajTower_at_forever da). now rewrite MajTower_at_equiv. }
+    unfold measure. rewrite Hmaj, Hmajnext.
+    apply right_lex.
+    assert ((!! (round gatherR2 da conf))[pt] <= N.nG).
+    { rewrite <- plus_0_r. change 0 with N.nB.
+      rewrite <- (Spect.cardinal_from_config (round gatherR2 da conf)).
+      apply Spect.cardinal_lower. }
+    cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]). omega.
+    rewrite increase_move_iff. exists gmove. split; trivial.
+    rewrite (round_simplify_Majority _ _ Hmaj). destruct (step da gmove); trivial. now elim Hstep.
+  - (* Computing the SEC *)
+    assert (Hlen : 2 <= length (Spect.support (Spect.max (!! conf)))).
+    { rewrite Hmaj. simpl. omega. }
+    destruct (is_clean (!! conf)) eqn:Hclean.
+    (** Clean case *)
+    + rewrite round_simplify_clean; trivial.
+      pose (l := Spect.support (!! conf)).
+      destruct (filter (on_circle (SEC (l))) l) as [| pt1 [| pt2 [| pt3 [| pt4 sec]]]] eqn:Hsec;
         unfold measure at 2; rewrite Hmaj; unfold l in Hsec; rewrite Hsec, ?Hclean.
-    (* TODO: There must be at least two point on the SEC, so the first two cases are absurd.
-             cf RDVinRd.v for the sketch of the proof (but it may require more than a metric space) *)
-    - admit.
-    - admit.
-    - (** Three aligned towers *)
+      (* There must be at least two point on the SEC, so the first two cases are absurd. *)
+      -- assert (h_all_target:forall g, (conf g) = target (!! conf)). 
+         { unfold is_clean in Hclean.
+           apply if_true in Hclean.
+           destruct Hclean as [Hclean _].
+           setoid_rewrite inclA_bool_true_iff in Hclean.
+           unfold SECT in Hclean.
+           rewrite Hsec in Hclean.
+           intros g.
+           unfold inclA in Hclean.
+           assert (h:=Spect.pos_in_config conf g).
+           rewrite <- Spect.support_spec in h.
+           apply Hclean in h.
+           inversion h;subst. 
+           - assumption. 
+           - inversion H0. }
+         elim Hmove.
+         
+         rewrite destination_is_target;auto.
+         ++ symmetry. 
+            apply h_all_target.
+         ++ apply moving_spec.
+            assumption.
+      -- assert (h_target_or_pt_1:forall g, (conf g) = target (!! conf) \/ (conf g) = pt1).
+         { unfold is_clean in Hclean.
+           apply if_true in Hclean.
+           destruct Hclean as [Hclean _].
+           setoid_rewrite inclA_bool_true_iff in Hclean.
+           unfold SECT in Hclean.
+           rewrite Hsec in Hclean.
+           unfold inclA in Hclean.
+           intros g.
+           assert (h:=Spect.pos_in_config conf g).
+           rewrite <- Spect.support_spec in h.
+           apply Hclean in h.
+           inversion h;subst;auto.
+           inversion H0;subst;auto.
+           inversion H1. }
+
+         assert (h_target_or_pt_2:forall g, InA R2.eq (conf g) ((target (!! conf)) :: pt1 :: nil)).
+         { intros g.
+           apply InA_cons.
+           rewrite InA_cons.
+           rewrite InA_nil.
+           destruct (h_target_or_pt_1 g) ;auto. }
+         
+         assert (PermutationA R2.eq (Spect.support (!! conf)) (target (!! conf) :: pt1 :: nil)).
+         { admit. }
+         assert (inclA R2.eq (Spect.support (Spect.max (!! conf))) (Spect.support (!! conf))).
+         { apply Spect.support_nfilter.
+           apply Spect.eqb_max_mult_compat. }
+         rewrite Hmaj in H0.
+         setoid_rewrite H in H0.
+
+         assert (length (Spect.support (!! conf)) = 2).
+         { rewrite H.
+           reflexivity. }
+         assert (length (Spect.support (Spect.max(!! conf))) = 2).
+         { apply Nat.le_antisymm.
+           - rewrite <- H1.
+             apply Preliminary.inclA_length with (eqA := R2.eq).
+             + apply R2.eq_equiv.
+             + apply Spect.support_NoDupA.
+             + rewrite Hmaj.
+               rewrite H.
+               assumption.
+           - assumption. }
+         elim Hforbidden.
+         apply forbidden_spec_2.
+         auto.
+      (* cf RDVinRd.v for the sketch of the proof (but it may require more than a metric space) *)
+      -- (** Three aligned towers *)
+        admit.
+      -- destruct (classify_triangle pt1 pt2 pt3) as [| v |] eqn:Htriangle.
+         { (** Equilateral triangle *)
+           admit. }
+         { (** Isosceles triangle *)
+           admit. }
+         { (** Scalene triangle *)
+           admit. }
+      -- (** General case *)
+        admit.
+    (** Dirty case *)
+    + rewrite round_simplify_dirty; trivial.
+      (* TODO: same decomposition as before *)
       admit.
-    - destruct (classify_triangle pt1 pt2 pt3) as [| v |] eqn:Htriangle.
-      { (** Equilateral triangle *)
-        admit. }
-      { (** Isosceles triangle *)
-        admit. }
-      { (** Scalene triangle *)
-        admit. }
-    - (** General case *)
-      admit.
-  (** Dirty case *)
-  + rewrite round_simplify_dirty; trivial.
-    (* TODO: same decomposition as before *)
-    admit.
 Admitted.
 
 End GatheringinR2.
+       
+ 
