@@ -449,7 +449,7 @@ Close Scope R_scope.
 Definition measure_reduce (s : Spect.t) := N.nG - s[target s].
 Definition measure_clean (s : Spect.t) := N.nG - SECT_cardinal s.
 
-Definition measure (s : Spect.t) : nat * nat :=
+Function measure (s : Spect.t) : nat * nat :=
   match Spect.support (Spect.max s) with
     | nil => (0, 0) (* no robot *)
     | pt :: nil => (0, N.nG -  s[pt]) (* majority *)
@@ -1544,6 +1544,78 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
     omega.
 Qed.
 
+Axiom SEC_diameter: forall c (pt1 pt2:R2.t),
+    c = SEC (pt1::pt2::nil) ->
+    R2.dist pt1 pt2 = (c.(radius) * 2)%R.
+Lemma diameter_spec1: forall c (pt1 pt2:R2.t),
+    c = SEC (pt1::pt2::nil) ->
+    R2.dist pt1 pt2 = (c.(radius) * 2)%R ->
+    c.(center) = R2.middle pt1 pt2.
+Proof.
+  intros c pt1 pt2 H H0.
+  assert (R2.dist pt1 c.(center) + R2.dist c.(center) pt2 >= R2.dist pt1 pt2)%R.
+  { admit. }
+  rewrite H0 in H1.
+  destruct (R2.eq_dec pt1 pt2).
+  ++ rewrite ?e in *.
+     unfold R2.middle.
+     rewrite R2.add_distr.
+     rewrite R2.plus_morph.
+     (assert (h_demi:(1 / 2 + 1 / 2 = 1)%R)).
+     { rewrite <- double.
+       field. }
+     rewrite h_demi.
+     rewrite R2.mul_1.
+     rewrite R2_dist_defined_2 in H0.
+     destruct (Rmult_integral (radius c) 2).
+     ** symmetry;assumption.
+     ** destruct (@SEC_reached (pt2 :: pt2 :: nil)) as [ x [h1 h2]].
+        --- discriminate.
+        --- simpl in h1.
+            assert (pt2 = x).
+            { tauto. }
+            clear h1. subst.
+            assert (R2.dist (center (SEC (x :: x :: nil))) x = 0%R).
+            { unfold on_circle in h2.
+              rewrite H2 in h2.
+              apply Rdec_bool_true_iff in h2.
+              rewrite R2.dist_sym.
+              assumption. }
+            apply R2.dist_defined.
+            assumption.
+     ** absurd (0%R = 2%R);auto.
+        apply Rlt_not_eq.
+        apply Rlt_R0_R2.
+  ++ destruct (@SEC_reached_twice (pt1 :: pt2 :: nil)).
+     ** auto.
+     ** intro abs.
+        subst c.
+        rewrite abs in H0.
+        rewrite Rmult_0_l in H0.
+        apply R2.dist_defined in H0.
+        contradiction.
+     ** decompose [ex and ] H2; clear H2.
+        assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt1 = true).
+        { admit. }
+        assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt2 = true).
+        { admit. }
+        clear H6 H8.
+        assert (h_middle: is_middle pt1 pt2 (center c)).
+        { red.
+          admit. }
+        apply (@middle_unique pt1 pt2 (center c) (R2.middle pt1 pt2)).
+        assumption.
+        apply middle_spec.
+Admitted.
+
+
+
+Lemma multiplicity_le_nG : forall pt conf, (!! conf)[pt] <= N.nG.
+Proof.
+intros pt conf. etransitivity.
+- apply Spect.cardinal_lower.
+- rewrite Spect.cardinal_from_config. unfold N.nB. omega.
+Qed.
 
 Theorem round_lt_config : forall da conf,
   ~forbidden conf -> moving gatherR2 da conf <> nil ->
@@ -1574,8 +1646,7 @@ Proof.
     { rewrite Hmaj. simpl. omega. }
     destruct (is_clean (!! conf)) eqn:Hclean.
     (** Clean case *)
-    + rewrite round_simplify_clean; trivial.
-      pose (l := Spect.support (!! conf)).
+    + pose (l := Spect.support (!! conf)).
       destruct (filter (on_circle (SEC (l))) l) as [| pt1 [| pt2 [| pt3 [| pt4 sec]]]] eqn:Hsec;
         unfold measure at 2; rewrite Hmaj; unfold l in Hsec; rewrite Hsec, ?Hclean.
       (* There must be at least two point on the SEC, so the first two cases are absurd. *)
@@ -1650,7 +1721,38 @@ Proof.
          auto.
       (* cf RDVinRd.v for the sketch of the proof (but it may require more than a metric space) *)
       -- (** Three aligned towers *)
-        admit.
+        assert (target (!! conf) = R2.middle pt1 pt2).
+        { unfold target.
+          rewrite Hsec.
+          reflexivity. }
+        remember ((!! (round gatherR2 da conf))) as f.
+        functional induction (measure f); try now (constructor 1; auto; try omega).
+        ++ constructor 2.        
+           unfold measure_reduce.
+           assert (N.nG >= (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
+           { apply multiplicity_le_nG. }
+           assert (N.nG >= (!! conf)[target (!! conf)]).
+           { apply multiplicity_le_nG. }           
+           assert ((!! conf)[target (!! conf)] < (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
+           { (* We need  to prove that both targets are the same, but this is not always true. *)
+             apply increase_move_iff.
+             exists gmove.
+             split.
+             - rewrite round_simplify_clean; trivial.
+               destruct (step da gmove).
+               + reflexivity.
+               + elim Hstep;reflexivity.
+             - apply Hmove. }
+           omega.
+
+        ++ admit. (* is_clean = false is absurd. *)
+
+        constructor 1.
+        destruct (step da id).
+          
+        
+
+        
       -- destruct (classify_triangle pt1 pt2 pt3) as [| v |] eqn:Htriangle.
          { (** Equilateral triangle *)
            admit. }

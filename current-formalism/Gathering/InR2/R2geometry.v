@@ -663,7 +663,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
     now apply SEC_spec2.
   - unfold r'. cut (d < r). lra.
     
-Abort.
+Admitted.
 
 (* TODO? *)
 Axiom SEC_unicity: forall l c,
