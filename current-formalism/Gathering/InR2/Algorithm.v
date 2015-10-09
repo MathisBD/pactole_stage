@@ -1554,7 +1554,7 @@ Lemma diameter_spec1: forall c (pt1 pt2:R2.t),
 Proof.
   intros c pt1 pt2 H H0.
   assert (R2.dist pt1 c.(center) + R2.dist c.(center) pt2 >= R2.dist pt1 pt2)%R.
-  { admit. }
+  { apply Rle_ge, R2.triang_ineq. }
   rewrite H0 in H1.
   destruct (R2.eq_dec pt1 pt2).
   ++ rewrite ?e in *.
@@ -1588,18 +1588,25 @@ Proof.
         apply Rlt_R0_R2.
   ++ destruct (@SEC_reached_twice (pt1 :: pt2 :: nil)).
      ** auto.
-     ** intro abs.
-        subst c.
-        rewrite abs in H0.
-        rewrite Rmult_0_l in H0.
-        apply R2.dist_defined in H0.
-        contradiction.
+     ** repeat constructor.
+        --- intro Habs. inversion Habs.
+            +++ symmetry in H2. contradiction.
+            +++ inversion H2.
+        --- intro Habs. inversion Habs.
      ** decompose [ex and ] H2; clear H2.
+        assert (Hpt : x = pt1 /\ x0 = pt2 \/ x0 = pt1 /\ x = pt2).
+        { inversion H3; inversion H4;
+          repeat match goal with
+          | H : In ?x nil  |- _ => inversion H
+          | H : In ?x (?y :: nil) |- _ => inversion_clear H; auto
+          end; now subst; elim H5.
+         }
         assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt1 = true).
-        { admit. }
+        { decompose [and or] Hpt ; subst ; assumption. }
         assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt2 = true).
-        { admit. }
-        clear H6 H8.
+        { decompose [and or] Hpt ; subst ; assumption. }
+        clear dependent x.
+        clear dependent x0.
         assert (h_middle: is_middle pt1 pt2 (center c)).
         { red.
           admit. }
@@ -1616,6 +1623,29 @@ intros pt conf. etransitivity.
 - apply Spect.cardinal_lower.
 - rewrite Spect.cardinal_from_config. unfold N.nB. omega.
 Qed.
+
+Lemma next_target_same : forall da conf pt1 pt2 pt3,
+    ~(is_clean (!! conf) = true /\ Spect.support (!! conf) = pt1 :: pt2 :: pt3 :: nil
+      /\ classify_triangle pt1 pt2 pt3 = Equilateral) ->
+    target (!! (round gatherR2 da conf)) = target (!! conf).
+Proof.
+  intros da conf pt1 pt2 pt3 Hexcluded. unfold target.
+  destruct (filter (on_circle (SEC (Spect.support (!! conf))))
+                   (Spect.support (!! conf))) as [| ptx [| pty [| ptz [| ptt ?]]]] eqn:Hfilter.
+  - destruct (@SEC_reached (Spect.support (!! conf))) as [pt Hpt].
+    + apply support_non_nil.
+    + exfalso. cut (In pt nil).
+      * intro H. inversion H.
+      * rewrite <- Hfilter. rewrite filter_In. assumption.
+  - assert (filter (on_circle (SEC (Spect.support (!! (round gatherR2 da conf)))))
+                   (Spect.support (!! (round gatherR2 da conf))) = ptx :: nil).
+    { apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz.
+        rewrite (filter_PermutationA_compat _ _);
+        try now apply Spect.support_compat, Spect.from_config_compat, round_simplify.
+    apply SEC_singleton_is_singleton in Hfilter. admit.    
+    }
+
+Admitted.
 
 Theorem round_lt_config : forall da conf,
   ~forbidden conf -> moving gatherR2 da conf <> nil ->
@@ -1672,54 +1702,19 @@ Proof.
             apply h_all_target.
          ++ apply moving_spec.
             assumption.
-      -- assert (h_target_or_pt_1:forall g, (conf g) = target (!! conf) \/ (conf g) = pt1).
-         { unfold is_clean in Hclean.
-           apply if_true in Hclean.
-           destruct Hclean as [Hclean _].
-           setoid_rewrite inclA_bool_true_iff in Hclean.
-           unfold SECT in Hclean.
-           rewrite Hsec in Hclean.
-           unfold inclA in Hclean.
-           intros g.
-           assert (h:=Spect.pos_in_config conf g).
-           rewrite <- Spect.support_spec in h.
-           apply Hclean in h.
-           inversion h;subst;auto.
-           inversion H0;subst;auto.
-           inversion H1. }
-
-         assert (h_target_or_pt_2:forall g, InA R2.eq (conf g) ((target (!! conf)) :: pt1 :: nil)).
-         { intros g.
-           apply InA_cons.
-           rewrite InA_cons.
-           rewrite InA_nil.
-           destruct (h_target_or_pt_1 g) ;auto. }
-         
-         assert (PermutationA R2.eq (Spect.support (!! conf)) (target (!! conf) :: pt1 :: nil)).
-         { admit. }
-         assert (inclA R2.eq (Spect.support (Spect.max (!! conf))) (Spect.support (!! conf))).
-         { apply Spect.support_nfilter.
-           apply Spect.eqb_max_mult_compat. }
-         rewrite Hmaj in H0.
-         setoid_rewrite H in H0.
-
-         assert (length (Spect.support (!! conf)) = 2).
-         { rewrite H.
-           reflexivity. }
-         assert (length (Spect.support (Spect.max(!! conf))) = 2).
-         { apply Nat.le_antisymm.
-           - rewrite <- H1.
-             apply Preliminary.inclA_length with (eqA := R2.eq).
-             + apply R2.eq_equiv.
-             + apply Spect.support_NoDupA.
-             + rewrite Hmaj.
-               rewrite H.
-               assumption.
-           - assumption. }
-         elim Hforbidden.
-         apply forbidden_spec_2.
-         auto.
-      (* cf RDVinRd.v for the sketch of the proof (but it may require more than a metric space) *)
+      -- apply SEC_singleton_is_singleton in Hsec.
+         exfalso.
+         cut (inclA R2.eq (pt :: pt' :: smax) (pt1 :: nil)).
+         ++ intros Hincl. cut (pt = pt').
+            ** assert (Hnodup : NoDupA R2.eq (pt :: pt' :: smax)).
+               { rewrite <- Hmaj. apply Spect.support_NoDupA. }
+               inversion_clear Hnodup. intro. subst. apply H. now left.
+            ** transitivity pt1.
+               --- specialize (Hincl pt $(now left)$). inversion Hincl; trivial.
+                   inversion H0.
+               --- specialize (Hincl pt' $(now right; left)$). symmetry.
+                   inversion Hincl; trivial. inversion H0.
+         ++ rewrite <- Hmaj, <- Hsec. apply Spect.support_sub_compat, Spect.max_subset.
       -- (** Three aligned towers *)
         assert (target (!! conf) = R2.middle pt1 pt2).
         { unfold target.
@@ -1732,7 +1727,7 @@ Proof.
            assert (N.nG >= (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
            { apply multiplicity_le_nG. }
            assert (N.nG >= (!! conf)[target (!! conf)]).
-           { apply multiplicity_le_nG. }           
+           { apply multiplicity_le_nG. }
            assert ((!! conf)[target (!! conf)] < (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
            { (* We need  to prove that both targets are the same, but this is not always true. *)
              apply increase_move_iff.

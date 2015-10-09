@@ -337,6 +337,9 @@ do 2 rewrite <- Forall_forall. apply Forall_Permutation_compat; trivial.
 intros ? ? ?. now subst.
 Qed.
 
+Instance on_circle_compat : Proper (eq ==> R2.eq ==> eq) on_circle.
+Proof. repeat intro. unfoldR2 in H0. now subst. Qed.
+
 (** We assume the existence of a primitive SEC computing the smallest enclosing circle,
     given by center and radius. *)
 Parameter SEC : list R2.t -> circle.
@@ -619,14 +622,14 @@ Qed.
    If there is no other, we take the furthest point from c strictly inside the disk.
    We decrease the center and radius to make it end up on the circle.
    Thus, the original SEC was not minimal, a contradiction. *)
-Lemma SEC_reached_twice : forall l, (2 <= length l)%nat ->
-                                    radius (SEC l) <> 0%R -> (* + NoDup? *)
+Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l ->
+(*                                    radius (SEC l) <> 0%R -> *)
   exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
 Proof.
-intros l Hl Hnozero.
-assert (on_circle (SEC l) (center (SEC l)) = false).
-{ now apply SEC_non_zero_radius_center. }
+intros l Hl Hnodup.
+(*assert (on_circle (SEC l) (center (SEC l)) = false).
+{ now apply SEC_non_zero_radius_center. }*)
 assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; omega. }
 destruct (SEC_reached Hnil) as [pt1 [Hin1 Hon1]].
 exists pt1.
@@ -670,3 +673,27 @@ Axiom SEC_unicity: forall l c,
     enclosing_circle c l
     -> (radius c <= radius (SEC l))%R
     -> c = SEC l.
+
+Lemma SEC_singleton_is_singleton :
+  forall pt l, NoDup l -> filter (on_circle (SEC l)) l = pt :: nil -> l = pt :: nil.
+Proof.
+  intros pt l Hnodup Hfilter.
+destruct l as [| pt1 [| pt2 l']] eqn:Hl.
+  + cbn in *. assumption.
+  + cbn in *. destruct (on_circle (SEC (pt1 :: nil)) pt1); trivial; discriminate.
+  + destruct (@SEC_reached_twice (pt1 :: pt2 :: l'))
+      as [pt_1 [pt_2 [Hpt_1 [Hpt_2 [Hdiff [H1 H2]]]]]].
+    * simpl. omega.
+    * rewrite <- Hl. now subst.
+    * assert (In pt_1 (filter (on_circle (SEC (pt1 :: pt2 :: l')))
+                              (pt1 :: pt2 :: l'))).
+      { rewrite filter_In. now split. }
+      assert (In pt_2 (filter (on_circle (SEC (pt1 :: pt2 :: l')))
+                              (pt1 :: pt2 :: l'))).
+      { rewrite filter_In. now split. }
+      exfalso. apply Hdiff. rewrite Hfilter in *.
+      repeat match goal with
+             | H : In ?x nil  |- _ => inversion H
+             | H : In ?x (?y :: nil) |- _ => inversion_clear H; auto
+             end. now subst.
+Qed.
