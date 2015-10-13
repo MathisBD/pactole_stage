@@ -715,10 +715,36 @@ Axiom SEC_unicity: forall l c,
     -> (radius c <= radius (SEC l))%R
     -> c = SEC l.
 
-Lemma SEC_singleton_is_singleton :
-  forall pt l, NoDup l -> filter (on_circle (SEC l)) l = pt :: nil -> l = pt :: nil.
+Definition on_SEC l := List.filter (on_circle (SEC l)) l.
+
+Instance on_SEC_compat : Proper (PermutationA Logic.eq ==> PermutationA Logic.eq) on_SEC.
 Proof.
-  intros pt l Hnodup Hfilter.
+intros l1 l2 Hl. unfold on_SEC. rewrite Hl at 2.
+rewrite filter_extensionality_compat; try reflexivity.
+intros ? ? ?. subst. now rewrite Hl.
+Qed.
+
+Lemma on_SEC_In : forall pt l, In pt (on_SEC l) <-> In pt l /\ on_circle (SEC l) pt = true.
+Proof. intros. unfold on_SEC. apply filter_In. Qed.
+
+Lemma on_SEC_nil : forall l, on_SEC l = nil <-> l = nil.
+Proof.
+intro l. split; intro H.
+- destruct l; trivial. exfalso.
+  destruct (@SEC_reached (t :: l)) as [pt Hpt]; try discriminate.
+  rewrite <- on_SEC_In in Hpt. rewrite H in Hpt. inversion Hpt.
+- subst. cbn. reflexivity.
+Qed.
+
+Lemma on_SEC_singleton : forall pt, on_SEC (pt :: nil) = pt :: nil.
+Proof.
+intro. cbn. rewrite SEC_singleton. unfold on_circle. cbn. rewrite R2_dist_defined_2.
+destruct (Rdec_bool 0 0) eqn:Htest; trivial. rewrite Rdec_bool_false_iff in Htest. now elim Htest.
+Qed.
+
+Lemma on_SEC_singleton_is_singleton : forall pt l, NoDup l -> on_SEC l = pt :: nil -> l = pt :: nil.
+Proof.
+intros pt l Hnodup Hfilter.
 destruct l as [| pt1 [| pt2 l']] eqn:Hl.
   + cbn in *. assumption.
   + cbn in *. destruct (on_circle (SEC (pt1 :: nil)) pt1); trivial; discriminate.
@@ -726,12 +752,8 @@ destruct l as [| pt1 [| pt2 l']] eqn:Hl.
       as [pt_1 [pt_2 [Hpt_1 [Hpt_2 [Hdiff [H1 H2]]]]]].
     * simpl. omega.
     * rewrite <- Hl. now subst.
-    * assert (In pt_1 (filter (on_circle (SEC (pt1 :: pt2 :: l')))
-                              (pt1 :: pt2 :: l'))).
-      { rewrite filter_In. now split. }
-      assert (In pt_2 (filter (on_circle (SEC (pt1 :: pt2 :: l')))
-                              (pt1 :: pt2 :: l'))).
-      { rewrite filter_In. now split. }
+    * assert (In pt_1 (on_SEC (pt1 :: pt2 :: l'))). { unfold on_SEC. rewrite filter_In. now split. }
+      assert (In pt_2 (on_SEC (pt1 :: pt2 :: l'))). { unfold on_SEC. rewrite filter_In. now split. }
       exfalso. apply Hdiff. rewrite Hfilter in *.
       repeat match goal with
              | H : In ?x nil  |- _ => inversion H
