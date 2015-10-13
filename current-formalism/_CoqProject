@@ -7,6 +7,7 @@ MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
 MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
+MMultiset/MMultisetExtraOps.v
 MMultiset/Preliminary.v
 Similarity.v
 CommonFormalism.v

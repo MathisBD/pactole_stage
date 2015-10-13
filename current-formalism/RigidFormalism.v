@@ -189,7 +189,7 @@ Inductive Between g h (d : demon) : nat -> Prop :=
                      Between g h (demon_tail d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
-CoInductive kFair k (d : demon) :=
+CoInductive kFair k (d : demon) : Prop :=
   AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
                 kFair k d.
 
@@ -331,8 +331,8 @@ Proof. induction 1. now constructor. Qed.
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
 Proof.
   coinduction fully_fair.
-  - intro. apply local_fully_synchronous_implies_fair. apply H.
-  - now inversion H.
+  - intro. apply local_fully_synchronous_implies_fair. apply X.
+  - now inversion X.
 Qed.
 
 (** ** One step executions *)

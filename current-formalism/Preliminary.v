@@ -1005,15 +1005,15 @@ intro l1. induction l1 as [| a l1]; intros l2 Hnodup Hincl.
 Qed.
 
 Lemma NoDupA_inclA_length_PermutationA : forall l1 l2,
-  NoDupA eqA l1 -> NoDupA eqA l2 -> inclA eqA l1 l2 -> length l1 = length l2 -> PermutationA eqA l1 l2.
+  NoDupA eqA l1 -> NoDupA eqA l2 -> inclA eqA l1 l2 -> length l2 <= length l1 -> PermutationA eqA l1 l2.
 Proof.
 intro l1. induction l1 as [| x l1]; intros l2 Hnodup1 Hnodup2 Hincl Hlen.
-+ destruct l2. reflexivity. discriminate Hlen.
++ destruct l2; try reflexivity. cbn in *. omega.
 + assert (Hin : InA eqA x l2). { apply Hincl. now left. }
   apply (PermutationA_split _) in Hin. destruct Hin as [l2' Heql2]. 
   rewrite Heql2 in *. constructor; try reflexivity.
   inversion_clear Hnodup1. inversion_clear Hnodup2.
-  apply inclA_cons_inv in Hincl; trivial. apply IHl1; auto.
+  apply inclA_cons_inv in Hincl; trivial. apply IHl1; auto. cbn in *. omega.
 Qed.
 
 End inclA_results.

@@ -93,6 +93,12 @@ Close Scope R_scope.
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
+Lemma Config_list_alls : forall pt, Spect.Config.list (fun _ => pt) = alls pt N.nG.
+Proof.
+intro. rewrite Config.list_spec, map_cst.
+setoid_rewrite Spect.Names.names_length. unfold N.nB. now rewrite plus_0_r.
+Qed.
+
 Lemma map_sim_support : forall (sim : Sim.t) s,
   Permutation (Spect.support (Spect.map sim s)) (map sim (Spect.support s)).
 Proof.
@@ -339,7 +345,7 @@ assert (Hperm : Permutation (filter (on_circle (SEC (Spect.support s1))) (Spect.
 { rewrite <- PermutationA_Leibniz. etransitivity.
   - apply (filter_PermutationA_compat _); refine _. now rewrite Hs.
   - rewrite filter_extensionality_compat; try reflexivity.
-    intros x y Hxy. subst. f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs. }
+    intros x y Hxy. subst. now rewrite Hs. }
 destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| a1 [| a2 [| a3 [| ? ?]]]] eqn:Hs1.
 + apply Permutation_nil in Hperm. now rewrite Hperm.
 + apply Permutation_length_1_inv in Hperm. now rewrite Hperm.
@@ -354,7 +360,7 @@ destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| 
     by now rewrite <- Hperm.
   destruct (filter (on_circle (SEC (Spect.support s2))) (Spect.support s2))
     as [| b1 [| b2 [| b3 [| ? ?]]]]; simpl in *; try omega.
-  f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs.
+  now rewrite Hs.
 Qed.
 
 Definition SECT (s : Spect.t) : list R2.t :=
@@ -367,7 +373,7 @@ intros s1 s2 Hs. unfold SECT. rewrite Hs at 1. constructor.
 etransitivity.
 - rewrite <- PermutationA_Leibniz. apply (filter_PermutationA_compat _); refine _. rewrite Hs. reflexivity.
 - rewrite filter_extensionality_compat; try reflexivity.
-  intros ? ? ?. subst. f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs.
+  intros ? ? ?. subst. now rewrite Hs.
 Qed.
 
 Definition SECT_cardinal s :=
@@ -491,7 +497,7 @@ simpl in Hsize; omega || clear Hsize.
   { rewrite <- PermutationA_Leibniz. etransitivity.
     - apply (filter_PermutationA_compat _); refine _. now rewrite Hs.
     - rewrite filter_extensionality_compat; try reflexivity.
-      intros x y Hxy. subst. f_equal. f_equiv. rewrite <- PermutationA_Leibniz. now rewrite Hs. }
+      intros x y Hxy. subst. now rewrite Hs. }
   destruct (filter (on_circle (SEC (Spect.support s1))) (Spect.support s1)) as [| a1 [| a2 [| a3 [| ? ?]]]] eqn:Hs1.
   - apply Permutation_nil in Hperm. now rewrite Hperm.
   - apply Permutation_length_1_inv in Hperm. now rewrite Hperm.
@@ -688,7 +694,8 @@ Proof.
   apply middle_unique with (sim x) (sim y);assumption.
 Qed.
 
-Lemma R2_is_bary3_morph : forall x y z C (sim:Sim.t), is_barycenter_3_pt x y z C -> (is_barycenter_3_pt (sim x) (sim y) (sim z) (sim C)).
+Lemma R2_is_bary3_morph : forall x y z C (sim : Sim.t),
+  is_barycenter_3_pt x y z C -> (is_barycenter_3_pt (sim x) (sim y) (sim z) (sim C)).
 Proof.
   intros x y z C sim hmid.
   red.
@@ -704,7 +711,8 @@ Proof.
 Qed.
 
 
-Lemma R2_bary3_morph : forall x y z (sim:Sim.t), (barycenter_3_pts (sim x) (sim y) (sim z))%R2 = sim ((barycenter_3_pts x y z))%R2.
+Lemma R2_bary3_morph : forall x y z (sim : Sim.t),
+  (barycenter_3_pts (sim x) (sim y) (sim z))%R2 = sim ((barycenter_3_pts x y z))%R2.
 Proof.
   intros x y z sim.
   generalize (@bary3_spec x y z).
@@ -758,7 +766,7 @@ destruct ((filter (on_circle (SEC (Spect.support s))) (Spect.support s))) as [| 
     reflexivity.
 + rewrite PermutationA_Leibniz in Hperm. rewrite <- (target_triangle_compat Hperm). apply target_triangle_morph.
 + change (sim (center (SEC (Spect.support s)))) with (center (sim_circle sim (SEC (Spect.support s)))).
-  f_equal. rewrite <- SEC_morph. f_equiv. apply map_sim_support.
+  f_equal. rewrite <- SEC_morph. apply SEC_compat, map_sim_support.
 Admitted.
 
 Corollary SECT_morph : forall (sim : Sim.t) s,
@@ -779,7 +787,8 @@ transitivity (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (map si
 Qed.
 
 
-Instance inclA_bool_compat A eqA: Proper (eq ==> eq ==> @PermutationA A eqA ==> @PermutationA A eqA ==> eq) (@inclA_bool A eqA).
+Instance inclA_bool_compat A eqA :
+  Proper (eq ==> eq ==> @PermutationA A eqA ==> @PermutationA A eqA ==> eq) (@inclA_bool A eqA).
 Proof.
 Admitted.
 
@@ -1126,8 +1135,8 @@ Proof.
     * assert (h:=@Spect.support_nfilter _ (Spect.eqb_max_mult_compat (!!conf)) (!! conf)).
       { change (Spect.nfilter (fun _ : R2.t => Nat.eqb (Spect.max_mult (!! conf))) (!! conf))
         with (Spect.max (!!conf)) in h.
-        assert (Hlen'': length (Spect.support (Spect.max (!! conf))) = length (Spect.support (!! conf))).
-        { rewrite Spect.size_spec in Hlen'. now rewrite Hsupp. }
+        assert (Hlen'': length (Spect.support (!! conf)) <= length (Spect.support (Spect.max (!! conf)))).
+        { rewrite Spect.size_spec in Hlen'. now rewrite Hsupp, Hlen'. }
         assert (h2:=@NoDupA_inclA_length_PermutationA
                       _ R2.eq _
                       (Spect.support (Spect.max (!! conf)))
@@ -1632,19 +1641,49 @@ Proof.
   intros da conf pt1 pt2 pt3 Hexcluded. unfold target.
   destruct (filter (on_circle (SEC (Spect.support (!! conf))))
                    (Spect.support (!! conf))) as [| ptx [| pty [| ptz [| ptt ?]]]] eqn:Hfilter.
-  - destruct (@SEC_reached (Spect.support (!! conf))) as [pt Hpt].
+  * (* No robots *)
+    destruct (@SEC_reached (Spect.support (!! conf))) as [pt Hpt].
     + apply support_non_nil.
     + exfalso. cut (In pt nil).
-      * intro H. inversion H.
-      * rewrite <- Hfilter. rewrite filter_In. assumption.
-  - assert (filter (on_circle (SEC (Spect.support (!! (round gatherR2 da conf)))))
-                   (Spect.support (!! (round gatherR2 da conf))) = ptx :: nil).
+      - intro H. inversion H.
+      - rewrite <- Hfilter. rewrite filter_In. assumption.
+  * (* A majority tower *)
+    assert (Heq : Spect.support (!! conf) = ptx :: nil).
+    { apply SEC_singleton_is_singleton.
+      - rewrite <- NoDupA_Leibniz. apply Spect.support_NoDupA.
+      - assumption. }
+    assert (Hconfig : Config.eq (round gatherR2 da conf) (fun id => ptx)).
+    { intro id. rewrite (round_simplify_Majority da conf (pt := ptx)).
+      + destruct (step da id).
+        - reflexivity.
+        - assert (Hin : Spect.In (conf id) (!! conf)) by apply Spect.pos_in_config.
+          rewrite <- Spect.support_In, Heq in Hin. inversion_clear Hin; trivial. now rewrite InA_nil in *.
+      + assert (Hsingl : Spect.eq (!! conf) (Spect.singleton ptx (!!conf)[ptx])).
+        { eapply proj1. rewrite <- Spect.support_1, Heq. reflexivity. }
+        apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz.
+        rewrite Hsingl, Spect.max_singleton, Spect.support_singleton; try reflexivity.
+        change (Spect.In ptx (!! conf)). rewrite <- Spect.support_In, Heq. now left. }
+    assert (Hfilter_round : filter (on_circle (SEC (Spect.support (!! (round gatherR2 da conf)))))
+                         (Spect.support (!! (round gatherR2 da conf))) = ptx :: nil).
     { apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz.
-        rewrite (filter_PermutationA_compat _ _);
-        try now apply Spect.support_compat, Spect.from_config_compat, round_simplify.
-    apply SEC_singleton_is_singleton in Hfilter. admit.    
-    }
-
+      apply SEC_singleton_is_singleton in Hfilter; try now rewrite <- NoDupA_Leibniz; apply Spect.support_NoDupA.
+      (* setoid_rewrite Hconfig. -> Fails! *)
+      setoid_rewrite Hconfig at 2; setoid_rewrite Hconfig.
+      unfold Spect.from_config. rewrite Config_list_alls.
+      (* Idem here! *)
+      assert (HnG : N.nG > 0). { apply lt_le_trans with 3. omega. apply nG_conf. }
+      rewrite Spect.multiset_alls at 2; rewrite Spect.multiset_alls.
+      rewrite Spect.support_singleton at 2; try rewrite Spect.support_singleton; trivial.
+      rewrite SEC_singleton. unfold on_circle. cbn. destruct (Rdec_bool (R2.dist ptx ptx) 0) eqn:Htest.
+      + reflexivity.
+      + exfalso. rewrite Rdec_bool_false_iff in Htest. apply Htest. rewrite R2.dist_defined. reflexivity. }
+    now rewrite Hfilter_round.
+  * (* Two points on the SEC *)
+    
+  * (* Three points on the SEC *)
+    
+  * (* Generic case *)
+    
 Admitted.
 
 Theorem round_lt_config : forall da conf,
@@ -1728,7 +1767,8 @@ Proof.
            { apply multiplicity_le_nG. }
            assert (N.nG >= (!! conf)[target (!! conf)]).
            { apply multiplicity_le_nG. }
-           assert ((!! conf)[target (!! conf)] < (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
+           assert ((!! conf)[target (!! conf)]
+                   < (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
            { (* We need  to prove that both targets are the same, but this is not always true. *)
              apply increase_move_iff.
              exists gmove.
@@ -1764,5 +1804,4 @@ Proof.
 Admitted.
 
 End GatheringinR2.
-       
- 
+

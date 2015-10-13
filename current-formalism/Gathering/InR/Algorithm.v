@@ -263,8 +263,8 @@ Proof.
     * assert (h:=@Spect.support_nfilter _ (Spect.eqb_max_mult_compat (!!conf)) (!! conf)).
       change (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Spect.max_mult (!! conf))) (!! conf))
       with (Spect.max (!!conf)) in h.
-      assert (Hlen'': length (Spect.support (Spect.max (!! conf))) = length (Spect.support (!! conf))).
-      { rewrite Spect.size_spec in Hlen'. now rewrite Hsupp. }
+      assert (Hlen'': length (Spect.support (!! conf)) <= length (Spect.support (Spect.max (!! conf)))).
+      { rewrite Spect.size_spec in Hlen'. rewrite Hsupp, Hlen'. reflexivity. }
       assert (h2:=@NoDupA_inclA_length_PermutationA
                     _ R.eq _
                     (Spect.support (Spect.max (!! conf)))
@@ -1279,7 +1279,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
         - apply Spect.support_NoDupA.
         - apply Spect.support_NoDupA.
         - rewrite inclA_Leibniz. eapply support_round_Three_incl; eassumption.
-        - do 2 rewrite <- Spect.size_spec. assumption. }
+        - do 2 rewrite <- Spect.size_spec. rewrite Hlen'. reflexivity. }
       rewrite Hperm.
       assert (Hup := multiplicity_le_nG (nth 1 (sort (Spect.support (!! conf))) 0%R)
                                         (round robogram da conf)).

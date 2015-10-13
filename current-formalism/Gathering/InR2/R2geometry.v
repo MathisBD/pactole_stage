@@ -307,9 +307,10 @@ Axiom Barycenter_spec_unicity: forall pt1 pt2 pt3 B: R2.t,
               (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)²
               < (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
-Definition is_middle pt1 pt2 B := forall p, (R2.dist B pt1)² + (R2.dist B pt2)² <= (R2.dist p pt1)² + (R2.dist p pt2)².
-Definition is_barycenter_3_pt pt1 pt2 pt3 B :=
-  forall p, (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
+Definition is_middle pt1 pt2 B := forall p,
+  (R2.dist B pt1)² + (R2.dist B pt2)² <= (R2.dist p pt1)² + (R2.dist p pt2)².
+Definition is_barycenter_3_pt pt1 pt2 pt3 B := forall p,
+  (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
 Axiom middle_spec: forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
 Axiom bary3_spec: forall pt1 pt2 pt3,
@@ -351,6 +352,9 @@ Axiom SEC_spec2 : forall l c, enclosing_circle c l -> radius (SEC l) <= radius c
 Axiom SEC_nil : radius (SEC nil) = 0.
 (** Its definition does not depend on the representation of points. *)
 Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
+
+Global Instance SEC_compat_bis : Proper (PermutationA Logic.eq ==> Logic.eq) SEC.
+Proof. intros ? ? Heq. rewrite PermutationA_Leibniz in Heq. now rewrite Heq. Qed.
 
 (* The last axiom is useful because of the following degeneracy fact. *)
 Lemma enclosing_circle_nil : forall pt r, enclosing_circle {| center := pt; radius := r |} nil.
@@ -476,7 +480,7 @@ Lemma SEC_spec_det:
   forall l sec,
     enclosing_circle sec l ->
     (forall (c : circle), enclosing_circle c l -> radius sec < radius c)
-    -> SEC l =sec.
+    -> SEC l = sec.
 Proof.
   intros l sec henclos hrad.
   
@@ -505,21 +509,20 @@ Proof.
     assert (R2.dist x (center (SEC (x :: nil))) = 0).
     { apply R2.dist_defined.
 *)
-    
-  
 
-(*
-Lemma SEC_singleton : forall x, SEC (x::nil) = {| center := x; radius :=0 |}.
+
+Lemma SEC_singleton : forall pt, SEC (pt :: nil) = {| center := pt; radius := 0 |}.
 Proof.
-  intros x.
-  generalize (radius_is_max_dist (x::nil));intro hrad.
+(*  intro pt.
+  generalize (radius_is_max_dist (pt :: nil));intro hrad.
   cbn in hrad.
-  destruct (SEC (x::nil)) eqn:heq_SEC.
-  apply f_equal2.
+  destruct (SEC (pt :: nil)) eqn:heq_SEC.
+  f_equal.
   cbn in *.
   max_dist_exists.
-Qed.
-*)
+Qed.*)
+Admitted.
+
 Function farthest_from_in c acc inl :=
 match inl with
 | nil => c
@@ -527,8 +530,6 @@ match inl with
   if Rle_dec (R2.dist x c) (R2.dist c acc)
   then farthest_from_in c acc inl' else farthest_from_in c x inl'
 end.
-
-
 
 Lemma farthest_In: forall c acc inl,
     farthest_from_in c acc inl = c \/
@@ -552,44 +553,82 @@ Proof.
   intuition.
 Qed.
 
-Function farthest_from_in_except (except c acc:R2.t) inl :=
+Function farthest_from_in_except (except c acc : R2.t) inl :=
 match inl with
-| nil => c
+| nil => acc
 | cons x inl' =>
   if R2.eq_dec x except then farthest_from_in_except except c acc inl'
   else if Rle_dec (R2.dist x c) (R2.dist c acc)
   then farthest_from_in_except except c acc inl' else farthest_from_in_except except c x inl'
 end.
 
-Lemma farthest_from_in_exc_In: forall except c acc inl,
-    farthest_from_in_except except c acc inl = c \/
+Lemma farthest_from_in_exc_In : forall except c acc inl,
     farthest_from_in_except except c acc inl = acc \/
     In (farthest_from_in_except except c acc inl) inl.
 Proof.
-  intros except c acc inl.
-  functional induction (farthest_from_in_except except c acc inl);auto.
-  - destruct IHt as [IHt1 | [IHt2 | IHt3]];auto.
-    cbn;auto.
-  - destruct IHt as [IHt1 | [IHt2 | IHt3]];auto.
-    cbn;auto.
-  - destruct IHt as [IHt1 | [IHt2 | IHt3]]; cbn;auto.
+intros except c acc inl.
+functional induction (farthest_from_in_except except c acc inl); auto;
+destruct IHt as [? | ?]; cbn; auto.
 Qed.
 
-Lemma farthest_from_in_exc_In_c: forall except c inl,
-    farthest_from_in_except except c c inl = c \/
-    In (farthest_from_in_except except c c inl) inl.
-Proof.
-  intros except c inl.
-  generalize (farthest_from_in_exc_In except c c inl).
-  intros H.
-  intuition.
-Qed.
-
-Lemma R2_dist_defined_2: forall pt, R2.dist pt pt = 0.
+Lemma R2_dist_defined_2 : forall pt, R2.dist pt pt = 0.
 Proof.
   intros pt.
   rewrite R2.dist_defined.
-  reflexivity.  
+  reflexivity.
+Qed.
+
+Lemma farthest_from_in_except_In : forall exc c l, (exists pt, pt <> exc /\ In pt l) ->
+  In (farthest_from_in_except exc c c l) l.
+Proof.
+intros exc c l Hl. induction l as [| e l].
+* now elim Hl.
+* cbn. destruct (R2.eq_dec e exc) as [Heq | Heq].
+  + rewrite Heq in *. destruct l.
+    - destruct Hl as [pt' [Habs Hin]]. elim Habs. now inversion Hin.
+    - right. apply IHl. destruct Hl as [pt' [Hneq Hin]]. exists pt'. split; trivial.
+      inversion Hin; subst; trivial; now elim Hneq.
+  + destruct (Rle_dec (R2.dist e c) (R2.dist c c)) as [H | H].
+    - assert (He : R2.eq e c).
+      { rewrite <- R2.dist_defined. transitivity (R2.dist c c).
+        + apply Rle_antisym; trivial.
+          rewrite R2_dist_defined_2. apply R2.dist_pos.
+        + apply R2_dist_defined_2. }
+      rewrite He. destruct (farthest_from_in_exc_In exc c c l); intuition.
+    - destruct (farthest_from_in_exc_In exc c e l); intuition.
+Qed.
+
+Lemma farthest_from_in_except_diff : forall exc c acc l, acc <> exc -> farthest_from_in_except exc c acc l <> exc.
+Proof.
+intros exc c acc l. revert acc. induction l as [| e l]; intros acc Hdiff; cbn.
+- assumption.
+- destruct (R2.eq_dec e exc); auto.
+  destruct (Rle_dec (R2.dist e c) (R2.dist c acc)); auto.
+Qed.
+
+Lemma farthest_from_in_except_le_acc : forall exc c l acc,
+  R2.dist c acc <= R2.dist c (farthest_from_in_except exc c acc l).
+Proof.
+intros exc c l. induction l as [| e l]; intro acc; cbn.
++ apply Rle_refl.
++ destruct (R2.eq_dec e exc); auto.
+  destruct (Rle_dec (R2.dist e c) (R2.dist c acc)) as [? | Hnle]; auto.
+  apply Rnot_le_lt in Hnle. eapply Rle_trans.
+  - apply Rlt_le. eassumption.
+  - rewrite R2.dist_sym. apply IHl.
+Qed.
+
+Lemma farthest_from_in_except_le : forall exc c l acc x,
+  In x l -> x <> exc -> R2.dist c x <= R2.dist c (farthest_from_in_except exc c acc l).
+Proof.
+intros exc c l. induction l as [| e l]; intros acc x Hin Hneq.
+* inversion Hin.
+* inversion_clear Hin.
+  + subst. clear IHl. cbn. destruct (R2.eq_dec x exc); try now cbn in *; contradiction.
+    destruct (Rle_dec (R2.dist x c) (R2.dist c acc)) as [Hle | Hlt].
+    - rewrite R2.dist_sym. eapply Rle_trans; try eassumption. apply farthest_from_in_except_le_acc.
+    - apply farthest_from_in_except_le_acc.
+  + cbn. destruct (R2.eq_dec e exc); auto. destruct (Rle_dec (R2.dist e c) (R2.dist c acc)); auto.
 Qed.
 
 (* If the radius of SEC is not zero then the center is not part of it. *)
@@ -622,8 +661,7 @@ Qed.
    If there is no other, we take the furthest point from c strictly inside the disk.
    We decrease the center and radius to make it end up on the circle.
    Thus, the original SEC was not minimal, a contradiction. *)
-Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l ->
-(*                                    radius (SEC l) <> 0%R -> *)
+Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l -> (* radius (SEC l) <> 0%R -> *)
   exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
 Proof.
@@ -655,9 +693,12 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   pose (d := R2.dist c pt). (* the room we have *)
   pose (r' := Rdiv (r + d) 2). (* the new radius *)
   pose (c' := R2.add c (R2.mul (r - r') (R2.add c (R2.opp pt)))). (* the new center *)
-  assert (Hin : In pt l) by admit.
-  assert (Hmax : forall x, In x l -> x <> pt1 -> R2.dist x c <= d).
-  { admit. }
+  assert (Hin : In pt l).
+  { apply farthest_from_in_except_In. destruct l as [| e l].
+    - cbn in Hl. omega.
+    - inversion_clear Hnodup. cbn in H. exists e. intuition. }
+  assert (Hmax : forall x, In x l -> x <> pt1 -> R2.dist c x <= d).
+  { intros. unfold d, pt. now apply farthest_from_in_except_le. }
   assert (Hnew : enclosing_circle {| center := c'; radius := r' |} l).
   { admit. }
   (* The final proof *)

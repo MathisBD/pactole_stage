@@ -32,7 +32,7 @@ Qed.
 
 (** [Always_forbidden e] means that (infinite) execution [e] is [forbidden]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-CoInductive Always_forbidden (e : execution) :=
+CoInductive Always_forbidden (e : execution) : Prop :=
   CAF : forbidden (execution_head e) ->
         Always_forbidden (execution_tail e) -> Always_forbidden e.
 

@@ -13,9 +13,9 @@ Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
-Require Import MMultisetInterface.
-Require Import MMultisetFacts.
-Require Import MMultisetWMap.
+Require MMultisetInterface.
+Require MMultisetExtraOps.
+Require MMultisetWMap.
 Require Import Pactole.Preliminary.
 Require Pactole.Robots.
 Require Import Pactole.Configurations.
@@ -28,7 +28,7 @@ Module Config := Configurations.Make(Location)(N)(Names).
 
 (** Definition of spectra as multisets of locations. *)
 Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
-Module M := MMultisetFacts.Make Location Mraw.
+Module M := MMultisetExtraOps.Make Location Mraw.
 
 Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
 Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
