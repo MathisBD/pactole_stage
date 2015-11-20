@@ -1599,10 +1599,54 @@ intros pt conf. etransitivity.
 - apply Spect.cardinal_lower.
 - rewrite Spect.cardinal_from_config. unfold N.nB. omega.
 Qed.
+(*
+Lemma next_target_same : forall spctr1 spctr2 da conf,
+    target spctr2 = target spctr1 ->
+    spctr1 = !!conf -> 
+    spctr2 = (!! (round gatherR2 da conf)) ->
+    False.
+Proof.
+  intros spctr1.
+  functional induction (target spctr1);intros.
+  - functional inversion H;subst.
+    + admit. (* Possible: no robot, target does not change *)
+    + subst l.
+      admit. (* Impossible: round ne rajoute pas de robot*)
+    + subst l.
 
+Lemma SEC: 
+      
+
+  functional induction (target spctr1);
+  ;intros.
+  - rewrite on_SEC_nil in e.
+    apply Spect.support_nil in e.
+    admit. (* round ne rajoute pas de robot*)
+  - rewrite on_SEC_nil in e.
+    apply Spect.support_nil in e.
+    admit. (* round ne rajoute pas de robot*)
+  - rewrite on_SEC_nil in e.
+    apply Spect.support_nil in e.
+    admit. (* round ne rajoute pas de robot*)
+  - rewrite on_SEC_nil in e.
+    apply Spect.support_nil in e.
+    admit. (* round ne rajoute pas de robot*)
+  - rewrite on_SEC_nil in e0.
+    apply Spect.support_nil in e0.
+    admit. (* round n'enlève pas de robot*)
+  - admit. (* gathered -> no target change *)
+  - admit. (* impossible gathered -> personne ne peut bouger *)
+  
+
+  
+*)  
+
+
+(* 
 Definition clean_equilateral_case conf := is_clean (!! conf) = true /\
       exists pt1 pt2 pt3, on_SEC (Spect.support (!! conf)) = pt1 :: pt2 :: pt3 :: nil
                           /\ classify_triangle pt1 pt2 pt3 = Equilateral.
+ *)
 
 (* XXX Lionel, 13/10/15: Les deux résultats suivants sont faux !
    Prendre 4 piles de robots sur le SEC dont 2 de taille max.
@@ -1610,15 +1654,11 @@ Definition clean_equilateral_case conf := is_clean (!! conf) = true /\
    Elle est vrai si on ne considère que les piles max sur le SEC. *)
 
 (** The target does not change between rounds except for the clean equilateral triangle case. *)
+(*
 Lemma next_target_same : forall da conf,
-    ~clean_equilateral_case conf -> target (!! (round gatherR2 da conf)) = target (!! conf).
+   ~clean_equilateral_case conf -> target (!! (round gatherR2 da conf)) = target (!! conf).
 Proof.
-  intros da conf Hexcluded. unfold target.
-  destruct (on_SEC (Spect.support (!! conf))) as [| ptx [| pty [| ptz [| ptt ?]]]] eqn:Hfilter.
-  * (* No robots *)
-    destruct (@SEC_reached (Spect.support (!! conf))) as [pt Hpt].
-    + apply support_non_nil.
-    + exfalso. cut (In pt nil).
+cut (In pt nil).
       - intro H. inversion H.
       - rewrite <- Hfilter, on_SEC_In. assumption.
   * (* A majority tower *)
@@ -1648,7 +1688,37 @@ Proof.
   * (* Three points on the SEC *)
     admit.
   * (* Generic case *)
-    
+*)    
+
+
+(* Tentative de restriction to the useful case. *)
+Definition clean_diameter_case conf :=
+  is_clean (!! conf) = true /\
+  exists pt1 pt2, on_SEC (Spect.support (!! conf)) = pt1 :: pt2 :: nil.
+
+Lemma next_target_same : forall da conf maj1 maj2 smaj,
+    ~forbidden conf ->
+    Spect.support (Spect.max (!! (round gatherR2 da conf))) = maj1 :: maj2 :: smaj ->
+    clean_diameter_case conf -> target (!! (round gatherR2 da conf)) = target (!! conf).
+Proof.
+  intros da conf  maj1 maj2 smaj h_noforbid h_twomaj h_clean.
+  unfold target,clean_diameter_case in *.
+  destruct h_clean as [Hclean [pt1 [pt2 Htwocol]]].
+  destruct (on_SEC (Spect.support (!! conf))) as [| ptx [| pty [| ptz [| ptt ?]]]] eqn:Hfilter;try discriminate.
+  destruct (on_SEC (Spect.support (!! (round gatherR2 da conf)))) as [| ptx' [| pty' [| ptz' [| ptt' ?]]]] eqn:Hfilter'.
+  - destruct (@SEC_reached (Spect.support (!! (round gatherR2 da conf)))) as [pt [Hptin Hptoonirc]].
+    + apply support_non_nil.
+    + exfalso.
+      unfold on_SEC in Hfilter'.
+      assert (h:= (conj Hptin Hptoonirc)).
+      rewrite <- (filter_In _ _ _) in h.
+      rewrite Hfilter' in h.
+      inversion h.
+  - inversion Htwocol;subst. clear Htwocol.
+    apply on_SEC_singleton_is_singleton in Hfilter'.
+    generalize (Spect.max_subset (!! (round gatherR2 da conf))).
+    intros H.
+    admit.
 Admitted.
 
 Theorem round_lt_config : forall da conf,
@@ -1731,16 +1801,22 @@ Proof.
             { apply multiplicity_le_nG. }
             assert (N.nG >= (!! conf)[target (!! conf)]) by apply multiplicity_le_nG.
             assert ((!! conf)[target (!! conf)]
-                    < (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
-            { rewrite next_target_same, increase_move_iff.
-              - exists gmove.
-                split.
-                + rewrite round_simplify_clean; trivial.
-                  destruct (step da gmove).
-                  * reflexivity.
-                  * elim Hstep;reflexivity.
-                + apply Hmove.
-              - intros [_ [? [? [? [Habs _]]]]]. rewrite Hsec in Habs. discriminate. }
+                    < (!! (round gatherR2 da conf))[target (!!(round gatherR2 da conf))]).
+            { 
+
+              rewrite next_target_same,increase_move_iff.
+                - exists gmove.
+                  split.
+                  + rewrite round_simplify_clean; trivial.
+                    destruct (step da gmove).
+                    * reflexivity.
+                    * elim Hstep;reflexivity.
+                  + apply Hmove.
+                - assumption.
+                - red.
+                  split; auto.
+                  eauto.
+              }
             omega.
          ++ exfalso. (* is_clean = false is absurd. *)
             admit.
