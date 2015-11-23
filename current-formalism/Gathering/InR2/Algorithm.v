@@ -1699,7 +1699,8 @@ Definition clean_diameter_case conf :=
 Lemma next_target_same : forall da conf maj1 maj2 smaj,
     ~forbidden conf ->
     Spect.support (Spect.max (!! (round gatherR2 da conf))) = maj1 :: maj2 :: smaj ->
-    clean_diameter_case conf -> target (!! (round gatherR2 da conf)) = target (!! conf).
+    clean_diameter_case conf ->
+    target (!! (round gatherR2 da conf)) = target (!! conf).
 Proof.
   intros da conf  maj1 maj2 smaj h_noforbid h_twomaj h_clean.
   unfold target,clean_diameter_case in *.
@@ -1710,15 +1711,143 @@ Proof.
     + apply support_non_nil.
     + exfalso.
       unfold on_SEC in Hfilter'.
-      assert (h:= (conj Hptin Hptoonirc)).
+       assert (h:= (conj Hptin Hptoonirc)).
       rewrite <- (filter_In _ _ _) in h.
       rewrite Hfilter' in h.
       inversion h.
   - inversion Htwocol;subst. clear Htwocol.
-    apply on_SEC_singleton_is_singleton in Hfilter'.
-    generalize (Spect.max_subset (!! (round gatherR2 da conf))).
+    assert (hnodup:NoDup (Spect.support (!! (round gatherR2 da conf)))).
+    { admit. }
+    apply on_SEC_singleton_is_singleton in Hfilter';auto.
+    generalize (Spect.max_subset (!! (round gatherR2 da conf)));auto.
     intros H.
+    generalize (@Spect.support_sub_compat _ _ H).
+    intros H0.
+    
+    rewrite h_twomaj in H0.
+    rewrite Hfilter' in H0.
+    red in H0.
+    assert (hdiff: maj1 <> maj2).
+    { admit. }
+    destruct (R2.eq_dec ptx' maj1).
+    + specialize (H0 maj2).
+      assert (InA R2.eq maj2 (maj1 :: maj2 :: smaj)).
+      { constructor 2.
+        constructor 1.
+        reflexivity. }
+      specialize (H0 H1).
+      inversion H0;subst.
+      * elim hdiff.
+        transitivity ptx'.
+        -- now rewrite e.
+        -- now rewrite H3.
+      * inversion H3.
+    +  specialize (H0 maj1).
+       assert (InA R2.eq maj1 (maj1 :: maj2 :: smaj)).
+       { constructor 1.
+         reflexivity. }
+       specialize (H0 H1). 
+       inversion H0;subst.
+       symmetry in H3.
+       contradiction.
+       inversion H3.
+  -
+    assert (PermutationA R2.eq (Spect.support (!! conf))
+                         (ptx :: pty ::  R2.middle ptx pty :: nil)).
+    { admit. }
+    assert (is_clean (!! (round gatherR2 da conf))= true).
+    { admit. }
+    assert (PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                         (ptx' :: pty' ::  R2.middle ptx' pty' :: nil)).
+    { admit. }
+
+    assert (inclA R2.eq
+                  (Spect.support (!! (round gatherR2 da conf)))
+                  (Spect.support (!! conf))).
+    { red.
+      intros x H2.
+      
+      rewrite Spect.support_elements in H2.
+      apply Spect.elements_spec in H2.
+      destruct H2.
+      rewrite Spect.support_elements.
+      apply Spect.elements_spec.
+      split;auto.
+      destruct (le_lt_dec ((!! conf)[x]) 0).
+      - exfalso.
+        destruct (@increase_move gatherR2 conf da x) as [r_moving [hdest_rmoving  hrmoving ]].
+        + omega.
+        + assert (x = target (!!conf)).
+          { rewrite round_simplify_clean in hdest_rmoving.
+            - destruct (step da r_moving) eqn:heq.
+              + symmetry;assumption.
+              + assert ((!! conf)[x] = 0) by auto with arith.
+                rewrite <- Spect.not_In in H4.
+                subst.
+                generalize (Spect.pos_in_config conf r_moving).
+                intros H5.
+                contradiction.
+            - admit.
+            - admit. }
+(*
+    assert (PermutationA R2.eq (on_SEC(Spect.support (!! (round gatherR2 da conf))))
+                         (ptx :: pty :: nil)).
+    { transitivity (on_SEC (Spect.support (!! conf))).
+      - rewrite H.
+        reflexivity.
+      - rewrite Hfilter.
+        reflexivity. }
+    rewrite Hfilter' in H0.
+    assert (h:=@PermutationA_2 _ R2.eq R2.eq_equiv ptx' pty' ptx pty).
+    
+    destruct h as [h1 h2].
+    specialize (h1 H0).
+    destruct h1 as [[h3 h4] | [h3 h4]]; rewrite ?h3, ?h4.
+    + reflexivity.
+    + unfold R2.middle.
+      rewrite R2.add_comm.
+      reflexivity.
+  -
+    
+    inversion H0;subst.
+    + apply (PermutationA_1 R2.eq_equiv) in H6.
+      rewrite H6.
+      reflexivity.
+    + unfold R2.middle.
+      rewrite R2.add_comm.
+      reflexivity.
+    + 
+
+
+        setoid_rewrite H.
+        reflexivity.
+
+       * elim hdiff.
+            transitivity ptx'.
+            -- now rewrite e.
+            -- now rewrite H3.
+          * inversion H3.
+      
+
+ { destruct (R2.eq_dec ptx' maj2).
+        + specialize (H0 maj2).
+          assert (InA R2.eq maj2 (maj1 :: maj2 :: smaj)).
+          { constructor 2.
+            constructor 1.
+            reflexivity. }
+          specialize (H0 H1).
+          inversion H0;subst.
+          * elim hdiff.
+            transitivity ptx'.
+            -- now rewrite e.
+            -- now rewrite H3.
+          * inversion H3.
+
+
+      rewrite ?e in *.
+    inversion H0.
     admit.
+*)
 Admitted.
 
 Theorem round_lt_config : forall da conf,
