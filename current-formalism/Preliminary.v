@@ -111,7 +111,7 @@ intros l Hl. induction l.
 + now elim Hl.
 + destruct l.
   - exists a, nil. reflexivity.
-  - destruct (IHl $(discriminate)$) as [b [l'' Hl'']].
+  - destruct (IHl ltac:(discriminate)) as [b [l'' Hl'']].
     exists b, (a :: l''). now rewrite Hl''.
 Qed.
 
@@ -659,8 +659,8 @@ intros. split.
   - intros x x' y y' Hl1 Hl2. subst.
     assert (Hlength : length l₂ = length (y :: y' :: nil)) by now rewrite perm2.
     destruct l₂ as [| x'' [| y'' [| ? ?]]]; discriminate Hlength || clear Hlength.
-    destruct (IHperm1 _ _ _ _ $(reflexivity)$ $(reflexivity)$) as [[H11 H12] | [H11 H12]],
-             (IHperm2 _ _ _ _ $(reflexivity)$ $(reflexivity)$) as [[H21 H22] | [H21 H22]];
+    destruct (IHperm1 _ _ _ _ ltac:(reflexivity) ltac:(reflexivity)) as [[H11 H12] | [H11 H12]],
+             (IHperm2 _ _ _ _ ltac:(reflexivity) ltac:(reflexivity)) as [[H21 H22] | [H21 H22]];
     rewrite H11, H12, <- H21, <- H22; intuition.
 + intros [[Heq1 Heq2] | [Heq1 Heq2]]; rewrite Heq1, Heq2. reflexivity. now constructor 3.
 Qed.
@@ -680,8 +680,8 @@ intros. split.
   - inversion Hl1. inversion Hl2. do 2 subst. inversion H5. intuition.
   - subst. assert (Hlength : length l₂ = length (x' :: y' :: z' :: nil)) by now rewrite perm2.
     destruct l₂ as [| x'' [| y'' [| z'' [| ? ?]]]]; discriminate Hlength || clear Hlength.
-    specialize (IHperm1 _ _ _ _ _ _ $(reflexivity)$ $(reflexivity)$).
-    specialize (IHperm2 _ _ _ _ _ _ $(reflexivity)$ $(reflexivity)$).
+    specialize (IHperm1 _ _ _ _ _ _ ltac:(reflexivity) ltac:(reflexivity)).
+    specialize (IHperm2 _ _ _ _ _ _ ltac:(reflexivity) ltac:(reflexivity)).
     repeat destruct IHperm1 as [IHperm1 | IHperm1]; destruct IHperm1 as [H11 [H12 H13]];
     repeat destruct IHperm2 as [IHperm2 | IHperm2]; destruct IHperm2 as [H21 [H22 H23]];
     rewrite H11, H12, H13, <- H21, <- H22, <-H23; intuition.
@@ -953,7 +953,7 @@ Global Instance inclA_compat : Proper (PermutationA eqA ==> PermutationA eqA ==>
 Proof. intros ? ? Hl1 ? ? Hl2. unfold inclA. setoid_rewrite Hl1. setoid_rewrite Hl2. reflexivity. Qed.
 
 Lemma inclA_nil : forall l, inclA eqA l nil -> l = nil.
-Proof. intros [| x l] Hin; trivial. specialize (Hin x $(now left)$). inversion Hin. Qed.
+Proof. intros [| x l] Hin; trivial. specialize (Hin x ltac:(now left)). inversion Hin. Qed.
 
 Lemma inclA_cons_inv : forall x l1 l2, ~InA eqA x l1 ->
   inclA eqA (x :: l1) (x :: l2) -> inclA eqA l1 l2.
