@@ -979,6 +979,12 @@ induction l1 as [| x1 l1 Hrec]; intro l2.
   + abstract (intro Habs; apply out_x; apply Habs; now left).
 Defined.
 
+Global Instance inclA_preorder: PreOrder (inclA eqA).
+Proof.
+  unfold inclA.
+  split;auto.
+Qed.
+
 (** A boolean decision procedure *)
 Definition inclA_bool l1 l2 := if inclA_dec l1 l2 then true else false.
 

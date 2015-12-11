@@ -16,7 +16,7 @@ Require Import List.
 Require Import SetoidList.
 Require Import Relations.
 Require Import RelationPairs.
-Require Import Morphisms.
+Require Import Morphisms. 
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import MMultisetFacts MMultisetMap.
@@ -1697,6 +1697,27 @@ Proof.
     + assumption.
 Qed.
 
+Lemma incl_clean_next : forall da conf,
+    is_clean (!! conf) = true ->
+    (inclA R2.eq
+           (Spect.support (!! (round gatherR2 da conf)))
+           ((target (!! conf)) :: on_SEC(Spect.support (!! conf)))).
+Proof.
+  intros da conf H.
+  transitivity ((target (!! conf)) :: (Spect.support (!! conf))).
+  - apply incl_next.
+  - apply inclA_Leibniz.
+    apply incl_cons.
+    + simpl.
+      left;reflexivity.
+    + apply inclA_Leibniz.
+      unfold is_clean in H.
+      destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support (!! conf)) (SECT (!! conf))) eqn:heq;try discriminate.
+      unfold SECT in heq.
+      erewrite <- inclA_bool_true_iff;eauto.
+Qed.
+
+
 
 (* 
 Definition clean_equilateral_case conf := is_clean (!! conf) = true /\
@@ -2247,6 +2268,84 @@ Proof.
       simpl in H1; discriminate.
 Qed.
 
+Lemma clean_triangle_support_incl:
+  forall conf ptx pty ptz,
+    ~ forbidden conf
+    -> is_clean (!! conf) = true
+    -> on_SEC (Spect.support (!! conf)) = ptx :: pty :: ptz :: nil
+    -> inclA R2.eq (Spect.support (!! conf))
+                          (ptx :: pty :: ptz :: target (!! conf) :: nil).
+Proof.
+  intros conf ptx pty ptz h_notforbid hisclean honsec.
+  intros x hin.
+  unfold is_clean in hisclean.
+  destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support (!! conf))
+               (SECT (!! conf))) eqn:heq; try discriminate.
+  rewrite inclA_bool_true_iff in heq.
+  apply heq in hin.
+  unfold SECT in hin. rewrite honsec in hin.
+  rewrite InA_Leibniz in *. simpl in hin |- *. tauto.
+Qed.
+
+
+(* Lemma triangle_equilateral_barycenter_ *)
+
+
+Lemma triangle_clean_support:
+  forall conf ptx pty ptz,
+    ~ forbidden conf
+    -> 2 <= length (Spect.support (Spect.max (!!  conf)))
+    -> is_clean (!! conf) = true
+    -> classify_triangle ptx pty ptz = Equilateral
+    -> on_SEC (Spect.support (!! conf)) = ptx :: pty :: ptz :: nil
+    -> (!!conf) [ target (!!conf) ] > 0
+    -> PermutationA R2.eq (Spect.support (!! conf))
+                    (ptx :: pty :: ptz :: target (!! conf) :: nil).
+Proof.
+  intros conf ptx pty ptz h_notforbid hmax hisclean Hequil Hfilter h_target_nonempty.
+  apply (NoDupA_inclA_length_PermutationA _).
+  - apply Spect.support_NoDupA.
+  - assert (hnodup: NoDupA R2.eq (ptx :: pty :: ptz ::nil)). 
+    { unfold on_SEC in Hfilter.
+      rewrite <- Hfilter.
+      apply Preliminary.NoDupA_filter_compat;autoclass.
+      apply Spect.support_NoDupA. }
+    assert (h_target_diff: forall pt, InA R2.eq pt (ptx :: pty :: ptz :: nil) -> target (!! conf) <> pt).
+    { unfold target.
+      intros pt H.
+      rewrite Hfilter.
+      unfold target_triangle.
+      rewrite Hequil.
+      unfold barycenter_3_pts.
+      admit. (* Lioneeeeeeeeeeeeeeeeeeeeeeeeeel *) }
+    change  (NoDupA R2.eq (List.app (ptx :: pty :: ptz :: nil) (target (!! conf) :: nil))).
+    apply NoDupA_app_iff;autoclass;split;[|split].
+    + assumption.
+    + apply NoDupA_singleton.
+    + intros x Hinx Hiny.
+      inversion Hinx;subst;rewrite ?H0 in *.
+      * inversion Hiny;subst.
+        -- symmetry in H1.
+           absurd ltac:(type of H1);auto.
+        -- inversion H1.
+      * inversion H0;subst;rewrite ?H1 in *.
+        -- inversion Hiny;subst.
+           ++ symmetry in H2.
+              absurd ltac:(type of H2);auto.
+           ++ inversion H2.
+        -- inversion H1;subst;rewrite ?H2 in *.
+           ++ inversion Hiny;subst.
+              ** symmetry in H3.
+                 absurd ltac:(type of H3);auto.
+              ** inversion H3.
+           ++ inversion H2.
+  - apply clean_triangle_support_incl;assumption.
+  - (* TODO *)
+
+Admitted.
+
+
+
 Theorem round_lt_config : forall da conf,
   ~forbidden conf -> moving gatherR2 da conf <> nil ->
   lt_config (round gatherR2 da conf) conf.
@@ -2398,8 +2497,57 @@ Proof.
               reflexivity. }
             remember ((!! (round gatherR2 da conf))) as f.
             functional induction (measure f);try now (constructor 1; auto; try omega).
-            ** (* the three towers are still there otherwise the ex-barycenter would make
+            ** (* no majority after round, clean after round + 3 towers on SEC after round. *)
+              (* the three towers are still there otherwise the ex-barycenter would make
                the position unclean. so target hasn't move, and measure decreases.  *)
+              assert (hpermut':inclA R2.eq
+                                     (Spect.support (!! (round gatherR2 da conf)))
+                                     (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)). {
+                assert (hperm: PermutationA R2.eq (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)
+                                     (barycenter_3_pts pt1 pt2 pt3 :: pt1 :: pt2 :: pt3 ::  nil)). {
+                  setoid_rewrite (PermutationA_cons_append _) at 5.
+                  reflexivity. }
+                rewrite hperm.
+                rewrite <- H.
+                rewrite <- Hsec.
+                apply incl_clean_next.
+                assumption.
+              }
+
+              assert (PermutationA R2.eq (pt0 :: pt4 :: pt5 :: nil) (pt1 :: pt2 :: pt3 :: nil) ). {
+                apply (NoDupA_inclA_length_PermutationA _).
+                - rewrite <- e0.
+                  apply Preliminary.NoDupA_filter_compat;autoclass.
+                  apply Spect.support_NoDupA.
+                - rewrite <- Hsec.
+                  apply Preliminary.NoDupA_filter_compat;autoclass.
+                  apply Spect.support_NoDupA.
+                - rewrite <- e0.
+                  assert (hnotin: ~InA R2.eq (barycenter_3_pts pt1 pt2 pt3)
+                                   (on_SEC (Spect.support (!! (round gatherR2 da conf))))). {
+                    unfold on_SEC.
+                    
+                    rewrite 
+                    apply hpermut'.
+                  }
+                  
+                - assumption.                
+              }
+
+              assert (hpermut':PermutationA R2.eq
+                                            (Spect.support (!! (round gatherR2 da conf)))
+                                            (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)).
+              { 
+                rewrite <- H.
+                apply triangle_clean_support.
+                
+                apply (NoDupA_inclA_length_PermutationA _).
+                - apply Spect.support_NoDupA.
+                - rewrite <- hpermut.
+                  apply Spect.support_NoDupA.
+                - apply hincl.
+                - assumption. }
+              
               admit.
             ** (* since is_clean (!! (round gatherR2 da conf)) = false, then SEC should have less than 3 elements. *)
               admit. 
