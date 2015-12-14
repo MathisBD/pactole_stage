@@ -122,6 +122,23 @@ Notation "u + v" := (R2.add u v) : R2_scope.
 Notation "k * u" := (R2.mul k u) : R2_scope.
 Notation "- u" := (R2.opp u) : R2_scope.
 
+Lemma pos_sqrt_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
+Proof. Admitted.
+
+Lemma sqrt_sqrt_id : forall x, 0 <= x -> Rpow_def.pow (sqrt x) 2 = x.
+Proof. Admitted.
+
+Lemma mul_dist : forall k u v, 0 <= k -> R2.dist (k * u) (k * v) = k * R2.dist u v.
+Proof.
+intros k [? ?] [? ?] Hk. unfold R2.dist, R2def.dist. cbn.
+apply pos_sqrt_eq.
+- apply sqrt_pos.
+- apply Rmult_le_pos; trivial. apply sqrt_pos.
+- unfold Rsqr. ring_simplify. repeat rewrite sqrt_sqrt_id. 
+  + cbn. field.
+  + psatz R.
+  + psatz R.
+Qed.
 
 (** **  Simplification tactics  **)
 
@@ -312,15 +329,15 @@ Axiom Barycenter_spec_unicity: forall pt1 pt2 pt3 B: R2.t,
 
 Definition is_middle pt1 pt2 B := forall p,
   (R2.dist B pt1)² + (R2.dist B pt2)² <= (R2.dist p pt1)² + (R2.dist p pt2)².
-Definition is_barycenter_3_pt pt1 pt2 pt3 B := forall p,
+Definition is_barycenter_3_pts pt1 pt2 pt3 B := forall p,
   (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
 Axiom middle_spec: forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
 Axiom bary3_spec: forall pt1 pt2 pt3,
-    is_barycenter_3_pt pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
+  is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
 Axiom middle_unique: forall x y a b, is_middle x y a -> is_middle x y b ->  R2.eq a b.
 Axiom bary3_unique: forall x y z a b,
-    is_barycenter_3_pt x y z a -> is_barycenter_3_pt x y z b ->  R2.eq a b.
+    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b ->  R2.eq a b.
 
 
 
@@ -735,3 +752,33 @@ destruct l as [| pt1 [| pt2 l']] eqn:Hl.
              | H : In ?x (?y :: nil) |- _ => inversion_clear H; auto
              end. now subst.
 Qed.
+
+Lemma on_SEC_add_same :
+  forall pt l, R2.dist (center (SEC l)) pt <= radius (SEC l)
+               -> (SEC (pt::l)) = SEC l .
+Proof.
+  intros pt l H.
+  apply SEC_unicity.
+  - intro.
+    intros H0.
+    apply SEC_spec1.
+    simpl.
+    right;auto.
+  - apply SEC_spec2.
+    intros x hin.
+    simpl in hin.
+    destruct hin;subst.
+    + rewrite R2.dist_sym.
+      assumption.
+    + apply SEC_spec1.
+      assumption.
+Qed.
+
+Lemma barycenter_3_pts_inside_SEC : forall pt1 pt2 pt3,
+  R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil))) <= radius (SEC (pt1 :: pt2 :: pt3 :: nil)).
+Proof.
+intros pt1 pt2 pt3. unfold barycenter_3_pts. do 2 rewrite R2.add_distr.
+remember (center (SEC (pt1 :: pt2 :: pt3 :: nil))) as c.
+apply Rle_trans with (R2.dist (/3 * pt1) (/3 * c) + R2.dist (/3 * pt2) (/3 * c) + R2.dist (/3 * pt3) (/3 * c)).
+(* apply R2.triang_ineq. *)
+Admitted.

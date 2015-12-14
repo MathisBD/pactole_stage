@@ -46,7 +46,7 @@ Definition bij_id := {|
   section := fun x => x;
   retraction := fun x => x;
   section_compat := fun x y Heq => Heq;
-  Inversion := $(easy)$ |}.
+  Inversion := ltac:(easy) |}.
 
 (** Composition of bijections *)
 Definition bij_compose (f g : bijection) : bijection.
