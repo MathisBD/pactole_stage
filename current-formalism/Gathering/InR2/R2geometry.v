@@ -301,6 +301,9 @@ Axiom Barycenter_spec: forall pt1 pt2 pt3 B: R2.t,
       (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)²
       <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
+(* False if we are not in an euclidian space!
+   Take for instance dist(x,y) = 1 <-> x <> y, and pt1, pt2 pt3 different.
+   Then any one of them is a barycenter. *)
 Axiom Barycenter_spec_unicity: forall pt1 pt2 pt3 B: R2.t,
     barycenter_3_pts pt1 pt2 pt3 = B <-> 
     forall p, p <> B ->
@@ -474,54 +477,32 @@ Proof.
   - inversion H0.
 Qed.
 
-(*
-(* If there is a enclosing circle strictly smaller than all other, then this is SEC. *)
-Lemma SEC_spec_det:
-  forall l sec,
-    enclosing_circle sec l ->
-    (forall (c : circle), enclosing_circle c l -> radius sec < radius c)
-    -> SEC l = sec.
+(* TODO? *)
+Axiom SEC_unicity: forall l c,
+    enclosing_circle c l
+    -> (radius c <= radius (SEC l))%R
+    -> c = SEC l.
+
+Lemma SEC_unicity2 : forall l c, enclosing_circle c l -> (radius c <= radius (SEC l))%R -> c = SEC l.
 Proof.
-  intros l sec henclos hrad.
-  
-
-Qed.
-*)
-
-(*
-Lemma SEC_singleton_radius : forall x, radius (SEC (x::nil)) = 0.
-Proof.
-  intros x.
-  
-  rewrite radius_is_max_dist.
-  rewrite max_dist_singleton.
-  
-  assert (max_dist (center (SEC (x::nil))) (x::nil) = 0).
-  { cbn.
-    assert (R2.dist x (center (SEC (x :: nil))) = 0).
-    { apply R2.dist_defined.
-
-Lemma SEC_singleton_center : forall x, center (SEC (x::nil)) = x.
-Proof.
-  intros x.
-  assert (max_dist (center (SEC (x::nil))) (x::nil) = 0).
-  { cbn.
-    assert (R2.dist x (center (SEC (x :: nil))) = 0).
-    { apply R2.dist_defined.
-*)
-
+intros l c Henclosing Hradius.
+assert (Heq : radius c = radius (SEC l)).
+{ apply Rle_antisym; trivial. now apply SEC_spec2. }
+clear Hradius.
+cut (center c = center (SEC l)).
++ intro Hcenter. destruct c, (SEC l); cbn in *; subst. reflexivity.
++ (* Idea?: If there are only two points on the SEC, they are a diameter.
+            Otherwise, three points define a unique circle.
+            Therefore, if they are not the same, we have points on one circle but not the other. *)
+destruct c as [pt r]. cbn in *. subst. destruct (SEC l). simpl in *.
+Abort.
 
 Lemma SEC_singleton : forall pt, SEC (pt :: nil) = {| center := pt; radius := 0 |}.
 Proof.
-(*  intro pt.
-  generalize (radius_is_max_dist (pt :: nil));intro hrad.
-  cbn in hrad.
-  destruct (SEC (pt :: nil)) eqn:heq_SEC.
-  f_equal.
-  cbn in *.
-  max_dist_exists.
-Qed.*)
-Admitted.
+intro pt. symmetry. apply SEC_unicity.
+- apply enclosing_singleton.
+- simpl. rewrite radius_is_max_dist, max_dist_singleton. apply R2.dist_pos.
+Qed.
 
 Function farthest_from_in c acc inl :=
 match inl with
@@ -708,12 +689,6 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   - unfold r'. cut (d < r). lra.
     
 Admitted.
-
-(* TODO? *)
-Axiom SEC_unicity: forall l c,
-    enclosing_circle c l
-    -> (radius c <= radius (SEC l))%R
-    -> c = SEC l.
 
 Definition on_SEC l := List.filter (on_circle (SEC l)) l.
 
