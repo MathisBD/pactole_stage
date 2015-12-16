@@ -79,7 +79,21 @@ Inductive attracted (c : R.t) (r : R) (e : execution) : Prop :=
   | WillBeCaptured : attracted c r (execution_tail e) → attracted c r e.
 
 Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
-Proof. Admitted.
+Proof.
+intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
+* revert c1 c2 e1 e2 Hc He. coinduction Hrec.
+  + intro g. rewrite <- He, <- Hc. apply H.
+  + apply (Hrec c1 c2 (execution_tail e1) _).
+    - assumption.
+    - now destruct He.
+    - now destruct H.
+* revert c1 c2 e1 e2 Hc He. coinduction Hrec.
+  + intro g. rewrite He, Hc. apply H.
+  + apply (Hrec c1 c2 _ (execution_tail e2)).
+    - assumption.
+    - now destruct He.
+    - now destruct H.
+Qed.
 
 Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
 Proof.
@@ -239,7 +253,7 @@ intros A eq_dec pt1 pt2 Hdiff pt n. induction n; simpl; intros l Hnodup Hlen.
 * apply length_0 in Hlen. subst. simpl. now rewrite Spect.add_0, Spect.singleton_0, Spect.empty_spec.
 * replace (S (n + S (n + 0))) with (S (S ( 2 * n))) in Hlen by ring.
   destruct l as [| a [| b l']]; try discriminate.
-  destruct (@not_nil_last _ (b :: l') $(discriminate)$) as [z [l Hl]].
+  destruct (@not_nil_last _ (b :: l') ltac:(discriminate)) as [z [l Hl]].
   rewrite Hl in *. clear Hl b l'. rewrite half1_cons2.
   assert (Hdup : ~In a l /\ ~In z l /\ NoDup l /\ a <> z).
   { inversion_clear Hnodup as [| ? ? Hin Hnodup'].

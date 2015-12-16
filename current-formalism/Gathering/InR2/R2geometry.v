@@ -128,6 +128,13 @@ Proof. Admitted.
 Lemma sqrt_sqrt_id : forall x, 0 <= x -> Rpow_def.pow (sqrt x) 2 = x.
 Proof. Admitted.
 
+Lemma Rsqr_pos : forall x, 0 <= x * x.
+Proof.
+intro. rewrite <- (Rmult_0_l 0). destruct (Rle_lt_dec 0 x).
+- apply Rmult_le_compat; lra.
+- replace (x * x) with (-x * -x) by ring. apply Rmult_le_compat; lra.
+Qed.
+
 Lemma mul_dist : forall k u v, 0 <= k -> R2.dist (k * u) (k * v) = k * R2.dist u v.
 Proof.
 intros k [? ?] [? ?] Hk. unfold R2.dist, R2def.dist. cbn.
@@ -136,8 +143,8 @@ apply pos_sqrt_eq.
 - apply Rmult_le_pos; trivial. apply sqrt_pos.
 - unfold Rsqr. ring_simplify. repeat rewrite sqrt_sqrt_id. 
   + cbn. field.
-  + psatz R.
-  + psatz R.
+  + rewrite <- Rplus_0_l at 1. apply Rplus_le_compat; apply Rsqr_pos.
+  + rewrite <- Rplus_0_l at 1. apply Rplus_le_compat; apply Rsqr_pos.
 Qed.
 
 (** **  Simplification tactics  **)

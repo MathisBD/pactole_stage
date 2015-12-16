@@ -92,7 +92,7 @@ Qed. *)
 
 Lemma InA_Leibniz : forall (x : A) l, InA Logic.eq x l <-> In x l.
 Proof.
-intros x l. split; intro Hl; induction l; inversion_clear Hl; (subst; now left) || (right; now apply IHl).  
+intros x l. split; intro Hl; induction l; inversion_clear Hl; (subst; now left) || (right; now apply IHl).
 Qed.
 
 Lemma nil_or_In_dec : forall l : list A, {l = nil} + {exists x, In x l}.
