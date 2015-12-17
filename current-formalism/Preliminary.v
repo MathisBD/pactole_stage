@@ -1524,6 +1524,20 @@ End List_halves.
 (* ******************************* *)
 
 
+(* Should be in Reals from the the std lib! *)
+Global Instance Rle_preorder : PreOrder Rle.
+Proof. split.
+- intro. apply Rle_refl.
+- intro. apply Rle_trans.
+Qed.
+
+Global Instance Rle_partialorder : PartialOrder eq Rle.
+Proof.
+intros x y. unfold flip. cbn. split; intro Hxy.
+- now subst.
+- destruct Hxy. now apply Rle_antisym.
+Qed.
+
 Lemma Rdec : forall x y : R, {x = y} + {x <> y}.
 Proof.
 intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).

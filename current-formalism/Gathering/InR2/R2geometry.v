@@ -135,7 +135,15 @@ intro. rewrite <- (Rmult_0_l 0). destruct (Rle_lt_dec 0 x).
 - replace (x * x) with (-x * -x) by ring. apply Rmult_le_compat; lra.
 Qed.
 
-Lemma mul_dist : forall k u v, 0 <= k -> R2.dist (k * u) (k * v) = k * R2.dist u v.
+Lemma R2add_dist : forall w u v, R2.dist (u + w) (v + w) = R2.dist u v.
+Proof.
+intros [] [] []. unfold R2.dist, R2def.dist. f_equal. cbn.
+replace (r1 + r - (r3 + r)) with (r1 - r3) by ring.
+replace (r2 + r0 - (r4 + r0)) with (r2 - r4) by ring.
+reflexivity.
+Qed.
+
+Lemma R2mul_dist : forall k u v, 0 <= k -> R2.dist (k * u) (k * v) = k * R2.dist u v.
 Proof.
 intros k [? ?] [? ?] Hk. unfold R2.dist, R2def.dist. cbn.
 apply pos_sqrt_eq.
@@ -146,6 +154,13 @@ apply pos_sqrt_eq.
   + rewrite <- Rplus_0_l at 1. apply Rplus_le_compat; apply Rsqr_pos.
   + rewrite <- Rplus_0_l at 1. apply Rplus_le_compat; apply Rsqr_pos.
 Qed.
+
+Lemma R2dist_subadditive : forall u u' v v', R2.dist (u + v) (u' + v') <= R2.dist u u' + R2.dist v v'.
+Proof.
+intros. etransitivity. apply (R2.triang_ineq _ (u' + v)%R2).
+rewrite R2add_dist. setoid_rewrite R2.add_comm. rewrite R2add_dist. reflexivity.
+Qed.
+
 
 (** **  Simplification tactics  **)
 
@@ -782,10 +797,19 @@ Proof.
 Qed.
 
 Lemma barycenter_3_pts_inside_SEC : forall pt1 pt2 pt3,
-  R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil))) <= radius (SEC (pt1 :: pt2 :: pt3 :: nil)).
+  R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
+  <= radius (SEC (pt1 :: pt2 :: pt3 :: nil)).
 Proof.
 intros pt1 pt2 pt3. unfold barycenter_3_pts. do 2 rewrite R2.add_distr.
 remember (center (SEC (pt1 :: pt2 :: pt3 :: nil))) as c.
-apply Rle_trans with (R2.dist (/3 * pt1) (/3 * c) + R2.dist (/3 * pt2) (/3 * c) + R2.dist (/3 * pt3) (/3 * c)).
-(* apply R2.triang_ineq. *)
-Admitted.
+transitivity (R2.dist (/3 * pt1) (/3 * c) + R2.dist (/3 * pt2) (/3 * c) + R2.dist (/3 * pt3) (/3 * c)).
++ replace c with (/3 * c + (/3 * c + /3 * c))%R2 at 1.
+  - etransitivity. apply R2dist_subadditive. rewrite Rplus_assoc.
+    apply Rplus_le_compat; try reflexivity. apply R2dist_subadditive.
+  - clear Heqc. destruct c. compute. f_equal; field.
++ repeat rewrite R2mul_dist; try lra; [].
+  remember (radius (SEC (pt1 :: pt2 :: pt3 :: nil))) as r.
+  replace r with (/3 * r + /3 * r + /3 * r) by field.
+  repeat apply Rplus_le_compat; (apply Rmult_le_compat; try lra || apply R2.dist_pos; []);
+  subst; apply SEC_spec1; intuition.
+Qed.

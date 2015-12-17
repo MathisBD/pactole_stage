@@ -670,12 +670,12 @@ Proof.
 Qed.
 
 Lemma R2_is_bary3_morph : forall x y z C (sim : Sim.t),
-  is_barycenter_3_pt x y z C -> (is_barycenter_3_pt (sim x) (sim y) (sim z) (sim C)).
+  is_barycenter_3_pts x y z C -> (is_barycenter_3_pts (sim x) (sim y) (sim z) (sim C)).
 Proof.
   intros x y z C sim hmid.
   red.
   intros p.
-  unfold is_barycenter_3_pt in hmid.
+  unfold is_barycenter_3_pts in hmid.
   rewrite <- (@Similarity.section_retraction _ _ _ (sim.(Sim.sim_f)) p).
   setoid_rewrite sim.(Sim.dist_prop).
   setoid_rewrite R_sqr.Rsqr_mult.
@@ -694,7 +694,7 @@ Proof.
   intro hmidlxy.
   generalize (@bary3_spec (sim x) (sim y) (sim z)).
   intro hmidsimxy.
-  assert (is_barycenter_3_pt (sim x) (sim y) (sim z) (sim (barycenter_3_pts x y z))).
+  assert (is_barycenter_3_pts (sim x) (sim y) (sim z) (sim (barycenter_3_pts x y z))).
   { apply R2_is_bary3_morph.
     auto. }
   apply bary3_unique with (sim x) (sim y) (sim z);assumption.
