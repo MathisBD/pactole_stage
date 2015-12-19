@@ -775,9 +775,9 @@ destruct l as [| pt1 [| pt2 l']] eqn:Hl.
              end. now subst.
 Qed.
 
-Lemma on_SEC_add_same :
+Lemma SEC_add_same :
   forall pt l, R2.dist (center (SEC l)) pt <= radius (SEC l)
-               -> (SEC (pt::l)) = SEC l .
+               -> (SEC (pt :: l)) = SEC l.
 Proof.
   intros pt l H.
   apply SEC_unicity.
@@ -796,6 +796,59 @@ Proof.
       assumption.
 Qed.
 
+Lemma SEC_append_same : forall l1 l2, (forall pt, In pt l1 -> R2.dist (center (SEC l2)) pt <= radius (SEC l2))
+               -> SEC (l1 ++ l2) = SEC l2.
+Proof.
+intros l1 l2 Hl1. induction l1.
+- reflexivity.
+- cbn.
+  assert (Hrec : forall pt : R2.t, In pt l1 -> R2.dist (center (SEC l2)) pt <= radius (SEC l2)).
+  { intros pt Hin. apply Hl1. now right. }
+  specialize (IHl1 Hrec). rewrite <- IHl1.
+  apply SEC_add_same. rewrite IHl1. apply Hl1. now left.
+Qed.
+
+Lemma filter_idempotent {A} : forall f (l : list A), filter f (filter f l) = filter f l.
+Proof.
+intros f l. induction l as [| e l].
+- reflexivity.
+- cbn. destruct (f e) eqn:Hfe; cbn; try rewrite Hfe; now (f_equal + idtac).
+Qed.
+
+Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
+Proof. Admitted.
+(*
+intro l. unfold on_SEC.
+assert ( Hperm := partition_Permutation (on_circle (SEC l)) l).
+rewrite <- PermutationA_Leibniz in Hperm. rewrite <- Hperm at 1 3.
+rewrite partition_filter in *. cbn in *. rewrite (PermutationA_app_comm _).
+remember (filter (fun x : R2.t => negb (on_circle (SEC l) x)) l) as l1.
+remember (filter (on_circle (SEC l)) l) as l2.
+assert (HinSEC : forall pt, In pt l1 -> R2.dist (center (SEC l2)) pt <= radius (SEC l2)).
+{ intros pt Hin. SearchAbout SEC.  }
+
+
+
+Qed.
+generalize (incl_refl l1). rewrite Heql1 at 2. clear Heql1. intro Hincl.
+induction l1 as [| e l1].
+- cbn. rewrite app_nil_r in Hperm. unfold on_SEC. subst. now rewrite filter_idempotent.
+- cbn. destruct (on_circle (SEC l) e) eqn:He.
+  + exfalso. assert (Hin : In e (e :: l1)) by now left.
+    apply Hincl in Hin. rewrite filter_In in Hin. destruct Hin as [_ Hin].
+    rewrite He in Hin. discriminate.
+  + rewrite <- IHl1.
+    * apply on_SEC_add_same.
+      assert (Hin : In e l).
+      { admit. }
+      apply SEC_spec1 in Hin.
+    * 
+    * 
+
+ remember (SEC l) as c.
+Qed.
+*)
+
 Lemma barycenter_3_pts_inside_SEC : forall pt1 pt2 pt3,
   R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
   <= radius (SEC (pt1 :: pt2 :: pt3 :: nil)).
@@ -813,3 +866,14 @@ transitivity (R2.dist (/3 * pt1) (/3 * c) + R2.dist (/3 * pt2) (/3 * c) + R2.dis
   repeat apply Rplus_le_compat; (apply Rmult_le_compat; try lra || apply R2.dist_pos; []);
   subst; apply SEC_spec1; intuition.
 Qed.
+
+Axiom equilateral_SEC_center_is_barycenter : forall pt1 pt2 pt3,
+  classify_triangle pt1 pt2 pt3 = Equilateral ->
+  center (SEC (pt1 :: pt2 :: pt3 :: nil)) = barycenter_3_pts pt1 pt2 pt3.
+
+Lemma equilateral_barycenter_not_eq : forall pt1 pt2 pt3,
+  classify_triangle pt1 pt2 pt3 = Equilateral -> pt1 <> pt2 -> barycenter_3_pts pt1 pt2 pt3 <> pt1.
+Proof.
+intros pt1 pt2 pt3 Htriangle Hneq.
+Admitted.
+

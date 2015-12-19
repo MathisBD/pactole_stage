@@ -867,7 +867,8 @@ destruct (Spect.support (Spect.max (!! conf))) as [| ? [| ? ?]]; simpl in Hlen; 
 reflexivity.
 Qed.
 
-(* In the case where one majority tower exists, target is not used and does not compute the real target. Hence the hypothesis on the length *)
+(* In the case where one majority tower exists, target is not used and does not compute the real target.
+   Hence the hypothesis on the length *)
 Theorem destination_is_target : forall da config, 2 <= length (Spect.support (Spect.max (!! config))) ->
   forall id, In id (moving gatherR2 da config) -> round gatherR2 da config id = target (!! config).
 Proof.
@@ -1712,7 +1713,7 @@ Proof.
       left;reflexivity.
     + apply inclA_Leibniz.
       unfold is_clean in H.
-      destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support (!! conf)) (SECT (!! conf))) eqn:heq;try discriminate.
+      destruct (inclA_bool _ R2.eq_dec (Spect.support (!! conf)) (SECT (!! conf))) eqn:heq;try discriminate.
       unfold SECT in heq.
       erewrite <- inclA_bool_true_iff;eauto.
 Qed.
@@ -1860,7 +1861,7 @@ Ltac contradict_middle_aux ptx pty H H' conf  :=
             | destruct ptx,pty;
               inversion H; clear H;
               apply hneq; f_equal;lra].
-  
+
 Ltac contradict_middle :=
       match goal with
       | H: context C [R2.middle _ (R2.middle ?ptx ?pty)],
@@ -1960,15 +1961,8 @@ Proof.
     + intro abs;inversion abs.
   - rewrite <- htarget.
     apply clean_diameter_support_incl;auto.
-  - apply not_forbidden_no_maj_length.
-    + assumption.
-    + (* TODO: h_twomaj + round_simply should be anough. *)
-      rewrite hmax.
-      reflexivity.
+  - now apply not_forbidden_no_maj_length.
 Qed.
-
-
-
 
 Lemma no_maj_round_no_maj:
   forall da conf,
@@ -2036,7 +2030,15 @@ Proof.
   unfold target,clean_diameter_case in *.
   destruct h_clean as [Hclean [pt1 [pt2 Htwocol]]].
   destruct (on_SEC (Spect.support (!! conf))) as [| ptx [| pty [| ptz [| ptt ?]]]] eqn:Hfilter;try discriminate.
-  destruct (on_SEC (Spect.support (!! (round gatherR2 da conf)))) as [| ptx' [| pty' [| ptz' [| ptt' ?]]]] eqn:Hfilter'.
+  assert (Hincl := incl_next da conf).
+  assert (Htarget : target (!!conf) = R2.middle ptx pty) by (apply (diameter_target); auto).
+  assert (Hmax : 2 <=  length (Spect.support (Spect.max (!! conf)))).
+  { apply no_maj_round_no_maj with da.
+    rewrite h_twomaj.
+    simpl; auto with arith. }
+  assert (Hperm := @diameter_clean_support conf ptx pty h_noforbid Hmax Hclean Hfilter).
+  destruct (on_SEC (Spect.support (!! (round gatherR2 da conf))))
+    as [| ptx' [| pty' [| ptz' [| ptt' ?]]]] eqn:Hfilter'.
   - destruct (@SEC_reached (Spect.support (!! (round gatherR2 da conf)))) as [pt [Hptin Hptoonirc]].
     + apply support_non_nil.
     + exfalso.
@@ -2046,101 +2048,72 @@ Proof.
       rewrite Hfilter' in h.
       inversion h.
   - inversion Htwocol;subst. clear Htwocol.
-    assert (hnodup:NoDup (Spect.support (!! (round gatherR2 da conf)))).
-    { apply NoDupA_Leibniz.
-      apply Spect.support_NoDupA. }
-    apply on_SEC_singleton_is_singleton in Hfilter';auto.
-    generalize (Spect.max_subset (!! (round gatherR2 da conf)));auto.
-    intros H.
-    generalize (@Spect.support_sub_compat _ _ H).
-    intros H0.
-    
-    rewrite h_twomaj in H0.
-    rewrite Hfilter' in H0.
-    red in H0.
-    assert (hdiff: maj1 <> maj2).
-    { assert (h:=Spect.support_NoDupA (Spect.max (!! (round gatherR2 da conf)))).
+    assert (Hnodup' : NoDup (Spect.support (!! (round gatherR2 da conf)))).
+    { apply NoDupA_Leibniz, Spect.support_NoDupA. }
+    apply on_SEC_singleton_is_singleton in Hfilter'; auto.
+    generalize (Spect.max_subset (!! (round gatherR2 da conf))); auto.
+    intro H.
+    assert (Hincl_max := @Spect.support_sub_compat _ _ H).
+    rewrite h_twomaj, Hfilter' in Hincl_max.
+    red in Hincl_max.
+    assert (Hdiff : maj1 <> maj2).
+    { assert (h := Spect.support_NoDupA (Spect.max (!! (round gatherR2 da conf)))).
       rewrite h_twomaj in h.
       inversion h.
-      intro;subst;apply H3;now left. }
+      intro; subst; apply H2; now left. }
     destruct (R2.eq_dec ptx' maj1).
-    + specialize (H0 maj2).
-      assert (InA R2.eq maj2 (maj1 :: maj2 :: smaj)).
-      { constructor 2.
-        constructor 1.
-        reflexivity. }
-      specialize (H0 H1).
-      inversion H0;subst.
-      * elim hdiff.
+    + specialize (Hincl_max maj2).
+      assert (Hin : InA R2.eq maj2 (maj1 :: maj2 :: smaj)).
+      { now repeat constructor. }
+      specialize (Hincl_max Hin).
+      inversion Hincl_max; subst.
+      * elim Hdiff.
         transitivity ptx'.
         -- now rewrite e.
-        -- now rewrite H3.
-      * inversion H3.
-    +  specialize (H0 maj1).
-       assert (InA R2.eq maj1 (maj1 :: maj2 :: smaj)).
-       { constructor 1.
-         reflexivity. }
-       specialize (H0 H1). 
-       inversion H0;subst.
-       symmetry in H3.
+        -- now rewrite H1.
+      * inversion H1.
+    +  specialize (Hincl_max maj1).
+       assert (Hin : InA R2.eq maj1 (maj1 :: maj2 :: smaj)) by now constructor.
+       specialize (Hincl_max Hin).
+       inversion Hincl_max; subst.
+       symmetry in H1.
        contradiction.
-       inversion H3.
-  - assert (hincl:= incl_next da conf).
-    assert (htarget:target (!!conf) = R2.middle ptx pty)
-      by (apply (diameter_target);auto).
-    rewrite  ?htarget in *.
-    assert (hmax:2 <=  length (Spect.support (Spect.max (!! conf)))). {
-      apply no_maj_round_no_maj with da.
-      rewrite h_twomaj.
-      simpl; auto with arith. }
-
-    assert (hpermut:=@diameter_clean_support conf ptx pty h_noforbid hmax Hclean Hfilter).
+       inversion H1.
+  - rewrite  ?Htarget in *.
     clear Htwocol.
-
-
-    rewrite hpermut in hincl.
-    apply inclA_cons_In in hincl;auto.
+    rewrite Hperm in Hincl.
+    apply (inclA_cons_In _) in Hincl; auto.
     + specialize (@not_forbidden_no_maj_length (round gatherR2 da conf) (never_forbidden h_noforbid)).
-      intros h.
-      rewrite h_twomaj in h.
-      simpl in h.
-      assert (h_le:2 <= S (S (length smaj))) by omega.
-      specialize (h h_le).
+      intros Hlen.
+      rewrite h_twomaj in Hlen.
+      simpl in Hlen.
+      assert (Hle : 2 <= S (S (length smaj))) by omega.
+      specialize (Hlen Hle).
       
-      assert (hpermut':PermutationA R2.eq
-                                    (Spect.support (!! (round gatherR2 da conf)))
-                                    (ptx :: pty :: R2.middle ptx pty :: nil)).
+      assert (Hperm' : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                          (ptx :: pty :: R2.middle ptx pty :: nil)).
       { apply (NoDupA_inclA_length_PermutationA _).
         - apply Spect.support_NoDupA.
-        - rewrite <- hpermut.
+        - rewrite <- Hperm.
           apply Spect.support_NoDupA.
-        - apply hincl.
+        - apply Hincl.
         - assumption. }
-      clear hincl.
-      
-(*    assert (hpermut'':PermutationA R2.eq
-                                   (Spect.support (!! (round gatherR2 da conf)))
-                                   (ptx' :: pty' :: R2.middle ptx' pty' :: nil)).
-    {
-      rewrite hpermut'. *)
-      assert (hpermut'':PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) (ptx' :: pty' :: nil)).
-      { rewrite Hfilter'.
-        reflexivity. }
-      assert (hpermut''':PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: nil)).
-      { rewrite Hfilter.
-        reflexivity. }
+      clear Hincl.
+      assert (HpermSEC' : PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf))))
+                                             (ptx' :: pty' :: nil)) by now rewrite Hfilter'.
+      assert (HpermSEC : PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: nil))
+        by now rewrite Hfilter.
 
-      assert (hincl:inclA R2.eq (on_SEC (ptx :: pty :: nil)) (ptx :: pty :: nil)).
-      { intro .
-          intro hin.
-          destruct (on_SEC_In x (ptx :: pty :: nil)).
-          apply InA_Leibniz in hin.
-          specialize (H hin).
-          destruct H.
-          apply InA_Leibniz.
-          assumption. }
+      assert (HinclSEC : inclA R2.eq (on_SEC (ptx :: pty :: nil)) (ptx :: pty :: nil)).
+      { intros x Hin.
+        destruct (on_SEC_In x (ptx :: pty :: nil)).
+        apply InA_Leibniz in Hin.
+        specialize (H Hin).
+        destruct H.
+        apply InA_Leibniz.
+        assumption. }
 
-      assert (hnodup':NoDupA R2.eq (ptx' :: pty' :: nil)).
+      assert (Hnodup' : NoDupA R2.eq (ptx' :: pty' :: nil)).
       { rewrite <- Hfilter'.
         unfold on_SEC.
         apply Preliminary.NoDupA_filter_compat.
@@ -2148,8 +2121,7 @@ Proof.
           reflexivity. }
         apply Spect.support_NoDupA. }
 
-
-      assert (hnodup:NoDupA R2.eq (ptx :: pty :: nil)).
+      assert (Hnodup : NoDupA R2.eq (ptx :: pty :: nil)).
       { rewrite <- Hfilter.
         unfold on_SEC.
         apply Preliminary.NoDupA_filter_compat.
@@ -2157,17 +2129,18 @@ Proof.
           reflexivity. }
         apply Spect.support_NoDupA. }
 
-      assert (hnodupSEC:NoDupA R2.eq (on_SEC (ptx :: pty :: nil))).
+      assert (HnodupSEC : NoDupA R2.eq (on_SEC (ptx :: pty :: nil))).
       { unfold on_SEC.
         apply Preliminary.NoDupA_filter_compat.
         { apply on_circle_compat.
           reflexivity. }
         assumption. }
-      rewrite hpermut' in hpermut''.
-
-      assert (PermutationA R2.eq (on_SEC (ptx :: pty :: R2.middle ptx pty :: nil)) (on_SEC (ptx :: pty :: nil)) ).
-      { rewrite hpermut in hpermut'''.
-        rewrite hpermut'''.
+      rewrite Hperm' in HpermSEC'.
+(* TODO *)
+      assert (HSECperm : PermutationA R2.eq (on_SEC (ptx :: pty :: R2.middle ptx pty :: nil))
+                                            (on_SEC (ptx :: pty :: nil))).
+      { rewrite Hperm in HpermSEC.
+        rewrite HpermSEC.
         symmetry.
         eapply (NoDupA_inclA_length_PermutationA); try apply R2.eq_equiv;auto.
         generalize (@SEC_reached_twice (ptx :: pty :: nil)).
@@ -2185,87 +2158,53 @@ Proof.
               | H: In ?x0 nil |- _ => inversion H
               end;
           try rewrite H3; try rewrite H5;try (simpl;omega). }
-      rewrite H in hpermut''.
-      assert (PermutationA R2.eq (ptx :: pty :: nil) (ptx' :: pty' :: nil)).
-      { symmetry .
-        apply NoDupA_inclA_length_PermutationA;try assumption.
-        - apply R2.eq_equiv.
-        - rewrite <- hpermut''.
-          assumption.
-        - simpl;omega. }
-      apply PermutationA_2 in H0.
-      destruct H0 as [ [h1 h2] | [h1 h2]] ;rewrite h1,h2;try reflexivity;try rewrite middle_comm;try reflexivity.
-      apply R2.eq_equiv.
-    + apply R2.eq_equiv.
+          rewrite HSECperm in HpermSEC'.
+          assert (Hperm_pt : PermutationA R2.eq (ptx :: pty :: nil) (ptx' :: pty' :: nil)).
+          { symmetry .
+            apply NoDupA_inclA_length_PermutationA;try assumption.
+            - apply R2.eq_equiv.
+            - now rewrite <- HpermSEC'.
+            - simpl; omega. }
+          apply (PermutationA_2 _) in Hperm_pt.
+          destruct Hperm_pt as [ [H1 H2] | [H1 H2]]; rewrite H1, H2; trivial; now rewrite middle_comm.
     + do 2 right; left;reflexivity.
   - exfalso.
-    assert (hincl:= incl_next da conf).
-    assert (htarget:target (!! conf) = R2.middle ptx pty)
-      by (apply (diameter_target);auto).
-
-    assert (hmax:2 <=  length (Spect.support (Spect.max (!! conf)))). {
-      apply no_maj_round_no_maj with da.
-      rewrite h_twomaj.
-      simpl; auto with arith. }
-    assert (hpermut:=@diameter_clean_support conf ptx pty h_noforbid hmax Hclean Hfilter).
     clear Htwocol.
 
-
-    assert (hpermut':PermutationA R2.eq
-                                  (Spect.support (!! (round gatherR2 da conf)))
-                                  (ptx :: pty :: R2.middle ptx pty :: nil)).
+    assert (Hperm' : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                        (ptx :: pty :: R2.middle ptx pty :: nil)).
     { apply diameter_round_same;auto.
       rewrite h_twomaj.
       simpl.
       auto with arith. }
-
-      assert (PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) (ptx' :: pty' :: ptz' :: nil)).
-      {
-        rewrite Hfilter'.
-        reflexivity. }
-      assert (PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf))) (Spect.support (!! conf))).
-      transitivity (ptx :: pty :: R2.middle ptx pty :: nil);auto.
-      { symmetry.
-        assumption. }
-      assert (PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: nil)).
-      { rewrite Hfilter;reflexivity. }
-      rewrite <- H0 in H1.
-      rewrite H in H1.
-      apply PermutationA_length in H1;autoclass.
-      simpl in H1; discriminate.
+    assert (HpermSEC' : PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf))))
+                                           (ptx' :: pty' :: ptz' :: nil)) by now rewrite Hfilter'.
+    assert (Hsupp : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf))) (Spect.support (!! conf))).
+    { transitivity (ptx :: pty :: R2.middle ptx pty :: nil); auto. now symmetry. }
+    assert (HpermSEC : PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: nil))
+      by now rewrite Hfilter.
+    rewrite <- Hsupp in HpermSEC.
+    rewrite HpermSEC in HpermSEC'.
+    apply PermutationA_length in HpermSEC'; autoclass.
+    simpl in HpermSEC'; discriminate.
 
   - exfalso.
-    assert (hincl:= incl_next da conf).
-    assert (htarget:target (!! conf) = R2.middle ptx pty)
-      by (apply (diameter_target);auto).
-
-    assert (hmax:2 <=  length (Spect.support (Spect.max (!! conf)))). {
-      apply no_maj_round_no_maj with da.
-      rewrite h_twomaj.
-      simpl; auto with arith. }
-    assert (hpermut:=@diameter_clean_support conf ptx pty h_noforbid hmax Hclean Hfilter).
-
-    assert (hpermut':PermutationA R2.eq
-                                  (Spect.support (!! (round gatherR2 da conf)))
-                                  (ptx :: pty :: R2.middle ptx pty :: nil)).
-    { apply diameter_round_same;auto.
+    assert (Hperm' : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                        (ptx :: pty :: R2.middle ptx pty :: nil)).
+    { apply diameter_round_same; auto.
       rewrite h_twomaj.
       simpl.
-      auto with arith. }      
-      assert (PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) (ptx' :: pty' :: ptz' :: ptt' :: l)).
-      {
-        rewrite Hfilter'.
-        reflexivity. }
-      assert (PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf))) (Spect.support (!! conf))).
-      transitivity (ptx :: pty :: R2.middle ptx pty :: nil);auto.
-      { symmetry.
-        assumption. }
-      assert (PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: nil)).
-      { rewrite Hfilter;reflexivity. }
-      rewrite <- H0 in H1.
-      rewrite H in H1.
-      apply PermutationA_length in H1;autoclass.
-      simpl in H1; discriminate.
+      auto with arith. }
+    assert (HpermSEC' : PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf))))
+                                           (ptx' :: pty' :: ptz' :: ptt' :: l)) by now rewrite Hfilter'.
+    assert (Hsupp : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf))) (Spect.support (!! conf))).
+    { transitivity (ptx :: pty :: R2.middle ptx pty :: nil); auto. now symmetry. }
+    assert (HpermSEC : PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: nil))
+      by now rewrite Hfilter.
+    rewrite <- Hsupp in HpermSEC.
+    rewrite HpermSEC in HpermSEC'.
+    apply PermutationA_length in HpermSEC'; autoclass.
+    simpl in HpermSEC'; discriminate.
 Qed.
 
 Lemma clean_triangle_support_incl:
@@ -2273,8 +2212,7 @@ Lemma clean_triangle_support_incl:
     ~ forbidden conf
     -> is_clean (!! conf) = true
     -> on_SEC (Spect.support (!! conf)) = ptx :: pty :: ptz :: nil
-    -> inclA R2.eq (Spect.support (!! conf))
-                          (ptx :: pty :: ptz :: target (!! conf) :: nil).
+    -> inclA R2.eq (Spect.support (!! conf)) (ptx :: pty :: ptz :: target (!! conf) :: nil).
 Proof.
   intros conf ptx pty ptz h_notforbid hisclean honsec.
   intros x hin.
@@ -2303,47 +2241,69 @@ Lemma triangle_clean_support:
                     (ptx :: pty :: ptz :: target (!! conf) :: nil).
 Proof.
   intros conf ptx pty ptz h_notforbid hmax hisclean Hequil Hfilter h_target_nonempty.
-  apply (NoDupA_inclA_length_PermutationA _).
-  - apply Spect.support_NoDupA.
-  - assert (hnodup: NoDupA R2.eq (ptx :: pty :: ptz ::nil)). 
+  assert (Hnodup: NoDupA R2.eq (ptx :: pty :: ptz ::nil)).
     { unfold on_SEC in Hfilter.
       rewrite <- Hfilter.
       apply Preliminary.NoDupA_filter_compat;autoclass.
       apply Spect.support_NoDupA. }
-    assert (h_target_diff: forall pt, InA R2.eq pt (ptx :: pty :: ptz :: nil) -> target (!! conf) <> pt).
-    { unfold target.
-      intros pt H.
-      rewrite Hfilter.
-      unfold target_triangle.
-      rewrite Hequil.
-      unfold barycenter_3_pts.
-      admit. (* Lioneeeeeeeeeeeeeeeeeeeeeeeeeel *) }
-    change  (NoDupA R2.eq (List.app (ptx :: pty :: ptz :: nil) (target (!! conf) :: nil))).
-    apply NoDupA_app_iff;autoclass;split;[|split].
+  assert (h_target_diff: forall pt, InA R2.eq pt (ptx :: pty :: ptz :: nil) -> target (!! conf) <> pt).
+  { unfold target.
+    intros pt H.
+    rewrite Hfilter.
+    unfold target_triangle.
+    rewrite Hequil.
+    rewrite NoDupA_Leibniz in Hnodup.
+    repeat match goal with 
+      | H : InA _ pt _ |- _ => inversion_clear H
+      | H : R2.eq pt _ |- _ => rewrite H
+      | H : NoDup _ |- _ => inversion_clear H
+    end. cbn in *.
+    - apply equilateral_barycenter_not_eq; intuition.
+    - rewrite (@barycenter_compat _ _ _ pty ptx ptz); try now etransitivity; repeat constructor.
+      apply equilateral_barycenter_not_eq.
+      + rewrite (@classify_triangle_compat _ _ _ ptx pty ptz); try now etransitivity; repeat constructor.
+      + intro. subst. intuition.
+    - rewrite (@barycenter_compat _ _ _ ptz pty ptx); try now do 2 etransitivity; repeat constructor.
+      apply equilateral_barycenter_not_eq.
+      + rewrite (@classify_triangle_compat _ _ _ ptx pty ptz); try now do 2 etransitivity; repeat constructor.
+      + intro. subst. intuition. }
+  apply (NoDupA_inclA_length_PermutationA _).
+  - apply Spect.support_NoDupA.
+  - change  (NoDupA R2.eq (List.app (ptx :: pty :: ptz :: nil) (target (!! conf) :: nil))).
+    apply NoDupA_app_iff; autoclass; split; [| split].
     + assumption.
     + apply NoDupA_singleton.
     + intros x Hinx Hiny.
-      inversion Hinx;subst;rewrite ?H0 in *.
-      * inversion Hiny;subst.
+      inversion Hinx; subst; rewrite ?H0 in *.
+      * inversion Hiny; subst.
         -- symmetry in H1.
            absurd ltac:(type of H1);auto.
         -- inversion H1.
-      * inversion H0;subst;rewrite ?H1 in *.
-        -- inversion Hiny;subst.
+      * inversion H0; subst; rewrite ?H1 in *.
+        -- inversion Hiny; subst.
            ++ symmetry in H2.
               absurd ltac:(type of H2);auto.
            ++ inversion H2.
-        -- inversion H1;subst;rewrite ?H2 in *.
-           ++ inversion Hiny;subst.
+        -- inversion H1; subst; rewrite ?H2 in *.
+           ++ inversion Hiny; subst.
               ** symmetry in H3.
                  absurd ltac:(type of H3);auto.
               ** inversion H3.
            ++ inversion H2.
-  - apply clean_triangle_support_incl;assumption.
-  - (* TODO *)
-
-Admitted.
-
+  - apply clean_triangle_support_incl; assumption.
+  - assert (Hperm : Permutation (ptx :: pty :: ptz :: target (!! conf) :: nil)
+                                (target (!! conf) :: ptx :: pty :: ptz :: nil)).
+    { now do 2 etransitivity; repeat constructor. }
+    rewrite Hperm.
+    apply (NoDupA_inclA_length _).
+    + constructor.
+      * intro Habs. now apply (h_target_diff _ Habs).
+      * rewrite <- Hfilter. unfold on_SEC. apply Preliminary.NoDupA_filter_compat; autoclass.
+        apply Spect.support_NoDupA.
+    + intros pt Hin. inversion_clear Hin.
+      * rewrite H. now rewrite Spect.support_spec.
+      * unfold on_SEC in Hfilter. now rewrite <- Hfilter, (filter_InA _) in H.
+Qed.
 
 
 Theorem round_lt_config : forall da conf,
@@ -2378,7 +2338,7 @@ Proof.
     + destruct (on_SEC (Spect.support (!! conf))) as [| pt1 [| pt2 [| pt3 [| pt4 sec]]]] eqn:Hsec;
         unfold measure at 2; rewrite Hmaj; rewrite Hsec, ?Hclean.
       (* There must be at least two point on the SEC, so the first two cases are absurd. *)
-      -- assert (h_all_target:forall g, (conf g) = target (!! conf)). 
+      -- assert (h_all_target : forall g, (conf g) = target (!! conf)). 
          { unfold is_clean in Hclean.
            apply if_true in Hclean.
            destruct Hclean as [Hclean _].
@@ -2387,19 +2347,18 @@ Proof.
            rewrite Hsec in Hclean.
            intros g.
            unfold inclA in Hclean.
-           assert (h:=Spect.pos_in_config conf g).
+           assert (h := Spect.pos_in_config conf g).
            rewrite <- Spect.support_spec in h.
            apply Hclean in h.
-           inversion h;subst. 
+           inversion h; subst. 
            - assumption. 
            - inversion H0. }
          elim Hmove.
          
-         rewrite destination_is_target;auto.
-         ++ symmetry. 
+         rewrite destination_is_target; auto.
+         ++ symmetry.
             apply h_all_target.
-         ++ apply moving_spec.
-            assumption.
+         ++ now apply moving_spec.
       -- apply on_SEC_singleton_is_singleton in Hsec; try now rewrite <- NoDupA_Leibniz; apply Spect.support_NoDupA.
          exfalso.
          cut (inclA R2.eq (pt :: pt' :: smax) (pt1 :: nil)).
@@ -2415,42 +2374,26 @@ Proof.
          ++ rewrite <- Hmaj, <- Hsec. apply Spect.support_sub_compat, Spect.max_subset.
       -- (** Three aligned towers *)
          assert (target (!! conf) = R2.middle pt1 pt2).
-         { unfold target.
-           rewrite Hsec.
-           reflexivity. }
+         { unfold target. now rewrite Hsec. }
          remember ((!! (round gatherR2 da conf))) as f.
          functional induction (measure f); try now (constructor 1; auto; try omega).
-         ++ constructor 2.
+         ++ right.
             unfold measure_reduce.
-            assert (N.nG >= (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]).
-            { apply multiplicity_le_nG. }
-            assert (N.nG >= (!! conf)[target (!! conf)]) by apply multiplicity_le_nG.
-            assert ((!! conf)[target (!! conf)]
-                    < (!! (round gatherR2 da conf))[target (!!(round gatherR2 da conf))]).
-            { 
-              rewrite (next_target_same _ Hforbidden e).
-              rewrite increase_move_iff.
-              - exists gmove.
-                split.
-                + rewrite round_simplify_clean; trivial.
-                  destruct (step da gmove).
-                  * reflexivity.
-                  * elim Hstep;reflexivity.
-                + apply Hmove.
-              - red.
-                split; auto.
-                eauto.
-            }
-            omega.
+            assert ((!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))] <= N.nG)
+              by apply multiplicity_le_nG.
+            cut ((!! conf)[target (!! conf)] < (!! (round gatherR2 da conf))[target (!!(round gatherR2 da conf))]);
+            try omega; [].
+            rewrite (next_target_same _ Hforbidden e).
+            ** rewrite increase_move_iff. exists gmove. split; trivial.
+               apply destination_is_target; trivial. now rewrite moving_spec.
+            ** split; trivial. eauto.
          ++ exfalso. (* is_clean = false is absurd. *)
-            assert (heq:=diameter_clean_support Hforbidden Hlen Hclean Hsec).
-
-            assert (hpermut':PermutationA R2.eq
-                                          (Spect.support (!! (round gatherR2 da conf)))
-                                          (pt1 :: pt2 :: R2.middle pt1 pt2 :: nil)).
+            assert (Hperm := diameter_clean_support Hforbidden Hlen Hclean Hsec).
+            assert (Hperm':PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                              (pt1 :: pt2 :: R2.middle pt1 pt2 :: nil)).
             { apply (NoDupA_inclA_length_PermutationA _).
               - apply Spect.support_NoDupA.
-              - rewrite <- heq.
+              - rewrite <- Hperm.
                 apply Spect.support_NoDupA.
               - apply inclA_Leibniz.
                 apply incl_tran with (target (!! conf) :: Spect.support (!! conf)).
@@ -2459,7 +2402,7 @@ Proof.
                 + rewrite H.
                   apply inclA_Leibniz.
                   apply inclA_cons_In with (x:=R2.middle pt1 pt2);autoclass.
-                  rewrite heq.
+                  rewrite Hperm.
                   apply inclA_Leibniz.
                   apply incl_refl.
               - simpl.
@@ -2470,14 +2413,15 @@ Proof.
                   simpl.
                   omega. }
             unfold is_clean in *.
-            rewrite hpermut' in *.
+            rewrite Hperm' in *.
             unfold SECT in e1.
             erewrite next_target_same in e1;eauto.
             ** rewrite H in e1.
-               rewrite hpermut' in e1.
-               rewrite <- heq in e1 at 2.
+               rewrite Hperm' in e1.
+               rewrite <- Hperm in e1 at 2.
                rewrite Hsec in e1.
-               assert (inclA_bool R2.eq_equiv R2.eq_dec (pt1 :: pt2 :: R2.middle pt1 pt2 :: nil) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil) = true).
+               assert (inclA_bool _ R2.eq_dec (pt1 :: pt2 :: R2.middle pt1 pt2 :: nil)
+                                              (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil) = true).
                { apply inclA_bool_true_iff.
                  apply inclA_Leibniz.
                  red.
@@ -2486,80 +2430,99 @@ Proof.
                  intuition. }
                rewrite H0 in e1.
                discriminate.
-            ** red;eauto.
+            ** red; eauto.
       -- destruct (classify_triangle pt1 pt2 pt3) as [| v |] eqn:Htriangle.
          (** Equilateral triangle *)
-         ++ assert (target (!! conf) = barycenter_3_pts pt1 pt2 pt3).
+         ++ assert (Htarget : target (!! conf) = barycenter_3_pts pt1 pt2 pt3).
             { unfold target.
               rewrite Hsec.
               unfold target_triangle.
               rewrite Htriangle.
               reflexivity. }
+            assert (Hincl' : inclA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                         (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)).
+            { assert (hperm: PermutationA R2.eq (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)
+                                   (barycenter_3_pts pt1 pt2 pt3 :: pt1 :: pt2 :: pt3 ::  nil)).
+              { now setoid_rewrite (PermutationA_cons_append _) at 5. }
+              rewrite hperm, <- Htarget, <- Hsec.
+              now apply incl_clean_next. }
             remember ((!! (round gatherR2 da conf))) as f.
             functional induction (measure f);try now (constructor 1; auto; try omega).
             ** (* no majority after round, clean after round + 3 towers on SEC after round. *)
-              (* the three towers are still there otherwise the ex-barycenter would make
-               the position unclean. so target hasn't move, and measure decreases.  *)
-              assert (hpermut':inclA R2.eq
-                                     (Spect.support (!! (round gatherR2 da conf)))
-                                     (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)). {
-                assert (hperm: PermutationA R2.eq (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)
-                                     (barycenter_3_pts pt1 pt2 pt3 :: pt1 :: pt2 :: pt3 ::  nil)). {
-                  setoid_rewrite (PermutationA_cons_append _) at 5.
-                  reflexivity. }
-                rewrite hperm.
-                rewrite <- H.
-                rewrite <- Hsec.
-                apply incl_clean_next.
-                assumption.
-              }
+               (* the three towers are still there otherwise the ex-barycenter would make
+                  the position unclean. so target hasn't move, and measure decreases.  *)
 
-              assert (PermutationA R2.eq (pt0 :: pt4 :: pt5 :: nil) (pt1 :: pt2 :: pt3 :: nil) ). {
-                apply (NoDupA_inclA_length_PermutationA _).
-                - rewrite <- e0.
-                  apply Preliminary.NoDupA_filter_compat;autoclass.
-                  apply Spect.support_NoDupA.
-                - rewrite <- Hsec.
-                  apply Preliminary.NoDupA_filter_compat;autoclass.
-                  apply Spect.support_NoDupA.
-                - rewrite <- e0.
-                  assert (hnotin: ~InA R2.eq (barycenter_3_pts pt1 pt2 pt3)
-                                   (on_SEC (Spect.support (!! (round gatherR2 da conf))))). {
-                    unfold on_SEC.
-                    
-                    rewrite 
-                    apply hpermut'.
-                  }
-                  
-                - assumption.                
-              }
-
-              assert (hpermut':PermutationA R2.eq
-                                            (Spect.support (!! (round gatherR2 da conf)))
-                                            (pt1 :: pt2 :: pt3 ::  barycenter_3_pts pt1 pt2 pt3 :: nil)).
-              { 
-                rewrite <- H.
-                apply triangle_clean_support.
-                
-                apply (NoDupA_inclA_length_PermutationA _).
-                - apply Spect.support_NoDupA.
-                - rewrite <- hpermut.
-                  apply Spect.support_NoDupA.
-                - apply hincl.
-                - assumption. }
-              
-              admit.
-            ** (* since is_clean (!! (round gatherR2 da conf)) = false, then SEC should have less than 3 elements. *)
-              admit. 
+               assert (PermutationA R2.eq (pt0 :: pt4 :: pt5 :: nil) (pt1 :: pt2 :: pt3 :: nil) ).
+               { apply (NoDupA_inclA_length_PermutationA _).
+                 - rewrite <- e0.
+                   apply Preliminary.NoDupA_filter_compat;autoclass.
+                   apply Spect.support_NoDupA.
+                 - rewrite <- Hsec.
+                   apply Preliminary.NoDupA_filter_compat;autoclass.
+                   apply Spect.support_NoDupA.
+                 - rewrite <- e0.
+                   assert (hnotin: ~InA R2.eq (barycenter_3_pts pt1 pt2 pt3)
+                                    (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                   { admit. }
+                   intros pt6 Hin.
+                   assert (Hpt6 : pt6 <> (barycenter_3_pts pt1 pt2 pt3)). { intro Habs. now subst. }
+                   unfold on_SEC in Hin. rewrite filter_InA in Hin; autoclass. destruct Hin as [Hin Hin'].
+                   apply Hincl' in Hin. clear -Hin Hpt6.
+                   rewrite InA_Leibniz in *. cbn in *. intuition.
+                 - reflexivity. }
+               right. unfold measure_reduce.
+               assert (Hle := multiplicity_le_nG (target (!! (round gatherR2 da conf))) (round gatherR2 da conf)).
+               cut ((!! conf)[target (!! conf)]
+                    < (!! (round gatherR2 da conf))[target (!! (round gatherR2 da conf))]); try omega.
+               assert (Hsame_target : target (!! (round gatherR2 da conf)) = target (!! conf)).
+               { unfold target. rewrite Hsec, e0. apply target_triangle_compat.
+                 now rewrite <- PermutationA_Leibniz. }
+               rewrite Hsame_target. rewrite increase_move_iff.
+               exists gmove. split; trivial. apply destination_is_target; trivial.
+               now rewrite moving_spec.
+            ** (* is_clean (!! (round gatherR2 da conf)) = false is absurd because
+                  + we can only move toward the target
+                  + the SEC has not changed *)
+               exfalso.
+               assert (PermutationA R2.eq (pt0 :: pt4 :: pt5 :: nil) (pt1 :: pt2 :: pt3 :: nil) ).
+               { apply (NoDupA_inclA_length_PermutationA _).
+                 - rewrite <- e0.
+                   apply Preliminary.NoDupA_filter_compat;autoclass.
+                   apply Spect.support_NoDupA.
+                 - rewrite <- Hsec.
+                   apply Preliminary.NoDupA_filter_compat;autoclass.
+                   apply Spect.support_NoDupA.
+                 - rewrite <- e0.
+                   assert (hnotin: ~InA R2.eq (barycenter_3_pts pt1 pt2 pt3)
+                                    (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                   { admit. }
+                   intros pt6 Hin.
+                   assert (Hpt6 : pt6 <> (barycenter_3_pts pt1 pt2 pt3)). { intro Habs. now subst. }
+                   unfold on_SEC in Hin. rewrite filter_InA in Hin; autoclass. destruct Hin as [Hin Hin'].
+                   apply Hincl' in Hin. clear -Hin Hpt6.
+                   rewrite InA_Leibniz in *. cbn in *. intuition.
+                 - reflexivity. }
+               assert (Hsame_target : target (!! (round gatherR2 da conf)) = target (!! conf)).
+               { unfold target. rewrite Hsec, e0. apply target_triangle_compat.
+                 now rewrite <- PermutationA_Leibniz. }
+               rewrite <- e0 in H.
+               cut (false = true); (intro; discriminate) || rewrite <- e2; [].
+               unfold is_clean.
+               destruct (inclA_bool _ R2.eq_dec (Spect.support (!! (round gatherR2 da conf)))
+                                                (SECT (!! (round gatherR2 da conf)))) eqn:Htest; trivial.
+               rewrite <- Htest. rewrite inclA_bool_true_iff. clear Htest e2.
+               intros x Hin. unfold SECT. rewrite H, Hsame_target. apply Hincl' in Hin.
+               now rewrite Htarget, (PermutationA_cons_append _).
             ** (* 2 elements on SEC + clean means two column => one is majoritary
-               > 3 elements on SEC is impossible*)
-              admit. 
+                  > 3 elements on SEC is impossible*)
+              exfalso. admit.
             ** (* 2 plus unclean => impossible; > 3 impossible *)
-              admit.
+               exfalso.
+               admit.
          ++ (** Isosceles triangle *)
-           admit.
+            admit.
          ++ (** Scalene triangle *)
-           admit.
+            admit.
       -- (** General case *)
         admit.
     (** Dirty case *)
