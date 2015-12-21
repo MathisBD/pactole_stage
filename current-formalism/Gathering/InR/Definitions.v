@@ -96,13 +96,13 @@ Module Rdef : RealMetricSpaceDef with Definition t := R
   Lemma add_opp : forall u, eq (add u (opp u)) origin.
   Proof. unfold eq, add, opp, origin. intros. lra. Qed.
   
-  Lemma mult_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Lemma mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
   Proof. unfold eq, mul. intros. lra. Qed.
   
-  Lemma add_distr : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
+  Lemma mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
-  Lemma plus_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
+  Lemma add_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   Proof. unfold eq, add, mul. intros. lra. Qed.
   
   (** The multiplicative identity is omitted. *)

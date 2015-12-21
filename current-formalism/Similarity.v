@@ -163,10 +163,10 @@ Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 ->
   Loc.eq (Loc.mul ρ (Loc.add x (Loc.opp c))) y ↔ Loc.eq (Loc.add (Loc.mul (/ ρ) y) c) x.
 Proof.
 intros. split; intro Heq; rewrite <- Heq; clear Heq.
-- rewrite Loc.mult_morph, Rinv_l, Loc.mul_1; trivial.
+- rewrite Loc.mul_morph, Rinv_l, Loc.mul_1; trivial.
   rewrite <- Loc.add_assoc. setoid_rewrite Loc.add_comm at 2.
   now rewrite Loc.add_opp, Loc.add_origin.
-- repeat rewrite Loc.add_distr. rewrite Loc.mult_morph. rewrite Rinv_r; trivial.
+- repeat rewrite Loc.mul_distr_add. rewrite Loc.mul_morph. rewrite Rinv_r; trivial.
   rewrite Loc.mul_1, <- Loc.add_assoc. now rewrite Loc.mul_opp, Loc.add_opp, Loc.add_origin.
 Qed.
 

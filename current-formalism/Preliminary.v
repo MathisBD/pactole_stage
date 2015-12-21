@@ -144,7 +144,7 @@ intros x l l' Hperm Hin. rewrite Hperm in Hin.
 destruct (in_split _ _ Hin) as [l1 [l2 Heq]]. exists l1. exists l2. now subst l'.
 Qed.
 
-(** If the list argument is not empty, [hd] and [last] return an elements of the list,
+(** If the list argument is not empty, [hd] and [last] return an element of the list,
     independent from the default value provided. *)
 Lemma hd_indep : forall l (d d' : A), l <> nil -> hd d l = hd d' l.
 Proof.
@@ -220,6 +220,23 @@ Qed.
 
 Lemma eqlistA_Leibniz_equiv : relation_equivalence (@eqlistA A eq) eq.
 Proof. repeat intro. apply eqlistA_Leibniz. Qed.
+
+Global Instance InA_impl_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@InA A).
+Proof.
+intros R1 R2 HR x y Hxy l l2 Hl Hin. subst y l2. induction l.
+  now inversion Hin.
+  inversion_clear Hin.
+    constructor. now apply HR.
+    constructor 2. now apply IHl.
+Qed.
+
+Global Instance InA_compat : Proper (eqA ==> equivlistA eqA ==> iff) (InA eqA).
+Proof.
+intros x y Hxy l1 l2 Hl. split; intro H; eapply InA_eqA; try eassumption.
+  now rewrite <- Hl.
+  symmetry. eassumption.
+  now rewrite Hl.
+Qed.
 
 (** ***  Results about [map]  **)
 
@@ -923,28 +940,13 @@ Qed.
 
 End Remove_results.
 
+(** ***  Results about [inclA]  **)
+
 Section inclA_results.
 Context (A B : Type).
 Context (eqA : relation A).
 Context (HeqA : Equivalence eqA).
 Context (eq_dec : forall x y : A, {eqA x y} + {~eqA x y}).
-
-Global Instance InA_impl_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@InA A).
-Proof.
-intros R1 R2 HR x y Hxy l l2 Hl Hin. subst y l2. induction l.
-  now inversion Hin.
-  inversion_clear Hin.
-    constructor. now apply HR.
-    constructor 2. now apply IHl.
-Qed.
-
-Global Instance InA_compat : Proper (eqA ==> equivlistA eqA ==> iff) (InA eqA).
-Proof.
-intros x y Hxy l1 l2 Hl. split; intro H; eapply InA_eqA; try eassumption.
-  now rewrite <- Hl.
-  symmetry. eassumption.
-  now rewrite Hl.
-Qed.
 
 Lemma inclA_Leibniz : forall l1 l2 : list A, inclA Logic.eq l1 l2 <-> incl l1 l2.
 Proof. intros. unfold inclA, incl. setoid_rewrite InA_Leibniz. reflexivity. Qed.
@@ -983,6 +985,18 @@ Global Instance inclA_preorder: PreOrder (inclA eqA).
 Proof.
   unfold inclA.
   split;auto.
+Qed.
+
+Lemma inclA_cons_InA : forall (x : A) (l1 l2 : list A),
+  InA eqA x l2 -> inclA eqA l1 (x::l2) -> inclA eqA l1 l2.
+Proof.
+  intros x l1 l2 Hin Hincl.
+  unfold inclA in *.
+  intros x' Hin'.
+  apply Hincl in Hin'.
+  inversion_clear Hin'.
+  + now rewrite H.
+  + assumption.
 Qed.
 
 (** A boolean decision procedure *)
