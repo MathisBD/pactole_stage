@@ -251,7 +251,7 @@ Lemma combine_0_r : forall n A f g,
   (eq ==> eq)%signature (@combine n 0 A f g) (fun x => f (eq_rec (n+0) Fin.t x n (plus_0_r n))).
 Proof. intros. intros x y ?. subst y. unfold combine. destruct (Fin.to_nat x) eqn:Hx. simpl. reflexivity. Qed.
 
-Lemma combine_0_l : forall m A f g,   (eq ==> eq)%signature (@combine 0 m A f g) g.
+Lemma combine_0_l : forall m A f g, (eq ==> eq)%signature (@combine 0 m A f g) g.
 Proof.
 intros m *. intros x y ?. subst y. unfold combine. destruct (eq_nat_dec m) as [Hm | Hm]; simpl.
 - apply Fin.case0. now rewrite Hm in x.

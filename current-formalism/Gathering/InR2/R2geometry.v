@@ -423,15 +423,15 @@ Proof.
 Qed.
 
 Lemma middle_eq : forall ptx pty,
-    R2.eq ptx (R2.middle ptx pty) <-> R2.eq ptx pty.
+    R2.eq (R2.middle ptx pty) ptx <-> R2.eq ptx pty.
 Proof.
-  unfold R2.middle, R2.eq,R2def.eq.
+  unfold R2.middle, R2.eq, R2def.eq.
   intros [? ?] [? ?].
-  split;intro h.
-  - inversion h; clear h;f_equal;lra.
-  - inversion h. clear h.
+  split; intro h.
+  - inversion h; clear h; f_equal; lra.
+  - inversion_clear h.
     cbv.
-    f_equal;lra.
+    f_equal; lra.
 Qed.
 
 
@@ -617,6 +617,75 @@ Qed.
 Lemma SEC_dueton : forall pt1 pt2,
   SEC (pt1 :: pt2 :: nil) = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
 Proof. Admitted.
+(*
+Lemma diameter_spec1: forall c (pt1 pt2:R2.t),
+    c = SEC (pt1::pt2::nil) ->
+    R2.dist pt1 pt2 = (c.(radius) * 2)%R ->
+    c.(center) = R2.middle pt1 pt2.
+Proof.
+  intros c pt1 pt2 H H0.
+  assert (R2.dist pt1 c.(center) + R2.dist c.(center) pt2 >= R2.dist pt1 pt2)%R.
+  { apply Rle_ge, R2.triang_ineq. }
+  rewrite H0 in H1.
+  destruct (R2.eq_dec pt1 pt2).
+  ++ rewrite ?e in *.
+     unfold R2.middle.
+     rewrite R2.mul_distr_add.
+     rewrite R2.add_morph.
+     (assert (h_demi:(1 / 2 + 1 / 2 = 1)%R)).
+     { rewrite <- double.
+       field. }
+     rewrite h_demi.
+     rewrite R2.mul_1.
+     rewrite R2_dist_defined_2 in H0.
+     destruct (Rmult_integral (radius c) 2).
+     ** symmetry;assumption.
+     ** destruct (@SEC_reached (pt2 :: pt2 :: nil)) as [ x [h1 h2]].
+        --- discriminate.
+        --- simpl in h1.
+            assert (pt2 = x).
+            { tauto. }
+            clear h1. subst.
+            assert (R2.dist (center (SEC (x :: x :: nil))) x = 0%R).
+            { unfold on_circle in h2.
+              rewrite H2 in h2.
+              apply Rdec_bool_true_iff in h2.
+              rewrite R2.dist_sym.
+              assumption. }
+            apply R2.dist_defined.
+            assumption.
+     ** absurd (0%R = 2%R);auto.
+        apply Rlt_not_eq.
+        apply Rlt_R0_R2.
+  ++ destruct (@SEC_reached_twice (pt1 :: pt2 :: nil)).
+     ** auto.
+     ** repeat constructor.
+        --- intro Habs. inversion Habs.
+            +++ symmetry in H2. contradiction.
+            +++ inversion H2.
+        --- intro Habs. inversion Habs.
+     ** decompose [ex and ] H2; clear H2.
+        assert (Hpt : x = pt1 /\ x0 = pt2 \/ x0 = pt1 /\ x = pt2).
+        { inversion H3; inversion H4;
+          repeat match goal with
+          | H : In ?x nil  |- _ => inversion H
+          | H : In ?x (?y :: nil) |- _ => inversion_clear H; auto
+          end; now subst; elim H5.
+         }
+        assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt1 = true).
+        { decompose [and or] Hpt ; subst ; assumption. }
+        assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt2 = true).
+        { decompose [and or] Hpt ; subst ; assumption. }
+        clear dependent x.
+        clear dependent x0.
+        assert (h_middle: is_middle pt1 pt2 (center c)).
+        { red.
+          admit. }
+        apply (@middle_unique pt1 pt2 (center c) (R2.middle pt1 pt2)).
+        assumption.
+        apply middle_spec.
+Admitted.
+*)
 
 Function farthest_from_in c acc inl :=
 match inl with
