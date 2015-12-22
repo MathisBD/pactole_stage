@@ -215,6 +215,24 @@ Ltac normalize_R2dist pt1' pt2' pt3' :=
         end.
 
 
+Definition R2dec_bool (x y : R2.t) := if R2.eq_dec x y then true else false.
+
+Lemma R2dec_bool_true_iff (x y : R2.t) : R2dec_bool x y = true <-> x = y.
+Proof.
+  unfold R2dec_bool.
+  destruct (R2.eq_dec x y);split;try discriminate;auto.
+Qed.
+
+Lemma R2dec_bool_false_iff (x y : R2.t) : R2dec_bool x y = false <-> x <> y.
+Proof.
+  unfold R2dec_bool.
+  destruct (R2.eq_dec x y); split; try discriminate;auto.
+  intros abs.
+  rewrite e in abs.
+  elim abs; auto.
+Qed.
+
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=
@@ -571,15 +589,15 @@ Proof.
   apply R2.dist_pos.
 Qed.
 
-Lemma enclosing_singleton : forall x, enclosing_circle {| center := x; radius :=0 |} (x::nil).
+Lemma enclosing_singleton : forall pt, enclosing_circle {| center := pt; radius := 0 |} (pt :: nil).
 Proof.
-  intros x.
+  intros pt.
   red.
-  intros x0 H.
+  intros pt' H.
   cbn.
   inversion H.
   - subst.
-    destruct (R2.dist_defined x0 x0).
+    destruct (R2.dist_defined pt' pt').
     apply Req_le_sym.
     symmetry.
     apply H1.
@@ -809,8 +827,7 @@ Proof.
 Qed.
 
 Lemma SEC_zero_radius_center : forall l,
-    on_circle (SEC l) (center (SEC l)) = true
-    <-> radius (SEC l) = 0%R.
+  on_circle (SEC l) (center (SEC l)) = true <-> radius (SEC l) = 0%R.
 Proof.
   intros l.
   split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
@@ -818,6 +835,28 @@ Proof.
     auto.
   - apply Rdec_bool_true_iff.
     auto.
+Qed.
+
+Lemma SEC_zero_radius_incl_singleton : forall l,
+  radius (SEC l) = 0%R <-> exists pt, incl l (pt :: nil).
+Proof.
+intro l.
+destruct l as [| e l].
+* rewrite SEC_nil. intuition. exists (0, 0). intuition.
+* split; intro H.
+  + exists (center (SEC (e :: l))).
+    intros x Hin. left. symmetry. rewrite <- R2.dist_defined. apply Rle_antisym.
+    - rewrite <- H. now apply SEC_spec1.
+    - apply R2.dist_pos.
+  + destruct H as [pt Hl].
+    assert (Hall : forall x, In x (e :: l) -> x = pt). { intros ? Hin. apply Hl in Hin. now inversion_clear Hin. }
+    clear Hl. apply Rle_antisym.
+    - pose (c := {| center := pt; radius := 0 |}).
+      change 0 with (radius c). apply SEC_spec2.
+      intros x Hin. rewrite (Hall _ Hin). cbn. now rewrite R2_dist_defined_2.
+    - transitivity (R2.dist pt (center (SEC (e :: l)))).
+      -- apply R2.dist_pos.
+      -- apply SEC_spec1. rewrite (Hall e ltac:(now left)). now left.
 Qed.
 
 (* Idea:

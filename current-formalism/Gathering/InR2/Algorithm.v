@@ -360,18 +360,6 @@ Definition SECT (s : Spect.t) : list R2.t := target s :: on_SEC (Spect.support s
 Instance SECT_compat : Proper (Spect.eq ==> @Permutation _) SECT.
 Proof. intros ? ? Hs. unfold SECT. rewrite Hs at 1. constructor. now rewrite <- PermutationA_Leibniz, Hs. Qed.
 
-Definition SECT_cardinal s :=
-  Spect.cardinal (Spect.filter (fun x => if List.in_dec R2.eq_dec x (SECT s) then true else false) s).
-
-Instance SECT_cardinal_compat : Proper (Spect.eq ==> Logic.eq) SECT_cardinal.
-Proof.
-intros s1 s2 Hs. unfold SECT_cardinal. f_equiv. rewrite Hs.
-apply Spect.filter_extensionality_compat.
-- intros x y Hxy. now rewrite Hxy.
-- intro x. destruct (in_dec R2.eq_dec x (SECT s1)), (in_dec R2.eq_dec x (SECT s2));
-  trivial; rewrite Hs in *; contradiction.
-Qed.
-
 Definition is_clean (s : Spect.t) : bool :=
   if inclA_bool _ R2.eq_dec (Spect.support s) (SECT s) then true else false.
 
@@ -387,6 +375,16 @@ destruct (inclA_bool _ R2.eq_dec (Spect.support x) (SECT x)) eqn:Hx,
 + elim Hx. intros e Hin. rewrite Heq in Hin.
   apply SECT_compat in Heq. rewrite <- PermutationA_Leibniz in Heq.
   rewrite Heq. now apply Hy.
+Qed.
+
+Lemma is_clean_spec : forall s, is_clean s = true <-> inclA R2.eq (Spect.support s) (SECT s).
+Proof.
+intro s. unfold is_clean.
+split; intro Hclean.
+- rewrite <- (inclA_bool_true_iff _ R2.eq_dec).
+  now destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support s) (SECT s)).
+- rewrite <- inclA_bool_true_iff in Hclean.
+  now rewrite Hclean.
 Qed.
 
 Definition gatherR2_pgm (s : Spect.t) : R2.t :=
@@ -419,9 +417,155 @@ Qed.
 
 Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
 
+Close Scope R_scope.
+
+
 (** **  Decreasing measure ensuring termination  **)
 
-(** Global measure: lexicgraphic order on the index of the type of config + some specific measure:
+(** ***  Naming the useful cases in the algorithm and proof  **)
+
+Definition MajTower_at x config := forall y, y <> x -> ((!! config)[y] < (!! config)[x]).
+
+Definition no_Majority config := (Spect.size (Spect.max (!! config)) > 1)%nat.
+
+Definition diameter_case config :=
+  no_Majority config
+  /\ exists pt1 pt2, PermutationA R2.eq (on_SEC (Spect.support (!! config))) (pt1 :: pt2 :: nil).
+
+Definition triangle_case config :=
+  no_Majority config
+  /\ exists pt1 pt2 pt3, PermutationA R2.eq (on_SEC (Spect.support (!! config))) (pt1 :: pt2 :: pt3 :: nil).
+
+Definition equilateral_case config :=
+  no_Majority config
+  /\ exists pt1 pt2 pt3, PermutationA R2.eq (on_SEC (Spect.support (!! config))) (pt1 :: pt2 :: pt3 :: nil)
+                         /\ classify_triangle pt1 pt2 pt3 = Equilateral.
+
+Definition generic_case config :=
+  no_Majority config
+  /\ exists pt1 pt2 pt3 pt4 l, PermutationA R2.eq (on_SEC (Spect.support (!! config)))
+                                                  (pt1 :: pt2 :: pt3 :: pt4 :: l).
+
+
+Instance no_Majority_compat : Proper (Config.eq ==> iff) no_Majority.
+Proof. intros ? ? Hconf. unfold no_Majority. now setoid_rewrite Hconf. Qed.
+
+Instance MajTower_at_compat : Proper (Logic.eq ==> Config.eq ==> iff) MajTower_at.
+Proof. intros ? ? ? ? ? Hconf. subst. unfold MajTower_at. now setoid_rewrite Hconf. Qed.
+
+Instance diameter_case_compat : Proper (Config.eq ==> iff) diameter_case.
+Proof. intros ? ? Hconf. unfold diameter_case. now setoid_rewrite Hconf. Qed.
+
+Instance triangle_case_compat : Proper (Config.eq ==> iff) triangle_case.
+Proof. intros ? ? Hconf. unfold triangle_case. now setoid_rewrite Hconf. Qed.
+
+Instance equilateral_case_compat : Proper (Config.eq ==> iff) equilateral_case.
+Proof. intros ? ? Hconf. unfold equilateral_case. now setoid_rewrite Hconf. Qed.
+
+Instance generic_case_compat : Proper (Config.eq ==> iff) generic_case.
+Proof. intros ? ? Hconf. unfold generic_case. now setoid_rewrite Hconf. Qed.
+
+Definition clean_diameter_case config :=
+  diameter_case config /\ is_clean (!! config) = true.
+
+
+Lemma Majority_MajTower_at : forall config pt,
+  Spect.support (Spect.max (!! config)) = pt :: nil -> MajTower_at pt config.
+Proof.
+intros config pt Hmaj x Hx. apply Spect.max_spec2.
+- rewrite <- Spect.support_In, Hmaj. now left.
+- rewrite <- Spect.support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
+Qed.
+
+Theorem MajTower_at_equiv : forall config pt, MajTower_at pt config <->
+  Spect.support (Spect.max (!! config)) = pt :: nil.
+Proof.
+intros config pt. split; intro Hmaj.
+* apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz.
+  apply (NoDupA_equivlistA_PermutationA _).
+  + apply NoDupA_singleton.
+  + apply Spect.support_NoDupA.
+  + intro y. rewrite InA_singleton.
+    rewrite Spect.support_In, Spect.max_spec1_iff; try apply spect_non_nil; [].
+    split; intro Hpt.
+    - subst y. intro x. destruct (R2.eq_dec x pt).
+      -- rewrite e. reflexivity.
+      -- apply lt_le_weak. now apply (Hmaj x).
+    - destruct (R2.eq_dec y pt) as [? | Hy]; trivial.
+      exfalso. apply (Hmaj y) in Hy. elim (lt_irrefl (!! config)[pt]).
+      eapply le_lt_trans; try eassumption; [].
+      apply Hpt.
+* intros x Hx. apply Spect.max_spec2.
+  - rewrite <- Spect.support_In, Hmaj. now left.
+  - rewrite <- Spect.support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
+Qed.
+
+Theorem no_Majority_equiv : forall config, no_Majority config
+  <-> exists pt1 pt2 l, Spect.support (Spect.max (!! config)) = pt1 :: pt2 :: l.
+Proof.
+intros config.
+unfold no_Majority. rewrite Spect.size_spec.
+split; intro Hmaj.
++ destruct (Spect.support (Spect.max (!! config))) as [| ? [| ? ?]]; cbn in Hmaj; omega || eauto.
++ destruct Hmaj as [? [? [? Hmaj]]]. rewrite Hmaj. cbn. omega.
+Qed.
+
+Corollary make_no_Majority : forall pt1 pt2 l config,
+  PermutationA R2.eq (Spect.support (Spect.max (!! config))) (pt1 :: pt2 :: l) -> no_Majority config.
+Proof.
+intros pt1 pt2 l config Hperm.
+rewrite no_Majority_equiv. apply (PermutationA_length _) in Hperm.
+destruct (Spect.support (Spect.max (!! config))) as [| ? [| ? ?]]; cbn in Hperm; omega || eauto.
+Qed.
+
+Theorem no_Majority_MajTower_at : forall config, no_Majority config <-> (forall pt, ~MajTower_at pt config).
+Proof.
+intro config.
+unfold no_Majority. rewrite Spect.size_spec.
+setoid_rewrite MajTower_at_equiv.
+split; intro Hmaj.
++ intros pt Habs. rewrite Habs in Hmaj. cbn in Hmaj. omega.
++ destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hsup.
+  - exfalso.
+    elim (support_non_nil config).
+    now rewrite Spect.support_nil, Spect.max_empty, <- Spect.support_nil in Hsup.
+  - now elim (Hmaj pt).
+  - simpl. omega.
+Qed.
+
+Ltac get_case config :=
+  let Hcase := fresh "Hcase" in
+(*   try rewrite <- PermutationA_Leibniz in *; *)
+  lazymatch goal with
+    (* Majority case *)
+    | H : Spect.support (Spect.max (!! config)) = ?pt :: nil |- _ =>
+        assert (Hcase : MajTower_at pt config) by now rewrite MajTower_at_equiv
+    (* Diameter case *)
+    | Hmaj : no_Majority config, H : on_SEC (Spect.support (!! config)) = _ :: _ :: nil |- _ =>
+        assert (Hcase : diameter_case config)
+          by now repeat split; trivial; setoid_rewrite H; repeat eexists; reflexivity
+    (* Equilateral case *)
+    | Hmaj : no_Majority config, H : on_SEC (Spect.support (!! config)) = ?pt1 :: ?pt2 :: ?pt3 :: nil,
+      H' : classify_triangle ?pt1 ?pt2 ?pt3 = Equilateral |- _ =>
+        assert (Hcase : equilateral_case config)
+          by now repeat split; trivial; setoid_rewrite H; repeat eexists; reflexivity
+    (* Triangle case *)
+    | Hmaj : no_Majority config, H : on_SEC (Spect.support (!! config)) = _ :: _ :: _ :: nil |- _ =>
+        assert (Hcase : triangle_case config)
+          by now repeat split; trivial; setoid_rewrite H; repeat eexists; reflexivity
+    (* Generic case *)
+    | Hmaj : no_Majority config, H : on_SEC (Spect.support (!! config)) = _ :: _ :: _ :: _ :: _ |- _ =>
+        assert (Hcase : generic_case config)
+          by now repeat split; trivial; setoid_rewrite H; repeat eexists; reflexivity
+    (* no_Majority *)
+    | Hmaj : no_Majority config, H : Spect.support (Spect.max (!! config)) = _ :: _ :: _ |- _ => idtac
+    | H : Spect.support (Spect.max (!! config)) = _ :: _ :: _ |- _ =>
+        let Hmaj := fresh "Hmaj" in
+        assert (Hmaj : no_Majority config) by (now eapply make_no_Majority; rewrite H); get_case config
+  end.
+
+(** ***  Global measure: lexicgraphic order on the index of the type of config + some specific measure  **)
+(**
     ]  Gathered: no need
    0]  Majority tower: # robots not on majority tower
    1]  Non-isosceles triangle and c = SEC ∪ DEST: # robots not on DEST
@@ -434,7 +578,17 @@ Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
    6]  General case ($|\SEC| \geq 4$) and c <> SECT$: # robots not on SEC ∪ DEST
 *)
 
-Close Scope R_scope.
+Definition SECT_cardinal s :=
+  Spect.cardinal (Spect.filter (fun x => if List.in_dec R2.eq_dec x (SECT s) then true else false) s).
+
+Instance SECT_cardinal_compat : Proper (Spect.eq ==> Logic.eq) SECT_cardinal.
+Proof.
+intros s1 s2 Hs. unfold SECT_cardinal. f_equiv. rewrite Hs.
+apply Spect.filter_extensionality_compat.
+- intros x y Hxy. now rewrite Hxy.
+- intro x. destruct (in_dec R2.eq_dec x (SECT s1)), (in_dec R2.eq_dec x (SECT s2));
+  trivial; rewrite Hs in *; contradiction.
+Qed.
 
 Definition measure_reduce (s : Spect.t) := N.nG - s[target s].
 Definition measure_clean (s : Spect.t) := N.nG - SECT_cardinal s.
@@ -770,7 +924,7 @@ trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff, ?inclA_Leibniz in 
   rewrite in_map_iff in *. destruct Hin as [x' [? Hin]]. subst. exists x'. repeat split. now apply Hy.
 Qed.
 
-
+(** We express the behavior of the algorithm in the demon referential. *)
 Theorem round_simplify : forall da conf,
     Config.eq (round gatherR2 da conf)
               (fun id => match da.(step) id with
@@ -817,21 +971,21 @@ simpl in Hlen; discriminate || clear Hlen.
          f_equiv. now apply Spect.from_config_map.
 Qed.
 
-(** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)
+(** ****  Specialization of [round_simplify] in the three main cases of the robogram  **)
 
 (** If we have a majority tower, everyone goes there. **)
-Lemma round_simplify_Majority : forall da conf pt,
-    Spect.support (Spect.max (!! conf)) = pt :: nil ->
-    Config.eq (round gatherR2 da conf)
+Lemma round_simplify_Majority : forall da config pt,
+    MajTower_at pt config ->
+    Config.eq (round gatherR2 da config)
               (fun id => match step da id with
-                      | None => conf id
+                      | None => config id
                       | Some _ => pt
                          end).
 Proof.
-  intros da conf pt Hmaj id. rewrite round_simplify;auto.
-  destruct (step da id); try reflexivity. cbv zeta. now rewrite Hmaj.
+intros da config pt Hmaj id. rewrite round_simplify; auto.
+destruct (step da id); try reflexivity. cbv zeta.
+rewrite MajTower_at_equiv in Hmaj. now rewrite Hmaj.
 Qed.
-
 
 Lemma round_simplify_clean : forall da conf,
   2 <= length (Spect.support (Spect.max (!! conf))) ->
@@ -863,78 +1017,6 @@ destruct (Spect.support (Spect.max (!! conf))) as [| ? [| ? ?]]; simpl in Hlen; 
 reflexivity.
 Qed.
 
-Definition no_Majority conf := (Spect.size (Spect.max (!! conf)) > 1)%nat.
-Definition MajTower_at x conf := forall y, y <> x -> ((!! conf)[y] < (!! conf)[x]).
-
-Instance no_Majority_compat : Proper (Config.eq ==> iff) no_Majority.
-Proof. intros ? ? Hconf. unfold no_Majority. now setoid_rewrite Hconf. Qed.
-
-Instance MajTower_at_compat : Proper (Logic.eq ==> Config.eq ==> iff) MajTower_at.
-Proof. intros ? ? ? ? ? Hconf. subst. unfold MajTower_at. now setoid_rewrite Hconf. Qed.
-
-Lemma Majority_MajTower_at : forall config pt,
-  Spect.support (Spect.max (!! config)) = pt :: nil -> MajTower_at pt config.
-Proof.
-intros config pt Hmaj x Hx. apply Spect.max_spec2.
-- rewrite <- Spect.support_In, Hmaj. now left.
-- rewrite <- Spect.support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
-Qed.
-
-Theorem MajTower_at_equiv : forall config pt, MajTower_at pt config <->
-  Spect.support (Spect.max (!! config)) = pt :: nil.
-Proof.
-intros config pt. split; intro Hmaj.
-* apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz.
-  apply (NoDupA_equivlistA_PermutationA _).
-  + apply NoDupA_singleton.
-  + apply Spect.support_NoDupA.
-  + intro y. rewrite InA_singleton.
-    rewrite Spect.support_In, Spect.max_spec1_iff; try apply spect_non_nil; [].
-    split; intro Hpt.
-    - subst y. intro x. destruct (R2.eq_dec x pt).
-      -- rewrite e. reflexivity.
-      -- apply lt_le_weak. now apply (Hmaj x).
-    - destruct (R2.eq_dec y pt) as [? | Hy]; trivial.
-      exfalso. apply (Hmaj y) in Hy. elim (lt_irrefl (!! config)[pt]).
-      eapply le_lt_trans; try eassumption; [].
-      apply Hpt.
-* intros x Hx. apply Spect.max_spec2.
-  - rewrite <- Spect.support_In, Hmaj. now left.
-  - rewrite <- Spect.support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
-Qed.
-
-Theorem no_Majority_equiv : forall config, no_Majority config
-  <-> exists pt1 pt2 l, Spect.support (Spect.max (!! config)) = pt1 :: pt2 :: l.
-Proof.
-intros config.
-unfold no_Majority. rewrite Spect.size_spec.
-split; intro Hmaj.
-+ destruct (Spect.support (Spect.max (!! config))) as [| ? [| ? ?]]; cbn in Hmaj; omega || eauto.
-+ destruct Hmaj as [? [? [? Hmaj]]]. rewrite Hmaj. cbn. omega.
-Qed.
-
-Corollary make_no_Majority : forall pt1 pt2 l config,
-  PermutationA R2.eq (Spect.support (Spect.max (!! config))) (pt1 :: pt2 :: l) -> no_Majority config.
-Proof.
-intros pt1 pt2 l config Hperm.
-rewrite no_Majority_equiv. apply (PermutationA_length _) in Hperm.
-destruct (Spect.support (Spect.max (!! config))) as [| ? [| ? ?]]; cbn in Hperm; omega || eauto.
-Qed.
-
-Theorem no_Majority_MajTower_at : forall config, no_Majority config <-> (forall pt, ~MajTower_at pt config).
-Proof.
-intro config.
-unfold no_Majority. rewrite Spect.size_spec.
-setoid_rewrite MajTower_at_equiv.
-split; intro Hmaj.
-+ intros pt Habs. rewrite Habs in Hmaj. cbn in Hmaj. omega.
-+ destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hsup.
-  - exfalso.
-    elim (support_non_nil config).
-    now rewrite Spect.support_nil, Spect.max_empty, <- Spect.support_nil in Hsup.
-  - now elim (Hmaj pt).
-  - simpl. omega.
-Qed.
 
 (* In the case where one majority tower exists, target is not used and does not compute the real target.
    Hence the no_Majority hypothesis  *)
@@ -970,50 +1052,6 @@ destruct (le_lt_dec 2 (length (Spect.support (Spect.max (!! config))))) as [Hle 
   - simpl in Hlt. omega.
 Qed.
 
-(* Next lemmas taken from the gathering algo in R. *)
-(** When there is a majority stack, it grows and all other stacks wither. **)
-Theorem Majority_grow :  forall pt config da, Spect.support (Spect.max (!! config)) = pt :: nil ->
-  (!! config)[pt] <= (!! (round gatherR2 da config))[pt].
-Proof.
-intros pt conf da Hmaj.
-rewrite (round_simplify_Majority _ _ Hmaj).
-do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
-induction Spect.Names.names as [| id l]; simpl.
-+ reflexivity.
-+ destruct (step da id).
-  - R2dec. R2dec_full; apply le_n_S + apply le_S; apply IHl.
-  - R2dec_full; try apply le_n_S; apply IHl.
-Qed.
-
-(* This proof follows the exact same structure. *)
-Theorem Majority_wither : forall  conf da pt,
-  Spect.support (Spect.max (!! conf)) = pt :: nil ->
-  forall pt',
-  pt <> pt' ->
-  (!! (round gatherR2 da conf))[pt'] <= (!! conf)[pt'].
-Proof.
-intros conf da pt Hmaj pt' Hdiff.
-rewrite (round_simplify_Majority _ _ Hmaj).
-do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
-induction Spect.Names.names as [| id l]; simpl.
-+ reflexivity.
-+ destruct (step da id).
-  - R2dec_full; try contradiction; []. R2dec_full; try apply le_S; apply IHl.
-  - R2dec_full; try apply le_n_S; apply IHl.
-Qed.
-
-(** Whenever there is a majority stack, it remains forever so. *)
-Theorem MajTower_at_forever : forall pt conf da, MajTower_at pt conf -> MajTower_at pt (round gatherR2 da conf).
-Proof.
-intros pt conf da Hmaj x Hx. assert (Hs := Hmaj x Hx).
-apply le_lt_trans with ((!! conf)[x]); try eapply lt_le_trans; try eassumption; [|].
-- eapply Majority_wither; eauto.
-  rewrite MajTower_at_equiv in Hmaj.
-  assumption.
-- eapply Majority_grow; eauto.
-  rewrite MajTower_at_equiv in Hmaj.
-  assumption.
-Qed.
 
 Lemma forbidden_support_length : forall config, forbidden config ->
   Spect.size (!! config) = 2.
@@ -1335,24 +1373,6 @@ rewrite Spect.size_spec, Hmaj in Hmaj'. simpl in *. omega.
 Qed.
 
 
-Definition R2dec_bool (x y : R2.t) := if R2.eq_dec x y then true else false.
-
-Lemma R2dec_bool_true_iff (x y : R2.t) : R2dec_bool x y = true <-> x = y.
-Proof.
-  unfold R2dec_bool.
-  destruct (R2.eq_dec x y);split;try discriminate;auto.
-Qed.
-
-Lemma R2dec_bool_false_iff (x y : R2.t) : R2dec_bool x y = false <-> x <> y.
-Proof.
-  unfold R2dec_bool.
-  destruct (R2.eq_dec x y);split;try discriminate;auto.
-  intros abs.
-  rewrite e in abs.
-  elim abs;auto.
-Qed.
-
-
 (** Generic result of robograms using multiset spectra. *)
 Lemma increase_move :
   forall r conf da pt,
@@ -1461,125 +1481,12 @@ rewrite Spect.remove_add_comm, Spect.remove_add_comm, Spect.cardinal_add; trivia
 omega.
 Qed.
 
-(* Taken from the gathering in R.
-   Any non-forbidden config without a majority tower contains at least three towers.
-   All robots move toward the same place (same_destination), wlog pt1.
-   |\before(pt2)| >= |\after(pt2)| = nG / 2
-   As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
-   thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
-Theorem never_forbidden : forall da conf, ~forbidden conf -> ~forbidden (round gatherR2 da conf).
-Proof.
-intros da conf Hok.
-(* Three cases for the robogram *)
-destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
-- assert (Config.eq (round gatherR2 da conf) conf).
-  { rewrite round_simplify;simpl;try rewrite Hmaj; simpl.
-    unfold Config.eq. 
-    intros id.
-    destruct (step da id);reflexivity. }
-  rewrite H.
-  assumption.
-  (* There is a majority tower *)
-- apply Majority_not_forbidden with pt.
-  rewrite <- ?MajTower_at_equiv in *.
-  apply (@MajTower_at_forever pt conf da) in Hmaj.
-  assumption.
-- rename Hmaj into Hmaj'.
-  assert (Hmaj : no_Majority conf). { unfold no_Majority. rewrite Spect.size_spec, Hmaj'. simpl. omega. }
-  clear pt pt' l' Hmaj'.
-  (* A robot has moved otherwise we have the same configuration before and it is forbidden. *)
-  assert (Hnil := no_moving_same_conf gatherR2 da conf).
-  destruct (moving gatherR2 da conf) as [| rmove l] eqn:Heq.
-  * now rewrite Hnil.
-  * intro Habs.
-    clear Hnil.
-    assert (Hmove : In rmove (moving gatherR2 da conf)). { rewrite Heq. now left. }
-    rewrite moving_spec in Hmove.
-    (* the robot moves to one of the two locations in round robogram conf *)
-    assert (Hforbidden := Habs). destruct Habs as [HnG [HsizeG[pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
-    assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
-                                  /\ round gatherR2 da conf rmove = pt).
-    { assert (Hperm : Permutation (Spect.support (!! (round gatherR2 da conf))) (pt1 :: pt2 :: nil)).
-      { symmetry. apply NoDup_Permutation_bis.
-        + repeat constructor.
-          - intro Habs. inversion Habs. now elim Hdiff. now inversion H.
-          - intro Habs. now inversion Habs.
-        + rewrite <- NoDupA_Leibniz. apply Spect.support_NoDupA.
-        + simpl. now rewrite <- Spect.size_spec, forbidden_support_length.
-        + intros pt Hpt. inversion_clear Hpt.
-          - subst. rewrite <- InA_Leibniz, Spect.support_spec. unfold Spect.In. rewrite Hpt1.
-            apply Exp_prop.div2_not_R0. apply HsizeG.
-          - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz, Spect.support_spec.
-            unfold Spect.In. rewrite Hpt2. apply Exp_prop.div2_not_R0. apply HsizeG. }
-      assert (Hpt : In (round gatherR2 da conf rmove) (pt1 :: pt2 :: nil)).
-      { rewrite <- Hperm. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config. }
-      inversion_clear Hpt; try (now exists pt1, pt2; eauto); [].
-      inversion_clear H; now exists pt2, pt1; eauto. }
-    destruct Hpt as [pt [pt' [Hpt Hrmove_pt]]].
-    assert (Hdiff2 : pt <> pt').
-    { decompose [and or] Hpt; congruence. }
-    assert (Hdest : forall g, In g (moving gatherR2 da conf) -> round gatherR2 da conf g = pt).
-    { intros id Hid.
-      rewrite <- Hrmove_pt.
-      apply same_destination; auto. rewrite moving_spec. congruence. }
-    assert ((div2 N.nG) <= (!! conf)[pt']).
-    { transitivity ((!! (round gatherR2 da conf))[pt']).
-      - decompose [and or] Hpt; subst; omega.
-      - generalize (@increase_move_iff conf da pt').
-        intro H1. apply Nat.nlt_ge.
-        rewrite H1. intros [id [Hid1 Hid2]].
-        apply Hdiff2.
-        rewrite <- Hid1.
-        symmetry.
-        apply Hdest. rewrite moving_spec. assumption. }
-    assert (Hlt : forall p, p <> pt' -> (!! conf)[p] < div2 N.nG).
-    { assert (Hpt'_in : Spect.In pt' (!! conf)).
-      { unfold Spect.In. eapply lt_le_trans; try eassumption. apply Exp_prop.div2_not_R0. apply HsizeG. }
-      assert (Hle := not_forbidden_no_majority_size Hmaj Hok).
-      intros p Hp. apply Nat.nle_gt. intro Habs. apply (lt_irrefl N.nG).
-      destruct (@towers_elements_3 conf pt' p Hle Hpt'_in) as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
-      + apply lt_le_trans with (div2 N.nG); try assumption. apply Exp_prop.div2_not_R0. apply HsizeG.
-      + auto.
-      + eapply lt_le_trans; try apply (sum3_le_total conf Hp Hdiff13 Hdiff23); [].
-        unfold Spect.In in Hpt3_in. rewrite <- ?Even.even_equiv in *.
-        rewrite (even_double N.nG);simpl;auto.
-        unfold Nat.double.
-        omega. }
-    assert (Hmaj' : MajTower_at pt' conf).
-    { intros x Hx. apply lt_le_trans with (div2 N.nG); trivial. now apply Hlt. }
-    apply MajTower_at_equiv in Hmaj'.
-    red in Hmaj.
-    rewrite Spect.size_spec in Hmaj.
-    rewrite Hmaj' in Hmaj.
-    simpl in Hmaj.
-    omega.
-Qed.
-
 
 Lemma multiplicity_le_nG : forall pt conf, (!! conf)[pt] <= N.nG.
 Proof.
 intros pt conf. etransitivity.
 - apply Spect.cardinal_lower.
 - rewrite Spect.cardinal_from_config. unfold N.nB. omega.
-Qed.
-
-Lemma no_maj_round_no_maj : forall da conf, no_Majority (round gatherR2 da conf) -> no_Majority conf.
-Proof.
-  intros da conf h_twomaj.
-  destruct (Spect.support (Spect.max (!! conf))) eqn:heq.
-  * now elim (support_max_non_nil conf).
-  * destruct l eqn:heq'.
-    -- exfalso.
-       assert (Hmaj := @Majority_wither conf da e heq).
-       rewrite <- MajTower_at_equiv in heq.
-       apply MajTower_at_forever with (da:= da) in heq.
-       rewrite MajTower_at_equiv in heq.
-       unfold no_Majority in h_twomaj.
-       rewrite Spect.size_spec, heq in h_twomaj.
-       simpl in h_twomaj.
-       omega.
-    -- unfold no_Majority. rewrite Spect.size_spec, heq. cbn.
-       auto with arith.
 Qed.
 
 Lemma incl_next : forall da conf,
@@ -1613,10 +1520,11 @@ Proof.
             + rewrite moving_spec.
               assumption.
           - assert ((Spect.support (Spect.max (!! conf))) = x::nil).
-            { destruct (Spect.support (Spect.max (!! conf))) as [|pt [| ? ?]] eqn:heq; cbv in l0; try omega.
+            { destruct (Spect.support (Spect.max (!! conf))) as [| pt [| ? ?]] eqn:heq; cbv in l0; try omega.
               - destruct (support_max_non_nil conf).
                 assumption.
-              - rewrite (@round_simplify_Majority _ _ pt heq) in hdest_rmoving.
+              - get_case conf.
+                rewrite (@round_simplify_Majority _ _ pt Hcase) in hdest_rmoving.
                 destruct (step da r_moving).
                 + subst;reflexivity.
                 + assert (h:=Spect.pos_in_config conf r_moving).
@@ -1644,11 +1552,7 @@ Proof.
   - rewrite inclA_Leibniz.
     apply incl_cons.
     + now left.
-    + rewrite <- inclA_Leibniz.
-      unfold is_clean in H.
-      destruct (inclA_bool _ R2.eq_dec (Spect.support (!! conf)) (SECT (!! conf))) eqn:Heq; try discriminate.
-      unfold SECT in Heq.
-      erewrite <- inclA_bool_true_iff; eauto.
+    + now rewrite <- inclA_Leibniz, <- is_clean_spec.
 Qed.
 
 
@@ -1732,6 +1636,176 @@ reflexivity || simpl in Hlen; try omega.
 - f_equal. setoid_rewrite SEC_on_SEC. now rewrite Hsec1, Hperm, Hsec2.
 Qed.
 
+(** ***  Lemma about the majority case  **)
+
+(* Next lemmas taken from the gathering algo in R. *)
+(** When there is a majority stack, it grows and all other stacks wither. **)
+Theorem Majority_grow :  forall pt config da, MajTower_at pt config ->
+  (!! config)[pt] <= (!! (round gatherR2 da config))[pt].
+Proof.
+intros pt confif da Hmaj.
+rewrite (round_simplify_Majority _ Hmaj).
+do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
+induction Spect.Names.names as [| id l]; simpl.
++ reflexivity.
++ destruct (step da id).
+  - R2dec. R2dec_full; apply le_n_S + apply le_S; apply IHl.
+  - R2dec_full; try apply le_n_S; apply IHl.
+Qed.
+
+(* This proof follows the exact same structure. *)
+Theorem Majority_wither : forall config da pt, MajTower_at pt config ->
+  forall pt', pt <> pt' -> (!! (round gatherR2 da config))[pt'] <= (!! config)[pt'].
+Proof.
+intros conf da pt Hmaj pt' Hdiff.
+rewrite (round_simplify_Majority _ Hmaj).
+do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
+induction Spect.Names.names as [| id l]; simpl.
++ reflexivity.
++ destruct (step da id).
+  - R2dec_full; try contradiction; []. R2dec_full; try apply le_S; apply IHl.
+  - R2dec_full; try apply le_n_S; apply IHl.
+Qed.
+
+(** Whenever there is a majority stack, it remains forever so. *)
+Theorem MajTower_at_forever : forall pt conf da, MajTower_at pt conf -> MajTower_at pt (round gatherR2 da conf).
+Proof.
+intros pt conf da Hmaj x Hx. assert (Hs := Hmaj x Hx).
+apply le_lt_trans with ((!! conf)[x]); try eapply lt_le_trans; try eassumption; [|].
+- eapply Majority_wither; eauto.
+- eapply Majority_grow; eauto.
+Qed.
+
+Lemma solve_measure_reduce : forall da config,
+  no_Majority config ->
+  moving gatherR2 da config <> nil ->
+  target (!! (round gatherR2 da config)) = target (!! config) ->
+  measure_reduce (!! (round gatherR2 da config)) < measure_reduce (!! config).
+Proof.
+intros da config Hmaj Hmoving Htarget.
+unfold measure_reduce. rewrite Htarget.
+assert (Hle := multiplicity_le_nG (target (!! config)) (round gatherR2 da config)).
+cut ((!! config)[target (!! config)] < (!! (round gatherR2 da config))[target (!! config)]); try omega.
+rewrite increase_move_iff.
+apply not_nil_In in Hmoving. destruct Hmoving as [gmove Hmove].
+assert (Hstep : step da gmove <> None).
+{ apply moving_active in Hmove. now rewrite active_spec in Hmove. }
+exists gmove. split.
+- now apply destination_is_target.
+- now rewrite <- moving_spec.
+Qed.
+
+(** ***  Lemmas about the non-majority cases  **)
+
+Lemma no_maj_round_no_maj : forall da conf, no_Majority (round gatherR2 da conf) -> no_Majority conf.
+Proof.
+  intros da conf h_twomaj.
+  destruct (Spect.support (Spect.max (!! conf))) eqn:heq.
+  * now elim (support_max_non_nil conf).
+  * destruct l eqn:heq'.
+    -- exfalso. get_case conf.
+       assert (Hmaj := @Majority_wither conf da e Hcase).
+       rewrite <- MajTower_at_equiv in heq.
+       apply MajTower_at_forever with (da:= da) in heq.
+       rewrite MajTower_at_equiv in heq.
+       unfold no_Majority in h_twomaj.
+       rewrite Spect.size_spec, heq in h_twomaj.
+       simpl in h_twomaj.
+       omega.
+    -- unfold no_Majority. rewrite Spect.size_spec, heq. cbn.
+       auto with arith.
+Qed.
+
+(* Taken from the gathering in R.
+   Any non-forbidden config without a majority tower contains at least three towers.
+   All robots move toward the same place (same_destination), wlog pt1.
+   |\before(pt2)| >= |\after(pt2)| = nG / 2
+   As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
+   thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
+Theorem never_forbidden : forall da conf, ~forbidden conf -> ~forbidden (round gatherR2 da conf).
+Proof.
+intros da conf Hok.
+(* Three cases for the robogram *)
+destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
+- assert (Config.eq (round gatherR2 da conf) conf).
+  { rewrite round_simplify; simpl; try rewrite Hmaj; simpl.
+    intros id. now destruct (step da id). }
+  now rewrite H.
+  (* There is a majority tower *)
+- apply Majority_not_forbidden with pt.
+  rewrite <- MajTower_at_equiv in *.
+  apply (@MajTower_at_forever pt conf da) in Hmaj.
+  assumption.
+- get_case conf.
+  clear pt pt' l' Hmaj. rename Hmaj0 into Hmaj.
+  (* A robot has moved otherwise we have the same configuration before and it is forbidden. *)
+  assert (Hnil := no_moving_same_conf gatherR2 da conf).
+  destruct (moving gatherR2 da conf) as [| rmove l] eqn:Heq.
+  * now rewrite Hnil.
+  * intro Habs.
+    clear Hnil.
+    assert (Hmove : In rmove (moving gatherR2 da conf)). { rewrite Heq. now left. }
+    rewrite moving_spec in Hmove.
+    (* the robot moves to one of the two locations in round robogram conf *)
+    assert (Hforbidden := Habs). destruct Habs as [HnG [HsizeG[pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
+    assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
+                                  /\ round gatherR2 da conf rmove = pt).
+    { assert (Hperm : Permutation (Spect.support (!! (round gatherR2 da conf))) (pt1 :: pt2 :: nil)).
+      { symmetry. apply NoDup_Permutation_bis.
+        + repeat constructor.
+          - intro Habs. inversion Habs. now elim Hdiff. now inversion H.
+          - intro Habs. now inversion Habs.
+        + rewrite <- NoDupA_Leibniz. apply Spect.support_NoDupA.
+        + simpl. now rewrite <- Spect.size_spec, forbidden_support_length.
+        + intros pt Hpt. inversion_clear Hpt.
+          - subst. rewrite <- InA_Leibniz, Spect.support_spec. unfold Spect.In. rewrite Hpt1.
+            apply Exp_prop.div2_not_R0. apply HsizeG.
+          - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz, Spect.support_spec.
+            unfold Spect.In. rewrite Hpt2. apply Exp_prop.div2_not_R0. apply HsizeG. }
+      assert (Hpt : In (round gatherR2 da conf rmove) (pt1 :: pt2 :: nil)).
+      { rewrite <- Hperm. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config. }
+      inversion_clear Hpt; try (now exists pt1, pt2; eauto); [].
+      inversion_clear H; now exists pt2, pt1; eauto. }
+    destruct Hpt as [pt [pt' [Hpt Hrmove_pt]]].
+    assert (Hdiff2 : pt <> pt').
+    { decompose [and or] Hpt; congruence. }
+    assert (Hdest : forall g, In g (moving gatherR2 da conf) -> round gatherR2 da conf g = pt).
+    { intros id Hid.
+      rewrite <- Hrmove_pt.
+      apply same_destination; auto. rewrite moving_spec. congruence. }
+    assert ((div2 N.nG) <= (!! conf)[pt']).
+    { transitivity ((!! (round gatherR2 da conf))[pt']).
+      - decompose [and or] Hpt; subst; omega.
+      - generalize (@increase_move_iff conf da pt').
+        intro H1. apply Nat.nlt_ge.
+        rewrite H1. intros [id [Hid1 Hid2]].
+        apply Hdiff2.
+        rewrite <- Hid1.
+        symmetry.
+        apply Hdest. rewrite moving_spec. assumption. }
+    assert (Hlt : forall p, p <> pt' -> (!! conf)[p] < div2 N.nG).
+    { assert (Hpt'_in : Spect.In pt' (!! conf)).
+      { unfold Spect.In. eapply lt_le_trans; try eassumption. apply Exp_prop.div2_not_R0. apply HsizeG. }
+      assert (Hle := not_forbidden_no_majority_size Hmaj Hok).
+      intros p Hp. apply Nat.nle_gt. intro Habs. apply (lt_irrefl N.nG).
+      destruct (@towers_elements_3 conf pt' p Hle Hpt'_in) as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
+      + apply lt_le_trans with (div2 N.nG); try assumption. apply Exp_prop.div2_not_R0. apply HsizeG.
+      + auto.
+      + eapply lt_le_trans; try apply (sum3_le_total conf Hp Hdiff13 Hdiff23); [].
+        unfold Spect.In in Hpt3_in. rewrite <- ?Even.even_equiv in *.
+        rewrite (even_double N.nG);simpl;auto.
+        unfold Nat.double.
+        omega. }
+    assert (Hmaj' : MajTower_at pt' conf).
+    { intros x Hx. apply lt_le_trans with (div2 N.nG); trivial. now apply Hlt. }
+    apply MajTower_at_equiv in Hmaj'.
+    red in Hmaj.
+    rewrite Spect.size_spec in Hmaj.
+    rewrite Hmaj' in Hmaj.
+    simpl in Hmaj.
+    omega.
+Qed.
+
 (** ***  Lemmas about the diameter case  **)
 
 Lemma diameter_target:
@@ -1753,20 +1827,11 @@ Lemma clean_diameter_support_incl:
     -> inclA R2.eq (Spect.support (!! conf))
                           (target (!! conf) :: ptx :: pty :: nil).
 Proof.
-  intros conf ptx pty h_notforbid hisclean honsec.
-  intros x hin.
-  unfold is_clean in hisclean.
-  destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support (!! conf))
-               (SECT (!! conf))) eqn:heq; try discriminate.
-  rewrite inclA_bool_true_iff in heq.
-  apply heq in hin.
-  unfold SECT in hin. now rewrite honsec in hin.
+  intros conf ptx pty h_notforbid Hclean Hsec.
+  intros x Hin. rewrite is_clean_spec in Hclean.
+  apply Hclean in Hin.
+  now rewrite <- Hsec.
 Qed.
-
-(* Naming the useful case. *)
-Definition clean_diameter_case conf :=
-  is_clean (!! conf) = true /\
-  exists pt1 pt2, on_SEC (Spect.support (!! conf)) = pt1 :: pt2 :: nil.
 
 
 Ltac contradict_middle_aux ptx pty H H' conf  :=
@@ -1799,7 +1864,7 @@ Ltac contradict_middle :=
       end.
 
 Ltac autoclass := eauto with typeclass_instances.
-Ltac destruct_InA := match goal with H : InA R2.eq _ _ |- _ => inversion_clear H end.
+(* Ltac destruct_InA := match goal with H : InA R2.eq _ _ |- _ => inversion_clear H end. *)
 
 Lemma diameter_clean_support:
   forall conf ptx pty,
@@ -1876,12 +1941,12 @@ Lemma diameter_next_target_same : forall da conf,
   target (!! (round gatherR2 da conf)) = target (!! conf).
 Proof.
   intros da conf Hforbidden Hmaj' Hcleandiam.
-  unfold target, clean_diameter_case in *.
-  destruct Hcleandiam as [Hclean [pt1 [pt2 Htwocol]]].
+  destruct Hcleandiam as [[Hmaj [pt1 [pt2 Htwocol]]] Hclean].
+  apply (PermutationA_length _) in Htwocol.
+  unfold target.
   destruct (on_SEC (Spect.support (!! conf))) as [| ptx [| pty [| ptz [| ptt ?]]]] eqn:Hsec; try discriminate.
   assert (Hincl := incl_next da conf).
   assert (Htarget : target (!!conf) = R2.middle ptx pty) by (apply diameter_target; auto).
-  assert (Hmaj : no_Majority conf) by now apply no_maj_round_no_maj with da.
   assert (Hperm := @diameter_clean_support conf ptx pty Hforbidden Hmaj Hclean Hsec).
   assert (Hperm' : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
                                       (R2.middle ptx pty :: ptx :: pty :: nil)).
@@ -1896,7 +1961,7 @@ Proof.
   assert (HpermSEC' : PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf))))
                                          (ptx :: pty :: nil)).
   { rewrite Hperm'. rewrite on_SEC_middle_diameter.
-    -  now rewrite on_SEC_dueton.
+    - now rewrite on_SEC_dueton.
     - assert (Hnodup : NoDupA R2.eq (R2.middle ptx pty :: ptx :: pty :: nil)).
       { rewrite <- Hperm. apply Spect.support_NoDupA. }
       inversion_clear Hnodup. inversion_clear H0. intuition. }
@@ -1940,19 +2005,14 @@ Qed.
 (** ***  Lemmas about the triangle cases  **)
 
 Lemma clean_triangle_support_incl : forall conf ptx pty ptz,
-  ~forbidden conf ->
   is_clean (!! conf) = true ->
   on_SEC (Spect.support (!! conf)) = ptx :: pty :: ptz :: nil ->
   inclA R2.eq (Spect.support (!! conf)) (target (!! conf) :: ptx :: pty :: ptz :: nil).
 Proof.
-  intros conf ptx pty ptz h_notforbid hisclean honsec.
-  intros x hin.
-  unfold is_clean in hisclean.
-  destruct (inclA_bool R2.eq_equiv R2.eq_dec (Spect.support (!! conf))
-               (SECT (!! conf))) eqn:heq; try discriminate.
-  rewrite inclA_bool_true_iff in heq.
-  apply heq in hin.
-  unfold SECT in hin. now rewrite honsec in hin.
+  intros conf ptx pty ptz Hclean Hsec.
+  intros x Hin. rewrite is_clean_spec in Hclean.
+  apply Hclean in Hin.
+  now rewrite <- Hsec.
 Qed.
 
 (** ****  Lemmas about the equilateral triangle case  **)
@@ -2027,35 +2087,35 @@ Qed.
 
 (** ****  Merging results about the different kinds of triangles  **)
 
-Lemma triangle_next_maj_or_diameter_or_triangle : forall da conf ptx pty ptz,
+Lemma triangle_next_maj_or_diameter_or_triangle : forall da conf,
   ~forbidden conf ->
-  no_Majority conf ->
-  PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: ptz :: nil) ->
+  triangle_case conf ->
   (* A majority tower *)
   length (Spect.support (Spect.max (!! (round gatherR2 da conf)))) = 1
   (* No majority tower and we go from equilateral to unclean general case *)
   \/ no_Majority (round gatherR2 da conf)
-     /\ classify_triangle ptx pty ptz = Equilateral
+     /\ equilateral_case conf
      /\ length (on_SEC (Spect.support (!! (round gatherR2 da conf)))) = 2
      /\ is_clean (!! (round gatherR2 da conf)) = false
-     /\ inclA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) (ptx :: pty :: ptz :: nil)
+     /\ inclA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) ((on_SEC (Spect.support (!! conf))))
   (* No majority tower and the SEC remains the same *)
   \/ no_Majority (round gatherR2 da conf)
      /\ PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf))))
                            (on_SEC (Spect.support (!! conf))).
 Proof.
-intros da conf ptx pty ptz Hforbidden Hmaj Hsec.
-destruct (le_dec 2 (length (Spect.support (Spect.max (!! (round gatherR2 da conf)))))) as [Hlen' | Hlen'].
+intros da conf Hforbidden [Hmaj [ptx [pty [ptz Hsec]]]].
+destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? ?]] eqn:Hmax'.
+- rewrite Spect.support_nil, Spect.max_empty in Hmax'. elim (spect_non_nil _ Hmax').
+- now left.
 - right.
-  assert (Hmaj' : no_Majority (round gatherR2 da conf)).
-  { unfold no_Majority. rewrite Spect.size_spec. omega. }
-  clear Hlen'.
+  get_case (round gatherR2 da conf). rename Hmaj0 into Hmaj'.
+  clear Hmax' e e0 l.
   assert (Hforbidden' : ~forbidden (round gatherR2 da conf)) by now apply never_forbidden.
   assert (Hlen' : Spect.size (!! (round gatherR2 da conf)) >= 3) by now apply not_forbidden_no_majority_size.
   destruct (classify_triangle ptx pty ptz) eqn:Htriangle.
   + (* Equilateral case *)
     assert (Htarget : target (!! conf) = barycenter_3_pts ptx pty ptz) by now apply equilateral_target.
-    destruct (on_SEC (Spect.support (!! (round gatherR2 da conf)))) as [| pt1 [| pt2 [| pt3 ?]]] eqn:Hsec'.
+    destruct (on_SEC (Spect.support (!! (round gatherR2 da conf)))) as [| pt1 [| pt2 [| pt3 l]]] eqn:Hsec'.
     * (* Absurd case: empty SEC *)
       exfalso.
       rewrite on_SEC_nil in Hsec'.
@@ -2074,7 +2134,7 @@ destruct (le_dec 2 (length (Spect.support (Spect.max (!! (round gatherR2 da conf
       destruct (is_clean (!! (round gatherR2 da conf))) eqn:Hclean'.
       -- (* Absurd case: the center of the SEC is not on a diameter *)
          admit.
-      -- left. repeat split; trivial.
+      -- left. repeat split; trivial; eauto.
          (* TODO: the old target is now strictly inside the SEC *)
          admit.
     * (* Valid case: SEC is a triangle *)
@@ -2104,9 +2164,9 @@ destruct (le_dec 2 (length (Spect.support (Spect.max (!! (round gatherR2 da conf
                 destruct (Spect.size (!! (round gatherR2 da conf))) as [| [| [| [| ?]]]] eqn:Hlen; simpl; try omega.
                 exfalso.
                 assert (l = nil).
-                { destruct l; trivial.
+                { destruct l as [| pt4 l]; trivial.
                   cut (4 + length l <= 3); try omega.
-                  change (4 + length l) with (length (pt1 :: pt2 :: pt3 :: t :: l)).
+                  change (4 + length l) with (length (pt1 :: pt2 :: pt3 :: pt4 :: l)).
                   rewrite <- Hsec', <- Hlen, Spect.size_spec.
                   apply (NoDupA_inclA_length _).
                   - apply on_SEC_NoDupA, Spect.support_NoDupA.
@@ -2145,11 +2205,35 @@ destruct (le_dec 2 (length (Spect.support (Spect.max (!! (round gatherR2 da conf
   destruct (is_clean (!! conf)) eqn:Hclean.
   + admit.
   + rewrite dirty_next_SEC_same; trivial. now rewrite Hsec'.*)
-- left.
-  destruct (length (Spect.support (Spect.max (!! (round gatherR2 da conf))))) as [| [| ?]] eqn:Habs; try omega.
-  apply length_0 in Habs. rewrite Spect.support_nil, Spect.max_empty in Habs. elim (spect_non_nil _ Habs).
 Admitted.
 
+(** ***  Lemmas about the generic case  **)
+
+Lemma generic_target : forall config,
+  generic_case config ->
+  target (!! config) = center (SEC (Spect.support (!! config))).
+Proof.
+intros config [_ [? [? [? [? [? HpermSEC]]]]]]. unfold target.
+apply (PermutationA_length _) in HpermSEC.
+destruct (on_SEC (Spect.support (!! config))) as [| ? [| ? [| ? [| ? ?]]]]; cbn in HpermSEC; omega || reflexivity.
+Qed.
+
+Lemma clean_generic_next_generic_same_target_and_clean : forall da config,
+  generic_case config ->
+  is_clean (!! config) = true ->
+  generic_case (round gatherR2 da config) ->
+  is_clean (!! (round gatherR2 da config)) = true
+  /\ target (!! (round gatherR2 da config)) = target (!! config).
+Proof.
+intros da config Hcase Hclean Hcase'.
+(* [Hmaj [pt1 [pt2 [pt3 [pt4 [maxl Hsec]]]]]]
+  Hclean [Hmaj' [pt1' [pt2' [pt3' [pt4' [maxl' Hsec']]]]]].*)
+assert (Hincl' := incl_clean_next da config Hclean).
+rewrite generic_target in Hincl'; trivial.
+rewrite is_clean_spec.
+(* For the target part: the new config contains at least 3 of the points on the old SEC,
+   therefore it is the same circle. *)
+Admitted.
 
 (** **  Main result: the measure decreases after a step where a robot moves  *)
 
@@ -2158,38 +2242,37 @@ Theorem round_lt_config : forall da conf,
   lt_config (round gatherR2 da conf) conf.
 Proof.
   intros da conf Hforbidden Hmove. unfold lt_config.
-  apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
+(*  apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
   assert (Hstep : step da gmove <> None).
   { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
-  rewrite moving_spec in Hmove.
+  rewrite moving_spec in Hmove.*)
   unfold measure at 2.
-  destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmaj.
+  destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmax.
   - (* No robots *)
-    rewrite Spect.support_nil, Spect.max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
+    rewrite Spect.support_nil, Spect.max_empty in Hmax. elim (spect_non_nil _ Hmax).
   - (* A majority tower *)
-    assert (Hmaj' : Spect.support (Spect.max (!! (round gatherR2 da conf))) = pt :: nil).
-    { rewrite <- MajTower_at_equiv. apply (MajTower_at_forever da). now rewrite MajTower_at_equiv. }
-    unfold measure. rewrite Hmaj'.
-    apply right_lex.
-    assert ((!! (round gatherR2 da conf))[pt] <= N.nG).
-    { rewrite <- plus_0_r. change 0 with N.nB.
-      rewrite <- (Spect.cardinal_from_config (round gatherR2 da conf)).
-      apply Spect.cardinal_lower. }
-    cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]). omega.
+    get_case conf.
+    apply (MajTower_at_forever da) in Hcase.
+    rewrite MajTower_at_equiv in Hcase.
+    unfold measure. rewrite Hcase.
+    right.
+    assert (Hle := multiplicity_le_nG pt (round gatherR2 da conf)).
+    cut ((!! conf)[pt] < (!! (round gatherR2 da conf))[pt]); try omega; [].
+    apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
+    assert (Hstep : step da gmove <> None).
+    { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
+    rewrite moving_spec in Hmove.
     rewrite increase_move_iff. exists gmove. split; trivial.
-    rewrite (round_simplify_Majority _ _ Hmaj). destruct (step da gmove); trivial. now elim Hstep.
+    get_case conf.
+    rewrite (round_simplify_Majority _ Hcase0). destruct (step da gmove); trivial. now elim Hstep.
   - (* Computing the SEC *)
-    assert (Hmaj2 : no_Majority conf) by now eapply make_no_Majority; rewrite Hmaj.
-    clear Hmaj pt pt' smax. rename Hmaj2 into Hmaj.
+    get_case conf. clear Hmax pt pt' smax.
     destruct (is_clean (!! conf)) eqn:Hclean.
     (** Clean case *)
     + destruct (on_SEC (Spect.support (!! conf))) as [| pt1 [| pt2 [| pt3 [| pt4 sec]]]] eqn:Hsec.
       (* There must be at least two points on the SEC, so the first two cases are absurd. *)
       -- assert (h_all_target : forall g, (conf g) = target (!! conf)). 
-         { unfold is_clean in Hclean.
-           apply if_true in Hclean.
-           destruct Hclean as [Hclean _].
-           setoid_rewrite inclA_bool_true_iff in Hclean.
+         { rewrite is_clean_spec in Hclean.
            unfold SECT in Hclean.
            rewrite Hsec in Hclean.
            intros g.
@@ -2200,7 +2283,10 @@ Proof.
            inversion h; subst. 
            - assumption. 
            - inversion H0. }
-         elim Hmove.
+        apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
+        assert (Hstep : step da gmove <> None).
+        { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
+        rewrite moving_spec in Hmove. elim Hmove.
          rewrite destination_is_target; auto.
          ++ symmetry.
             apply h_all_target.
@@ -2215,11 +2301,10 @@ Proof.
          rewrite Spect.support_1 in Hsingleton. destruct Hsingleton as [Hsingleton ?].
          rewrite Hsingleton. now rewrite Spect.max_singleton, Spect.support_singleton.
       -- (** Diameter case *)
-         assert (Htarget : target (!! conf) = R2.middle pt1 pt2).
-         { unfold target. now rewrite Hsec. }
+         assert (Htarget : target (!! conf) = R2.middle pt1 pt2) by now apply diameter_target.
          assert (Hmaj' := Hmaj). unfold no_Majority in Hmaj'. rewrite Spect.size_spec in Hmaj'.
-         destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' ?]]; cbn in Hmaj'; try omega.
-         clear Hmaj' pt pt' l.
+(*          destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' ?]]; cbn in Hmaj'; try omega. *)
+         clear Hmaj'. (* pt pt' l.*)
          assert (Hperm := diameter_clean_support Hforbidden Hmaj Hclean Hsec).
          destruct (clean_diameter_next_maj_or_diameter da Hforbidden Hmaj Hclean Hsec)
            as [[pt Hmaj'] | [Hmaj' HpermSEC']].
@@ -2239,27 +2324,17 @@ Proof.
             destruct (on_SEC (Spect.support (!! (round gatherR2 da conf)))) as [| ? [| ? [| ? ?]]] eqn:Hsec';
             cbn in Hlen'; try omega.
             assert (Hclean' : is_clean (!! (round gatherR2 da conf)) = true).
-            { unfold is_clean.
-              destruct (inclA_bool _ R2.eq_dec (Spect.support (!! (round gatherR2 da conf)))
-                                               (SECT (!! (round gatherR2 da conf)))) eqn:Htest; trivial; [].
-              rewrite <- Htest. clear Htest.
-              rewrite inclA_bool_true_iff. unfold SECT.
+            { rewrite is_clean_spec. unfold SECT.
               rewrite Hsec', HpermSEC', Hperm', Htarget', Htarget; try reflexivity; [].
-              split; trivial; eauto. }
+              repeat split; trivial; setoid_rewrite Hsec; do 2 eexists; reflexivity. }
             rewrite Hclean'.
             right.
-            unfold measure_reduce. rewrite Htarget'.
-            ** assert (Hle := multiplicity_le_nG (target (!! conf)) (round gatherR2 da conf)).
-               cut ((!! conf)[target (!! conf)] < (!! (round gatherR2 da conf))[target (!! conf)]); try omega.
-               rewrite increase_move_iff.
-               exists gmove. split; trivial.
-               apply destination_is_target; trivial.
-               now rewrite moving_spec.
-            ** split; trivial; eauto.
-      -- (* Triangle cases *)
-         assert (HpermSEC : PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (pt1 :: pt2 :: pt3 :: nil)).
-         { now rewrite Hsec. }
-         assert (HnextSEC := triangle_next_maj_or_diameter_or_triangle da Hforbidden Hmaj HpermSEC).
+            apply solve_measure_reduce; trivial.
+            apply Htarget'.
+            repeat split; trivial; setoid_rewrite Hsec; do 2 eexists; reflexivity.
+      -- (** Triangle cases *)
+         get_case conf.
+         assert (HnextSEC := triangle_next_maj_or_diameter_or_triangle da Hforbidden Hcase).
          rewrite Hsec in HnextSEC.
          destruct HnextSEC as [HnextSEC | [[Hmaj' [Htriangle [Hlen [Hclean' Hincl]]]] | [Hmaj' HpermSEC']]].
          ++ (* There is a majority tower on the next round *)
@@ -2287,22 +2362,27 @@ Proof.
             { apply same_on_SEC_same_target. now rewrite Hsec, Hsec'. }
             assert (Hclean' : is_clean (!! (round gatherR2 da conf)) = true).
             { assert (Hincl' := incl_clean_next da conf Hclean).
-              unfold is_clean.
-              destruct (inclA_bool _ R2.eq_dec (Spect.support (!! (round gatherR2 da conf)))
-                                               (SECT (!! (round gatherR2 da conf)))) eqn:Htest; trivial; [].
-              rewrite <- Htest. clear Htest.
-              rewrite inclA_bool_true_iff. unfold SECT.
+              rewrite is_clean_spec. unfold SECT.
               now rewrite Hsec', HpermSEC', <- Hsec, Htarget'. }
             rewrite Hclean'.
-            right. unfold measure_reduce. rewrite Htarget'.
-            assert (Hle := multiplicity_le_nG (target (!! conf)) (round gatherR2 da conf)).
-            cut ((!! conf)[target (!! conf)] < (!! (round gatherR2 da conf))[target (!! conf)]); try omega.
-            rewrite increase_move_iff.
-            exists gmove. split; trivial.
-            apply destination_is_target; trivial.
-            now rewrite moving_spec.
-      -- (* Generic case *)
-         admit.
+            right.
+            now apply solve_measure_reduce.
+      -- (** Generic case *)
+         unfold measure.
+         destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| pt [| ? ?]] eqn:Hmax';
+         try now left; omega.
+         get_case conf.
+         get_case (round gatherR2 da conf).
+         destruct (on_SEC (Spect.support (!! (round gatherR2 da conf))))
+           as [| pt1' [| pt2' [| pt3' [| pt4' ?]]]] eqn:Hsec';
+         try (now destruct (is_clean (!! (round gatherR2 da conf))); left; omega); [].
+         (* Still in the generic case after one round *)
+         get_case (round gatherR2 da conf).
+         assert (Hgeneric := clean_generic_next_generic_same_target_and_clean Hcase Hclean Hcase0).
+         destruct Hgeneric as [Hclean' Htarget'].
+         rewrite Hclean'.
+         right.
+         now apply solve_measure_reduce.
     (** Dirty case *)
     + admit.
 Admitted.
