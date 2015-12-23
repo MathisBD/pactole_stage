@@ -2329,16 +2329,16 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     + intros m Hm. rewrite subset_empty_r in Hm. now rewrite Hm.
     Qed.
     
-    Lemma nfilter_extensionality_compat : forall g, (forall x n, g x n = f x n) ->
+    Lemma nfilter_extensionality_compat : forall g, (forall x n, f x n = g x n) ->
       forall m, nfilter f m [=] nfilter g m.
     Proof.
     intros g Hext m x.
-    assert (Hg : Proper (E.eq ==> Logic.eq ==> Logic.eq) g). { repeat intro. repeat rewrite Hext. now apply Hf. }
+    assert (Hg : Proper (E.eq ==> Logic.eq ==> Logic.eq) g). { repeat intro. do 2 rewrite <- Hext. now apply Hf. }
     repeat rewrite nfilter_spec; trivial. rewrite Hext. reflexivity.
     Qed.
     
-    Lemma nfilter_dependent_extensionality_compat : forall g, Proper (E.eq ==> Logic.eq ==> Logic.eq) g ->
-      forall m, (forall x n, In x m -> g x n = f x n) -> nfilter f m [=] nfilter g m.
+    Lemma nfilter_extensionality_compat_strong : forall g, Proper (E.eq ==> Logic.eq ==> Logic.eq) g ->
+      forall m, (forall x n, In x m -> f x n = g x n) -> nfilter f m [=] nfilter g m.
     Proof.
     intros g Hg m Hext x. repeat rewrite nfilter_spec; trivial.
     destruct (eq_nat_dec m[x] 0) as [Heq | Hneq].
@@ -2478,7 +2478,38 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + repeat rewrite nfilter_empty; trivial. reflexivity.
   Qed.
   
-  (** **  Results about [nfilter]  **)
+  (* TODO: The disjointness property should be strengthen into [forall x, In x m -> f x m[x] && g x m[x] = false] *)
+  Lemma nfilter_disjoint_or_union : forall f g,
+    Proper (E.eq ==> Logic.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq ==> Logic.eq) g ->
+    forall m, (forall x n, n > 0 -> In x m -> f x n && g x n = false) ->
+    nfilter (fun x n => f x n || g x n) m [=] union (nfilter f m) (nfilter g m).
+  Proof.
+  intros f g Hf Hg m Hdisjoint.
+  assert (Hforg : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun x n => f x n || g x n))
+    by (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
+  assert (Hfandg : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun x n => f x n && g x n))
+    by (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
+  cut (m [<=] m); try reflexivity; []. pattern m at -2. apply ind.
+  + intros m1 m2 Heq. split; intros Hrec Hand; try now rewrite Heq in *; now apply Hrec.
+  + intros m' x n Hin Hn Hrec Hincl.
+    assert (Hincl' : m' [<=] m).
+    { intro y. destruct (E.eq_dec y x) as [Hxy | Hxy].
+      - rewrite Hxy. transitivity (m'[x] + n); try omega; [].
+        rewrite <- add_same. apply Hincl.
+      - now rewrite <- (add_other x y n). }
+    repeat rewrite nfilter_add; trivial.
+    destruct (f x n) eqn:Hfxn, (g x n) eqn:Hgxn; simpl.
+    - specialize (Hdisjoint x n Hn). rewrite Hfxn, Hgxn in Hdisjoint.
+      cut (true = false); try discriminate; [].
+      apply Hdisjoint. rewrite <- Hincl, add_In.
+      right. split; reflexivity || omega.
+    - rewrite union_add_comm_l. f_equiv. now apply Hrec.
+    - rewrite union_add_comm_r. f_equiv. now apply Hrec.
+    - now apply Hrec.
+  + intros _. repeat rewrite nfilter_empty; trivial. now rewrite union_empty_l.
+  Qed.
+  
+  (** **  Results about [filter]  **)
   
   Section Filter_results.
     Variable f : E.t -> bool.
@@ -2524,11 +2555,20 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - assumption.
     Qed.
     
-    Lemma filter_extensionality_compat : forall g, (forall x, g x = f x) -> forall m, filter f m [=] filter g m.
+    Lemma filter_extensionality_compat : forall g, (forall x, f x = g x) -> forall m, filter f m [=] filter g m.
     Proof.
     intros g Hext m x.
-    assert (Hg : Proper (E.eq ==> Logic.eq) g). { repeat intro. repeat rewrite Hext. now apply Hf. }
+    assert (Hg : Proper (E.eq ==> Logic.eq) g). { repeat intro. do 2 rewrite <- Hext. now apply Hf. }
     repeat rewrite filter_spec; trivial. rewrite Hext. reflexivity.
+    Qed.
+    
+    Lemma filter_extensionality_compat_strong : forall g, Proper (E.eq ==> Logic.eq) g ->
+      forall m, (forall x, In x m -> f x = g x) -> filter f m [=] filter g m.
+    Proof.
+    intros g Hg m Hext x. repeat rewrite filter_spec; trivial.
+    destruct (In_dec x m) as [Hin | Hin].
+    - now rewrite (Hext _ Hin).
+    - rewrite not_In in Hin. rewrite Hin. destruct (f x), (g x); reflexivity.
     Qed.
     
     Lemma elements_filter : forall m,
@@ -2646,6 +2686,31 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - repeat intro. apply Hfg.
   Qed.
   
+  Lemma filter_disjoint_or_union : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> Logic.eq) g ->
+    forall m, (forall x, In x m -> f x && g x = false) ->
+    filter (fun x => f x || g x) m [=] union (filter f m) (filter g m).
+  Proof.
+  intros f g Hf Hg m.
+  assert (Hforg : Proper (E.eq ==> Logic.eq) (fun x => f x || g x)) by (intros ? ? Heq; now rewrite Heq).
+  assert (Hfandg : Proper (E.eq ==> Logic.eq) (fun x => f x && g x)) by (intros ? ? Heq; now rewrite Heq).
+  pattern m. apply ind; clear m.
+  + intros m1 m2 Heq.
+    split; intros Hrec Hand; now rewrite Heq in *; apply Hrec; setoid_rewrite Heq || setoid_rewrite <- Heq.
+  + intros m' x n Hin Hn Hrec Hdisjoint.
+    assert (Hdisjoint' : forall y, In y m' -> f y && g y = false).
+    { intros y Hin'. apply Hdisjoint. rewrite add_In. now left. }
+    repeat rewrite filter_add; trivial.
+    destruct (f x) eqn:Hfx, (g x) eqn:Hgx; simpl.
+    - specialize (Hdisjoint x). rewrite Hfx, Hgx in Hdisjoint.
+      cut (true = false); try discriminate; [].
+      apply Hdisjoint.
+      msetdec.
+    - rewrite union_add_comm_l. f_equiv. now apply Hrec.
+    - rewrite union_add_comm_r. f_equiv. now apply Hrec.
+    - now apply Hrec.
+  + intros _. repeat rewrite filter_empty; trivial. now rewrite union_empty_l.
+  Qed.
+  
   (** **  Results about [npartition]  **)
   
   Section nPartition_results.
@@ -2741,22 +2806,22 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - assumption.
     Qed.
     
-    Lemma npartition_extensionality_compat_fst : forall g, (forall x n, g x n = f x n) ->
-      forall m, fst (npartition g m) [=] fst (npartition f m).
+    Lemma npartition_extensionality_compat_fst : forall g, (forall x n, f x n = g x n) ->
+      forall m, fst (npartition f m) [=] fst (npartition g m).
     Proof.
-    intros ? Hext ? ?. setoid_rewrite npartition_spec_fst at 2; trivial.
-    rewrite nfilter_extensionality_compat; trivial. apply npartition_spec_fst.
-    repeat intro. repeat rewrite Hext. apply Hf; assumption.
+    intros ? Hext ? ?. setoid_rewrite npartition_spec_fst at 1; trivial.
+    rewrite nfilter_extensionality_compat; trivial. symmetry. apply npartition_spec_fst.
+    repeat intro. repeat rewrite <- Hext. apply Hf; assumption.
     Qed.
     
-    Lemma npartition_extensionality_compat_snd : forall g, (forall x n, g x n = f x n) ->
-      forall m, snd (npartition g m) [=] snd (npartition f m).
+    Lemma npartition_extensionality_compat_snd : forall g, (forall x n, f x n = g x n) ->
+      forall m, snd (npartition f m) [=] snd (npartition g m).
     Proof.
-    intros g Hext m. intro. repeat rewrite npartition_spec_snd; trivial.
-    + apply nfilter_extensionality_compat; trivial.
-      - repeat intro. f_equal. repeat rewrite Hext. apply Hf; assumption.
-      - repeat intro. f_equal. symmetry. apply Hext.
-    + repeat intro. repeat rewrite Hext. apply Hf; assumption.
+    intros g Hext m ?. repeat rewrite npartition_spec_snd; trivial.
+    + rewrite nfilter_extensionality_compat; trivial.
+      - repeat intro. subst. f_equal. now apply Hf.
+      - repeat intro. simpl. f_equal. apply Hext.
+    + repeat intro. repeat rewrite <- Hext. apply Hf; assumption.
     Qed.
     
     Lemma elements_npartition_fst : forall m,
@@ -2978,22 +3043,22 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - assumption.
     Qed.
     
-    Lemma partition_extensionality_compat_fst : forall g, (forall x, g x = f x) ->
-      forall m, fst (partition g m) [=] fst (partition f m).
+    Lemma partition_extensionality_compat_fst : forall g, (forall x, f x = g x) ->
+      forall m, fst (partition f m) [=] fst (partition g m).
     Proof.
-    intros ? Hext ? ?. setoid_rewrite partition_spec_fst at 2; trivial.
-    rewrite filter_extensionality_compat; trivial. apply partition_spec_fst.
-    repeat intro. repeat rewrite Hext. apply Hf; assumption.
+    intros ? Hext ? ?. setoid_rewrite partition_spec_fst at 1; trivial.
+    rewrite filter_extensionality_compat; trivial. symmetry. apply partition_spec_fst.
+    repeat intro. do 2 rewrite <- Hext. apply Hf; assumption.
     Qed.
     
-    Lemma partition_extensionality_compat_snd : forall g, (forall x, g x = f x) ->
-      forall m, snd (partition g m) [=] snd (partition f m).
+    Lemma partition_extensionality_compat_snd : forall g, (forall x, f x = g x) ->
+      forall m, snd (partition f m) [=] snd (partition g m).
     Proof.
     intros g Hext m. intro. repeat rewrite partition_spec_snd; trivial.
     + apply filter_extensionality_compat; trivial.
-      - repeat intro. f_equal. repeat rewrite Hext. apply Hf; assumption.
-      - repeat intro. f_equal. symmetry. apply Hext.
-    + repeat intro. repeat rewrite Hext. apply Hf; assumption.
+      - repeat intro. f_equal. apply Hf; assumption.
+      - repeat intro. f_equal. apply Hext.
+    + repeat intro. do 2 rewrite <- Hext. apply Hf; assumption.
     Qed.
     
     Lemma elements_partition_fst : forall m,

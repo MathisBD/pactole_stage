@@ -324,11 +324,11 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - intros y _. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); trivial; rewrite Hext in *; contradiction.
   Qed.
   
-  Lemma map_dependent_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
+  Lemma map_extensionality_compat_strong : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
     forall m, (forall x, In x m -> g x = f x) -> map g m [=] map f m.
   Proof.
   intros f g Hf Hg m Hext x.
-  repeat rewrite map_spec; trivial. f_equiv. apply nfilter_dependent_extensionality_compat.
+  repeat rewrite map_spec; trivial. f_equiv. apply nfilter_extensionality_compat_strong.
   - intros y z Heq _ _ _. destruct (E.eq_dec (g y) x), (E.eq_dec (g z) x); trivial; rewrite Heq in *; contradiction.
   - intros y z Heq _ _ _. destruct (E.eq_dec (f y) x), (E.eq_dec (f z) x); trivial; rewrite Heq in *; contradiction.
   - intros y _ Hin. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); rewrite Hext in *; trivial; contradiction.

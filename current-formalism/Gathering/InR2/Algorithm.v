@@ -1708,26 +1708,59 @@ assert (HsameSECT := same_on_SEC_same_SECT _ _ HsameSEC).
 unfold measure_clean.
 assert (HlenG : SECT_cardinal (!! (round gatherR2 da config)) <= N.nG) by apply SECT_cardinal_le_nG.
 cut (SECT_cardinal (!! config) < SECT_cardinal (!! (round gatherR2 da config))); try omega; [].
-assert (Hle : SECT_cardinal (!! config) <= SECT_cardinal (!! (round gatherR2 da config))).
-{ unfold SECT_cardinal.
-  pose (f s x := if in_dec R2.eq_dec x (SECT s) then true else false).
-  assert (Hext : forall x, f (!! config) x = f (!! (round gatherR2 da config)) x).
-  { intro pt. unfold f.
-    destruct (in_dec R2.eq_dec pt (SECT (!! config))) as [Htest1 | Htest1],
-             (in_dec R2.eq_dec pt (SECT (!! (round gatherR2 da config)))) as [Htest2 | Htest2]; trivial.
-    - elim Htest2.
-      rewrite <- InA_Leibniz in *.
-      now rewrite HsameSECT.
-    - elim Htest1.
-      rewrite <- InA_Leibniz in *.
-      now rewrite <- HsameSECT. }
-  unfold f in Hext.
-  rewrite (Spect.filter_extensionality_compat _ _ Hext). clear Hext f.
-  apply Spect.cardinal_sub_compat.
-  intro pt.
-  setoid_rewrite Spect.filter_spec; autoclass.
-  destruct (in_dec R2.eq_dec pt (SECT (!! config))); trivial.
-  
+assert (Hlt : (!! config)[target (!! config)] < (!! (round gatherR2 da config))[target (!! config)]).
+{ rewrite increase_move_iff.
+  apply not_nil_In in Hmoving. destruct Hmoving as [gmove Hmove].
+  assert (Hstep : step da gmove <> None).
+  { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
+  exists gmove. split.
+  - now apply destination_is_target.
+  - now rewrite <- moving_spec. }
+unfold SECT_cardinal.
+pose (f s x := if in_dec R2.eq_dec x (SECT s) then true else false).
+assert (Hext : forall x, f (!! (round gatherR2 da config)) x = f (!! config) x).
+{ intro pt. unfold f.
+  destruct (in_dec R2.eq_dec pt (SECT (!! config))) as [Htest1 | Htest1],
+           (in_dec R2.eq_dec pt (SECT (!! (round gatherR2 da config)))) as [Htest2 | Htest2]; trivial.
+  - elim Htest2.
+    rewrite <- InA_Leibniz in *.
+    now rewrite HsameSECT.
+  - elim Htest1.
+    rewrite <- InA_Leibniz in *.
+    now rewrite <- HsameSECT. }
+unfold f in Hext.
+rewrite (Spect.filter_extensionality_compat _ _ Hext). clear Hext.
+pose (f_target := fun x => if R2.eq_dec x (target (!! config)) then true else false).
+pose (f_on_SEC := fun x => if in_dec R2.eq_dec x (on_SEC (Spect.support (!! config))) then true else false).
+assert (Hext : forall x, f (!! config) x = f_target x || f_on_SEC x).
+{ intro pt. unfold f, f_target, f_on_SEC, SECT. simpl.
+  do 2 R2dec_full; intuition; try (now symmetry in Heq); [].
+  now destruct (in_dec R2.eq_dec pt (on_SEC (Spect.support (!! config)))). }
+unfold f in Hext. setoid_rewrite (Spect.filter_extensionality_compat _ _ Hext). clear Hext f.
+assert (Hdisjoint : forall m x, Spect.In x m -> f_target x && f_on_SEC x = false).
+{ intros m x Hin.
+  destruct (f_target x) eqn:Heq1, (f_on_SEC x) eqn:Heq2; trivial.
+  exfalso. unfold f_target, f_on_SEC in *. clear f_target f_on_SEC.
+  R2dec_full in Heq1; try discriminate; [].
+  rewrite Heq in Heq2.
+  destruct (in_dec R2.eq_dec (target (!! config)) (on_SEC (Spect.support (!! config))))
+    as [Habs | ?]; try discriminate.
+  unfold on_SEC in Habs. rewrite <- InA_Leibniz, filter_InA in Habs; autoclass.
+  destruct Habs as [_ Habs].
+  (* TODO the target cannot be on the SEC *)
+  admit. }
+setoid_rewrite Spect.filter_disjoint_or_union; autoclass.
+do 2 rewrite Spect.cardinal_union.
+unfold f_target.
+setoid_rewrite Spect.cardinal_filter_is_multiplicity.
+assert (Heq : Spect.eq (Spect.filter f_on_SEC (!! config)) (Spect.filter f_on_SEC (!! (round gatherR2 da config)))).
+{ intro pt. repeat rewrite Spect.filter_spec; autoclass.
+  destruct (f_on_SEC pt) eqn:Htest; trivial.
+  rewrite round_simplify_dirty; trivial.
+  admit. (* TODO: we can use induction on the list of robot names. *)
+}
+rewrite Heq.
+omega.
 Admitted.
 
 (** ***  Lemmas about the non-majority cases  **)
