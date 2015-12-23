@@ -999,6 +999,23 @@ Proof.
   + assumption.
 Qed.
 
+Lemma not_inclA : forall l1 l2, ~inclA eqA l1 l2 <-> exists x, InA eqA x l1 /\ ~InA eqA x l2.
+Proof.
+intros l1 l2. split; intro H.
+* induction l1 as [| e l1].
+  + elim H. intro. now rewrite InA_nil.
+  + destruct (InA_dec eq_dec e l2).
+    - assert (Hincl : ~ inclA eqA l1 l2).
+      { intro Hincl. apply H. intros x Hin. inversion_clear Hin.
+        - now rewrite H0.
+        - now apply Hincl. }
+      apply IHl1 in Hincl. destruct Hincl as [x [Hin Hin']].
+      exists x. intuition.
+    - exists e. intuition.
+* destruct H as [x [Hin Hin']].
+  intro Hincl. now apply Hincl in Hin.
+Qed.
+
 (** A boolean decision procedure *)
 Definition inclA_bool l1 l2 := if inclA_dec l1 l2 then true else false.
 

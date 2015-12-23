@@ -1329,41 +1329,11 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
 Qed.
 
 
-Section HypRobots.
-Variable nG : nat.
-Hypothesis size_G : nG >= 2.
-
-
-Definition g1' : Fin.t nG.
-destruct nG eqn:HnG. abstract (omega).
+Definition g1 : Names.G.
+unfold Names.G, Names.Internals.G, N.nG.
+destruct nG eqn:HnG. abstract (pose (Hle := size_G); omega).
 apply (@Fin.F1 n).
 Defined.
-
-Definition g2' : Fin.t nG.
-destruct nG as [| [| n]] eqn:HnG; try (abstract (omega)).
-apply (Fin.FS Fin.F1).
-Defined.
-
-End HypRobots.
-
-Require Import Coq.Program.Equality.
-Lemma g1'_g2' : forall nG size_nG , @g1' nG size_nG <> @g2' nG size_nG.
-Proof.
-  intro nG.
-  dependent destruction nG; intros.
-  - exfalso;omega.
-  - dependent destruction nG0.
-    + exfalso;omega.
-    + simpl.
-      intro abs.
-      inversion abs.
-Qed.
-
-Definition g1 : Names.G := @g1' nG size_G.
-Definition g2 : Names.G := @g2' nG size_G.
-
-Lemma g1_g2 : g1 <> g2.
-Proof. apply g1'_g2'. Qed.
 
 
 Instance gathered_at_compat : Proper (eq ==> Config.eq ==> iff) gathered_at.

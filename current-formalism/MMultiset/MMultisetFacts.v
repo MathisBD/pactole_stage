@@ -2548,9 +2548,20 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - assumption.
     Qed.
     
-    Lemma support_filter : forall m, inclA E.eq (support (filter f m)) (support m).
+    Lemma support_filter_incl : forall m, inclA E.eq (support (filter f m)) (support m).
     Proof. intro. apply support_sub_compat, filter_subset. Qed.
     
+    Lemma support_filter : forall m, PermutationA E.eq (support (filter f m)) (List.filter f (support m)).
+    Proof.
+    intro m. apply (NoDupA_equivlistA_PermutationA _).
+    - apply support_NoDupA.
+    - now apply NoDupA_filter_compat, support_NoDupA.
+    - intro x. rewrite support_elements, elements_filter.
+      setoid_rewrite filter_InA; refine _.
+      simpl. rewrite elements_spec, support_spec, filter_spec; trivial. unfold In.
+      split; intros [Hin Hfx]; rewrite Hfx; intuition.
+    Qed.
+
     Lemma cardinal_filter : forall m, cardinal (filter f m) <= cardinal m.
     Proof. intro. apply cardinal_sub_compat, filter_subset. Qed.
     

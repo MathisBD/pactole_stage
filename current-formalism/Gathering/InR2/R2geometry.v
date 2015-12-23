@@ -334,7 +334,7 @@ intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
 Qed.
 
-Lemma classify_triangle_Isoceles_spec : forall pt1 pt2 pt3 pt,
+Lemma classify_triangle_Isosceles_spec : forall pt1 pt2 pt3 pt,
   classify_triangle pt1 pt2 pt3 = Isosceles pt
   <-> (pt = pt1 /\ R2.dist pt1 pt2 = R2.dist pt1 pt3 /\ R2.dist pt1 pt2 <> R2.dist pt2 pt3)
    \/ (pt = pt2 /\ R2.dist pt2 pt1 = R2.dist pt2 pt3 /\ R2.dist pt2 pt1 <> R2.dist pt1 pt3)

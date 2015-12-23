@@ -34,6 +34,10 @@ Require Import Pactole.Gathering.InR2.R2geometry.
 Import Permutation.
 Set Implicit Arguments.
 
+
+Ltac autoclass := eauto with typeclass_instances.
+(* Ltac destruct_InA := match goal with H : InA R2.eq _ _ |- _ => inversion_clear H end. *)
+
 Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
@@ -548,7 +552,7 @@ Ltac get_case config :=
     | Hmaj : no_Majority config, H : on_SEC (Spect.support (!! config)) = ?pt1 :: ?pt2 :: ?pt3 :: nil,
       H' : classify_triangle ?pt1 ?pt2 ?pt3 = Equilateral |- _ =>
         assert (Hcase : equilateral_case config)
-          by now repeat split; trivial; setoid_rewrite H; repeat eexists; reflexivity
+          by now repeat split; trivial; setoid_rewrite H; repeat eexists; reflexivity || assumption
     (* Triangle case *)
     | Hmaj : no_Majority config, H : on_SEC (Spect.support (!! config)) = _ :: _ :: _ :: nil |- _ =>
         assert (Hcase : triangle_case config)
@@ -987,34 +991,35 @@ destruct (step da id); try reflexivity. cbv zeta.
 rewrite MajTower_at_equiv in Hmaj. now rewrite Hmaj.
 Qed.
 
-Lemma round_simplify_clean : forall da conf,
-  2 <= length (Spect.support (Spect.max (!! conf))) ->
-  is_clean (!! conf) = true ->
-  Config.eq (round gatherR2 da conf)
+Lemma round_simplify_clean : forall da config,
+  no_Majority config ->
+  is_clean (!! config) = true ->
+  Config.eq (round gatherR2 da config)
          (fun id => match step da id with
-                      | None => conf id
-                      | Some _ => target (!! conf)
+                      | None => config id
+                      | Some _ => target (!! config)
                     end).
 Proof.
-intros da conf Hlen Hclean id. rewrite round_simplify.
+intros da config Hmaj Hclean id. rewrite round_simplify.
 destruct (step da id); try reflexivity. cbv zeta. rewrite Hclean.
-destruct (Spect.support (Spect.max (!! conf))) as [| ? [| ? ?]]; simpl in Hlen; try omega.
-reflexivity.
+rewrite no_Majority_equiv in Hmaj. destruct Hmaj as [? [? [? Hmaj]]].
+now rewrite Hmaj.
 Qed.
 
-Lemma round_simplify_dirty : forall da conf,
-  2 <= length (Spect.support (Spect.max (!! conf))) ->
-  is_clean (!! conf) = false ->
-  Config.eq (round gatherR2 da conf)
+Lemma round_simplify_dirty : forall da config,
+  no_Majority config ->
+  is_clean (!! config) = false ->
+  Config.eq (round gatherR2 da config)
          (fun id => match step da id with
-                      | None => conf id
-                      | Some _ => if mem R2.eq_dec (conf id) (SECT (!! conf)) then conf id else target (!! conf)
+                      | None => config id
+                      | Some _ => if mem R2.eq_dec (config id) (SECT (!! config))
+                                  then config id else target (!! config)
                     end).
 Proof.
-intros da conf Hlen Hclean id. rewrite round_simplify.
+intros da config Hmaj Hclean id. rewrite round_simplify.
 destruct (step da id); try reflexivity. cbv zeta. rewrite Hclean.
-destruct (Spect.support (Spect.max (!! conf))) as [| ? [| ? ?]]; simpl in Hlen; try omega.
-reflexivity.
+rewrite no_Majority_equiv in Hmaj. destruct Hmaj as [? [? [? Hmaj]]].
+now rewrite Hmaj.
 Qed.
 
 
@@ -1619,6 +1624,16 @@ reflexivity || simpl in Hlen; try omega.
 - f_equal. setoid_rewrite SEC_on_SEC. now rewrite Hsec1, Hperm, Hsec2.
 Qed.
 
+Lemma same_on_SEC_same_SECT : forall config1 config2,
+  PermutationA R2.eq (on_SEC (Spect.support (!! config1))) (on_SEC (Spect.support (!! config2))) ->
+  PermutationA R2.eq (SECT (!! config1)) (SECT (!! config2)).
+Proof.
+intros config1 config2 Hsame. unfold SECT.
+rewrite Hsame.
+apply same_on_SEC_same_target in Hsame.
+now rewrite Hsame.
+Qed.
+
 (** ***  Lemma about the majority case  **)
 
 (* Next lemmas taken from the gathering algo in R. *)
@@ -1689,12 +1704,30 @@ Proof.
 intros da config Hmoving Hmaj Hclean Hmaj' Hclean'.
 assert (HsameSEC := dirty_next_on_SEC_same da Hmaj Hclean).
 assert (Htarget := same_on_SEC_same_target _ _ HsameSEC).
+assert (HsameSECT := same_on_SEC_same_SECT _ _ HsameSEC).
 unfold measure_clean.
 assert (HlenG : SECT_cardinal (!! (round gatherR2 da config)) <= N.nG) by apply SECT_cardinal_le_nG.
 cut (SECT_cardinal (!! config) < SECT_cardinal (!! (round gatherR2 da config))); try omega; [].
-unfold SECT_cardinal.
-SearchAbout Spect.cardinal Spect.filter.
-
+assert (Hle : SECT_cardinal (!! config) <= SECT_cardinal (!! (round gatherR2 da config))).
+{ unfold SECT_cardinal.
+  pose (f s x := if in_dec R2.eq_dec x (SECT s) then true else false).
+  assert (Hext : forall x, f (!! config) x = f (!! (round gatherR2 da config)) x).
+  { intro pt. unfold f.
+    destruct (in_dec R2.eq_dec pt (SECT (!! config))) as [Htest1 | Htest1],
+             (in_dec R2.eq_dec pt (SECT (!! (round gatherR2 da config)))) as [Htest2 | Htest2]; trivial.
+    - elim Htest2.
+      rewrite <- InA_Leibniz in *.
+      now rewrite HsameSECT.
+    - elim Htest1.
+      rewrite <- InA_Leibniz in *.
+      now rewrite <- HsameSECT. }
+  unfold f in Hext.
+  rewrite (Spect.filter_extensionality_compat _ _ Hext). clear Hext f.
+  apply Spect.cardinal_sub_compat.
+  intro pt.
+  setoid_rewrite Spect.filter_spec; autoclass.
+  destruct (in_dec R2.eq_dec pt (SECT (!! config))); trivial.
+  
 Admitted.
 
 (** ***  Lemmas about the non-majority cases  **)
@@ -1901,9 +1934,6 @@ Ltac contradict_middle :=
         |- _  =>
         contradict_middle_aux ptx pty H H' conf
       end.
-
-Ltac autoclass := eauto with typeclass_instances.
-(* Ltac destruct_InA := match goal with H : InA R2.eq _ _ |- _ => inversion_clear H end. *)
 
 Lemma diameter_clean_support:
   forall conf ptx pty,
@@ -2394,6 +2424,183 @@ Proof.
         cbn in Hle, Hle', Hlen; try omega; [| |];
         destruct (is_clean (!! (round gatherR2 da conf))) eqn:Hclean';
         solve [ left; omega | right; now apply solve_measure_clean ].
+Qed.
+
+
+Instance gathered_at_compat : Proper (eq ==> Config.eq ==> iff) gathered_at.
+Proof.
+intros ? pt ? config1 config2 Hconfig. subst. unfold gathered_at.
+split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
+Qed.
+
+Lemma gathered_precise : forall config pt,
+  gathered_at pt config -> forall id, gathered_at (config id) config.
+Proof.
+intros config pt Hgather id id'. transitivity pt.
+- apply Hgather.
+- symmetry. destruct id as [? | b]. apply Hgather. apply Fin.case0. exact b.
+Qed.
+
+Corollary not_gathered_generalize : forall config id,
+  ~gathered_at (config id) config -> forall pt, ~gathered_at pt config.
+Proof. intros config id Hnot pt Hgather. apply Hnot. apply (gathered_precise Hgather). Qed.
+
+Lemma not_gathered_exists : forall config pt,
+  ~ gathered_at pt config -> exists id, config id <> pt.
+Proof.
+intros config pt Hgather.
+destruct (forallb (fun x => R2dec_bool (config x) pt) Names.names) eqn:Hall.
+- elim Hgather. rewrite forallb_forall in Hall.
+  intro id'. setoid_rewrite R2dec_bool_true_iff in Hall. repeat rewrite Hall; trivial; apply Names.In_names.
+- rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall.
+  destruct Hall as [id' [_ Hid']]. rewrite negb_true_iff, R2dec_bool_false_iff in Hid'. now exists id'.
+Qed.
+
+Inductive FirstMove r d config : Prop :=
+  | MoveNow : moving r (demon_head d) config <> nil -> FirstMove r d config
+  | MoveLater : moving r (demon_head d) config = nil ->
+                FirstMove r (demon_tail d) (round r (demon_head d) config) -> FirstMove r d config.
+
+Instance FirstMove_compat : Proper (req ==> deq ==> Config.eq ==> iff) FirstMove.
+Proof.
+intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
+* revert r2 d2 c2 Hr Hd Hc. induction Hfirst; intros r2 d2 c2 Hr Hd Hc.
+  + apply MoveNow. now rewrite <- Hr, <- Hd, <- Hc.
+  + apply MoveLater.
+    - rewrite <- Hr, <- Hd, <- Hc. assumption.
+    - destruct Hd. apply IHHfirst; trivial. now apply round_compat.
+* revert r1 d1 c1 Hr Hd Hc. induction Hfirst; intros r1 d1 c1 Hr Hd Hc.
+  + apply MoveNow. now rewrite Hr, Hd, Hc.
+  + apply MoveLater.
+    - rewrite Hr, Hd, Hc. assumption.
+    - destruct Hd. apply IHHfirst; trivial. now apply round_compat.
+Qed.
+
+(** Given a non-gathered, non forbidden configuration, then some robot will move some day *)
+Theorem OneMustMove : forall config id, ~ forbidden config -> ~gathered_at (config id) config ->
+  exists gmove, forall da, In gmove (active da) -> In gmove (moving gatherR2 da config).
+Proof.
+intros config id Hforbidden Hgather.
+destruct (Spect.support (Spect.max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
+* elim (support_max_non_nil _ Hmax).
+* rewrite <- MajTower_at_equiv in Hmax.
+  apply not_gathered_generalize with _ _ pt in Hgather.
+  apply not_gathered_exists in Hgather. destruct Hgather as [gmove Hmove].
+  exists gmove. intros da Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
+  rewrite (round_simplify_Majority _ Hmax). destruct (step da gmove); auto; now elim Hactive.
+* (* No majority tower *)
+  get_case config.
+  destruct (is_clean (!! config)) eqn:Hclean.
+  + (* clean case *)
+    apply not_gathered_generalize with _ _ (target (!! config)) in Hgather.
+    apply not_gathered_exists in Hgather. destruct Hgather as [gmove Hmove].
+    exists gmove. intros da Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
+    rewrite round_simplify_clean; trivial.
+    destruct (step da gmove); try (now elim Hactive); [].
+    intuition.
+  + (* dirty case *)
+    assert (Hclean' := Hclean). unfold is_clean in Hclean'. clear Hmax pt pt' lmax.
+    destruct (inclA_bool _ R2.eq_dec (Spect.support (!! config)) (SECT (!! config))) eqn:Hincl;
+    try discriminate; [].
+    rewrite inclA_bool_false_iff, (not_inclA _ R2.eq_dec) in Hincl.
+    destruct Hincl as [pt [Hin Hin']].
+    rewrite Spect.support_In, Spect.from_config_In in Hin.
+    destruct Hin as [gmove Hmove].
+    exists gmove. intros da Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
+    rewrite round_simplify_dirty; trivial.
+    destruct (step da gmove); try (now elim Hactive); [].
+    destruct (mem R2.eq_dec (config gmove) (SECT (!! config))) eqn:Htest.
+    - rewrite mem_true_iff, Hmove in Htest.
+      contradiction.
+    - rewrite mem_false_iff, Hmove in Htest.
+      assert (Htarget : InA R2.eq (target (!! config)) (SECT (!! config))) by now left.
+      intro Habs. rewrite Habs, Hmove in *.
+      contradiction.
+Qed.
+
+(* Given a k-fair demon, in any non gathered, non forbidden configuration, a robot will be the first to move. *)
+Theorem Fair_FirstMove : forall d, Fair d ->
+  forall config id, ~forbidden config -> ~gathered_at (config id) config -> FirstMove gatherR2 d config.
+Proof.
+intros d Hfair config id Hforbidden Hgathered.
+destruct (OneMustMove id Hforbidden Hgathered) as [gmove Hmove].
+destruct Hfair as [locallyfair Hfair].
+revert config Hforbidden Hgathered Hmove Hfair.
+specialize (locallyfair gmove).
+induction locallyfair; intros config Hforbidden Hgathered Hmove Hfair.
++ apply MoveNow. intro Habs. rewrite <- active_spec in H. apply Hmove in H. rewrite Habs in H. inversion H.
++ destruct (moving gatherR2 (demon_head d) config) eqn:Hnil.
+  - apply MoveLater. exact Hnil.
+    rewrite (no_moving_same_conf _ _ _ Hnil).
+    apply (IHlocallyfair); trivial.
+    now destruct Hfair.
+  - apply MoveNow. rewrite Hnil. discriminate.
+Qed.
+
+Definition g1 : Fin.t nG.
+destruct nG eqn:HnG. abstract (pose(Hle := nG_conf); omega).
+apply (@Fin.F1 n).
+Defined.
+
+
+Lemma gathered_at_forever : forall da conf pt, gathered_at pt conf -> gathered_at pt (round gatherR2 da conf).
+Proof.
+intros da conf pt Hgather. rewrite (round_simplify_Majority).
++ intro g. destruct (step da (Good g)); reflexivity || apply Hgather.
++ intros pt' Hdiff.
+  assert (H0 : (!! conf)[pt'] = 0).
+  { rewrite Spect.from_config_spec, Spect.Config.list_spec.
+    induction Spect.Names.names as [| id l].
+    + reflexivity.
+    + cbn. R2dec_full.
+      - elim Hdiff. rewrite <- Heq. destruct id as [g | b]. apply Hgather. apply Fin.case0. exact b.
+      - apply IHl. }
+  rewrite H0. Print Names.Internals.G. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
+Qed.
+
+Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
+Proof.
+intros conf pt.
+destruct (forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
++ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
++ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
+  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
+Qed.
+
+Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> gather pt (execute gatherR2 d conf).
+Proof.
+cofix Hind. intros d conf pt Hgather. constructor.
++ clear Hind. simpl. assumption.
++ rewrite execute_tail. apply Hind. now apply gathered_at_forever.
+Qed.
+
+Theorem Gathering_in_R2 :
+  forall d, Fair d -> ValidSolGathering gatherR2 d.
+Proof.
+intros d Hfair conf. revert d Hfair. pattern conf.
+apply (well_founded_ind wf_lt_conf). clear conf.
+intros conf Hind d Hfair Hok.
+(* Are we already gathered? *)
+destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
+* (* If so, not much to do *)
+  exists (conf (Good g1)). apply Now. apply gathered_at_OK. assumption.
+* (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
+  apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
+  induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
+  + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
+    destruct (Hind (round gatherR2 (demon_head d) conf)) with (demon_tail d) as [pt Hpt].
+    - apply round_lt_config; assumption.
+    - now destruct Hfair.
+    - now apply never_forbidden.
+    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+  + (* Inductive case: we know by induction hypothesis that the wait will end *)
+    apply no_moving_same_conf in Heq.
+    destruct Hrec as [pt Hpt].
+    - setoid_rewrite Heq. apply Hind.
+    - now destruct Hfair.
+    - rewrite Heq. assumption.
+    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
 Qed.
 
 End GatheringinR2.
