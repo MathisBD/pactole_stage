@@ -1731,37 +1731,52 @@ assert (Hext : forall x, f (!! (round gatherR2 da config)) x = f (!! config) x).
 unfold f in Hext.
 rewrite (Spect.filter_extensionality_compat _ _ Hext). clear Hext.
 pose (f_target := fun x => if R2.eq_dec x (target (!! config)) then true else false).
-pose (f_on_SEC := fun x => if in_dec R2.eq_dec x (on_SEC (Spect.support (!! config))) then true else false).
-assert (Hext : forall x, f (!! config) x = f_target x || f_on_SEC x).
-{ intro pt. unfold f, f_target, f_on_SEC, SECT. simpl.
-  do 2 R2dec_full; intuition; try (now symmetry in Heq); [].
-  now destruct (in_dec R2.eq_dec pt (on_SEC (Spect.support (!! config)))). }
+pose (f_out_target := fun x => if in_dec R2.eq_dec x (SECT (!! config)) then negb (f_target x) else false).
+assert (Hext : forall x, f (!! config) x = f_target x || f_out_target x).
+{ intro pt. unfold f, f_out_target, f_target. simpl. do 2 R2dec_full; intuition. }
 unfold f in Hext. setoid_rewrite (Spect.filter_extensionality_compat _ _ Hext). clear Hext f.
-assert (Hdisjoint : forall m x, Spect.In x m -> f_target x && f_on_SEC x = false).
+assert (Hdisjoint : forall m x, Spect.In x m -> f_target x && f_out_target x = false).
 { intros m x Hin.
-  destruct (f_target x) eqn:Heq1, (f_on_SEC x) eqn:Heq2; trivial.
-  exfalso. unfold f_target, f_on_SEC in *. clear f_target f_on_SEC.
+  destruct (f_target x) eqn:Heq1, (f_out_target x) eqn:Heq2; trivial.
+  exfalso. unfold f_out_target, f_target in *. clear f_target f_out_target.
   R2dec_full in Heq1; try discriminate; [].
   rewrite Heq in Heq2.
-  destruct (in_dec R2.eq_dec (target (!! config)) (on_SEC (Spect.support (!! config))))
-    as [Habs | ?]; try discriminate.
-  unfold on_SEC in Habs. rewrite <- InA_Leibniz, filter_InA in Habs; autoclass.
-  destruct Habs as [_ Habs].
-  (* TODO the target cannot be on the SEC *)
-  admit. }
+  destruct (in_dec R2.eq_dec (target (!! config)) (SECT (!! config))); discriminate. }
 setoid_rewrite Spect.filter_disjoint_or_union; autoclass.
 do 2 rewrite Spect.cardinal_union.
 unfold f_target.
 setoid_rewrite Spect.cardinal_filter_is_multiplicity.
-assert (Heq : Spect.eq (Spect.filter f_on_SEC (!! config)) (Spect.filter f_on_SEC (!! (round gatherR2 da config)))).
+assert (Heq : Spect.eq (Spect.filter f_out_target (!! config))
+                       (Spect.filter f_out_target (!! (round gatherR2 da config)))).
 { intro pt. repeat rewrite Spect.filter_spec; autoclass.
-  destruct (f_on_SEC pt) eqn:Htest; trivial.
+  destruct (f_out_target pt) eqn:Htest; trivial.
   rewrite round_simplify_dirty; trivial.
-  admit. (* TODO: we can use induction on the list of robot names. *)
-}
+  (* by induction on the list of robot names *)
+  do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
+  induction Spect.Names.names as [| id l]; simpl.
+  * reflexivity.
+  * R2dec_full.
+    + rewrite Heq in *. destruct (step da id) eqn:Hactive.
+      - assert (Hmem : mem R2.eq_dec pt (SECT (!! config)) = true).
+        { rewrite mem_true_iff, InA_Leibniz. unfold f_out_target in Htest. clear Hdisjoint f_out_target.
+          destruct (in_dec R2.eq_dec pt (SECT (!! config))) as [Hin | Hin]; trivial; discriminate. }
+        rewrite Hmem. R2dec. f_equal. apply IHl.
+      - R2dec. f_equal. apply IHl.
+    + destruct (step da id) eqn:Hactive.
+      - destruct (mem R2.eq_dec (config id) (SECT (!! config))) eqn:Hmem.
+        ++ R2dec_full; contradiction || apply IHl.
+        ++ destruct (R2.eq_dec (target (!! config)) pt) as [Heq | Heq].
+           -- exfalso.
+              unfold f_out_target in Htest.
+              destruct (in_dec R2.eq_dec pt (SECT (!! config))); try discriminate.
+              rewrite negb_true_iff in Htest.
+              unfold f_target in Htest. symmetry in Heq.
+              R2dec_full in Htest; discriminate || contradiction.
+           -- apply IHl.
+      - R2dec. f_equal. R2dec_full; contradiction || apply IHl. }
 rewrite Heq.
 omega.
-Admitted.
+Qed.
 
 (** ***  Lemmas about the non-majority cases  **)
 
@@ -2588,7 +2603,7 @@ intros da conf pt Hgather. rewrite (round_simplify_Majority).
     + cbn. R2dec_full.
       - elim Hdiff. rewrite <- Heq. destruct id as [g | b]. apply Hgather. apply Fin.case0. exact b.
       - apply IHl. }
-  rewrite H0. Print Names.Internals.G. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
+  rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
 Qed.
 
 Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
@@ -2635,6 +2650,8 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     - rewrite Heq. assumption.
     - exists pt. apply Later. rewrite execute_tail. apply Hpt.
 Qed.
+
+Print Assumptions Gathering_in_R2.
 
 End GatheringinR2.
 
