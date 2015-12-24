@@ -1482,8 +1482,11 @@ Qed.
 
 Lemma SECT_cardinal_le_nG : forall config, SECT_cardinal (!! config) <= N.nG.
 Proof.
-
-Admitted.
+intro config. unfold SECT_cardinal.
+replace N.nG with (N.nG + N.nB) by (unfold N.nB; apply plus_0_r).
+rewrite <- (Spect.cardinal_from_config config).
+apply Spect.cardinal_sub_compat, Spect.filter_subset; autoclass.
+Qed.
 
 Lemma incl_next : forall da conf,
     (inclA R2.eq
@@ -1746,11 +1749,11 @@ setoid_rewrite Spect.filter_disjoint_or_union; autoclass.
 do 2 rewrite Spect.cardinal_union.
 unfold f_target.
 setoid_rewrite Spect.cardinal_filter_is_multiplicity.
-assert (Heq : Spect.eq (Spect.filter f_out_target (!! config))
-                       (Spect.filter f_out_target (!! (round gatherR2 da config)))).
+assert (Heq : Spect.eq (Spect.filter f_out_target (!! (round gatherR2 da config)))
+                       (Spect.filter f_out_target (!! config))).
 { intro pt. repeat rewrite Spect.filter_spec; autoclass.
   destruct (f_out_target pt) eqn:Htest; trivial.
-  rewrite round_simplify_dirty; trivial.
+  rewrite round_simplify_dirty; trivial. symmetry.
   (* by induction on the list of robot names *)
   do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
   induction Spect.Names.names as [| id l]; simpl.
