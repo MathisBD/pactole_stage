@@ -232,6 +232,17 @@ Proof.
   elim abs; auto.
 Qed.
 
+(* A location is determined by distances to 3 points. *)
+Lemma GPS : forall x y z t1 t2, x <> y -> y <> z -> x <> z ->
+  R2.dist t1 x = R2.dist t2 x -> R2.dist t1 y = R2.dist t2 y -> R2.dist t1 z = R2.dist t2 z -> t1 = t2.
+Proof.
+intros x y z t1 t2 Hxy Hyz Hxz Hx Hy Hz.
+Admitted.
+Arguments GPS x y z t1 t2 _ _ _ _ _ _ : clear implicits.
+
+Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
+Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
+
 
 (** **  Triangles  **)
 
@@ -472,6 +483,18 @@ Qed.
 Instance on_circle_compat : Proper (eq ==> R2.eq ==> eq) on_circle.
 Proof. repeat intro. unfoldR2 in H0. now subst. Qed.
 
+(*
+Lemma three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
+  on_circle c1 pt1 = true -> on_circle c1 pt2 = true -> on_circle c1 pt3 = true ->
+  on_circle c2 pt1 = true -> on_circle c2 pt2 = true -> on_circle c2 pt3 = true ->
+  c1 = c2.
+Proof.
+intros [c1 r1] [c2 r2] pt1 pt2 pt3 Hc1_pt1 Hc1_pt2 Hc1_pt3 Hc2_pt1 Hc2_pt2 Hc2_pt3.
+unfold on_circle in *; cbn in *; rewrite Rdec_bool_true_iff in *.
+Check GPS.
+Admitted.
+*)
+
 (** We assume the existence of a primitive SEC computing the smallest enclosing circle,
     given by center and radius. *)
 Parameter SEC : list R2.t -> circle.
@@ -481,7 +504,7 @@ Axiom SEC_spec1 : forall l, enclosing_circle (SEC l) l.
 Axiom SEC_spec2 : forall l c, enclosing_circle c l -> radius (SEC l) <= radius c.
 (** Extra specification in the degenerate case. *)
 Axiom SEC_nil : radius (SEC nil) = 0.
-(** Its definition does not depend on the representation of points. *)
+(** Its definition does not depend on the order of points. *)
 Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
 
 Global Instance SEC_compat_bis : Proper (PermutationA Logic.eq ==> Logic.eq) SEC.
@@ -1069,7 +1092,16 @@ Lemma on_SEC_idempotent : forall l, PermutationA R2.eq (on_SEC (on_SEC l)) (on_S
 Proof. Admitted.
 
 Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
-Proof. Admitted.
+Proof.
+intro l.
+assert (Hperm := partition_Permutation (on_circle (SEC l)) l).
+rewrite Permutation_app_comm, MMultiset.Preliminary.partition_filter in Hperm. simpl in Hperm.
+rewrite <- Hperm at 1. unfold on_SEC.
+apply SEC_append_same.
+intros pt Hin.
+rewrite filter_In, Bool.negb_true_iff in Hin. destruct Hin as [Hin Hout].
+apply SEC_spec1.
+Admitted.
 (*
 intro l. unfold on_SEC.
 assert ( Hperm := partition_Permutation (on_circle (SEC l)) l).

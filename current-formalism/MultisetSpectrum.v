@@ -126,7 +126,7 @@ intros x l. induction l; intros n Hin.
     + rewrite eq_refl_left in Hin.
       omega.
     + rewrite eq_refl_left in Hin.
-      rewrite plus_comm in Hin. simpl in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+      rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
     exists l'. split. assumption. simpl. now constructor.
   - rewrite M.add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
     exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
@@ -164,7 +164,18 @@ induction l; simpl.
 + rewrite (@M.map_compat f Hf (multiset nil)), multiset_nil. now rewrite M.map_empty. now apply multiset_nil.
 + do 2 rewrite multiset_cons. now rewrite M.map_add, IHl.
 Qed.
-
+(*
+Theorem multiset_filter : forall f, Proper (Location.eq ==> Logic.eq) f ->
+  forall l, multiset (filter f l) [=] M.filter f (multiset l).
+Proof.
+intros f Hf l.
+induction l as [| e l]; simpl.
++ rewrite (@M.filter_compat f Hf (multiset nil)), multiset_nil. now rewrite M.filter_empty. now apply multiset_nil.
++ destruct (f e) eqn:Htest.
+  - do 2 rewrite multiset_cons. rewrite M.filter_add, Htest, IHl; trivial; reflexivity || omega.
+  - rewrite multiset_cons, M.filter_add, Htest, IHl; trivial; reflexivity || omega.
+Qed.
+*)
 Theorem cardinal_multiset : forall l, M.cardinal (multiset l) = length l.
 Proof.
 induction l; simpl.

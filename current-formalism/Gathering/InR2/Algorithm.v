@@ -136,6 +136,16 @@ Qed.
     are at the same location [pt] (exactly). *)
 Definition gathered_at (pt : R2.t) (conf : Config.t) := forall g : Names.G, conf (Good g) = pt.
 
+Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
+Proof.
+intros conf pt.
+destruct (forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
++ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
++ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
+  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
+Qed.
+
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
 CoInductive gather (pt: R2.t) (e : execution) : Prop :=
@@ -170,28 +180,6 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 (** **  Some results about R with respect to distance and similarities  **)
 
 Open Scope R_scope.
-
-(* A location is determined by distances to 3 points. *)
-(*
-Lemma dist_case : forall x y, R2.dist x y = x - y \/ R2.dist x y = y - x.
-Proof.
-unfold R.dist, Rdef.dist. intros x y. destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
-- apply Rabs_pos_eq in Hle. lra.t
-- apply Rabs_left in Hlt. lra.
-Qed.
-
-Lemma dist_locate : forall x y k, R.dist x y = k -> x = y + k \/ x = y - k.
-Proof. intros x y k ?. subst. assert (Hcase := dist_case x y). lra. Qed.
-*)
-Lemma GPS : forall x y z t1 t2, x <> y -> y <> z -> x <> z ->
-  R2.dist t1 x = R2.dist t2 x -> R2.dist t1 y = R2.dist t2 y -> R2.dist t1 z = R2.dist t2 z -> t1 = t2.
-Proof.
-intros x y z t1 t2 Hxy Hyz Hxz Hx Hy Hz.
-Admitted.
-Arguments GPS x y z t1 t2 _ _ _ _ _ _ : clear implicits.
-
-Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
-Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
 
 Lemma three_fixpoints_is_id : forall sim : Sim.t,
   (exists pt1 pt2 pt3 : R2.t, pt1 <> pt2 /\ pt1 <> pt3 /\ pt2 <> pt3
@@ -908,12 +896,6 @@ transitivity (filter (on_circle (SEC (Spect.support (Spect.map sim s)))) (map si
     repeat intro. subst. now rewrite map_sim_support, SEC_morph, on_circle_morph.
 Qed.
 
-
-Instance inclA_bool_compat A eqA :
-  Proper (eq ==> eq ==> @PermutationA A eqA ==> @PermutationA A eqA ==> eq) (@inclA_bool A eqA).
-Proof.
-Admitted.
-
 Lemma is_clean_morph : forall (sim : Sim.t) s,
     Spect.support s <> nil -> is_clean (Spect.map sim s) = is_clean s.
 Proof.
@@ -1584,18 +1566,98 @@ Proof.
 Qed.
 *)
 
+(* To prove dirty_next_on_SEC_same below, we first prove that any point on the SEC does not move. *)
+Lemma dirty_next_still_on_SEC : forall da conf id,
+  no_Majority conf ->
+  is_clean (!! conf) = false ->
+  on_circle (SEC (Spect.support (!! conf))) (conf id) = true ->
+  round gatherR2 da conf id = conf id.
+Proof.
+intros da conf id Hmaj Hclean Hcircle.
+rewrite round_simplify_dirty; trivial; [].
+destruct (step da id); trivial; [].
+destruct (mem R2.eq_dec (conf id) (SECT (!! conf))) eqn:Hmem; trivial; [].
+rewrite mem_false_iff in Hmem. elim Hmem.
+unfold SECT. right. unfold on_SEC. rewrite filter_InA; autoclass; [].
+split; trivial; [].
+rewrite Spect.support_In. apply Spect.pos_in_config.
+Qed.
+
+Lemma target_inside_SEC : forall config,
+  no_Majority config ->
+  (R2.dist (target (!! config)) (center (SEC (Spect.support (!! config))))
+   <= radius (SEC (Spect.support (!! config))))%R.
+Proof.
+intros config Hmaj. unfold target.
+assert (Hlen := no_Majority_on_SEC_length Hmaj).
+destruct (on_SEC (Spect.support (!! config))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hsec;
+simpl in Hlen; omega || clear Hlen; [| |].
++ rewrite SEC_on_SEC, Hsec. apply middle_in_SEC_diameter.
++ rewrite SEC_on_SEC, Hsec. unfold target_triangle.
+  destruct (classify_triangle pt1 pt2 pt3) eqn:Htriangle.
+  - apply barycenter_3_pts_inside_SEC.
+  - rewrite classify_triangle_Isosceles_spec in Htriangle.
+    admit.
+  - rewrite classify_triangle_Scalene_spec in Htriangle.
+    admit.
++ rewrite R2_dist_defined_2.
+  rewrite SEC_on_SEC, Hsec, radius_is_max_dist.
+  transitivity (R2.dist pt1 (center (SEC (pt1 :: pt2 :: pt3 :: t :: l)))).
+  - apply R2.dist_pos.
+  - apply max_dist_le. intuition.
+Admitted.
+
+Lemma dirty_next_SEC_smaller : forall da conf,
+  no_Majority conf ->
+  is_clean (!! conf) = false ->
+  enclosing_circle (SEC (Spect.support (!! conf))) (Spect.support (!! (round gatherR2 da conf))).
+Proof.
+intros da conf Hmaj Hclean pt Hin.
+rewrite <- InA_Leibniz, Spect.support_In in Hin. unfold Spect.In in Hin.
+rewrite Spect.from_config_spec, Spect.Config.list_spec in Hin.
+induction Spect.Names.names as [| id l]; simpl in *; try omega; [].
+R2dec_full in Hin; try (now apply IHl); [].
+rewrite <- Heq.
+rewrite round_simplify_dirty; trivial; [].
+destruct (step da id).
++ destruct (mem R2.eq_dec (conf id) (SECT (!! conf))) eqn:Hmem.
+  - apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
+  - now apply target_inside_SEC.
++ apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
+Qed.
+
+(* To prove this results:
+   - split the (!! conf) into two parts, the SEC and the rest
+   - prove that the rest can be ommitted to define the SEC as it is closer to the center
+   - use the previous lemma *)
 Lemma dirty_next_on_SEC_same : forall da conf,
 (*   ~forbidden conf -> *)
   no_Majority conf ->
   is_clean (!! conf) = false ->
   PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) (on_SEC (Spect.support (!! conf))).
 Proof.
+Admitted.
+(*
 intros da conf Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
 - unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
 - unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
 - intro pt.
-(*  rewrite round_simplify_dirty; trivial. *)
-  split; intro Hin.
+  unfold on_SEC in *. do 2 (rewrite filter_InA; autoclass); [].
+  split; intros [Hin Hcircle].
+  + rewrite dirty_next_SEC_same in Hcircle; trivial; split; trivial; [].
+    rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
+    admit.
+  + rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
+    rewrite <- Hid in *.
+    assert (Heq : round gatherR2 da conf id = conf id) by now apply dirty_next_still_on_SEC.
+    split.
+    * rewrite <- Heq, Spect.support_In. apply Spect.pos_in_config.
+    * now rewrite dirty_next_SEC_same.
+Restart.
+intros da conf Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
+- unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
+- unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
+- intro pt. split.
   + unfold on_SEC in *. rewrite (filter_InA _). rewrite (filter_InA _) in Hin. destruct Hin as [Hin Hcircle].
     rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
     unfold on_circle in Hcircle. rewrite Rdec_bool_true_iff in Hcircle.
@@ -1610,6 +1672,7 @@ intros da conf Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
       now rewrite Htest.
     * admit.
 Admitted.
+*)
 
 Lemma same_on_SEC_same_target : forall config1 config2,
   PermutationA R2.eq (on_SEC (Spect.support (!! config1))) (on_SEC (Spect.support (!! config2))) ->
@@ -2609,16 +2672,6 @@ intros da conf pt Hgather. rewrite (round_simplify_Majority).
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
 Qed.
 
-Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
-Proof.
-intros conf pt.
-destruct (forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
-+ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
-+ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
-  rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
-Qed.
-
 Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> gather pt (execute gatherR2 d conf).
 Proof.
 cofix Hind. intros d conf pt Hgather. constructor.
@@ -2635,7 +2688,7 @@ intros conf Hind d Hfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (conf (Good g1)). apply Now. apply gathered_at_OK. assumption.
+  exists (conf (Good g1)). now apply Now, gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].

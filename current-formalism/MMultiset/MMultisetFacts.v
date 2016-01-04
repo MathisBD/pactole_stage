@@ -2527,22 +2527,38 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Lemma filter_subset : forall m, filter f m [<=] m.
     Proof. intros m x. rewrite filter_spec; trivial. destruct (f x); omega. Qed.
     
-    Lemma filter_add_true : forall x n m, ~In x m -> n > 0 ->
+    Lemma filter_add_true : forall x n m, n > 0 ->
       (filter f (add x n m) [=] add x n (filter f m) <-> f x = true).
     Proof.
-    repeat intro. do 2 rewrite filter_nfilter. apply nfilter_add_true; trivial. repeat intro. now apply Hf.
+    repeat intro. split.
+    * intro Heq. specialize (Heq x). rewrite filter_spec in Heq; trivial.
+      destruct (f x) eqn:Hfx; trivial.
+      rewrite add_same in Heq. omega.
+    * intros Hfx y. rewrite filter_spec; trivial.
+      destruct (E.eq_dec y x) as [Hxy | Hxy].
+      + rewrite Hxy, Hfx, Hxy. do 2 rewrite add_same. now rewrite filter_spec, Hfx.
+      + destruct (f y) eqn:Hfy.
+        - do 2 (rewrite add_other; trivial). now rewrite filter_spec, Hfy.
+        - rewrite add_other; trivial. now rewrite filter_spec, Hfy.
     Qed.
     
-    Lemma filter_add_false : forall x n m, ~In x m -> n > 0 ->
+    Lemma filter_add_false : forall x n m, n > 0 ->
       (filter f (add x n m) [=] filter f m <-> f x = false).
     Proof.
-    repeat intro. do 2 rewrite filter_nfilter. apply nfilter_add_false; trivial. repeat intro. now apply Hf.
+    repeat intro. destruct (f x) eqn:Hfx.
+    + rewrite <- (@filter_add_true x n m) in Hfx; trivial. rewrite Hfx.
+      split; intro Habs; try discriminate. specialize (Habs x). rewrite add_same in Habs. omega.
+    + split; intro Heq; reflexivity || clear Heq. intro y.
+      do 2 (rewrite filter_spec; trivial).
+      destruct (E.eq_dec y x) as [Hxy | Hxy].
+      - now rewrite Hxy, Hfx.
+      - destruct (f y) eqn:Hfy; trivial. now apply add_other.
     Qed.
     
-    Theorem filter_add : forall x n m, ~In x m -> n > 0 ->
+    Theorem filter_add : forall x n m, n > 0 ->
       filter f (add x n m) [=] if f x then add x n (filter f m) else filter f m.
     Proof.
-    intros x n m Hin Hn. destruct (f x) eqn:Hfxn.
+    intros x n m Hn. destruct (f x) eqn:Hfx.
     - now rewrite filter_add_true.
     - now rewrite filter_add_false.
     Qed.
