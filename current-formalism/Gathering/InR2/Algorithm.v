@@ -2436,7 +2436,82 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
     * (* Valid case: SEC is a pair *)
       destruct (is_clean (!! (round gatherR2 da conf))) eqn:Hclean'.
       -- (* Absurd case: the center of the SEC is not on a diameter *)
-         admit.
+        exfalso.
+        clear Hle.
+        assert (PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                             (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
+        apply diameter_clean_support;auto.
+         destruct (is_clean (!! conf)) eqn:Hclean.
+         ** assert (inclA R2.eq (Spect.support (!! (round gatherR2 da conf))) (target (!! conf) :: ptx :: pty :: ptz :: nil)).
+            { rewrite <- Hsec.
+              apply incl_clean_next.
+              assumption. }
+            rewrite H in H0.
+            destruct (List.in_dec R2.eq_dec (target (!! conf)) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)) as [HIn|HIn].
+            --- rewrite Htarget in HIn.
+                assert (hNoDup:NoDupA R2.eq (pt1 :: pt2 :: nil)).
+                { rewrite <- Hsec'.
+                  apply on_SEC_NoDupA.
+                  apply Spect.support_NoDupA. }
+                cbn in HIn.
+                { decompose [or False] HIn;clear HIn.
+                  - apply Preliminary.inclA_app_inv in H0;autoclass; auto.
+                    + unfold inclA in H0.
+                      assert (hpt1:= H0 pt1 (InA_cons_hd _ eq_refl)).
+                      assert (hpt2:= H0 pt2 (InA_cons_tl pt1 (InA_cons_hd _ eq_refl))).
+                      rewrite InA_Leibniz in hpt1,hpt2.
+                      simpl in hpt1,hpt2.
+                      decompose [or False] hpt1;
+                      decompose [or False] hpt2;subst;clear hpt1; clear hpt2;
+                      try match goal with 
+                      | H: pt1 = pt2 |- _ =>
+                        absurd (InA R2.eq pt1  (pt2 :: nil));
+                          [rewrite NoDupA_Leibniz in hNoDup;
+                            rewrite NoDup_cons_iff in hNoDup;
+                            destruct hNoDup;
+                            rewrite InA_Leibniz;
+                            assumption
+                          | rewrite H; left;reflexivity
+                          ]
+                          end; unfold barycenter_3_pts,R2.middle in H1;
+                      admit.  (* Absurd: Property of equilateral triangle *)
+                    + intro abs.
+                      rewrite InA_Leibniz in abs.
+                      simpl in abs.
+                      decompose [or False] abs.
+                      -- change eq with R2.eq in H2.
+                         symmetry in H2.
+                         rewrite middle_eq in H2.
+                         inversion hNoDup.
+                         rewrite H2 in H5.
+                         apply H5;left;reflexivity.
+                      -- change eq with R2.eq in H3.
+                         symmetry in H3.
+                         rewrite middle_comm in H3.
+                         rewrite middle_eq in H3.
+                         inversion hNoDup.
+                         rewrite H3 in H5.
+                         apply H5;left;reflexivity.
+                    + rewrite Htarget.
+                      rewrite H1.
+                      reflexivity.
+                  - (* if (target (conf)) is in (SEC (round conf)) then two previously
+                       SEC-towers have moved to (target (conf)). therefore there are
+                       two tower => majority (or contradicting forbidden).  *)
+                    admit.
+                  - (* idem *)
+                    admit.
+                }
+            --- (* (ptx :: pty :: ptz :: nil) = (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)
+                   contradiction with calssify_triangle = equilateral *)
+              admit.
+         ** rewrite <- dirty_next_on_SEC_same in Hsec;auto.
+            rewrite Hsec' in Hsec.
+            assert (length (pt1 :: pt2 :: nil) = length (ptx :: pty :: ptz :: nil)).
+            { rewrite Hsec.
+              reflexivity. }
+            simpl in H0;omega.
+
       -- left. repeat split; trivial; eauto.
          (* TODO: the old target is now strictly inside the SEC *)
          admit.
