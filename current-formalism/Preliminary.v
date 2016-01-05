@@ -24,6 +24,8 @@ Require Import Bool.
 Set Implicit Arguments.
 
 
+Ltac autoclass := eauto with typeclass_instances.
+
 (** A tactic simplifying coinduction proofs. *)
 Global Ltac coinduction proof :=
   cofix proof; intros; constructor;
@@ -603,14 +605,14 @@ Proof.
   - now constructor 2.
   - break_list l3' c l3'' H4.
       now constructor 2.
-      rewrite <- PermutationA_middle in Hp. now rewrite Hp, H. refine _. 
+      rewrite <- PermutationA_middle in Hp; autoclass. now rewrite Hp, H.
   - break_list l1' d l1'' H0.
       now constructor 2.
-      rewrite <- PermutationA_middle in Hp. now rewrite <- H, Hp. refine _. 
+      rewrite <- PermutationA_middle in Hp; autoclass. now rewrite <- H, Hp.
   - break_list l3' e l3'' H1; break_list l1' g l1'' H4.
       now constructor 2.
-      rewrite <- PermutationA_middle in Hp. rewrite permA_swap, <- H. now constructor 2. refine _.
-      rewrite permA_swap, PermutationA_middle, H. now constructor 2. refine _.
+      rewrite <- PermutationA_middle in Hp; autoclass. rewrite permA_swap, <- H. now constructor 2.
+      rewrite permA_swap, PermutationA_middle, H; autoclass. now constructor 2.
       now rewrite permA_swap, (IH a _ _ _ _ _ H eq_refl eq_refl).
 + (*trans*)
   intros.
@@ -831,7 +833,7 @@ End NoDupA_results.
 Lemma Permutation_NoDup {A : Type} : forall (l l' : list A), Permutation l l' -> NoDup l -> NoDup l'.
 Proof.
 intros ? ?. rewrite <- PermutationA_Leibniz. do 2 rewrite <- NoDupA_Leibniz.
-apply PermutationA_NoDupA. refine _.
+apply PermutationA_NoDupA; autoclass.
 Qed.
 
 (* Already exists as [Permutation.Permutation_NoDup'] *)
@@ -1453,7 +1455,7 @@ Lemma firstn_skipn_nodup_exclusive : forall l : list A, NoDup l ->
   forall n e, In e (firstn n l) -> In e (skipn n l) -> False.
 Proof.
 intros l Hnodup n. rewrite <- (firstn_skipn n) in Hnodup.
-rewrite <- NoDupA_Leibniz, NoDupA_app_iff in Hnodup; refine _.
+rewrite <- NoDupA_Leibniz, NoDupA_app_iff in Hnodup; autoclass.
 destruct Hnodup as [Hleft [Hright Hboth]]. now setoid_rewrite InA_Leibniz in Hboth.
 Qed.
 

@@ -259,7 +259,7 @@ refine {|
   zoom := f.(zoom) * g.(zoom);
   center := retraction g (retraction f Loc.origin) |}.
 Proof.
-+ simpl. abstract (now repeat rewrite section_retraction; refine _).
++ simpl. abstract (now repeat rewrite section_retraction; autoclass).
 + simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring).
 Defined.
 Global Infix "∘" := compose (left associativity, at level 59).
@@ -276,7 +276,7 @@ Proof.
 + abstract (apply (retraction_section _)).
 + assert (sim.(zoom) <> 0) by apply zoom_non_null.
   intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
-  rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; refine _. now field.
+  rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass. now field.
 Defined.
 Global Notation "s ⁻¹" := (inverse s) (at level 99).
 
@@ -284,10 +284,10 @@ Global Instance inverse_compat : Proper (eq ==> eq) inverse.
 Proof. intros f g Hfg x y Hxy. simpl. rewrite Hxy. f_equiv. apply Hfg. Qed.
 
 Lemma compose_inverse_l : forall sim : t, eq (sim ⁻¹ ∘ sim) id.
-Proof. intros sim x y Hxy. simpl. now rewrite retraction_section; refine _. Qed.
+Proof. intros sim x y Hxy. simpl. now rewrite retraction_section; autoclass. Qed.
 
 Lemma compose_inverse_r : forall sim : t, eq (sim ∘ (sim ⁻¹)) id.
-Proof. intros sim x y Hxy. simpl. now rewrite section_retraction; refine _. Qed.
+Proof. intros sim x y Hxy. simpl. now rewrite section_retraction; autoclass. Qed.
 
 Lemma inverse_compose : forall f g : t, eq ((f ∘ g) ⁻¹) ((g ⁻¹) ∘ (f ⁻¹)).
 Proof. intros f g x y Hxy. simpl. rewrite Hxy. reflexivity. Qed.
