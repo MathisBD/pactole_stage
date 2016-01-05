@@ -238,11 +238,11 @@ Defined.
 Set Implicit Arguments.
 
 Definition combine n m A (f : Fin.t n -> A) (g : Fin.t m -> A) : Fin.t (n + m) -> A.
-  refine (fun x =>
+  unshelve refine (fun x =>
       if eq_nat_dec m 0 then f _ else
       if (lt_dec (proj1_sig (Fin.to_nat x)) n) then f (Fin.of_nat_lt _) else g (Rinv n m _ x)).
-- subst m. rewrite plus_0_r in x. exact x.
 - exact (proj1_sig (Fin.to_nat x)).
+- subst m. rewrite plus_0_r in x. exact x.
 - assumption.
 - assumption.
 Defined.
