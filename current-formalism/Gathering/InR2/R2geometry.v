@@ -137,7 +137,7 @@ Qed.
 
 Lemma R2add_dist : forall w u v, R2.dist (u + w) (v + w) = R2.dist u v.
 Proof.
-intros [] [] []. unfold R2.dist, R2def.dist. f_equal. cbn.
+intros [? ?] [? ?] [? ?]. unfold R2.dist, R2def.dist. f_equal. cbn.
 replace (r1 + r - (r3 + r)) with (r1 - r3) by ring.
 replace (r2 + r0 - (r4 + r0)) with (r2 - r4) by ring.
 reflexivity.

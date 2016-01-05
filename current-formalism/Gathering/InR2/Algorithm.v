@@ -2275,6 +2275,18 @@ Proof.
   now rewrite <- Hsec.
 Qed.
 
+Lemma clean_triangle_support_permut_incl : forall conf ptx pty ptz,
+  is_clean (!! conf) = true ->
+  PermutationA R2.eq (on_SEC (Spect.support (!! conf)))  (ptx :: pty :: ptz :: nil) ->
+  inclA R2.eq (Spect.support (!! conf)) (target (!! conf) :: ptx :: pty :: ptz :: nil).
+Proof.
+  intros conf ptx pty ptz Hclean Hsec.
+  intros x Hin. 
+  rewrite is_clean_spec in Hclean.
+  apply Hclean in Hin.
+  now rewrite <- Hsec.
+Qed.
+
 (** ****  Lemmas about the equilateral triangle case  **)
 
 Lemma equilateral_target : forall conf ptx pty ptz,
@@ -2343,6 +2355,126 @@ Proof.
     + intros pt Hin. inversion_clear Hin.
       * rewrite H. now rewrite Spect.support_spec.
       * unfold on_SEC in Hfilter. now rewrite <- Hfilter, (filter_InA _) in H.
+Qed.
+
+Lemma isoscele_vertex_is_vertex: forall ptx pty ptz vertex,
+        classify_triangle ptx pty ptz = Isosceles vertex -> 
+        InA R2.eq vertex (ptx::pty::ptz::nil).
+Proof.
+  intros ptx pty ptz vertex H.
+  functional induction (classify_triangle ptx pty ptz);try discriminate;inversion H.
+  - right;left;reflexivity.
+  - right;right;left;reflexivity.
+  - left;reflexivity.
+Qed.
+
+
+Lemma scalene_vertex_is_vertex: forall ptx pty ptz,
+        classify_triangle ptx pty ptz = Scalene -> 
+        InA R2.eq (opposite_of_max_side ptx pty ptz) (ptx::pty::ptz::nil).
+Proof.
+  intros ptx pty ptz H.
+  functional induction (classify_triangle ptx pty ptz);try discriminate.
+  functional induction (opposite_of_max_side ptx pty ptz).
+  - right;left;reflexivity.
+  - left;reflexivity.
+  - right;left;reflexivity.
+  - right;right;left;reflexivity.
+Qed.
+
+Lemma isoscele_target_is_vertex: forall conf ptx pty ptz vertex,
+    classify_triangle ptx pty ptz = Isosceles vertex -> 
+    PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: ptz :: nil)
+    -> target (!! conf) = vertex.
+Proof.
+  intros conf ptx pty ptz vertex Htriangle Hsec.
+
+  unfold target.
+  destruct (on_SEC (Spect.support (!! conf))) eqn:heq.
+  - assert (@length R2.t nil = length (ptx :: pty :: ptz :: nil)).
+    { rewrite Hsec at 1.
+      reflexivity. }
+    cbn in H; omega.
+  - destruct l.
+    + assert (@length R2.t (t :: nil) = length (ptx :: pty :: ptz :: nil)).
+      { rewrite Hsec at 1.
+        reflexivity. }
+      cbn in H; omega.
+    + destruct l.
+      * assert (@length R2.t (t :: t0 :: nil) = length (ptx :: pty :: ptz :: nil)).
+        { rewrite Hsec at 1.
+          reflexivity. }
+        cbn in H; omega.
+      * destruct l.
+        -- assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+           destruct h.
+           specialize (H Hsec).
+           decompose [or and] H;
+             match goal with
+             | |- target_triangle ?x ?y ?z = ?v => 
+               assert (hhh:classify_triangle x y z = classify_triangle ptx pty ptz);
+                 [ eapply classify_triangle_compat;
+                   rewrite <- PermutationA_Leibniz;
+                   rewrite PermutationA_3;auto;autoclass
+                 | rewrite <- hhh in Htriangle;auto;
+                   unfold target_triangle; rewrite Htriangle;reflexivity]
+             end.
+           
+        -- assert (@length R2.t (t :: t0 :: t1 :: t2 :: l) = length (ptx :: pty :: ptz :: nil)).
+           { rewrite Hsec at 1.
+             reflexivity. }
+           cbn in H; omega.
+Qed.
+
+Lemma scalene_target_is_opposite_of_max_side: forall conf ptx pty ptz,
+    classify_triangle ptx pty ptz = Scalene -> 
+    PermutationA R2.eq (on_SEC (Spect.support (!! conf))) (ptx :: pty :: ptz :: nil)
+    -> target (!! conf) = opposite_of_max_side ptx pty ptz.
+Proof.
+  intros conf ptx pty ptz Htriangle Hsec.
+  remember (opposite_of_max_side ptx pty ptz) as vertex.
+  unfold target.
+  
+  destruct (on_SEC (Spect.support (!! conf))) eqn:heq.
+  - assert (@length R2.t nil = length (ptx :: pty :: ptz :: nil)).
+    { rewrite Hsec at 1.
+      reflexivity. }
+    cbn in H; omega.
+  - destruct l.
+    + assert (@length R2.t (t :: nil) = length (ptx :: pty :: ptz :: nil)).
+      { rewrite Hsec at 1.
+        reflexivity. }
+      cbn in H; omega.
+    + destruct l.
+      * assert (@length R2.t (t :: t0 :: nil) = length (ptx :: pty :: ptz :: nil)).
+        { rewrite Hsec at 1.
+          reflexivity. }
+        cbn in H; omega.
+      * destruct l.
+        -- assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+           destruct h.
+           specialize (H Hsec).
+           decompose [or and] H;
+             match goal with
+             | |- target_triangle ?x ?y ?z = ?v => 
+               assert (hhh:classify_triangle x y z = classify_triangle ptx pty ptz);
+                 [ eapply classify_triangle_compat;
+                   rewrite <- PermutationA_Leibniz;
+                   rewrite PermutationA_3;auto;autoclass
+                 | rewrite <- hhh in Htriangle;auto;
+                   unfold target_triangle; rewrite Htriangle;rewrite H2,H1,H4; symmetry; auto ]
+             end;
+             match goal with
+             | |- ?v = opposite_of_max_side ?x ?y ?z => 
+               assert (hhhh:opposite_of_max_side ptx pty ptz = opposite_of_max_side x y z);
+                 [ apply opposite_of_max_side_compat;[rewrite <- hhh;assumption|rewrite <- PermutationA_Leibniz;
+             rewrite PermutationA_3;auto 8;autoclass]
+                 | rewrite <- hhhh;assumption ]
+             end.
+        -- assert (@length R2.t (t :: t0 :: t1 :: t2 :: l) = length (ptx :: pty :: ptz :: nil)).
+           { rewrite Hsec at 1.
+             reflexivity. }
+           cbn in H; omega.
 Qed.
 
 (** ****  Merging results about the different kinds of triangles  **)
@@ -2428,6 +2560,10 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                   - apply Spect.support_NoDupA.
                   - rewrite <- Hsec'. unfold on_SEC. intro. rewrite (filter_InA _). intuition.
                   - rewrite <- Spect.size_spec. cbn. omega. }
+                rewrite <- Hsec' in Hperm'.
+                (* Triangle equilatéral: comme qqchose bouge et que on est encore avec 3
+                   colonne après, une colonne s'est déplacée vers le barycentre, contradiction:
+                   le barycentre ne peut pas être sur le SEC. *)
                 admit. }
             apply (NoDupA_equivlistA_PermutationA _).
             ** apply on_SEC_NoDupA, Spect.support_NoDupA.
@@ -2440,19 +2576,118 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                rewrite Hsec in Hnodup. inversion Hnodup. intuition.
       -- now apply dirty_next_on_SEC_same.
   + (* Isosceles case *)
+    assert (htarget:=isoscele_target_is_vertex conf Htriangle Hsec).
     right. split; trivial.
-    (* TODO: the SEC has not changed, same thing? *)
-    admit.
+    destruct (is_clean (!! conf)) eqn:Hclean.
+    -- destruct (moving gatherR2 da conf) as [| gmove ?] eqn:Hmoving.
+       ++ apply no_moving_same_conf in Hmoving. now rewrite Hmoving.
+       ++ assert (Hperm' : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                        (ptx :: pty :: ptz :: nil)).
+          { assert (forall x, In x (gmove :: l) -> (round gatherR2 da conf) x = vertex).
+            { rewrite <- htarget.
+              intros x H3.
+              apply destination_is_target;auto.
+              rewrite Hmoving.
+              assumption. }
+            assert (h_vertex:=isoscele_vertex_is_vertex _ _ _ Htriangle).
+            assert (H_supp: PermutationA R2.eq (Spect.support (!! conf)) (ptx :: pty :: ptz :: nil)).
+            { rewrite is_clean_spec in Hclean.
+              unfold SECT in Hclean.
+              rewrite Hsec in Hclean.
+              apply inclA_cons_InA in Hclean;autoclass;auto.
+              - apply NoDupA_inclA_length_PermutationA;autoclass.
+                + apply Spect.support_NoDupA;auto.
+                + rewrite <- Hsec.
+                  apply on_SEC_NoDupA.
+                  apply Spect.support_NoDupA;auto.
+                + transitivity (length (on_SEC (Spect.support (!! conf)))).
+                  -- rewrite Hsec.
+                     reflexivity.
+                  -- unfold on_SEC. 
+                     rewrite filter_length.
+                     omega.
+              - rewrite htarget.
+                assumption. }
+
+            apply NoDupA_inclA_length_PermutationA; autoclass.
+            - apply Spect.support_NoDupA.
+            - rewrite <- Hsec.
+              apply on_SEC_NoDupA, Spect.support_NoDupA.
+            - transitivity (target (!! conf) :: ptx :: pty :: ptz :: nil).
+              + rewrite <- H_supp.
+                apply incl_next.
+              + apply inclA_Leibniz.
+                apply incl_cons.
+                * rewrite htarget.
+                  apply InA_Leibniz.
+                  assumption.
+                * apply inclA_Leibniz.
+                  reflexivity.
+            - rewrite Spect.size_spec in Hlen'.
+              apply Hlen'. }
+          rewrite Hperm'.
+          rewrite <- Hsec.
+          apply on_SEC_idempotent.
+    -- now apply dirty_next_on_SEC_same.
   + (* Scalene case *)
+    assert (htarget:= scalene_target_is_opposite_of_max_side conf Htriangle Hsec).
     right. split; trivial.
     (* TODO: the SEC has not changed, same thing? *)
-    admit.
-(*  assert (Hincl := incl_next da conf).
-  destruct (on_SEC (Spect.support (!! conf))) as [| ptx' [| pty' [| ptz' [| ? ?]]]] eqn:Hsec';
-  simpl in Hsec; discriminate || clear Hsec.
-  destruct (is_clean (!! conf)) eqn:Hclean.
-  + admit.
-  + rewrite dirty_next_SEC_same; trivial. now rewrite Hsec'.*)
+    destruct (is_clean (!! conf)) eqn:Hclean.
+    -- destruct (moving gatherR2 da conf) as [| gmove ?] eqn:Hmoving.
+       ++ apply no_moving_same_conf in Hmoving. now rewrite Hmoving.
+       ++
+         remember (opposite_of_max_side ptx pty ptz) as vertex.
+         assert (Hperm' : PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                                        (ptx :: pty :: ptz :: nil)).
+          { assert (forall x, In x (gmove :: l) -> (round gatherR2 da conf) x = vertex).
+            { rewrite <- htarget.
+              intros x H3.
+              apply destination_is_target;auto.
+              rewrite Hmoving.
+              assumption. }
+            assert (h_vertex:=scalene_vertex_is_vertex _ _ _ Htriangle).
+            assert (H_supp: PermutationA R2.eq (Spect.support (!! conf)) (ptx :: pty :: ptz :: nil)).
+            { rewrite is_clean_spec in Hclean.
+              unfold SECT in Hclean.
+              rewrite Hsec in Hclean.
+              apply inclA_cons_InA in Hclean;autoclass;auto.
+              - apply NoDupA_inclA_length_PermutationA;autoclass.
+                + apply Spect.support_NoDupA;auto.
+                + rewrite <- Hsec.
+                  apply on_SEC_NoDupA.
+                  apply Spect.support_NoDupA;auto.
+                + transitivity (length (on_SEC (Spect.support (!! conf)))).
+                  -- rewrite Hsec.
+                     reflexivity.
+                  -- unfold on_SEC. 
+                     rewrite filter_length.
+                     omega.
+              - subst.
+                rewrite htarget.
+                assumption. }
+
+            apply NoDupA_inclA_length_PermutationA; autoclass.
+            - apply Spect.support_NoDupA.
+            - rewrite <- Hsec.
+              apply on_SEC_NoDupA, Spect.support_NoDupA.
+            - transitivity (target (!! conf) :: ptx :: pty :: ptz :: nil).
+              + rewrite <- H_supp.
+                apply incl_next.
+              + apply inclA_Leibniz.
+                apply incl_cons.
+                * subst.
+                  rewrite htarget.
+                  apply InA_Leibniz.
+                  assumption.
+                * apply inclA_Leibniz.
+                  reflexivity.
+            - rewrite Spect.size_spec in Hlen'.
+              apply Hlen'. }
+          rewrite Hperm'.
+          rewrite <- Hsec.
+          apply on_SEC_idempotent.
+    -- now apply dirty_next_on_SEC_same.
 Admitted.
 
 (** ***  Lemmas about the generic case  **)
