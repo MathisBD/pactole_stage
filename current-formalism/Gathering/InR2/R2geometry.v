@@ -244,6 +244,17 @@ Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
 Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
 
 
+Lemma R2dist_middle : forall pt1 pt2,
+  R2.dist pt1 (R2.middle pt1 pt2) = /2 * R2.dist pt1 pt2.
+Proof.
+intros pt1 pt2.
+replace pt1 with (/2 * pt1 + /2 * pt1)%R2 at 1.
++ unfold R2.middle. rewrite R2.mul_distr_add. setoid_rewrite R2.add_comm.
+  replace (1/2) with (/2) by field. rewrite R2add_dist.
+  rewrite R2mul_dist. rewrite Rabs_pos_eq; lra.
++ rewrite R2.add_morph. replace (/ 2 + / 2) with 1 by field. apply R2.mul_1.
+Qed.
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=
@@ -483,7 +494,9 @@ Qed.
 Instance on_circle_compat : Proper (eq ==> R2.eq ==> eq) on_circle.
 Proof. repeat intro. unfoldR2 in H0. now subst. Qed.
 
-(*
+Lemma on_circle_true_iff : forall c pt, on_circle c pt = true <-> R2.dist pt (center c) = radius c.
+Proof. intros c pt. unfold on_circle. now rewrite Rdec_bool_true_iff. Qed.
+
 Lemma three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
   on_circle c1 pt1 = true -> on_circle c1 pt2 = true -> on_circle c1 pt3 = true ->
   on_circle c2 pt1 = true -> on_circle c2 pt2 = true -> on_circle c2 pt3 = true ->
@@ -493,7 +506,7 @@ intros [c1 r1] [c2 r2] pt1 pt2 pt3 Hc1_pt1 Hc1_pt2 Hc1_pt3 Hc2_pt1 Hc2_pt2 Hc2_p
 unfold on_circle in *; cbn in *; rewrite Rdec_bool_true_iff in *.
 Check GPS.
 Admitted.
-*)
+
 
 (** We assume the existence of a primitive SEC computing the smallest enclosing circle,
     given by center and radius. *)
@@ -518,7 +531,7 @@ Definition center_eq c1 c2 := c1.(center) = c2.(center).
 Definition radius_eq c1 c2 := c1.(radius) = c2.(radius).
 
 (** Unicity proof of the radius of the SEC *)
-Lemma SEC_radius_compat :
+Instance SEC_radius_compat :
   Proper (@Permutation _ ==> center_eq) SEC -> Proper (@Permutation _ ==> radius_eq) SEC.
 Proof.
 intros Hspec l1 l2 Hperm.
@@ -541,6 +554,10 @@ intros pt l. induction l as [| e l]; intro acc; simpl.
   - apply Rmax_l.
   - apply IHl.
 Qed.
+
+Corollary max_dist_pos : forall pt l, 0 <= max_dist pt l.
+Proof. intros. apply max_dist_le_acc. Qed.
+
 (*
 Lemma max_dist_le_mono : forall pt l, Proper (Rle ==> Rle) (List.fold_left (fun r x => Rmax r (R2.dist x pt)) l).
 Proof.
@@ -594,6 +611,35 @@ apply Rle_antisym.
   - destruct (@max_dist_exists (center (SEC (e :: l))) (e :: l)) as [pt [Hin Heq]]; try discriminate; [].
     rewrite <- Heq. now apply SEC_spec1.
 Qed.
+
+Lemma max_dist_incl_compat : forall pt l1 l2, incl l1 l2 -> max_dist pt l1 <= max_dist pt l2.
+Proof.
+intros pt l1. induction l1; intros l2 Hincl.
++ cbn. apply max_dist_pos.
++ rewrite max_dist_cons. apply Rmax_lub.
+  - apply max_dist_le. apply Hincl. now left.
+  - apply IHl1. intros pt' Hin. apply Hincl. now right.
+Qed.
+
+(* If we add more points the radius of the SEC cannot decrease. *)
+Lemma max_dist_enclosing : forall pt l, enclosing_circle {| center := pt; radius := max_dist pt l |} l.
+Proof.
+intros pt l. induction l as [| e l].
++ apply enclosing_circle_nil.
++ intros pt' Hin. simpl. inversion Hin.
+  - subst. rewrite max_dist_cons. apply Rmax_l.
+  - apply IHl in H. simpl in H. transitivity (max_dist pt l); trivial; [].
+    rewrite max_dist_cons. apply Rmax_r.
+Qed.
+
+Lemma SEC_incl_compat : forall l1 l2, incl l1 l2 -> radius (SEC l1) <= radius (SEC l2).
+Proof.
+intros l1 l2 Hincl.
+transitivity (max_dist (center (SEC l2)) l1).
+- apply (SEC_spec2 (max_dist_enclosing (center (SEC l2)) l1)).
+- rewrite radius_is_max_dist. now apply max_dist_incl_compat.
+Qed.
+
 
 Lemma SEC_reached : forall l, l <> nil ->
   exists pt, In pt l /\ on_circle (SEC l) pt = true.
@@ -655,6 +701,7 @@ intro pt. symmetry. apply SEC_unicity.
 - simpl. rewrite radius_is_max_dist, max_dist_singleton. apply R2.dist_pos.
 Qed.
 
+(* OK even when the points are the same *)
 Lemma SEC_dueton : forall pt1 pt2,
   SEC (pt1 :: pt2 :: nil) = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
 Proof. Admitted.
@@ -996,6 +1043,40 @@ destruct (Rdec_bool (R2.dist pt1 (R2.middle pt1 pt2)) (/ 2 * R2.dist pt1 pt2)) e
   setoid_rewrite R2dist_ref_0.
   unfold R2.middle. rewrite <- (Rabs_pos_eq (/2)); try lra. rewrite <- R2mul_dist, R2.mul_origin. f_equal.
   destruct pt1, pt2. compute. f_equal; field.
+Qed.
+
+Lemma on_SEC_pair_is_diameter : forall pt1 pt2 l, on_SEC l = pt1 :: pt2 :: nil ->
+  SEC l = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
+Proof.
+Admitted.
+
+Lemma enclosing_twice_same_SEC : forall l1 l2,
+  enclosing_circle (SEC l1) l2 -> enclosing_circle (SEC l2) l1 -> SEC l1 = SEC l2.
+Proof.
+intros l1 l2 Hencl12 Hencl21. apply SEC_unicity.
+- assumption.
+- now apply SEC_spec2.
+Qed.
+
+
+
+Lemma SEC_min_radius : forall pt1 pt2 l, In pt1 l -> In pt2 l -> /2 * R2.dist pt1 pt2 <= radius (SEC l).
+Proof.
+intros pt1 pt2 l Hpt1 Hpt2.
+assert (Hperm : exists l', Permutation l (pt1 :: l')).
+{ rewrite <- InA_Leibniz in Hpt1. setoid_rewrite <- PermutationA_Leibniz.
+  apply PermutationA_split; autoclass. }
+destruct Hperm as [l' Hperm]. rewrite Hperm in *. clear Hpt1 Hperm l.
+destruct (R2.eq_dec pt1 pt2) as [Heq | Heq].
++ rewrite Heq. rewrite R2_dist_defined_2. replace (/2 * 0) with 0 by ring.
+  rewrite radius_is_max_dist. apply max_dist_pos.
++ assert (Hperm : exists l, Permutation l' (pt2 :: l)).
+  { rewrite <- InA_Leibniz in Hpt2. setoid_rewrite <- PermutationA_Leibniz.
+    apply PermutationA_split; autoclass.
+    inversion_clear Hpt2; trivial. subst. now elim Heq. }
+  destruct Hperm as [l Hperm]. rewrite Hperm in *. clear Hpt2 Hperm l'.
+  change (/2 * R2.dist pt1 pt2) with (radius {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}).
+  rewrite <- SEC_dueton. apply SEC_incl_compat. intro. cbn. intuition.
 Qed.
 
 Lemma SEC_add_same :

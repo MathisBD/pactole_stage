@@ -136,7 +136,7 @@ Proof.
 unfold Rigid_Flex_da, Rigid.round, Flex.round.
 intros δ r [] conf [g | b]; simpl.
 + destruct (step (Good g)).
-  - rewrite the_chosen_one; try reflexivity. refine _. refine _.
+  - rewrite the_chosen_one; autoclass. reflexivity. refine _.
   - reflexivity.
 + now destruct (step (Byz b)).
 Qed.
@@ -147,7 +147,7 @@ Proof.
 unfold Flex_Rigid_da, Rigid.round, Flex.round, rigid.
 intros δ r [] conf Hda [g | b]; simpl in *.
 + specialize (Hda (Good g)). destruct (step (Good g)) as [[sim ρ] |] eqn:Heq.
-  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one; try reflexivity. refine _. refine _.
+  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one; autoclass. reflexivity. refine _.
   - reflexivity.
 + now destruct (step (Byz b)) as [[] |].
 Qed.

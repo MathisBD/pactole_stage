@@ -35,7 +35,6 @@ Import Permutation.
 Set Implicit Arguments.
 
 
-Ltac autoclass := eauto with typeclass_instances.
 (* Ltac destruct_InA := match goal with H : InA R2.eq _ _ |- _ => inversion_clear H end. *)
 
 Function target_triangle (pt1 pt2 pt3 : R2.t) : R2.t :=
@@ -1080,7 +1079,7 @@ transitivity 3;auto.
 apply nG_conf.
 Qed.
 
-Lemma support_max_1_not_forbidden : forall config pt,
+Lemma Majority_not_forbidden : forall config pt,
   MajTower_at pt config -> ~forbidden config.
 Proof.
 intros config pt Hmaj. rewrite MajTower_at_equiv in Hmaj.
@@ -1127,7 +1126,7 @@ Proof.
   - intro Hforbidden. split.
     + rewrite Spect.size_spec. destruct (Spect.support (Spect.max (!! conf))) as [| pt1 [| pt2 l]] eqn:Hmax.
       * exfalso. revert Hmax. apply support_max_non_nil.
-      * exfalso. revert Hmax Hforbidden. rewrite <- MajTower_at_equiv. apply support_max_1_not_forbidden.
+      * exfalso. revert Hmax Hforbidden. rewrite <- MajTower_at_equiv. apply Majority_not_forbidden.
       * simpl. omega.
     + now apply forbidden_support_length.
   - intros [Hlen H2]. rewrite Spect.size_spec in *.
@@ -1352,14 +1351,6 @@ Proof.
 Qed.
 
 
-Theorem Majority_not_forbidden : forall pt config,
-  Spect.support (Spect.max (!! config)) = pt :: nil -> ~forbidden config.
-Proof.
-intros pt config Hmaj. rewrite forbidden_equiv. unfold no_Majority. intros [Hmaj' _].
-rewrite Spect.size_spec, Hmaj in Hmaj'. simpl in *. omega.
-Qed.
-
-
 (** Generic result of robograms using multiset spectra. *)
 Lemma increase_move :
   forall r conf da pt,
@@ -1470,6 +1461,84 @@ rewrite <- (Spect.cardinal_from_config config).
 apply Spect.cardinal_sub_compat, Spect.filter_subset; autoclass.
 Qed.
 
+Lemma target_inside_SEC : forall config,
+  no_Majority config ->
+  (R2.dist (target (!! config)) (center (SEC (Spect.support (!! config))))
+   <= radius (SEC (Spect.support (!! config))))%R.
+Proof.
+intros config Hmaj. unfold target.
+assert (Hlen := no_Majority_on_SEC_length Hmaj).
+destruct (on_SEC (Spect.support (!! config))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hsec;
+simpl in Hlen; omega || clear Hlen; [| |].
++ rewrite SEC_on_SEC, Hsec. apply middle_in_SEC_diameter.
++ rewrite SEC_on_SEC, Hsec. unfold target_triangle.
+  destruct (classify_triangle pt1 pt2 pt3) eqn:Htriangle.
+  - apply barycenter_3_pts_inside_SEC.
+  - rewrite classify_triangle_Isosceles_spec in Htriangle.
+    assert (Hin : InA R2.eq vertex (on_SEC (Spect.support (!! config)))).
+    { rewrite Hsec. decompose [and or] Htriangle; subst; intuition. }
+    unfold on_SEC in Hin. rewrite filter_InA in Hin; autoclass. destruct Hin as [_ Hin].
+    rewrite on_circle_true_iff, SEC_on_SEC, Hsec in Hin. now rewrite Hin.
+  - unfold opposite_of_max_side. unfold Rle_bool.
+    do 2 match goal with |- context[Rle_dec ?x ?y] => destruct (Rle_dec x y) end;
+    match goal with |- (R2.dist ?pt _ <= _)%R =>
+      assert (Hin : InA R2.eq pt (on_SEC (Spect.support (!! config)))) by (rewrite Hsec; intuition);
+      unfold on_SEC in Hin; rewrite filter_InA in Hin; autoclass; []; rewrite <- Hsec, <- SEC_on_SEC;
+      destruct Hin as [_ Hin]; rewrite on_circle_true_iff in Hin; now rewrite Hin
+    end.
++ rewrite R2_dist_defined_2.
+  rewrite SEC_on_SEC, Hsec, radius_is_max_dist.
+  transitivity (R2.dist pt1 (center (SEC (pt1 :: pt2 :: pt3 :: t :: l)))).
+  - apply R2.dist_pos.
+  - apply max_dist_le. intuition.
+Qed.
+
+Lemma target_on_SEC_already_occupied : forall config,
+  no_Majority config ->
+  on_circle (SEC (Spect.support (!! config))) (target (!! config)) = true ->
+  InA R2.eq (target (!! config)) (Spect.support (!! config)).
+Proof.
+intros config Hmaj Htarget.
+rewrite SEC_on_SEC in Htarget. unfold target in *.
+assert (Hlen := no_Majority_on_SEC_length Hmaj).
+assert (Hnodup : NoDupA R2.eq (on_SEC (Spect.support (!! config)))).
+{ unfold on_SEC. apply Preliminary.NoDupA_filter_compat, Spect.support_NoDupA; autoclass. }
+destruct (on_SEC (Spect.support (!! config))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hsec;
+simpl in Hlen; omega || clear Hlen; [| |].
++ exfalso.
+  assert (Heq : R2.eq pt1 pt2).
+  { rewrite SEC_dueton in Htarget.
+    rewrite on_circle_true_iff in Htarget. cbn in Htarget.
+    rewrite R2_dist_defined_2 in Htarget.
+    rewrite <- R2.dist_defined. lra. }
+  inversion_clear Hnodup. intuition.
++ unfold target_triangle in *. destruct (classify_triangle pt1 pt2 pt3) eqn:Htriangle.
+  - exfalso.
+    rewrite triangle_barycenter_inside in Htarget; try discriminate; [].
+    inversion_clear Hnodup. intuition.
+  - rewrite classify_triangle_Isosceles_spec in Htriangle.
+    decompose [and or] Htriangle; subst; clear Htriangle;
+    match goal with |- InA R2.eq ?pt (Spect.support (!! config)) =>
+      assert (Hin : InA R2.eq pt (pt1 :: pt2 :: pt3 :: nil)) by intuition;
+      rewrite <- Hsec in Hin; unfold on_SEC in Hin; now rewrite filter_InA in Hin; autoclass
+    end.
+  - unfold opposite_of_max_side. unfold Rle_bool.
+    do 2 match goal with |- context[Rle_dec ?x ?y] => destruct (Rle_dec x y) end;
+    match goal with |- InA R2.eq ?pt (Spect.support (!! config)) =>
+      assert (Hin : InA R2.eq pt (pt1 :: pt2 :: pt3 :: nil)) by intuition;
+      rewrite <- Hsec in Hin; unfold on_SEC in Hin; now rewrite filter_InA in Hin; autoclass
+    end.
++ exfalso.
+  setoid_rewrite SEC_on_SEC in Htarget at 2. rewrite Hsec in Htarget.
+  rewrite SEC_zero_radius_center in Htarget.
+  rewrite SEC_zero_radius_incl_singleton in Htarget. destruct Htarget as [pt Hpt].
+  assert (Heq : R2.eq pt1 pt2).
+  { transitivity pt.
+    - specialize (Hpt pt1). cbn in Hpt. intuition.
+    - specialize (Hpt pt2). cbn in Hpt. intuition. }
+  inversion_clear Hnodup. intuition.
+Qed.
+
 Lemma incl_next : forall da conf,
     (inclA R2.eq
            (Spect.support (!! (round gatherR2 da conf)))
@@ -1536,6 +1605,31 @@ Proof.
     + now rewrite <- inclA_Leibniz, <- is_clean_spec.
 Qed.
 
+Lemma next_SEC_enclosed : forall da config,
+  no_Majority config -> 
+  enclosing_circle (SEC (Spect.support (!! config))) (Spect.support (!! (round gatherR2 da config))).
+Proof.
+intros da config Hmaj pt Hin.
+rewrite <- InA_Leibniz, Spect.support_In in Hin. unfold Spect.In in Hin.
+rewrite Spect.from_config_spec, Spect.Config.list_spec in Hin.
+induction Spect.Names.names as [| id l]; simpl in *; try omega; [].
+R2dec_full in Hin; try (now apply IHl); [].
+rewrite <- Heq.
+rewrite round_simplify; trivial; []. simpl.
+destruct (step da id).
+* assert (Hmax := Hmaj). rewrite no_Majority_equiv in Hmax. destruct Hmax as [pt1 [pt2 [lmax Hmax]]]. rewrite Hmax.
+  destruct (is_clean (!! config)).
+  + now apply target_inside_SEC.
+  + destruct (mem R2.eq_dec (config id) (SECT (!! config))) eqn:Hmem.
+    - apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
+    - now apply target_inside_SEC.
+* apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
+Qed.
+
+Lemma next_SEC_smaller : forall da config,
+  no_Majority config ->
+  (radius (SEC (Spect.support (!! (round gatherR2 da config)))) <= radius (SEC (Spect.support (!! config))))%R.
+Proof. intros. now apply SEC_spec2, next_SEC_enclosed. Qed.
 
 (* It is in fact the lemma not_forbidden_no_majority_size *)
 Check not_forbidden_no_majority_size.
@@ -1567,112 +1661,95 @@ Qed.
 *)
 
 (* To prove dirty_next_on_SEC_same below, we first prove that any point on the SEC does not move. *)
-Lemma dirty_next_still_on_SEC : forall da conf id,
-  no_Majority conf ->
-  is_clean (!! conf) = false ->
-  on_circle (SEC (Spect.support (!! conf))) (conf id) = true ->
-  round gatherR2 da conf id = conf id.
+Lemma dirty_next_still_on_SEC : forall da config id,
+  no_Majority config ->
+  is_clean (!! config) = false ->
+  on_circle (SEC (Spect.support (!! config))) (config id) = true ->
+  round gatherR2 da config id = config id.
 Proof.
-intros da conf id Hmaj Hclean Hcircle.
+intros da config id Hmaj Hclean Hcircle.
 rewrite round_simplify_dirty; trivial; [].
 destruct (step da id); trivial; [].
-destruct (mem R2.eq_dec (conf id) (SECT (!! conf))) eqn:Hmem; trivial; [].
+destruct (mem R2.eq_dec (config id) (SECT (!! config))) eqn:Hmem; trivial; [].
 rewrite mem_false_iff in Hmem. elim Hmem.
 unfold SECT. right. unfold on_SEC. rewrite filter_InA; autoclass; [].
 split; trivial; [].
 rewrite Spect.support_In. apply Spect.pos_in_config.
 Qed.
 
-Lemma target_inside_SEC : forall config,
+(* Other proof idea:
+   1) split points on and outside the SEC
+   2) the one outside can be removed:
+      - if they move, they are on the target which is inside the disk (target_inside_SEC)
+        and if on the SEC, there was already someone at that location (target_on_SEC_already occupied)
+      - if they stay still, they were already strictly inside the SEC
+   3) same relevant points, same SEC. *)
+Lemma dirty_next_SEC_same : forall da config,
   no_Majority config ->
-  (R2.dist (target (!! config)) (center (SEC (Spect.support (!! config))))
-   <= radius (SEC (Spect.support (!! config))))%R.
+  is_clean (!! config) = false ->
+  SEC (Spect.support (!! (round gatherR2 da config))) = SEC (Spect.support (!! config)).
 Proof.
-intros config Hmaj. unfold target.
+intros da config Hmaj Hclean.
 assert (Hlen := no_Majority_on_SEC_length Hmaj).
-destruct (on_SEC (Spect.support (!! config))) as [| pt1 [| pt2 [| pt3 [| ? ?]]]] eqn:Hsec;
-simpl in Hlen; omega || clear Hlen; [| |].
-+ rewrite SEC_on_SEC, Hsec. apply middle_in_SEC_diameter.
-+ rewrite SEC_on_SEC, Hsec. unfold target_triangle.
-  destruct (classify_triangle pt1 pt2 pt3) eqn:Htriangle.
-  - apply barycenter_3_pts_inside_SEC.
-  - rewrite classify_triangle_Isosceles_spec in Htriangle.
-    admit.
-  - rewrite classify_triangle_Scalene_spec in Htriangle.
-    admit.
-+ rewrite R2_dist_defined_2.
-  rewrite SEC_on_SEC, Hsec, radius_is_max_dist.
-  transitivity (R2.dist pt1 (center (SEC (pt1 :: pt2 :: pt3 :: t :: l)))).
-  - apply R2.dist_pos.
-  - apply max_dist_le. intuition.
+destruct (on_SEC (Spect.support (!! config))) as [| pt1 [| pt2 [| pt3 ?]]] eqn:HonSEC;
+simpl in Hlen; omega || clear Hlen; [|].
+* (* 2 points on the SEC, it is a diameter *)
+  assert (Hsec := on_SEC_pair_is_diameter _ HonSEC). rewrite Hsec.
+  symmetry. apply SEC_unicity.
+  + rewrite <- Hsec. now apply next_SEC_enclosed.
+  + simpl. apply SEC_min_radius; rewrite <- InA_Leibniz.
+    - assert (Hpt1 : InA R2.eq pt1 (on_SEC (Spect.support (!! config)))) by (rewrite HonSEC; intuition).
+      unfold on_SEC in Hpt1. rewrite filter_InA in Hpt1; autoclass. destruct Hpt1 as [Hpt1 Hcircle1].
+      rewrite Spect.support_spec, Spect.from_config_In in Hpt1. destruct Hpt1 as [id Hpt1].
+      rewrite <- Hpt1 in Hcircle1. apply (dirty_next_still_on_SEC da id Hmaj Hclean) in Hcircle1.
+      rewrite <- Hpt1, <- Hcircle1. rewrite Spect.support_spec. apply Spect.pos_in_config.
+    - assert (Hpt2 : InA R2.eq pt2 (on_SEC (Spect.support (!! config)))) by (rewrite HonSEC; intuition).
+      unfold on_SEC in Hpt2. rewrite filter_InA in Hpt2; autoclass. destruct Hpt2 as [Hpt2 Hcircle2].
+      rewrite Spect.support_spec, Spect.from_config_In in Hpt2. destruct Hpt2 as [id Hpt2].
+      rewrite <- Hpt2 in Hcircle2. apply (dirty_next_still_on_SEC da id Hmaj Hclean) in Hcircle2.
+      rewrite <- Hpt2, <- Hcircle2. rewrite Spect.support_spec. apply Spect.pos_in_config.
+* (* At least 3 points on the SEC, they stay on it, thus same circle *)
+  symmetry. apply three_points_same_circle with pt1 pt2 pt3; 
+  try match goal with |- on_circle _ ?pt = true =>
+      assert (Hin : InA R2.eq pt (pt1 :: pt2 :: pt3 :: l)) by intuition;
+      rewrite <- HonSEC in Hin; unfold on_SEC in Hin; now rewrite filter_InA in Hin; autoclass
+  end; [| |].
+  + assert (Hin : InA R2.eq pt1 (pt1 :: pt2 :: pt3 :: l)) by intuition.
+    rewrite <- HonSEC in Hin; unfold on_SEC in Hin; rewrite filter_InA in Hin; autoclass; [].
+    destruct Hin as [Hin Hcircle]. rewrite Spect.support_spec, Spect.from_config_In in Hin.
+    destruct Hin as [id Hin]. rewrite <- Hin in Hcircle.
+    assert (Hid := dirty_next_still_on_SEC da id Hmaj Hclean Hcircle).
+    rewrite <- Hin, <- Hid, on_circle_true_iff.
+    apply Rle_antisym.
+    - apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
+    - etransitivity; try now apply next_SEC_smaller; [].
 Admitted.
 
-Lemma dirty_next_SEC_smaller : forall da conf,
-  no_Majority conf ->
-  is_clean (!! conf) = false ->
-  enclosing_circle (SEC (Spect.support (!! conf))) (Spect.support (!! (round gatherR2 da conf))).
+Lemma dirty_next_on_SEC_same : forall da config,
+  no_Majority config ->
+  is_clean (!! config) = false ->
+  PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da config)))) (on_SEC (Spect.support (!! config))).
 Proof.
-intros da conf Hmaj Hclean pt Hin.
-rewrite <- InA_Leibniz, Spect.support_In in Hin. unfold Spect.In in Hin.
-rewrite Spect.from_config_spec, Spect.Config.list_spec in Hin.
-induction Spect.Names.names as [| id l]; simpl in *; try omega; [].
-R2dec_full in Hin; try (now apply IHl); [].
-rewrite <- Heq.
-rewrite round_simplify_dirty; trivial; [].
-destruct (step da id).
-+ destruct (mem R2.eq_dec (conf id) (SECT (!! conf))) eqn:Hmem.
-  - apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
-  - now apply target_inside_SEC.
-+ apply SEC_spec1. rewrite <- InA_Leibniz, Spect.support_In. apply Spect.pos_in_config.
-Qed.
-
-(* To prove this results:
-   - split the (!! conf) into two parts, the SEC and the rest
-   - prove that the rest can be ommitted to define the SEC as it is closer to the center
-   - use the previous lemma *)
-Lemma dirty_next_on_SEC_same : forall da conf,
-(*   ~forbidden conf -> *)
-  no_Majority conf ->
-  is_clean (!! conf) = false ->
-  PermutationA R2.eq (on_SEC (Spect.support (!! (round gatherR2 da conf)))) (on_SEC (Spect.support (!! conf))).
-Proof.
-Admitted.
-(*
-intros da conf Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
+intros da config Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
 - unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
 - unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
 - intro pt.
-  unfold on_SEC in *. do 2 (rewrite filter_InA; autoclass); [].
-  split; intros [Hin Hcircle].
-  + rewrite dirty_next_SEC_same in Hcircle; trivial; split; trivial; [].
-    rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
-    admit.
+  unfold on_SEC in *. rewrite dirty_next_SEC_same; trivial; [].
+  do 2 (rewrite filter_InA; autoclass); [].
+  split; intros [Hin Hcircle]; split; trivial; [|].
+  + rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
+    rewrite round_simplify_dirty in Hid; trivial; [].
+    destruct (step da id).
+    * destruct (mem R2.eq_dec (config id) (SECT (!! config))) eqn:Hmem.
+      -- rewrite <- Hid, Spect.support_In. apply Spect.pos_in_config.
+      -- rewrite <- Hid in *. clear Hid pt.
+         now apply target_on_SEC_already_occupied.
+    * rewrite <- Hid, Spect.support_In. apply Spect.pos_in_config.
   + rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
     rewrite <- Hid in *.
-    assert (Heq : round gatherR2 da conf id = conf id) by now apply dirty_next_still_on_SEC.
-    split.
-    * rewrite <- Heq, Spect.support_In. apply Spect.pos_in_config.
-    * now rewrite dirty_next_SEC_same.
-Restart.
-intros da conf Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
-- unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
-- unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), Spect.support_NoDupA.
-- intro pt. split.
-  + unfold on_SEC in *. rewrite (filter_InA _). rewrite (filter_InA _) in Hin. destruct Hin as [Hin Hcircle].
-    rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
-    unfold on_circle in Hcircle. rewrite Rdec_bool_true_iff in Hcircle.
-    admit.
-  + unfold on_SEC in *. rewrite (filter_InA _). rewrite (filter_InA _) in Hin. destruct Hin as [Hin Hcircle].
-    rewrite Spect.support_In, Spect.from_config_In in Hin. destruct Hin as [id Hid].
-    rewrite round_simplify_dirty; trivial. split.
-    * rewrite Spect.support_In, Spect.from_config_In. exists id. destruct (step da id); trivial.
-      assert (Htest : mem R2.eq_dec (conf id) (SECT (!! conf)) = true).
-      { rewrite mem_true_iff. unfold SECT. right. unfold on_SEC. rewrite (filter_InA _).
-        rewrite <- Hid in Hcircle. split; trivial. rewrite Spect.support_In. apply Spect.pos_in_config. }
-      now rewrite Htest.
-    * admit.
-Admitted.
-*)
+    assert (Heq : round gatherR2 da config id = config id) by now apply dirty_next_still_on_SEC.
+    rewrite <- Heq, Spect.support_In. apply Spect.pos_in_config.
+Qed.
 
 Lemma same_on_SEC_same_target : forall config1 config2,
   PermutationA R2.eq (on_SEC (Spect.support (!! config1))) (on_SEC (Spect.support (!! config2))) ->
