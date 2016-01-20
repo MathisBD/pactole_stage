@@ -2537,6 +2537,21 @@ Proof.
   * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
 Qed.
 
+Lemma inclA_skip: forall (A : Type) (eqA : relation A),
+    Equivalence eqA ->
+    forall (x : A) (l1 l2 : list A), ~ InA eqA x l1 -> inclA eqA l1 (x :: l2) -> inclA eqA l1 l2. 
+Proof.
+  intros A eqA H x l1 l2 H0 H1.
+  unfold inclA in H1.
+  red.
+  intros x0 H2.
+  specialize (H1 x0 H2).
+  inversion H1;subst. (* Why does destruct fail here? *)
+  - rewrite ?H4 in *.
+    contradiction.
+  - assumption.
+Qed.
+
 (** ****  Merging results about the different kinds of triangles  **)
 
 Lemma triangle_next_maj_or_diameter_or_triangle : forall da conf,
@@ -2711,8 +2726,17 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                 }
             --- (* (ptx :: pty :: ptz :: nil) = (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)
                    contradiction with calssify_triangle = equilateral *)
-              assert (Permutation (ptx :: pty :: ptz :: nil) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
-              { admit. }
+              assert (PermutationA R2.eq (ptx :: pty :: ptz :: nil) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
+              { apply inclA_skip in H0;autoclass.
+                - symmetry.
+                  apply NoDupA_inclA_length_PermutationA with (1:=R2.eq_equiv);auto.
+                  + rewrite <- H.
+                    apply Spect.support_NoDupA;auto.
+                  + rewrite <- Hsec.
+                    apply on_SEC_NoDupA;auto.
+                    apply Spect.support_NoDupA;auto.
+                - rewrite InA_Leibniz.
+                  assumption. }
               assert (classify_triangle (R2.middle pt1 pt2) pt1 pt2 = Equilateral).
               { rewrite (classify_triangle_compat H1) in Htriangle.
                 assumption. }
