@@ -2126,6 +2126,19 @@ Ltac contradict_middle :=
         contradict_middle_aux ptx pty H H' conf
       end.
 
+Lemma middle_diff: forall ptx pty,
+    ptx <> pty
+    -> ~ InA R2.eq (R2.middle ptx pty) (ptx :: pty :: nil).
+Proof.
+  intros ptx pty hdiff hIn.
+  inversion hIn; subst.
+  * rewrite middle_eq in H0. contradiction.
+  * inversion_clear H0.
+    -- rewrite middle_comm, middle_eq in H.
+       symmetry in H. contradiction.
+    -- inversion H.
+Qed.
+
 Lemma diameter_clean_support:
   forall conf ptx pty,
     ~ forbidden conf
@@ -2148,13 +2161,8 @@ Proof.
       intro abs; subst.
       apply h1; now left. }
     repeat constructor.
-    + intro hIn.
-      inversion hIn; subst.
-      * rewrite middle_eq in H0. contradiction.
-      * inversion_clear H0.
-        -- rewrite middle_comm, middle_eq in H.
-           symmetry in H. contradiction.
-        -- inversion H.
+    + apply middle_diff.
+      assumption.
     + intro hIn.
       inversion_clear hIn; try contradiction; subst.
       inversion H.
@@ -2551,27 +2559,285 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                           | rewrite H; left;reflexivity
                           ]
                           end; unfold barycenter_3_pts,R2.middle in H1;
-                      admit.  (* Absurd: Property of equilateral triangle *)
-                    + intro abs.
-                      rewrite InA_Leibniz in abs.
-                      simpl in abs.
-                      decompose [or False] abs.
-                      -- change eq with R2.eq in H2.
-                         symmetry in H2.
-                         rewrite middle_eq in H2.
-                         inversion hNoDup.
-                         rewrite H2 in H5.
-                         apply H5;left;reflexivity.
-                      -- change eq with R2.eq in H3.
-                         symmetry in H3.
-                         rewrite middle_comm in H3.
-                         rewrite middle_eq in H3.
-                         inversion hNoDup.
-                         rewrite H3 in H5.
-                         apply H5;left;reflexivity.
-                    + rewrite Htarget.
-                      rewrite H1.
-                      reflexivity.
+                      functional inversion Htriangle; rewrite -> ?Rdec_bool_true_iff in *;
+                      repeat progress match goal with
+                             | HH: R2.dist ?p ?p' = R2.dist ?p'' ?p''' |- _ =>
+                               assert (Rsqr (R2.dist p p') = Rsqr (R2.dist p'' p'''))
+                               ; [ idtac HH ; setoid_rewrite HH; try reflexivity;clear HH | clear HH ]
+                             end.
+                      
+
+                      * destruct pt1 as [xA yA], pt2 as [xB yB], ptz as [xC yC];
+                        unfold R2.dist,R2def.dist in *;simpl in *.
+                        { setoid_rewrite Rsqr_sqrt in H4.
+                          setoid_rewrite Rsqr_sqrt in H3; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+                          * inversion H1.
+                            assert (xA=xB /\ yA = yB).
+                            { clear -H3 H4 H5 H6.
+                              assert (xC = / 2 * (xA + xB))%R by lra.
+                              assert (yC = / 2 * (yA + yB))%R by lra.
+                              rewrite H, H0 in H3.
+                              unfold Rsqr in *.
+                              apply Rminus_diag_eq in H3.
+                              revert H3.
+                              clear.
+                              match goal with |- ?v = _ -> _ => replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field end.
+                              intros h.
+                              apply (Rmult_eq_compat_l (4/3)%R) in h.
+                              rewrite <- Rmult_assoc in h.
+                              replace (4 / 3)%R with (/ (3 / 4))%R in h.
+                              ++ rewrite <- Rinv_l_sym in h.
+                                 ** rewrite Rmult_1_l in h.
+                                    rewrite Rmult_0_r in h.
+                                    apply Rplus_sqr_eq_0 in h.
+                                    inversion h.
+                                    intuition.
+                                 ** clear.
+                                    lra.
+                              ++ lra. }
+                            destruct H2 ; subst.
+                            inversion hNoDup;subst.
+                            apply H8.
+                            left.
+                            reflexivity.
+                          * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+                          * apply Rplus_le_le_0_compat; apply Rle_0_sqr. }
+                      * setoid_rewrite R2.dist_sym in H3 at 2.
+                        setoid_rewrite R2.dist_sym in H4 at 2.
+                        rename H3 into dummy.
+                        rename H4 into H3.
+                        rename dummy into H4.
+                        
+                        destruct pt1 as [xA yA], pt2 as [xB yB], pty as [xC yC];
+                        unfold R2.dist,R2def.dist in *;simpl in *.
+                      
+                      { setoid_rewrite Rsqr_sqrt in H4.
+                        setoid_rewrite Rsqr_sqrt in H3; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+                        * inversion H1.
+                          assert (xA=xB /\ yA = yB).
+                          { clear -H3 H4 H5 H6.
+                            assert (xC = / 2 * (xA + xB))%R by lra.
+                            assert (yC = / 2 * (yA + yB))%R by lra.
+                            rewrite H, H0 in H3.
+                            unfold Rsqr in *.
+                            apply Rminus_diag_eq in H3.
+                            revert H3.
+                            clear.
+                            match goal with
+                              |- ?v = _ -> _ => 
+                              replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field 
+                            end.
+                            intros h.
+                            apply (Rmult_eq_compat_l (4/3)%R) in h.
+                            rewrite <- Rmult_assoc in h.
+                            replace (4 / 3)%R with (/ (3 / 4))%R in h.
+                            ++ rewrite <- Rinv_l_sym in h.
+                               ** rewrite Rmult_1_l in h.
+                                  rewrite Rmult_0_r in h.
+                                  apply Rplus_sqr_eq_0 in h.
+                                  inversion h.
+                                  intuition.
+                               ** clear.
+                                  lra.
+                            ++ lra. }
+                          destruct H2 ; subst.
+                          inversion hNoDup;subst.
+                          apply H8.
+                          left.
+                          reflexivity.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr. }
+                      
+                      * destruct pt2 as [xA yA], pt1 as [xB yB], ptz as [xC yC];
+                        unfold R2.dist,R2def.dist in *;simpl in *.
+                      
+                      { setoid_rewrite Rsqr_sqrt in H4.
+                        setoid_rewrite Rsqr_sqrt in H3; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+                        * inversion H1.
+                          assert (xA=xB /\ yA = yB).
+                          { clear -H3 H4 H5 H6.
+                            assert (xC = / 2 * (xA + xB))%R by lra.
+                            assert (yC = / 2 * (yA + yB))%R by lra.
+                            rewrite H, H0 in H3.
+                            unfold Rsqr in *.
+                            apply Rminus_diag_eq in H3.
+                            revert H3.
+                            clear.
+                            match goal with
+                              |- ?v = _ -> _ => 
+                              replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field 
+                            end.
+                            intros h.
+                            apply (Rmult_eq_compat_l (4/3)%R) in h.
+                            rewrite <- Rmult_assoc in h.
+                            replace (4 / 3)%R with (/ (3 / 4))%R in h.
+                            ++ rewrite <- Rinv_l_sym in h.
+                               ** rewrite Rmult_1_l in h.
+                                  rewrite Rmult_0_r in h.
+                                  apply Rplus_sqr_eq_0 in h.
+                                  inversion h.
+                                  intuition.
+                               ** clear.
+                                  lra.
+                            ++ lra. }
+                          destruct H2 ; subst.
+                          inversion hNoDup;subst.
+                          apply H8.
+                          left.
+                          reflexivity.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr. }
+
+                      * assert ((R2.dist pt1 ptx)²%R = (R2.dist pt2 ptx)²%R).
+                        { setoid_rewrite R2.dist_sym in H4 at 1.
+                          setoid_rewrite R2.dist_sym in H3 at 1.
+                          rewrite H3.
+                          symmetry; assumption. }
+                        assert ((R2.dist pt1 pt2)²%R = (R2.dist pt2 ptx)²%R).
+                        { setoid_rewrite <- R2.dist_sym in H4 at 1.
+                          rewrite <- H4;reflexivity. }
+                        clear H3 H4.
+                        rename H2 into H4.
+                        rename H5 into H3.
+                        destruct pt1 as [xA yA], pt2 as [xB yB], ptx as [xC yC];
+                        unfold R2.dist,R2def.dist in *;simpl in *.
+                      
+                      { setoid_rewrite Rsqr_sqrt in H4.
+                        setoid_rewrite Rsqr_sqrt in H3; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+                        * inversion H1.
+                          assert (xA=xB /\ yA = yB).
+                          { clear -H3 H4 H5 H6.
+                            assert (xC = / 2 * (xA + xB))%R by lra.
+                            assert (yC = / 2 * (yA + yB))%R by lra.
+                            rewrite H, H0 in H3.
+                            unfold Rsqr in *.
+                            apply Rminus_diag_eq in H3.
+                            revert H3.
+                            clear.
+                            match goal with
+                              |- ?v = _ -> _ => 
+                              replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field 
+                            end.
+                            intros h.
+                            apply (Rmult_eq_compat_l (4/3)%R) in h.
+                            rewrite <- Rmult_assoc in h.
+                            replace (4 / 3)%R with (/ (3 / 4))%R in h.
+                            ++ rewrite <- Rinv_l_sym in h.
+                               ** rewrite Rmult_1_l in h.
+                                  rewrite Rmult_0_r in h.
+                                  apply Rplus_sqr_eq_0 in h.
+                                  inversion h.
+                                  intuition.
+                               ** clear.
+                                  lra.
+                            ++ lra. }
+                          destruct H2 ; subst.
+                          inversion hNoDup;subst.
+                          apply H8.
+                          left.
+                          reflexivity.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr. }
+                      * setoid_rewrite R2.dist_sym in H4.
+                        setoid_rewrite R2.dist_sym in H3 at 2.
+                        symmetry in H3,H4.
+                        assert ((R2.dist pt1 pt2)²%R = (R2.dist pt2 pty)²%R).
+                        { setoid_rewrite <- H4 at 1.
+                          assumption. }
+                        clear H4.
+                        rename H3 into H4.
+                        rename H2 into H3.
+                        destruct pt1 as [xA yA], pt2 as [xB yB], pty as [xC yC];
+                        unfold R2.dist,R2def.dist in *;simpl in *.
+                      
+                      { setoid_rewrite Rsqr_sqrt in H4.
+                        setoid_rewrite Rsqr_sqrt in H3; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+                        * inversion H1.
+                          assert (xA=xB /\ yA = yB).
+                          { clear -H3 H4 H5 H6.
+                            assert (xC = / 2 * (xA + xB))%R by lra.
+                            assert (yC = / 2 * (yA + yB))%R by lra.
+                            rewrite H, H0 in H3.
+                            unfold Rsqr in *.
+                            apply Rminus_diag_eq in H3.
+                            revert H3.
+                            clear.
+                            match goal with
+                              |- ?v = _ -> _ => 
+                              replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field 
+                            end.
+                            intros h.
+                            apply (Rmult_eq_compat_l (4/3)%R) in h.
+                            rewrite <- Rmult_assoc in h.
+                            replace (4 / 3)%R with (/ (3 / 4))%R in h.
+                            ++ rewrite <- Rinv_l_sym in h.
+                               ** rewrite Rmult_1_l in h.
+                                  rewrite Rmult_0_r in h.
+                                  apply Rplus_sqr_eq_0 in h.
+                                  inversion h.
+                                  intuition.
+                               ** clear.
+                                  lra.
+                            ++ lra. }
+                          destruct H2 ; subst.
+                          inversion hNoDup;subst.
+                          apply H8.
+                          left.
+                          reflexivity.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr. }
+                      * 
+                        setoid_rewrite R2.dist_sym in H3.
+                        symmetry in H3.
+                        
+                        setoid_rewrite R2.dist_sym in H4.
+                        rewrite  H3 in H4.
+
+                        destruct pt1 as [xA yA], pt2 as [xB yB], ptx as [xC yC];
+                        unfold R2.dist,R2def.dist in *;simpl in *.
+                      
+                      { setoid_rewrite Rsqr_sqrt in H4.
+                        setoid_rewrite Rsqr_sqrt in H3; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+                        * inversion H1.
+                          assert (xA=xB /\ yA = yB).
+                          { clear -H3 H4 H5 H6.
+                            assert (xC = / 2 * (xA + xB))%R by lra.
+                            assert (yC = / 2 * (yA + yB))%R by lra.
+                            rewrite H, H0 in H3.
+                            unfold Rsqr in *.
+                            apply Rminus_diag_eq in H3.
+                            revert H3.
+                            clear.
+                            match goal with
+                              |- ?v = _ -> _ => 
+                              replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field 
+                            end.
+                            intros h.
+                            apply (Rmult_eq_compat_l (4/3)%R) in h.
+                            rewrite <- Rmult_assoc in h.
+                            replace (4 / 3)%R with (/ (3 / 4))%R in h.
+                            ++ rewrite <- Rinv_l_sym in h.
+                               ** rewrite Rmult_1_l in h.
+                                  rewrite Rmult_0_r in h.
+                                  apply Rplus_sqr_eq_0 in h.
+                                  inversion h.
+                                  intuition.
+                               ** clear.
+                                  lra.
+                            ++ lra. }
+                          destruct H2 ; subst.
+                          inversion hNoDup;subst.
+                          apply H8.
+                          left.
+                          reflexivity.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+                        * apply Rplus_le_le_0_compat; apply Rle_0_sqr. }
+                    + apply middle_diff.
+                      inversion hNoDup;subst.
+                      intro abs;subst.
+                      apply H4.
+                      left;reflexivity.
+                    + rewrite Htarget;assumption.
                   - (* if (target (conf)) is in (SEC (round conf)) then two previously
                        SEC-towers have moved to (target (conf)). therefore there are
                        two tower => majority (or contradicting forbidden).  *)
