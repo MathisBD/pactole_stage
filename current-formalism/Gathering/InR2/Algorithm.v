@@ -2710,7 +2710,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         left; reflexivity.
                       * rewrite <- H1.
                         left;reflexivity.
-                    + 
+
 
                       Lemma foo: forall ptx pty ptopp white mid,
                         classify_triangle ptx pty ptopp = Equilateral ->
@@ -2747,21 +2747,43 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         rewrite middle_comm in h_dist.
                         assert (R2.dist white (R2.middle ptopp white) = 0%R).
                         { lra. }
-                        apply R2.dist_defined in H.
-                        symmetry in H.
-
-                        rewrite middle_comm in H.
-                        rewrite middle_eq in H.
-                        rewrite H in hwhite.
-                        assert (h_eq_ptx_pty := middle_barycenter_3_neq ptx pty ptopp hequil).
-                        assert (R2.middle ptx pty = barycenter_3_pts ptx pty ptopp).
-                        { symmetry.
-                          unfold R2.middle.
-                          admit.
+                        assert (h_white_ptopp:(R2.eq white ptopp)). 
+                        { apply R2.dist_defined in H.
+                          symmetry in H.
+                          rewrite middle_comm in H.
+                          now rewrite middle_eq in H.
                         }
-                        specialize (h_eq_ptx_pty H0).
-                        admit.
-                      Admitted.
+                        assert (h_white_ptx:(R2.eq white ptx)).
+                        { rewrite <- h in H.
+                          now apply R2.dist_defined in H.
+                        }
+                        rewrite <- h_white_ptopp, h_white_ptx.
+                        reflexivity.
+                      Qed.
+
+                    + 
+
+                      (*   symmetry in H. *)
+                      (*     rewrite middle_comm in H. *)
+                      (*     now rewrite middle_eq in H. *)
+                      (*   } *)
+                        
+
+                      (*   apply R2.dist_defined in H. *)
+                      (*   symmetry in H. *)
+
+                      (*   rewrite middle_comm in H. *)
+                      (*   rewrite middle_eq in H. *)
+                      (*   rewrite H in hwhite. *)
+                      (*   assert (h_eq_ptx_pty := middle_barycenter_3_neq ptx pty ptopp hequil). *)
+                      (*   assert (R2.middle ptx pty = barycenter_3_pts ptx pty ptopp). *)
+                      (*   { symmetry. *)
+                      (*     unfold R2.middle. *)
+                      (*     admit. *)
+                      (*   } *)
+                      (*   specialize (h_eq_ptx_pty H0). *)
+                      (*   admit. *)
+                      (* Admitted. *)
 
 (*                    
                     assert (h_rnd_ge_3: Spect.size (!! (round gatherR2 da conf)) >= 3).
