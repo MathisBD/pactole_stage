@@ -628,16 +628,7 @@ Theorem PermutationA_cons_inv :
 Proof. intros; exact (PermutationA_app_inv nil l nil l' a H). Qed.
 
 Global Instance PermutationA_length : Proper (PermutationA eqA ==> Logic.eq) (@length A).
-Proof.
-intro l. induction l; intros l' Hperm.
-  apply PermutationA_nil in Hperm. now subst.
-  assert (Hp := @PermutationA_InA_inside a _ _ Hperm).
-  destruct Hp as [l1 [y [l2 [Heq1 Heq2]]]]. now left. subst l'.
-  rewrite app_length. simpl. rewrite <- plus_n_Sm. f_equal. rewrite <- app_length.
-  apply IHl. apply PermutationA_cons_inv with a.
-  transitivity (l1 ++ y :: l2). assumption. etransitivity. symmetry. apply PermutationA_middle. assumption.
-  constructor. now symmetry. reflexivity.
-Qed.
+Proof. clear. intros l1 l2 perm. induction perm; simpl; omega. Qed.
 
 Lemma PermutationA_length1 : forall x l, PermutationA eqA l (x :: nil) -> exists y, eqA x y /\ l = y :: nil.
 Proof.

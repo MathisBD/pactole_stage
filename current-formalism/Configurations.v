@@ -8,6 +8,7 @@
 (**************************************************************************)
 
 
+Require Import Omega.
 Require Import Equalities.
 Require Import SetoidList.
 Require Import Reals.
@@ -180,10 +181,13 @@ End MakeRealMetricSpace.
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
   Definition t := Names.ident -> Location.t.
-  Definition eq conf₁ conf₂ := forall id : Names.ident, Location.eq (conf₁ id) (conf₂ id).
+  Definition eq config₁ config₂ := forall id : Names.ident, Location.eq (config₁ id) (config₂ id).
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> Location.eq)%signature.
+  
+  Parameter neq_equiv : forall config₁ config₂,
+    ~eq config₁ config₂ <-> exists id, ~Location.eq (config₁ id) (config₂ id).
   
   Definition map (f : Location.t -> Location.t) (conf : t) := fun id => f (conf id).
   Declare Instance map_compat : Proper ((Location.eq ==> Location.eq) ==> eq ==> eq) map.
@@ -303,6 +307,24 @@ Proof. repeat intro. reflexivity. Qed.
 
 Lemma map_id : forall conf, eq (map Datatypes.id conf) conf.
 Proof. repeat intro. reflexivity. Qed.
+
+Lemma neq_equiv : forall config₁ config₂,
+  ~eq config₁ config₂ <-> exists id, ~Location.eq (config₁ id) (config₂ id).
+Proof.
+intros config₁ config₂. split; intro Hneq.
+* assert (Hlist : ~eqlistA Location.eq (List.map config₁ Names.names) (List.map config₂ Names.names)).
+  { intro Habs. apply Hneq. intro id.
+    assert (Hin : List.In id Names.names) by apply Names.In_names.
+    induction Names.names as [| id' l].
+    - inversion Hin.
+    - inversion_clear Habs. inversion_clear Hin; solve [now subst | now apply IHl]. }
+  induction Names.names as [| id l].
+  + now elim Hlist.
+  + cbn in Hlist. destruct (Location.eq_dec (config₁ id) (config₂ id)) as [Hid | Hid].
+    - apply IHl. intro Heq. apply Hlist. now constructor.
+    - eauto.
+* destruct Hneq as [id Hneq]. intro Habs. apply Hneq, Habs.
+Qed.
 
 End Make.
 
