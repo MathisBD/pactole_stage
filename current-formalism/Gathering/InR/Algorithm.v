@@ -562,7 +562,7 @@ unfold robogram_pgm. intros s s' Hs. assert (Hperm := Spect.support_compat (Spec
 destruct (Spect.support (Spect.max s)) as [| pt [| pt2 l]].
 + now rewrite (PermutationA_nil _ Hperm).
 + symmetry in Hperm. destruct (PermutationA_length1 _ Hperm) as [pt' [Heq Hin]]. now rewrite Hin.
-+ assert (Hlength := PermutationA_length _ Hperm).
++ assert (Hlength := PermutationA_length Hperm).
   destruct (Spect.support (Spect.max s')) as [| pt' [| pt2' l']]; try discriminate. rewrite Hs.
   destruct (Spect.size s' =? 3); rewrite Hs; trivial.
   destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
@@ -614,7 +614,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt' [| pt2' l']].
   simpl in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]]. rewrite Hperm.
   hnf in Hy |- *. subst y. rewrite Hsim. field. destruct Hk; subst; now try apply Ropp_neq_0_compat.
 * (* No majority stack *)
-  apply (PermutationA_length _) in Hperm.
+  apply PermutationA_length in Hperm.
   destruct (Spect.support (Spect.max (!! (Config.map (simc pt) conf)))) as [| pt'' [| pt2'' l'']];
   try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
   assert (Hlength : Spect.size (!! (Config.map (simc pt) conf)) = Spect.size (!! conf)).
@@ -1137,7 +1137,7 @@ destruct (Spect.support (Spect.max (!! conf2))) as [| pt [| ? ?]] eqn:Hsupp.
 + symmetry in Hperm. apply (PermutationA_nil _) in Hperm. rewrite Hperm. reflexivity.
 + apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
   rewrite Hperm, <- Hy, Heq. reflexivity.
-+ apply (PermutationA_length _) in Hperm.
++ apply PermutationA_length in Hperm.
   destruct (Spect.support (Spect.max (!! conf1))) as [| ? [| ? ?]]; try discriminate Hperm.
   rewrite Heq. destruct (Spect.size (!! conf2) =? 3); rewrite Heq; reflexivity.
 Qed.
