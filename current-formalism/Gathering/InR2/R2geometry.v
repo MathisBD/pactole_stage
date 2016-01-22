@@ -1058,8 +1058,6 @@ intros l1 l2 Hencl12 Hencl21. apply SEC_unicity.
 - now apply SEC_spec2.
 Qed.
 
-
-
 Lemma SEC_min_radius : forall pt1 pt2 l, In pt1 l -> In pt2 l -> /2 * R2.dist pt1 pt2 <= radius (SEC l).
 Proof.
 intros pt1 pt2 l Hpt1 Hpt2.
@@ -1214,6 +1212,31 @@ induction l1 as [| e l1].
  remember (SEC l) as c.
 Qed.
 *)
+
+(* Proof idea:
+   1) split points on and outside the SEC
+   2) the one outside can be removed:
+      - if they move, they are on the target which is inside the disk (target_inside_SEC)
+        and if on the SEC, there was already someone at that location (target_on_SEC_already occupied)
+      - if they stay still, they were already strictly inside the SEC
+   3) same relevant points, same SEC. *)
+Lemma enclosing_same_on_SEC_is_same_SEC : forall l1 l2,
+  enclosing_circle (SEC l2) l1 ->
+  (forall pt, In pt (on_SEC l2) -> In pt l1) ->
+  SEC l1 = SEC l2.
+Proof.
+intros l1 l2 Hencl Hincl.
+assert (Hperm := partition_Permutation (on_circle (SEC l2)) l1).
+rewrite Permutation_app_comm in Hperm. rewrite <- Hperm. rewrite partition_filter. cbn.
+rewrite SEC_append_same.
+* apply enclosing_twice_same_SEC.
+  + intros pt Hin. rewrite (SEC_on_SEC l2) at 2.
+    admit.
+  + intros pt Hin. apply Hencl. now rewrite filter_In in Hin.
+* intros pt Hin.
+  admit.
+Admitted.
+
 
 Lemma barycenter_3_pts_inside_SEC : forall pt1 pt2 pt3,
   R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
