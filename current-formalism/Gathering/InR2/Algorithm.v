@@ -1715,7 +1715,7 @@ intros config Hmaj. split.
       discriminate.
   + exfalso.
     setoid_rewrite SEC_on_SEC in Htarget at 2. rewrite Hsec in Htarget.
-    rewrite SEC_zero_radius_center in Htarget.
+    rewrite center_on_circle in Htarget.
     rewrite SEC_zero_radius_incl_singleton in Htarget. destruct Htarget as [pt Hpt].
     assert (Heq : R2.eq pt1 pt2).
     { transitivity pt.

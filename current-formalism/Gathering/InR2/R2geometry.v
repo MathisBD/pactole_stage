@@ -123,10 +123,10 @@ Notation "k * u" := (R2.mul k u) : R2_scope.
 Notation "- u" := (R2.opp u) : R2_scope.
 
 Lemma pos_sqrt_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
-Proof. Admitted.
+Proof. intros. setoid_rewrite <- sqrt_Rsqr; trivial. now f_equal. Qed.
 
-Lemma sqrt_sqrt_id : forall x, 0 <= x -> Rpow_def.pow (sqrt x) 2 = x.
-Proof. Admitted.
+Lemma pos_Rsqr_le : forall x y, 0 <= x -> 0 <= y -> (x² <= y² <-> x <= y).
+Proof. intros. split; intro; try now apply R_sqr.Rsqr_incr_0 + apply R_sqr.Rsqr_incr_1. Qed.
 
 Lemma Rsqr_pos : forall x, 0 <= x * x.
 Proof.
@@ -134,6 +134,14 @@ intro. rewrite <- (Rmult_0_l 0). destruct (Rle_lt_dec 0 x).
 - apply Rmult_le_compat; lra.
 - replace (x * x) with (-x * -x) by ring. apply Rmult_le_compat; lra.
 Qed.
+
+Lemma R2_dist_defined_2 : forall pt, R2.dist pt pt = 0.
+Proof.
+  intros pt.
+  rewrite R2.dist_defined.
+  reflexivity.
+Qed.
+Hint Resolve R2_dist_defined_2.
 
 Lemma R2add_dist : forall w u v, R2.dist (u + w) (v + w) = R2.dist u v.
 Proof.
@@ -149,11 +157,11 @@ intros k [? ?] [? ?]. unfold R2.dist, R2def.dist. cbn.
 apply pos_sqrt_eq.
 - apply sqrt_pos.
 - apply Rmult_le_pos; apply Rabs_pos || apply sqrt_pos.
-- assert (Heq := R_sqr.Rsqr_abs k). unfold Rsqr in Heq. ring_simplify in Heq.
-  unfold Rsqr. ring_simplify. rewrite <- Heq. repeat rewrite sqrt_sqrt_id.
-  + cbn. field.
-  + rewrite <- Rplus_0_l at 1. apply Rplus_le_compat; apply Rsqr_pos.
-  + rewrite <- Rplus_0_l at 1. apply Rplus_le_compat; apply Rsqr_pos.
+- rewrite Rsqr_sqrt.
+  + rewrite R_sqr.Rsqr_mult. rewrite Rsqr_sqrt.
+    * repeat rewrite ?R_sqr.Rsqr_mult, ?R_sqr.Rsqr_plus, ?R_sqr.Rsqr_minus, <- ?R_sqr.Rsqr_abs. unfold Rsqr. lra.
+    * replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
+  + replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
 Qed.
 
 Lemma R2dist_subadditive : forall u u' v v', R2.dist (u + v) (u' + v') <= R2.dist u u' + R2.dist v v'.
@@ -446,6 +454,7 @@ Definition is_middle pt1 pt2 B := forall p,
 Definition is_barycenter_3_pts pt1 pt2 pt3 B := forall p,
   (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
+(* TODO *)
 Axiom middle_spec: forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
 Axiom bary3_spec: forall pt1 pt2 pt3,
   is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
@@ -497,6 +506,25 @@ Proof. repeat intro. unfoldR2 in H0. now subst. Qed.
 Lemma on_circle_true_iff : forall c pt, on_circle c pt = true <-> R2.dist pt (center c) = radius c.
 Proof. intros c pt. unfold on_circle. now rewrite Rdec_bool_true_iff. Qed.
 
+(* If the radius of circle is not zero then the center is not part of it. *)
+Lemma center_not_on_circle : forall c,
+    on_circle c (center c) = false <-> radius  c<> 0%R.
+Proof.
+  intro.
+  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
+  - rewrite Rdec_bool_false_iff in *. auto.
+  - apply Rdec_bool_false_iff. auto.
+Qed.
+
+Lemma center_on_circle : forall c,
+  on_circle c (center c) = true <-> radius c = 0%R.
+Proof.
+  intro.
+  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
+  - rewrite Rdec_bool_true_iff in *. auto.
+  - apply Rdec_bool_true_iff. auto.
+Qed.
+
 Lemma three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
   on_circle c1 pt1 = true -> on_circle c1 pt2 = true -> on_circle c1 pt3 = true ->
   on_circle c2 pt1 = true -> on_circle c2 pt2 = true -> on_circle c2 pt3 = true ->
@@ -542,6 +570,14 @@ apply Rle_antisym.
 - apply Hdown2. now rewrite <- Hperm.
 Qed.
 
+Lemma SEC_radius_pos : forall l, 0 <= radius (SEC l).
+Proof.
+intros [| pt ?].
++ now rewrite SEC_nil.
++ transitivity (R2.dist pt (center (SEC (pt :: l)))).
+  - apply R2.dist_pos.
+  - apply SEC_spec1. now left.
+Qed.
 
 
 Definition max_dist pt l := List.fold_left (fun r x => Rmax r (R2.dist x pt)) l 0%R.
@@ -704,76 +740,26 @@ Qed.
 (* OK even when the points are the same *)
 Lemma SEC_dueton : forall pt1 pt2,
   SEC (pt1 :: pt2 :: nil) = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
-Proof. Admitted.
-(*
-Lemma diameter_spec1: forall c (pt1 pt2:R2.t),
-    c = SEC (pt1::pt2::nil) ->
-    R2.dist pt1 pt2 = (c.(radius) * 2)%R ->
-    c.(center) = R2.middle pt1 pt2.
 Proof.
-  intros c pt1 pt2 H H0.
-  assert (R2.dist pt1 c.(center) + R2.dist c.(center) pt2 >= R2.dist pt1 pt2)%R.
-  { apply Rle_ge, R2.triang_ineq. }
-  rewrite H0 in H1.
-  destruct (R2.eq_dec pt1 pt2).
-  ++ rewrite ?e in *.
-     unfold R2.middle.
-     rewrite R2.mul_distr_add.
-     rewrite R2.add_morph.
-     (assert (h_demi:(1 / 2 + 1 / 2 = 1)%R)).
-     { rewrite <- double.
-       field. }
-     rewrite h_demi.
-     rewrite R2.mul_1.
-     rewrite R2_dist_defined_2 in H0.
-     destruct (Rmult_integral (radius c) 2).
-     ** symmetry;assumption.
-     ** destruct (@SEC_reached (pt2 :: pt2 :: nil)) as [ x [h1 h2]].
-        --- discriminate.
-        --- simpl in h1.
-            assert (pt2 = x).
-            { tauto. }
-            clear h1. subst.
-            assert (R2.dist (center (SEC (x :: x :: nil))) x = 0%R).
-            { unfold on_circle in h2.
-              rewrite H2 in h2.
-              apply Rdec_bool_true_iff in h2.
-              rewrite R2.dist_sym.
-              assumption. }
-            apply R2.dist_defined.
-            assumption.
-     ** absurd (0%R = 2%R);auto.
-        apply Rlt_not_eq.
-        apply Rlt_R0_R2.
-  ++ destruct (@SEC_reached_twice (pt1 :: pt2 :: nil)).
-     ** auto.
-     ** repeat constructor.
-        --- intro Habs. inversion Habs.
-            +++ symmetry in H2. contradiction.
-            +++ inversion H2.
-        --- intro Habs. inversion Habs.
-     ** decompose [ex and ] H2; clear H2.
-        assert (Hpt : x = pt1 /\ x0 = pt2 \/ x0 = pt1 /\ x = pt2).
-        { inversion H3; inversion H4;
-          repeat match goal with
-          | H : In ?x nil  |- _ => inversion H
-          | H : In ?x (?y :: nil) |- _ => inversion_clear H; auto
-          end; now subst; elim H5.
-         }
-        assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt1 = true).
-        { decompose [and or] Hpt ; subst ; assumption. }
-        assert (on_circle (SEC (pt1 :: pt2 :: nil)) pt2 = true).
-        { decompose [and or] Hpt ; subst ; assumption. }
-        clear dependent x.
-        clear dependent x0.
-        assert (h_middle: is_middle pt1 pt2 (center c)).
-        { red.
-          admit. }
-        apply (@middle_unique pt1 pt2 (center c) (R2.middle pt1 pt2)).
-        assumption.
-        apply middle_spec.
-Admitted.
-*)
+intros pt1 pt2. symmetry. apply SEC_unicity.
+* intros pt Hin. simpl. inversion_clear Hin.
+  + subst. now rewrite R2dist_middle.
+  + inversion H; easy || subst. now rewrite middle_comm, R2dist_middle, R2.dist_sym.
+* simpl. rewrite <- R2dist_middle. rewrite radius_is_max_dist.
+  pose (c := center (SEC (pt1 :: pt2 :: nil))). fold c. cbn.
+  rewrite (Rmax_right 0); try apply R2.dist_pos; [].
+  rewrite <- pos_Rsqr_le.
+  + cut ((R2.dist pt1 (R2.middle pt1 pt2))² + (R2.dist pt1 (R2.middle pt1 pt2))² <=
+      (Rmax (R2.dist pt1 c) (R2.dist pt2 c))² + (Rmax (R2.dist pt1 c) (R2.dist pt2 c))²); try lra; [].
+    transitivity ((R2.dist pt1 c)² + (R2.dist pt2 c)²).
+    - assert (Heq : R2.dist pt1 (R2.middle pt1 pt2) = R2.dist pt2 (R2.middle pt1 pt2)).
+      { now rewrite R2dist_middle, middle_comm, R2dist_middle, R2.dist_sym. }
+      rewrite Heq at 2. setoid_rewrite R2.dist_sym. apply (middle_spec pt1 pt2 c).
+    - apply Rplus_le_compat; rewrite pos_Rsqr_le;
+      solve [apply Rmax_l | apply Rmax_r | apply R2.dist_pos | apply Rmax_case; apply R2.dist_pos].
+  + apply R2.dist_pos.
+  + apply Rmax_case; apply R2.dist_pos.
+Qed.
 
 Function farthest_from_in c acc inl :=
 match inl with
@@ -821,13 +807,6 @@ Proof.
 intros except c acc inl.
 functional induction (farthest_from_in_except except c acc inl); auto;
 destruct IHt as [? | ?]; cbn; auto.
-Qed.
-
-Lemma R2_dist_defined_2 : forall pt, R2.dist pt pt = 0.
-Proof.
-  intros pt.
-  rewrite R2.dist_defined.
-  reflexivity.
 Qed.
 
 Lemma farthest_from_in_except_In : forall exc c l, (exists pt, pt <> exc /\ In pt l) ->
@@ -883,30 +862,6 @@ intros exc c l. induction l as [| e l]; intros acc x Hin Hneq.
   + cbn. destruct (R2.eq_dec e exc); auto. destruct (Rle_dec (R2.dist e c) (R2.dist c acc)); auto.
 Qed.
 
-(* If the radius of SEC is not zero then the center is not part of it. *)
-Lemma SEC_non_zero_radius_center : forall l,
-    radius (SEC l)<> 0%R
-    <-> on_circle (SEC l) (center (SEC l)) = false.
-Proof.
-  intros l.
-  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
-  - apply Rdec_bool_false_iff.
-    auto.
-  - rewrite ?Rdec_bool_false_iff in *.
-    auto.
-Qed.
-
-Lemma SEC_zero_radius_center : forall l,
-  on_circle (SEC l) (center (SEC l)) = true <-> radius (SEC l) = 0%R.
-Proof.
-  intros l.
-  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
-  - rewrite ?Rdec_bool_true_iff in *.
-    auto.
-  - apply Rdec_bool_true_iff.
-    auto.
-Qed.
-
 Lemma SEC_zero_radius_incl_singleton : forall l,
   radius (SEC l) = 0%R <-> exists pt, incl l (pt :: nil).
 Proof.
@@ -934,13 +889,11 @@ Qed.
    If there is no other, we take the furthest point from c strictly inside the disk.
    We decrease the center and radius to make it end up on the circle.
    Thus, the original SEC was not minimal, a contradiction. *)
-Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l -> (* radius (SEC l) <> 0%R -> *)
+Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l ->
   exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
 Proof.
 intros l Hl Hnodup.
-(*assert (on_circle (SEC l) (center (SEC l)) = false).
-{ now apply SEC_non_zero_radius_center. }*)
 assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; omega. }
 destruct (SEC_reached Hnil) as [pt1 [Hin1 Hon1]].
 exists pt1.
@@ -959,28 +912,68 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   exists pt2; intuition.
 + (* If all other points are inside the sphere, we can slightly reduce its radius by moving the center *)
   exfalso.
-  pose (c := center (SEC l)).
-  pose (r := radius (SEC l)).
-  (* the farthest point of l from c (excluding pt1) *)
-  pose (pt := farthest_from_in_except pt1 c c l).
-  pose (d := R2.dist c pt). (* the room we have *)
+  pose (c := center (SEC (pt1 :: l))).
+  pose (r := radius (SEC (pt1 :: l))).
+  assert (Hr : r <> 0).
+  { unfold r. rewrite SEC_zero_radius_incl_singleton. intros [pt Hincl].
+    destruct l as [| pt2 ?]; simpl in Hl; try omega; [].
+    inversion_clear Hnodup. apply H. left. transitivity pt.
+    - specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition.
+    - specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition. }
+  (* pt2 := the farthest point of l from c (excluding pt1) *)
+  pose (pt2 := farthest_from_in_except pt1 c c l).
+  pose (d := R2.dist c pt2). (* the maximum distance to c (except pt1) *)
   pose (r' := Rdiv (r + d) 2). (* the new radius *)
-  pose (c' := R2.add c (R2.mul (r - r') (R2.add c (R2.opp pt)))). (* the new center *)
-  assert (Hin : In pt l).
+  pose (c' := (c + ((1 - r' / r) * (pt1 + - c)))%R2). (* the new center *)
+  assert (Hin2 : In pt2 l).
   { apply farthest_from_in_except_In. destruct l as [| e l].
     - cbn in Hl. omega.
     - inversion_clear Hnodup. cbn in H. exists e. intuition. }
   assert (Hmax : forall x, In x l -> x <> pt1 -> R2.dist c x <= d).
-  { intros. unfold d, pt. now apply farthest_from_in_except_le. }
-  assert (Hnew : enclosing_circle {| center := c'; radius := r' |} l).
-  { admit. }
-  (* The final proof *)
-  apply (Rle_not_lt r' r).
-  - unfold r. change r' with (radius {| center := c'; radius := r' |}).
-    now apply SEC_spec2.
-  - unfold r'. cut (d < r). lra.
-    
-Admitted.
+  { intros. unfold d, pt2. now apply farthest_from_in_except_le. }
+  assert (Hr2 : 0 < r). { apply Rle_neq_lt; auto. unfold r. apply SEC_radius_pos. }
+  assert (Hr' : 0 <= r'). { assert (0 <= d). { unfold d. apply R2.dist_pos. } unfold r'. lra. }
+  (* The new circle has a smaller radius *)
+  assert (Hlt : r' < r).
+  { unfold r'. cut (d < r); try lra; [].
+    apply Rle_neq_lt.
+    ++ unfold d, r, c. rewrite R2.dist_sym. apply SEC_spec1. now right.
+    ++ intro. do 2 subst. apply Hsmall. rewrite Exists_exists. exists pt2. repeat split.
+       -- now right.
+       -- clear -Hon1 Hnodup Hin2. unfold pt2. apply farthest_from_in_except_diff. intro Heq. subst.
+          rewrite <- Heq in Hon1 at 2. rewrite center_on_circle, SEC_zero_radius_incl_singleton in Hon1.
+          destruct Hon1 as [pt Hincl].
+          assert (pt = pt1). { specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition. }
+          assert (Hpt : pt = pt2). { specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition. }
+          subst pt. inversion_clear Hnodup. apply H. now rewrite Hpt.
+       -- rewrite on_circle_true_iff. now rewrite R2.dist_sym. }
+  (* Yet, it is still enclosing *)
+  assert (Hnew : enclosing_circle {| center := c'; radius := r' |} (pt1 :: l)).
+  { intros pt Hin. cbn. destruct Hin.
+    * subst pt. unfold c'. rewrite R2dist_ref_0.
+      replace (pt1 + - (c + (1 - r'/r) * (pt1 + - c)))%R2 with (r'/ r * pt1 + - (r' / r * c))%R2
+        by (destruct pt1, c; unfoldR2; cbn; f_equal; ring).
+      rewrite <- R2dist_ref_0. rewrite R2mul_dist.
+      rewrite on_circle_true_iff in Hon1. unfold c. rewrite Hon1.
+      fold r. rewrite Rabs_pos_eq; [field_simplify; lra |].
+      unfold Rdiv. now apply Fourier_util.Rle_mult_inv_pos.
+    * transitivity (R2.dist pt c + R2.dist c c'); [| transitivity (d + R2.dist c c')].
+      + apply R2.triang_ineq.
+      + apply Rplus_le_compat_r. rewrite R2.dist_sym. unfold d, pt2.
+        apply farthest_from_in_except_le; trivial. intro. subst. inversion_clear Hnodup. contradiction.
+      + unfold c'. rewrite R2dist_ref_0.
+        replace (c + - (c + (1 - r' / r) * (pt1 + - c)))%R2 with ((1 - r' / r) * c + - ((1 - r' / r) * pt1))%R2
+          by (destruct pt1, c; unfoldR2; cbn; f_equal; ring).
+        rewrite <- R2dist_ref_0. rewrite R2mul_dist. rewrite on_circle_true_iff in Hon1.
+        unfold c. rewrite R2.dist_sym. rewrite Hon1. fold r.
+        rewrite Rabs_pos_eq.
+        - unfold r'. now field_simplify.
+        - cut (r' / r <= 1); try lra. unfold Rdiv. rewrite <- (Rinv_r r); trivial. auto with real. }
+  (* A contradiction *)
+  apply (Rle_not_lt r' r); trivial.
+  unfold r. change r' with (radius {| center := c'; radius := r' |}).
+  now apply SEC_spec2.
+Qed.
 
 Definition on_SEC l := List.filter (on_circle (SEC l)) l.
 
@@ -1044,11 +1037,6 @@ destruct (Rdec_bool (R2.dist pt1 (R2.middle pt1 pt2)) (/ 2 * R2.dist pt1 pt2)) e
   unfold R2.middle. rewrite <- (Rabs_pos_eq (/2)); try lra. rewrite <- R2mul_dist, R2.mul_origin. f_equal.
   destruct pt1, pt2. compute. f_equal; field.
 Qed.
-
-Lemma on_SEC_pair_is_diameter : forall pt1 pt2 l, on_SEC l = pt1 :: pt2 :: nil ->
-  SEC l = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
-Proof.
-Admitted.
 
 Lemma enclosing_twice_same_SEC : forall l1 l2,
   enclosing_circle (SEC l1) l2 -> enclosing_circle (SEC l2) l1 -> SEC l1 = SEC l2.
@@ -1213,6 +1201,11 @@ induction l1 as [| e l1].
 Qed.
 *)
 
+Lemma on_SEC_pair_is_diameter : forall pt1 pt2 l, on_SEC l = pt1 :: pt2 :: nil ->
+  SEC l = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
+Proof. intros pt1 pt2 l Hsec. rewrite SEC_on_SEC, Hsec. apply SEC_dueton. Qed.
+
+
 (* Proof idea:
    1) split points on and outside the SEC
    2) the one outside can be removed:
@@ -1257,6 +1250,7 @@ transitivity (R2.dist (/3 * pt1) (/3 * c) + R2.dist (/3 * pt2) (/3 * c) + R2.dis
   subst; apply SEC_spec1; intuition.
 Qed.
 
+(* TODO *)
 Axiom triangle_barycenter_inside : forall pt1 pt2 pt3,
   pt1 <> pt2 -> on_circle (SEC (pt1 :: pt2 :: pt3 :: nil)) (barycenter_3_pts pt1 pt2 pt3) = false.
 
@@ -1296,7 +1290,7 @@ assert (Hcenter : center (SEC (pt1 :: pt2 :: pt3 :: nil)) = barycenter_3_pts pt1
 { apply equilateral_SEC in Htriangle. now rewrite Htriangle. }
 assert (Hradius : radius (SEC (pt1 :: pt2 :: pt3 :: nil)) = R2.dist (barycenter_3_pts pt1 pt2 pt3) pt1).
 { apply equilateral_SEC in Htriangle. now rewrite Htriangle. }
-rewrite <- R2.dist_defined. rewrite <- Hradius, <- SEC_zero_radius_center.
+rewrite <- R2.dist_defined. rewrite <- Hradius, <- center_on_circle.
 rewrite Hcenter. now rewrite triangle_barycenter_inside.
 Qed.
 
