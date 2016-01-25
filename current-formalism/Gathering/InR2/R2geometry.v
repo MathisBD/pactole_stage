@@ -261,17 +261,6 @@ Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
 Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
 
 
-Lemma R2dist_middle : forall pt1 pt2,
-  R2.dist pt1 (R2.middle pt1 pt2) = /2 * R2.dist pt1 pt2.
-Proof.
-intros pt1 pt2.
-replace pt1 with (/2 * pt1 + /2 * pt1)%R2 at 1.
-+ unfold R2.middle. rewrite R2.mul_distr_add. setoid_rewrite R2.add_comm.
-  replace (1/2) with (/2) by field. rewrite R2add_dist.
-  rewrite R2mul_dist. rewrite Rabs_pos_eq; lra.
-+ rewrite R2.add_morph. replace (/ 2 + / 2) with 1 by field. apply R2.mul_1.
-Qed.
-
 (** **  Triangles  **)
 
 Inductive triangle_type :=
@@ -413,7 +402,7 @@ rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition 
 Qed.
 
 
-(** ** Barycenter *)
+(** **  Barycenter  **)
 
 (* Barycenter is the center of SEC for an equilateral triangle *)
 
@@ -450,7 +439,7 @@ Axiom Barycenter_spec: forall pt1 pt2 pt3 B: R2.t,
       <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
 (* False if we are not in an euclidian space!
-   Take for instance dist(x,y) = 1 <-> x <> y, and pt1, pt2 pt3 different.
+   Take for instance the coarse distance d(x,y) = 1 <-> x <> y, and pt1, pt2 pt3 different.
    Then any one of them is a barycenter. *)
 Axiom Barycenter_spec_unicity: forall pt1 pt2 pt3 B: R2.t,
     barycenter_3_pts pt1 pt2 pt3 = B <-> 
@@ -463,13 +452,16 @@ Definition is_middle pt1 pt2 B := forall p,
 Definition is_barycenter_3_pts pt1 pt2 pt3 B := forall p,
   (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
-(* TODO? *)
-Axiom middle_spec: forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
-Axiom bary3_spec: forall pt1 pt2 pt3,
-  is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
-Axiom middle_unique: forall x y a b, is_middle x y a -> is_middle x y b ->  R2.eq a b.
-Axiom bary3_unique: forall x y z a b,
-    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b -> R2.eq a b.
+Lemma R2dist_middle : forall pt1 pt2,
+  R2.dist pt1 (R2.middle pt1 pt2) = /2 * R2.dist pt1 pt2.
+Proof.
+intros pt1 pt2.
+replace pt1 with (/2 * pt1 + /2 * pt1)%R2 at 1.
++ unfold R2.middle. rewrite R2.mul_distr_add. setoid_rewrite R2.add_comm.
+  replace (1/2) with (/2) by field. rewrite R2add_dist.
+  rewrite R2mul_dist. rewrite Rabs_pos_eq; lra.
++ rewrite R2.add_morph. replace (/ 2 + / 2) with 1 by field. apply R2.mul_1.
+Qed.
 
 Lemma middle_comm : forall ptx pty,
     R2.eq (R2.middle ptx pty) (R2.middle pty ptx).
@@ -492,8 +484,71 @@ Proof.
     f_equal; lra.
 Qed.
 
+Lemma middle_spec : forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
+Proof.
+intros pt1 pt2 pt.
+setoid_rewrite R2.dist_sym. rewrite R2dist_middle, middle_comm, R2dist_middle, R2.dist_sym.
+rewrite R_sqr.Rsqr_mult. unfold Rsqr at 1 3. field_simplify.
+transitivity ((R2.dist pt1 pt + R2.dist pt2 pt)² / 2).
++ replace (2 * (R2.dist pt2 pt1)² / 4) with ((R2.dist pt2 pt1)² / 2) by field.
+  cut ((R2.dist pt2 pt1)² <= (R2.dist pt1 pt + R2.dist pt2 pt)²); try lra; [].
+  rewrite pos_Rsqr_le.
+  - rewrite (R2.dist_sym pt pt1), Rplus_comm. apply R2.triang_ineq.
+  - apply R2.dist_pos.
+  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply R2.dist_pos.
++ assert (Hle : 0 <= (R2.dist pt1 pt - R2.dist pt2 pt)²) by apply Rle_0_sqr.
+  rewrite R_sqr.Rsqr_minus in Hle. rewrite R_sqr.Rsqr_plus. lra.
+Qed.
+
+(* This is true because we use the euclidean distance. *)
+Lemma middle_is_R2middle : forall pt1 pt2 pt, is_middle pt1 pt2 pt -> R2.eq pt (R2.middle pt1 pt2).
+Proof.
+intros pt1 pt2 pt Hpt. specialize (Hpt (R2.middle pt1 pt2)).
+(* First, we simplify out R2.middle pt1 pt2. *)
+assert (Hmid : (R2.dist (R2.middle pt1 pt2) pt1)² + (R2.dist (R2.middle pt1 pt2) pt2)² = (R2.dist pt1 pt2)² / 2).
+{ setoid_rewrite R2.dist_sym. rewrite R2dist_middle, middle_comm, R2dist_middle.
+  rewrite (R2.dist_sym pt1 pt2). rewrite R_sqr.Rsqr_mult. unfold Rsqr. field. }
+rewrite Hmid in Hpt.
+(* Then, we prove that pt is at the same distance of pt1 and pt2. *)
+assert (Hle : (R2.dist pt1 pt2)² <= (R2.dist pt1 pt + R2.dist pt pt2)²).
+{ rewrite pos_Rsqr_le.
+  - apply R2.triang_ineq.
+  - apply R2.dist_pos.
+  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply R2.dist_pos. }
+assert (Hpt' : 2 * (R2.dist pt pt1)² + 2 * (R2.dist pt pt2)² <= (R2.dist pt1 pt2)²) by lra.
+clear Hpt. rename Hpt' into Hpt.
+rewrite R_sqr.Rsqr_plus in Hle.
+assert (Heq0 : (R2.dist pt1 pt - R2.dist pt pt2)² = 0).
+{ apply antisymmetry.
+  - rewrite R_sqr.Rsqr_minus. apply Rle_minus. rewrite R2.dist_sym in Hpt. lra.
+  - apply Rle_0_sqr. }
+apply Rsqr_0_uniq in Heq0. apply Rminus_diag_uniq in Heq0.
+(* That distance is half the distance between pt1 and pt2. *)
+assert (Hhalf : R2.dist pt1 pt = R2.dist pt1 pt2 / 2).
+{ apply antisymmetry.
+  + rewrite <- pos_Rsqr_le.
+    - rewrite <- Heq0 in *. rewrite (R2.dist_sym pt1 pt) in Hpt. ring_simplify in Hpt.
+      unfold Rdiv. rewrite R_sqr.Rsqr_mult. unfold Rsqr in *. lra.
+    - apply R2.dist_pos.
+    - assert (Rpos := R2.dist_pos pt1 pt2). lra.
+  + assert (Hgoal := R2.triang_ineq pt1 pt pt2). lra. }
+(* And now... use Pythagoras' theorem? *)
+Admitted.
+
+Corollary is_middle_uniq : forall pt1 pt2 mid1 mid2,
+  is_middle pt1 pt2 mid1 -> is_middle pt1 pt2 mid2 -> mid1 = mid2.
+Proof. intros ? ? ? ? H1 H2. apply middle_is_R2middle in H1. apply middle_is_R2middle in H2. congruence. Qed.
+
+(* TODO? *)
+Axiom bary3_spec: forall pt1 pt2 pt3,
+  is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
+Axiom bary3_unique: forall x y z a b,
+    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b -> R2.eq a b.
+
 
 (** **  Circles and SEC  *)
+
+(** ***  General results about circles  **)
 
 Record circle := {
   center : R2.t;
@@ -545,6 +600,7 @@ unfold on_circle in *; cbn in *; rewrite Rdec_bool_true_iff in *.
 Check GPS.
 Admitted.
 
+(** ***  Definition of the [SEC]  **)
 
 (** We assume the existence of a primitive SEC computing the smallest enclosing circle,
     given by center and radius. *)
@@ -589,6 +645,20 @@ intros [| pt ?].
   - apply SEC_spec1. now left.
 Qed.
 
+(** Points on the SEC. *)
+Definition on_SEC l := List.filter (on_circle (SEC l)) l.
+
+Instance on_SEC_compat : Proper (PermutationA Logic.eq ==> PermutationA Logic.eq) on_SEC.
+Proof.
+intros l1 l2 Hl. unfold on_SEC. rewrite Hl at 2.
+rewrite filter_extensionality_compat; try reflexivity.
+intros ? ? ?. subst. now rewrite Hl.
+Qed.
+
+Lemma on_SEC_In : forall pt l, In pt (on_SEC l) <-> In pt l /\ on_circle (SEC l) pt = true.
+Proof. intros. unfold on_SEC. apply filter_In. Qed.
+
+(** ***  Results about the [SEC]  **)
 
 Definition max_dist pt l := List.fold_left (fun r x => Rmax r (R2.dist x pt)) l 0%R.
 
@@ -720,25 +790,12 @@ Proof.
   - inversion H0.
 Qed.
 
-(* TODO? *)
+(* TODO?
+   Wrong with a general distance because of the coarse distance: d(x, y) = 1 <-> x <> y *)
 Axiom SEC_unicity: forall l c,
     enclosing_circle c l
     -> (radius c <= radius (SEC l))%R
     -> c = SEC l.
-
-Lemma SEC_unicity2 : forall l c, enclosing_circle c l -> (radius c <= radius (SEC l))%R -> c = SEC l.
-Proof.
-intros l c Henclosing Hradius.
-assert (Heq : radius c = radius (SEC l)).
-{ apply Rle_antisym; trivial. now apply SEC_spec2. }
-clear Hradius.
-cut (center c = center (SEC l)).
-+ intro Hcenter. destruct c, (SEC l); cbn in *; subst. reflexivity.
-+ (* Idea?: If there are only two points on the SEC, they are a diameter.
-            Otherwise, three points define a unique circle.
-            Therefore, if they are not the same, we have points on one circle but not the other. *)
-destruct c as [pt r]. cbn in *. subst. destruct (SEC l). simpl in *.
-Abort.
 
 Lemma SEC_singleton : forall pt, SEC (pt :: nil) = {| center := pt; radius := 0 |}.
 Proof.
@@ -985,17 +1042,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   now apply SEC_spec2.
 Qed.
 
-Definition on_SEC l := List.filter (on_circle (SEC l)) l.
-
-Instance on_SEC_compat : Proper (PermutationA Logic.eq ==> PermutationA Logic.eq) on_SEC.
-Proof.
-intros l1 l2 Hl. unfold on_SEC. rewrite Hl at 2.
-rewrite filter_extensionality_compat; try reflexivity.
-intros ? ? ?. subst. now rewrite Hl.
-Qed.
-
-Lemma on_SEC_In : forall pt l, In pt (on_SEC l) <-> In pt l /\ on_circle (SEC l) pt = true.
-Proof. intros. unfold on_SEC. apply filter_In. Qed.
+(** ***  Results about [on_SEC]  **)
 
 Lemma on_SEC_nil : forall l, on_SEC l = nil <-> l = nil.
 Proof.

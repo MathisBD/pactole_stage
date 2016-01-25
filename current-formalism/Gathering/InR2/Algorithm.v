@@ -744,7 +744,26 @@ Proof.
     apply Rlt_le, Sim.zoom_pos.
 Qed.
 
-Axiom SEC_morph : forall (sim:Sim.t) l, SEC (List.map sim l) = sim_circle sim (SEC l).
+Lemma SEC_morph : forall (sim:Sim.t) l, SEC (List.map sim l) = sim_circle sim (SEC l).
+Proof.
+intros sim l. symmetry. apply SEC_unicity.
++ intros pt' Hin. rewrite in_map_iff in Hin. destruct Hin as [pt [Hpt Hin]]. subst pt'.
+  unfold sim_circle. simpl. rewrite sim.(Sim.dist_prop).
+  apply Rmult_le_compat_l.
+  - apply Rlt_le. apply Sim.zoom_pos.
+  - now apply SEC_spec1.
++ assert ( 0 < / (Sim.zoom sim))%R by apply Rinv_0_lt_compat, Sim.zoom_pos.
+  unfold sim_circle. simpl. apply Rmult_le_reg_l with (/ (Sim.zoom sim))%R; trivial; [].
+  rewrite <- Rmult_assoc. rewrite Rinv_l; try (now assert (Hpos := Sim.zoom_pos sim); lra); [].
+  change (/ Sim.zoom sim * radius (SEC (map sim l)))%R with (radius (sim_circle (sim ⁻¹) (SEC (map sim l)))).
+  ring_simplify. apply SEC_spec2.
+  intros pt Hin. replace pt with ((sim ⁻¹) (sim pt)).
+  - change (center (sim_circle (sim ⁻¹) (SEC (map sim l)))) with ((sim ⁻¹) (center (SEC (map sim l)))).
+    rewrite (Sim.dist_prop (sim ⁻¹)). simpl. apply Rmult_le_reg_l with (/ (Sim.zoom sim))%R; trivial.
+    do 2 (apply Rmult_le_compat_l; try lra; []).
+    apply SEC_spec1. now apply in_map.
+  - simpl. apply (Similarity.retraction_section _).
+Qed.
 
 Lemma barycenter_3_morph: forall (sim : Sim.t) pt1 pt2 pt3,
   barycenter_3_pts (sim pt1) (sim pt2) (sim pt3) = sim (barycenter_3_pts pt1 pt2 pt3).
@@ -841,6 +860,8 @@ Qed.
 
 Lemma R2_middle_morph : forall x y (sim:Sim.t), (R2.middle (sim x) (sim y))%R2 = sim ((R2.middle x y))%R2.
 Proof.
+intros x y sim. symmetry. apply middle_is_R2middle, R2_is_middle_morph, middle_spec.
+Restart.
   intros x y sim.
   generalize (@middle_spec x y).
   intro hmidlxy.
@@ -849,7 +870,7 @@ Proof.
   assert (is_middle (sim x) (sim y) (sim (R2.middle x y))).
   { apply R2_is_middle_morph.
     auto. }
-  apply middle_unique with (sim x) (sim y);assumption.
+  apply is_middle_uniq with (sim x) (sim y); assumption.
 Qed.
 
 Lemma R2_is_bary3_morph : forall x y z C (sim : Sim.t),
@@ -2547,7 +2568,7 @@ Proof.
                     | HH: R2.dist ?p ?p' = R2.dist ?p'' ?p''' |- _ =>
                       let hdist := fresh "hdist" in
                       assert (hdist:Rsqr (R2.dist p p') = Rsqr (R2.dist p'' p'''))
-                      ; [ idtac HH ; setoid_rewrite HH; try reflexivity;clear HH | clear HH ]
+                      ; [ setoid_rewrite HH; try reflexivity;clear HH | clear HH ]
                     end.
   rename hdist into hdist2.
   rename hdist0 into hdist1.
