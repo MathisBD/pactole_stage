@@ -56,7 +56,7 @@ Proof.
   ;generalize h_classify; intro h_classify'
   ;symmetry in h_classify';rewrite e in h_classify';unfold target_triangle
   ;rewrite h_classify';auto.
-  - apply barycenter_compat;auto.
+  - apply barycenter_3_pts_compat;auto.
   - apply opposite_of_max_side_compat;auto.
 Qed.
 
@@ -744,15 +744,20 @@ Proof.
     apply Rlt_le, Sim.zoom_pos.
 Qed.
 
-(* TODO *)
 Axiom SEC_morph : forall (sim:Sim.t) l, SEC (List.map sim l) = sim_circle sim (SEC l).
 
 Lemma barycenter_3_morph: forall (sim : Sim.t) pt1 pt2 pt3,
   barycenter_3_pts (sim pt1) (sim pt2) (sim pt3) = sim (barycenter_3_pts pt1 pt2 pt3).
 Proof.
-  intros sim pt1 pt2 pt3.
-  unfold barycenter_3_pts.
-Admitted.
+intros sim pt1 pt2 pt3. eapply bary3_unique.
++ apply bary3_spec.
++ intro p. change p with (Sim.id p). rewrite <- (Sim.compose_inverse_r sim).
+  change ((Sim.compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
+  repeat rewrite sim.(Sim.dist_prop), R_sqr.Rsqr_mult. repeat rewrite <- Rmult_plus_distr_l.
+  apply Rmult_le_compat_l.
+  - apply Rle_0_sqr.
+  - apply bary3_spec.
+Qed.
 
 Lemma opposite_of_max_side_morph : forall (sim : Sim.t) pt1 pt2 pt3,
   opposite_of_max_side (sim pt1) (sim pt2) (sim pt3) = sim (opposite_of_max_side pt1 pt2 pt3).
@@ -2480,11 +2485,11 @@ Proof.
       | H : NoDup _ |- _ => inversion_clear H
     end. cbn in *.
     - apply equilateral_barycenter_not_eq; intuition.
-    - rewrite (@barycenter_compat _ _ _ pty ptx ptz); try now etransitivity; repeat constructor.
+    - rewrite (@barycenter_3_pts_compat _ _ _ pty ptx ptz); try now etransitivity; repeat constructor.
       apply equilateral_barycenter_not_eq.
       + rewrite (@classify_triangle_compat _ _ _ ptx pty ptz); try now etransitivity; repeat constructor.
       + intro. subst. intuition.
-    - rewrite (@barycenter_compat _ _ _ ptz pty ptx); try now do 2 etransitivity; repeat constructor.
+    - rewrite (@barycenter_3_pts_compat _ _ _ ptz pty ptx); try now do 2 etransitivity; repeat constructor.
       apply equilateral_barycenter_not_eq.
       + rewrite (@classify_triangle_compat _ _ _ ptx pty ptz); try now do 2 etransitivity; repeat constructor.
       + intro. subst. intuition. }
@@ -2679,7 +2684,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         end.
                         left.
                         reflexivity.
-                      * rewrite (@barycenter_compat pt1 pty pt2 pt1 pt2 pty) in H1;repeat econstructor.
+                      * rewrite (@barycenter_3_pts_compat pt1 pty pt2 pt1 pt2 pty) in H1;repeat econstructor.
                         rewrite (@classify_triangle_compat pt1 pty pt2 pt1 pt2 pty) in Htriangle;repeat econstructor.
                         assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
                         inversion hNoDup;subst.
@@ -2688,7 +2693,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         end.
                         left.
                         reflexivity. 
-                      * rewrite (@barycenter_compat pt2 pt1 ptz pt1 pt2 ptz) in H1;repeat econstructor.
+                      * rewrite (@barycenter_3_pts_compat pt2 pt1 ptz pt1 pt2 ptz) in H1;repeat econstructor.
                         rewrite (@classify_triangle_compat pt2 pt1 ptz pt1 pt2 ptz) in Htriangle;repeat econstructor.
                         assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
                         inversion hNoDup;subst.
@@ -2698,7 +2703,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         left.
                         reflexivity.
 
-                      * rewrite (@barycenter_compat ptx pt1 pt2 pt1 pt2 ptx) in H1.
+                      * rewrite (@barycenter_3_pts_compat ptx pt1 pt2 pt1 pt2 ptx) in H1.
                         -- rewrite (@classify_triangle_compat ptx pt1 pt2 pt1 pt2 ptx) in Htriangle.
                            ++
                              assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
@@ -2711,7 +2716,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                            ++ now do 3 econstructor.
                         -- now do 3 econstructor.
 
-                      * rewrite (@barycenter_compat pt2 pty pt1 pt1 pt2 pty) in H1.
+                      * rewrite (@barycenter_3_pts_compat pt2 pty pt1 pt1 pt2 pty) in H1.
                         -- rewrite (@classify_triangle_compat pt2 pty pt1 pt1 pt2 pty) in Htriangle.
                            ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
                               inversion hNoDup;subst.
@@ -2723,7 +2728,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                            ++ now do 3 econstructor.
                         -- now do 3 econstructor.
 
-                      * rewrite (@barycenter_compat ptx pt2 pt1 pt1 pt2 ptx) in H1.
+                      * rewrite (@barycenter_3_pts_compat ptx pt2 pt1 pt1 pt2 ptx) in H1.
                         -- rewrite (@classify_triangle_compat ptx pt2 pt1 pt1 pt2 ptx) in Htriangle.
                            ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
                               inversion hNoDup;subst.

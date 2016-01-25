@@ -122,18 +122,27 @@ Notation "u + v" := (R2.add u v) : R2_scope.
 Notation "k * u" := (R2.mul k u) : R2_scope.
 Notation "- u" := (R2.opp u) : R2_scope.
 
-Lemma pos_sqrt_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
+Lemma pos_Rsqr_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
 Proof. intros. setoid_rewrite <- sqrt_Rsqr; trivial. now f_equal. Qed.
+
+Corollary square_dist_equiv : forall pt1 pt2 k, 0 <= k ->
+  (R2.dist pt1 pt2 = k <-> (R2.dist pt1 pt2)² = k²).
+Proof.
+intros pt1 pt2 k Hk. split; intro Heq.
++ now rewrite Heq.
++ unfold R2.dist, R2def.dist in *. rewrite Rsqr_sqrt in Heq.
+  - rewrite Heq. now rewrite sqrt_Rsqr.
+  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
+Qed.
+
+Lemma square_dist_simpl : forall pt1 pt2, (R2.dist pt1 pt2)² = (fst pt1 - fst pt2)² + (snd pt1 - snd pt2)².
+Proof.
+intros pt1 pt2. unfold R2.dist, R2def.dist. rewrite Rsqr_sqrt; trivial.
+replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
+Qed.
 
 Lemma pos_Rsqr_le : forall x y, 0 <= x -> 0 <= y -> (x² <= y² <-> x <= y).
 Proof. intros. split; intro; try now apply R_sqr.Rsqr_incr_0 + apply R_sqr.Rsqr_incr_1. Qed.
-
-Lemma Rsqr_pos : forall x, 0 <= x * x.
-Proof.
-intro. rewrite <- (Rmult_0_l 0). destruct (Rle_lt_dec 0 x).
-- apply Rmult_le_compat; lra.
-- replace (x * x) with (-x * -x) by ring. apply Rmult_le_compat; lra.
-Qed.
 
 Lemma R2_dist_defined_2 : forall pt, R2.dist pt pt = 0.
 Proof.
@@ -154,7 +163,7 @@ Qed.
 Lemma R2mul_dist : forall k u v, R2.dist (k * u) (k * v) = Rabs k * R2.dist u v.
 Proof.
 intros k [? ?] [? ?]. unfold R2.dist, R2def.dist. cbn.
-apply pos_sqrt_eq.
+apply pos_Rsqr_eq.
 - apply sqrt_pos.
 - apply Rmult_le_pos; apply Rabs_pos || apply sqrt_pos.
 - rewrite Rsqr_sqrt.
@@ -410,7 +419,7 @@ Qed.
 
 Definition barycenter_3_pts (pt1 pt2 pt3:R2.t) := R2.mul (Rinv 3) (R2.add pt1 (R2.add pt2 pt3)).
 
-Lemma barycenter_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+Lemma barycenter_3_pts_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     barycenter_3_pts pt1 pt2 pt3 =  barycenter_3_pts pt1' pt2' pt3'.
 Proof.
@@ -454,13 +463,13 @@ Definition is_middle pt1 pt2 B := forall p,
 Definition is_barycenter_3_pts pt1 pt2 pt3 B := forall p,
   (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
-(* TODO *)
+(* TODO? *)
 Axiom middle_spec: forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
 Axiom bary3_spec: forall pt1 pt2 pt3,
   is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
 Axiom middle_unique: forall x y a b, is_middle x y a -> is_middle x y b ->  R2.eq a b.
 Axiom bary3_unique: forall x y z a b,
-    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b ->  R2.eq a b.
+    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b -> R2.eq a b.
 
 Lemma middle_comm : forall ptx pty,
     R2.eq (R2.middle ptx pty) (R2.middle pty ptx).
@@ -525,6 +534,7 @@ Proof.
   - apply Rdec_bool_true_iff. auto.
 Qed.
 
+(* TODO? *)
 Lemma three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
   on_circle c1 pt1 = true -> on_circle c1 pt2 = true -> on_circle c1 pt3 = true ->
   on_circle c2 pt1 = true -> on_circle c2 pt2 = true -> on_circle c2 pt3 = true ->
@@ -1158,6 +1168,7 @@ Qed.
 Lemma on_SEC_idempotent : forall l, PermutationA R2.eq (on_SEC (on_SEC l)) (on_SEC l).
 Proof. Admitted.
 
+(* TODO? *)
 Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
 Proof.
 intro l.
@@ -1206,29 +1217,16 @@ Lemma on_SEC_pair_is_diameter : forall pt1 pt2 l, on_SEC l = pt1 :: pt2 :: nil -
 Proof. intros pt1 pt2 l Hsec. rewrite SEC_on_SEC, Hsec. apply SEC_dueton. Qed.
 
 
-(* Proof idea:
-   1) split points on and outside the SEC
-   2) the one outside can be removed:
-      - if they move, they are on the target which is inside the disk (target_inside_SEC)
-        and if on the SEC, there was already someone at that location (target_on_SEC_already occupied)
-      - if they stay still, they were already strictly inside the SEC
-   3) same relevant points, same SEC. *)
 Lemma enclosing_same_on_SEC_is_same_SEC : forall l1 l2,
   enclosing_circle (SEC l2) l1 ->
   (forall pt, In pt (on_SEC l2) -> In pt l1) ->
   SEC l1 = SEC l2.
 Proof.
 intros l1 l2 Hencl Hincl.
-assert (Hperm := partition_Permutation (on_circle (SEC l2)) l1).
-rewrite Permutation_app_comm in Hperm. rewrite <- Hperm. rewrite partition_filter. cbn.
-rewrite SEC_append_same.
-* apply enclosing_twice_same_SEC.
-  + intros pt Hin. rewrite (SEC_on_SEC l2) at 2.
-    admit.
-  + intros pt Hin. apply Hencl. now rewrite filter_In in Hin.
-* intros pt Hin.
-  admit.
-Admitted.
+symmetry. apply SEC_unicity; trivial.
+rewrite (SEC_on_SEC l2). apply SEC_spec2.
+intros pt Hin. apply Hincl in Hin. now apply SEC_spec1.
+Qed.
 
 
 Lemma barycenter_3_pts_inside_SEC : forall pt1 pt2 pt3,
@@ -1250,9 +1248,59 @@ transitivity (R2.dist (/3 * pt1) (/3 * c) + R2.dist (/3 * pt2) (/3 * c) + R2.dis
   subst; apply SEC_spec1; intuition.
 Qed.
 
+Lemma triangle_barycenter_inside_aux : forall pt1 pt2,
+  pt1 <> pt2 -> on_circle (SEC (pt1 :: pt1 :: pt2 :: nil)) (barycenter_3_pts pt1 pt1 pt2) = false.
+Proof.
+intros pt1 pt2 Hneq.
+rewrite SEC_add_same.
+- rewrite SEC_dueton. apply Bool.not_true_iff_false. rewrite on_circle_true_iff. simpl.
+  rewrite square_dist_equiv; try (now assert (Hle := R2.dist_pos pt1 pt2); lra); [].
+  unfold barycenter_3_pts, R2.middle. rewrite square_dist_simpl, R_sqr.Rsqr_mult, square_dist_simpl.
+  intro Habs. apply Hneq. destruct pt1, pt2; simpl in Habs. unfold Rsqr in Habs. field_simplify in Habs.
+  pose (x := (r² + r1² - 2 * r * r1) + (r0² + r2² - 2 * r0 * r2)).
+  assert (Heq0 : x = 0). { unfold x. unfold Rsqr in *. field_simplify in Habs. field_simplify. lra. }
+  clear Habs. unfold x in *. clear x. do 2 rewrite <- R_sqr.Rsqr_minus in Heq0.
+  apply Rplus_eq_R0 in Heq0; try apply Rle_0_sqr; []. unfold Rsqr in Heq0. destruct Heq0 as [Heq0 Heq0'].
+  apply Rsqr_0_uniq in Heq0. apply Rsqr_0_uniq in Heq0'. f_equal; lra.
+- apply SEC_spec1. intuition.
+Qed.
+
 (* TODO *)
-Axiom triangle_barycenter_inside : forall pt1 pt2 pt3,
-  pt1 <> pt2 -> on_circle (SEC (pt1 :: pt2 :: pt3 :: nil)) (barycenter_3_pts pt1 pt2 pt3) = false.
+Lemma triangle_barycenter_inside : forall pt1 pt2 pt3,
+  ~(pt1 = pt2 /\ pt1 = pt3) -> on_circle (SEC (pt1 :: pt2 :: pt3 :: nil)) (barycenter_3_pts pt1 pt2 pt3) = false.
+Proof.
+intros pt1 pt2 pt3 Hneq.
+destruct (R2.eq_dec pt1 pt2) as [Heq12 | Heq12];
+[| destruct (R2.eq_dec pt1 pt3) as [Heq13 | Heq13]; [| destruct (R2.eq_dec pt2 pt3) as [Heq23 | Heq23]]].
+* assert (Hneq12 : pt1 <> pt3) by now intro; subst; auto. rewrite <- Heq12.
+  now apply triangle_barycenter_inside_aux.
+* rewrite <- Heq13.
+  assert (Hperm : Permutation (pt1 :: pt2 :: pt1 :: nil) (pt1 :: pt1 :: pt2 :: nil)) by do 2 constructor.
+  rewrite Hperm. rewrite (barycenter_3_pts_compat Hperm). apply triangle_barycenter_inside_aux. auto.
+* rewrite <- Heq23.
+  assert (Hperm : Permutation (pt1 :: pt2 :: pt2 :: nil) (pt2 :: pt2 :: pt1 :: nil)) by now do 3 econstructor.
+  rewrite Hperm. rewrite (barycenter_3_pts_compat Hperm). apply triangle_barycenter_inside_aux. auto.
+* assert (Hnodup : NoDup (pt1 :: pt2 :: pt3 :: nil)) by (repeat constructor; simpl in *; intuition).
+  destruct (on_SEC (pt1 :: pt2 :: pt3 :: nil)) as [| pt1' [| pt2' [| pt3' [| ? ?]]]] eqn:Hsec.
+  + rewrite on_SEC_nil in Hsec. discriminate.
+  + apply on_SEC_singleton_is_singleton in Hsec; trivial. discriminate.
+  + apply on_SEC_pair_is_diameter in Hsec. rewrite Hsec. apply Bool.not_true_iff_false.
+    rewrite on_circle_true_iff. simpl.
+    rewrite square_dist_equiv; try (now assert (Hle := R2.dist_pos pt1' pt2'); lra); [].
+    unfold barycenter_3_pts, R2.middle. rewrite square_dist_simpl, R_sqr.Rsqr_mult, square_dist_simpl.
+    destruct pt1, pt2, pt3, pt1', pt2'; simpl. unfold Rsqr. intro Habs. field_simplify in Habs.
+    admit.
+  + assert (Hperm : Permutation (pt1' :: pt2' :: pt3' :: nil) (pt1 :: pt2 :: pt3 :: nil)).
+    { rewrite <- PermutationA_Leibniz. rewrite <- NoDupA_Leibniz in Hnodup.
+      apply (NoDupA_inclA_length_PermutationA _); trivial.
+      - rewrite <- Hsec. now apply on_SEC_NoDupA.
+      - rewrite <- Hsec. unfold on_SEC. intros ? Hin. now rewrite (filter_InA _) in Hin. }
+    rewrite <- Hsec in Hperm.
+    admit.
+  + assert (Hle : (length (on_SEC (pt1 :: pt2 :: pt3 :: nil)) <= 3)%nat).
+    { unfold on_SEC. rewrite filter_length. simpl length at 1. omega. }
+    rewrite Hsec in Hle. simpl in Hle. omega.
+Admitted.
 
 Lemma barycenter_3_pts_strictly_inside_SEC : forall pt1 pt2 pt3, ~(pt1 = pt2 /\ pt1 = pt3) ->
   R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
@@ -1265,7 +1313,7 @@ assert (Hcircle : on_circle (SEC (pt1 :: pt2 :: pt3 :: nil)) (barycenter_3_pts p
 { destruct (R2.eq_dec pt1 pt2).
   - assert (Hperm : PermutationA R2.eq (pt1 :: pt2 :: pt3 :: nil) (pt1 :: pt3 :: pt2 :: nil)).
     { now repeat constructor. }
-    rewrite Hperm. rewrite PermutationA_Leibniz in Hperm. rewrite (barycenter_compat Hperm).
+    rewrite Hperm. rewrite PermutationA_Leibniz in Hperm. rewrite (barycenter_3_pts_compat Hperm).
     apply triangle_barycenter_inside. intro. intuition.
   - now apply triangle_barycenter_inside. }
 unfold on_circle in Hcircle. rewrite Rdec_bool_false_iff in Hcircle. contradiction.
@@ -1322,12 +1370,12 @@ constructor.
   end.
   + now apply (equilateral_barycenter_not_eq _ Htriangle).
   + assert (Hperm : Permutation (ptx :: pty :: ptz :: nil) (pty :: ptx :: ptz :: nil)) by constructor.
-    rewrite (barycenter_compat Hperm) in H0. rewrite (classify_triangle_compat Hperm) in Htriangle.
+    rewrite (barycenter_3_pts_compat Hperm) in H0. rewrite (classify_triangle_compat Hperm) in Htriangle.
     apply (equilateral_barycenter_not_eq _ Htriangle); trivial.
     intuition.
   + assert (Hperm : Permutation (ptx :: pty :: ptz :: nil) (ptz :: ptx :: pty :: nil)).
     { now etransitivity; repeat constructor. }
-    rewrite (barycenter_compat Hperm) in H. rewrite (classify_triangle_compat Hperm) in Htriangle.
+    rewrite (barycenter_3_pts_compat Hperm) in H. rewrite (classify_triangle_compat Hperm) in Htriangle.
     apply (equilateral_barycenter_not_eq _ Htriangle); trivial.
     functional induction (classify_triangle ptz ptx pty) as [Heq1 Heq2 | | | |]; try discriminate.
     rewrite Rdec_bool_true_iff in *.
