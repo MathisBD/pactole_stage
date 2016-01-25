@@ -3181,39 +3181,67 @@ assert (Hex : forall id id' f, In id (id1 :: id2 :: id3 :: id4 :: nil) -> In id'
 assert (Hperm_id : exists id1' id2' id3' id4',
       Permutation (id1 :: id2 :: id3 :: id4 :: nil) (id1' :: id2' :: id3' :: id4' :: nil)
       /\ step da id2' = None /\ step da id3' = None /\ step da id4' = None
-      /\ config id2' <> target (!! config) /\ config id3' <> target (!! config) /\ config id4' <> target (!! config)).
+      /\ NoDup (config id2' :: config id3' :: config id4' :: nil)
+      /\ config id2' <> target (!!config) /\ config id3' <> target (!!config) /\ config id4' <> target (!!config)).
 { destruct (step da id1) as [f |] eqn:Hstep1.
   * exists id1, id2, id3, id4. split; trivial.
     repeat split; try (now generalize Hstep1; apply Hex; intuition).
+    -- assert (Heq2 : step da id2 = None) by (generalize Hstep1; apply Hex; intuition).
+       assert (Heq3 : step da id3 = None) by (generalize Hstep1; apply Hex; intuition).
+       assert (Heq4 : step da id4 = None) by (generalize Hstep1; apply Hex; intuition).
+       rewrite Heq2, Heq3, Heq4 in *. subst. clear Heq2 Heq3 Heq4.
+       assert (Hnodup : NoDup (target (!! config) :: config id2 :: config id3 :: config id4 :: l')).
+       { rewrite <- NoDupA_Leibniz. rewrite <- Hperm'. apply on_SEC_NoDupA, Spect.support_NoDupA. }
+       inversion_clear Hnodup. inversion_clear H0. inversion_clear H2. repeat constructor; cbn in *; intuition.
     -- intro. apply Hneq12. rewrite (Hex id1 id2 f) in Hid2; trivial; subst; intuition.
     -- intro. apply Hneq13. rewrite (Hex id1 id3 f) in Hid3; trivial; subst; intuition.
     -- intro. apply Hneq14. rewrite (Hex id1 id4 f) in Hid4; trivial; subst; intuition.
   * destruct (step da id2) as [f |] eqn:Hstep2.
     + exists id2, id1, id3, id4. split; [now do 3 econstructor|].
       repeat split; try now generalize Hstep2; apply Hex; intuition.
+      -- assert (Heq1 : step da id1 = None) by (generalize Hstep2; apply Hex; intuition).
+         assert (Heq3 : step da id3 = None) by (generalize Hstep2; apply Hex; intuition).
+         assert (Heq4 : step da id4 = None) by (generalize Hstep2; apply Hex; intuition).
+         rewrite Heq1, Heq3, Heq4 in *. subst. clear Heq1 Heq3 Heq4.
+         assert (Hnodup : NoDup (config id1 :: target (!! config) :: config id3 :: config id4 :: l')).
+         { rewrite <- NoDupA_Leibniz. rewrite <- Hperm'. apply on_SEC_NoDupA, Spect.support_NoDupA. }
+         inversion_clear Hnodup. inversion_clear H0. inversion_clear H2. repeat constructor; cbn in *; intuition.
       -- intro. apply Hneq12. now subst.
       -- intro. apply Hneq23. rewrite (Hex id2 id3 f) in Hid3; trivial; subst; intuition.
       -- intro. apply Hneq24. rewrite (Hex id2 id4 f) in Hid4; trivial; subst; intuition.
     + destruct (step da id3) as [f |] eqn:Hstep3.
       - exists id3, id1, id2, id4. split; [now do 3 econstructor|].
         repeat split; try now generalize Hstep3; apply Hex; intuition.
+        -- assert (Heq1 : step da id1 = None) by (generalize Hstep3; apply Hex; intuition).
+           assert (Heq2 : step da id2 = None) by (generalize Hstep3; apply Hex; intuition).
+           assert (Heq4 : step da id4 = None) by (generalize Hstep3; apply Hex; intuition).
+           rewrite Heq1, Heq2, Heq4 in *. subst. clear Heq1 Heq2 Heq4.
+           assert (Hnodup : NoDup (config id1 :: config id2 :: target (!! config) :: config id4 :: l')).
+           { rewrite <- NoDupA_Leibniz. rewrite <- Hperm'. apply on_SEC_NoDupA, Spect.support_NoDupA. }
+           inversion_clear Hnodup. inversion_clear H0. inversion_clear H2. repeat constructor; cbn in *; intuition.
         -- intro. apply Hneq13. now subst.
         -- intro. apply Hneq23. now subst.
         -- intro. apply Hneq34. rewrite (Hex id3 id4 f) in Hid4; trivial; subst; intuition.
       - destruct (step da id4) as [f |] eqn:Hstep4.
-        ** exists id4, id1, id2, id3. repeat split; trivial; [now do 4 econstructor| ..]; now subst.
+        ** exists id4, id1, id2, id3. repeat split; trivial; [now do 4 econstructor| ..]; try (now subst); [].
+           subst. repeat constructor; cbn in *; intuition.
         ** destruct (R2.eq_dec (config id1) (target (!! config))) as [Heq1 | Heq1].
-           ++ exists id1, id2, id3, id4. rewrite <- Heq1. subst. repeat split; trivial; intuition.
+           ++ exists id1, id2, id3, id4. rewrite <- Heq1. subst. repeat split; trivial; intuition; [].
+              repeat constructor; cbn in *; intuition.
            ++ destruct (R2.eq_dec (config id2) (target (!! config))) as [Heq2 | Heq2].
               -- exists id2, id1, id3, id4. rewrite <- Heq2. subst.
-                 repeat split; trivial; intuition. now do 3 econstructor.
+                 repeat split; trivial; intuition;
+                 solve [repeat constructor; cbn in *; intuition | now do 3 econstructor].
               -- destruct (R2.eq_dec (config id3) (target (!! config))) as [Heq3 | Heq3].
                  *** exists id3, id1, id2, id4. rewrite <- Heq3. subst.
-                     repeat split; trivial; intuition. now do 3 econstructor.
-                 *** exists id4, id1, id2, id3. subst. repeat split; trivial; intuition. now do 4 econstructor. }
+                     repeat split; trivial; intuition;
+                     solve [repeat constructor; cbn in *; intuition | now do 3 econstructor].
+                 *** exists id4, id1, id2, id3. subst. repeat split; trivial; intuition;
+                     solve [repeat constructor; cbn in *; intuition | now do 4 econstructor]. }
 (* Finally, the old and new SEC are defined by the unchanging locations of these three robots *)
-destruct Hperm_id as [id1' [id2' [id3' [id4' [Hperm_id [Hstep2' [Hstep3' [Hstep4' [? [? ?]]]]]]]]]].
+destruct Hperm_id as [id1' [id2' [id3' [id4' [Hperm_id [Hstep2' [Hstep3' [Hstep4' [Hnodup [? [? ?]]]]]]]]]]].
 apply three_points_same_circle with (config id2') (config id3') (config id4').
++ assumption.
 + eapply proj2. rewrite <- (filter_InA _).
   assert (Hin : In id2' (id1 :: id2 :: id3 :: id4 :: nil)) by (rewrite Hperm_id; intuition).
   simpl in Hin. unfold on_SEC in Hperm'. rewrite Hperm'.
