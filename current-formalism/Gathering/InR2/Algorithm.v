@@ -1478,7 +1478,7 @@ Proof.
 intros conf H1 H2.
 assert (Spect.size (!! conf) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption.
-  do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length _).
+  do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length R2.eq_equiv).
   - apply Spect.support_NoDupA.
   - unfold Spect.max. apply Spect.support_nfilter. repeat intro. now subst. }
  destruct (Spect.size (!! conf)) as [| [| [| ?]]] eqn:Hlen; try omega.
@@ -1488,7 +1488,7 @@ Qed.
 Lemma size_max_le : forall conf,
   Spect.size (Spect.max (!! conf)) <= Spect.size (!! conf).
 Proof.
-intro conf. do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length _).
+intro conf. do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length R2.eq_equiv).
 - apply Spect.support_NoDupA.
 - apply Spect.support_sub_compat, Spect.max_subset.
 Qed.
@@ -1575,7 +1575,7 @@ Proof.
           reflexivity. }
         cbn in H; omega.
       * destruct l.
-        -- assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+        -- assert (h:=PermutationA_3 R2.eq_equiv t t0 t1 ptx pty ptz).
            destruct h.
            specialize (H Hsec).
            decompose [or and] H;
@@ -1620,7 +1620,7 @@ Proof.
           reflexivity. }
         cbn in H; omega.
       * destruct l.
-        -- assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+        -- assert (h:=PermutationA_3 R2.eq_equiv t t0 t1 ptx pty ptz).
            destruct h.
            specialize (H Hsec).
            decompose [or and] H;
@@ -2520,7 +2520,7 @@ Proof.
     apply equilateral_barycenter_NoDupA; trivial.
     inversion_clear Hnodup. intuition.
   - apply clean_triangle_support_incl; assumption.
-  - apply (NoDupA_inclA_length _).
+  - apply (NoDupA_inclA_length R2.eq_equiv).
     + constructor.
       * intro Habs. now apply (h_target_diff _ Habs).
       * rewrite <- Hfilter. unfold on_SEC. apply Preliminary.NoDupA_filter_compat; autoclass.
@@ -2950,7 +2950,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                   cut (4 + length l <= 3); try omega.
                   change (4 + length l) with (length (pt1 :: pt2 :: pt3 :: pt4 :: l)).
                   rewrite <- Hsec', <- Hlen, Spect.size_spec.
-                  apply (NoDupA_inclA_length _).
+                  apply (NoDupA_inclA_length R2.eq_equiv).
                   - apply on_SEC_NoDupA, Spect.support_NoDupA.
                   - unfold on_SEC. intro. rewrite (filter_InA _). intuition. }
                 subst.
