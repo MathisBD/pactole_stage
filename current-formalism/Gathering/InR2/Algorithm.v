@@ -2757,6 +2757,55 @@ Proof.
            constructor 3.
     + assumption.
 Qed.
+
+
+
+Lemma isosceles_vertex_notin_sub_circle: forall ptx pty c,
+    classify_triangle ptx pty c = Isosceles c
+    -> (R2.dist (R2.middle c ptx) pty <= R2.dist c (R2.middle c ptx))%R
+    -> pty = ptx.
+Proof.
+  intros ptx pty c Hhiso hdist.
+  assert (h_dist_iso:R2.dist pty c = R2.dist ptx c).
+  { apply classify_triangle_Isosceles_spec in Hhiso.
+    decompose [or and] Hhiso.
+    + subst.
+      rewrite <- H.
+      apply R2.dist_sym.
+    + subst.
+      rewrite <- H0.
+      apply R2.dist_sym.
+    + setoid_rewrite R2.dist_sym.
+      symmetry.
+      assumption. }
+  assert (h:=Rtotal_order (R2.dist (R2.middle c ptx) pty) (R2.dist c (R2.middle c ptx))).
+  decompose [or] h;clear h.
+  - assert ((R2.dist c ptx) = 2 * R2.dist c (R2.middle c ptx))%R.
+    { rewrite R2dist_middle.
+      lra. }
+    assert (h_ineq:=R2.triang_ineq pty (R2.middle c ptx) c).
+    setoid_rewrite R2.dist_sym in h_ineq at 2 3.
+    rewrite h_dist_iso in h_ineq.
+    rewrite R2.dist_sym in h_ineq at 1.
+    rewrite H0 in h_ineq.
+    exfalso.
+    lra.
+  - assert (Rsqr (R2.dist ptx c) = (R2.dist c pty)² + (R2.dist ptx pty)²)%R.
+    { admit. (*pythagore + Lionel = la tête à toto*) }
+    setoid_rewrite R2.dist_sym in H at 2.
+    rewrite h_dist_iso in H. 
+    assert ((R2.dist ptx pty)² = 0)%R.
+    { lra. }
+    assert ((R2.dist ptx pty) = 0)%R.
+    { apply Rsqr_0_uniq.
+      assumption. }
+    apply R2.dist_defined.
+    rewrite R2.dist_sym.
+    assumption.
+  - exfalso;lra.
+Admitted.
+
+
 (** ****  Merging results about the different kinds of triangles  **)
 
 Lemma triangle_next_maj_or_diameter_or_triangle : forall da conf,
@@ -3099,7 +3148,125 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
 
       -- left. repeat split; trivial; eauto.
          (* TODO: the old target is now strictly inside the SEC *)
-         admit.
+         assert (is_clean (!! conf) = true).
+         { destruct (bool_dec (is_clean (!! conf)) true).
+           - assumption.
+           - exfalso.
+             apply not_true_is_false in n.
+             assert (hdirty:=@dirty_next_SEC_same da conf Hmaj n).
+             + setoid_rewrite <- (@dirty_next_on_SEC_same da conf Hmaj n) in Hsec.
+               * rewrite Hsec' in Hsec.
+                 apply PermutationA_length in Hsec.
+                 simpl in Hsec.
+                 omega. }
+
+         assert (inclA R2.eq (Spect.support (!! (round gatherR2 da conf)))
+                       (target (!! conf) :: on_SEC (Spect.support (!! conf)))).
+         { eapply incl_clean_next ;eauto. }
+         rewrite Htarget in H0.
+         rewrite Hsec in H0.
+         assert (inclA R2.eq (pt1 :: pt2 :: nil) (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)).
+         { transitivity (Spect.support (!! (round gatherR2 da conf))).
+           -  rewrite <- Hsec'.
+             unfold on_SEC.
+             unfold inclA.
+             intros x H1.
+             rewrite filter_InA in H1.
+             destruct H1.
+             assumption.
+             autoclass. 
+           - assumption. }
+         
+         assert (hnodup: NoDupA R2.eq (pt1 :: pt2 :: nil)).
+         { rewrite <- Hsec'. 
+           apply on_SEC_NoDupA.
+           apply Spect.support_NoDupA. }
+
+         { destruct (R2.eq_dec pt1 (barycenter_3_pts ptx pty ptz)).
+           - exfalso.
+             assert(PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf))) (pt1 :: pt2 :: nil)).
+             { apply Preliminary.inclA_app_inv in H1;autoclass.
+               + assert (~R2.eq pt2 (barycenter_3_pts ptx pty ptz)).
+                 { intro abs'.
+                   rewrite e,abs' in hnodup.
+                   inversion hnodup.
+                   apply H4.
+                   left;reflexivity. }
+                 red in H1.
+                 assert (h_pt2:InA R2.eq pt2 (pt2 :: nil) ).
+                 { left;reflexivity. }
+                 specialize (H1 pt2 h_pt2).
+(* ********** *)
+                 inversion H1.
+                 (* pt2 = ptx *)
+                 * unfold R2.eq, R2def.eq in H4.
+                   subst.
+                   assert (hpermut:PermutationA R2.eq (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                          (pty :: ptz :: barycenter_3_pts ptx pty ptz :: ptx :: nil)).
+                   { constructor 4 with (ptx :: barycenter_3_pts ptx pty ptz :: pty :: ptz :: nil).
+                     - constructor 3.
+                     - constructor 4 with (ptx :: pty :: barycenter_3_pts ptx pty ptz :: ptz :: nil).
+                       + constructor 2.
+                         { reflexivity. }
+                         constructor 3.
+                       + constructor 4 with (pty :: ptx :: barycenter_3_pts ptx pty ptz :: ptz :: nil).
+                         * constructor 3.
+                         * constructor 2.
+                           { reflexivity. } 
+                           constructor 4 with (barycenter_3_pts ptx pty ptz :: ptx :: ptz :: nil).
+                           -- constructor 3.
+                           -- constructor 4 with (barycenter_3_pts ptx pty ptz :: ptz :: ptx :: nil).
+                              ++ constructor 2.
+                                 { reflexivity. }
+                                 constructor 3.
+                              ++ constructor 3. }
+                   rewrite hpermut in H0.
+                   assert (h_ynotin:~ InA R2.eq pty (Spect.support (!! (round gatherR2 da conf)))).
+                   { intro abs.
+                     assert (h_bary:=@isosceles_vertex_notin_sub_circle ptx pty pt1).
+                     rewrite h_bary in Hsec.
+                     - assert (hnodup2:NoDupA R2.eq (ptx :: ptx :: ptz :: nil)).
+                       { admit. (* facile *) }
+                       inversion hnodup2.
+                       apply H5.
+                       left;reflexivity.
+                     - admit.
+                     - admit. (* contradiction between h_bary and abs *)
+                   }
+                   assert (h_znotin:~ InA R2.eq ptz (Spect.support (!! (round gatherR2 da conf)))).
+                   { admit. }
+
+                   apply inclA_skip in H0;autoclass.
+                   apply inclA_skip in H0;autoclass.
+                   apply NoDupA_inclA_length_PermutationA;autoclass.
+                   -- apply Spect.support_NoDupA.                   
+                   -- rewrite e.
+                      assumption.
+                   -- simpl.
+                      transitivity (length (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                      ++ rewrite Hsec'.
+                         reflexivity.
+                      ++ unfold on_SEC.
+                         rewrite filter_length.
+                         omega.
+                 * (* InA R2.eq pt2 (pt2 :: nil)  *)
+                   (* do the same twice. *)
+                   admit.
+               + intro abs'.
+                 inversion abs'.
+                 * rewrite H3 in hnodup.
+                   inversion hnodup.
+                   apply H7.
+                   left;reflexivity.
+                 * inversion H3. }
+             rewrite Spect.size_spec in Hlen'.
+             rewrite H2 in Hlen'.
+             simpl in Hlen'.
+             omega.
+           - admit. (* is the barycenter equal to pt2? yes/no *)
+         }
+
+
     * (* Valid case: SEC is a triangle *)
       right. split; trivial.
       rewrite <- Hsec'.
