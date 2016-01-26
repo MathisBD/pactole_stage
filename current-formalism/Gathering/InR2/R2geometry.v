@@ -260,18 +260,6 @@ Proof.
   elim abs; auto.
 Qed.
 
-(* A location is determined by distances to 3 points. *)
-Lemma GPS : forall x y z t1 t2, x <> y -> y <> z -> x <> z ->
-  R2.dist t1 x = R2.dist t2 x -> R2.dist t1 y = R2.dist t2 y -> R2.dist t1 z = R2.dist t2 z -> t1 = t2.
-Proof.
-intros x y z t1 t2 Hxy Hyz Hxz Hx Hy Hz.
-Admitted.
-Arguments GPS x y z t1 t2 _ _ _ _ _ _ : clear implicits.
-
-Lemma diff_0_1 : ~R2.eq (0, 0) (0, 1).
-Proof. intro Heq. inversion Heq. now apply R1_neq_R0. Qed.
-
-
 (** **  Triangles  **)
 
 Inductive triangle_type :=
@@ -1891,9 +1879,6 @@ intros f l. induction l as [| e l].
 - cbn. destruct (f e) eqn:Hfe; cbn; try rewrite Hfe; now (f_equal + idtac).
 Qed.
 
-Lemma on_SEC_idempotent : forall l, PermutationA R2.eq (on_SEC (on_SEC l)) (on_SEC l).
-Proof. Admitted.
-
 (* TODO? *)
 Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
 Proof.
@@ -1906,37 +1891,9 @@ intros pt Hin.
 rewrite filter_In, Bool.negb_true_iff in Hin. destruct Hin as [Hin Hout].
 apply SEC_spec1.
 Admitted.
-(*
-intro l. unfold on_SEC.
-assert ( Hperm := partition_Permutation (on_circle (SEC l)) l).
-rewrite <- PermutationA_Leibniz in Hperm. rewrite <- Hperm at 1 3.
-rewrite partition_filter in *. cbn in *. rewrite (PermutationA_app_comm _).
-remember (filter (fun x : R2.t => negb (on_circle (SEC l) x)) l) as l1.
-remember (filter (on_circle (SEC l)) l) as l2.
-assert (HinSEC : forall pt, In pt l1 -> R2.dist (center (SEC l2)) pt <= radius (SEC l2)).
-{ intros pt Hin. SearchAbout SEC.  }
 
-
-
-Qed.
-generalize (incl_refl l1). rewrite Heql1 at 2. clear Heql1. intro Hincl.
-induction l1 as [| e l1].
-- cbn. rewrite app_nil_r in Hperm. unfold on_SEC. subst. now rewrite filter_idempotent.
-- cbn. destruct (on_circle (SEC l) e) eqn:He.
-  + exfalso. assert (Hin : In e (e :: l1)) by now left.
-    apply Hincl in Hin. rewrite filter_In in Hin. destruct Hin as [_ Hin].
-    rewrite He in Hin. discriminate.
-  + rewrite <- IHl1.
-    * apply on_SEC_add_same.
-      assert (Hin : In e l).
-      { admit. }
-      apply SEC_spec1 in Hin.
-    * 
-    * 
-
- remember (SEC l) as c.
-Qed.
-*)
+Corollary on_SEC_idempotent : forall l, PermutationA R2.eq (on_SEC (on_SEC l)) (on_SEC l).
+Proof. intro l. unfold on_SEC at 1 3. unfold on_SEC at 2. rewrite (SEC_on_SEC l). now rewrite filter_twice. Qed.
 
 Lemma on_SEC_pair_is_diameter : forall pt1 pt2 l, on_SEC l = pt1 :: pt2 :: nil ->
   SEC l = {| center := R2.middle pt1 pt2; radius := /2 * R2.dist pt1 pt2 |}.
