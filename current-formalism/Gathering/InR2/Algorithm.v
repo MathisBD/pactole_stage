@@ -2622,6 +2622,141 @@ Proof.
   - assumption.
 Qed.
 
+(* In a equilateral triangle x y z with barycenter b, if the middle of [b,y]
+   is equal to x then the triangle is degenerated.  *)
+Lemma equilateral_barycenter_degenerated: forall ptx pty ptopp white mid,
+    classify_triangle ptx pty ptopp = Equilateral ->
+    white = barycenter_3_pts ptx pty ptopp ->
+    mid = R2.middle ptopp white ->
+    ptx = mid ->
+    ptx = ptopp.
+Proof.
+  intros ptx pty ptopp white mid hequil hwhite hmid h.
+  subst mid.
+  assert (h_dist:=R2dist_middle white ptopp).
+  assert (h_dist_bary:=@equilateral_SEC ptx pty ptopp hequil).
+  assert (h_permut:Permutation (ptopp :: pty :: ptx :: nil) (ptx :: pty :: ptopp :: nil) ).
+  { constructor 4 with (l':=  pty ::ptopp ::ptx :: nil).
+    - constructor 3.
+    - constructor 4 with (l':= pty :: ptx ::ptopp :: nil).
+      + constructor 2.
+        constructor 3.
+      + constructor 3. }
+  assert (hequil':classify_triangle ptopp pty ptx = Equilateral).
+  { rewrite <- hequil.
+    eapply classify_triangle_compat.
+    assumption. }
+  assert (h_dist_bary':=@equilateral_SEC  ptopp pty ptx hequil').
+  rewrite h_permut in h_dist_bary'.
+  rewrite h_dist_bary' in h_dist_bary.
+  injection h_dist_bary.
+  intro h_disteq.
+  intro h_baryeq'.
+  rewrite h_baryeq' in h_disteq.
+  setoid_rewrite <- hwhite in h_disteq.
+  rewrite h_disteq in h_dist.
+  rewrite h in h_dist.
+  rewrite middle_comm in h_dist.
+  assert (R2.dist white (R2.middle ptopp white) = 0%R).
+  { lra. }
+  assert (h_white_ptopp:(R2.eq white ptopp)). 
+  { apply R2.dist_defined in H.
+    symmetry in H.
+    rewrite middle_comm in H.
+    now rewrite middle_eq in H.
+  }
+  assert (h_white_ptx:(R2.eq white ptx)).
+  { rewrite <- h in H.
+    now apply R2.dist_defined in H.
+  }
+  rewrite <- h_white_ptopp, h_white_ptx.
+  reflexivity.
+Qed.
+
+Lemma equilateral_barycenter_degenerated_gen: forall ptx pty ptz ptopp white mid,
+    classify_triangle ptx pty ptz = Equilateral ->
+    white = barycenter_3_pts ptx pty ptz ->
+    In ptopp (ptx :: pty :: ptz :: nil) -> 
+    mid = R2.middle ptopp white ->
+    In mid (ptx :: pty :: ptz :: nil) ->
+    mid = ptopp.
+Proof.
+  intros ptx pty ptz ptopp white mid hequil hwhite hptopp hmid h.
+  simpl in h.
+  decompose [or] h;clear h;try contradiction.
+  - subst ptx.
+    simpl in hptopp.
+    decompose [or] hptopp;clear hptopp;try contradiction.
+    + assumption.
+    + subst pty.
+      apply (@equilateral_barycenter_degenerated mid ptz ptopp white mid);auto.
+      * erewrite classify_triangle_compat;eauto.
+        constructor 2.
+        constructor 3.
+      * erewrite barycenter_3_pts_compat;eauto.
+        constructor 2.
+        constructor 3.
+    + subst ptz.
+      apply (@equilateral_barycenter_degenerated mid pty ptopp white mid);auto.
+  - subst pty.
+    simpl in hptopp.
+    decompose [or] hptopp;clear hptopp;try contradiction.
+    + subst ptx.
+      apply (@equilateral_barycenter_degenerated mid ptz ptopp white mid);auto.
+      * erewrite classify_triangle_compat;eauto.
+        constructor 4 with (mid :: ptopp :: ptz :: nil).
+        ++ constructor 2.
+           constructor 3.
+        ++ constructor 3.
+      * erewrite barycenter_3_pts_compat;eauto.
+        constructor 4 with (mid :: ptopp :: ptz :: nil).
+        ++ constructor 2.
+           constructor 3.
+        ++ constructor 3.
+    + assumption.
+    + subst ptz.
+      eapply equilateral_barycenter_degenerated with (pty:=ptx) ; eauto.
+      * erewrite classify_triangle_compat;eauto.
+        constructor 3.
+      * subst white.
+        erewrite barycenter_3_pts_compat;eauto.
+        constructor 3.
+  - subst ptz.
+    simpl in hptopp.
+    decompose [or] hptopp;clear hptopp;try contradiction.
+    + subst ptx.
+      apply (@equilateral_barycenter_degenerated mid pty ptopp white mid);auto.
+      * erewrite classify_triangle_compat;eauto.
+        constructor 4 with (mid :: ptopp :: pty :: nil).
+        ++ constructor 2.
+           constructor 3.
+        ++ constructor 4 with (ptopp :: mid :: pty :: nil).
+           ** constructor 3.
+           ** constructor 2.
+              constructor 3.
+      * erewrite barycenter_3_pts_compat;eauto.
+        constructor 4 with (mid :: ptopp :: pty :: nil).
+        ++ constructor 2.
+           constructor 3.
+        ++ constructor 4 with (ptopp :: mid :: pty :: nil).
+           ** constructor 3.
+           ** constructor 2.
+              constructor 3.
+    + subst pty.
+      eapply equilateral_barycenter_degenerated with (pty:=ptx) ; eauto.
+      * erewrite classify_triangle_compat;eauto.
+        constructor 4 with (ptx :: mid :: ptopp :: nil).
+        -- constructor 3.
+        -- constructor 2.
+           constructor 3.
+      * subst white.
+        erewrite barycenter_3_pts_compat;eauto.
+        constructor 4 with (ptx :: mid :: ptopp :: nil).
+        -- constructor 3.
+        -- constructor 2.
+           constructor 3.
+    + assumption.
+Qed.
 (** ****  Merging results about the different kinds of triangles  **)
 
 Lemma triangle_next_maj_or_diameter_or_triangle : forall da conf,
@@ -2769,6 +2904,28 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                   - (* if (target (conf)) is in (SEC (round conf)) then two previously
                        SEC-towers have moved to (target (conf)). therefore there are
                        two tower => majority (or contradicting forbidden).  *)
+                    
+                    assert (hIn:In pt2 (ptx :: pty :: ptz :: nil)).
+                    { assert (In pt2 (target (!! conf) :: ptx :: pty :: ptz :: nil)).
+                      { rewrite <- Hsec.
+                        apply InA_Leibniz.
+                        eapply incl_clean_next with da;auto.
+                        assert (InA R2.eq pt2 (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                        { rewrite Hsec'.
+                          right;left;reflexivity. }
+                        rewrite InA_Leibniz in H1 |-*.
+                        apply on_SEC_In.
+                        assumption. }
+                      inversion H1.
+                      - exfalso.
+                        rewrite <- H2 in Htarget.
+                        rewrite Htarget in H3.
+                        subst.
+                        rewrite H3 in hNoDup.
+                        inversion  hNoDup.
+                        apply H6.
+                        left;reflexivity.
+                      - assumption. }
                     unfold inclA in H0.
                     assert (hmid:InA R2.eq (R2.middle pt1 pt2) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
                     { left.
@@ -2785,100 +2942,124 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         left; reflexivity.
                       * rewrite <- H1.
                         left;reflexivity.
+                    + assert(ptx = pt2).
+                      { rewrite middle_comm in H3.
+                        eapply equilateral_barycenter_degenerated_gen
+                        with (ptopp:=pt2) (mid:=ptx) (white:=pt1);eauto.
+                        left.
+                        reflexivity. }
+                      subst ptx.
+                      rewrite middle_comm in H0.
+                      rewrite middle_eq in H0.
+                      rewrite H0 in hNoDup.
+                      inversion hNoDup.
+                      apply H4.
+                      left.
+                      reflexivity.
+                    + assert(pty = pt2).
+                      { rewrite middle_comm in H1.
+                        eapply equilateral_barycenter_degenerated_gen
+                        with (ptopp:=pt2) (mid:=pty) (white:=pt1);eauto.
+                        right;left.
+                        reflexivity. }
+                      subst pty.
+                      rewrite middle_comm in H0.
+                      rewrite middle_eq in H0.
+                      rewrite H0 in hNoDup.
+                      inversion hNoDup.
+                      apply H4.
+                      left.
+                      reflexivity.
+                    + assert(ptz = pt2).
+                      { rewrite middle_comm in H3.
+                        eapply equilateral_barycenter_degenerated_gen
+                        with (ptopp:=pt2) (mid:=ptz) (white:=pt1);eauto.
+                        right;right;left.
+                        reflexivity. }
+                      subst ptz.
+                      rewrite middle_comm in H0.
+                      rewrite middle_eq in H0.
+                      rewrite H0 in hNoDup.
+                      inversion hNoDup.
+                      apply H4.
+                      left.
+                      reflexivity.
+                  - (* if (target (conf)) is in (SEC (round conf)) then two previously
+                       SEC-towers have moved to (target (conf)). therefore there are
+                       two tower => majority (or contradicting forbidden).  *)
 
-
-                      Lemma foo: forall ptx pty ptopp white mid,
-                        classify_triangle ptx pty ptopp = Equilateral ->
-                        white = barycenter_3_pts ptx pty ptopp ->
-                        mid = R2.middle ptopp white ->
-                        ptx = mid ->
-                        ptx = ptopp.
-                      Proof.
-                        intros ptx pty ptopp white mid hequil hwhite hmid h.
-                        subst mid.
-                        assert (h_dist:=R2dist_middle white ptopp).
-                        assert (h_dist_bary:=@equilateral_SEC ptx pty ptopp hequil).
-                        assert (h_permut:Permutation (ptopp :: pty :: ptx :: nil) (ptx :: pty :: ptopp :: nil) ).
-                        { constructor 4 with (l':=  pty ::ptopp ::ptx :: nil).
-                          - constructor 3.
-                          - constructor 4 with (l':= pty :: ptx ::ptopp :: nil).
-                            + constructor 2.
-                              constructor 3.
-                            + constructor 3. }
-                        assert (hequil':classify_triangle ptopp pty ptx = Equilateral).
-                        { rewrite <- hequil.
-                          eapply classify_triangle_compat.
-                          assumption. }
-                        assert (h_dist_bary':=@equilateral_SEC  ptopp pty ptx hequil').
-                        rewrite h_permut in h_dist_bary'.
-                        rewrite h_dist_bary' in h_dist_bary.
-                        injection h_dist_bary.
-                        intro h_disteq.
-                        intro h_baryeq'.
-                        rewrite h_baryeq' in h_disteq.
-                        setoid_rewrite <- hwhite in h_disteq.
-                        rewrite h_disteq in h_dist.
-                        rewrite h in h_dist.
-                        rewrite middle_comm in h_dist.
-                        assert (R2.dist white (R2.middle ptopp white) = 0%R).
-                        { lra. }
-                        assert (h_white_ptopp:(R2.eq white ptopp)). 
-                        { apply R2.dist_defined in H.
-                          symmetry in H.
-                          rewrite middle_comm in H.
-                          now rewrite middle_eq in H.
-                        }
-                        assert (h_white_ptx:(R2.eq white ptx)).
-                        { rewrite <- h in H.
-                          now apply R2.dist_defined in H.
-                        }
-                        rewrite <- h_white_ptopp, h_white_ptx.
-                        reflexivity.
-                      Qed.
-
-                    + 
-
-                      (*   symmetry in H. *)
-                      (*     rewrite middle_comm in H. *)
-                      (*     now rewrite middle_eq in H. *)
-                      (*   } *)
-                        
-
-                      (*   apply R2.dist_defined in H. *)
-                      (*   symmetry in H. *)
-
-                      (*   rewrite middle_comm in H. *)
-                      (*   rewrite middle_eq in H. *)
-                      (*   rewrite H in hwhite. *)
-                      (*   assert (h_eq_ptx_pty := middle_barycenter_3_neq ptx pty ptopp hequil). *)
-                      (*   assert (R2.middle ptx pty = barycenter_3_pts ptx pty ptopp). *)
-                      (*   { symmetry. *)
-                      (*     unfold R2.middle. *)
-                      (*     admit. *)
-                      (*   } *)
-                      (*   specialize (h_eq_ptx_pty H0). *)
-                      (*   admit. *)
-                      (* Admitted. *)
-
-(*                    
-                    assert (h_rnd_ge_3: Spect.size (!! (round gatherR2 da conf)) >= 3).
-                    { apply not_forbidden_no_majority_size;assumption. }
-                    assert (h_rnd_eq_2:Spect.size (!! (round gatherR2 da conf)) = 2).
-                    { assert (h_spect_size:Spect.support (!! (round gatherR2 da conf)) = pt1 :: pt2 :: nil).
-                      { 
-
-                        admit. }
-                      rewrite Spect.size_spec.
-                      rewrite h_spect_size.
+                    assert (hIn:In pt1 (ptx :: pty :: ptz :: nil)).
+                    { assert (In pt1 (target (!! conf) :: ptx :: pty :: ptz :: nil)).
+                      { rewrite <- Hsec.
+                        apply InA_Leibniz.
+                        eapply incl_clean_next with da;auto.
+                        assert (InA R2.eq pt1 (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                        { rewrite Hsec'.
+                          left;reflexivity. }
+                        rewrite InA_Leibniz in H2 |-*.
+                        apply on_SEC_In.
+                        assumption. }
+                      inversion H2.
+                      - exfalso.
+                        rewrite H3 in Htarget.
+                        rewrite <- Htarget in H1.
+                        subst pt2.
+                        inversion  hNoDup.
+                        apply H5.
+                        left;reflexivity.
+                      - assumption. }
+                    unfold inclA in H0.
+                    assert (hmid:InA R2.eq (R2.middle pt1 pt2) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
+                    { left.
                       reflexivity. }
-                    rewrite h_rnd_eq_2 in h_rnd_ge_3.
-                    omega.
-                  - (* idem *) *)
-                    admit.
-                    + admit.
-                    + admit.
-                  -  admit.
-                }
+                    specialize (H0 (R2.middle pt1 pt2) hmid).
+                    rewrite InA_Leibniz in H0.
+                    simpl in H0.
+                    decompose [or False] H0;clear H0.
+                    + rewrite Htarget in H2.
+                      rewrite <- H1 in H2.
+                      elim (@middle_diff pt1 pt2).
+                      * intro abs. rewrite abs in hNoDup. inversion hNoDup.
+                        apply H4.
+                        left; reflexivity.
+                      * rewrite <- H2.
+                        right;left;reflexivity.
+                    + assert(ptx = pt1).
+                      { eapply equilateral_barycenter_degenerated_gen
+                        with (ptopp:=pt1) (mid:=ptx) (white:=pt2);eauto.
+                        left.
+                        reflexivity. }
+                      subst ptx.
+                      rewrite middle_eq in H0.
+                      rewrite H0 in hNoDup.
+                      inversion hNoDup.
+                      apply H4.
+                      left.
+                      reflexivity.
+                    + assert(pty = pt1).
+                      { eapply equilateral_barycenter_degenerated_gen
+                        with (ptopp:=pt1) (mid:=pty) (white:=pt2);eauto.
+                        right;left.
+                        reflexivity. }
+                      subst pty.
+                      rewrite middle_eq in H0.
+                      rewrite H0 in hNoDup.
+                      inversion hNoDup.
+                      apply H4.
+                      left.
+                      reflexivity.
+                    + assert(ptz = pt1).
+                      { eapply equilateral_barycenter_degenerated_gen
+                        with (ptopp:=pt1) (mid:=ptz) (white:=pt2);eauto.
+                        right;right;left.
+                        reflexivity. }
+                      subst ptz.
+                      rewrite middle_eq in H0.
+                      rewrite H0 in hNoDup.
+                      inversion hNoDup.
+                      apply H4.
+                      left.
+                      reflexivity. }
             --- (* (ptx :: pty :: ptz :: nil) = (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)
                    contradiction with calssify_triangle = equilateral *)
               assert (PermutationA R2.eq (ptx :: pty :: ptz :: nil) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
