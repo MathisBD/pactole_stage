@@ -2678,31 +2678,44 @@ Proof.
       symmetry.
       assumption. }
   assert (h:=Rtotal_order (R2.dist (R2.middle c ptx) pty) (R2.dist c (R2.middle c ptx))).
-  decompose [or] h;clear h.
-  - assert ((R2.dist c ptx) = 2 * R2.dist c (R2.middle c ptx))%R.
+  destruct h as [Hlt | [Heq | Hlt]].
+  - assert (Heq : ((R2.dist c ptx) = 2 * R2.dist c (R2.middle c ptx))%R).
     { rewrite R2dist_middle.
       lra. }
     assert (h_ineq:=R2.triang_ineq pty (R2.middle c ptx) c).
     setoid_rewrite R2.dist_sym in h_ineq at 2 3.
     rewrite h_dist_iso in h_ineq.
     rewrite R2.dist_sym in h_ineq at 1.
-    rewrite H0 in h_ineq.
+    rewrite Heq in h_ineq.
     exfalso.
     lra.
-  - assert (Rsqr (R2.dist ptx c) = (R2.dist c pty)² + (R2.dist ptx pty)²)%R.
-    { admit. (*pythagore + Lionel = la tête à toto*) }
-    setoid_rewrite R2.dist_sym in H at 2.
-    rewrite h_dist_iso in H. 
-    assert ((R2.dist ptx pty)² = 0)%R.
-    { lra. }
-    assert ((R2.dist ptx pty) = 0)%R.
-    { apply Rsqr_0_uniq.
-      assumption. }
-    apply R2.dist_defined.
-    rewrite R2.dist_sym.
-    assumption.
+  - pose (m := R2.middle c ptx). fold m in Heq.
+    assert (Htriang_eq : (R2.dist c pty = R2.dist c m + R2.dist m pty)%R).
+    { rewrite Heq. ring_simplify. unfold m. rewrite R2dist_middle.
+      rewrite R2.dist_sym, h_dist_iso, R2.dist_sym. field. }
+    apply triang_ineq_eq in Htriang_eq. destruct Htriang_eq as [Hcol1 Hcol2].
+    assert (Hmiddle : colinear (m - c) (ptx - c)).
+    { symmetry. unfold m. rewrite middle_shift. apply colinear_middle. }
+    rewrite Hcol1, Hmiddle in Hcol2.
+    destruct (R2.eq_dec ptx c) as [Hxc | Hxc].
+    + rewrite Hxc in *. rewrite<- R2.dist_defined. rewrite h_dist_iso. apply R2_dist_defined_2.
+    + apply colinear_decompose in Hcol2; try (now rewrite R2sub_origin); [].
+      rewrite R2.dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol2.
+        unfold m in Hcol2. rewrite R2dist_middle in Hcol2. rewrite R2.minus_morph in Hcol2.
+        rewrite R2.dist_sym, R2norm_dist, <- R2.mul_morph, <- unitary_id in Hcol2. fold m in Hcol2.
+      destruct Hcol2 as [Hcol2 | Hcol2].
+      * assert (Hpty : R2.eq pty (m + /2 * (ptx - c))).
+        { apply R2.add_reg_r with (- m)%R2. rewrite Hcol2. setoid_rewrite R2.add_comm at 3.
+          now rewrite <- R2.add_assoc, R2.add_opp, R2.add_origin. }
+        rewrite Hpty. unfold m, R2.middle. destruct ptx, c; simpl; hnf; f_equal; field.
+      * assert (Hpty : R2.eq pty (m - /2 * (ptx - c))).
+        { apply R2.add_reg_r with (- m)%R2. rewrite Hcol2. setoid_rewrite R2.add_comm at 3.
+          now rewrite <- R2.add_assoc, R2.add_opp, R2.add_origin. }
+        assert (pty = c).
+        { rewrite Hpty. unfold m, R2.middle. destruct ptx, c; simpl; hnf; f_equal; field. }
+        subst. symmetry. rewrite <- R2.dist_defined, <- h_dist_iso. apply R2_dist_defined_2.
   - exfalso;lra.
-Admitted.
+Qed.
 
 
 (** ****  Merging results about the different kinds of triangles  **)

@@ -260,147 +260,8 @@ Proof.
   elim abs; auto.
 Qed.
 
-(** **  Triangles  **)
 
-Inductive triangle_type :=
-  | Equilateral
-  | Isosceles (vertex : R2.t)
-  | Scalene.
-
-Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
-  if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt2 pt3)
-  then if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3)
-       then Equilateral
-       else Isosceles pt2
-  else if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3) then Isosceles pt3
-  else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
-  else Scalene.
-
-Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
-  let len12 := R2.dist pt1 pt2 in
-  let len23 := R2.dist pt2 pt3 in
-  let len13 := R2.dist pt1 pt3 in
-  if Rle_bool len12 len23
-  then if Rle_bool len23 len13 then pt2 else pt1
-  else if Rle_bool len12 len13 then pt2 else pt3.
-
-Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
-    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-    classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
-Proof.
-  intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
-  rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
-  decompose [or and] Hperm; clear Hperm; subst;
-  match goal with
-  | |- ?x = ?x => reflexivity
-  | |- classify_triangle ?a ?b ?c = classify_triangle ?a' ?b' ?c'
-    =>
-    functional induction (classify_triangle a b c);auto;
-    functional induction (classify_triangle a' b' c');auto
-  end;
-  normalize_R2dist pt1' pt2' pt3';try contradiction;
-  try match goal with
-      | H1:?A <> ?B, H2: ?B = ?A |- _ => symmetry in H2;contradiction
-      | H1:?A <> ?B, H2: ?A = ?C , H3: ?C = ?B  |- _ =>
-        assert (A=B) by (transitivity C;auto)
-        ;contradiction
-      | H1:?A <> ?B, H2: ?A = ?C , H3: ?B = ?C  |- _ =>
-        assert (A=B) by (transitivity C;auto)
-        ;try contradiction; try (symmetry; contradiction)
-      | H1:?A <> ?B, H2: ?C = ?A , H3: ?C = ?B  |- _ =>
-        assert (A=B) by (transitivity C;auto)
-        ;try contradiction; try (symmetry; contradiction)
-      | H1:?A <> ?B, H2: ?C = ?A , H3: ?B = ?C  |- _ =>
-        assert (A=B) by (transitivity C;auto)
-        ;try contradiction; try (symmetry; contradiction)
-      end.
-Qed.
-
-Lemma opposite_of_max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
-    classify_triangle pt1 pt2 pt3 = Scalene ->
-    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
-    opposite_of_max_side pt1 pt2 pt3 = opposite_of_max_side pt1' pt2' pt3'.
-Proof.
-  intros pt1 pt2 pt3 pt1' pt2' pt3' scalene Hperm.
-  generalize (classify_triangle_compat Hperm).
-  intro scalene'.
-  rewrite scalene in scalene'. symmetry in scalene'.
-  functional inversion scalene.
-  functional inversion scalene'.
-  clear scalene' scalene.
-  normalize_R2dist pt1 pt2 pt3.
-  normalize_R2dist pt1' pt2' pt3'.
-  rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
-  decompose [or and] Hperm; clear Hperm; subst; reflexivity ||
-  match goal with
-  | |- ?x = ?x => reflexivity
-  | |- opposite_of_max_side ?a ?b ?c = opposite_of_max_side ?a' ?b' ?c'
-    =>
-    functional induction (opposite_of_max_side a b c);auto;
-    functional induction (opposite_of_max_side a' b' c');auto
-  end;
-  repeat rewrite ?Rle_bool_true_iff, ?Rle_bool_false_iff in *
-  ; repeat progress normalize_R2dist pt1' pt2' pt3' ;try contradiction;
-  repeat match goal with
-         | H1: ?A < ?A |- _ => elim (Rlt_irrefl _ h_ltxx)
-         | H1: ?A < ?B, H2: ?B < ?A |- _ =>
-           assert (h_ltxx:A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx)
-         | H1: ?A < ?B, H2: ?B < ?C, H3: ?C < ?A |- _ =>
-           assert (h_ltxx:A<C) by (eapply Rlt_trans;eauto);
-           assert (h_ltxx':A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx')
-         | H1:?A <> ?B, H2: ?A <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;auto);clear H2
-         | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
-         end.
-Qed.
-
-Lemma classify_triangle_Equilateral_spec : forall pt1 pt2 pt3,
-  classify_triangle pt1 pt2 pt3 = Equilateral
-  <-> R2.dist pt1 pt2 = R2.dist pt2 pt3 /\ R2.dist pt1 pt3 = R2.dist pt2 pt3.
-Proof.
-intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
-rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
-Qed.
-
-Lemma classify_triangle_Isosceles_spec : forall pt1 pt2 pt3 pt,
-  classify_triangle pt1 pt2 pt3 = Isosceles pt
-  <-> (pt = pt1 /\ R2.dist pt1 pt2 = R2.dist pt1 pt3 /\ R2.dist pt1 pt2 <> R2.dist pt2 pt3)
-   \/ (pt = pt2 /\ R2.dist pt2 pt1 = R2.dist pt2 pt3 /\ R2.dist pt2 pt1 <> R2.dist pt1 pt3)
-   \/ (pt = pt3 /\ R2.dist pt3 pt1 = R2.dist pt3 pt2 /\ R2.dist pt3 pt1 <> R2.dist pt1 pt2).
-Proof.
-intros pt1 pt2 pt3 pt. functional induction (classify_triangle pt1 pt2 pt3);
-rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *;
-repeat lazymatch goal with
-  | H : context[R2.dist pt2 pt1] |- _ => rewrite (R2.dist_sym pt1 pt2) in H
-  | H : context[R2.dist pt3 pt1] |- _ => rewrite (R2.dist_sym pt1 pt3) in H
-  | H : context[R2.dist pt3 pt2] |- _ => rewrite (R2.dist_sym pt2 pt3) in H
-  | |- context[R2.dist pt2 pt1] => rewrite (R2.dist_sym pt1 pt2)
-  | |- context[R2.dist pt3 pt1] => rewrite (R2.dist_sym pt1 pt3)
-  | |- context[R2.dist pt3 pt2] => rewrite (R2.dist_sym pt2 pt3)
-  | H : context[R2.dist ?x ?y = _] |- context[R2.dist ?x ?y] => setoid_rewrite H; clear H
-end;
-split; intro H; discriminate || (progress decompose [or and] H; clear H) || (injection H; intro);
-subst; trivial; try contradiction.
-+ right; left. subst. repeat split. intro Heq. rewrite Heq in *. intuition.
-+ match goal with H : ?x <> ?x |- _ => now elim H end.
-+ do 2 right. subst. repeat split; trivial. intro Heq. rewrite Heq in *. intuition.
-+ repeat match goal with
-    | H : R2.dist _ _ = _ |- _ => rewrite H in *; clear H
-    | H : ?x <> ?x |- _ => now elim H
-  end.
-+ left. now repeat split.
-Qed.
-
-Lemma classify_triangle_Scalene_spec : forall pt1 pt2 pt3,
-  classify_triangle pt1 pt2 pt3 = Scalene
-  <-> R2.dist pt1 pt2 <> R2.dist pt2 pt3
-   /\ R2.dist pt1 pt2 <> R2.dist pt1 pt3
-   /\ R2.dist pt1 pt3 <> R2.dist pt2 pt3.
-Proof.
-intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
-rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
-Qed.
-
-(** **  Segment bisector  **)
+(** **  Poor man's formalization of euclidean spaces  **)
 
 (* FIXME: we should instead have a proper formalisation of euclidean spaces! *)
 Definition product (u v : R2.t) := fst u * fst v + snd u * snd v.
@@ -522,6 +383,9 @@ Proof. intros u k Hk. split; intro Heq; try congruence; []. apply pos_Rsqr_eq; t
 
 Corollary squared_R2norm : forall u v, R2norm u = R2norm v <-> (R2norm u)² = (R2norm v)².
 Proof. intros u v. apply square_R2norm_equiv. apply R2norm_pos. Qed.
+
+Lemma squared_R2norm_product : forall u, (R2norm u)² = product u u.
+Proof. intro. unfold R2norm. rewrite Rsqr_sqrt; trivial. apply product_self_pos. Qed.
 
 (** ***  Results about [orthogonal]  **)
 
@@ -788,13 +652,24 @@ intros u u' Hu v v' Hv. split; intro Hperp.
 Qed.
 
 (** Important theorems *)
-Theorem Pythagoras : forall u v, perpendicular u v -> (R2norm (u + v)%R2)² = (R2norm u)² + (R2norm v)².
+Theorem Pythagoras : forall u v, perpendicular u v <-> (R2norm (u + v)%R2)² = (R2norm u)² + (R2norm v)².
 Proof.
-intros u v Hperp. unfold R2norm.
-repeat rewrite Rsqr_sqrt; try apply product_self_pos; [].
-rewrite product_add_l, product_add_r, product_add_r.
-rewrite (product_comm v u), Hperp. ring.
+intros u v. split; intro Hperp.
+- unfold R2norm.
+  repeat rewrite Rsqr_sqrt; try apply product_self_pos; [].
+  rewrite product_add_l, product_add_r, product_add_r.
+  rewrite (product_comm v u), Hperp. ring.
+- rewrite squared_R2norm_product in Hperp at 1.
+  rewrite product_add_l, product_add_r, product_add_r in Hperp.
+  setoid_rewrite product_comm in Hperp at 3.
+  do 2 rewrite <- squared_R2norm_product in Hperp.
+  unfold perpendicular. lra.
 Qed.
+
+Theorem triang_ineq_eq : forall u v w,
+  R2.dist u w = R2.dist u v + R2.dist v w -> colinear (w - u) (v - u) /\ colinear (w - u) (w - v).
+Proof.
+Admitted.
 
 (* Beurk! *)
 Theorem decompose_on : forall u, ~R2.eq u R2.origin -> forall v,
@@ -875,16 +750,154 @@ intros pt1 pt2 pt Hnull. split; intro Hpt.
     by (destruct pt1, pt2; simpl; f_equal; field).
   replace (- pt2 + 1 / 2 * (pt1 + pt2))%R2 with (- (/2 * (pt2 - pt1)))%R2
     by (destruct pt1, pt2; simpl; f_equal; field).
-  rewrite squared_R2norm. setoid_rewrite Pythagoras.
-  - now do 2 rewrite R2norm_opp.
-  - apply perpendicular_opp_compat_l, perpendicular_opp_compat_r.
-    apply perpendicular_mul_compat_l, perpendicular_mul_compat_r.
-    apply orthogonal_perpendicular.
-  - apply perpendicular_opp_compat_l.
-    apply perpendicular_mul_compat_l, perpendicular_mul_compat_r.
-    apply orthogonal_perpendicular.
+  assert (Hperp : perpendicular (- (/2 * (pt2 - pt1))) (k * orthogonal (pt2 - pt1)))
+    by apply perpendicular_opp_compat_l, perpendicular_mul_compat_l,
+             perpendicular_mul_compat_r, orthogonal_perpendicular.
+  rewrite squared_R2norm. rewrite Pythagoras in Hperp. rewrite Hperp.
+  setoid_rewrite <- R2norm_opp at 3. rewrite <- Pythagoras.
+  apply perpendicular_opp_compat_l, perpendicular_opp_compat_r,
+        perpendicular_mul_compat_l, perpendicular_mul_compat_r, orthogonal_perpendicular.
 Qed.
 
+(** **  Triangles  **)
+
+Inductive triangle_type :=
+  | Equilateral
+  | Isosceles (vertex : R2.t)
+  | Scalene.
+
+Function classify_triangle (pt1 pt2 pt3 : R2.t) : triangle_type :=
+  if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt2 pt3)
+  then if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3)
+       then Equilateral
+       else Isosceles pt2
+  else if Rdec_bool (R2.dist pt1 pt3) (R2.dist pt2 pt3) then Isosceles pt3
+  else if Rdec_bool (R2.dist pt1 pt2) (R2.dist pt1 pt3) then Isosceles pt1
+  else Scalene.
+
+Function opposite_of_max_side (pt1 pt2 pt3 : R2.t) :=
+  let len12 := R2.dist pt1 pt2 in
+  let len23 := R2.dist pt2 pt3 in
+  let len13 := R2.dist pt1 pt3 in
+  if Rle_bool len12 len23
+  then if Rle_bool len23 len13 then pt2 else pt1
+  else if Rle_bool len12 len13 then pt2 else pt3.
+
+Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
+  rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
+  decompose [or and] Hperm; clear Hperm; subst;
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | |- classify_triangle ?a ?b ?c = classify_triangle ?a' ?b' ?c'
+    =>
+    functional induction (classify_triangle a b c);auto;
+    functional induction (classify_triangle a' b' c');auto
+  end;
+  normalize_R2dist pt1' pt2' pt3';try contradiction;
+  try match goal with
+      | H1:?A <> ?B, H2: ?B = ?A |- _ => symmetry in H2;contradiction
+      | H1:?A <> ?B, H2: ?A = ?C , H3: ?C = ?B  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;contradiction
+      | H1:?A <> ?B, H2: ?A = ?C , H3: ?B = ?C  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      | H1:?A <> ?B, H2: ?C = ?A , H3: ?C = ?B  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      | H1:?A <> ?B, H2: ?C = ?A , H3: ?B = ?C  |- _ =>
+        assert (A=B) by (transitivity C;auto)
+        ;try contradiction; try (symmetry; contradiction)
+      end.
+Qed.
+
+Lemma opposite_of_max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
+    classify_triangle pt1 pt2 pt3 = Scalene ->
+    Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
+    opposite_of_max_side pt1 pt2 pt3 = opposite_of_max_side pt1' pt2' pt3'.
+Proof.
+  intros pt1 pt2 pt3 pt1' pt2' pt3' scalene Hperm.
+  generalize (classify_triangle_compat Hperm).
+  intro scalene'.
+  rewrite scalene in scalene'. symmetry in scalene'.
+  functional inversion scalene.
+  functional inversion scalene'.
+  clear scalene' scalene.
+  normalize_R2dist pt1 pt2 pt3.
+  normalize_R2dist pt1' pt2' pt3'.
+  rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
+  decompose [or and] Hperm; clear Hperm; subst; reflexivity ||
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | |- opposite_of_max_side ?a ?b ?c = opposite_of_max_side ?a' ?b' ?c'
+    =>
+    functional induction (opposite_of_max_side a b c);auto;
+    functional induction (opposite_of_max_side a' b' c');auto
+  end;
+  repeat rewrite ?Rle_bool_true_iff, ?Rle_bool_false_iff in *
+  ; repeat progress normalize_R2dist pt1' pt2' pt3' ;try contradiction;
+  repeat match goal with
+         | H1: ?A < ?A |- _ => elim (Rlt_irrefl _ h_ltxx)
+         | H1: ?A < ?B, H2: ?B < ?A |- _ =>
+           assert (h_ltxx:A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx)
+         | H1: ?A < ?B, H2: ?B < ?C, H3: ?C < ?A |- _ =>
+           assert (h_ltxx:A<C) by (eapply Rlt_trans;eauto);
+           assert (h_ltxx':A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx')
+         | H1:?A <> ?B, H2: ?A <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;auto);clear H2
+         | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
+         end.
+Qed.
+
+Lemma classify_triangle_Equilateral_spec : forall pt1 pt2 pt3,
+  classify_triangle pt1 pt2 pt3 = Equilateral
+  <-> R2.dist pt1 pt2 = R2.dist pt2 pt3 /\ R2.dist pt1 pt3 = R2.dist pt2 pt3.
+Proof.
+intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
+rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
+Qed.
+
+Lemma classify_triangle_Isosceles_spec : forall pt1 pt2 pt3 pt,
+  classify_triangle pt1 pt2 pt3 = Isosceles pt
+  <-> (pt = pt1 /\ R2.dist pt1 pt2 = R2.dist pt1 pt3 /\ R2.dist pt1 pt2 <> R2.dist pt2 pt3)
+   \/ (pt = pt2 /\ R2.dist pt2 pt1 = R2.dist pt2 pt3 /\ R2.dist pt2 pt1 <> R2.dist pt1 pt3)
+   \/ (pt = pt3 /\ R2.dist pt3 pt1 = R2.dist pt3 pt2 /\ R2.dist pt3 pt1 <> R2.dist pt1 pt2).
+Proof.
+intros pt1 pt2 pt3 pt. functional induction (classify_triangle pt1 pt2 pt3);
+rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *;
+repeat lazymatch goal with
+  | H : context[R2.dist pt2 pt1] |- _ => rewrite (R2.dist_sym pt1 pt2) in H
+  | H : context[R2.dist pt3 pt1] |- _ => rewrite (R2.dist_sym pt1 pt3) in H
+  | H : context[R2.dist pt3 pt2] |- _ => rewrite (R2.dist_sym pt2 pt3) in H
+  | |- context[R2.dist pt2 pt1] => rewrite (R2.dist_sym pt1 pt2)
+  | |- context[R2.dist pt3 pt1] => rewrite (R2.dist_sym pt1 pt3)
+  | |- context[R2.dist pt3 pt2] => rewrite (R2.dist_sym pt2 pt3)
+  | H : context[R2.dist ?x ?y = _] |- context[R2.dist ?x ?y] => setoid_rewrite H; clear H
+end;
+split; intro H; discriminate || (progress decompose [or and] H; clear H) || (injection H; intro);
+subst; trivial; try contradiction.
++ right; left. subst. repeat split. intro Heq. rewrite Heq in *. intuition.
++ match goal with H : ?x <> ?x |- _ => now elim H end.
++ do 2 right. subst. repeat split; trivial. intro Heq. rewrite Heq in *. intuition.
++ repeat match goal with
+    | H : R2.dist _ _ = _ |- _ => rewrite H in *; clear H
+    | H : ?x <> ?x |- _ => now elim H
+  end.
++ left. now repeat split.
+Qed.
+
+Lemma classify_triangle_Scalene_spec : forall pt1 pt2 pt3,
+  classify_triangle pt1 pt2 pt3 = Scalene
+  <-> R2.dist pt1 pt2 <> R2.dist pt2 pt3
+   /\ R2.dist pt1 pt2 <> R2.dist pt1 pt3
+   /\ R2.dist pt1 pt3 <> R2.dist pt2 pt3.
+Proof.
+intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
+rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
+Qed.
 
 (** **  Barycenter and middle  **)
 
@@ -955,6 +968,9 @@ Proof.
   rewrite R2.add_comm.
   reflexivity.
 Qed.
+
+Lemma middle_shift : forall ptx pty, R2.eq (R2.middle ptx pty - ptx) (pty - R2.middle ptx pty).
+Proof. unfold R2.middle. unfoldR2. destruct ptx, pty; simpl; hnf; f_equal; field. Qed.
 
 Lemma middle_eq : forall ptx pty,
     R2.eq (R2.middle ptx pty) ptx <-> R2.eq ptx pty.
