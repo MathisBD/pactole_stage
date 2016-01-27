@@ -1207,6 +1207,12 @@ intros f g Hfg ? l ?; subst. induction l as [| x l]; simpl.
 + destruct (f x) eqn:Hfx; rewrite (Hfg _ _ (reflexivity _)) in Hfx; now rewrite Hfx, IHl.
 Qed.
 
+Lemma filter_twice : forall f (l : list A), filter f (filter f l) = filter f l.
+Proof.
+intros f l. induction l as [| e l]; simpl; auto.
+destruct (f e) eqn:Hfe; simpl; try rewrite Hfe; rewrite IHl; auto.
+Qed.
+
 End ToSortOut_results.
 
 Global Arguments mem [A] [eqA] eq_dec x l.

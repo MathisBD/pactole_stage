@@ -176,109 +176,6 @@ Definition FullSolGathering (r : robogram) (d : demon) :=
 Definition ValidSolGathering (r : robogram) (d : demon) :=
   forall config, ~forbidden config -> exists pt : R2.t, willGather pt (execute r d config).
 
-(** **  Some results about R² with respect to distance and similarities  **)
-
-Open Scope R_scope.
-
-Lemma three_fixpoints_is_id : forall sim : Sim.t,
-  (exists pt1 pt2 pt3 : R2.t, pt1 <> pt2 /\ pt1 <> pt3 /\ pt2 <> pt3
-                           /\ sim pt1 = pt1 /\ sim pt2 = pt2 /\ sim pt3 = pt3) ->
-  Sim.eq sim Sim.id.
-Proof.
-intros sim [pt1 [pt2 [pt3 [Hneq12 [Hneq23 [Hneq13 [Hpt1 [Hpt2 Hpt3]]]]]]]] x y Hxy.
-assert (Hzoom : sim.(Sim.zoom) = 1).
-{ apply (Rmult_eq_reg_r (R2.dist pt1 pt2)). rewrite <- sim.(Sim.dist_prop).
-  - rewrite Hpt1, Hpt2. ring.
-  - rewrite R2.dist_defined. assumption. }
-rewrite Hxy. apply (GPS pt1 pt2 pt3); trivial.
-- rewrite <- Hpt1 at 1. rewrite sim.(Sim.dist_prop). rewrite Hzoom. simpl. ring.
-- rewrite <- Hpt2 at 1. rewrite sim.(Sim.dist_prop). rewrite Hzoom. simpl. ring.
-- rewrite <- Hpt3 at 1. rewrite sim.(Sim.dist_prop). rewrite Hzoom. simpl. ring.
-Qed.
-
-(** Definition of rotations *)
-
-Definition rotate_bij (θ : R) : Similarity.bijection R2.eq.
-refine {|
-  Similarity.section := fun r => (cos θ * fst r - sin θ * snd r, sin θ * fst r + cos θ * snd r);
-  Similarity.retraction := fun r => (cos (-θ) * fst r - sin (-θ) * snd r, sin (-θ) * fst r + cos (-θ) * snd r) |}.
-Proof.
-unfold R2.eq, R2def.eq.
-abstract (intros xy xy'; split; intro; subst; destruct xy as [x y] || destruct xy' as [x y]; simpl;
-rewrite Rtrigo1.cos_neg, Rtrigo1.sin_neg; f_equal; ring_simplify ; do 2 rewrite <- Rfunctions.Rsqr_pow2;
-rewrite <- (Rmult_1_l x) at 3 || rewrite <- (Rmult_1_l y) at 3; rewrite <- (Rtrigo1.sin2_cos2 θ); ring).
-Defined.
-
-Lemma arith : forall (θ : R) (x y : R2.t),
-  (cos θ)² * (fst x)² - 2 * (cos θ)² * fst x * fst y + (cos θ)² * (snd x)² -
-  2 * (cos θ)² * snd x * snd y + (cos θ)² * (fst y)² + (cos θ)² * (snd y)² +
-  (fst x)² * (sin θ)² - 2 * fst x * (sin θ)² * fst y + (sin θ)² * (snd x)² -
-  2 * (sin θ)² * snd x * snd y + (sin θ)² * (fst y)² + (sin θ)² * (snd y)² =
-  (fst x)² - 2 * fst x * fst y + (snd x)² - 2 * snd x * snd y + (fst y)² + (snd y)².
-Proof.
-(* AACtactics should help with rewriting by sin2_cos2 here *)
-Admitted.
-
-
-Definition rotate (θ : R) : Sim.t.
-refine {|
-  Sim.sim_f := rotate_bij θ;
-  Sim.zoom := 1;
-  Sim.center := (0, 0) |}.
-Proof.
-+ simpl. unfoldR2. abstract(f_equal; field).
-+ unfoldR2. intros. rewrite Rmult_1_l. f_equal. simpl.
-repeat rewrite Rfunctions.Rsqr_pow2; ring_simplify; repeat rewrite <- Rfunctions.Rsqr_pow2.
-apply arith.
-Defined.
-
-Lemma rotate_inverse : forall θ, Sim.eq ((rotate θ)⁻¹) (rotate (-θ)).
-Proof. intros θ x y Hxy. now rewrite Hxy. Qed.
-
-Lemma rotate_mul_comm : forall θ k u, R2.eq (rotate θ (R2.mul k u)) (R2.mul k (rotate θ u)).
-Proof. intros θ k [x y]. unfoldR2. simpl. f_equal; field. Qed.
-
-Lemma rotate_opp_comm : forall θ u, R2.eq (rotate θ (R2.opp u)) (R2.opp (rotate θ u)).
-Proof. intros θ [? ?]. unfoldR2. simpl. f_equal; field. Qed.
-
-Lemma rotate_add_distr : forall θ u v, R2.eq (rotate θ (R2.add u v)) (R2.add (rotate θ u) (rotate θ v)).
-Proof. intros θ [? ?] [? ?]. unfoldR2. simpl. f_equal; field. Qed.
-
-(** A similarity in R² is described by its ratio, center and rotation angle. *)
-Theorem similarity_in_R2 : forall sim : Sim.t, exists θ,
-  forall x, sim x = R2.mul sim.(Sim.zoom) (rotate θ (R2.add x (R2.opp sim.(Sim.center)))).
-Proof.
-intro sim. assert (Hkpos : 0 < sim.(Sim.zoom)) by apply Sim.zoom_pos.
-destruct sim as [f k c Hc Hk]. simpl in *. unfoldR2 in Hc.
-
-Admitted.
-
-Corollary inverse_similarity_in_R2 : forall (sim : Sim.t) θ,
-  (forall x, sim x = sim.(Sim.zoom) * (rotate θ (x + (- sim.(Sim.center)))))%R2 ->
-  (forall x, R2.eq ((sim ⁻¹) x) ((/sim.(Sim.zoom)) *
-                                  (rotate (-θ) (x + (sim.(Sim.zoom) * rotate θ sim.(Sim.center)))))%R2).
-Proof.
-intros sim θ Hdirect x. cbn -[rotate].
-rewrite <- sim.(Similarity.Inversion). rewrite Hdirect. clear Hdirect.
-assert (Sim.zoom sim <> 0) by apply Sim.zoom_non_null.
-setoid_rewrite <- rotate_mul_comm. rewrite R2.mul_distr_add. rewrite R2.mul_morph.
-replace (Sim.zoom sim * / Sim.zoom sim) with 1 by (now field). rewrite R2.mul_1.
-repeat rewrite rotate_add_distr. rewrite <- rotate_inverse.
-(* Does not work! Sniff...
-match goal with |- context[(rotate θ) ((rotate θ ⁻¹) ?x)] => idtac "found";
-change ((rotate θ) ((rotate θ ⁻¹) x)) with (Sim.compose (rotate θ) (rotate θ ⁻¹) x) end *)
-change ((rotate θ) ((rotate θ ⁻¹) x)) with (Sim.compose (rotate θ) (rotate θ ⁻¹) x).
-change ((rotate θ) ((rotate θ ⁻¹) (Sim.zoom sim *  (rotate θ) (Sim.center sim))%R2))
-  with (Sim.compose (rotate θ) (rotate θ ⁻¹) (Sim.zoom sim * (rotate θ) (Sim.center sim))%R2).
-rewrite Sim.compose_inverse_r.
-unfoldR2. destruct x as [x1 x2], sim as [f k [c1 c2] ? ?]; simpl in *. f_equal; field.
-Qed.
-
-
-Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R2.eq R2.eq sim.
-Proof. apply Sim.injective. Qed.
-
-Hint Immediate sim_Minjective.
 
 Instance forbidden_compat : Proper (Config.eq ==> iff) forbidden.
 Proof.
@@ -314,6 +211,8 @@ intros f s. apply Spect.max_map_injective.
 - intros ? ? Heq. now rewrite Heq.
 - apply Sim.injective.
 Qed.
+
+Open Scope R_scope.
 
 (* Safe to use only when SEC is well-defined, ie when robots are not gathered. *)
 Function target (s : Spect.t) : R2.t :=
@@ -1478,7 +1377,7 @@ Proof.
 intros conf H1 H2.
 assert (Spect.size (!! conf) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption.
-  do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length _).
+  do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length R2.eq_equiv).
   - apply Spect.support_NoDupA.
   - unfold Spect.max. apply Spect.support_nfilter. repeat intro. now subst. }
  destruct (Spect.size (!! conf)) as [| [| [| ?]]] eqn:Hlen; try omega.
@@ -1488,7 +1387,7 @@ Qed.
 Lemma size_max_le : forall conf,
   Spect.size (Spect.max (!! conf)) <= Spect.size (!! conf).
 Proof.
-intro conf. do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length _).
+intro conf. do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length R2.eq_equiv).
 - apply Spect.support_NoDupA.
 - apply Spect.support_sub_compat, Spect.max_subset.
 Qed.
@@ -1575,7 +1474,7 @@ Proof.
           reflexivity. }
         cbn in H; omega.
       * destruct l.
-        -- assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+        -- assert (h:=PermutationA_3 R2.eq_equiv t t0 t1 ptx pty ptz).
            destruct h.
            specialize (H Hsec).
            decompose [or and] H;
@@ -1620,7 +1519,7 @@ Proof.
           reflexivity. }
         cbn in H; omega.
       * destruct l.
-        -- assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+        -- assert (h:=PermutationA_3 R2.eq_equiv t t0 t1 ptx pty ptz).
            destruct h.
            specialize (H Hsec).
            decompose [or and] H;
@@ -2520,7 +2419,7 @@ Proof.
     apply equilateral_barycenter_NoDupA; trivial.
     inversion_clear Hnodup. intuition.
   - apply clean_triangle_support_incl; assumption.
-  - apply (NoDupA_inclA_length _).
+  - apply (NoDupA_inclA_length R2.eq_equiv).
     + constructor.
       * intro Habs. now apply (h_target_diff _ Habs).
       * rewrite <- Hfilter. unfold on_SEC. apply Preliminary.NoDupA_filter_compat; autoclass.
@@ -3298,7 +3197,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                   cut (4 + length l <= 3); try omega.
                   change (4 + length l) with (length (pt1 :: pt2 :: pt3 :: pt4 :: l)).
                   rewrite <- Hsec', <- Hlen, Spect.size_spec.
-                  apply (NoDupA_inclA_length _).
+                  apply (NoDupA_inclA_length R2.eq_equiv).
                   - apply on_SEC_NoDupA, Spect.support_NoDupA.
                   - unfold on_SEC. intro. rewrite (filter_InA _). intuition. }
                 subst.
