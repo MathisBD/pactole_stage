@@ -3183,7 +3183,24 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                                rewrite <- H3 in h_radius_y.
                                rewrite <- h_radius_y, <- h_radius_x.
                                reflexivity.
-                             * admit. (* encore de la géométrie à la con... *)
+                             * rewrite (classify_triangle_Equilateral_spec ptx pty ptz) in Htriangle.
+                               elim Htriangle.
+                               intros hdist_xyyz hdist_xzyz.
+                               assert (h_x1 : (R2.dist pt1 ptx = R2.dist ptx pty -> R2.dist pt1 ptx = 0)%R).
+                               { intro h_dist_abs.
+                                 assert (h_min_dist : forall p : R2.t,
+                                            ((R2.dist pt1 ptx)² + (R2.dist pt1 pty)² + (R2.dist pt1 ptz)² <=                                           (R2.dist p ptx)² + (R2.dist p pty)² + (R2.dist p ptz)²)%R).
+                                 { now apply (@Barycenter_spec ptx pty ptz pt1). }
+                                 specialize (h_min_dist ptx).
+                                 rewrite hdist_xzyz in h_min_dist.
+                                 rewrite <- hdist_xyyz in h_min_dist.
+                                 rewrite R2_dist_defined_2, Rsqr_0, Rplus_0_l in h_min_dist.
+                                 setoid_rewrite <- h_dist_abs in h_min_dist.
+                                 (* dist 1 x = dist 1 y = dist 1 z because on_circle *)
+                                 (* 3 (dist 1 x)² <= 2 (dist 1 x)² --> resultat *)
+                               admit. }
+                               admit.
+                       
                    - admit. (* contradiction between h_bary and abs *)
                    }
                    assert (h_znotin:~ InA R2.eq ptz (Spect.support (!! (round gatherR2 da conf)))).
