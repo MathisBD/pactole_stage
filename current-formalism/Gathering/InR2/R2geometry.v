@@ -294,10 +294,10 @@ Proof. intros u1 u2 Hu v1 v2 Hv. now rewrite Hu, Hv. Qed.
 
 (** *** Results about [product]  **)
 
-Lemma product_0_l : forall u, product R2.origin u = 0.
+Lemma product_origin_l : forall u, product R2.origin u = 0.
 Proof. intros [x y]. unfold product; simpl. field. Qed.
 
-Lemma product_0_r : forall u, product u R2.origin = 0.
+Lemma product_origin_r : forall u, product u R2.origin = 0.
 Proof. intros [x y]. unfold product; simpl. field. Qed.
 
 Lemma product_comm : forall u v, product u v = product v u.
@@ -387,12 +387,15 @@ Proof. intros u v. apply square_R2norm_equiv. apply R2norm_pos. Qed.
 Lemma squared_R2norm_product : forall u, (R2norm u)² = product u u.
 Proof. intro. unfold R2norm. rewrite Rsqr_sqrt; trivial. apply product_self_pos. Qed.
 
+Lemma R2norm_origin : R2norm R2.origin = 0.
+Proof. rewrite square_R2norm_equiv, squared_R2norm_product; try reflexivity; []. compute. field. Qed.
+
 (** ***  Results about [orthogonal]  **)
 
 Lemma orthogonal_perpendicular : forall u, perpendicular u (orthogonal u).
 Proof.
 intro u. destruct (R2.eq_dec u R2.origin) as [Hnull | Hnull].
-- unfold perpendicular. now rewrite Hnull, product_0_l.
+- unfold perpendicular. now rewrite Hnull, product_origin_l.
 - destruct u as [x y]. unfold perpendicular, orthogonal, product. simpl. field. now rewrite R2norm_0.
 Qed.
 
@@ -600,6 +603,9 @@ Proof. unfold colinear. split.
   - now rewrite perpendicular_orthogonal_shift.
 Qed.
 
+Lemma colinear_sym : forall u v, colinear u v <-> colinear v u.
+Proof. intros. split; intros; now symmetry. Qed.
+
 Lemma colinear_origin_l : forall u, colinear R2.origin u.
 Proof. intro u. unfold colinear. apply perpendicular_origin_l. Qed.
 
@@ -651,6 +657,13 @@ intros u u' Hu v v' Hv. split; intro Hperp.
   unfold colinear. now rewrite perpendicular_orthogonal_compat.
 Qed.
 
+Lemma colinear_add : forall u v, colinear u (u + v) <-> colinear u v.
+Proof.
+intros u v. unfold colinear at 1. rewrite <- perpendicular_orthogonal_shift.
+unfold perpendicular. rewrite product_add_r. rewrite product_comm, orthogonal_perpendicular.
+rewrite Rplus_0_l. rewrite product_comm. rewrite colinear_sym. reflexivity.
+Qed.
+
 (** Important theorems *)
 Theorem Pythagoras : forall u v, perpendicular u v <-> (R2norm (u + v)%R2)² = (R2norm u)² + (R2norm v)².
 Proof.
@@ -665,11 +678,6 @@ intros u v. split; intro Hperp.
   do 2 rewrite <- squared_R2norm_product in Hperp.
   unfold perpendicular. lra.
 Qed.
-
-Theorem triang_ineq_eq : forall u v w,
-  R2.dist u w = R2.dist u v + R2.dist v w -> colinear (w - u) (v - u) /\ colinear (w - u) (w - v).
-Proof.
-Admitted.
 
 (* Beurk! *)
 Theorem decompose_on : forall u, ~R2.eq u R2.origin -> forall v,
@@ -709,6 +717,54 @@ rewrite R2norm_mul. rewrite R2norm_unitary, Rmult_1_r; trivial.
 destruct (Rle_dec 0 (product v (unitary u))) as [Hle | Hle].
 - left. f_equal. now rewrite Rabs_pos_eq.
 - right. f_equal. now rewrite Rabs_left, Ropp_involutive; auto with real.
+Qed.
+
+Lemma colinear_product_spec : forall u v, Rabs (product u v) = (R2norm u) * (R2norm v) <-> colinear u v.
+Proof.
+intros u v. split; intro Huv.
+* apply (f_equal Rsqr) in Huv. rewrite <- R_sqr.Rsqr_abs in Huv.
+  rewrite R_sqr.Rsqr_mult in Huv. do 2 rewrite squared_R2norm_product in Huv.
+  null v; try apply colinear_origin_r; [].
+  unfold colinear, orthogonal, perpendicular. rewrite product_mul_r. apply Rmult_eq_0_compat_l.
+  unfold product in *. rewrite R_sqr.Rsqr_plus in Huv. do 2 rewrite R_sqr.Rsqr_mult in Huv.
+  unfold Rsqr in Huv. simpl. ring_simplify. apply Rsqr_0_uniq.
+  rewrite R_sqr.Rsqr_minus. unfold Rsqr. lra.
+* null u.
+  + rewrite product_origin_l. rewrite Rabs_R0, R2norm_origin. ring.
+  + apply (colinear_decompose Hnull) in Huv.
+    setoid_rewrite unitary_id at 1. rewrite product_mul_l.
+    destruct Huv as [Huv | Huv]; rewrite Huv at 1.
+    - rewrite product_mul_r. rewrite <- squared_R2norm_product, R2norm_unitary; trivial.
+      rewrite R_sqr.Rsqr_1, Rmult_1_r. apply Rabs_pos_eq.
+      replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply R2norm_pos.
+    - rewrite product_mul_r. rewrite <- squared_R2norm_product, R2norm_unitary; trivial.
+      rewrite R_sqr.Rsqr_1, Rmult_1_r.
+      replace (R2norm u * - R2norm v) with (- (R2norm u * R2norm v)) by ring. rewrite Rabs_Ropp.
+      apply Rabs_pos_eq.
+      replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply R2norm_pos.
+Qed.
+
+Theorem triang_ineq_eq : forall u v w,
+  R2.dist u w = R2.dist u v + R2.dist v w -> colinear (w - u) (v - u) /\ colinear (w - u) (w - v).
+Proof.
+intros u v w Heq. null (w - u)%R2.
+* split; apply colinear_origin_l.
+* rewrite R2.dist_sym, R2norm_dist in Heq.
+  assert (Huw : (w - u =(w - v) + (v - u))%R2).
+  { rewrite R2.add_assoc. f_equal. rewrite <- R2.add_assoc. setoid_rewrite R2.add_comm at 2.
+    rewrite R2.add_opp. now rewrite R2.add_origin. }
+  rewrite Huw in Heq. apply (f_equal Rsqr) in Heq. rewrite squared_R2norm_product in Heq.
+  rewrite product_add_l in Heq. setoid_rewrite product_add_r in Heq.
+  do 2 rewrite <- squared_R2norm_product, <- R2norm_dist in Heq.
+  rewrite R_sqr.Rsqr_plus in Heq. rewrite product_comm in Heq. setoid_rewrite R2.dist_sym at 1 2 in Heq.
+  assert (Heq' : product (v - u) (w - v) = R2.dist u v * R2.dist v w) by lra.
+  apply (f_equal Rabs) in Heq'. setoid_rewrite Rabs_pos_eq at 2 in Heq'.
+  + setoid_rewrite R2.dist_sym in Heq'. setoid_rewrite R2norm_dist in Heq'.
+    rewrite colinear_product_spec in Heq'.
+    split.
+    - rewrite Huw. rewrite R2.add_comm. rewrite colinear_sym. now rewrite colinear_add.
+    - rewrite Huw. rewrite colinear_sym. now rewrite colinear_add.
+  + replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply R2.dist_pos.
 Qed.
 
 (* A very ugly proof! *)
