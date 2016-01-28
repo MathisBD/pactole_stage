@@ -3181,6 +3181,36 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                    assert (h_ynotin:~ InA R2.eq pty (Spect.support (!! (round gatherR2 da conf)))).
                    { intro abs.
                      assert (h_bary:=@same_dist_vertex_notin_sub_circle ptx pty pt1).
+                     assert (h_sec_on_sec : (SEC (Spect.support (!! conf))) =
+                                            SEC (on_SEC (Spect.support (!! conf)))).
+                     { now apply SEC_on_SEC. }
+                     assert (h_radius_x : radius (SEC (ptx :: pty :: ptz :: nil)) =  R2.dist pt1 ptx).
+                     {  generalize (@equilateral_SEC _ _ _ Htriangle).
+                        intro h_sec_xyz.
+                        rewrite <- e in h_sec_xyz.
+                        rewrite h_sec_xyz.
+                        simpl.
+                        reflexivity.
+                     }                                     
+                     assert (h_permut_xy : PermutationA R2.eq (ptx :: pty :: ptz :: nil)
+                                                        (pty :: ptx :: ptz :: nil))
+                       by constructor 3.
+                     assert (SEC (ptx :: pty :: ptz :: nil) = SEC (pty :: ptx :: ptz :: nil)).
+                     { rewrite h_permut_xy ; reflexivity. }
+                     assert (Htriangle_permut : classify_triangle pty ptx ptz = Equilateral).
+                     { apply PermutationA_Leibniz in h_permut_xy.
+                       now rewrite <- (@classify_triangle_compat ptx pty ptz pty ptx ptz h_permut_xy ).
+                     }
+                     assert (h_radius_y : radius (SEC (pty :: ptx :: ptz :: nil)) =  R2.dist pt1 pty).
+                     {  generalize (@equilateral_SEC pty ptx ptz Htriangle_permut).
+                        intro h_sec_xyz.
+                        apply PermutationA_Leibniz in h_permut_xy.
+                        rewrite (@barycenter_3_pts_compat ptx pty ptz pty ptx ptz h_permut_xy) in e.
+                                  rewrite <- e in h_sec_xyz.
+                                  rewrite h_sec_xyz.
+                                  simpl.
+                                  reflexivity.
+                               }                                     
                      rewrite h_bary in Hsec.
                      - assert (hnodup2:NoDupA R2.eq (ptx :: ptx :: ptz :: nil)).
                        { rewrite <- Hsec.
@@ -3188,70 +3218,125 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                          now apply Spect.support_NoDupA.
                        }                         
                        inversion hnodup2.
-                       apply H5.
-                       left;reflexivity.
-                     - (* rewrite classify_triangle_Isosceles_spec. *)
+                       apply H6.
+                       left.
+                       reflexivity.
+                       (*- rewrite classify_triangle_Isosceles_spec. *)
                        (*     right. right. split. *)
                        (*     + reflexivity. *)
                        (*     + split. *)
-                              assert (h_sec_on_sec : (SEC (Spect.support (!! conf))) =
-                                                      SEC (on_SEC (Spect.support (!! conf)))).
-                               { now apply SEC_on_SEC. }
-                               assert (h_radius_x : radius (SEC (ptx :: pty :: ptz :: nil)) =  R2.dist pt1 ptx).
-                               {  generalize (@equilateral_SEC _ _ _ Htriangle).
-                                  intro h_sec_xyz.
-                                  rewrite <- e in h_sec_xyz.
-                                  rewrite h_sec_xyz.
-                                  simpl.
-                                  reflexivity.
-                               }                                     
-                               assert (h_permut_xy : PermutationA R2.eq (ptx :: pty :: ptz :: nil)
-                                                                  (pty :: ptx :: ptz :: nil))
-                                 by constructor 3.
-                               assert (SEC (ptx :: pty :: ptz :: nil) = SEC (pty :: ptx :: ptz :: nil)).
-                               { rewrite h_permut_xy ; reflexivity. }
-                               assert (Htriangle_permut : classify_triangle pty ptx ptz = Equilateral).
-                               { apply PermutationA_Leibniz in h_permut_xy.
-                                 now rewrite <- (@classify_triangle_compat ptx pty ptz pty ptx ptz h_permut_xy ).
-                               }
-                               assert (h_radius_y : radius (SEC (pty :: ptx :: ptz :: nil)) =  R2.dist pt1 pty).
-                               
-                               {  generalize (@equilateral_SEC pty ptx ptz Htriangle_permut).
-                                  intro h_sec_xyz.
-                                  apply PermutationA_Leibniz in h_permut_xy.
-                                  rewrite (@barycenter_3_pts_compat ptx pty ptz pty ptx ptz h_permut_xy) in e.
-                                  rewrite <- e in h_sec_xyz.
-                                  rewrite h_sec_xyz.
-                                  simpl.
-                                  reflexivity.
-                               }                                     
-                               rewrite <- H3 in h_radius_y.
-                               setoid_rewrite R2.dist_sym.
-                               rewrite <- h_radius_y, <- h_radius_x.
-                               reflexivity.
-                             (* * rewrite (classify_triangle_Equilateral_spec ptx pty ptz) in Htriangle. *)
-                             (*   elim Htriangle. *)
-                             (*   intros hdist_xyyz hdist_xzyz. *)
-                             (*   assert (h_x1 : (R2.dist pt1 ptx = R2.dist ptx pty -> R2.dist pt1 ptx = 0)%R). *)
-                             (*   { intro h_dist_abs. *)
-                             (*     assert (h_min_dist : forall p : R2.t, *)
-                             (*                ((R2.dist pt1 ptx)² + (R2.dist pt1 pty)² + (R2.dist pt1 ptz)² <=                                           (R2.dist p ptx)² + (R2.dist p pty)² + (R2.dist p ptz)²)%R). *)
-                             (*     { now apply (@Barycenter_spec ptx pty ptz pt1). } *)
-                             (*     specialize (h_min_dist ptx). *)
-                             (*     rewrite hdist_xzyz in h_min_dist. *)
-                             (*     rewrite <- hdist_xyyz in h_min_dist. *)
-                             (*     rewrite R2_dist_defined_2, Rsqr_0, Rplus_0_l in h_min_dist. *)
-                             (*     setoid_rewrite <- h_dist_abs in h_min_dist. *)
-                             (*     (* dist 1 x = dist 1 y = dist 1 z because on_circle *) *)
-                             (*     (* 3 (dist 1 x)² <= 2 (dist 1 x)² --> resultat *) *)
-                             (*   admit. } *)
-                             (*   admit. *)
+                     - rewrite <- H3 in h_radius_y.
+                       setoid_rewrite R2.dist_sym.
+                       rewrite <- h_radius_y, <- h_radius_x.
+                       reflexivity.
+                             (* * rewrite (classify_triangle_Equilateral_spec ptx pty ptz) in Htriangle. 
+                                elim Htriangle. 
+                                intros hdist_xyyz hdist_xzyz. 
+                                assert (h_x1 : (R2.dist pt1 ptx = R2.dist ptx pty -> R2.dist pt1 ptx = 0)%R). 
+                                { intro h_dist_abs. 
+                                  assert (h_min_dist : forall p : R2.t, 
+                                             ((R2.dist pt1 ptx)² + (R2.dist pt1 pty)² + (R2.dist pt1 ptz)² <=                                           (R2.dist p ptx)² + (R2.dist p pty)² + (R2.dist p ptz)²)%R). 
+                                  { now apply (@Barycenter_spec ptx pty ptz pt1). } 
+                                 specialize (h_min_dist ptx). 
+                                  rewrite hdist_xzyz in h_min_dist. 
+                                  rewrite <- hdist_xyyz in h_min_dist. 
+                                  rewrite R2_dist_defined_2, Rsqr_0, Rplus_0_l in h_min_dist. 
+                                  setoid_rewrite <- h_dist_abs in h_min_dist. 
+                                  (* dist 1 x = dist 1 y = dist 1 z because on_circle *) 
+                                  (* 3 (dist 1 x)² <= 2 (dist 1 x)² --> resultat *) 
+                                admit. } 
+                                admit. *)
                        
-                   - admit. (* contradiction between h_bary and abs *)
+                     -
+                       assert (h_diameter_after : SEC (Spect.support (!! (round gatherR2 da conf))) = {| center := R2.middle pt1 ptx; radius := / 2 * R2.dist pt1 ptx |}).
+                       { now apply on_SEC_pair_is_diameter. }
+                       assert (dist_pt1_mid_is_radius : R2.dist pt1 (R2.middle pt1 ptx) = radius (SEC (Spect.support (!! (round gatherR2 da conf))))).
+                       { rewrite h_diameter_after.
+                         simpl.
+                         rewrite R2dist_middle.
+                         reflexivity.
+                       }
+                       rewrite dist_pt1_mid_is_radius.
+                       rewrite radius_is_max_dist.
+                       replace (R2.middle pt1 ptx) with (center (SEC (Spect.support (!! (round gatherR2 da conf))))).
+                       + rewrite R2.dist_sym.
+                         apply max_dist_le.                       
+                         now rewrite InA_Leibniz in abs.
+                       + now rewrite h_diameter_after.
                    }
-                   assert (h_znotin:~ InA R2.eq ptz (Spect.support (!! (round gatherR2 da conf)))).
-                   { admit. }
 
+                   (* Factoriser : copie du précédent - avec z à la place de y *)
+                   assert (h_znotin:~ InA R2.eq ptz (Spect.support (!! (round gatherR2 da conf)))).
+                   { intro abs.
+                     assert (h_bary:=@same_dist_vertex_notin_sub_circle ptx ptz pt1).
+                     assert (h_sec_on_sec : (SEC (Spect.support (!! conf))) =
+                                            SEC (on_SEC (Spect.support (!! conf)))).
+                     { now apply SEC_on_SEC. }
+                     assert (h_radius_x : radius (SEC (ptx :: pty :: ptz :: nil)) =  R2.dist pt1 ptx).
+                     {  generalize (@equilateral_SEC _ _ _ Htriangle).
+                        intro h_sec_xyz.
+                        rewrite <- e in h_sec_xyz.
+                        rewrite h_sec_xyz.
+                        simpl.
+                        reflexivity.
+                     }                                     
+                     assert (h_permut_xz : PermutationA R2.eq (ptx :: pty :: ptz :: nil)
+                                                        (ptz :: ptx :: pty :: nil)).
+                     { constructor 4 with (ptx::ptz::pty::nil).
+                       - constructor 2.
+                         + reflexivity.
+                         + constructor 3.
+                       - constructor 3.
+                     }
+                     assert (SEC (ptx :: pty :: ptz :: nil) = SEC (ptz :: ptx :: pty :: nil)).
+                     { rewrite h_permut_xz ; reflexivity. }
+                     assert (Htriangle_permut : classify_triangle ptz ptx pty = Equilateral).
+                     { apply PermutationA_Leibniz in h_permut_xz.
+                       now rewrite <- (@classify_triangle_compat ptx pty ptz ptz ptx pty h_permut_xz ).
+                     }
+                     assert (h_radius_z : radius (SEC (ptz :: ptx :: pty :: nil)) =  R2.dist pt1 ptz).
+                     {  generalize (@equilateral_SEC ptz ptx pty Htriangle_permut).
+                        intro h_sec_xyz.
+                        apply PermutationA_Leibniz in h_permut_xz.
+                        rewrite (@barycenter_3_pts_compat ptx pty ptz ptz ptx pty h_permut_xz) in e.
+                                  rewrite <- e in h_sec_xyz.
+                                  rewrite h_sec_xyz.
+                                  simpl.
+                                  reflexivity.
+                               }                                     
+                     rewrite h_bary in Hsec.
+                     - assert (hnodup2:NoDupA R2.eq (ptx :: pty :: ptx :: nil)).
+                       { rewrite <- Hsec.
+                         apply on_SEC_NoDupA.
+                         now apply Spect.support_NoDupA.
+                       }                         
+                       inversion hnodup2.
+                       apply H6.
+                       right. left.
+                       reflexivity.
+                     - rewrite <- H3 in h_radius_z.
+                       setoid_rewrite R2.dist_sym.
+                       rewrite <- h_radius_z, <- h_radius_x.
+                       reflexivity.
+                       
+                     - assert (h_diameter_after : SEC (Spect.support (!! (round gatherR2 da conf))) = {| center := R2.middle pt1 ptx; radius := / 2 * R2.dist pt1 ptx |}).
+                       { now apply on_SEC_pair_is_diameter. }
+                       assert (dist_pt1_mid_is_radius : R2.dist pt1 (R2.middle pt1 ptx) = radius (SEC (Spect.support (!! (round gatherR2 da conf))))).
+                       { rewrite h_diameter_after.
+                         simpl.
+                         rewrite R2dist_middle.
+                         reflexivity.
+                       }
+                       rewrite dist_pt1_mid_is_radius.
+                       rewrite radius_is_max_dist.
+                       replace (R2.middle pt1 ptx) with (center (SEC (Spect.support (!! (round gatherR2 da conf))))).
+                       + rewrite R2.dist_sym.
+                         apply max_dist_le.                       
+                         now rewrite InA_Leibniz in abs.
+                       + now rewrite h_diameter_after.
+                   }
+          
+(* ici *)
                    apply inclA_skip in H0;autoclass.
                    apply inclA_skip in H0;autoclass.
                    apply NoDupA_inclA_length_PermutationA;autoclass.
