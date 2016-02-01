@@ -44,6 +44,9 @@ Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
 Close Scope R_scope.
 
+Definition translation := Sim.translation translation_hypothesis.
+Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
+
 
 Lemma nG_nB : N.nG = 2 * N.nB.
 Proof. reflexivity. Qed.
@@ -324,7 +327,7 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + rewrite Names.Gnames_length. reflexivity.
 Qed.
 
-Lemma swap_spect2_spect1 : Spect.eq (Spect.map (Sim.homothecy 1 minus_1) spectrum2) spectrum1.
+Lemma swap_spect2_spect1 : Spect.eq (Spect.map (homothecy 1 minus_1) spectrum2) spectrum1.
 Proof.
 intro pt. unfold spectrum1, spectrum2. rewrite Spect.map_add, Spect.map_singleton; refine _.
 simpl. unfoldR. ring_simplify (-1 * (0 + -1)). ring_simplify (-1 * (1 + -1)).
@@ -339,8 +342,8 @@ CoFixpoint exec := NextExecution config1 (NextExecution config2 exec).
 
 Definition step1 (id : Names.ident) :=
   match id with
-    | Good g => if left_dec g then Some (fun c : R.t => Sim.translation (R.opp c)) else None
-    | Byz b => Some (fun c : R.t => Sim.translation (R.opp c))
+    | Good g => if left_dec g then Some (fun c : R.t => translation (R.opp c)) else None
+    | Byz b => Some (fun c : R.t => translation (R.opp c))
   end.
 
 Lemma step1_zoom : forall id sim c, step1 id = Some sim -> Sim.zoom (sim c) ≠ 0.
@@ -365,8 +368,8 @@ Definition bad_da1 : demonic_action := {|
 
 Definition step2 (id : Names.ident) :=
   match id with
-    | Good g => if left_dec g then None else Some (fun c : R.t => Sim.homothecy c minus_1)
-    | Byz b => Some (fun c : R.t => Sim.translation (R.opp c))
+    | Good g => if left_dec g then None else Some (fun c : R.t => homothecy  c minus_1)
+    | Byz b => Some (fun c : R.t => translation (R.opp c))
   end.
 
 Lemma step2_zoom : forall id sim c, step2 id = Some sim -> Sim.zoom (sim c) ≠ 0.
@@ -463,7 +466,7 @@ Hypothesis sol : solution r.
     by the same amount in order to get the same translated configuration. *)
 
 Definition shifting_da (pt : R) : demonic_action.
-refine {| step := fun _ => Some (fun c => Sim.translation (R.opp c));
+refine {| step := fun _ => Some (fun c => translation (R.opp c));
           relocate_byz := fun _ => pt |}.
 Proof.
 + abstract (intros _ sim c Heq; inversion_clear Heq; simpl; apply R1_neq_R0).
@@ -569,7 +572,7 @@ destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (Config.map (Sim.homothecy 1 minus_1) config2 )) = 0.
+Corollary no_move2 : r (!! (Config.map (homothecy  1 minus_1) config2 )) = 0.
 Proof.
 assert (1 <> 0) by apply R1_neq_R0.
 rewrite <- Spect.from_config_map; refine _.
@@ -579,7 +582,7 @@ Qed.
 Lemma round_config1 : Config.eq (round r bad_da1 config1) config2.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
-destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
+destruct (left_dec g) as [Hleft | Hright]; try reflexivity; []. unfold translation.
 rewrite R.opp_origin, Sim.translation_origin, Config.map_id, spect_conf1.
 simpl. apply no_move1.
 Qed.

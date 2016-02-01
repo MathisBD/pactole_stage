@@ -150,13 +150,54 @@ intros sim. apply Preliminary.Rle_neq_lt.
 - intro. now apply (zoom_non_null sim).
 Qed.
 
-(** The identity bijection *)
+(** The identity similarity *)
 Definition id : t.
 refine {| sim_f := bij_id Loc.eq_equiv;
           zoom := 1;
           center := Loc.origin;
           center_prop := reflexivity _ |}.
 Proof. abstract (intros; simpl; now rewrite Rmult_1_l). Defined.
+
+Section Normed_Results.
+(** The existence of homothecy and translation similarities (implied by these two hypotheses)
+    is actually equivalent to defining a normed vector space. *)
+Hypothesis translation_hypothesis : forall v x y, Loc.dist (Loc.add x v) (Loc.add y v) = Loc.dist x y.
+Hypothesis homothecy_hypothesis : forall ρ x y, Loc.dist (Loc.mul ρ x) (Loc.mul ρ y) = Rabs ρ * Loc.dist x y.
+
+(** The translation similarity *)
+Lemma bij_translation_Inversion : forall v x y : Loc.t, Loc.eq (Loc.add x v) y ↔ Loc.eq (Loc.add y (Loc.opp v)) x.
+Proof.
+intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- Loc.add_assoc.
+- now rewrite Loc.add_opp, Loc.add_origin.
+- setoid_rewrite Loc.add_comm at 2. now rewrite Loc.add_opp, Loc.add_origin.
+Qed.
+
+Definition bij_translation (v : Loc.t) : bijection Loc.eq.
+refine {|
+  section := fun x => Loc.add x v;
+  retraction := fun x => Loc.add x (Loc.opp v) |}.
+Proof.
++ abstract (intros x y Hxy; now rewrite Hxy).
++ apply bij_translation_Inversion.
+Defined.
+
+Lemma translation_zoom : forall v x y : Loc.t, Loc.dist (Loc.add x v) (Loc.add y v) = 1 * Loc.dist x y.
+Proof. intros. ring_simplify. apply translation_hypothesis. Qed.
+
+Definition translation (v : Loc.t) : t.
+refine {| sim_f := bij_translation v;
+          zoom := 1;
+          center := Loc.opp v |}.
+Proof.
++ simpl. abstract (now rewrite Loc.add_comm, Loc.add_opp).
++ simpl. apply translation_zoom.
+Defined.
+
+Global Instance translation_compat : Proper (Loc.eq ==> eq) translation.
+Proof. intros u v Huv x y Hxy. simpl. now rewrite Huv, Hxy. Qed.
+
+Lemma translation_origin : eq (translation Loc.origin) id.
+Proof. intros x y Hxy. simpl. now rewrite Loc.add_origin. Qed.
 
 (** The homothetic similarity *)
 Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 ->
@@ -181,22 +222,7 @@ Defined.
 
 Lemma bij_homothecy_zoom : forall c ρ (Hρ : ρ <> 0%R) (x y : Loc.t),
   Loc.dist ((bij_homothecy c Hρ) x) ((bij_homothecy c Hρ) y) = Rabs ρ * Loc.dist x y.
-Proof.
-intros c ρ Hρ x y. cbn.
-(*destruct (Rcase_abs (ρ * (x + - c) + - (ρ * (y + - c)))), (Rcase_abs (x + - y)), (Rcase_abs ρ); try field.
-+ ring_simplify in r0. exfalso. revert r0. apply Rle_not_lt.
-  replace (ρ * x - ρ * y) with (-ρ * - (x + -y)) by ring.
-  rewrite <- Rmult_0_r with (-ρ). apply Rmult_le_compat_l; lra.
-+ ring_simplify in r0. exfalso. revert r0. apply Rle_not_lt.
-  replace (ρ * x - ρ * y) with (ρ * (x + -y)) by ring. rewrite <- Rmult_0_r with ρ. apply Rmult_le_compat_l; lra.
-+ ring_simplify in r0. exfalso. revert r0. apply Rlt_not_ge.
-  replace (ρ * x - ρ * y) with (ρ * (x + -y)) by ring. rewrite <- Rmult_0_r with ρ. apply Rmult_lt_compat_l; lra.
-+ destruct (Rdec x y).
-  - subst. ring.
-  - ring_simplify in r0. exfalso. revert r0. apply Rlt_not_ge.
-    replace (ρ * x - ρ * y) with (ρ * (x + -y)) by ring.
-    rewrite <- Rmult_0_l with (x + - y). apply Rmult_lt_compat_r; lra.*)
-Admitted.
+Proof. intros. cbn. rewrite homothecy_hypothesis. f_equal. apply translation_hypothesis. Qed.
 
 Definition homothecy (c : Loc.t) (ρ : R) (Hρ : ρ <> 0) : t.
 refine {|
@@ -212,44 +238,10 @@ Global Instance homothecy_compat :
   Proper (Loc.eq ==> @forall_relation _ _ (fun _ => full_relation ==> eq)) homothecy.
 Proof. intros c1 c2 Hc ρ ? ? ? x y Hxy. simpl. now rewrite Hxy, Hc. Qed.
 
-(** The translation similarity *)
-Lemma bij_translation_Inversion : forall v x y : Loc.t, Loc.eq (Loc.add x v) y ↔ Loc.eq (Loc.add y (Loc.opp v)) x.
-Proof.
-intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- Loc.add_assoc.
-- now rewrite Loc.add_opp, Loc.add_origin.
-- setoid_rewrite Loc.add_comm at 2. now rewrite Loc.add_opp, Loc.add_origin.
-Qed.
-
-Definition bij_translation (v : Loc.t) : bijection Loc.eq.
-refine {|
-  section := fun x => Loc.add x v;
-  retraction := fun x => Loc.add x (Loc.opp v) |}.
-Proof.
-+ abstract (intros x y Hxy; now rewrite Hxy).
-+ apply bij_translation_Inversion.
-Defined.
-
-Lemma translation_zoom : forall v x y : Loc.t, Loc.dist (Loc.add x v) (Loc.add y v) = 1 * Loc.dist x y.
-Proof.
-Admitted.
-
-Definition translation (v : Loc.t) : t.
-refine {| sim_f := bij_translation v;
-          zoom := 1;
-          center := Loc.opp v |}.
-Proof.
-+ simpl. abstract (now rewrite Loc.add_comm, Loc.add_opp).
-+ simpl. apply translation_zoom.
-Defined.
-
-Global Instance translation_compat : Proper (Loc.eq ==> eq) translation.
-Proof. intros u v Huv x y Hxy. simpl. now rewrite Huv, Hxy. Qed.
-
-Lemma translation_origin : eq (translation Loc.origin) id.
-Proof. intros x y Hxy. simpl. now rewrite Loc.add_origin. Qed.
-
 Lemma homothecy_translation : forall c (H10 : 1 <> 0), eq (homothecy c H10) (translation (Loc.opp c)).
 Proof. intros c H10 x y Hxy. rewrite Hxy. simpl. now rewrite Loc.mul_1. Qed.
+
+End Normed_Results.
 
 (** Composition of similarity *)
 

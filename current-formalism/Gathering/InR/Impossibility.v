@@ -189,7 +189,7 @@ Section GatheringEven.
 Variable r : robogram.
 
 (* A demon that makes the robogram fail:
-   - if robots go on the position of the other one (symmetrical by definition of robogram), 
+   - if robots go on the position of the other one (symmetrical by definition of robogram),
      activate both and they swap positions;
    - otherwise, just activate one and the distance between them does not become zero
      and you can scale it back on the next round. *)
@@ -465,7 +465,7 @@ Proof.
 Qed.
 
 Lemma homothecy_ratio_1 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_conf (fun g => if left_dec g then Some (fun c => Sim.homothecy c Hρ) else None) id = Some sim ->
+  lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
   Sim.zoom (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
@@ -476,7 +476,7 @@ intros ρ Hρ [g | b] sim c.
 Qed.
 
 Lemma homothecy_center_1 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_conf (fun g => if left_dec g then Some (fun c => Sim.homothecy c Hρ) else None) id = Some sim ->
+  lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) id = Some sim ->
   R.eq (Sim.center (sim c)) c.
 Proof.
 intros ρ Hρ [g | b] sim c.
@@ -489,7 +489,7 @@ Qed.
 Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
-  step := lift_conf (fun g => if left_dec g then Some (fun c => Sim.homothecy c Hρ) else None) |}.
+  step := lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) |}.
 Proof.
 + apply homothecy_ratio_1.
 + apply homothecy_center_1.
@@ -497,7 +497,7 @@ Defined.
 
 Lemma homothecy_ratio_2 : forall ρ (Hρ : ρ <> 0) id sim c,
   lift_conf (fun g => if left_dec g 
-                     then None else Some (fun c => Sim.homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
+                     then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
   Sim.zoom (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
@@ -509,7 +509,7 @@ Qed.
 
 Lemma homothecy_center_2 : forall ρ (Hρ : ρ <> 0) id sim c,
   lift_conf (fun g => if left_dec g 
-                     then None else Some (fun c => Sim.homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
+                     then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
   R.eq (Sim.center (sim c)) c.
 Proof.
 intros ρ Hρ [g | b] sim c.
@@ -523,7 +523,7 @@ Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action.
 refine {|
   relocate_byz := fun b => 0;
   step := lift_conf (fun g => if left_dec g
-                             then None else Some (fun c => Sim.homothecy c (Ropp_neq_0_compat _ Hρ))) |}.
+                             then None else Some (fun c => homothecy c (Ropp_neq_0_compat _ Hρ))) |}.
 Proof.
 + apply homothecy_ratio_2.
 + apply homothecy_center_2.
@@ -635,7 +635,7 @@ intros d Hd config Hconfig.
 rewrite <- (Rinv_involutive d) in Hconfig; trivial.
 assert (Hd' := Rinv_neq_0_compat _ Hd).
 rewrite <- Config.map_id at 1. change Datatypes.id with (Similarity.section Sim.id).
-rewrite <- (Sim.compose_inverse_l (Sim.homothecy (config (Good gfirst)) Hd')). cbn -[Sim.homothecy].
+rewrite <- (Sim.compose_inverse_l (homothecy (config (Good gfirst)) Hd')). cbn -[homothecy].
 rewrite <- Config.map_merge, <- Spect.from_config_map; refine _. simpl. unfoldR.
 change (fun x : R => / d * (x + - config (Good gfirst))) with (fun x : R => / d * (x - config (Good gfirst))).
 rewrite (dist_homothecy_spectrum_centered_left Hd'); auto.

@@ -147,8 +147,11 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   apply mul_0.
   Qed.
   
-  Lemma mul_origin : forall a, eq (mul a origin) origin.
-  Proof. Admitted.
+  Lemma mul_origin : forall k, eq (mul k origin) origin.
+  Proof.
+  intro k. apply add_reg_l with (mul k origin).
+  rewrite <- mul_distr_add. setoid_rewrite add_origin. reflexivity.
+  Qed.
   
   Lemma mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
   Proof.

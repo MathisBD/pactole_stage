@@ -402,6 +402,18 @@ Qed.
 Lemma orthogonal_origin : R2.eq (orthogonal R2.origin) R2.origin.
 Proof. unfold orthogonal. simpl. now rewrite Ropp_0, Rmult_0_r. Qed.
 
+Lemma orthogonal_origin_iff : forall u, R2.eq (orthogonal u) R2.origin <-> R2.eq u R2.origin.
+Proof.
+intro u. null u.
++ split; now auto using orthogonal_origin.
++ split; intro Heq.
+  - destruct u as [x y]. unfold orthogonal in Heq. simpl in *.
+    rewrite <- R2norm_0 in Hnull. unfoldR2 in Heq. injection Heq; intros Heqx Heqy.
+    apply Rinv_neq_0_compat in Hnull. apply Rmult_integral in Heqx. apply Rmult_integral in Heqy.
+    destruct Heqx, Heqy; try contradiction; []. unfoldR2. f_equal; lra.
+  - rewrite Heq. apply orthogonal_origin.
+Qed.
+
 Lemma R2norm_orthogonal : forall u, ~R2.eq u R2.origin -> R2norm (orthogonal u) = 1.
 Proof.
 intros u Hnull. rewrite <- R2norm_0 in Hnull. unfold orthogonal. rewrite R2norm_mul. rewrite Rabs_pos_eq.
@@ -575,16 +587,33 @@ intros u v. null u; [| null v].
   rewrite Heq0; lra.
 Qed.
 
-Lemma perpendicular_twice_colinear : forall u v w, perpendicular u v -> perpendicular v w -> colinear u w.
+Lemma perpendicular_twice_colinear : forall u v w, ~R2.eq v R2.origin ->
+  perpendicular u v -> perpendicular v w -> colinear u w.
 Proof.
-intros u v w Huv Hvw.
+intros u v w Hv Huv Hvw.
 null u; [| null w].
 + apply perpendicular_origin_l.
 + unfold colinear. rewrite orthogonal_origin. apply perpendicular_origin_r.
 + unfold colinear, perpendicular, orthogonal, product in *. simpl.
   replace (fst u * (/ R2norm w * snd w) + snd u * (/ R2norm w * - fst w))
     with (/ R2norm w * (fst u * snd w + snd u * - fst w)) by ring.
-Admitted.
+  erewrite <- Rmult_0_r. apply Rmult_eq_compat_l.
+  destruct (Req_dec (fst u) 0) as [Heq_u | Heq_u].
+  - assert (snd u <> 0). { intro Heq. apply Hnull. destruct u. simpl in *. now subst. }
+    rewrite Heq_u in *. ring_simplify in Huv. ring_simplify.
+    assert (Heq_v : snd v = 0). { apply Rmult_integral in Huv. now destruct Huv. }
+    assert (Heq_v' : fst v <> 0). { intro Heq. apply Hv. destruct v. simpl in *. now subst. }
+    rewrite Heq_v in *. ring_simplify in Hvw.
+    erewrite <- Rmult_0_r. apply Rmult_eq_compat_l.
+    apply Rmult_integral in Hvw. now destruct Hvw.
+  - apply (f_equal (Rmult (fst u))) in Hvw. rewrite Rmult_plus_distr_l, <- Rmult_assoc in Hvw.
+    assert (Huv' : fst u * fst v = - snd u * snd v) by lra.
+    rewrite Huv' in Hvw.
+    assert (snd v <> 0).
+    { intro Heq. apply Hv. destruct v as [x y]. simpl in *. subst. cut (x = 0); try (now intro; subst); [].
+      ring_simplify in Huv'. apply Rmult_integral in Huv'. lra. }
+    apply Rmult_eq_reg_l with (snd v); trivial. lra.
+Qed.
 
 Lemma perpendicular_dec : forall u v, {perpendicular u v} + {~perpendicular u v}.
 Proof. intros u v. unfold perpendicular. apply Rdec. Defined.
@@ -594,13 +623,18 @@ Proof. intros u v. unfold perpendicular. apply Rdec. Defined.
 Lemma colinear_dec : forall u v, {colinear u v} + {~colinear u v}.
 Proof. intros u v. unfold colinear. apply perpendicular_dec. Defined.
 
-Instance colinear_equiv : Equivalence colinear.
-Proof. unfold colinear. split.
-+ intro. apply orthogonal_perpendicular.
-+ intros u v H. now rewrite perpendicular_sym, perpendicular_orthogonal_shift.
-+ intros u v w Huv Hvw. apply perpendicular_twice_colinear with (orthogonal v).
-  - assumption.
-  - now rewrite perpendicular_orthogonal_shift.
+Instance colinear_Reflexive : Reflexive colinear.
+Proof. intro. apply orthogonal_perpendicular. Qed.
+
+Instance colinear_Symmetric : Symmetric colinear.
+Proof. intros u v H. unfold colinear. now rewrite perpendicular_sym, perpendicular_orthogonal_shift. Qed.
+
+Lemma colinear_trans : forall u v w, ~R2.eq v R2.origin -> colinear u v -> colinear v w -> colinear u w.
+Proof.
+intros u v w Hv Huv Hvw. apply perpendicular_twice_colinear with (orthogonal v).
+- now rewrite orthogonal_origin_iff.
+- assumption.
+- now rewrite perpendicular_orthogonal_shift.
 Qed.
 
 Lemma colinear_sym : forall u v, colinear u v <-> colinear v u.
@@ -646,24 +680,42 @@ Qed.
 Lemma colinear_orthogonal_compat : forall u v, colinear (orthogonal u) (orthogonal v) <-> colinear u v.
 Proof. intros. unfold colinear. now rewrite perpendicular_orthogonal_compat. Qed.
 
-Instance perpendicular_colinear_compat : Proper (colinear ==> colinear ==> iff) perpendicular.
-Proof.
-intros u u' Hu v v' Hv. split; intro Hperp.
-+ rewrite <- perpendicular_orthogonal_compat. change (colinear (orthogonal u') v').
-  rewrite <- Hv, <- colinear_orthogonal_shift, <- Hu, colinear_orthogonal_shift.
-  unfold colinear. now rewrite perpendicular_orthogonal_compat.
-+ rewrite <- perpendicular_orthogonal_compat. change (colinear (orthogonal u) v).
-  rewrite Hv, <- colinear_orthogonal_shift, Hu, colinear_orthogonal_shift.
-  unfold colinear. now rewrite perpendicular_orthogonal_compat.
-Qed.
-
 Lemma colinear_add : forall u v, colinear u (u + v) <-> colinear u v.
 Proof.
 intros u v. unfold colinear at 1. rewrite <- perpendicular_orthogonal_shift.
 unfold perpendicular. rewrite product_add_r. rewrite product_comm, orthogonal_perpendicular.
 rewrite Rplus_0_l. rewrite product_comm. rewrite colinear_sym. reflexivity.
 Qed.
+(*
+(* If vectors are non-null, then colinearity is an equivalence relation. *)
+Definition strict_colinear u v := ~R2.eq u R2.origin /\ ~R2.eq v R2.origin /\ colinear u v.
 
+Instance strict_colinear_sym : Symmetric strict_colinear.
+Proof. unfold strict_colinear. intros x y ?. rewrite colinear_sym. intuition. Qed.
+
+Instance strict_colinear_transitive : Transitive strict_colinear.
+Proof.
+unfold strict_colinear. intros x y z [Hx [Hy Hxy]] [_ [Hz Hyz]].
+repeat split; trivial. now eapply colinear_trans with y.
+Qed.
+
+Definition strict_colinear_PER : PER _ strict_colinear.
+Proof. split.
+- apply strict_colinear_sym.
+- apply strict_colinear_transitive.
+Qed.
+
+Instance perpendicular_colinear_compat : Proper (strict_colinear ==> strict_colinear ==> iff) perpendicular.
+Proof.
+intros u u' Hu v v' Hv. split; intro Hperp.
++ rewrite <- perpendicular_orthogonal_compat. change (colinear (orthogonal u') v').
+  rewrite <- Hv , <- colinear_orthogonal_shift, <- Hu, colinear_orthogonal_shift.
+  unfold colinear. now rewrite perpendicular_orthogonal_compat.
++ rewrite <- perpendicular_orthogonal_compat. change (colinear (orthogonal u) v).
+  rewrite Hv, <- colinear_orthogonal_shift, Hu, colinear_orthogonal_shift.
+  unfold colinear. now rewrite perpendicular_orthogonal_compat.
+Qed.
+*)
 (** Important theorems *)
 Theorem Pythagoras : forall u v, perpendicular u v <-> (R2norm (u + v)%R2)² = (R2norm u)² + (R2norm v)².
 Proof.
@@ -765,6 +817,26 @@ intros u v w Heq. null (w - u)%R2.
     - rewrite Huw. rewrite R2.add_comm. rewrite colinear_sym. now rewrite colinear_add.
     - rewrite Huw. rewrite colinear_sym. now rewrite colinear_add.
   + replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply R2.dist_pos.
+Qed.
+
+Theorem triang_ineq_eq3 : forall t u v w,
+  R2.dist t w = R2.dist t u + R2.dist u v + R2.dist v w -> colinear (u - t) (v - t) /\ colinear (w - t) (u - t).
+Proof.
+intros t u v w Heq. null (u - t)%R2; [| null (v - t)%R2].
++ split; apply colinear_origin_l || apply colinear_origin_r.
++ split; try apply colinear_origin_r.
+  rewrite R2sub_origin in Hnull0. rewrite <- Hnull0 in *.
+  elim Hnull.
+  rewrite R2sub_origin, <- R2.dist_defined. apply Rmult_eq_reg_l with 2; try lra; [].
+  ring_simplify. apply Rplus_eq_reg_r with (R2.dist v w).
+  rewrite Rplus_0_l. rewrite Heq at 2. setoid_rewrite R2.dist_sym at 3. ring.
++ assert (Heq' : R2.dist t v = R2.dist t u + R2.dist u v).
+  { apply antisymmetry.
+    - apply R2.triang_ineq.
+    - apply Rplus_le_reg_r with (R2.dist v w). rewrite <- Heq. apply R2.triang_ineq. }
+  assert (Hcol := triang_ineq_eq _ _ _ Heq'). split; try (now symmetry); [].
+  rewrite <- Heq' in Heq. apply triang_ineq_eq in Heq.
+  destruct Heq. destruct Hcol. now apply colinear_trans with (v - t)%R2.
 Qed.
 
 (* A very ugly proof! *)
@@ -1184,7 +1256,7 @@ Proof.
 Qed.
 
 (* useless
-(** If two radii are clinear, they form a diameter of the circle. *)
+(** If two radii are colinear, they form a diameter of the circle. *)
 Lemma colinear_diameter : forall pt1 pt2 circ, ~R2.eq pt1 pt2 ->
   on_circle circ pt1 = true -> on_circle circ pt2 = true ->
   (colinear (pt1 - center circ) (pt2 - center circ) <-> R2.eq (center circ) (R2.middle pt1 pt2)).
@@ -2020,11 +2092,11 @@ rewrite SEC_add_same.
 - apply SEC_spec1. intuition.
 Qed.
 
-(* TODO *)
 Lemma triangle_barycenter_inside : forall pt1 pt2 pt3,
   ~(pt1 = pt2 /\ pt1 = pt3) -> on_circle (SEC (pt1 :: pt2 :: pt3 :: nil)) (barycenter_3_pts pt1 pt2 pt3) = false.
 Proof.
 intros pt1 pt2 pt3 Hneq.
+(* if there are only two different points, we use triangle_barycenter_inside_aux. *)
 destruct (R2.eq_dec pt1 pt2) as [Heq12 | Heq12];
 [| destruct (R2.eq_dec pt1 pt3) as [Heq13 | Heq13]; [| destruct (R2.eq_dec pt2 pt3) as [Heq23 | Heq23]]].
 * assert (Hneq12 : pt1 <> pt3) by now intro; subst; auto. rewrite <- Heq12.
@@ -2035,27 +2107,121 @@ destruct (R2.eq_dec pt1 pt2) as [Heq12 | Heq12];
 * rewrite <- Heq23.
   assert (Hperm : Permutation (pt1 :: pt2 :: pt2 :: nil) (pt2 :: pt2 :: pt1 :: nil)) by now do 3 econstructor.
   rewrite Hperm. rewrite (barycenter_3_pts_compat Hperm). apply triangle_barycenter_inside_aux. auto.
-* assert (Hnodup : NoDup (pt1 :: pt2 :: pt3 :: nil)) by (repeat constructor; simpl in *; intuition).
+* (* All three points are different, we consider the size of on_SEC *)
+  assert (Hnodup : NoDup (pt1 :: pt2 :: pt3 :: nil)) by (repeat constructor; simpl in *; intuition).
   destruct (on_SEC (pt1 :: pt2 :: pt3 :: nil)) as [| pt1' [| pt2' [| pt3' [| ? ?]]]] eqn:Hsec.
   + rewrite on_SEC_nil in Hsec. discriminate.
   + apply on_SEC_singleton_is_singleton in Hsec; trivial. discriminate.
-  + apply on_SEC_pair_is_diameter in Hsec. rewrite Hsec. apply Bool.not_true_iff_false.
+  + (* 2 points on SEC, hence a diameter [pt1' pt2'] with middle c. Let pt3' be the last point.
+       Then barycenter pt1 pt2 pt3 - c = 1/3 (pt3' - c).
+       If pt3' = c then bary = c and d(bary, c) = 0 <> radius.
+       Otherwise, d(bary, c) = 1/3 dist(pt3', c) <> radius = dist(pt3', c). *)
+    assert (Hincl : incl (pt1' :: pt2' :: nil) (pt1 :: pt2 :: pt3 :: nil)).
+    { intro. rewrite <- Hsec. unfold on_SEC. rewrite filter_In. intuition. }
+    assert (Hdiff' : ~R2.eq pt1' pt2').
+    { assert (Hnodup' : NoDupA R2.eq (pt1' :: pt2' :: nil)).
+      { rewrite <- Hsec. apply on_SEC_NoDupA. now rewrite NoDupA_Leibniz. }
+    rewrite NoDupA_Leibniz in Hnodup'. inversion_clear Hnodup'. unfoldR2. intro. subst. intuition. }
+    assert (Hpair := on_SEC_pair_is_diameter _ Hsec). rewrite Hpair. apply Bool.not_true_iff_false.
     rewrite on_circle_true_iff. simpl.
-    rewrite square_dist_equiv; try (now assert (Hle := R2.dist_pos pt1' pt2'); lra); [].
-    unfold barycenter_3_pts, R2.middle. rewrite square_dist_simpl, R_sqr.Rsqr_mult, square_dist_simpl.
-    destruct pt1, pt2, pt3, pt1', pt2'; simpl. unfold Rsqr. intro Habs. field_simplify in Habs.
-    admit.
-  + assert (Hperm : Permutation (pt1' :: pt2' :: pt3' :: nil) (pt1 :: pt2 :: pt3 :: nil)).
+    (* Define pt3'. *)
+    assert (Hpt3' : exists pt3', Permutation (pt1' :: pt2' :: pt3' :: nil) (pt1 :: pt2 :: pt3 :: nil)).
+    { assert (Hpt1' := Hincl pt1' ltac:(intuition)).
+      assert (Hpt2' := Hincl pt2' ltac:(intuition)).
+      simpl in Hpt1', Hpt2'. decompose [or] Hpt1'; decompose [or] Hpt2'; clear Hpt1' Hpt2'; repeat subst;
+      try match goal with
+        | H : False |- _ => elim H
+        | H : ~R2.eq ?x ?x |- _ => elim H; reflexivity
+      end.
+      - exists pt3. do 4 constructor.
+      - exists pt2. do 4 constructor.
+      - exists pt3. do 4 constructor.
+      - exists pt1. do 4 econstructor.
+      - exists pt2. now do 3 econstructor.
+      - exists pt1. now do 4 econstructor. }
+    destruct Hpt3' as [pt3' Hperm].
+    rewrite <- (barycenter_3_pts_compat Hperm).
+    rewrite R2norm_dist. unfold barycenter_3_pts, R2.middle.
+    destruct (R2.eq_dec pt3' (1/2 * (pt1' + pt2'))) as [Heq | Heq].
+    - assert (Hzero : (/3 * (pt1' + (pt2' + pt3')) - 1/2 * (pt1' + pt2') = R2.origin)%R2).
+      { rewrite Heq. unfoldR2. destruct pt1', pt2'. simpl. f_equal; field. }
+      rewrite Hzero. rewrite R2norm_origin. apply not_eq_sym. erewrite <- Rmult_0_r.
+      intro Habs. rewrite <- R2.dist_defined in Hdiff'. apply Rmult_eq_reg_l in Habs; lra.
+    - replace ((/ 3 * (pt1' + (pt2' + pt3')) - 1 / 2 * (pt1' + pt2')))%R2
+        with (/3 *(pt3' - 1 / 2 * (pt1' + pt2')))%R2.
+      -- rewrite R2norm_mul. rewrite Rabs_pos_eq; try lra; [].
+         rewrite <- R2norm_dist.
+         assert (Hpt3' : R2.dist pt3' (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
+                         <= radius (SEC (pt1 :: pt2 :: pt3 :: nil))).
+         { apply SEC_spec1. rewrite <- Hperm. intuition. }
+         rewrite Hpair in Hpt3'. simpl in Hpt3'. fold (R2.middle pt1' pt2').
+         apply Rlt_not_eq. eapply Rlt_le_trans; try eassumption; [].
+         rewrite <- R2.dist_defined in Heq. setoid_rewrite <- Rmult_1_l at 9.
+         apply Rmult_lt_compat_r; lra || apply Rle_neq_lt; auto using R2.dist_pos.
+      -- destruct pt1', pt2', pt3'. simpl. f_equal; field.
+  + (* let c be the center of the SEC and r its radius.
+       If bary is on the circle, the triangular inequality 3 * d(bary, c) <= d(pt1, c) + d(pt2, c) + d(pt3, c)
+       is actually an equality.  Therefore, these three vectors are colinear and of same length (circle).
+       As one end is always c, two points must be the same, a contradiction. *)
+    assert (Hperm : Permutation (pt1' :: pt2' :: pt3' :: nil) (pt1 :: pt2 :: pt3 :: nil)).
     { rewrite <- PermutationA_Leibniz. rewrite <- NoDupA_Leibniz in Hnodup.
       apply (NoDupA_inclA_length_PermutationA _); trivial.
       - rewrite <- Hsec. now apply on_SEC_NoDupA.
       - rewrite <- Hsec. unfold on_SEC. intros ? Hin. now rewrite (filter_InA _) in Hin. }
-    rewrite <- Hsec in Hperm.
-    admit.
+    rewrite <- Hsec in Hperm. apply Bool.not_true_is_false. rewrite on_circle_true_iff.
+    pose (c := center (SEC (pt1 :: pt2 :: pt3 :: nil))).
+    pose (r := radius (SEC (pt1 :: pt2 :: pt3 :: nil))).
+    fold r c.
+    (* pt1, pt2, pt3 are on the circle, so d(ptX, c) = r. *)
+    assert (Hpt1 : R2.dist pt1 c = r).
+    { unfold c, r. rewrite <- on_circle_true_iff. eapply proj2. rewrite <- filter_In.
+      unfold on_SEC in Hperm. rewrite Hperm. now left. }
+    assert (Hpt2 : R2.dist pt2 c = r).
+    { unfold c, r. rewrite <- on_circle_true_iff. eapply proj2. rewrite <- filter_In.
+      unfold on_SEC in Hperm. rewrite Hperm. now right; left. }
+    assert (Hpt3 : R2.dist pt3 c = r).
+    { unfold c, r. rewrite <- on_circle_true_iff. eapply proj2. rewrite <- filter_In.
+      unfold on_SEC in Hperm. rewrite Hperm. now right; right; left. }
+    (* Modifyng goal to have the right shape for the equality case of the triangular inequality. *)
+    replace c with (/3 * (c + c + c))%R2 by (destruct c; simpl; f_equal; field).
+    unfold barycenter_3_pts. rewrite R2mul_dist, Rabs_pos_eq; try lra; [].
+    replace r with (/3 * (r + r + r)) by field.
+    intro Habs. apply Rmult_eq_reg_l in Habs; try lra; [].
+    (* We use the triangular equality to get colinearity results. *)
+    destruct (triang_ineq_eq3 (c + c + c) (pt1 + c + c) (pt1 + pt2 + c) (pt1 + pt2 + pt3)) as [Hcol1 Hcol2].
+    - rewrite R2.add_assoc, R2.dist_sym in Habs. rewrite Habs.
+      repeat rewrite R2add_dist. setoid_rewrite R2.add_comm.
+      repeat rewrite R2add_dist. setoid_rewrite R2.dist_sym.
+      now rewrite Hpt1, Hpt2, Hpt3.
+    - replace (pt1 + c + c - (c + c + c))%R2 with (pt1 - c)%R2 in * by (destruct pt1, c; simpl; f_equal; field).
+      replace (pt1 + pt2 + c - (c + c + c))%R2 with (pt1 - c + (pt2 - c))%R2 in Hcol1
+        by (destruct pt1, pt2, c; simpl; f_equal; field).
+      replace (pt1 + pt2 + pt3 - (c + c + c))%R2 with (pt1 - c + ((pt2 - c) + (pt3 - c)))%R2 in Hcol2
+        by (destruct pt1, pt2, pt3, c; simpl; f_equal; field).
+      (* The radius is not zero, otherwise all points would be the center, a contradiction. *)
+      assert (Hr : r <> 0).
+      { intro Hr. rewrite Hr in *. apply Heq12. transitivity c.
+        - now rewrite <- R2.dist_defined.
+        - now rewrite <- R2.dist_defined, R2.dist_sym. }
+      assert (Hc_pt1 : ~R2.eq pt1 c) by now rewrite <- R2.dist_defined, Hpt1.
+      assert (Hc_pt2 : ~R2.eq pt2 c) by now rewrite <- R2.dist_defined, Hpt2.
+      (* Simplify the colinearity results. *)
+      symmetry in Hcol2. rewrite colinear_add in Hcol1, Hcol2.
+      rewrite <- R2sub_origin in Hc_pt1, Hc_pt2.
+      assert (Hcol3 : colinear (pt1 - c) (pt3 - c)).
+      { apply colinear_trans with (pt2 - c)%R2; trivial. rewrite <- colinear_add.
+        apply colinear_trans with (pt1 - c)%R2; trivial. now symmetry. }
+      apply colinear_decompose in Hcol1; trivial; [].
+      apply colinear_decompose in Hcol3; trivial; [].
+      assert (Heq_pt1 := unitary_id (pt1 - c)%R2).
+      repeat rewrite <- ?R2norm_dist, ?Hpt1, ?Hpt2, ?Hpt3 in *.
+      (* Use the expression of colinearity by two possible equality. *)
+      destruct Hcol1 as [Hcol1 | Hcol1], Hcol3 as [Hcol3 | Hcol3];
+      apply Heq12 + apply Heq13 + apply Heq23; apply R2.add_reg_r with (- c)%R2; congruence.
   + assert (Hle : (length (on_SEC (pt1 :: pt2 :: pt3 :: nil)) <= 3)%nat).
     { unfold on_SEC. rewrite filter_length. simpl length at 1. omega. }
     rewrite Hsec in Hle. simpl in Hle. omega.
-Admitted.
+Qed.
 
 Lemma barycenter_3_pts_strictly_inside_SEC : forall pt1 pt2 pt3, ~(pt1 = pt2 /\ pt1 = pt3) ->
   R2.dist (barycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))

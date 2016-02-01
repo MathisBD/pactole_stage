@@ -168,6 +168,13 @@ Ltac Rdec_aux H :=
     | _ => fail
   end.
 
+(** Translation and homothecy similarities are well-defined on R. *)
+Lemma translation_hypothesis : forall z x y, R.dist (R.add x z) (R.add y z) = R.dist x y.
+Proof. intros z x y. unfoldR. unfold R.dist, Rdef.dist. now ring_simplify (x + z - (y + z))%R. Qed.
+
+Lemma homothecy_hypothesis : forall k x y, R.dist (R.mul k x) (R.mul k y) = (Rabs k * R.dist x y)%R.
+Proof. intros. unfoldR. unfold R.dist, Rdef.dist. rewrite <- Rmult_minus_distr_l. apply Rabs_mult. Qed.
+
 
 (** *  The Gathering Problem  **)
 
@@ -191,7 +198,6 @@ End N.
 
 (** The spectrum is a multiset of positions *)
 Module Spect := MultisetSpectrum.Make(R)(N).
-Module Sim := Similarity.Make(R).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
@@ -199,6 +205,11 @@ Add Search Blacklist "Spect.M" "Ring".
 
 Module Export Common := CommonRealFormalism.Make(R)(N)(Spect).
 Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
+
+Module Sim := Common.Sim.
+
+Definition translation := Sim.translation translation_hypothesis.
+Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
 
 Close Scope R_scope.
 
@@ -306,14 +317,7 @@ Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 Corollary inverse_similarity_in_R : forall (sim : Sim.t) k, k <> 0 ->
   (forall x, sim x = k * (x - sim.(Sim.center))) -> forall x, (sim ⁻¹) x = x / k + sim.(Sim.center).
 Proof. intros sim k Hk Hdirect x. simpl. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
-(*
-Lemma sim_compat (sim:similarity) : Proper (R.eq ==> R.eq) sim.
-Proof.
-  repeat intro.
-  rewrite H.
-  reflexivity.
-Qed.
-*)
+
 Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R.eq R.eq sim.
 Proof. apply Sim.injective. Qed.
 
