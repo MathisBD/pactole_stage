@@ -2542,19 +2542,33 @@ Ltac permut_3_4 :=
     apply PermutationA_app_comm with (l₁:=a::b::nil)(l₂:=c::d::nil);try autoclass
   | |- @PermutationA _ _ (?a::?b::?c::?d::nil) (?d::?a::?b::?c::nil) =>
     apply PermutationA_app_comm with (l₁:=a::b::c::nil)(l₂:=d::nil);try autoclass
+  | |- @PermutationA _ _ (?a::?b::?c::?d::nil) (?a::?d::?b::?c::nil) =>
+    constructor 2; 
+    apply PermutationA_app_comm with (l₁:=b::c::nil)(l₂:=d::nil);try autoclass
   | |- @PermutationA _ _ (?a::?b::?c::nil) (?c::?b::?a::nil) =>
     transitivity (b::c::a::nil);
     [ apply PermutationA_app_comm with (l₁:=a::nil)(l₂:=b::c::nil);try autoclass
     | constructor 3;reflexivity
     ]
-  | |- @PermutationA _ _ (?a::?b::?c::?d::nil) (?d::?c::?b::?a::nil) =>
-    transitivity (?c::?d::?b::?a::nil);
-    [ transitivity (?c::?d::?a::?b::nil);
-      [ apply PermutationA_app_comm with (l₁:=a::b::nil)(l₂:=c::d::nil);try autoclass
-      | do 2 constructor 2; constructor 3
-      ]
-    | constructor 3;reflexivity
+  | |- @PermutationA _ _ (?a::?b::?c::?d::nil) (?b::?d::?a::?c::nil) =>
+    transitivity (b::c::d::a::nil);
+    [ apply PermutationA_app_comm with (l₁:=a::nil)(l₂:=b::c::d::nil);try autoclass
+    | constructor 2;
+      [reflexivity
+      | apply PermutationA_app_comm with (l₁:=c::nil)(l₂:=d::a::nil);try autoclass ]
     ]
+  | |- @PermutationA _ _ (?a::?b::?c::?d::nil) (?b::?c::?a::?d::nil) =>
+    transitivity (a::d::b::c::nil);
+    [ constructor 2;
+      [reflexivity
+      | apply PermutationA_app_comm with (l₁:=b::c::nil)(l₂:=d::nil);try autoclass ]
+    | apply PermutationA_app_comm with (l₁:=a::d::nil)(l₂:=b::c::nil);try autoclass ]
+  | |- @PermutationA _ _ (?a::?b::?c::?d::nil) (?d::?c::?b::?a::nil) =>
+    transitivity (c::d::b::a::nil);
+    [ transitivity (c::d::a::b::nil);
+      [ apply PermutationA_app_comm with (l₁:=a::b::nil)(l₂:=c::d::nil);try autoclass
+      | do 2 constructor 2; constructor 3 ]
+    | constructor 3;reflexivity ]
   end.
 
 (* In a equilateral triangle x y z with barycenter b, if the middle of [b,y]
@@ -2884,6 +2898,41 @@ Proof.
   + now rewrite h_diameter_after.
 Qed.
 
+(* Extracting nodupA and ~InA consequences (in termms of <>) *)
+Ltac inv_notin H :=
+  match type of H with
+  | ~ In ?x nil => clear H
+  | ~ InA R2.eq ?x ?l =>
+    let h := fresh H in
+    assert (h:~ In x l); 
+    [ rewrite <- InA_Leibniz;assumption | inv_notin h ]
+  | ~ In ?x ?l =>
+    apply not_in_cons in H;
+    let h := fresh H in
+    let heq := fresh "heq" in
+    destruct H as [heq h];
+    try inv_notin h
+  end.
+
+Ltac inv_nodup H :=
+  match type of H with
+  | NoDupA R2.eq nil => clear H
+  | NoDupA R2.eq (?x::nil) => clear H
+  | NoDupA R2.eq (?x::?y::?l) =>
+    let x := fresh "x" in
+    let l := fresh "l" in
+    let C := fresh "h_notin" in
+    let D := fresh "h_nodup" in
+    inversion H as [|x l C D [E F]];
+    match type of E with
+    | ?x = _ => subst x
+    end;
+    match type of F with
+    | ?x = _ => subst x
+    end;
+    inv_notin C;
+    inv_nodup D
+  end.
 
 (** ****  Merging results about the different kinds of triangles  **)
 
@@ -3261,6 +3310,12 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
            apply on_SEC_NoDupA.
            apply Spect.support_NoDupA. }
 
+         assert (hnodupxyz: NoDupA R2.eq (ptx :: pty :: ptz :: nil)).
+         { rewrite <- Hsec. 
+           apply on_SEC_NoDupA.
+           apply Spect.support_NoDupA. }
+         inv_nodup hnodupxyz.
+         inv_nodup hnodup.
          destruct (R2.eq_dec pt1 (barycenter_3_pts ptx pty ptz)) as [heq_pt1_bary | hneq_pt1_bary].
          ++ { exfalso.
               assert(hpermut_conf: PermutationA R2.eq (Spect.support (!! (round gatherR2 da conf))) (pt1 :: pt2 :: nil)).
@@ -3269,45 +3324,19 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                   assert (h_pt2:InA R2.eq pt2 (pt2 :: nil)).
                   { left;reflexivity. }
                   specialize (h_incl_pt1_pt2 pt2 h_pt2).
+                  clear h_pt2.
                   inversion h_incl_pt1_pt2 as [pt lpt heq_pt2_ptx [__h heq_lpt] | pt lpt h_in_pt2_lpt [__h heq_lpt]].
                   (* pt2 = ptx *)
                   * unfold R2.eq, R2def.eq in heq_pt2_ptx.
                     subst.
                     assert (hpermut:PermutationA R2.eq (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
-                                                 (pty :: ptz :: barycenter_3_pts ptx pty ptz :: ptx :: nil)).
-                    { permut_3_4. }
-
+                                                 (pty :: ptz :: barycenter_3_pts ptx pty ptz :: ptx :: nil))
+                      by permut_3_4.
                     rewrite hpermut in hincl_round;clear hpermut.
-                    clear h_pt2.
-
-
                     assert (h_ynotin:~ InA R2.eq pty (Spect.support (!! (round gatherR2 da conf)))).
-                    { eapply SEC_3_to_2;eauto.
-                      - right;left;reflexivity.
-                      - intro abs.
-                        subst.
-                        assert (hnodup2:NoDupA R2.eq (ptx :: ptx :: ptz :: nil)).
-                        { rewrite <- Hsec.
-                          apply on_SEC_NoDupA.
-                          now apply Spect.support_NoDupA. }                         
-                        inversion hnodup2.
-                        match goal with | H: ~ InA R2.eq _ _ |- _ => apply H end.
-                        left.
-                        reflexivity. }
-
+                    { eapply SEC_3_to_2;eauto;repeat econstructor; reflexivity. }
                     assert (h_znotin:~ InA R2.eq ptz (Spect.support (!! (round gatherR2 da conf)))).
-                    { eapply SEC_3_to_2;eauto.
-                      - right;right;left;reflexivity.
-                      - intro abs.
-                        subst.
-                        assert (hnodup2:NoDupA R2.eq (ptx :: pty :: ptx :: nil)).
-                        { rewrite <- Hsec.
-                          apply on_SEC_NoDupA.
-                          now apply Spect.support_NoDupA. }                         
-                        inversion hnodup2.
-                        match goal with | H: ~ InA R2.eq _ _ |- _ => apply H end.
-                        right;left.
-                        reflexivity. }
+                    { eapply SEC_3_to_2;eauto;repeat econstructor; reflexivity. }
                     apply inclA_skip in hincl_round;autoclass.
                     apply inclA_skip in hincl_round;autoclass.
                     apply NoDupA_inclA_length_PermutationA;autoclass.
@@ -3322,21 +3351,66 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                           rewrite filter_length.
                           omega.
 
-                  * (* InA R2.eq pt2 (pt2 :: nil)  *)
-                    
-                    (* do the same twice. *)
-                    admit.
-                + intro abs'.
-                  inversion abs'.
-                  * rewrite H0 in hnodup.
-                    inversion hnodup.
-                    apply H4.
-                    left;reflexivity.
-                  * inversion H0. }
-              rewrite Spect.size_spec in Hlen'.
-              rewrite hpermut_conf in Hlen'.
-              simpl in Hlen'.
-              omega. }
+                  * { (* InA R2.eq pt2 (pt2 :: nil)  *)
+                      subst pt.
+                      subst lpt.
+                      inversion h_in_pt2_lpt as [pt lpt heq_pt2_pty [__h heq_lpt] | pt lpt h_in_pt2_lpt' [__h heq_lpt]].
+                      (* pt2 = pty *)
+                      * unfold R2.eq, R2def.eq in heq_pt2_pty.
+                        subst.
+                        assert (hpermut:PermutationA R2.eq (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                                     (ptx :: ptz :: barycenter_3_pts ptx pty ptz :: pty :: nil))
+                          by permut_3_4.
+                        rewrite hpermut in hincl_round;clear hpermut.
+                        assert (h_ynotin:~ InA R2.eq ptx (Spect.support (!! (round gatherR2 da conf)))).
+                        { eapply SEC_3_to_2;eauto;repeat econstructor; reflexivity. }
+                        assert (h_znotin:~ InA R2.eq ptz (Spect.support (!! (round gatherR2 da conf)))).
+                        { eapply SEC_3_to_2;eauto;repeat econstructor; reflexivity. }
+                        apply inclA_skip in hincl_round;autoclass.
+                        apply inclA_skip in hincl_round;autoclass.
+                        apply NoDupA_inclA_length_PermutationA;autoclass.
+                        -- apply Spect.support_NoDupA.                   
+                        -- rewrite heq_pt1_bary.
+                           assumption.
+                        -- simpl.
+                           transitivity (length (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                           ++ rewrite Hsec'.
+                              reflexivity.
+                           ++ unfold on_SEC.
+                              rewrite filter_length.
+                              omega.
+                      * subst pt.
+                        subst lpt.
+                        { inversion h_in_pt2_lpt' as [pt lpt heq_pt2_pty [__h heq_lpt] | pt lpt h_in_pt2_lpt'' [__h heq_lpt]].
+                          (* pt2 = pty *)
+                          * unfold R2.eq, R2def.eq in heq_pt2_pty.
+                            subst.
+                            assert (hpermut:PermutationA R2.eq (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                                         (ptx :: pty :: barycenter_3_pts ptx pty ptz :: ptz :: nil))
+                              by permut_3_4.
+                            rewrite hpermut in hincl_round;clear hpermut.
+                            assert (h_ynotin:~ InA R2.eq ptx (Spect.support (!! (round gatherR2 da conf)))).
+                            { eapply SEC_3_to_2;eauto;repeat econstructor; reflexivity. }
+                            assert (h_znotin:~ InA R2.eq pty (Spect.support (!! (round gatherR2 da conf)))).
+                            { eapply SEC_3_to_2;eauto;repeat econstructor; reflexivity. }
+                            apply inclA_skip in hincl_round;autoclass.
+                            apply inclA_skip in hincl_round;autoclass.
+                            apply NoDupA_inclA_length_PermutationA;autoclass.
+                            -- apply Spect.support_NoDupA.                   
+                            -- rewrite heq_pt1_bary.
+                               assumption.
+                            -- simpl.
+                               transitivity (length (on_SEC (Spect.support (!! (round gatherR2 da conf))))).
+                               ++ rewrite Hsec'.
+                                  reflexivity.
+                               ++ unfold on_SEC.
+                                  rewrite filter_length.
+                                  omega.
+                          * inversion h_in_pt2_lpt''. } } }
+                + rewrite Spect.size_spec in Hlen'.
+                  rewrite hpermut_conf in Hlen'.
+                  simpl in Hlen'.
+                  omega. }
          ++ admit. (* is the barycenter equal to pt2? yes/no *)
 
 
