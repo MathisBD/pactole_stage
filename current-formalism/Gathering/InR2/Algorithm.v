@@ -3594,8 +3594,20 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                      simpl in Hlen'.
                      omega. }
             
-         ++ admit. (* barycenter is not pt1 not pt2 *)
-
+              ++ rewrite Hsec.
+                 intros pt hin.
+                 assert (h:=h_incl_pt1_pt2 _ hin).
+                 inversion_clear h.
+                 ** inversion hin.
+                    --- subst.
+                        rewrite H1 in H.
+                        contradiction.
+                    --- subst.
+                        inversion H1.
+                        +++ rewrite H2 in H.
+                            contradiction.
+                        +++ inversion H2.
+                 ** assumption. }
 
     * (* Valid case: SEC is a triangle *)
       right. split; trivial.
