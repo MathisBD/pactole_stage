@@ -3656,7 +3656,77 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                 (* Triangle equilatéral: comme qqchose bouge et que on est encore avec 3
                    colonne après, une colonne s'est déplacée vers le barycentre, contradiction:
                    le barycentre ne peut pas être sur le SEC. *)
-                admit. }
+                assert (hex:exists pta ptb,
+                           pta <> ptb
+                           /\ inclA R2.eq (pta::ptb::nil) (ptx :: pty :: ptz :: nil)
+                           /\ PermutationA R2.eq (barycenter_3_pts ptx pty ptz :: pta :: ptb ::nil)
+                                           (pt1 :: pt2 :: pt3 :: nil)).
+                { assert (hincl:=incl_clean_next da conf Hclean).
+                  rewrite Hsec in hincl.
+                  rewrite Hperm',Hsec' in hincl.
+                  assert (hbary:InA R2.eq (barycenter_3_pts ptx pty ptz) (Spect.support (!! (round gatherR2 da conf)))).
+                  { rewrite Spect.support_In.
+                    rewrite <- Htarget.
+                    assumption. }
+                  rewrite Hperm',Hsec' in hbary.
+                  apply PermutationA_split in hbary;autoclass.
+                  destruct hbary as [l hpermut_l].
+                  setoid_rewrite hpermut_l.
+                  assert (hlength:=PermutationA_length hpermut_l).
+                  destruct l as [| pta [| ptb [| ? ?]]];simpl in hlength;try omega.
+                  exists pta, ptb.
+                  assert (hnodup:NoDupA R2.eq (barycenter_3_pts ptx pty ptz :: pta :: ptb :: nil)).
+                  { rewrite  <- hpermut_l, <-Hsec'.
+                    apply on_SEC_NoDupA.
+                    apply Spect.support_NoDupA. }
+                  split ; [| split].
+                  - inv_nodup hnodup.
+                    assumption.
+                  - rewrite hpermut_l in hincl.
+                    rewrite Htarget in hincl.
+                    eapply inclA_cons_inv;autoclass.
+                    inversion hnodup.
+                    assumption.
+                  - reflexivity. }
+                destruct hex as [ pta [ptb [hneq [hincl Hperm]]]].
+                pose (better_SEC := {| center:=R2.middle pta ptb;radius := /2 * R2.dist pta ptb|}).
+                assert (Hbary_strict: (R2.dist (barycenter_3_pts ptx pty ptz) (center better_SEC) < radius better_SEC)%R).
+                { admit. }
+                assert (enclosing_circle better_SEC (barycenter_3_pts ptx pty ptz :: pta :: ptb :: nil)).
+                { intros pt hin.
+                  simpl in hin.
+                  decompose [or False] hin;subst pt;clear hin.
+                  - apply Rlt_le. 
+                    assumption.
+                  - unfold better_SEC ; simpl.
+                    rewrite R2dist_middle.
+                    reflexivity.
+                  - unfold better_SEC ; simpl.
+                    rewrite middle_comm.
+                    rewrite R2dist_middle.
+                    rewrite R2.dist_sym.
+                    reflexivity. }
+                assert (better_SEC = (SEC (Spect.support (!! (round gatherR2 da conf))))).
+                { rewrite PermutationA_Leibniz in Hperm',Hperm.
+                  rewrite Hperm',Hsec',<-Hperm.
+                  apply SEC_unicity.
+                  - assumption.
+                  - unfold better_SEC.
+                    simpl.
+                    apply SEC_min_radius; intuition. }
+                absurd (on_circle better_SEC (barycenter_3_pts  ptx pty ptz)=true).
+                + rewrite on_circle_true_iff.
+                  apply Rlt_not_eq.
+                  assumption.
+                + rewrite H1.
+                  eapply proj2.
+                  rewrite <- filter_InA;autoclass.
+                  unfold on_SEC in Hsec'.
+                  rewrite Hsec'.
+                  rewrite <- Hperm.
+                  constructor.
+                  reflexivity.
+                }
             apply (NoDupA_equivlistA_PermutationA _).
             ** apply on_SEC_NoDupA, Spect.support_NoDupA.
             ** apply on_SEC_NoDupA, Spect.support_NoDupA.
