@@ -998,6 +998,24 @@ intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
 Qed.
 
+Lemma isoscele_vertex_is_vertex: forall ptx pty ptz vertex,
+  classify_triangle ptx pty ptz = Isosceles vertex -> 
+  InA R2.eq vertex (ptx :: pty :: ptz :: nil).
+Proof.
+intros ptx pty ptz vertex H.
+functional induction (classify_triangle ptx pty ptz);
+try discriminate; inversion H; now repeat constructor.
+Qed.
+
+Lemma scalene_vertex_is_vertex: forall ptx pty ptz,
+  classify_triangle ptx pty ptz = Scalene ->
+  InA R2.eq (opposite_of_max_side ptx pty ptz) (ptx :: pty :: ptz :: nil).
+Proof.
+intros ptx pty ptz H.
+functional induction (opposite_of_max_side ptx pty ptz);
+repeat (left + right); reflexivity.
+Qed.
+
 (** **  Barycenter and middle  **)
 
 (* Barycenter is the center of SEC for an equilateral triangle *)
@@ -1048,6 +1066,13 @@ Definition is_middle pt1 pt2 B := forall p,
 Definition is_barycenter_3_pts pt1 pt2 pt3 B := forall p,
   (R2.dist B pt1)² + (R2.dist B pt2)² + (R2.dist B pt3)² <= (R2.dist p pt1)² + (R2.dist p pt2)² + (R2.dist p pt3)².
 
+(* TODO? *)
+Axiom bary3_spec: forall pt1 pt2 pt3,
+  is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
+Axiom bary3_unique: forall x y z a b,
+    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b -> R2.eq a b.
+
+
 Lemma R2dist_middle : forall pt1 pt2,
   R2.dist pt1 (R2.middle pt1 pt2) = /2 * R2.dist pt1 pt2.
 Proof.
@@ -1081,6 +1106,18 @@ Proof.
   - inversion_clear h.
     cbv.
     f_equal; lra.
+Qed.
+
+Lemma middle_diff: forall ptx pty,
+  ptx <> pty -> ~InA R2.eq (R2.middle ptx pty) (ptx :: pty :: nil).
+Proof.
+intros ptx pty Hdiff Hin.
+inversion_clear Hin; subst.
+* rewrite middle_eq in H. contradiction.
+* inversion_clear H.
+  -- rewrite middle_comm, middle_eq in H0.
+     symmetry in H0. contradiction.
+  -- inversion H0.
 Qed.
 
 Lemma middle_spec : forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
@@ -1176,12 +1213,57 @@ destruct (R2.eq_dec pt1 pt2) as [Heq | Hneq].
   now rewrite R2norm_0.
 Qed.
 
-(* TODO? *)
-Axiom bary3_spec: forall pt1 pt2 pt3,
-  is_barycenter_3_pts pt1 pt2 pt3 (barycenter_3_pts pt1 pt2 pt3).
-Axiom bary3_unique: forall x y z a b,
-    is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b -> R2.eq a b.
+Lemma middle_barycenter_3_neq: forall pt1 pt2 ptopp,
+    classify_triangle pt1 pt2 ptopp = Equilateral ->
+    R2.middle pt1 pt2 = barycenter_3_pts pt1 pt2 ptopp ->
+    pt1 = pt2.
+Proof.
+  intros pt1 pt2 ptopp Htriangle h_middle_eq_bary.
+  unfold barycenter_3_pts,R2.middle in h_middle_eq_bary;
+    functional inversion Htriangle; rewrite -> ?Rdec_bool_true_iff in *;
+    (* I prefer hdist1 hdist2 later :) *)
+    repeat progress match goal with
+                    | HH: R2.dist ?p ?p' = R2.dist ?p'' ?p''' |- _ =>
+                      let hdist := fresh "hdist" in
+                      assert (hdist:Rsqr (R2.dist p p') = Rsqr (R2.dist p'' p'''))
+                      ; [ setoid_rewrite HH; try reflexivity;clear HH | clear HH ]
+                    end.
+  rename hdist into hdist2.
+  rename hdist0 into hdist1.
 
+  destruct pt1 as [xA yA], pt2 as [xB yB], ptopp as [xC yC];
+    unfold R2.dist,R2def.dist in *;simpl in *.
+  setoid_rewrite Rsqr_sqrt in hdist2.
+  setoid_rewrite Rsqr_sqrt in hdist1; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
+  * inversion h_middle_eq_bary as [[heqx heqy]].
+    assert (hand:xA=xB /\ yA = yB).
+    { clear -hdist1 hdist2 heqx heqy.
+      assert (heqxC:(xC = / 2 * (xA + xB))%R) by lra.
+      assert (heqyC:(yC = / 2 * (yA + yB))%R) by lra.
+      rewrite heqxC,heqyC in hdist1.
+      unfold Rsqr in *.
+      apply Rminus_diag_eq in hdist1.
+      revert hdist1.
+      clear.
+      match goal with |- ?v = _ -> _ => replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field end.
+      intros h.
+      apply (Rmult_eq_compat_l (4/3)%R) in h.
+      rewrite <- Rmult_assoc in h.
+      replace (4 / 3)%R with (/ (3 / 4))%R in h.
+      ++ rewrite <- Rinv_l_sym in h.
+         ** rewrite Rmult_1_l in h.
+            rewrite Rmult_0_r in h.
+            apply Rplus_sqr_eq_0 in h.
+            inversion h.
+            intuition.
+         ** clear.
+            lra.
+      ++ lra. }
+    destruct hand ; subst.
+    reflexivity.
+  * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+  * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+Qed.
 
 (** **  Circles and SEC  *)
 
@@ -1226,17 +1308,15 @@ Proof.
   - apply Rdec_bool_true_iff. auto.
 Qed.
 
-Lemma three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
+Axiom three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
   NoDup (pt1 :: pt2 :: pt3 :: nil) ->
   on_circle c1 pt1 = true -> on_circle c1 pt2 = true -> on_circle c1 pt3 = true ->
   on_circle c2 pt1 = true -> on_circle c2 pt2 = true -> on_circle c2 pt3 = true ->
   c1 = c2.
-Proof.
-Admitted.
 
 (** ***  Definition of the [SEC]  **)
 
-(** We assume the existence of a primitive SEC computing the smallest enclosing circle,
+(** We assume the existence of a function [SEC] computing the smallest enclosing circle,
     given by center and radius. *)
 Parameter SEC : list R2.t -> circle.
 (** The SEC is an enclosing circle. *)
@@ -1293,6 +1373,8 @@ Lemma on_SEC_In : forall pt l, In pt (on_SEC l) <-> In pt l /\ on_circle (SEC l)
 Proof. intros. unfold on_SEC. apply filter_In. Qed.
 
 (** ***  Results about the [SEC]  **)
+
+(** ****  The radius of the SEC is the maximum distance between the center and any point in the list  **)
 
 Definition max_dist pt l := List.fold_left (fun r x => Rmax r (R2.dist x pt)) l 0%R.
 
@@ -1382,7 +1464,7 @@ transitivity (max_dist (center (SEC l2)) l1).
 - rewrite radius_is_max_dist. now apply max_dist_incl_compat.
 Qed.
 
-
+(** There is at least one point on the [SEC]. *)
 Lemma SEC_reached : forall l, l <> nil ->
   exists pt, In pt l /\ on_circle (SEC l) pt = true.
 Proof.
@@ -1454,6 +1536,15 @@ intros pt1 pt2. symmetry. apply SEC_unicity.
   + apply Rmax_case; apply R2.dist_pos.
 Qed.
 
+(** ****  The [SEC] contains at least two points  **)
+
+(** Idea of the proof:
+    We already know that there is one point on the circle.
+    If there is no other, we take the furthest point from c strictly inside the disk.
+    We decrease the center and radius to make it end up on the circle.
+    Thus, the original SEC was not minimal, a contradiction. *)
+
+(*
 Function farthest_from_in c acc inl :=
 match inl with
 | nil => c
@@ -1483,7 +1574,7 @@ Proof.
   intros H.
   intuition.
 Qed.
-
+*)
 Function farthest_from_in_except (except c acc : R2.t) inl :=
 match inl with
 | nil => acc
@@ -1577,11 +1668,6 @@ destruct l as [| e l].
       -- apply SEC_spec1. rewrite (Hall e ltac:(now left)). now left.
 Qed.
 
-(* Idea:
-   We already know that there is one point on the circle.
-   If there is no other, we take the furthest point from c strictly inside the disk.
-   We decrease the center and radius to make it end up on the circle.
-   Thus, the original SEC was not minimal, a contradiction. *)
 Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l ->
   exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
@@ -1841,6 +1927,13 @@ Qed.
 (* TODO? *)
 Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
 Proof.
+intro l.
+symmetry. apply SEC_unicity.
++ intros pt Hin. destruct (In_dec R2.eq_dec pt (on_SEC l)).
+  - now apply SEC_spec1.
+  - admit.
++ apply SEC_incl_compat. unfold on_SEC. apply filter_incl.
+Restart.
 intro l.
 assert (Hperm := partition_Permutation (on_circle (SEC l)) l).
 rewrite Permutation_app_comm, MMultiset.Preliminary.partition_filter in Hperm. simpl in Hperm.

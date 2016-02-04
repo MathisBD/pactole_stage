@@ -654,4 +654,12 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - now rewrite <- max_subset.
   + assert (H := max_spec_max Hempty Hx). rewrite max_max_mult; auto.
   Qed.
+  
+  Lemma size_max_le : forall m, size (max m) <= size m.
+  Proof.
+  intro m. do 2 rewrite size_spec. apply (NoDupA_inclA_length E.eq_equiv).
+  - apply support_NoDupA.
+  - apply support_sub_compat, max_subset.
+  Qed.
+
 End Make.

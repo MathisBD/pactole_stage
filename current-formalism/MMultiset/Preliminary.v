@@ -497,7 +497,7 @@ intros x l Hin. induction l; inversion_clear Hin.
     constructor 3.
 Qed.
 
-Lemma inclA_app : forall x y l1 l2, eqA x y -> inclA eqA l1 l2 -> inclA eqA (x :: l1) (y :: l2).
+Lemma inclA_cons : forall x y l1 l2, eqA x y -> inclA eqA l1 l2 -> inclA eqA (x :: l1) (y :: l2).
 Proof.
 intros x y l1 l2 Heq Hincl z Hin. inversion_clear Hin.
 - left. now transitivity x.
@@ -507,7 +507,7 @@ Qed.
 Global Instance inclA_PermutationA_compat : Proper (PermutationA eqA ==> PermutationA eqA ==> iff) (inclA eqA).
 Proof. intros ? ? Hperm1 ? ? Hperm2. unfold inclA. setoid_rewrite Hperm1. setoid_rewrite Hperm2. reflexivity. Qed.
 
-Lemma inclA_app_inv : forall x y l1 l2,
+Lemma inclA_cons_inv : forall x y l1 l2,
   ~InA eqA x l1 -> eqA x y -> inclA eqA (x :: l1) (y :: l2) -> inclA eqA l1 l2.
 Proof.
 intros x y l1 l2 Hx Heq Hincl z Hin.
@@ -522,7 +522,7 @@ intro l1. induction l1 as [| x l]; intros l2 Hnodup Hle.
 + assert (Hin : InA eqA x l2). { apply Hle. now left. }
   apply PermutationA_split in Hin. destruct Hin as [l' Hin]. rewrite Hin. simpl. apply le_n_S. apply IHl.
   - now inversion Hnodup.
-  - intros y Hy. rewrite Hin in Hle. inversion_clear Hnodup. apply inclA_app_inv in Hle; auto. reflexivity.
+  - intros y Hy. rewrite Hin in Hle. inversion_clear Hnodup. apply inclA_cons_inv in Hle; auto. reflexivity.
 Qed.
 
 Lemma not_NoDupA : (forall x y, {eqA x y} + {~eqA x y} ) ->
@@ -632,6 +632,16 @@ intros f l Hf Hinj. induction l; simpl.
   - rewrite IHl. now inversion_clear Hl.
 Qed.
 
+Lemma NoDupA_inclA_length : forall l1 l2, NoDupA eqA l1 -> inclA eqA l1 l2 -> length l1 <= length l2.
+Proof.
+intro l1. induction l1 as [| a l1]; intros l2 Hnodup Hincl.
++ simpl. omega.
++ assert (Hin : InA eqA a l2). { apply Hincl. now left. }
+  apply PermutationA_split in Hin. destruct Hin as [l2' Heql2]. 
+  rewrite Heql2 in *. inversion_clear Hnodup.
+  apply inclA_cons_inv in Hincl; reflexivity || trivial; [].
+  simpl. apply le_n_S. now apply IHl1.
+Qed.
 
 Lemma NoDupA_app_iff : forall l l' : list A, NoDupA eqA (l ++ l')
   <-> NoDupA eqA l /\ NoDupA eqA l' /\ (forall x : A, InA eqA x l -> InA eqA x l' -> False).

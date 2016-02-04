@@ -958,6 +958,15 @@ assert (Hin2 : InA eqA y (x :: l2)). { apply Hincl. now right. }
 inversion_clear Hin2; trivial. rewrite <- H in Hx. contradiction.
 Qed.
 
+Lemma inclA_skip: forall (x : A) (l1 l2 : list A), ~ InA eqA x l1 -> inclA eqA l1 (x :: l2) -> inclA eqA l1 l2.
+Proof.
+intros x l1 l2 Hout Hincl y Hin.
+specialize (Hincl y Hin).
+inversion_clear Hincl as [? ? Heq |]; subst.
+- now rewrite Heq in Hin.
+- assumption.
+Qed.
+
 Lemma inclA_dec : forall l1 l2, {inclA eqA l1 l2} + {~inclA eqA l1 l2}.
 Proof.
 induction l1 as [| x1 l1 Hrec]; intro l2.
@@ -1212,6 +1221,12 @@ Proof.
 intros f l. induction l as [| e l]; simpl; auto.
 destruct (f e) eqn:Hfe; simpl; try rewrite Hfe; rewrite IHl; auto.
 Qed.
+
+Lemma filter_inclA : forall f, Proper (eqA ==> eq) f -> forall l, inclA eqA (filter f l) l.
+Proof. intros f Hf l x Hin. now rewrite filter_InA in Hin. Qed.
+
+Lemma filter_incl : forall f (l : list A), incl (filter f l) l.
+Proof. intros f l x Hin. now rewrite filter_In in Hin. Qed.
 
 End ToSortOut_results.
 
