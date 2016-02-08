@@ -2015,15 +2015,27 @@ intros f l. induction l as [| e l].
 - cbn. destruct (f e) eqn:Hfe; cbn; try rewrite Hfe; now (f_equal + idtac).
 Qed.
 
-(* TODO? *)
+Lemma on_SEC_is_max_dist : forall l pt pt', In pt l -> In pt' (on_SEC l) ->
+  R2.dist pt (center (SEC l)) <= R2.dist pt' (center (SEC l)).
+Proof.
+intros l pt pt' Hin Hin'. unfold on_SEC in Hin'.
+rewrite <- InA_Leibniz, (filter_InA _), on_circle_true_iff in Hin'.
+destruct Hin' as [_ Hin']. rewrite Hin'. now apply SEC_spec1.
+Qed.
+
 Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
 Proof.
 intro l.
 symmetry. apply SEC_unicity.
-+ intros pt Hin. destruct (In_dec R2.eq_dec pt (on_SEC l)).
-  - now apply SEC_spec1.
-  - admit.
-+ apply SEC_incl_compat. unfold on_SEC. apply filter_incl.
+* intros pt Hin.
+  assert (HonSEC : on_SEC (on_SEC l) <> nil).
+  { intro Habs. do 2 rewrite on_SEC_nil in Habs. subst. tauto. }
+  apply not_nil_In in HonSEC. destruct HonSEC as [pt' HonSEC].
+  assert (Hdist : R2.dist pt' (center (SEC (on_SEC l))) = radius (SEC (on_SEC l))).
+  { rewrite <- on_circle_true_iff. eapply proj2. now rewrite <- (filter_InA _ (on_SEC l)), InA_Leibniz. }
+  rewrite <- Hdist.
+  admit.
+* apply SEC_incl_compat. unfold on_SEC. apply filter_incl.
 Restart.
 intro l.
 assert (Hperm := partition_Permutation (on_circle (SEC l)) l).
@@ -2316,7 +2328,7 @@ Ltac permut_3_4 :=
   | |- @PermutationA _ _ (?a::?l) (?a::?l2) =>
     constructor 2;[reflexivity | permut_3_4 ]
   | |- @PermutationA _ _ (?a::?b::?l) (?b::?a::?l2) =>
-    transitivity (b::a::l); [constructor 3 | constructor 2; [ reflexivity | constructor 2; [ reflexivity | permut_3_4]]]
+    transitivity (b::a::l); [constructor 3|constructor 2; [reflexivity|constructor 2; [reflexivity|permut_3_4]]]
   | |- @PermutationA _ _ (?a::?b::?c::nil) (?c::?a::?b::nil) =>
     apply PermutationA_app_comm with (l₁:=a::b::nil)(l₂:=c::nil);try autoclass
   | |- @PermutationA _ _ (?a::?b::?c::nil) (?b::?c::?a::nil) =>
