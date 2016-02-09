@@ -947,9 +947,9 @@ Proof.
   reflexivity.
 Qed.
 
-(** ***  The robogram is invariant by referential change  **)
+(** ***  The robogram is invariant by a change of the frame of reference  **)
 
-(** We first prove how the function used by the robogram are affected by referential change. *)
+(** We first prove how the functions used by the robogram are affected by a change of the frame of reference. *)
 Definition map_triangle_type f t :=
   match t with
   | Isosceles p => Isosceles (f p)
