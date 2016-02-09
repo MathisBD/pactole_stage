@@ -2023,9 +2023,79 @@ rewrite <- InA_Leibniz, (filter_InA _), on_circle_true_iff in Hin'.
 destruct Hin' as [_ Hin']. rewrite Hin'. now apply SEC_spec1.
 Qed.
 
-Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l).
+    
+
+
+Lemma split_on_SEC: forall l,
+    PermutationA R2.eq l ((on_SEC l)++filter (fun x => negb (on_circle (SEC l) x)) l).
 Proof.
-intro l.
+  intros l.
+  unfold on_SEC.
+  change (filter (on_circle (SEC l)) l)
+         with
+         (filter (fun x : R2.t => (on_circle (SEC l) x)) l).
+  rewrite <- (map_id (filter (fun x : R2.t => on_circle (SEC l) x) l)).
+  rewrite <- (map_id (filter (fun x : R2.t => negb (on_circle (SEC l) x)) l)).
+  rewrite PermutationA_Leibniz.
+  rewrite <- map_cond_Permutation.
+  rewrite (map_ext (fun x : R2.t => if on_circle (SEC l) x then x else x) (fun x => x)).
+  - rewrite map_id.
+    reflexivity.
+  - intros a.
+    destruct (on_circle (SEC l) a);reflexivity.
+Qed.
+
+(* ±a c'est faux si l' contient des trucs qui ne sont pas dansl au départ.
+Lemma SEC_on_SEC_cons : forall x l l',
+    InA R2.eq x l
+    -> inclA R2.eq (on_SEC l) l'
+    -> SEC l' = SEC (x::l').
+Proof.
+Admitted.*)
+
+
+Lemma SEC_on_SEC_incl : forall l' l,
+    inclA R2.eq l' l
+    -> inclA R2.eq (on_SEC l) l'
+    -> SEC l' = SEC (on_SEC l).
+Proof.
+  intros l' l H H0.
+  assert (hl'': exists l'', PermutationA R2.eq l' (l''++on_SEC l)).
+  { admit. }
+  destruct hl'' as [l'' hl''].
+  rewrite hl'' in *.
+  clear hl'' H0 l'.
+  revert l H.
+  (* Ici j'ai envie de faire une induction mais moralement j'ai envie d'appliquer SEC_append_same. *)
+  induction l'';intros.
+  - simpl in *.
+    reflexivity.
+  - rewrite <- app_comm_cons in *.
+    assert (hex: exists l''', PermutationA R2.eq l (a::l''')).
+    { (* facile *)
+      admit. }
+    destruct hex as [l''' hl'''].
+    rewrite hl''' in *.
+    clear hl'''.
+    assert (hh:=IHl'' (a :: l''')).
+    rewrite <- hh.
+    + admit. (* la propriété clé, il faut unicity peut-être. *)
+    + intros x hx.
+      apply H.
+      right.
+      assumption.
+Admitted.
+
+Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l) .
+Proof.
+  intros l.
+  apply SEC_on_SEC_incl with (l' := l).
+  - reflexivity.
+  - unfold on_SEC.
+    apply filter_inclA;autoclass.
+Qed.
+
+(*
 symmetry. apply SEC_unicity.
 * intros pt Hin.
   assert (HonSEC : on_SEC (on_SEC l) <> nil).
@@ -2046,7 +2116,7 @@ intros pt Hin.
 rewrite filter_In, Bool.negb_true_iff in Hin. destruct Hin as [Hin Hout].
 apply SEC_spec1.
 Admitted.
-
+*)
 Corollary on_SEC_idempotent : forall l, PermutationA R2.eq (on_SEC (on_SEC l)) (on_SEC l).
 Proof. intro l. unfold on_SEC at 1 3. unfold on_SEC at 2. rewrite (SEC_on_SEC l). now rewrite filter_twice. Qed.
 
