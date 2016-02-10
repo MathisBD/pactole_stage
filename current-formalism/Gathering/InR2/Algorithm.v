@@ -1100,7 +1100,7 @@ simpl in Hlen; discriminate || clear Hlen.
   subst pt1'. now apply Sim.compose_inverse_l.
 - rewrite <- Spect.from_config_map, is_clean_morph; trivial.
   + destruct (is_clean (!! conf)).
-    * rewrite <- Spect.from_config_map, target_morph; trivial;auto.
+    * rewrite <- Spect.from_config_map, target_morph; trivial; auto.
       now apply Sim.compose_inverse_l.
     * rewrite <- (Sim.center_prop sim). rewrite Heqsim at 3. rewrite (step_center da _ _ Hstep).
       assert (Hperm' : PermutationA eq (SECT (!! (Config.map sim conf))) (map sim (SECT (!! conf)))).

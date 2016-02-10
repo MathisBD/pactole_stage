@@ -344,9 +344,9 @@ Qed.
 Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config.t :=
   (** for a given robot, we compute the new configuration *)
   fun id =>
-    let t := conf id in (** t is the current position of g seen by the demon *)
+(*     let t := conf id in (** t is the current position of g seen by the demon *) *)
     match da.(step) id with (** first see whether the robot is activated *)
-      | None => t (** If g is not activated, do nothing *)
+      | None => conf id (** If g is not activated, do nothing *)
       | Some sim => (** g is activated and [sim (conf g)] is its similarity *)
         match id with
         | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
