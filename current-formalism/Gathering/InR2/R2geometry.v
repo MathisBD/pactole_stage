@@ -1943,6 +1943,39 @@ Proof.
     now apply SEC_spec1.
 Qed.
 
+Lemma on_SEC_critical_on_SEC: forall pt l,
+    radius (SEC l) < radius (SEC (pt :: l))
+    -> InA R2.eq pt (on_SEC (pt :: l)).
+Proof.
+  intros pt l hlt.
+Admitted.
+
+
+Lemma SEC_add_same':
+  forall pt l, R2.dist pt (center (SEC (pt::l))) < radius (SEC (pt::l))
+               -> (SEC (pt :: l)) = SEC l.
+Proof.
+  intros pt l H.
+  apply SEC_unicity.
+  - intro.
+    intros H0.
+    apply SEC_spec1.
+    simpl.
+    right;auto.
+  - apply Rnot_lt_le.
+    intro abs.
+    absurd (InA R2.eq pt (on_SEC (pt::l))).
+    + rewrite InA_Leibniz.
+      rewrite on_SEC_In.
+      intro abs'.
+      destruct abs'.
+      apply on_circle_true_iff in H1.
+      lra.
+    + apply on_SEC_critical_on_SEC.
+      assumption.
+Qed.
+
+
 Lemma on_SEC_add_same : forall pt l, R2.dist pt (center (SEC l)) < radius (SEC l) ->
   equivlistA R2.eq (on_SEC (pt :: l)) (on_SEC l).
 Proof.
@@ -1966,6 +1999,30 @@ intros l1 l2 Hl1. induction l1.
   { intros pt Hin. apply Hl1. now right. }
   specialize (IHl1 Hrec). rewrite <- IHl1.
   apply SEC_add_same. rewrite IHl1. apply Hl1. now left.
+Qed.
+
+Lemma SEC_append_same' : forall l1 l2,
+    (forall pt, In pt l1 -> R2.dist pt (center (SEC (l1++l2))) < radius (SEC (l1++l2)))
+    -> SEC (l1 ++ l2) = SEC l2.
+Proof.
+  intros l1 l2 Hl1. induction l1.
+- reflexivity.
+- cbn.
+  setoid_rewrite <- IHl1.
+  + apply SEC_add_same'. apply Hl1. now left.
+  + intros pt Hin.
+    assert (hinpt : In pt (a::l1)).
+    { right.
+      assumption. }
+    assert (hpt:=Hl1 pt hinpt).
+    assert (hina : In a (a::l1)).
+    { left.
+      reflexivity. }
+    assert (ha:=Hl1 a hina).
+    clear Hl1 hinpt hina.
+    assert (h:=SEC_add_same' a (l1 ++ l2) ha).
+    setoid_rewrite <- h.
+    assumption.
 Qed.
 
 Lemma middle_in_SEC_diameter : forall pt1 pt2,
@@ -2045,78 +2102,29 @@ Proof.
     destruct (on_circle (SEC l) a);reflexivity.
 Qed.
 
-(* ±a c'est faux si l' contient des trucs qui ne sont pas dansl au départ.
-Lemma SEC_on_SEC_cons : forall x l l',
-    InA R2.eq x l
-    -> inclA R2.eq (on_SEC l) l'
-    -> SEC l' = SEC (x::l').
-Proof.
-Admitted.*)
-
-
-Lemma SEC_on_SEC_incl : forall l' l,
-    inclA R2.eq l' l
-    -> inclA R2.eq (on_SEC l) l'
-    -> SEC l' = SEC (on_SEC l).
-Proof.
-  intros l' l H H0.
-  assert (hl'': exists l'', PermutationA R2.eq l' (l''++on_SEC l)).
-  { admit. }
-  destruct hl'' as [l'' hl''].
-  rewrite hl'' in *.
-  clear hl'' H0 l'.
-  revert l H.
-  (* Ici j'ai envie de faire une induction mais moralement j'ai envie d'appliquer SEC_append_same. *)
-  induction l'';intros.
-  - simpl in *.
-    reflexivity.
-  - rewrite <- app_comm_cons in *.
-    assert (hex: exists l''', PermutationA R2.eq l (a::l''')).
-    { (* facile *)
-      admit. }
-    destruct hex as [l''' hl'''].
-    rewrite hl''' in *.
-    clear hl'''.
-    assert (hh:=IHl'' (a :: l''')).
-    rewrite <- hh.
-    + admit. (* la propriété clé, il faut unicity peut-être. *)
-    + intros x hx.
-      apply H.
-      right.
-      assumption.
-Admitted.
-
-Lemma SEC_on_SEC : forall l, SEC l = SEC (on_SEC l) .
+Lemma SEC_on_SEC : forall l,  SEC l = SEC (on_SEC l) .
 Proof.
   intros l.
-  apply SEC_on_SEC_incl with (l' := l).
-  - reflexivity.
-  - unfold on_SEC.
-    apply filter_inclA;autoclass.
+  rewrite (split_on_SEC l) at 1.
+  rewrite PermutationA_app_comm;autoclass.
+  apply SEC_append_same'.
+  intros pt H.
+  apply Rle_neq_lt.
+  - apply SEC_spec1.
+    apply in_or_app.
+    now left.
+  - apply filter_In in H.
+    destruct H.
+    rewrite Bool.negb_true_iff in H0.
+    rewrite <- Bool.not_true_iff_false in H0.
+    rewrite on_circle_true_iff in H0.
+    rewrite PermutationA_app_comm;autoclass.
+    rewrite <- split_on_SEC.
+    assumption.
 Qed.
 
-(*
-symmetry. apply SEC_unicity.
-* intros pt Hin.
-  assert (HonSEC : on_SEC (on_SEC l) <> nil).
-  { intro Habs. do 2 rewrite on_SEC_nil in Habs. subst. tauto. }
-  apply not_nil_In in HonSEC. destruct HonSEC as [pt' HonSEC].
-  assert (Hdist : R2.dist pt' (center (SEC (on_SEC l))) = radius (SEC (on_SEC l))).
-  { rewrite <- on_circle_true_iff. eapply proj2. now rewrite <- (filter_InA _ (on_SEC l)), InA_Leibniz. }
-  rewrite <- Hdist.
-  admit.
-* apply SEC_incl_compat. unfold on_SEC. apply filter_incl.
-Restart.
-intro l.
-assert (Hperm := partition_Permutation (on_circle (SEC l)) l).
-rewrite Permutation_app_comm, MMultiset.Preliminary.partition_filter in Hperm. simpl in Hperm.
-rewrite <- Hperm at 1. unfold on_SEC.
-apply SEC_append_same.
-intros pt Hin.
-rewrite filter_In, Bool.negb_true_iff in Hin. destruct Hin as [Hin Hout].
-apply SEC_spec1.
-Admitted.
-*)
+
+
 Corollary on_SEC_idempotent : forall l, PermutationA R2.eq (on_SEC (on_SEC l)) (on_SEC l).
 Proof. intro l. unfold on_SEC at 1 3. unfold on_SEC at 2. rewrite (SEC_on_SEC l). now rewrite filter_twice. Qed.
 
