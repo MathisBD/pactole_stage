@@ -1066,7 +1066,7 @@ trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff, ?inclA_Leibniz in 
   rewrite in_map_iff in *. destruct Hin as [x' [? Hin]]. subst. exists x'. repeat split. now apply Hy.
 Qed.
 
-(** We express the behavior of the algorithm in the global (demon) referential. *)
+(** We express the behavior of the algorithm in the global (demon) frame of reference. *)
 Theorem round_simplify : forall da conf,
     Config.eq (round gatherR2 da conf)
               (fun id => match da.(step) id with

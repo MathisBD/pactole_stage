@@ -152,6 +152,14 @@ Proof.
 Qed.
 Hint Resolve R2_dist_defined_2.
 
+Lemma R2opp_dist : forall u v, R2.dist (- u) (- v) = R2.dist u v.
+Proof.
+intros [? ?] [? ?]. unfold R2.dist, R2def.dist. f_equal. cbn.
+replace (- r - -r1) with (- (r - r1)) by ring.
+replace (- r0 - - r2) with (- (r0 - r2)) by ring.
+now do 2 rewrite <- R_sqr.Rsqr_neg.
+Qed.
+
 Lemma R2add_dist : forall w u v, R2.dist (u + w) (v + w) = R2.dist u v.
 Proof.
 intros [? ?] [? ?] [? ?]. unfold R2.dist, R2def.dist. f_equal. cbn.
@@ -451,6 +459,9 @@ Qed.
 
 Lemma unitary_origin : unitary R2.origin = R2.origin.
 Proof. unfold unitary. apply R2.mul_origin. Qed.
+
+Lemma unitary_opp : forall u, R2.eq (unitary (-u)) (-unitary u).
+Proof. intro u. unfold unitary. now rewrite R2norm_opp, R2.mul_opp. Qed.
 
 Lemma unitary_id : forall u, R2.eq u ((R2norm u) * unitary u).
 Proof.
@@ -1777,10 +1788,10 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
 + intro x. destruct (R2.eq_dec x pt1) as [Heq | Heq].
   - right. intuition.
   - destruct (on_circle (SEC (pt1 :: l)) x); intuition.
-+ (* If there is another point on the sphere *)
++ (* If there is another point on the circle *)
   rewrite Exists_exists in HOK. destruct HOK as [pt2 [Hin2 Heq2]].
   exists pt2; intuition.
-+ (* If all other points are inside the sphere, we can slightly reduce its radius by moving the center *)
++ (* If all other points are inside the circle, we can slightly reduce its radius by moving the center *)
   exfalso.
   pose (c := center (SEC (pt1 :: l))).
   pose (r := radius (SEC (pt1 :: l))).
@@ -1943,13 +1954,160 @@ Proof.
     now apply SEC_spec1.
 Qed.
 
-Lemma on_SEC_critical_on_SEC: forall pt l,
-    radius (SEC l) < radius (SEC (pt :: l))
-    -> InA R2.eq pt (on_SEC (pt :: l)).
+(* Actually, we have a strongler result stating that we can remove multiple copies of elements. *)
+Lemma SEC_alls : forall pt n, (0 < n)%nat ->  SEC (alls pt n) = {| center := pt; radius := 0 |}.
 Proof.
-  intros pt l hlt.
-Admitted.
+intros pt n Hn. induction n.
++ omega.
++ destruct n; simpl.
+  - apply SEC_singleton.
+  - rewrite SEC_add_same; auto with arith. apply SEC_spec1. now left.
+Qed.
 
+(* Given two the sec₁ = SEC l and sec₂ = SEC (pt :: l), we build a better SEC sec₃ for (pt :: l).  *)
+Theorem on_SEC_critical_on_SEC: forall pt l,
+  radius (SEC l) < radius (SEC (pt :: l)) -> InA R2.eq pt (on_SEC (pt :: l)).
+Proof.
+intros pt l Hlt.
+pose (c₁ := center (SEC l)).
+pose (r₁ := radius (SEC l)).
+pose (c₂ := center (SEC (pt :: l))).
+pose (r₂ := radius (SEC (pt :: l))).
+fold r₁ r₂ in Hlt.
+(* First eliminate the cases where l is empty or contains only copies of a single element. *)
+assert (Hl : l = nil \/ (exists pt, l = alls pt (length l) /\ l <> nil)
+          \/ exists pt1 pt2, pt1 <> pt2 /\ In pt1 l /\ In pt2 l).
+{ clear. induction l as [| e l].
+  * now left.
+  * right.
+    destruct IHl as [HL | [[pt [Hl Hnil]] | [pt1 [pt2 [Hneq [Hpt1 Hpt2]]]]]].
+    + subst. left. simpl. exists e. split; trivial; discriminate.
+    + destruct (R2.eq_dec e pt) as [Heq | Heq].
+      - left. rewrite Heq. exists pt. simpl. now rewrite <- Hl.
+      - right. exists pt, e. intuition.
+        right. rewrite Hl. destruct l; simpl; intuition.
+    + right. exists pt1, pt2. intuition. }
+destruct Hl as [Hl | [[pt1 [Hl Hnil]] | [pt1 [pt2 [Hneq [Hpt1 Hpt2]]]]]].
+* subst. rewrite on_SEC_singleton. now left.
+* destruct (R2.eq_dec pt pt1) as [Heq | Heq].
+  + rewrite Heq, Hl. change (pt1 :: alls pt1 (length l)) with (alls pt1 (S (length l))).
+    unfold on_SEC. rewrite (filter_InA _), on_circle_true_iff, SEC_alls; try omega; []. split.
+    - now left.
+    - simpl. now rewrite R2.dist_defined.
+  + assert (Hsec : SEC (pt :: l) = {| center := R2.middle pt pt1; radius := /2 * R2.dist pt pt1 |}).
+    { assert (Hlen : (length l <> 0)%nat) by auto using length_0.
+      rewrite Hl. clear Hl Hnil.
+      induction (length l) as [| [| n]].
+      + now elim Hlen.
+      + simpl. apply SEC_dueton.
+      + assert (Hperm : Permutation (pt :: alls pt1 (S (S n))) (pt1 :: pt :: alls pt1 (S n)))
+          by (simpl; constructor).
+        rewrite Hperm. rewrite SEC_add_same.
+        - apply IHn. discriminate.
+        - apply SEC_spec1. now right; left. }
+    unfold on_SEC. rewrite (filter_InA _), Hsec, on_circle_true_iff. simpl. split.
+    - now left.
+    - apply R2dist_middle.
+* (* Now the real case, with at least two elements inside l. *)
+  assert (Hlt_r₁ : 0 < r₁).
+  { unfold r₁. apply Rle_neq_lt.
+    + apply SEC_radius_pos.
+    + intro Habs. symmetry in Habs. rewrite SEC_zero_radius_incl_singleton in Habs.
+      destruct Habs as [pt' Hincl]. apply Hneq. transitivity pt'.
+      - specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition.
+      - specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition. }
+  destruct (InA_dec R2.eq_dec pt (on_SEC (pt :: l))) as [? | Hout]; trivial; exfalso.
+  (* As pt is not on the circle, its distance to the center is smaller than the radius. *)
+  assert (Hlt_pt_2 : R2.dist pt c₂ < r₂).
+  { apply Rle_neq_lt.
+    - apply SEC_spec1. now left.
+    - intro Habs. apply Hout. unfold on_SEC. rewrite (filter_InA _).
+      split; intuition. now rewrite on_circle_true_iff. }
+  (* If all other points are inside a smaller SEC, we can find a better SEC *)
+  destruct (R2.eq_dec c₂ c₁) as [Heq_c | Heq_c].
+  + (* Both centers are the same: we can have a better circle than the SEC with radius [R2.dist pt c]. *)
+    pose (r₃ := Rmax (R2.dist pt c₂) (radius (SEC l))). (* the new radius *)
+    pose (circ := {| center := c₂; radius := r₃ |}). (* the better circle *)
+    apply (Rlt_irrefl r₃). apply Rlt_le_trans with r₂.
+    - unfold r₃. now apply Rmax_lub_lt.
+    - change r₃ with (radius circ). unfold r₂. apply SEC_spec2.
+      intros pt' Hin. destruct Hin.
+      ++ subst pt'. unfold circ, r₃. simpl. apply Rmax_l.
+      ++ unfold circ, r₃. simpl. transitivity r₁.
+         -- rewrite Heq_c. now apply SEC_spec1.
+         -- apply Rmax_r.
+  + (* Both centers are different, we move the center c₂ to get a better SEC. *)
+    destruct (R2.eq_dec pt c₂) as [Heq | ?].
+    - (* if pt = c₂, we take c₃ = c₁ and r₃ = R2.dist c₁ c₂. *)
+      pose (r₃ := R2.dist c₂ c₁).
+      assert (Hlt_r₃_r₂ : r₁ < r₃ < r₂).
+      { unfold r₃. split.
+        + apply Rnot_le_lt. rewrite <- Heq. intro Habs. apply SEC_add_same in Habs.
+          unfold r₂ in Hlt. rewrite Habs in Hlt. apply (Rlt_irrefl _ Hlt).
+        + admit. }
+      assert (enclosing_circle {| center := c₁; radius := r₃ |} (pt :: l)).
+      { intros pt' Hin. simpl. destruct Hin.
+        + subst pt'. unfold r₃. rewrite Heq. reflexivity.
+        + transitivity r₁.
+          - now apply SEC_spec1.
+          - now apply Rlt_le. }
+      (* A contradiction *)
+      apply (Rle_not_lt r₃ r₂); try easy; [].
+      unfold r₂. change r₃ with (radius {| center := c₁; radius := r₃ |}).
+      now apply SEC_spec2.
+    - (* Otherwise, we move by [ε/2] on the line [pt c]. *)
+      pose (d := R2.dist pt c₂).
+      pose (ε := r₂ - d). (* the room we have *)
+      pose (r₃ := (r₂ + d) / 2). (* the new radius *)
+      pose (ratio := ε / (2 * d)).
+      pose (c₃ := (c₂ - (ratio * (pt - c₂)))%R2). (* the new center *)
+      assert (Hr₃ : r₃ = d + ε / 2) by (unfold ε, r₃; field).
+      assert (Hr : r₂ <> 0).
+      { unfold r₂. rewrite SEC_zero_radius_incl_singleton. intros [pt' Hincl].
+        apply Hneq. transitivity pt'.
+        - specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition.
+        - specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition. }
+      assert (Hle_d : 0 <= d) by apply R2.dist_pos.
+      assert (Hlt_d : 0 < d).
+      { apply Rle_neq_lt; trivial. unfold d. intro Habs. symmetry in Habs.
+        rewrite R2.dist_defined in Habs. contradiction. }
+      assert (Hlt_r₂ : 0 < r₂). { apply Rle_neq_lt; auto. unfold r₂. apply SEC_radius_pos. }
+      assert (Hlt_r₃ : 0 < r₃) by (unfold r₃; lra).
+        assert (Hle_r₃ : 0 <= r₃) by lra.
+      (* The new circle has a smaller radius *)
+      assert (Hlt_d_r : d < r₂).
+      { apply Rle_neq_lt.
+        ++ unfold d, r₂, c₂. apply SEC_spec1. now left.
+          ++ unfold d, r₂, c₂. rewrite <- on_circle_true_iff. intro Habs.
+           apply Hout. unfold on_SEC. rewrite (filter_InA _). intuition. }
+      assert (Hlt_r₃_r₂ : r₃ < r₂) by (unfold r₃; lra).
+      (* Yet, it is still enclosing *)
+      assert (Hlt_ε : 0 < ε) by (unfold ε; lra).
+      assert (Hratio_pos : 0 < ratio).
+      { unfold ratio, Rdiv.
+        apply Rle_neq_lt.
+        - apply Fourier_util.Rle_mult_inv_pos; lra.
+        - unfold Rdiv. intro Habs. symmetry in Habs. apply Rmult_integral in Habs.
+          assert (Hlt_inv_d := Rinv_0_lt_compat _ Hlt_d).
+          destruct Habs as [? | Habs]; lra || rewrite Rinv_mult_distr in Habs; lra. }
+        assert (Hdist : R2.dist c₂ c₃ = ε / 2).
+        { unfold c₃, ratio. rewrite <- R2.add_origin at 1. setoid_rewrite R2.add_comm.
+          rewrite R2add_dist, R2.dist_sym. rewrite R2norm_dist, R2.opp_origin, R2.add_origin.
+          rewrite R2norm_opp, R2norm_mul, Rabs_pos_eq.
+          - rewrite <- R2norm_dist. fold d. field. lra.
+          - apply Fourier_util.Rle_mult_inv_pos; lra. }
+      (* Yet, it is still enclosing *)
+      assert (Hnew : enclosing_circle {| center := c₃; radius := r₃ |} (pt :: l)).
+      { intros pt' Hin. cbn. destruct Hin.
+        * subst pt'. transitivity (R2.dist pt c₂ + R2.dist c₂ c₃).
+          + apply R2.triang_ineq.
+          + rewrite Hdist. fold d. rewrite Hr₃. reflexivity.
+        * admit. }
+      (* A contradiction *)
+      apply (Rle_not_lt r₃ r₂); trivial.
+      unfold r₂. change r₃ with (radius {| center := c₃; radius := r₃ |}).
+      now apply SEC_spec2.
+Admitted.
 
 Lemma SEC_add_same':
   forall pt l, R2.dist pt (center (SEC (pt::l))) < radius (SEC (pt::l))
@@ -2079,9 +2237,6 @@ intros l pt pt' Hin Hin'. unfold on_SEC in Hin'.
 rewrite <- InA_Leibniz, (filter_InA _), on_circle_true_iff in Hin'.
 destruct Hin' as [_ Hin']. rewrite Hin'. now apply SEC_spec1.
 Qed.
-
-    
-
 
 Lemma split_on_SEC: forall l,
     PermutationA R2.eq l ((on_SEC l)++filter (fun x => negb (on_circle (SEC l) x)) l).
