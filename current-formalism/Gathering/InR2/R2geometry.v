@@ -31,6 +31,9 @@ Proof. intros. setoid_rewrite <- sqrt_Rsqr; trivial. now f_equal. Qed.
 Lemma pos_Rsqr_le : forall x y, 0 <= x -> 0 <= y -> (x² <= y² <-> x <= y).
 Proof. intros. split; intro; try now apply R_sqr.Rsqr_incr_0 + apply R_sqr.Rsqr_incr_1. Qed.
 
+Lemma pos_Rsqr_lt : forall x y, 0 <= x -> 0 <= y -> (x² < y² <-> x < y).
+Proof. intros. split; intro; try now apply R_sqr.Rsqr_incrst_0 + apply R_sqr.Rsqr_incrst_1. Qed.
+
 
 (** **  R² as a vector space over R  **)
 
@@ -460,8 +463,27 @@ Qed.
 Lemma unitary_origin : unitary R2.origin = R2.origin.
 Proof. unfold unitary. apply R2.mul_origin. Qed.
 
+Lemma unitary_is_origin : forall u, R2.eq (unitary u) R2.origin <-> R2.eq u R2.origin.
+Proof.
+intro u. split; intro Heq.
+- null u; try reflexivity; [].
+  apply R2norm_unitary in Hnull. rewrite Heq, R2norm_origin in Hnull.
+  exfalso. now apply R1_neq_R0.
+- now rewrite Heq, unitary_origin.
+Qed.
+
 Lemma unitary_opp : forall u, R2.eq (unitary (-u)) (-unitary u).
 Proof. intro u. unfold unitary. now rewrite R2norm_opp, R2.mul_opp. Qed.
+
+Lemma unitary_mul : forall k u, 0 < k -> R2.eq (unitary (k * u)) (unitary u).
+Proof.
+intros k u Hk.
+null u.
+- now rewrite R2.mul_origin.
+- unfold unitary. rewrite R2norm_mul. rewrite Rabs_pos_eq; try lra; [].
+  rewrite R2.mul_morph. replace (/ (k * R2norm u) * k) with (/R2norm u); try reflexivity; [].
+  field. rewrite R2norm_0. split; auto with real.
+Qed.
 
 Lemma unitary_id : forall u, R2.eq u ((R2norm u) * unitary u).
 Proof.
@@ -1441,6 +1463,64 @@ Proof.
   - apply Rdec_bool_true_iff. auto.
 Qed.
 
+(* Given a circle of center [c] and a point pt outside this circle, 
+   any point pt' inside the disk is closer to any point on [c pt] than to [pt]. *)
+Lemma disk_dist : forall circ pt, radius circ < R2.dist pt (center circ) ->
+  forall pt' k, 0 < k < R2.dist pt (center circ) - radius circ -> R2.dist pt' (center circ) <= radius circ ->
+  R2.dist pt' (pt + k * unitary (center circ - pt)) < R2.dist pt' pt.
+Proof.
+intros circ pt Hpt pt' k Hk Hpt'.
+assert (Hle := R2.dist_pos  pt' (center circ)).
+assert (Hneq : ~R2.eq (center circ) pt).
+{ rewrite <- R2.dist_defined. intro Habs. rewrite R2.dist_sym in Habs. rewrite Habs in *. apply (Rlt_irrefl 0).
+  apply Rle_lt_trans with (radius circ); lra. }
+pose (pt'' := ((pt + k * unitary (center circ - pt)))%R2).
+assert (Hneq' : ~R2.eq (center circ) pt'').
+{ unfold pt''. rewrite <- R2sub_origin. rewrite R2.opp_distr_add, R2.add_assoc.
+  rewrite (unitary_id (center circ - pt)) at 1.
+  rewrite <- R2.minus_morph, R2.add_morph, <- R2norm_dist, R2.dist_sym.
+  intro Habs. apply R2.mul_integral in Habs. destruct Habs as [Habs | Habs].
+  - lra.
+  - rewrite <- R2sub_origin, <- unitary_is_origin in Hneq. contradiction. }
+assert (Heq' : (pt - pt'' = -k * unitary (center circ - pt))%R2).
+{ unfold pt''. now rewrite R2.opp_distr_add, R2.add_assoc, R2.add_opp, R2.add_comm, R2.add_origin, R2.minus_morph. }
+assert (Heq : R2.eq (unitary (center circ - pt)) (unitary (center circ - pt''))).
+{ unfold pt''. rewrite R2.opp_distr_add, R2.add_assoc.
+  rewrite (unitary_id (center circ - pt)) at 2.
+  rewrite <- R2.minus_morph, R2.add_morph.
+  rewrite unitary_mul, unitary_idempotent; try reflexivity; [].
+  rewrite <- R2norm_dist, R2.dist_sym.
+  lra. }
+rewrite <- R2sub_origin in Hneq'. fold pt''.
+rewrite <- (R2add_dist (-pt'')%R2 pt' pt).
+rewrite Heq', Heq.
+rewrite <- pos_Rsqr_lt; try apply R2.dist_pos; [].
+assert (Heq_pt' := decompose_on Hneq' (pt' - pt'')).
+do 2 rewrite R2norm_dist. rewrite Heq_pt'.
+assert (Hperp : perpendicular (product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt''))
+                      (product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
+{ apply perpendicular_mul_compat_l, perpendicular_mul_compat_r, unitary_orthogonal_perpendicular. }
+rewrite Pythagoras in Hperp. rewrite Hperp. clear Hperp.
+replace (product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt'') +
+         product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt'') -
+         - k * unitary (center circ - pt''))%R2
+  with ((product (pt' - pt'') (unitary (center circ - pt'')) + k) * unitary (center circ - pt'') +
+         product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))%R2
+  by (destruct (unitary (center circ - pt'')), (orthogonal (center circ - pt'')); simpl; f_equal; lra).
+assert (Hperp : perpendicular
+                  ((product (pt' - pt'') (unitary (center circ - pt'')) + k) * unitary (center circ - pt''))
+                  (product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
+{ apply perpendicular_mul_compat_l, perpendicular_mul_compat_r, unitary_orthogonal_perpendicular. }
+rewrite Pythagoras in Hperp. rewrite Hperp. clear Hperp.
+apply Rplus_lt_compat_r.
+rewrite pos_Rsqr_lt; try apply R2norm_pos; [].
+do 2 rewrite R2norm_mul. rewrite R2norm_unitary; trivial; [].
+assert (Hpos : 0 <= product (pt' - pt'') (unitary (center circ - pt''))).
+{ admit. }
+repeat rewrite Rabs_pos_eq; lra.
+Admitted.
+
+
 Axiom three_points_same_circle : forall c1 c2 pt1 pt2 pt3,
   NoDup (pt1 :: pt2 :: pt3 :: nil) ->
   on_circle c1 pt1 = true -> on_circle c1 pt2 = true -> on_circle c1 pt3 = true ->
@@ -2276,7 +2356,8 @@ Proof.
     rewrite PermutationA_app_comm;autoclass.
     rewrite <- split_on_SEC.
     assumption.
-Qed.
+(* Still relies on two admitted results: [disk_dist] and [on_SEC_critical_on_SEC]. *)
+Admitted.
 
 
 

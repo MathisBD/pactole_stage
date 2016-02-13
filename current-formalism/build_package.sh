@@ -3,15 +3,22 @@
 rm -rf ./package
 mkdir ./package
 mkdir ./package/MMultiset
-mkdir ./package/GatheringinR
+mkdir ./package/Convergence
+mkdir ./package/Gathering
+mkdir ./package/Gathering/InR
+mkdir ./package/Gathering/InR2
 
-cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetMap.v ./package/MMultiset/
+cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
 
-cp Preliminary.v Robots.v Positions.v CommonFormalism.v FlexibleFormalism.v RigidFormalism.v MultisetSpectrum.v makefile _CoqProject ./package/
+cp Preliminary.v Lexprod.v Robots.v Configurations.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v MultisetSpectrum.v Similarity.v makefile _CoqProject ./package/
 
-cp GatheringinR/SortingR.v GatheringinR/Definitions.v GatheringinR/Algorithm.v GatheringinR/Impossibility.v ./package/GatheringinR/
+cp Convergence/Impossibility_2G_1B.v ./package/Convergence/
 
-make -C package -j 3 GatheringinR/Algorithm.vo GatheringinR/Impossibility.vo
+cp Gathering/InR/SortingR.v Gathering/InR/Definitions.v Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
+
+cp Gathering/InR2/R2geometry.v Gathering/InR2/Algorithm.v ./package/Gathering/InR2
+
+make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Convergence/Impossibility_2G_1B.vo
 make -C package clean
-rm -f package/.*.aux
+rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
 tar cvfz package.tgz package 

@@ -19,13 +19,11 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Pactole.CommonFormalism.
 Require Pactole.RigidFormalism.
-Require Import Pactole.Gathering.InR.SortingR.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
 Require Import Pactole.Gathering.InR2.R2geometry.

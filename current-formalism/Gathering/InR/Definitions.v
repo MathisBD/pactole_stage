@@ -16,7 +16,6 @@ Require Import List.
 Require Import SetoidList.
 Require Import Relations.
 Require Import RelationPairs.
-Require Import MMultisetFacts MMultisetMap.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
