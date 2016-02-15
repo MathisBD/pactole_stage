@@ -23,6 +23,7 @@ Require Import Pactole.Similarity.
 Require Pactole.CommonRealFormalism.
 Require Pactole.RigidFormalism.
 Require Import Pactole.Gathering.InR.SortingR.
+Require Import Pactole.Gathering.Definitions.
 Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Psatz.
@@ -194,24 +195,15 @@ Module N : Size with Definition nG := nG with Definition nB := 0.
   Definition nB := 0.
 End N.
 
-
-(** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(R)(N).
-
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
-Notation "!!" := Spect.from_config (at level 1).
-Add Search Blacklist "Spect.M" "Ring".
-
-Module Export Common := CommonRealFormalism.Make(R)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
-
-Module Sim := Common.Sim.
+(** We instantiate in our setting the generic definitions of the gathering problem. *)
+Module Defs := Definitions.GatheringDefs(R)(N).
+Export Defs.
 
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
 
 Close Scope R_scope.
-
+(*
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)
 Definition gathered_at (pt : R) (conf : Config.t) := forall g : Names.G, conf (Good g) = pt.
@@ -246,7 +238,7 @@ Definition FullSolGathering (r : robogram) (d : demon) :=
     This is the statement used for the correctness proof of the algorithm. *)
 Definition ValidSolGathering (r : robogram) (d : demon) :=
   forall config, ~forbidden config -> exists pt : R.t, WillGather pt (execute r d config).
-
+*)
 
 (** **  Some results about R with respect to distance and similarities  **)
 
@@ -343,12 +335,6 @@ intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
   pose (Hratio := Sim.zoom_pos sim). lra.
 + right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
   assert (Hratio := Sim.zoom_pos sim). lra.
-Qed.
-
-Instance forbidden_compat : Proper (Config.eq ==> iff) forbidden.
-Proof.
-intros ? ? Heq. split; intros [HnG [pt1 [pt2 [Hneq Hpt]]]]; split; trivial ||
-exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
 
 Global Instance Leibniz_fun_compat : forall f, Proper (R.eq ==> R.eq) f.

@@ -21,6 +21,13 @@ Close Scope R_scope.
 Axiom even_nG : Nat.Even N.nG.
 Axiom nG_non_0 : N.nG <> 0.
 
+Lemma nG_ge_2 : 2 <= N.nG.
+Proof.
+assert (Heven := even_nG). assert (H0 := nG_non_0).
+inversion Heven.
+destruct N.nG as [| [| ?]]; omega.
+Qed.
+
 Lemma half_size_conf : Nat.div2 N.nG > 0.
 Proof.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
@@ -57,7 +64,7 @@ Theorem different_no_gathering : forall (e : execution),
 Proof.
 intros e HnG He pt Habs. induction Habs.
 + destruct H as [Hnow Hlater]. destruct He as [Hforbidden He].
-  destruct Hforbidden as [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]].
+  destruct Hforbidden as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
   - assert (Hin : Spect.In pt1 (!! (execution_head e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
@@ -298,7 +305,7 @@ Qed.
 
 Corollary conf1_forbidden : forbidden conf1.
 Proof.
-split; try exact even_nG.
+repeat split; try (exact even_nG || exact nG_ge_2); [].
 exists 0, 1. rewrite spect_conf1. repeat split.
 + intro. now apply R1_neq_R0.
 + unfold spectrum. rewrite Spect.add_same, Spect.singleton_spec. now Rdec.
@@ -647,7 +654,7 @@ Qed.
 Lemma dist_forbidden : forall d (Hd : d <> 0) (config : Config.t),
   (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) -> forbidden config.
 Proof.
-intros d Hd config Hconfig. unfold forbidden. split; try apply even_nG; [].
+intros d Hd config Hconfig. unfold forbidden. repeat split; try apply even_nG || apply nG_ge_2; [].
 assert (Hdiff : config (Good gfirst) <> config (Good glast)).
 { apply Rminus_not_eq_right. rewrite Hconfig; auto. }
 exists (config (Good gfirst)), (config (Good glast)). repeat split.

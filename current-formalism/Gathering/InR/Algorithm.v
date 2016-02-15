@@ -140,7 +140,7 @@ Proof. now intros conf [? _]. Qed.
 Lemma forbidden_support_length : forall config, forbidden config ->
   Spect.size (!! config) = 2.
 Proof.
-intros conf [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+intros conf [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.singleton pt1 (Nat.div2 N.nG)))
                                         (!! conf)).
 + rewrite Spect.size_add; try now apply half_size_conf.
@@ -166,8 +166,8 @@ Lemma forbidden_injective_invariant : forall f, injective eq eq f ->
   forall conf, forbidden conf -> forbidden (Config.map f conf).
 Proof.
 unfold forbidden.
-intros f Hf conf [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
-split;trivial.
+intros f Hf conf [HnG [? [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
+repeat split; trivial; [].
 exists (f pt1), (f pt2). split.
 - intro Heq. apply Hdiff. now apply Hf in Heq.
 - split; rewrite <- Spect.from_config_map, Spect.map_injective_spec;
@@ -195,7 +195,7 @@ assert (Hmax : forall x, Spect.In x (Spect.max (!! config)) <-> x = pt).
   - intro. subst x. now left. }
 intro Hforbidden.
 assert (Hsuplen := forbidden_support_length Hforbidden).
-destruct Hforbidden as [Heven [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+destruct Hforbidden as [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 assert (Hsup : Permutation (Spect.support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA eq pt1 (Spect.support (!! config))).
   { rewrite Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_conf. }
@@ -246,7 +246,7 @@ Proof.
       pt0 <> pt3 /\
       (!! conf)[pt0] = Nat.div2 N.nG /\ (!! conf)[pt3] = Nat.div2 N.nG /\ Nat.Even N.nG).
    { intros h.
-     decompose [ex and] h; split; try assumption.
+     decompose [ex and] h; repeat split; try (assumption || apply size_G); [].
      exists x, x0; intuition. }
    exists pt1, pt2.
    split.
@@ -1062,7 +1062,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
     assert (Hmove : In rmove (moving robogram da conf)). { rewrite Heq. now left. }
     rewrite moving_spec in Hmove.
     (* the robot moves to one of the two locations in round robogram conf *)
-    assert (Hforbidden := Habs). destruct Habs as [HnG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]].
+    assert (Hforbidden := Habs). destruct Habs as [HnG [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
     assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
                                   /\ round robogram da conf rmove = pt).
     { assert (Hperm : Permutation (Spect.support (!! (round robogram da conf))) (pt1 :: pt2 :: nil)).
@@ -1359,7 +1359,7 @@ Proof.
 intros config pt Hgather.
 destruct (forallb (fun x => Rdec_bool (config x) pt) Names.names) eqn:Hall.
 - elim Hgather. rewrite forallb_forall in Hall.
-  intro id'. setoid_rewrite Rdec_bool_true_iff in Hall. repeat rewrite Hall; trivial; apply Names.In_names.
+  intro id'. setoid_rewrite Rdec_bool_true_iff in Hall. hnf. repeat rewrite Hall; trivial; apply Names.In_names.
 - rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall.
   destruct Hall as [id' [_ Hid']]. rewrite negb_true_iff, Rdec_bool_false_iff in Hid'. now exists id'.
 Qed.

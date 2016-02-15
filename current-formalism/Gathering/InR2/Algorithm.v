@@ -27,6 +27,7 @@ Require Pactole.RigidFormalism.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
 Require Import Pactole.Gathering.InR2.R2geometry.
+Require Import Pactole.Gathering.Definitions.
 
 
 Import Permutation.
@@ -45,7 +46,7 @@ Module GatheringinR2.
 (** **  Framework of the correctness proof: a finite set with at least three elements  **)
 
 Parameter nG: nat.
-Hypothesis nG_conf : (3 <= nG)%nat.
+Hypothesis Hyp_nG : (3 <= nG)%nat.
 
 (** There are nG good robots and no byzantine ones. *)
 Module N : Size with Definition nG := nG with Definition nB := 0%nat.
@@ -53,17 +54,10 @@ Module N : Size with Definition nG := nG with Definition nB := 0%nat.
   Definition nB := 0%nat.
 End N.
 
+(** We instantiate in our setting the generic definitions of the gathering problem. *)
+Module Defs := Definitions.GatheringDefs(R2)(N).
+Import Defs.
 
-(** The spectrum is a multiset of configurations *)
-Module Spect := MultisetSpectrum.Make(R2)(N).
-
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 2, format "s [ pt ]").
-Notation "!!" := Spect.from_config (at level 1).
-Add Search Blacklist "Spect.M" "Ring".
-
-Module Export Common := CommonRealFormalism.Make(R2)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
-Close Scope R_scope.
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
@@ -83,17 +77,7 @@ Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.empty.
-Proof.
-intros conf Heq.
-unfold Spect.from_config in Heq.
-rewrite Spect.multiset_empty in Heq.
-assert (Hlgth:= Spect.Config.list_length conf).
-rewrite Heq in Hlgth.
-simpl in *.
-unfold N.nB, N.nG in *.
-cut (3 <= 0). omega.
-rewrite Hlgth at 2. rewrite plus_0_r. apply nG_conf.
-Qed.
+Proof. apply spect_non_nil. assert (Hle := Hyp_nG). unfold N.nG. omega. Qed.
 
 Lemma support_non_nil : forall config, Spect.support (!! config) <> nil.
 Proof. intros config Habs. rewrite Spect.support_nil in Habs. apply (spect_non_nil _ Habs). Qed.
@@ -105,7 +89,17 @@ intros pt conf. etransitivity.
 - rewrite Spect.cardinal_from_config. unfold N.nB. omega.
 Qed.
 
+Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
+Proof.
+intros conf pt.
+destruct (forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
++ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
++ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
+  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
+Qed.
 
+(*
 (* FIXME: These three definitions: gathered_at, gather and WillGather
    should be shared by all our proofs about gathering (on Q, R, R2,
    for impossibility and possibility proofs). Shouldn't they be in a
@@ -121,16 +115,6 @@ Instance gathered_at_compat : Proper (eq ==> Config.eq ==> iff) gathered_at.
 Proof.
 intros ? pt ? config1 config2 Hconfig. subst. unfold gathered_at.
 split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
-Qed.
-
-Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
-Proof.
-intros conf pt.
-destruct (forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
-+ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
-+ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
-  rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
 Qed.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
@@ -170,6 +154,7 @@ Proof.
 intros ? ? Heq. split; intros [HnG [? [pt1 [pt2 [Hneq Hpt]]]]];(split;[|split]); trivial ||
 exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
+*)
 
 Lemma support_max_non_nil : forall config, Spect.support (Spect.max (!! config)) <> nil.
 Proof. intros config Habs. rewrite Spect.support_nil, Spect.max_empty in Habs. apply (spect_non_nil _ Habs). Qed.
@@ -544,7 +529,7 @@ Proof.
       (!! conf)[pt0] = Nat.div2 N.nG /\ (!! conf)[pt3] = Nat.div2 N.nG /\ Nat.Even N.nG).
    { intros h.
      decompose [ex and] h; repeat split; trivial.
-     - unfold ge. transitivity 3; omega || apply nG_conf.
+     - unfold ge. transitivity 3; omega || apply Hyp_nG.
      - exists x, x0; intuition. }
    exists pt1, pt2.
    split.
@@ -3530,7 +3515,7 @@ Proof.
 intros config pt Hgather.
 destruct (forallb (fun x => R2dec_bool (config x) pt) Names.names) eqn:Hall.
 - elim Hgather. rewrite forallb_forall in Hall.
-  intro id'. setoid_rewrite R2dec_bool_true_iff in Hall. repeat rewrite Hall; trivial; apply Names.In_names.
+  intro id'. setoid_rewrite R2dec_bool_true_iff in Hall. hnf. repeat rewrite Hall; trivial; apply Names.In_names.
 - rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall.
   destruct Hall as [id' [_ Hid']]. rewrite negb_true_iff, R2dec_bool_false_iff in Hid'. now exists id'.
 Qed.
@@ -3620,7 +3605,7 @@ Qed.
 (** Define one robot to get the location whenever they are gathered. *)
 Definition g1 : Fin.t nG.
 Proof.
-destruct nG eqn:HnG. abstract (pose(Hle := nG_conf); omega).
+destruct nG eqn:HnG. abstract (pose(Hle := Hyp_nG); omega).
 apply (@Fin.F1 n).
 Defined.
 
@@ -3639,7 +3624,7 @@ intros da conf pt Hgather. rewrite (round_simplify_Majority).
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
 Qed.
 
-Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> gather pt (execute gatherR2 d conf).
+Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> Gather pt (execute gatherR2 d conf).
 Proof.
 cofix Hind. intros d conf pt Hgather. constructor.
 + clear Hind. simpl. assumption.
