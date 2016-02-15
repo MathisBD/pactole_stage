@@ -135,13 +135,10 @@ Qed.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
-CoInductive gather (pt: R2.t) (e : execution) : Prop :=
-  Gathering : gathered_at pt (execution_head e) -> gather pt (execution_tail e) -> gather pt e.
+Definition gather (pt : R2.t) (e : execution) : Prop := Streams.forever (Streams.instant (gathered_at pt)) e.
 
 (** [WillGather pt e] means that (infinite) execution [e] is *eventually* [Gather]ed. *)
-Inductive willGather (pt : R2.t) (e : execution) : Prop :=
-  | Now : gather pt e -> willGather pt e
-  | Later : willGather pt (execution_tail e) -> willGather pt e.
+Definition willGather (pt : R2.t) (e : execution) : Prop := Streams.eventually (gather pt) e.
 
 (** When all robots are on two towers of the same height,
     there is no solution to the gathering problem.
@@ -3537,9 +3534,9 @@ Qed.
 
 (** [FirstMove r d config] gives the number of rounds before one robot moves. *)
 Inductive FirstMove r d config : Prop :=
-  | MoveNow : moving r (demon_head d) config <> nil -> FirstMove r d config
-  | MoveLater : moving r (demon_head d) config = nil ->
-                FirstMove r (demon_tail d) (round r (demon_head d) config) -> FirstMove r d config.
+  | MoveNow : moving r (Streams.hd d) config <> nil -> FirstMove r d config
+  | MoveLater : moving r (Streams.hd d) config = nil ->
+                FirstMove r (Streams.tl d) (round r (Streams.hd d) config) -> FirstMove r d config.
 
 Instance FirstMove_compat : Proper (req ==> deq ==> Config.eq ==> iff) FirstMove.
 Proof.
@@ -3609,7 +3606,7 @@ revert config Hforbidden Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
 induction locallyfair; intros config Hforbidden Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H. apply Hmove in H. rewrite Habs in H. inversion H.
-+ destruct (moving gatherR2 (demon_head d) config) eqn:Hnil.
++ destruct (moving gatherR2 (Streams.hd d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
     rewrite (no_moving_same_conf _ _ _ Hnil).
     apply (IHlocallyfair); trivial.
@@ -3656,23 +3653,23 @@ intros conf Hind d Hfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (conf (Good g1)). now apply Now, gathered_at_OK.
+  exists (conf (Good g1)). now apply Streams.Now, gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
-    destruct (Hind (round gatherR2 (demon_head d) conf)) with (demon_tail d) as [pt Hpt].
+    destruct (Hind (round gatherR2 (Streams.hd d) conf)) with (Streams.tl d) as [pt Hpt].
     - apply round_lt_config; assumption.
     - now destruct Hfair.
     - now apply never_forbidden.
-    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+    - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_conf in Heq.
     destruct Hrec as [pt Hpt].
     - setoid_rewrite Heq. apply Hind.
     - now destruct Hfair.
     - rewrite Heq. assumption.
-    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+    - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
 Qed.
 
 Print Assumptions Gathering_in_R2.

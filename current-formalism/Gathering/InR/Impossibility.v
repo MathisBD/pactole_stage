@@ -32,9 +32,7 @@ Qed.
 
 (** [Always_forbidden e] means that (infinite) execution [e] is [forbidden]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-CoInductive Always_forbidden (e : execution) : Prop :=
-  CAF : forbidden (execution_head e) ->
-        Always_forbidden (execution_tail e) -> Always_forbidden e.
+Definition Always_forbidden (e : execution) := Streams.forever (Streams.instant forbidden) e.
 
 Lemma Always_forbidden_compat_lemma : forall e1 e2, eeq e1 e2 -> Always_forbidden e1 -> Always_forbidden e2.
 Proof.
@@ -53,17 +51,17 @@ Qed.
 (** ** Linking the different properties *)
 
 Theorem different_no_gathering : forall (e : execution),
-  N.nG <> 0%nat -> Always_forbidden e -> forall pt, ~WillGather pt e.
+  N.nG <> 0%nat -> Always_forbidden e -> forall pt, ~willGather pt e.
 Proof.
-intros e HnG He pt Habs. induction Habs.
-+ destruct H as [Hnow Hlater]. destruct He as [Hforbidden He].
+intros e HnG He pt Habs. induction Habs as [e Habs | e].
++ destruct Habs as [Hnow Hlater]. destruct He as [Hforbidden He].
   destruct Hforbidden as [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]].
   apply Hdiff. transitivity pt.
-  - assert (Hin : Spect.In pt1 (!! (execution_head e))).
+  - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
-  - assert (Hin : Spect.In pt2 (!! (execution_head e))).
+  - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
@@ -76,7 +74,7 @@ Qed.
 Definition left  := half1 Names.Gnames.
 Definition right := half2 Names.Gnames.
 
-Definition left_dec (e : Names.G) := List.in_dec Fin.eq_dec e left.
+Definition left_dec (g : Names.G) := List.in_dec Fin.eq_dec g left.
 
 Lemma not_left_is_right : forall g : Names.G, ~In g left -> In g right.
 Proof.
@@ -92,10 +90,6 @@ unfold left, right, half1, half2. intros.
 eapply firstn_skipn_nodup_exclusive; try eassumption.
 apply Names.Gnames_NoDup.
 Qed.
-
-(* Seems like a bad idea because it hides some properties.
-Definition left_right_dec (g : Names.G) := half_dec Fin.eq_dec Names.Gnames_NoDup g (Names.In_Gnames g).
-*)
 
 (** First and last robots are resp. in the first and in the second half. *)
 
@@ -376,22 +370,13 @@ intros id sim c Heq. destruct id; simpl in Heq.
 - apply Fin.case0. exact b.
 Qed.
 
-Definition da1 : demonic_action.
-refine {|
+Definition da1 : demonic_action := {|
   relocate_byz := fun b => 0;
-  step := lift_conf (fun g => Some (fun c => if Rdec c 0 then Sim.id else swap c)) |}.
-Proof.
-+ exact da1_ratio.
-+ exact da1_center.
-Defined.
+  step := lift_conf (fun g => Some (fun c => if Rdec c 0 then Sim.id else swap c));
+  step_zoom := da1_ratio;
+  step_center := da1_center |}.
 
-CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
-
-Lemma bad_demon1_tail : demon_tail bad_demon1 = bad_demon1.
-Proof. reflexivity. Qed.
-
-Lemma bad_demon1_head : demon_head bad_demon1 = da1.
-Proof. reflexivity. Qed.
+Definition bad_demon1 : demon := Streams.constant da1.
 
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof.
@@ -403,12 +388,8 @@ Lemma round_simplify_1_1 : Config.eq (round r da1 conf1) conf2.
 Proof.
 intros [g | b]; unfold round; simpl.
 + destruct (left_dec g) as [Hleft | Hright].
-  - Rdec. simpl.
-  (* BUG?: rewrite Config.map_id should be enough. *)
-    assert (Heq : Config.eq (Config.map (fun x : R.t => x) conf1) conf1) by apply Config.map_id.
-    apply Spect.from_config_compat, (pgm_compat r) in Heq. rewrite Heq.
-    fold move. apply Hmove.
-  - Rdec. setoid_rewrite swap_conf1. simpl. replace 0 with (1 - 1) by ring. hnf. f_equal.
+  - Rdec. rewrite Config.map_id. simpl. apply Hmove.
+  - Rdec. setoid_rewrite swap_conf1. simpl. replace 0 with (1 - 1) by ring. f_equal.
     rewrite <- conf1_conf2_spect_eq. apply Hmove.
 + apply Fin.case0. exact b.
 Qed.
@@ -418,11 +399,7 @@ Proof.
 intros [g | b]; unfold round; simpl.
 + destruct (left_dec g) as [Hleft | Hright].
   - Rdec. rewrite swap_conf2. simpl. replace 0 with (1 - 1) by ring. hnf. f_equal. apply Hmove.
-  - Rdec. simpl.
-  (* BUG?: rewrite Config.map_id should be enough. *)
-    assert (Heq : Config.eq (Config.map (fun x : R.t => x) conf2) conf2) by apply Config.map_id.
-    apply Spect.from_config_compat, (pgm_compat r) in Heq. rewrite Heq.
-    rewrite <- conf1_conf2_spect_eq. fold move. apply Hmove.
+  - Rdec. rewrite Config.map_id. simpl. rewrite <- conf1_conf2_spect_eq. apply Hmove.
 + apply Fin.case0. exact b.
 Qed.
 
@@ -486,14 +463,11 @@ intros ρ Hρ [g | b] sim c.
 + apply Fin.case0. exact b.
 Qed.
 
-Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action.
-refine {|
+Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
   relocate_byz := fun b => 0;
-  step := lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) |}.
-Proof.
-+ apply homothecy_ratio_1.
-+ apply homothecy_center_1.
-Defined.
+  step := lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None);
+  step_zoom := homothecy_ratio_1 Hρ;
+  step_center := homothecy_center_1 Hρ |}.
 
 Lemma homothecy_ratio_2 : forall ρ (Hρ : ρ <> 0) id sim c,
   lift_conf (fun g => if left_dec g 
@@ -519,38 +493,24 @@ intros ρ Hρ [g | b] sim c.
 + apply Fin.case0. exact b.
 Qed.
 
-Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action.
-refine {|
+Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
   relocate_byz := fun b => 0;
   step := lift_conf (fun g => if left_dec g
-                             then None else Some (fun c => homothecy c (Ropp_neq_0_compat _ Hρ))) |}.
-Proof.
-+ apply homothecy_ratio_2.
-+ apply homothecy_center_2.
-Defined.
+                             then None else Some (fun c => homothecy c (Ropp_neq_0_compat _ Hρ)));
+  step_zoom := homothecy_ratio_2 Hρ;
+  step_center := homothecy_center_2 Hρ |}.
 
 CoFixpoint bad_demon2 ρ (Hρ : ρ <> 0) : demon :=
-  NextDemon (da2_left Hρ)
-  (NextDemon (da2_right (ratio_inv Hρ))
+  Streams.cons (da2_left Hρ)
+  (Streams.cons (da2_right (ratio_inv Hρ))
   (bad_demon2 (ratio_inv (ratio_inv Hρ)))). (* ρ updated *)
 
-Lemma bad_demon_head2_1 : forall ρ (Hρ : ρ <> 0), demon_head (bad_demon2 Hρ) = da2_left Hρ.
-Proof. reflexivity. Qed.
-
-Lemma bad_demon_head2_2 : forall ρ (Hρ : ρ <> 0),
-  demon_head (demon_tail (bad_demon2 Hρ)) = da2_right (ratio_inv Hρ).
-Proof. reflexivity. Qed.
-
-Lemma bad_demon_tail2 :
-  forall ρ (Hρ : ρ <> 0), demon_tail (demon_tail (bad_demon2 Hρ)) = bad_demon2 (ratio_inv (ratio_inv Hρ)).
-Proof. reflexivity. Qed.
-
 Lemma da_eq_step_None : forall d1 d2, deq d1 d2 ->
-  forall g, step (demon_head d1) (Good g) = None <-> step (demon_head d2) (Good g) = None.
+  forall g, step (Streams.hd d1) (Good g) = None <-> step (Streams.hd d2) (Good g) = None.
 Proof.
 intros d1 d2 Hd g.
 assert (Hopt_eq : opt_eq (R.eq ==> Sim.eq)%signature
-                    (step (demon_head d1) (Good g)) (step (demon_head d2) (Good g))).
+                    (step (Streams.hd d1) (Good g)) (step (Streams.hd d2) (Good g))).
 { apply step_da_compat; trivial. now rewrite Hd. }
   split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
 Qed.
@@ -562,30 +522,30 @@ constructor; [| constructor].
 * setoid_rewrite Heq.
   intros [g1 | b1] [g2 | b2]; try now apply Fin.case0; assumption.
   destruct (left_dec g1).
-  + constructor 1. rewrite bad_demon_head2_1. simpl. destruct (left_dec g1); eauto. discriminate.
+  + constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
   + destruct (left_dec g2).
-    - constructor 2.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g2); eauto. discriminate.
-      -- constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. discriminate.
-    - constructor 3.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_1. simpl. destruct (left_dec g2); eauto. exfalso. eauto.
-      -- constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. discriminate.
+    - constructor 2; simpl.
+      -- destruct (left_dec g1); eauto. exfalso. eauto.
+      -- destruct (left_dec g2); eauto. discriminate.
+      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+    - constructor 3; simpl.
+      -- destruct (left_dec g1); eauto. exfalso. eauto.
+      -- destruct (left_dec g2); eauto. exfalso. eauto.
+      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
 * setoid_rewrite Heq.
   intros [g1 | b1] [g2 | b2]; try now apply Fin.case0; assumption.
   destruct (left_dec g1).
   + destruct (left_dec g2).
-    - constructor 3.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g2); eauto. exfalso. eauto.
-      -- rewrite bad_demon_tail2. constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
-    - constructor 2.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. exfalso. eauto.
-      -- rewrite bad_demon_head2_2. simpl. destruct (left_dec g2); eauto. discriminate.
-      -- rewrite bad_demon_tail2. constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
-  + constructor 1. rewrite bad_demon_head2_2. simpl. destruct (left_dec g1); eauto. discriminate.
-* eapply fair_demon. now rewrite Heq, bad_demon_tail2.
+    - constructor 3; simpl.
+      -- destruct (left_dec g1); eauto. exfalso. eauto.
+      -- destruct (left_dec g2); eauto. exfalso. eauto.
+      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+    - constructor 2; simpl.
+      -- destruct (left_dec g1); eauto. exfalso. eauto.
+      -- destruct (left_dec g2); eauto. discriminate.
+      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+  + constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+* eapply fair_demon. rewrite Heq. now simpl.
 Qed.
 
 Theorem kFair_bad_demon2 : forall ρ (Hρ : ρ <> 0), kFair 1 (bad_demon2 Hρ).
@@ -730,9 +690,6 @@ destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
   now apply dist_homothecy_spectrum_centered_right.
 Qed.
 
-Ltac shift := let Hm := fresh "Hm" in intro Hm; apply Rminus_diag_uniq in Hm;
-  try (contradiction || symmetry in Hm; contradiction).
-
 Theorem Always_forbidden2 : forall ρ (Hρ : ρ <> 0) config,
   (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
   Always_forbidden (execute r (bad_demon2 Hρ) config).
@@ -744,9 +701,7 @@ constructor; [| constructor].
   (* State after one step *)
 - cbn. now apply round2_left_forbidden.
 (* State after two steps *)
-- do 2 rewrite execute_tail.
-  rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.
-  apply differs. intros g1 g2 Hg1 Hg2.
+- cbn. apply differs. intros g1 g2 Hg1 Hg2.
   replace (/ (ρ / (1 - move) / (1 - move))) with ((1 - move) / (ρ / (1 - move))) by (field; auto).
   apply round_dist2_right; trivial.
   replace (/ (ρ / (1 - move))) with ((1 - move) / ρ) by (field; auto).

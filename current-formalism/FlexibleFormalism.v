@@ -22,7 +22,6 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Pactole.CommonRealFormalism.
-(* Require Pactole.Similarity. *)
 
 
 Ltac coinduction proof :=
@@ -136,66 +135,42 @@ Qed.
 
 
 (** A [demon] is just a stream of [demonic_action]s. *)
-CoInductive demon :=
-  NextDemon : demonic_action → demon → demon.
+Definition demon := Stream.t demonic_action.
 
-(** Destructors for demons, getting the head demonic action or the
-    tail of the demon. *)
-
-Definition demon_head (d : demon) : demonic_action :=
-  match d with NextDemon da _ => da end.
-
-Definition demon_tail (d : demon) : demon :=
-  match d with NextDemon _ d => d end.
-
-CoInductive deq (d1 d2 : demon) : Prop :=
-  | Cdeq : da_eq (demon_head d1) (demon_head d2) -> deq (demon_tail d1) (demon_tail d2) -> deq d1 d2.
+Definition deq (d1 d2 : demon) : Prop := Stream.eq da_eq d1 d2.
 
 Instance deq_equiv : Equivalence deq.
-Proof. split.
-+ coinduction deq_refl. reflexivity.
-+ coinduction deq_sym. symmetry. now inversion H. now inversion H.
-+ coinduction deq_trans.
-  - inversion H. inversion H0. now transitivity (demon_head y).
-  - apply (deq_trans (demon_tail x) (demon_tail y) (demon_tail z)).
-      now inversion H.
-      now inversion H0.
-Qed.
+Proof. apply Stream.eq_equiv. apply da_eq_equiv. Qed.
 
-Instance deq_bisim : Bisimulation demon.
-Proof. exists deq. apply deq_equiv. Qed.
-
-Instance demon_head_compat : Proper (deq ==> da_eq) demon_head.
-Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
-
-Instance demon_tail_compat : Proper (deq ==> deq) demon_tail.
-Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
+Instance demon_hd_compat : Proper (deq ==> da_eq) (@Stream.hd _) := Stream.hd_compat _.
+Instance demon_tl_compat : Proper (deq ==> deq) (@Stream.tl _) := Stream.tl_compat _.
 
 (** ** Fairness *)
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : step (demon_head d) g ≠ None → LocallyFairForOne g d
-  | LaterFair : step (demon_head d) g = None → 
-                LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
+  | NowFair : step (Stream.hd d) g ≠ None → LocallyFairForOne g d
+  | LaterFair : step (Stream.hd d) g = None → LocallyFairForOne g (Stream.tl d) → LocallyFairForOne g d.
 
-CoInductive Fair (d : demon) : Prop :=
-  AlwaysFair : (∀ g, LocallyFairForOne g d) → Fair (demon_tail d) →
-               Fair d.
+Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ g, LocallyFairForOne g d).
 
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k, step (demon_head d) g <> None -> Between g h d k
-| kReduce : forall k, step (demon_head d) g = None -> step (demon_head d) h <> None ->
-                      Between g h (demon_tail d) k -> Between g h d (S k)
-| kStall : forall k, step (demon_head d) g = None -> step (demon_head d) h = None ->
-                     Between g h (demon_tail d) k -> Between g h d k.
+| kReset : forall k, step (Stream.hd d) g <> None -> Between g h d k
+| kReduce : forall k, step (Stream.hd d) g = None -> step (Stream.hd d) h <> None ->
+                      Between g h (Stream.tl d) k -> Between g h d (S k)
+| kStall : forall k, step (Stream.hd d) g = None -> step (Stream.hd d) h = None ->
+                     Between g h (Stream.tl d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
+<<<<<<< HEAD:dev_coq/current-formalism/FlexibleFormalism.v
 CoInductive kFair k (d : demon) : Prop :=
   AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
                 kFair k d.
+=======
+Definition kFair k : demon -> Prop := Stream.forever (fun d => forall g h, Between g h d k).
+>>>>>>> c2944b4... Définitions de eventually et forever pour les flots.:dev_coq/gathering-nD/FlexibleFormalism.v
 
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
@@ -209,15 +184,8 @@ Qed.
 Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> iff) LocallyFairForOne.
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
-Lemma Fair_compat_aux : forall d1 d2, deq d1 d2 -> Fair d1 -> Fair d2.
-Proof.
-cofix be_fair. intros d1 d2 Heq Hfair. destruct Hfair as [Hnow Hlater]. constructor.
-+ intro. now rewrite <- Heq.
-+ eapply be_fair; try eassumption. now f_equiv.
-Qed.
-
 Instance Fair_compat : Proper (deq ==> iff) Fair.
-Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
+Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
 Proof.
@@ -236,108 +204,77 @@ Qed.
 Instance Between_compat : Proper (eq ==> eq ==> deq ==> eq ==> iff) Between.
 Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
-Lemma kFair_compat_aux : forall k d1 d2, deq d1 d2 -> kFair k d1 -> kFair k d2.
-Proof.
-cofix be_fair. intros k d1 d2 Heq Hkfair. destruct Hkfair as [Hnow Hlater]. constructor.
-+ intros. now rewrite <- Heq.
-+ eapply be_fair; try eassumption. now f_equiv.
-Qed.
-
 Instance kFair_compat : Proper (eq ==> deq ==> iff) kFair.
-Proof. repeat intro. subst. split; intro; now eapply kFair_compat_aux; eauto. Qed.
+Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
-Proof.
-  intros g h d k Hg. induction Hg.
-  now constructor 1.
-  now constructor 2.
-  now constructor 2.
-Qed.
+Proof. intros g h d k Hg. induction Hg; now constructor. Qed.
 
 (** A robot is never activated before itself with a fair demon! The
     fairness hypothesis is necessary, otherwise the robot may never be
     activated. *)
 Lemma Between_same :
   forall g (d : demon) k, LocallyFairForOne g d -> Between g g d k.
-Proof.
-  intros g d k Hd. induction Hd.
-  now constructor 1.
-  now constructor 3.
-Qed.
+Proof. intros g d k Hd. induction Hd; now constructor. Qed.
 
 (** A k-fair demon is fair. *)
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
-Proof.
-  coinduction kfair_is_fair.
-  destruct H as [Hbetween H]. intro. apply Between_LocallyFair with g k. now apply Hbetween.
-  apply (kfair_is_fair k). now destruct H.
-Qed.
+Proof. intro. apply Stream.forever_impl_compat. intros. eauto using (@Between_LocallyFair g _ g). Qed.
 
 (** [Between g h d k] is monotonic on [k]. *)
 Lemma Between_mon : forall g h (d : demon) k,
   Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
 Proof.
-  intros g h d k Hd. induction Hd; intros k' Hk.
-  now constructor 1.
-  destruct k'.
-    now inversion Hk.
-    constructor 2; assumption || now (apply IHHd; omega).
-  constructor 3; assumption || now (apply IHHd; omega).
+intros g h d k Hd. induction Hd; intros k' Hk.
++ now constructor 1.
++ destruct k'.
+  - now inversion Hk.
+  - constructor 2; assumption || now (apply IHHd; omega).
++ constructor 3; assumption || now (apply IHHd; omega).
 Qed.
 
 (** [kFair k d] is monotonic on [k] relation. *)
 Theorem kFair_mon : forall k (d: demon),
   kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
 Proof.
-  coinduction fair; destruct H.
-  - intros. now apply Between_mon with k.
-  - now apply (fair k).
+coinduction fair; destruct H.
+- intros. now apply Between_mon with k.
+- now apply (fair k).
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (demon_head d).(step) g = None <-> (demon_head d).(step) h = None.
+  forall g h, (Stream.hd d).(step) g = None <-> (Stream.hd d).(step) h = None.
 Proof.
 intros d Hd g h. destruct Hd as [Hd _]. split; intro H.
-  assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
-  assert (Hh := Hd h g). inversion Hh. contradiction. assumption.
+- assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
+- assert (Hh := Hd h g). inversion Hh. contradiction. assumption.
 Qed.
 
 (** ** Full synchronicity
 
   A fully synchronous demon is a particular case of fair demon: all good robots
-  are activated at each round. In our setting this means that the demon never
-  return a null reference. *)
+  are activated at each round. In our setting this means that the step function
+  of the demon never returns None. *)
 
 
-(** A demon is fully synchronous for one particular good robot g at the first
-    step. *)
-Inductive FullySynchronousForOne g d:Prop :=
-  ImmediatelyFair2:
-    (step (demon_head d) g) ≠ None → 
-                      FullySynchronousForOne g d.
+(** A demon is fully synchronous at the first step. *)
+Definition FullySynchronousInstant : demon -> Prop := Stream.instant (fun da => forall g, step da g ≠ None).
 
-(** A demon is fully synchronous if it is fully synchronous for all good robots
-    at all step. *)
-CoInductive FullySynchronous d :=
-  NextfullySynch:
-    (∀ g, FullySynchronousForOne g d)
-    → FullySynchronous (demon_tail d)
-    → FullySynchronous d.
-
-
-(** A locally synchronous demon is fair *)
-Lemma local_fully_synchronous_implies_fair:
-  ∀ g d, FullySynchronousForOne g d → LocallyFairForOne g d.
-Proof. induction 1. now constructor. Qed.
+(** A demon is fully synchronous if it is fully synchronous at all step. *)
+Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
+<<<<<<< HEAD:dev_coq/current-formalism/FlexibleFormalism.v
 Proof.
   coinduction fully_fair.
   - intro. apply local_fully_synchronous_implies_fair. apply X.
   - now inversion X.
 Qed.
+=======
+Proof. apply Stream.forever_impl_compat. intros s Hs g. constructor. apply Hs. Qed.
+>>>>>>> c2944b4... Définitions de eventually et forever pour les flots.:dev_coq/gathering-nD/FlexibleFormalism.v
 
 (** ** One step executions *)
 
@@ -456,6 +393,7 @@ now apply no_moving_same_conf.
 Qed.
 
 
+<<<<<<< HEAD:dev_coq/current-formalism/FlexibleFormalism.v
 (** [execute r d conf] returns an (infinite) execution from an initial global
     configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)
 Definition execute δ (r : robogram): demon → Config.t → execution :=
@@ -466,12 +404,27 @@ Definition execute δ (r : robogram): demon → Config.t → execution :=
 Lemma execute_tail : forall δ (r : robogram) (d : demon) (conf : Config.t),
   execution_tail (execute δ r d conf) = execute δ r (demon_tail d) (round δ r (demon_head d) conf).
 Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
+=======
+(** [execute r d pos] returns an (infinite) execution from an initial global
+    position [pos], a demon [d] and a robogram [r] running on each good robot. *)
+Definition execute δ (r : robogram): demon → Pos.t → execution :=
+  cofix execute d pos :=
+  Stream.cons pos (execute (Stream.tl d) (round δ r (Stream.hd d) pos)).
+
+(** Decomposition lemma for [execute]. *)
+Lemma execute_tail : forall δ (r : robogram) (d : demon) (pos : Pos.t),
+  Stream.tl (execute δ r d pos) = execute δ r (Stream.tl d) (round δ r (Stream.hd d) pos).
+Proof. intros. destruct d. reflexivity. Qed.
+>>>>>>> c2944b4... Définitions de eventually et forever pour les flots.:dev_coq/gathering-nD/FlexibleFormalism.v
 
 Instance execute_compat : Proper (eq ==> req ==> deq ==> Config.eq ==> eeq) execute.
 Proof.
 intros ? δ ? r1 r2 Hr. subst.
-cofix proof. constructor. simpl. assumption.
-apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
+cofix proof. constructor.
++ simpl. assumption.
++ apply proof; clear proof.
+  - now inversion H.
+  - apply round_compat; trivial. now inversion H.
 Qed.
 
 End Make.

@@ -34,8 +34,8 @@ Qed.
 Corollary Rleb_total : forall x y, Rleb x y = true \/ Rleb y x = true.
 Proof.
 intros x y. unfold Rleb. destruct (Rle_lt_dec x y).
-  now left.
-  right. destruct (Rle_lt_dec y x). reflexivity. elim (Rlt_irrefl x). now apply Rlt_trans with y.
+- now left.
+- right. destruct (Rle_lt_dec y x). reflexivity. elim (Rlt_irrefl x). now apply Rlt_trans with y.
 Qed.
 Local Coercion is_true : bool >-> Sortclass.
 
@@ -164,8 +164,6 @@ intros l d x Hin Hmax. apply Rle_antisym.
   - intro Habs. cut (r :: l = nil); try discriminate; [].
     apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
-
-(* Existing Instance Permutation_map_aux_Proper. *)
 
 Lemma StronglySorted_map_increasing : forall A B (RA : relation A) (RB : relation B) f, Proper (RA ==> RB) f ->
   forall l, StronglySorted RA l -> StronglySorted RB (map f l).

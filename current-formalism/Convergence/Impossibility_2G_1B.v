@@ -71,22 +71,19 @@ Qed.
 Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
-CoInductive imprisoned (center : R.t) (radius : R) (e : execution) : Prop
-:= InDisk : (forall g, R.dist center (execution_head e (Good g)) <= radius)
-            → imprisoned center radius (execution_tail e)
-            → imprisoned center radius e.
+Definition imprisoned (center : R.t) (radius : R) (e : execution) : Prop :=
+  Streams.forever (Streams.instant (fun config => forall g, R.dist center (config (Good g)) <= radius)) e.
 
 (** The execution will end in a small disk. *)
-Inductive attracted (c : R.t) (r : R) (e : execution) : Prop :=
-  | Captured : imprisoned c r e → attracted c r e
-  | WillBeCaptured : attracted c r (execution_tail e) → attracted c r e.
+Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
 
 Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
-Proof.
+Proof. Admitted.
+(* TODO
 intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
 * revert c1 c2 e1 e2 Hc He. coinduction Hrec.
   + intro g. rewrite <- He, <- Hc. apply H.
-  + apply (Hrec c1 c2 (execution_tail e1) _).
+  + constructor. unfold Streams.instant. intro. rewrite <- He. apply H. simpl. apply (Hrec c1 c2 (execution_tail e1) _).
     - assumption.
     - now destruct He.
     - now destruct H.
@@ -96,35 +93,24 @@ intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
     - assumption.
     - now destruct He.
     - now destruct H.
-Qed.
+Qed.*)
 
 Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
-Proof.
-intros ? ? Heq ? ? ? e1 e2 He. unfoldR in Heq. subst. split; intro Hin.
-+ revert e2 He. induction Hin as [e1 Hin | e1 Hin IHin]; intros e2 He.
-  - setoid_rewrite He in Hin. now constructor.
-  - constructor 2. apply IHin. now f_equiv.
-+ revert e1 He. induction Hin as [e2 Hin | e2 Hin IHin]; intros e1 He.
-  - setoid_rewrite <- He in Hin. now constructor.
-  - constructor 2. apply IHin. now f_equiv.
-Qed.
+Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Streams.eventually_compat, imprisoned_compat. Qed.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
   forall (config : Config.t) (d : demon), Fair d →
-  forall (ε : R), 0 < ε → exists (lim_app : R.t), attracted lim_app ε (execute r d config).
+  forall (ε : R), 0 < ε → exists (pt : R.t), attracted pt ε (execute r d config).
 
 (** A solution is just convergence property for any demon. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
   forall (config : Config.t) (d : demon), FullySynchronous d →
-  forall (ε : R), 0 < ε → exists (lim_app : R.t), attracted lim_app ε (execute r d config).
+  forall (ε : R), 0 < ε → exists (pt : R.t), attracted pt ε (execute r d config).
 
 
 Lemma synchro : ∀ r, solution r → solution_FSYNC r.
-Proof.
-unfold solution. intros r Hsol config d HFSYNC ε Hε.
-auto using fully_synchronous_implies_fair.
-Qed.
+Proof. unfold solution. repeat intro. auto using fully_synchronous_implies_fair. Qed.
 
 Close Scope R_scope.
 
@@ -150,10 +136,6 @@ unfold left, right, half1, half2. intros.
 eapply firstn_skipn_nodup_exclusive; try eassumption.
 apply Names.Gnames_NoDup.
 Qed.
-
-(* Seems like a bad idea because it hides some properties.
-Definition left_right_dec (g : Names.G) := half_dec Fin.eq_dec Names.Gnames_NoDup g (Names.In_Gnames g).
-*)
 
 (** First and last robots are resp. in the first and in the second half. *)
 
@@ -336,7 +318,7 @@ repeat rewrite ?Spect.add_same, ?Spect.singleton_same, ?Spect.singleton_other, ?
 Qed.
 
 (* An execution alternating config1 and config2 *)
-CoFixpoint exec := NextExecution config1 (NextExecution config2 exec).
+Definition exec : execution := Streams.alternate config1 config2.
 
 (** The demon defeating any robogram *)
 
@@ -393,16 +375,7 @@ Definition bad_da2 : demonic_action := {|
   step_zoom := step2_zoom;
   step_center := step2_center |}.
 
-CoFixpoint bad_demon := NextDemon bad_da1 (NextDemon bad_da2 bad_demon).
-
-Lemma bad_demon_head : demon_head bad_demon = bad_da1.
-Proof. reflexivity. Qed.
-
-Lemma bad_demon_tail_head : demon_head (demon_tail bad_demon) = bad_da2.
-Proof. reflexivity. Qed.
-
-Lemma bad_demon_tail_tail : demon_tail (demon_tail bad_demon) = bad_demon.
-Proof. reflexivity. Qed.
+Definition bad_demon : demon := Streams.alternate bad_da1 bad_da2.
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
@@ -474,13 +447,13 @@ Proof.
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
-CoFixpoint shifting_demon d pt := NextDemon (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
+CoFixpoint shifting_demon d pt := Streams.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
 intros d pt. apply fully_synchronous_implies_fair. revert pt.
 cofix shift_fair. intro pt. constructor.
-+ intro. constructor. simpl. discriminate.
++ intro. simpl. discriminate.
 + cbn. apply shift_fair.
 Qed.
 
@@ -492,7 +465,7 @@ Definition config0 pt : Config.t := fun id =>
   end.
 
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
-CoFixpoint shifting_execution d pt := NextExecution (config0 pt) (shifting_execution d (pt + d)).
+CoFixpoint shifting_execution d pt := Streams.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt, Spect.eq (!! (Config.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
 Proof.
@@ -615,14 +588,14 @@ End PropRobogram.
 (** A 2-step induction scheme for attracted. *)
 Definition attracted_ind2 (c : R.t) (r : R) (P : execution → Prop)
   (P0 : ∀ e : execution, imprisoned c r e → P e)
-  (P1 : ∀ e : execution, imprisoned c r (execution_tail e) → P e)
-  (Ps : ∀ e : execution, attracted c r (execution_tail (execution_tail e)) →
-                         P (execution_tail (execution_tail e)) → P e)
+  (P1 : ∀ e : execution, imprisoned c r (Streams.tl e) → P e)
+  (Ps : ∀ e : execution, attracted c r (Streams.tl (Streams.tl e)) →
+                         P (Streams.tl (Streams.tl e)) → P e)
   := fix F (e : execution) (a : attracted c r e) {struct a} : P e :=
     match a with
-      | Captured i => P0 e i
-      | WillBeCaptured _ (Captured i) => P1 e i
-      | WillBeCaptured _ (WillBeCaptured _ a0) => Ps e a0 (F (execution_tail (execution_tail e)) a0)
+      | Streams.Now i => P0 e i
+      | Streams.Later (Streams.Now i) => P1 e i
+      | Streams.Later (Streams.Later a0) => Ps e a0 (F (Streams.tl (Streams.tl e)) a0)
     end.
 
 Theorem noConvergence : forall r, ~solution r.

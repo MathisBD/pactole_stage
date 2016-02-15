@@ -18,6 +18,7 @@ Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
+Require Import Pactole.Streams.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
@@ -44,30 +45,22 @@ Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(
       | Some x, Some y => eqT x y
     end.
   Declare Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
+  Declare Instance opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
+  Declare Instance opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
   Declare Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
   
   (** ** Executions *)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-  CoInductive execution :=
-    NextExecution : Config.t → execution → execution.
+  Definition execution := Streams.t Config.t.
   
-  (** *** Destructors for demons *)
+  (** *** Destructors for executions *)
   
-  Definition execution_head (e : execution) : Config.t :=
-    match e with NextExecution conf _ => conf end.
-  
-  Definition execution_tail (e : execution) : execution :=
-    match e with NextExecution _ e => e end.
-  
-  CoInductive eeq (e1 e2 : execution) : Prop :=
-    | Ceeq : Config.eq (execution_head e1) (execution_head e2) ->
-             eeq (execution_tail e1) (execution_tail e2) -> eeq e1 e2.
+  Definition eeq : execution -> execution -> Prop := Streams.eq Config.eq.
   
   Declare Instance eeq_equiv : Equivalence eeq.
-  Declare Instance eeq_bisim : Bisimulation execution.
-  Declare Instance execution_head_compat : Proper (eeq ==> Config.eq) execution_head.
-  Declare Instance execution_tail_compat : Proper (eeq ==> eeq) execution_tail.
+  Declare Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _).
+  Declare Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _).
 End Sig.
 
 
@@ -122,40 +115,14 @@ Proof. split; auto with typeclass_instances. Qed.
 
 (** ** Executions *)
 
-(** Now we can [execute] some robogram from a given configuration with a [demon] *)
-CoInductive execution :=
-  NextExecution : Config.t → execution → execution.
+(** Now we can [execute] some robogram from a given position with a [demon] *)
+Definition execution := Streams.t Config.t.
 
-
-(** *** Destructors for demons *)
-
-Definition execution_head (e : execution) : Config.t :=
-  match e with NextExecution conf _ => conf end.
-
-Definition execution_tail (e : execution) : execution :=
-  match e with NextExecution _ e => e end.
-
-CoInductive eeq (e1 e2 : execution) : Prop :=
-  | Ceeq : Config.eq (execution_head e1) (execution_head e2) ->
-           eeq (execution_tail e1) (execution_tail e2) -> eeq e1 e2.
+Definition eeq (e1 e2 : execution) : Prop := Streams.eq Config.eq e1 e2.
 
 Instance eeq_equiv : Equivalence eeq.
-Proof. split.
-+ coinduction eeq_refl. reflexivity.
-+ coinduction eeq_sym. symmetry. now inversion H. now inversion H.
-+ coinduction eeq_trans. intro.
-  - inversion H. inversion H0. now transitivity (execution_head y id).
-  - apply (eeq_trans (execution_tail x) (execution_tail y) (execution_tail z)).
-    now inversion H. now inversion H0.
-Qed.
+Proof. apply Streams.eq_equiv. apply Config.eq_equiv. Qed.
 
-Instance eeq_bisim : Bisimulation execution.
-Proof. exists eeq. apply eeq_equiv. Qed.
-
-Instance execution_head_compat : Proper (eeq ==> Config.eq) execution_head.
-Proof. intros e1 e2 He id. subst. inversion He. intuition. Qed.
-
-Instance execution_tail_compat : Proper (eeq ==> eeq) execution_tail.
-Proof. intros e1 e2 He. now inversion He. Qed.
-
+Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _) := Streams.hd_compat _.
+Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _) := Streams.tl_compat _.
 End Make.
