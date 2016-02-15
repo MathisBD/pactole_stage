@@ -520,6 +520,9 @@ Qed.
 
 (** ***  Results about [perpendicular]  **)
 
+Lemma perpendicular_sym : forall u v, perpendicular u v <-> perpendicular v u.
+Proof. intros. unfold perpendicular. now rewrite product_comm. Qed.
+
 Lemma perpendicular_origin_l : forall u, perpendicular R2.origin u.
 Proof. intros [? ?]; compute. field. Qed.
 
@@ -545,9 +548,6 @@ Proof. intros k u v Hperp. unfold perpendicular. rewrite product_mul_l, Hperp. f
 
 Lemma perpendicular_mul_compat_r : forall k u v, perpendicular u v -> perpendicular u (k * v).
 Proof. intros k u v Hperp. unfold perpendicular. rewrite product_mul_r, Hperp. field. Qed.
-
-Lemma perpendicular_sym : forall u v, perpendicular u v <-> perpendicular v u.
-Proof. intros. unfold perpendicular. now rewrite product_comm. Qed.
 
 Lemma perpendicular_mul_compat_l_iff : forall k u v, k <> 0 -> (perpendicular (k * u) v <-> perpendicular u v).
 Proof.
@@ -585,22 +585,30 @@ intros u v. split; intro Hperp.
     with (/ R2norm (r, r0) * (/ R2norm (r1, r2) * (r * r1 + r0 * r2))) by ring. rewrite Hperp. ring.
 Qed.
 
-Lemma perpendicular_unitary_compat_l : forall u v, perpendicular u v -> perpendicular (unitary u) v.
+Lemma perpendicular_unitary_compat_l : forall u v, perpendicular (unitary u) v <-> perpendicular u v.
 Proof.
-intros u v Hperp. destruct (R2.eq_dec u R2.origin) as [Hnull | Hnull].
-- rewrite Hnull, unitary_origin. unfold perpendicular, product. simpl. field.
-- unfold perpendicular. unfold unitary. rewrite product_mul_l, Hperp. field. now rewrite R2norm_0.
+intros u v. null u.
++ now rewrite unitary_origin.
++ unfold perpendicular, unitary. rewrite product_mul_l.
+  rewrite <- R2norm_0 in Hnull. apply Rinv_neq_0_compat in Hnull.
+  split; intro Hperp.
+  - apply Rmult_integral in Hperp. destruct Hperp; lra.
+  - rewrite Hperp. lra.
 Qed.
 
-Lemma perpendicular_unitary_compat_r : forall u v, perpendicular u v -> perpendicular u (unitary v).
+Lemma perpendicular_unitary_compat_r : forall u v, perpendicular u (unitary v) <-> perpendicular u v.
 Proof.
-intros u v Hperp. destruct (R2.eq_dec v R2.origin) as [Hnull | Hnull].
-- rewrite Hnull, unitary_origin. unfold perpendicular, product. simpl. field.
-- unfold perpendicular. unfold unitary. rewrite product_mul_r, Hperp. field. now rewrite R2norm_0.
+intros u v. null v.
++ now rewrite unitary_origin.
++ unfold perpendicular, unitary. rewrite product_mul_r.
+  rewrite <- R2norm_0 in Hnull. apply Rinv_neq_0_compat in Hnull.
+  split; intro Hperp.
+  - apply Rmult_integral in Hperp. destruct Hperp; lra.
+  - rewrite Hperp. lra.
 Qed.
 
 Lemma unitary_orthogonal_perpendicular : forall u, perpendicular (unitary u) (orthogonal u).
-Proof. intro. apply perpendicular_unitary_compat_l, orthogonal_perpendicular. Qed.
+Proof. intro. rewrite perpendicular_unitary_compat_l. apply orthogonal_perpendicular. Qed.
 
 Lemma perpendicular_orthogonal_shift : forall u v,
   perpendicular (orthogonal u) v <-> perpendicular u (orthogonal v).
@@ -772,6 +780,17 @@ rewrite R2norm_mul. rewrite R2norm_unitary, Rmult_1_r; trivial.
 destruct (Rle_dec 0 (product v (unitary u))) as [Hle | Hle].
 - left. f_equal. now rewrite Rabs_pos_eq.
 - right. f_equal. now rewrite Rabs_left, Ropp_involutive; auto with real.
+Qed.
+
+Lemma perpendicular_colinear_compat : forall u u' v v', ~R2.eq u R2.origin -> ~R2.eq v R2.origin ->
+  colinear u u' -> colinear v v' -> perpendicular u v -> perpendicular u' v'.
+Proof.
+intros u u' v v' Hu Hv Hcol_u Hcol_v Hperp.
+apply colinear_decompose in Hcol_u; trivial; [].
+apply colinear_decompose in Hcol_v; trivial; [].
+rewrite <- perpendicular_unitary_compat_l, <- perpendicular_unitary_compat_r in Hperp.
+destruct Hcol_u as [Hcol_u | Hcol_u], Hcol_v as [Hcol_v | Hcol_v];
+rewrite Hcol_u, Hcol_v; apply perpendicular_mul_compat_l, perpendicular_mul_compat_r; assumption.
 Qed.
 
 Lemma colinear_product_spec : forall u v, Rabs (product u v) = (R2norm u) * (R2norm v) <-> colinear u v.
@@ -1297,7 +1316,59 @@ Proof.
   * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
 Qed.
 
-
+(** Some results about equilateral circles *)
+Section Equilateral_results.
+  Variables pt1 pt2 pt3 : R2.t.
+  Hypothesis Htriangle : classify_triangle pt1 pt2 pt3 = Equilateral.
+  
+  (* The base of the altitude of an equilateral triangle is hte middle of the opposite side. *)
+  Lemma equilateral_altitude_base : perpendicular (pt3 - pt2) (pt1 - R2.middle pt2 pt3).
+  Proof.
+  null (pt3 - pt2)%R2.
+  + apply perpendicular_origin_l.
+  + assert (Heq := decompose_on Hnull (pt1 - R2.middle pt2 pt3)).
+  Admitted.
+  
+  (* The altitude of an equilateral triangle of side length a is (sqrt 2 / 3) * a. *)
+  Lemma equilateral_altitude : R2.dist pt1 (R2.middle pt2 pt3) = sqrt 3 / 2 * R2.dist pt1 pt2.
+  Proof.
+  assert (Hbase := equilateral_altitude_base).
+  rewrite classify_triangle_Equilateral_spec in Htriangle. destruct Htriangle as [Heq12 Heq13]. clear Htriangle.
+  null (pt3 - pt2)%R2; [| null (pt1 - R2.middle pt2 pt3)%R2].
+  + rewrite R2sub_origin in Hnull.
+    assert (Heq : R2.eq pt1 pt2 /\ R2.eq pt2 pt3).
+    { symmetry in Hnull. rewrite <- R2.dist_defined in Hnull. now rewrite Hnull, R2.dist_defined in *. }
+    destruct Heq as [Heq ?]. rewrite Heq. rewrite R2_dist_defined_2. ring_simplify.
+    rewrite R2.dist_defined. symmetry. now rewrite middle_eq.
+  + exfalso. apply Hnull. rewrite R2sub_origin in *. rewrite <- R2.dist_defined, R2.dist_sym.
+    rewrite Hnull0 in *. rewrite R2.dist_sym in Heq12. rewrite R2dist_middle in Heq12. lra.
+  + apply (perpendicular_colinear_compat Hnull Hnull0 (colinear_middle pt2 pt3) (reflexivity _))%R2 in Hbase.
+    rewrite <- perpendicular_opp_compat_l in Hbase.
+    rewrite Pythagoras in Hbase.
+    replace (- (pt3 - R2.middle pt2 pt3) + (pt1 - R2.middle pt2 pt3))%R2 with (pt1 - pt3)%R2 in Hbase
+      by (unfold R2.middle; unfoldR2; destruct pt1, pt2, pt3; simpl; f_equal; lra).
+    repeat rewrite ?R2norm_opp, <- R2norm_dist in Hbase.
+    rewrite square_dist_equiv.
+    - assert (Heq : (R2.dist pt1 (R2.middle pt2 pt3))² = (R2.dist pt1 pt3)² - (R2.dist pt3 (R2.middle pt2 pt3))²)
+        by lra.
+      rewrite Heq.
+      rewrite middle_comm, R2dist_middle. rewrite (R2.dist_sym pt2). rewrite Heq12, Heq13.
+      unfold Rdiv. do 3 rewrite R_sqr.Rsqr_mult. rewrite Rsqr_sqrt; try lra.
+      replace (/2)² with (/4) by (unfold Rsqr; lra). lra.
+    - assert (Hpos := sqrt_pos 3). apply Rmult_le_pos; apply R2.dist_pos || lra.
+  Qed.
+  
+  (* The radius of the circumscribed circle to an equilateral triangle of side length a is (sqrt 3 / 3) * a. *)
+  Lemma equilateral_barycenter_dist : R2.dist (barycenter_3_pts pt1 pt2 pt3) pt1 = sqrt 3 / 3 * R2.dist pt1 pt2.
+  Proof.
+  unfold barycenter_3_pts. rewrite R2norm_dist.
+  replace ((/ 3 * (pt1 + (pt2 + pt3)) - pt1))%R2 with (2 / 3 * (R2.middle pt2 pt3 - pt1))%R2
+    by (unfold R2.middle; destruct pt1, pt2, pt3; simpl; f_equal; lra).
+  rewrite R2norm_mul, <- R2norm_dist, R2.dist_sym.
+  rewrite equilateral_altitude. rewrite Rabs_pos_eq; lra.
+  Qed.
+  
+End Equilateral_results.
 
 Lemma same_dist_vertex_notin_sub_circle: forall ptx pty c,
     R2.dist pty c = R2.dist ptx c
