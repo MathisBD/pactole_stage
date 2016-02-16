@@ -100,18 +100,6 @@ intros ? ? Heq. split; intros [HnG [Hle [pt1 [pt2 [Hneq Hpt]]]]]; repeat split; 
 exists pt1; exists pt2; split; try rewrite Heq in *; trivial.
 Qed.
 
-(*
-Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
-Proof.
-intros conf pt.
-destruct (List.forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
-+ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
-+ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
-  rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
-Qed.
-*)
-
 (** **  Generic properties  **)
 
 Lemma spect_non_nil : 2 <= N.nG -> forall conf, ~Spect.eq (!! conf) Spect.empty.
