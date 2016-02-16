@@ -1,3 +1,13 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+
 Require Import Reals.
 Require Import Psatz.
 Require Import Morphisms.
@@ -6,7 +16,7 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.Gathering.InR.Definitions.
+Require Import Pactole.Gathering.InR.Rcomplements.
 
 
 Set Implicit Arguments.

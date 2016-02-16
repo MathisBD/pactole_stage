@@ -21,11 +21,11 @@ Require Import Inverse_Image.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.Gathering.InR.SortingR.
+(* Require Import Pactole.Gathering.InR.SortingR. *)
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
 Import Permutation.
-Require Import Pactole.Gathering.InR.Definitions.
+Require Import Pactole.Gathering.InR.Rcomplements.
 
 
 Set Implicit Arguments.
@@ -51,17 +51,7 @@ Proof. apply Exp_prop.div2_not_R0. apply size_G. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.empty.
-Proof.
-intros conf Heq.
-unfold Spect.from_config in Heq.
-rewrite Spect.multiset_empty in Heq.
-assert (Hlgth:= Spect.Config.list_length conf).
-rewrite Heq in Hlgth.
-simpl in *.
-unfold N.nG in *.
-assert (hnG:=size_G).
-omega.
-Qed.
+Proof. apply spect_non_nil. apply size_G. Qed.
 
 Corollary sort_non_nil : forall config, sort (Spect.support (!! config)) <> nil.
 Proof.
