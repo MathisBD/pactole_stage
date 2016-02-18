@@ -7,18 +7,18 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
-Require Import Pactole.Gathering.InR.Definitions.
+Require Import Pactole.Gathering.InR.Rcomplements.
 
 
 Set Implicit Arguments.
 
 
 Parameter nB: nat.
-Axiom nB_non_0 : nB <> 0.
+Axiom nB_non_0 : nB <> 0%nat.
 
 (** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := 2 * nB with Definition nB := nB.
-  Definition nG := 2 * nB.
+Module N : Size with Definition nG := (2 * nB)%nat with Definition nB := nB.
+  Definition nG := (2 * nB)%nat.
   Definition nB := nB.
 End N.
 

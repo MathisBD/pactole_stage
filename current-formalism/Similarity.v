@@ -132,8 +132,8 @@ Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
     (this requires that the metric space is not trivial (i.e. has dimension > 0). *)
 Lemma zoom_non_null : forall sim, sim.(zoom) <> 0.
 Proof.
-intros sim Heq. destruct Loc.non_trivial as [x [y Htriv]]. apply Htriv.
-assert (Heqsim : Loc.eq (sim x) (sim y)).
+intros sim Heq. apply Loc.non_trivial.
+assert (Heqsim : Loc.eq (sim Loc.unit) (sim Loc.origin)).
 { now rewrite <- Loc.dist_defined, sim.(dist_prop), Heq, Rmult_0_l. }
 rewrite sim.(Inversion) in Heqsim. rewrite <- Heqsim, <- sim.(Inversion). reflexivity.
 Qed.
@@ -142,11 +142,12 @@ Lemma zoom_pos : forall sim, 0 < sim.(zoom).
 Proof.
 intros sim. apply Preliminary.Rle_neq_lt.
 - destruct sim as [f k c Hc Hk]. simpl. clear c Hc.
-  destruct Loc.non_trivial as [x [y Hxy]]. specialize (Hk x y).
-  rewrite <- Loc.dist_defined in Hxy.
-  assert (Hdist := Loc.dist_pos x y).
-  generalize (Loc.dist_pos (f x) (f y)).
-  rewrite <- (Rmult_0_l (Loc.dist x y)) at 1. rewrite Hk. apply Rmult_le_reg_r. apply Rle_neq_lt; auto.
+  assert (Hnon_triv := Loc.non_trivial). specialize (Hk Loc.unit Loc.origin).
+  rewrite <- Loc.dist_defined in Hnon_triv.
+  assert (Hdist := Loc.dist_pos Loc.unit Loc.origin).
+  generalize (Loc.dist_pos (f Loc.unit) (f Loc.origin)).
+  rewrite <- (Rmult_0_l (Loc.dist Loc.unit Loc.origin)) at 1.
+  rewrite Hk. apply Rmult_le_reg_r. apply Rle_neq_lt; auto.
 - intro. now apply (zoom_non_null sim).
 Qed.
 
@@ -255,6 +256,9 @@ Proof.
 + simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring).
 Defined.
 Global Infix "∘" := compose (left associativity, at level 59).
+
+Global Instance compose_compat : Proper (eq ==> eq ==> eq) compose.
+Proof. intros f1 f2 Hf g1 g2 Hg x y Hxy. cbn. now rewrite Hxy, Hf, Hg. Qed.
 
 Lemma compose_assoc : forall f g h, eq (f ∘ (g ∘ h)) ((f ∘ g) ∘ h).
 Proof. intros f g h x y Hxy. simpl. now rewrite Hxy. Qed.

@@ -315,7 +315,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   End map_results.
   
   Lemma map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
-    (forall x, g x = f x) -> forall m, map g m [=] map f m.
+    (forall x, E.eq (g x) (f x)) -> forall m, map g m [=] map f m.
   Proof.
   intros f g Hf Hext m x.
   assert (Hg : Proper (E.eq ==> E.eq) g). { intros ? ? Heq. do 2 rewrite Hext. now apply Hf. }
@@ -325,7 +325,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Lemma map_extensionality_compat_strong : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
-    forall m, (forall x, In x m -> g x = f x) -> map g m [=] map f m.
+    forall m, (forall x, In x m -> E.eq (g x) (f x)) -> map g m [=] map f m.
   Proof.
   intros f g Hf Hg m Hext x.
   repeat rewrite map_spec; trivial. f_equiv. apply nfilter_extensionality_compat_strong.

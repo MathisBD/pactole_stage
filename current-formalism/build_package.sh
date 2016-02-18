@@ -8,6 +8,8 @@ mkdir ./package/Gathering
 mkdir ./package/Gathering/InR
 mkdir ./package/Gathering/InR2
 
+coq_makefile -f _CoqProject -o makefile
+
 cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
 
 cp Preliminary.v Lexprod.v Robots.v Configurations.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v MultisetSpectrum.v Similarity.v makefile _CoqProject ./package/
@@ -21,4 +23,4 @@ cp Gathering/InR2/R2geometry.v Gathering/InR2/Algorithm.v ./package/Gathering/In
 make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Convergence/Impossibility_2G_1B.vo
 make -C package clean
 rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
-tar cvfz package.tgz package 
+tar cvfz package.tgz package

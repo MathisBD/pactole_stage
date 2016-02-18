@@ -110,8 +110,8 @@ Module Rdef : RealMetricSpaceDef with Definition t := R
   Lemma mul_1 : forall u, eq (mul 1 u) u.
   Proof. unfold eq, mul. intros. lra. Qed.
   
-  Lemma non_trivial : exists u v, ~eq u v.
-  Proof. exists 1%R, 0%R. apply R1_neq_R0. Qed.
+  Definition unit := 1.
+  Definition non_trivial : ~eq unit origin := R1_neq_R0.
 End Rdef.
 
 

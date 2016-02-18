@@ -445,7 +445,7 @@ rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.s
     apply Exp_prop.div2_not_R0. apply HsizeG.
   - apply Exp_prop.div2_not_R0. apply HsizeG.
 + intro pt. destruct (R2.eq_dec pt pt2), (R2.eq_dec pt pt1); subst.
-  - elim Hdiff. transitivity pt;auto.
+  - elim Hdiff. congruence.
   - rewrite Spect.add_spec, Spect.singleton_spec.
     destruct (R2.eq_dec pt pt2); try contradiction.
     destruct (R2.eq_dec pt pt1); try contradiction.

@@ -31,7 +31,7 @@ Module Type RealMetricSpaceDef <: DecidableType.
   Parameter eq_dec : forall x y, {eq x y} + {~eq x y}.
   
   Parameter add : t -> t -> t.
-  Parameter mul : R -> t -> t. (* underlying field is R *)
+  Parameter mul : R -> t -> t. (* the underlying field is R *)
   Parameter opp : t -> t.
   
   Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
@@ -51,9 +51,9 @@ Module Type RealMetricSpaceDef <: DecidableType.
   Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
   Parameter add_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
   
-  (* TODO: add the missing properties *)
   Parameter mul_1 : forall u, eq (mul 1 u) u.
-  Parameter non_trivial : exists u v, ~eq u v.
+  Parameter unit : t. (* TODO: is it really a good name? *)
+  Parameter non_trivial : ~eq unit origin.
 End RealMetricSpaceDef.
 
 Module Type RealMetricSpace.

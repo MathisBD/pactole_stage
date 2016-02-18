@@ -117,8 +117,9 @@ Module R2def : RealMetricSpaceDef with Definition t := (R * R)%type
   Lemma mul_1 : forall u, eq (mul 1 u) u.
   Proof. solve_R. Qed.
   
-  Lemma non_trivial : exists u v, ~eq u v.
-  Proof. exists (0, 0), (0, 1). compute. injection. auto using R1_neq_R0. Qed.
+  Definition unit := (0, 1).
+  Lemma non_trivial : ~eq unit origin.
+  Proof. compute. injection. auto using R1_neq_R0. Qed.
 End R2def.
 
 

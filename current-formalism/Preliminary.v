@@ -378,7 +378,16 @@ intros x l. split; intro H.
   - apply H. now left.
   - apply IHl. intros y Hy. apply H. now right.
 + rewrite H. intro. apply alls_In.
-Qed. 
+Qed.
+
+Lemma alls_caracA : forall x l, (forall y, InA eqA y l -> eqA y x) <-> eqlistA eqA l (alls x (length l)).
+Proof.
+intros x l. split; intro H.
++ induction l. reflexivity. simpl. constructor.
+  - apply H. now left.
+  - apply IHl. intros y Hy. apply H. now right.
++ intro. rewrite H, InA_alt. intros [y' [Heq Hin]]. apply alls_In in Hin. now subst.
+Qed.
 
 Lemma Permutation_alls : forall (x : A) n l,
   Permutation l (alls x n) <-> l = alls x n.
@@ -1489,6 +1498,9 @@ Qed.
 Corollary half2_length : forall l : list A, length (half2 l) = length l - div2 (length l).
 Proof. intros. unfold half2. now rewrite skipn_length. Qed.
 
+Corollary half2_even_length : forall l : list A, Nat.Even (length l) -> length (half2 l) = div2 (length l).
+Proof. intros l H. unfold half2. rewrite skipn_length. apply even_div2 in H. omega. Qed.
+
 Lemma merge_halves : forall l : list A, half1 l ++ half2 l = l.
 Proof. intro. apply firstn_skipn. Qed.
 
@@ -1519,9 +1531,9 @@ Lemma half2_dec : (forall x y : A, {x = y} + {x <> y}) ->
 Proof. intros. now apply List.In_dec. Qed.
 
 Theorem half_dec : (forall x y : A, {x = y} + {x <> y}) ->
-  forall l : list A, NoDup l -> forall e, In e l -> {In e (half1 l)} + {In e (half2 l)}.
+  forall l e, In e l -> {In e (half1 l)} + {In e (half2 l)}.
 Proof.
-intros HeqA l Hnodup e Hin. destruct (half1_dec HeqA e l) as [? | Hg].
+intros HeqA l e Hin. destruct (half1_dec HeqA e l) as [? | Hg].
 + left. assumption.
 + right. abstract (rewrite <- merge_halves in Hin; apply List.in_app_or in Hin; tauto).
 Defined.
