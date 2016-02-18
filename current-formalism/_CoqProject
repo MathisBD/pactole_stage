@@ -22,6 +22,7 @@ MultisetSpectrum.v
 Lexprod.v
 Convergence/Impossibility_2G_1B.v
 Gathering/Definitions.v
+Gathering/Impossibility.v
 Gathering/InR/Rcomplements.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
