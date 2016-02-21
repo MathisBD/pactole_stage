@@ -3662,5 +3662,32 @@ Qed.
 
 Print Assumptions Gathering_in_R2.
 
-End GatheringinR2.
 
+(* Let us change the assumption over the demon, it is no longer fair
+   but instead activates at least a robot that should move at each round *)
+CoInductive OKunfair r (d : demon) config : Prop :=
+  AlwaysOKunfair : moving r (demon_head d) config <> nil -> 
+  OKunfair r (demon_tail d) (round gatherR2 (demon_head d) config) -> OKunfair r d config.
+
+Theorem unfair_Gathering_in_R2 : forall d config,
+  OKunfair gatherR2 d config -> ~forbidden config ->
+  exists pt, WillGather pt (execute gatherR2 d config).
+Proof.
+intros d config Hunfair. revert d Hunfair. pattern config.
+apply (well_founded_ind wf_lt_conf). clear config.
+intros config Hind d Hunfair Hok.
+(* Are we already gathered? *)
+destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove].
++ (* If so, not much to do *)
+  exists (config (Good g1)). now apply Now, gathered_at_OK.
++ (* Otherwise, by assumption on the demon, a robot should move
+     so we can use our well-founded induction hypothesis. *)
+  destruct Hunfair as [Hstep Hunfair].
+  destruct (Hind (round gatherR2 (demon_head d) config)) with (demon_tail d) as [pt Hpt].
+  - apply round_lt_config; assumption.
+  - assumption.
+  - now apply never_forbidden.
+  - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+Qed.
+
+End GatheringinR2.
