@@ -189,6 +189,38 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   
 End MakeRealMetricSpace.
 
+Module Type DiscretSpaceDef <: DecidableType.
+  Parameter t : Type.
+  Parameter origin : t.
+  Parameter eq : t -> t -> Prop.
+  Parameter dist : t -> t -> nat.
+  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
+  
+  Parameter add : t -> t -> t -> t.
+  Parameter mul : nat -> t -> t -> t.
+  Parameter opp : t -> t -> t.
+  
+  Declare Instance add_compact : Proper (eq ==> eq ==> eq ==> eq) add.
+  Declare Instance mul_compact : Proper (Logic.eq ==> eq ==> eq ==> eq) mul.
+  Declare Instance opp_compact : Proper (eq ==> eq ==> eq) opp.
+  
+  Parameter eq_equiv : Equivalence eq.
+  Parameter dist_define : forall x y, dist x y = O <-> eq x y.
+  Parameter dist_sym : forall x y, dist x y = dist y x.
+(* there is no triangular inequation in ring-type space.*)
+
+  Parameter add_assoc : forall u v w, eq (add u (add v w origin) origin) (add (add u v origin) w origin).
+  Parameter add_comm : forall u v, eq (add u v origin) (add v u origin).
+  Parameter add_origin : forall u, eq (add u origin origin) u.
+  Parameter add_opp: forall u, eq (add u (opp u origin) origin) origin.
+  Parameter mul_distr_add : forall a u v, eq (mul a (add u v origin) origin) (add (mul a u origin) (mul a v origin) origin).
+  Parameter mul_morph : forall a b u, eq (mul a (mul b u origin) origin) (mul (a * b) u origin).
+  Parameter add_morph : forall a b u, eq (add (mul a u origin) (mul b u origin) origin) (mul (a + b) u origin).
+  
+  Parameter mul_1 : forall u, eq (mul 1 u origin) u.
+  Parameter unit : t. (* TODO: is it really a good name? *)
+  Parameter non_trivial : ~eq unit origin.
+End DiscretSpaceDef.
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
   Definition t := Names.ident -> Location.t.
