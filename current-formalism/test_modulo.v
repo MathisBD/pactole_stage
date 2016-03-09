@@ -4,7 +4,7 @@ Require Import ZArith.
 Require Import Omega.
 Require Import SetoidList.
 
-Local Open Scope Z_scope.
+(* Local Open Scope Z_scope. *)
 
 (* Parameter N:Z. *)
 Definition origin := N%Z.
@@ -29,7 +29,7 @@ Definition opp_mod (x n : Z) : Z := n - x.
 
 Lemma opp_mod_proper : Proper (Z.eq ==> Z.eq ==> eq) opp_mod.
 Proof.
-intros x x' Hx z z' Hz. unfold opp_mod. rewrite Hz, Hx. intuition.  
+intros x x' Hx z z' Hz. unfold opp_mod. rewrite Hz, Hx. intuition.
 Qed.
 
 Definition dist (x y n : Z) : Z := (Zmin (Zmin (add_mod x y n) (add_mod x (Z.sub 0%Z y) n))
@@ -40,13 +40,13 @@ Definition eq_mod ( x y n : Z): Prop := Zmod x n = Zmod y n.
 
 Lemma dist_sup : forall x y n, Z.ge (dist x y n) 0%Z.
 Proof.
-intros. unfold dist. unfold Z.min. destruct (match add_mod x y n ?= add_mod x (0 - y) n with
+intros. unfold dist. unfold Z.min. destruct (match Z.compare (add_mod x y n)  (add_mod x (0 - y) n) with
   | Eq => add_mod x y n
   | Lt => add_mod x y n
   | Gt => add_mod x (0 - y) n
-  end ?= add_mod (0 - x) y n). 
-destruct (add_mod x y n ?= add_mod x (0 - y) n); unfold add_mod. apply (Z.mod_bound_pos (x+y) n).
-Qed.
+  end ?= add_mod (0 - x) y n)%Z. 
+destruct (Z.compare (add_mod x y n) (add_mod x (0 - y) n)); unfold add_mod. unfold Z.modulo.
+unfold Z.div_eucl. simpl.
 
 Lemma dist_define : forall x y n, dist x y n = O <-> eq_mod x y n.
 Proof.
