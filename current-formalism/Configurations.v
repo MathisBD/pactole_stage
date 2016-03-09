@@ -192,7 +192,7 @@ End MakeRealMetricSpace.
 Module Type DiscretSpaceDef <: DecidableType.
   Parameter t : Type.
   Parameter origin : t.
-  Parameter eq : t -> t -> Prop.
+  Parameter eq : t -> t -> t -> Prop.
   Parameter dist : t -> t -> nat.
   Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
   
@@ -205,7 +205,7 @@ Module Type DiscretSpaceDef <: DecidableType.
   Declare Instance opp_compact : Proper (eq ==> eq ==> eq) opp.
   
   Parameter eq_equiv : Equivalence eq.
-  Parameter dist_define : forall x y, dist x y = O <-> eq x y.
+  Parameter dist_define : forall x y, dist x y = O <-> eq x y origin.
   Parameter dist_sym : forall x y, dist x y = dist y x.
 (* there is no triangular inequation in ring-type space.*)
 
