@@ -194,7 +194,7 @@ Module Type DiscretSpaceDef <: DecidableType.
   Parameter origin : t.
   Parameter eq : t -> t -> t -> Prop.
   Parameter dist : t -> t -> nat.
-  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
+  Parameter eq_dec : forall x y n, {eq x y n} + {~ eq x y n}.
   
   Parameter add : t -> t -> t -> t.
   Parameter mul : nat -> t -> t -> t.
