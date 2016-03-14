@@ -192,35 +192,83 @@ End MakeRealMetricSpace.
 Module Type DiscretSpaceDef <: DecidableType.
   Parameter t : Type.
   Parameter origin : t.
-  Parameter eq : t -> t -> t -> Prop.
-  Parameter dist : t -> t -> nat.
-  Parameter eq_dec : forall x y n, {eq x y n} + {~ eq x y n}.
+  Parameter eq : t -> t -> Prop.
+  Parameter dist : t -> t -> Z.
+  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
   
-  Parameter add : t -> t -> t -> t.
-  Parameter mul : nat -> t -> t -> t.
-  Parameter opp : t -> t -> t.
+  Parameter add : t -> t -> t.
+  Parameter mul : Z -> t -> t.
+  Parameter opp : t -> t.
   
-  Declare Instance add_compact : Proper (eq ==> eq ==> eq ==> eq) add.
-  Declare Instance mul_compact : Proper (Logic.eq ==> eq ==> eq ==> eq) mul.
-  Declare Instance opp_compact : Proper (eq ==> eq ==> eq) opp.
+  Declare Instance add_compact : Proper (eq ==> eq ==> eq) add.
+  Declare Instance mul_compact : Proper (Logic.eq ==> eq  ==> eq) mul.
+  Declare Instance opp_compact : Proper (eq  ==> eq) opp.
   
   Parameter eq_equiv : Equivalence eq.
-  Parameter dist_define : forall x y, dist x y = O <-> eq x y origin.
+  Parameter dist_define : forall x y, dist x y = 0%Z <-> eq x y.
   Parameter dist_sym : forall x y, dist x y = dist y x.
 (* there is no triangular inequation in ring-type space.*)
 
-  Parameter add_assoc : forall u v w, eq (add u (add v w origin) origin) (add (add u v origin) w origin).
-  Parameter add_comm : forall u v, eq (add u v origin) (add v u origin).
-  Parameter add_origin : forall u, eq (add u origin origin) u.
-  Parameter add_opp: forall u, eq (add u (opp u origin) origin) origin.
-  Parameter mul_distr_add : forall a u v, eq (mul a (add u v origin) origin) (add (mul a u origin) (mul a v origin) origin).
-  Parameter mul_morph : forall a b u, eq (mul a (mul b u origin) origin) (mul (a * b) u origin).
-  Parameter add_morph : forall a b u, eq (add (mul a u origin) (mul b u origin) origin) (mul (a + b) u origin).
+  Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Parameter add_comm : forall u v, eq (add u v) (add v u).
+  Parameter add_origin : forall u, eq (add u origin) u.
+  Parameter add_opp: forall u, eq (add u (opp u)) origin.
+  Parameter mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
+  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Parameter add_morph : forall a b u, eq (add (mul a u ) (mul b u ) ) (mul (a + b) u ).
   
-  Parameter mul_1 : forall u, eq (mul 1 u origin) u.
+  Parameter mul_1 : forall u, eq (mul 1 u ) u.
   Parameter unit : t. (* TODO: is it really a good name? *)
   Parameter non_trivial : ~eq unit origin.
 End DiscretSpaceDef.
+
+Module Type DiscretSpace.
+  Include DiscretSpaceDef.
+  
+  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
+  Parameter mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  Parameter opp_origin : eq (opp origin) origin.
+  Parameter opp_opp : forall u, eq (opp (opp u)) u.
+  Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
+  Parameter mul_0 : forall u, eq (mul 0 u) origin.
+  Parameter mul_origin : forall a, eq (mul a origin) origin.
+  Parameter mul_reg_l : forall k u v, k <> 0%Z -> eq (mul k u) (mul k v) -> eq u v.
+  Parameter mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
+  Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+  Parameter mul_integral : forall k u, eq (mul k u) origin -> k = 0%Z \/ eq u origin.
+
+End DiscretSpace.
+
+
+Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
+    with Definition t := Def.t
+    with Definition eq := Def.eq
+    with Definition eq_dec := Def.eq_dec
+    with Definition origin := Def.origin
+    with Definition dist := Def.dist
+    with Definition add := Def.add
+    with Definition mul := Def.mul
+    with Definition opp := Def.opp.
+  
+  Include Def.
+
+  (** Proofs of two derivable properties about MetricSpace *)
+  Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Proof.
+  intros x x' Hx y y' Hy.
+  + replace (dist x' y') with (0 + dist x' y' + 0)%Z by ring. symmetry in Hy.
+    rewrite <- dist_define in Hx. rewrite <- dist_define in Hy.
+    rewrite <- Hx at 1. rewrite <- Hy. unfold dist. unfold add. 
+ (* j'en suis là *)
+
+  Admitted.
+
+  
+End MakeDiscretSpace.
+
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
   Definition t := Names.ident -> Location.t.
