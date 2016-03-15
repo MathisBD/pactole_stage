@@ -64,6 +64,14 @@ Qed.
 
 Definition dist (x y : Z) : Z := Z.min (add_mod (opp_mod y) x) (add_mod (opp_mod x) y) .
 
+Lemma s : forall x y z, x-y+z = x-(y-z). Proof. intros; omega. Qed.
+
+(* Lemma min_mod_mod: forall x y z, (-((x-y)mod z) mod z) = -(x-y) mod z.
+intros. rewrite Zmod_mod. *)
+
+(* intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.*)
+
+
 Lemma dist_pos : forall x y, (0 <= dist x y).
 Proof.
 intros. unfold dist. unfold Z.min. 
@@ -79,23 +87,6 @@ rewrite Hx, Hy.
 rewrite <- Zminus_mod, <- Zplus_mod. rewrite <- Zminus_mod, <- Zplus_mod. intuition.
 Qed.
 
-(*Assume n divides a-b and prove a mod n = b mod n.
-
-We know we can write a = q1 n + r1 and b = q2 n + r2, with remainders r1 and r2 both 
-between 0 and n.
-
-Then a-b = (q1 - q2) n + (r1 - r2).
-
-Because n goes evenly into (q1 - q2) n, the remainder when a-b is divided by n
-is the same as the remainder when r1 - r2 is divided by n.
-
-Since a-b is divisible by n, the remainder when r1 - r2 is divided by n must be 0. 
-So r1 - r2 is a multiple of n.
-
-But r1 and r2 are both numbers between 0 and n, so the only way r1 - r2 can be an even 
-multiple of n is for it to equal 0 n = 0.
-
-So r1 = r2 and a mod n = b mod n.*)
 
 Lemma dm0 : forall a b, (a - b) mod n = 0 -> a mod n = b mod n.
 Proof.
@@ -155,6 +146,40 @@ Lemma dist_sym : forall x y, dist x y = dist y x.
 Proof.
 intros. unfold dist. rewrite Z.min_comm. intuition.
 Qed.
+
+
+Lemma ordre_mod: forall a b, add_mod a b <= a mod n + b mod n. 
+Proof. 
+intros. unfold add_mod. rewrite Zplus_mod. apply Zmod_le. apply Z.gt_lt_iff, n_pos.
+assert (0 <= a mod n). apply Z_mod_lt. apply n_pos. 
+assert (0 <= b mod n). apply Z_mod_lt. apply n_pos. omega.
+Save.
+
+Lemma triang_ineq : forall x y z, dist x z <= add_mod (dist x y) (dist y z).
+Proof.
+intros. unfold add_mod. unfold dist. unfold add_mod, opp_mod. unfold Z.min.
+repeat rewrite Zplus_mod_idemp_l. repeat rewrite s. rewrite Zminus_mod.
+rewrite (Zminus_mod n (x-z) n); rewrite (Zminus_mod n (y-x) n); rewrite (Zminus_mod n (x-y) n);
+rewrite (Zminus_mod n (z-y) n); rewrite (Zminus_mod n (y-z) n). rewrite Z_mod_same_full.
+repeat rewrite Zminus_mod_idemp_r. simpl. 
+destruct (- (z - x) mod n ?= - (x - z) mod n) eqn:Heq1.
+* destruct (- (y - x) mod n ?= - (x - y) mod n) eqn:Heq2.
+ - destruct (- (z - y) mod n ?= - (y - z) mod n) eqn:Heq3.
+   + rewrite <- Zplus_mod. assert (-(y-x) + - (z - y) = -(z-x)). omega. rewrite H. intuition.
+   + rewrite <- Zplus_mod. assert (-(y-x) + - (z - y) = -(z-x)). omega. rewrite H. intuition.
+   + rewrite <- Zplus_mod. assert (-(z-x) = ((x - y) + - (z - y))) by omega. rewrite H. 
+     rewrite Zplus_mod. rewrite (Zplus_mod (- (y - x)) (- (y - z)) n).
+     assert ((- (y - x) mod n + - (y - z) mod n) mod n 
+            <= ((- (y - x) mod n) mod n + (- (y - z) mod n) mod n)). apply ordre_mod.
+     assert (((x - y) mod n + - (z - y) mod n) mod n 
+            <= (- (y - x) mod n) mod n + (- (y - z) mod n) mod n). do 2 rewrite Zmod_mod.
+     assert ( - (y - x) mod n + - (y - z) mod n <  - (y - x) mod n + - (z - y) mod n).
+     rewrite <- (Zplus_lt_reg_l (- (y - z) mod n) (- (z - y) mod n) (- (y - x) mod n )). simpl.
+(* ((x - y) mod n + - (z - y) mod n) mod n <= (- (y - x) mod n + - (y - z) mod n) mod n *)
+omega.
+ 
+Qed.
+
 
 Lemma add_assoc: forall x y z, eq_mod (add_mod (add_mod x y) z) (add_mod x (add_mod y z)).  
 Proof.
