@@ -23,7 +23,7 @@ Definition add_mod (x y : Z) : Z :=  (Zmod (x + y) n).
 
 Definition mul_mod (x y : Z): Z :=  (Zmod (Z.mul x y) n).
 
-Definition eq_mod ( x y : Z): Prop := Zmod x n = Zmod y n.
+Definition eq_mod (x y : Z): Prop := Zmod x n = Zmod y n.
 
 Definition eq_equiv := @eq_equivalence Z.
 
@@ -64,14 +64,6 @@ Qed.
 
 Definition dist (x y : Z) : Z := Z.min (add_mod (opp_mod y) x) (add_mod (opp_mod x) y) .
 
-Lemma s : forall x y z, x-y+z = x-(y-z). Proof. intros; omega. Qed.
-
-(* Lemma min_mod_mod: forall x y z, (-((x-y)mod z) mod z) = -(x-y) mod z.
-intros. rewrite Zmod_mod. *)
-
-(* intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.*)
-
-
 Lemma dist_pos : forall x y, (0 <= dist x y).
 Proof.
 intros. unfold dist. unfold Z.min. 
@@ -96,7 +88,7 @@ assert (let (q2, r2) := Z.div_eucl b n in b = n * q2 + r2 /\ 0 <= r2 < n).
 apply Z_div_mod; apply n_pos. destruct (Z.div_eucl a n). destruct (Z.div_eucl b n).
 destruct H0 as (Ha, Hr1) , H1 as (Hb, Hr2). assert ((a-b) mod n = (z0 - z2) mod n).
 rewrite Ha, Hb, Zminus_mod, Zplus_mod, (Zplus_mod (n*z1) z2). 
-assert (n*z = z * n). ring. rewrite H0. assert (n * z1 = z1 * n). ring. rewrite H1.
+assert (n*z = z * n). ring. rewrite H0. apply (fast_Zmult_comm n z1).
 do 2 rewrite Z_mod_mult. simpl. do 2 rewrite Zmod_mod. symmetry; apply Zminus_mod. 
 rewrite H0 in H. rewrite Zmod_divides in H. destruct H.
 assert (z0 - z2 < n * 1). omega. rewrite H in H1.
@@ -109,6 +101,13 @@ assert ( z0 = z2). intuition. rewrite Ha, Hb, H7, Zplus_mod, (Zplus_mod (n*z1) z
 assert (n*z = z * n). ring. rewrite H8. assert (n * z1 = z1 * n). ring. rewrite H9.
 do 2 rewrite Z_mod_mult. intuition. omega.
 Qed. 
+
+
+Lemma dm1 : forall a b, a mod n = b mod n -> (a - b) mod n = 0.
+Proof.
+intros; rewrite Zminus_mod, H. rewrite <- Zminus_mod. 
+assert (b-b=0) by omega; rewrite H0; intuition.
+Qed.
 
 Lemma dist_define : forall x y, dist x y= 0 <-> eq_mod x y.
 Proof.
@@ -155,17 +154,66 @@ assert (0 <= a mod n). apply Z_mod_lt. apply n_pos.
 assert (0 <= b mod n). apply Z_mod_lt. apply n_pos. omega.    
 Qed.
 
+Lemma Zmod_minus_n: forall x, (n-x) mod n = -x mod n. 
+Proof. intros. rewrite Zminus_mod. rewrite Z_mod_same_full.
+rewrite Zminus_mod_idemp_r. simpl. intuition.
+Qed.
+
 Lemma trans_mod_z:  forall a b c, Z.lt a b -> Z.le c a -> Z.lt c b. Proof. intros. omega. Qed.
 
-(* Lemma test_mo: forall a b c, -a + -b < -a + -c -> (-a + -c) mod n <=  *)
+Lemma s : forall x y z, x-y+z = x-(y-z). Proof. intros; omega. Qed.
+
+Lemma s1 : forall x y z, x+y-z = x+(y-z). Proof. intros; omega. Qed.
+
+Lemma s2: forall y,0 - - y =  y. Proof. intros; omega. Qed.
+
+(* à retenir: 
+Z.min (add_mod (opp_mod y) x) (add_mod (opp_mod x) y) < add_mod (dist x y) (dist y z) -> 
+Z.max (add_mod (opp_mod y) x) (add_mod (opp_mod x) y) = add_mod (dist x y) (dist y z)   *)
+
+(* intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.*)
+
+Lemma plus_mod_order: forall a b, 0 <= a < n -> 0 <= b < n -> 0 <= a + b < n
+                                -> a mod n <= (a + b) mod n.
+Proof. intros. rewrite Zmod_small. rewrite (Zmod_small (a+b) n); intuition. intuition. Qed.
+
+Lemma add_comm: forall x y, eq_mod (add_mod x y) (add_mod y x).
+Proof.
+intros. unfold add_mod. apply fast_Zplus_comm. intuition.
+Qed.
+
+Lemma dist_half_n: forall x y, (dist x y) <= n / 2.
+Proof.
+intros. unfold dist, add_mod, opp_mod, Z.min.  
+repeat rewrite Zplus_mod_idemp_l. repeat rewrite s.
+rewrite Zminus_mod; rewrite ( Zminus_mod n (x-y) n). rewrite Z_mod_same_full.
+repeat rewrite Zminus_mod_idemp_r. 
+destruct ((0- (y - x)) mod n ?= (0- (x - y)) mod n) eqn : Heq.
+ + rewrite Z.compare_eq_iff in *.  
+
+
+
+Lemma tri_le_n: forall x y z, (dist x y) + (dist y z) + (dist z x) <= n.
+Proof.
+intros. unfold dist, add_mod, opp_mod, Z.min. 
+repeat rewrite Zplus_mod_idemp_l. repeat rewrite s.
+rewrite (Zminus_mod n (x-z) n) ; rewrite (Zminus_mod n (y-x) n); rewrite (Zminus_mod n (x-y) n);
+rewrite (Zminus_mod n (z-y) n); rewrite (Zminus_mod n (y-z) n); rewrite (Zminus_mod n (z-x) n). rewrite Z_mod_same_full.
+repeat rewrite Zminus_mod_idemp_r. simpl.
+destruct (- (x - z) mod n ?= - (z - x) mod n) eqn:Heq1;
+destruct ( - (y - x) mod n ?= - (x - y) mod n) eqn:Heq2;
+destruct (- (z - y) mod n ?= - (y - z) mod n) eqn:Heq3.
++ repeat rewrite Z.compare_eq_iff in *. 
 
 Lemma triang_ineq : forall x y z, dist x z <= add_mod (dist x y) (dist y z).
 Proof.
-intros. unfold add_mod. unfold dist. unfold add_mod, opp_mod. unfold Z.min.
+intros. unfold add_mod. unfold dist. 
+unfold add_mod, opp_mod. 
 repeat rewrite Zplus_mod_idemp_l. repeat rewrite s. rewrite Zminus_mod.
 rewrite (Zminus_mod n (x-z) n) ; rewrite (Zminus_mod n (y-x) n); rewrite (Zminus_mod n (x-y) n);
 rewrite (Zminus_mod n (z-y) n); rewrite (Zminus_mod n (y-z) n) . rewrite Z_mod_same_full.
-repeat rewrite Zminus_mod_idemp_r. simpl. 
+repeat rewrite Zminus_mod_idemp_r. simpl.  unfold Z.min.
+ 
 destruct (- (z - x) mod n ?= - (x - z) mod n) eqn:Heq1.
 * destruct ( - (y - x) mod n ?= - (x - y) mod n) eqn:Heq2.
  - destruct (- (z - y) mod n ?= - (y - z) mod n) eqn:Heq3.
@@ -177,17 +225,18 @@ destruct (- (z - x) mod n ?= - (x - z) mod n) eqn:Heq1.
  - destruct (- (z - y) mod n ?= - (y - z) mod n) eqn:Heq3.
    + rewrite <- Zplus_mod. assert (-(y-x) + - (z - y) = -(z-x)). omega. rewrite H. intuition.
    + rewrite <- Zplus_mod. assert (-(y-x) + - (z - y) = -(z-x)). omega. rewrite H. intuition.
-   + rewrite Z.compare_eq_iff, Z.compare_lt_iff, Z.compare_gt_iff in *. 
-     assert (- (z - x) mod n + - (x - y) mod n 
-     <= (- (y - x) mod n + - (y - z) mod n) mod n + -(y - x) mod n).
-     
+   + rewrite Z.compare_eq_iff, Z.compare_lt_iff, Z.compare_gt_iff in *. assert (x mod n = z mod n).
+     apply dm0. 
+     replace (x-z) with (-(y - x) - (- - (z - y))). rewrite Zminus_mod. apply dm1.
+     repeat rewrite Zmod_mod. assert (- - (z - y) mod n < - (x - y) mod n).    
      admit.
   - destruct (- (z - y) mod n ?= - (y - z) mod n) eqn:Heq3.
    + rewrite Z.compare_eq_iff, Z.compare_gt_iff in *. rewrite Heq3. rewrite <- Zplus_mod.
      assert (-(x - y) + - (y - z) = -(x-z)). omega. rewrite H. intuition.
    + rewrite Z.compare_eq_iff, Z.compare_lt_iff, Z.compare_gt_iff in *. rewrite <- Zplus_mod.
      assert (- (x - y) + - (z - y) = - (z - x) + (- (x - y) + - (x - y))) by omega; rewrite H.
-     rewrite Zplus_mod. fold add_mod. rewrite (ordre_mod (- (z - x) mod n) ((- (x - y)) + - (x - y))).
+     rewrite Zplus_mod. 
+
 
   rewrite <- Zplus_mod. assert (-(y-x) + - (z - y) = -(z-x)). omega. rewrite H. intuition.
 (*      apply Z.le_trans. *)
@@ -208,10 +257,6 @@ intros. unfold add_mod. rewrite Zplus_mod_idemp_l. rewrite Zplus_mod_idemp_r.
 assert ((x + (y + z)) = ( x + y + z)). intuition. rewrite H; intuition.
 Qed.
 
-Lemma add_comm: forall x y, eq_mod (add_mod x y) (add_mod y x).
-Proof.
-intros. unfold add_mod. apply fast_Zplus_comm. intuition.
-Qed.
 
 Lemma add_origin: forall x, eq_mod (add_mod x origin) x.
 Proof.

@@ -343,8 +343,7 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   - rewrite <- mul_morph. rewrite Heq0. apply mul_origin.
   - intro Habs. apply Hneq. now apply Rminus_diag_uniq.
   Qed.
-  
-  Definition middle u v := mul (1/2)%R (add u v).
+ 
   
   Lemma mul_integral : forall k u, eq (mul k u) origin -> k = 0%R \/ eq u origin.
   Proof.
