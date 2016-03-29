@@ -286,22 +286,15 @@ replace (--(a-b)) with (a-b) in H0 by omega. rewrite H0 in H; simpl in H. assert
 apply n_pos. intuition. 
 Qed.
 
-(* Lemma aaa_admitted: forall x y z, 0 < dist x z -> dist x z < add_mod (dist x y) (dist y z) 
-                                <-> n - dist x z = dist x y + dist y z.
+Lemma eq_nz_n: forall a b,(a - b) mod n <> 0 <->  (a - b) mod n + (b - a) mod n = n.
 Proof.
-split; intros.
- 
- unfold add_mod, dist in *.
-unfold add_mod, opp_mod in *. 
- unfold Z.min in *. 
-* destruct (((n - z) mod n + x) mod n ?= ((n - x) mod n + z) mod n) eqn:Heq2;
-  destruct (((n - y) mod n + x) mod n ?= ((n - x) mod n + y) mod n) eqn:Heq3;
-  destruct (((n - z) mod n + y) mod n ?= ((n - y) mod n + z) mod n) eqn: Heq1;
-  try rewrite Z.compare_eq_iff in *; try rewrite Z.compare_lt_iff in *;
-  try rewrite Z.compare_gt_iff in *. 
-Admitted. *)
+intros. replace (a-b) with (-(b-a)) in * by omega. replace (b-a) with (-(a-b)) at 3 by omega.
+apply eq_nz_opp_n. 
+Qed.
 
-Lemma tri_ineq_help: forall x y z,
+
+
+Lemma tri_ineq_help_eq_lt_lt: forall x y z,
 (x - z) mod n = (z - x) mod n -> 
 0 < (x - z) mod n -> 
 (x - y) mod n < (y - x) mod n -> 
@@ -360,7 +353,7 @@ replace (x - y) with ((x - z) + (z - y)) in Heq2 by omega.
     transitivity (((y - z) mod n + (z - x) mod n - n) mod n); intuition. intuition.
 Qed.
 
-Lemma tri_ineq_help2: forall x y z,
+Lemma tri_ineq_help_eq_lt_lt2: forall x y z,
 (x - z) mod n = (z - x) mod n -> 
 0 < (x - z) mod n -> 
 (y - x) mod n < (x - y) mod n ->
@@ -417,6 +410,109 @@ replace (x - y) with ((x - z) + (z - y)) in Heq2 by omega.
     transitivity (((z - y) mod n + (z - x) mod n - n) mod n); intuition. intuition. intuition.
 Qed.
 
+Lemma tri_ineq_help_lt_lt_lt: forall x y z,  (x - z) mod n < (z - x) mod n ->
+0 < (x - z) mod n ->
+(x - y) mod n < (y - x) mod n ->
+(x - y) mod n <= n / 2 -> 
+(z - y) mod n < (y - z) mod n ->
+(z - y) mod n <= n / 2 ->
+(x - z) mod n <= n / 2 ->
+(x - z) mod n = ((x - y) mod n + (z - y) mod n) mod n \/
+(x - z) mod n < ((x - y) mod n + (z - y) mod n) mod n.
+Proof.
+intros x y z Heq1 eq0 Heq2 Hdxy Heq3 hdzy Hdxz.
+assert (lt_0_xy: 0<(y-x) mod n). assert (0 <= (x-y) mod n) by apply Z_mod_lt, n_pos; intuition.
+    assert (lt_0_yx: 0<(x-y) mod n). assert ((y-x) mod n <> 0) by intuition.
+    replace (y-x) with (-(x-y)) in H by omega. 
+    rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
+    replace (x-y) with (-(y-x)) by omega. assert (0<=-(y-x) mod n) by apply Z_mod_lt, n_pos.
+    intuition.
+    assert (lt_0_xz: 0<(z-x) mod n). assert (0 <= (x-z) mod n) by apply Z_mod_lt, n_pos; intuition.
+    assert (lt_0_zx: 0<(x-z) mod n). assert ((z-x) mod n <> 0) by intuition.
+    replace (z-x) with (-(x-z)) in H by omega. 
+    rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
+    replace (x-z) with (-(z-x)) by omega. assert (0<=-(z-x) mod n) by apply Z_mod_lt, n_pos.
+    intuition.
+    assert ((x - y) mod n + (z - y) mod n < n). destruct (Z.odd n) eqn: Hpar.
+    rewrite Zodd_mod in Hpar. apply Zeq_bool_eq in Hpar. rewrite Z_div_mod_eq with (b := 2);
+    intuition. rewrite Zodd_even_bool, Bool.negb_false_iff, Zeven_mod, <- Zeq_is_eq_bool in Hpar.
+    rewrite Zmod_eq_full in Hpar. apply Zminus_eq in Hpar.
+    rewrite <- Zplus_diag_eq_mult_2 in Hpar. 
+    assert (xy_lt_n2: (x-y) mod n < n/2). assert ((x-y) mod n <> 0) by intuition.
+    replace (x-y) with (-(y-x)) in H by omega. rewrite eq_nz_opp_n in H.
+    replace (-(y-x)) with (x-y) in H by omega;
+    replace (-(x-y)) with (y-x) in H by omega. intuition. intuition. intuition.
+    assert (0<=(x-y) mod n) by apply Z_mod_lt, n_pos.
+    assert (0<=(z-y) mod n) by apply Z_mod_lt, n_pos.
+    rewrite (Zmod_small ((x - y) mod n + (z - y) mod n) n); intuition.
+    replace (x-y) with (x-z+(z-y)) by omega.
+    assert ((x - z) mod n + (z - y) mod n < n).
+    destruct (Z.odd n) eqn: Hpar.
+    rewrite Zodd_mod in Hpar. apply Zeq_bool_eq in Hpar. rewrite Z_div_mod_eq with (b := 2);
+    intuition. rewrite Zodd_even_bool, Bool.negb_false_iff, Zeven_mod, <- Zeq_is_eq_bool in Hpar.
+    rewrite Zmod_eq_full in Hpar. apply Zminus_eq in Hpar.
+    rewrite <- Zplus_diag_eq_mult_2 in Hpar. 
+    assert (xz_lt_n2: (x-z) mod n < n/2). assert ((x-z) mod n <> 0) by intuition.
+    replace (x-z) with (-(z-x)) in H2 by omega. rewrite eq_nz_opp_n in H2.
+    replace (-(z-x)) with (x-z) in H2 by omega;
+    replace (-(x-z)) with (z-x) in H2 by omega. intuition. intuition. intuition.
+    rewrite Zplus_mod, (Zmod_small ((x - z) mod n + (z - y) mod n) n); intuition.
+    destruct ((z-y) mod n ?= 0) eqn : eH; try rewrite Z.compare_eq_iff in *;
+    try rewrite Z.compare_lt_iff in *; try rewrite Z.compare_gt_iff in *.
+    rewrite eH; intuition. intuition. intuition.
+Qed.
+
+Lemma tri_ineq_help_lt_lt_lt2: forall x y z,  (x - z) mod n < (z - x) mod n ->
+0 < (x - z) mod n ->
+(y - x) mod n < (x - y) mod n ->
+(y - x) mod n <= n / 2 -> 
+(y - z) mod n < (z - y) mod n ->
+(y - z) mod n <= n / 2 ->
+(x - z) mod n <= n / 2 ->
+(x - z) mod n = ((y - x) mod n + (y - z) mod n) mod n \/
+(x - z) mod n < ((y - x) mod n + (y - z) mod n) mod n.
+Proof.
+intros x y z Heq1 eq0 Heq2 Hdxy Heq3 hdzy Hdxz.
+assert (lt_0_xy: 0<(x-y) mod n). assert (0 <= (y-x) mod n) by apply Z_mod_lt, n_pos; intuition.
+    assert (lt_0_yx: 0<(y-x) mod n). assert ((x-y) mod n <> 0) by intuition.
+    replace (x-y) with (-(y-x)) in H by omega. 
+    rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
+    replace (y-x) with (-(x-y)) by omega. assert (0<=-(x-y) mod n) by apply Z_mod_lt, n_pos.
+    intuition.
+    assert (lt_0_xz: 0<(x-z) mod n). assert (0 <= (z-x) mod n) by apply Z_mod_lt, n_pos; intuition.
+    assert (lt_0_zx: 0<(z-x) mod n). assert ((x-z) mod n <> 0) by intuition.
+    replace (x-z) with (-(z-x)) in H by omega. 
+    rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
+    replace (z-x) with (-(x-z)) by omega. assert (0<=-(x-z) mod n) by apply Z_mod_lt, n_pos.
+    intuition.
+    assert ((y - x) mod n + (y - z) mod n < n). destruct (Z.odd n) eqn: Hpar.
+    rewrite Zodd_mod in Hpar. apply Zeq_bool_eq in Hpar. rewrite Z_div_mod_eq with (b := 2);
+    intuition. rewrite Zodd_even_bool, Bool.negb_false_iff, Zeven_mod, <- Zeq_is_eq_bool in Hpar.
+    rewrite Zmod_eq_full in Hpar. apply Zminus_eq in Hpar.
+    rewrite <- Zplus_diag_eq_mult_2 in Hpar. 
+    assert (xy_lt_n2: (y-x) mod n < n/2). assert ((y-x) mod n <> 0) by intuition.
+    replace (y-x) with (-(x-y)) in H by omega. rewrite eq_nz_opp_n in H.
+    replace (-(x-y)) with (y-x) in H by omega;
+    replace (-(y-x)) with (x-y) in H by omega. intuition. intuition. intuition.
+    assert (0<=(y-x) mod n) by apply Z_mod_lt, n_pos.
+    assert (0<=(y-z) mod n) by apply Z_mod_lt, n_pos.
+    rewrite (Zmod_small ((y - x) mod n + (y - z) mod n) n); intuition.
+    replace (y-z) with (y-x+(x-z)) by omega.
+    assert ((y - x) mod n + (x - z) mod n < n).
+    destruct (Z.odd n) eqn: Hpar.
+    rewrite Zodd_mod in Hpar. apply Zeq_bool_eq in Hpar. rewrite Z_div_mod_eq with (b := 2);
+    intuition. rewrite Zodd_even_bool, Bool.negb_false_iff, Zeven_mod, <- Zeq_is_eq_bool in Hpar.
+    rewrite Zmod_eq_full in Hpar. apply Zminus_eq in Hpar.
+    rewrite <- Zplus_diag_eq_mult_2 in Hpar. 
+    assert (xz_lt_n2: (x-z) mod n < n/2). assert ((x-z) mod n <> 0) by intuition.
+    replace (x-z) with (-(z-x)) in H2 by omega. rewrite eq_nz_opp_n in H2.
+    replace (-(z-x)) with (x-z) in H2 by omega;
+    replace (-(x-z)) with (z-x) in H2 by omega. intuition. intuition. intuition.
+    rewrite Zplus_mod, (Zmod_small ((y - x) mod n + (x - z) mod n) n); intuition.
+Qed.
+
+
+
 Lemma triang_ineq : forall x y z, dist x z <= add_mod (dist x y) (dist y z).
 Proof.
 intros. 
@@ -431,8 +527,6 @@ clear H.
 assert (Hdxy: dist x y <= n/2) by apply dist_half_n.
 assert (Hdyz: dist y z <= n/2) by apply dist_half_n.
 assert (Hdxz: dist x z <= n/2) by apply dist_half_n.
-(* assert ((dist x z < add_mod (dist x y) (dist y z)) <-> n-dist x z = (dist x y) + (dist y z)).
-rewrite aaa_admitted.  intuition. intuition. rewrite H3.*)
 unfold add_mod, dist, opp_mod, add_mod. 
 repeat rewrite Zplus_mod_idemp_l in *. rewrite <- (Zplus_mod_idemp_r x (n-y) n).
 replace (n - x + y) with (n + y - x) by omega. rewrite <- (Zminus_mod_idemp_r (n+y) x n).
@@ -454,34 +548,34 @@ try rewrite Z.compare_gt_iff in *.
     rewrite <- Zplus_mod. assert (eq2: (y-x)+(z-y) = (z-x)). omega. rewrite eq2. intuition.
   + rewrite <- Zplus_mod. assert (eq: (x-y) + (y - z) = (x-z)). omega. rewrite eq. intuition.
   + rewrite <- Zplus_mod. assert (eq: (x-y) + (y - z) = (x-z)). omega. rewrite eq. intuition.
-  + exfalso. apply tri_ineq_help with (x :=x) (y:=y) (z:=z); intuition. 
+  
+  + exfalso. apply tri_ineq_help_eq_lt_lt with (x :=x) (y:=y) (z:=z); intuition. 
   + rewrite Heq3. rewrite <- Zplus_mod.
      assert (eq: (y - x + (z - y)) = z-x). omega. rewrite eq. intuition.
-  + exfalso; apply tri_ineq_help2 with (x:=x) (y:=y) (z:=z); intuition.
+  + exfalso; apply tri_ineq_help_eq_lt_lt2 with (x:=x) (y:=y) (z:=z); intuition.
   + rewrite <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega. intuition.
   + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega. intuition.
+
   + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega. intuition.
   + rewrite Heq2, <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega. intuition.
   + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega; intuition.
   + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega. intuition.
-  + rewrite <- Zplus_mod. replace (x-y+(z-y)) with ((x-z) +((z-y) + (z-y))) by omega.
-    assert (lt_0_yz: 0<(y-z) mod n). assert (0 <= (z-y) mod n) by apply Z_mod_lt, n_pos; intuition.
-    assert (lt_0_zy: 0<(z-y) mod n). assert ((y-z) mod n <> 0) by intuition. 
-    replace (y-z) with (-(z-y)) in H by omega. 
-    rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
-    replace (z-y) with (-(y-z)) by omega. assert (0<=-(y-z) mod n) by apply Z_mod_lt, n_pos.
-    intuition. rewrite Zplus_mod. rewrite (Zplus_mod (z-y) (z-y) n).
-    rewrite Zplus_mod_idemp_r. replace ((z-y) mod n + (z-y) mod n) with (2*((z-y) mod n)) by omega.
-    assert (Hlb2: 0 <= 2 * ((z - y) mod n)). assert (0<= (z-y) mod n) by apply Z_mod_lt, n_pos.
-    intuition. assert (Hlb1: 0 < (x - z) mod n + 2 * ((z - y) mod n)). intuition.
-    assert (Hub2: 2 * ((z - y) mod n) <= n). transitivity (2*(n/2)).
-    intuition. apply Z_mult_div_ge. intuition. 
-    assert (Hub1: (x - z) mod n + 2 * ((z - y) mod n) <= 3*(n/2)). intuition.
-    assert (Hsplit: 0< (x - z) mod n + 2 * ((z - y) mod n) < n 
-            \/ n <= (x - z) mod n + 2 * ((z - y) mod n) <= 3*(n/2)). 
-    assert (n < 3*n/2). replace 3 with (Z.succ 2) by omega. rewrite <- Zmult_succ_l_reverse.
-    assert (1<n) by apply n_sup_1. assert (n <> 3*n/2). 
-     intuition.
+  + apply tri_ineq_help_lt_lt_lt; intuition.
+
+  + rewrite Heq3, <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega; intuition.
+  + apply tri_ineq_help_lt_lt_lt2; intuition.
+  + rewrite <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega; intuition.
+  + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega. intuition.
+  + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega. intuition.
+
+  + rewrite Heq2, <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega; intuition.
+  + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega; intuition.
+  + rewrite <- Zplus_mod. replace (x-y+(y-z)) with (x-z) by omega; intuition.
+  + rewrite Z.add_comm. apply tri_ineq_help_lt_lt_lt with (x:=z) (z:= x); intuition.
+  + rewrite Heq3, <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega; intuition.
+
+  + rewrite Z.add_comm. apply tri_ineq_help_lt_lt_lt2 with (x:=z) (z:=x); intuition.
+  + rewrite <- Zplus_mod. replace (y-x+(z-y)) with (z-x) by omega; intuition.
 Qed.
 
 

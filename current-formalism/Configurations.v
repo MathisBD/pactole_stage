@@ -14,6 +14,7 @@ Require Import SetoidList.
 Require Import Reals.
 Require Import Pactole.Preliminary.
 Require Import Robots.
+Require Import ZArith.
 
 
 (** * Configurations *)
@@ -326,10 +327,11 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   setoid_rewrite add_opp. now rewrite mul_origin.
   Qed.
   
-  Lemma mul_reg_l : forall k u v, k <> 0%Z -> eq (mul k u) (mul k v) -> eq u v.
+  Lemma mul_reg_l : forall k u v, k <> origin -> eq (mul k u) (mul k v) -> eq u v.
   Proof.
   intros k u v Hk Heq. setoid_rewrite <- mul_1.
-  replace 1%Z with (k / k)%Z.  
+  replace 1%Z with ((k/k))%Z. Focus 2. apply Z_div_same_full. intuition.
+  rewrite Zred_factor0 with (n:=k) at 1 3.
   setoid_rewrite mul_morph.  rewrite Heq.
   reflexivity.
   Qed.
