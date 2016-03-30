@@ -645,3 +645,4 @@ Module Ddef : DiscretSpaceDef with Definition t := Z
                                  with Definition add := add_mod
                                  with Definition mul := mul_mod
                                  with Definition opp := opp_mod.
+End Ddef.

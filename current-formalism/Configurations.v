@@ -236,10 +236,7 @@ Module Type DiscretSpace.
   Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
   Parameter mul_0 : forall u, eq (mul 0 u) origin.
   Parameter mul_origin : forall a, eq (mul a origin) origin.
-  Parameter mul_reg_l : forall k u v, k <> 0%Z -> eq (mul k u) (mul k v) -> eq u v.
-  Parameter mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
   Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
-  Parameter mul_integral : forall k u, eq (mul k u) origin -> k = 0%Z \/ eq u origin.
 
 End DiscretSpace.
 
@@ -256,7 +253,7 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   
   Include Def.
 
-  (** Proofs of two derivable properties about MetricSpace *)
+  (** Proofs of two derivable properties about DiscretSpace *)
   Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
   Proof.
   intros x x' Hx y y' Hy. apply Zle_antisym.
@@ -327,33 +324,7 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   setoid_rewrite add_opp. now rewrite mul_origin.
   Qed.
   
-  Lemma mul_reg_l : forall k u v, k <> origin -> eq (mul k u) (mul k v) -> eq u v.
-  Proof.
-  intros k u v Hk Heq. setoid_rewrite <- mul_1.
-  replace 1%Z with ((k/k))%Z. Focus 2. apply Z_div_same_full. intuition.
-  rewrite Zred_factor0 with (n:=k) at 1 3.
-  setoid_rewrite mul_morph.  rewrite Heq.
-  reflexivity.
-  Qed.
-  
-  Lemma mul_reg_r : forall k k' u, ~eq u origin -> eq (mul k u) (mul k' u) -> k = k'.
-  Proof.
-  intros k k' u Hu Heq. destruct (Rdec k k') as [| Hneq]; trivial.
-  assert (Heq0 : eq (mul (k -k') u)  origin).
-  { unfold Rminus. rewrite <- add_morph, minus_morph, Heq. apply add_opp. }
-  elim Hu. rewrite <- mul_1. rewrite <- (Rinv_l (k - k')).
-  - rewrite <- mul_morph. rewrite Heq0. apply mul_origin.
-  - intro Habs. apply Hneq. now apply Rminus_diag_uniq.
-  Qed.
  
-  
-  Lemma mul_integral : forall k u, eq (mul k u) origin -> k = 0%R \/ eq u origin.
-  Proof.
-  intros k u Heq. destruct (Rdec k 0%R).
-  - now left.
-  - right. apply mul_reg_l with k; trivial; []. now rewrite Heq, mul_origin.
-  Qed.
-
 
 
   
