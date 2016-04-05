@@ -330,60 +330,73 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   
 End MakeDiscretSpace.
 
+  Inductive state := Rdy2LC | Rdy2M.
+  Record StateR := { State: state; ChangeState: state -> state}.
+
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
-  Definition t := Names.ident -> Location.t.
-  Definition eq config₁ config₂ := forall id : Names.ident, Location.eq (config₁ id) (config₂ id).
+  Record Global := { Loc:> Location.t; Sta: StateR}.
+  Definition t := Names.ident -> Global.
+  Definition eq_state (st1 st2:StateR) := st1 = st2.
+  Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
+                                                            let c2 := (config₂ id) in
+                                                            Location.eq (Loc c1) (Loc c2) 
+                                                         /\ eq_state (Sta c1) (Sta c2).
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_bisim : Bisimulation t.
-  Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> Location.eq)%signature.
+  Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> Logic.eq)%signature.
   
   Parameter neq_equiv : forall config₁ config₂,
-    ~eq config₁ config₂ <-> exists id, ~Location.eq (config₁ id) (config₂ id).
+    ~eq config₁ config₂ <-> exists id, ~Logic.eq (config₁ id) (config₂ id).
   
-  Definition map (f : Location.t -> Location.t) (conf : t) := fun id => f (conf id).
-  Declare Instance map_compat : Proper ((Location.eq ==> Location.eq) ==> eq ==> eq) map.
+  Definition map (f : Global -> Global) (conf : t) : t := fun id => f (conf id).
+  Declare Instance map_compat : Proper ((Logic.eq ==> Logic.eq) ==> eq ==> eq) map.
   
-  Parameter Gpos : t -> list Location.t.
-  Parameter Bpos : t -> list Location.t.
-  Parameter list : t -> list Location.t.
-  Declare Instance Gpos_compat : Proper (eq ==> eqlistA Location.eq) Gpos.
-  Declare Instance Bpos_compat : Proper (eq ==> eqlistA Location.eq) Bpos.
-  Declare Instance list_compat : Proper (eq ==> eqlistA Location.eq) list.
+  Parameter Gpos : t -> list Global.
+  Parameter Bpos : t -> list Global.
+  Parameter list : t -> list Global.
+  Declare Instance Gpos_compat : Proper (eq ==> eqlistA Logic.eq) Gpos.
+  Declare Instance Bpos_compat : Proper (eq ==> eqlistA Logic.eq) Bpos.
+  Declare Instance list_compat : Proper (eq ==> eqlistA Logic.eq) list.
   
   Parameter Gpos_spec : forall conf, Gpos conf = List.map (fun g => conf (Good g)) Names.Gnames.
   Parameter Bpos_spec : forall conf, Bpos conf = List.map (fun g => conf (Byz g)) Names.Bnames.
   Parameter list_spec : forall conf, list conf = List.map conf Names.names.
 
-  Parameter Gpos_InA : forall l conf, InA Location.eq l (Gpos conf) <-> exists g, Location.eq l (conf (Good g)).
-  Parameter Bpos_InA : forall l conf, InA Location.eq l (Bpos conf) <-> exists b, Location.eq l (conf (Byz b)).
-  Parameter list_InA : forall l conf, InA Location.eq l (list conf) <-> exists id, Location.eq l (conf id).
+  Parameter Gpos_InA : forall l conf, InA Logic.eq l (Gpos conf) <-> exists g, Logic.eq l (conf (Good g)).
+  Parameter Bpos_InA : forall l conf, InA Logic.eq l (Bpos conf) <-> exists b, Logic.eq l (conf (Byz b)).
+  Parameter list_InA : forall l conf, InA Logic.eq l (list conf) <-> exists id, Logic.eq l (conf id).
   
   Parameter Gpos_length : forall conf, length (Gpos conf) = N.nG.
   Parameter Bpos_length : forall conf, length (Bpos conf) = N.nB.
   Parameter list_length : forall conf, length (list conf) = N.nG + N.nB.
   
-  Parameter list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
+  Parameter list_map : forall f, Proper (Logic.eq ==> Logic.eq) f -> 
     forall conf, list (map f conf) = List.map f (list conf).
-  Parameter map_merge : forall f g, Proper (Location.eq ==> Location.eq) f ->
-    Proper (Location.eq ==> Location.eq) g ->
+  Parameter map_merge : forall f g, Proper (Logic.eq ==> Logic.eq) f ->
+    Proper (Logic.eq ==> Logic.eq) g ->
     forall conf, eq (map g (map f conf)) (map (fun x => g (f x)) conf).
   Parameter map_id : forall conf, eq (map Datatypes.id conf) conf.
 End Configuration.
 
 
 Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names)
-  with Definition t := Names.ident -> Location.t.
+  with 
+  
+  Definition t := Names.ident -> Global.
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
-Definition t := Names.ident -> Location.t.
-Definition eq (conf₁ conf₂ : t) : Prop := forall id, Location.eq (conf₁ id) (conf₂ id).
 
+  Definition eq_state (st1 st2:StateR) := st1 = st2.
+  Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
+                                                            let c2 := (config₂ id) in
+                                                            Location.eq (Loc c1) (Loc c2) 
+                                                         /\ eq_state (Sta c1) (Sta c2).
 Instance eq_equiv : Equivalence eq.
 Proof. split.
-+ intros conf x. reflexivity.
-+ intros d1 d2 H r. symmetry. apply H.
-+ intros d1 d2 d3 H12 H23 x. transitivity (d2 x); auto.
++ intros conf x. split; reflexivity.
++ intros d1 d2 H r. split; symmetry; apply H.
++ intros d1 d2 d3 H12 H23 x. split. transitivity (d2 x); auto.
 Qed.
 
 Instance eq_bisim : Bisimulation t.
