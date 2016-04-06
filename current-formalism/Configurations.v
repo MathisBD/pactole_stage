@@ -335,8 +335,8 @@ End MakeDiscretSpace.
 
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
-  Record Global := { Loc:> Location.t; Sta: StateR}.
-  Definition t := Names.ident -> Global.
+  Record GlobalConf := { Loc:> Location.t; Sta: StateR}.
+  Definition t := Names.ident -> GlobalConf.
   Definition eq_state (st1 st2:StateR) := st1 = st2.
   Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
                                                             let c2 := (config₂ id) in
@@ -349,12 +349,12 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Parameter neq_equiv : forall config₁ config₂,
     ~eq config₁ config₂ <-> exists id, ~Logic.eq (config₁ id) (config₂ id).
   
-  Definition map (f : Global -> Global) (conf : t) : t := fun id => f (conf id).
+  Definition map (f : GlobalConf -> GlobalConf) (conf : t) : t := fun id => f (conf id).
   Declare Instance map_compat : Proper ((Logic.eq ==> Logic.eq) ==> eq ==> eq) map.
   
-  Parameter Gpos : t -> list Global.
-  Parameter Bpos : t -> list Global.
-  Parameter list : t -> list Global.
+  Parameter Gpos : t -> list GlobalConf.
+  Parameter Bpos : t -> list GlobalConf.
+  Parameter list : t -> list GlobalConf.
   Declare Instance Gpos_compat : Proper (eq ==> eqlistA Logic.eq) Gpos.
   Declare Instance Bpos_compat : Proper (eq ==> eqlistA Logic.eq) Bpos.
   Declare Instance list_compat : Proper (eq ==> eqlistA Logic.eq) list.
@@ -380,10 +380,10 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
 End Configuration.
 
 
-Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names)
-  with 
-  
-  Definition t := Names.ident -> Global.
+Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
+
+  Record GlobalConf := {Loc : Location.t; Sta:StateR}.
+  Definition t := Names.ident -> GlobalConf.
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
 
@@ -396,20 +396,41 @@ Instance eq_equiv : Equivalence eq.
 Proof. split.
 + intros conf x. split; reflexivity.
 + intros d1 d2 H r. split; symmetry; apply H.
-+ intros d1 d2 d3 H12 H23 x. split. transitivity (d2 x); auto.
++ intros d1 d2 d3 H12 H23 x. 
+  split;
+  unfold eq in *.
+  transitivity (Loc (d2 x)).
+  apply H12.
+  apply H23.
+  transitivity (Sta (d2 x)).
+  apply H12.
+  apply H23.
 Qed.
 
 Instance eq_bisim : Bisimulation t.
 Proof. exists eq. apply eq_equiv. Defined.
 
-Instance eq_subrelation : subrelation eq (Logic.eq ==> Location.eq)%signature.
-Proof. intros ? ? Hconf ? id ?. subst. apply Hconf. Qed.
+Instance eq_subrelation : subrelation eq (Logic.eq ==> Logic.eq)%signature.
+Proof.
+intros ? ? Hconf ? id ?.
+subst.
+unfold eq in Hconf.
+destruct Hconf with id.
+destruct (x id), (y id).
+unfold Loc in H.
+unfold Sta in H0.
+unfold eq_state in *.
+f_equal;
+intuition.
+admit.
+Admitted.
 
 (** Pointwise mapping of a function on a configuration *)
-Definition map (f : Location.t -> Location.t) (conf : t) := fun id => f (conf id).
+Definition map (f : GlobalConf -> GlobalConf) (conf : t) := fun id => f (conf id).
 
-Instance map_compat : Proper ((Location.eq ==> Location.eq) ==> eq ==> eq) map.
-Proof. intros f g Hfg ? ? Hconf id. unfold map. apply Hfg, Hconf. Qed.
+Instance map_compat : Proper ((Logic.eq ==> Logic.eq) ==> eq ==> eq) map.
+Proof. intros f g Hfg ? ? Hconf id. split. unfold map. destruct f. destruct Hconf with id.
+destruct g,x,y in *. unfold Loc in *. apply H. apply Hfg, H. Hconf. Qed.
 
 (** Configurations seen as lists *)
 Definition Gpos (conf : t) := Names.Internals.fin_map (fun g => conf (Good g)).
