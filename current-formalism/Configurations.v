@@ -15,6 +15,7 @@ Require Import Reals.
 Require Import Pactole.Preliminary.
 Require Import Robots.
 Require Import ZArith.
+Require Import Decidable.
 
 
 (** * Configurations *)
@@ -324,57 +325,66 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   setoid_rewrite add_opp. now rewrite mul_origin.
   Qed.
   
- 
-
-
-  
 End MakeDiscretSpace.
 
-  Inductive state := Rdy2LC | Rdy2M.
-  Record StateR := { State: state; ChangeState: state -> state}.
+  Inductive State := Rdy2LC | Rdy2M.
+  Definition ChangeState s := match s with
+    | Rdy2LC => Rdy2M
+    | Rdy2M => Rdy2LC
+  end.
+  
+
+  Lemma State_eq_dec: forall (s1 s2 : State), {s1 = s2} + {s1 <> s2}.
+  Proof.
+  intros.
+  destruct s1,s2; auto. right. intro. inversion H. right; intro; inversion H.
+  Qed.
+
 
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
-  Record GlobalConf := { Loc:> Location.t; Sta: StateR}.
-  Definition t := Names.ident -> GlobalConf.
-  Definition eq_state (st1 st2:StateR) := st1 = st2.
+  Record RobotConf := { Loc:> Location.t; Sta: State}.
+  Definition t := Names.ident -> RobotConf.
+  Definition eq_State (st1 st2:State) := st1 = st2.
+  Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
   Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
                                                             let c2 := (config₂ id) in
-                                                            Location.eq (Loc c1) (Loc c2) 
-                                                         /\ eq_state (Sta c1) (Sta c2).
+                                                            eq_RobotConf c1 c2.
+  
   Declare Instance eq_equiv : Equivalence eq.
+  Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
   Declare Instance eq_bisim : Bisimulation t.
-  Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> Logic.eq)%signature.
+  Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
   
   Parameter neq_equiv : forall config₁ config₂,
-    ~eq config₁ config₂ <-> exists id, ~Logic.eq (config₁ id) (config₂ id).
+    ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
   
-  Definition map (f : GlobalConf -> GlobalConf) (conf : t) : t := fun id => f (conf id).
-  Declare Instance map_compat : Proper ((Logic.eq ==> Logic.eq) ==> eq ==> eq) map.
+  Definition map (f : RobotConf -> RobotConf) (conf : t) : t := fun id => f (conf id).
+  Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
   
-  Parameter Gpos : t -> list GlobalConf.
-  Parameter Bpos : t -> list GlobalConf.
-  Parameter list : t -> list GlobalConf.
-  Declare Instance Gpos_compat : Proper (eq ==> eqlistA Logic.eq) Gpos.
-  Declare Instance Bpos_compat : Proper (eq ==> eqlistA Logic.eq) Bpos.
-  Declare Instance list_compat : Proper (eq ==> eqlistA Logic.eq) list.
+  Parameter Gpos : t -> list RobotConf.
+  Parameter Bpos : t -> list RobotConf.
+  Parameter list : t -> list RobotConf.
+  Declare Instance Gpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Gpos.
+  Declare Instance Bpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Bpos.
+  Declare Instance list_compat : Proper (eq ==> eqlistA eq_RobotConf) list.
   
   Parameter Gpos_spec : forall conf, Gpos conf = List.map (fun g => conf (Good g)) Names.Gnames.
   Parameter Bpos_spec : forall conf, Bpos conf = List.map (fun g => conf (Byz g)) Names.Bnames.
   Parameter list_spec : forall conf, list conf = List.map conf Names.names.
 
-  Parameter Gpos_InA : forall l conf, InA Logic.eq l (Gpos conf) <-> exists g, Logic.eq l (conf (Good g)).
-  Parameter Bpos_InA : forall l conf, InA Logic.eq l (Bpos conf) <-> exists b, Logic.eq l (conf (Byz b)).
-  Parameter list_InA : forall l conf, InA Logic.eq l (list conf) <-> exists id, Logic.eq l (conf id).
+  Parameter Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
+  Parameter Bpos_InA : forall l conf, InA eq_RobotConf l (Bpos conf) <-> exists b, eq_RobotConf l (conf (Byz b)).
+  Parameter list_InA : forall l conf, InA eq_RobotConf l (list conf) <-> exists id, eq_RobotConf l (conf id).
   
   Parameter Gpos_length : forall conf, length (Gpos conf) = N.nG.
   Parameter Bpos_length : forall conf, length (Bpos conf) = N.nB.
   Parameter list_length : forall conf, length (list conf) = N.nG + N.nB.
   
-  Parameter list_map : forall f, Proper (Logic.eq ==> Logic.eq) f -> 
+  Parameter list_map : forall f, Proper (eq_RobotConf ==> eq_RobotConf) f -> 
     forall conf, list (map f conf) = List.map f (list conf).
-  Parameter map_merge : forall f g, Proper (Logic.eq ==> Logic.eq) f ->
-    Proper (Logic.eq ==> Logic.eq) g ->
+  Parameter map_merge : forall f g, Proper (eq_RobotConf ==> eq_RobotConf) f ->
+    Proper (eq_RobotConf ==> eq_RobotConf) g ->
     forall conf, eq (map g (map f conf)) (map (fun x => g (f x)) conf).
   Parameter map_id : forall conf, eq (map Datatypes.id conf) conf.
 End Configuration.
@@ -382,16 +392,17 @@ End Configuration.
 
 Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
 
-  Record GlobalConf := {Loc : Location.t; Sta:StateR}.
-  Definition t := Names.ident -> GlobalConf.
+  Record RobotConf := {Loc : Location.t; Sta:State}.
+  Definition t := Names.ident -> RobotConf.
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
 
-  Definition eq_state (st1 st2:StateR) := st1 = st2.
+  Definition eq_State (st1 st2:State) := st1 = st2.
+  Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
   Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
                                                             let c2 := (config₂ id) in
-                                                            Location.eq (Loc c1) (Loc c2) 
-                                                         /\ eq_state (Sta c1) (Sta c2).
+                                                            eq_RobotConf c1 c2.
+  
 Instance eq_equiv : Equivalence eq.
 Proof. split.
 + intros conf x. split; reflexivity.
@@ -407,44 +418,57 @@ Proof. split.
   apply H23.
 Qed.
 
+Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
+Proof.
+split.
++ split; reflexivity.
++ split; symmetry; apply H.
++ split. unfold eq_RobotConf in *.
+  transitivity (Loc y).
+  apply H.
+  apply H0.
+  transitivity (Sta y).
+  apply H.
+  apply H0.
+Qed.
+
 Instance eq_bisim : Bisimulation t.
 Proof. exists eq. apply eq_equiv. Defined.
 
-Instance eq_subrelation : subrelation eq (Logic.eq ==> Logic.eq)%signature.
+Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
 Proof.
 intros ? ? Hconf ? id ?.
 subst.
-unfold eq in Hconf.
 destruct Hconf with id.
-destruct (x id), (y id).
-unfold Loc in H.
-unfold Sta in H0.
-unfold eq_state in *.
-f_equal;
-intuition.
-admit.
-Admitted.
+unfold eq_RobotConf.
+auto.
+Qed.
 
 (** Pointwise mapping of a function on a configuration *)
-Definition map (f : GlobalConf -> GlobalConf) (conf : t) := fun id => f (conf id).
+Definition map (f : RobotConf -> RobotConf) (conf : t) := fun id => f (conf id).
 
-Instance map_compat : Proper ((Logic.eq ==> Logic.eq) ==> eq ==> eq) map.
-Proof. intros f g Hfg ? ? Hconf id. split. unfold map. destruct f. destruct Hconf with id.
-destruct g,x,y in *. unfold Loc in *. apply H. apply Hfg, H. Hconf. Qed.
+Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
+Proof.
+intros f g Hfg ? ? Hconf id.
+unfold map.
+apply Hfg.
+unfold eq in Hconf.
+auto.
+Qed.
 
 (** Configurations seen as lists *)
 Definition Gpos (conf : t) := Names.Internals.fin_map (fun g => conf (Good g)).
 Definition Bpos (conf : t) := Names.Internals.fin_map (fun b => conf (Byz b)).
 Definition list conf := Gpos conf ++ Bpos conf.
 
-Instance Gpos_compat : Proper (eq ==> eqlistA Location.eq) Gpos.
+Instance Gpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Gpos.
 Proof. repeat intro. unfold Gpos. apply Names.Internals.fin_map_compatA. repeat intro. now subst. Qed.
 
-Instance Bpos_compat : Proper (eq ==> eqlistA Location.eq) Bpos.
+Instance Bpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Bpos.
 Proof. repeat intro. unfold Bpos. apply Names.Internals.fin_map_compatA. repeat intro. now subst. Qed.
 
-Instance list_compat : Proper (eq ==> eqlistA Location.eq) list.
-Proof. repeat intro. unfold list. now apply (eqlistA_app _); apply Gpos_compat || apply Bpos_compat. Qed.
+Instance list_compat : Proper (eq ==> eqlistA eq_RobotConf) list.
+Proof. repeat intro. unfold list. apply (eqlistA_app _); apply Gpos_compat || apply Bpos_compat; auto. Qed.
 
 Lemma Gpos_spec : forall conf, Gpos conf = List.map (fun g => conf (Good g)) Names.Gnames.
 Proof. intros. unfold Gpos, Names.Gnames, Names.Internals.Gnames. now rewrite <- Names.Internals.map_fin_map. Qed.
@@ -458,13 +482,19 @@ intros. unfold list. unfold Names.names, Names.Internals.names.
 rewrite map_app, Gpos_spec, Bpos_spec. now do 2 rewrite map_map.
 Qed.
 
-Lemma Gpos_InA : forall l conf, InA Location.eq l (Gpos conf) <-> exists g, Location.eq l (conf (Good g)).
-Proof. intros. unfold Gpos. rewrite (Names.Internals.fin_map_InA _ Location.eq_dec). reflexivity. Qed.
+Lemma eq_RobotConf_dec: forall x y, {eq_RobotConf x y} + {~ eq_RobotConf x y}.
+Proof.
+intros. unfold eq_RobotConf, eq_State.
+destruct (Location.eq_dec (Loc x) (Loc y)), (State_eq_dec (Sta x) (Sta y)); intuition.
+Qed.
 
-Lemma Bpos_InA : forall l conf, InA Location.eq l (Bpos conf) <-> exists b, Location.eq l (conf (Byz b)).
-Proof. intros. unfold Bpos. rewrite (Names.Internals.fin_map_InA _ Location.eq_dec). reflexivity. Qed.
+Lemma Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
+Proof. intros. unfold Gpos,eq_RobotConf. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.
 
-Lemma list_InA : forall l conf, InA Location.eq l (list conf) <-> exists id, Location.eq l (conf id).
+Lemma Bpos_InA : forall l conf, InA eq_RobotConf l (Bpos conf) <-> exists b, eq_RobotConf l (conf (Byz b)).
+Proof. intros. unfold Bpos. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.
+
+Lemma list_InA : forall l conf, InA eq_RobotConf l (list conf) <-> exists id, eq_RobotConf l (conf id).
 Proof.
 intros. unfold list. rewrite (InA_app_iff _). split; intro Hin.
 + destruct Hin as [Hin | Hin]; rewrite Gpos_InA in Hin || rewrite Bpos_InA in Hin; destruct Hin; eauto.
@@ -480,25 +510,25 @@ Proof. intro. unfold Bpos. apply Names.Internals.fin_map_length. Qed.
 Lemma list_length : forall conf, length (list conf) = N.nG + N.nB.
 Proof. intro. unfold list. now rewrite app_length, Gpos_length, Bpos_length. Qed.
 
-Lemma list_map : forall f, Proper (Location.eq ==> Location.eq) f -> 
+Lemma list_map : forall f, Proper (eq_RobotConf ==> eq_RobotConf) f -> 
   forall conf, list (map f conf) = List.map f (list conf).
 Proof.
 intros f Hf conf. unfold list, map, Gpos, Bpos.
 repeat rewrite Names.Internals.map_fin_map. rewrite List.map_app. reflexivity.
 Qed.
 
-Lemma map_merge : forall f g, Proper (Location.eq ==> Location.eq) f -> Proper (Location.eq ==> Location.eq) g ->
+Lemma map_merge : forall f g, Proper (eq_RobotConf ==> eq_RobotConf) f -> Proper (eq_RobotConf ==> eq_RobotConf) g ->
   forall conf, eq (map g (map f conf)) (map (fun x => g (f x)) conf).
-Proof. repeat intro. reflexivity. Qed.
+Proof. repeat intro. split; reflexivity. Qed.
 
 Lemma map_id : forall conf, eq (map Datatypes.id conf) conf.
-Proof. repeat intro. reflexivity. Qed.
+Proof. repeat intro. split; reflexivity. Qed.
 
 Lemma neq_equiv : forall config₁ config₂,
-  ~eq config₁ config₂ <-> exists id, ~Location.eq (config₁ id) (config₂ id).
+  ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
 Proof.
 intros config₁ config₂. split; intro Hneq.
-* assert (Hlist : ~eqlistA Location.eq (List.map config₁ Names.names) (List.map config₂ Names.names)).
+* assert (Hlist : ~eqlistA eq_RobotConf (List.map config₁ Names.names) (List.map config₂ Names.names)).
   { intro Habs. apply Hneq. intro id.
     assert (Hin : List.In id Names.names) by apply Names.In_names.
     induction Names.names as [| id' l].
@@ -506,7 +536,7 @@ intros config₁ config₂. split; intro Hneq.
     - inversion_clear Habs. inversion_clear Hin; solve [now subst | now apply IHl]. }
   induction Names.names as [| id l].
   + now elim Hlist.
-  + cbn in Hlist. destruct (Location.eq_dec (config₁ id) (config₂ id)) as [Hid | Hid].
+  + cbn in Hlist. destruct (eq_RobotConf_dec (config₁ id) (config₂ id)) as [Hid | Hid].
     - apply IHl. intro Heq. apply Hlist. now constructor.
     - eauto.
 * destruct Hneq as [id Hneq]. intro Habs. apply Hneq, Habs.

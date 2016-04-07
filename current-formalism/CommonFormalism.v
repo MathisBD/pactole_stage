@@ -16,6 +16,7 @@ Require Import Morphisms.
 Require Import RelationPairs.
 Require Import Reals.
 Require Import Psatz.
+Require Import Setoid.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
@@ -143,8 +144,8 @@ Instance eeq_equiv : Equivalence eeq.
 Proof. split.
 + coinduction eeq_refl. reflexivity.
 + coinduction eeq_sym. symmetry. now inversion H. now inversion H.
-+ coinduction eeq_trans. intro.
-  - inversion H. inversion H0. now transitivity (execution_head y id).
++ coinduction eeq_trans. 
+  - inversion H. inversion H0. now transitivity (execution_head y).
   - apply (eeq_trans (execution_tail x) (execution_tail y) (execution_tail z)).
     now inversion H. now inversion H0.
 Qed.
