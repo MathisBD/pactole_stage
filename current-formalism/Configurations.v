@@ -328,11 +328,7 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
 End MakeDiscretSpace.
 
   Inductive State := Rdy2LC | Rdy2M.
-  Definition ChangeState s := match s with
-    | Rdy2LC => Rdy2M
-    | Rdy2M => Rdy2LC
-  end.
-  
+
 
   Lemma State_eq_dec: forall (s1 s2 : State), {s1 = s2} + {s1 <> s2}.
   Proof.
@@ -361,6 +357,9 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   
   Definition map (f : RobotConf -> RobotConf) (conf : t) : t := fun id => f (conf id).
   Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
+
+  Definition get_State (r: RobotConf) := Sta r.
+  Declare Instance get_State_compat : Proper (eq_RobotConf ==> eq_State) get_State.
   
   Parameter Gpos : t -> list RobotConf.
   Parameter Bpos : t -> list RobotConf.
@@ -455,6 +454,18 @@ apply Hfg.
 unfold eq in Hconf.
 auto.
 Qed.
+
+Definition get_State (r: RobotConf) := Sta r.
+
+Instance get_State_compat : Proper (eq_RobotConf ==> eq_State) get_State.
+Proof.
+intros r1 r2 Hr.
+unfold eq_RobotConf in *.
+destruct Hr.
+unfold get_State.
+assumption.
+Qed.
+
 
 (** Configurations seen as lists *)
 Definition Gpos (conf : t) := Names.Internals.fin_map (fun g => conf (Good g)).
