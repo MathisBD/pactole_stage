@@ -327,25 +327,19 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   
 End MakeDiscretSpace.
 
-  Inductive State := Rdy2LC | Rdy2M.
 
+Inductive State := Rdy2LC | Rdy2M.
 
-  Lemma State_eq_dec: forall (s1 s2 : State), {s1 = s2} + {s1 <> s2}.
-  Proof.
-  intros.
-  destruct s1,s2; auto. right. intro. inversion H. right; intro; inversion H.
-  Qed.
-
+Lemma State_eq_dec: forall (s1 s2 : State), {s1 = s2} + {s1 <> s2}.
+Proof. decide equality. Qed.
 
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
-  Record RobotConf := { Loc:> Location.t; Sta: State}.
+  Record RobotConf := { Loc :> Location.t; Sta : State}.
   Definition t := Names.ident -> RobotConf.
-  Definition eq_State (st1 st2:State) := st1 = st2.
+  Definition eq_State (st1 st2 : State) := st1 = st2.
   Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
-  Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
-                                                            let c2 := (config₂ id) in
-                                                            eq_RobotConf c1 c2.
+  Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
   
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
@@ -398,9 +392,7 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
 
   Definition eq_State (st1 st2:State) := st1 = st2.
   Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
-  Definition eq config₁ config₂ := forall id : Names.ident, let c1 := (config₁ id) in
-                                                            let c2 := (config₂ id) in
-                                                            eq_RobotConf c1 c2.
+  Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
   
 Instance eq_equiv : Equivalence eq.
 Proof. split.

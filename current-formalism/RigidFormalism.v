@@ -337,6 +337,16 @@ Qed.
 
 (** ** One step executions *)
 
+Definition apply_sim (sim : Sim.t) (info : Config.RobotConf) :=
+  {| Config.Loc := sim info; Config.Sta := Config.Sta info |}.
+
+Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
+Proof.
+intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
+- apply Hsim, Hconf.
+- apply Hconf.
+Qed.
+
 (** [round r da conf] return the new configuration of robots (that is a function
     giving the position of each robot) from the previous one [conf] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
@@ -344,16 +354,19 @@ Qed.
 Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config.t :=
   (** for a given robot, we compute the new configuration *)
   fun id =>
-     let t := conf id in (** t is the current position of g seen by the demon *) 
     match da.(step) id with (** first see whether the robot is activated *)
       | None => conf id (** If g is not activated, do nothing *)
       | Some sim => (** g is activated and [sim (conf g)] is its similarity *)
         match id with
-        | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
+        | Byz b => (* byzantine robots are relocated by the demon *)
+            {| Config.Loc := da.(relocate_byz) b;
+               Config.Sta := Config.Sta (conf id) |}
         | Good g => (* configuration expressed in the frame of g *)
-          let conf_seen_by_g := Config.map (sim (conf (Good g))) conf in
+          let frame_change := sim (conf id) in
+          let local_conf := Config.map (apply_sim frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
-          (sim (conf (Good g)))⁻¹ (r (Spect.from_config conf_seen_by_g))
+          {| Config.Loc := frame_change⁻¹ (r (Spect.from_config local_conf));
+             Config.Sta := Config.Sta (conf id) |}
         end
     end.
 
@@ -363,10 +376,12 @@ intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
 unfold req in Hr. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
 destruct (step da1 id), (step da2 id), id; try now elim Hstep.
-+ f_equiv.
-  - do 2 f_equiv. apply Hstep, Hconf.
-  - apply Hr, Spect.from_config_compat, Config.map_compat; trivial. apply Hstep, Hconf.
-+ rewrite Hda. reflexivity.
+* hnf. simpl. split.
+  + f_equiv.
+    - apply Hstep, Hconf.
+    - apply Hr, Spect.from_config_compat, Config.map_compat; trivial. f_equiv. apply Hstep, Hconf.
+  + apply Hconf.
+* hnf. split; try apply Hconf; []. simpl. rewrite Hda. reflexivity.
 Qed.
 
 (** A third subset of robots, moving ones *)
@@ -413,12 +428,15 @@ Qed.
 
 (** Some results *)
 
+(* no longer true as the state may change even if the robot does not move. *)
 Lemma no_moving_same_conf : forall r da config,
   moving r da config = List.nil -> Config.eq (round r da config) config.
 Proof.
-intros r da config Hmove id.
-destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | Heq]; trivial.
-rewrite <- moving_spec, Hmove in Heq. inversion Heq.
+intros r da config Hmove id. hnf. split; simpl.
++ destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
+  rewrite <- moving_spec, Hmove in Heq. inversion Heq.
++ hnf. unfold round. destruct (step da id) eqn:Hstep; trivial; [].
+  now destruct id; simpl.
 Qed.
 
 Corollary no_active_same_conf :
