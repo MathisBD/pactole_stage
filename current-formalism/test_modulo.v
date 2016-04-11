@@ -34,7 +34,11 @@ Qed.
 
 Definition eq_dec : forall x y, {~ eq_mod x y} + {eq_mod x y}:= eq_dec_lem.
 
-
+Lemma n_not_0: n <> 0.
+Proof.
+  assert (n>0) by apply n_pos. intuition.
+Qed.
+  
 Lemma mod_pos_z : forall (x:Z), ( 0 <= (Zmod x n) < n ).
 Proof.
 intros. apply Z_mod_lt. apply n_pos.
@@ -306,6 +310,25 @@ apply opp_mod_eq.
 replace (- - (b - c)) with (b-c) by omega.
 reflexivity.
 Qed.
+
+Lemma mod_simp_1:
+  forall x y, ((n - y) mod n + x) mod n = (x - y) mod n.
+Proof.
+  intros.
+  rewrite Zplus_mod_idemp_l, s, Zminus_mod, Z_mod_same_full, Zminus_mod_idemp_r, s2.
+  reflexivity.
+Qed.
+
+Lemma add_opp_mod_n: forall x, x mod n + (-x) mod n = 0 \/ x mod n + (-x) mod n = n.
+Proof.
+  intros.
+  destruct (eq_dec x 0).
+  - right. rewrite Z.mod_opp_l_nz. intuition. apply n_not_0.
+    unfold eq_mod in n0. rewrite Zmod_0_l in n0. assumption.
+  - left. unfold eq_mod in e. rewrite e, Zmod_0_l in *. simpl.
+    apply Z_mod_zero_opp_full. assumption.
+Qed.
+
 
 Lemma dist_half_n: forall x y, (dist x y) <= n / 2.
 Proof.
