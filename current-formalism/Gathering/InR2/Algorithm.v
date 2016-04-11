@@ -1058,7 +1058,7 @@ Theorem round_simplify : forall da conf,
                            let s := !! conf in
                            match Spect.support (Spect.max s) with
                            | nil => conf id (* only happen with no robots *)
-                           | pt :: nil => pt (* majority stack *)
+                           | pt :: nil => pt (* majority tower *)
                            | _ => if is_clean s then target s else
                                     if mem R2.eq_dec (conf id) (SECT s) then conf id else target s
                            end
@@ -1686,7 +1686,7 @@ Qed.
 (** ***  Lemma about the majority case  **)
 
 (* Next lemmas taken from the gathering algo in R. *)
-(** When there is a majority stack, it grows and all other stacks wither. **)
+(** When there is a majority tower, it grows and all other towers wither. **)
 Theorem Majority_grow :  forall pt config da, MajTower_at pt config ->
   (!! config)[pt] <= (!! (round gatherR2 da config))[pt].
 Proof.
@@ -1714,7 +1714,7 @@ induction Spect.Names.names as [| id l]; simpl.
   - R2dec_full; try apply le_n_S; apply IHl.
 Qed.
 
-(** Whenever there is a majority stack, it remains forever so. *)
+(** Whenever there is a majority tower, it remains forever so. *)
 Theorem MajTower_at_forever : forall pt conf da, MajTower_at pt conf -> MajTower_at pt (round gatherR2 da conf).
 Proof.
 intros pt conf da Hmaj x Hx. assert (Hs := Hmaj x Hx).
