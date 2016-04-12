@@ -31,7 +31,7 @@ Module Sim := Common.Sim.
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : Loc.t) (conf : Config.t) := forall g : Names.G, Loc.eq (conf (Good g)) pt.
+Definition gathered_at (pt : Loc.t) (conf : Config.t) := forall g : Names.G, let (loc,_) := conf (Good g) in Loc.eq loc pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)
@@ -68,8 +68,11 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 (** Compatibility properties *)
 Instance gathered_at_compat : Proper (Loc.eq ==> Config.eq ==> iff) gathered_at.
 Proof.
-intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at. setoid_rewrite Hpt.
-split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
+intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at. 
+split; intros H g; specialize (H g); specialize (Hconfig (Good g));
+destruct (config2 (Good g)) eqn:c2, (config1 (Good g)) eqn:c1 in *.
+rewrite <- Hpt, <- H; unfold Config.eq, Config.eq_RobotConf in Hconfig;
+intuition. rewrite Hpt, <- H. unfold Config.eq, Config.eq_RobotConf in Hconfig; intuition.
 Qed.
 
 Instance Gather_compat : Proper (Loc.eq ==> eeq ==> iff) Gather.

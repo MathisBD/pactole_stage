@@ -328,17 +328,30 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
 End MakeDiscretSpace.
 
 
-Inductive State := Rdy2LC | Rdy2M.
-
-Lemma State_eq_dec: forall (s1 s2 : State), {s1 = s2} + {s1 <> s2}.
-Proof. decide equality. Qed.
 
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
+
+
+  Inductive State :=
+    | Look1
+    | Look2 (loc_of_g: Location.t)
+    | Compute (loc_of_g: Location.t)
+    | Move (target : Location.t).
+ 
   Record RobotConf := { Loc :> Location.t; Sta : State}.
-  Definition t := Names.ident -> RobotConf.
-  Definition eq_State (st1 st2 : State) := st1 = st2.
+
+  Definition t := Names.ident -> RobotConf. 
+
+  Definition eq_State (st1 st2 : State) :=  match st1 with 
+    | Look1 => match st2 with | Look1 => True | _ => False end
+    | Look2 loc1 => match st2 with | Look2 loc2 => Location.eq loc1 loc2 | _ => False end
+    | Compute loc1 => match st2 with | Compute loc2 => Location.eq loc1 loc2 | _ => False end
+    | Move ta1 => match st2 with | Move ta2 => Location.eq ta1 ta2 | _ => False end
+  end.
+ 
   Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
+
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
   
   Declare Instance eq_equiv : Equivalence eq.
@@ -348,13 +361,22 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   
   Parameter neq_equiv : forall config₁ config₂,
     ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
-  
-  Definition map (f : RobotConf -> RobotConf) (conf : t) : t := fun id => f (conf id).
-  Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
 
   Definition get_State (r: RobotConf) := Sta r.
   Declare Instance get_State_compat : Proper (eq_RobotConf ==> eq_State) get_State.
-  
+
+  Definition get_Loc (r:RobotConf) := Loc r.
+  Declare Instance get_Loc_compat : Proper (eq_RobotConf ==> Location.eq) get_Loc.
+
+  Definition map (f : RobotConf -> RobotConf) (conf : t) : t := fun id => f (conf id).
+  Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
+
+  Definition set_Look2  loc :State := Look2 loc.
+  Declare Instance set_Look2_compat : Proper (Location.eq ==> eq_State) set_Look2.
+ 
+  Definition set_RC loc sta : RobotConf := {| Loc := loc; Sta := sta|}.
+  Declare Instance set_RC_compat : Proper (Location.eq ==> eq_State ==> eq_RobotConf) set_RC.
+
   Parameter Gpos : t -> list RobotConf.
   Parameter Bpos : t -> list RobotConf.
   Parameter list : t -> list RobotConf.
@@ -384,16 +406,66 @@ End Configuration.
 
 
 Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
+  Inductive State :=
+    | Look1
+    | Look2 (loc_of_g: Location.t)
+    | Compute (loc_of_g: Location.t)
+    | Move (target : Location.t).
 
-  Record RobotConf := {Loc : Location.t; Sta:State}.
-  Definition t := Names.ident -> RobotConf.
+  Record RobotConf := { Loc :> Location.t; Sta : State}.
+
+  Definition t := Names.ident -> RobotConf. 
+
+  Definition eq_State (st1 st2 : State) :=  match st1 with 
+    | Look1 => match st2 with | Look1 => True | _ => False end
+    | Look2 loc1 => match st2 with | Look2 loc2 => Location.eq loc1 loc2 | _ => False end
+    | Compute loc1 => match st2 with | Compute loc2 => Location.eq loc1 loc2 | _ => False end
+    | Move ta1 => match st2 with | Move ta2 => Location.eq ta1 ta2 | _ => False end
+  end.
+ 
+  Lemma State_eq_dec: forall (s1 s2 : State), {eq_State s1 s2} + {~ eq_State s1 s2}.
+  Proof.
+  intros.
+  unfold eq_State; destruct s1,s2; auto. 
+  apply Location.eq_dec.
+  apply Location.eq_dec.
+  apply Location.eq_dec.
+  Qed.
+
+ 
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
 
-  Definition eq_State (st1 st2:State) := st1 = st2.
   Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
   
+
+Instance eq_State_equiv : Equivalence eq_State.
+Proof.
+split.
++ intros x. unfold eq_State. destruct x; reflexivity.
++ intros x y. unfold eq_State. destruct x,y; auto; symmetry; apply H.
++ intros x y z H12 H23. unfold eq_State in *. destruct x,y,z; intuition.
+  transitivity loc_of_g0. apply H12. apply H23.
+  transitivity loc_of_g0. apply H12. apply H23.
+  transitivity target0. apply H12. apply H23.
+Qed.
+ 
+
+Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
+Proof.
+split.
++ split; reflexivity.
++ split; symmetry; apply H.
++ split. unfold eq_RobotConf in *.
+  transitivity (Loc y).
+  apply H.
+  apply H0.
+  transitivity (Sta y).
+  apply H.
+  apply H0.
+Qed.
+
 Instance eq_equiv : Equivalence eq.
 Proof. split.
 + intros conf x. split; reflexivity.
@@ -409,19 +481,7 @@ Proof. split.
   apply H23.
 Qed.
 
-Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
-Proof.
-split.
-+ split; reflexivity.
-+ split; symmetry; apply H.
-+ split. unfold eq_RobotConf in *.
-  transitivity (Loc y).
-  apply H.
-  apply H0.
-  transitivity (Sta y).
-  apply H.
-  apply H0.
-Qed.
+
 
 Instance eq_bisim : Bisimulation t.
 Proof. exists eq. apply eq_equiv. Defined.
@@ -458,6 +518,19 @@ unfold get_State.
 assumption.
 Qed.
 
+
+Definition get_Loc (r:RobotConf) := Loc r.
+
+Instance get_Loc_compat : Proper (eq_RobotConf ==> Location.eq) get_Loc.
+Proof. intros r1 r2 Hr. unfold eq_RobotConf, get_Loc in *. destruct Hr; auto. Qed.
+
+Definition set_Look2  loc :State := Look2 loc.
+Instance set_Look2_compat : Proper (Location.eq ==> eq_State) set_Look2.
+Proof. intros l1 l2 Hl; unfold set_Look2, eq_State; apply Hl. Qed.
+
+Definition set_RC loc sta : RobotConf := {|Loc := loc ; Sta := sta|}.
+Instance set_RC_compat : Proper (Location.eq ==> eq_State ==> eq_RobotConf) set_RC.
+Proof. intros l1 l2 Hl s1 s2 Hs. unfold set_RC, eq_RobotConf. auto. Qed. 
 
 (** Configurations seen as lists *)
 Definition Gpos (conf : t) := Names.Internals.fin_map (fun g => conf (Good g)).
