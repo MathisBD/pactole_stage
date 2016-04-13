@@ -359,36 +359,23 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
         | Good g => 
           let (loc_of_g, state_of_g) := (config (Good g)) in
           (* back to demon ref *)
-          (sim (loc_of_g))⁻¹
             match state_of_g with
-(* Pour expliquer :
-1) Look est découpé en deux car le modèle dit que le snapshot correspond à
-un vrai état qui a existé pendant la phase Look.
-    C'est le démon qui dit quand on prend ce snapshot donc quand on passe de
-Look1 à Look2.
-2) Pendant Compute, on utilise le snapshot pour calculer la cible du robot.
-Dans Coq, on peut faire ce calcul soit au début, soit à la fin ; ici je le
-fais à la fin.
-3) Pendant Move, le robot ne sait que l'endroit où il veut aller.
-    L'endroit où il termine effectivement dépend du démon donc je ne le
-mettrai pas ici mais dans le démon.
-Dans ce cas, il faut se faire une égalité à la main car celles de Loc.t et
-Config.t ne sont pas celles de Coq.*)
-              | Look1 => get_Loc (Config.map (fun rc:Config.RobotConf =>
-                 let (loc,_) := rc in Config.set_RC loc (Config.set_Look2 loc_of_g)) config) (Good g)
-              | Look2 =>  1 end 
-(*             (if Config.eq_State state_of_g Rdy2LC then 
-                (* configuration expressed in the frame of g *)
+              | Config.RDY2Look => (* configuration expressed in the frame of g *)
                 let config_seen_by_g := Config.map (sim (loc_of_g)) config in
+                Config.set conf g 
+                  (mk_RC  ((sim (loc_of_g))⁻¹ config_seen_by_g) (Config.RDY2Compute loc_of_g))
+              | Config.RDY2Compute loc => 
                 (* apply r on spectrum *)
-                let local_target := r (Spect.from_config config_seen_by_g) in
+                let local_target := r (Spect.from_config loc) in
                 (* the demon chooses a point on the line from the target by mv_ratio *)
                 let chosen_target := Location.mul mv_ratio local_target in 
-                Config.add_snap id local_target chosen_target
-            else 
-                (if Rle_bool δ ((Location.dist (Config.get_chosen_target id) conf),new_state) 
-                then (Config.get_chosen_target id,new_state) 
-                else (Config.get_local_target id,new_state))) *)
+                Config.set conf g 
+                  (mk_RC ((sim (loc_of_g))⁻¹ loc) (Config.RDY2Move (local_target,chosen_target)))
+              | Config.RDY2Move (localtarget, chosentarget) => 
+                (sim (config (Good g)))⁻¹
+                (if Rle_bool δ (Location.dist chosentarget conf) then chosentarget else localtarget)
+            end 
+
         end
     end.
 
