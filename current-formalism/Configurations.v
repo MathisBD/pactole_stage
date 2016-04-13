@@ -373,7 +373,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
 
   Definition set (conf:t) (id:Names.ident) (rc:RobotConf) : t := 
-   fun name => if name = id then rc else conf name.
+   fun name => if Names.eq_dec id name then rc else conf name.
   Declare Instance set_compat : Proper (eq ==> Logic.eq ==> eq_RobotConf ==> eq) set.
 
   Definition mk_RC loc sta : RobotConf := {| Loc := loc; Sta := sta|}.
@@ -533,10 +533,10 @@ Proof. intros r1 r2 Hr. unfold eq_RobotConf, get_Loc in *. destruct Hr; auto. Qe
 
 
 Definition set (conf:t) (id:Names.ident) (rc:RobotConf) : t :=  
-  fun name => if id = name then rc else conf name.
-
+  fun name => if Names.eq_dec id name then rc else conf name.
+ 
 Instance set_compat : Proper (eq ==> Logic.eq ==> eq_RobotConf ==> eq) set.
-intros c1 c2 Hconf id1 id2 Hid rc1 rc2 Hrc. unfold eq,set, eq_RobotConf. split.
+Proof. intros c1 c2 Hconf id1 id2 Hid rc1 rc2 Hrc. unfold eq,set, eq_RobotConf. split. Admitted.
 
 
 Definition mk_RC loc sta : RobotConf := {|Loc := loc ; Sta := sta|}.
