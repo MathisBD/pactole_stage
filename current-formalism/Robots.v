@@ -340,6 +340,7 @@ Module Type Robots(N : Size).
   Parameter Gnames_length : length Gnames = N.nG.
   Parameter Bnames_length : length Bnames = N.nB.
   Parameter names_length : length names = N.nG + N.nB.
+  Parameter eq_dec: forall n m: ident, {n=m}+{n<>m}.
 End Robots.
 
 Module Make(N : Size) <: Robots(N).
@@ -407,4 +408,21 @@ Module Make(N : Size) <: Robots(N).
   unfold names, Internals.names. rewrite app_length, map_length, map_length.
   fold Gnames Bnames. now rewrite Gnames_length, Bnames_length.
   Qed.
+
+  Lemma eq_dec: forall n m: ident, {n=m}+{n<>m}.
+  Proof.
+    intros n m.
+    destruct n;destruct m; try now (right;intro abs;discriminate).
+    - destruct (Fin.eq_dec g g0).
+      + left;subst;auto.
+      + right;intro abs.
+        injection abs.
+        auto.
+    - destruct (Fin.eq_dec b b0).
+      + left;subst;auto.
+      + right;intro abs.
+        injection abs.
+        auto.
+  Qed.
+
 End Make.
