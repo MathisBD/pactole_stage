@@ -343,6 +343,16 @@ Qed.
 
 (** ** One step executions *)
 
+Definition apply_sim (sim : Sim.t) (info : Config.RobotConf) :=
+  {| Config.Loc := sim info; Config.Sta := Config.Sta info |}.
+
+Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
+Proof.
+intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
+- apply Hsim, Hconf.
+- apply Hconf.
+Qed.
+
 (** [round r da conf] return the new configuration of robots (that is a function
     giving the configuration of each robot) from the previous one [conf] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
@@ -355,22 +365,29 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
       | None => conf (** If g is not activated, do nothing *)
       | Some (sim, mv_ratio) => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
-        | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
+        | Byz b => {| Config.Loc := da.(relocate_byz) b;
+                      Config.Sta := Config.Sta (conf id) |} (* byzantine robot are relocated by the demon *)
         | Good g => 
           let (loc_of_g, state_of_g) := (config (Good g)) in
           (* back to demon ref *)
+          (*(* configuration expressed in the frame of g *)
+          let frame_change := sim (conf id) in
+          let local_conf := Config.map (apply_sim frame_change) conf in
+          (* apply r on spectrum + back to demon ref. *)
+          {| Config.Loc := frame_change⁻¹ (r (Spect.from_config local_conf));
+             Config.Sta := Config.Sta (conf id) |}*)
             match state_of_g with
               | Config.RDY2Look => (* configuration expressed in the frame of g *)
-                let config_seen_by_g := Config.map (sim (loc_of_g)) config in
-                Config.set conf g 
-                  (mk_RC  ((sim (loc_of_g))⁻¹ config_seen_by_g) (Config.RDY2Compute loc_of_g))
+                let config_seen_by_g := Config.map (apply_sim (sim (loc_of_g))) config in
+                Config.set config (Good g) 
+                  (Config.mk_RC  ((sim (loc_of_g))⁻¹ loc_of_g) (Config.RDY2Compute loc_of_g))
               | Config.RDY2Compute loc => 
                 (* apply r on spectrum *)
                 let local_target := r (Spect.from_config loc) in
                 (* the demon chooses a point on the line from the target by mv_ratio *)
                 let chosen_target := Location.mul mv_ratio local_target in 
                 Config.set conf g 
-                  (mk_RC ((sim (loc_of_g))⁻¹ loc) (Config.RDY2Move (local_target,chosen_target)))
+                  (Config.mk_RC ((sim (loc_of_g))⁻¹ loc) (Config.RDY2Move (local_target,chosen_target)))
               | Config.RDY2Move (localtarget, chosentarget) => 
                 (sim (config (Good g)))⁻¹
                 (if Rle_bool δ (Location.dist chosentarget conf) then chosentarget else localtarget)

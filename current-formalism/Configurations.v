@@ -357,6 +357,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
+  Declare Instance eq_State_equiv : Equivalence eq_State.
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
   
@@ -536,7 +537,21 @@ Definition set (conf:t) (id:Names.ident) (rc:RobotConf) : t :=
   fun name => if Names.eq_dec id name then rc else conf name.
  
 Instance set_compat : Proper (eq ==> Logic.eq ==> eq_RobotConf ==> eq) set.
-Proof. intros c1 c2 Hconf id1 id2 Hid rc1 rc2 Hrc. unfold eq,set, eq_RobotConf. split. Admitted.
+Proof.
+intros c1 c2 Hconf id1 id2 Hid rc1 rc2 Hrc. 
+unfold eq,set, eq_RobotConf.
+intros id.
+split;
+destruct (Names.eq_dec id1 id), (Names.eq_dec id2 id).
+apply Hrc.
+rewrite <- e in n. exfalso. auto.
+exfalso; rewrite <- e in n; auto.
+apply Hconf.
+apply Hrc.
+exfalso; rewrite <- e in n; auto.
+exfalso; rewrite <- e in n; auto.
+apply Hconf.
+Qed.
 
 
 Definition mk_RC loc sta : RobotConf := {|Loc := loc ; Sta := sta|}.

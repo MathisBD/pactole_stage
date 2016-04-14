@@ -432,19 +432,27 @@ Qed.
 Lemma no_moving_same_conf : forall r da config,
   moving r da config = List.nil -> Config.eq (round r da config) config.
 Proof.
-intros r da config Hmove id. hnf. split; simpl.
+(* intros r da config Hmove id. hnf. split; simpl.
 + destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
   rewrite <- moving_spec, Hmove in Heq. inversion Heq.
-+ hnf. unfold round. destruct (step da id) eqn:Hstep; trivial; [].
-  now destruct id; simpl.
-Qed.
++ hnf. unfold moving in *. unfold round. 
+  destruct (step da id) eqn:Hstep. 
+  Focus 2. destruct id. destruct (Config.Sta (config (Good g)));intuition.
+destruct (Config.Sta (config (Byz b)));intuition. 
+  destruct (config id). simpl. *)
+Abort.
 
-Corollary no_active_same_conf :
+Lemma no_active_same_conf :
   forall r da conf, active da = List.nil -> Config.eq (round r da conf) conf.
 Proof.
-intros r da conf Hactive.
-assert (moving r da conf = List.nil). { apply incl_nil. rewrite <- Hactive. apply moving_active. }
-now apply no_moving_same_conf.
+intros r da conf Hactive. split; simpl; unfold round.
+  + destruct (step da id) eqn : Heq ; try reflexivity.
+    assert (Heq': step da id <> None). intro. rewrite Heq in H. discriminate.
+    rewrite <- active_spec, Hactive in Heq'. inversion Heq'.
+  + destruct (step da id) eqn : Heq. 
+    assert (Heq': step da id <> None). intro. rewrite Heq in H. discriminate.
+    rewrite <- active_spec, Hactive in Heq'. inversion Heq'. 
+    reflexivity. 
 Qed.
 
 
