@@ -366,9 +366,8 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
       | Some (sim, mv_ratio) => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => {| Config.Loc := da.(relocate_byz) b;
-                      Config.Sta := Config.Sta (conf id) |} (* byzantine robot are relocated by the demon *)
+                      Config.Sta := Config.Sta (config id) |} (* byzantine robot are relocated by the demon *)
         | Good g => 
-          let (loc_of_g, state_of_g) := (config (Good g)) in
           (* back to demon ref *)
           (*(* configuration expressed in the frame of g *)
           let frame_change := sim (conf id) in
@@ -376,21 +375,23 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
           (* apply r on spectrum + back to demon ref. *)
           {| Config.Loc := frame_change⁻¹ (r (Spect.from_config local_conf));
              Config.Sta := Config.Sta (conf id) |}*)
-            match state_of_g with
+            match Config.Sta (config (Good g)) with
               | Config.RDY2Look => (* configuration expressed in the frame of g *)
-                let config_seen_by_g := Config.map (apply_sim (sim (loc_of_g))) config in
-                Config.set config (Good g) 
-                  (Config.mk_RC  ((sim (loc_of_g))⁻¹ loc_of_g) (Config.RDY2Compute loc_of_g))
+                let config_seen_by_g := Config.map (apply_sim (sim (Config.Loc (config (Good g))))) config in
+                let loc_seen_by_g := Config.Loc (config_seen_by_g (Good g)) in
+                (Config.mk_RC  (loc_seen_by_g ) (Config.RDY2Compute (loc_seen_by_g)))
               | Config.RDY2Compute loc => 
+                let config_seen_while_compute := Config.set config (Good g) 
+                    {| Config.Loc := loc; Config.Sta := Config.Sta (config (Good g)) |} in
                 (* apply r on spectrum *)
-                let local_target := r (Spect.from_config loc) in
+                let local_target := r (Spect.from_config config_seen_while_compute) in
                 (* the demon chooses a point on the line from the target by mv_ratio *)
                 let chosen_target := Location.mul mv_ratio local_target in 
-                Config.set conf g 
-                  (Config.mk_RC ((sim (loc_of_g))⁻¹ loc) (Config.RDY2Move (local_target,chosen_target)))
-              | Config.RDY2Move (localtarget, chosentarget) => 
-                (sim (config (Good g)))⁻¹
-                (if Rle_bool δ (Location.dist chosentarget conf) then chosentarget else localtarget)
+                  (Config.mk_RC ((sim (Config.Loc (config (Good g))))⁻¹ loc) (Config.RDY2Move (local_target,chosen_target)))
+              | Config.RDY2Move targets => 
+                {| Config.Loc := (sim (config (Good g)))⁻¹
+                (if Rle_bool δ (Location.dist (snd targets) conf) then (snd targets) else (fst targets));
+                   Config.Sta := Config.RDY2Look |}
             end 
 
         end
@@ -401,17 +402,39 @@ Proof.
 intros ? δ ? r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id. subst.
 unfold req in Hr. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
-destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try now elim Hstep.
+destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id as [ g| b]; try now elim Hstep.
 + destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
 (* we lack some instances to ba able to perform directly the correct rewrites
 SearchAbout Proper Spect.from_config.
 SearchAbout Proper Config.map.
 SearchAbout Proper Location.eq.
  *)
-  assert (Heq : Location.eq
-            (Location.mul mvr2 (r1 (Spect.from_config (Config.map (f1 (conf1 (Good g))) conf1))))
-            (Location.mul mvr2 (r2 (Spect.from_config (Config.map (f2 (conf2 (Good g))) conf2))))).
-  { f_equiv. apply Hr. do 2 f_equiv; trivial. apply Hstep, Hconf. }
+  
+  assert (Heq : Location.eq (Config.map (apply_sim (f2 (conf2 (Good g)))) conf2 (Good g))
+                          (Config.map (apply_sim (f1 (conf1 (Good g)))) conf1 (Good g))).
+{ f_equiv. apply apply_sim_compat. symmetry. apply Hstep, Hconf. symmetry; apply Hconf. }
+ destruct (Config.Sta (conf1 (Good g))) eqn:HSta1, (Config.Sta (conf2 (Good g))) eqn:HSta2;
+ unfold Config.mk_RC, Config.eq_RobotConf, Config.eq_State; simpl.
+ * intuition.
+ * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
+   unfold Config.eq_State in H0. assumption.
+ * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
+   unfold Config.eq_State in H0. assumption.
+ * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
+   unfold Config.eq_State in H0. assumption.
+ * destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0.
+   intuition. f_equiv. apply Hstep, Hconf.  assumption.
+   apply Hr. f_equiv. f_equiv. assumption. f_equiv. assumption.
+   unfold Config.eq_State. assumption.
+   f_equiv. apply Hr. do 2 f_equiv. assumption. f_equiv. assumption.
+   unfold Config.eq_State; assumption.
+ * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
+   unfold Config.eq_State in H0. assumption.
+ * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
+   unfold Config.eq_State in H0. intuition. auto. simpl in  H0. assumption.
+
+  { f_equiv. apply Hr. do 2 f_equiv; trivial. f_equiv. apply Hstep, Hconf. } 
+unfold Config.eq_RobotConf.
   rewrite Heq. clear Heq. rewrite (Hconf (Good g)) at 2.
   destruct (Rle_bool δ (Location.dist
               (Location.mul mvr2 (r2 (Spect.from_config (Config.map (f2 (conf2 (Good g))) conf2))))
