@@ -334,8 +334,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
 
 
   Inductive State :=
-    | RDY2Look
-    | RDY2Compute (loc_of_g: Location.t)
+    | RDY2LookCompute
     | RDY2Move (targets: Location.t*Location.t).
  
   Record RobotConf := { Loc :> Location.t; Sta : State}.
@@ -343,8 +342,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Definition t := Names.ident -> RobotConf. 
 
   Definition eq_State (st1 st2 : State) :=  match st1 with 
-    | RDY2Look => match st2 with | RDY2Look => True | _ => False end
-    | RDY2Compute loc1 => match st2 with | RDY2Compute loc2 => Location.eq loc1 loc2 | _ => False end
+    | RDY2LookCompute => match st2 with | RDY2LookCompute => True | _ => False end
     | RDY2Move (loc,loc0) => match st2 with 
                             | RDY2Move (loc1,loc2) => Location.eq loc loc1 /\ Location.eq loc0 loc2 
                             | _ => False end
@@ -410,8 +408,7 @@ End Configuration.
 
 Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
   Inductive State :=
-    | RDY2Look
-    | RDY2Compute (loc_of_g: Location.t)
+    | RDY2LookCompute
     | RDY2Move (targets: Location.t*Location.t).
 
   Record RobotConf := { Loc :> Location.t; Sta : State}.
@@ -419,12 +416,10 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
   Definition t := Names.ident -> RobotConf. 
 
   Definition eq_State (st1 st2 : State) :=  match st1 with 
-    | RDY2Look => match st2 with | RDY2Look => True | _ => False end
-    | RDY2Compute loc1 => match st2 with | RDY2Compute loc2 => Location.eq loc1 loc2 | _ => False end
     | RDY2Move (loc,loc0) => match st2 with 
                             | RDY2Move (loc1,loc2) => Location.eq loc loc1 /\ Location.eq loc0 loc2 
                             | _ => False end
-    
+    | RDY2Look => match st2 with | RDY2LookCompute => True | _ => False end
   end.
 
  
@@ -432,7 +427,6 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
   Proof.
   intros.
   unfold eq_State; destruct s1,s2; intuition.
-  apply Location.eq_dec.
   destruct (Location.eq_dec a a0), (Location.eq_dec b b0); intuition.
   Qed.
 
@@ -451,8 +445,6 @@ split.
 + intros x y. unfold eq_State. destruct x,y; auto; try symmetry; try apply H; try destruct targets; auto.
   destruct targets0. intros H; destruct H; split; symmetry. apply H. apply H0.
 + intros x y z H12 H23. unfold eq_State in *. destruct x,y,z; intuition.
-  transitivity loc_of_g0. apply H12. apply H23.
-  destruct targets, targets0 in *. auto.
   destruct targets, targets0 in *. auto.
   destruct targets, targets0, targets1, H12, H23 in *; split.
   transitivity t2. apply H. apply H1.
