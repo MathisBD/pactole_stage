@@ -41,15 +41,15 @@ Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
 Inductive Active_or_idle := 
-  | Idle (dist :R) (* moving distance *)
-  | Active (ref:((Location.t → Sim.t) (* change of referential *)
-                               * R)). (* travel ratio (rigid or flexible moves) *)
+  | Idle (dist :R)                    (* moving distance, only use is state is Moving *)
+  | Active (sim : Location.t → Sim.t) (* change of referential *)
+                 ( r: R). (* travel ratio (rigid or flexible moves) *)
 
 Definition Aoi_eq (a1 a2: Active_or_idle) := 
   match a1 with 
     | Idle d1 => match a2 with | Idle d2 => (d1 = d2) | _ => False end
-    | Active ref1 => match a2 with 
-      | Active ref2 => ((Location.eq ==> Sim.eq) * eq)%signature ref1 ref2
+    | Active sim1 r1 => match a2 with 
+      | Active sim2 r2 => ((Location.eq ==> Sim.eq))%signature sim1 sim2 /\ r1 = r2
       | _ => False
     end
   end.
@@ -66,10 +66,9 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Active_or_idle;
   step_compat : Proper (eq ==> Aoi_eq) step;
-  step_zoom :  forall id sim c, step id = Active sim -> (fst sim c).(Sim.zoom) <> 0%R;
-  step_center : forall id sim c, step id = Active sim -> Location.eq (fst sim c).(Sim.center) c;
-  step_flexibility : forall id sim, step id = Active sim ->
-    (0 <= snd sim <= 1)%R}.
+  step_zoom :  forall id sim r c, step id = Active sim r -> (sim c).(Sim.zoom) <> 0%R;
+  step_center : forall id sim c r, step id = Active sim r -> Location.eq (sim c).(Sim.center) c;
+  step_flexibility : forall id sim r, step id = Active sim r -> (0 <= r <= 1)%R}.
 Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
@@ -99,20 +98,33 @@ Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
-Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id r, step da1 id = (Idle r) <-> step da2 id = (Idle r).
+Lemma da_eq_step_Idle : forall da1 da2, da_eq da1 da2 -> 
+                        forall id r, step da1 id = (Idle r) <-> step da2 id = (Idle r).
 Proof.
 intros da1 da2 Hda id r.
 assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
-split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq; auto.
+split; intro Hidle; rewrite Hidle in Hopt_eq; destruct step; reflexivity || elim Hopt_eq; auto.
+Qed.
+
+Lemma da_eq_step_Active : forall da1 da2, da_eq da1 da2 -> 
+                          forall id sim r, step da1 id = (Active sim r) 
+                                       <-> step da2 id = (Active sim r).
+Proof.
+intros da1 da2 Hda id sim r.
+assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
+split; intro Hactive; rewrite Hactive in Hopt_eq; destruct step; try reflexivity; elim Hopt_eq;
+intros. erewrite H.
+
+
 Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition idle da := List.filter
-  (fun id => match step da id with Active _ => false | Idle _ => true end)
+  (fun id => match step da id with Active _ _ => false | Idle _ => true end)
   Names.names.
 
 Definition active da := List.filter
-  (fun id => match step da id with Active _ => true | Idle _ => false end)
+  (fun id => match step da id with Active _ _ => true | Idle _ => false end)
   Names.names.
 
 Instance idle_compat : Proper (da_eq ==> eq) idle.
@@ -197,8 +209,8 @@ Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : forall r, step (demon_head d) g ≠ Idle r → LocallyFairForOne g d
-  | LaterFair : forall r, step (demon_head d) g = Idle r → 
+  | ImmediatelyFair : forall sim r, step (demon_head d) g = Active sim r → LocallyFairForOne g d
+  | LaterFair : (exists r, step (demon_head d) g = Idle r) →
                 LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
 
 CoInductive Fair (d : demon) : Prop :=
@@ -222,9 +234,9 @@ CoInductive kFair k (d : demon) : Prop :=
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
 intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
-+ (constructor 1 with r). rewrite da_eq_step_None; try eassumption. now f_equiv.
-+ constructor 2 with r.
-  - rewrite da_eq_step_None; try eassumption. now f_equiv.
++ (constructor 1 with  sim r). inversion H. rewrite Hda ; try eassumption. now f_equiv.
++  constructor 2.
+  - destruct H. exists x. rewrite da_eq_step_None; try eassumption. now f_equiv.
   - apply IHHfair. now f_equiv.
 Qed.
 
@@ -273,8 +285,8 @@ Lemma Between_LocallyFair : forall g (d : demon) h k,
 Proof.
   intros g h d k Hg. induction Hg.
   now constructor 1 with r.
-  now constructor 2 with r1.
-  now constructor 2 with r1.
+  constructor 2. exists r1. apply H. apply IHHg.
+  constructor 2. exists r1. apply H. apply IHHg.
 Qed.
 
 (** A robot is never activated before itself with a fair demon! The
@@ -285,7 +297,7 @@ Lemma Between_same :
 Proof.
   intros g d k Hd. induction Hd.
   now constructor 1 with r.
-  now constructor 3 with r r.
+   destruct H. now constructor 3 with x x.
 Qed.
 
 (** A k-fair demon is fair. *)
@@ -318,12 +330,14 @@ Proof.
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (exists r1, (demon_head d).(step) g = Idle r1) <-> (exists r2, (demon_head d).(step) h = Idle r2).
+  forall g h, (forall r1, (demon_head d).(step) g = Idle r1) <-> forall r2, (demon_head d).(step) h = Idle r2.
 Proof.
-intros d Hd g h. destruct Hd as [Hd _]. split ; intro H.
-  assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
-  assert (Hh := Hd h g). inversion Hh. contradiction. assumption.
-Qed.
+intros d Hd. destruct Hd as [Hd _]. split; intros H.
+  assert (Hg := Hd g h). inversion Hg. specialize (H r). contradiction.
+  destruct (H r2). intros r0. specialize (H r0). rewrite H in H1. assumption.
+  assert (Hh := Hd h g). inversion Hh. specialize (H r). contradiction.
+  destruct (H r2). intros r0. specialize (H r0). rewrite H in H1. assumption.
+Qed. 
 
 (** ** Full synchronicity
 
@@ -335,8 +349,8 @@ Qed.
 (** A demon is fully synchronous for one particular good robot g at the first
     step. *)
 Inductive FullySynchronousForOne g d:Prop :=
-  ImmediatelyFair2:
-    (step (demon_head d) g) ≠ None → 
+  ImmediatelyFair2: forall r,
+    (step (demon_head d) g) ≠ Idle r → 
                       FullySynchronousForOne g d.
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
@@ -351,7 +365,7 @@ CoInductive FullySynchronous d :=
 (** A locally synchronous demon is fair *)
 Lemma local_fully_synchronous_implies_fair:
   ∀ g d, FullySynchronousForOne g d → LocallyFairForOne g d.
-Proof. induction 1. now constructor. Qed.
+Proof. induction 1. now (constructor 1 with r). Qed.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
