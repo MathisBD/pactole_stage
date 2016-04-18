@@ -111,7 +111,7 @@ intros HnG conf Heq.
 unfold Spect.from_config in Heq.
 rewrite Spect.multiset_empty in Heq.
 assert (Hlgth:= Spect.Config.list_length conf).
-rewrite Heq in Hlgth.
+erewrite <- List.map_length, Heq in Hlgth.
 simpl in *.
 omega.
 Qed.
