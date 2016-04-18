@@ -141,17 +141,18 @@ intros da1 da2 Hda. unfold active. induction Names.names as [| id l]; simpl.
   - rewrite IHl. reflexivity.
 Qed.
 
-Lemma idle_spec : forall da id, List.In id (idle da) <-> (exist r step da id = Idle r.
+Lemma idle_spec : forall da id, List.In id (idle da) <-> exists r, step da id = Idle r.
 Proof.
-intros da id r. unfold idle. rewrite List.filter_In.
-destruct (step da id); intuition; try discriminate.
-apply Names.In_names.
+intros da id. unfold idle. rewrite List.filter_In.
+destruct (step da id); intuition; try discriminate. exists dist; auto.
+apply Names.In_names. apply Names.In_names. destruct H. discriminate.
 Qed.
 
-Lemma active_spec : forall da id, List.In id (active da) <-> step da id <> None.
+Lemma active_spec : forall da id, List.In id (active da) <-> forall r, step da id <> Idle r.
 Proof.
 intros da id. unfold active. rewrite List.filter_In.
 destruct (step da id); intuition; try discriminate.
+apply Names.In_names. exfalso. apply (H dist). auto.
 apply Names.In_names.
 Qed.
 
@@ -196,8 +197,8 @@ Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : step (demon_head d) g ≠ None → LocallyFairForOne g d
-  | LaterFair : step (demon_head d) g = None → 
+  | ImmediatelyFair : forall r, step (demon_head d) g ≠ Idle r → LocallyFairForOne g d
+  | LaterFair : forall r, step (demon_head d) g = Idle r → 
                 LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
 
 CoInductive Fair (d : demon) : Prop :=
@@ -207,10 +208,10 @@ CoInductive Fair (d : demon) : Prop :=
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k, step (demon_head d) g <> None -> Between g h d k
-| kReduce : forall k, step (demon_head d) g = None -> step (demon_head d) h <> None ->
+| kReset : forall k r, step (demon_head d) g <> Idle r -> Between g h d k
+| kReduce : forall k r1 r2, step (demon_head d) g = Idle r1 -> step (demon_head d) h <> Idle r2 ->
                       Between g h (demon_tail d) k -> Between g h d (S k)
-| kStall : forall k, step (demon_head d) g = None -> step (demon_head d) h = None ->
+| kStall : forall k r1 r2, step (demon_head d) g = Idle r1 -> step (demon_head d) h = Idle r2 ->
                      Between g h (demon_tail d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
@@ -221,8 +222,8 @@ CoInductive kFair k (d : demon) : Prop :=
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
 intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
-+ constructor 1. rewrite da_eq_step_None; try eassumption. now f_equiv.
-+ constructor 2.
++ (constructor 1 with r). rewrite da_eq_step_None; try eassumption. now f_equiv.
++ constructor 2 with r.
   - rewrite da_eq_step_None; try eassumption. now f_equiv.
   - apply IHHfair. now f_equiv.
 Qed.
@@ -243,12 +244,12 @@ Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
 Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
 Proof.
 intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
-+ constructor 1. rewrite <- da_eq_step_None; try eassumption. now f_equiv.
-+ constructor 2.
++ constructor 1 with r. rewrite <- da_eq_step_None; try eassumption. now f_equiv.
++ constructor 2 with r1 r2.
   - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
   - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
   - apply IHbet. now f_equiv.
-+ constructor 3.
++ constructor 3 with r1 r2.
   - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
   - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
   - apply IHbet. now f_equiv.
@@ -271,9 +272,9 @@ Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
 Proof.
   intros g h d k Hg. induction Hg.
-  now constructor 1.
-  now constructor 2.
-  now constructor 2.
+  now constructor 1 with r.
+  now constructor 2 with r1.
+  now constructor 2 with r1.
 Qed.
 
 (** A robot is never activated before itself with a fair demon! The
@@ -283,8 +284,8 @@ Lemma Between_same :
   forall g (d : demon) k, LocallyFairForOne g d -> Between g g d k.
 Proof.
   intros g d k Hd. induction Hd.
-  now constructor 1.
-  now constructor 3.
+  now constructor 1 with r.
+  now constructor 3 with r r.
 Qed.
 
 (** A k-fair demon is fair. *)
@@ -300,11 +301,11 @@ Lemma Between_mon : forall g h (d : demon) k,
   Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
 Proof.
   intros g h d k Hd. induction Hd; intros k' Hk.
-  now constructor 1.
+  now constructor 1 with r.
   destruct k'.
     now inversion Hk.
-    constructor 2; assumption || now (apply IHHd; omega).
-  constructor 3; assumption || now (apply IHHd; omega).
+    constructor 2 with r1 r2; assumption || now (apply IHHd; omega).
+  constructor 3 with r1 r2; assumption || now (apply IHHd; omega).
 Qed.
 
 (** [kFair k d] is monotonic on [k] relation. *)
@@ -317,9 +318,9 @@ Proof.
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (demon_head d).(step) g = None <-> (demon_head d).(step) h = None.
+  forall g h, (exists r1, (demon_head d).(step) g = Idle r1) <-> (exists r2, (demon_head d).(step) h = Idle r2).
 Proof.
-intros d Hd g h. destruct Hd as [Hd _]. split; intro H.
+intros d Hd g h. destruct Hd as [Hd _]. split ; intro H.
   assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
   assert (Hh := Hd h g). inversion Hh. contradiction. assumption.
 Qed.
