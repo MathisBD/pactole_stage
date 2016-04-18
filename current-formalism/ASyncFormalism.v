@@ -54,13 +54,16 @@ Definition Aoi_eq (a1 a2: Active_or_idle) :=
     end
   end.
 
-(* Instance Aoi_eq_equiv : Equivalence Aoi_eq.
+Instance Active_compat : Proper ((Location.eq ==> Sim.eq) ==>  eq ==> Aoi_eq) Active.
+Proof. repeat intro. now split. Qed.
+
+Instance Aoi_eq_equiv : Equivalence Aoi_eq.
 Proof.
 split.
-+ intros x. unfold Aoi_eq. destruct x; try reflexivity. destruct ref. split.
++ intros x. unfold Aoi_eq. destruct x; try reflexivity. split; trivial.
 
 
-Qed. *)
+Admitted.
 
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
@@ -77,6 +80,12 @@ Definition da_eq (da1 da2 : demonic_action) :=
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
++ split; reflexivity.
++ intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
++ intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
+Qed.
+(*
+Proof. split.
 + split; intuition. now apply step_compat.
 + intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
   specialize (H1 id). destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2; trivial;
@@ -91,6 +100,7 @@ Proof. split.
     * intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
     * rewrite H1'. now destruct H3.
 Qed.
+*)
 
 Instance step_da_compat : Proper (da_eq ==> eq ==> Aoi_eq) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
@@ -233,10 +243,13 @@ CoInductive kFair k (d : demon) : Prop :=
 
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
-intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
-+ (constructor 1 with  sim r). inversion H. rewrite Hda ; try eassumption. now f_equiv.
-+  constructor 2.
-  - destruct H. exists x. rewrite da_eq_step_None; try eassumption. now f_equiv.
+intros g d1 d2 Hd Hfair. revert d2 Hd. induction Hfair; intros d2 Hd.
++ assert (Heq : Aoi_eq (step (demon_head d2) g) (Active sim r)) by now rewrite <- Hd, H.
+  destruct (step (demon_head d2) g) eqn:?; simpl in Heq.
+  - easy.
+  - now constructor 1 with sim0 r0.
++ constructor 2.
+  - destruct H. exists x. rewrite da_eq_step_Idle; try eassumption. now f_equiv.
   - apply IHHfair. now f_equiv.
 Qed.
 
@@ -350,7 +363,7 @@ Qed.
     step. *)
 Inductive FullySynchronousForOne g d:Prop :=
   ImmediatelyFair2: forall r,
-    (step (demon_head d) g) ≠ Idle r → 
+    (step (demon_head d) g) ≠ Idle r →
                       FullySynchronousForOne g d.
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
