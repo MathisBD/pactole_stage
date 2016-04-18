@@ -29,8 +29,8 @@ Module Config := Configurations.Make(Location)(N)(Names).
 Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.Loc.
 Proof. intros [] [] []. now cbn. Qed.
 
-Instance Sta_compat : Proper (Config.eq_RobotConf ==> eq) Config.Sta.
-Proof. intros [] [] []. now cbn. Qed.
+Instance Sta_compat : Proper (Config.eq_RobotConf ==> Config.eq_State) Config.Sta.
+Proof. intros [] [] [] *. now cbn. Qed.
 
 (** Definition of spectra as multisets of locations. *)
 Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
