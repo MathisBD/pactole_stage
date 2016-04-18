@@ -40,58 +40,79 @@ Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
+Inductive Active_or_idle := 
+  | Idle (dist :R) (* moving distance *)
+  | Active (ref:((Location.t → Sim.t) (* change of referential *)
+                               * R)). (* travel ratio (rigid or flexible moves) *)
+
+Definition Aoi_eq (a1 a2: Active_or_idle) := 
+  match a1 with 
+    | Idle d1 => match a2 with | Idle d2 => (d1 = d2) | _ => False end
+    | Active ref1 => match a2 with 
+      | Active ref2 => ((Location.eq ==> Sim.eq) * eq)%signature ref1 ref2
+      | _ => False
+    end
+  end.
+
+(* Instance Aoi_eq_equiv : Equivalence Aoi_eq.
+Proof.
+split.
++ intros x. unfold Aoi_eq. destruct x; try reflexivity. destruct ref. split.
+
+
+Qed. *)
+
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
-  step : Names.ident → option ((Location.t → Sim.t) (* change of referential *)
-                               * R); (* travel ratio (rigid or flexible moves) *)
-  step_compat : Proper (eq ==> opt_eq ((Location.eq ==> Sim.eq) * (@eq R))) step;
-  step_zoom :  forall id sim c, step id = Some sim -> (fst sim c).(Sim.zoom) <> 0%R;
-  step_center : forall id sim c, step id = Some sim -> Location.eq (fst sim c).(Sim.center) c;
-  step_flexibility : forall id sim, step id = Some sim ->
+  step : Names.ident → Active_or_idle;
+  step_compat : Proper (eq ==> Aoi_eq) step;
+  step_zoom :  forall id sim c, step id = Active sim -> (fst sim c).(Sim.zoom) <> 0%R;
+  step_center : forall id sim c, step id = Active sim -> Location.eq (fst sim c).(Sim.center) c;
+  step_flexibility : forall id sim, step id = Active sim ->
     (0 <= snd sim <= 1)%R}.
 Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id, opt_eq ((Location.eq ==> Sim.eq) * eq)%signature (da1.(step) id) (da2.(step) id)) /\
+  (forall id, (Aoi_eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
 + split; intuition. now apply step_compat.
 + intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
-  specialize (H1 id). destruct (step d1 id) as [[f1 mvr1] |], (step d2 id) as [[f2 mvr2] |]; trivial.
-  destruct H1 as [H1 ?]. split; auto.
+  specialize (H1 id). destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2; trivial;
+  unfold Aoi_eq in *. symmetry. apply H1. destruct H1 as [H1 ?]. split; auto.
   intros x y Hxy. simpl in *. symmetry. apply H1. now symmetry.
 + intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
   specialize (H1 id). specialize (H3 id).
-  destruct (step d1 id) as [[f1 mvr1] |], (step d2 id) as [[f2 mvr2] |], (step d3 id) as [[f3 mvr3] |];
-  simpl in *; trivial.
+  destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2, (step d3 id) eqn:Haoi3;
+  simpl in *; trivial. transitivity dist0. apply H1. apply H3. exfalso; auto.
+  - elim H1.
   - destruct H1 as [H1 H1']. split.
     * intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
     * rewrite H1'. now destruct H3.
-  - elim H1.
 Qed.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq ((Location.eq ==> Sim.eq) * eq)) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> Aoi_eq) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
-Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id, step da1 id = None <-> step da2 id = None.
+Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id r, step da1 id = (Idle r) <-> step da2 id = (Idle r).
 Proof.
-intros da1 da2 Hda id.
+intros da1 da2 Hda id r.
 assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
-split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
+split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq; auto.
 Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition idle da := List.filter
-  (fun id => match step da id with Some _ => false | None => true end)
+  (fun id => match step da id with Active _ => false | Idle _ => true end)
   Names.names.
 
 Definition active da := List.filter
-  (fun id => match step da id with Some _ => true | None => false end)
+  (fun id => match step da id with Active _ => true | Idle _ => false end)
   Names.names.
 
 Instance idle_compat : Proper (da_eq ==> eq) idle.
@@ -99,12 +120,12 @@ Proof.
 intros da1 da2 Hda. unfold idle. induction Names.names as [| id l]; simpl.
 + reflexivity.
 + destruct (step da1 id) eqn:Hstep1, (step da2 id) eqn:Hstep2.
+  - rewrite IHl. reflexivity.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
   - apply IHl.
-  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
-    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
-  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
-    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
-  - f_equal. apply IHl.
 Qed.
 
 Instance active_compat : Proper (da_eq ==> eq) active.
@@ -112,17 +133,17 @@ Proof.
 intros da1 da2 Hda. unfold active. induction Names.names as [| id l]; simpl.
 + reflexivity.
 + destruct (step da1 id) eqn:Hstep1, (step da2 id) eqn:Hstep2.
-  - f_equal. apply IHl.
-  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
-    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
-  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
-    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
   - apply IHl.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - assert (Hcompat := step_da_compat Hda (reflexivity id)).
+    rewrite Hstep1, Hstep2 in Hcompat. elim Hcompat.
+  - rewrite IHl. reflexivity.
 Qed.
 
-Lemma idle_spec : forall da id, List.In id (idle da) <-> step da id = None.
+Lemma idle_spec : forall da id, List.In id (idle da) <-> (exist r step da id = Idle r.
 Proof.
-intros da id. unfold idle. rewrite List.filter_In.
+intros da id r. unfold idle. rewrite List.filter_In.
 destruct (step da id); intuition; try discriminate.
 apply Names.In_names.
 Qed.
@@ -358,6 +379,7 @@ Qed.
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
     is used for byzantine robots. *)
 Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
+  let config' := fun id =>
   (** for a given robot, we compute the new configuration *)
   fun id =>
     let conf := config id in (** t is the current configuration of g seen by the demon *)
@@ -368,13 +390,6 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
         | Byz b => {| Config.Loc := da.(relocate_byz) b;
                       Config.Sta := Config.Sta (config id) |} (* byzantine robot are relocated by the demon *)
         | Good g => 
-          (* back to demon ref *)
-          (*(* configuration expressed in the frame of g *)
-          let frame_change := sim (conf id) in
-          let local_conf := Config.map (apply_sim frame_change) conf in
-          (* apply r on spectrum + back to demon ref. *)
-          {| Config.Loc := frame_change⁻¹ (r (Spect.from_config local_conf));
-             Config.Sta := Config.Sta (conf id) |}*)
             match Config.Sta (config (Good g)) with
               | Config.RDY2LookCompute => (* configuration expressed in the frame of g *)
                 let config_seen_by_g := Config.map (apply_sim (sim (Config.Loc (config (Good g))))) config in
@@ -383,7 +398,7 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
                 (* the demon chooses a point on the line from the target by mv_ratio *)
                 let chosen_target := Location.mul mv_ratio local_target in 
                   (Config.mk_RC (Config.Loc (config (Good g))) (Config.RDY2Move (local_target,chosen_target)))
-              | Config.RDY2Move targets => 
+              | Config.RDY2Move targets =>
                 {| Config.Loc := (sim (config (Good g)))⁻¹
                 (if Rle_bool δ (Location.dist (snd targets) conf) then (snd targets) else (fst targets));
                    Config.Sta := Config.RDY2LookCompute |}

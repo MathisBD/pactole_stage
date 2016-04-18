@@ -335,7 +335,8 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
 
   Inductive State :=
     | RDY2LookCompute
-    | RDY2Move (targets: Location.t*Location.t).
+    | RDY2Move (targets: Location.t*Location.t)
+    | Moving (target : Location.t).
  
   Record RobotConf := { Loc :> Location.t; Sta : State}.
 
@@ -346,7 +347,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
     | RDY2Move (loc,loc0) => match st2 with 
                             | RDY2Move (loc1,loc2) => Location.eq loc loc1 /\ Location.eq loc0 loc2 
                             | _ => False end
-    
+    | Moving loc => match st2 with | Moving loc2 => Location.eq loc loc2 | _ => False end 
   end.
  
   Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
@@ -409,17 +410,19 @@ End Configuration.
 Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
   Inductive State :=
     | RDY2LookCompute
-    | RDY2Move (targets: Location.t*Location.t).
+    | RDY2Move (targets: Location.t*Location.t)
+    | Moving (target:Location.t).
 
   Record RobotConf := { Loc :> Location.t; Sta : State}.
 
   Definition t := Names.ident -> RobotConf. 
 
   Definition eq_State (st1 st2 : State) :=  match st1 with 
+    | RDY2LookCompute => match st2 with | RDY2LookCompute => True | _ => False end
     | RDY2Move (loc,loc0) => match st2 with 
                             | RDY2Move (loc1,loc2) => Location.eq loc loc1 /\ Location.eq loc0 loc2 
                             | _ => False end
-    | RDY2Look => match st2 with | RDY2LookCompute => True | _ => False end
+    | Moving loc => match st2 with | Moving loc2 => Location.eq loc loc2 | _ => False end 
   end.
 
  
@@ -428,6 +431,7 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
   intros.
   unfold eq_State; destruct s1,s2; intuition.
   destruct (Location.eq_dec a a0), (Location.eq_dec b b0); intuition.
+  apply Location.eq_dec.
   Qed.
 
  
@@ -449,6 +453,8 @@ split.
   destruct targets, targets0, targets1, H12, H23 in *; split.
   transitivity t2. apply H. apply H1.
   transitivity t3. apply H0. apply H2.
+  destruct targets, targets0. auto.
+  transitivity target0. apply H12. apply H23.
 Qed.
  
 
