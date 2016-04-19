@@ -57,8 +57,9 @@ Definition Aoi_eq (a1 a2: Active_or_idle) :=
 (* Instance Aoi_eq_equiv : Equivalence Aoi_eq.
 Proof.
 split.
-+ intros x. unfold Aoi_eq. destruct x; try reflexivity. destruct ref. split.
-
++ intros x. unfold Aoi_eq. destruct x; try reflexivity. split; try reflexivity.
+  f_equiv.
+  
 
 Qed. *)
 
@@ -106,17 +107,17 @@ assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
 split; intro Hidle; rewrite Hidle in Hopt_eq; destruct step; reflexivity || elim Hopt_eq; auto.
 Qed.
 
-Lemma da_eq_step_Active : forall da1 da2, da_eq da1 da2 -> 
-                          forall id sim r, step da1 id = (Active sim r) 
-                                       <-> step da2 id = (Active sim r).
+(* Lemma da_eq_step_Active : forall da1 da2, da_eq da1 da2 ->
+                          forall id sim1 sim2 r, (Location.eq ==> Sim.eq)%signature sim1 sim2 -> 
+                          (step da1 id = (Active sim1 r) <-> step da2 id = (Active sim2 r)).
 Proof.
-intros da1 da2 Hda id sim r.
+intros da1 da2 Hda id sim1 sim2 r Hsim.
 assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
-split; intro Hactive; rewrite Hactive in Hopt_eq; destruct step; try reflexivity; elim Hopt_eq;
-intros. erewrite H.
+split. intro Hactive; rewrite Hactive in Hopt_eq. destruct step. elim Hopt_eq.
+destruct Hopt_eq. rewrite H0. f_equiv.
 
 
-Qed.
+Qed.  *)
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition idle da := List.filter
@@ -233,8 +234,10 @@ CoInductive kFair k (d : demon) : Prop :=
 
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
-intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
-+ (constructor 1 with  sim r). inversion H. rewrite Hda ; try eassumption. now f_equiv.
+intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda. 
++ (constructor 1 with  sim r).
+ destruct Hda, H0. specialize (H0 g). 
+
 +  constructor 2.
   - destruct H. exists x. rewrite da_eq_step_None; try eassumption. now f_equiv.
   - apply IHHfair. now f_equiv.
