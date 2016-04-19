@@ -54,14 +54,16 @@ Definition Aoi_eq (a1 a2: Active_or_idle) :=
     end
   end.
 
-(* Instance Aoi_eq_equiv : Equivalence Aoi_eq.
+Instance Aoi_eq_equiv : Equivalence Aoi_eq.
 Proof.
-split.
-+ intros x. unfold Aoi_eq. destruct x; try reflexivity. split; try reflexivity.
-  f_equiv.
-  
-
-Qed. *)
+(* split.
++ intros x. unfold Aoi_eq. destruct x; auto. split; try reflexivity.
+  intros loc1 loc2 Hloc. admit. (*rewrite Hloc. reflexivity.*)
++ intros x y. unfold Aoi_eq. destruct x,y ; auto. split; destruct H; auto.
+  intros l1 l2 Hl x y z. f_equiv. f_equiv.  
+  destruct sim as [f kf cf Hcf Hkf] in Hsim. , sim as [g kg cg Hcg Hkg] in *.
+   destruct simpl in *. *)
+Admitted. 
 
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
@@ -78,19 +80,19 @@ Definition da_eq (da1 da2 : demonic_action) :=
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
-+ split; intuition. now apply step_compat.
++ split; intuition. (* now apply step_compat.*)
 + intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
-  specialize (H1 id). destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2; trivial;
+(*  specialize (H1 id). destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2; trivial;
   unfold Aoi_eq in *. symmetry. apply H1. destruct H1 as [H1 ?]. split; auto.
-  intros x y Hxy. simpl in *. symmetry. apply H1. now symmetry.
+  intros x y Hxy. simpl in *. symmetry. apply H1. now symmetry. *)
 + intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
-  specialize (H1 id). specialize (H3 id).
+(*  specialize (H1 id). specialize (H3 id).
   destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2, (step d3 id) eqn:Haoi3;
   simpl in *; trivial. transitivity dist0. apply H1. apply H3. exfalso; auto.
   - elim H1.
   - destruct H1 as [H1 H1']. split.
     * intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
-    * rewrite H1'. now destruct H3.
+    * rewrite H1'. now destruct H3.*)
 Qed.
 
 Instance step_da_compat : Proper (da_eq ==> eq ==> Aoi_eq) step.
@@ -107,17 +109,16 @@ assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
 split; intro Hidle; rewrite Hidle in Hopt_eq; destruct step; reflexivity || elim Hopt_eq; auto.
 Qed.
 
-(* Lemma da_eq_step_Active : forall da1 da2, da_eq da1 da2 ->
-                          forall id sim1 sim2 r, (Location.eq ==> Sim.eq)%signature sim1 sim2 -> 
-                          (step da1 id = (Active sim1 r) <-> step da2 id = (Active sim2 r)).
+ Lemma da_eq_step_Active : forall da1 da2, da_eq da1 da2 ->
+                           forall id sim r, (step da1 id = (Active sim r) 
+                           <-> step da2 id = (Active sim r)).
 Proof.
-intros da1 da2 Hda id sim1 sim2 r Hsim.
+(* intros da1 da2 Hda id sim r.
 assert (Hopt_eq := step_da_compat Hda (reflexivity id)).
-split. intro Hactive; rewrite Hactive in Hopt_eq. destruct step. elim Hopt_eq.
-destruct Hopt_eq. rewrite H0. f_equiv.
-
-
-Qed.  *)
+split. intro Hactive; rewrite Hactive in Hopt_eq.
+destruct step. elim Hopt_eq. symmetry. rewrite Hopt_eq. elim Hopt_eq. intros. rewrite H0 in *. f_equiv.
+unfold Aoi_eq in *.  destruct Hopt_eq. f_equiv. *)
+Admitted. 
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition idle da := List.filter
@@ -221,8 +222,8 @@ CoInductive Fair (d : demon) : Prop :=
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k r, step (demon_head d) g <> Idle r -> Between g h d k
-| kReduce : forall k r1 r2, step (demon_head d) g = Idle r1 -> step (demon_head d) h <> Idle r2 ->
+| kReset : forall k  sim r, step (demon_head d) g = Active sim r -> Between g h d k
+| kReduce : forall k r1 sim r2, step (demon_head d) g = Idle r1 -> step (demon_head d) h = Active sim r2 ->
                       Between g h (demon_tail d) k -> Between g h d (S k)
 | kStall : forall k r1 r2, step (demon_head d) g = Idle r1 -> step (demon_head d) h = Idle r2 ->
                      Between g h (demon_tail d) k -> Between g h d k.
@@ -234,14 +235,15 @@ CoInductive kFair k (d : demon) : Prop :=
 
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
-intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda. 
-+ (constructor 1 with  sim r).
- destruct Hda, H0. specialize (H0 g). 
-
-+  constructor 2.
+(* intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda. 
+destruct Hda as ((Hdg,_),_).
+  specialize (Hdg g). assert (Aoi_eq (step (demon_head d) g) (Active sim r)).
+  rewrite <- H. apply step_compat. reflexivity. 
++ constructor 1 with sim r. destruct H. apply step_compat. rewrite Hdg in H.  
++ (constructor 1 with  sim r). 
   - destruct H. exists x. rewrite da_eq_step_None; try eassumption. now f_equiv.
-  - apply IHHfair. now f_equiv.
-Qed.
+  - apply IHHfair. now f_equiv.  admit. *)
+Admitted. 
 
 Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> iff) LocallyFairForOne.
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
@@ -259,14 +261,14 @@ Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
 Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
 Proof.
 intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
-+ constructor 1 with r. rewrite <- da_eq_step_None; try eassumption. now f_equiv.
-+ constructor 2 with r1 r2.
-  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
-  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
++ constructor 1 with sim r. rewrite <- da_eq_step_Active; try eassumption. now f_equiv.
++ constructor 2 with r1 sim r2.
+  - rewrite <- da_eq_step_Idle; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_Active; try eassumption. now f_equiv.
   - apply IHbet. now f_equiv.
 + constructor 3 with r1 r2.
-  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
-  - rewrite <- da_eq_step_None; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_Idle; try eassumption. now f_equiv.
+  - rewrite <- da_eq_step_Idle; try eassumption. now f_equiv.
   - apply IHbet. now f_equiv.
 Qed.
 
@@ -287,7 +289,7 @@ Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
 Proof.
   intros g h d k Hg. induction Hg.
-  now constructor 1 with r.
+  now constructor 1 with sim r.
   constructor 2. exists r1. apply H. apply IHHg.
   constructor 2. exists r1. apply H. apply IHHg.
 Qed.
@@ -299,7 +301,7 @@ Lemma Between_same :
   forall g (d : demon) k, LocallyFairForOne g d -> Between g g d k.
 Proof.
   intros g d k Hd. induction Hd.
-  now constructor 1 with r.
+  now constructor 1 with sim r.
    destruct H. now constructor 3 with x x.
 Qed.
 
@@ -316,10 +318,10 @@ Lemma Between_mon : forall g h (d : demon) k,
   Between g h d k -> forall k', (k <= k')%nat -> Between g h d k'.
 Proof.
   intros g h d k Hd. induction Hd; intros k' Hk.
-  now constructor 1 with r.
+  now constructor 1 with sim r.
   destruct k'.
     now inversion Hk.
-    constructor 2 with r1 r2; assumption || now (apply IHHd; omega).
+    constructor 2 with r1 sim r2; assumption || now (apply IHHd; omega).
   constructor 3 with r1 r2; assumption || now (apply IHHd; omega).
 Qed.
 
@@ -336,9 +338,9 @@ Theorem Fair0 : forall d, kFair 0 d ->
   forall g h, (forall r1, (demon_head d).(step) g = Idle r1) <-> forall r2, (demon_head d).(step) h = Idle r2.
 Proof.
 intros d Hd. destruct Hd as [Hd _]. split; intros H.
-  assert (Hg := Hd g h). inversion Hg. specialize (H r). contradiction.
+  assert (Hg := Hd g h). inversion Hg. specialize (H r). rewrite H in H0. discriminate.
   destruct (H r2). intros r0. specialize (H r0). rewrite H in H1. assumption.
-  assert (Hh := Hd h g). inversion Hh. specialize (H r). contradiction.
+  assert (Hh := Hd h g). inversion Hh. specialize (H r). rewrite H in H0. discriminate.
   destruct (H r2). intros r0. specialize (H r0). rewrite H in H1. assumption.
 Qed. 
 
@@ -352,8 +354,8 @@ Qed.
 (** A demon is fully synchronous for one particular good robot g at the first
     step. *)
 Inductive FullySynchronousForOne g d:Prop :=
-  ImmediatelyFair2: forall r,
-    (step (demon_head d) g) ≠ Idle r → 
+  ImmediatelyFair2: forall sim r,
+    (step (demon_head d) g) = Active sim r → 
                       FullySynchronousForOne g d.
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
@@ -368,7 +370,7 @@ CoInductive FullySynchronous d :=
 (** A locally synchronous demon is fair *)
 Lemma local_fully_synchronous_implies_fair:
   ∀ g d, FullySynchronousForOne g d → LocallyFairForOne g d.
-Proof. induction 1. now (constructor 1 with r). Qed.
+Proof. induction 1. now (constructor 1 with sim r). Qed.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
@@ -397,13 +399,22 @@ Qed.
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
     is used for byzantine robots. *)
 Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
-  let config' := fun id =>
+  let config' := fun id => 
+    match da.(step) id with
+      | Idle R => 
+        match id with 
+          | Byz _ => config
+          | Good g => 
+            match Config.Sta (config (Good g)) with
+              | Moving target => let dist_done := (Location.mul R config id) in
+                 if (Rle_bool dist_done (Location.dist target (config id))) 
+                 then {| Config.Loc (Location.add 
   (** for a given robot, we compute the new configuration *)
   fun id =>
     let conf := config id in (** t is the current configuration of g seen by the demon *)
     match da.(step) id with (** first see whether the robot is activated *)
-      | None => conf (** If g is not activated, do nothing *)
-      | Some (sim, mv_ratio) => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
+      | Idle _ => conf (** If g is not activated, do nothing *)
+      | Active sim mv_ratio => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => {| Config.Loc := da.(relocate_byz) b;
                       Config.Sta := Config.Sta (config id) |} (* byzantine robot are relocated by the demon *)
