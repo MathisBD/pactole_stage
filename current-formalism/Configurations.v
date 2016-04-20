@@ -332,13 +332,18 @@ End MakeDiscretSpace.
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
 
+  Record Info : Type := { source: Location.t ; target: Location.t}.
+
+  Definition Info_eq i1 i2 :=
+    Location.eq i1.(source) i2.(source) /\
+    Location.eq i1.(target) i2.(target).
 
   Inductive State :=
     | RDY2LookCompute
     | RDY2Move (targets: Location.t*Location.t)
     | Moving (target : Location.t).
  
-  Record RobotConf := { Loc :> Location.t; Sta : State}.
+  Record RobotConf := { loc :> Location.t; info: Info }.
 
   Definition t := Names.ident -> RobotConf. 
 
@@ -350,24 +355,19 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
     | Moving loc => match st2 with | Moving loc2 => Location.eq loc loc2 | _ => False end 
   end.
  
-  Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
+  Definition eq_RobotConf g1 g2 := Location.eq (loc g1) (loc g2) /\ Info_eq (info g1) (info g2).
 
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
   
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
-  Declare Instance eq_State_equiv : Equivalence eq_State.
+  Declare Instance eq_info_equiv : Equivalence Info_eq.
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
   
   Parameter neq_equiv : forall config₁ config₂,
     ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
 
-  Definition get_State (r: RobotConf) := Sta r.
-  Declare Instance get_State_compat : Proper (eq_RobotConf ==> eq_State) get_State.
-
-  Definition get_Loc (r:RobotConf) := Loc r.
-  Declare Instance get_Loc_compat : Proper (eq_RobotConf ==> Location.eq) get_Loc.
 
   Definition map (f : RobotConf -> RobotConf) (conf : t) : t := fun id => f (conf id).
   Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
@@ -376,8 +376,8 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
    fun name => if Names.eq_dec id name then rc else conf name.
   Declare Instance set_compat : Proper (eq ==> Logic.eq ==> eq_RobotConf ==> eq) set.
 
-  Definition mk_RC loc sta : RobotConf := {| Loc := loc; Sta := sta|}.
-  Declare Instance mk_RC_compat : Proper (Location.eq ==> eq_State ==> eq_RobotConf) mk_RC.
+  Definition mk_RC loc inf : RobotConf := {| loc := loc; info := inf |}.
+  Declare Instance mk_RC_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) mk_RC.
 
   Parameter Gpos : t -> list RobotConf.
   Parameter Bpos : t -> list RobotConf.
@@ -408,12 +408,19 @@ End Configuration.
 
 
 Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
+
+  Record Info : Type := { source: Location.t ; target: Location.t}.
+
+  Definition Info_eq i1 i2 :=
+    Location.eq i1.(source) i2.(source) /\
+    Location.eq i1.(target) i2.(target).
+
   Inductive State :=
     | RDY2LookCompute
     | RDY2Move (targets: Location.t*Location.t)
     | Moving (target:Location.t).
 
-  Record RobotConf := { Loc :> Location.t; Sta : State}.
+  Record RobotConf := { loc :> Location.t; info: Info }.
 
   Definition t := Names.ident -> RobotConf. 
 
@@ -424,6 +431,10 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
                             | _ => False end
     | Moving loc => match st2 with | Moving loc2 => Location.eq loc loc2 | _ => False end 
   end.
+ 
+  Definition eq_RobotConf g1 g2 := Location.eq (loc g1) (loc g2) /\ Info_eq (info g1) (info g2).
+
+  Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
 
  
   Lemma State_eq_dec: forall (s1 s2 : State), {eq_State s1 s2} + {~ eq_State s1 s2}.
@@ -438,24 +449,9 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
 
-  Definition eq_RobotConf g1 g2 := Location.eq (Loc g1) (Loc g2) /\ eq_State (Sta g1) (Sta g2).
-  Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
-  
-
-Instance eq_State_equiv : Equivalence eq_State.
+Instance eq_info_equiv : Equivalence Info_eq.
 Proof.
-split.
-+ intros x. unfold eq_State. destruct x; try reflexivity. destruct targets. split; reflexivity.
-+ intros x y. unfold eq_State. destruct x,y; auto; try symmetry; try apply H; try destruct targets; auto.
-  destruct targets0. intros H; destruct H; split; symmetry. apply H. apply H0.
-+ intros x y z H12 H23. unfold eq_State in *. destruct x,y,z; intuition.
-  destruct targets, targets0 in *. auto.
-  destruct targets, targets0, targets1, H12, H23 in *; split.
-  transitivity t2. apply H. apply H1.
-  transitivity t3. apply H0. apply H2.
-  destruct targets, targets0. auto.
-  transitivity target0. apply H12. apply H23.
-Qed.
+Admitted.
  
 
 Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
@@ -464,10 +460,10 @@ split.
 + split; reflexivity.
 + split; symmetry; apply H.
 + split. unfold eq_RobotConf in *.
-  transitivity (Loc y).
+  transitivity (loc y).
   apply H.
   apply H0.
-  transitivity (Sta y).
+  transitivity (info y).
   apply H.
   apply H0.
 Qed.
@@ -479,10 +475,10 @@ Proof. split.
 + intros d1 d2 d3 H12 H23 x. 
   split;
   unfold eq in *.
-  transitivity (Loc (d2 x)).
+  transitivity (loc (d2 x)).
   apply H12.
   apply H23.
-  transitivity (Sta (d2 x)).
+  transitivity (info (d2 x)).
   apply H12.
   apply H23.
 Qed.
@@ -513,9 +509,9 @@ unfold eq in Hconf.
 auto.
 Qed.
 
-Definition get_State (r: RobotConf) := Sta r.
+Definition get_State (r: RobotConf) := info r.
 
-Instance get_State_compat : Proper (eq_RobotConf ==> eq_State) get_State.
+Instance get_State_compat : Proper (eq_RobotConf ==> Info_eq) get_State.
 Proof.
 intros r1 r2 Hr.
 unfold eq_RobotConf in *.
@@ -525,7 +521,7 @@ assumption.
 Qed.
 
 
-Definition get_Loc (r:RobotConf) := Loc r.
+Definition get_Loc (r:RobotConf) := loc r.
 
 Instance get_Loc_compat : Proper (eq_RobotConf ==> Location.eq) get_Loc.
 Proof. intros r1 r2 Hr. unfold eq_RobotConf, get_Loc in *. destruct Hr; auto. Qed.
@@ -552,8 +548,8 @@ apply Hconf.
 Qed.
 
 
-Definition mk_RC loc sta : RobotConf := {|Loc := loc ; Sta := sta|}.
-Instance mk_RC_compat : Proper (Location.eq ==> eq_State ==> eq_RobotConf) mk_RC.
+Definition mk_RC loc inf : RobotConf := {|loc := loc ; info := inf|}.
+Instance mk_RC_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) mk_RC.
 Proof. intros l1 l2 Hl s1 s2 Hs. unfold mk_RC, eq_RobotConf. auto. Qed. 
 
 (** Configurations seen as lists *)
@@ -585,8 +581,8 @@ Qed.
 Lemma eq_RobotConf_dec: forall x y, {eq_RobotConf x y} + {~ eq_RobotConf x y}.
 Proof.
 intros. unfold eq_RobotConf, eq_State.
-destruct (Location.eq_dec (Loc x) (Loc y)), (State_eq_dec (Sta x) (Sta y)); intuition.
-Qed.
+(* destruct (Location.eq_dec (loc x) (loc y)), (State_eq_dec (Sta x) (Sta y)); intuition. *)
+Admitted.
 
 Lemma Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
 Proof. intros. unfold Gpos,eq_RobotConf. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.
