@@ -54,6 +54,9 @@ Definition Aoi_eq (a1 a2: Active_or_idle) :=
     end
   end.
 
+(* Lemma Aoi_eq_dec : forall a1 a2, {Aoi_eq a1 a2} + {~ Aoi_eq a1 a2}.
+intros. unfold Aoi_eq. destruct a1, a2; auto. apply Rdec.
+destruct (Rdec r r0); intuition. *)
 
 Instance Active_compat : Proper ((Location.eq ==> Sim.eq) ==>  eq ==> Aoi_eq) Active.
 Proof. repeat intro. now split. Qed.
@@ -395,15 +398,33 @@ Qed.
     is used for byzantine robots. *)
 Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
   let config' := fun id => 
+    let pos := config id in
     match da.(step) id with
       | Idle R => 
         match id with 
-          | Byz _ => config
+          | Byz _ => pos
           | Good g => 
             match Config.Sta (config (Good g)) with
-              | Moving target => let dist_done := (Location.mul R config id) in
-                 if (Rle_bool dist_done (Location.dist target (config id))) 
-                 then {| Config.Loc (Location.add 
+              | Config.Moving target =>
+                (* case if R is a dist, do not work now*)
+                (*  if (Rle_bool R (Location.dist target pos)) 
+                 then if Rle_bool Location.origin (Location.add (Location.opp pos) target)
+                      then {| Config.Loc := (Location.add pos (Location.opp R));
+                              Config.Sta := Config.Moving target|}
+                      else {| Config.Loc := (Location.add pos R);
+                              Config.Sta := Config.Moving target|}
+                 else {| Config.Loc := target; Config.Sta := Config.RDY2LookCompute|} *)
+                (* case if  R is a ratio, not really satisfied by it*)
+                if Rle_bool R 1 
+                then {| Config.Loc := Location.add pos (Location.mul R (Location.add (Location.opp pos) target));
+                        Config.Sta := Config.Moving target |} 
+                else {| Config.Loc := target; Config.Sta := Config.RDY2LookCompute|}
+              | _ => config id
+            end
+        end
+      | Active _ _ => config id
+    end 
+  in
   (** for a given robot, we compute the new configuration *)
   fun id =>
     let conf := config id in (** t is the current configuration of g seen by the demon *)
@@ -426,6 +447,7 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
                 {| Config.Loc := (sim (config (Good g)))⁻¹
                 (if Rle_bool δ (Location.dist (snd targets) conf) then (snd targets) else (fst targets));
                    Config.Sta := Config.RDY2LookCompute |}
+              | Config.Moving _ => conf
             end 
 
         end
@@ -436,7 +458,7 @@ Proof.
 intros ? δ ? r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id. subst.
 unfold req in Hr. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
-destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id as [ g| b]; try now elim Hstep.
+destruct (step da1 id) eqn:Haoi1, (step da2 id) eqn:Haoi2, id as [ g| b]; try now elim Hstep.
 + destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
 (* we lack some instances to ba able to perform directly the correct rewrites
 SearchAbout Proper Spect.from_config.
@@ -444,9 +466,10 @@ SearchAbout Proper Config.map.
 SearchAbout Proper Location.eq.
  *)
   
-  assert (Heq : Location.eq (Config.map (apply_sim (f2 (conf2 (Good g)))) conf2 (Good g))
-                          (Config.map (apply_sim (f1 (conf1 (Good g)))) conf1 (Good g))).
-{ f_equiv. apply apply_sim_compat. symmetry. apply Hstep, Hconf. symmetry; apply Hconf. }
+  assert (Heq : Location.eq (Config.map (apply_sim (sim0 (conf2 (Good g)))) conf2 (Good g))
+                          (Config.map (apply_sim (sim (conf1 (Good g)))) conf1 (Good g))).
+{ f_equiv. apply apply_sim_compat. symmetry. specialize (Hstep (conf1 (Good g)) (conf2 (Good g))).
+  apply Hstep, Hconf. symmetry; apply Hconf. }
  destruct (Config.Sta (conf1 (Good g))) eqn:HSta1, (Config.Sta (conf2 (Good g))) eqn:HSta2;
  unfold Config.mk_RC, Config.eq_RobotConf, Config.eq_State; simpl.
  * destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0.
@@ -455,12 +478,22 @@ SearchAbout Proper Location.eq.
  * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
    unfold Config.eq_State in H0. assumption.
  * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
+   unfold Config.eq_State in H0. assumption.
+ * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
    unfold Config.eq_State in H0. destruct targets in H0. assumption.
  * split; auto. f_equiv. f_equiv. apply Hstep. f_equiv. auto.
    destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0.
    destruct targets, targets0 in *.  
    destruct H0. rewrite H1,H0. simpl. rewrite H. 
    destruct (Rle_bool δ (Location.dist t2 (conf2 (Good g)))); simpl; assumption.
+ * rewrite HSta2. exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
+   unfold Config.eq_State in H0. destruct targets in H0. assumption.
+ * rewrite HSta1. exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
+   unfold Config.eq_State in H0. assumption.
+ * rewrite HSta1. exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
+   unfold Config.eq_State in H0. destruct targets in H0. assumption.
+ * rewrite HSta1, HSta2. split; destruct (Hconf (Good g)). assumption. 
+   rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0. assumption.
 + rewrite Hda. destruct (Hconf (Byz b)). rewrite H0. reflexivity.
 Qed.
 
@@ -502,8 +535,8 @@ Lemma moving_active : forall δ r da config, List.incl (moving δ r da config) (
 Proof.
 intros δ r config da id. rewrite moving_spec, active_spec. intro Hmove.
 unfold round in Hmove. destruct (step config id).
-- discriminate.
 - now elim Hmove.
+- discriminate.
 Qed.
 
 (** Some results *)
@@ -513,7 +546,8 @@ Lemma no_active_same_conf :
 Proof.
 intros δ r da conf Hactive.
 unfold round, Config.eq, Config.eq_RobotConf; split;
-destruct (step da id) eqn : Heq. assert (Heq': step da id <> None).
+destruct (step da id) eqn : Heq. reflexivity.
+ assert (Heq': step da id <> Idle r0).
  intro. rewrite H in Heq. discriminate. rewrite <- active_spec, Hactive in Heq'. inversion Heq'.
  reflexivity.
  assert (Heq': step da id <> None). intro. rewrite H in Heq. discriminate.
