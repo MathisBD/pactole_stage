@@ -33,15 +33,12 @@ Module Sim := Common.Sim.
     are at the same location [pt] (exactly). *)
 Definition gathered_at (pt : Loc.t) (conf : Config.t) := forall g : Names.G, Loc.eq (conf (Good g)) pt.
 
-(** [Gather pt e] means that at all rounds of (infinite) execution
-    [e], robots are gathered at the same position [pt]. *)
-CoInductive Gather (pt: Loc.t) (e : execution) : Prop :=
-  Gathering : gathered_at pt (execution_head e) -> Gather pt (execution_tail e) -> Gather pt e.
+(** [Gather pt e] means that at all rounds of (infinite) execution [e],
+    robots are gathered at the same position [pt]. *)
+Definition Gather (pt: Loc.t) (e : execution) : Prop := Streams.forever (Streams.instant (gathered_at pt)) e.
 
 (** [WillGather pt e] means that (infinite) execution [e] is *eventually* [Gather]ed. *)
-Inductive WillGather (pt : Loc.t) (e : execution) : Prop :=
-  | Now : Gather pt e -> WillGather pt e
-  | Later : WillGather pt (execution_tail e) -> WillGather pt e.
+Definition WillGather (pt : Loc.t) (e : execution) : Prop := Streams.eventually (Gather pt) e.
 
 (** When all robots are on two towers of the same height,
     there is no solution to the gathering problem.
@@ -74,25 +71,12 @@ Qed.
 
 Instance Gather_compat : Proper (Loc.eq ==> eeq ==> iff) Gather.
 Proof.
-intros pt1 pt2 Hpt e1 e2 He. split.
-+ revert e1 e2 He. coinduction rec.
-  - rewrite <- Hpt, <- He. now destruct H.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
-+ revert e1 e2 He. coinduction rec.
-  - rewrite Hpt, He. now destruct H.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
+intros pt1 pt2 Hpt. apply Streams.forever_compat, Streams.instant_compat.
+intros config1 config2 Hconfig. now rewrite Hpt, Hconfig.
 Qed.
 
 Instance WillGather_compat : Proper (Loc.eq ==> eeq ==> iff) WillGather.
-Proof.
-intros pt1 pt2 Hpt e1 e2 He. split; intro H.
-+ revert e2 He. induction H as [e1 | e1 He1 IHe1]; intros e2 He.
-  - apply Now. now rewrite <- Hpt, <- He.
-  - apply Later. apply IHe1. apply He.
-+ revert e1 He. induction H as [e2 | e2 He2 IHe2]; intros e1 He.
-  - apply Now. now rewrite Hpt, He.
-  - apply Later. apply IHe2. apply He.
-Qed.
+Proof. intros pt1 pt2 Hpt. apply Streams.eventually_compat. now apply Gather_compat. Qed.
 
 Instance forbidden_compat : Proper (Config.eq ==> iff) forbidden.
 Proof.

@@ -1355,9 +1355,9 @@ destruct (forallb (fun x => Rdec_bool (config x) pt) Names.names) eqn:Hall.
 Qed.
 
 Inductive FirstMove r d config : Prop :=
-  | MoveNow : moving r (demon_head d) config <> nil -> FirstMove r d config
-  | MoveLater : moving r (demon_head d) config = nil ->
-                FirstMove r (demon_tail d) (round r (demon_head d) config) -> FirstMove r d config.
+  | MoveNow : moving r (Streams.hd d) config <> nil -> FirstMove r d config
+  | MoveLater : moving r (Streams.hd d) config = nil ->
+                FirstMove r (Streams.tl d) (round r (Streams.hd d) config) -> FirstMove r d config.
 
 Instance FirstMove_compat : Proper (req ==> deq ==> Config.eq ==> iff) FirstMove.
 Proof.
@@ -1443,7 +1443,7 @@ revert config Hforbidden Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
 induction locallyfair; intros config Hforbidden Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H. apply Hmove in H. rewrite Habs in H. inversion H.
-+ destruct (moving robogram (demon_head d) config) eqn:Hnil.
++ destruct (moving robogram (Streams.hd d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
     rewrite (no_moving_same_conf _ _ _ Hnil).
     apply (IHlocallyfair); trivial.
@@ -1481,7 +1481,7 @@ Lemma gathered_at_OK : forall d conf pt, gathered_at pt conf -> Gather pt (execu
 Proof.
 cofix Hind. intros d conf pt Hgather. constructor.
 + clear Hind. simpl. assumption.
-+ rewrite execute_tail. apply Hind. now apply gathered_at_forever.
++ cbn. apply Hind. now apply gathered_at_forever.
 Qed.
 
 Theorem Gathering_in_R :
@@ -1493,23 +1493,24 @@ intros conf Hind d Hfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (conf (Good g1)). apply Now. apply gathered_at_OK. assumption.
+  exists (conf (Good g1)). constructor. apply gathered_at_OK. assumption.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
-    destruct (Hind (round robogram (demon_head d) conf)) with (demon_tail d) as [pt Hpt].
+    destruct (Hind (round robogram (Streams.hd d) conf)) with (Streams.tl d) as [pt Hpt].
     - apply round_lt_conf; assumption.
     - now destruct Hfair.
     - now apply never_forbidden.
-    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+    - exists pt. constructor; cbn; apply Hpt.
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_conf in Heq.
     destruct Hrec as [pt Hpt].
     - setoid_rewrite Heq. apply Hind.
     - now destruct Hfair.
     - rewrite Heq. assumption.
-    - exists pt. apply Later. rewrite execute_tail. apply Hpt.
+    - exists pt. constructor; cbn; apply Hpt.
 Qed.
+
 Print Assumptions Gathering_in_R.
 

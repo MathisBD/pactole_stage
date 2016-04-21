@@ -23,12 +23,12 @@ Module Rigid := RigidFormalism.Make(Location)(N)(Spect)(Common).
 Definition rigid da := forall id sim r, da.(Flex.step) id = Some (sim, r) -> r = 1%R.
 
 CoInductive drigid d :=
-  | Drigid : rigid (Flex.demon_head d) -> drigid (Flex.demon_tail d) -> drigid d.
+  | Drigid : rigid (Stream.hd d) -> drigid (Stream.tl d) -> drigid d.
 
-Lemma drigid_head : forall d, drigid d -> rigid (Flex.demon_head d).
+Lemma drigid_head : forall d, drigid d -> rigid (Stream.hd d).
 Proof. intros ? []. auto. Qed.
 
-Lemma drigid_tail : forall d, drigid d -> drigid (Flex.demon_tail d).
+Lemma drigid_tail : forall d, drigid d -> drigid (Stream.tl d).
 Proof. intros ? []. auto. Qed.
 
 Import Common.
@@ -109,23 +109,23 @@ Proof. unfold rigid. intros [] * H; simpl in *. destruct step; now inversion H. 
 (** **  Conversion at the level of demons  **)
 
 CoFixpoint Rigid_Flex_d (d : Rigid.demon) : Flex.demon :=
-  Flex.NextDemon (Rigid_Flex_da (Rigid.demon_head d)) (Rigid_Flex_d (Rigid.demon_tail d)).
+  Stream.cons (Rigid_Flex_da (Stream.hd d)) (Rigid_Flex_d (Stream.tl d)).
 
 CoFixpoint Flex_Rigid_d (d : Flex.demon) : Rigid.demon :=
-  Rigid.NextDemon (Flex_Rigid_da (Flex.demon_head d)) (Flex_Rigid_d (Flex.demon_tail d)).
+  Stream.cons (Flex_Rigid_da (Stream.hd d)) (Flex_Rigid_d (Stream.tl d)).
 
 Lemma Rigid_Flex_head : forall d,
-  Flex.da_eq (Rigid_Flex_da (Rigid.demon_head d)) (Flex.demon_head (Rigid_Flex_d d)).
+  Flex.da_eq (Rigid_Flex_da (Stream.hd d)) (Stream.hd (Rigid_Flex_d d)).
 Proof. intro d. now destruct d. Qed.
 
 Lemma Flex_Rigid_head : forall d,
-  Rigid.da_eq (Flex_Rigid_da (Flex.demon_head d)) (Rigid.demon_head (Flex_Rigid_d d)).
+  Rigid.da_eq (Flex_Rigid_da (Stream.hd d)) (Stream.hd (Flex_Rigid_d d)).
 Proof. intro d. now destruct d. Qed.
 
-Lemma Rigid_Flex_tail : forall d, Flex.deq (Rigid_Flex_d (Rigid.demon_tail d)) (Flex.demon_tail (Rigid_Flex_d d)).
+Lemma Rigid_Flex_tail : forall d, Flex.deq (Rigid_Flex_d (Stream.tl d)) (Stream.tl (Rigid_Flex_d d)).
 Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
-Lemma Flex_Rigid_tail : forall d, Rigid.deq (Flex_Rigid_d (Flex.demon_tail d)) (Rigid.demon_tail (Flex_Rigid_d d)).
+Lemma Flex_Rigid_tail : forall d, Rigid.deq (Flex_Rigid_d (Stream.tl d)) (Stream.tl (Flex_Rigid_d d)).
 Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
 (** **  Equalities on one round  **)

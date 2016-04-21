@@ -205,40 +205,27 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
 
 (** [Always_forbidden e] means that (infinite) execution [e] is [forbidden]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-CoInductive Always_forbidden (e : execution) : Prop :=
-  CAF : forbidden (execution_head e) ->
-        Always_forbidden (execution_tail e) -> Always_forbidden e.
-
-Lemma Always_forbidden_compat_lemma : forall e1 e2, eeq e1 e2 -> Always_forbidden e1 -> Always_forbidden e2.
-Proof.
-coinduction diff.
-- rewrite <- H. now destruct H0.
-- destruct H. apply (diff _ _ H1). now destruct H0.
-Qed.
+Definition Always_forbidden (e : execution) : Prop := Streams.forever (Streams.instant forbidden) e.
 
 Instance Always_forbidden_compat : Proper (eeq ==> iff) Always_forbidden.
-Proof.
-intros e1 e2 He; split; intro.
-- now apply (Always_forbidden_compat_lemma He).
-- now apply (Always_forbidden_compat_lemma (symmetry He)).
-Qed.
+Proof. apply Streams.forever_compat, Streams.instant_compat. apply forbidden_compat. Qed.
 
 Theorem different_no_gathering : forall (e : execution),
   Always_forbidden e -> forall pt, ~WillGather pt e.
 Proof.
-intros e He pt Habs. induction Habs.
-+ destruct H as [Hnow Hlater]. destruct He as [Hforbidden He].
+intros e He pt Habs. induction Habs as [e IHe | e _ IHe].
++ destruct IHe as [Hnow Hlater]. destruct He as [Hforbidden He].
   destruct Hforbidden as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
-  - assert (Hin : Spect.In pt1 (!! (execution_head e))).
+  - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
-  - assert (Hin : Spect.In pt2 (!! (execution_head e))).
+  - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
-+ inversion He. now apply IHHabs.
++ inversion He. auto.
 Qed.
 
 Section GatheringEven.
@@ -475,12 +462,12 @@ Proof.
 - exact da1_center.
 Defined.
 
-CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
 
-Lemma bad_demon1_tail : demon_tail bad_demon1 = bad_demon1.
+Lemma bad_demon1_tail : Streams.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
 
-Lemma bad_demon1_head : demon_head bad_demon1 = da1.
+Lemma bad_demon1_head : Streams.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
@@ -681,27 +668,27 @@ Proof.
 Defined.
 
 CoFixpoint bad_demon2 ρ (Hρ : ρ <> 0) : demon :=
-  NextDemon (da2_left Hρ)
-  (NextDemon (da2_right (ratio_inv Hρ))
-  (bad_demon2 (ratio_inv (ratio_inv Hρ)))). (* ρ updated *)
+   Streams.cons (da2_left Hρ)
+  (Streams.cons (da2_right (ratio_inv Hρ))
+   (bad_demon2 (ratio_inv (ratio_inv Hρ)))). (* ρ updated *)
 
-Lemma bad_demon_head2_1 : forall ρ (Hρ : ρ <> 0), demon_head (bad_demon2 Hρ) = da2_left Hρ.
+Lemma bad_demon_head2_1 : forall ρ (Hρ : ρ <> 0), Streams.hd (bad_demon2 Hρ) = da2_left Hρ.
 Proof. reflexivity. Qed.
 
 Lemma bad_demon_head2_2 : forall ρ (Hρ : ρ <> 0),
-  demon_head (demon_tail (bad_demon2 Hρ)) = da2_right (ratio_inv Hρ).
+  Streams.hd (Streams.tl (bad_demon2 Hρ)) = da2_right (ratio_inv Hρ).
 Proof. reflexivity. Qed.
 
 Lemma bad_demon_tail2 :
-  forall ρ (Hρ : ρ <> 0), demon_tail (demon_tail (bad_demon2 Hρ)) = bad_demon2 (ratio_inv (ratio_inv Hρ)).
+  forall ρ (Hρ : ρ <> 0), Streams.tl (Streams.tl (bad_demon2 Hρ)) = bad_demon2 (ratio_inv (ratio_inv Hρ)).
 Proof. reflexivity. Qed.
 
 Lemma da_eq_step_None : forall d1 d2, deq d1 d2 ->
-  forall g, step (demon_head d1) (Good g) = None <-> step (demon_head d2) (Good g) = None.
+  forall g, step (Streams.hd d1) (Good g) = None <-> step (Streams.hd d2) (Good g) = None.
 Proof.
 intros d1 d2 Hd g.
 assert (Hopt_eq : opt_eq (Loc.eq ==> Sim.eq)%signature
-                    (step (demon_head d1) (Good g)) (step (demon_head d2) (Good g))).
+                    (step (Streams.hd d1) (Good g)) (step (Streams.hd d2) (Good g))).
 { apply step_da_compat; trivial. now rewrite Hd. }
   split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
 Qed.
@@ -885,7 +872,7 @@ constructor; [| constructor].
 - cbn. apply left_right_dist_forbidden.
   + intros g Hg. now apply round_da2_left_next_left.
   + intros g Hg. now apply round_da2_left_next_right.
-  + rewrite round_da2_left_next_dist; trivial; []. now apply ratio_neq_0.
+  + cbn. rewrite round_da2_left_next_dist; trivial; []. now apply ratio_neq_0.
 (* State after two steps *)
 - do 2 rewrite execute_tail.
   rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.

@@ -12,11 +12,13 @@ coq_makefile -f _CoqProject -o makefile
 
 cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
 
-cp Preliminary.v Lexprod.v Robots.v Configurations.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v MultisetSpectrum.v Similarity.v makefile _CoqProject ./package/
+cp Preliminary.v Lexprod.v Robots.v Configurations.v Streams.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v MultisetSpectrum.v Similarity.v makefile _CoqProject ./package/
 
 cp Convergence/Impossibility_2G_1B.v ./package/Convergence/
 
-cp Gathering/InR/SortingR.v Gathering/InR/Definitions.v Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
+cp Gathering/Definitions.v ./package/Gathering/
+
+cp Gathering/InR/Rcomplements.v Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
 
 cp Gathering/InR2/R2geometry.v Gathering/InR2/Algorithm.v ./package/Gathering/InR2
 
