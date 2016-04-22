@@ -1,8 +1,18 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+
 (* This file extends the common formalism for real metric spaces and contains a common notion of similarity. *)
 
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Export Similarity.
+Require Export Pactole.Spaces.Similarity.
 Require Pactole.CommonFormalism.
 
 

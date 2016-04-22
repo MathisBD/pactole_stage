@@ -9,8 +9,8 @@
 
 
 Require Import SetoidList.
-Require Import Pactole.Preliminary.
-Require Import FinComplements.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.FinComplements.
 
 
 Set Implicit Arguments.
@@ -26,7 +26,11 @@ Class Names1 := {
   G : Type;
   B : Type}.
 
-Class Names2 `{Names1} := { ident : Type }.
+Inductive identifier {G} {B} : Type :=
+  | Good (g : G)
+  | Byz (b : B).
+
+Class Names2 `{H : Names1} := { ident := @identifier (@G H) (@B H) }.
 
 Class Names3 `{Names2} := {
   Gnames : list G;
@@ -57,12 +61,8 @@ Instance Robots1 (n m : nat) : Names1 := {|
   G := Fin.t n;
   B := Fin.t m |}.
 
-
-Inductive identifier {G} {B} : Type :=
-  | Good (g : G)
-  | Byz (b : B).
-
-Instance Robots2 (n m : nat) : @Names2 (Robots1 n m) := {| ident := @identifier (@G (Robots1 n m)) (@B (Robots1 n m)) |}.
+Instance Robots2 (n m : nat) : @Names2 (Robots1 n m).
+Proof. split. Defined.
 
 Instance Robots3 (n m : nat) : @Names3 _ (Robots2 n m).
 Proof.

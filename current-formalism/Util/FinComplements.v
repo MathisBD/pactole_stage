@@ -13,7 +13,7 @@ Require Import Omega.
 Require Import Morphisms.
 Require Import SetoidList.
 Require Vector.
-Require Import Pactole.Preliminary.
+Require Import Pactole.Util.Preliminary.
 
 
 Set Implicit Arguments.

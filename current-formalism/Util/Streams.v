@@ -1,10 +1,20 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+
 (* Complements to the standard library on streams. *)
 
 
 Require Import Relations.
 Require Import Morphisms.
 Require Import RelationClasses.
-Require Import Pactole.Preliminary.
+Require Import Pactole.Util.Preliminary.
 
 
 Set Implicit Arguments.
@@ -55,6 +65,22 @@ Proof. unfold constant. now coinduction Heq. Qed.
 
 Instance aternate_compat {A} (eqA : relation A) : Proper (eqA ==> eqA ==> eq eqA) alternate.
 Proof. cofix Heq. do 2 (constructor; trivial). cbn. now apply Heq. Qed.
+
+(* Some sanity check on [constant] and [alternate]. *)
+Lemma constant_hd {A} : forall c : A, hd (constant c) = c.
+Proof. reflexivity. Qed.
+
+Lemma constant_tl {A} : forall c : A, tl (constant c) = constant c.
+Proof. reflexivity. Qed.
+
+Lemma alternate_tl_tl {A} : forall c1 c2 : A, tl (tl (alternate c1 c2)) = alternate c1 c2.
+Proof. reflexivity. Qed.
+
+Lemma alternate_hd {A} : forall c1 c2 : A, hd (alternate c1 c2) = c1.
+Proof. reflexivity. Qed.
+
+Lemma alternate_tl_hd {A} : forall c1 c2 : A, hd (tl (alternate c1 c2)) = c2.
+Proof. reflexivity. Qed.
 
 (** Logical operators on streams. *)
 
