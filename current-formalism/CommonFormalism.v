@@ -10,88 +10,35 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
-Require Import Omega.
-Require Import Equalities.
-Require Import Morphisms.
-Require Import RelationPairs.
-Require Import Reals.
-Require Import Psatz.
-Require Import SetoidList.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Streams.
+Require Import SetoidDec.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Streams.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)).
-  Module Names := Spect.Names.
-  Module Config := Spect.Config.
-  
-  (** ** Good robots have a common program, which we call a robogram *)
-  
-  Record robogram := {
-    pgm :> Spect.t → Location.t;
-    pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
-  Existing Instance pgm_compat.
-  
-  Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
-  Declare Instance req_equiv : Equivalence req.
-  
-  (** Lifting an equivalence relation to an option type. *)
-  Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
-    match xo, yo with
-      | None, None => True
-      | None, Some _ | Some _, None => False
-      | Some x, Some y => eqT x y
-    end.
-  Declare Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
-  Declare Instance opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
-  Declare Instance opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
-  Declare Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
-  
-  (** ** Executions *)
-  
-  (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-  Definition execution := Streams.t Config.t.
-  
-  (** *** Destructors for executions *)
-  
-  Definition eeq : execution -> execution -> Prop := Streams.eq Config.eq.
-  
-  Declare Instance eeq_equiv : Equivalence eeq.
-  Declare Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _).
-  Declare Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _).
-End Sig.
-
-
-Module Make (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)) : Sig (Location)(N)(Spect).
-
-Module Names := Spect.Names.
-Module Config := Spect.Config.
-
-(** ** Programs for good robots *)
-
-Unset Implicit Arguments.
-
 (** ** Good robots have a common program, which we call a robogram *)
 
+Section Robogram.
+Hypothesis (loc : Type).
+Context {S : Setoid loc}.
+Context {ES : EqDec S}.
+Context {pN : NamesDef}.
+Context {N : Names}.
+Context {Spect : @Spectrum loc S ES pN N}.
+
 Record robogram := {
-  pgm :> Spect.t → Location.t;
-  pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
+  pgm :> spectrum → loc;
+  pgm_compat : Proper (equiv ==> equiv) pgm}.
+Existing Instance pgm_compat.
 
-Global Existing Instance pgm_compat.
-
-Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
-
-Instance req_equiv : Equivalence req.
+Instance reqSetoid : Setoid robogram := {| equiv := fun r1 r2 => forall s, equiv (pgm r1 s) (pgm r2 s) |}.
 Proof. split.
-+ intros [robogram Hrobogram] x y Heq; simpl. rewrite Heq. reflexivity.
-+ intros r1 r2 H x y Heq. rewrite <- (H _ _ (reflexivity _)). now apply (pgm_compat r1).
-+ intros r1 r2 r3 H1 H2 x y Heq.
-  rewrite (H1 _ _ (reflexivity _)), (H2 _ _ (reflexivity _)). now apply (pgm_compat r3).
++ repeat intro. reflexivity.
++ repeat intro. now symmetry.
++ repeat intro. etransitivity; eauto.
 Qed.
 
-(** ** Prelude for Demonic schedulers *)
 
 (** Lifting an equivalence relation to an option type. *)
 Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
@@ -101,28 +48,35 @@ Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
     | Some x, Some y => eqT x y
   end.
 
-Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
+Instance opt_eq_refl : forall T (R : T -> T -> Prop), Reflexive R -> Reflexive (opt_eq R).
 Proof. intros T R HR [x |]; simpl; auto. Qed.
 
-Instance opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
+Instance opt_eq_sym : forall T (R : T -> T -> Prop), Symmetric R -> Symmetric (opt_eq R).
 Proof. intros T R HR [x |] [y |]; simpl; auto. Qed.
 
-Instance opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
+Instance opt_eq_trans : forall T (R : T -> T -> Prop), Transitive R -> Transitive (opt_eq R).
 Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed.
 
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split; auto with typeclass_instances. Qed.
 
+Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
+
+
 (** ** Executions *)
 
-(** Now we can [execute] some robogram from a given position with a [demon] *)
-Definition execution := Streams.t Config.t.
+(** Now we can [execute] some robogram from a given configuration with a [demon] *)
+Definition execution := Streams.t config.
 
-Definition eeq (e1 e2 : execution) : Prop := Streams.eq Config.eq e1 e2.
+(** *** Destructors for executions *)
+
+Definition eeq : execution -> execution -> Prop := Streams.eq equiv.
+
+(** ** Prelude for Demonic schedulers *)
 
 Instance eeq_equiv : Equivalence eeq.
-Proof. apply Streams.eq_equiv. apply Config.eq_equiv. Qed.
+Proof. apply Streams.eq_equiv. autoclass. Qed.
 
-Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _) := Streams.hd_compat _.
+Instance eeq_hd_compat : Proper (eeq ==> equiv) (@hd _) := Streams.hd_compat _.
 Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _) := Streams.tl_compat _.
-End Make.
+End Robogram.

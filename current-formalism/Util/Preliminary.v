@@ -19,6 +19,7 @@ Require Import Psatz.
 Require Import SetoidList.
 Require Export SetoidPermutation.
 Require Import Bool.
+Require Import SetoidClass.
 
 
 Set Implicit Arguments.
@@ -26,6 +27,7 @@ Set Implicit Arguments.
 
 Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
+
 
 (** A tactic simplifying coinduction proofs. *)
 Global Ltac coinduction proof :=
@@ -74,6 +76,14 @@ Global Instance relation_equivalence_subrelation {A} :
 Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
 Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
+
+Instance fun_equiv T U `(Setoid U) : Setoid (T -> U) := {
+  equiv := fun f g : T -> U => forall x, equiv (f x) (g x) }.
+Proof. split.
++ repeat intro. reflexivity.
++ intros ? ? Heq ?. symmetry. apply Heq.
++ repeat intro. etransitivity; eauto.
+Defined.
 
 
 (******************************)
@@ -861,7 +871,7 @@ Proof.
 intros x y l. induction l as [| a l].
 + split; intro Habs. inversion Habs. destruct Habs as [Habs _]. inversion Habs.
 + simpl. destruct (eq_dec y a). 
-  - subst a. rewrite IHl. intuition. now elim H3.
+  - subst a. rewrite IHl. intuition.
   - simpl. rewrite IHl. split; intro Hin.
       now destruct Hin; try subst a; intuition.
       intuition.
@@ -1705,3 +1715,4 @@ Proof.
 intros x Habs. assert (Heq : x = x + 0) by ring. rewrite Heq in Habs at 1. clear Heq.
 apply Rplus_eq_reg_l in Habs. symmetry in Habs. revert Habs. exact R1_neq_R0.
 Qed.
+
