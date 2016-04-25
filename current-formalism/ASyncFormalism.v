@@ -448,37 +448,22 @@ Proof.
 intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
 unfold req in Hr. unfold round. assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
 apply Hconf. assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
-destruct (step da1 id (conf1 id)) eqn:Haoi1, (step da2 id (conf2 id)) eqn:Haoi2, id as [ g| b];
+destruct (step da1 id (conf1 id))  as [ dist| sim], (step da2 id (conf2 id)) as [dist'|sim'], id as [ g| b];
    try now elim Hstep.
 + unfold Aom_eq in *. rewrite Hstep. f_equiv. f_equiv. apply Hrconf. do 2 f_equiv.
  apply Hrconf. f_equiv; apply Hrconf. unfold Config.Info_eq. split; apply Hrconf.
-+ unfold Aom_eq in *. split. apply Hrconf. simpl. unfold Config.Info_eq. split; simpl.
- apply Hrconf. f_equiv; try apply Hr. f_equiv. unfold Config.eq_RobotConf in Hrconf.
- assert (Location.eq (Config.loc (conf1 (Good g))) (Config.loc (conf2 (Good g)))) by apply Hrconf.
- rewrite H. apply Hstep. specialize (Hstep (conf1 (Good g))).
-    rewrite Hstep. f_equiv. 
- * destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0.
-   repeat split. assumption. apply Hr. f_equiv. do 2 f_equiv. apply Hstep, Hconf. assumption.
-   f_equiv. apply Hr. f_equiv. f_equiv. f_equiv. apply Hstep. assumption. assumption.
- * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
-   unfold Config.eq_State in H0. assumption.
- * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0.
-   unfold Config.eq_State in H0. assumption.
- * exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
-   unfold Config.eq_State in H0. destruct targets in H0. assumption.
- * split; auto. f_equiv. f_equiv. apply Hstep. f_equiv. auto.
-   destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0.
-   destruct targets, targets0 in *.  
-   destruct H0. rewrite H1,H0. simpl. rewrite H. 
-   destruct (Rle_bool δ (Location.dist t2 (conf2 (Good g)))); simpl; assumption.
- * rewrite HSta2. exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
-   unfold Config.eq_State in H0. destruct targets in H0. assumption.
- * rewrite HSta1. exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
-   unfold Config.eq_State in H0. assumption.
- * rewrite HSta1. exfalso. destruct (Hconf (Good g)). rewrite HSta1, HSta2 in H0. 
-   unfold Config.eq_State in H0. destruct targets in H0. assumption.
- * rewrite HSta1, HSta2. split; destruct (Hconf (Good g)). assumption. 
-   rewrite HSta1, HSta2 in H0. unfold Config.eq_State in H0. assumption.
++ unfold Aom_eq in *. split. apply Hrconf. unfold Config.Info_eq. simpl. split. apply Hrconf.
+  assert (Heq: Location.eq 
+    (r1 (Spect.from_config (Config.map (apply_sim (sim (conf1 (Good g)))) conf1)))
+    (r2 (Spect.from_config (Config.map (apply_sim (sim' (conf2 (Good g)))) conf2)))).
+    apply Hr. do 2 f_equiv; trivial. f_equiv. 
+    assert (Hs: Sim.eq (sim (conf1 (Good g))) (sim (conf2 (Good g)))). destruct Hrconf.
+    apply Sim.f_compat; trivial. intros x y f.
+    intuition. f_equiv. apply Location.eq_equiv.
+    f_equiv. intuition. f_equiv.
+    
+    
+     apply Hstep.
 + rewrite Hda. destruct (Hconf (Byz b)). rewrite H0. reflexivity.
 Qed.
 
