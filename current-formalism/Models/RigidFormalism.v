@@ -258,8 +258,8 @@ Definition round r (da : demonic_action) (config : configuration) : configuratio
   (** for a given robot, we compute the new configuration *)
   fun id =>
     match da.(step) id with (** first see whether the robot is activated *)
-      | None => config id (** If g is not activated, do nothing *)
-      | Some sim => (** g is activated and [sim (conf g)] is its similarity *)
+      | None => config id (** If id is not activated, do nothing *)
+      | Some sim => (** id is activated and [sim (conf id)] is its similarity *)
         match id with
           | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
           | Good g =>  (* change of frame of reference *)

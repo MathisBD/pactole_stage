@@ -14,19 +14,20 @@ Require Import Omega.
 Require Import Rbase Rbasic_fun.
 Require Import Sorting.
 Require Import List.
-Require Import SetoidList.
 Require Import Relations.
 Require Import RelationPairs.
-Require Import Pactole.Preliminary.
+Require Import SetoidDec.
+Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.Similarity.
-Require Pactole.CommonRealFormalism.
-Require Pactole.RigidFormalism.
+Require Import Pactole.Spaces.RealMetricSpaces.
+Require Import Pactole.Spaces.Similarity.
+Require Pactole.CommonFormalism.
+(* Require Pactole.RigidFormalism. *)
 (* Require Import Pactole.Gathering.InR.SortingR. *)
-Require Import Pactole.Gathering.Definitions.
-Require Import Pactole.MultisetSpectrum.
-Require Import Morphisms.
+(* Require Import Pactole.Gathering.Definitions. *)
+(* Require Import Pactole.MultisetSpectrum. *)
+(* Require Import Morphisms. *)
 Require Import Psatz.
 Import Permutation.
 
@@ -38,96 +39,33 @@ Open Scope R_scope.
 
 (** R as a vector space over itself. *)
 
-Module Rdef : RealMetricSpaceDef with Definition t := R
-                                 with Definition eq := @Logic.eq R
-                                 with Definition eq_dec := Rdec
-                                 with Definition origin := 0%R
-                                 with Definition dist := fun x y => Rabs (x - y)
-                                 with Definition add := Rplus
-                                 with Definition mul := Rmult
-                                 with Definition opp := Ropp.
-  
-  Definition t := R.
-  Definition origin := 0%R.
-  Definition eq := @Logic.eq R.
-  Definition dist x y := Rabs (x - y).
-  
-  Definition add := Rplus.
-  Definition mul := Rmult.
-  Definition opp := Ropp.
-  
-  Instance add_compat : Proper (eq ==> eq ==> eq) add.
-  Proof. unfold eq. repeat intro. now subst. Qed.
-  
-  Instance mul_compat : Proper (Logic.eq ==> eq ==> eq) mul.
-  Proof. unfold eq. repeat intro. now subst. Qed.
-  
-  Instance opp_compat : Proper (eq ==> eq) opp.
-  Proof. unfold eq. repeat intro. now subst. Qed.
-  
-  Definition eq_equiv := @eq_equivalence R.
-  Definition eq_dec : forall x y : t, {eq x y} + {~ eq x y} := Rdec.
-  
-  Lemma dist_defined : forall x y : t, dist x y = 0%R <-> eq x y.
-  Proof.
-  intros x y. unfold eq, dist. split; intro Heq.
+Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
+Instance R_EqDec : @EqDec R _ := Rdec.
+
+Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
+
+(* We use the square of the distance in order to avoid sqrt, hence we can use any field of charactistic 0. *)
+Instance R_RMS : RealMetricSpace R := {|
+  origin := 0;
+  unit := 1;
+  dist := fun x y => Rabs (x - y);
+  add := Rplus;
+  mul := Rmult;
+  opp := Ropp |}.
+Proof.
+all:try now intros; cbn; field.
+* intros x y. cbn. split; intro Heq.
   + apply Rminus_diag_uniq. destruct (Rcase_abs (x - y)) as [Hcase | Hcase].
     - apply Rlt_not_eq in Hcase. apply Rabs_no_R0 in Hcase. contradiction.
     - rewrite <- Heq. symmetry. now apply Rabs_pos_eq, Rge_le.
   + rewrite (Rminus_diag_eq _ _ Heq). apply Rabs_R0.
-  Qed.
-
-  Lemma dist_sym : forall y x : t, dist x y = dist y x.
-  Proof. intros. unfold dist. apply Rabs_minus_sym. Qed.
-  
-  Lemma triang_ineq : forall x y z : t, (dist x z <= dist x y + dist y z)%R.
-  Proof.
-  intros. unfold dist. replace (x - z)%R with (x - y + (y - z))%R by lra. apply Rabs_triang.
-  Qed.
-  
-  Lemma add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
-  Proof. unfold eq, add. intros. lra. Qed.
-  
-  Lemma add_comm : forall u v, eq (add u v) (add v u).
-  Proof. unfold eq, add. intros. lra. Qed.
-  
-  Lemma add_origin : forall u, eq (add u origin) u.
-  Proof. unfold eq, add, origin. intros. lra. Qed.
-  
-  Lemma add_opp : forall u, eq (add u (opp u)) origin.
-  Proof. unfold eq, add, opp, origin. intros. lra. Qed.
-  
-  Lemma mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
-  Proof. unfold eq, mul. intros. lra. Qed.
-  
-  Lemma mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Proof. unfold eq, add, mul. intros. lra. Qed.
-  
-  Lemma add_morph : forall a b u, eq (add (mul a u) (mul b u)) (mul (a + b) u).
-  Proof. unfold eq, add, mul. intros. lra. Qed.
-  
-  (** The multiplicative identity is omitted. *)
-  Lemma mul_1 : forall u, eq (mul 1 u) u.
-  Proof. unfold eq, mul. intros. lra. Qed.
-  
-  Definition unit := 1.
-  Definition non_trivial : ~eq unit origin := R1_neq_R0.
-End Rdef.
-
-
-Module R := MakeRealMetricSpace(Rdef).
-
-Transparent R.origin Rdef.origin R.eq_dec Rdef.eq_dec R.eq Rdef.eq.
-
-Ltac unfoldR := unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t,
-                       R.add, Rdef.add, R.opp, Rdef.opp, R.mul, Rdef.mul.
-
-Tactic Notation "unfoldR" "in" hyp(H) :=
-  unfold R.origin, Rdef.origin, R.eq_dec, Rdef.eq_dec, R.eq, Rdef.eq, R.t, Rdef.t,
-         R.add, Rdef.add, R.opp, Rdef.opp, R.mul, Rdef.mul in H.
+* intros. apply Rabs_minus_sym.
+* intros. replace (x - z)%R with (x - y + (y - z))%R by ring. apply Rabs_triang.
+* apply R1_neq_R0.
+Defined.
 
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
-Ltac Rdec := unfoldR; repeat
+Ltac Rdec := repeat
   match goal with
     | |- context[Rdec ?x ?x] =>
         let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
@@ -145,7 +83,6 @@ Ltac Rdec := unfoldR; repeat
   end.
 
 Ltac Rdec_full :=
-  unfoldR;
   match goal with
     | |- context[Rdec ?x ?y] =>
       let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
@@ -177,27 +114,27 @@ Ltac Rle_dec :=
   end.
 
 (** Translation and homothecy similarities are well-defined on R. *)
-Lemma translation_hypothesis : forall z x y, R.dist (R.add x z) (R.add y z) = R.dist x y.
-Proof. intros z x y. unfoldR. unfold R.dist, Rdef.dist. now ring_simplify (x + z - (y + z))%R. Qed.
+Lemma translation_hypothesis : forall z x y, dist (add x z) (add y z) = dist x y.
+Proof. intros z x y. cbn. now ring_simplify (x + z - (y + z))%R. Qed.
 
-Lemma homothecy_hypothesis : forall k x y, R.dist (R.mul k x) (R.mul k y) = (Rabs k * R.dist x y)%R.
-Proof. intros. unfoldR. unfold R.dist, Rdef.dist. rewrite <- Rmult_minus_distr_l. apply Rabs_mult. Qed.
+Lemma homothecy_hypothesis : forall k x y, dist (mul k x) (mul k y) = (Rabs k * dist x y)%R.
+Proof. intros. cbn. rewrite <- Rmult_minus_distr_l. apply Rabs_mult. Qed.
 
-Global Instance Leibniz_fun_compat : forall f, Proper (R.eq ==> R.eq) f.
+Global Instance Leibniz_fun_compat : forall f, Proper (equiv ==> equiv) f.
 Proof. intros f ? ? Heq. now rewrite Heq. Qed.
 
 (** A location is determined by distances to 2 points. *)
-Lemma dist_case : forall x y, R.dist x y = x - y \/ R.dist x y = y - x.
+Lemma dist_case : forall x y, dist x y = x - y \/ dist x y = y - x.
 Proof.
-unfold R.dist, Rdef.dist. intros x y. destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
-- apply Rabs_pos_eq in Hle. lra.
-- apply Rabs_left in Hlt. lra.
+cbn. intros x y. destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
+- apply Rabs_pos_eq in Hle. now left.
+- apply Rabs_left in Hlt. right. rewrite Hlt. field.
 Qed.
 
-Lemma dist_locate : forall x y k, R.dist x y = k -> x = y + k \/ x = y - k.
+Lemma dist_locate : forall x y k, dist x y = k -> x = y + k \/ x = y - k.
 Proof. intros x y k ?. subst. assert (Hcase := dist_case x y). lra. Qed.
 
-Lemma GPS : forall x y z1 z2, x <> y -> R.dist z1 x = R.dist z2 x -> R.dist z1 y = R.dist z2 y -> z1 = z2.
+Lemma GPS : forall x y z1 z2, x <> y -> dist z1 x = dist z2 x -> dist z1 y = dist z2 y -> z1 = z2.
 Proof.
 intros x y z1 z2 Hneq Hx Hy.
 assert (Hcase1 := dist_case z1 x). assert (Hcase2 := dist_case z2 x).
@@ -387,94 +324,78 @@ Proof. repeat intro. hnf in *. rewrite Rleb_spec in *. apply Rmult_le_compat_l; 
 
 Lemma similarity_decreasing : forall k t, k <= 0 -> Proper (Rleb --> Rleb) (fun x => k * (x - t)).
 Proof.
-repeat intro. hnf in *. unfold flip in *. rewrite Rleb_spec in *. apply Ropp_le_cancel.
+repeat intro. hnf in *. unfold Basics.flip in *. rewrite Rleb_spec in *. apply Ropp_le_cancel.
 replace (- (k * (y - t))) with ((- k) * (y - t)) by ring.
 replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
 apply Rmult_le_compat_l; lra.
 Qed.
 
-(** **  Framework of the proofs about gathering  **)
-(* TODO: Move all references to robots to each file Impossiblity.v and Algorithm.v,
-         once we switch to typeclasses and can leave proofs about similarities and R here. *)
 
-Module GatheringinR.
-
-Parameter nG: nat.
-
-(** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := nG with Definition nB := 0%nat.
-  Definition nG := nG.
-  Definition nB := 0%nat.
-End N.
-
-(** We instantiate in our setting the generic definitions of the gathering problem. *)
-Module Defs := Definitions.GatheringDefs(R)(N).
-Export Defs.
-
-Definition translation := Sim.translation translation_hypothesis.
-Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
+Definition translation := translation _ translation_hypothesis.
+Definition homothecy := homothecy _ translation_hypothesis homothecy_hypothesis.
 
 
 (** **  Some results about R with respect to distance and similarities  **)
 
 Open Scope R_scope.
 
-(* A similarity in R is described by its ratio and its center. *)
-Theorem similarity_in_R_case : forall sim : Sim.t,
-  (forall x : R, sim x = sim.(Sim.zoom) * (x - sim.(Sim.center))) \/
-  (forall x, sim x = - sim.(Sim.zoom) * (x - sim.(Sim.center))).
+(** A similarity in R is described by its ratio and its center. *)
+
+Theorem similarity_in_R_case : forall sim : similarity R,
+  (forall x : R, sim x == sim.(zoom) * (x - sim.(center))) \/
+  (forall x, sim x == - sim.(zoom) * (x - sim.(center))).
 Proof.
-intro sim. assert (Hkpos : 0 < sim.(Sim.zoom)) by apply Sim.zoom_pos.
-destruct sim as [f k c Hc Hk]. simpl in *. unfold R.origin, Rdef.origin in Hc.
-destruct (Rdec k 0) as [Hk0 | Hk0].
+intro sim. assert (Hkpos : 0 < sim.(zoom)) by apply zoom_pos.
+destruct sim as [f k c Hc Hk]. simpl in Hkpos |- *.
+destruct (equiv_dec k 0) as [Hk0 | Hk0].
 * (* if the ratio is 0, the similarity is a constant function. *)
-  left. intro x. subst k. rewrite Rmult_0_l.
-  rewrite <- R.dist_defined. rewrite <- Hc, Hk at 1. ring.
+  left. intro x. cbn in Hk0. subst k. rewrite Rmult_0_l.
+  change (f x == 0). rewrite <- dist_defined. rewrite <- Hc, Hk at 1. ring.
 * assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
   { specialize (Hk (c + 1) c). rewrite Hc in Hk.
-    assert (H1 : R.dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
-    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) 0) as [Heq | Heq]; rewrite Heq in Hk.
-    - ring_simplify in Hk. now left.
-    - ring_simplify in Hk. right. now rewrite <- Hk, Ropp_involutive. }
+    assert (H1 : dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
+    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) origin) as [Heq | Heq];
+    rewrite Heq in Hk; ring_simplify in Hk; cbn in *; lra. }
   destruct Hc1 as [Hc1 | Hc1].
   + left. intro x. apply (GPS (f c) (f (c + 1))).
-    - rewrite Hc, Hc1. lra.
-    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
+    - rewrite Hc, Hc1. cbn. lra.
+    - rewrite Hk, Hc. cbn.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
+    - rewrite Hk, Hc1. cbn.
       replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
   + right. intro x. apply (GPS (f c) (f (c + 1))).
-    - rewrite Hc, Hc1. lra.
-    - rewrite Hk, Hc. unfold R.dist, Rdef.dist.
+    - rewrite Hc, Hc1. cbn. lra.
+    - rewrite Hk, Hc. cbn.
       replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
-    - rewrite Hk, Hc1. unfold R.dist, Rdef.dist.
+    - rewrite Hk, Hc1. cbn.
       replace (- k * (x - c) - - k) with (- k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
 Qed.
 
-Corollary similarity_in_R : forall sim, exists k, (k = sim.(Sim.zoom) \/ k = - sim.(Sim.zoom))
-  /\ forall x, sim x = k * (x - sim.(Sim.center)).
+Corollary similarity_in_R : forall sim, exists k, (k = sim.(zoom) \/ k = - sim.(zoom))
+  /\ forall x, sim x = k * (x - sim.(center)).
 Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 
-Corollary inverse_similarity_in_R : forall (sim : Sim.t) k, k <> 0 ->
-  (forall x, sim x = k * (x - sim.(Sim.center))) -> forall x, (sim ⁻¹) x = x / k + sim.(Sim.center).
-Proof. intros sim k Hk Hdirect x. simpl. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
+Corollary inverse_similarity_in_R : forall (sim : similarity R) k, k <> 0 ->
+  (forall x, sim x == k * (x - sim.(center))) -> forall x, (sim ⁻¹) x == x / k + sim.(center).
+Proof.
+intros sim k Hk Hdirect x. change ((sim ⁻¹) x) with (retraction sim x).
+rewrite <- sim.(Inversion), Hdirect. hnf. now field.
+Qed.
 
-Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R.eq R.eq sim.
-Proof. apply Sim.injective. Qed.
+Lemma sim_Minjective : forall (sim : similarity R), Preliminary.injective equiv equiv sim.
+Proof. apply injective. Qed.
 
-Hint Immediate Sim.injective sim_Minjective.
+Hint Immediate injective sim_Minjective.
 
-Corollary similarity_monotonic : forall sim : Sim.t, monotonic Rleb Rleb sim.
+Corollary similarity_monotonic : forall sim : similarity R, monotonic Rleb Rleb sim.
 Proof.
 intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
 + left. intros x y Hxy. do 2 rewrite Hinc. apply similarity_increasing; trivial.
-  pose (Hratio := Sim.zoom_pos sim). lra.
+  pose (Hratio := zoom_pos sim). lra.
 + right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
-  assert (Hratio := Sim.zoom_pos sim). lra.
+  assert (Hratio := zoom_pos sim). lra.
 Qed.
-
-End GatheringinR.

@@ -13,9 +13,10 @@ MMultiset/MMultisetExtraOps.v
 MMultiset/Preliminary.v
 Spaces/RealMetricSpaces.v
 Spaces/Similarity.v
+Spaces/R.v
+Spaces/R2.v
 CommonFormalism.v
-CommonRealFormalism.v
-#Models/FlexibleFormalism.v
+Models/FlexibleFormalism.v
 Models/RigidFormalism.v
 #Models/RigidEquivalence.v
 Spectra/MultisetSpectrum.v
@@ -26,8 +27,6 @@ Util/Lexprod.v
 Convergence/Impossibility_2G_1B.v
 Gathering/Definitions.v
 Gathering/Impossibility.v
-Gathering/InR/Rcomplements.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
-Gathering/InR2/R2geometry.v
 Gathering/InR2/Algorithm.v

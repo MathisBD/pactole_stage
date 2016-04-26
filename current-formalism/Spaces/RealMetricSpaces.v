@@ -32,7 +32,7 @@ Class RealMetricSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   opp_compat : Proper (equiv ==> equiv) opp;
   
   dist_defined : forall x y, dist x y = 0%R <-> equiv x y;
-  dist_sym : forall y x, dist x y = dist y x;
+  dist_sym : forall x y, dist y x = dist x y;
   triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R ;
   
   add_assoc : forall u v w, equiv (add u (add v w)) (add (add u v) w);
@@ -47,9 +47,9 @@ Class RealMetricSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   unit : T; (* TODO: is it really a good name? *)
   non_trivial : ~equiv unit origin}.
 
-Existing Instance add_compat.
-Existing Instance mul_compat.
-Existing Instance opp_compat.
+Global Existing Instance add_compat.
+Global Existing Instance mul_compat.
+Global Existing Instance opp_compat.
 
 (** Proofs of two derivable properties about MetricSpace *)
 
