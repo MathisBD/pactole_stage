@@ -46,14 +46,14 @@ Class Names `{NamesDef} := {
   Gnames_length : length Gnames = nG;
   Bnames_length : length Bnames = nB}.
 
-Lemma In_names `(Names) : forall r : ident, In r names.
+Lemma In_names `{Names} : forall r : ident, In r names.
 Proof.
 intro r. cbn. unfold names. rewrite in_app_iff. destruct r as [g | b].
 - left. apply in_map, In_Gnames.
 - right. apply in_map, In_Bnames.
 Qed.
 
-Lemma names_NoDup `(Names) : NoDup names.
+Lemma names_NoDup `{Names} : NoDup names.
 Proof.
 unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
 + apply (map_injective_NoDupA _ _).
@@ -70,7 +70,7 @@ unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
   - now repeat intro; subst.
 Qed.
 
-Lemma names_length `(Names) : length names = nG + nB.
+Lemma names_length `{Names} : length names = nG + nB.
 Proof. unfold names. now rewrite app_length, map_length, map_length, Gnames_length, Bnames_length. Qed.
 
 Instance RobotsDef (n m : nat) : NamesDef := {|

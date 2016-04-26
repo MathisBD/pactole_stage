@@ -17,16 +17,17 @@ Require Import Pactole.Robots.
 (** * Configurations *)
 
 Class Configuration (loc : Type) {S : Setoid loc} (Loc : @EqDec loc S) `(N : Names) := {
-  config := ident -> loc;
+  configuration := ident -> loc;
   
-  config_neq_equiv : forall config₁ config₂ : config,
+  config_neq_equiv : forall config₁ config₂ : configuration,
     ~@equiv _ (fun_equiv _ _) config₁ config₂ <-> exists id, ~equiv (config₁ id) (config₂ id);
   
-  map_config := fun (f : loc -> loc) (config : config) => fun id => f (config id);
-  map_config_compat : Proper ((equiv ==> equiv) ==> @equiv _ (fun_equiv _ _) ==> equiv) map_config;
+  map_config := fun (f : loc -> loc) (config : configuration) => ((fun id => f (config id)) : configuration);
+  map_config_compat :
+    Proper ((equiv ==> equiv) ==> @equiv _ (fun_equiv _ _) ==> @equiv _ (fun_equiv _ _)) map_config;
   
-  Gpos : config -> list loc;
-  Bpos : config -> list loc;
+  Gpos : configuration -> list loc;
+  Bpos : configuration -> list loc;
   config_list := fun config => Gpos config ++ Bpos config;
   Gpos_compat : Proper (eq ==> eqlistA equiv) Gpos;
   Bpos_compat : Proper (eq ==> eqlistA equiv) Bpos;
@@ -47,9 +48,9 @@ Class Configuration (loc : Type) {S : Setoid loc} (Loc : @EqDec loc S) `(N : Nam
   config_list_map : forall f, Proper (equiv ==> equiv) f -> 
     forall config, config_list (map_config f config) = List.map f (config_list config);
   map_merge : forall f g, Proper (equiv ==> equiv) f ->
-    Proper (equiv ==> equiv) g -> forall config : config,
+    Proper (equiv ==> equiv) g -> forall config : configuration,
     equiv (map_config g (map_config f config)) (map_config (fun x => g (f x)) config);
-  map_id : forall config : config, equiv (map_config Datatypes.id config) config}.
+  map_id : forall config : configuration, equiv (map_config Datatypes.id config) config}.
 
 
 Instance Make_Configuration loc `{S : Setoid loc} `(ES : @EqDec loc S) `(Names) : Configuration loc ES _ := {|
@@ -108,7 +109,7 @@ Class Spectrum loc {S : Setoid loc} `{@EqDec loc S} `{Names} := {
   SpectEqDec : EqDec SpectSetoid;
 
   (** A predicate characterizing correct spectra for a given local configuration *)
-  from_config : config -> spectrum;
-  from_config_compat : Proper (equiv ==> equiv) from_config;
-  is_ok : spectrum -> config -> Prop;
-  from_config_spec : forall config, is_ok (from_config config) config}.
+  spect_from_config : @configuration loc _ _ _ _ _ -> spectrum;
+  spect_from_config_compat : Proper (equiv ==> equiv) spect_from_config;
+  spect_is_ok : spectrum -> @configuration loc _ _ _ _ _ -> Prop;
+  spect_from_config_spec : forall config, spect_is_ok (spect_from_config config) config}.
