@@ -15,6 +15,7 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Streams.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.Spectra.Definition.
 
 
 (** ** Good robots have a common program, which we call a robogram *)
@@ -32,7 +33,7 @@ Record robogram := {
   pgm_compat : Proper (@equiv _ SpectSetoid ==> equiv) pgm}.
 Global Existing Instance pgm_compat.
 
-Global Instance robogramSetoid : Setoid robogram := {|
+Global Instance robogram_Setoid : Setoid robogram := {|
   equiv := fun r1 r2 => forall s, equiv (pgm r1 s) (pgm r2 s) |}.
 Proof. split.
 + repeat intro. reflexivity.

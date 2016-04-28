@@ -16,9 +16,11 @@ Spaces/Similarity.v
 Spaces/R.v
 Spaces/R2.v
 CommonFormalism.v
-Models/FlexibleFormalism.v
-Models/RigidFormalism.v
-#Models/RigidEquivalence.v
+Models/Flexible.v
+Models/Rigid.v
+Models/RigidEquivalence.v
+Setting.v
+Spectra/Definition.v
 Spectra/MultisetSpectrum.v
 #Spectra/SetSpectrum.v
 #Spectra/LimitedSetSpectrum.v

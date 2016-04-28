@@ -35,7 +35,7 @@ Record bijection := {
   Inversion : ∀ x y, section x == y ↔ retraction y == x}.
 Global Existing Instance section_compat.
 
-Global Instance bij_Setoid : Setoid bijection := {| equiv := fun f g => equiv f.(section) g |}.
+Global Instance bij_Setoid : Setoid bijection := {| equiv := fun f g => forall x, f.(section) x == g x |}.
 Proof. split.
 + repeat intro. reflexivity.
 + repeat intro. now symmetry.
