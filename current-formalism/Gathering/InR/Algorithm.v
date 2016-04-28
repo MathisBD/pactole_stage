@@ -13,32 +13,26 @@ Require Import Arith.Div2.
 Require Import Omega.
 Require Import Rbase Rbasic_fun.
 Require Import List.
-Require Import SetoidList.
+(* Require Import SetoidList. *)
 Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-(* Require Import Pactole.Gathering.InR.SortingR. *)
-Require Import Pactole.MultisetSpectrum.
-Require Import Pactole.Lexprod.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
+Require Import Pactole.Spaces.R.
+Require Import Pactole.Spectra.MultisetSpectrum.
 Import Permutation.
-Require Import Pactole.Gathering.InR.Rcomplements.
+Require Import Pactole.Gathering.Definitions.
 
 
 Set Implicit Arguments.
 
 
-Import GatheringinR.
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
-
-Lemma similarity_middle : forall (sim : Sim.t) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
+Lemma similarity_middle : forall (sim : similarity R) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
 Proof.
 intros sim x y. destruct (similarity_in_R_case sim) as [Hsim | Hsim];
-repeat rewrite Hsim; unfold R.t, Rdef.t in *; field.
+repeat rewrite Hsim; cbn in *; field.
 Qed.
 Close Scope R_scope.
 

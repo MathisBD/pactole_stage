@@ -11,66 +11,62 @@
 Require Import Utf8.
 Require Import Reals.
 Require Import Psatz.
-Require Import Morphisms.
+Require Import SetoidDec.
 Require Import Arith.Div2.
 Require Import Omega.
-Require Import List SetoidList.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Gathering.InR.Rcomplements.
+(* Require Import List SetoidList. *)
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
+Require Import Pactole.Spaces.R.
+Require Import Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Models.Rigid.
 
 
 Set Implicit Arguments.
+Close Scope R_scope.
 
-
-Parameter nB: nat.
-Axiom nB_non_0 : nB <> 0%nat.
 
 (** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := (2 * nB)%nat with Definition nB := nB.
-  Definition nG := (2 * nB)%nat.
-  Definition nB := nB.
-End N.
+Parameter n: nat.
+Axiom n_non_0 : n <> 0%nat.
+
+Definition MyRobots := Robots (2*n) n.
+Existing Instance MyRobots.
 
 
 (** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(R)(N).
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
-Notation "!!" := Spect.from_config (at level 1).
+Notation "!!" := spect_from_config (at level 1).
 
 Add Search Blacklist "Spect.M" "Ring".
 Hint Extern 0 (1 <> 0)%R => apply R1_neq_R0.
 Hint Extern 0 (0 <> 1)%R => intro; apply R1_neq_R0; now symmetry.
 Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
-Hint Extern 0 (~R.eq 1 0)%R => apply R1_neq_R0.
-Hint Extern 0 (~R.eq 0 1)%R => intro; apply R1_neq_R0; now symmetry.
-Hint Extern 0 (~R.eq _ _) => match goal with | H : ~R.eq ?x ?y |- ~R.eq ?y ?x => intro; apply H; now symmetry end.
+Hint Extern 0 (~@equiv R _ 1 0)%R => apply R1_neq_R0.
+Hint Extern 0 (~@equiv R _ 0 1)%R => intro; apply R1_neq_R0; now symmetry.
+Hint Extern 0 (~equiv R _ _ _) =>
+  match goal with | H : ~@equiv R _ ?x ?y |- ~@equiv R _ ?y ?x => intro; apply H; now symmetry end.
 
 
-Module Export Common := CommonRealFormalism.Make(R)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
+Lemma nB_value : nB = n.
+Proof. Admitted.
+(* Proof. reflexivity. Qed. *)
 
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
-Close Scope R_scope.
+Lemma nG_nB : nG = 2 * nB.
+Proof. Admitted.
+(* Proof. reflexivity. Qed. *)
 
-Definition translation := Sim.translation translation_hypothesis.
-Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
+Corollary even_nG : Nat.Even nG.
+Proof. exists nB. apply nG_nB. Qed.
 
+Corollary nG_non_0 : nG <> 0.
+Proof. Admitted.
+(* Proof. rewrite nG_nB. assert (H0 := n_non_0). unfold nB. omega. Qed. *)
 
-Lemma nG_nB : N.nG = 2 * N.nB.
-Proof. reflexivity. Qed.
-
-Corollary even_nG : Nat.Even N.nG.
-Proof. exists N.nB. apply nG_nB. Qed.
-
-Corollary nG_non_0 : N.nG <> 0.
-Proof. rewrite nG_nB. assert (H0 := nB_non_0). unfold N.nB. omega. Qed.
-
-Corollary half_size_conf : Nat.div2 N.nG > 0.
+Corollary half_size_conf : Nat.div2 nG > 0.
 Proof.
-assert (H0 := nB_non_0). rewrite nG_nB. unfold N.nB.
-destruct nB as [| n].
+assert (H0 := n_non_0). rewrite nG_nB, nB_value.
+destruct n as [| n].
 - omega.
 - simpl. rewrite plus_comm. simpl. omega.
 Qed.
@@ -81,8 +77,8 @@ Qed.
 Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
-Definition imprisoned (center : R.t) (radius : R) (e : execution) : Prop :=
-  Streams.forever (Streams.instant (fun config => forall g, R.dist center (config (Good g)) <= radius)) e.
+Definition imprisoned (center : R) (radius : R) (e : execution) : Prop :=
+  Streams.forever (Streams.instant (fun config => forall g, dist center (config (Good g)) <= radius)) e.
 
 (** The execution will end in a small disk. *)
 Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.

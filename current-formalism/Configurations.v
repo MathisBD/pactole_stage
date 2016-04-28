@@ -18,20 +18,21 @@ Require Import Pactole.Robots.
 
 Class Configuration (loc : Type) {S : Setoid loc} (Loc : @EqDec loc S) `(N : Names) := {
   configuration := ident -> loc;
+  configuration_Setoid : Setoid configuration := fun_equiv ident S;
   
   config_neq_equiv : forall config₁ config₂ : configuration,
-    ~@equiv _ (fun_equiv _ _) config₁ config₂ <-> exists id, ~equiv (config₁ id) (config₂ id);
+    ~@equiv _ configuration_Setoid config₁ config₂ <-> exists id, ~equiv (config₁ id) (config₂ id);
   
   map_config := fun (f : loc -> loc) (config : configuration) => ((fun id => f (config id)) : configuration);
   map_config_compat :
-    Proper ((equiv ==> equiv) ==> @equiv _ (fun_equiv _ _) ==> @equiv _ (fun_equiv _ _)) map_config;
+    Proper ((equiv ==> equiv) ==> @equiv _ configuration_Setoid ==> @equiv _ configuration_Setoid) map_config;
   
   Gpos : configuration -> list loc;
   Bpos : configuration -> list loc;
   config_list := fun config => Gpos config ++ Bpos config;
-  Gpos_compat : Proper (eq ==> eqlistA equiv) Gpos;
-  Bpos_compat : Proper (eq ==> eqlistA equiv) Bpos;
-  config_list_compat : Proper (eq ==> eqlistA equiv) config_list;
+  Gpos_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) Gpos;
+  Bpos_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) Bpos;
+  config_list_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) config_list;
   
   Gpos_spec : forall config, Gpos config = List.map (fun g => config (Good g)) Gnames;
   Bpos_spec : forall config, Bpos config = List.map (fun g => config (Byz g)) Bnames;
@@ -45,12 +46,14 @@ Class Configuration (loc : Type) {S : Setoid loc} (Loc : @EqDec loc S) `(N : Nam
   Bpos_length : forall config, length (Bpos config) = nB;
   config_list_length : forall config, length (config_list config) = nG + nB;
   
-  config_list_map : forall f, Proper (equiv ==> equiv) f -> 
-    forall config, config_list (map_config f config) = List.map f (config_list config);
+  config_list_map : forall f, Proper (equiv ==> equiv) f ->
+    forall config, config_list (map_config f config) == List.map f (config_list config);
   map_merge : forall f g, Proper (equiv ==> equiv) f ->
     Proper (equiv ==> equiv) g -> forall config : configuration,
-    equiv (map_config g (map_config f config)) (map_config (fun x => g (f x)) config);
-  map_id : forall config : configuration, equiv (map_config Datatypes.id config) config}.
+    @equiv _ configuration_Setoid (map_config g (map_config f config)) (map_config (fun x => g (f x)) config);
+  map_id : forall config : configuration, @equiv _ configuration_Setoid (map_config Datatypes.id config) config}.
+
+Existing Instance configuration_Setoid.
 
 
 Instance Make_Configuration loc `{S : Setoid loc} `(ES : @EqDec loc S) `(Names) : Configuration loc ES _ := {|
@@ -71,6 +74,12 @@ Proof.
       -- eauto.
   + destruct Hneq as [id Hneq]. intro Habs. apply Hneq, Habs.
 * intros f g Hfg ? ? Hconfig id. unfold map. apply Hfg, Hconfig.
+* intros f g Hfg. eapply map_extensionalityA_compat; reflexivity || autoclass; [].
+  intros x y Hxy. cbn in Hxy. subst. apply Hfg.
+* intros f g Hfg. eapply map_extensionalityA_compat; reflexivity || autoclass; [].
+  intros x y Hxy. cbn in Hxy. subst. apply Hfg.
+* intros f g Hfg. f_equiv;
+  (eapply map_extensionalityA_compat; reflexivity || autoclass; []; intros x y Hxy; cbn in Hxy; subst; apply Hfg).
 * reflexivity.
 * reflexivity.
 * intros. unfold config_list, names. rewrite map_app. now do 2 rewrite map_map.
@@ -98,18 +107,3 @@ Proof.
 * reflexivity.
 * reflexivity.
 Qed.
-
-
-(** **  Spectra  **)
-
-Class Spectrum loc {S : Setoid loc} `{@EqDec loc S} `{Names} := {
-  (** Spectrum is a decidable type *)
-  spectrum : Type;
-  SpectSetoid : Setoid spectrum;
-  SpectEqDec : EqDec SpectSetoid;
-
-  (** A predicate characterizing correct spectra for a given local configuration *)
-  spect_from_config : @configuration loc _ _ _ _ _ -> spectrum;
-  spect_from_config_compat : Proper (equiv ==> equiv) spect_from_config;
-  spect_is_ok : spectrum -> @configuration loc _ _ _ _ _ -> Prop;
-  spect_from_config_spec : forall config, spect_is_ok (spect_from_config config) config}.

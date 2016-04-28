@@ -16,24 +16,43 @@ Require Import SetoidList.
 Require MMultisetInterface.
 Require MMultisetExtraOps.
 Require MMultisetWMap.
-Require Import Pactole.Preliminary.
-Require Pactole.Robots.
+Require Import SetoidDec.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.Spectra.Definition.
+Require Import Pactole.Spaces.RealMetricSpaces.
 
 
-Module Make(Location : RealMetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
+Context {loc : Type}.
+Context {Sloc : Setoid loc}.
+Context {ESloc : EqDec Sloc}.
+Context {RMS : @RealMetricSpace loc Sloc ESloc}.
+Context {Ndef : NamesDef}.
+Context {N : Names}.
+Context {Spect : @Spectrum loc Sloc ESloc Ndef N}.
 
-Module Names := Robots.Make(N).
-Module Config := Configurations.Make(Location)(N)(Names).
+
+Module Location : Equalities.DecidableType with Definition t := loc
+                                           with Definition eq := @equiv loc _
+                                           with Definition eq_dec := @equiv_dec loc _ _.
+  Definition t := loc.
+  Definition eq := @equiv loc _.
+  Definition eq_dec := @equiv_dec loc _ _.
+  Definition eq_equiv := @setoid_equiv _ _.
+End Location.
+
+
+Instance Make : Spectrum loc.
 
 (** Definition of spectra as multisets of locations. *)
-Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
-Module M := MMultisetExtraOps.Make Location Mraw.
+Module SpectRaw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
+Module Spect := MMultisetExtraOps.Make Location SpectRaw.
 
-Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
-Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
-Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
-Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
+Notation "m1  ≡  m2" := (Spect.eq m1 m2) (at level 70).
+Notation "m1  ⊆  m2" := (Spect.Subset m1 m2) (at level 70).
+Notation "m1  [=]  m2" := (Spect.eq m1 m2) (at level 70, only parsing).
+Notation "m1  [c=]  m2" := (Spect.Subset m1 m2) (at level 70, only parsing).
 
 Lemma eq_refl_left : forall e A (a b:A), (if Location.eq_dec e e then a else b) = a.
 Proof.
@@ -47,48 +66,25 @@ Qed.
 
 (** **  Building multisets from lists  **)
 
-(* TODO: should be replaced by M.from_elements *)
-Definition multiset l := fold_left (fun acc x => M.add x 1 acc) l M.empty.
+(* TODO: should be replaced by Spect.from_elements *)
+Definition multiset l := Spect.from_elements (List.map (fun x => (x, 1)) l).
 
-Lemma multiset_nil : multiset nil [=] M.empty.
+Lemma multiset_nil : multiset nil [=] Spect.empty.
 Proof. reflexivity. Qed.
 
-Lemma multiset_cons_aux : forall l x m,
-  List.fold_left (fun acc y => M.add y 1 acc) (x :: l) m [=]
-  M.add x 1 (List.fold_left (fun acc x => M.add x 1 acc) l m).
+Lemma multiset_cons : forall x l, multiset (x :: l) [=] Spect.add x 1 (multiset l).
+Proof. reflexivity. Qed.
+
+Lemma multiset_empty : forall l, multiset l [=] Spect.empty <-> l = nil.
 Proof.
-intro l. induction l; intros x m.
-+ reflexivity.
-+ simpl. intro.
-  assert (Hf : Proper (M.eq ==> eq ==> M.eq) (fun acc y => M.add y 1 acc)).
-  { clear. intros s1 s2 Hs x y Hxy. now rewrite Hxy, Hs. }
-  rewrite (@fold_left_start _ _ Logic.eq M.eq _ _ _ Hf l _ (M.add x 1 (M.add a 1 m)) (M.add_comm _ _ _ _ _)).
-  apply IHl.
+intro l. unfold multiset. rewrite Spect.from_elements_empty.
+destruct l; cbn.
+- intuition.
+- split; intro Hl; inv Hl. discriminate.
 Qed.
 
-Lemma multiset_cons : forall x l, multiset (x :: l) [=] M.add x 1 (multiset l).
-Proof. intros x l y. unfold multiset. now rewrite multiset_cons_aux. Qed.
-
-Lemma multiset_empty : forall l, multiset l [=] M.empty <-> l = nil.
-Proof.
-intro l. split; intro H.
-+ destruct l as [| x l]. reflexivity. rewrite multiset_cons in H.
-  specialize (H x). rewrite M.add_spec, M.empty_spec in H.
-  rewrite eq_refl_left in H.
-  exfalso;omega.
-+ subst l. apply multiset_nil.
-Qed.
-
-Lemma multiset_app : forall l l', multiset (l ++ l') [=] M.union (multiset l) (multiset l').
-Proof.
-induction l as [| e l]; intros l'; simpl.
-+ now rewrite M.union_empty_l.
-+ do 2 rewrite multiset_cons. intro x. destruct (Location.eq_dec x e) as [Heq | Heq].
-  - rewrite Heq, M.add_spec, IHl. repeat rewrite M.union_spec. rewrite M.add_spec.
-    repeat rewrite eq_refl_left.
-    omega.
-  - rewrite M.add_other, IHl; auto. repeat rewrite M.union_spec. rewrite M.add_other; auto.
-Qed.
+Lemma multiset_app : forall l l', multiset (l ++ l') [=] Spect.union (multiset l) (multiset l').
+Proof. intros. unfold multiset. now rewrite map_app, Spect.from_elements_append. Qed.
 
 Lemma location_neq_sym: forall x y, ~ Location.eq x y -> ~ Location.eq y x.
 Proof.
@@ -98,179 +94,147 @@ Proof.
   contradiction.
 Qed.
 
-Instance multiset_compat : Proper (PermutationA Location.eq ==> M.eq) multiset.
+Instance multiset_compat : Proper (PermutationA Location.eq ==> Spect.eq) multiset.
 Proof.
-intro l1. induction l1 as [| x l1]; intros l2 Hperm.
-+ apply (PermutationA_nil _) in Hperm. now subst.
-+ assert (Hx := @PermutationA_InA_inside _ _ _ x _ _ Hperm).
-  destruct Hx as [l1' [y [l2' [Hxy Heq]]]]. now left. subst l2.
-  intro z. rewrite multiset_app, M.union_spec. do 2 rewrite multiset_cons.
-  destruct (Location.eq_dec x z) as [Heq | Hneq].
-  - rewrite <- Heq, <- Hxy. repeat rewrite M.add_spec.
-    repeat rewrite eq_refl_left.
-    rewrite plus_assoc. f_equal.
-    rewrite <- M.union_spec, <- multiset_app. apply IHl1.
-    rewrite <- (PermutationA_middle _), Hxy in Hperm. revert Hperm. apply (PermutationA_cons_inv _).
-  - apply location_neq_sym in Hneq.
-    rewrite <- Hxy. repeat rewrite M.add_other; trivial. rewrite <- M.union_spec, <- multiset_app.
-    apply IHl1. rewrite <- (PermutationA_middle _), Hxy in Hperm. revert Hperm. apply (PermutationA_cons_inv _).
+intros ? ? ?. unfold multiset. f_equiv. eapply PermutationA_map; eauto.
+- autoclass.
+- repeat intro. split; hnf; auto.
 Qed.
 
-Lemma multiset_PermutationA : forall x l n, M.multiplicity x (multiset l) = n ->
+Lemma multiset_PermutationA : forall x l n, Spect.multiplicity x (multiset l) = n ->
   exists l', ~InA Location.eq x l' /\ PermutationA Location.eq l (alls x n ++ l').
 Proof.
 intros x l. induction l; intros n Hin.
-  exists nil. split. now auto. rewrite multiset_nil, M.empty_spec in Hin. subst n. simpl. reflexivity.
+  exists nil. split. now auto. rewrite multiset_nil, Spect.empty_spec in Hin. subst n. simpl. reflexivity.
   rewrite multiset_cons in Hin. destruct (Location.eq_dec x a) as [Heq | Heq].
-  - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite M.add_spec in Hin. destruct n.
+  - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite Spect.add_spec in Hin. destruct n.
     + rewrite eq_refl_left in Hin.
       omega.
     + rewrite eq_refl_left in Hin.
       rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
     exists l'. split. assumption. simpl. now constructor.
-  - rewrite M.add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+  - rewrite Spect.add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
     exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
     transitivity (a :: alls x n ++ l'); now constructor || apply (PermutationA_middle _).
 Qed.
 
-Lemma multiset_alls : forall x n, multiset (alls x n) [=] M.singleton x n.
+Lemma multiset_alls : forall x n, multiset (alls x n) [=] Spect.singleton x n.
 Proof.
 intros x n. induction n; simpl.
-+ now rewrite M.singleton_0, multiset_nil.
-+ rewrite multiset_cons. rewrite IHn. intro y. rewrite M.singleton_spec.
++ now rewrite Spect.singleton_0, multiset_nil.
++ rewrite multiset_cons. rewrite IHn. intro y. rewrite Spect.singleton_spec.
   destruct (Location.eq_dec y x) as [Heq | Heq].
-  - rewrite Heq, M.add_spec, M.singleton_spec. destruct (Location.eq_dec x x) as [_ | Helim]. omega. now elim Helim.
-  - rewrite M.add_other; auto. rewrite M.singleton_spec. destruct (Location.eq_dec y x); trivial. contradiction.
+  - rewrite Heq, Spect.add_spec, Spect.singleton_spec.
+    destruct (Location.eq_dec x x) as [_ | Helim]. omega. now elim Helim.
+  - rewrite Spect.add_other; auto. rewrite Spect.singleton_spec.
+    destruct (Location.eq_dec y x); trivial; []. contradiction.
 Qed.
 
-Corollary multiset_In : forall x l, M.multiplicity x (multiset l) > 0 <-> InA Location.eq x l.
+Corollary multiset_In : forall x l, Spect.In x (multiset l) <-> InA Location.eq x l.
 Proof.
-intros x l. split; intro Hl.
-+ destruct (multiset_PermutationA _ _ _ (eq_refl (M.multiplicity x (multiset l)))) as [l' [Hl' Hperm]].
-  rewrite Hperm. rewrite (InA_app_iff _). left. destruct (M.multiplicity x (multiset l)). omega. now left.
-+ induction l. now inversion Hl. rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Hneq].
-  - rewrite Heq. rewrite M.add_spec. 
-    rewrite eq_refl_left.
-    omega.
-  - apply location_neq_sym in Hneq.
-    rewrite M.add_other; trivial. apply IHl. inversion_clear Hl; auto. now elim Hneq.
+intros x l. unfold multiset. rewrite Spect.from_elements_In.
+setoid_rewrite InA_map_iff; autoclass.
++ split; intro Hin.
+  - destruct Hin as [n [[y [[Heq _] Hy]] Hn]]. hnf in *. cbn in *. now rewrite <- Heq.
+  - exists 1. firstorder.
++ intros ? ? Heq. now split.
 Qed.
 
 Theorem multiset_map : forall f, Proper (Location.eq ==> Location.eq) f ->
-  forall l, multiset (map f l) [=] M.map f (multiset l).
-Proof.
-intros f Hf l.
-induction l; simpl.
-+ rewrite (@M.map_compat f Hf (multiset nil)), multiset_nil. now rewrite M.map_empty. now apply multiset_nil.
-+ do 2 rewrite multiset_cons. now rewrite M.map_add, IHl.
-Qed.
-(*
+  forall l, multiset (map f l) [=] Spect.map f (multiset l).
+Proof. intros. unfold multiset. now rewrite Spect.map_from_elements, map_map, map_map. Qed.
+
 Theorem multiset_filter : forall f, Proper (Location.eq ==> Logic.eq) f ->
-  forall l, multiset (filter f l) [=] M.filter f (multiset l).
+  forall l, multiset (filter f l) [=] Spect.filter f (multiset l).
 Proof.
-intros f Hf l.
-induction l as [| e l]; simpl.
-+ rewrite (@M.filter_compat f Hf (multiset nil)), multiset_nil. now rewrite M.filter_empty. now apply multiset_nil.
+intros f Hf l. induction l as [| e l]; simpl.
++ rewrite (@Spect.filter_compat f Hf (multiset nil)), multiset_nil.
+  now rewrite Spect.filter_empty. now apply multiset_nil.
 + destruct (f e) eqn:Htest.
-  - do 2 rewrite multiset_cons. rewrite M.filter_add, Htest, IHl; trivial; reflexivity || omega.
-  - rewrite multiset_cons, M.filter_add, Htest, IHl; trivial; reflexivity || omega.
-Qed.
-*)
-Theorem cardinal_multiset : forall l, M.cardinal (multiset l) = length l.
-Proof.
-induction l; simpl.
-+ now rewrite multiset_nil, M.cardinal_empty.
-+ rewrite multiset_cons, M.cardinal_add. apply f_equal, IHl.
+  - do 2 rewrite multiset_cons. rewrite Spect.filter_add, Htest, IHl; trivial; reflexivity || omega.
+  - rewrite multiset_cons, Spect.filter_add, Htest, IHl; trivial; reflexivity || omega.
 Qed.
 
-Theorem multiset_spec : forall x l, M.multiplicity x (multiset l) = countA_occ _ Location.eq_dec x l.
+Theorem cardinal_multiset : forall l, Spect.cardinal (multiset l) = length l.
+Proof.
+induction l; simpl.
++ now rewrite multiset_nil, Spect.cardinal_empty.
++ rewrite multiset_cons, Spect.cardinal_add. apply f_equal, IHl.
+Qed.
+
+Theorem multiset_spec : forall x l, Spect.multiplicity x (multiset l) = countA_occ _ Location.eq_dec x l.
 Proof.
 intros x l. induction l; simpl.
-+ rewrite multiset_nil. now apply M.empty_spec.
++ rewrite multiset_nil. now apply Spect.empty_spec.
 + rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Hneq].
-  - rewrite Heq. rewrite M.add_spec. rewrite IHl.
+  - rewrite Heq. rewrite Spect.add_spec. rewrite IHl.
     rewrite eq_refl_left.
     omega.
-  - apply location_neq_sym in Hneq. rewrite M.add_other. now apply IHl. assumption.
+  - apply location_neq_sym in Hneq. rewrite Spect.add_other. now apply IHl. assumption.
 Qed.
-(*
+
 Lemma multiset_remove : forall x l,
-  multiset (remove Rdec x l) [=] M.remove x (M.multiplicity x (multiset l)) (multiset l).
+  multiset (removeA Location.eq_dec x l) [=] Spect.remove x (Spect.multiplicity x (multiset l)) (multiset l).
 Proof.
-intros x l y. induction l as[| a l]; simpl.
-+ rewrite multiset_nil. do 2 rewrite M.empty_spec. now rewrite M.remove_0, M.empty_spec.
-+ rewrite multiset_cons. destruct (Rdec y x). 
-  - subst y. Rdec_full.
-      subst a. rewrite IHl. rewrite M.add_spec. do 2 rewrite M.remove_spec. rewrite M.add_spec. omega.
-      rewrite multiset_cons. rewrite M.add_other; auto. rewrite IHl. do 2 rewrite M.remove_spec. omega.
-  - Rdec_full.
-      subst a. rewrite IHl. rewrite M.add_spec. repeat rewrite M.remove_spec'; auto. rewrite M.add_other; auto.
-      rewrite multiset_cons. rewrite M.remove_spec'; auto. destruct (Rdec a y).
-        subst a. do 2 rewrite M.add_spec. rewrite IHl. now rewrite M.remove_spec'.
-        repeat rewrite M.add_other; trivial. rewrite IHl. rewrite M.remove_spec'; auto.
-Qed.
-*)
-
-Lemma multiset_support : forall x l, InA Location.eq x (M.support (multiset l)) <-> InA Location.eq x l.
-Proof.
-intros x l. split; intro Hl.
-* induction l.
-  + cut (M.support (multiset nil) = nil).
-    - intro Heq. unfold M.elt in *. now rewrite <- Heq.
-    - apply (PermutationA_nil Location.eq_equiv). now rewrite multiset_nil, M.support_empty.
-  + rewrite multiset_cons in Hl. rewrite M.support_add in Hl; try omega.
-    destruct (M.In_dec a (multiset l)).
-    - right. now apply IHl.
-    - inversion_clear Hl. now left. right. now apply IHl.
-* induction l.
-  + inversion Hl.
-  + rewrite M.support_spec. unfold M.In. rewrite multiset_cons. destruct (Location.eq_dec a x) as [Heq | Hneq].
-    - rewrite Heq. rewrite M.add_spec.
-      rewrite eq_refl_left. omega.
-    - apply location_neq_sym in Hneq.
-      rewrite M.add_other; trivial. change (M.In x (multiset l)).
-      rewrite <- M.support_spec. apply IHl. inversion_clear Hl; trivial. elim Hneq. now symmetry.
+intros x l y. induction l as [| a l]; simpl.
+* rewrite multiset_nil. do 2 rewrite Spect.empty_spec. now rewrite Spect.remove_0, Spect.empty_spec.
+* rewrite multiset_cons. destruct (Location.eq_dec y x) as [Hyx | Hyx], (Location.eq_dec x a) as [Hxa | Hxa].
+  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite Spect.remove_same. setoid_rewrite Spect.add_same. omega.
+  + rewrite Hyx in *. rewrite multiset_cons, Spect.add_other; auto.
+    rewrite IHl. do 2 rewrite Spect.remove_same. omega.
+  + rewrite Hxa in *. rewrite IHl, Spect.add_same.
+    repeat rewrite Spect.remove_other; auto. rewrite Spect.add_other; auto.
+  + rewrite multiset_cons. rewrite Spect.remove_other; auto. destruct (Location.eq_dec y a) as [Hya | Hya].
+    - rewrite Hya in *. do 2 rewrite Spect.add_same. rewrite IHl. now rewrite Spect.remove_other.
+    - repeat rewrite Spect.add_other; trivial. rewrite IHl. rewrite Spect.remove_other; auto.
 Qed.
 
+Lemma multiset_support : forall x l, InA Location.eq x (Spect.support (multiset l)) <-> InA Location.eq x l.
+Proof.
+intros x l. rewrite Spect.support_spec. unfold Spect.In.
+rewrite multiset_spec. apply countA_occ_pos. autoclass.
+Qed.
 
 (** Building a spectrum from a configuration *)
-Include M.
 
-Definition from_config conf : t := multiset (Config.list conf).
-
-Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
+Instance multiset_spectrum : Spectrum loc := {|
+  spectrum := Spect.t;
+  SpectSetoid := {| equiv := Spect.eq |};
+  SpectEqDec := Spect.MProp.eq_dec;
+  
+  spect_from_config conf := multiset (config_list conf);
+  spect_is_ok s conf := forall l, Spect.multiplicity l s = countA_occ _ Location.eq_dec l (config_list conf) |}.
 Proof.
-intros conf1 conf2 Hconf x. unfold from_config. do 2 f_equiv.
-apply eqlistA_PermutationA_subrelation, Config.list_compat. assumption.
+* autoclass.
+* intros conf1 conf2 Hconf x. unfold spect_from_config. do 2 f_equiv.
+  apply eqlistA_PermutationA_subrelation. apply config_list_compat. assumption.
+* unfold spect_from_config, spect_is_ok. intros. apply multiset_spec.
+Defined.
+
+Lemma spect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->
+  forall config : configuration,
+  @equiv spectrum SpectSetoid (Spect.map f (spect_from_config config)) (spect_from_config (map_config f config)).
+Proof. repeat intro. unfold spect_from_config. cbn. now rewrite config_list_map, multiset_map. Qed.
+
+Theorem cardinal_spect_from_config : forall conf, Spect.cardinal (spect_from_config conf) = nG + nB.
+Proof. intro. unfold spect_from_config. cbn. now rewrite cardinal_multiset, config_list_length. Qed.
+
+Property pos_in_config : forall conf id, Spect.In (conf id) (spect_from_config conf).
+Proof.
+intros conf id. cbn. unfold Spect.In.
+rewrite multiset_spec. rewrite (countA_occ_pos _).
+unfold Location.eq. rewrite config_list_InA. now exists id.
 Qed.
 
-Definition is_ok s conf := forall l,
-  M.multiplicity l s = countA_occ _ Location.eq_dec l (Config.list conf).
-
-Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
-Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
-
-Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
-  forall conf, eq (map f (from_config conf)) (from_config (Config.map f conf)).
-Proof. repeat intro. unfold from_config. now rewrite Config.list_map, multiset_map. Qed.
-
-Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.
-Proof. intro. unfold from_config. now rewrite cardinal_multiset, Config.list_length. Qed.
-
-Property pos_in_config : forall conf id, In (conf id) (from_config conf).
-Proof.
-intros conf id. unfold from_config.
-unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
-rewrite Config.list_InA. now exists id.
-Qed.
-
-Property from_config_In : forall config l, In l (from_config config) <-> exists id, Location.eq (config id) l.
+Property spect_from_config_In : forall config l,
+  Spect.In l (spect_from_config config) <-> exists id, equiv (config id) l.
 Proof.
 intros config l. split; intro Hin.
-+ unfold In in Hin. rewrite from_config_spec, (countA_occ_pos _), Config.list_spec in Hin.
++ unfold Spect.In in Hin. assert (Heq := spect_from_config_spec config). cbn in Heq.
+  rewrite Heq, (countA_occ_pos _), config_list_spec in Hin.
   rewrite (InA_map_iff _ _) in Hin.
   - firstorder.
-  - repeat intro. now subst.
+  - repeat intro. cbn in *. now subst.
 + destruct Hin as [id Hid]. rewrite <- Hid. apply pos_in_config.
 Qed.
-End Make.
+

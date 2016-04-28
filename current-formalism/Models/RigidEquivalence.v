@@ -11,52 +11,55 @@
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
-Require Import Equalities.
-Require Import Morphisms.
+(* Require Import Equalities. *)
+(* Require Import Morphisms. *)
 Require Import RelationPairs.
 Require Import Reals.
 Require Import Psatz.
-Require Import SetoidList.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.FlexibleFormalism.
-Require Import Pactole.RigidFormalism.
+(* Require Import SetoidList. *)
+Require Import SetoidDec.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
+Require Pactole.Models.Flexible.
+Require Pactole.Models.Rigid.
 
 
-Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
+Section RigidEquivalence.
 
-Module Common := CommonRealFormalism.Make(Location)(N)(Spect).
-Module Flex := FlexibleFormalism.Make(Location)(N)(Spect)(Common).
-Module Rigid := RigidFormalism.Make(Location)(N)(Spect)(Common).
+Context {loc : Type}.
+Context {Sloc : Setoid loc}.
+Context {ESloc : EqDec Sloc}.
+Context {RMS : @RealMetricSpace loc Sloc ESloc}.
+Context {Ndef : NamesDef}.
+Context {N : Names}.
+Context {Spect : @Spectrum loc Sloc ESloc Ndef N}.
 
-Definition rigid da := forall id sim r, da.(Flex.step) id = Some (sim, r) -> r = 1%R.
+
+Definition rigid da := forall id sim r, da.(Flexible.step) id = Some (sim, r) -> r = 1%R.
 
 CoInductive drigid d :=
-  | Drigid : rigid (Stream.hd d) -> drigid (Stream.tl d) -> drigid d.
+  | Drigid : rigid (Streams.hd d) -> drigid (Streams.tl d) -> drigid d.
 
-Lemma drigid_head : forall d, drigid d -> rigid (Stream.hd d).
+Lemma drigid_head : forall d, drigid d -> rigid (Streams.hd d).
 Proof. intros ? []. auto. Qed.
 
-Lemma drigid_tail : forall d, drigid d -> drigid (Stream.tl d).
+Lemma drigid_tail : forall d, drigid d -> drigid (Streams.tl d).
 Proof. intros ? []. auto. Qed.
-
-Import Common.
 
 Lemma the_chosen_one {A} eqA (HeqA : Reflexive eqA) :
-  forall f : Location.t -> A, Proper (Location.eq ==> eqA) f ->
+  forall f : loc -> A, Proper (equiv ==> eqA) f ->
   forall δ conf local_target,
-  let chosen_target := Location.mul 1%R local_target in
-  eqA (f (if Rle_bool δ (Location.dist chosen_target conf) then chosen_target else local_target))
+  let chosen_target := mul 1%R local_target in
+  eqA (f (if Rle_bool δ (dist chosen_target conf) then chosen_target else local_target))
       (f local_target).
-Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_1; reflexivity. Qed.
+Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite mul_1; reflexivity. Qed.
 
 (** **  Conversion at the level of demonic_actions  **)
 
 (* TODO: take the proof outside (or make them abstract) to have a cleaner proofterm. *)
-Definition Rigid_Flex_da (rda : Rigid.demonic_action) : Flex.demonic_action.
+Definition Rigid_Flex_da (rda : Rigid.demonic_action) : Flexible.demonic_action.
 Proof.
-refine (@Flex.Build_demonic_action
+refine (@Flexible.Build_demonic_action _ _ _ _ _
           rda.(Rigid.relocate_byz)
           (fun id => match rda.(Rigid.step) id with None => None | Some f => Some (f, 1%R) end)
           _ _ _ _).
@@ -74,24 +77,24 @@ refine (@Flex.Build_demonic_action
   - discriminate.
 Defined.
 
-Definition Flex_Rigid_da (fda : Flex.demonic_action) : Rigid.demonic_action.
+Definition Flex_Rigid_da (fda : Flexible.demonic_action) : Rigid.demonic_action.
 Proof.
-refine (@Rigid.Build_demonic_action
-          fda.(Flex.relocate_byz)
-          (fun id => match fda.(Flex.step) id with None => None | Some f => Some (fst f) end)
+refine (@Rigid.Build_demonic_action _ _ _ _ _
+          fda.(Flexible.relocate_byz)
+          (fun id => match fda.(Flexible.step) id with None => None | Some f => Some (fst f) end)
           _ _ _).
-+ intros ? id ?; subst; destruct (Flex.step fda id) as [[f r] |] eqn:Hstep; try reflexivity.
-  intros x y Hxy. simpl. assert (Heq := fda.(Flex.step_compat) (reflexivity id)).
++ intros ? id ?; subst; destruct (Flexible.step fda id) as [[f r] |] eqn:Hstep; try reflexivity.
+  intros x y Hxy. simpl. assert (Heq := fda.(Flexible.step_compat) (reflexivity id)).
   rewrite Hstep in Heq. now apply Heq.
-+ intros id sim c Heq. destruct (Flex.step fda id) eqn:Hstep.
-  - inversion Heq. subst. eapply Flex.step_zoom; eassumption.
++ intros id sim c Heq. destruct (Flexible.step fda id) eqn:Hstep.
+  - inversion Heq. subst. eapply Flexible.step_zoom; eassumption.
   - discriminate.
-+ intros id sim c Heq. destruct (Flex.step fda id) eqn:Hstep.
-  - inversion Heq. subst. simpl. eapply Flex.step_center; eassumption.
++ intros id sim c Heq. destruct (Flexible.step fda id) eqn:Hstep.
+  - inversion Heq. subst. simpl. eapply Flexible.step_center; eassumption.
   - discriminate.
 Defined.
 
-Lemma Rigid_Flex_Rigid_da : forall da, Rigid.da_eq (Flex_Rigid_da (Rigid_Flex_da da)) da.
+Lemma Rigid_Flex_Rigid_da : forall da, @equiv _ Rigid.da_Setoid (Flex_Rigid_da (Rigid_Flex_da da)) da.
 Proof.
 intro da.
 assert (Hstep := Rigid.step_compat da).
@@ -101,10 +104,10 @@ intros x y Hxy. specialize (Hstep _ _ (reflexivity id)).
 rewrite Heq in Hstep. apply Hstep, Hxy.
 Qed.
 
-Lemma Flex_Rigid_Flex_da : forall da, rigid da -> Flex.da_eq (Rigid_Flex_da (Flex_Rigid_da da)) da.
+Lemma Flex_Rigid_Flex_da : forall da, rigid da -> @equiv _ Flexible.da_Setoid (Rigid_Flex_da (Flex_Rigid_da da)) da.
 Proof.
 intros da Hda. unfold rigid in Hda.
-assert (Hstep := Flex.step_compat da).
+assert (Hstep := Flexible.step_compat da).
 destruct da. split; reflexivity || simpl in *; [].
 intro id. destruct (step id) as [[sim r] |] eqn:Heq; simpl; trivial.
 split.
@@ -118,46 +121,48 @@ Proof. unfold rigid. intros [] * H; simpl in *. destruct step; now inversion H. 
 
 (** **  Conversion at the level of demons  **)
 
-CoFixpoint Rigid_Flex_d (d : Rigid.demon) : Flex.demon :=
-  Stream.cons (Rigid_Flex_da (Stream.hd d)) (Rigid_Flex_d (Stream.tl d)).
+CoFixpoint Rigid_Flex_d (d : Rigid.demon) : Flexible.demon :=
+  Streams.cons (Rigid_Flex_da (Streams.hd d)) (Rigid_Flex_d (Streams.tl d)).
 
-CoFixpoint Flex_Rigid_d (d : Flex.demon) : Rigid.demon :=
-  Stream.cons (Flex_Rigid_da (Stream.hd d)) (Flex_Rigid_d (Stream.tl d)).
+CoFixpoint Flex_Rigid_d (d : Flexible.demon) : Rigid.demon :=
+  Streams.cons (Flex_Rigid_da (Streams.hd d)) (Flex_Rigid_d (Streams.tl d)).
 
 Lemma Rigid_Flex_head : forall d,
-  Flex.da_eq (Rigid_Flex_da (Stream.hd d)) (Stream.hd (Rigid_Flex_d d)).
+  @equiv _ Flexible.da_Setoid (Rigid_Flex_da (Streams.hd d)) (Streams.hd (Rigid_Flex_d d)).
 Proof. intro d. now destruct d. Qed.
 
 Lemma Flex_Rigid_head : forall d,
-  Rigid.da_eq (Flex_Rigid_da (Stream.hd d)) (Stream.hd (Flex_Rigid_d d)).
+  @equiv _ Rigid.da_Setoid (Flex_Rigid_da (Streams.hd d)) (Streams.hd (Flex_Rigid_d d)).
 Proof. intro d. now destruct d. Qed.
 
-Lemma Rigid_Flex_tail : forall d, Flex.deq (Rigid_Flex_d (Stream.tl d)) (Stream.tl (Rigid_Flex_d d)).
+Lemma Rigid_Flex_tail : forall d,
+  @equiv _ Flexible.demon_Setoid (Rigid_Flex_d (Streams.tl d)) (Streams.tl (Rigid_Flex_d d)).
 Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
-Lemma Flex_Rigid_tail : forall d, Rigid.deq (Flex_Rigid_d (Stream.tl d)) (Stream.tl (Flex_Rigid_d d)).
+Lemma Flex_Rigid_tail : forall d,
+  @equiv _ Rigid.demon_Setoid (Flex_Rigid_d (Streams.tl d)) (Streams.tl (Flex_Rigid_d d)).
 Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
 (** **  Equalities on one round  **)
 
-Lemma Rigid_Flex_round : forall δ r rda conf,
-  Config.eq (Rigid.round r rda conf) (Flex.round δ r (Rigid_Flex_da rda) conf).
+Lemma Rigid_Flex_round : forall δ (r : robogram) rda conf,
+   Rigid.round r rda conf == Flexible.round δ r (Rigid_Flex_da rda) conf.
 Proof.
-unfold Rigid_Flex_da, Rigid.round, Flex.round.
+unfold Rigid_Flex_da, Rigid.round, Flexible.round.
 intros δ r [] conf [g | b]; simpl.
 + destruct (step (Good g)).
-  - rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - now rewrite the_chosen_one; autoclass.
   - reflexivity.
 + now destruct (step (Byz b)).
 Qed.
 
 Lemma Flex_Rigid_round : forall δ r fda conf, rigid fda ->
-  Config.eq (Flex.round δ r fda conf) (Rigid.round r (Flex_Rigid_da fda) conf).
+  Flexible.round δ r fda conf == Rigid.round r (Flex_Rigid_da fda) conf.
 Proof.
-unfold Flex_Rigid_da, Rigid.round, Flex.round, rigid.
+unfold Flex_Rigid_da, Rigid.round, Flexible.round, rigid.
 intros δ r [] conf Hda [g | b]; simpl in *.
 + specialize (Hda (Good g)). destruct (step (Good g)) as [[sim ρ] |] eqn:Heq.
-  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - specialize (Hda _ _ (reflexivity _)). subst. now rewrite the_chosen_one; autoclass.
   - reflexivity.
 + now destruct (step (Byz b)) as [[] |].
 Qed.
@@ -166,29 +171,29 @@ Qed.
 
 (** A rigid demon can be turned into a flexible one (that satifties the [rigid] predicate). *)
 Theorem Rigid_Flex_preserves_eq : forall δ r conf1 conf2 (rd : Rigid.demon),
-  Config.eq conf1 conf2 -> Common.eeq (Rigid.execute r rd conf1) (Flex.execute δ r (Rigid_Flex_d rd) conf2).
+  conf1 == conf2 -> Rigid.execute r rd conf1 == Flexible.execute δ r (Rigid_Flex_d rd) conf2.
 Proof.
 intros δ r. cofix next_exec. intros conf1 conf2 rd. constructor; trivial.
-rewrite Rigid.execute_tail, Flex.execute_tail. simpl.
-apply next_exec. rewrite Rigid_Flex_round. now f_equiv.
+rewrite Rigid.execute_tail, Flexible.execute_tail. simpl.
+apply next_exec. rewrite Rigid_Flex_round. now apply Flexible.round_compat.
 Qed.
 
 Corollary Rigid_Flex : forall δ r conf (rd : Rigid.demon),
-  Common.eeq (Rigid.execute r rd conf) (Flex.execute δ r (Rigid_Flex_d rd) conf).
+  Rigid.execute r rd conf == Flexible.execute δ r (Rigid_Flex_d rd) conf.
 Proof. intros. now apply Rigid_Flex_preserves_eq. Qed.
 
 (** A flexible demon that satisfies the [rigid] predicate can be turned into a rigid one. *)
-Theorem Flex_Rigid_preserves_eq : forall δ r conf1 conf2 (fd : Flex.demon), drigid fd ->
-  Config.eq conf1 conf2 -> Common.eeq (Flex.execute δ r fd conf1) (Rigid.execute r (Flex_Rigid_d fd) conf2).
+Theorem Flex_Rigid_preserves_eq : forall δ r conf1 conf2 (fd : Flexible.demon), drigid fd ->
+  conf1 == conf2 -> Flexible.execute δ r fd conf1 == Rigid.execute r (Flex_Rigid_d fd) conf2.
 Proof.
 intros δ r. cofix next_exec. intros conf1 conf2 fd Hfd. constructor; trivial.
-rewrite Rigid.execute_tail, Flex.execute_tail. simpl.
+rewrite Rigid.execute_tail, Flexible.execute_tail. simpl.
 destruct Hfd. apply next_exec; trivial.
-rewrite Flex_Rigid_round; trivial. now f_equiv.
+rewrite Flex_Rigid_round; trivial. now apply Rigid.round_compat.
 Qed.
 
-Corollary Flex_Rigid : forall δ r conf (fd : Flex.demon), drigid fd ->
-  Common.eeq (Flex.execute δ r fd conf) (Rigid.execute r (Flex_Rigid_d fd) conf).
+Corollary Flex_Rigid : forall δ r conf (fd : Flexible.demon), drigid fd ->
+  Flexible.execute δ r fd conf == Rigid.execute r (Flex_Rigid_d fd) conf.
 Proof. intros. now apply Flex_Rigid_preserves_eq. Qed.
 
 End RigidEquivalence.

@@ -77,9 +77,9 @@ Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
 Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
 
-Instance fun_equiv T U `(Setoid U) : Setoid (T -> U) := {
-  equiv := fun f g : T -> U => forall x, equiv (f x) (g x) }.
-Proof. split.
+Definition fun_equiv T U `(Setoid U) : Setoid (T -> U).
+Proof. exists (fun f g : T -> U => forall x, equiv (f x) (g x)).
+split.
 + repeat intro. reflexivity.
 + intros ? ? Heq ?. symmetry. apply Heq.
 + repeat intro. etransitivity; eauto.
