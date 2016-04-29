@@ -30,7 +30,7 @@ Context {Spect : @Spectrum loc S ES pN N}.
 
 Record robogram := {
   pgm :> spectrum → loc;
-  pgm_compat : Proper (@equiv _ SpectSetoid ==> equiv) pgm}.
+  pgm_compat : Proper (@equiv _ spectrum_Setoid ==> equiv) pgm}.
 Global Existing Instance pgm_compat.
 
 Global Instance robogram_Setoid : Setoid robogram := {|

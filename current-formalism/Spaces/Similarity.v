@@ -60,7 +60,8 @@ Proof.
 + abstract (intros x y Hxy; now apply f.(section_compat), g.(section_compat)).
 + abstract (intros x y; now rewrite f.(Inversion), <- g.(Inversion)).
 Defined.
-Infix "∘" := bij_compose (left associativity, at level 59).
+
+Infix "∘" := bij_compose (left associativity, at level 40).
 
 Lemma bij_compose_assoc : forall f g h : bijection, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
 Proof. repeat intro. reflexivity. Qed.
@@ -257,7 +258,7 @@ Proof.
 + simpl. abstract (now repeat rewrite section_retraction; autoclass).
 + simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring).
 Defined.
-Global Infix "∘" := compose (left associativity, at level 59).
+Global Infix "∘" := compose (left associativity, at level 40).
 
 Global Instance compose_compat `{RealMetricSpace} : Proper (equiv ==> equiv ==> equiv) compose.
 Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed.
