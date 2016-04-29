@@ -183,7 +183,7 @@ intros x y l Hin. induction l; simpl in *.
   - inversion_clear Hin; auto.
 Qed.
 
-Global Instance removeA_el_compat eq_dec : Proper (eqA ==> eq ==> eq) (@removeA A eqA eq_dec).
+Global Instance removeA_eq_compat eq_dec : Proper (eqA ==> eq ==> eq) (@removeA A eqA eq_dec).
 Proof.
 intros x y Hxy l l' ?. subst l'. induction l; simpl.
 + reflexivity.
@@ -206,16 +206,16 @@ intros x y ? l1 l2 Hl. subst. induction Hl.
   - now apply PermutationA_cons.
 + simpl. destruct (eq_dec x x0), (eq_dec y y0), (eq_dec y x0), (eq_dec x y0);
   try (now elim n; rewrite H) || (now elim n; rewrite <- H).
-  - now erewrite removeA_el_compat.
-  - constructor. reflexivity. now erewrite removeA_el_compat.
+  - now erewrite removeA_eq_compat.
+  - constructor. reflexivity. now erewrite removeA_eq_compat.
   - elim n0. now rewrite <- H.
-  - constructor. reflexivity. now erewrite removeA_el_compat.
+  - constructor. reflexivity. now erewrite removeA_eq_compat.
   - elim n1. now rewrite H.
   - elim n0. now rewrite <- H.
-  - etransitivity. constructor 3. repeat constructor; reflexivity || now erewrite removeA_el_compat.
+  - etransitivity. constructor 3. repeat constructor; reflexivity || now erewrite removeA_eq_compat.
 + constructor 4 with (removeA eq_dec y l₂).
   - assumption.
-  - transitivity (removeA (eqA:=eqA) eq_dec x l₂). now erewrite removeA_el_compat. assumption.
+  - transitivity (removeA (eqA:=eqA) eq_dec x l₂). now erewrite removeA_eq_compat. assumption.
 Qed.
 
 Lemma removeA_app eq_dec : forall (x : A) l1 l2,

@@ -1,17 +1,25 @@
 Require Import Omega.
-Require Import Equalities.
 Require Import SetoidList.
+Require Import SetoidDec.
 Require Import Pactole.MMultiset.Preliminary.
 Require Import Pactole.MMultiset.MMultisetInterface.
-Require Pactole.MMultiset.MMultisetFacts.
+Require Import Pactole.MMultiset.MMultisetFacts.
 
 
 Set Implicit Arguments.
+Existing Instance multiplicity_compat.
 
 
-Module Make(E : DecidableType)(M : FMultisetsOn E).
-  Module MProp := MMultisetFacts.Make(E)(M).
-  Include MProp.
+Section MMultisetExtra.
+  
+  Context {elt : Type}.
+  Context `{M : FMultisetsOn elt}.
+  
+  Hint Rewrite empty_spec add_same remove_same diff_spec union_spec inter_spec lub_spec singleton_same : FMsetdec.
+  Hint Rewrite is_empty_spec nfilter_spec filter_spec npartition_spec_fst npartition_spec_snd : FMsetdec.
+  Hint Rewrite partition_spec_fst partition_spec_snd for_all_spec exists_spec : FMsetdec.
+  Hint Unfold In : FMsetdec.
+  
   
   (** *  Extra operations  **)
   
@@ -20,10 +28,10 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Definition map f m := fold (fun x n acc => add (f x) n acc) m empty.
   
   Section map_results.
-    Variable f : E.t -> E.t.
-    Hypothesis Hf : Proper (E.eq ==> E.eq) f.
+    Variable f : elt -> elt.
+    Hypothesis Hf : Proper (equiv ==> equiv) f.
     
-    Global Instance map_compat : Proper (eq ==> eq) (map f).
+    Global Instance map_compat : Proper (equiv ==> equiv) (map f).
     Proof.
     intros m₁ m₂ Hm. unfold map. apply (fold_compat _ _).
     - repeat intro. msetdec.
@@ -32,22 +40,22 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - reflexivity.
     Qed.
     
-    Lemma map_In : forall x m, In x (map f m) <-> exists y, E.eq x (f y) /\ In y m.
+    Lemma map_In : forall x m, In x (map f m) <-> exists y, x == (f y) /\ In y m.
     Proof.
     intros x m. unfold In, map. apply fold_rect.
     + intros m₁ m₂ acc Heq Hequiv. rewrite Hequiv. now setoid_rewrite Heq.
     + setoid_rewrite empty_spec. split; try intros [? [_ ?]]; omega.
-    + intros y p m' acc Hm Hpos Hin Hrec. destruct (E.eq_dec x (f y)) as [Heq | Hneq]; msetdec.
+    + intros y p m' acc Hm Hpos Hin Hrec. destruct (equiv_dec x (f y)) as [Heq | Hneq]; msetdec.
       - split.
-          intros. exists y. split; trivial. now msetdec.
+          intros. exists y. split; trivial. msetdec.
           intros [? [? ?]]. msetdec.
       - rewrite Hrec. split; intros [z [Heq ?]]; exists z; split; msetdec.
     Qed.
     
-    Lemma map_empty : map f empty [=] empty.
+    Lemma map_empty : map f empty == empty.
     Proof. unfold map. now rewrite fold_empty. Qed.
     
-    Lemma map_add : forall x n m, map f (add x n m) [=] add (f x) n (map f m).
+    Lemma map_add : forall x n m, map f (add x n m) == add (f x) n (map f m).
     Proof.
     intros x n m y. destruct n.
     + now do 2 rewrite add_0.
@@ -59,11 +67,11 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       - omega.
     Qed.
     
-    Lemma map_spec : forall x m, multiplicity x (map f m) =
-      cardinal (nfilter (fun y _ => if E.eq_dec (f y) x then true else false) m).
+    Lemma map_spec : forall x m,
+      (map f m)[x] = cardinal (nfilter (fun y _ => if equiv_dec (f y) x then true else false) m).
     Proof.
-    intros x m. pose (g := fun y (_ : nat) => if E.eq_dec (f y) x then true else false). unfold elt. fold g.
-    assert (Hg : Proper (E.eq ==> @Logic.eq nat ==> Logic.eq) g). { repeat intro. unfold g. msetdec. }
+    intros x m. pose (g := fun y (_ : nat) => if equiv_dec (f y) x then true else false). fold g.
+    assert (Hg : Proper (equiv ==> @Logic.eq nat ==> Logic.eq) g). { repeat intro. unfold g. msetdec. }
     pattern m. apply ind; clear m.
     + intros ? ? Hm. now rewrite Hm.
     + intros * Hin Hrec. rewrite map_add, nfilter_add; trivial. unfold g at 2. msetdec. rewrite cardinal_add. omega.
@@ -74,40 +82,44 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Proof.
     intro m. pattern m. apply ind; clear m.
     + intros ? ? Hm. now setoid_rewrite Hm.
-    + intros m x n Hin Hn Hrec m' Hsub y. setoid_rewrite <- (@add_remove_cancel x n m').
-      - do 2 rewrite (map_add _). msetdec.
-          apply plus_le_compat; trivial. repeat rewrite map_spec; trivial. apply add_subset_remove in Hsub.
-          apply cardinal_sub_compat, nfilter_sub_compat, Hsub; repeat intro; msetdec.
-          now apply Hrec, add_subset_remove.
-      - specialize (Hsub x). msetdec.
+    + intros m x n Hin Hn Hrec m' Hsub y.
+      assert (Hx : m[x] = 0). { unfold In in Hin. omega. }
+      rewrite <- (add_remove_cancel x m' (Hsub x)). do 2 rewrite (map_add _). msetdec.
+      - apply plus_le_compat; trivial; [].
+        repeat rewrite map_spec; trivial. apply add_subset_remove in Hsub.
+        apply cardinal_sub_compat, nfilter_sub_compat; solve [omega | repeat intro; msetdec].
+      - now apply Hrec, add_subset_remove.
     + intros ? _. rewrite map_empty. apply subset_empty_l.
     Qed.
     
-    Lemma map_singleton : forall x n, map f (singleton x n) [=] singleton (f x) n.
+    Lemma map_singleton : forall x n, map f (singleton x n) == singleton (f x) n.
     Proof.
     intros x n y. destruct n.
     + repeat rewrite singleton_0. now rewrite map_empty. 
-    + unfold map. rewrite (@fold_singleton _ eq); repeat intro; msetdec.
+    + unfold map. rewrite fold_singleton; repeat intro; msetdec.
     Qed.
     
-    Lemma map_remove1 : forall x n m, n <= multiplicity x m -> map f (remove x n m) [=] remove (f x) n (map f m).
+    Lemma map_remove1 : forall x n m, n <= multiplicity x m -> map f (remove x n m) == remove (f x) n (map f m).
     Proof.
-    intros x n m Hle. rewrite <- (add_remove_cancel Hle) at 2. now rewrite (map_add _), remove_add_cancel.
+    intros x n m Hle. rewrite <- (add_remove_cancel _ _ Hle) at 2. now rewrite (map_add _), remove_add_cancel.
     Qed.
     
     Lemma map_remove2 : forall x n m,
-      multiplicity x m <= n -> map f (remove x n m) [=] remove (f x) (multiplicity x m) (map f m).
-    Proof. intros x n m Hle. rewrite <- (add_remove_id Hle) at 3. now rewrite (map_add _), remove_add_cancel. Qed.
+      multiplicity x m <= n -> map f (remove x n m) == remove (f x) m[x] (map f m).
+    Proof.
+    intros x n m Hle. rewrite <- (add_remove_id _ _ Hle) at 3.
+    now rewrite (map_add _), remove_add_cancel.
+    Qed.
     
-    Lemma fold_map_union : forall m₁ m₂, fold (fun x n acc => add (f x) n acc) m₁ m₂ [=] union (map f m₁) m₂.
+    Lemma fold_map_union : forall m₁ m₂, fold (fun x n acc => add (f x) n acc) m₁ m₂ == union (map f m₁) m₂.
     Proof.
     intros m₁ m₂. apply fold_rect with (m := m₁).
     + repeat intro. msetdec.
     + now rewrite map_empty, union_empty_l.
-    + intros. now rewrite H2, map_add, union_add_comm_l.
+    + intros * ? ? ? Heq. now rewrite Heq, map_add, union_add_comm_l.
     Qed.
     
-    Theorem map_union : forall m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
+    Theorem map_union : forall m₁ m₂, map f (union m₁ m₂) == union (map f m₁) (map f m₂).
     Proof.
     intros m₁ m₂. unfold map at 1 2. rewrite (fold_union_additive _).
     + now apply fold_map_union.
@@ -131,7 +143,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     intros m1 m2 x. destruct (multiplicity x (lub (map f m1) (map f m2))) eqn:Hfx.
     + omega.
     + assert (Hin : In x (lub (map f m1) (map f m2))).
-      { rewrite lub_spec in *. rewrite lub_In. unfold In.
+      { rewrite lub_spec in Hfx. rewrite lub_In. unfold In.
         destruct (Max.max_dec (multiplicity x (map f m1)) (multiplicity x (map f m2))) as [Heq | Heq];
         rewrite Heq in Hfx; left + right; omega. }
       rewrite lub_In in Hin. rewrite <- Hfx.
@@ -154,14 +166,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     *)
     
     Lemma map_from_elements : 
-      forall l, map f (from_elements l) [=] from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
+      forall l, map f (from_elements l) == from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
     Proof.
-    induction l as [| [x n] l]; simpl.
+    induction l as [| [x n] l].
     - apply map_empty.
-    - rewrite map_add. f_equiv. apply IHl.
+    - simpl from_elements. rewrite map_add. f_equiv. apply IHl.
     Qed.
     
-    Lemma map_support : forall m, inclA E.eq (support (map f m)) (List.map f (support m)).
+    Lemma map_support : forall m, inclA equiv (support (map f m)) (List.map f (support m)).
     Proof.
     apply ind.
     * repeat intro. msetdec.
@@ -196,14 +208,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     Qed.
     
     Section map_injective_results.
-      Hypothesis Hf2 : injective E.eq E.eq f.
+      Hypothesis Hf2 : injective equiv equiv f.
       
       Lemma map_injective_spec : forall x m, multiplicity (f x) (map f m) = multiplicity x m.
       Proof.
       intros x m. unfold map. apply fold_rect.
       + repeat intro. msetdec.
       + now do 2 rewrite empty_spec.
-      + intros y n m' acc Hin Hpos Hm Heq. destruct (E.eq_dec x y) as [Hxy | Hxy].
+      + intros y n m' acc Hin Hpos Hm Heq. destruct (equiv_dec x y) as [Hxy | Hxy].
         - msetdec.
         - repeat rewrite add_other; trivial. intro Habs. apply Hxy. now apply Hf2.
       Qed.
@@ -215,7 +227,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       + now exists x.
       Qed.
       
-      Lemma map_injective_remove : forall x n m, map f (remove x n m) [=] remove (f x) n (map f m).
+      Lemma map_injective_remove : forall x n m, map f (remove x n m) == remove (f x) n (map f m).
       Proof.
       intros x n m. destruct (le_dec n (multiplicity x m)) as [Hle | Hlt].
       * now apply map_remove1.
@@ -228,11 +240,12 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
             intros [z [Heq Hz]]. msetdec. rewrite map_injective_spec in Hin; trivial. omega.
       Qed.
       
-      Theorem map_injective_inter : forall m₁ m₂, map f (inter m₁ m₂) [=] inter (map f m₁) (map f m₂).
+      Theorem map_injective_inter : forall m₁ m₂, map f (inter m₁ m₂) == inter (map f m₁) (map f m₂).
       Proof.
-      intros m₁ m₂ x. destruct (multiplicity x (inter (map f m₁) (map f m₂))) eqn:Hn.
-      + rewrite <- not_In in *. intro Habs. apply Hn. rewrite (map_In _) in Habs. destruct Habs as [y [Heq Hy]].
-        msetdec. unfold gt in *. rewrite Nat.min_glb_lt_iff in *. now repeat rewrite map_injective_spec.
+      intros m₁ m₂ x. destruct ((inter (map f m₁) (map f m₂))[x]) eqn:Hn.
+      + rewrite <- not_In in Hn |- *. intro Habs. apply Hn.
+        rewrite (map_In _) in Habs. destruct Habs as [y [Heq Hy]]. msetdec.
+        unfold gt in *. rewrite Nat.min_glb_lt_iff in *. now repeat rewrite map_injective_spec.
       + rewrite inter_spec in Hn.
         assert (Hx : In x (map f m₁)).
         { msetdec. apply lt_le_trans with (S n). omega. rewrite <- Hn. apply Min.le_min_l. }
@@ -240,11 +253,12 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
         do 2 (rewrite map_injective_spec in *; trivial). msetdec.
       Qed.
       
-      Theorem map_injective_diff : forall m₁ m₂, map f (diff m₁ m₂) [=] diff (map f m₁) (map f m₂).
+      Theorem map_injective_diff : forall m₁ m₂, map f (diff m₁ m₂) == diff (map f m₁) (map f m₂).
       Proof.
       intros m₁ m₂ x. destruct (multiplicity x (diff (map f m₁) (map f m₂))) eqn:Hn.
-      + rewrite <- not_In in *. intro Habs. apply Hn. rewrite (map_In _) in Habs. destruct Habs as [y [Heq Hy]].
-        msetdec. now repeat rewrite map_injective_spec.
+      + rewrite <- not_In in Hn |- *. intro Habs. apply Hn.
+        rewrite (map_In _) in Habs. destruct Habs as [y [Heq Hy]]. msetdec.
+        now repeat rewrite map_injective_spec.
       + assert (Hx : In x (map f m₁)) by msetdec.
         rewrite map_In in *; trivial. destruct Hx as [y [Heq _]]. msetdec.
         do 2 (rewrite map_injective_spec in *; trivial). msetdec.
@@ -263,14 +277,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
           rewrite lub_spec. rewrite Nat.max_l; omega.
       Qed.
       
-      Theorem map_injective_lub : forall m₁ m₂, map f (lub m₁ m₂) [=] lub (map f m₁) (map f m₂).
+      Theorem map_injective_lub : forall m₁ m₂, map f (lub m₁ m₂) == lub (map f m₁) (map f m₂).
       Proof.
       intros m₁ m₂ x. rewrite lub_spec. apply Max.max_case_strong; intro Hle.
       - now apply map_injective_lub_wlog.
       - rewrite lub_comm. now apply map_injective_lub_wlog.
       Qed.
       
-      Lemma map_injective : injective eq eq (map f).
+      Lemma map_injective : injective equiv equiv (map f).
       Proof. intros ? ? Hm x. specialize (Hm (f x)). repeat (rewrite map_injective_spec in Hm; trivial). Qed.
       
       Lemma map_injective_elements : forall m,
@@ -285,14 +299,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       + now rewrite map_empty, elements_empty.
       Qed.
       
-      Lemma map_injective_support : forall m, PermutationA E.eq (support (map f m)) (List.map f (support m)).
+      Lemma map_injective_support : forall m, PermutationA equiv (support (map f m)) (List.map f (support m)).
       Proof.
       apply ind.
       * repeat intro. msetdec.
       * intros m x n Hin Hrec. rewrite map_add; trivial. repeat rewrite support_add; try omega.
-        destruct (InA_dec (eqA:=E.eq) E.eq_dec (f x) (support (map f m))) as [Habs | _].
+        destruct (InA_dec (eqA:=equiv) equiv_dec (f x) (support (map f m))) as [Habs | _].
         + rewrite support_spec in Habs. unfold In in *. rewrite map_injective_spec in Habs. contradiction.
-        + destruct (InA_dec (eqA:=E.eq) E.eq_dec x (support m)) as [Habs | _].
+        + destruct (InA_dec (eqA:=equiv) equiv_dec x (support m)) as [Habs | _].
           - rewrite support_spec in Habs. unfold In in *. contradiction.
           - simpl. destruct (In_dec x m); try contradiction. rewrite <- map_injective_In in Hin; trivial.
             destruct (In_dec (f x) (map f m)); try contradiction. now apply PermutationA_cons.
@@ -314,28 +328,28 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     End map_injective_results.
   End map_results.
   
-  Lemma map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
-    (forall x, E.eq (g x) (f x)) -> forall m, map g m [=] map f m.
+  Lemma map_extensionality_compat : forall f g, Proper (equiv ==> equiv) f ->
+    (forall x, equiv (g x) (f x)) -> forall m, map g m == map f m.
   Proof.
   intros f g Hf Hext m x.
-  assert (Hg : Proper (E.eq ==> E.eq) g). { intros ? ? Heq. do 2 rewrite Hext. now apply Hf. }
+  assert (Hg : Proper (equiv ==> equiv) g). { intros ? ? Heq. do 2 rewrite Hext. now apply Hf. }
   repeat rewrite map_spec; trivial. f_equiv. apply nfilter_extensionality_compat.
-  - intros y z Heq _ _ _. destruct (E.eq_dec (g y) x), (E.eq_dec (g z) x); trivial; rewrite Heq in *; contradiction.
-  - intros y _. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); trivial; rewrite Hext in *; contradiction.
+  - intros y z Heq _ _ _. destruct (equiv_dec (g y) x), (equiv_dec (g z) x); trivial; rewrite Heq in *; contradiction.
+  - intros y _. destruct (equiv_dec (f y) x), (equiv_dec (g y) x); trivial; rewrite Hext in *; contradiction.
   Qed.
   
-  Lemma map_extensionality_compat_strong : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
-    forall m, (forall x, In x m -> E.eq (g x) (f x)) -> map g m [=] map f m.
+  Lemma map_extensionality_compat_strong : forall f g, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
+    forall m, (forall x, In x m -> equiv (g x) (f x)) -> map g m == map f m.
   Proof.
   intros f g Hf Hg m Hext x.
   repeat rewrite map_spec; trivial. f_equiv. apply nfilter_extensionality_compat_strong.
-  - intros y z Heq _ _ _. destruct (E.eq_dec (g y) x), (E.eq_dec (g z) x); trivial; rewrite Heq in *; contradiction.
-  - intros y z Heq _ _ _. destruct (E.eq_dec (f y) x), (E.eq_dec (f z) x); trivial; rewrite Heq in *; contradiction.
-  - intros y _ Hin. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); rewrite Hext in *; trivial; contradiction.
+  - intros y z Heq _ _ _. destruct (equiv_dec (g y) x), (equiv_dec (g z) x); trivial; rewrite Heq in *; contradiction.
+  - intros y z Heq _ _ _. destruct (equiv_dec (f y) x), (equiv_dec (f z) x); trivial; rewrite Heq in *; contradiction.
+  - intros y _ Hin. destruct (equiv_dec (f y) x), (equiv_dec (g y) x); rewrite Hext in *; trivial; contradiction.
   Qed.
   
-  Lemma map_merge : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
-    forall m, map f (map g m) [=] map (fun x => f (g x)) m.
+  Lemma map_merge : forall f g, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
+    forall m, map f (map g m) == map (fun x => f (g x)) m.
   Proof.
   intros f g Hf Hg.
   apply ind.
@@ -345,8 +359,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Qed.
   
   Theorem map_injective_fold : forall A eqA, Equivalence eqA ->
-    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
-    Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall f g, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    Proper (equiv ==> equiv) g -> injective equiv equiv g ->
     forall m (i : A), eqA (fold f (map g m) i) (fold (fun x => f (g x)) m i).
   Proof.
   intros A eqA HeqA f g Hf Hf2 Hg Hg2 m.
@@ -361,8 +375,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + intro. rewrite fold_compat; apply map_empty || reflexivity || trivial. now do 2 rewrite fold_empty.
   Qed.
   
-  Lemma map_injective_nfilter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
-    forall m, nfilter f (map g m) [=] map g (nfilter (fun x => f (g x)) m).
+  Lemma map_injective_nfilter : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
+    forall m, nfilter f (map g m) == map g (nfilter (fun x => f (g x)) m).
   Proof.
   intros f g Hf Hg Hg2. apply ind.
   + repeat intro. msetdec.
@@ -375,17 +389,17 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + rewrite map_empty. now rewrite nfilter_empty, nfilter_empty, map_empty; refine _.
   Qed.
   
-  Lemma map_injective_npartition_fst : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
-    forall m, fst (npartition f (map g m)) [=] map g (fst (npartition (fun x => f (g x)) m)).
+  Lemma map_injective_npartition_fst : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
+    forall m, fst (npartition f (map g m)) == map g (fst (npartition (fun x => f (g x)) m)).
   Proof. intros. repeat rewrite npartition_spec_fst; refine _. now apply map_injective_nfilter. Qed.
   
-  Lemma map_npartition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
-    forall m, snd (npartition f (map g m)) [=] map g (snd (npartition (fun x => f (g x)) m)).
+  Lemma map_npartition_injective_snd : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
+    forall m, snd (npartition f (map g m)) == map g (snd (npartition (fun x => f (g x)) m)).
   Proof.
   intros. repeat rewrite npartition_spec_snd; refine _. apply map_injective_nfilter; trivial. repeat intro. msetdec.
   Qed.
   
-  Lemma map_injective_for_all : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+  Lemma map_injective_for_all : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
     forall m, for_all f (map g m) = for_all (fun x => f (g x)) m.
   Proof.
   intros f g Hf Hg Hg2. apply ind.
@@ -397,7 +411,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + rewrite map_empty. now repeat rewrite for_all_empty; refine _.
   Qed.
   
-  Lemma map_injective_exists : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+  Lemma map_injective_exists : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
     forall m, exists_ f (map g m) = exists_ (fun x => f (g x)) m.
   Proof.
   intros f g Hf Hg Hg2. apply ind.
@@ -415,7 +429,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Definition max_mult m := fold (fun _ => max) m 0%nat.
   
-  Instance max_mult_compat : Proper (eq ==> Logic.eq) max_mult.
+  Instance max_mult_compat : Proper (equiv ==> Logic.eq) max_mult.
   Proof.
   unfold max_mult. intros m1 m2 Heq. apply fold_compat; trivial; refine _.
   - repeat intro. now subst.
@@ -433,7 +447,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     repeat intro. now subst.
   Qed.
   
-  Lemma max_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+  Lemma max_mult_map_injective_invariant : forall f, Proper (equiv ==> equiv) f -> injective equiv equiv f ->
     forall m, max_mult (map f m) = max_mult m.
   Proof.
   intros f Hf Hinj. apply ind.
@@ -464,7 +478,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   * intros m1 m2 Hm. now setoid_rewrite Hm.
   * intros m x n Hout Hn Hrec y. rewrite max_mult_add; trivial.
     assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
-    destruct (E.eq_dec y x) as [Hxy | Hxy].
+    destruct (equiv_dec y x) as [Hxy | Hxy].
     + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
     + rewrite add_other; auto. transitivity (max_mult m).
       - apply Hrec.
@@ -472,7 +486,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   * intro x. rewrite empty_spec. omega.
   Qed.
   
-  Lemma max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
+  Lemma max_mult_0 : forall m, max_mult m = 0%nat <-> m == empty.
   Proof.
   intro m. split; intro Heq.
   + destruct (empty_or_In_dec m) as [? | [x Hin]]; trivial.
@@ -486,15 +500,15 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   
   Definition max m := nfilter (fun _ => beq_nat (max_mult m)) m.
   
-  Instance eqb_max_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult m)).
+  Instance eqb_max_mult_compat m : Proper (equiv ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult m)).
   Proof. repeat intro. now subst. Qed.
   
-  Instance eqb_max_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.max).
+  Instance eqb_max_compat : Proper (equiv ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.max).
   Proof. repeat intro. now subst. Qed.
   
   Local Hint Immediate eqb_max_mult_compat eqb_max_compat.
   
-  Global Instance max_compat : Proper (eq ==> eq) max.
+  Global Instance max_compat : Proper (equiv ==> equiv) max.
   Proof.
   intros m1 m2 Heq. unfold max.
   rewrite Heq. apply nfilter_extensionality_compat.
@@ -502,8 +516,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   - intros _ n. now rewrite Heq.
   Qed.
   
-  Lemma max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-    forall m, (max (map f m)) [=] (map f (max m)).
+  Lemma max_map_injective : forall f, Proper (equiv ==> equiv) f -> injective equiv equiv f ->
+    forall m, (max (map f m)) == (map f (max m)).
   Proof.
   intros f Hf Hinj m. unfold max. rewrite map_injective_nfilter; auto.
   apply map_compat.
@@ -522,7 +536,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   Theorem max_spec1 : forall m x y, In y (max m) -> m[x] <= (max m)[y].
   Proof.
   intros m x y Hy. unfold max in *.
-  unfold In in Hy. rewrite nfilter_spec in *; auto.
+  unfold In in Hy. rewrite nfilter_spec in Hy |- *; auto.
   destruct (max_mult m =? m[y]) eqn:Heq; try omega.
   rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply max_mult_spec.
   Qed.
@@ -552,22 +566,21 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
       - exists x. split.
         -- msetdec.
         -- rewrite Nat.eqb_eq, Max.max_l; try omega. msetdec.
-  * intros x H. elim (In_empty H).
+  * intros x Hin. elim (In_empty Hin).
   Qed.
   
-  Lemma max_empty : forall m, max m [=] empty <-> m [=] empty.
+  Lemma max_empty : forall m, max m == empty <-> m == empty.
   Proof.
-  intro m. split; intro H.
+  intro m. split; intro Heq.
   + destruct (empty_or_In_dec m) as [Hm | Hm].
     - intro. now rewrite Hm.
     - destruct Hm as [x Hx].
       destruct (max_spec_non_nil Hx) as [y Hy].
-      unfold In in Hy. rewrite H, empty_spec in Hy. omega.
-  + rewrite H. unfold max.
-    apply nfilter_empty; auto.
+      unfold In in Hy. rewrite Heq, empty_spec in Hy. omega.
+  + rewrite Heq. unfold max. apply nfilter_empty; auto.
   Qed.
   
-  Lemma max_singleton : forall x n, max (singleton x n) [=] singleton x n.
+  Lemma max_singleton : forall x n, max (singleton x n) == singleton x n.
   Proof.
   intros x n. destruct n.
   + rewrite singleton_0. now rewrite max_empty.
@@ -609,26 +622,26 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
     - rewrite Habs. unfold max in Hx. rewrite nfilter_In in Hx; try now repeat intro; subst.
   Qed.
   
-  Lemma max_max_mult : forall m x, ~m [=] empty -> In x (max m) <-> m[x] = max_mult m.
+  Lemma max_max_mult : forall m x, ~m == empty -> In x (max m) <-> m[x] = max_mult m.
   Proof.
-  intros m x Hm. split; intro H.
-  + apply nfilter_In in H; auto.
-    symmetry. apply beq_nat_true. now destruct H.
+  intros m x Hm. split; intro Hin.
+  + apply nfilter_In in Hin; auto.
+    symmetry. apply beq_nat_true. now destruct Hin.
   + unfold max. rewrite nfilter_In; auto.
     split.
     - red. cut (m[x]<>0). omega.
-      intro Habs. now rewrite H, max_mult_0 in Habs.
-    - now rewrite H, <- beq_nat_refl.
+      intro Habs. now rewrite Hin, max_mult_0 in Habs.
+    - now rewrite Hin, <- beq_nat_refl.
   Qed.
   
-  Lemma max_max_mult_ex : forall m, ~m [=] empty -> exists x, max_mult m = m[x].
+  Lemma max_max_mult_ex : forall m, ~m == empty -> exists x, max_mult m = m[x].
   Proof.
   intros m. pattern m. apply ind; clear m.
   * intros ? ? Heq. now setoid_rewrite Heq.
   * intros m x n Hout Hn Hrec _.
     destruct (empty_or_In_dec m) as [Hm | Hm].
     + exists x. rewrite Hm, add_empty. rewrite max_mult_singleton. msetdec.
-    + assert (Hempty : ~m [=] empty) by now rewrite not_empty_In.
+    + assert (Hempty : ~m == empty) by now rewrite not_empty_In.
       destruct (Hrec Hempty) as [max_m Hmax_m]. rewrite max_mult_add; trivial.
       destruct (Max.max_spec n (max_mult m)) as [[Hmax1 Hmax2] | [Hmax1 Hmax2]].
       - exists max_m. msetdec.
@@ -636,15 +649,15 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   * intro. msetdec.
   Qed.
   
-  Lemma max_spec_max : forall m x, ~m [=] empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
+  Lemma max_spec_max : forall m x, ~m == empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
   Proof.
-  intros m x Hm H. apply le_antisym.
+  intros m x Hm Hmax. apply le_antisym.
   - destruct (@max_max_mult_ex m) as [y Hy]; auto.
-    rewrite Hy. apply H.
+    rewrite Hy. apply Hmax.
   - apply max_mult_spec.
   Qed.
   
-  Corollary max_spec1_iff : forall m, ~m [=] empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
+  Corollary max_spec1_iff : forall m, ~m == empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
   Proof.
   intros m Hm x. assert (Hempty := Hm).
   rewrite <- max_empty, not_empty_In in Hm. destruct Hm as [z Hz].
@@ -652,14 +665,14 @@ Module Make(E : DecidableType)(M : FMultisetsOn E).
   + intro y. assert (Hx' := Hx). rewrite max_In_mult in Hx.
     - rewrite <- Hx. now apply max_spec1.
     - now rewrite <- max_subset.
-  + assert (H := max_spec_max Hempty Hx). rewrite max_max_mult; auto.
+  + assert (Hmax := max_spec_max _ Hempty Hx). rewrite max_max_mult; auto.
   Qed.
   
   Lemma size_max_le : forall m, size (max m) <= size m.
   Proof.
-  intro m. do 2 rewrite size_spec. apply (NoDupA_inclA_length E.eq_equiv).
+  intro m. do 2 rewrite size_spec. apply (NoDupA_inclA_length setoid_equiv).
   - apply support_NoDupA.
   - apply support_sub_compat, max_subset.
   Qed.
 
-End Make.
+End MMultisetExtra.
