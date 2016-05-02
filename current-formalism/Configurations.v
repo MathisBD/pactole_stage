@@ -332,6 +332,7 @@ End MakeDiscretSpace.
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
 
+  (* for now it's only locations, but the content could change *)
   Record Info : Type := { source: Location.t ; target: Location.t}.
 
   Definition Info_eq i1 i2 :=
