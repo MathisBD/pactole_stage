@@ -341,8 +341,8 @@ Qed.
 
 (** ** One step executions *)
 
-Definition apply_sim (sim : Sim.t) (info : Config.RobotConf) :=
-  {| Config.Loc := sim info; Config.Sta := Config.Sta info |}.
+Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
+  {| Config.loc := sim infoR; Config.info := Config.info infoR |}.
 
 Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
 Proof.
@@ -364,8 +364,8 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
       | Some (sim, mv_ratio) => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         (* byzantine robot are relocated by the demon *)
-        | Byz b => {| Config.Loc := da.(relocate_byz) b;
-                      Config.Sta := Config.Sta (config id) |}
+        | Byz b => {| Config.loc := da.(relocate_byz) b;
+                      Config.info := Config.info (config id) |}
         | Good g => (* configuration expressed in the frame of g *)
           let frame_change := sim (config (Good g)) in
           (* apply r on spectrum *)
@@ -374,10 +374,10 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
           (* the demon chooses a point on the line from the target by mv_ratio *)
           let chosen_target := Location.mul mv_ratio local_target in
           (* back to demon ref *)
-          {| Config.Loc := frame_change⁻¹
+          {| Config.loc := frame_change⁻¹
             (if Rle_bool δ (Location.dist chosen_target conf) then chosen_target 
              else local_target);
-             Config.Sta := Config.Sta (config id) |}
+             Config.info := Config.info (config id) |}
         end
     end.
 
@@ -397,16 +397,16 @@ SearchAbout Proper Location.eq.
             (Location.mul mvr2 (r1 (Spect.from_config (Config.map (apply_sim (f1 (conf1 (Good g)))) conf1))))
             (Location.mul mvr2 (r2 (Spect.from_config (Config.map (apply_sim (f2 (conf2 (Good g)))) conf2))))).
   { f_equiv. apply Hr. do 2 f_equiv; trivial. f_equiv. apply Hstep, Hconf. }
-  rewrite Heq. clear Heq. rewrite (Hconf (Good g)) at 2.
+  rewrite Heq. clear Heq. split; simpl; try apply Hconf. destruct (Hconf (Good g)) as (Hrconf,Hinfo). rewrite Hrconf at 2.
   destruct (Rle_bool δ (Location.dist
               (Location.mul mvr2 (r2 (Spect.from_config (Config.map (apply_sim (f2 (conf2 (Good g)))) conf2))))
               (conf2 (Good g)))) eqn:Heq.
   * f_equiv.
-    -- do 2 f_equiv. f_equiv. apply Hstep, Hconf. apply Hr. do 2 f_equiv; try apply Hconf. f_equiv. apply Hstep, Hconf.
-    -- f_equiv. apply Hconf.
+    -- f_equiv. apply Hstep, Hconf.
+    -- f_equiv. apply Hr. do 2 f_equiv; trivial. f_equiv. apply Hstep, Hconf.
   * f_equiv.
-    -- f_equiv. do 2 f_equiv. apply Hstep, Hconf. apply Hr. do 3 f_equiv. apply Hstep,Hconf. apply Hconf.
-    -- f_equiv. apply Hconf.
+    -- f_equiv. apply Hstep, Hconf.
+    -- apply Hr. do 3 f_equiv. apply Hstep,Hconf. apply Hconf.
 + f_equiv. rewrite Hda. reflexivity. apply Hconf.
 Qed.
 

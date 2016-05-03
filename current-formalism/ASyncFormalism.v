@@ -45,7 +45,7 @@ Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 Inductive Active_or_Moving := 
   | Moving (dist :R)                   (* moving ratio *)
   | Active (sim : Location.t → Sim.t). (* change of referential *)
-             
+
 
 Definition Aom_eq (a1 a2: Active_or_Moving) :=
   match a1 with
@@ -490,18 +490,20 @@ unfold req in Hr. unfold round. assert (Hrconf : Config.eq_RobotConf (conf1 id) 
 apply Hconf. assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
 assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
 apply step_da_compat; try reflexivity. apply Hrconf.
-destruct (step da1 id (conf1 id)) eqn:He1, (step da2 id (conf2 id)) eqn:He2,
+destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
 (step da1 id (conf2 id)) eqn:He3, id as [ g| b]; try now elim Hstep.
 + unfold Aom_eq in *. rewrite Hstep. f_equiv. f_equiv. apply Hrconf. do 2 f_equiv.
  apply Hrconf. f_equiv; apply Hrconf. unfold Config.Info_eq. split; apply Hrconf.
 + unfold Aom_eq in *. exfalso; auto.
 + unfold Aom_eq in *. exfalso; auto.
-+ assert (Hf : Sim.eq (sim (conf1 (Good g))) (sim0 (conf2 (Good g)))).
-  unfold da_eq in *. destruct Hda as (Hdag, Hdab). specialize (Hdag (Good g) (conf1 (Good g))).
-  apply step_compat in Hsim. unfold Aom_eq in Hsim.
-      admit.
-  split. apply Hrconf. unfold Config.Info_eq. simpl. split. apply Hrconf. rewrite Hf.
-  f_equiv. apply Hr. f_equiv. f_equiv; trivial. f_equiv.
++ destruct Hrconf as (Hloc,Hinfo). assert (Hstep':= Active_compat (reflexivity id) Hloc). split. apply Hrconf. unfold Config.Info_eq. simpl. split. apply Hrconf. 
+  destruct Hda as (Hdag,Hdab). specialize (Hdag (Good g) (conf1 (Good g))).
+  unfold Aom_eq in Hsim. assert (Sim.eq (sim (conf1 (Good g))) (sim0 (conf2 (Good g)))).
+  eapply Active_compat.
+  f_equiv. f_equiv. Focus 2. apply Hr. do 3 f_equiv. unfold Aom_eq in Hsim. apply Hsim. 
+  admit.
+(*   f_equiv. destruct Hda as (Hdag, Hdab). specialize (Hdag (Good g) (conf1 (Good g))).
+  apply Hr. f_equiv. f_equiv; trivial. f_equiv. *)
 + rewrite Hda. destruct (Hconf (Byz b)). rewrite H0. reflexivity.
 Admitted.
 
@@ -539,16 +541,26 @@ split; intro H.
   - destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | _]; intuition.
 Qed.
 
-(* un Lemme qui dit que si personne n'a bougé de 0 ni été activé, alors on a la même conf?*)
+(* un Lemme qui dit que si personne n'a bougé de 0 ni été activé, alors on a la même conf? 
 
-(* Lemma moving_no_sup_0_same_conf : forall r da conf id ratio, moving_sup_0 r da conf = List.nil 
+faux car si jamais on a un ratio qui *)
+
+(* Lemma moving_no_sup_0_same_conf : forall r da conf id ratio g, id = Good g -> moving_sup_0 r da conf = Datatypes.nil 
 -> step da id (conf id) = Moving ratio -> (ratio = 0)%R.
 Proof.
-intros r da conf id ratio Hmoving Hratio. specialize (moving_sup_0 r da conf id). in Hmoving.
+intros r da conf id ratio g Hgood Hmoving Hratio. destruct (Rdec ratio 0%R).
+auto. exfalso. assert (~Location.eq (round r da conf id) (conf id)).
+Focus 2. apply moving_sup_0_spec in H. rewrite Hmoving in H. auto.
+unfold round. rewrite Hratio, Hgood.
+
+
+(* elim Hmoving.
+simpl in *. destruct (step da id (conf id)) in Hmoving. rewrite Hratio in Hmoving.
+specialize (moving_sup_0 r da conf id). in Hmoving.
 unfold moving_sup_0, round in Hmoving. specialize (Hmoving id). rewrite Hratio in Hmoving.
 
-
-Qed.
+ *)
+Admitted.
 
 
 Lemma no_active_no_moving_same_conf : forall r da conf rconf, active da rconf = List.nil
@@ -556,9 +568,14 @@ Lemma no_active_no_moving_same_conf : forall r da conf rconf, active da rconf = 
 Proof.
 intros r da conf rconf Hactive Hmoving.
 unfold round, Config.eq, Config.eq_RobotConf; split;
-destruct (step da id (conf id)) eqn : Heq.
-unfold moving_sup_0 in Hmoving. destruct id as [g|b]. f_equiv. reflexivity. *)
-
+destruct (step da id (conf id)) eqn : Heq. apply moving_no_sup_0_same_conf with (r:=r) in Heq; trivial.
+rewrite Heq.
+assert (Location.eq (Location.mul 0 (Location.add 
+        (Config.target (Config.info (conf id))) (Location.opp (conf id))))
+        Location.origin). apply Location.mul_0. destruct id as [g |b]. simpl.
+        rewrite H. apply Location.add_origin. reflexivity.
+        unfold active in Hactive.
+ *)
 (* this Lemmas are not true anymore now that we change the definition of a step and a round.*)
 (* Lemma moving_sup_0_active : forall r da config rconf, List.incl (moving_sup_0 r da config) (moving da rconf).
 Proof.
