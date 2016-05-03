@@ -353,6 +353,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Declare Instance eq_info_equiv : Equivalence Info_eq.
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
+  Declare Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
   
   Parameter neq_equiv : forall config₁ config₂,
     ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
@@ -438,6 +439,9 @@ split.
   apply H.
   apply H0.
 Qed.
+
+Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
+Proof. intros l1 l2 Hl info1 info2 Hinfo. split; apply Hl || apply Hinfo. Qed.
 
 Instance eq_equiv : Equivalence eq.
 Proof. split.
