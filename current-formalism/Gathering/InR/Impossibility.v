@@ -14,24 +14,29 @@ Require Import Morphisms.
 Require Import Arith.Div2.
 Require Import Omega.
 Require Import List SetoidList.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Gathering.InR.Rcomplements.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
+Require Import Spaces.R.
+Require Import Pactole.Gathering.Definitions.
 
 
 Set Implicit Arguments.
 
 
-Import GatheringinR.
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
 Close Scope R_scope.
 
+(** The number of robots we consider. *)
+Parameter n : nat.
+Axiom even_nG : Nat.Even n.
+Axiom nG_non_0 : n <> 0.
 
-Axiom even_nG : Nat.Even N.nG.
-Axiom nG_non_0 : N.nG <> 0.
 
-Lemma nG_ge_2 : 2 <= N.nG.
+Definition NbRobots := Robots n 0.
+Existing Instance NbRobots.
+Print Instances NamesDef.
+
+
+Lemma nG_ge_2 : 2 <= nG.
 Proof.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
 inversion Heven.

@@ -14,13 +14,72 @@ Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
 Require Import RelationPairs.
-Require Import MMultiset.Preliminary.
-Require Import MMultisetInterface.
-Require Import Equalities.
+Require Import Pactole.Util.MMultiset.Preliminary.
+Require Import Pactole.Util.MMultiset.MMultisetInterface.
+Require Export Pactole.Util.FMaps.FMapInterface.
+Require Import SetoidDec.
 
-Module FMultisets (MMap : Sfun) (E : OrderedType) : Sord E.
 
-Module M := MMap(E).
+
+Definition multiplicity elt {elt_Setoid : Setoid elt} {elt_EqDec : @EqDec elt elt_Setoid}
+                            {Mapimpl : @FMap elt elt_Setoid elt_EqDec} :=
+  fun x m => match find x m with Some n => Pos.to_nat n | None => 0 end.
+Check multiplicity.
+
+Instance FMultisets elt (elt_Setoid : Setoid elt) `(elt_EqDec : @EqDec elt elt_Setoid)
+                        (Mapimpl : @FMap elt elt_Setoid elt_EqDec) : FMOps elt elt_EqDec := {|
+  multiset := Map[elt, positive];
+  MMultisetInterface.empty := FMapInterface.empty positive;
+  MMultisetInterface.is_empty := FMapInterface.is_empty;
+  MMultisetInterface.multiplicity := multiplicity elt;
+  MMultisetInterface.add := fun x n m => if eq_nat_dec n 0 then m else add x (Pos.of_nat (m[x] + n)) m;
+  MMultisetInterface.singleton x n := add x n empty |}.
+  remove x n m := if eq_nat_dec n 0 then m else
+    if le_lt_dec m[x] n then remove x m else add x (Pos.of_nat (multiplicity x s - n)) s.
+Definition union (s s' : t) := M.fold (fun x n acc => add x (Pos.to_nat n) acc) s s'.
+Definition inter (s s' : t) :=
+  M.fold (fun x n acc => add x ((fun x n => min (multiplicity x s) (Pos.to_nat n)) x n) acc) s' empty.
+Definition diff (s s' : t) := M.fold (fun x n acc => add x (Pos.to_nat n - multiplicity x s') acc) s empty.
+Definition lub (s s' : t) := M.fold (fun x n acc => add x (Pos.to_nat n - multiplicity x s') acc) s s'.
+Definition equal (s s' : t) := M.equal Pos.eqb s s'.
+Definition subset s s' := is_empty (diff s s').
+Definition fold {A} f (s : t) := @M.fold positive A (fun x y => f x (Pos.to_nat y)) s.
+Definition for_all f (s : t) := M.fold (fun x n b => b && f x (Pos.to_nat n)) s true.
+Definition exists_ f (s : t) := M.fold (fun x n b => b || f x (Pos.to_nat n)) s false.
+Definition nfilter f (s : t) :=
+  M.fold (fun x n acc => if f x (Pos.to_nat n) : bool then add x (Pos.to_nat n) acc else acc) s empty.
+Definition filter f (s : t) := nfilter (fun x _ => f x) s.
+Definition npartition f (s : t) :=
+  M.fold (fun x n acc => if f x (Pos.to_nat n) : bool then (add x (Pos.to_nat n) (fst acc), snd acc)
+                                               else (fst acc, add x (Pos.to_nat n) (snd acc))) s (empty,empty).
+Definition partition f (s : t) := npartition (fun x _ => f x) s.
+Definition cardinal (s : t) := M.fold (fun _ n acc => Pos.to_nat n + acc) s 0.
+Definition size (s : t) := M.fold (fun _ _ n => S n) s 0.
+Definition elements (s : t) := List.map (fun xy => (fst xy, Pos.to_nat (snd xy))) (M.bindings s).
+Definition support (s : t) := M.fold (fun x _ l => cons x l) s nil.
+Definition choose (s : t) := M.fold (fun x _ _ => Some x) s None.
+    add : elt -> nat -> multiset -> multiset;
+    singleton : elt -> nat -> multiset;
+    remove : elt -> nat -> multiset -> multiset;
+    union : multiset -> multiset -> multiset;
+    inter : multiset -> multiset -> multiset;
+    diff : multiset -> multiset -> multiset;
+    lub : multiset -> multiset -> multiset;
+    equal : multiset -> multiset -> bool;
+    subset : multiset -> multiset -> bool;
+    fold : forall A : Type, (elt -> nat -> A -> A) -> multiset -> A -> A;
+    for_all : (elt -> nat -> bool) -> multiset -> bool;
+    exists_ : (elt -> nat -> bool) -> multiset -> bool;
+    nfilter : (elt -> nat -> bool) -> multiset -> multiset;
+    filter : (elt -> bool) -> multiset -> multiset;
+    npartition : (elt -> nat -> bool) -> multiset -> multiset * multiset;
+    partition : (elt -> bool) -> multiset -> multiset * multiset;
+    elements : multiset -> list (elt * nat);
+    support : multiset -> list elt;
+    cardinal : multiset -> nat;
+    size : multiset -> nat;
+    choose : multiset -> option elt }
+
 
 Definition eq_pair := RelProd E.eq (@Logic.eq nat).
 Definition eq_elt := RelCompFun E.eq (@fst E.t nat).
@@ -112,7 +171,7 @@ Definition nfilter f (s : t) :=
 Definition filter f (s : t) := nfilter (fun x _ => f x) s.
 Definition npartition f (s : t) :=
   M.fold (fun x n acc => if f x (Pos.to_nat n) : bool then (add x (Pos.to_nat n) (fst acc), snd acc)
-                                                      else (fst acc, add x (Pos.to_nat n) (snd acc))) s (empty,empty).
+                                               else (fst acc, add x (Pos.to_nat n) (snd acc))) s (empty,empty).
 Definition partition f (s : t) := npartition (fun x _ => f x) s.
 Definition cardinal (s : t) := M.fold (fun _ n acc => Pos.to_nat n + acc) s 0.
 Definition size (s : t) := M.fold (fun _ _ n => S n) s 0.
@@ -891,7 +950,8 @@ revert s'. induction (M.bindings s) as [| [y m] l]; intro s'; simpl.
   intros n Habs. apply (Hs n). now right.
 Qed.
 
-Corollary npartition_spec_snd : forall f s, compatb f -> snd (npartition f s) [=] nfilter (fun x n => negb (f x n)) s.
+Corollary npartition_spec_snd : forall f s,
+  compatb f -> snd (npartition f s) [=] nfilter (fun x n => negb (f x n)) s.
 Proof.
 intros f s Hf x. unfold npartition. rewrite nfilter_spec.
 destruct (multiplicity x s) eqn:Hin.
@@ -943,20 +1003,6 @@ rewrite fold_left_symmetry_PermutationA.
   - eapply NoDupA_strengthen; try apply M.bindings_spec2w. now intros [? ?] [? ?] [? ?].
   - clear -Hs. intros [x n]. do 2 rewrite Melements_multiplicity. now rewrite Hs.
 + assumption.
-Qed.
-
-
-(** Specifics about ordering of elements *)
-Definition lt_elt (xn yp : elt * nat) := E.lt (fst xn) (fst yp).
-
-Theorem elements_Sorted : forall s, Sorted lt_elt (elements s).
-Proof.
-intros s. unfold elements. assert (Hsorted := M.bindings_spec2 s).
-induction (M.bindings s).
-+ constructor.
-+ simpl. inversion_clear Hsorted. constructor.
-  - now apply IHl.
-  - induction H0; constructor; assumption.
 Qed.
 
 End FMultisets.

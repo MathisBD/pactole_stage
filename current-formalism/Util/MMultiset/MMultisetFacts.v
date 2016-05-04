@@ -16,8 +16,8 @@ Require Import RelationPairs.
 (* Require Import Equalities. *)
 Require Import SetoidList.
 Require Import SetoidDec.
-Require Import MMultiset.Preliminary.
-Require Import MMultisetInterface.
+Require Import Pactole.Util.MMultiset.Preliminary.
+Require Import Pactole.Util.MMultisetInterface.
 
 
 Set Implicit Arguments.

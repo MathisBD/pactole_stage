@@ -1,9 +1,9 @@
 Require Import Omega.
 Require Import SetoidList.
 Require Import SetoidDec.
-Require Import Pactole.MMultiset.Preliminary.
-Require Import Pactole.MMultiset.MMultisetInterface.
-Require Import Pactole.MMultiset.MMultisetFacts.
+Require Import Pactole.Util.MMultiset.Preliminary.
+Require Import Pactole.Util.MMultiset.MMultisetInterface.
+Require Import Pactole.Util.MMultiset.MMultisetFacts.
 
 
 Set Implicit Arguments.

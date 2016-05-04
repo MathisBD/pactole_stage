@@ -26,16 +26,26 @@ Set Implicit Arguments.
 Close Scope R_scope.
 
 
-(** There are nG good robots and no byzantine ones. *)
+(** There are [2 * n] good robots and [n] byzantine ones. *)
 Parameter n: nat.
 Axiom n_non_0 : n <> 0%nat.
 
-Definition MyRobots := Robots (2*n) n.
+Definition MyRobotsDef := RobotsDef (2 * n) n.
+Definition MyRobots := Robots (2 * n) n.
+Existing Instance MyRobotsDef.
 Existing Instance MyRobots.
 
+(* BUG?: To help finding correct instances, loops otherwise! *)
+Notation configuration := (@configuration R _ _ _ _ _).
+Notation execution := (@execution R _ _ _ _).
+Notation demon := (@demon R _ _ _ _).
+Print robogram.
+Notation robogram := (@robogram R _ _ _ _ _).
+Check demon.
+Check robogram.
 
 (** The spectrum is a multiset of positions *)
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
+(* Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]"). *)
 Notation "!!" := spect_from_config (at level 1).
 
 Add Search Blacklist "Spect.M" "Ring".
@@ -81,15 +91,21 @@ Definition imprisoned (center : R) (radius : R) (e : execution) : Prop :=
   Streams.forever (Streams.instant (fun config => forall g, dist center (config (Good g)) <= radius)) e.
 
 (** The execution will end in a small disk. *)
-Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
+Definition attracted (c : R) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
 
-Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
+Instance imprisoned_compat : Proper (equiv ==> Logic.eq ==> equiv ==> iff) imprisoned.
 Proof. Admitted.
-(* TODO
+(*
 intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
 * revert c1 c2 e1 e2 Hc He. coinduction Hrec.
-  + intro g. rewrite <- He, <- Hc. apply H.
-  + constructor. unfold Streams.instant. intro. rewrite <- He. apply H. simpl. apply (Hrec c1 c2 (execution_tail e1) _).
+  + intro g. rewrite <- Hc.
+Check (@eeq_hd_compat R _ _ _ _).
+SearchAbout Proper Streams.hd.
+SearchAbout Proper dist.
+
+ rewrite <- He. , <- Hc. apply H.
+  + constructor. unfold Streams.instant. intro. rewrite <- He.
+    apply H. simpl. apply (Hrec c1 c2 (execution_tail e1) _).
     - assumption.
     - now destruct He.
     - now destruct H.
@@ -101,18 +117,18 @@ intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
     - now destruct H.
 Qed.*)
 
-Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
-Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Streams.eventually_compat, imprisoned_compat. Qed.
+Instance attracted_compat : Proper (equiv ==> eq ==> equiv ==> iff) attracted.
+Proof. intros ? ? Heq ? ? ?. now apply Streams.eventually_compat, imprisoned_compat. Qed.
 
 (** A solution is just convergence property for any demon. *)
-Definition solution (r : robogram) : Prop :=
-  forall (config : Config.t) (d : demon), Fair d →
-  forall (ε : R), 0 < ε → exists (pt : R.t), attracted pt ε (execute r d config).
+Definition solution (r : robogram) : Prop := True.
+  forall (config : configuration) (d : demon), True. Fair d → True.
+  forall (ε : R), 0 < ε → exists (pt : R), attracted pt ε (execute r d config).
 
 (** A solution is just convergence property for any demon. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
-  forall (config : Config.t) (d : demon), FullySynchronous d →
-  forall (ε : R), 0 < ε → exists (pt : R.t), attracted pt ε (execute r d config).
+  forall (config : configuration) (d : demon), FullySynchronous d →
+  forall (ε : R), 0 < ε → exists (pt : R), attracted pt ε (execute r d config).
 
 
 Lemma synchro : ∀ r, solution r → solution_FSYNC r.

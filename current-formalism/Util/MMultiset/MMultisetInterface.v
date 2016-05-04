@@ -13,105 +13,105 @@ Require Import RelationPairs.
 Require Import MSetInterface.
 Require Import SetoidDec.
 Require Import SetoidPermutation.
-Require Import MMultiset.Preliminary.
+Require Import Pactole.Util.MMultiset.Preliminary.
 
 (* based on MSets *)
 
 Class FMOps elt `(EqDec elt) := {
 
-  t : Type;
+  multiset : Type;
   (** The types of elements and multisets. *)
 
-  empty : t;
+  empty : multiset;
   (** The empty multiset. *)
 
-  is_empty : t -> bool;
+  is_empty : multiset -> bool;
   (** Test whether a multiset is empty or not. *)
 
-  multiplicity : elt -> t -> nat;
+  multiplicity : elt -> multiset -> nat;
   (** [multiplicity x s] gives the number of occurences of [x] inside [s]. *)
 
-  add : elt -> nat -> t -> t;
+  add : elt -> nat -> multiset -> multiset;
   (** [add x n s] returns a multiset containing all elements of s, plus [n] copies of [x]. *)
   (* If [n] is [0], should we return /exactly/ the original multiset? *)
 
-  singleton : elt -> nat -> t;
+  singleton : elt -> nat -> multiset;
   (** [singleton x n] returns the multiset containing only [n] copies of [x].
       It is [empty] if [n] is [0]. *)
 
-  remove : elt -> nat -> t -> t;
+  remove : elt -> nat -> multiset -> multiset;
   (** [remove x n s] returns a multiset containing all elements of s, minus [n] copies of [x].
       If the multiplicity of [x] in [s] is less than [n], we remove all the copies of [x] from [s]. *)
 
-  union : t -> t -> t;
+  union : multiset -> multiset -> multiset;
   (** Multiset union. *)
 
-  inter : t -> t -> t;
+  inter : multiset -> multiset -> multiset;
   (** Multiset intersection. *)
 
-  diff : t -> t -> t;
+  diff : multiset -> multiset -> multiset;
   (** Multiset difference. *)
 
-  lub : t -> t -> t;
+  lub : multiset -> multiset -> multiset;
   (** Multiset lowest upper bound: the multiplicity of any [x] in [sup s1 s2] is the maximum of the multiplicities
   of [x] in [s1] and [s2]. *)
 
-  equal : t -> t -> bool;
+  equal : multiset -> multiset -> bool;
   (** [equal s1 s2] tests whether the multisets [s1] and [s2] are equal,
       that is, contain equal elements with equal multiplicities. *)
 
-  subset : t -> t -> bool;
+  subset : multiset -> multiset -> bool;
   (** [subset s1 s2] tests whether the multiset [s1] is a subset of the multiset [s2]. *)
 
-  fold : forall {A : Type}, (elt -> nat -> A -> A) -> t -> A -> A;
+  fold : forall {A : Type}, (elt -> nat -> A -> A) -> multiset -> A -> A;
   (** [fold f s a] computes [(f xN nN ... (f x2 n2 (f x1 n1 a))...)], where [x1 ... xN]
       are the distinct elements of [s] with respective positive multiplicities [n1 ... nN].
       The order in which the elements of [s] are presented to [f] is unspecified. *)
 
-  for_all : (elt -> nat -> bool) -> t -> bool;
+  for_all : (elt -> nat -> bool) -> multiset -> bool;
   (** [for_all p s] checks if all elements of the multiset (with their multiplicities) satisfy the predicate [p]. *)
 
-  exists_ : (elt -> nat -> bool) -> t -> bool;
+  exists_ : (elt -> nat -> bool) -> multiset -> bool;
   (** [exists_ p s] checks if at least one element of the multiset (with its multiplicity)
       satisfies the predicate [p]. *)
 
-  nfilter : (elt -> nat -> bool) -> t -> t;
+  nfilter : (elt -> nat -> bool) -> multiset -> multiset;
   (** [nfilter p s] returns the multiset of all elements with multiplicity in [s] that satisfy the predicate [p]. *)
 
-  filter : (elt -> bool) -> t -> t;
+  filter : (elt -> bool) -> multiset -> multiset;
   (** [filter p s] returns the multiset of all elements in [s] that satisfy the predicate [p],
       keeping their multiplicity. *)
 
-  npartition : (elt -> nat -> bool) -> t -> t * t;
+  npartition : (elt -> nat -> bool) -> multiset -> multiset * multiset;
   (** [partition p s] returns a pair of multisets [(s1, s2)],
       where [s1] is the multiset of all the elements of [s] with multiplicity that satisfy the predicate [p],
       and [s2] is the multiset of all the elements of [s] with multiplicity that do not satisfy [p]. *)
 
-  partition : (elt -> bool) -> t -> t * t;
+  partition : (elt -> bool) -> multiset -> multiset * multiset;
   (** [partition p s] returns a pair of multisets [(s1, s2)],
       where [s1] is the multiset of all the elements of [s] that satisfy the predicate [p],
       and [s2] is the multiset of all the elements of [s] that do not satisfy [p]. *)
 
-  elements : t -> list (elt * nat);
+  elements : multiset -> list (elt * nat);
   (** Return the list of all elements with multiplicity of the given multiset, in any order. *)
 
-  support : t -> list elt;
+  support : multiset -> list elt;
   (** Return the list of all different elements without multiplicity of the given multiset, in any order. *)
 
-  cardinal : t -> nat;
+  cardinal : multiset -> nat;
   (** Return the number of elements of a multiset, with multiplicity. *)
 
-  size : t -> nat;
+  size : multiset -> nat;
   (** Return the size of the support of a multiset,
       that is, the number of different elements (without multiplicity). *)
 
-  choose : t -> option elt
+  choose : multiset -> option elt
   (** Return one element of the given multiset, or [None] if the multiset is empty.
       Which element is chosen is unspecified: equal multisets could return different elements. *)
 }.
 
 
-Instance MMultiset_Setoid `{FMOps} : Setoid t := {
+Instance MMultiset_Setoid `{FMOps} : Setoid multiset := {
   equiv := fun s s' => forall x, multiplicity x s = multiplicity x s' }.
 Proof. split.
 + repeat intro. reflexivity.
@@ -193,7 +193,7 @@ Global Notation "m1  ⊆  m2" := (Subset m1 m2) (at level 70).
 
 
 Class FMultisetOrd elt lt `(FMultisetsOn elt) `(@StrictOrder elt lt) := {
-  
+
   (** Orders on elements *)
   lt_elt (xn yp : elt * nat) := lt (fst xn) (fst yp);
 

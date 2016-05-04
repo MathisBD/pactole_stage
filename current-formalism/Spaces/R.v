@@ -39,13 +39,13 @@ Open Scope R_scope.
 
 (** R as a vector space over itself. *)
 
-Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
-Instance R_EqDec : @EqDec R _ := Rdec.
+Global Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
+Global Instance R_EqDec : @EqDec R _ := Rdec.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
 (* We use the square of the distance in order to avoid sqrt, hence we can use any field of charactistic 0. *)
-Instance R_RMS : RealMetricSpace R := {|
+Global Instance R_RMS : RealMetricSpace R := {|
   origin := 0;
   unit := 1;
   dist := fun x y => Rabs (x - y);
@@ -112,6 +112,7 @@ Ltac Rle_dec :=
       destruct (Rle_lt_dec x y) as [Heq | Hneq]
     | _ => fail
   end.
+
 
 (** Translation and homothecy similarities are well-defined on R. *)
 Lemma translation_hypothesis : forall z x y, dist (add x z) (add y z) = dist x y.

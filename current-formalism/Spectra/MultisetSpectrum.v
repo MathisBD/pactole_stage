@@ -8,6 +8,9 @@
 (**************************************************************************)
 
 
+(* TODO: perform a correct installation of Containers *)
+Add LoadPath "~/.opam/coq-8.5/lib/coq/user-contrib/Containers" as Containers.
+Require Import Containers.MapInterface.
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.
@@ -26,16 +29,18 @@ Set Implicit Arguments.
 Existing Instance multiplicity_compat.
 
 
+Print FMap.
+
 Section MultisetSpectrum.
 
 Context {loc : Type}.
 Context {loc_Setoid : Setoid loc}.
 Context {loc_EqDec : EqDec loc_Setoid}.
+Print OrderedType.
+Context {loc_EqDec : EqDec loc_Setoid}.
 Context {loc_RMS : RealMetricSpace loc}.
 Context {RobotsDef : NamesDef}.
 Context {Robots : Names}.
-Context {SpectOps : @FMOps loc loc_Setoid loc_EqDec}.
-Context {Spect : @FMultisetsOn loc loc_Setoid loc_EqDec SpectOps}.
 
 
 (*

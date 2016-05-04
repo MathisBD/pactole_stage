@@ -54,9 +54,11 @@ Class Configuration (loc : Type) {S : Setoid loc} (Loc : @EqDec loc S) `(N : Nam
   map_id : forall config : configuration, @equiv _ configuration_Setoid (map_config Datatypes.id config) config}.
 
 Existing Instance configuration_Setoid.
+Instance configuration_compat loc `(Configuration loc) :
+  forall config : configuration, Proper (Logic.eq ==> equiv) config.
+Proof. repeat intro. now subst. Qed.
 
-
-Instance Make_Configuration loc `{S : Setoid loc} `(ES : @EqDec loc S) `(Names) : Configuration loc ES _ := {|
+Global Instance Make_Configuration loc `(ES : EqDec loc) `(Names) : Configuration loc ES _ := {|
   Gpos := fun config => List.map (fun g : G => config (Good g)) Gnames;
   Bpos := fun config => List.map (fun b => config (Byz b)) Bnames |}.
 Proof.

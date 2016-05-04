@@ -14,11 +14,11 @@ Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
 Require Import RelationPairs.
-Require Import MMultiset.Preliminary.
-Require Import MMultisetInterface.
+Require Import Pactole.Util.MMultiset.Preliminary.
+Require Import Pactole.Util.MMultisetInterface.
 Require Import Equalities.
 
-Module FMultisets (MMap : WSfun) (E : DecidableType) : FMultisetsOn E.
+Module FMultisets (MMap : Sfun) (E : OrderedType) : Sord E.
 
 Module M := MMap(E).
 
@@ -943,6 +943,20 @@ rewrite fold_left_symmetry_PermutationA.
   - eapply NoDupA_strengthen; try apply M.bindings_spec2w. now intros [? ?] [? ?] [? ?].
   - clear -Hs. intros [x n]. do 2 rewrite Melements_multiplicity. now rewrite Hs.
 + assumption.
+Qed.
+
+
+(** Specifics about ordering of elements *)
+Definition lt_elt (xn yp : elt * nat) := E.lt (fst xn) (fst yp).
+
+Theorem elements_Sorted : forall s, Sorted lt_elt (elements s).
+Proof.
+intros s. unfold elements. assert (Hsorted := M.bindings_spec2 s).
+induction (M.bindings s).
++ constructor.
++ simpl. inversion_clear Hsorted. constructor.
+  - now apply IHl.
+  - induction H0; constructor; assumption.
 Qed.
 
 End FMultisets.
