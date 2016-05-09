@@ -338,7 +338,7 @@ Qed.
 (** ** One step executions *)
 
 Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
-  {| Config.loc := sim infoR; Config.info := Config.info infoR |}.
+  {| Config.loc := sim infoR; Config.robot_info := Config.robot_info infoR |}.
 
 Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
 Proof.
@@ -360,13 +360,13 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
         match id with
         | Byz b => (* byzantine robots are relocated by the demon *)
             {| Config.loc := da.(relocate_byz) b;
-               Config.info := Config.info (conf id) |}
+               Config.robot_info := Config.robot_info (conf id) |}
         | Good g => (* configuration expressed in the frame of g *)
           let frame_change := sim (conf id) in
           let local_conf := Config.map (apply_sim frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
           {| Config.loc := frame_change⁻¹ (r (Spect.from_config local_conf));
-             Config.info := Config.info (conf id) |}
+             Config.robot_info := Config.robot_info (conf id) |}
         end
     end.
 

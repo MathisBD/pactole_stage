@@ -18,6 +18,7 @@ Require Import RelationPairs.
 Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
+Require Import RelationClasses.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
@@ -38,7 +39,7 @@ Module Make (Location : RealMetricSpace)(N : Size)(Import D: Delta)(Spect : Spec
 
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
-(** ** Demonic schedulers *)
+(** **  Demonic schedulers  **)
 
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
@@ -46,44 +47,39 @@ Inductive Active_or_Moving :=
   | Moving (dist :R)                   (* moving ratio *)
   | Active (sim : Location.t → Sim.t). (* change of referential *)
 
-
 Definition Aom_eq (a1 a2: Active_or_Moving) :=
-  match a1 with
-    | Moving d1 => match a2 with | Moving d2 => (d1 = d2) | _ => False end
-    | Active sim1 => match a2 with
-      | Active sim2 => (forall (loc: Location.t), Sim.eq (sim1 loc) (sim2 loc))
-      | _ => False
-    end
+  match a1, a2 with
+    | Moving d1, Moving d2 => d1 = d2
+    | Active sim1, Active sim2 => (Location.eq ==> Sim.eq)%signature sim1 sim2
+    | _, _ => False
   end.
 
 
-(* Lemma Aom_eq_dec : forall a1 a2, {Aoi_eq a1 a2} + {~ Aoi_eq a1 a2}.
-intros. unfold Aom_eq. destruct a1, a2; auto. apply Rdec.
-destruct (Rdec r r0); intuition. *)
-
 Instance Active_compat : Proper ((Location.eq ==> Sim.eq) ==> Aom_eq) Active.
-Proof. repeat intro. apply H;auto. reflexivity. Qed.
+Proof. intros ? ? ?. auto. Qed.
 
-Instance Aom_eq_equiv : Equivalence Aom_eq.
+(* as Active give a function, Aom_eq is not reflexive. It's still symmetric and transitive.*)
+Instance Aom_eq_Symmetric : Symmetric Aom_eq.
 Proof.
-split.
-+ intros x. unfold Aom_eq. destruct x; try reflexivity.
-+ intros x y H. unfold Aom_eq in *. destruct x,y; auto. intros. symmetry. apply H.
-+ intros x y z H12 H23. unfold Aom_eq in *; destruct x, y, z; auto.
-  transitivity dist0; assumption. easy.
-  easy. intros. rewrite H12. apply H23.
+intros x y H. unfold Aom_eq in *. destruct x, y; auto. intros ? ? Heq. symmetry. now apply H.
 Qed.
 
-(* TODO reduce Config.t to RobotConf. *)
+Instance Aom_eq_Transitive : Transitive Aom_eq.
+Proof.
+intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto; [].
+intros ? ? Heq. rewrite (H12 _ _ Heq). now apply H23.
+Qed.
+
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Config.RobotConf -> Active_or_Moving;
-  step_delta : forall id Rconfig sim, step id Rconfig = Active sim ->
-                                (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Config.target)) \/
-                                (Location.dist Rconfig.(Config.loc) Rconfig.(Config.info).(Config.source) >= delta)%R;
+  step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
+       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target)) \/
+       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.source) >= delta)%R;
   step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
   step_zoom :  forall id config sim c, step id config = Active sim -> (sim c).(Sim.zoom) <> 0%R;
-  step_center : forall id config sim c , step id config = Active sim -> Location.eq (sim c).(Sim.center) c;
+  step_center : forall id config sim c , step id config = Active sim -> 
+                                         Location.eq (sim c).(Sim.center) c;
   step_flexibility : forall id config r, step id config = Moving r -> (0 <= r <= 1)%R}.
 Set Implicit Arguments.
 
@@ -93,58 +89,38 @@ Definition da_eq (da1 da2 : demonic_action) :=
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
-+ split; intuition. (* now apply step_compat.*)
-+ intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
-  (*specialize (H1 id). destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2; trivial;
-  unfold Aoi_eq in *. symmetry. apply H1. destruct H1 as [H1 ?]. split; auto.
-  intros x y Hxy. simpl in *. symmetry. apply H1. now symmetry. *)
-+ intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
-(*  specialize (H1 id). specialize (H3 id).
-  destruct (step d1 id) eqn:Haoi1, (step d2 id) eqn:Haoi2, (step d3 id) eqn:Haoi3;
-  simpl in *; trivial. transitivity dist0. apply H1. apply H3. exfalso; auto.
-  - elim H1.
-  - destruct H1 as [H1 H1']. split.
-    * intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
-    * rewrite H1'. now destruct H3.*)
++ split; intuition. now apply step_compat.
++ intros da1 da2 [Hda1 Hda2]. repeat split; repeat intro; try symmetry; auto.
++ intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
+  repeat split; intros; try etransitivity; eauto.
 Qed.
 
 Instance step_da_compat : Proper (da_eq ==> eq ==> Config.eq_RobotConf ==> Aom_eq) step.
-Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp x y Hxy. subst.
-       etransitivity.
-       apply Hd1.
-       apply (step_compat da2);auto.
+Proof.
+intros da1 da2 [Hd1 Hd2] p1 p2 Hp x y Hxy. subst.
+etransitivity.
+- apply Hd1.
+- apply (step_compat da2); auto.
 Qed.
 
 Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
 Lemma da_eq_step_Moving : forall da1 da2, da_eq da1 da2 -> 
-                        forall id config r, step da1 id config = (Moving r) <-> step da2 id config = (Moving r).
+                        forall id config r, step da1 id config = (Moving r) <-> 
+                                            step da2 id config = (Moving r).
 Proof.
 intros da1 da2 Hda id config r.
 assert (Hopt_eq := step_da_compat Hda (reflexivity id) (reflexivity config)).
 split; intro Hidle;rewrite Hidle in Hopt_eq ; destruct step; reflexivity || elim Hopt_eq; auto.
 Qed.
 
-Definition is_Moving aom :=
-  match aom with
-    | Active _ => false
-    | Moving _ => true
-  end.
-  
+(* small function to know is an object of type Active_or_Moving is Active *) 
 Definition is_Active aom :=
   match aom with
     | Active _ => true
-    | Moving _ => false
+    | _ => false
   end.
-
-Instance is_Moving_compat : Proper (Aom_eq ==> eq) is_Moving.
-Proof.
-intros a1 a2 Haom.
-unfold is_Moving, Aom_eq in *.
-destruct a1,a2; auto.
-exfalso; auto.
-Qed.
 
 Instance is_Active_compat : Proper (Aom_eq ==> eq) is_Active.
 Proof.
@@ -157,11 +133,11 @@ Qed.
  
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition moving da config := List.filter
-  (fun id => is_Moving (step da id config))
+  (fun id => if (is_Active (step da id config)) then false else true)
   Names.names.
 
 Definition active da config := List.filter
-  (fun id => if (is_Moving (step da id config)) then false else true)
+  (fun id => is_Active (step da id config))
   Names.names.
 
 Instance moving_compat : Proper (da_eq ==> Config.eq_RobotConf ==> eq) moving.
@@ -190,14 +166,16 @@ intros da1 da2 Hda c1 c2 Hc. unfold active. induction Names.names as [| id l]; s
   - rewrite IHl. reflexivity.
 Qed.
 
-Lemma moving_spec : forall da id config, List.In id (moving da config) <-> exists r, step da id config = Moving r.
+Lemma moving_spec : forall da id config, List.In id (moving da config) <-> 
+                                         exists r, step da id config = Moving r.
 Proof.
 intros da id config. unfold moving. rewrite List.filter_In.
 destruct (step da id config); intuition; try discriminate. exists dist; auto.
 apply Names.In_names. apply Names.In_names. destruct H. discriminate.
 Qed.
 
-Lemma active_spec : forall da id config, List.In id (active da config) <-> exists sim, step da id config = Active sim.
+Lemma active_spec : forall da id config,
+  List.In id (active da config) <-> exists sim, step da id config = Active sim.
 Proof.
 intros da id config. unfold active. rewrite List.filter_In.
 destruct (step da id config); intuition; try discriminate.
@@ -220,7 +198,8 @@ Definition demon_tail (d : demon) : demon :=
   match d with NextDemon _ d => d end.
 
 CoInductive deq (d1 d2 : demon) : Prop :=
-  | Cdeq : da_eq (demon_head d1) (demon_head d2) -> deq (demon_tail d1) (demon_tail d2) -> deq d1 d2.
+  | Cdeq : da_eq (demon_head d1) (demon_head d2) ->
+           deq (demon_tail d1) (demon_tail d2) -> deq d1 d2.
 
 Instance deq_equiv : Equivalence deq.
 Proof. split.
@@ -242,11 +221,12 @@ Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
 Instance demon_tail_compat : Proper (deq ==> deq) demon_tail.
 Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
 
-(** ** Fairness *)
+(** **  Fairness  **)
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : forall config, is_Active (step (demon_head d) g config) = true → LocallyFairForOne g d
+  | ImmediatelyFair : forall config, is_Active (step (demon_head d) g config) = true → 
+                                      LocallyFairForOne g d
   | LaterFair : forall config, is_Active (step (demon_head d) g config) = false →
                                  LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
 
@@ -270,17 +250,27 @@ CoInductive kFair k (d : demon) : Prop :=
   AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
                 kFair k d.
 
-Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
+Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> 
+                                     LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
 intros g d1 d2 Hd Hfair. revert d2 Hd. induction Hfair; intros d2 Hd.
  + assert (Heq : is_Active (step (demon_head d2) g config) = true) by now rewrite <- Hd, H.
    destruct (step (demon_head d2) g) eqn:?; simpl in Heq.
    - easy.
-   - constructor 1 with config. unfold is_Active. rewrite Heqa. auto.
+   - constructor 1 with config.
+     unfold is_Active.
+     rewrite Heqa; auto.
  + assert (Heq : is_Active (step (demon_head d2) g config) = false) by now rewrite <- Hd, H.
    destruct (step (demon_head d2) g) eqn:?; simpl in Heq.
-   - constructor 2 with config. unfold is_Active. rewrite Heqa. assumption. apply IHHfair. now f_equiv.
-   - apply IHHfair. assert (Hneq:= Bool.diff_true_false). exfalso. auto.
+   - constructor 2 with config.
+     unfold is_Active.
+     rewrite Heqa.
+     assumption.
+     apply IHHfair.
+     now f_equiv.
+   - apply IHHfair.
+     assert (Hneq:= Bool.diff_true_false).
+     exfalso; auto.
  Qed.
  
 
@@ -311,16 +301,19 @@ intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
     * unfold is_Active in *. destruct (step (demon_head d2) g rconf) eqn:?,
       (step (demon_head d) g rconf) eqn:?; intuition.
       rewrite <- da_eq_step_Moving with (da1 := (demon_head d2)) in *. 
-      rewrite Heqa1 in Heqa2. discriminate. symmetry. apply Heq.
-    * rewrite Heqa0. assumption.
-    * apply IHbet. now f_equiv.
+      rewrite Heqa1 in Heqa2. discriminate.
+      symmetry.
+      apply Heq.
+    * rewrite Heqa0; assumption.
+    * apply IHbet; now f_equiv.
 + constructor 3 with rconf.
-  - unfold is_Active in *. destruct (step (demon_head d2) g rconf) eqn:?,
-    (step (demon_head d) g rconf) eqn:?; intuition. 
+  - unfold is_Active in *.
+    destruct (step (demon_head d2) g rconf) eqn:?, (step (demon_head d) g rconf) eqn:?; intuition.
     rewrite <- da_eq_step_Moving with (da1 := (demon_head d2)) in *.
-    rewrite Heqa in Heqa0; discriminate. symmetry; apply Heq.
-  - unfold is_Active in *. destruct (step (demon_head d2) h rconf) eqn:?,
-    (step (demon_head d) h rconf) eqn:?; intuition. 
+    rewrite Heqa in Heqa0; discriminate.
+    symmetry; apply Heq.
+  - unfold is_Active in *.
+    destruct (step (demon_head d2) h rconf) eqn:?, (step (demon_head d) h rconf) eqn:?; intuition.
     rewrite <- da_eq_step_Moving with (da1 := (demon_head d2)) in *.
     rewrite Heqa in Heqa0; discriminate. symmetry; apply Heq.
   - apply IHbet. now f_equiv.
@@ -388,18 +381,14 @@ Proof.
   - now apply (fair k).
 Qed.
 
+(* difficult to prove now tha step take a Rconf *)
 (* Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h,(exists r1 rconf1, (demon_head d).(step) g rconf1 = Moving r1)
-           <-> (exists r2 rconf2, (demon_head d).(step) h rconf2 = Moving r2).  
+  forall g h, (forall rconf, is_Active ((demon_head d).(step) g rconf) = false)
+             <-> (forall rconf, is_Active ((demon_head d).(step) h rconf) = false).
 Proof.
-intros d Hd. destruct Hd as [Hd _]. split; intros H.
-  assert (Hg := Hd g h). inversion Hg. Focus 2. exists r2, rconf. assumption.
-  subst. destruct H as (r1,(rconf1,Hconf)). exists r. exists rconf0. rewrite H in H0. discriminate.
-  destruct (H r2 rconf). specialize (H r rconf0). rewrite H in H1. assumption.
-  assert (Hh := Hd h g). inversion Hh. specialize (H r). rewrite H in H0. discriminate.
-  destruct (H r2). intros r0. specialize (H r0). rewrite H in H1. assumption.
-Qed. 
- *)
+
+Qed.  *)
+
 (** ** Full synchronicity
 
   A fully synchronous demon is a particular case of fair demon: all good robots
@@ -441,9 +430,10 @@ Qed.
 
 (* TODO: apply sim to info? *)
 Definition apply_sim (sim : Sim.t) (rconf : Config.RobotConf) :=
-  {| Config.loc := sim rconf; Config.info := Config.info rconf |}.
+  {| Config.loc := sim rconf; Config.robot_info := Config.robot_info rconf |}.
 
-Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
+Instance apply_sim_compat : 
+        Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
 Proof.
 intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
 - apply Hsim, Hconf.
@@ -463,22 +453,24 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
       | Moving mv_ratio =>
         match id with
         | Good g =>
-           let tgt := conf.(Config.info).(Config.target) in
-           let new_loc :=
+           let tgt := conf.(Config.robot_info).(Config.target) in
+           let new_loc :=  (** If g is not activated, it moves toward its destination *)
               Location.add pos
-              (Location.mul mv_ratio (Location.add tgt (Location.opp pos))) in (** If g is not activated, it moves toward its destination  *)
-           {| Config.loc := new_loc ; Config.info := conf.(Config.info) |}
+              (Location.mul mv_ratio (Location.add tgt (Location.opp pos))) in
+           {| Config.loc := new_loc ; Config.robot_info := conf.(Config.robot_info) |}
         | Byz b => conf
         end
-      | Active sim => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
+      | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
-        | Byz b => {| Config.loc := da.(relocate_byz) b;
-                      Config.info := Config.info (config id) |} (* byzantine robot are relocated by the demon *)
+        | Byz b => (* byzantine robot are relocated by the demon *)
+                   {| Config.loc := da.(relocate_byz) b;
+                      Config.robot_info := Config.robot_info (config id) |}
         | Good g => 
           let frame_change := sim (Config.loc (config (Good g))) in
           let local_conf := Config.map (apply_sim frame_change) config in
           let target := frame_change⁻¹ (r (Spect.from_config local_conf)) in
-           {| Config.loc := pos ; Config.info := {| Config.source := pos ; Config.target := target|} |}
+           {| Config.loc := pos ; 
+              Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
         end
     end.
 
@@ -486,26 +478,36 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
 Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
 Proof.
 intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
-unfold req in Hr. unfold round. assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
-apply Hconf. assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
+unfold req in Hr.
+unfold round.
+assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
+apply Hconf.
+assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
 assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
-apply step_da_compat; try reflexivity. apply Hrconf.
+apply step_da_compat; try reflexivity.
+apply Hrconf.
 destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
 (step da1 id (conf2 id)) eqn:He3, id as [ g| b]; try now elim Hstep.
-+ unfold Aom_eq in *. rewrite Hstep. f_equiv. f_equiv. apply Hrconf. do 2 f_equiv.
- apply Hrconf. f_equiv; apply Hrconf. unfold Config.Info_eq. split; apply Hrconf.
++ unfold Aom_eq in *.
+  rewrite Hstep.
+  f_equiv.
+  f_equiv.
+  apply Hrconf.
+  do 2 f_equiv.
+  apply Hrconf.
+  f_equiv; apply Hrconf.
+  unfold Config.Info_eq.
+  split; apply Hrconf.
 + unfold Aom_eq in *. exfalso; auto.
 + unfold Aom_eq in *. exfalso; auto.
-+ destruct Hrconf as (Hloc,Hinfo). assert (Hstep':= Active_compat (reflexivity id) Hloc). split. apply Hrconf. unfold Config.Info_eq. simpl. split. apply Hrconf. 
-  destruct Hda as (Hdag,Hdab). specialize (Hdag (Good g) (conf1 (Good g))).
-  unfold Aom_eq in Hsim. assert (Sim.eq (sim (conf1 (Good g))) (sim0 (conf2 (Good g)))).
-  eapply Active_compat.
-  f_equiv. f_equiv. Focus 2. apply Hr. do 3 f_equiv. unfold Aom_eq in Hsim. apply Hsim. 
-  admit.
-(*   f_equiv. destruct Hda as (Hdag, Hdab). specialize (Hdag (Good g) (conf1 (Good g))).
-  apply Hr. f_equiv. f_equiv; trivial. f_equiv. *)
-+ rewrite Hda. destruct (Hconf (Byz b)). rewrite H0. reflexivity.
-Admitted.
++ f_equiv; try (now apply Hconf); [].
+  split; cbn; try (now apply Hconf); [].
+  simpl in Hstep. f_equiv.
+  - f_equiv. apply Hstep, Hrconf.
+  - apply Hr. do 3 f_equiv; trivial; []. apply Hstep, Hconf.
++ rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
+Qed.
+
 
 (** A third subset of robots, moving ones *)
 Definition moving_sup_0 r da config := List.filter
@@ -543,7 +545,7 @@ Qed.
 
 (* un Lemme qui dit que si personne n'a bougé de 0 ni été activé, alors on a la même conf? 
 
-faux car si jamais on a un ratio qui *)
+faux car si jamais on a un ratio qui revient au point de départ c'est pas vrai*)
 
 (* Lemma moving_no_sup_0_same_conf : forall r da conf id ratio g, id = Good g -> moving_sup_0 r da conf = Datatypes.nil 
 -> step da id (conf id) = Moving ratio -> (ratio = 0)%R.
