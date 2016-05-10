@@ -26,10 +26,10 @@ Module Make(Location : RealMetricSpace)(N : Robots.Size) <: Spectrum (Location)(
 Module Names := Robots.Make(N).
 Module Config := Configurations.Make(Location)(N)(Names).
 
-Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.Loc.
+Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
 Proof. intros [] [] []. now cbn. Qed.
 
-Instance Sta_compat : Proper (Config.eq_RobotConf ==> Config.eq_State) Config.Sta.
+Instance info_compat : Proper (Config.eq_RobotConf ==> Config.Info_eq) Config.robot_info.
 Proof. intros [] [] [] *. now cbn. Qed.
 
 (** Definition of spectra as multisets of locations. *)
@@ -172,7 +172,7 @@ Proof. intros x l. rewrite M.support_spec. unfold M.In. rewrite multiset_spec. a
 (** Building a spectrum from a configuration *)
 Include M.
 
-Definition from_config conf : t := multiset (List.map Config.Loc (Config.list conf)).
+Definition from_config conf : t := multiset (List.map Config.loc (Config.list conf)).
 
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
 Proof.
@@ -182,14 +182,14 @@ apply Config.list_compat. assumption.
 Qed.
 
 Definition is_ok s conf := forall l,
-  M.multiplicity l s = countA_occ _ Location.eq_dec l (List.map Config.Loc (Config.list conf)).
+  M.multiplicity l s = countA_occ _ Location.eq_dec l (List.map Config.loc (Config.list conf)).
 
 Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
 Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
 Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall conf, eq (map f (from_config conf))
-  (from_config (Config.map (fun x => {| Config.Loc := f (Config.Loc x); Config.Sta := Config.Sta x|}) conf)).
+  (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.robot_info := Config.robot_info x|}) conf)).
 Proof.
 intros f Hf config. unfold from_config. rewrite Config.list_map.
 - now rewrite <- multiset_map, map_map, map_map.
@@ -199,7 +199,7 @@ Qed.
 Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.
 Proof. intro. unfold from_config. now rewrite cardinal_multiset, map_length, Config.list_length. Qed.
 
-Property pos_in_config : forall (config : Config.t) id, In (Config.Loc (config id)) (from_config config).
+Property pos_in_config : forall (config : Config.t) id, In (Config.loc (config id)) (from_config config).
 Proof.
 intros conf id. unfold from_config.
 unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
@@ -208,7 +208,7 @@ setoid_rewrite Config.list_InA. now exists id.
 Qed.
 
 Property from_config_In : forall config l,
-  In l (from_config config) <-> exists id, Location.eq (Config.Loc (config id)) l.
+  In l (from_config config) <-> exists id, Location.eq (Config.loc (config id)) l.
 Proof.
 intros config l. split; intro Hin.
 + unfold In in Hin. rewrite from_config_spec, (countA_occ_pos _), Config.list_spec in Hin.

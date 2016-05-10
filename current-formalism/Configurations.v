@@ -191,7 +191,7 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   
 End MakeRealMetricSpace.
 
-Module Type DiscretSpaceDef <: DecidableType.
+Module Type DiscreteSpaceDef <: DecidableType.
   Parameter t : Type.
   Parameter origin : t.
   Parameter eq : t -> t -> Prop.
@@ -202,14 +202,14 @@ Module Type DiscretSpaceDef <: DecidableType.
   Parameter mul : Z -> t -> t.
   Parameter opp : t -> t.
   
-  Declare Instance add_compact : Proper (eq ==> eq ==> eq) add.
-  Declare Instance mul_compact : Proper (Logic.eq ==> eq  ==> eq) mul.
-  Declare Instance opp_compact : Proper (eq  ==> eq) opp.
+  Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
+  Declare Instance mul_compat : Proper (Logic.eq ==> eq  ==> eq) mul.
+  Declare Instance opp_compat : Proper (eq  ==> eq) opp.
   
   Parameter eq_equiv : Equivalence eq.
   Parameter dist_defined : forall x y, dist x y = 0%Z <-> eq x y.
   Parameter dist_sym : forall x y, dist x y = dist y x.
-  Parameter triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%Z.
+  Parameter triang_ineq : forall x y z, (dist x z <= (dist x y) + (dist y z))%Z.
 
   Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
   Parameter add_comm : forall u v, eq (add u v) (add v u).
@@ -222,10 +222,10 @@ Module Type DiscretSpaceDef <: DecidableType.
   Parameter mul_1 : forall u, eq (mul 1 u ) u.
   Parameter unit : t. (* TODO: is it really a good name? *)
   Parameter non_trivial : ~eq unit origin.
-End DiscretSpaceDef.
+End DiscreteSpaceDef.
 
-Module Type DiscretSpace.
-  Include DiscretSpaceDef.
+Module Type DiscreteSpace.
+  Include DiscreteSpaceDef.
   
   Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
   Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
@@ -239,10 +239,10 @@ Module Type DiscretSpace.
   Parameter mul_origin : forall a, eq (mul a origin) origin.
   Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
 
-End DiscretSpace.
+End DiscreteSpace.
 
 
-Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
+Module MakeDiscreteSpace (Def : DiscreteSpaceDef) : DiscreteSpace
     with Definition t := Def.t
     with Definition eq := Def.eq
     with Definition eq_dec := Def.eq_dec
@@ -254,7 +254,7 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   
   Include Def.
 
-  (** Proofs of two derivable properties about DiscretSpace *)
+  (** Proofs of two derivable properties about DiscreteSpace *)
   Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
   Proof.
   intros x x' Hx y y' Hy. apply Zle_antisym.
@@ -325,7 +325,7 @@ Module MakeDiscretSpace (Def : DiscretSpaceDef) : DiscretSpace
   setoid_rewrite add_opp. now rewrite mul_origin.
   Qed.
   
-End MakeDiscretSpace.
+End MakeDiscreteSpace.
 
 
 

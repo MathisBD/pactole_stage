@@ -10,8 +10,8 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.FlexibleFormalism.
 Require Import Pactole.RigidFormalism.
+Require Import Pactole.FlexibleFormalism.
 
 
 Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
