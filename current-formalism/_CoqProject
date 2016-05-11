@@ -10,9 +10,12 @@ FlexibleFormalism.v
 RigidFormalism.v
 #RigidEquivalence.v
 MultisetSpectrum.v
+DiscreteMultisetSpectrtum.v
 #SetSpectrum.v
 #LimitedSetSpectrum.v
 #LimitedMultisetSpectrum.v
 Lexprod.v
 DiscreteSimilarity.v
 CommonDiscreteFormalism.v
+Exploration/test_modulo.v
+Exploration/Definition.v
