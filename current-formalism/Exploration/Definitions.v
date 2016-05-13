@@ -80,11 +80,11 @@ Qed.
 (*in this probleme, we consider a configuration as a potial initial configuration iff there
   is no tower in it*)
   
-Definition ValideInitialConfig (config : Config.t) :=
+Definition ValidInitialConfig (config : Config.t) :=
 let m := Spect.from_config(config) in
   forall pt, m[pt] <=1.
 
-Instance ValideInitialConfig_compat: Proper (Config.eq ==> iff) ValideInitialConfig.
+Instance ValidInitialConfig_compat: Proper (Config.eq ==> iff) ValidInitialConfig.
 Proof.
 intros c1 c2 Hc.
 split; intros Hv pt; destruct (Hv pt).
@@ -141,8 +141,43 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
   - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
 Qed.
 
+Inductive Will_be_visited (loc: Loc.t) (e : execution) : Prop :=
+ | Now_v: has_been_visited loc e -> Will_be_visited loc e
+ | Later_v : Will_be_visited loc (execution_tail e) -> Will_be_visited loc e.
+ 
+Inductive Will_stop (e : execution) : Prop :=
+ | Now_s : Stopped e -> Will_stop e
+ | Later_s : Will_stop (execution_tail e) -> Will_stop e.
+ 
+Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
+Proof.
+intros l1 l2 Hl e1 e2 He. split; intros Hw. 
++ revert e2 He. induction Hw as [ e1 | e1 He1 IHe1]; intros e2 He.
+  - apply Now_v. now rewrite <- Hl, <- He.
+  - apply Later_v, IHe1, He.
++ revert e1 He. induction Hw as [ e2 | e2 He2 IHe2]; intros e1 He.
+  - apply Now_v. now rewrite Hl, He.
+  - apply Later_v, IHe2, He.
+Qed.
+
+Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
+Proof.
+intros e1 e2 He. split; intros Hw.
++ revert e2 He. induction Hw as [e1 | e1 He1 IHe1]; intros e2 He.
+  - apply Now_s. now rewrite <-He.
+  - apply Later_s, IHe1, He.
++ revert e1 He. induction Hw as [e2 | e2 He2 IHe2]; intros e1 He.
+  - apply Now_s. now rewrite He.
+  - apply Later_s, IHe2, He.
+Qed.
+
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
-CoInductive Exploration_with_stop  (e : execution) : Prop := 
-forall l : Loc.t, 
+Definition FullSolExplorationStop  (r : robogram) (d : demon) := 
+forall l config, Will_be_visited l (execute r d config) -> Will_stop (execute r d config).
 
+Definition ValidSolExplorationStop (r : robogram) (d : demon) :=
+forall l config, ValidInitialConfig config -> Will_be_visited l (execute r d config) 
+                                           -> Will_stop (execute r d config).
+
+End ExplorationDefs.

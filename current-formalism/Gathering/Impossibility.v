@@ -233,11 +233,13 @@ intros e He pt Habs. induction Habs.
   - assert (Hin : Spect.In pt1 (!! (execution_head e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
-    destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
+    destruct id as [g | b]. unfold gathered_at in Hnow. 
+    specialize (Hnow g). destruct (execution_head e). apply Hnow. apply Fin.case0. exact b.
   - assert (Hin : Spect.In pt2 (!! (execution_head e))).
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
-    symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
+    symmetry. destruct id as [g | b]. unfold gathered_at in Hnow; specialize (Hnow g).
+    destruct (execution_head e) in *. apply Hnow. apply Fin.case0. exact b.
 + inversion He. now apply IHHabs.
 Qed.
 

@@ -24,5 +24,7 @@ Lexprod.v
 DiscreteSimilarity.v
 CommonDiscreteFormalism.v
 DiscreteRigidFormalism.v
+DiscreteASyncFormalism.v
 Exploration/test_modulo.v
 Exploration/Definitions.v
+Gathering/Definitions.v
