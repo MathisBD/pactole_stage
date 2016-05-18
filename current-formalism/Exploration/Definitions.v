@@ -7,7 +7,7 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSimilarity.
 Require Pactole.CommonDiscreteFormalism.
-Require Pactole.DiscreteRigidFormalism.
+Require Pactole.DiscreteASyncFormalism.
 Require Import Pactole.DiscreteMultisetSpectrum.
 Require Import Morphisms.
 
@@ -16,7 +16,7 @@ Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs(Loc : DiscreteSpace)(N : Size)(Config : Configuration).
+Module ExplorationDefs(Loc : DiscreteSpace)(N : Size).
 
 Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N).
 
@@ -24,8 +24,16 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
+Module Type Delta.
+  Parameter delta: Z.
+End Delta.
+
+Module Import D : Delta.
+  Parameter delta : Z.
+End D.
+
 Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Spect).
-Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Spect)(Common).
+Module Export ASync := DiscreteASyncFormalism.Make(Loc)(N)(D)(Spect)(Common).
 
 Module Sim := Common.Sim. 
 

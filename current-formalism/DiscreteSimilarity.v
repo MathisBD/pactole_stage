@@ -104,9 +104,10 @@ End Bijections.
 
 Open Scope Z_scope.
 
-(** Similarities are functions that multiply distances by a constant zoom.
-    Unlike bijections that only need a setoid, we need here a metric space.
-    For convenience, we also add their center, that is the location from which robots locally observe. *)
+(** Similarities are functions that change the way we move.
+    Unlike bijections that only need a setoid, we need here a space.
+    For convenience, we also add their center, that is the location 
+    from which robots locally observe. *)
 Module Make (Loc : DiscreteSpace).
 
 Record t := {
@@ -139,7 +140,7 @@ Section Normed_Results.
 (** The existence of homothecy and translation similarities (implied by these two hypotheses)
     is actually equivalent to defining a normed vector space. *)
 Hypothesis translation_hypothesis : forall v x y, Loc.dist (Loc.add x v) (Loc.add y v) = Loc.dist x y.
-Hypothesis homothecy_hypothesis : forall ρ x y, Loc.dist (Loc.mul ρ x) (Loc.mul ρ y) = Zabs ρ * Loc.dist x y.
+Hypothesis rotation_hypothesis : forall x y, Loc.dist (Loc.opp x) (Loc.opp y) = Loc.dist x y.
 
 (** The translation similarity *)
 Lemma bij_translation_Inversion : forall v x y : Loc.t, Loc.eq (Loc.add x v) y ↔ Loc.eq (Loc.add y (Loc.opp v)) x.
@@ -158,8 +159,6 @@ Proof.
 + apply bij_translation_Inversion.
 Defined.
 
-Lemma translation_zoom : forall v x y : Loc.t, Loc.dist (Loc.add x v) (Loc.add y v) = 1 * Loc.dist x y.
-Proof. intros. ring_simplify. apply translation_hypothesis. Qed.
 
 Definition translation (v : Loc.t) : t.
 refine {| sim_f := bij_translation v;
@@ -174,6 +173,32 @@ Proof. intros u v Huv x y Hxy. simpl. now rewrite Huv, Hxy. Qed.
 
 Lemma translation_origin : eq (translation Loc.origin) id.
 Proof. intros x y Hxy. simpl. now rewrite Loc.add_origin. Qed.
+
+(** the rotation similarity **)
+
+Lemma bij_rotation_Inversion : forall x y : Loc.t, Loc.eq (Loc.opp x) y ↔ Loc.eq (Loc.opp y) x.
+Proof.
+intros.
+split;intros Heq; rewrite <- Heq, Loc.opp_opp; reflexivity.
+Qed.
+
+Definition bij_rotation : bijection Loc.eq.
+refine {|
+  section := fun x => Loc.opp x;
+  retraction := fun x => Loc.opp x |}.
+Proof. intros; split; intros Heq; rewrite <- Heq, Loc.opp_opp; reflexivity. Defined.
+
+
+Definition rotation : t.
+refine {| sim_f := bij_rotation|}.
+Proof.
++ simpl. rewrite Loc.opp_origin. reflexivity.
++ simpl. auto.
+Defined.
+
+Global Instance rotation_compat : Proper (eq) rotation.
+Proof. intros u v Huv. simpl. now rewrite Huv. Qed.
+
 
 (* (** The homothetic similarity *)
 Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 ->
