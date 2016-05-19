@@ -87,7 +87,7 @@ rewrite Zminus_mod, Hx, <- Zminus_mod.
 reflexivity.
 Qed.
 
-Definition dist (x y : Z) : Z := Z.min (add (opp y) x) (add (opp x) y) .
+Definition dist (x y : Z) : Z := Z.min (add (opp y) x) (add (opp x) y).
 
 
 

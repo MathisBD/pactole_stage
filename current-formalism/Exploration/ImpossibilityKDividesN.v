@@ -13,6 +13,7 @@ Set Implicit Arguments.
 (* taille de l'anneau*)
 Parameter n : nat.
 
+Print Fin.t.
 (** The setting is a ring. *)
 Module Loc := ring.
 
@@ -34,6 +35,8 @@ Section ExplorationKDivedesN.
 Open Scope Z_scope.
 
 
+
+
 Fixpoint create_confs (names: list Names.Internals.ident) (lloc : list Loc.t) id :=
   match names,lloc with
     | (h1::c1),(h2::c2) => if Names.eq_dec h1 id then h2 else create_confs c1 c2 id
@@ -50,24 +53,41 @@ Definition Fint_to_nat (k:nat) (f:Fin.t k): nat :=
 Fixpoint create_conf1 (k:nat) (f:Fin.t k) : Loc.t :=
   Loc.mul (((Z_of_nat ((Fint_to_nat f)*(kG / n))))) Loc.unit.
 
+Definition config1 : Config.t :=
+  fun id => match id with
+              | Good g => let pos := create_conf1 g in
+                          {| Config.loc := pos;
+                             Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
+              | Byz b => let pos := Loc.origin in
+                          {| Config.loc := pos;
+                             Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
+            end.
+
+Definition loc_add k rconfig :=
+  let new_pos := Loc.add k (Config.loc rconfig) in
+  {| Config.loc := new_pos;
+     Config.robot_info := {| Config.source := new_pos; Config.target := new_pos |} |}.
+
+Definition config2 := Config.map (loc_add Loc.unit) config1.
+(*
 Fixpoint create_conf2 (k:nat) (f:Fin.t k) : Loc.t :=
  Loc.add Loc.unit (Loc.mul (((Z_of_nat ((Fint_to_nat f)*(kG / n))))) Loc.unit).
 
-Instance create_confs_compat : Proper (Logic.eq ==> Loc.eq ==> eq ==> Loc.eq ) create_confs.
+(* Instance create_confs_compat : Proper (Logic.eq ==> Loc.eq ==> eq ==> Loc.eq ) create_confs.
 Proof.
 intros n1 n2 Hnames l1 l2 Hlistloc id1 id2 Hid.
 now f_equiv.
 Qed.
-
+ *)
 Fixpoint create_lnat (n:nat) : list nat := 
   match n with
   | O => nil
   | S k => k::(create_lnat k)
   end.
 
-Instance create_lnat_compat : Proper (eq ==> eq) create_lnat.
+(* Instance create_lnat_compat : Proper (eq ==> eq) create_lnat.
 Proof. intros x y Hxy. rewrite Hxy. reflexivity. Qed.
-
+ *)
 Definition list_loc1 := 
   let lnat := create_lnat kG in
   let f := (fun id => Loc.mul ((Z_of_nat (id*(kG / n)))) Loc.unit) in
@@ -102,14 +122,18 @@ Definition conf2 : Config.t := fun id =>
   let place := create_confs Names.names list_loc2 id in
      {| Config.loc := place;
       Config.robot_info := {| Config.source := place; Config.target := place |} |}.
+*)
 
+Lemma translate_eq : forall id v config, let config' := (Config.map (loc_add v) config) in
+                     Config.eq (Config.map (loc_add (Loc.opp (Config.loc (config id)))) config)
+                               (Config.map (loc_add (Loc.opp (Config.loc (config' id)))) config').
 
-Theorem conf1_conf2_spect_eq : Spect.eq (!! conf1) (!! conf2).
+Theorem config1_config2_spect_eq : Spect.eq (!! config1) (!! config2).
 Proof.
-intro pt. unfold conf1, conf2.
+intro pt. 
 do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
 (* f_equiv. f_equiv. f_equiv. unfold create_confs.
-f_equiv. rewrite names_Gnames. *) do 2 rewrite map_map. unfold Spect.Config.loc.
+f_equiv. rewrite names_Gnames. *) do 2 rewrite map_map. simpl. unfold Spect.Config.loc.
 generalize (Names.names_NoDup). unfold list_loc1, list_loc2. 
 (* unfold left_dec, left. generalize (Names.Gnames_NoDup).
  *)apply (@first_last_ind _
