@@ -16,10 +16,8 @@ Axiom n_pos : (n > 0)%Z.
 
 Axiom n_sup_1: (1 < n)%Z. (* at first, it was 0 < n, but for the "non_trivial" definition,
 there was a probleme: 1 mod n have to be different to 0 mod n, so n ~= 1*)
- (*
-(* Parameter N:Z. *)
-Module ringDef : DiscretSpaceDef with Definition t :=   ensembles_finis(Finite Z, cardinal Z n).
-Definition origin := N%Z.*)
+
+
 
 Definition origin := 0 mod n. 
 
@@ -101,7 +99,7 @@ Module Ddef : DiscreteSpaceDef with Definition t := Z
                                  with Definition add := add
                                  with Definition mul := mul
                                  with Definition opp := opp.
-                                 
+
 Definition t := Z.
 
 Definition origin := 0 mod n.
@@ -1056,3 +1054,6 @@ Qed.
 
 Definition non_trivial: ~eq unit origin := non_trivial_lem.
 End Ddef.
+
+Module ring := Configurations.MakeDiscreteSpace(Ddef).
+

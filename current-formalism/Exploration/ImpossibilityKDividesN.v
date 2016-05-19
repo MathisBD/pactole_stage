@@ -7,17 +7,19 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.Exploration.Definitions.
+Require Import Pactole.Exploration.test_modulo.
 
 Set Implicit Arguments.
-
+(* taille de l'anneau*)
 Parameter n : nat.
 
-(** The setting is an arbitrary metric space over R. *)
-Declare Module Loc : DiscreteSpace.
+(** The setting is a ring. *)
+Module Loc := ring.
 
 
-(** There are nG good robots and no byzantine ones. *)
+(** There are KG good robots and no byzantine ones. *)
 Parameter kG : nat.
+Axiom kdn : kG mod n = 0.
 
 Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
@@ -38,7 +40,20 @@ Fixpoint create_confs (names: list Names.Internals.ident) (lloc : list Loc.t) id
     | _,_ => Loc.origin
   end.
 
-Instance create_confs_compat : Proper (eq ==> eq ==> eq ==> Loc.eq ) create_confs.
+(* Fin.t k c'est l'ensemble de 1 à k.*)
+Definition Fint_to_nat (k:nat) (f:Fin.t k): nat :=
+  match f with
+  | @Fin.F1 _ => 1%nat
+  | @Fin.FS n' f' => 1 + n'
+  end.
+
+Fixpoint create_conf1 (k:nat) (f:Fin.t k) : Loc.t :=
+  Loc.mul (((Z_of_nat ((Fint_to_nat f)*(kG / n))))) Loc.unit.
+
+Fixpoint create_conf2 (k:nat) (f:Fin.t k) : Loc.t :=
+ Loc.add Loc.unit (Loc.mul (((Z_of_nat ((Fint_to_nat f)*(kG / n))))) Loc.unit).
+
+Instance create_confs_compat : Proper (Logic.eq ==> Loc.eq ==> eq ==> Loc.eq ) create_confs.
 Proof.
 intros n1 n2 Hnames l1 l2 Hlistloc id1 id2 Hid.
 now f_equiv.
@@ -55,14 +70,27 @@ Proof. intros x y Hxy. rewrite Hxy. reflexivity. Qed.
 
 Definition list_loc1 := 
   let lnat := create_lnat kG in
-  let f := (fun n => Loc.mul ((Z_of_nat (n*(kG / n)))) Loc.unit) in
+  let f := (fun id => Loc.mul ((Z_of_nat (id*(kG / n)))) Loc.unit) in
   List.map f lnat.
   
 Definition list_loc2 := 
   let lnat := create_lnat kG in
-  let f := (fun n => Loc.add Loc.unit (Loc.mul ((Z_of_nat (n*(kG / n)))) Loc.unit)) in
+  let f := (fun id => Loc.add Loc.unit (Loc.mul ((Z_of_nat (id*(kG / n)))) Loc.unit)) in
   List.map f lnat.
 
+Lemma same_length : List.length list_loc1 = List.length list_loc2.
+Proof.
+unfold list_loc1, list_loc2. do 2 rewrite map_length. reflexivity.
+Qed.
+
+Lemma lloc1_NoDup : NoDup list_loc1.
+Proof.
+unfold list_loc1. apply FinFun.Injective_map_NoDup.
++ intros x y. intros Hloc. 
+assert (Heq : Loc.mul (Z.of_nat (x * (kG / n))) Loc.unit = Loc.mul (Z.of_nat (y * (kG / n))) Loc.unit
+-> (Z.of_nat (x * (kG / n))) = (Z.of_nat (y * (kG / n)))). assert (Hmul := Loc.mul_compat _ (reflexivity Loc.unit)) .
+
+Qed.
 
 Definition conf1 : Config.t := fun id => 
   let place := create_confs Names.names list_loc1 id in
@@ -75,39 +103,33 @@ Definition conf2 : Config.t := fun id =>
      {| Config.loc := place;
       Config.robot_info := {| Config.source := place; Config.target := place |} |}.
 
+
 Theorem conf1_conf2_spect_eq : Spect.eq (!! conf1) (!! conf2).
 Proof.
 intro pt. unfold conf1, conf2.
 do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec.
 (* f_equiv. f_equiv. f_equiv. unfold create_confs.
-f_equiv. rewrite names_Gnames. *) do 2 rewrite map_map.
-unfold create_confs.
+f_equiv. rewrite names_Gnames. *) do 2 rewrite map_map. unfold Spect.Config.loc.
+generalize (Names.names_NoDup). unfold list_loc1, list_loc2. 
 (* unfold left_dec, left. generalize (Names.Gnames_NoDup).
- *)apply (@first_last_even_ind _
+ *)apply (@first_last_ind _
 (fun l => NoDup l ->
-     countA_occ _ Loc.eq_dec pt (map (fun x => 
-    Spect.Config.loc
-        {|
-        Config.loc := create_confs Names.names list_loc1 x;
-        Config.robot_info := {|
-                             Config.source := create_confs Names.names list_loc1 x;
-                             Config.target := create_confs Names.names list_loc1 x |} |})
-                             Spect.Names.names) =
-     countA_occ _ Loc.eq_dec pt (map (fun x =>
-     Spect.Config.loc
-        {|
-        Config.loc := create_confs Names.names list_loc2 x;
-        Config.robot_info := {|
-                             Config.source := create_confs Names.names list_loc2 x;
-                             Config.target := create_confs Names.names list_loc2 x |} |}) 
-                             Spect.Names.names))).
+    countA_occ Loc.eq Loc.eq_dec pt
+  (map
+     (fun x : Spect.Names.ident =>
+      create_confs l
+        (map (fun id : nat => Loc.mul (Z.of_nat (id * (kG / n))) Loc.unit) (create_lnat kG)) x)
+     l) =
+countA_occ Loc.eq Loc.eq_dec pt
+  (map
+     (fun x : Spect.Names.ident =>
+      create_confs l
+        (map (fun id : nat => Loc.add Loc.unit (Loc.mul (Z.of_nat (id * (kG / n))) Loc.unit))
+           (create_lnat kG)) x) l))).
 * reflexivity.
-* intros gl gr l Heven Hrec Hnodup.
-  (* Inversing the NoDup property *)
-  inversion_clear Hnodup as [| ? ? Helt Hnodup'].
-  assert (Hneq : gl <> gr). { intro Habs. subst. intuition. }
-  assert (Hgl : ~In gl l) by intuition.
-  rewrite <- NoDupA_Leibniz, PermutationA_app_comm, NoDupA_Leibniz in Hnodup'; refine _.
+* intros x HNoDup. 
+  inversion_clear HNoDup as [| ? ? Helt Hnodup'].
+  rewrite <- NoDupA_Leibniz, NoDupA_Leibniz in Hnodup'; refine _.
   simpl in Hnodup'. inversion_clear Hnodup' as [| ? ? Hgr Hnodup]. specialize (Hrec Hnodup). clear Helt.
   (* Rewriting in the goal *)
   do 2 rewrite map_app. simpl. repeat rewrite countA_occ_app. simpl. rewrite half1_cons2.

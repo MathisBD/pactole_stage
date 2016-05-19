@@ -256,25 +256,31 @@ Variable r : robogram.
 
 (** The reference starting configuration **)
 Definition conf1 : Config.t := fun id =>
+  let place := 
   match id with
     | Good g => if left_dec g then Loc.origin else Loc.unit
     | Byz b => Loc.origin
-  end.
+  end in
+  {| Config.loc := place;
+      Config.robot_info := {| Config.source := place; Config.target := place |} |}.
 
 (** The symmetrical configuration of the starting configuration **)
 Definition conf2 : Config.t := fun id =>
+  let place :=
   match id with
     | Good g => if left_dec g then Loc.unit else Loc.origin
     | Byz b => Loc.origin
-  end.
+  end in
+  {| Config.loc := place;
+      Config.robot_info := {| Config.source := place; Config.target := place |} |}.
 
 Definition spectrum := Spect.add Loc.origin (Nat.div2 N.nG) (Spect.singleton Loc.unit (Nat.div2 N.nG)).
 
 Theorem conf1_conf2_spect_eq : Spect.eq (!! conf1) (!! conf2).
 Proof.
 intro pt. unfold conf1, conf2.
-do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames. do 2 rewrite map_map.
-unfold left_dec, left. generalize (Names.Gnames_NoDup).
+do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames. do 4 rewrite map_map.
+unfold left_dec, left. generalize (Names.Gnames_NoDup). unfold Spect.Config.loc.
 apply (@first_last_even_ind _
 (fun l => NoDup l ->
      countA_occ _ Loc.eq_dec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then Loc.origin else Loc.unit) l) =
@@ -314,8 +320,8 @@ Qed.
 Theorem spect_conf1 : Spect.eq (!! conf1) spectrum.
 Proof.
 intro pt. unfold conf1, spectrum.
-rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames, map_map.
-unfold left_dec, left. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
+rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames, map_map, map_map.
+unfold left_dec, left, Spect.Config.loc. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
 apply (@first_last_even_ind _
 (fun l => NoDup l ->
       countA_occ _ Loc.eq_dec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then Loc.origin else Loc.unit) l)
