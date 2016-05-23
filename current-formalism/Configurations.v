@@ -480,6 +480,14 @@ reflexivity.
 omega.
 Qed.
 
+Lemma dist_pos : forall x y, (0 <= dist x y).
+Proof.
+intros.
+unfold dist, Z.min. 
+destruct (Z.compare (add (opp y) x) (add (opp x) y) ); 
+unfold add;
+apply Z_mod_lt, Z.gt_lt_iff, n_pos.
+Qed.
 
 Lemma dist_defined_1 : forall a b, a mod n = b mod n -> (a - b) mod n = 0.
 Proof.
@@ -549,11 +557,11 @@ intros.
 unfold add.
 rewrite Zplus_mod.
 apply Zmod_le.
-apply Z.gt_lt_iff, n_pos.
+apply n_pos.
 assert (0 <= a mod n).
-apply Z_mod_lt, n_pos. 
+apply Z_mod_lt, Z.gt_lt_iff, n_pos. 
 assert (0 <= b mod n).
-apply Z_mod_lt, n_pos.
+apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.    
 Qed.
 
@@ -599,7 +607,7 @@ destruct (a mod n ?= 0) eqn : Heq.
 + rewrite Z.compare_lt_iff in *.
   exfalso.
   assert (0 <= a mod n).
-  apply Z_mod_lt, n_pos.
+  apply Z_mod_lt, Z.gt_lt_iff, n_pos.
   apply Zle_not_gt in H0.
   omega.
 + rewrite Z.compare_gt_iff in *.
@@ -613,12 +621,12 @@ destruct (a mod n ?= 0) eqn : Heq.
     replace (0-n) with (-n) in H0 by omega.
     apply Z.opp_inj in H0.
     assert (a mod n < n).
-    apply Z_mod_lt, n_pos.
+    apply Z_mod_lt, Z.gt_lt_iff, n_pos.
     omega.
   - rewrite Z.compare_lt_iff in *.
     exfalso.
     assert (0 <= b mod n).
-    apply Z_mod_lt, n_pos.
+    apply Z_mod_lt, Z.gt_lt_iff, n_pos.
     omega.
   - rewrite Z.compare_gt_iff in *.
     assert (b mod n <> 0) by omega.
@@ -666,7 +674,7 @@ Proof.
   destruct (eq_dec x 0).
   - left. unfold eq in e. rewrite e, Zmod_0_l in *. simpl.
     apply Z_mod_zero_opp_full. assumption.
-  - right. rewrite Z.mod_opp_l_nz. omega. apply n_not_0.
+  - right. rewrite Z.mod_opp_l_nz. omega. generalize n_pos. omega.
     unfold eq in n0. rewrite Zmod_0_l in n0. assumption.
 Qed.
 
@@ -695,7 +703,7 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
     - left.
       rewrite Z.mod_opp_l_nz.
       omega.
-      assert (n>0) by apply n_pos.
+      assert (n>0) by apply Z.gt_lt_iff, n_pos.
       omega.
       unfold eq in n0.
       assert ((x - y) mod n = 0 -> x mod n = y mod n).
@@ -709,7 +717,7 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
       assert (n = 2*(n/2)).
       apply Z_div_exact_2; omega. 
       omega.
-      assert (n>0) by apply n_pos.
+      assert (n>0) by apply Z.gt_lt_iff, n_pos.
       assert (0 <= n/2).
       apply Z.div_pos; omega.
       omega.
@@ -717,13 +725,13 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
    assert ((- (x - y) mod n + (x - y) mod n) = n).
    rewrite Z.mod_opp_l_nz.
    omega.
-   assert (n>0) by apply n_pos.
+   assert (n>0) by apply Z.gt_lt_iff, n_pos.
    omega.
    assert ((x - y) mod n <> - (x - y) mod n) by omega.
    destruct ((x - y) mod n ?= 0) eqn : H0.
     - assert (0 < -(x - y) mod n). 
       apply (Z.le_lt_trans 0 ((x - y) mod n) (- (x - y) mod n)).
-      apply mod_pos_z.
+      apply Z_mod_lt, Z.gt_lt_iff, n_pos.
       assumption.
       assert (- (x - y) mod n <> 0) by omega.
       rewrite Z.compare_eq_iff in *. 
@@ -754,7 +762,7 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
    assert ((- (x - y) mod n + (x - y) mod n) = n).
    rewrite Z.mod_opp_l_nz.
    omega.
-   assert (n>0) by apply n_pos.
+   assert (n>0) by apply Z.gt_lt_iff, n_pos.
    omega.
    assert ((x - y) mod n <> - (x - y) mod n) by omega.
    destruct (-(x - y) mod n ?= 0) eqn : H0.
@@ -808,7 +816,7 @@ split.
    replace (--(a-b)) with (a-b) in H0 by omega.
    rewrite H0 in H; simpl in H.
    assert (n>0).
-   apply n_pos.
+   apply Z.gt_lt_iff, n_pos.
    omega. 
 Qed.
 
@@ -846,13 +854,13 @@ rewrite <- Heq1 in n_div_2 at 2.
 omega.
 omega.
 assert (lt_0_yz: 0<(y-z) mod n).
-assert (0 <= (z-y) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (z-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zy: 0<(z-y) mod n).
 assert ((y-z) mod n <> 0) by omega. 
 replace (y-z) with (-(z-y)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (z-y) with (-(y-z)) by omega.
-assert (0<=-(y-z) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(y-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (n_div_2: n = 2*(n/2)).
 assert ((x-z) mod n + (z-x) mod n = n).
@@ -896,7 +904,7 @@ apply fast_Zmult_comm.
 rewrite <- Zplus_diag_eq_mult_2.
 omega.
 assert (Hlt2: ((y - z) mod n + (z - x) mod n) < n+n/2).
-assert ((y-z) mod n < n) by apply Z_mod_lt, n_pos.
+assert ((y-z) mod n < n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (Heq2': 0 < ((y - z) mod n + (z - x) mod n) - n < n/2) by omega.
 assert (Hmod: 0 < ((y - z) mod n + (z - x) mod n - n) mod n < n/2).
@@ -932,13 +940,13 @@ rewrite <- Heq1 in n_div_2 at 2.
 omega.
 omega.
 assert (lt_0_yz: 0<(z-y) mod n).
-assert (0 <= (y-z) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (y-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zy: 0<(y-z) mod n).
 assert ((z-y) mod n <> 0) by omega. 
 replace (z-y) with (-(y-z)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (y-z) with (-(z-y)) by omega.
-assert (0<=-(z-y) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(z-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (n_div_2: n = 2*(n/2)).
 assert ((x-z) mod n + (z-x) mod n = n).
@@ -977,7 +985,7 @@ assert (Hgt2: n < (z - y) mod n + (z - x) mod n).
 rewrite n_div_2 at 1.
 omega.
 assert (Hlt2: ((z - y) mod n + (z - x) mod n) < n+n/2).
-assert ((z-y) mod n < n) by apply Z_mod_lt, n_pos.
+assert ((z-y) mod n < n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (Heq2': 0 < ((z - y) mod n + (z - x) mod n) - n < n/2).
 omega.
@@ -1004,22 +1012,22 @@ Lemma tri_ineq_help_lt_lt_lt: forall x y z,  (x - z) mod n < (z - x) mod n ->
 Proof.
 intros x y z Heq1 eq0 Heq2 Hdxy Heq3 hdzy Hdxz.
 assert (lt_0_xy: 0<(y-x) mod n).
-assert (0 <= (x-y) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (x-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_yx: 0<(x-y) mod n).
 assert ((y-x) mod n <> 0) by omega.
 replace (y-x) with (-(x-y)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (x-y) with (-(y-x)) by omega.
-assert (0<=-(y-x) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(y-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (lt_0_xz: 0<(z-x) mod n).
-assert (0 <= (x-z) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (x-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zx: 0<(x-z) mod n).
 assert ((z-x) mod n <> 0) by omega.
 replace (z-x) with (-(x-z)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (x-z) with (-(z-x)) by omega.
-assert (0<=-(z-x) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(z-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert ((x - y) mod n + (z - y) mod n < n).
 destruct (Z.odd n) eqn: Hpar.
@@ -1037,8 +1045,8 @@ rewrite eq_nz_opp_n in H.
 replace (-(y-x)) with (x-y) in H by omega;
 replace (-(x-y)) with (y-x) in H by omega.
 omega. omega. omega.
-assert (0<=(x-y) mod n) by apply Z_mod_lt, n_pos.
-assert (0<=(z-y) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=(x-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
+assert (0<=(z-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 rewrite (Zmod_small ((x - y) mod n + (z - y) mod n) n); try omega.
 replace (x-y) with (x-z+(z-y)) by omega.
 assert ((x - z) mod n + (z - y) mod n < n).
@@ -1072,22 +1080,22 @@ Lemma tri_ineq_help_lt_lt_lt2: forall x y z,  (x - z) mod n < (z - x) mod n ->
 Proof.
 intros x y z Heq1 eq0 Heq2 Hdxy Heq3 hdzy Hdxz.
 assert (lt_0_xy: 0<(x-y) mod n).
-assert (0 <= (y-x) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (y-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_yx: 0<(y-x) mod n).
 assert ((x-y) mod n <> 0) by omega.
 replace (x-y) with (-(y-x)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (y-x) with (-(x-y)) by omega.
-assert (0<=-(x-y) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(x-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (lt_0_xz: 0<(x-z) mod n).
-assert (0 <= (z-x) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (z-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zx: 0<(z-x) mod n).
 assert ((x-z) mod n <> 0) by omega.
 replace (x-z) with (-(z-x)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (z-x) with (-(x-z)) by omega.
-assert (0<=-(x-z) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(x-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert ((y - x) mod n + (y - z) mod n < n).
 destruct (Z.odd n) eqn: Hpar.
@@ -1105,8 +1113,8 @@ rewrite eq_nz_opp_n in H.
 replace (-(x-y)) with (y-x) in H by omega;
 replace (-(y-x)) with (x-y) in H by omega.
 omega. omega. omega.
-assert (0<=(y-x) mod n) by apply Z_mod_lt, n_pos.
-assert (0<=(y-z) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=(y-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
+assert (0<=(y-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 rewrite (Zmod_small ((y - x) mod n + (y - z) mod n) n); try omega.
 replace (y-z) with (y-x+(x-z)) by omega.
 assert ((y - x) mod n + (x - z) mod n < n).
@@ -1136,7 +1144,7 @@ intros.
 destruct (dist x z ?= 0) eqn:eq0.
 unfold add.
 rewrite Z.compare_eq_iff, eq0 in *.
-apply Z_mod_lt, n_pos.
+apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 rewrite Z.compare_lt_iff in *.
 exfalso.
 assert (0 <= dist x z).
@@ -1211,8 +1219,7 @@ Lemma add_mod_to_add : forall a b, 0<= a -> 0 <= b -> add a b <= a + b.
 Proof.
 intros.
 unfold add.
-apply Zmod_le.
-apply Z.gt_lt, n_pos.
+apply Zmod_le. apply n_pos.
 omega.
 Qed.
 
@@ -1288,6 +1295,7 @@ reflexivity.
 Qed.
 
 End Ring.
+Close Scope Z_scope.
 
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
