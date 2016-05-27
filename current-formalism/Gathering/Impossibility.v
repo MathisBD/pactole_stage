@@ -384,7 +384,7 @@ abstract (intros x y; split; intro Heq; rewrite <- Heq;
           now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
 Defined.
 
-Lemma bij_swap_ratio : forall c x y : Loc.t, Loc.dist (bij_swap c x) (bij_swap c y) = (1 * Loc.dist x y)%R.
+Lemma bij_swap_ratio : forall c x y : Loc.t, Loc.dist ((bij_swap c) x) (bij_swap c y) = (1 * Loc.dist x y)%R.
 Proof.
 intros c x y. rewrite Rmult_1_l. compute.
 setoid_rewrite Loc.add_comm. rewrite translation_hypothesis.
@@ -408,7 +408,12 @@ Defined.
 Instance swap_compat : Proper (Loc.eq ==> Sim.eq) swap.
 Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
 
-Lemma swap_conf1 : Config.eq (Config.map (swap Loc.unit) conf1) conf2.
+Definition rc_map (f : Loc.t -> Loc.t) (rc: Config.RobotConf) : Config.RobotConf := 
+{| Config.loc := f (Config.loc rc);
+   Config.robot_info := {| Config.source := f (Config.source (Config.robot_info rc));
+                           Config.target := f (Config.target (Config.robot_info rc)) |} |}.
+
+Lemma swap_conf1 : Config.eq (Config.map (rc_map (swap Loc.unit)) conf1) conf2.
 Proof.
 intros [g | b].
 + unfold Config.map. simpl. LR_dec.
