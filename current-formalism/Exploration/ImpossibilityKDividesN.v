@@ -36,15 +36,30 @@ Export DefsE.
 Coercion Sim.sim_f : Sim.t >-> DiscreteSimilarity.bijection.
 Coercion DiscreteSimilarity.section : DiscreteSimilarity.bijection >-> Funclass.
 
-Definition translation := Sim.translation translation_hypothesis.
+Definition translation_hyp := Sim.translation translation_hypothesis.
 
-Instance translation_compat : Proper (Loc.eq ==> Sim.eq) translation.
+Instance translation_hyp_compat : Proper (Loc.eq ==> Sim.eq) translation_hyp.
 Proof. intros l1 l2 Hl x y Hxy. simpl. now rewrite Hxy, Hl. Qed.
+
+Ltac Ldec_full :=
+  match goal with
+    | |- context[Loc.eq_dec ?x ?y] =>
+      let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
+      destruct (Loc.eq_dec x y) as [Heq | Hneq]
+    | _ => fail
+  end.
+
+(* As there is no byzantine robot, we can lift configurations for good robots as a full configuration.  *)
+Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
+  match id with
+    | Good g => conf g
+    | Byz b => Fin.case0 _ b
+  end.
 
 Section ExplorationKDivedesN.
 Open Scope Z_scope.
 
-
+Variable r : robogram.
 
 (* Fin.t k c'est l'ensemble de 1 à k.*)
 Definition Fint_to_nat (k:nat) (f:Fin.t k): nat :=
@@ -112,41 +127,34 @@ generalize test_modulo.n_pos; omega.
 generalize test_modulo.n_pos; omega.
 Qed.
 
-Definition bij_swap (c: Loc.t) : DiscreteSimilarity.bijection Loc.eq.
+Definition bij_t (c : Loc.t): DiscreteSimilarity.bijection Loc.eq.
 refine {|
-  DiscreteSimilarity.section := fun x => Loc.add x c;
-  DiscreteSimilarity.retraction := fun x => Loc.add x (Loc.opp c) |}.
+  DiscreteSimilarity.section := Loc.add c;
+  DiscreteSimilarity.retraction := Loc.add (Loc.opp c) |}.
 Proof.
-intros x y Heq. now rewrite Heq.
-intros x y. split; intro Heq. 
-now rewrite <- Heq, Loc.add_comm with (u:=x), Loc.add_comm, Loc.add_assoc,
++ 
+intros x y. split; intro Heq.
+now rewrite <- Heq, Loc.add_comm with (u:= Loc.opp c), Loc.add_comm, Loc.add_assoc,
 Loc.add_comm with (v:= c), Loc.add_opp, Loc.add_comm, Loc.add_origin.
-now rewrite <- Heq, Loc.add_comm with (u:=y), Loc.add_comm, Loc.add_assoc,
+now rewrite <- Heq, Loc.add_comm with (u:= c), Loc.add_comm, Loc.add_assoc,
 Loc.add_opp, Loc.add_comm, Loc.add_origin.
 Defined.
 
-(* ça ne fonctionne pas, je ne sais pas pourquoi. a travailler.*)
-
-Lemma bij_swap_ratio : forall c x y : Loc.t, Loc.dist (bij_swap c x) (bij_swap c y) = (1 * Loc.dist x y).
-Proof.
-intros c x y.
-setoid_rewrite Loc.add_comm. rewrite Loc.add_comm, Loc.add_comm with (v := y).
-rewrite translation_hypothesis. rewrite Z.mul_1_l. reflexivity.
-Qed.
-
 (* We need to define it with a general center although only 1 will be used. *)
-Definition swap (c:Loc.t) : Sim.t.
+Definition translation (c:Loc.t) : Sim.t.
 refine {|
-  Sim.sim_f := bij_swap c;
-  Sim.center := c |}.
+  Sim.sim_f := bij_t c;
+  Sim.center := Loc.opp c |}.
 Proof.
--  apply Loc.add_opp.
--  intros x y. rewrite <- Z.mul_1_l with (n := (Loc.dist x y)). apply (bij_swap_ratio c).
++ simpl. abstract (now rewrite Loc.add_opp).
++ simpl. intros. rewrite Loc.add_comm with (v:=y), Loc.add_comm.
+  revert x y. apply translation_hyp.
 Defined.
 
-Instance swap_compat : Proper (Loc.eq ==> Sim.eq) swap.
+(* 
+Instance translation_compat : Proper (Loc.eq ==> Sim.eq) translation.
 Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
-
+ *)
 Definition rc_map (f : Loc.t -> Loc.t) (rc: Config.RobotConf) : Config.RobotConf := 
 {| Config.loc := f (Config.loc rc);
    Config.robot_info := {| Config.source := f (Config.source (Config.robot_info rc));
@@ -167,24 +175,82 @@ rewrite (Hf (Config.target (Config.robot_info r1))(Config.target (Config.robot_i
 reflexivity. assumption.
 Qed.
 
-Lemma swap_conf1 : Config.eq (Config.map (rc_map (swap Loc.unit)) config1) config2.
+Lemma tr_conf1 : Config.eq (Config.map (rc_map (translation Loc.unit)) config1) config2.
 Proof.
 intros [g | b].
 + unfold Config.map. simpl. unfold config2. unfold rc_map; simpl.
   unfold Config.eq_RobotConf. split;simpl.
-  - now rewrite Loc.opp_origin, Loc.add_origin.
-  - apply Loc.add_opp.
+  - now rewrite Loc.add_comm.
+  - unfold Config.Info_eq; split; simpl; now rewrite Loc.add_comm.
 + apply Fin.case0. exact b.
 Qed.
 
-Lemma swap_conf2 : Config.eq (Config.map (swap Loc.unit) conf2) conf1.
+Lemma tr_conf2 : Config.eq (Config.map (rc_map (translation (Loc.opp Loc.unit))) config2) config1.
 Proof.
 intros [g | b].
-+ unfold Config.map. simpl. LR_dec.
-  - apply Loc.add_opp.
-  - now rewrite Loc.opp_origin, Loc.add_origin.
++ unfold Config.map. simpl. unfold config1. unfold rc_map; simpl.
+  unfold Config.eq_RobotConf. split;simpl.
+  - now rewrite Loc.add_assoc, Loc.add_comm with (v := Loc.unit), Loc.add_opp,
+    Loc.add_comm, Loc.add_origin.
+  - unfold Config.Info_eq; split; simpl;now rewrite Loc.add_assoc, 
+    Loc.add_comm with (v := Loc.unit), Loc.add_opp, Loc.add_comm, Loc.add_origin.
 + apply Fin.case0. exact b.
 Qed.
+
+Definition move := r (!! config1).
+
+(** The key idea is to prove that we can always make robots think that there are in the same configuration.
+    If they do not gather in one step, then they will never do so.
+    The configuration to which we will always come back is [conf1].
+
+    So, in [conf1], if the robot move to [Loc.unit], we activate all robots and they swap locations.
+    If it does not, activated only this tower which does not reach to other one.
+    The new configuration is the same up to scaling, translation and rotation.  *)
+
+(** **  First case: the robots exchange their positions  **)
+
+Section Move1.
+
+Hypothesis Hmove : Loc.eq move Loc.unit.
+
+Lemma da1_compat : Proper (Logic.eq ==> opt_eq (Loc.eq ==> Sim.eq))
+  (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => 
+      if Loc.eq_dec (c mod test_modulo.n) 0 then translation Loc.unit
+                                            else translation (Loc.opp Loc.unit)))).
+Proof.
+intros ? [g | b] ?; subst; simpl.
++ intros c1 c2 Hc. do 2 Ldec_full.
+  - reflexivity.
+  - elim Hneq. now rewrite <- Hc.
+  - elim Hneq. now rewrite Hc.
+  - reflexivity.
++ apply Fin.case0. exact b.
+Qed.
+
+(* Lemma da1_center : forall id sim (c: Loc.t),
+  (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => 
+      if Loc.eq_dec (c mod test_modulo.n) 0 then translation Loc.unit
+                                            else translation (Loc.opp Loc.unit)))) id = Some sim ->
+  Loc.eq (Sim.center (sim c)) (c).
+Proof.
+intros id sim c Heq. destruct id; simpl in Heq.
+- inversion_clear Heq. Ldec_full; simpl.
+- apply Fin.case0. exact b.
+Admitted. *)
+
+Definition da1 : demonic_action.
+
+refine {|
+  relocate_byz := fun b => Loc.origin;
+  step := (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => 
+      if Loc.eq_dec (c mod test_modulo.n) 0 then translation Loc.unit
+                                            else translation (Loc.opp Loc.unit))));
+  step_center : |}.
+Proof.
+- exact da1_compat.
+- intros id sim c Heq. destruct id; simpl in Heq.
+  + inversion Heq. Ldec_full; simpl.
+Defined.
 
 (* final theorem: In the asynchronous model, if k divide n, 
    then the exploration of a n-node ring is not possible. *)

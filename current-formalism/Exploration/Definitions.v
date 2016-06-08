@@ -7,7 +7,7 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSimilarity.
 Require Pactole.CommonDiscreteFormalism.
-Require Pactole.DiscreteASyncFormalism.
+Require Pactole.DiscreteRigidFormalism.
 Require Import Pactole.DiscreteMultisetSpectrum.
 Require Import Morphisms.
 
@@ -33,7 +33,7 @@ Module Import D : Delta.
 End D.
 
 Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Spect).
-Module Export ASync := DiscreteASyncFormalism.Make(Loc)(N)(D)(Spect)(Common).
+Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Spect)(Common).
 
 Module Sim := Common.Sim. 
 
