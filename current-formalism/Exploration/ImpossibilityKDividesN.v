@@ -37,6 +37,8 @@ Coercion Sim.sim_f : Sim.t >-> DiscreteSimilarity.bijection.
 Coercion DiscreteSimilarity.section : DiscreteSimilarity.bijection >-> Funclass.
 
 Definition translation_hyp := Sim.translation translation_hypothesis.
+(*Hypothesis translation_hypothesis : 
+      forall v x y, Loc.dist (Loc.add x v) (Loc.add y v) = Loc.dist x y. *)
 
 Instance translation_hyp_compat : Proper (Loc.eq ==> Sim.eq) translation_hyp.
 Proof. intros l1 l2 Hl x y Hxy. simpl. now rewrite Hxy, Hl. Qed.
@@ -70,7 +72,7 @@ Definition Fint_to_nat (k:nat) (f:Fin.t k): nat :=
   
 
 Fixpoint create_conf1 (k:nat) (f:Fin.t k) : Loc.t :=
-  Loc.mul (((Z_of_nat ((Fint_to_nat f)*(kG / n))))) Loc.unit.
+  Loc.mul (((Z_of_nat ((Fint_to_nat f)*(n / kG))))) Loc.unit.
 
 Definition config1 : Config.t :=
   fun id => match id with
@@ -127,34 +129,6 @@ generalize test_modulo.n_pos; omega.
 generalize test_modulo.n_pos; omega.
 Qed.
 
-Definition bij_t (c : Loc.t): DiscreteSimilarity.bijection Loc.eq.
-refine {|
-  DiscreteSimilarity.section := Loc.add c;
-  DiscreteSimilarity.retraction := Loc.add (Loc.opp c) |}.
-Proof.
-+ 
-intros x y. split; intro Heq.
-now rewrite <- Heq, Loc.add_comm with (u:= Loc.opp c), Loc.add_comm, Loc.add_assoc,
-Loc.add_comm with (v:= c), Loc.add_opp, Loc.add_comm, Loc.add_origin.
-now rewrite <- Heq, Loc.add_comm with (u:= c), Loc.add_comm, Loc.add_assoc,
-Loc.add_opp, Loc.add_comm, Loc.add_origin.
-Defined.
-
-(* We need to define it with a general center although only 1 will be used. *)
-Definition translation (c:Loc.t) : Sim.t.
-refine {|
-  Sim.sim_f := bij_t c;
-  Sim.center := Loc.opp c |}.
-Proof.
-+ simpl. abstract (now rewrite Loc.add_opp).
-+ simpl. intros. rewrite Loc.add_comm with (v:=y), Loc.add_comm.
-  revert x y. apply translation_hyp.
-Defined.
-
-(* 
-Instance translation_compat : Proper (Loc.eq ==> Sim.eq) translation.
-Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
- *)
 Definition rc_map (f : Loc.t -> Loc.t) (rc: Config.RobotConf) : Config.RobotConf := 
 {| Config.loc := f (Config.loc rc);
    Config.robot_info := {| Config.source := f (Config.source (Config.robot_info rc));
@@ -175,7 +149,7 @@ rewrite (Hf (Config.target (Config.robot_info r1))(Config.target (Config.robot_i
 reflexivity. assumption.
 Qed.
 
-Lemma tr_conf1 : Config.eq (Config.map (rc_map (translation Loc.unit)) config1) config2.
+(* Lemma tr_conf1 : Config.eq (Config.map (rc_map (translation Loc.unit)) config1) config2.
 Proof.
 intros [g | b].
 + unfold Config.map. simpl. unfold config2. unfold rc_map; simpl.
@@ -195,7 +169,43 @@ intros [g | b].
   - unfold Config.Info_eq; split; simpl;now rewrite Loc.add_assoc, 
     Loc.add_comm with (v := Loc.unit), Loc.add_opp, Loc.add_comm, Loc.add_origin.
 + apply Fin.case0. exact b.
-Qed.
+Qed. *)
+
+Definition bij_id := DiscreteSimilarity.bij_id.
+
+Definition bij_swap (c : Loc.t) : DiscreteSimilarity.bijection Loc.eq.
+refine {|
+  DiscreteSimilarity.section := fun x => Loc.add c (Loc.opp x);
+  DiscreteSimilarity.retraction := fun x => Loc.add c (Loc.opp x) |}.
+Proof.
+abstract (intros x y; split; intro Heq; rewrite <- Heq;
+          now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
+Defined.
+
+Definition id : Sim.t.
+refine {| Sim.sim_f := bij_id eq_equiv;
+          Sim.center := Loc.origin;
+          Sim.center_prop := reflexivity _ |}.
+Proof. abstract (intros; auto). Defined.
+
+Definition swap (c : Loc.t) : Sim.t.
+refine {|
+  Sim.sim_f := bij_swap c;
+  Sim.center := c |}.
+Proof.
+- abstract (compute; apply Loc.add_opp).
+- intros. simpl. setoid_rewrite Loc.add_comm.
+  rewrite translation_hypothesis. 
+rewrite <- (translation_hypothesis (Loc.add x y)).
+rewrite Loc.add_assoc, (Loc.add_comm _ x), Loc.add_opp, Loc.add_comm, Loc.add_origin.
+rewrite Loc.add_comm, <- Loc.add_assoc, Loc.add_opp, Loc.add_origin.
+apply Loc.dist_sym.
+Defined.
+
+
+Instance swap_compat : Proper (Loc.eq ==> Sim.eq) swap.
+Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
+
 
 Definition move := r (!! config1).
 
@@ -214,16 +224,10 @@ Section Move1.
 Hypothesis Hmove : Loc.eq move Loc.unit.
 
 Lemma da1_compat : Proper (Logic.eq ==> opt_eq (Loc.eq ==> Sim.eq))
-  (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => 
-      if Loc.eq_dec (c mod test_modulo.n) 0 then translation Loc.unit
-                                            else translation (Loc.opp Loc.unit)))).
+  (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => swap c))).
 Proof.
 intros ? [g | b] ?; subst; simpl.
-+ intros c1 c2 Hc. do 2 Ldec_full.
-  - reflexivity.
-  - elim Hneq. now rewrite <- Hc.
-  - elim Hneq. now rewrite Hc.
-  - reflexivity.
++ intros c1 c2 Hc. rewrite Hc. reflexivity.
 + apply Fin.case0. exact b.
 Qed.
 
@@ -242,21 +246,50 @@ Definition da1 : demonic_action.
 
 refine {|
   relocate_byz := fun b => Loc.origin;
-  step := (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => 
-      if Loc.eq_dec (c mod test_modulo.n) 0 then translation Loc.unit
-                                            else translation (Loc.opp Loc.unit))));
-  step_center : |}.
+  step := (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => swap c))) |}.
 Proof.
 - exact da1_compat.
 - intros id sim c Heq. destruct id; simpl in Heq.
-  + inversion Heq. Ldec_full; simpl.
+  + inversion Heq. now simpl.
+  + apply Fin.case0. exact b .
 Defined.
+
+CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
+
+Lemma bad_demon1_tail : demon_tail bad_demon1 = bad_demon1.
+Proof. reflexivity. Qed.
+
+Lemma bad_demon1_head : demon_head bad_demon1 = da1.
+Proof. reflexivity. Qed.
+
+Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
+Proof.
+coinduction bad_fair1.
+intros id1 id2. constructor. destruct id1; simpl. discriminate. apply Fin.case0. exact b.
+Qed.
+
+Theorem kFair_bad_demon : kFair 1 bad_demon1.
+Proof.
+intros. unfold bad_demon1.
+- apply kFair_mon with 0%nat. exact kFair_bad_demon1. omega.
+Qed.
+
+Theorem kFair_bad_demon' : forall k, (k>=1)%nat -> kFair k bad_demon1.
+Proof.
+intros.
+eapply kFair_mon with 1%nat.
+- apply kFair_bad_demon;auto.
+- auto.
+Qed.
+
 
 (* final theorem: In the asynchronous model, if k divide n, 
    then the exploration of a n-node ring is not possible. *)
 
-Theorem no_exploration : kG mod n = 0 -> ~(forall r d, 
-ValidSolExplorationStop r d).
+Theorem no_exploration : forall k, (1<=k)%nat -> Z_of_nat (kG mod n) = 0 -> 
+                          ~(forall d, kFair k d -> ValidSolExplorationStop r d).
 Proof.
-
+intros k h Hmod Habs. specialize (Habs bad_demon1 (kFair_bad_demon' h) config1).
+revert Habs. 
+destruct Habs as [pt Habs]. kFair_bad_demon' config1).
 Save.

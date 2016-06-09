@@ -416,18 +416,31 @@ Definition rc_map (f : Loc.t -> Loc.t) (rc: Config.RobotConf) : Config.RobotConf
 Lemma swap_conf1 : Config.eq (Config.map (rc_map (swap Loc.unit)) conf1) conf2.
 Proof.
 intros [g | b].
-+ unfold Config.map. simpl. LR_dec.
-  - now rewrite Loc.opp_origin, Loc.add_origin.
-  - apply Loc.add_opp.
++ unfold Config.map, rc_map. simpl. LR_dec.
+  - unfold Config.eq_RobotConf, Config.Info_eq. split; simpl.
+    rewrite Loc.opp_origin, Loc.add_origin. destruct (left_dec g).
+    reflexivity.
+    contradiction.
+    split; rewrite Loc.opp_origin, Loc.add_origin; destruct (left_dec g);
+    try reflexivity; try contradiction.
+  - split; try split; simpl; destruct (left_dec g).
+    try (exfalso; apply (left_right_exclusive g)); auto.
+    apply Loc.add_opp.
+    try (exfalso; apply (left_right_exclusive g)); auto.
+    apply Loc.add_opp.
+    try (exfalso; apply (left_right_exclusive g)); auto.
+    apply Loc.add_opp.
 + apply Fin.case0. exact b.
 Qed.
 
-Lemma swap_conf2 : Config.eq (Config.map (swap Loc.unit) conf2) conf1.
+Lemma swap_conf2 : Config.eq (Config.map (rc_map (swap Loc.unit)) conf2) conf1.
 Proof.
 intros [g | b].
-+ unfold Config.map. simpl. LR_dec.
-  - apply Loc.add_opp.
-  - now rewrite Loc.opp_origin, Loc.add_origin.
++ unfold Config.map, rc_map. simpl. LR_dec.
+  - split; try split; simpl; destruct (left_dec g);
+    try apply Loc.add_opp; try contradiction.
+  - split; try split; simpl; rewrite Loc.opp_origin, Loc.add_origin; destruct (left_dec g);
+    try reflexivity; exfalso; now apply (left_right_exclusive g).
 + apply Fin.case0. exact b.
 Qed.
 

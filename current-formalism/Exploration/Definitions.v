@@ -185,7 +185,7 @@ Definition FullSolExplorationStop  (r : robogram) (d : demon) :=
 forall l config, Will_be_visited l (execute r d config) -> Will_stop (execute r d config).
 
 Definition ValidSolExplorationStop (r : robogram) (d : demon) :=
-forall l config, ValidInitialConfig config -> Will_be_visited l (execute r d config) 
+forall (config : Config.t) l, ValidInitialConfig config -> Will_be_visited l (execute r d config) 
                                            -> Will_stop (execute r d config).
 
 End ExplorationDefs.
