@@ -87,7 +87,10 @@ intros e He Habs. destruct Habs as (Hor, Hun). induction Hor, Hun.
   destruct (Hforbidden Loc.unit) as (Hunmul,Huneq).
   unfold is_visited in *.
   assert (Hnor: (!! (execution_head e))[Loc.origin] = 1).
-  { admit. }
+  { assert ((!! (execution_head e))[Loc.origin] >= 1).
+  rewrite Spect.from_config_spec, Spect.Config.list_spec. destruct Hornow.
+  apply InA_map_iff.
+   admit. }
   assert (Hnun: (!! (execution_head e))[Loc.unit] = 1).
   { admit. }
   rewrite <- Hnor in Hnun. rewrite <- Hnun in Horeq.
