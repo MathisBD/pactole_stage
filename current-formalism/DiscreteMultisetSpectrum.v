@@ -21,7 +21,7 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : DiscreteSpace)(N : Robots.Size) <: Spectrum (Location)(N).
+Module Make(Location : RingSig)(N : Robots.Size) <: Spectrum (Location)(N).
 
 Module Names := Robots.Make(N).
 Module Config := Configurations.Make(Location)(N)(Names).

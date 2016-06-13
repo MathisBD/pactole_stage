@@ -16,7 +16,7 @@ Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs(Loc : DiscreteSpace)(N : Size).
+Module ExplorationDefs(Loc : RingSig)(N : Size).
 
 Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N).
 
@@ -24,13 +24,6 @@ Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]")
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Type Delta.
-  Parameter delta: Z.
-End Delta.
-
-Module Import D : Delta.
-  Parameter delta : Z.
-End D.
 
 Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Spect).
 Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Spect)(Common).
@@ -88,6 +81,21 @@ Qed.
 (*in this probleme, we consider a configuration as a potial initial configuration iff there
   is no tower in it*)
   
+Definition forbidden (config : Config.t) :=
+(* forall id, 
+    exists id1, Loc.eq (Config.loc (config id)) 
+                       (Loc.add (Config.loc (config id1)) (Loc.mul (Z_of_nat N.nG) Loc.unit)). *)
+let m := Spect.from_config(config) in 
+  forall loc, m[loc] <=1 /\ 
+   m[loc] = m[Loc.add loc (Loc.mul (Z_of_nat N.nG/Loc.n) Loc.unit)].
+
+Instance forbidden_compat: Proper (Config.eq ==> iff) forbidden.
+Proof.
+intros c1 c2 Hc. split; intros H loc.
+- rewrite <- Hc. apply H.
+- rewrite Hc. apply H.
+Qed.
+
 Definition ValidInitialConfig (config : Config.t) :=
 let m := Spect.from_config(config) in
   forall pt, m[pt] <=1.
@@ -185,7 +193,7 @@ Definition FullSolExplorationStop  (r : robogram) (d : demon) :=
 forall l config, Will_be_visited l (execute r d config) -> Will_stop (execute r d config).
 
 Definition ValidSolExplorationStop (r : robogram) (d : demon) :=
-forall (config : Config.t) l, ValidInitialConfig config -> Will_be_visited l (execute r d config) 
+forall (config : Config.t) l, ~(forbidden config) -> Will_be_visited l (execute r d config) 
                                            -> Will_stop (execute r d config).
 
 End ExplorationDefs.

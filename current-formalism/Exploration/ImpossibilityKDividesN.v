@@ -21,6 +21,7 @@ Module Loc := ring.
 (** There are KG good robots and no byzantine ones. *)
 Parameter kG : nat.
 Axiom kdn : kG mod n = 0.
+Axiom k_inf_n : kG < n.
 
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 
@@ -57,6 +58,60 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
     | Good g => conf g
     | Byz b => Fin.case0 _ b
   end.
+
+CoInductive Always_forbidden (e : execution) : Prop :=
+  CAF : forbidden (execution_head e) ->
+        Always_forbidden (execution_tail e) -> Always_forbidden e.
+
+Lemma Always_forbidden_compat_lemma : forall e1 e2, eeq e1 e2 -> Always_forbidden e1 -> Always_forbidden e2.
+Proof.
+coinduction diff.
+- rewrite <- H. now destruct H0.
+- destruct H. apply (diff _ _ H1). now destruct H0.
+Qed.
+
+Instance Always_forbidden_compat : Proper (eeq ==> iff) Always_forbidden.
+Proof.
+intros e1 e2 He; split; intro.
+- now apply (Always_forbidden_compat_lemma He).
+- now apply (Always_forbidden_compat_lemma (symmetry He)).
+Qed.
+
+Theorem different_no_explo : forall (e : execution),
+  Always_forbidden e -> ~(Will_be_visited Loc.origin e /\ Will_be_visited Loc.unit e).
+Proof.
+intros e He Habs. destruct Habs as (Hor, Hun). induction Hor, Hun.
++ destruct H as [Hornow Horlater], H0 as [Hunnow Hunlater].
+  destruct He as [Hforbidden He]. unfold forbidden in *.
+  destruct (Hforbidden Loc.origin) as (Hormul, Horeq).
+  destruct (Hforbidden Loc.unit) as (Hunmul,Huneq).
+  unfold is_visited in *.
+  assert (Hnor: (!! (execution_head e))[Loc.origin] = 1).
+  { admit. }
+  assert (Hnun: (!! (execution_head e))[Loc.unit] = 1).
+  { admit. }
+  rewrite <- Hnor in Hnun. rewrite <- Hnun in Horeq.
+  assert 
+  assert  destruct Hnow as (g,Hnow).
+  rewrite Hnow in Heq. 
+  assert (Hloc_0: exists loc, (!!(execution_head e))[loc] = 0).
+  { admit. } destruct Hloc_0 as (loc, Hloc_0).
+  
+  
+  
+  
+    rewrite Spect.from_config_In. in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+    destruct id as [g | b]. unfold gathered_at in Hnow. 
+    specialize (Hnow g). destruct (execution_head e). apply Hnow. apply Fin.case0. exact b.
+  - assert (Hin : Spect.In pt2 (!! (execution_head e))).
+    { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
+    rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+    symmetry. destruct id as [g | b]. unfold gathered_at in Hnow; specialize (Hnow g).
+    destruct (execution_head e) in *. apply Hnow. apply Fin.case0. exact b.
++ inversion He. now apply IHHabs.
+Qed.
+
+Qed.
 
 Section ExplorationKDivedesN.
 Open Scope Z_scope.

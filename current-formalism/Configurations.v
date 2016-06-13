@@ -339,8 +339,8 @@ Open Scope Z_scope.
    Do not forget [dist] and the compatibility lemmas.  *)
 Module Type RingSig.
 
-  Parameter n : Z.
-  Parameter n_pos : 0 < n.
+  Parameter t : Z.
+  Parameter t_pos : 0 < t.
 
   Parameter eq : Z -> Z -> Prop.
   Parameter dist : Z -> Z -> Z.
@@ -370,9 +370,10 @@ Module Type RingSig.
   Parameter mul_1 : forall u, eq (mul 1 u ) u.
 End RingSig.
 
-Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n.
+Module Ring (Odef : RingDef) : RingSig with Definition t := Z.of_nat Odef.n.
   
   Definition n := Z.of_nat Odef.n.
+  Definition t := Z.of_nat Odef.n.
   Definition add (x y : Z) : Z :=  (Zmod (x + y) n).
   Definition mul (x y : Z): Z :=  (Zmod (Z.mul x y) n).
   Definition opp (x: Z): Z := (n - x) mod n. 
@@ -396,6 +397,11 @@ Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n.
   Lemma n_pos : 0 < n.
   Proof.
   unfold n. rewrite <- Nat2Z.inj_0. apply inj_lt. generalize Odef.n_pos. omega.
+  Qed.
+
+  Lemma t_pos : 0 < t.
+  Proof.
+  unfold t. rewrite <- Nat2Z.inj_0. apply inj_lt. generalize Odef.n_pos. omega.
   Qed.
   
 (* Lemma mod_pos_z : forall (x:Z), ( 0 <= (Zmod x n) < n ).
