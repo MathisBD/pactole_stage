@@ -25,6 +25,10 @@ DiscreteSimilarity.v
 CommonDiscreteFormalism.v
 DiscreteRigidFormalism.v
 DiscreteASyncFormalism.v
+CommonGraphFormalism.v
+DiscreteGraphFormalism.v
+AtomicGraphFormalism.v
+GraphEquivalence.v
 Exploration/test_modulo.v
 Exploration/Definitions.v
 Gathering/Definitions.v

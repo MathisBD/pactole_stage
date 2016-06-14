@@ -1704,3 +1704,23 @@ Proof.
 intros x Habs. assert (Heq : x = x + 0) by ring. rewrite Heq in Habs at 1. clear Heq.
 apply Rplus_eq_reg_l in Habs. symmetry in Habs. revert Habs. exact R1_neq_R0.
 Qed.
+
+(** Lifting an equivalence relation to an option type. *)
+Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
+  match xo, yo with
+    | None, None => True
+    | None, Some _ | Some _, None => False
+    | Some x, Some y => eqT x y
+  end.
+
+Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
+Proof. intros T R HR [x |]; simpl; auto. Qed.
+
+Instance opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
+Proof. intros T R HR [x |] [y |]; simpl; auto. Qed.
+
+Instance opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
+Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed.
+
+Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
+Proof. split; auto with typeclass_instances. Qed.

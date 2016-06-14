@@ -1299,6 +1299,7 @@ Close Scope Z_scope.
 
 
 Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
+(*                          (Info : DecidableType) *)
 
   (* for now it's only locations, but the content could change *)
   Record Info : Type := { source: Location.t ; target: Location.t}.
@@ -1318,6 +1319,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
+  Parameter eq_dec : forall c1 c2, {eq c1 c2} + {~eq c1 c2}.
   Declare Instance eq_info_equiv : Equivalence Info_eq.
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
@@ -1407,6 +1409,9 @@ split.
   apply H.
   apply H0.
 Qed.
+
+Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
+Proof. Admitted.
 
 Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
 Proof. intros l1 l2 Hl info1 info2 Hinfo. split; apply Hl || apply Hinfo. Qed.
