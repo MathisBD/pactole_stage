@@ -373,6 +373,7 @@ End RingSig.
 Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n.
   
   Definition n := Z.of_nat Odef.n.
+  Definition t := Z.
   Definition add (x y : Z) : Z :=  (Zmod (x + y) n).
   Definition mul (x y : Z): Z :=  (Zmod (Z.mul x y) n).
   Definition opp (x: Z): Z := (n - x) mod n. 
@@ -397,7 +398,7 @@ Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n.
   Proof.
   unfold n. rewrite <- Nat2Z.inj_0. apply inj_lt. generalize Odef.n_pos. omega.
   Qed.
-  
+
 (* Lemma mod_pos_z : forall (x:Z), ( 0 <= (Zmod x n) < n ).
 Proof.
 intros. apply Z_mod_lt. apply n_pos.
