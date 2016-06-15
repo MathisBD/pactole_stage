@@ -16,7 +16,7 @@ Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs(Loc : RingSig)(N : Size).
+Module ExplorationDefs(Loc : DiscreteSpace)(N : Size).
 
 Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N).
 
@@ -87,7 +87,7 @@ Definition forbidden (config : Config.t) :=
                        (Loc.add (Config.loc (config id1)) (Loc.mul (Z_of_nat N.nG) Loc.unit)). *)
 let m := Spect.from_config(config) in 
   forall loc, m[loc] <=1 /\ 
-   m[loc] = m[Loc.add loc (Loc.mul (Z_of_nat N.nG/Loc.n) Loc.unit)].
+   m[loc] = m[Loc.add loc (Loc.mul (Z_of_nat N.nG (*/Loc.n *)) Loc.unit)].
 
 Instance forbidden_compat: Proper (Config.eq ==> iff) forbidden.
 Proof.
@@ -109,14 +109,14 @@ now rewrite Hc. rewrite Hc. auto.
 Qed.
 
 Definition is_visited (loc : Loc.t) (conf : Config.t) := 
-    exists g : Names.G, Loc.eq loc (conf (Good g)).(Config.loc).
+    exists g : Names.G, Loc.eq (conf (Good g)).(Config.loc) loc .
     
 Instance is_visited_compat : Proper (Loc.eq ==> Config.eq ==> iff) is_visited.
 Proof.
 intros l1 l2 Hl c1 c2 Hc.
 split; intros Hv; unfold is_visited in *; destruct Hv as (g, Hv); exists g.
-rewrite <- Hl, Hv; apply Hc.
-rewrite Hl, Hv; symmetry; apply Hc.
+rewrite <- Hl, <- Hv; symmetry; apply Hc.
+rewrite Hl, <- Hv; apply Hc.
 Qed.
 
 CoInductive has_been_visited (loc : Loc.t) (e : execution) : Prop :=

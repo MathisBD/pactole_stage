@@ -29,11 +29,21 @@ Module Location : DecidableType with Definition t := location.
   
   Lemma eq_equiv : Equivalence eq.
   Proof.
-  Admitted.
+  split.
+  + intros x. unfold eq, loc_eq. destruct x. reflexivity. split; reflexivity.
+  + intros x y Hxy. unfold eq, loc_eq in *. destruct x, y;
+    try auto. now symmetry. split; now symmetry.
+  + intros x y z Hxy Hyz. destruct x, y, z; unfold eq, loc_eq in *; try auto.
+    now transitivity l0. exfalso; auto. exfalso; auto. 
+    split. now transitivity e0. now transitivity p0.
+  Qed.
   
   Lemma eq_dec : forall l l', {eq l l'} + {~eq l l'}.
   Proof.
-  Admitted.
+  intros l l'.
+  destruct l, l'; unfold eq, loc_eq; auto. apply Veq_dec. destruct (Eeq_dec e e0), (Rdec p p0);
+  intuition.
+  Qed.
 End Location.
 
 (* (* Identity spectrum *)
@@ -82,6 +92,9 @@ Definition Aom_eq (a1 a2: Active_or_Moving) :=
 Instance Active_compat : Proper (Logic.eq ==> Aom_eq) Active.
 Proof. intros ? ? ?. auto. Qed.
 
+Instance Aom_eq_reflexive : Reflexive Aom_eq.
+Proof. intros x. unfold Aom_eq. now destruct x. Qed.
+
 (* as Active give a function, Aom_eq is not reflexive. It's still symmetric and transitive.*)
 Instance Aom_eq_Symmetric : Symmetric Aom_eq.
 Proof.
@@ -108,7 +121,7 @@ Definition da_eq (da1 da2 : demonic_action) :=
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
-+ split; intuition. now apply step_compat.
++ split; intuition. (* now apply step_compat. *)
 + intros da1 da2 [Hda1 Hda2]. repeat split; repeat intro; try symmetry; auto.
 + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
   repeat split; intros; try etransitivity; eauto.
@@ -190,7 +203,7 @@ Program Definition round (r : robogram) (da : demonic_action) (config : Config.t
         match id, pos with
           | Good g, Mvt e p Hp => if Rle_dec 1%R (p + mv_ratio)
               then {| Config.loc := Loc (tgt e); Config.robot_info := Config.robot_info conf |}
-              else {| Config.loc := Mvt e (p + mv_ratio) _; Config.robot_info := Config.robot_info conf |}
+              else {| Config.loc := Mvt e (p + mv_ratio) _ ; Config.robot_info := Config.robot_info conf |}
           | Good g, Loc l =>
               if Rdec mv_ratio 0%R then conf else
               if Rdec mv_ratio 1%R then {| Config.loc := Config.target (Config.robot_info conf);
@@ -221,7 +234,8 @@ Program Definition round (r : robogram) (da : demonic_action) (config : Config.t
         end
     end.
 Next Obligation.
-symmetry in Heq_anonymous. apply step_flexibility in Heq_anonymous.
+assert (Hs: step da (Good g) (config (Good g)) = Moving mv_ratio). 
+auto. apply step_flexibility in Hs.
 lra.
 Qed.
 Next Obligation.
@@ -230,19 +244,17 @@ lra.
 Qed.
 
 Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
-Proof. Admitted.
-(* intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
+Proof. (* Admitted. *)
+intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf. intros id.
 unfold req in Hr.
-unfold round.
-assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
-apply Hconf.
+assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)) by apply Hconf.
 assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
 assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
-apply step_da_compat; try reflexivity.
-apply Hrconf.
-destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
-(step da1 id (conf2 id)) eqn:He3, id as [ g| b]; try now elim Hstep.
-+ unfold Aom_eq in *.
+{ apply step_da_compat; try reflexivity. apply Hrconf. }
+destruct id as [g | b].
+unfold round. 
+
++ simpl in Hstep. intuition. rewrite He1 in step.
   rewrite Hstep.
   f_equiv.
   f_equiv.
@@ -262,6 +274,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
 + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
 Qed. *)
 
+(* Lemma compat_helper1 : Aom_eq (da.(step) id conf) (Moving mv_r) ->  *)
 
 (** [execute r d conf] returns an (infinite) execution from an initial global
     configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)

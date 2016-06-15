@@ -87,12 +87,24 @@ intros e He Habs. destruct Habs as (Hor, Hun). induction Hor, Hun.
   destruct (Hforbidden Loc.unit) as (Hunmul,Huneq).
   unfold is_visited in *.
   assert (Hnor: (!! (execution_head e))[Loc.origin] = 1).
-  { assert ((!! (execution_head e))[Loc.origin] >= 1).
-  rewrite Spect.from_config_spec, Spect.Config.list_spec. destruct Hornow.
-  apply InA_map_iff.
-   admit. }
+  { assert ((!! (execution_head e))[Loc.origin] <> 0).
+  assert (Hornow': exists id : Spect.Names.ident,
+  Loc.eq (Spect.Config.loc (execution_head e id)) Loc.origin).
+  destruct Hornow as (g, Hornow). exists (Good g). apply Hornow.
+  rewrite <- Spect.from_config_In in Hornow'.
+  SearchAbout Spect.In. intros H. rewrite <- Spect.not_In in H. contradiction. omega.
+  }
   assert (Hnun: (!! (execution_head e))[Loc.unit] = 1).
-  { admit. }
+  { assert ((!! (execution_head e))[Loc.unit] <> 0).
+  assert (Hunnow': exists id : Spect.Names.ident,
+  Loc.eq (Spect.Config.loc (execution_head e id)) Loc.unit).
+  destruct Hunnow as (g, Hunnow). exists (Good g). apply Hunnow.
+  rewrite <- Spect.from_config_In in Hunnow'.
+  SearchAbout Spect.In. intros H. rewrite <- Spect.not_In in H. contradiction. omega.
+  } 
+  assert (Heq : (!! (execution_head e))[Loc.origin] = (!! (execution_head e))[Loc.unit]) 
+  by now rewrite Hnor. rewrite Horeq in Heq.
+  assert (Heq': Z.of_nat (K.nG/n) = 1%Z). simpl in Heq.
   rewrite <- Hnor in Hnun. rewrite <- Hnun in Horeq.
   assert 
   assert  destruct Hnow as (g,Hnow).

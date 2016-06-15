@@ -180,8 +180,8 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
     end.
 
 Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
-Proof. Admitted.
-(* intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
+Proof.
+intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
 unfold req in Hr.
 unfold round.
 assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
@@ -194,23 +194,28 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
 (step da1 id (conf2 id)) eqn:He3, id as [ g| b]; try now elim Hstep.
 + unfold Aom_eq in *.
   rewrite Hstep.
-  f_equiv.
-  f_equiv.
+  destruct dist0.
+  f_equiv;
   apply Hrconf.
-  do 2 f_equiv.
   apply Hrconf.
-  f_equiv; apply Hrconf.
++ unfold Aom_eq in *.
+  rewrite Hstep.
+  destruct dist0.
+  f_equiv;
+  apply Hrconf.
+  apply Hrconf.
++ unfold Aom_eq in *.
+  f_equiv.
+  apply Hconf.
   unfold Config.Info_eq.
-  split; apply Hrconf.
-+ unfold Aom_eq in *. exfalso; auto.
-+ unfold Aom_eq in *. exfalso; auto.
-+ f_equiv; try (now apply Hconf); [].
-  split; cbn; try (now apply Hconf); [].
-  simpl in Hstep. f_equiv.
-  - f_equiv. apply Hstep, Hrconf.
-  - apply Hr. do 3 f_equiv; trivial; []. apply Hstep, Hconf.
+  split.
+  apply Hconf.
+  simpl.
+  apply Hr.
+  f_equiv.
+  apply Hconf.
 + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
-Qed. *)
+Qed.
 
 
 (** [execute r d conf] returns an (infinite) execution from an initial global
