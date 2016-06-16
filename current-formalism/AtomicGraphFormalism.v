@@ -10,7 +10,7 @@ Require Import Pactole.CommonFormalism.
 Require Import Pactole.CommonGraphFormalism.
 
 
-Module Location : DecidableType with Definition t := V.
+Module Location : DecidableType with Definition t := V with Definition eq := Veq.
   Definition t := V.
   Definition eq := Veq.
   Definition eq_equiv : Equivalence eq := Veq_equiv.

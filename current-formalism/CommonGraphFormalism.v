@@ -11,6 +11,7 @@
 Require Import Rbase.
 Require Import Equalities.
 Require Import Pactole.Preliminary.
+Require Import Morphisms.
 
 
 Parameter V : Type.
@@ -24,6 +25,9 @@ Axiom Eeq_equiv : Equivalence Eeq.
 Axiom Veq_dec : forall l l' : V, {Veq l l'} + {~Veq l l'}.
 Axiom Eeq_dec : forall e e' : E, {Eeq e e'} + {~Eeq e e'}.
 Axiom threshold_pos : forall e, (0 < threshold e < 1)%R.
+Parameter tgt_compat : Proper (Eeq ==> Veq) tgt.
+Parameter src_compat : Proper (Eeq ==> Veq) src.
+Parameter threshold_compat : Proper (Eeq ==> eq) threshold.
 
 Parameter find_edge : V -> V -> option E.
 Axiom find_edge_Some : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e).

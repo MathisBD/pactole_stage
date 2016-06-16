@@ -23,7 +23,7 @@ Definition loc_eq l l' :=
 
 Axiom e_default : E.
 
-Module Location : DecidableType with Definition t := location.
+Module Location : DecidableType with Definition t := location with Definition eq := loc_eq.
   Definition t := location.
   Definition eq := loc_eq.
   
@@ -244,8 +244,8 @@ lra.
 Qed.
 
 Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
-Proof. (* Admitted. *)
-intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf. intros id.
+Proof.  Admitted. 
+(* intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf. intros id.
 unfold req in Hr.
 assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)) by apply Hconf.
 assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
@@ -254,7 +254,7 @@ assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
 destruct id as [g | b].
 unfold round. 
 
-+ simpl in Hstep. intuition. rewrite He1 in step.
++ simpl in Hstep. intuition.
   rewrite Hstep.
   f_equiv.
   f_equiv.
@@ -272,7 +272,7 @@ unfold round.
   - f_equiv. apply Hstep, Hrconf.
   - apply Hr. do 3 f_equiv; trivial; []. apply Hstep, Hconf.
 + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
-Qed. *)
+Qed.  *)
 
 (* Lemma compat_helper1 : Aom_eq (da.(step) id conf) (Moving mv_r) ->  *)
 
