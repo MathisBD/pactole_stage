@@ -16,7 +16,7 @@ Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs(Loc : DiscreteSpace)(N : Size).
+Module ExplorationDefs(Loc : RingSig)(N : Size).
 
 Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N).
 
@@ -87,7 +87,7 @@ Definition forbidden (config : Config.t) :=
                        (Loc.add (Config.loc (config id1)) (Loc.mul (Z_of_nat N.nG) Loc.unit)). *)
 let m := Spect.from_config(config) in 
   forall loc, m[loc] <=1 /\ 
-   m[loc] = m[Loc.add loc (Loc.mul (Z_of_nat N.nG (*/Loc.n *)) Loc.unit)].
+   m[loc] = m[Loc.add loc (Loc.mul (Z_of_nat N.nG /Loc.n ) Loc.unit)].
 
 Instance forbidden_compat: Proper (Config.eq ==> iff) forbidden.
 Proof.

@@ -12,23 +12,33 @@ Require Import Pactole.Exploration.test_modulo.
 Set Implicit Arguments.
 (* taille de l'anneau*)
 Parameter n : nat.
+Axiom n_sup_1 : 1 < n.
 
-Print Fin.t.
-(** The setting is a ring. *)
-Module Loc := ring.
-
-
-(** There are KG good robots and no byzantine ones. *)
 Parameter kG : nat.
 Axiom kdn : kG mod n = 0.
 Axiom k_inf_n : kG < n.
 
-Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
+Check Configurations.Ring.
 
 Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
   Definition nB := 0%nat.
 End K.
+Module def : RingDef.
+ Definition n:= Top.n.
+ Lemma n_pos : n <> 0. Proof. unfold n. generalize Top.n_sup_1. omega. Qed.
+ Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
+End def.
+
+(** The setting is a ring. *)
+Declare Module Loc : RingSig (def).
+
+Check (Configuration.Ring (def)). add.
+(** There are KG good robots and no byzantine ones. *)
+
+
+Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
+
 
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
 Module DefsE := Definitions.ExplorationDefs(Loc)(K).
@@ -77,41 +87,41 @@ intros e1 e2 He; split; intro.
 - now apply (Always_forbidden_compat_lemma (symmetry He)).
 Qed.
 
-Theorem different_no_explo : forall (e : execution),
+(* Theorem different_no_explo : forall (e : execution),
   Always_forbidden e -> ~(Will_be_visited Loc.origin e /\ Will_be_visited Loc.unit e).
 Proof.
 intros e He Habs. destruct Habs as (Hor, Hun). induction Hor, Hun.
-+ destruct H as [Hornow Horlater], H0 as [Hunnow Hunlater].
++ destruct H as [Hor_now Hor_later], H0 as [Hun_now Hun_later].
   destruct He as [Hforbidden He]. unfold forbidden in *.
-  destruct (Hforbidden Loc.origin) as (Hormul, Horeq).
-  destruct (Hforbidden Loc.unit) as (Hunmul,Huneq).
+  destruct (Hforbidden Loc.origin) as (Hor_mul, Hor_eq).
+  destruct (Hforbidden Loc.unit) as (Hun_mul,Hun_eq).
   unfold is_visited in *.
-  assert (Hnor: (!! (execution_head e))[Loc.origin] = 1).
+  assert (Hn_or: (!! (execution_head e))[Loc.origin] = 1).
   { assert ((!! (execution_head e))[Loc.origin] <> 0).
-  assert (Hornow': exists id : Spect.Names.ident,
+  assert (Hor_now': exists id : Spect.Names.ident,
   Loc.eq (Spect.Config.loc (execution_head e id)) Loc.origin).
-  destruct Hornow as (g, Hornow). exists (Good g). apply Hornow.
-  rewrite <- Spect.from_config_In in Hornow'.
-  SearchAbout Spect.In. intros H. rewrite <- Spect.not_In in H. contradiction. omega.
+  destruct Hor_now as (g, Hor_now). exists (Good g). apply Hor_now.
+  rewrite <- Spect.from_config_In in Hor_now'.
+  intros H. rewrite <- Spect.not_In in H. contradiction. omega.
   }
-  assert (Hnun: (!! (execution_head e))[Loc.unit] = 1).
+  assert (Hn_un: (!! (execution_head e))[Loc.unit] = 1).
   { assert ((!! (execution_head e))[Loc.unit] <> 0).
-  assert (Hunnow': exists id : Spect.Names.ident,
+  assert (Hun_now': exists id : Spect.Names.ident,
   Loc.eq (Spect.Config.loc (execution_head e id)) Loc.unit).
-  destruct Hunnow as (g, Hunnow). exists (Good g). apply Hunnow.
-  rewrite <- Spect.from_config_In in Hunnow'.
-  SearchAbout Spect.In. intros H. rewrite <- Spect.not_In in H. contradiction. omega.
+  destruct Hun_now as (g, Hun_now). exists (Good g). apply Hun_now.
+  rewrite <- Spect.from_config_In in Hun_now'.
+  intros H. rewrite <- Spect.not_In in H. contradiction. omega.
   } 
   assert (Heq : (!! (execution_head e))[Loc.origin] = (!! (execution_head e))[Loc.unit]) 
-  by now rewrite Hnor. rewrite Horeq in Heq.
-  assert (Heq': Z.of_nat (K.nG/n) = 1%Z). simpl in Heq.
-  rewrite <- Hnor in Hnun. rewrite <- Hnun in Horeq.
-  assert 
-  assert  destruct Hnow as (g,Hnow).
-  rewrite Hnow in Heq. 
-  assert (Hloc_0: exists loc, (!!(execution_head e))[loc] = 0).
-  { admit. } destruct Hloc_0 as (loc, Hloc_0).
-  
+  by now rewrite Hn_or. rewrite Hor_eq in Heq.
+  assert (Heq': Z.of_nat (K.nG/n) = 1%Z). admit. simpl in Heq.
+  assert (Heq_uo : Loc.eq Loc.unit (Loc.add (Loc.mul (Z.of_nat K.nG / Loc.n) Loc.unit) Loc.origin)).
+  admit.
+  replace (Loc.add (Loc.mul (Z.of_nat K.nG / Loc.n) Loc.unit) Loc.origin) with 
+  (Loc.mul (Z.of_nat K.nG / Loc.n) Loc.unit) in Heq_uo.
+  generalize (Loc.mul_1 Loc.unit). intro. rewrite Heq_uo in H at 2.
+  generalize Loc.mul_compat. intro. 
+
   
   
   
@@ -126,7 +136,7 @@ intros e He Habs. destruct Habs as (Hor, Hun). induction Hor, Hun.
 + inversion He. now apply IHHabs.
 Qed.
 
-Qed.
+Qed. *)
 
 Section ExplorationKDivedesN.
 Open Scope Z_scope.
