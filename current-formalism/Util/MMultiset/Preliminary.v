@@ -24,6 +24,8 @@ Set Implicit Arguments.
 Require Import Bool.
 
 
+Ltac autoclass := eauto with typeclass_instances.
+
 (* Seems useless…
 Global Instance NotRel_symmetric A (R : relation A) `(Symmetric A R) : Symmetric (fun x y => ~R x y).
 Proof. intros x y Hxy Habs. apply Hxy. now symmetry. Qed.
@@ -450,6 +452,16 @@ Proof.
 intros (*A' B' eqA2 eqB2*) f Hf l1 l2 eq. induction eq as [| ? ? ? ? Hx Hl IHeq].
 + repeat intro. simpl. assumption.
 + intros a b Hab. simpl. apply IHeq. apply Hf; assumption.
+Qed.
+
+Global Instance fold_left_extensional :
+  Proper ((eqB ==> eqA ==> eqB) ==> eqlistA eqA ==> eqB ==> eqB) (@fold_left _ _).
+Proof.
+intros f g Hfg l. induction l.
++ intros l' Hl ? ? ?. destruct l'; trivial; []. inversion Hl.
++ intros l' Hl ? ? ?. destruct l'; simpl.
+  - inversion Hl.
+  - inversion_clear Hl. now apply IHl, Hfg.
 Qed.
 
 Global Instance PermutationA_map : forall f, Proper (eqA ==> eqB) f ->

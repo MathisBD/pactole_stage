@@ -7,7 +7,7 @@ Util/Streams.v
 Configurations.v
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
-Util.FMaps/FMapList.v
+Util/FMaps/FMapList.v
 Util/MMultiset/MMultisetInterface.v
 Util/MMultiset/MMultisetWMap.v
 #Util/MMultiset/MMultisetMap.v

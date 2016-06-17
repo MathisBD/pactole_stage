@@ -6,6 +6,7 @@ Require Import Pactole.Util.MMultiset.MMultisetInterface.
 Require Import Pactole.Util.MMultiset.MMultisetFacts.
 
 
+Set Default Proof Using "All".
 Set Implicit Arguments.
 Existing Instance multiplicity_compat.
 
@@ -53,7 +54,7 @@ Section MMultisetExtra.
     Qed.
     
     Lemma map_empty : map f empty == empty.
-    Proof. unfold map. now rewrite fold_empty. Qed.
+    Proof using M f. unfold map. now rewrite fold_empty. Qed.
     
     Lemma map_add : forall x n m, map f (add x n m) == add (f x) n (map f m).
     Proof.
@@ -386,7 +387,7 @@ Section MMultisetExtra.
         apply Hrec.
     - refine _. 
     - rewrite (map_In _). intros [y [Heq Hy]]. apply Hg2 in Heq. apply Hin. now rewrite Heq.
-  + rewrite map_empty. now rewrite nfilter_empty, nfilter_empty, map_empty; refine _.
+  + rewrite map_empty. now rewrite nfilter_empty, nfilter_empty, map_empty; autoclass.
   Qed.
   
   Lemma map_injective_npartition_fst : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
@@ -408,7 +409,7 @@ Section MMultisetExtra.
     - now rewrite Hrec.
     - refine _.
     - now rewrite map_injective_In.
-  + rewrite map_empty. now repeat rewrite for_all_empty; refine _.
+  + rewrite map_empty. repeat rewrite for_all_empty; autoclass.
   Qed.
   
   Lemma map_injective_exists : forall f g, compatb f -> Proper (equiv ==> equiv) g -> injective equiv equiv g ->
@@ -420,7 +421,7 @@ Section MMultisetExtra.
     - now rewrite Hrec.
     - refine _. 
     - rewrite (map_In _). intros [y [Heq Hy]]. apply Hg2 in Heq. apply Hin. now rewrite Heq.
-  + rewrite map_empty. now repeat rewrite exists_empty; refine _.
+  + rewrite map_empty. repeat rewrite exists_empty; autoclass.
   Qed.
   
   (** **  Function [max] and its properties  **)
@@ -562,7 +563,8 @@ Section MMultisetExtra.
       destruct (le_lt_dec n (m[y])).
       - exists y. split.
         -- msetdec.
-        -- rewrite Nat.eqb_eq, Heq, add_other, Max.max_r; trivial. msetdec.
+        -- rewrite Nat.eqb_eq, Heq, add_other, Max.max_r; trivial.
+           Fail now msetdec. (* BUG? *) intro Habs. msetdec.
       - exists x. split.
         -- msetdec.
         -- rewrite Nat.eqb_eq, Max.max_l; try omega. msetdec.
@@ -646,7 +648,7 @@ Section MMultisetExtra.
       destruct (Max.max_spec n (max_mult m)) as [[Hmax1 Hmax2] | [Hmax1 Hmax2]].
       - exists max_m. msetdec.
       - exists x. msetdec.
-  * intro. msetdec.
+  * intro. Fail now msetdec. (* BUG? *) now elim H0.
   Qed.
   
   Lemma max_spec_max : forall m x, ~m == empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].

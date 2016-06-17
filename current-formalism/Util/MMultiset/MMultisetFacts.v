@@ -17,19 +17,31 @@ Require Import RelationPairs.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.MMultiset.Preliminary.
-Require Import Pactole.Util.MMultisetInterface.
+Require Import Pactole.Util.MMultiset.MMultisetInterface.
 
 
+Set Default Proof Using "All".
 Set Implicit Arguments.
 Notation " x == y " := (equiv x y) (at level 70, no associativity).
 Notation " x =/= y " := (complement equiv x y) (at level 70, no associativity).
 
 
 Section MMultisetFacts.
-
-Context {elt : Type}.
-Context `{FMultisetsOn elt}.
-
+  
+  Context {elt : Type}.
+  Context {elt_Setoid : Setoid elt}.
+  Context {elt_EqDec : EqDec elt_Setoid}.
+  Context {FMultisetsOps : FMOps elt elt_EqDec}.
+  Context {FMultisetsSpec : FMultisetsOn elt FMultisetsOps}.
+  
+  Instance eq_pair_equiv : Equivalence eq_pair.
+  Proof. split.
+  intros [x n]. now split; hnf.
+  intros [x n] [y m] [? ?]; split; hnf in *; now auto.
+  intros ? ? ? [? ?] [? ?]. split. hnf in *. now transitivity (fst y). now transitivity (snd y).
+  Qed.
+  
+  Instance eq_pair_Setoid : Setoid (elt * nat) := {| equiv := eq_pair |}.
   
   (** An experimental tactic that superficially ressembles [fsetdec].  It is by no mean as general. **)
   Hint Rewrite empty_spec add_same remove_same diff_spec union_spec inter_spec lub_spec singleton_same : FMsetdec.
@@ -69,9 +81,9 @@ Context `{FMultisetsOn elt}.
       | H : ?x = ?y |- _ => subst x || rewrite H in *
       | Hneq : ?x =/= ?x |- _ => now elim Hneq
       | Heq : @equiv elt _ ?x ?y |- _ => clear x Heq || rewrite Heq in *
-      | Heq : @equiv t _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
-      | Heq : @equiv t _ ?x ?y |- context[?x] => rewrite Heq
-      | Heq : @equiv t _ ?x ?y |- _ => clear x Heq
+      | Heq : @equiv multiset _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
+      | Heq : @equiv multiset _ ?x ?y |- context[?x] => rewrite Heq
+      | Heq : @equiv multiset _ ?x ?y |- _ => clear x Heq
       (* Simplifying [singleton], [add] and [remove] *)
       | Hneq : ?y =/= ?x |- context[multiplicity ?y (singleton ?x ?n)] => rewrite singleton_other; trivial
       | Hneq : ?y =/= ?x |- context[multiplicity ?y (add ?x ?n ?m)] => rewrite add_other; trivial
@@ -111,7 +123,7 @@ Context `{FMultisetsOn elt}.
   intros x n p l Hin. induction l as [| [y q] l].
   + rewrite InA_nil in Hin. elim Hin.
   + inversion_clear Hin.
-    - destruct H2 as [Heq ?]. now left.
+    - destruct H as [Heq ?]. now left.
     - right. now apply IHl.
   Qed.
   
@@ -120,8 +132,8 @@ Context `{FMultisetsOn elt}.
   intros x n l Hin. induction l as [| [y p] l].
   + rewrite InA_nil in Hin. elim Hin.
   + inversion_clear Hin.
-    - compute in H2. exists p. left. now rewrite H2.
-    - apply IHl in H2. destruct H2 as [k Hin]. exists k. now right.
+    - compute in H. exists p. left. now rewrite H.
+    - apply IHl in H. destruct H as [k Hin]. exists k. now right.
   Qed.
   
   Lemma pair_dec : forall xn yp, {eq_pair xn yp} + {~eq_pair xn yp}.
@@ -218,7 +230,8 @@ Context `{FMultisetsOn elt}.
   - msetdec; repeat intro; now rewrite Hf.
   Qed.
   
-  Global Instance partition_compat f : Proper (equiv ==> Logic.eq) f -> Proper (equiv ==> equiv * equiv) (partition f).
+  Global Instance partition_compat f : Proper (equiv ==> Logic.eq) f ->
+    Proper (equiv ==> equiv * equiv) (partition f).
   Proof.
   intros Hf s1 s2 Hs. split; intro x.
   - msetdec.
@@ -236,9 +249,8 @@ Context `{FMultisetsOn elt}.
   
   Global Instance support_compat : Proper (equiv ==> PermutationA equiv) support.
   Proof.
-  intros s1 s2 Hs. assert (Equivalence equiv) by auto with typeclass_instances.
-  apply NoDupA_equivlistA_PermutationA. assumption.
-  now apply support_NoDupA. now apply support_NoDupA.
+  intros s1 s2 Hs.
+  apply NoDupA_equivlistA_PermutationA; autoclass; try (now apply support_NoDupA); [].
   intro x. do 2 rewrite support_spec. unfold In. now rewrite Hs.
   Qed.
   
@@ -265,14 +277,16 @@ Context `{FMultisetsOn elt}.
     - reflexivity.
   Qed.
   
-  Global Instance For_all_compat : forall f, Proper (equiv ==> Logic.eq ==> iff) f -> Proper (equiv ==> iff) (For_all f).
+  Global Instance For_all_compat : forall f, Proper (equiv ==> Logic.eq ==> iff) f ->
+    Proper (equiv ==> iff) (For_all f).
   Proof.
   intros f Hf s1 s2 Hs. split; intros Hall x Hin.
   - rewrite <- Hs. apply Hall. now rewrite Hs.
   - rewrite Hs. apply Hall. now rewrite <- Hs.
   Qed.
   
-  Global Instance Exists_compat : forall f, Proper (equiv ==> Logic.eq ==> iff) f -> Proper (equiv ==> iff) (Exists f).
+  Global Instance Exists_compat : forall f, Proper (equiv ==> Logic.eq ==> iff) f ->
+    Proper (equiv ==> iff) (Exists f).
   Proof.
   intros f Hf s1 s2 Hs. split; intros [x [Hin Hfx]].
   - exists x. now split; rewrite <- Hs.
@@ -392,7 +406,7 @@ Context `{FMultisetsOn elt}.
   (** *  Complementary results  **)
   
 (*   Lemma eq_dec : forall m1 m2, {m1 == m2} + {~m1 == m2}. *)
-  Global Instance MMultisetEqDec : @EqDec t _.
+  Global Instance MMultisetEqDec : @EqDec multiset _.
   Proof.
   intros m1 m2. destruct (equal m1 m2) eqn:Heq.
   - left. now rewrite <- equal_spec.
@@ -528,7 +542,7 @@ Context `{FMultisetsOn elt}.
   Proof. repeat intro. msetdec. Qed.
   
   Lemma remove_singleton_other : forall x y n p, ~y == x -> remove y n (singleton x p) == singleton x p.
-  Proof. repeat intro. msetdec. Qed.
+  Proof. repeat intro. msetdec. (* BUG?: saturate_Einequalities shou work! *) now elim H. Qed.
   
   Theorem elements_singleton : forall x n, n > 0 -> eqlistA eq_pair (elements (singleton x n)) ((x, n) :: nil).
   Proof.
@@ -538,8 +552,8 @@ Context `{FMultisetsOn elt}.
   + intros [y p]. rewrite elements_spec. simpl. split; intro Hin.
     - destruct Hin as [Hin1 Hin2]. msetdec. now left.
     - inversion_clear Hin.
-        compute in H2. destruct H2. msetdec.
-        now rewrite InA_nil in H2.
+        compute in H. destruct H. msetdec.
+        now rewrite InA_nil in H.
   Qed.
   
   Lemma singleton_injective : forall x y n p, n > 0 -> singleton x n == singleton y p -> equiv x y /\ n = p.
@@ -548,7 +562,7 @@ Context `{FMultisetsOn elt}.
   assert (p > 0) by (destruct p; try rewrite singleton_0, singleton_empty in Heq; omega).
   assert (Hel := elements_singleton x Hn). apply eqlistA_PermutationA_subrelation in Hel.
   rewrite Heq in Hel. apply (PermutationA_length1 _) in Hel. rewrite elements_singleton in Hel; trivial.
-  inversion_clear Hel. now destruct H3.
+  inversion_clear Hel. now destruct H0.
   Qed.
   
   Lemma fold_singleton : forall A eqA, Reflexive eqA -> forall f, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f ->
@@ -575,7 +589,7 @@ Context `{FMultisetsOn elt}.
   + apply NoDupA_singleton.
   + intro. rewrite support_spec. unfold In. split; intro Hin.
     - left. msetdec.
-    - inversion_clear Hin. msetdec. inversion H2.
+    - inversion_clear Hin. msetdec. inversion H.
   Qed.
   
   Corollary size_singleton : forall x n, n > 0 -> size (singleton x n) = 1.
@@ -1390,9 +1404,9 @@ Context `{FMultisetsOn elt}.
       - unfold In in Hin. left. split. assumption. compute. omega.
       - now right.
     + simpl. inversion_clear Hm.
-      - destruct H2 as [Hy Hp]. compute in Hy, Hp. left. subst. unfold In in Hin. repeat split; trivial. omega.
+      - destruct H as [Hy Hp]. compute in Hy, Hp. left. subst. unfold In in Hin. repeat split; trivial. omega.
       - right. split; trivial. intro Habs. apply Hin. rewrite <- Habs. rewrite <- support_spec, support_elements.
-        assert (Hy := H2). rewrite elements_spec in Hy. destruct Hy as [Hy _]. simpl in Hy. now subst.
+        assert (Hy := H). rewrite elements_spec in Hy. destruct Hy as [Hy _]. simpl in Hy. now subst.
   Qed.
   
   Lemma elements_remove1 : forall x n m, m[x] <= n ->
@@ -1402,8 +1416,8 @@ Context `{FMultisetsOn elt}.
   + apply (NoDupA_strengthen _ (elements_NoDupA _)).
   + apply removeA_NoDupA; refine _. apply (NoDupA_strengthen _ (elements_NoDupA _)).
   + intros [y p]. rewrite removeA_InA_iff; refine _. rewrite elements_remove, elements_spec. simpl. intuition.
-    - destruct H4. contradiction.
-    - destruct (equiv_dec y x) as [Heq | Heq]; auto. elim H4. split; msetdec.
+    - destruct H1. contradiction.
+    - destruct (equiv_dec y x) as [Heq | Heq]; auto. elim H1. split; msetdec.
   Qed.
   
   Lemma elements_remove2 : forall x n m, n < m[x] ->
@@ -1417,17 +1431,17 @@ Context `{FMultisetsOn elt}.
       destruct Habs as [_ Habs]. now elim Habs.
     - eapply (NoDupA_strengthen subrelation_pair_elt). apply removeA_NoDupA, elements_NoDupA; refine _.
   + intros [y p]. rewrite elements_remove, elements_spec. simpl. intuition.
-    - rewrite H2. left. split. compute. reflexivity. assumption.
+    - rewrite H. left. split. compute. reflexivity. assumption.
     - right. rewrite removeA_InA_iff_strong; refine _. split; trivial.
       rewrite elements_spec. auto.
     - { destruct (equiv_dec y x) as [Heq | Heq].
-        + inversion_clear H2.
-          - left. destruct H3. repeat split; auto. hnf in *. simpl in *. omega.
-          - apply (InA_pair_elt (m[x])) in H3. rewrite Heq, removeA_InA in H3; refine _.
-            destruct H3 as [_ Habs]. elim Habs. reflexivity.
-        + right. split; trivial. inversion_clear H2.
-          - elim Heq. destruct H3. auto.
-          - apply removeA_InA_weak in H3. rewrite elements_spec in H3. assumption. }
+        + inversion_clear H.
+          - left. destruct H0. repeat split; auto. hnf in *. simpl in *. omega.
+          - apply (InA_pair_elt (m[x])) in H0. rewrite Heq, removeA_InA in H0; refine _.
+            destruct H0 as [_ Habs]. elim Habs. reflexivity.
+        + right. split; trivial. inversion_clear H.
+          - elim Heq. destruct H0. auto.
+          - apply removeA_InA_weak in H0. rewrite elements_spec in H0. assumption. }
   Qed.
   
   (** [is_elements] tests wether a given list can be the elements of a multiset **)
@@ -1460,23 +1474,23 @@ Context `{FMultisetsOn elt}.
   + compute in Heq1, Heq2. subst p. split; intros [Hdup Hpos]; inversion_clear Hdup; inversion_clear Hpos.
     - apply is_elements_cons.
         apply IHperm. now split.
-        now rewrite perm, Heq1 in H2.
+        now rewrite perm, Heq1 in H.
         assumption.
     - apply is_elements_cons.
         apply IHperm. now split.
         now rewrite perm, Heq1.
         assumption.
   + split; intros [Hdup Hpos]; inversion_clear Hdup; inversion_clear Hpos;
-    inversion_clear H3; inversion_clear H5; repeat apply is_elements_cons; trivial.
+    inversion_clear H0; inversion_clear H2; repeat apply is_elements_cons; trivial.
     - now split.
-    - intro Habs. apply H2. now right.
+    - intro Habs. apply H. now right.
     - intros Habs. inversion_clear Habs.
-        apply H2. now left.
+        apply H. now left.
         contradiction.
     - now split.
-    - intro Habs. apply H2. now right.
+    - intro Habs. apply H. now right.
     - intros Habs. inversion_clear Habs.
-        apply H2. now left.
+        apply H. now left.
         contradiction.
   + now rewrite IHperm1.
   Qed.
@@ -1492,7 +1506,7 @@ Context `{FMultisetsOn elt}.
       assert (Hel : is_elements l). { split. now inversion_clear Hdup. now inversion_clear Hpos. }
       rewrite IHl in Hel. destruct Hel as [m Hm]. exists (add x n m). symmetry. rewrite Hm. apply elements_add_out.
         now inversion_clear Hpos.
-        inversion_clear Hdup. rewrite <- support_spec, support_elements. intro Habs. apply H2.
+        inversion_clear Hdup. rewrite <- support_spec, support_elements. intro Habs. apply H.
         rewrite <- Hm in Habs. eapply InA_pair_elt. apply Habs.
     - destruct Hl as [m Hperm]. rewrite Hperm. apply elements_is_elements.
   Qed.
@@ -1506,7 +1520,7 @@ Context `{FMultisetsOn elt}.
     assert (Hel : is_elements l). { split. now inversion_clear Hdup. now inversion_clear Hpos. }
     apply IHl in Hel. destruct Hel as [m Hm]. exists (add x n m). symmetry. rewrite Hm. apply elements_add_out.
     - now inversion_clear Hpos.
-    - inversion_clear Hdup. rewrite <- support_spec, support_elements. intro Habs. apply H2.
+    - inversion_clear Hdup. rewrite <- support_spec, support_elements. intro Habs. apply H.
       rewrite <- Hm in Habs. eapply InA_pair_elt. apply Habs.
   Defined.
   
@@ -1556,16 +1570,16 @@ Context `{FMultisetsOn elt}.
     - inversion_clear Hin.
   + simpl from_elements. rewrite add_empty. split; intro Heq.
     - symmetry in Heq. apply singleton_injective in Heq; trivial. destruct Heq. now repeat constructor.
-    - inversion_clear Heq. destruct H2 as [Heq1 Heq2]. compute in Heq1, Heq2. now rewrite Heq1, Heq2.
+    - inversion_clear Heq. destruct H as [Heq1 Heq2]. compute in Heq1, Heq2. now rewrite Heq1, Heq2.
   + split; intro Hin.
     - assert (Heq : equiv y x /\ equiv z x).
       { simpl in *. split.
         + specialize (Hin y). msetdec. destruct Hl as [_ Hl]. inversion_clear Hl. cbn in *. omega.
         + apply add_is_singleton in Hin. specialize (Hin z). msetdec. destruct Hl as [_ Hl].
-          inversion_clear Hl. inversion_clear H3. simpl in *. omega. }
+          inversion_clear Hl. inversion_clear H0. simpl in *. omega. }
       destruct Heq as [Heq1 Heq2]. destruct Hl as [Hl _]. inversion_clear Hl.
-      elim H2. left. compute. now transitivity x.
-    - inversion_clear Hin. inversion_clear H3.
+      elim H. left. compute. now transitivity x.
+    - inversion_clear Hin. inversion_clear H0.
   Qed.
   
   Lemma from_elements_out : forall x n l, ~InA eq_elt (x, n) l -> (from_elements l)[x] = 0.
@@ -1582,9 +1596,9 @@ Context `{FMultisetsOn elt}.
   intros x n l Hl Hin. induction l as [| [y p] l].
   + rewrite InA_nil in Hin. elim Hin.
   + simpl. inversion_clear Hin.
-    - destruct H2 as [Hx Hn]. compute in Hx, Hn. inversion Hl. now rewrite Hx, add_same, (@from_elements_out y p).
+    - destruct H as [Hx Hn]. compute in Hx, Hn. inversion Hl. now rewrite Hx, add_same, (@from_elements_out y p).
     - inversion_clear Hl. rewrite add_other. now apply IHl.
-      intro Habs. apply H3. apply InA_pair_elt with n. now rewrite <- Habs.
+      intro Habs. apply H0. apply InA_pair_elt with n. now rewrite <- Habs.
   Qed.
   
   Lemma from_elements_elements : forall m, from_elements (elements m) == m.
@@ -1629,7 +1643,7 @@ Context `{FMultisetsOn elt}.
       - exists n. split; trivial. now right.
       - exists p. split; try (left; split); auto; omega.
     + destruct Hin as [n [Hin Hn]]. inversion_clear Hin.
-      - destruct H2. right. compute in *. split; trivial. omega.
+      - destruct H. right. compute in *. split; trivial. omega.
       - left. exists n. now split.
   Qed.
   
@@ -1653,17 +1667,17 @@ Context `{FMultisetsOn elt}.
     + assert (Hin : (from_elements l)[y] = 0).
       { setoid_replace ((from_elements l)[y] = 0) with (~In y (from_elements l)) by (unfold In; cbn; omega).
         destruct l as [| z l]; try apply In_empty. inversion_clear Hnodup.
-        rewrite from_elements_In; trivial. intros [q [Hin Hq]]. apply H2. revert Hin. apply InA_pair_elt. }
+        rewrite from_elements_In; trivial. intros [q [Hin Hq]]. apply H. revert Hin. apply InA_pair_elt. }
       rewrite Heq, add_same, Hin. simpl. split; intro Hp.
       - subst. now repeat left.
       - inversion_clear Hp.
-        -- destruct H2; auto.
-        -- inversion_clear Hnodup. elim H3. revert H2. apply InA_pair_elt.
+        -- destruct H; auto.
+        -- inversion_clear Hnodup. elim H0. revert H. apply InA_pair_elt.
     + rewrite add_other; trivial. destruct l as [| z l].
       - simpl. rewrite empty_spec. intuition; try omega.
-        inversion_clear H2. destruct H3; try contradiction. rewrite InA_nil in H3. elim H3.
+        inversion_clear H. destruct H0; try contradiction. rewrite InA_nil in H0. elim H0.
       - inversion_clear Hnodup. rewrite IHl; discriminate || trivial. intuition.
-        inversion_clear H4; trivial. destruct H5. contradiction.
+        inversion_clear H1; trivial. destruct H2. contradiction.
   Qed.
   
   Corollary from_elements_valid_spec : forall l x n, n > 0 -> is_elements l ->
@@ -1713,6 +1727,49 @@ Context `{FMultisetsOn elt}.
   
   (** **  Results about [fold]  **)
   
+  Definition fold_rect : forall {A} (f : elt -> nat -> A -> A) (P : multiset -> A -> Type) (i : A) (m : multiset),
+  (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
+  (forall x n m' acc, In x m -> n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
+  Proof.
+  intros A f P i m HP Hi Hrec. rewrite fold_spec. rewrite <- fold_left_rev_right.
+  assert (Hrec' : forall x n acc m', InA eq_pair (x, n) (rev (elements m)) -> ~In x m' ->
+                                       P m' acc -> P (add x n m') (f x n acc)).
+  { intros ? ? ? ? Hrev Hin. rewrite (InA_rev _), elements_spec in Hrev.
+    destruct Hrev. apply Hrec; trivial. unfold In. omega. }
+  assert (Helt : is_elements (rev (elements m))).
+  { rewrite <- (PermutationA_rev _). apply (elements_is_elements _). }
+  clear Hrec. pose (l := rev (elements m)). fold l in Hrec', Helt. change (rev (elements m)) with l.
+  eapply HP. rewrite <- from_elements_elements. rewrite (PermutationA_rev _). reflexivity.
+  fold l. clearbody l. induction l as [| [x n] l]; simpl.
+  + (* elements m = nil *)
+    assumption.
+  + (* elements m = (x, n) :: l *)
+    assert (Hdup := Helt). destruct Hdup as [Hdup _]. apply is_elements_cons_inv in Helt.
+    apply Hrec'.
+    - now left.
+    - intro. inversion_clear Hdup. apply H0. rewrite <- elements_from_elements; trivial. now rewrite elements_In.
+    - apply IHl.
+        intros. apply Hrec'; trivial. now right.
+        assumption.
+  Qed.
+  
+  Lemma fold_rect_weak : forall {A} (f : elt -> nat -> A -> A) (P : multiset -> A -> Type) (i : A) (m : multiset),
+  (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
+  (forall x n m' acc, n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
+  Proof. intros * ? ? Hrec. apply fold_rect; trivial. intros. now apply Hrec. Qed.
+  
+  Lemma fold_rect_nodep : forall {A} (f : elt -> nat -> A -> A) (P : A -> Type) (i : A) (m : multiset),
+    P i -> (forall x n acc, In x m -> P acc -> P (f x n acc)) -> P (fold f m i).
+  Proof.
+  intros A f P i m Hi Hrec. rewrite fold_spec.
+  assert (Hrec' : forall x n k acc, InA eq_elt (x, k) (rev (elements m)) -> P acc -> P (f x n acc)).
+  { intros ? ? ? ? Hin. apply Hrec. change x with (fst (x, k)).
+    rewrite <- elements_In, <- (InA_rev _). eassumption. }
+  rewrite <- fold_left_rev_right. induction (rev (elements m)) as [| [x n] l]; simpl.
+  + assumption.
+  + eapply Hrec'. now left. apply IHl. intros. apply Hrec' with k; trivial. now right.
+  Qed.
+  
   Section Fold_results.
     Variables (A : Type) (eqA : relation A).
     Context (HeqA : Equivalence eqA).
@@ -1720,49 +1777,6 @@ Context `{FMultisetsOn elt}.
     Hypotheses (Hf : Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f) (Hf2 : transpose2 eqA f).
     
     Global Instance fold_f_compat : Proper (equiv ==> eqA ==> eqA) (fold f) := fold_compat _ _ _ Hf Hf2.
-    
-    Definition fold_rect : forall (P : t -> A -> Type) (i : A) (m : t),
-    (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
-    (forall x n m' acc, In x m -> n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
-    Proof.
-    intros P i m HP Hi Hrec. rewrite fold_spec. rewrite <- fold_left_rev_right.
-    assert (Hrec' : forall x n acc m', InA eq_pair (x, n) (rev (elements m)) -> ~In x m' ->
-                                         P m' acc -> P (add x n m') (f x n acc)).
-    { intros ? ? ? ? Hrev Hin. rewrite (InA_rev _), elements_spec in Hrev.
-      destruct Hrev. apply Hrec; trivial. unfold In. omega. }
-    assert (Helt : is_elements (rev (elements m))).
-    { rewrite <- (PermutationA_rev _). apply (elements_is_elements _). }
-    clear Hrec. pose (l := rev (elements m)). fold l in Hrec', Helt. change (rev (elements m)) with l.
-    eapply HP. rewrite <- from_elements_elements. rewrite (PermutationA_rev _). reflexivity.
-    fold l. clearbody l. induction l as [| [x n] l]; simpl.
-    + (* elements m = nil *)
-      assumption.
-    + (* elements m = (x, n) :: l *)
-      assert (Hdup := Helt). destruct Hdup as [Hdup _]. apply is_elements_cons_inv in Helt.
-      apply Hrec'.
-      - now left.
-      - intro. inversion_clear Hdup. apply H3. rewrite <- elements_from_elements; trivial. now rewrite elements_In.
-      - apply IHl.
-          intros. apply Hrec'; trivial. now right.
-          assumption.
-    Qed.
-    
-    Lemma fold_rect_weak : forall (P : t -> A -> Type) (i : A) (m : t),
-    (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
-    (forall x n m' acc, n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
-    Proof. intros * ? ? Hrec. apply fold_rect; trivial. intros. now apply Hrec. Qed.
-    
-    Lemma fold_rect_nodep : forall (P : A -> Type) (f : elt -> nat -> A -> A) (i : A) (m : t),
-      P i -> (forall x n acc, In x m -> P acc -> P (f x n acc)) -> P (fold f m i).
-    Proof.
-    intros P ff i m Hi Hrec. rewrite fold_spec.
-    assert (Hrec' : forall x n k acc, InA eq_elt (x, k) (rev (elements m)) -> P acc -> P (ff x n acc)).
-    { intros ? ? ? ? Hin. apply Hrec. change x with (fst (x, k)).
-      rewrite <- elements_In, <- (InA_rev _). eassumption. }
-    rewrite <- fold_left_rev_right. induction (rev (elements m)) as [| [x n] l]; simpl.
-    + assumption.
-    + eapply Hrec'. now left. apply IHl. intros. apply Hrec' with k; trivial. now right.
-    Qed.
     
     Theorem fold_add : forall x n m (i : A), n > 0 -> ~In x m -> eqA (fold f (add x n m) i) (f x n (fold f m i)).
     Proof.
@@ -1933,7 +1947,7 @@ Context `{FMultisetsOn elt}.
     destruct (equiv_dec y x) as [Heq | Hneq]. now rewrite Heq.
     destruct (multiplicity y m) eqn:Hy. reflexivity.
     assert (Hiny : In y m). { unfold In. rewrite Hy. omega. }
-    rewrite <- support_spec, Hm in Hiny. inversion_clear Hiny. contradiction. inversion H2.
+    rewrite <- support_spec, Hm in Hiny. inversion_clear Hiny. contradiction. inversion H.
   + destruct Hm as [Hm Hmult]. rewrite Hm. apply support_singleton. omega.
   Qed.
   
@@ -1954,7 +1968,7 @@ Context `{FMultisetsOn elt}.
       - split; intro. now left. omega.
       - split; intro Hz.
           right. now rewrite support_spec.
-          inversion Hz; subst. contradiction. now rewrite support_spec in H3.
+          inversion Hz; subst. contradiction. now rewrite support_spec in H0.
   Qed.
   
   Lemma support_remove : forall x n m,
@@ -1971,7 +1985,7 @@ Context `{FMultisetsOn elt}.
         destruct (equiv_dec z x).
           exfalso. revert Hin. msetdec.
           split; msetdec.
-        destruct Hin. msetdec.
+        destruct Hin. msetdec. (* BUG?: saturate_Einequalities shou work! *) now elim H0.
     - do 2 rewrite support_spec. unfold In in *. msetdec.
   Qed.
   
@@ -2006,7 +2020,7 @@ Context `{FMultisetsOn elt}.
     induction Hm as [| [x n] l].
     - constructor.
     - simpl. constructor; trivial.
-      intro Habs. apply H2. clear -Habs. induction l as [| [y p] l].
+      intro Habs. apply H. clear -Habs. induction l as [| [y p] l].
         now inversion Habs.
         inversion_clear Habs. now left. right. now apply IHl.
   + intro x. rewrite support_elements. rewrite (InA_map_iff _ _). split; intro Hin.
@@ -2324,7 +2338,8 @@ Context `{FMultisetsOn elt}.
     - now rewrite nfilter_add_false.
     Qed.
     
-    Global Instance nfilter_sub_compat : Proper (equiv ==> le ==> Bool.leb) f -> Proper (Subset ==> Subset) (nfilter f).
+    Global Instance nfilter_sub_compat : Proper (equiv ==> le ==> Bool.leb) f ->
+      Proper (Subset ==> Subset) (nfilter f).
     Proof.
     intros Hf2 m1 m2. revert m1. pattern m2. apply ind; clear m2.
     + intros ? ? Hm. now setoid_rewrite Hm.
@@ -2390,7 +2405,7 @@ Context `{FMultisetsOn elt}.
       destruct (IHl ltac:(assumption)  ltac:(assumption)) as [Hnodup Hpos].
     (* BUG?: why does _ not do the job here? (rather than ltac:(assumption)) *)
       split; simpl.
-      + destruct (f x n); trivial. constructor; trivial. intro Hin. apply H2.
+      + destruct (f x n); trivial. constructor; trivial. intro Hin. apply H.
         apply InA_elt_pair in Hin. destruct Hin as [n' Hin]. simpl in *. rewrite filter_InA in Hin.
         - destruct Hin. eapply InA_pair_elt; eassumption.
         - intros [] [] []. compute in *. auto.
@@ -2470,7 +2485,7 @@ Context `{FMultisetsOn elt}.
   Proof.
   intros x m.
   assert (Hf : Proper (equiv ==> Logic.eq ==> Logic.eq) (fun y (_ : nat) => if equiv_dec y x then true else false)).
-  { intros y1 y2 Hy ? ? ?. subst. destruct (equiv_dec y1 x), (equiv_dec y2 x); auto; rewrite Hy in *; contradiction. }
+  { intros y1 y2 Hy ? ? ?. subst. destruct (equiv_dec y1 x), (equiv_dec y2 x); auto; now rewrite Hy in *. }
   pattern m. apply ind; clear m.
   + intros m1 m2 Hm. now setoid_rewrite Hm.
   + intros m y n Hm Hn Hrec. rewrite nfilter_add; trivial. destruct (equiv_dec y x) as [Heq | Heq].
@@ -2676,8 +2691,8 @@ Context `{FMultisetsOn elt}.
   destruct (g x), (f x (m[x])); simpl; trivial; now destruct (f x 0).
   Qed.
   
-  Lemma fold_filter_fold_left A eqA `{Equivalence A eqA} :
-    forall f g, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> Proper (equiv ==> Logic.eq) g ->
+  Lemma fold_filter_fold_left A eqA `{Equivalence A eqA} : forall f g,
+    Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> Proper (equiv ==> Logic.eq) g ->
     forall m i, eqA (fold f (filter g m) i)
                     (fold_left (fun acc xn => f (fst xn) (snd xn) acc)
                                (List.filter (fun xn => g (fst xn)) (elements m))
@@ -2689,8 +2704,8 @@ Context `{FMultisetsOn elt}.
   + now apply elements_filter.
   Qed.
   
-  Lemma fold_filter A eqA `{Equivalence A eqA} :
-    forall f g, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> Proper (equiv ==> Logic.eq) g ->
+  Lemma fold_filter A eqA `{Equivalence A eqA} : forall f g,
+    Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f -> Proper (equiv ==> Logic.eq) g ->
     forall m i, eqA (fold f (filter g m) i) (fold (fun x n acc => if g x then f x n acc else acc) m i).
   Proof.
   intros f g Hf Hf2 Hg m i. rewrite (fold_compat _ _ f Hf Hf2 _ _ (filter_nfilter Hg m) i i (reflexivity i)).
@@ -3330,7 +3345,8 @@ Context `{FMultisetsOn elt}.
     rewrite elements_spec in Hin. destruct Hin as [? _]. simpl in *. subst. now apply Hall.
   + intros x Hin. rewrite <- (elements_In x 0) in Hin. apply InA_elt_pair in Hin. destruct Hin as [n Hin].
     assert (Hin' : exists y, List.In (y, n) (elements m) /\ equiv y x).
-    { rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]]. compute in Heqx, Heqn. subst. now exists y. }
+    { rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]].
+      compute in Heqx, Heqn. subst. now exists y. }
     rewrite elements_spec in Hin. destruct Hin as [Heq Hpos]. simpl in *. subst.
     destruct Hin' as [y [Hin' Heq]]. rewrite <- Heq at 1. now apply (Hall (y, m[x])).
   Qed.
@@ -3620,9 +3636,9 @@ Ltac msetdec_step :=
     | H : ?x = ?y |- _ => subst x || rewrite H in *
     | Hneq : ?x =/= ?x |- _ => now elim Hneq
     | Heq : equiv ?x ?y |- _ => clear x Heq || rewrite Heq in *
-    | Heq : @equiv t _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
-    | Heq : @equiv t _ ?x ?y |- context[?x] => rewrite Heq
-    | Heq : @equiv t _ ?x ?y |- _ => clear x Heq
+    | Heq : @equiv multiset _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
+    | Heq : @equiv multiset _ ?x ?y |- context[?x] => rewrite Heq
+    | Heq : @equiv multiset _ ?x ?y |- _ => clear x Heq
     (* Simplifying [singleton], [add] and [remove] *)
     | Hneq : ?y =/= ?x |- context[multiplicity ?y (singleton ?x ?n)] => rewrite singleton_other; trivial
     | Hneq : ?y =/= ?x |- context[multiplicity ?y (add ?x ?n ?m)] => rewrite add_other; trivial
@@ -3653,4 +3669,3 @@ Ltac msetdec :=
 Tactic Notation "msetdec_n" integer(n) :=
   do n (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
           msetdec_step; easy || (try omega)).
-

@@ -13,12 +13,16 @@ Generalizable All Variables.
    in the [InductiveSpec] section at the end of the file.
    *)
 Hint Extern 1 (Equivalence _) => constructor; congruence.
+Hint Extern 1 (equiv ?x ?x) => reflexivity.
+Hint Extern 2 (equiv ?y ?x) => now symmetry.
+
 
 Notation Leibniz := (@eq _) (only parsing).
 
 (** * Facts about weak maps *)
 Section WeakFacts.
   Context `{HF : @FMapSpecs key key_Setoid key_EqDec F}.
+
   Let t elt := Map[key, elt].
   Definition eqb x y := x == y.
 
@@ -489,7 +493,7 @@ Section WeakFacts.
       rewrite <- H0; rewrite H2; exists e; rewrite H1; auto.
     Qed.
 
-    Lemma map2_1bis : forall (m: t elt)(m': t elt') x
+(*     Lemma map2_1bis : forall (m: t elt)(m': t elt') x
       (f:option elt->option elt'->option elt''),
       f None None = None ->
       find x (map2 f m m') = f (find x m) (find x m').
@@ -509,7 +513,7 @@ Section WeakFacts.
       destruct (map2_2 H3) as [(e0,H4)|(e0,H4)].
       rewrite (find_1 H4) in H0; discriminate.
       rewrite (find_1 H4) in H1; discriminate.
-    Qed.
+    Qed. *)
 
     Lemma eqb_dec : forall x y, {x == y} + {x =/= y}.
     Proof. apply equiv_dec. Qed.
@@ -655,21 +659,56 @@ Section WeakFacts.
     constructor; red; [apply Equal_refl | apply Equal_sym | apply Equal_trans].
   Qed.
 
-  Global Instance In_m elt : Proper (equiv ==> Equal ==> iff) (In (elt:=elt)).
+  Global Instance eq_key_elt_Equivalence elt : Equivalence (@eq_key_elt key _ _ _ elt) := _.
+
+  Global Instance eq_key_elt_Setoid elt : Setoid (key * elt) := {| equiv := eq_key_elt |}.
+
+  Global Instance eq_key_elt_EqDec elt (elt_dec : forall x y : elt, {x = y} + {x <> y})
+    : EqDec (eq_key_elt_Setoid elt).
+  Proof.
+  intros [x n] [y p]. destruct (equiv_dec x y).
+  + destruct (elt_dec n p).
+    - now left.
+    - right. intros [? ?]. contradiction.
+  + right. intros [? ?]. contradiction.
+  Defined.
+
+  Global Instance eq_key_Equivalence elt : Equivalence (@eq_key key _ _ _ elt).
+  Proof.
+  unfold eq_key. split; repeat intro; reflexivity + symmetry + etransitivity; eassumption.
+  Qed.
+
+  Global Instance eq_key_Setoid elt : Setoid (key * elt) := {| equiv := eq_key |}.
+
+  Global Instance eq_key_EqDec elt : EqDec (eq_key_Setoid elt).
+  Proof. intros [x n] [y p]. cbn. apply equiv_dec. Defined.
+
+  Global Instance eq_key_elt_eq_key_subrelation elt
+    : subrelation (@eq_key_elt key _ _ _ elt) (@eq_key key _ _ _ elt).
+  Proof. intros [x n] [y p] [H _]. apply H. Qed.
+
+  Global Instance fst_compat elt : Proper (equiv ==> equiv) (@fst key elt).
+  Proof. intros [? ?] [? ?] H. apply H. Qed.
+
+  Global Instance snd_compat elt
+    : Proper (@equiv _ (eq_key_elt_Setoid elt) ==> equiv) (@snd key elt).
+  Proof. intros [? ?] [? ?] H. apply H. Qed.
+
+  Global Instance In_m elt : Proper (@equiv key _ ==> Equal ==> iff) (In (elt:=elt)).
   Proof.
     unfold Equal. intros k k' Hk m m' Hm.
     rewrite (In_iff m Hk), in_find_iff, in_find_iff, Hm; intuition.
   Qed.
 
   Global Instance Morphism_m elt :
-    Proper (equiv ==> Leibniz ==> Equal ==> iff) (MapsTo (elt:=elt)).
+    Proper (@equiv key _ ==> Leibniz ==> Equal ==> iff) (MapsTo (elt:=elt)).
   Proof.
     unfold Equal; intros k k' Hk e e' He m m' Hm.
     rewrite (MapsTo_iff m e Hk), find_mapsto_iff, find_mapsto_iff, Hm;
       subst; intuition.
   Qed.
 
-  Global Instance Empty_m elt : Proper (Equal ==> iff) (@Empty _ _ _ _ elt).
+  Global Instance Empty_m elt : Proper (Equal ==> iff) (@Empty key _ _ _ elt).
   Proof.
     unfold Empty; intros m m' Hm; intuition.
     rewrite <-Hm in H0; eauto.
@@ -677,28 +716,28 @@ Section WeakFacts.
   Qed.
 
   Global Instance is_empty_m elt :
-    Proper (Equal ==> Leibniz) (@is_empty _ _ _ _ elt).
+    Proper (Equal ==> Leibniz) (@is_empty key _ _ _ elt).
   Proof.
     intros m m' Hm.
     rewrite eq_bool_alt, <-is_empty_iff, <-is_empty_iff, Hm; intuition.
   Qed.
 
   Global Instance mem_m :
-    Proper (equiv ==> Equal ==> Leibniz) (@mem _ _ _ _ elt).
+    Proper (equiv ==> Equal ==> Leibniz) (@mem key _ _ _ elt).
   Proof.
     intros elt k k' Hk m m' Hm.
     rewrite eq_bool_alt, <- mem_in_iff, <-mem_in_iff, Hk, Hm; intuition.
   Qed.
 
   Global Instance find_m elt :
-    Proper (equiv ==> Equal ==> Leibniz) (@find _ _ _ _ elt).
+    Proper (equiv ==> Equal ==> Leibniz) (@find key _ _ _ elt).
   Proof.
     intros k k' Hk m m' Hm. rewrite eq_option_alt. intro e.
     rewrite <- 2 find_mapsto_iff, Hk, Hm. split; auto.
   Qed.
 
   Global Instance add_m elt :
-    Proper (equiv ==> Leibniz ==> Equal ==> Equal) (@add _ _ _ _ elt).
+    Proper (equiv ==> Leibniz ==> Equal ==> Equal) (@add key _ _ _ elt).
   Proof.
     intros k k' Hk e e' He m m' Hm y.
     rewrite add_o, add_o; destruct (equiv_dec k y);
@@ -706,7 +745,7 @@ Section WeakFacts.
   Qed.
 
   Global Instance remove_m elt :
-    Proper (equiv ==> Equal ==> Equal) (@remove _ _ _ _ elt).
+    Proper (equiv ==> Equal ==> Equal) (@remove key _ _ _ elt).
   Proof.
     intros k k' Hk m m' Hm y.
     rewrite remove_o, remove_o;
@@ -715,7 +754,7 @@ Section WeakFacts.
   Qed.
 
   Global Instance map_m elt elt' :
-    Proper (Leibniz ==> Equal ==> Equal) (@map _ _ _ _ elt elt').
+    Proper (Leibniz ==> Equal ==> Equal) (@map key _ _ _ elt elt').
   Proof.
     intros f f' Hf m m' Hm y; subst.
     rewrite map_o, map_o, Hm; auto.
@@ -759,7 +798,7 @@ Section MoreWeakFacts.
     Lemma NoDupA_eq_key_eq_key_elt : forall l, NoDupA eq_key l -> NoDupA eq_key_elt l.
     Proof.
       induction 1; auto; []. constructor; trivial; [].
-      destruct x. intro Hin. apply InA_eq_key_elt_eq_key with _ k _ e _ in Hin; auto. reflexivity.
+      destruct x. intro Hin. apply InA_eq_key_elt_eq_key with _ k _ e _ in Hin; auto.
     Qed.
 
 (*     Lemma find_NoDup :
@@ -795,17 +834,16 @@ Section MoreWeakFacts.
       intros.
       unfold Empty.
       split; intros.
-      assert (forall a, ~ List.In a (elements m)).
-      red; intros.
-      apply (H (fst a) (snd a)).
-      rewrite elements_mapsto_iff.
-      rewrite InA_alt; exists a; auto.
-      destruct (elements m); auto.
-      elim (H0 p); simpl; auto.
-      red; intros.
-      rewrite elements_mapsto_iff in H0.
-      rewrite InA_alt in H0; destruct H0.
-      rewrite H in H0; destruct H0 as (_,H0); inversion H0.
+      + assert (forall a, ~ List.In a (elements m)).
+        { red; intros a H0. apply (H (fst a) (snd a)).
+          rewrite elements_mapsto_iff.
+          rewrite InA_alt; exists a; auto. }
+        destruct (elements m); auto.
+        elim (H0 p); simpl; auto.
+      + red; intros.
+        rewrite elements_mapsto_iff in H0.
+        rewrite InA_alt in H0; destruct H0.
+        rewrite H in H0; destruct H0 as (_,H0); inversion H0.
     Qed.
 
     Lemma elements_empty : elements (empty elt) = nil.
@@ -825,19 +863,21 @@ Section MoreWeakFacts.
       (MapsTo k e (of_list l) <-> InA eq_key_elt (k,e) l).
     Proof.
       induction l as [|(k',e') l IH]; simpl; intros k e Hnodup.
-      rewrite empty_mapsto_iff, InA_nil; intuition.
-      inversion_clear Hnodup as [| ? ? Hnotin Hnodup'].
-      specialize (IH k e Hnodup'); clear Hnodup'.
-      rewrite add_mapsto_iff, InA_cons, <- IH.
-      unfold KeyOrderedType.eq_key_elt in *.
-      split; destruct 1 as [H|H]; try (intuition; fail).
-      destruct (equiv_dec k k'); [left|right]; split; auto.
-      contradict Hnotin.
-      apply InA_eq_key_elt_eq_key with k e; intuition.
-      symmetry; assumption.
+      + rewrite empty_mapsto_iff, InA_nil; intuition.
+      + inversion_clear Hnodup as [| ? ? Hnotin Hnodup'].
+        specialize (IH k e Hnodup'); clear Hnodup'.
+        rewrite add_mapsto_iff, InA_cons, <- IH.
+        unfold eq_key_elt in *.
+        split; destruct 1 as [H|H]; try (intuition; fail).
+        - destruct (equiv_dec k k'); [left|right]; split; try (now (idtac + symmetry); auto); [|].
+          * now destruct H.
+          * elim c. now destruct H.
+        - destruct (equiv_dec k k').
+          * left. elim Hnotin. apply InA_eq_key_elt_eq_key with k e; intuition.
+          * right. now split; try symmetry.
     Qed.
 
-    Lemma of_list_1b : forall l k,
+(*     Lemma of_list_1b : forall l k,
       NoDupA eq_key l ->
       find k (of_list l) = findA (eqb k) l.
     Proof.
@@ -848,22 +888,21 @@ Section MoreWeakFacts.
       rewrite add_o, IH.
       unfold eqb; destruct (equiv_dec k k'); destruct (equiv_dec k' k); auto;
         false_order.
-    Qed.
+    Qed. *)
 
     Lemma of_list_2 : forall l, NoDupA eq_key l ->
       equivlistA eq_key_elt l (to_list (of_list l)).
     Proof.
       intros l Hnodup (k,e); unfold to_list.
-      fold (eq_key_elt (elt:=elt)).
       rewrite <- elements_mapsto_iff, of_list_1; intuition.
     Qed.
 
-    Lemma of_list_3 : forall s, Equal (of_list (to_list s)) s.
+(*     Lemma of_list_3 : forall s, Equal (of_list (to_list s)) s.
     Proof.
       intros s k.
       rewrite of_list_1b, elements_o; auto.
       apply elements_3w.
-    Qed.
+    Qed. *)
 
     (** * Fold *)
 
@@ -890,30 +929,38 @@ Section MoreWeakFacts.
       revert H; unfold l; rewrite InA_rev, elements_mapsto_iff; auto.
       assert (Hdup : NoDupA eq_key l).
       unfold l. apply NoDupA_rev; auto.
-      apply eq_key_Equiv.
-      apply elements_3w.
-      assert (Hsame : forall k, find k m = findA (eqb k) l).
-      intros k; unfold l; rewrite elements_o, findA_rev; auto.
-      apply elements_3w.
+      unfold eq_key. split.
+        now repeat intro; reflexivity.
+        now repeat intro; symmetry.
+        now repeat intro; etransitivity; eauto.
+      apply zelements_3.
+      assert (Hsame : forall k e, find k m = Some e <-> InA eq_key_elt (k, e) l).
+      { intros k e; unfold l. now rewrite <- find_mapsto_iff, InA_rev, elements_mapsto_iff. }
       clearbody l. clearbody ff. clear Hstep f. revert m Hsame. induction l.
       (* empty *)
       intros m Hsame; simpl.
       apply Hempty. intros k e.
-      rewrite find_mapsto_iff, Hsame; simpl; discriminate.
+      rewrite find_mapsto_iff, Hsame; intro Habs; inversion Habs.
       (* step *)
       intros m Hsame; destruct a as (k,e); simpl.
       apply Hstep' with (of_list l); auto.
-      inversion_clear Hdup. contradict H. destruct H as (e',He').
-      apply InA_eq_key_elt_eq_key with k e'; auto.
-      rewrite <- of_list_1; auto.
-      intro k'. rewrite Hsame, add_o, of_list_1b. simpl.
-      unfold eqb; destruct (equiv_dec k' k); destruct (equiv_dec k k');
-        auto; false_order.
-      inversion_clear Hdup; auto.
-      apply IHl.
-      intros; eapply Hstep'; eauto.
-      inversion_clear Hdup; auto.
-      intros; apply of_list_1b. inversion_clear Hdup; auto.
+      - inversion_clear Hdup. contradict H. destruct H as (e',He').
+        apply InA_eq_key_elt_eq_key with k e'; auto. now rewrite <- of_list_1.
+      - intro k'. rewrite add_o. destruct (equiv_dec k k').
+        + rewrite Hsame. now left.
+        + inversion_clear Hdup.
+          destruct (find k' (of_list l)) eqn:Hin.
+          * rewrite Hsame. right. now rewrite <- of_list_1, find_mapsto_iff.
+          * destruct (find k' m) eqn:Habs; trivial.
+            exfalso. rewrite Hsame in Habs.
+            inversion_clear Habs.
+            -- elim c. now destruct H1.
+            -- rewrite <- of_list_1, find_mapsto_iff in H1; trivial.
+               rewrite H1 in Hin. discriminate.
+      - apply IHl.
+        + intros; eapply Hstep'; eauto.
+        + inversion_clear Hdup; auto.
+        + intros. inversion Hdup. now rewrite <- of_list_1, find_mapsto_iff.
     Qed.
 
     (** Same, with [empty] and [add] instead of [Empty] and [Add]. In this
@@ -1074,29 +1121,26 @@ Section MoreWeakFacts.
         reflexivity.
         intros.
         transitivity (f k0 e0 (f k e b)).
-        apply Comp; auto.
+        apply Comp; auto. auto.
         apply Tra; auto.
         intro abs.
         rewrite abs in H; contradict Hnotin; exists e0; auto.
       Qed.
 
-      Hint Resolve NoDupA_eq_key_eq_key_elt NoDupA_rev elements_3w : map.
+      Hint Resolve NoDupA_eq_key_eq_key_elt NoDupA_rev (* elements_3w *) : map.
       Lemma fold_Equal : forall m1 m2 i, Equal m1 m2 ->
         eqA (fold f m1 i) (fold f m2 i).
       Proof.
         intros; do 2 rewrite fold_1; do 2 rewrite <- fold_left_rev_right.
-        assert (NoDupA eq_key (rev (elements m1))) by
-          (apply NoDupA_rev; [apply eq_key_Equiv | apply elements_3w]).
+        assert (NoDupA eq_key (rev (elements m1))).
+          (apply NoDupA_rev; [typeclasses eauto | apply elements_3]).
         assert (NoDupA eq_key (rev (elements m2))) by
-          (apply NoDupA_rev; [apply eq_key_Equiv | apply elements_3w]).
+          (apply NoDupA_rev; [typeclasses eauto | apply elements_3]).
         apply fold_right_equivlistA_restr with (R:=complement eq_key)(eqA:=eq_key_elt);
-          auto with map.
-        apply eq_key_elt_Equiv. auto.
+          auto with map; try typeclasses eauto.
         intros (k1,e1) (k2,e2) (Hk,He) a1 a2 Ha; simpl in *; apply Comp; auto.
-        unfold complement, eq_key, eq_key_elt; repeat red. intuition eauto.
-        intros (k1,e1) (k2,e2) (Hk,He) (k3,e3) (k4,e4) (Hk',He'); simpl in *.
-        unfold complement, KeyOrderedType.eq_key; simpl; subst; intuition.
-        apply H2; order. apply H2; order.
+        unfold complement, eq_key, eq_key_elt; repeat red.
+        intros ? ? Heq ? ? Heq'. rewrite Heq, Heq'. tauto.
         intros (k,e) (k',e'); unfold eq_key; simpl; auto with *.
         rewrite <- NoDupA_altdef; auto.
         intros (k,e).
@@ -1116,7 +1160,7 @@ Section MoreWeakFacts.
         intros (x1,x2) (y1,y2); unfold eq_key_elt; simpl; intuition.
         assert (eq_key_elt_trans : forall p p' p'',
           eq_key_elt p p' -> eq_key_elt p' p'' -> eq_key_elt p p'').
-        intros (x1,x2) (y1,y2) (z1,z2); unfold K.eq_key_elt; simpl.
+        intros (x1,x2) (y1,y2) (z1,z2); unfold eq_key_elt; simpl.
         intuition; subst; auto; transitivity y1; auto.
         intros; do 2 rewrite fold_1; do 2 rewrite <- fold_left_rev_right.
         set (f':=fun y x0 => f (fst y) (snd y) x0) in *.
@@ -1124,37 +1168,34 @@ Section MoreWeakFacts.
           with (f' (k,e) (fold_right f' i (rev (elements m1)))).
         apply fold_right_add_restr with
           (R:=complement eq_key)(eqA:=eq_key_elt)(eqB:=eqA); auto.
-        apply eq_key_elt_Equiv.
+        typeclasses eauto.
         intros (k1,e1) (k2,e2) (Hk,He) a1 a2 Ha; unfold f';
           simpl in *. apply Comp; auto.
-        unfold complement, eq_key, eq_key_elt; repeat red. intuition eauto.
-        intros (k1,e1) (k2,e2) (Hk,He) (k3,e3) (k4,e4) (Hk',He'); simpl in *.
-        unfold complement, KeyOrderedType.eq_key; simpl; subst; intuition.
-        apply H1; order. apply H1; order.
+        unfold complement, eq_key, eq_key_elt; repeat red.
+        intros ? ? Habs Heq. apply Habs. now symmetry.
+        unfold complement, eq_key, eq_key_elt; repeat red.
+        intros ? ? Heq ? ? Heq'. rewrite Heq, Heq'. tauto.
         unfold f'; intros (k1,e1) (k2,e2); unfold eq_key; simpl; auto.
-        apply NoDupA_rev; auto using eq_key_elt_Equiv;
-          apply NoDupA_eq_key_eq_key_elt; apply elements_3w.
-        apply NoDupA_rev; auto using eq_key_elt_Equiv;
-          apply NoDupA_eq_key_eq_key_elt; apply elements_3w.
+        apply NoDupA_rev; auto using eq_key_elt_Equivalence;
+          apply NoDupA_eq_key_eq_key_elt; apply elements_3.
+        apply NoDupA_rev; auto using eq_key_elt_Equivalence;
+          apply NoDupA_eq_key_eq_key_elt; apply elements_3.
         rewrite <- NoDupA_altdef; auto.
-        apply NoDupA_rev; auto using eq_key_Equiv; apply elements_3w.
+        apply NoDupA_rev; auto using eq_key_Equivalence; apply elements_3.
         rewrite InA_rev.
         contradict H.
         exists e.
         rewrite elements_mapsto_iff; auto.
         intros a.
-        rewrite InA_cons; do 2 (rewrite InA_rev by apply eq_key_elt_Equiv);
-          destruct a as (a,b); fold (eq_key_elt (elt:=elt));
+        rewrite InA_cons; do 2 (rewrite InA_rev by apply eq_key_elt_Equivalence);
+          destruct a as (a,b); fold eq_key_elt;
             do 2 rewrite <- elements_mapsto_iff.
         do 2 rewrite find_mapsto_iff; unfold eq_key_elt; simpl.
         rewrite H0.
         rewrite add_o.
-        destruct (equiv_dec k a); intuition try congruence.
-        inversion H2; auto.
-        destruct H3; f_equal; auto.
-        elim H.
-        exists b; apply MapsTo_1 with a; auto with map.
-        elim H1; destruct H3; auto.
+        destruct (equiv_dec k a); intuition try (easy || congruence).
+        elim H. exists b; apply MapsTo_1 with a; now auto with map.
+        symmetry in H1. contradiction.
       Qed.
 
       Lemma fold_add : forall m k e i, ~In k m ->
@@ -1213,7 +1254,7 @@ Section MoreWeakFacts.
       forall m n, cardinal m = S n ->
         { p : key*elt | MapsTo (fst p) (snd p) m }.
     Proof.
-      intros; rewrite MapInterface.cardinal_1 in H.
+      intros; rewrite FMapInterface.cardinal_1 in H.
       generalize (elements_mapsto_iff m).
       destruct (elements m); try discriminate.
       exists p; auto.
@@ -1547,7 +1588,6 @@ Section MoreWeakFacts.
       rewrite <- cardinal_fold.
       intros.
       apply fold_rel with (R:=fun u v => u = v + cardinal m2); simpl; auto.
-      unfold _eq; simpl.
       symmetry; apply Partition_fold with (eqA:=@Logic.eq _); try red; auto.
       compute; auto.
     Qed.
@@ -1706,7 +1746,8 @@ Section MoreWeakFacts.
     intros k k' Hk e e' He m m' Hm; rewrite Hk,He,Hm; red; auto.
     intros k k' e e' i Hneq x.
     rewrite !add_o.
-    destruct (equiv_dec k x); destruct (equiv_dec k' x); auto; false_order.
+    destruct (equiv_dec k x); destruct (equiv_dec k' x); auto.
+    elim Hneq. etransitivity; eauto.
     apply fold_init with (eqA:=Equal); auto.
     intros k k' Hk e e' He m m' Hm; rewrite Hk,He,Hm; red; auto.
   Qed.
@@ -1727,7 +1768,8 @@ Section MoreWeakFacts.
     intros k k' e e' i Hneq x.
     case_eq (mem k m2'); case_eq (mem k' m2'); intros; auto.
     rewrite !add_o.
-    destruct (equiv_dec k x); destruct (equiv_dec k' x); auto; false_order.
+    destruct (equiv_dec k x); destruct (equiv_dec k' x); auto.
+    elim Hneq. etransitivity; eauto.
   Qed.
 
   Global Instance diff_m elt :
@@ -1746,14 +1788,16 @@ Section MoreWeakFacts.
     intros k k' e e' i Hneq x.
     case_eq (mem k m2'); case_eq (mem k' m2'); intros; simpl; auto.
     rewrite !add_o.
-    destruct (equiv_dec k x); destruct (equiv_dec k' x); auto; false_order.
+    destruct (equiv_dec k x); destruct (equiv_dec k' x); auto.
+    elim Hneq. etransitivity; eauto.
   Qed.
 
 End MoreWeakFacts.
 
+(*
 (** * Properties specific to maps with ordered keys *)
 Section OrdProperties.
-  Context `{HF : @FMapSpecs key Hkey F}.
+  Context `{HF : @FMapSpecs key key_Setoid key_EqDec F}.
   Let t elt := Map[key, elt].
 
   Section Elt.
@@ -2219,14 +2263,14 @@ Section OrdProperties.
   End Elt.
 
 End OrdProperties.
-
+*)
 (** * Inductive specifications of boolean functions *)
 Inductive reflects (P : Prop) : bool -> Prop :=
 | reflects_true : forall (Htrue : P), reflects P true
 | reflects_false : forall (Hfalse : ~P), reflects P false.
 
 Section InductiveSpec.
-  Context `{HF : @FMapSpecs key Hkey F}.
+  Context `{HF : @FMapSpecs key key_Setoid key_EqDec F}.
   Variable elt : Type.
   Variables m m' m'' : Map[key, elt].
   Variables k k' k'' : key.
@@ -2265,108 +2309,3 @@ Section InductiveSpec.
   Qed.
 End InductiveSpec.
 
-Section AdditionalMorphisms.
-  Open Scope map_scope.
-  Require Import OrderedTypeEx.
-  (** Additional morphisms, when the value type is Ordered *)
-  Context `{HF : @FMapSpecs key Hkey F}.
-  Context `{elt_OT : OrderedType elt}.
-
-  Global Instance elements_m :
-    Proper (Equal ==> equiv) (@elements key Hkey _ elt).
-  Proof.
-    intros m m' Hm.
-    assert (H := @elements_mapsto_iff _ _ _ _ elt m).
-    assert (Hsort := @elements_3 _ _ _ _ elt m).
-    assert (H' := @elements_mapsto_iff _ _ _ _ elt m').
-    assert (Hsort' := @elements_3 _ _ _ _ elt m').
-    assert (Hm' : Equal_kw (elt := elt)
-      (fun k v m => exists v', v == v' /\ MapsTo k v' m) m m').
-    intros k v; generalize (Hm k); clear Hm H Hsort H' Hsort'.
-    destruct (find_dec m k); destruct (find_dec m' k); intro; try discriminate.
-    split; intros [v' [Hvv' Hv'm]];
-      [contradiction Hnotin | contradiction Hnotin0]; eexists; eauto.
-    inversion H; subst; split; intros [v' [Hvv' Hv'm]]; exists v'.
-    rewrite Hvv'; split; auto.
-    rewrite <- (MapsTo_fun Hin) in *; auto.
-    rewrite Hvv'; split; auto.
-    rewrite <- (MapsTo_fun Hin0) in *; auto.
-    clear Hm; revert Hm'; intro Hm.
-    assert (Cut :
-      forall k v,
-        (exists v', v == v' /\ InA eq_key_elt (k, v') (elements m)) <->
-        (exists v', v == v' /\ InA eq_key_elt (k, v') (elements m'))).
-    intros k v; split; intros [v' [Hvv' Hv']].
-    destruct (proj1 (Hm k v')) as [v'' [Hvv'' Hv'']].
-    exists v'; split; auto; rewrite H; assumption.
-    exists v''; split. transitivity v'; auto. rewrite <- H'; assumption.
-    destruct (proj2 (Hm k v')) as [v'' [Hvv'' Hv'']].
-    exists v'; split; auto; rewrite H'; assumption.
-    exists v''; split. transitivity v'; auto. rewrite <- H; assumption.
-    clear H H' Hm.
-    revert Hsort Hsort' Cut.
-    generalize (elements m) (elements m'); clear m m'.
-    induction l; intro l'; destruct l'; intros Hsort Hsort' Cut.
-    constructor.
-    destruct p as [a b]; destruct (proj2 (Cut a b)) as [? [_ abs]].
-    exists b; split; auto. inversion abs.
-    destruct a as [c d]; destruct (proj1 (Cut c d)) as [? [_ abs]].
-    exists d; split; auto. inversion abs.
-    inversion_clear Hsort; inversion_clear Hsort'.
-    assert (cutsort : forall l (x a : key * elt), sort lt_key l ->
-      lelistA lt_key a l -> InA eq_key_elt x l -> lt_key a x).
-    apply SortA_InfA_InA; try solve [intuition].
-    apply eq_key_elt_Equiv.
-    constructor; repeat intro; unfold lt_key, KeyOrderedType.ltk in *; order.
-    intros x y E.
-    destruct x; destruct y; simpl in E; destruct E; red; simpl in *.
-    intros x y E.
-    destruct x; destruct y; simpl in E; destruct E; red; simpl in *.
-    subst; unfold lt_key, KeyOrderedType.ltk; simpl; rewrite H3, H5; tauto.
-    destruct a as [k v]; destruct p as [a b].
-    assert (Heq : k == a /\ v == b).
-    destruct (proj1 (Cut k v)) as [k'' [Heq'' Hin'']]; [exists v; split; auto|].
-    inversion Hin''; subst; clear Hin''.
-    inversion_clear H4; simpl in *; subst. constructor; auto.
-    destruct (proj2 (Cut a b)) as [a' [Heq' Hin']]; [exists b; split; auto|].
-    inversion Hin'; subst; clear Hin'.
-    inversion_clear H5; simpl in *; subst; constructor; auto.
-    assert (R := cutsort _ _ _ H H0 H5).
-    assert (R' := cutsort _ _ _ H1 H2 H4).
-    unfold lt_key, KeyOrderedType.ltk in R, R'; simpl in R, R'.
-    contradiction (lt_not_gt R R').
-    constructor.
-    constructor; destruct Heq; auto.
-    apply IHl; try assumption.
-    intros g h; split; intros [h' [Hh' Hinh']].
-    destruct (proj1 (Cut g h')) as
-      [h'' [Hh'' Hinh'']]; [exists h'; split; auto|].
-    inversion Hinh''; auto; subst.
-    2:(exists h''; split; [transitivity h'; assumption | auto]).
-    inversion_clear H4; simpl in *; subst.
-    assert (R := cutsort _ _ _ H H0 Hinh').
-    compute in R; rewrite H3 in R; contradiction (lt_not_eq R (proj1 Heq)).
-    destruct (proj2 (Cut g h')) as
-      [h'' [Hh'' Hinh'']]; [exists h'; split; auto|].
-    inversion Hinh''; auto; subst.
-    2:(exists h''; split; [transitivity h'; assumption | auto]).
-    inversion_clear H4; simpl in *; subst.
-    assert (R := cutsort _ _ _ H1 H2 Hinh').
-    compute in R; contradiction (lt_not_eq R); rewrite H3; symmetry; tauto.
-  Qed.
-  Global Instance fold_m `{A_OT : OrderedType A} :
-    Proper ((equiv ==> equiv ==> equiv ==> equiv) ==> Equal ==> equiv ==> equiv)
-    (@fold key Hkey _ elt A).
-  Proof.
-    intros f f' Hf m m' Hm i i' Hi.
-    rewrite !fold_1; assert (Heqm := elements_m Hm); clear Hm.
-    revert i i' Hi Heqm; generalize (elements m) (elements m'); clear m m'.
-    induction l; intros l'; destruct l'; intros; simpl in *.
-    assumption.
-    inversion Heqm.
-    inversion Heqm.
-    inversion Heqm; subst; simpl in *.
-    destruct H2; subst; simpl in *.
-    apply IHl; auto. apply Hf; auto.
-  Qed.
-End AdditionalMorphisms.

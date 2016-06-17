@@ -17,6 +17,8 @@ Require Import Pactole.Util.MMultiset.Preliminary.
 
 (* based on MSets *)
 
+(** **  Operations on multisets  **)
+
 Class FMOps elt `(EqDec elt) := {
 
   multiset : Type;
@@ -111,7 +113,7 @@ Class FMOps elt `(EqDec elt) := {
 }.
 
 
-Instance MMultiset_Setoid `{FMOps} : Setoid multiset := {
+Global Instance MMultiset_Setoid `{FMOps} : Setoid multiset := {
   equiv := fun s s' => forall x, multiplicity x s = multiplicity x s' }.
 Proof. split.
 + repeat intro. reflexivity.
@@ -122,69 +124,127 @@ Defined.
 Notation compatb := (Proper (equiv ==> Logic.eq ==> @Logic.eq bool)) (only parsing).
 Global Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
 
+Definition eq_pair {elt : Type} `{FMOps elt} := RelProd (@equiv elt _) (@Logic.eq nat).
+Definition eq_elt {elt : Type} `{FMOps elt} := RelCompFun equiv (@fst elt nat).
 
-Class FMultisetsOn elt `(FMOps elt) := {
+(** ** Logical predicates *)
+Definition In {elt : Type} `{FMOps elt} := fun x s => multiplicity x s > 0.
+Definition Subset {elt : Type} `{FMOps elt} s s' := forall x, multiplicity x s <= multiplicity x s'.
+Definition For_all {elt : Type} `{FMOps elt} (P : elt -> nat -> Prop) s :=
+  forall x, In x s -> P x (multiplicity x s).
+Definition Exists {elt : Type} `{FMOps elt} (P : elt -> nat -> Prop) s :=
+  exists x, In x s /\ P x (multiplicity x s).
 
-  (** ** Logical predicates *)
-  In := fun x s => multiplicity x s > 0;
-  Subset s s' := forall x, multiplicity x s <= multiplicity x s';
-  For_all (P : elt -> nat -> Prop) s := forall x, In x s -> P x (multiplicity x s);
-  Exists (P : elt -> nat -> Prop) s := exists x, In x s /\ P x (multiplicity x s);
+(** **  Specifications of multisets  **)
 
-  (** ** Specifications of set operators *)
+(** Specification of [multiplicity]. **)
+Class MultiplicitySpec elt `(FMOps elt) := {
+  multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) multiplicity}.
+Global Existing Instance multiplicity_compat.
 
-  multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) multiplicity;
-  fold_compat A (eqA : A -> A -> Prop) `{Equivalence A eqA} :
-    forall f, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
-    Proper (equiv ==> eqA ==> eqA) (fold f);
+(** Specification of [empty]. **)
+Class EmptySpec elt `(FMOps elt) := {
+  empty_spec : forall x, empty[x] = 0}.
 
-  equal_spec : forall s s', equal s s' = true <-> s == s';
-  subset_spec : forall s s', subset s s' = true <-> Subset s s';
-  empty_spec : forall x, empty[x] = 0;
-  is_empty_spec : forall s, is_empty s = true <-> s == empty;
-  add_same : forall x n s, (add x n s)[x] = s[x] + n;
-  add_other : forall x y n s, ~y == x -> (add x n s)[y] = s[y];
-  remove_same : forall x n s, (remove x n s)[x] = s[x] - n;
-  remove_other : forall x y n s, ~y == x -> (remove x n s)[y] = s[y];
+(** Specification of [singleton]. **)
+Class SingletonSpec elt `(FMOps elt) := {
   singleton_same : forall x n, (singleton x n)[x] = n;
+  singleton_other : forall x y n, ~y == x -> (singleton x n)[y] = 0}.
 
-  singleton_other : forall x y n, ~y == x -> (singleton x n)[y] = 0;
+(** Specification of [add]. **)
+Class AddSpec elt `(FMOps elt) := {
+  add_same : forall x n s, (add x n s)[x] = s[x] + n;
+  add_other : forall x y n s, y =/= x -> (add x n s)[y] = s[y]}.
+
+(** Specification of [remove]. **)
+Class RemoveSpec elt `(FMOps elt) := {
+  remove_same : forall x n s, (remove x n s)[x] = s[x] - n;
+  remove_other : forall x y n s, ~y == x -> (remove x n s)[y] = s[y]}.
+
+(** Specification of binary operations: [union], [inter], [diff] ans [lub]. **)
+Class BinarySpec elt `(FMOps elt) := {
   union_spec : forall x s s', (union s s')[x] = s[x] + s'[x];
   inter_spec : forall x s s', (inter s s')[x] = min s[x] s'[x];
   diff_spec : forall x s s', (diff s s')[x] = s[x] - s'[x];
-  lub_spec : forall x s s', (lub s s')[x] = max s[x] s'[x];
+  lub_spec : forall x s s', (lub s s')[x] = max s[x] s'[x]}.
+
+(** Specification of [fold]. **)
+Class FoldSpec elt `(FMOps elt) := {
   fold_spec : forall (A : Type) s (i : A) (f : elt -> nat -> A -> A),
     fold f s i = fold_left (fun acc xn => f (fst xn) (snd xn) acc) (elements s) i;
-  cardinal_spec : forall s, cardinal s = fold (fun x n acc => n + acc) s 0;
-  size_spec : forall s, size s = length (support s);
-  nfilter_spec : forall f x s, compatb f -> (nfilter f s)[x] = if f x s[x] then s[x] else 0;
-  filter_spec : forall f x s, Proper (equiv ==> Logic.eq) f -> (filter f s)[x] = if f x then s[x] else 0;
-  for_all_spec : forall f s, compatb f -> (for_all f s = true <-> For_all (fun x n => f x n = true) s);
-  exists_spec : forall f s, compatb f -> (exists_ f s = true <-> Exists (fun x n => f x n = true) s);
-  npartition_spec_fst : forall f s, compatb f -> fst (npartition f s) == nfilter f s;
-  npartition_spec_snd : forall f s, compatb f ->
-    snd (npartition f s) == nfilter (fun x n => negb (f x n)) s;
-  partition_spec_fst : forall f s, Proper (equiv ==> Logic.eq) f -> fst (partition f s) == filter f s;
-  partition_spec_snd : forall f s, Proper (equiv ==> Logic.eq) f ->
-    snd (partition f s) == filter (fun x => negb (f x)) s;
+  fold_compat A (eqA : A -> A -> Prop) `{Equivalence A eqA} :
+    forall f, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    Proper (equiv ==> eqA ==> eqA) (fold f)}.
+Global Existing Instance fold_compat.
 
-  eq_pair := RelProd (@equiv elt _) (@Logic.eq nat);
-  eq_elt := RelCompFun equiv (@fst elt nat);
+(** Specification of [equal], [subset] and [is_empty]. **)
+Class TestSpec elt `(FMOps elt) := {
+  equal_spec : forall s s', equal s s' = true <-> s == s';
+  subset_spec : forall s s', subset s s' = true <-> Subset s s';
+  is_empty_spec : forall s, is_empty s = true <-> s == empty}.
 
+(** Specification of [elements]. **)
+Class ElementsSpec elt `(FMOps elt) := {
   elements_spec : forall x n s, InA eq_pair (x, n) (elements s) <-> s[x] = n /\ n > 0;
-  elements_NoDupA : forall s, NoDupA eq_elt (elements s);
-  support_spec : forall x s, InA equiv x (support s) <-> In x s;
-  support_NoDupA : forall s, NoDupA equiv (support s);
+  elements_NoDupA : forall s, NoDupA eq_elt (elements s)}.
 
+(** Specification of [support]. **)
+Class SupportSpec elt `(FMOps elt) := {
+  support_spec : forall x s, InA equiv x (support s) <-> In x s;
+  support_NoDupA : forall s, NoDupA equiv (support s)}.
+
+(** Specification of [choose]. **)
+Class ChooseSpec elt `(FMOps elt) := {
   choose_Some : forall x s, choose s = Some x -> In x s;
   choose_None : forall s, choose s = None <-> s == empty}.
 
-Instance eq_pair_equiv `{FMultisetsOn} : Equivalence eq_pair.
-Proof. split.
-intros [x n]. now split; hnf.
-intros [x n] [y m] [? ?]; split; hnf in *; now auto.
-intros ? ? ? [? ?] [? ?]. split. hnf in *. now transitivity (fst y). now transitivity (snd y).
-Qed.
+(** Specification of filtering functions. **)
+Class FilterSpec elt `(FMOps elt) := {
+  nfilter_spec : forall f x s, compatb f -> (nfilter f s)[x] = if f x s[x] then s[x] else 0;
+  filter_spec : forall f x s, Proper (equiv ==> Logic.eq) f -> (filter f s)[x] = if f x then s[x] else 0}.
+
+(** Specification of [partition]. **)
+Class PartitionSpec elt `(FMOps elt) := {
+  partition_spec_fst : forall f s, Proper (equiv ==> Logic.eq) f -> fst (partition f s) == filter f s;
+  partition_spec_snd : forall f s, Proper (equiv ==> Logic.eq) f ->
+    snd (partition f s) == filter (fun x => negb (f x)) s}.
+
+(** Specification of [npartition]. **)
+Class NpartitionSpec elt `(FMOps elt) := {
+  npartition_spec_fst : forall f s, compatb f -> fst (npartition f s) == nfilter f s;
+  npartition_spec_snd : forall f s, compatb f ->
+    snd (npartition f s) == nfilter (fun x n => negb (f x n)) s}.
+
+(** Specification of quantifiers. **)
+Class QuantifierSpec elt `(FMOps elt) := {
+  for_all_spec : forall f s, compatb f -> (for_all f s = true <-> For_all (fun x n => f x n = true) s);
+  exists_spec : forall f s, compatb f -> (exists_ f s = true <-> Exists (fun x n => f x n = true) s)}.
+
+(** Specification of size measures. **)
+Class SizeSpec elt `(FMOps elt) := {
+  cardinal_spec : forall s, cardinal s = fold (fun x n acc => n + acc) s 0;
+  size_spec : forall s, size s = length (support s)}.
+
+(** ***  Full specification  **)
+
+Class FMultisetsOn elt `(Ops : FMOps elt) := {
+  FullMultiplicitySpec :> MultiplicitySpec elt Ops;
+  FullEmptySpec :> EmptySpec elt Ops;
+  FullSingletonSpec :> SingletonSpec elt Ops;
+  FullAddSpec :> AddSpec elt Ops;
+  FullRemoveSpec :> RemoveSpec elt Ops;
+  FullBinarySpec :> BinarySpec elt Ops;
+  FullFoldSpec :> FoldSpec elt Ops;
+  FullTestSpec: > TestSpec elt Ops;
+  FullElementsSpec :> ElementsSpec elt Ops;
+  FullSupportSpec :> SupportSpec elt Ops;
+  FullChooseSpec :> ChooseSpec elt Ops;
+  FullPartitionSpec :> PartitionSpec elt Ops;
+  FullNpartitionSpec :> NpartitionSpec elt Ops;
+  FullQuantifierSpec :> QuantifierSpec elt Ops;
+  FullSizeSpec :> SizeSpec elt Ops;
+  FullFilterSpec :> FilterSpec elt Ops}.
+
 
 (* Global Notation "s  [=]  t" := (eq s t) (at level 70, no associativity, only parsing). *)
 (* Global Notation "m1  ≡  m2" := (eq m1 m2) (at level 70). *)
