@@ -111,11 +111,15 @@ Defined.
 End SpectD.
 
 
-
-Module SpectD : Spectrum (DiscreteGraphFormalism.Location)(N) := 
-    
-
 Module Disc := DiscreteGraphFormalism.Make(N)(Names)(Spect)(Common).
 
 Print Module AtomicGraphFormalism.Location.
+
+
+Theorem graph_equiv : forall (c c': Atom.Config.t) (rbg:robogram) (da:Atom.demonic_action),
+c' = Atom.round rbg da c -> exists da', config_A2D c' = Disc.round rbg da' (config_A2D c).
+Proof.
+
+Save.
+
 
