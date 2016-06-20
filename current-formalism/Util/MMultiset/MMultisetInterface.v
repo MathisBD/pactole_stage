@@ -227,7 +227,7 @@ Class SizeSpec elt `(FMOps elt) := {
 
 (** ***  Full specification  **)
 
-Class FMultisetsOn elt `(Ops : FMOps elt) := {
+Global Class FMultisetsOn elt `(Ops : FMOps elt) := {
   FullMultiplicitySpec :> MultiplicitySpec elt Ops;
   FullEmptySpec :> EmptySpec elt Ops;
   FullSingletonSpec :> SingletonSpec elt Ops;

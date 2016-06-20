@@ -15,8 +15,8 @@ Require Import SetoidList.
 Require Import Pactole.Util.FMaps.FMapList.
 Require Import Pactole.Util.MMultiset.MMultisetWMap.
 Require Export Pactole.Util.MMultiset.MMultisetInterface.
-Require Import Pactole.Util.MMultiset.MMultisetFacts.
-Require Import Pactole.Util.MMultiset.MMultisetExtraOps.
+Require Export Pactole.Util.MMultiset.MMultisetFacts.
+Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
@@ -171,7 +171,7 @@ Qed.
 
 Lemma make_multiset_support : forall x l, InA equiv x (support (make_multiset l)) <-> InA equiv x l.
 Proof.
-intros x l. Locate support_spec. rewrite support_spec. unfold In.
+intros x l. rewrite support_spec. unfold In.
 rewrite make_multiset_spec. apply countA_occ_pos. autoclass.
 Qed.
 

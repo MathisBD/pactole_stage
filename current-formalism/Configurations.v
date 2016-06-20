@@ -58,7 +58,7 @@ Instance configuration_compat loc `(Configuration loc) :
   forall config : configuration, Proper (Logic.eq ==> equiv) config.
 Proof. repeat intro. now subst. Qed.
 
-Global Instance Make_Configuration loc `(ES : EqDec loc) `(Names) : Configuration loc ES _ := {|
+Instance Make_Configuration loc `(ES : EqDec loc) `(Names) : Configuration loc ES _ := {|
   Gpos := fun config => List.map (fun g : G => config (Good g)) Gnames;
   Bpos := fun config => List.map (fun b => config (Byz b)) Bnames |}.
 Proof.

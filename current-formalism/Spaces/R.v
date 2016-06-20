@@ -23,11 +23,6 @@ Require Import Pactole.Configurations.
 Require Import Pactole.Spaces.RealMetricSpaces.
 Require Import Pactole.Spaces.Similarity.
 Require Pactole.CommonFormalism.
-(* Require Pactole.RigidFormalism. *)
-(* Require Import Pactole.Gathering.InR.SortingR. *)
-(* Require Import Pactole.Gathering.Definitions. *)
-(* Require Import Pactole.MultisetSpectrum. *)
-(* Require Import Morphisms. *)
 Require Import Psatz.
 Import Permutation.
 
@@ -39,13 +34,13 @@ Open Scope R_scope.
 
 (** R as a vector space over itself. *)
 
-Global Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
-Global Instance R_EqDec : @EqDec R _ := Rdec.
+Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
+Instance R_EqDec : @EqDec R _ := Rdec.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
 (* We use the square of the distance in order to avoid sqrt, hence we can use any field of charactistic 0. *)
-Global Instance R_RMS : RealMetricSpace R := {|
+Instance R_RMS : RealMetricSpace R := {|
   origin := 0;
   unit := 1;
   dist := fun x y => Rabs (x - y);

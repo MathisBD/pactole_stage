@@ -38,7 +38,7 @@ Record demonic_action := {
   step_zoom :  forall id sim c, step id = Some sim -> (sim c).(zoom) <> 0%R;
   step_center : forall id sim c, step id = Some sim -> (sim c).(center) == c}.
 
-Instance da_Setoid : Setoid demonic_action := {|
+Global Instance da_Setoid : Setoid demonic_action := {|
   equiv := fun (da1 da2 : demonic_action) =>
            (forall id, opt_eq (equiv ==> equiv)%signature (da1.(step) id) (da2.(step) id)) /\
            (forall b : B, da1.(relocate_byz) b == da2.(relocate_byz) b) |}.
@@ -54,10 +54,10 @@ Proof. split.
   - elim Hda1.
 Defined.
 
-Instance step_da_compat : Proper (equiv ==> Logic.eq ==> opt_eq (equiv ==> equiv)) step.
+Global Instance step_da_compat : Proper (equiv ==> Logic.eq ==> opt_eq (equiv ==> equiv)) step.
 Proof. intros da1 da2 [Hda1 Hda2] p1 p2 Hp. subst. apply Hda1. Qed.
 
-Instance relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz.
+Global Instance relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz.
 Proof. intros [] [] Hda b1 b2 Hb. subst. destruct Hda as [Hda1 Hda2]. simpl in *. apply (Hda2 b2). Qed.
 
 Lemma da_eq_step_None : forall da1 da2, da1 == da2 -> forall id, step da1 id = None <-> step da2 id = None.
@@ -76,7 +76,7 @@ Definition active da := List.filter
   (fun id => match step da id with Some _ => true | None => false end)
   names.
 
-Instance idle_compat : Proper (equiv ==> Logic.eq) idle.
+Global Instance idle_compat : Proper (equiv ==> Logic.eq) idle.
 Proof.
 intros da1 da2 Hda. unfold idle. induction names as [| id l]; simpl.
 + reflexivity.
@@ -89,7 +89,7 @@ intros da1 da2 Hda. unfold idle. induction names as [| id l]; simpl.
   - f_equal. apply IHl.
 Qed.
 
-Instance active_compat : Proper (equiv ==> Logic.eq) active.
+Global Instance active_compat : Proper (equiv ==> Logic.eq) active.
 Proof.
 intros da1 da2 Hda. unfold active. induction names as [| id l]; simpl.
 + reflexivity.
@@ -120,10 +120,10 @@ Qed.
 (** A [demon] is just a stream of [demonic_action]s. *)
 Definition demon := Streams.t demonic_action.
 
-Instance demon_Setoid : Setoid demon := {| equiv := Streams.eq equiv |}.
+Global Instance demon_Setoid : Setoid demon := {| equiv := Streams.eq equiv |}.
 
-Instance demon_hd_compat : Proper (equiv ==> equiv) (@Streams.hd _) := Streams.hd_compat _.
-Instance demon_tl_compat : Proper (equiv ==> equiv) (@Streams.tl _) := Streams.tl_compat _.
+Global Instance demon_hd_compat : Proper (equiv ==> equiv) (@Streams.hd _) := Streams.hd_compat _.
+Global Instance demon_tl_compat : Proper (equiv ==> equiv) (@Streams.tl _) := Streams.tl_compat _.
 
 (** ** Fairness *)
 
@@ -156,10 +156,10 @@ intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
   - apply IHHfair. now f_equiv.
 Qed.
 
-Instance LocallyFairForOne_compat : Proper (eq ==> equiv ==> iff) LocallyFairForOne.
+Global Instance LocallyFairForOne_compat : Proper (eq ==> equiv ==> iff) LocallyFairForOne.
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
-Instance Fair_compat : Proper (equiv ==> iff) Fair.
+Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
 Proof. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall g h k d1 d2, d1 == d2 -> Between g h d1 k -> Between g h d2 k.
@@ -176,10 +176,10 @@ intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
   - apply IHbet. now f_equiv.
 Qed.
 
-Instance Between_compat : Proper (eq ==> eq ==> equiv ==> eq ==> iff) Between.
+Global Instance Between_compat : Proper (eq ==> eq ==> equiv ==> eq ==> iff) Between.
 Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
-Instance kFair_compat : Proper (eq ==> equiv ==> iff) kFair.
+Global Instance kFair_compat : Proper (eq ==> equiv ==> iff) kFair.
 Proof. intros k ? ?. subst. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
@@ -270,7 +270,7 @@ Definition round r (da : demonic_action) (config : configuration) : configuratio
         end
     end.
 
-Instance round_compat : Proper (@equiv robogram _ ==> equiv ==> equiv ==> equiv) round.
+Global Instance round_compat : Proper (@equiv robogram _ ==> equiv ==> equiv ==> equiv) round.
 Proof.
 intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
 unfold round.
@@ -290,7 +290,7 @@ Definition moving (r : robogram) da config := List.filter
   (fun id => if equiv_dec (round r da config id) (config id) then false else true)
   names.
 
-Instance moving_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) moving.
+Global Instance moving_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) moving.
 Proof.
 intros r1 r2 Hr da1 da2 Hda c1 c2 Hc. unfold moving.
 induction names as [| id l]; simpl.
@@ -357,7 +357,7 @@ Lemma execute_tail : forall (r : robogram) (d : demon) (config : configuration),
   Streams.tl (execute r d config) = execute r (Streams.tl d) (round r (Streams.hd d) config).
 Proof. intros. destruct d. reflexivity. Qed.
 
-Instance execute_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) execute.
+Global Instance execute_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) execute.
 Proof.
 intros r1 r2 Hr.
 cofix proof. constructor.

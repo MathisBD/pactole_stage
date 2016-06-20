@@ -17,6 +17,6 @@ Class Spectrum loc {S : Setoid loc} `{@EqDec loc S} `{Names} := {
   spect_is_ok : spectrum -> @configuration loc _ _ _ _ _ -> Prop;
   spect_from_config_spec : forall config, spect_is_ok (spect_from_config config) config}.
 
-Global Existing Instance spectrum_Setoid.
-Global Existing Instance spectrum_EqDec.
-Global Existing Instance spect_from_config_compat.
+Existing Instance spectrum_Setoid.
+Existing Instance spectrum_EqDec.
+Existing Instance spect_from_config_compat.

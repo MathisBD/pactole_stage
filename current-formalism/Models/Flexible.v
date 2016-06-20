@@ -42,7 +42,7 @@ Record demonic_action := {
   step_flexibility : forall id sim, step id = Some sim -> (0 <= snd sim <= 1)%R}.
 Set Implicit Arguments.
 
-Instance da_Setoid : Setoid demonic_action := {| equiv := fun (da1 da2 : demonic_action) =>
+Global Instance da_Setoid : Setoid demonic_action := {| equiv := fun (da1 da2 : demonic_action) =>
   (forall id, opt_eq ((equiv ==> equiv) * eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : B, equiv (da1.(relocate_byz) b) (da2.(relocate_byz) b)) |}.
 Proof. split.
@@ -83,7 +83,7 @@ Definition active da := List.filter
   (fun id => match step da id with Some _ => true | None => false end)
   names.
 
-Instance idle_compat : Proper (equiv ==> Logic.eq) idle.
+Global Instance idle_compat : Proper (equiv ==> Logic.eq) idle.
 Proof.
 intros da1 da2 Hda. unfold idle. induction names as [| id l]; simpl.
 + reflexivity.
@@ -96,7 +96,7 @@ intros da1 da2 Hda. unfold idle. induction names as [| id l]; simpl.
   - f_equal. apply IHl.
 Qed.
 
-Instance active_compat : Proper (equiv ==> Logic.eq) active.
+Global Instance active_compat : Proper (equiv ==> Logic.eq) active.
 Proof.
 intros da1 da2 Hda. unfold active. induction names as [| id l]; simpl.
 + reflexivity.
@@ -127,11 +127,11 @@ Qed.
 (** A [demon] is just a stream of [demonic_action]s. *)
 Definition demon := Streams.t demonic_action.
 
-Instance demon_Setoid : Setoid demon := {| equiv := fun d1 d2 : demon => Streams.eq equiv d1 d2 |}.
+Global Instance demon_Setoid : Setoid demon := {| equiv := fun d1 d2 : demon => Streams.eq equiv d1 d2 |}.
 Proof. apply Streams.eq_equiv. autoclass. Defined.
 
-Instance demon_hd_compat : Proper (equiv ==> equiv) (@Streams.hd _) := Streams.hd_compat _.
-Instance demon_tl_compat : Proper (equiv ==> equiv) (@Streams.tl _) := Streams.tl_compat _.
+Global Instance demon_hd_compat : Proper (equiv ==> equiv) (@Streams.hd _) := Streams.hd_compat _.
+Global Instance demon_tl_compat : Proper (equiv ==> equiv) (@Streams.tl _) := Streams.tl_compat _.
 
 (** ** Fairness *)
 
@@ -163,10 +163,10 @@ intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
   - apply IHHfair. now f_equiv.
 Qed.
 
-Instance LocallyFairForOne_compat : Proper (Logic.eq ==> equiv ==> iff) LocallyFairForOne.
+Global Instance LocallyFairForOne_compat : Proper (Logic.eq ==> equiv ==> iff) LocallyFairForOne.
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
-Instance Fair_compat : Proper (equiv ==> iff) Fair.
+Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
 Proof. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall g h k d1 d2, d1 == d2 -> Between g h d1 k -> Between g h d2 k.
@@ -183,10 +183,10 @@ intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
   - apply IHbet. now f_equiv.
 Qed.
 
-Instance Between_compat : Proper (Logic.eq ==> Logic.eq ==> equiv ==> Logic.eq ==> iff) Between.
+Global Instance Between_compat : Proper (Logic.eq ==> Logic.eq ==> equiv ==> Logic.eq ==> iff) Between.
 Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
-Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
+Global Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
 Proof. intros k ? ?. subst. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
@@ -279,7 +279,7 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : configu
         end
     end.
 
-Instance round_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) round.
+Global Instance round_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
 intros ? δ ? r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id. subst. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
@@ -320,7 +320,7 @@ Definition moving δ r da config := List.filter
   (fun id => if equiv_dec (round δ r da config id) (config id) then false else true)
   names.
 
-Instance moving_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> Logic.eq) moving.
+Global Instance moving_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> Logic.eq) moving.
 Proof.
 intros ? δ ? r1 r2 Hr da1 da2 Hda c1 c2 Hc. subst. unfold moving.
 induction names as [| id l]; simpl.
@@ -387,7 +387,7 @@ Lemma execute_tail : forall δ (r : robogram) (d : demon) (config : configuratio
   Streams.tl (execute δ r d config) = execute δ r (Streams.tl d) (round δ r (Streams.hd d) config).
 Proof. intros. destruct d. reflexivity. Qed.
 
-Instance execute_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) execute.
+Global Instance execute_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) execute.
 Proof.
 intros ? δ ? r1 r2 Hr. subst.
 cofix proof. constructor.

@@ -933,7 +933,13 @@ Proof. split.
   - repeat intro. now apply Hf.
 Qed.
 
-Global Instance FMultisetsFacts : FMultisetsOn elt FMOps_WMap.
+Instance MakeFMultisetsFacts : FMultisetsOn elt _.
 Proof. split; autoclass. Qed.
 
 End WMapImplementation.
+
+Require Import Pactole.Util.FMaps.FMapList.
+
+Instance FMultisetsFacts elt `{EqDec elt} : FMultisetsOn elt (FMOps_WMap _ _ _ _) :=
+  MakeFMultisetsFacts _ _ _ _ _.
+
