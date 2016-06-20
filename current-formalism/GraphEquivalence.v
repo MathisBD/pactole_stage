@@ -26,7 +26,7 @@ Module Atom := AtomicGraphFormalism.Make(N)(Names)(SpectA)(CommonA).
 Import CommonA.
 
 Module SpectD : Spectrum(DiscreteGraphFormalism.Location)(N).
-  Module Names := Robots.Make(N).
+  Module Names := Names.
   Module Config := Configurations.Make(DiscreteGraphFormalism.Location)(N)(Names).
 
 Definition config_A2D (confA : SpectA.Config.t): Config.t :=
@@ -110,8 +110,10 @@ Defined.
 
 End SpectD.
 
-
-Module Disc := DiscreteGraphFormalism.Make(N)(Names)(Spect)(Common).
+(* Module CommonD : (CommonFormalism.Sig(AtomicGraphFormalism.Location)(N)(SpectA)).
+End CommonD. *)
+Module Disc := DiscreteGraphFormalism.Make(N)(Names)(SpectD)(CommonA).
+               (CommonFormalism.Sig(AtomicGraphFormalism.Location)(N)(SpectA)).
 
 Print Module AtomicGraphFormalism.Location.
 

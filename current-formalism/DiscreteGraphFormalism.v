@@ -14,7 +14,12 @@ Inductive location :=
   | Loc (l : V)
   | Mvt (e : E) (p : R) (Hp : (0 < p < 1)%R).
 
-Definition loc_eq l l' :=
+Definition loc_eq l l' :=Module Location : DecidableType with Definition t := V with Definition eq := Veq.
+  Definition t := V.
+  Definition eq := Veq.
+  Definition eq_equiv : Equivalence eq := Veq_equiv.
+  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := Veq_dec.
+End Location.
   match l, l' with
     | Loc l, Loc l' => Veq l l'
     | Mvt e p _, Mvt e' p' _ => Eeq e e' /\ p = p'
@@ -67,11 +72,12 @@ End IdentitySpectrum.
  *)
 
 (* Record graph_iso :=  *)
-
+                                         (* view *)
 Module Make (N : Size)(Names : Robots(N))(Spect : Spectrum(Location)(N))
             (Common : CommonFormalism.Sig(Location)(N)(Spect)).
 (* Module Spect := IdentitySpectrum(Location)(N). *)
 Import Common.
+(* Module Configuration.Make (N)(Names)(Location).*)
 
 (** ** Demonic schedulers *)
 
