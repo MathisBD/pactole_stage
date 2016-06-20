@@ -146,7 +146,7 @@ Qed. *)
 Admitted.
 
 
-Instance FMOps_WMap : FMOps elt elt_EqDec := {|
+Global Instance FMOps_WMap : FMOps elt elt_EqDec := {|
   multiset := Map[elt, positive];
   MMultisetInterface.empty := FMapInterface.empty positive;
   MMultisetInterface.is_empty := FMapInterface.is_empty;
@@ -933,7 +933,7 @@ Proof. split.
   - repeat intro. now apply Hf.
 Qed.
 
-Instance FMultisetsFacts : FMultisetsOn elt FMOps_WMap.
+Global Instance FMultisetsFacts : FMultisetsOn elt FMOps_WMap.
 Proof. split; autoclass. Qed.
 
 End WMapImplementation.
