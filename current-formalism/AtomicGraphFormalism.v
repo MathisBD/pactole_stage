@@ -39,10 +39,51 @@ End IdentitySpectrum.
 
 (* Record graph_iso :=  *)
 
-Module Make (N : Size)(Names : Robots(N))(Spect : Spectrum(Location)(N))
-            (Common : CommonFormalism.Sig(Location)(N)(Spect)).
-(* Module Spect := IdentitySpectrum(Location)(N). *)
-Import Common.
+Module Type View := DecidableType with Definition t := V with Definition eq := Veq.
+
+Module Make (N : Size)(Names : Robots(N))(View:View).
+
+  Module Config := Configurations.Make (Location)(N)(Names).
+
+  Module SpectA : Spectrum(Location)(N).
+    Module Names := Names.
+    Module Config :=  Config.
+    Module ConfigV := Configurations.Make (View)(N)(Names).
+
+    Definition t := ConfigV.t.
+    Definition eq := ConfigV.eq.
+    Definition eq_equiv := ConfigV.eq_equiv.
+    Definition eq_dec := ConfigV.eq_dec.
+
+    Definition project (config : Config.t) : t :=
+      fun id =>
+        {| ConfigV.loc := (Config.loc (config id));
+           ConfigV.robot_info := 
+           {| ConfigV.source := (Config.source (Config.robot_info (config id)));
+              ConfigV.target := (Config.target (Config.robot_info (config id))) |} |}.
+
+    Instance project_compat : Proper (Config.eq ==> eq) project.
+    Proof.
+    intros x y Hxy id. unfold project. repeat try (split; simpl); apply Hxy.
+    Qed.
+
+    Definition from_config := fun x => project x.
+    Definition from_config_compat : Proper (Config.eq ==> eq) from_config.
+    Proof.
+    intros x y Hxy. unfold from_config. now apply project_compat.
+    Defined.
+    Definition is_ok : t -> Config.t -> Prop := fun t c => if (eq_dec t (project c)) then True else False.
+    Definition from_config_spec : forall config, is_ok (from_config config) config.
+    Proof.
+    intro.
+    unfold is_ok, from_config. destruct (eq_dec (project config) (project config)); auto.
+    destruct n. reflexivity.
+    Defined.
+
+  End SpectA.
+
+  Module Common := CommonFormalism.Make(Location)(N)(SpectA).
+  Import Common.
 
 (** ** Demonic schedulers *)
 
@@ -173,7 +214,7 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
                       Config.robot_info := Config.robot_info (config id) |}
         | Good g => 
           let local_conf := config in
-          let target := r (Spect.from_config local_conf) in
+          let target := r (SpectA.from_config local_conf) in
            {| Config.loc := pos ; 
               Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
         end
