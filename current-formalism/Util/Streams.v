@@ -13,6 +13,7 @@
 
 Require Import Relations.
 Require Import Morphisms.
+Require Import SetoidDec.
 Require Import RelationClasses.
 Require Import Pactole.Util.Preliminary.
 
@@ -89,7 +90,8 @@ Definition instant {A} (P : A -> Prop) := fun s => P (hd s).
 Instance instant_compat {A} (eqA : relation A) : Proper ((eqA ==> iff) ==> eq eqA ==> iff) instant.
 Proof. intros P Q HPQ s s' Hs. unfold instant. apply HPQ, Hs. Qed.
 
-Lemma instant_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, instant P s -> instant Q s.
+Lemma instant_impl_compat {A} : forall P Q : t A -> Prop,
+  (forall s, P s -> Q s) -> forall s, instant P s -> instant Q s.
 Proof. unfold instant. auto. Qed.
 
 CoInductive forever {A} (P : t A -> Prop) (s : t A) : Prop :=
@@ -107,7 +109,8 @@ intros P Q HPQ s s' Hs. split.
   - inv Hs. inv H. eapply Hrec; eassumption.
 Qed.
 
-Lemma forever_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, forever P s -> forever Q s.
+Lemma forever_impl_compat {A} : forall P Q : t A -> Prop,
+  (forall s, P s -> Q s) -> forall s, forever P s -> forever Q s.
 Proof.
 cofix Hrec. intros P Q HPQ s HP. constructor.
 - inv HP. auto.
@@ -132,9 +135,41 @@ intros P Q HPQ s s' Hs. split; intro H.
   - apply Later. apply IHeventually. now inv Hs.
 Qed.
 
-Lemma eventually_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, eventually P s -> eventually Q s.
+Lemma eventually_impl_compat {A} : forall P Q : t A -> Prop,
+  (forall s, P s -> Q s) -> forall s, eventually P s -> eventually Q s.
 Proof.
 intros P Q HPQ s HP. induction HP as [e HP | HP].
 - apply Now. auto.
 - now apply Later.
 Qed.
+
+
+(** We extend the equivalence properties to setoid. *)
+Section Equiv_compat.
+  Variable A : Type.
+  Context `{Setoid A}.
+  
+  Global Instance streams_Setoid : Setoid (t A).
+  Proof. exists (eq equiv). apply eq_equiv. autoclass. Defined.
+  
+  Global Instance hd_Setoid_compat : Proper (equiv ==> equiv) hd.
+  Proof. now apply hd_compat. Qed.
+  
+  Global Instance tl_Setoid_compat : Proper (equiv ==> equiv) tl.
+  Proof. now apply tl_compat. Qed.
+  
+  Global Instance constant_Setoid_compat : Proper (@equiv A _ ==> equiv) constant.
+  Proof. now apply constant_compat. Qed.
+  
+  Global Instance aternate_Setoid_compat : Proper (@equiv A _ ==> equiv ==> equiv) alternate.
+  Proof. now apply aternate_compat. Qed.
+  
+  Instance instant_Setoid_compat : Proper ((@equiv A _ ==> iff) ==> equiv ==> iff) instant.
+  Proof. intros P Q HPQ s s' Hs. unfold instant. apply HPQ, Hs. Qed.
+  
+  Instance forever_Setoid_compat : Proper ((equiv ==> iff) ==> equiv ==> iff) forever.
+  Proof. intros P Q HPQ s s' Hs. simpl in Hs. f_equiv; try eassumption. apply HPQ. Qed.
+  
+  Instance eventually_Setoid_compat {A} (eqA : relation A) : Proper ((equiv ==> iff) ==> equiv ==> iff) eventually.
+  Proof. intros P Q HPQ s s' Hs. simpl in Hs. f_equiv; try eassumption. apply HPQ. Qed.
+End Equiv_compat.

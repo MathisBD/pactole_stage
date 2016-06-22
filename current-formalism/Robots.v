@@ -73,7 +73,7 @@ Qed.
 Lemma names_length `{Names} : length names = nG + nB.
 Proof. unfold names. now rewrite app_length, map_length, map_length, Gnames_length, Bnames_length. Qed.
 
-Instance RobotsDef (n m : nat) : NamesDef := {|
+Local Instance RobotsDef (n m : nat) : NamesDef := {|
   nG := n;
   nB := m;
   G := Fin.t n;
@@ -83,7 +83,7 @@ Proof.
 + unfold B. cbn. apply (fin_map id).
 Defined.
 
-Instance Robots (n m : nat) : @Names (RobotsDef n m).
+Local Instance Robots (n m : nat) : @Names (RobotsDef n m).
 Proof. split.
 + intro g. unfold Gnames. change g with (Datatypes.id g). apply In_fin_map.
 + intro b. unfold Bnames. change b with (Datatypes.id b). apply In_fin_map.

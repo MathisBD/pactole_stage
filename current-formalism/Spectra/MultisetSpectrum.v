@@ -37,6 +37,10 @@ Context {loc_RMS : RealMetricSpace loc}.
 Context {RobotsDef : NamesDef}.
 Context {Robots : Names}.
 
+Global Instance multiset_FMOps : FMOps loc _ := FMOps_WMap loc _ _ _.
+Global Instance multiset_Facts : FMultisetsOn loc _ := MakeFMultisetsFacts _ _ _ _ _.
+
+
 Lemma eq_refl_left : forall (e : loc) A (a b:A), (if equiv_dec e e then a else b) = a.
 Proof.
 intros e A a b.
@@ -159,9 +163,9 @@ intros x l y. induction l as [| a l].
 * rewrite make_multiset_nil. rewrite empty_spec. now rewrite remove_0, empty_spec.
 * rewrite make_multiset_cons. simpl removeA.
   destruct (equiv_dec y x) as [Hyx | Hyx], (equiv_dec x a) as [Hxa | Hxa].
-  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite remove_same. rewrite Hxa, add_same. omega.
+  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite remove_same. rewrite Hxa, add_same, add_same. omega.
   + rewrite Hyx in *. rewrite make_multiset_cons, add_other; auto.
-    rewrite IHl. do 2 rewrite remove_same. omega.
+    rewrite IHl. do 2 rewrite remove_same. simpl. omega.
   + rewrite IHl. repeat rewrite remove_other; auto; [].
     rewrite Hxa in *. rewrite add_other; auto.
   + rewrite make_multiset_cons. rewrite remove_other; auto. destruct (equiv_dec y a) as [Hya | Hya].
@@ -184,7 +188,7 @@ Global Instance multiset_spectrum : Spectrum loc := {|
   
   spect_from_config conf := make_multiset (config_list conf);
   spect_is_ok s conf := forall l, s[l] = countA_occ _ equiv_dec l (config_list conf) |}.
-(* BUG? proof is forbidden now *)
+(* BUG? [Proof.] is forbidden now? *)
 (* Proof. *)
 + intros conf1 conf2 Hconf x. unfold spect_from_config. do 2 f_equiv.
   apply eqlistA_PermutationA_subrelation. apply config_list_compat. assumption.
@@ -228,4 +232,4 @@ Qed.
 
 End MultisetSpectrum.
 
-Global Notation "s [ x ]" := (multiplicity x (s : spectrum)) (at level 2, no associativity, format "s [ x ]").
+Global Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").

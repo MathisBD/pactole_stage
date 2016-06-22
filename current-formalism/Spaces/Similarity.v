@@ -25,8 +25,8 @@ Set Implicit Arguments.
 (** Bijections on a type [T] with an equivalence relation [eqT] *)
 
 Section Bijections.
-Context (T : Type).
-Context (HesT : Setoid T).
+Context {T : Type}.
+Context {HeqT : Setoid T}.
 
 Record bijection := {
   section :> T → T;
@@ -100,6 +100,8 @@ Proof. repeat intro. reflexivity. Qed.
 
 End Bijections.
 
+Arguments bijection T {_}.
+
 
 (**********************)
 (** *  Similarities  **)
@@ -155,7 +157,7 @@ Qed.
 
 (** The identity similarity *)
 Definition id {T} `{RealMetricSpace T} : similarity T.
-refine {| sim_f := bij_id _;
+refine {| sim_f := bij_id;
           zoom := 1;
           center := origin;
           center_prop := reflexivity _ |}.

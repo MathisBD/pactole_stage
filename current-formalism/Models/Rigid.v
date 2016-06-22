@@ -329,7 +329,7 @@ Qed.
 
 (** Some results *)
 
-Lemma no_moving_same_conf : forall r da config,
+Lemma no_moving_same_config : forall r da config,
   moving r da config = List.nil -> round r da config == config.
 Proof.
 intros r da config Hmove id.
@@ -337,12 +337,12 @@ destruct (equiv_dec (round r da config id) (config id)) as [Heq | Heq]; trivial.
 rewrite <- moving_spec, Hmove in Heq. inversion Heq.
 Qed.
 
-Corollary no_active_same_conf :
+Corollary no_active_same_config :
   forall (r : robogram) da conf, active da = List.nil -> equiv (round r da conf) conf.
 Proof.
 intros r da conf Hactive.
 assert (moving r da conf = List.nil). { apply incl_nil. rewrite <- Hactive. apply moving_active. }
-now apply no_moving_same_conf.
+now apply no_moving_same_config.
 Qed.
 
 

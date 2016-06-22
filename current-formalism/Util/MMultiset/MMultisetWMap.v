@@ -181,12 +181,12 @@ Global Instance FMOps_WMap : FMOps elt elt_EqDec := {|
   size := fun m => FMapInterface.fold (fun _ _ n => S n) m 0;
   choose := fun m =>  FMapInterface.fold (fun x _ _ => Some x) m None |}.
 
-Instance eq_pair_equiv : Equivalence eq_pair.
+Global Instance eq_pair_equiv : Equivalence eq_pair.
 Proof. split. easy. easy. intros ? y ? ? ?. now transitivity y. Qed.
 
-Instance eq_pair_Setoid : Setoid (elt * positive)%type := _.
+Global Instance eq_pair_Setoid : Setoid (elt * positive)%type := _.
 
-Instance eq_pair_EqDec : @EqDec (elt * positive)%type _.
+Global Instance eq_pair_EqDec : @EqDec (elt * positive)%type _.
 Proof.
 intros [x n] [y p]. destruct (equiv_dec x y).
 + destruct (Pos.eq_dec n p).
@@ -195,20 +195,20 @@ intros [x n] [y p]. destruct (equiv_dec x y).
 + right. intro Heq. now destruct Heq.
 Defined.
 
-Instance eq_elt_equiv : Equivalence eq_elt.
+Global Instance eq_elt_equiv : Equivalence eq_elt.
 Proof. split. easy. easy. intros ? y ? ? ?. now transitivity y. Qed.
 
-Instance eq_elt_Setoid : Setoid (elt * nat)%type := {| equiv := eq_elt; setoid_equiv := _ |}.
+Global Instance eq_elt_Setoid : Setoid (elt * nat)%type := {| equiv := eq_elt; setoid_equiv := _ |}.
 
-Instance eq_elt_EqDec : @EqDec (elt * nat)%type _.
+Global Instance eq_elt_EqDec : @EqDec (elt * nat)%type _.
 Proof.
 intros [x n] [y p]. destruct (equiv_dec x y); now left + right; cbn.
 Defined.
 
-Instance eq_pair_elt_subrelation : subrelation eq_pair eq_elt.
+Global Instance eq_pair_elt_subrelation : subrelation eq_pair eq_elt.
 Proof. intros x y [H _]. apply H. Qed.
 
-Instance eq_key_eq_key_elt_subrelation : subrelation (@eq_key_elt elt _ _ _ positive) eq_key.
+Global Instance eq_key_eq_key_elt_subrelation : subrelation (@eq_key_elt elt _ _ _ positive) eq_key.
 Proof. intros x y [H _]. apply H. Qed.
 
 Lemma eq_pair_elt_weak_In : forall x y n m l,
@@ -236,10 +236,10 @@ Qed.
 
 Notation "s  [c=]  t" := (Subset s t) (at level 70, no associativity).
 
-Instance multiset_Setoid : Setoid multiset := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
+Global Instance multiset_Setoid : Setoid multiset := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
 Proof. split; repeat intro; solve [ eauto | etransitivity; eauto ]. Defined.
 
-Instance multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) MMultisetInterface.multiplicity.
+Global Instance multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) MMultisetInterface.multiplicity.
 Proof.
 intros x y Hxy m m' Hm. rewrite Hm. simpl. unfold multiplicity.
 assert (Heq : find x m' = find y m') by now apply find_m.
@@ -285,7 +285,7 @@ Qed.
 
 (** **  Specifications of operations  **)
 
-Instance multiplicity_spec : MultiplicitySpec elt _.
+Global Instance multiplicity_spec : MultiplicitySpec elt _.
 Proof.
 split.
 intros x y Hxy m m' Hm. rewrite Hm. simpl. unfold multiplicity.
@@ -293,7 +293,7 @@ assert (Heq : find x m' = find y m') by now apply find_m.
 now rewrite Heq.
 Qed.
 
-Instance empty_full_spec : EmptySpec elt _.
+Global Instance empty_full_spec : EmptySpec elt _.
 Proof.
 split. intro x. simpl. unfold multiplicity, empty. simpl.
 destruct (find x (FMapInterface.empty positive)) eqn:Hin.
@@ -301,7 +301,7 @@ destruct (find x (FMapInterface.empty positive)) eqn:Hin.
 - reflexivity.
 Qed.
 
-Instance singleton_spec : SingletonSpec elt _.
+Global Instance singleton_spec : SingletonSpec elt _.
 Proof. split.
 + intros x n. unfold singleton, add. simpl. destruct (Nat.eq_dec n 0).
   - subst n. unfold multiplicity. now rewrite empty_o.
@@ -311,7 +311,7 @@ Proof. split.
   - unfold multiplicity. rewrite add_neq_o, empty_o; reflexivity || now symmetry.
 Qed.
 
-Instance add_spec : AddSpec elt _.
+Global Instance add_spec : AddSpec elt _.
 Proof. split.
 + intros x n s. unfold add. simpl. unfold m_add. destruct (Nat.eq_dec n 0). omega.
   unfold multiplicity at 1. rewrite add_eq_o, Nat2Pos.id; reflexivity || omega.
@@ -319,7 +319,7 @@ Proof. split.
   unfold multiplicity at 1 3. rewrite add_neq_o; reflexivity || now symmetry.
 Qed.
 
-Instance remove_spec : RemoveSpec elt _.
+Global Instance remove_spec : RemoveSpec elt _.
 Proof. split.
 + intros x n s. unfold remove. simpl. destruct (Nat.eq_dec n 0). omega.
   destruct (le_lt_dec (multiplicity x s) n) as [Hle | Hlt]; unfold multiplicity at 1; simpl.
@@ -331,7 +331,7 @@ Proof. split.
   - rewrite add_neq_o; reflexivity || now symmetry.
 Qed.
 
-Instance binary_spec :  BinarySpec elt _.
+Global Instance binary_spec :  BinarySpec elt _.
 Proof. split.
 * intros x s s'. unfold union. simpl. destruct (find x s) eqn:Hin.
   - unfold multiplicity at 2. rewrite Hin. erewrite fold_add; eauto. now repeat intro.
@@ -363,7 +363,7 @@ Proof. split.
     - intros [n Habs]. now rewrite find_mapsto_iff, Hin in Habs.
 Qed.
 
-Instance fold_full_spec : FoldSpec elt _.
+Global Instance fold_full_spec : FoldSpec elt _.
 Proof. split.
 * intros A i f s. unfold fold, elements. simpl. unfold m_fold.
   now rewrite FMapInterface.fold_1, fold_left_map.
@@ -389,7 +389,7 @@ Proof. split.
   + assumption.
 Qed.
 
-Instance test_spec : TestSpec elt _.
+Global Instance test_spec : TestSpec elt _.
 Proof.
 assert (His_empty_spec : forall s, is_empty s = true <-> s == empty).
 { intros s. unfold is_empty. simpl. split; intro H.
@@ -444,7 +444,7 @@ intros s s'. destruct (equal s s') eqn:Heq.
 - right. intro H. revert H. rewrite <- equal_spec. rewrite Heq. discriminate.
 Qed.
 
-Instance elements_full_spec : ElementsSpec elt _.
+Global Instance elements_full_spec : ElementsSpec elt _.
 Proof. split.
 * intros x n s. unfold elements. simpl. rewrite InA_map_iff; [split; intro H |..].
   + destruct H as [[y m] [[Heq1 Heq2] Hin]]. hnf in Heq1, Heq2. cbn in Heq1, Heq2. subst.
@@ -525,7 +525,7 @@ intros A B l1. induction l1; intro l2; simpl.
 - rewrite IHl1. now rewrite <- app_assoc.
 Qed.
 
-Instance support_spec : SupportSpec elt _.
+Global Instance support_spec : SupportSpec elt _.
 Proof. split.
 * intros x s. rewrite support_elements. rewrite elements_spec. intuition.
 * intro s. unfold support. simpl. rewrite fold_1, support_NoDupA_aux, app_nil_r.
@@ -547,7 +547,7 @@ revert o. induction (FMapInterface.elements s); simpl; intros o Hin.
   - intros n Habs. apply (Hs' n). now right.
 Qed.
 
-Instance choose_spec : ChooseSpec elt _.
+Global Instance choose_spec : ChooseSpec elt _.
 Proof.
 assert (Hchoose_Some : forall (x : elt) (s : multiset), choose s = Some x -> In x s).
 { intros x s Hin. destruct (In_dec s x).
@@ -629,7 +629,7 @@ simpl. rewrite IHl.
 - intros n Habs. apply (Hs n). now right.
 Qed.
 
-Instance filter_spec : FilterSpec elt _.
+Global Instance filter_spec : FilterSpec elt _.
 Proof.
 assert (Hnfilter : forall (f : elt -> nat -> bool) (x : elt) (s : multiset),
         Proper (equiv ==> eq ==> eq) f ->
@@ -652,7 +652,7 @@ Qed.
 (* Theorem filter_nfilter : forall f s, filter f s [=] nfilter (fun x _ => f x) s.
 Proof. now unfold filter. Qed. *)
 
-Instance sizes_spec : SizeSpec elt _.
+Global Instance sizes_spec : SizeSpec elt _.
 Proof. split.
 * intro. unfold cardinal. simpl. unfold m_fold. reflexivity.
 * intro. unfold size, support. simpl. now rewrite fold_1, fold_left_length, fold_1, fold_left_cons_length.
@@ -735,7 +735,7 @@ rewrite Hequiv. clear Hequiv. unfold m_fold. rewrite fold_1. unfold For_all. spl
       -- right. exists x. exists n. now split.
 Qed.
 
-Instance quantifiers_spec : QuantifierSpec elt _.
+Global Instance quantifiers_spec : QuantifierSpec elt _.
 Proof. split.
 * intros. unfold for_all. simpl. rewrite for_all_spec_aux; intuition.
 * intros. unfold exists_. simpl. rewrite exists_spec_aux; intuition discriminate.
@@ -893,7 +893,7 @@ simpl. rewrite IHl.
 - intros n Habs. apply (Hs n). now right.
 Qed.
 
-Instance npartition_spec : NpartitionSpec elt _.
+Global Instance npartition_spec : NpartitionSpec elt _.
 Proof. split.
 * intros f s Hf x. unfold npartition. rewrite nfilter_spec; trivial. simpl.
   destruct (multiplicity x s) eqn:Hin.
@@ -923,7 +923,7 @@ Proof. now unfold partition. Qed.
 Theorem partition_npartition_snd : forall f s, snd (partition f s) == snd (npartition (fun x _ => f x) s).
 Proof. now unfold partition. Qed.
 
-Instance partition_spec : PartitionSpec elt _.
+Global Instance partition_spec : PartitionSpec elt _.
 Proof. split.
 * intros f s Hf. rewrite partition_npartition_fst, npartition_spec_fst.
   - reflexivity.
@@ -933,13 +933,18 @@ Proof. split.
   - repeat intro. now apply Hf.
 Qed.
 
-Instance MakeFMultisetsFacts : FMultisetsOn elt _.
+Global Instance MakeFMultisetsFacts : FMultisetsOn elt _.
 Proof. split; autoclass. Qed.
 
 End WMapImplementation.
 
+(*
 Require Import Pactole.Util.FMaps.FMapList.
+
+(** Exported instances *)
+Instance FMultisetsOps elt `{EqDec elt} : FMOps elt _ :=
+  FMOps_WMap _ _ _ _.
 
 Instance FMultisetsFacts elt `{EqDec elt} : FMultisetsOn elt (FMOps_WMap _ _ _ _) :=
   MakeFMultisetsFacts _ _ _ _ _.
-
+*)

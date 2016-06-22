@@ -32,30 +32,16 @@ Import SetoidClass.
 Parameter n: nat.
 Axiom n_non_0 : n <> 0%nat.
 
-Definition MyRobotsDef := RobotsDef (2 * n) n.
-Definition MyRobots := Robots (2 * n) n.
-Existing Instance MyRobotsDef.
-Existing Instance MyRobots.
-Existing Instance execute_compat.
-
+Instance MyRobotsDef : NamesDef := RobotsDef (2 * n) n.
+Instance MyRobots : Names := Robots (2 * n) n.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
 Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS.
-Instance R_Multisets : FMultisetsOn R _ := MMultisetWMap.FMultisetsFacts _.
-Instance R_spectrum : Spectrum R := multiset_spectrum.
 
-(* Notation configuration := (@configuration R _ _ _ _ _).
-Notation execution := (@execution R _ _ _ _).
-Notation demon := (@demon R _ _ _ _).
-Print robogram.
-Notation robogram := (@robogram R R_Setoid R_EqDec MyRobotsDef MyRobots _).
-Check demon.
-Check robogram.
- *)
+
 (** The spectrum is a multiset of positions *)
-(* Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]"). *)
 Notation "!!" := spect_from_config (at level 1).
 
 Add Search Blacklist "Spect.M" "Ring".
@@ -297,7 +283,7 @@ Qed.
 Theorem spect_config1 : (!! config1) == spectrum1.
 Proof.
 intro pt. assert (Hconfig1 := spect_from_config_spec config1).
-unfold spect_is_ok, config1, spectrum1, R_spectrum, multiset_spectrum in *.
+unfold spect_is_ok, config1, spectrum1, multiset_spectrum in *.
 rewrite Hconfig1, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
@@ -319,7 +305,7 @@ Qed.
 Theorem spect_conf2 : (!! config2) == spectrum2.
 Proof.
 intro pt. assert (Hconfig2 := spect_from_config_spec config2).
-unfold spect_is_ok, config2, spectrum2, R_spectrum, multiset_spectrum in *.
+unfold spect_is_ok, config2, spectrum2, multiset_spectrum in *.
 rewrite Hconfig2, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
@@ -614,7 +600,7 @@ cofix exec. intros e He; constructor; [| constructor].
 + apply exec. rewrite <- He.
   change (Streams.tl (Streams.tl (execute r bad_demon config1)))
     with (execute r bad_demon (round r bad_da2 (round r bad_da1 config1))).
-f_equiv. rewrite <- round_config2 at 1. Locate round_compat.
+f_equiv. rewrite <- round_config2 at 1.
 apply round_compat; try reflexivity; []. now rewrite round_config1.
 Qed.
 

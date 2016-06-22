@@ -11,12 +11,12 @@
 Require Import Arith.Div2.
 Require Import Omega.
 (* Require Import Morphisms. *)
-Require Import SetoidDec.
+Require Export SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Setting.
-Require Import Pactole.Models.Rigid.
-Require Import Pactole.Spectra.Definition.
-Require Import Pactole.Spectra.MultisetSpectrum.
+Require Export Pactole.Setting.
+Require Export Pactole.Models.Rigid.
+Require Export Pactole.Spectra.Definition.
+Require Export Pactole.Spectra.MultisetSpectrum.
 
 
 Close Scope R_scope.
@@ -25,16 +25,12 @@ Set Implicit Arguments.
 
 Section GatheringDefinitions.
 
-Context (loc : Type).
-Context (loc_Setoid : Setoid loc).
-Context (loc_EqDec : EqDec loc_Setoid).
-Context (loc_RMS : @RealMetricSpace loc loc_Setoid loc_EqDec).
-Context (RobotsDef : NamesDef).
-Context (Robots : Names).
-Context (FMSetOps : MMultisetInterface.FMOps loc loc_EqDec).
-Context (FMSets : MMultisetInterface.FMultisetsOn loc FMSetOps).
-
-Instance Spect : Spectrum loc := multiset_spectrum.
+Context {loc : Type}.
+Context {loc_Setoid : Setoid loc}.
+Context {loc_EqDec : EqDec loc_Setoid}.
+Context {loc_RMS : @RealMetricSpace loc loc_Setoid loc_EqDec}.
+Context {RobotsDef : NamesDef}.
+Context {Robots : Names}.
 
 
 (* Notation "s [ pt ]" := (Spect.multiplicity pt (s : Spect.t)) (at level 5, format "s [ pt ]"). *)
@@ -77,22 +73,22 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 
 
 (** Compatibility properties *)
-Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
+Global Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
 Proof.
 intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at. setoid_rewrite Hpt.
 split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
 Qed.
 
-Instance Gather_compat : Proper (equiv ==> equiv ==> iff) Gather.
+Global Instance Gather_compat : Proper (equiv ==> equiv ==> iff) Gather.
 Proof.
 intros pt1 pt2 Hpt. apply Streams.forever_compat, Streams.instant_compat.
 intros config1 config2 Hconfig. now rewrite Hpt, Hconfig.
 Qed.
 
-Instance WillGather_compat : Proper (equiv ==> equiv ==> iff) WillGather.
+Global Instance WillGather_compat : Proper (equiv ==> equiv ==> iff) WillGather.
 Proof. intros pt1 pt2 Hpt. apply Streams.eventually_compat. now apply Gather_compat. Qed.
 
-Instance forbidden_compat : Proper (equiv ==> iff) forbidden.
+Global Instance forbidden_compat : Proper (equiv ==> iff) forbidden.
 Proof.
 intros ? ? Heq. split; intros [HnG [Hle [pt1 [pt2 [Hneq Hpt]]]]];
 repeat split; trivial; exists pt1, pt2; split; trivial; now rewrite Heq in *.
@@ -104,10 +100,12 @@ Lemma spect_non_nil : 2 <= nG -> forall conf, ~!! conf == MMultisetInterface.emp
 Proof.
 simpl spect_from_config. intros HnG conf Heq.
 assert (Hlgth:= config_list_length conf).
-assert (Hl : config_list conf = nil) by now rewrite <- multiset_empty, Heq.
+assert (Hl : config_list conf = nil) by now rewrite <- make_multiset_empty, Heq.
 rewrite Hl in Hlgth.
 simpl in *.
 omega.
 Qed.
 
 End GatheringDefinitions.
+
+Notation "!!" := spect_from_config (at level 1).

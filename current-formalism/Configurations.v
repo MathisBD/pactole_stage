@@ -48,12 +48,17 @@ Class Configuration (loc : Type) {S : Setoid loc} (Loc : @EqDec loc S) `(N : Nam
   
   config_list_map : forall f, Proper (equiv ==> equiv) f ->
     forall config, config_list (map_config f config) == List.map f (config_list config);
-  map_merge : forall f g, Proper (equiv ==> equiv) f ->
+  map_config_merge : forall f g, Proper (equiv ==> equiv) f ->
     Proper (equiv ==> equiv) g -> forall config : configuration,
     @equiv _ configuration_Setoid (map_config g (map_config f config)) (map_config (fun x => g (f x)) config);
   map_id : forall config : configuration, @equiv _ configuration_Setoid (map_config Datatypes.id config) config}.
 
 Existing Instance configuration_Setoid.
+Existing Instance map_config_compat.
+Existing Instance config_list_compat.
+Existing Instance Gpos_compat.
+Existing Instance Bpos_compat.
+
 Instance configuration_compat loc `(Configuration loc) :
   forall config : configuration, Proper (Logic.eq ==> equiv) config.
 Proof. repeat intro. now subst. Qed.
