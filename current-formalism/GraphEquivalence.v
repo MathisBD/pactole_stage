@@ -10,31 +10,14 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.AtomicGraphFormalism.
 Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.CommonGraphFormalism.
 
 
-Print Module Location.
+About AGF.Spect.t.
+About DGF.Spect.t.
 
-
-Module View : DecidableType with Definition t := V with Definition eq:= Veq.
-    Definition t := V.
-    Definition eq:= Veq.
-    Definition eq_equiv := Veq_equiv.
-    Definition eq_dec := Veq_dec.
-End View.
-
-Module GraphEquivalence (N : Size)(Names : Robots(N)).
-
-Module Atom := AtomicGraphFormalism.Make(N)(Names)(View).
-Module Disc := DiscreteGraphFormalism.Make(N)(Names)(View).
-
-
-Import Atom.Common.
-Import Disc.Common.
-
-Check Atom.Config.t.
 
 Definition ConfigA2D (confA : Atom.Config.t) : Disc.Config.t :=
     fun id =>

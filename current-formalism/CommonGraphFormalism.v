@@ -10,8 +10,10 @@
 
 Require Import Rbase.
 Require Import Equalities.
-Require Import Pactole.Preliminary.
 Require Import Morphisms.
+Require Import Pactole.Preliminary.
+Require Import Pactole.Robots.
+Require Import Pactole.Configurations.
 
 
 Parameter V : Type.
@@ -33,3 +35,25 @@ Parameter find_edge : V -> V -> option E.
 Axiom find_edge_Some : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e).
 Axiom find_edge_None : forall a b : V,
   find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
+
+
+
+Declare Module N : Size.
+Declare Module Names : Robots(N).
+
+Module LocationA : DecidableType with Definition t := V with Definition eq := Veq.
+  Definition t := V.
+  Definition eq := Veq.
+  Definition eq_equiv : Equivalence eq := Veq_equiv.
+  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := Veq_dec.
+End LocationA.
+
+Module ConfigA := Configurations.Make (LocationA)(N)(Names).
+
+(** For spectra *)
+Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
+  Definition t := ConfigA.t.
+  Definition eq := ConfigA.eq.
+  Definition eq_equiv := ConfigA.eq_equiv.
+  Definition eq_dec := ConfigA.eq_dec.
+End View.
