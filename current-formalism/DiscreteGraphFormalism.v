@@ -320,7 +320,7 @@ Module Make (N : Size)(Names : Robots(N))(View:View).
   symmetry in Heq_anonymous. apply step_flexibility in Heq_anonymous.
   lra.
   Qed.
-
+ 
   Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
   Proof. Admitted. 
   (* intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf. intros id.

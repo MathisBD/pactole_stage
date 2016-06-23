@@ -80,6 +80,10 @@ Proof.
 intros confA id. unfold ConfigD2A, ConfigA2D. now repeat try (split; simpl).
 Qed.
 
+
+
+
+
 Lemma DiscS_Atom_DiscS_Config : forall SconfD : Disc.Config.t, 
       Disc.SpectD.eq (Disc.SpectD.from_config SconfD) 
       (Disc.SpectD.from_config (ConfigA2D (ConfigD2A SconfD))).
