@@ -1666,9 +1666,8 @@ End Make.
 
 (** **  Spectra  **)
 
-Module Type Spectrum(Location : DecidableType)(N : Size). (* <: DecidableType *)
-  Module Names := Robots.Make(N).
-  Module Config := Make(Location)(N)(Names).
+Module Type Spectrum(Location : DecidableType)(N : Size) (Names : Robots(N))
+                    (Config : Configuration(Location)(N)(Names)). (* <: DecidableType *)
   
   (** Spectra are a decidable type *)
   Parameter t : Type.

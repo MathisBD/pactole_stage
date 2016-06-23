@@ -6,9 +6,14 @@ Require Import Decidable.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.CommonFormalism.
+(* Require Import Pactole.CommonFormalism. *)
 Require Import Pactole.CommonGraphFormalism.
 
+
+(* Record graph_iso :=  *)
+
+
+Module DGF.
 
 Inductive location :=
   | Loc (l : V)
@@ -46,59 +51,26 @@ Module Location : DecidableType with Definition t := location with Definition eq
   Qed.
 End Location.
 
-Module Type View := DecidableType with Definition t := V with Definition eq := Veq.
-(* 
-    Definition t := V.
-    Definition eq:= Veq.
-    Definition eq_equiv := Veq_equiv.
-    Definition eq_dec := Veq_dec.
-End View. *)
 
-(* (* Identity spectrum *)
-Module IdentitySpectrum(Location : DecidableType)(N : Size) : Spectrum(Location)(N).
-  Module Names := Robots.Make(N).
-  Module Config := Configurations.Make(Location)(N)(Names).
-  
-  Definition t := Config.t. (* too strong as we identify byzantine robots *)
-  Definition eq := Config.eq.
-  Definition eq_equiv : Equivalence eq := Config.eq_equiv.
-  Definition eq_dec : forall x y : t, {eq x y} + {~eq x y} := Config.eq_dec.
-  
-  Definition from_config := fun x : Config.t => x.
-  Definition from_config_compat : Proper (Config.eq ==> eq) from_config.
-  Proof.
-  Admitted.
-  Definition is_ok : t -> Config.t -> Prop := eq.
-  Definition from_config_spec : forall config, is_ok (from_config config) config.
-  Proof. intro. reflexivity. Qed.
-End IdentitySpectrum.
- *)
-
-(* Record graph_iso :=  *)
-                                         (* view *)
-Module Make (N : Size)(Names : Robots(N))(View:View).
 
   Module Config := Configurations.Make (Location)(N)(Names).
 
-  Module SpectD : Spectrum(Location)(N).
-    Module Names := Names.
-    Module Config :=  Config.
-    Module ConfigV := Configurations.Make (View)(N)(Names).
+  Module Spect : Spectrum(Location)(N)(Names)(Config).
 
-    Definition t := ConfigV.t.
-    Definition eq := ConfigV.eq.
-    Definition eq_equiv := ConfigV.eq_equiv.
-    Definition eq_dec := ConfigV.eq_dec.
+    Definition t := ConfigA.t.
+    Definition eq := ConfigA.eq.
+    Definition eq_equiv := ConfigA.eq_equiv.
+    Definition eq_dec := ConfigA.eq_dec.
 
-    Definition project_loc (loc : Location.t) : View.t :=
-      match loc  with
+    Definition project_loc (loc : Location.t) : V :=
+      match loc with
         | Loc l =>  l
         | Mvt e p Hp => 
           (if Rle_dec p (CommonGraphFormalism.threshold e) then CommonGraphFormalism.src e 
                                                            else CommonGraphFormalism.tgt e)
       end.
 
-    Instance project_loc_compat : Proper ( Location.eq ==> Veq) project_loc.
+    Instance project_loc_compat : Proper (Location.eq ==> Veq) project_loc.
     Proof.
     intros x y Hxy. simpl in *. unfold Location.eq, loc_eq in *.
     unfold project_loc. destruct x,y.
@@ -117,22 +89,21 @@ Module Make (N : Size)(Names : Robots(N))(View:View).
        + now apply tgt_compat.
     Qed.
 
-
-    Definition project (config : Config.t) : ConfigV.t :=
+    Definition project (config : Config.t) : View.t :=
       fun id =>
-        {| ConfigV.loc := (project_loc (Config.loc (config id)));
-           ConfigV.robot_info := 
-           {| ConfigV.source := (project_loc (Config.source (Config.robot_info (config id))));
-              ConfigV.target := (project_loc (Config.target (Config.robot_info (config id)))) |} |}.
+        {| ConfigA.loc := (project_loc (Config.loc (config id)));
+           ConfigA.robot_info := 
+           {| ConfigA.source := (project_loc (Config.source (Config.robot_info (config id))));
+              ConfigA.target := (project_loc (Config.target (Config.robot_info (config id)))) |} |}.
 
-    Instance project_compat : Proper (Config.eq ==> ConfigV.eq) project.
+    Instance project_compat : Proper (Config.eq ==> ConfigA.eq) project.
     Proof.
     intros c1 c2 Hc id. destruct (Hc id) as (Hl, (Hs, Ht)). unfold project.
     split; simpl. now apply project_loc_compat. split; simpl; now apply project_loc_compat.
     Qed.
 
     Definition from_config := fun x => (project x).
-    Definition from_config_compat : Proper (Config.eq ==> eq) from_config.
+    Instance from_config_compat : Proper (Config.eq ==> View.eq) from_config.
     Proof.
     intros x y Hxy. unfold from_config. now apply project_compat.
     Defined.
@@ -144,11 +115,8 @@ Module Make (N : Size)(Names : Robots(N))(View:View).
     destruct n. reflexivity.
     Defined.
 
-  End SpectD.
+  End Spect.
 
-
-  Module Common := CommonFormalism.Make(Location)(N)(SpectD).
-  Import Common.
 
 
   (** ** Demonic schedulers *)
