@@ -21,7 +21,8 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : RealMetricSpace)(N : Robots.Size) <: Spectrum (Location)(N).
+Module Make(Location : RealMetricSpace)(N : Robots.Size)(Names : Robots.Robots(N))
+            (Config : Configuration(Location)(N)(Names)) <: Spectrum (Location)(N)(Names)(Config).
 
 Module Names := Robots.Make(N).
 Module Config := Configurations.Make(Location)(N)(Names).

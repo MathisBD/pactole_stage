@@ -21,10 +21,9 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : DiscreteSpace)(N : Robots.Size) <: Spectrum (Location)(N).
-
-Module Names := Robots.Make(N).
-Module Config := Configurations.Make(Location)(N)(Names).
+Module Make (Location : DiscreteSpace)(N : Robots.Size)(Names : Robots.Robots(N))
+            (Config : Configuration(Location)(N)(Names))
+            <: Spectrum (Location)(N)(Names)(Config).
 
 Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
 Proof. intros [] [] []. now cbn. Qed.

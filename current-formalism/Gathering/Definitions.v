@@ -17,14 +17,16 @@ Set Implicit Arguments.
 Module GatheringDefs(Loc : RealMetricSpace)(N : Size).
 
 (** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(Loc)(N).
+Module Names := Robots.Make(N).
+Module Config := Configurations.Make(Loc)(N)(Names).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Common := CommonRealFormalism.Make(Loc)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(Loc)(N)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(Loc)(N)(Names)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
 
 Module Sim := Common.Sim.
 
@@ -110,7 +112,7 @@ Proof.
 intros HnG conf Heq.
 unfold Spect.from_config in Heq.
 rewrite Spect.multiset_empty in Heq.
-assert (Hlgth:= Spect.Config.list_length conf).
+assert (Hlgth:= Config.list_length conf).
 erewrite <- List.map_length, Heq in Hlgth.
 simpl in *.
 omega.

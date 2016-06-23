@@ -23,9 +23,11 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)).
-  Module Names := Spect.Names.
-  Module Config := Spect.Config.
+
+
+Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))
+                (Config : Configuration(Location)(N)(Names))
+                (Spect : Spectrum(Location)(N)(Names)(Config)).
   
   (** ** Good robots have a common program, which we call a robogram *)
   
@@ -62,10 +64,10 @@ Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(
 End Sig.
 
 
-Module Make (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)) : Sig (Location)(N)(Spect).
-
-Module Names := Spect.Names.
-Module Config := Spect.Config.
+Module Make (Location : DecidableType)(N : Size)(Names : Robots(N))
+            (Config : Configuration(Location)(N)(Names))
+            (Spect : Spectrum(Location)(N)(Names)(Config))
+            : Sig (Location)(N)(Names)(Config)(Spect).
 
 (** ** Programs for good robots *)
 

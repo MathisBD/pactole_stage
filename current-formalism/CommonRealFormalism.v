@@ -6,13 +6,16 @@ Require Export Similarity.
 Require Pactole.CommonFormalism.
 
 
-Module Type Sig (Loc : RealMetricSpace)(N : Size)(Spect : Spectrum(Loc)(N)).
-  Include CommonFormalism.Sig(Loc)(N)(Spect).
+Module Type Sig (Loc : RealMetricSpace)(N : Size)(Names : Robots(N))
+                (Config : Configuration(Loc)(N)(Names))(Spect : Spectrum(Loc)(N)(Names)(Config)).
+  Include CommonFormalism.Sig(Loc)(N)(Names)(Config)(Spect).
   Module Sim := Similarity.Make(Loc).
 End Sig.
 
-Module Make (Loc : RealMetricSpace)(N : Size)(Spect : Spectrum(Loc)(N)) : Sig(Loc)(N)(Spect).
-  Module Common := CommonFormalism.Make(Loc)(N)(Spect).
+Module Make (Loc : RealMetricSpace)(N : Size)(Names : Robots(N))
+            (Config : Configuration(Loc)(N)(Names))
+            (Spect : Spectrum(Loc)(N)(Names)(Config)) : Sig(Loc)(N)(Names)(Config)(Spect).
+  Module Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect).
   Include Common.
   Module Sim := Similarity.Make(Loc).
 End Make.

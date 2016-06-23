@@ -18,15 +18,18 @@ Set Implicit Arguments.
 
 Module ExplorationDefs(Loc : RingSig)(N : Size).
 
-Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N).
+Module Names := Robots.Make(N).
+Module Config := Configurations.Make(Loc)(N)(Names).
+
+Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N)(Names)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
 
-Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Spect).
-Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Spect)(Common).
+Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Names)(Config)(Spect).
+Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
 
 Module Sim := Common.Sim. 
 

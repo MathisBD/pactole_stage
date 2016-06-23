@@ -28,8 +28,10 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module Make (Location : DiscreteSpace)(N : Size)(Spect : Spectrum(Location)(N))
-            (Common : CommonDiscreteFormalism.Sig(Location)(N)(Spect)).
+Module Make (Location : DiscreteSpace)(N : Size)(Names : Robots(N))
+            (Config : Configuration(Location)(N)(Names))
+            (Spect : Spectrum(Location)(N)(Names)(Config))
+            (Common : CommonDiscreteFormalism.Sig(Location)(N)(Names)(Config)(Spect)).
 
 Import Common.
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
