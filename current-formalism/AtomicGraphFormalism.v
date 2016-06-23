@@ -16,6 +16,8 @@ Require Import Pactole.CommonGraphFormalism.
 
 Module AGF.
 
+Check CommonGraphFormalism.LocationA.
+
 (* They come from the common part as they are shared by AGF and DGF. *)
 Module Location := LocationA.
 Module Config := ConfigA.

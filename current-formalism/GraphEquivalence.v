@@ -86,6 +86,6 @@ Theorem graph_equiv : forall (c c': Atom.Config.t) (rbg:robogram) (da:Atom.demon
 c' = Atom.round rbg da c -> exists da', config_A2D c' = Disc.round rbg da' (config_A2D c).
 Proof.
 
-Save.*)
+Save.
 
 
