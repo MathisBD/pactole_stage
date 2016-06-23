@@ -249,8 +249,8 @@ Definition spectrum0 := add origin (Nat.div2 nG) (singleton unit (Nat.div2 nG)).
 
 Theorem config1_config2_spect_eq : !! config1 == !! config2.
 Proof.
-intro pt. unfold config1, config2. assert (Hconfig := spect_from_config_spec).
-do 2 rewrite Hconfig, config_list_spec. rewrite names_Gnames. do 2 rewrite map_map.
+intro pt. unfold config1, config2.
+do 2 rewrite spect_from_config_spec, config_list_spec, names_Gnames, map_map.
 unfold left_dec, left. generalize Gnames_NoDup.
 apply (@first_last_even_ind _
 (fun l => NoDup l ->
@@ -290,8 +290,8 @@ Qed.
 
 Theorem spect_config1 : !! config1 == spectrum0.
 Proof.
-intro pt. unfold config1, spectrum0. assert (Hconfig := spect_from_config_spec).
-rewrite Hconfig, config_list_spec. rewrite names_Gnames, map_map.
+intro pt. unfold config1, spectrum0.
+rewrite spect_from_config_spec, config_list_spec, names_Gnames, map_map.
 unfold left_dec, left. rewrite <- Gnames_length at 1 2. generalize Gnames_NoDup.
 apply (@first_last_even_ind _
 (fun l => NoDup l ->

@@ -40,9 +40,13 @@ Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS.
 
-
 (** The spectrum is a multiset of positions *)
 Notation "!!" := spect_from_config (at level 1).
+
+(* We need to unfold [spect_is_ok] for rewriting *)
+Definition spect_from_config_spec : forall config l, (!! config)[l] = countA_occ _ equiv_dec l (config_list config)
+ := spect_from_config_spec.
+
 
 Add Search Blacklist "Spect.M" "Ring".
 Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.
@@ -282,9 +286,8 @@ Qed.
 
 Theorem spect_config1 : (!! config1) == spectrum1.
 Proof.
-intro pt. assert (Hconfig1 := spect_from_config_spec config1).
-unfold spect_is_ok, config1, spectrum1, multiset_spectrum in *.
-rewrite Hconfig1, config_list_spec.
+intro pt. unfold config1, spectrum1, multiset_spectrum.
+rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
@@ -304,9 +307,8 @@ Qed.
 
 Theorem spect_conf2 : (!! config2) == spectrum2.
 Proof.
-intro pt. assert (Hconfig2 := spect_from_config_spec config2).
-unfold spect_is_ok, config2, spectrum2, multiset_spectrum in *.
-rewrite Hconfig2, config_list_spec.
+intro pt. unfold config2, spectrum2, multiset_spectrum in *.
+rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
@@ -488,7 +490,7 @@ Lemma spectrum_config0 : forall pt : R,
   !! (map_config (fun x : R => RealMetricSpaces.add x (opp pt)) (config0 pt)) == spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
-assert (Hconfig := spect_from_config_spec). rewrite Hconfig, config_list_spec.
+rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, countA_occ_app.
 rewrite (map_ext_in _ (fun _ : G => 0)), (map_ext_in _ (fun _ : B => 1)).

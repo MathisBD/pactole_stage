@@ -96,6 +96,10 @@ Qed.
 
 (** **  Generic properties  **)
 
+(* We need to unfold [spect_is_ok] for rewriting *)
+Definition spect_from_config_spec : forall config l, (!! config)[l] = countA_occ _ equiv_dec l (config_list config)
+ := spect_from_config_spec.
+
 Lemma spect_non_nil : 2 <= nG -> forall conf, ~!! conf == MMultisetInterface.empty.
 Proof.
 simpl spect_from_config. intros HnG conf Heq.
