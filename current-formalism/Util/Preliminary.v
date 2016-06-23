@@ -1271,6 +1271,13 @@ Proof. intros f Hf l x Hin. now rewrite filter_InA in Hin. Qed.
 Lemma filter_incl : forall f (l : list A), incl (filter f l) l.
 Proof. intros f l x Hin. now rewrite filter_In in Hin. Qed.
 
+Lemma NoDupA_filter_compat : forall f, Proper (eqA ==> eq) f -> forall l, NoDupA eqA l -> NoDupA eqA (filter f l).
+Proof.
+intros f Hf l Hnodup. induction Hnodup; simpl.
+- constructor.
+- destruct (f x) eqn:Hfx; trivial. constructor; trivial. rewrite filter_InA; intuition.
+Qed.
+
 End ToSortOut_results.
 
 Global Arguments mem [A] [eqA] eq_dec x l.

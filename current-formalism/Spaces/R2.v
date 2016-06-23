@@ -2307,9 +2307,9 @@ Qed.
 Lemma SEC_middle_diameter : forall pt1 pt2, SEC (middle pt1 pt2 :: pt1 :: pt2 :: nil) = SEC (pt1 :: pt2 :: nil).
 Proof. intros. apply SEC_add_same, middle_in_SEC_diameter. Qed.
 
-Require Pactole.MMultiset.Preliminary.
+(* Require Pactole.MMultiset.Preliminary. *)
 Lemma on_SEC_NoDupA : forall l, NoDupA equiv l -> NoDupA equiv (on_SEC l).
-Proof. intros. unfold on_SEC. now apply (Preliminary.NoDupA_filter_compat _). Qed.
+Proof. intros. unfold on_SEC. SearchAbout filter NoDupA. now apply (Util.Preliminary.NoDupA_filter_compat _). Qed.
 
 Lemma on_SEC_middle_diameter : forall pt1 pt2, ~pt1 == pt2 ->
   PermutationA equiv (on_SEC (middle pt1 pt2 :: pt1 :: pt2 :: nil)) (on_SEC (pt1 :: pt2 :: nil)).
