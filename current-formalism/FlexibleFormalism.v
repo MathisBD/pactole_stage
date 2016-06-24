@@ -30,8 +30,10 @@ Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 
-Module Make (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N))
-            (Common : CommonRealFormalism.Sig(Location)(N)(Spect)).
+Module Make (Location : RealMetricSpace)(N : Size)(Names : Robots(N))
+            (Config : Configuration(Location)(N)(Names))
+            (Spect : Spectrum(Location)(N)(Names)(Config))
+            (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Config)(Spect)).
 
 Import Common.
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
