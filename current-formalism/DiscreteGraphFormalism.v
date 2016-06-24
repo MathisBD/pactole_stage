@@ -204,13 +204,14 @@ End Location.
   intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
   Qed.
 
+
   Record demonic_action := {
     relocate_byz : Names.B -> Location.t;
     step : Names.ident -> Config.RobotConf -> Active_or_Moving;
-    step_delta : forall id Rconfig sim, step id Rconfig = Active sim ->
-         (exists l, Location.eq Rconfig.(Config.loc) (Loc l));
+    step_delta : forall id Rconfig sim, (step id Rconfig) = (Active sim) ->
+         Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target);
     step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
-    step_flexibility : forall id config r, step id config = Moving r -> (0 <= r <= 1)%R}.
+    step_flexibility : forall id config r,(step id config) = (Moving r) -> (0 <= r <= 1)%R}.
   Set Implicit Arguments.
 
   Definition da_eq (da1 da2 : demonic_action) :=
@@ -332,7 +333,7 @@ End Location.
           end
       end.
   Next Obligation.
-  assert (Hs: step da (Good g) (config (Good g)) = Moving mv_ratio). 
+  assert (Hs: (step da (Good g) (config (Good g))) = (Moving mv_ratio)).
   auto. apply step_flexibility in Hs.
   lra.
   Qed.
