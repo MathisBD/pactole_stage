@@ -107,7 +107,8 @@ destruct (equiv_dec x y) as [Hxy | Hxy].
 * assert (p = Pos.of_nat (multiplicity x m)).
   { inversion_clear Hm. destruct H as [H1 H2]; try now cbn in H1, H2.
     eapply InA_impl_compat in H; try apply eq_key_elt_eq_key_subrelation || reflexivity.
-    inversion_clear Hdup. elim H0. rewrite <- Hxy. revert H. apply InA_compat; autoclass. reflexivity. }
+    assert (Heq : eq_key (y, p) (x, Pos.of_nat (multiplicity x m))) by now hnf.
+    inversion_clear Hdup. elim H0. rewrite Heq. revert H. apply InA_compat; autoclass. reflexivity. }
   subst p.
 (*  assert (Hn : multiplicity x m = Pos.to_nat n). { unfold multiplicity. now rewrite Hin. }
   transitivity (multiplicity x (fold_left (fun acc xn =>
@@ -373,7 +374,7 @@ Proof. split.
   + reflexivity.
   + apply eq_key_elt_Equivalence.
   + assumption.
-  + repeat intro. now apply Hf; try rewrite H1 || rewrite H0.
+  + intros ? ? Heq ? ? [? Heq']. now apply Hf; try rewrite Heq || rewrite Heq'.
   + intros. apply Hfcomm.
   + apply NoDupA_equivlistA_PermutationA.
     - autoclass.
