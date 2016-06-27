@@ -20,9 +20,6 @@ Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Names : Robots(N)
 
 
 Module Common := CommonRealFormalism.Make(Location)(N)(Names)(Config)(Spect).
-
-Import Common.
-
 Module Flex := FlexibleFormalism.Make(Location)(N)(Names)(Config)(Spect)(Common).
 Module Rigid := RigidFormalism.Make(Location)(N)(Names)(Config)(Spect)(Common).
 
