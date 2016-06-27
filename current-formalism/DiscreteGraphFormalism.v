@@ -55,6 +55,10 @@ End Location.
 
   Module Config := Configurations.Make (Location)(N)(Names).
 
+  Axiom ri_Loc : forall (rc : Config.RobotConf), exists l1 l2, 
+                    Config.target (Config.robot_info rc) = Loc l1 /\
+                    Config.source (Config.robot_info rc) = Loc l2.
+
   Module Spect : Spectrum(Location)(N)(Names)(Config) with Definition t := View.t with Definition eq := View.eq.
 
     Definition t := ConfigA.t.
