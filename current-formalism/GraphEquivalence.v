@@ -20,11 +20,11 @@ About DGF.Spect.t.
 
 
 Definition ConfigA2D (confA : AGF.Config.t) : DGF.Config.t :=
-    fun id =>
-        {| DGF.Config.loc := DGF.Loc (AGF.Config.loc (confA id));
-           DGF.Config.robot_info := 
-           {| DGF.Config.source := DGF.Loc (AGF.Config.source (AGF.Config.robot_info (confA id)));
-              DGF.Config.target := DGF.Loc (AGF.Config.target (AGF.Config.robot_info (confA id))) |} |}.
+  fun id =>
+    {| DGF.Config.loc := DGF.Loc (AGF.Config.loc (confA id));
+       DGF.Config.robot_info := 
+      {| DGF.Config.source := DGF.Loc (AGF.Config.source (AGF.Config.robot_info (confA id)));
+         DGF.Config.target := DGF.Loc (AGF.Config.target (AGF.Config.robot_info (confA id))) |} |}.
 
 Instance configA2D_compat : Proper (AGF.Config.eq ==> DGF.Config.eq) ConfigA2D.
 Proof.
@@ -38,11 +38,11 @@ Definition LocD2A (locD : DGF.Location.t) : AGF.Location.t :=
       end.
 
 Definition ConfigD2A (ConfD : DGF.Config.t) : AGF.Config.t := 
-    fun id =>
-        {| AGF.Config.loc := LocD2A (DGF.Config.loc (ConfD id));
-           AGF.Config.robot_info := 
-           {| AGF.Config.source := LocD2A (DGF.Config.source (DGF.Config.robot_info (ConfD id)));
-              AGF.Config.target := LocD2A (DGF.Config.target (DGF.Config.robot_info (ConfD id))) |} |}.
+  fun id =>
+    {| AGF.Config.loc := LocD2A (DGF.Config.loc (ConfD id));
+       AGF.Config.robot_info := 
+       {| AGF.Config.source := LocD2A (DGF.Config.source (DGF.Config.robot_info (ConfD id)));
+          AGF.Config.target := LocD2A (DGF.Config.target (DGF.Config.robot_info (ConfD id))) |} |}.
 
 Instance LocD2A_compat : Proper (DGF.Location.eq ==> AGF.Location.eq) LocD2A.
 Proof.
@@ -58,7 +58,8 @@ Proof.
 intros cd1 cd2 Hcd id. unfold ConfigD2A. repeat try(split;simpl); apply LocD2A_compat, Hcd.
 Qed.
 
-Lemma AGF_DGF_AGF_Config : forall confA: AGF.Config.t,  AGF.Config.eq confA (ConfigD2A (ConfigA2D confA)).
+Lemma AGF_DGF_AGF_Config : forall confA: AGF.Config.t,  AGF.Config.eq confA
+                                                                     (ConfigD2A (ConfigA2D confA)).
 Proof.
 intros confA id. unfold ConfigD2A, ConfigA2D. now repeat try (split; simpl).
 Qed.
@@ -228,7 +229,7 @@ refine {|
   DGF.step := fun id rcD => 
               match ((AGF.step daA) id (rcD2A rcD)) with
                 | AGF.Active sim =>  if DGF.Location.eq_dec (DGF.Config.loc rcD)
-                                                        (DGF.Config.target (DGF.Config.robot_info rcD))
+                                                    (DGF.Config.target (DGF.Config.robot_info rcD))
                                      then DGF.Active sim
                                      else DGF.Moving 1%R
                 | AGF.Moving b => if b then DGF.Moving 1%R else DGF.Moving 0%R
@@ -257,7 +258,8 @@ discriminate.
   unfold AGF.Aom_eq in *. discriminate.
   destruct dist; now unfold AGF.Aom_eq in *.
   destruct dist; now unfold AGF.Aom_eq.
-  destruct (if DGF.Location.eq_dec (DGF.Config.loc rcD1) (DGF.Config.target (DGF.Config.robot_info rcD1))
+  destruct (if DGF.Location.eq_dec (DGF.Config.loc rcD1)
+                                   (DGF.Config.target (DGF.Config.robot_info rcD1))
    then DGF.Active sim
    else DGF.Moving 1) eqn : HifD1, 
    (if DGF.Location.eq_dec (DGF.Config.loc rcD2) (DGF.Config.target (DGF.Config.robot_info rcD2))
@@ -281,7 +283,8 @@ discriminate.
   now rewrite Hm. unfold DGF.Aom_eq in *. rewrite <- Heqm. lra.
   assert (Heqm : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving r)).
   now rewrite Hm. unfold DGF.Aom_eq in *. rewrite <- Heqm. lra.
-  destruct (DGF.Location.eq_dec (DGF.Config.loc confD) (DGF.Config.target (DGF.Config.robot_info confD)));
+  destruct (DGF.Location.eq_dec (DGF.Config.loc confD)
+                                (DGF.Config.target (DGF.Config.robot_info confD)));
   intros Hm. discriminate.
   assert (Heqm : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving r)).
   now rewrite Hm. unfold DGF.Aom_eq in *. rewrite <- Heqm. lra.
@@ -311,6 +314,8 @@ CoFixpoint demonD2A (demonD : DGF.demon) : AGF.demon :=
 CoFixpoint demonA2D (demonA : AGF.demon) : DGF.demon :=
   DGF.NextDemon (daA2D (AGF.demon_head demonA)) (demonA2D demonA).
 
+(* Instance demonD2A_compat : Proper (DGF.Deq  *)
+
 (*Ensuite, pour montrer l'équivalence, on écrit des fonctions de
 traduction entre les modèles Atomic et Discrete pour :
 + configuration (check)
@@ -321,14 +326,26 @@ traduction entre les modèles Atomic et Discrete pour :
 *)
 
 
-Definition roundD2A (rD : DGF.round) : AGF.round :=
 
 
-Theorem graph_equiv : forall (c c': AGF.Config.t) (rbg:AGF.robogram) (da:AGF.demonic_action),
-c' = AGF.round rbg da c -> exists da', ConfigA2D c' = DGF.round (rbgA2D rbg) da' (ConfigA2D c).
+Theorem graph_equiv : forall (c c': DGF.Config.t) (rbg:DGF.robogram) (da:DGF.demonic_action),
+DGF.Config.eq c' (DGF.round rbg da c) ->
+exists da', AGF.Config.eq (ConfigD2A c') (AGF.round (rbgD2A rbg) da' (ConfigD2A c)).
 Proof.
-intros c c' rbg da HAGF.
-
+intros c c' rbg da HDGF.
+exists (daD2A da). repeat try (split; simpl).
+assert (Heq : DGF.Location.eq (DGF.Config.loc (c' id))
+                              (DGF.Config.loc ((DGF.round rbg da c) id))) by apply HDGF.
+rewrite Heq. 
+unfold AGF.round. destruct (AGF.step (daD2A da) id (ConfigD2A c id)) eqn:HstepA.
+destruct dist; simpl. f_equiv. unfold daD2A in HstepA. simpl in *.
+destruct (DGF.step da id (rcA2D (ConfigD2A c id))) eqn : HstepD.
+destruct (find_edge (LocD2A (DGF.Config.source (DGF.Config.robot_info (c id))))
+             (LocD2A (DGF.Config.target (DGF.Config.robot_info (c id))))).
+destruct (Rle_dec dist (threshold e)); try discriminate.
+unfold rcA2D, ConfigD2A in HstepD; simpl in HstepD.
+unfold DGF.round. simpl in *. intuition. in Hrd.
+case (DGF.step (daA2D da) id (ConfigA2D c id)) eqn : Heqe. in Hrd.
 Save.
 
-
+Lemma test : n : ]0;1[

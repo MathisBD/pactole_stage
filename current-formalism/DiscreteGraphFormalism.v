@@ -19,6 +19,8 @@ Inductive location :=
   | Loc (l : V)
   | Mvt (e : E) (p : R) (Hp : (0 < p < 1)%R).
 
+Axiom mvt0_1 : forall e p loc, loc = Mvt e p -> 0 < p < 1.
+
 Definition loc_eq l l' :=
   match l, l' with
     | Loc l, Loc l' => Veq l l'
