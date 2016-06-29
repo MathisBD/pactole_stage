@@ -17,14 +17,21 @@ Module DGF.
 
 Inductive location :=
   | Loc (l : V)
-  | Mvt (e : E) (p : R) (Hp : (0 < p < 1)%R).
+  | Mvt (e : E) (p : R) (* (Hp : (0 < p < 1)%R) *).
 
-Axiom mvt0_1 : forall e p loc, loc = Mvt e p -> 0 < p < 1.
+(* Axiom mvt0_1 : forall e p loc, loc = Mvt e p -> 0 < p < 1. *)
+
+Parameter project_p : R -> R.
+Axiom project_p_image : forall p, (0 < project_p p < 1)%R.
+
+(*Definition project_p (p : R) : R := p. fonction de R vers ]0;1[, par exemple utiliser arctan.*)
+
+(* Lemma *)
 
 Definition loc_eq l l' :=
   match l, l' with
     | Loc l, Loc l' => Veq l l'
-    | Mvt e p _, Mvt e' p' _ => Eeq e e' /\ p = p'
+    | Mvt e p, Mvt e' p' => Eeq e e' /\ project_p p = project_p p'
     | _, _ => False
   end.
 
@@ -42,13 +49,14 @@ Module Location : DecidableType with Definition t := location with Definition eq
     try auto. now symmetry. split; now symmetry.
   + intros x y z Hxy Hyz. destruct x, y, z; unfold eq, loc_eq in *; try auto.
     now transitivity l0. exfalso; auto. exfalso; auto. 
-    split. now transitivity e0. now transitivity p0.
+    split. now transitivity e0. now transitivity (project_p p0).
   Qed.
   
   Lemma eq_dec : forall l l', {eq l l'} + {~eq l l'}.
   Proof.
   intros l l'.
-  destruct l, l'; unfold eq, loc_eq; auto. apply Veq_dec. destruct (Eeq_dec e e0), (Rdec p p0);
+  destruct l, l'; unfold eq, loc_eq; auto. apply Veq_dec.
+  destruct (Eeq_dec e e0), (Rdec (project_p p) (project_p p0));
   intuition.
   Qed.
 End Location.
@@ -71,9 +79,10 @@ End Location.
     Definition project_loc (loc : Location.t) : V :=
       match loc with
         | Loc l =>  l
-        | Mvt e p Hp => 
-          (if Rle_dec p (CommonGraphFormalism.threshold e) then CommonGraphFormalism.src e 
-                                                           else CommonGraphFormalism.tgt e)
+        | Mvt e p => 
+          (if Rle_dec (project_p p) (CommonGraphFormalism.threshold e)
+             then CommonGraphFormalism.src e 
+             else CommonGraphFormalism.tgt e)
       end.
 
     Instance project_loc_compat : Proper (Location.eq ==> Veq) project_loc.
@@ -83,13 +92,13 @@ End Location.
      - assumption.
      - exfalso; assumption.
      - exfalso; assumption.
-     - destruct Hxy as (Hexy, Hpxy), (Rle_dec p (threshold e)) eqn : Hx,
-       (Rle_dec p0 (threshold e0)) eqn:Hy.
+     - destruct Hxy as (Hexy, Hpxy), (Rle_dec (project_p p) (threshold e)) eqn : Hx,
+       (Rle_dec (project_p p0) (threshold e0)) eqn:Hy.
        + now apply src_compat.
        + assert (Ht := threshold_compat e e0 Hexy).
-         assert (Hr : (p <= threshold e)%R) by assumption.
+         assert (Hr : ((project_p p) <= threshold e)%R) by assumption.
          now rewrite Ht, Hpxy in Hr.
-       + assert (Hr : (p0 <= threshold e0)%R) by assumption.
+       + assert (Hr : ((project_p p0) <= threshold e0)%R) by assumption.
          assert (Ht := threshold_compat e e0 Hexy).
          now rewrite <- Ht, <- Hpxy in Hr.
        + now apply tgt_compat.
@@ -294,11 +303,30 @@ End Location.
     fun id =>
       match Config.loc (config id) with
         | Loc l => config id
-        | Mvt e p Hp => {| Config.loc := Loc (if Rle_dec p (threshold e) then src e else tgt e);
+        | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (threshold e) 
+                                               then src e else tgt e);
                            Config.robot_info := Config.robot_info (config id) |}
       end.
+      
+  Instance project_compat : Proper (Config.eq ==> Config.eq) project.
+  Proof.
+  intros c1 c2 Hc id. unfold project. repeat try (split; simpl);
+  destruct (Hc id) as (Hloc, (Hsrc, Htgt)); unfold loc_eq in *;
+  destruct (Config.loc (c1 id)) eqn : Hloc1, (Config.loc (c2 id)) eqn : Hloc2,
+  (Config.source (Config.robot_info (c1 id))) eqn : Hsrc1,
+  (Config.source (Config.robot_info (c2 id))) eqn : Hsrc2,
+  (Config.target (Config.robot_info (c1 id))) eqn : Htgt1,
+  (Config.target (Config.robot_info (c2 id))) eqn : Htgt2; simpl;
+  try rewrite Hloc1 in *; try rewrite Hloc2 in *; try rewrite Hsrc1 in *;
+  try rewrite Hsrc2 in *; try rewrite Htgt1 in *; try rewrite Htgt2 in *;
+  unfold loc_eq in *; try (now exfalso); try assumption;
+  destruct Hloc;
+  destruct (Rle_dec (project_p p) (threshold e)),(Rle_dec (project_p p0) (threshold e0));
+  try (apply (src_compat e e0 H)); (try now rewrite H ,H0 in r); (try now rewrite H, H0 in n);
+  try now apply tgt_compat.
+  Qed.
 
-  Program Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
+  Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
     (** for a given robot, we compute the new configuration *)
     fun id =>
       let conf := config id in
@@ -306,16 +334,17 @@ End Location.
       match da.(step) id conf with (** first see whether the robot is activated *)
         | Moving mv_ratio =>
           match id, pos with
-            | Good g, Mvt e p Hp => if Rle_dec 1%R (p + mv_ratio)
+            | Good g, Mvt e p => if Rle_dec 1%R ((project_p p) + mv_ratio)
                 then {| Config.loc := Loc (tgt e); Config.robot_info := Config.robot_info conf |}
-                else {| Config.loc := Mvt e (p + mv_ratio) _ ; Config.robot_info := Config.robot_info conf |}
+                else {| Config.loc := Mvt e ((project_p p) + mv_ratio);
+                        Config.robot_info := Config.robot_info conf |}
             | Good g, Loc l =>
                 if Rdec mv_ratio 0%R then conf else
                 if Rdec mv_ratio 1%R then {| Config.loc := Config.target (Config.robot_info conf);
                                              Config.robot_info := Config.robot_info conf |} else
                 let new_pos := match Config.target (Config.robot_info conf) with
                                  | Loc l => l
-                                 | Mvt e _ _ => src e
+                                 | Mvt e _ => src e
                                end in
                 if Veq_dec l new_pos then conf
                 else 
@@ -323,7 +352,7 @@ End Location.
                            | Some e => e
                            | None => e_default
                          end in
-                         {| Config.loc := Mvt e mv_ratio _; Config.robot_info := Config.robot_info conf |}
+                         {| Config.loc := Mvt e mv_ratio; Config.robot_info := Config.robot_info conf |}
             | Byz b, _ => conf
           end
         | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
@@ -338,46 +367,79 @@ End Location.
                 Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
           end
       end.
-  Next Obligation.
-  assert (Hs: (step da (Good g) (config (Good g))) = (Moving mv_ratio)).
-  auto. apply step_flexibility in Hs.
-  lra.
-  Qed.
-  Next Obligation.
-  symmetry in Heq_anonymous. apply step_flexibility in Heq_anonymous.
-  lra.
-  Qed.
  
-  Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
-  Proof. Admitted. 
-  (* intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf. intros id.
-  unfold req in Hr.
-  assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)) by apply Hconf.
-  assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
-  assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
-  { apply step_da_compat; try reflexivity. apply Hrconf. }
-  destruct id as [g | b].
-  unfold round. 
-
-  + simpl in Hstep. intuition.
-    rewrite Hstep.
-    f_equiv.
-    f_equiv.
-    apply Hrconf.
-    do 2 f_equiv.
-    apply Hrconf.
-    f_equiv; apply Hrconf.
-    unfold Config.Info_eq.
-    split; apply Hrconf.
-  + unfold Aom_eq in *. exfalso; auto.
-  + unfold Aom_eq in *. exfalso; auto.
-  + f_equiv; try (now apply Hconf); [].
-    split; cbn; try (now apply Hconf); [].
-    simpl in Hstep. f_equiv.
-    - f_equiv. apply Hstep, Hrconf.
-    - apply Hr. do 3 f_equiv; trivial; []. apply Hstep, Hconf.
-  + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
-  Qed.  *)
+Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
+Proof.
+assert (Haxiom := ri_Loc).
+intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
+unfold req in Hr.
+unfold round.
+assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
+apply Hconf.
+assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
+assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
+apply step_da_compat; try reflexivity.
+apply Hrconf.
+destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
+(step da1 id (conf2 id)) eqn:He3, id as [ g| b]; try now elim Hstep.
++ unfold Aom_eq in *.
+  destruct (Config.loc (conf1 (Good g))) eqn: Hloc1, (Config.loc (conf2 (Good g))) eqn : Hloc2.
+  * destruct (Rdec dist 0), (Rdec dist0 0).
+    - apply Hrconf.
+    - now rewrite Hstep in e.
+    - now rewrite Hstep in n.
+    - destruct (Rdec dist 1), (Rdec dist0 1).
+      -- f_equiv; apply Hrconf.
+      -- now rewrite Hstep in e.
+      -- now rewrite Hstep in n1.
+      -- destruct (Config.target (Config.robot_info (conf1 (Good g)))) eqn : Htgt1,
+         (Config.target (Config.robot_info (conf2 (Good g)))) eqn : Htgt2,
+         (Config.source (Config.robot_info (conf1 (Good g)))) eqn : Hsrc1,
+         (Config.source (Config.robot_info (conf2 (Good g)))) eqn : Hsrc2;
+         destruct Hrconf as (Hloc, (Hsrc, Htgt)); rewrite Htgt1, Htgt2 in Htgt;
+         rewrite Hloc1, Hloc2 in Hloc; rewrite Hsrc1, Hsrc2 in Hsrc; unfold loc_eq in *;
+         try (now exfalso).
+         ++ destruct (Veq_dec l l1), (Veq_dec l0 l2).
+            ** apply Hconf.
+            ** now rewrite Hloc, Htgt in v.
+            ** now rewrite Hloc, Htgt in n3.
+            ** repeat try (split; simpl); try apply Hconf.
+               assert (Hcp := CommonGraphFormalism.find_edge_compat l l0 Hloc l1 l2 Htgt).
+               now destruct (find_edge l l1), (find_edge l0 l2).
+               now rewrite Hstep.
+         ++ destruct (Veq_dec l l1), (Veq_dec l0 l2).
+            ** apply Hconf.
+            ** now rewrite Hloc, Htgt in v.
+            ** now rewrite Hloc, Htgt in n3.
+            ** repeat try (split; simpl); try apply Hconf.
+               assert (Hcp := CommonGraphFormalism.find_edge_compat l l0 Hloc l1 l2 Htgt).
+               now destruct (find_edge l l1), (find_edge l0 l2).
+               now rewrite Hstep.
+         ++ specialize (Haxiom (conf1 (Good g))).
+            destruct Haxiom as (la1, (la2, (Haxiom1, Haxiom2))).
+            rewrite Haxiom1 in Htgt1. discriminate.
+         ++ specialize (Haxiom (conf1 (Good g))).
+            destruct Haxiom as (la1, (la2, (Haxiom1, Haxiom2))).
+            rewrite Haxiom1 in Htgt1. discriminate.
+ * destruct Hrconf as (Hloc, (Hsrc, Htgt)).
+   rewrite Hloc1, Hloc2 in Hloc. unfold loc_eq in *; now exfalso.
+ * destruct Hrconf as (Hloc, (Hsrc, Htgt)).
+   rewrite Hloc1, Hloc2 in Hloc. unfold loc_eq in *; now exfalso.
+ * rewrite Hstep. 
+   destruct Hrconf as (Hloc, (Hsrc, Htgt)).
+   rewrite Hloc1, Hloc2 in Hloc. unfold loc_eq in Hloc. destruct Hloc as (He, Hp).
+   rewrite Hp.
+   destruct (Rle_dec 1 (project_p p0 + dist0));
+   repeat try (split;simpl); try apply Hconf.
+   - now apply CommonGraphFormalism.tgt_compat.
+   - assumption.
++ repeat try (split;simpl); try apply Hconf.
+  apply Hr.
+  f_equiv.
+  apply project_compat.
+  apply Hconf.
++ rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
+  Qed.
 
   (* Lemma compat_helper1 : Aom_eq (da.(step) id conf) (Moving mv_r) ->  *)
 
