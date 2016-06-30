@@ -331,836 +331,119 @@ AGF.Config.eq c' (AGF.round rbg da c) ->
 exists da', DGF.Config.eq (ConfigA2D c') (DGF.round (rbgA2D rbg) da' (ConfigA2D c)).
 Proof.
 intros c c' rbg da HAGF.
-exists (daA2D da). repeat try (split; simpl).
-+ assert (Heq : AGF.Location.eq (AGF.Config.loc (c' id))
-                              (AGF.Config.loc ((AGF.round rbg da c) id))) by apply HAGF.
-  unfold AGF.Location.eq in Heq.
-  unfold AGF.round, DGF.round in *.
-  destruct (AGF.step da id (c id)) eqn : HstepA,
-         (DGF.step (daA2D da) id (ConfigA2D c id)) eqn:HstepD, (HAGF id) as (HlocA,(HsrcA,HtgtA)),
-         id as [g|b].
-  - unfold ConfigA2D. simpl in *. destruct (Rdec dist0 0);
-    unfold rcD2A, ConfigA2D in *; simpl in *.
-    * rewrite HstepA in *. simpl in *.
-      assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
+exists (daA2D da). repeat try (split; simpl);
+assert (Heq : AGF.Location.eq (AGF.Config.loc (c' id))
+                              (AGF.Config.loc ((AGF.round rbg da c) id))) by apply HAGF;
+  unfold AGF.Location.eq in Heq;
+  unfold AGF.round, DGF.round in *;
+  assert (Heq_rcA: AGF.Config.eq_RobotConf (c id) ({|
+             AGF.Config.loc := AGF.Config.loc (c id);
              AGF.Config.robot_info := {|
                                       AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
+                                                             (AGF.Config.robot_info (c id));
                                       AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-      repeat (try split; simpl) ; reflexivity.
-      destruct (AGF.step da (Good g)
+                                                             (AGF.Config.robot_info (c id)) |} |})) by (
+      repeat (try split; simpl) ; reflexivity);
+assert (HstepA_compat := AGF.step_compat da id id (reflexivity id)
+              (c id)
+              ({| AGF.Config.loc := AGF.Config.loc (c id);
+                  AGF.Config.robot_info := {|
+                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c id));
+                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c id)) |} |})
+              Heq_rcA);
+destruct (AGF.step da id (c id)) eqn : HstepA,
+         (DGF.step (daA2D da) id (ConfigA2D c id)) eqn:HstepD; unfold ConfigA2D in HstepD;
+  simpl in *; unfold rcD2A in HstepD; simpl in *;
+         destruct (AGF.step da id
              {|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
+             AGF.Config.loc := AGF.Config.loc (c id);
              AGF.Config.robot_info := {|
                                       AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
+                                                             (AGF.Config.robot_info (c id));
                                       AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})
-      eqn : HstepA'.
-      destruct dist; simpl in *; destruct dist1.
-      ++ rewrite e in *.
-         assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving 0)). unfold daA2D in *.
-         rewrite HstepD; reflexivity. unfold DGF.Aom_eq in *. lra.
-      ++ assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         rewrite HstepA, HstepA' in HstepA_compat. now unfold AGF.Aom_eq in *.
-      ++ assumption.
-      ++ assumption.
-      ++ assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         rewrite HstepA, HstepA' in HstepA_compat. now unfold AGF.Aom_eq in *.
-    * destruct (Rdec dist0 1); simpl in *. rewrite HstepA in *; simpl in *.
-      destruct dist; simpl in *.
-      ++ assumption.
-      ++ assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-         repeat (try split; simpl) ; reflexivity.
-         assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-         rewrite e, HstepA in *. unfold AGF.Aom_eq in *. rewrite <- HstepA_compat in *.
+                                                             (AGF.Config.robot_info (c id)) |} |})
+      eqn : HstepA',
+         (HAGF id) as (HlocA,(HsrcA,HtgtA)),
+         id as [g|b]; try now exfalso; simpl in *; rewrite HstepA in *.
+  - destruct (Rdec dist0 0).
+    * destruct dist; simpl in *; destruct dist1; try auto; try discriminate.
+      rewrite e in *.
+      assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving 0)). unfold daA2D in *.
+      rewrite HstepD; reflexivity. unfold DGF.Aom_eq in *. lra.
+    * destruct (Rdec dist0 1).
+      destruct dist; simpl in *; auto.
+      ++ rewrite e, <- HstepA_compat in *.
          assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving 1)).
          rewrite HstepD. reflexivity. unfold DGF.Aom_eq in *. lra.
-         rewrite HstepA in *. now unfold AGF.Aom_eq in *.
+      ++ destruct (Veq_dec (AGF.Config.loc (c (Good g)))
+        (AGF.Config.target (AGF.Config.robot_info (c (Good g))))); simpl in *.
+        ** destruct dist; simpl in *; destruct dist1; simpl in *; try auto.
+          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
+             { rewrite HstepD. reflexivity. }
+             unfold DGF.Aom_eq in *. lra.
+          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
+             { rewrite HstepD. reflexivity. }
+             unfold DGF.Aom_eq in *. lra.
+        ** destruct dist; simpl in *; destruct dist1; simpl in *; try discriminate.
+          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
+             { rewrite HstepD. reflexivity. }
+             unfold DGF.Aom_eq in *. lra.
+          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
+             { rewrite HstepD. reflexivity. }
+             unfold DGF.Aom_eq in *. lra.
+ - destruct dist; simpl in *; assumption.
+ - destruct dist0; simpl in *; discriminate.
+ - destruct dist0; simpl in *; discriminate.
+ - simpl in *. assumption.
+ - simpl in *. assumption.
+ - destruct (Rdec dist0 0); rewrite HstepA in *; simpl in *.
+    * destruct dist; destruct dist1; try auto.
+    * destruct (Rdec dist0 1).
+      destruct dist; simpl in *; try auto.
+      destruct (Veq_dec (AGF.Config.loc (c (Good g)))
+        (AGF.Config.target (AGF.Config.robot_info (c (Good g))))); simpl in *;
+      destruct dist; simpl in *; destruct dist1; simpl in *; try auto.
+ - rewrite HstepA in *. destruct dist; assumption.
+ - rewrite HstepA in *. destruct dist0; discriminate.
+ - rewrite HstepA in *. destruct dist0; discriminate.
+ - rewrite HstepA in *. assumption.
+ - rewrite HstepA in *; assumption.
+ - destruct (Rdec dist0 0).
+    * rewrite HstepA in *. simpl in *.
+      destruct dist; simpl in *; destruct dist1; auto; try discriminate.
+    * destruct (Rdec dist0 1); simpl in *. rewrite HstepA in *; simpl in *.
+      destruct dist; simpl in *; auto.
       ++ destruct (Veq_dec (AGF.Config.loc (c (Good g)))
         (AGF.Config.target (AGF.Config.robot_info (c (Good g))))); simpl in *.
         ** rewrite HstepA in *.
-           assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-          destruct dist; simpl in *; destruct dist1; simpl in *.
+          destruct dist; simpl in *; destruct dist1; simpl in *; try discriminate.
           -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
              { rewrite HstepD. reflexivity. }
              unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
           -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
              { rewrite HstepD. reflexivity. }
              unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
         ** rewrite HstepA in *.
-           assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-          destruct dist; simpl in *; destruct dist1; simpl in *.
+          destruct dist; simpl in *; destruct dist1; simpl in *; try discriminate.
           -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
              { rewrite HstepD. reflexivity. }
              unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
           -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
              { rewrite HstepD. reflexivity. }
              unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
- - unfold ConfigA2D in *. simpl in *. rewrite HstepA in *; simpl in *. destruct dist;
-   simpl in *; assumption.
- - unfold ConfigA2D. simpl in *.
-    unfold rcD2A, ConfigA2D in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |});
-    rewrite HstepA in *; simpl in *. destruct dist0; simpl in *; discriminate.
-    now exfalso.
-  - simpl in *. unfold rcD2A, ConfigA2D in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Byz b)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Byz b));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Byz b)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Byz b))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Byz b) (Byz b) (reflexivity (Byz b))
-              (c (Byz b))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Byz b)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Byz b))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Byz b)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b))) |} |});
-    rewrite HstepA in *; simpl in *. destruct dist0; simpl in *; discriminate.
-    now exfalso.
-  - unfold ConfigA2D in *; simpl in *. unfold rcD2A in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |});
-    rewrite HstepA in *; simpl in *. now exfalso.
-    destruct (DGF.Location.eq_dec (DGF.Loc (AGF.Config.loc (c (Good g))))
-             (DGF.Loc (AGF.Config.target (AGF.Config.robot_info (c (Good g))))));
-    discriminate.
- - unfold ConfigA2D in *; simpl in *. unfold rcD2A in *; simpl in *.
-   assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Byz b)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Byz b));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Byz b)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Byz b))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Byz b) (Byz b) (reflexivity (Byz b))
-              (c (Byz b))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Byz b)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Byz b))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Byz b)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b))) |} |});
-    rewrite HstepA in *; simpl in *. now exfalso. discriminate.
-  - simpl in *. rewrite HstepA in *. simpl in *. assumption.
-  - simpl in *. rewrite HstepA in *; simpl in *. assumption.
-+ assert (Heq : AGF.Location.eq (AGF.Config.loc (c' id))
-                              (AGF.Config.loc ((AGF.round rbg da c) id))) by apply HAGF.
-  unfold AGF.Location.eq in Heq.
-  unfold AGF.round, DGF.round in *.
-  destruct (AGF.step da id (c id)) eqn : HstepA,
-         (DGF.step (daA2D da) id (ConfigA2D c id)) eqn:HstepD, (HAGF id) as (HlocA,(HsrcA,HtgtA)),
-         id as [g|b].
-  - unfold ConfigA2D. simpl in *. destruct (Rdec dist0 0);
-    unfold rcD2A, ConfigA2D in *; simpl in *.
-    * rewrite HstepA in *. simpl in *.
-      assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-      repeat (try split; simpl) ; reflexivity.
-      destruct (AGF.step da (Good g)
-             {|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})
-      eqn : HstepA'.
-      destruct dist; simpl in *; destruct dist1.
-      ++ rewrite e in *.
-         assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving 0)). unfold daA2D in *.
-         rewrite HstepD; reflexivity. unfold DGF.Aom_eq in *. lra.
-      ++ assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         rewrite HstepA, HstepA' in HstepA_compat. now unfold AGF.Aom_eq in *.
-      ++ assumption.
-      ++ assumption.
-      ++ assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         rewrite HstepA, HstepA' in HstepA_compat. now unfold AGF.Aom_eq in *.
-    * destruct (Rdec dist0 1); simpl in *. rewrite HstepA in *; simpl in *.
-      destruct dist; simpl in *.
-      ++ assumption.
-      ++ assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-         repeat (try split; simpl) ; reflexivity.
-         assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-         rewrite e, HstepA in *. unfold AGF.Aom_eq in *. rewrite <- HstepA_compat in *.
-         assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving 1)).
-         rewrite HstepD. reflexivity. unfold DGF.Aom_eq in *. lra.
-         rewrite HstepA in *. now unfold AGF.Aom_eq in *.
-      ++ destruct (Veq_dec (AGF.Config.loc (c (Good g)))
-        (AGF.Config.target (AGF.Config.robot_info (c (Good g))))); simpl in *.
-        ** rewrite HstepA in *.
-           assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-          destruct dist; simpl in *; destruct dist1; simpl in *.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-        ** rewrite HstepA in *.
-           assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-          destruct dist; simpl in *; destruct dist1; simpl in *.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
- - unfold ConfigA2D in *. simpl in *. rewrite HstepA in *; simpl in *. destruct dist;
-   simpl in *; assumption.
- - unfold ConfigA2D. simpl in *.
-    unfold rcD2A, ConfigA2D in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |});
-    rewrite HstepA in *; simpl in *. destruct dist0; simpl in *; discriminate.
-    now exfalso.
-  - simpl in *. unfold rcD2A, ConfigA2D in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Byz b)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Byz b));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Byz b)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Byz b))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Byz b) (Byz b) (reflexivity (Byz b))
-              (c (Byz b))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Byz b)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Byz b))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Byz b)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b))) |} |});
-    rewrite HstepA in *; simpl in *. destruct dist0; simpl in *; discriminate.
-    now exfalso.
-  - unfold ConfigA2D in *; simpl in *. unfold rcD2A in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |});
-    rewrite HstepA in *; simpl in *. now exfalso.
-    destruct (DGF.Location.eq_dec (DGF.Loc (AGF.Config.loc (c (Good g))))
-             (DGF.Loc (AGF.Config.target (AGF.Config.robot_info (c (Good g))))));
-    discriminate.
- - unfold ConfigA2D in *; simpl in *. unfold rcD2A in *; simpl in *.
-   assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Byz b)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Byz b));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Byz b)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Byz b))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Byz b) (Byz b) (reflexivity (Byz b))
-              (c (Byz b))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Byz b)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Byz b))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Byz b)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b))) |} |});
-    rewrite HstepA in *; simpl in *. now exfalso. discriminate.
-  - simpl in *. rewrite HstepA in *. simpl in *. assumption.
-  - simpl in *. rewrite HstepA in *; simpl in *. assumption.
-+ assert (Heq : AGF.Location.eq (AGF.Config.loc (c' id))
-                              (AGF.Config.loc ((AGF.round rbg da c) id))) by apply HAGF.
-  unfold AGF.Location.eq in Heq.
-  unfold AGF.round, DGF.round in *.
-  destruct (AGF.step da id (c id)) eqn : HstepA,
-         (DGF.step (daA2D da) id (ConfigA2D c id)) eqn:HstepD, (HAGF id) as (HlocA,(HsrcA,HtgtA)),
-         id as [g|b].
-  - unfold ConfigA2D. simpl in *. destruct (Rdec dist0 0);
-    unfold rcD2A, ConfigA2D in *; simpl in *.
-    * rewrite HstepA in *. simpl in *.
-      assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-      repeat (try split; simpl) ; reflexivity.
-      destruct (AGF.step da (Good g)
-             {|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})
-      eqn : HstepA'.
-      destruct dist; simpl in *; destruct dist1.
-      ++ rewrite e in *.
-         assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving 0)). unfold daA2D in *.
-         rewrite HstepD; reflexivity. unfold DGF.Aom_eq in *. lra.
-      ++ assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         rewrite HstepA, HstepA' in HstepA_compat. now unfold AGF.Aom_eq in *.
-      ++ assumption.
-      ++ assumption.
-      ++ assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         rewrite HstepA, HstepA' in HstepA_compat. now unfold AGF.Aom_eq in *.
-    * destruct (Rdec dist0 1); simpl in *. rewrite HstepA in *; simpl in *.
-      destruct dist; simpl in *.
-      ++ assumption.
-      ++ assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-         repeat (try split; simpl) ; reflexivity.
-         assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-         destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-         rewrite e, HstepA in *. unfold AGF.Aom_eq in *. rewrite <- HstepA_compat in *.
-         assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving 1)).
-         rewrite HstepD. reflexivity. unfold DGF.Aom_eq in *. lra.
-         rewrite HstepA in *. now unfold AGF.Aom_eq in *.
-      ++ destruct (Veq_dec (AGF.Config.loc (c (Good g)))
-        (AGF.Config.target (AGF.Config.robot_info (c (Good g))))); simpl in *.
-        ** rewrite HstepA in *.
-           assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-          destruct dist; simpl in *; destruct dist1; simpl in *.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-        ** rewrite HstepA in *.
-           assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |}).
-          destruct dist; simpl in *; destruct dist1; simpl in *.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 1) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
-          -- assert (Hfalse : DGF.Aom_eq (DGF.Moving 0) (DGF.Moving dist0)).
-             { rewrite HstepD. reflexivity. }
-             unfold DGF.Aom_eq in *. lra.
-          -- rewrite HstepA in *. now unfold AGF.Aom_eq.
- - unfold ConfigA2D in *. simpl in *. rewrite HstepA in *; simpl in *. destruct dist;
-   simpl in *; assumption.
- - unfold ConfigA2D. simpl in *.
-    unfold rcD2A, ConfigA2D in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |});
-    rewrite HstepA in *; simpl in *. destruct dist0; simpl in *; discriminate.
-    now exfalso.
-  - simpl in *. unfold rcD2A, ConfigA2D in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Byz b)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Byz b));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Byz b)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Byz b))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Byz b) (Byz b) (reflexivity (Byz b))
-              (c (Byz b))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Byz b)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Byz b))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Byz b)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b))) |} |});
-    rewrite HstepA in *; simpl in *. destruct dist0; simpl in *; discriminate.
-    now exfalso.
-  - unfold ConfigA2D in *; simpl in *. unfold rcD2A in *; simpl in *.
-     assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Good g)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Good g));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Good g)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Good g))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Good g) (Good g) (reflexivity (Good g))
-              (c (Good g))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Good g));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Good g)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Good g))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Good g)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Good g));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Good g))) |} |});
-    rewrite HstepA in *; simpl in *. now exfalso.
-    destruct (DGF.Location.eq_dec (DGF.Loc (AGF.Config.loc (c (Good g))))
-             (DGF.Loc (AGF.Config.target (AGF.Config.robot_info (c (Good g))))));
-    discriminate.
- - unfold ConfigA2D in *; simpl in *. unfold rcD2A in *; simpl in *.
-   assert (Heq_rcA: AGF.Config.eq_RobotConf (c (Byz b)) ({|
-             AGF.Config.loc := AGF.Config.loc (c (Byz b));
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := AGF.Config.source
-                                                             (AGF.Config.robot_info (c (Byz b)));
-                                      AGF.Config.target := AGF.Config.target
-                                                             (AGF.Config.robot_info (c (Byz b))) |} |})).
-          repeat (try split; simpl) ; reflexivity.
-          assert (HstepA_compat := AGF.step_compat da (Byz b) (Byz b) (reflexivity (Byz b))
-              (c (Byz b))
-              ({| AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                  AGF.Config.robot_info := {|
-                     AGF.Config.source := AGF.Config.source (AGF.Config.robot_info (c (Byz b)));
-                     AGF.Config.target := AGF.Config.target (AGF.Config.robot_info (c (Byz b))) |} |})
-              Heq_rcA).
-          destruct (AGF.step da (Byz b)
-                     {|
-                     AGF.Config.loc := AGF.Config.loc (c (Byz b));
-                     AGF.Config.robot_info := {|
-                                              AGF.Config.source := AGF.Config.source
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b)));
-                                              AGF.Config.target := AGF.Config.target
-                                                                   (AGF.Config.robot_info
-                                                                   (c (Byz b))) |} |});
-    rewrite HstepA in *; simpl in *. now exfalso. discriminate.
-  - rewrite HstepA in *. simpl in *. rewrite HtgtA.
+ - rewrite HstepA in *; destruct dist; simpl in *; assumption.
+ - rewrite HstepA in *; destruct dist0; simpl in *; discriminate.
+ - rewrite HstepA in *; destruct dist0; simpl in *; discriminate.
+ - rewrite HstepA in *. simpl in *. rewrite HtgtA.
     assert (Htest : forall confA, DGF.Config.eq (ConfigA2D (confA)) (DGF.project (ConfigA2D confA))).
     intros confA id.
     unfold DGF.project, ConfigA2D; simpl in *. reflexivity.
     specialize (Htest c). rewrite <- Htest.
     assert (AGF.Spect.eq (AGF.Spect.from_config c) (DGF.Spect.from_config (ConfigA2D c))).
-    unfold AGF.Spect.eq, View.eq. split.
+    unfold AGF.Spect.eq, View.eq.
     unfold ConfigA2D; simpl in *.
-    repeat try (split; simpl). f_equiv.
-    assumption. *)
-  - simpl in *. rewrite HstepA in *; simpl in *. assumption.    
-
+    repeat try (split; simpl); now unfold AGF.Spect.from_config. now rewrite H.
+ - rewrite HstepA in *; simpl in *; assumption.
 Save.
 
 (*assert (Htest : forall confD, AGF.Config.eq (ConfigD2A confD) (ConfigD2A (DGF.project confD))).
