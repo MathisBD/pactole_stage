@@ -22,7 +22,7 @@ Module Location := LocationA.
 Module Config := ConfigA.
 
 (* Identity spectrum *)
-Module Spect : Spectrum(Location)(N)(Names)(Config) with Definition t := View.t with Definition eq := View.eq.
+Module Spect : Spectrum(Location)(N)(Names)(Config) with Definition t := View.t with Definition from_config := (fun x : ConfigA.t => x) with Definition eq := View.eq.
   Definition t := View.t. (* too strong as we identify byzantine robots *)
   Definition eq := View.eq.
   Definition eq_equiv : Equivalence eq := View.eq_equiv.
@@ -210,9 +210,11 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
     let pos := conf.(Config.loc) in
     match da.(step) id conf with (** first see whether the robot is activated *)
       | Moving false => conf
-      | Moving true => 
-           let tgt := conf.(Config.robot_info).(Config.target) in
-           {| Config.loc := tgt ; Config.robot_info := conf.(Config.robot_info) |}
+      | Moving true => match id with
+           | Good g => let tgt := conf.(Config.robot_info).(Config.target) in
+                       {| Config.loc := tgt ; Config.robot_info := conf.(Config.robot_info) |}
+           | Byz b => conf
+           end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => (* byzantine robot are relocated by the demon *)
@@ -247,10 +249,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   apply Hrconf.
 + unfold Aom_eq in *.
   rewrite Hstep.
-  destruct dist0.
-  f_equiv;
-  apply Hrconf.
-  apply Hrconf.
+  destruct dist0; apply Hrconf.
 + unfold Aom_eq in *.
   f_equiv.
   apply Hconf.

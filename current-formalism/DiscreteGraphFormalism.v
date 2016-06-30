@@ -65,18 +65,38 @@ End Location.
 
   Module Config := Configurations.Make (Location)(N)(Names).
 
+  Definition project (config : Config.t) : Config.t :=
+    fun id =>
+      match Config.loc (config id) with
+        | Loc l => config id
+        | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (threshold e) 
+                                               then src e else tgt e);
+                           Config.robot_info := Config.robot_info (config id) |}
+      end.
+      
+  Instance project_compat : Proper (Config.eq ==> Config.eq) project.
+  Proof.
+  intros c1 c2 Hc id. unfold project. repeat try (split; simpl);
+  destruct (Hc id) as (Hloc, (Hsrc, Htgt)); unfold loc_eq in *;
+  destruct (Config.loc (c1 id)) eqn : Hloc1, (Config.loc (c2 id)) eqn : Hloc2,
+  (Config.source (Config.robot_info (c1 id))) eqn : Hsrc1,
+  (Config.source (Config.robot_info (c2 id))) eqn : Hsrc2,
+  (Config.target (Config.robot_info (c1 id))) eqn : Htgt1,
+  (Config.target (Config.robot_info (c2 id))) eqn : Htgt2; simpl;
+  try rewrite Hloc1 in *; try rewrite Hloc2 in *; try rewrite Hsrc1 in *;
+  try rewrite Hsrc2 in *; try rewrite Htgt1 in *; try rewrite Htgt2 in *;
+  unfold loc_eq in *; try (now exfalso); try assumption;
+  destruct Hloc;
+  destruct (Rle_dec (project_p p) (threshold e)),(Rle_dec (project_p p0) (threshold e0));
+  try (apply (src_compat e e0 H)); (try now rewrite H ,H0 in r); (try now rewrite H, H0 in n);
+  try now apply tgt_compat.
+  Qed.
+
   Axiom ri_Loc : forall (rc : Config.RobotConf), exists l1 l2, 
                     Config.target (Config.robot_info rc) = Loc l1 /\
                     Config.source (Config.robot_info rc) = Loc l2.
 
-  Module Spect : Spectrum(Location)(N)(Names)(Config) with Definition t := View.t with Definition eq := View.eq.
-
-    Definition t := ConfigA.t.
-    Definition eq := ConfigA.eq.
-    Definition eq_equiv := ConfigA.eq_equiv.
-    Definition eq_dec := ConfigA.eq_dec.
-
-    Definition project_loc (loc : Location.t) : V :=
+   Definition projectS_loc (loc : Location.t) : V :=
       match loc with
         | Loc l =>  l
         | Mvt e p => 
@@ -85,10 +105,10 @@ End Location.
              else CommonGraphFormalism.tgt e)
       end.
 
-    Instance project_loc_compat : Proper (Location.eq ==> Veq) project_loc.
+    Instance projectS_loc_compat : Proper (Location.eq ==> Veq) projectS_loc.
     Proof.
     intros x y Hxy. simpl in *. unfold Location.eq, loc_eq in *.
-    unfold project_loc. destruct x,y.
+    unfold projectS_loc. destruct x,y.
      - assumption.
      - exfalso; assumption.
      - exfalso; assumption.
@@ -104,29 +124,38 @@ End Location.
        + now apply tgt_compat.
     Qed.
 
-    Definition project (config : Config.t) : View.t :=
+    Definition projectS (config : Config.t) : View.t :=
       fun id =>
-        {| ConfigA.loc := (project_loc (Config.loc (config id)));
+        {| ConfigA.loc := (projectS_loc (Config.loc (config id)));
            ConfigA.robot_info := 
-           {| ConfigA.source := (project_loc (Config.source (Config.robot_info (config id))));
-              ConfigA.target := (project_loc (Config.target (Config.robot_info (config id)))) |} |}.
+           {| ConfigA.source := (projectS_loc (Config.source (Config.robot_info (config id))));
+              ConfigA.target := (projectS_loc (Config.target (Config.robot_info (config id)))) |} |}.
 
-    Instance project_compat : Proper (Config.eq ==> ConfigA.eq) project.
+    Instance projectS_compat : Proper (Config.eq ==> ConfigA.eq) projectS.
     Proof.
-    intros c1 c2 Hc id. destruct (Hc id) as (Hl, (Hs, Ht)). unfold project.
-    split; simpl. now apply project_loc_compat. split; simpl; now apply project_loc_compat.
+    intros c1 c2 Hc id. destruct (Hc id) as (Hl, (Hs, Ht)). unfold projectS.
+    split; simpl. now apply projectS_loc_compat. split; simpl; now apply projectS_loc_compat.
     Qed.
 
-    Definition from_config := fun x => (project x).
+  Module Spect : Spectrum(Location)(N)(Names)(Config) with Definition t := View.t with Definition from_config := (fun x => projectS x) with Definition eq := View.eq.
+
+    Definition t := ConfigA.t.
+    Definition eq := ConfigA.eq.
+    Definition eq_equiv := ConfigA.eq_equiv.
+    Definition eq_dec := ConfigA.eq_dec.
+
+   
+
+    Definition from_config := fun x => (projectS x).
     Instance from_config_compat : Proper (Config.eq ==> View.eq) from_config.
     Proof.
-    intros x y Hxy. unfold from_config. now apply project_compat.
+    intros x y Hxy. unfold from_config. now apply projectS_compat.
     Defined.
-    Definition is_ok : t -> Config.t -> Prop := fun t c => if (eq_dec t (project c)) then True else False.
+    Definition is_ok : t -> Config.t -> Prop := fun t c => if (eq_dec t (projectS c)) then True else False.
     Definition from_config_spec : forall config, is_ok (from_config config) config.
     Proof.
     intro.
-    unfold is_ok, from_config. destruct (eq_dec (project config) (project config)); auto.
+    unfold is_ok, from_config. destruct (eq_dec (projectS config) (projectS config)); auto.
     destruct n. reflexivity.
     Defined.
 
@@ -224,6 +253,7 @@ End Location.
     relocate_byz : Names.B -> Location.t;
     step : Names.ident -> Config.RobotConf -> Active_or_Moving;
     step_delta : forall id Rconfig sim, (step id Rconfig) = (Active sim) ->
+         (exists l, Location.eq Rconfig.(Config.loc) (Loc l)) ->
          Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target);
     step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
     step_flexibility : forall id config r,(step id config) = (Moving r) -> (0 <= r <= 1)%R}.
@@ -299,32 +329,7 @@ End Location.
       giving the configuration of each robot) from the previous one [conf] by applying
       the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
       is used for byzantine robots. *)
-  Definition project (config : Config.t) : Config.t :=
-    fun id =>
-      match Config.loc (config id) with
-        | Loc l => config id
-        | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (threshold e) 
-                                               then src e else tgt e);
-                           Config.robot_info := Config.robot_info (config id) |}
-      end.
-      
-  Instance project_compat : Proper (Config.eq ==> Config.eq) project.
-  Proof.
-  intros c1 c2 Hc id. unfold project. repeat try (split; simpl);
-  destruct (Hc id) as (Hloc, (Hsrc, Htgt)); unfold loc_eq in *;
-  destruct (Config.loc (c1 id)) eqn : Hloc1, (Config.loc (c2 id)) eqn : Hloc2,
-  (Config.source (Config.robot_info (c1 id))) eqn : Hsrc1,
-  (Config.source (Config.robot_info (c2 id))) eqn : Hsrc2,
-  (Config.target (Config.robot_info (c1 id))) eqn : Htgt1,
-  (Config.target (Config.robot_info (c2 id))) eqn : Htgt2; simpl;
-  try rewrite Hloc1 in *; try rewrite Hloc2 in *; try rewrite Hsrc1 in *;
-  try rewrite Hsrc2 in *; try rewrite Htgt1 in *; try rewrite Htgt2 in *;
-  unfold loc_eq in *; try (now exfalso); try assumption;
-  destruct Hloc;
-  destruct (Rle_dec (project_p p) (threshold e)),(Rle_dec (project_p p0) (threshold e0));
-  try (apply (src_compat e e0 H)); (try now rewrite H ,H0 in r); (try now rewrite H, H0 in n);
-  try now apply tgt_compat.
-  Qed.
+
 
   Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
     (** for a given robot, we compute the new configuration *)
