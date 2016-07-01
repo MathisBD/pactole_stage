@@ -8,7 +8,7 @@
 (**************************************************************************)
 
 
-Require MMapWeakList. (* to build an actual implementation of multisets *)
+Require MMaps.MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.

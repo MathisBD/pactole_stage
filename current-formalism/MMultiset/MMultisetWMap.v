@@ -8,8 +8,7 @@
 (*                                        *)
 (******************************************)
 
-
-Require Import MMapInterface.
+Require Import MMaps.MMapInterface.
 Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
