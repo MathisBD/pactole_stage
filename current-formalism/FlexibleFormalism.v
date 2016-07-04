@@ -133,44 +133,40 @@ destruct (step da id); intuition; try discriminate.
 apply Names.In_names.
 Qed.
 
-
 (** A [demon] is just a stream of [demonic_action]s. *)
-Definition demon := Stream.t demonic_action.
+Definition demon := Streams.t demonic_action.
 
-Definition deq (d1 d2 : demon) : Prop := Stream.eq da_eq d1 d2.
+Definition deq (d1 d2 : demon) : Prop := Streams.eq da_eq d1 d2.
 
 Instance deq_equiv : Equivalence deq.
-Proof. apply Stream.eq_equiv. apply da_eq_equiv. Qed.
+Proof. apply Streams.eq_equiv. apply da_eq_equiv. Qed.
 
-Instance demon_hd_compat : Proper (deq ==> da_eq) (@Stream.hd _) := Stream.hd_compat _.
-Instance demon_tl_compat : Proper (deq ==> deq) (@Stream.tl _) := Stream.tl_compat _.
+Instance demon_hd_compat : Proper (deq ==> da_eq) (@Streams.hd _) := Streams.hd_compat _.
+Instance demon_tl_compat : Proper (deq ==> deq) (@Streams.tl _) := Streams.tl_compat _.
 
 (** ** Fairness *)
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | NowFair : step (Stream.hd d) g ≠ None → LocallyFairForOne g d
-  | LaterFair : step (Stream.hd d) g = None → LocallyFairForOne g (Stream.tl d) → LocallyFairForOne g d.
+  | NowFair : step (Streams.hd d) g ≠ None → LocallyFairForOne g d
+  | LaterFair : step (Streams.hd d) g = None → LocallyFairForOne g (Streams.tl d) → LocallyFairForOne g d.
 
-Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ g, LocallyFairForOne g d).
+Definition Fair : demon -> Prop := Streams.forever (fun d => ∀ g, LocallyFairForOne g d).
 
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k, step (Stream.hd d) g <> None -> Between g h d k
-| kReduce : forall k, step (Stream.hd d) g = None -> step (Stream.hd d) h <> None ->
-                      Between g h (Stream.tl d) k -> Between g h d (S k)
-| kStall : forall k, step (Stream.hd d) g = None -> step (Stream.hd d) h = None ->
-                     Between g h (Stream.tl d) k -> Between g h d k.
+| kReset : forall k, step (Streams.hd d) g <> None -> Between g h d k
+| kReduce : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h <> None ->
+                      Between g h (Streams.tl d) k -> Between g h d (S k)
+| kStall : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h = None ->
+                     Between g h (Streams.tl d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
-<<<<<<< HEAD:dev_coq/current-formalism/FlexibleFormalism.v
-CoInductive kFair k (d : demon) : Prop :=
-  AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
-                kFair k d.
-=======
-Definition kFair k : demon -> Prop := Stream.forever (fun d => forall g h, Between g h d k).
->>>>>>> c2944b4... Définitions de eventually et forever pour les flots.:dev_coq/gathering-nD/FlexibleFormalism.v
+(* CoInductive kFair k (d : demon) : Prop := *)
+(*   AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) -> *)
+(*                 kFair k d. *)
+Definition kFair k : demon -> Prop := Streams.forever (fun d => forall g h, Between g h d k).
 
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
@@ -185,7 +181,7 @@ Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> iff) LocallyFairForOn
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
 Instance Fair_compat : Proper (deq ==> iff) Fair.
-Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
+Proof. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
 Proof.
@@ -205,7 +201,7 @@ Instance Between_compat : Proper (eq ==> eq ==> deq ==> eq ==> iff) Between.
 Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
 Instance kFair_compat : Proper (eq ==> deq ==> iff) kFair.
-Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
+Proof. intros k ? ?. subst. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
@@ -220,7 +216,7 @@ Proof. intros g d k Hd. induction Hd; now constructor. Qed.
 
 (** A k-fair demon is fair. *)
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
-Proof. intro. apply Stream.forever_impl_compat. intros. eauto using (@Between_LocallyFair g _ g). Qed.
+Proof. intro. apply Streams.forever_impl_compat. intros. eauto using (@Between_LocallyFair g _ g). Qed.
 
 (** [Between g h d k] is monotonic on [k]. *)
 Lemma Between_mon : forall g h (d : demon) k,
@@ -244,7 +240,7 @@ coinduction fair; destruct H.
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (Stream.hd d).(step) g = None <-> (Stream.hd d).(step) h = None.
+  forall g h, (Streams.hd d).(step) g = None <-> (Streams.hd d).(step) h = None.
 Proof.
 intros d Hd g h. destruct Hd as [Hd _]. split; intro H.
 - assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
@@ -259,22 +255,19 @@ Qed.
 
 
 (** A demon is fully synchronous at the first step. *)
-Definition FullySynchronousInstant : demon -> Prop := Stream.instant (fun da => forall g, step da g ≠ None).
+Definition FullySynchronousInstant : demon -> Prop := Streams.instant (fun da => forall g, step da g ≠ None).
 
 (** A demon is fully synchronous if it is fully synchronous at all step. *)
-Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
+Definition FullySynchronous : demon -> Prop := Streams.forever FullySynchronousInstant.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
-<<<<<<< HEAD:dev_coq/current-formalism/FlexibleFormalism.v
-Proof.
-  coinduction fully_fair.
-  - intro. apply local_fully_synchronous_implies_fair. apply X.
-  - now inversion X.
-Qed.
-=======
-Proof. apply Stream.forever_impl_compat. intros s Hs g. constructor. apply Hs. Qed.
->>>>>>> c2944b4... Définitions de eventually et forever pour les flots.:dev_coq/gathering-nD/FlexibleFormalism.v
+(* Proof. *)
+(*   coinduction fully_fair. *)
+(*   - intro. apply local_fully_synchronous_implies_fair. apply X. *)
+(*   - now inversion X. *)
+(* Qed. *)
+Proof. apply Streams.forever_impl_compat. intros s Hs g. constructor. apply Hs. Qed.
 
 (** ** One step executions *)
 
@@ -393,29 +386,26 @@ now apply no_moving_same_conf.
 Qed.
 
 
-<<<<<<< HEAD:dev_coq/current-formalism/FlexibleFormalism.v
 (** [execute r d conf] returns an (infinite) execution from an initial global
     configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)
+(* Definition execute δ (r : robogram): demon → Config.t → execution := *)
+(*   cofix execute d conf := *)
+(*   NextExecution conf (execute (demon_tail d) (round δ r (demon_head d) conf)). *)
+
+(** Decomposition lemma for [execute]. *)
+(* Lemma execute_tail : forall δ (r : robogram) (d : demon) (conf : Config.t), *)
+(*   execution_tail (execute δ r d conf) = execute δ r (demon_tail d) (round δ r (demon_head d) conf). *)
+(* Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed. *)
+(** [execute r d pos] returns an (infinite) execution from an initial global
+    position [pos], a demon [d] and a robogram [r] running on each good robot. *)
 Definition execute δ (r : robogram): demon → Config.t → execution :=
   cofix execute d conf :=
-  NextExecution conf (execute (demon_tail d) (round δ r (demon_head d) conf)).
+  Streams.cons conf (execute (Streams.tl d) (round δ r (Streams.hd d) conf)).
 
 (** Decomposition lemma for [execute]. *)
 Lemma execute_tail : forall δ (r : robogram) (d : demon) (conf : Config.t),
-  execution_tail (execute δ r d conf) = execute δ r (demon_tail d) (round δ r (demon_head d) conf).
-Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
-=======
-(** [execute r d pos] returns an (infinite) execution from an initial global
-    position [pos], a demon [d] and a robogram [r] running on each good robot. *)
-Definition execute δ (r : robogram): demon → Pos.t → execution :=
-  cofix execute d pos :=
-  Stream.cons pos (execute (Stream.tl d) (round δ r (Stream.hd d) pos)).
-
-(** Decomposition lemma for [execute]. *)
-Lemma execute_tail : forall δ (r : robogram) (d : demon) (pos : Pos.t),
-  Stream.tl (execute δ r d pos) = execute δ r (Stream.tl d) (round δ r (Stream.hd d) pos).
+  Streams.tl (execute δ r d conf) = execute δ r (Streams.tl d) (round δ r (Streams.hd d) conf).
 Proof. intros. destruct d. reflexivity. Qed.
->>>>>>> c2944b4... Définitions de eventually et forever pour les flots.:dev_coq/gathering-nD/FlexibleFormalism.v
 
 Instance execute_compat : Proper (eq ==> req ==> deq ==> Config.eq ==> eeq) execute.
 Proof.
