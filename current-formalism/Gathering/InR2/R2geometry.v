@@ -910,6 +910,16 @@ intros pt1 pt2 pt Hnull. split; intro Hpt.
         perpendicular_mul_compat_l, perpendicular_mul_compat_r, orthogonal_perpendicular.
 Qed.
 
+(** ** Segments **)
+
+Definition on_segment ptA ptB pt :=
+  exists k, (pt - ptA) = k * (ptB - ptA) /\ (0 <= k <= 1)%R.
+
+Lemma orthogonal_projection :
+  forall ptA ptB ptS, ~R2.eq ptA ptB ->
+                      exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS).
+
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=
