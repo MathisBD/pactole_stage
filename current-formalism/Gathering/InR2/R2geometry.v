@@ -932,7 +932,21 @@ Proof.
   intros. subst. apply Rinv_r_simpl_l. assumption.
 Qed.
 
-Lemma orthogonal_projection :
+Lemma R2plus_opp_assoc_comm : forall u1 u2 u3, (u1 + u2 + - u3 = u1 + - u3 + u2)%R2.
+Proof.
+  intros.
+  rewrite <- R2.add_assoc. rewrite R2.add_comm with (u := u2). rewrite R2.add_assoc.
+  reflexivity.
+Qed.
+
+Lemma R2_opp_dist : forall (u v: R2.t), (- (u + v) = -u + -v)%R2.
+Proof.
+  intros [? ?] [? ?].
+  compute.
+  f_equal; ring.
+Qed.
+  
+Lemma orthogonal_projection_aux :
   forall ptA ptB ptS, ~R2.eq ptA ptB ->
                       exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA)).
 Proof.
@@ -982,17 +996,128 @@ Proof.
 
 Qed.
 
+Lemma orthogonal_projection :
+  forall ptA ptB ptS, ~R2.eq ptA ptB ->
+                      exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS).
+Proof.
+  intros A B S Hineq.
+  destruct (orthogonal_projection_aux S Hineq) as (k, Hp).
+  exists k.
+  rewrite R2plus_opp_assoc_comm.
+  assumption.
+Qed.
+
+Lemma squared_R2norm_le : forall u v, (R2norm u)² <= (R2norm v)² <-> R2norm u <= R2norm v.
+Proof.
+  intros.
+  apply pos_Rsqr_le; auto using R2norm_pos.
+Qed.    
+  
 Definition on_segment (ptA ptB pt: R2.t) :=
   exists k, (pt - ptA)%R2 = (k * (ptB - ptA))%R2 /\ (0 <= k <= 1)%R.
 
 Lemma inner_segment :
   forall ptA ptB ptS ptK,
+    ~R2.eq ptA ptB ->
     on_segment ptA ptB ptK ->
     R2.dist ptS ptK <= R2.dist ptS ptA \/ R2.dist ptS ptK <= R2.dist ptS ptB.
 Proof.
-  admit.
-
-                    
+  intros A B S K Hneq Hseg.
+  destruct Hseg as (k, (Hcolinear, Hinside)).
+  destruct (orthogonal_projection S Hneq) as (kh, Hp).
+  set (H := (A + kh * (B - A))%R2).
+  assert (HperpA: perpendicular (A - H) (H - S)).
+  unfold H.
+  replace (A - (A + kh * (B - A)))%R2 with (- kh * (B - A))%R2.
+  auto using perpendicular_mul_compat_l.
+  destruct A, B; compute; f_equal; ring.
+  assert (HperpB: perpendicular (B - H) (H - S)).
+  unfold H.
+  replace (B - (A + kh * (B - A)))%R2 with ((1 + - kh) * (B - A))%R2.
+  auto using perpendicular_mul_compat_l.
+  destruct A, B; compute; f_equal; ring.
+  assert (HperpK: perpendicular (K - H) (H - S)).
+  replace ((K - H)%R2) with (((K - A) + (A - H))%R2).
+  rewrite Hcolinear.
+  unfold H.
+  replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
+  rewrite R2.add_morph.
+  auto using perpendicular_mul_compat_l.
+  destruct A, B; compute; f_equal; ring.
+  destruct K, A, H; compute; f_equal; ring.
+  clear Hp.
+  assert (Kdef: K = (A + k * (B - A))%R2).
+  rewrite <- Hcolinear.
+  destruct K, A; compute; f_equal; ring.
+  clear Hcolinear.
+  
+  destruct (Rlt_le_dec k kh) as [Hlt | Hle].
+  + left.
+    rewrite R2.dist_sym.
+    rewrite R2norm_dist.
+    rewrite R2.dist_sym.
+    rewrite R2norm_dist.
+    apply squared_R2norm_le.
+    replace (K - S)%R2 with ((K - H) + (H - S))%R2.
+    apply Pythagoras in HperpK. rewrite HperpK.
+    replace (A - S)%R2 with ((A - H) + (H - S))%R2.
+    apply Pythagoras in HperpA. rewrite HperpA.
+    apply Rplus_le_compat_r.
+    rewrite Kdef.
+    unfold H.
+    replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
+    replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
+    apply squared_R2norm_le.
+    repeat rewrite R2norm_mul.
+    apply Rmult_le_compat_r.
+    apply R2norm_pos.
+    rewrite Rabs_Ropp.
+    rewrite Rabs_minus_sym.
+    repeat rewrite Rabs_pos_eq.
+    apply Rplus_le_reg_pos_r with (r2 := k). tauto.
+    right. ring.
+    left. apply Rle_lt_trans with (r2 := k). tauto.
+    assumption.
+    left. apply Rlt_Rminus. assumption.
+    destruct A, B; compute; f_equal; ring.
+    destruct A, B; compute; f_equal; ring.
+    destruct A, H, S; compute; f_equal; ring.
+    destruct K, H, S; compute; f_equal; ring.
+  + right.
+    rewrite R2.dist_sym.
+    rewrite R2norm_dist.
+    rewrite R2.dist_sym.
+    rewrite R2norm_dist.
+    apply squared_R2norm_le.
+    replace (K - S)%R2 with ((K - H) + (H - S))%R2.
+    apply Pythagoras in HperpK. rewrite HperpK.
+    replace (B - S)%R2 with ((B - H) + (H - S))%R2.
+    apply Pythagoras in HperpB. rewrite HperpB.
+    apply Rplus_le_compat_r.
+    rewrite Kdef.
+    unfold H.
+    replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
+    replace (B - (A + kh * (B - A)))%R2 with ((1 - kh) * (B - A))%R2.
+    apply squared_R2norm_le.
+    repeat rewrite R2norm_mul.
+    apply Rmult_le_compat_r.
+    apply R2norm_pos.
+    repeat rewrite Rabs_pos_eq.
+    apply Rplus_le_compat_r. tauto.
+    apply Rge_le.
+    apply Rge_minus.
+    apply Rle_ge.
+    apply Rle_trans with (r2 := k). assumption. tauto.
+    apply Rge_le.
+    apply Rge_minus.
+    apply Rle_ge.
+    assumption.
+    destruct A, B; compute; f_equal; ring.
+    destruct A, B; compute; f_equal; ring.
+    destruct B, H, S; compute; f_equal; ring.
+    destruct K, H, S; compute; f_equal; ring.
+Qed.
+    
 (** **  Triangles  **)
 
 Inductive triangle_type :=
