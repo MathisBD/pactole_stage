@@ -912,14 +912,87 @@ Qed.
 
 (** ** Segments **)
 
-Definition on_segment ptA ptB pt :=
-  exists k, (pt - ptA) = k * (ptB - ptA) /\ (0 <= k <= 1)%R.
+Lemma Rplus_reg_r : forall r1 r2 r3, r1 = r3 + - r2 -> r1 + r2 = r3.
+Proof.
+  intros. subst. rewrite Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_r. reflexivity.
+Qed.
+
+Lemma Rplus_reg_l : forall r1 r2 r3, r2 = r3 + -r1 -> r1 + r2 = r3.
+Proof.
+  intros. subst. rewrite Rplus_comm, Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_r. reflexivity.
+Qed.
+
+Lemma Rplus_opp_r_rwrt : forall r1 r2,  r1 + - r2 = 0 -> r1 = r2.
+Proof.
+  intros. apply Rplus_opp_r_uniq in H. apply Ropp_eq_compat in H. repeat rewrite Ropp_involutive in H. subst. reflexivity.
+Qed.
+  
+Lemma Rmult_inv_reg_r : forall r1 r2 r3, r2 <> 0 -> r1 = r3 * r2 -> r1 * / r2 = r3.
+Proof.
+  intros. subst. apply Rinv_r_simpl_l. assumption.
+Qed.
 
 Lemma orthogonal_projection :
   forall ptA ptB ptS, ~R2.eq ptA ptB ->
-                      exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS).
+                      exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA)).
+Proof.
+  intros A B S Hineq.
+  destruct A as (xA, yA).
+  destruct B as (xB, yB).
+  destruct S as (xS, yS).
+  unfold perpendicular, product.
+  simpl.
+  set (xAB := xB + - xA).
+  set (yAB := yB + - yA).
+  set (xSA := xA + - xS).
+  set (ySA := yA + - yS).
+  
+  exists ( - (xAB * xSA + yAB * ySA) * / (xAB * xAB + yAB * yAB) ).
+  
+  rewrite Rmult_plus_distr_l.
+  rewrite Rplus_assoc.
+  apply Rplus_reg_l.
+  rewrite Rplus_0_l.
+  rewrite Rplus_comm.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rplus_assoc.
+  apply Rplus_reg_l.
+  rewrite Rplus_comm.
 
+  rewrite Rmult_comm with (r2 := xAB).
+  rewrite <- Rmult_assoc.
+  rewrite <- Rmult_assoc.
+  rewrite Rplus_comm.
+  rewrite Rmult_comm with (r2 := yAB).
+  rewrite <- Rmult_assoc.
+  rewrite <- Rmult_assoc.
+  rewrite <- Rmult_plus_distr_r.
 
+  apply Rmult_inv_reg_r.
+
+  + intro Hsqr_sum.
+    destruct (Rplus_sqr_eq_0 _ _ Hsqr_sum) as (Hx, Hy).
+    apply Hineq.
+    unfoldR2.
+    rewrite (Rplus_opp_r_rwrt Hx).
+    rewrite (Rplus_opp_r_rwrt Hy).
+    reflexivity.
+
+  + ring.
+
+Qed.
+
+Definition on_segment (ptA ptB pt: R2.t) :=
+  exists k, (pt - ptA)%R2 = (k * (ptB - ptA))%R2 /\ (0 <= k <= 1)%R.
+
+Lemma inner_segment :
+  forall ptA ptB ptS ptK,
+    on_segment ptA ptB ptK ->
+    R2.dist ptS ptK <= R2.dist ptS ptA \/ R2.dist ptS ptK <= R2.dist ptS ptB.
+Proof.
+  admit.
+
+                    
 (** **  Triangles  **)
 
 Inductive triangle_type :=
