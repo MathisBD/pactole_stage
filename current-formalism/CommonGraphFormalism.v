@@ -33,6 +33,7 @@ Parameter threshold_compat : Proper (Eeq ==> eq) threshold.
 
 Parameter find_edge : V -> V -> option E.
 Axiom find_edge_Some : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e).
+Axiom NoAutoLoop : forall e, ~Veq (src e) (tgt e).
 Axiom find_edge_None : forall a b : V,
   find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
 Parameter find_edge_compat : Proper (Veq ==> Veq ==> opt_eq (Eeq)) find_edge.

@@ -23,6 +23,13 @@ Inductive location :=
 
 Parameter project_p : R -> R.
 Axiom project_p_image : forall p, (0 < project_p p < 1)%R.
+Parameter project_p_inv : R -> R.
+Axiom inv_pro : forall p, (0 < p < 1)%R -> p = project_p (project_p_inv p).
+Axiom pro_inv : forall p, p = project_p_inv (project_p p).
+Axiom project_p_inv_image : forall p q, p = project_p_inv q -> (0 < q < 1)%R.
+Axiom subj_proj : forall p q, p = project_p q <-> project_p_inv p = q.
+Axiom proj_comm : forall p q, (project_p (p + q) = (project_p p) + (project_p q))%R.
+
 
 (*Definition project_p (p : R) : R := p. fonction de R vers ]0;1[, par exemple utiliser arctan.*)
 
@@ -31,7 +38,7 @@ Axiom project_p_image : forall p, (0 < project_p p < 1)%R.
 Definition loc_eq l l' :=
   match l, l' with
     | Loc l, Loc l' => Veq l l'
-    | Mvt e p, Mvt e' p' => Eeq e e' /\ project_p p = project_p p'
+    | Mvt e p, Mvt e' p' => Eeq e e' /\ p = p'
     | _, _ => False
   end.
 
@@ -49,14 +56,14 @@ Module Location : DecidableType with Definition t := location with Definition eq
     try auto. now symmetry. split; now symmetry.
   + intros x y z Hxy Hyz. destruct x, y, z; unfold eq, loc_eq in *; try auto.
     now transitivity l0. exfalso; auto. exfalso; auto. 
-    split. now transitivity e0. now transitivity (project_p p0).
+    split. now transitivity e0. now transitivity (p0).
   Qed.
   
   Lemma eq_dec : forall l l', {eq l l'} + {~eq l l'}.
   Proof.
   intros l l'.
   destruct l, l'; unfold eq, loc_eq; auto. apply Veq_dec.
-  destruct (Eeq_dec e e0), (Rdec (project_p p) (project_p p0));
+  destruct (Eeq_dec e e0), (Rdec (p) (p0));
   intuition.
   Qed.
 End Location.
@@ -92,9 +99,16 @@ End Location.
   try now apply tgt_compat.
   Qed.
 
-  Axiom ri_Loc : forall (rc : Config.RobotConf), exists l1 l2, 
-                    Config.target (Config.robot_info rc) = Loc l1 /\
-                    Config.source (Config.robot_info rc) = Loc l2.
+  Axiom ri_Loc : forall (rc : Config.RobotConf), exists l1 l2, (
+                    Config.source (Config.robot_info rc) = Loc l1 /\
+                    Config.target (Config.robot_info rc) = Loc l2)
+                    /\ exists e, find_edge l1 l2 = Some e.
+
+  Axiom ax_cont : forall rc e p, Config.loc rc = Mvt e p ->
+                               exists l1 l2, (
+                    Config.source (Config.robot_info rc) = Loc l1 /\
+                    Config.target (Config.robot_info rc) = Loc l2) /\
+                    find_edge l1 l2 = Some e.
 
    Definition projectS_loc (loc : Location.t) : V :=
       match loc with
@@ -259,6 +273,16 @@ End Location.
     step_flexibility : forall id config r,(step id config) = (Moving r) -> (0 <= r <= 1)%R}.
   Set Implicit Arguments.
 
+  Axiom a : forall (e : E) (p : R) (c : Config.t) (da : demonic_action) (id : Names.ident),
+          Config.loc (c id) = Mvt e p ->
+          let l := if Rle_dec (project_p p) (threshold e)
+            then (src e)
+            else (tgt e)
+          in step da id (c id) = step da id
+                    {| Config.loc := Loc l; Config.robot_info :=
+                      {| Config.source := Config.source (Config.robot_info (c id));
+                         Config.target := Config.target (Config.robot_info (c id)) |} |} .
+
   Definition da_eq (da1 da2 : demonic_action) :=
     (forall id config, (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
     (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
@@ -341,7 +365,7 @@ End Location.
           match id, pos with
             | Good g, Mvt e p => if Rle_dec 1%R ((project_p p) + mv_ratio)
                 then {| Config.loc := Loc (tgt e); Config.robot_info := Config.robot_info conf |}
-                else {| Config.loc := Mvt e ((project_p p) + mv_ratio);
+                else {| Config.loc := Mvt e (p + (project_p_inv mv_ratio));
                         Config.robot_info := Config.robot_info conf |}
             | Good g, Loc l =>
                 if Rdec mv_ratio 0%R then conf else
@@ -357,7 +381,7 @@ End Location.
                            | Some e => e
                            | None => e_default
                          end in
-                         {| Config.loc := Mvt e mv_ratio; Config.robot_info := Config.robot_info conf |}
+                         {| Config.loc := Mvt e (project_p_inv mv_ratio); Config.robot_info := Config.robot_info conf |}
             | Byz b, _ => conf
           end
         | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
@@ -421,11 +445,11 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
                now destruct (find_edge l l1), (find_edge l0 l2).
                now rewrite Hstep.
          ++ specialize (Haxiom (conf1 (Good g))).
-            destruct Haxiom as (la1, (la2, (Haxiom1, Haxiom2))).
-            rewrite Haxiom1 in Htgt1. discriminate.
+            destruct Haxiom as (la1, (la2, ((Haxiom1, Haxiom2), (eD, Hed)))).
+            rewrite Haxiom2 in Htgt1. discriminate.
          ++ specialize (Haxiom (conf1 (Good g))).
-            destruct Haxiom as (la1, (la2, (Haxiom1, Haxiom2))).
-            rewrite Haxiom1 in Htgt1. discriminate.
+            destruct Haxiom as (la1, (la2, ((Haxiom1, Haxiom2), (eD, Hed)))).
+            rewrite Haxiom2 in Htgt1. discriminate.
  * destruct Hrconf as (Hloc, (Hsrc, Htgt)).
    rewrite Hloc1, Hloc2 in Hloc. unfold loc_eq in *; now exfalso.
  * destruct Hrconf as (Hloc, (Hsrc, Htgt)).
@@ -434,7 +458,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
    destruct Hrconf as (Hloc, (Hsrc, Htgt)).
    rewrite Hloc1, Hloc2 in Hloc. unfold loc_eq in Hloc. destruct Hloc as (He, Hp).
    rewrite Hp.
-   destruct (Rle_dec 1 (project_p p0 + dist0));
+   destruct (Rle_dec 1 (project_p p0 + dist0)); 
    repeat try (split;simpl); try apply Hconf.
    - now apply CommonGraphFormalism.tgt_compat.
    - assumption.
