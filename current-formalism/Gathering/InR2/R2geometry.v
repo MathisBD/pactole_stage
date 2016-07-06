@@ -1118,21 +1118,128 @@ Proof.
     destruct K, H, S; compute; f_equal; ring.
 Qed.
 
+Lemma R2div_reg_l :
+  forall k (u v: R2.t), k <> 0 -> (k * u = v)%R2 -> (u = /k * v)%R2.
+Proof.
+  intros k u v Hneqz Heq.
+  subst.
+  rewrite R2.mul_morph.
+  rewrite Rinv_l.
+  rewrite R2.mul_1.
+  reflexivity.
+  assumption.
+Qed.  
+
+Lemma R2plus_compat_eq_r :
+  forall u v w, (u = v)%R2 -> (u + w = v + w)%R2.
+Proof. intros. subst. reflexivity. Qed.
+  
 Lemma distance_after_move
       (P Q C: R2.t) (kp kq dm: R)
-      (HneqPC: ~R2.eq P C) (HneqQC: ~R2.eq Q C) (HneqPQ: ~R2.eq P Q)
-      (HdistPC: R2.dist P C <= dm) (HdistQC: R2.dist Q C <= dm) (HdistPQ: R2.dist P Q <= dm)
+      (HneqPC: ~R2.eq P C) (HneqQC: ~R2.eq Q C) (*(HneqPQ: ~R2.eq P Q)*)
+      (HdistPC: R2.dist P C <= dm) (*(HdistQC: R2.dist Q C <= dm)*) (HdistPQ: R2.dist P Q <= dm)
       (Hkp: 0 < kp) (Hkpkq: kp <= kq) (Hkq: kq < 1) :
   R2.dist (P + kp * (C - P)) (Q + kq * (C - Q)) <= (1 - kp) * dm.
 Proof.                                              
   set (KP := (P + kp * (C - P))%R2).
   set (KQ := (Q + kq * (C - Q))%R2).
   set (KQ' := (Q + kp * (C - Q))%R2).
-  assert (HPQ': R2.dist KP KQ' <= (1 - kp) * dm).
-  + 
+  assert (Hpos: 0 < 1 - kp).
+  apply Rgt_lt.
+  apply Rgt_minus.
+  apply Rlt_gt.
+  apply Rle_lt_trans with (r2 := kq); assumption.
+  assert (Thales: R2.dist KP KQ' <= (1 - kp) * dm).
+  + rewrite R2norm_dist.
+    unfold KP, KQ'.
+    replace (P + kp * (C - P) - (Q + kp * (C - Q)))%R2 with ((1 - kp) * (P - Q))%R2.
+    rewrite R2norm_mul.
+    assert (Hpos': 0 <= 1 - kp).
+    left. assumption.
+    rewrite (Rabs_pos_eq _ Hpos').
+    rewrite (Rmult_le_compat_l (1 - kp) (R2norm (P - Q)) dm Hpos').
+    right. reflexivity.
+    rewrite <- R2norm_dist.
+    assumption.
+    destruct P, Q, C; compute; f_equal; ring.
 
+  + assert (Hseg: on_segment KQ' C KQ).
+    - unfold on_segment.
+      exists (/(1 - kp) * (kq - kp)).
+      split.
+      rewrite <- R2.mul_morph.
+      apply R2div_reg_l.
+      apply Rgt_not_eq.
+      apply Rlt_gt.
+      assumption.    
+      unfold KQ, KQ'.
+      destruct C, Q; compute; f_equal; ring.
+      split.
+      apply Rmult_le_reg_l with (r := 1 - kp).
+      assumption.
+      rewrite Rmult_0_r.
+      rewrite <- Rmult_assoc.
+      rewrite Rinv_r.
+      rewrite Rmult_1_l.
+      apply Rge_le.
+      apply Rge_minus.
+      apply Rle_ge.
+      assumption.
+      apply Rgt_not_eq.
+      apply Rlt_gt.
+      assumption.    
+      apply Rmult_le_reg_l with (r := 1 - kp).
+      assumption.
+      rewrite Rmult_1_r.
+      rewrite <- Rmult_assoc.
+      rewrite Rinv_r.
+      rewrite Rmult_1_l.
+      apply Rplus_le_reg_l with (r := kp).
+      repeat rewrite Rplus_minus.
+      left. assumption.
+      apply Rgt_not_eq.
+      apply Rlt_gt.
+      assumption.    
 
-    
+    - assert (HneqKQ'C: ~ R2.eq KQ' C).
+      unfold KQ'; unfoldR2.
+      intro Heq.
+      apply R2plus_compat_eq_r with (w := (-Q)%R2) in Heq.
+      replace (Q + kp * (C - Q) - Q)%R2 with (kp * (C - Q))%R2 in Heq; [ | destruct Q, C; compute; f_equal; ring].
+      replace (C - Q)%R2 with (1 * (C - Q))%R2 in Heq at 2; [ | apply R2.mul_1].
+      apply R2.mul_reg_r in Heq.
+      subst.
+      compute in Hpos. rewrite Rplus_opp_r in Hpos. apply (Rlt_irrefl _ Hpos).
+      intro Horigin.
+      apply R2plus_compat_eq_r with (w := Q%R2) in Horigin.
+      rewrite <- R2.add_assoc in Horigin.
+      rewrite R2.add_comm with (u := (-Q)%R2) in Horigin.
+      rewrite R2.add_opp in Horigin.
+      rewrite R2.add_origin in Horigin.
+      rewrite R2.add_comm in Horigin.
+      rewrite R2.add_origin in Horigin.
+      subst.
+      apply HneqQC.
+      unfoldR2.
+      reflexivity.
+
+      destruct (inner_segment KP HneqKQ'C Hseg).
+      * apply Rle_trans with (r2 := R2.dist KP KQ'); assumption.
+      * apply Rle_trans with (r2 := R2.dist KP C); [ assumption | ].
+        unfold KP. rewrite R2norm_dist.
+        replace (P + kp * (C - P) - C)%R2 with ((1 - kp) * (P - C))%R2.
+        rewrite R2norm_mul.
+        rewrite Rabs_pos_eq.
+        apply Rmult_le_compat_l.
+        left; assumption.
+        rewrite <- R2norm_dist.
+        assumption.
+        left; assumption.
+        destruct P, C; compute; f_equal; ring.
+
+Qed.
+        
+        
 (** **  Triangles  **)
 
 Inductive triangle_type :=
