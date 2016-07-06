@@ -1117,6 +1117,21 @@ Proof.
     destruct B, H, S; compute; f_equal; ring.
     destruct K, H, S; compute; f_equal; ring.
 Qed.
+
+Lemma distance_after_move
+      (P Q C: R2.t) (kp kq dm: R)
+      (HneqPC: ~R2.eq P C) (HneqQC: ~R2.eq Q C) (HneqPQ: ~R2.eq P Q)
+      (HdistPC: R2.dist P C <= dm) (HdistQC: R2.dist Q C <= dm) (HdistPQ: R2.dist P Q <= dm)
+      (Hkp: 0 < kp) (Hkpkq: kp <= kq) (Hkq: kq < 1) :
+  R2.dist (P + kp * (C - P)) (Q + kq * (C - Q)) <= (1 - kp) * dm.
+Proof.                                              
+  set (KP := (P + kp * (C - P))%R2).
+  set (KQ := (Q + kq * (C - Q))%R2).
+  set (KQ' := (Q + kp * (C - Q))%R2).
+  assert (HPQ': R2.dist KP KQ' <= (1 - kp) * dm).
+  + 
+
+
     
 (** **  Triangles  **)
 
