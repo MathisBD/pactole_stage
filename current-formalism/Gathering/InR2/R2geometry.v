@@ -1238,10 +1238,168 @@ Proof.
         destruct P, C; compute; f_equal; ring.
 
 Qed.
-        
-        
+
+Lemma R2norm_ineq :
+  forall u v, R2norm (u + v) <= R2norm u + R2norm v.
+Proof.
+  intros.
+  replace (R2norm (u+v)) with (R2norm (u - -v)).
+  replace (R2norm u) with (R2norm (u - R2.origin)).
+  replace (R2norm v) with (R2norm (R2.origin - - v)).
+  repeat rewrite <- R2norm_dist.
+  apply R2.triang_ineq.
+  rewrite R2.add_comm. rewrite R2.add_origin. rewrite R2.opp_opp. reflexivity.
+  rewrite R2.opp_origin. rewrite R2.add_origin. reflexivity.
+  rewrite R2.opp_opp. reflexivity.
+Qed.  
+
+Lemma fold_add_ac :
+  forall E (a b: R2.t),
+    fold_left R2.add E (a + b)%R2 = ((fold_left R2.add E a) + b)%R2.
+Proof.
+  induction E.
+  simpl; reflexivity.
+  intros.
+  simpl.
+  rewrite <- R2.add_assoc.
+  rewrite R2.add_comm with (u := b).
+  rewrite R2.add_assoc.
+  apply IHE.
+Qed.
+  
+Definition barycenter (E: list R2.t) : R2.t :=
+  /(INR (List.length E)) * (List.fold_left R2.add E R2.origin).
+
+Lemma Lemme2_aux:
+  forall (E: list R2.t) (dm: R) (c: R2.t),
+    E <> nil ->
+    (forall p1 p2, In p1 E -> In p2 E -> R2.dist p1 p2 <= dm) ->
+    c = barycenter E ->
+    forall p, (forall q, In q E -> R2.dist p q <= dm) ->
+              R2.dist p c <= dm.
+Proof.
+  intros E dm c Hnotempty Hdm Hc p Hp.
+  assert (Hlength_pos: 0 < INR (List.length E)).
+    apply lt_0_INR. destruct E. elim Hnotempty. reflexivity. simpl. omega.
+  
+  rewrite R2norm_dist.
+  subst.
+  unfold barycenter.
+  replace p%R2 with (- / INR (length E) * (- INR (length E) * p))%R2.
+  rewrite <- R2.minus_morph.
+  rewrite <- R2.mul_distr_add.
+  rewrite R2norm_mul.
+  rewrite Rabs_Ropp.
+  rewrite Rabs_right.
+  apply Rmult_le_reg_l with (r := INR (length E)).
+  assumption.
+  rewrite <- Rmult_assoc.
+  rewrite Rinv_r.
+  rewrite Rmult_1_l.
+
+  induction E.
+  elim Hnotempty. reflexivity.
+  destruct E.
+  simpl.
+  rewrite Rmult_1_l.
+  destruct a.
+  repeat rewrite Rplus_0_l.
+  rewrite R2.minus_morph.
+  rewrite R2.mul_1.
+  rewrite R2.add_comm.
+  rewrite <- R2norm_dist.
+  rewrite R2.dist_sym.
+  apply Hp.
+  left; reflexivity.
+
+  clear Hlength_pos Hnotempty.
+  set (F := t :: E). fold F in IHE, Hdm, Hp.
+  set (lF := length F). fold lF in IHE.
+  replace (length (a :: F)) with (1 + lF)%nat; [ | simpl; reflexivity ].
+  rewrite R2.add_comm.
+  rewrite S_INR.
+  rewrite Ropp_plus_distr.
+  rewrite <- R2.add_morph.
+  rewrite Rmult_plus_distr_r.
+  rewrite Rmult_1_l.  
+  replace (fold_left R2.add (a::F) R2.origin) with ((fold_left R2.add F R2.origin) + a)%R2.
+  rewrite <- R2.add_assoc.
+  rewrite R2.add_comm with (u := a).
+  rewrite <- R2.add_assoc with (w := a).
+  rewrite R2.add_assoc.
+  rewrite R2.add_comm with (v := a).
+  rewrite R2.minus_morph with (k := 1).
+  rewrite R2.mul_1.
+  rewrite R2norm_ineq.
+  rewrite R2.add_comm.
+  apply Rplus_le_compat.
+  apply IHE.
+  unfold F. discriminate.
+  intros.
+  apply Hdm.
+  right; assumption.
+  right; assumption.
+  intros.
+  apply Hp.
+  right; assumption.
+  unfold lF, F.
+  replace (length (t :: E)) with (S (length E)).
+  rewrite S_INR.
+  apply Rplus_le_lt_0_compat.
+  apply pos_INR.
+  apply Rlt_0_1.
+  reflexivity.
+  rewrite <- R2norm_dist.
+  rewrite R2.dist_sym.
+  apply Hp.
+  left; reflexivity.
+
+  rewrite <- fold_add_ac.
+  simpl.
+  reflexivity.
+
+  apply not_0_INR.
+  intro.
+  apply Hnotempty.
+  apply length_zero_iff_nil.
+  assumption.
+
+  apply Rle_ge.
+  left.
+  apply Rinv_0_lt_compat.
+  assumption.
+
+  rewrite R2.mul_morph.
+  rewrite Ropp_inv_permute.
+  rewrite <- Rinv_l_sym.
+  rewrite R2.mul_1.
+  reflexivity.
+  apply Ropp_neq_0_compat.
+  intro.
+  rewrite H in Hlength_pos.
+  elim (Rlt_irrefl _ Hlength_pos).
+  intro.
+  rewrite H in Hlength_pos.
+  elim (Rlt_irrefl _ Hlength_pos).
+
+Qed.
+  
+Lemma Lemme2:
+  forall (E: list R2.t) (dm: R) (c: R2.t),
+    E <> nil ->
+    (forall p1 p2, In p1 E -> In p2 E -> R2.dist p1 p2 <= dm) ->
+    c = barycenter E ->
+    forall p, In p E -> R2.dist p c <= dm.
+Proof.
+  intros E dm c Hnotempty Hdm Hc p Hp.
+  apply (Lemme2_aux Hnotempty Hdm Hc).
+  intros q Hq.
+  apply Hdm; assumption.
+Qed.
+  
 (** **  Triangles  **)
 
+ 
 Inductive triangle_type :=
   | Equilateral
   | Isosceles (vertex : R2.t)
