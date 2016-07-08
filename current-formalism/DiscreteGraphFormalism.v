@@ -381,7 +381,7 @@ End Location.
                 else 
                 let e := match find_edge l new_pos with
                            | Some e => e
-                           | None => e_default
+                           | None => e_default (* ici *)
                          end in
                          {| Config.loc := Mvt e (project_p_inv mv_ratio); Config.robot_info := Config.robot_info conf |}
             | Byz b, _ => conf

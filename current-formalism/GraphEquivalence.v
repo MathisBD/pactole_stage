@@ -707,18 +707,15 @@ repeat try (split; simpl).
             rewrite Ht in n. lra.
       ** assert ( Hax := DGF.ax_cont (c' (Good g)) e p HlocD').
          destruct Hax as (ld1, (ld2, ((Hax1, Hax2), He))).
-         assert (opt_eq Eeq (find_edge l3 l1) (find_edge l l0)).
-            apply find_edge_compat.
-            admit.
-            assert (opt_eq Eeq (find_edge l1 l3) (find_edge l2 l0)).
-            admit.
-            rewrite H0 in H.
-         destruct (find_edge l l0) eqn : Hedge; simpl in *.
-         ++ destruct Hloc. rewrite H1.
-            assert (Hf := find_edge_Some e2).
-            rewrite <- Hedge in Hf.
-            admit. (* on a (opt_eq Eeq (find_edge (src e1) (tgt e1)) (find_edge l l0)) *)
-         ++ rewrite Hedge2 in H. contradiction.
+         assert (opt_eq Eeq (find_edge l3 l1) (find_edge ld1 ld2)).
+         apply find_edge_compat. rewrite HsrcD' in *;
+         assert (Htemp : DGF.loc_eq (DGF.Loc l3) (DGF.Loc ld1)) by (now rewrite Hax1);
+         unfold DGF.loc_eq in *; now rewrite <- Htemp.
+         rewrite HtgtD' in *;
+         assert (Htemp : DGF.loc_eq (DGF.Loc l1) (DGF.Loc ld2)) by (now rewrite Hax2);
+         unfold DGF.loc_eq in *; now rewrite <- Htemp.
+         assert (Hf := find_edge_Some e). rewrite He in H; rewrite <- H in Hf.
+         admit (* voir Hf *).
       ** destruct n. now repeat split.
    * assert ( Hax := DGF.ax_cont (c (Good g)) e p HlocD).
      destruct Hax as (ld1, (ld2, ((Hax1, Hax2), He))).
@@ -729,21 +726,29 @@ repeat try (split; simpl).
              (rcD2A (c (Good g)))).
      destruct (Rle_dec 1 (DGF.project_p p + dist0)) eqn : Heq1; simpl in *;
      try rewrite HlocD, HsrcD, HtgtD in *.
-     ** assert (Eeq e eD').
-        assert (Eeq e eD). admit.
-        assert (Eeq eD eD').
-        assert (opt_eq Eeq (Some eD) (Some eD')).
+     ** assert (Hf : opt_eq Eeq (Some eD) (Some eD')).
         rewrite <- HeD, <- HeD'.
         apply find_edge_compat.
-        admit. (* faire a partir de Hax_src et Hax_src' *)
-        admit. (* faire a partir de Hax_tgt et Hax_tgt' *)
-        auto.
-        now rewrite H.
+        assert (DGF.loc_eq (DGF.Loc l2) (DGF.Loc lax1)) by now rewrite Hax_src.
+        assert (DGF.loc_eq (DGF.Loc l3) (DGF.Loc lax1')) by now rewrite Hax_src'.
+        unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
+        assert (DGF.loc_eq (DGF.Loc l0) (DGF.Loc lax2)) by now rewrite Hax_tgt.
+        assert (DGF.loc_eq (DGF.Loc l1) (DGF.Loc lax2')) by now rewrite Hax_tgt'.
+        unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
+        assert (Hf' : opt_eq Eeq (Some eD) (Some e)).
+        rewrite <- HeD, <- He.
+        apply find_edge_compat.
+        assert (DGF.loc_eq (DGF.Loc l2) (DGF.Loc lax1)) by now rewrite Hax_src.
+        assert (DGF.loc_eq (DGF.Loc l2) (DGF.Loc ld1)) by now rewrite Hax1.
+        unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
+        assert (DGF.loc_eq (DGF.Loc l0) (DGF.Loc lax2)) by now rewrite Hax_tgt.
+        assert (DGF.loc_eq (DGF.Loc l0) (DGF.Loc ld2)) by now rewrite Hax2.
+        unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
         assert (DGF.Location.eq (DGF.Loc (tgt e)) (DGF.Loc l0)).
         rewrite Hax2. unfold DGF.Location.eq, DGF.loc_eq.
         admit (* voir He *).
         unfold DGF.Location.eq, DGF.loc_eq in *.
-        now rewrite <- H0.
+        now rewrite <- H.
      ** destruct (Rdec dist0 0); now exfalso.
      ** destruct n. repeat split; simpl;
         unfold LocD2A. now rewrite HlocD. now rewrite HsrcD. now rewrite HtgtD.
@@ -853,10 +858,10 @@ repeat try (split; simpl).
          ++ simpl in *. now rewrite HtgtD, HlocD, HsrcD in *.
          ++ destruct (Veq_dec l l0). now rewrite HlocD in *.
             simpl in *. destruct Hloc as (Heq_e, Heq_p).
+            rewrite HlocD, HtgtD, HsrcD in *;
             symmetry in Heq_p;
-            rewrite <- DGF.subj_proj in Heq_p.
+            rewrite <- DGF.subj_proj in Heq_p;
             rewrite HstepD_compat, Heq_p in *.
-            rewrite HsrcD, HtgtD in *.
             assert (opt_eq Eeq (find_edge l2 l0) (find_edge l3 l1)).
             now apply find_edge_compat.
             assert (opt_eq Eeq (find_edge lax1' lax2') (find_edge l3 l1)).
@@ -887,7 +892,8 @@ repeat try (split; simpl).
             destruct (find_edge l l0) eqn : He3.
             assert (Veq (src e2) l) by admit (* voir He3 *).
             now rewrite Heq_e.
-            assert (Veq l l2).
+            assert (Veq l l2). unfold rcD2A, LocD2A in e0. 
+            rewrite HlocD, HsrcD, HtgtD in e0; simpl in *.
             admit (* si on est sur un nœud, soit on est au départ, soit a l'arrivé, et on a n1 *).
             assert (Eeq e eD') by apply H1.
             assert (Eeq e1 eD') by apply H.
@@ -1657,8 +1663,7 @@ repeat try (split; simpl).
   destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) eqn : HsrcD; try discriminate;
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) eqn : HsrcD'; try discriminate;
   try assumption; try (now exfalso). rewrite HstepD in HstepA. 
-  unfold AGF.Spect.from_config, DGF.Spect.from_config, DGF.projectS, DGF.projectS_loc, DGF.project in *. 
-  rewrite HlocD in *. simpl in *.
+(* <<<<<<< HEAD
   assert ( (ConfigD2A c) = (λ id : Names.ident,
        {|
        AGF.Config.loc := match DGF.Config.loc (c id) with
@@ -1692,6 +1697,34 @@ repeat try (split; simpl).
                                                          else tgt e
                                                      end |} |})).
   unfold ConfigD2A, LocD2A. reflexivity. admit (* rewrite <- H.*).
++ destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *; 
+======= *)
+  cut (Veq l2 match DGF.pgm rbg (ConfigD2A c)
+              with
+                | DGF.Loc l5 => l5
+                | DGF.Mvt e p =>
+                    if Rle_dec (DGF.project_p p) (threshold e) then src e else tgt e
+              end); trivial; [].
+  cut (Veq l2 match DGF.pgm rbg ((DGF.Spect.from_config (DGF.project c)))
+              with
+  | DGF.Loc l5 => l5
+  | DGF.Mvt e p => if Rle_dec (DGF.project_p p) (threshold e) then src e else tgt e
+  end). assert (AGF.Config.eq (DGF.Spect.from_config (DGF.project c)) (ConfigD2A c)).
+  unfold ConfigD2A, DGF.Spect.from_config, DGF.project, DGF.projectS, DGF.projectS_loc, LocD2A.
+  intros id. destruct (DGF.Config.loc (c id)) eqn : Hlid. rewrite Hlid; simpl in *. reflexivity.
+  simpl in *. reflexivity.
+  assert (Hpgm := DGF.pgm_compat rbg (DGF.Spect.from_config (DGF.project c)) (ConfigD2A c) H).
+  destruct (DGF.pgm rbg (DGF.Spect.from_config (DGF.project c))) eqn : Hpgm1,
+  (DGF.pgm rbg (ConfigD2A c)) eqn : Hpgm2; unfold DGF.Location.eq, DGF.loc_eq in Hpgm.
+  intros Hv; now rewrite Hv. now exfalso. now exfalso. destruct Hpgm as (Hepgm, Hppgm).
+  rewrite Hppgm.
+  assert (Hthpgm : threshold e = threshold e0) by now apply threshold_compat.
+  rewrite Hthpgm.
+  intros Hv.
+  destruct (Rle_dec (DGF.project_p p0) (threshold e0)).
+  rewrite Hv; now apply src_compat.
+  rewrite Hv; now apply tgt_compat.
+  now destruct (DGF.pgm rbg (DGF.Spect.from_config (DGF.project c))).
 + destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
   rewrite <- HlocD in *;
   destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
