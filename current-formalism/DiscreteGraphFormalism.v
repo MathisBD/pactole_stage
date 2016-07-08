@@ -267,13 +267,13 @@ End Location.
     relocate_byz : Names.B -> Location.t;
     step : Names.ident -> Config.RobotConf -> Active_or_Moving;
     step_delta : forall id Rconfig sim, (step id Rconfig) = (Active sim) ->
-         (exists l, Location.eq Rconfig.(Config.loc) (Loc l)) ->
-         Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target);
+         ((exists l, Location.eq Rconfig.(Config.loc) (Loc l)) /\
+         Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target));
     step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
     step_flexibility : forall id config r,(step id config) = (Moving r) -> (0 <= r <= 1)%R}.
   Set Implicit Arguments.
 
-  Axiom a : forall (e : E) (p : R) (c : Config.t) (da : demonic_action) (id : Names.ident),
+(*   Axiom a : forall (e : E) (p : R) (c : Config.t) (da : demonic_action) (id : Names.ident),
           Config.loc (c id) = Mvt e p ->
           let l := if Rle_dec (project_p p) (threshold e)
             then (src e)
@@ -281,7 +281,7 @@ End Location.
           in step da id (c id) = step da id
                     {| Config.loc := Loc l; Config.robot_info :=
                       {| Config.source := Config.source (Config.robot_info (c id));
-                         Config.target := Config.target (Config.robot_info (c id)) |} |} .
+                         Config.target := Config.target (Config.robot_info (c id)) |} |} . *)
 
   Definition da_eq (da1 da2 : demonic_action) :=
     (forall id config, (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
@@ -365,7 +365,9 @@ End Location.
           match id, pos with
             | Good g, Mvt e p => if Rle_dec 1%R ((project_p p) + mv_ratio)
                 then {| Config.loc := Loc (tgt e); Config.robot_info := Config.robot_info conf |}
-                else {| Config.loc := Mvt e (p + (project_p_inv mv_ratio));
+                else {| Config.loc := if Rdec mv_ratio 0 
+                                      then Mvt e p
+                                      else Mvt e (p + (project_p_inv mv_ratio));
                         Config.robot_info := Config.robot_info conf |}
             | Good g, Loc l =>
                 if Rdec mv_ratio 0%R then conf else
@@ -461,7 +463,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
    destruct (Rle_dec 1 (project_p p0 + dist0)); 
    repeat try (split;simpl); try apply Hconf.
    - now apply CommonGraphFormalism.tgt_compat.
-   - assumption.
+   - destruct (Rdec dist0 0); unfold loc_eq; now split.
 + repeat try (split;simpl); try apply Hconf.
   apply Hr.
   f_equiv.

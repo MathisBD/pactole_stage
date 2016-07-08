@@ -1435,6 +1435,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
+  Parameter eq_Robotconf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
   Parameter eq_dec : forall c1 c2, {eq c1 c2} + {~eq c1 c2}.
   Declare Instance eq_info_equiv : Equivalence Info_eq.
   Declare Instance eq_bisim : Bisimulation t.
@@ -1526,6 +1527,8 @@ split.
   apply H0.
 Qed.
 
+
+
 Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
 Proof. Admitted.
 
@@ -1599,13 +1602,15 @@ intros. unfold list. unfold Names.names, Names.Internals.names.
 rewrite map_app, Gpos_spec, Bpos_spec. now do 2 rewrite map_map.
 Qed.
 
-Lemma eq_RobotConf_dec: forall x y, {eq_RobotConf x y} + {~ eq_RobotConf x y}.
+Lemma eq_RobotConf_dec: forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
 Proof.
 intros. unfold eq_RobotConf, Info_eq.
-destruct (Location.eq_dec (loc x) (loc y)),
-(Location.eq_dec (source (robot_info x)) (source (robot_info y))),
-(Location.eq_dec (target (robot_info x)) (target (robot_info y))); intuition.
-Qed.
+destruct (Location.eq_dec (loc rc1) (loc rc2)),
+(Location.eq_dec (source (robot_info rc1)) (source (robot_info rc2))),
+(Location.eq_dec (target (robot_info rc1)) (target (robot_info rc2))); intuition.
+Defined.
+
+Definition eq_Robotconf_dec := eq_RobotConf_dec.
 
 Lemma Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
 Proof. intros. unfold Gpos,eq_RobotConf. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.
