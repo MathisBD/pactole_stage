@@ -681,31 +681,34 @@ repeat try (split; simpl).
          destruct Hloc as (Heq_edge, Heq_p);
          assert (Hproj_eq : DGF.project_p p = dist) by (
          symmetry; rewrite DGF.subj_proj; symmetry; assumption).
-         ++ assert (opt_eq Eeq (find_edge l1 l3) (find_edge l l0)).
-            admit.
-            assert (opt_eq Eeq (find_edge l1 l3) (find_edge l2 l0)).
-            admit.
-            rewrite H0 in H.
-            assert (Veq l l2).
-            admit (* voir H *).
-            rewrite Hproj_eq in r.
-            assert (Heq_some : opt_eq Eeq (Some e) (Some e1)).
-            rewrite <- Hedge2.
-            assert (Heq_some' : opt_eq Eeq (Some e)(Some e2)). now simpl.
-            rewrite Heq_some', <- Hedge.
-            now symmetry.
+         ++ assert (opt_eq Eeq (find_edge ld1 ld2) (find_edge l2 l0)).
+            apply find_edge_compat; rewrite HsrcD' in *;
+            assert (Htemp : DGF.loc_eq (DGF.Loc l3) (DGF.Loc ld1)) by now (rewrite Hax1). 
+            unfold DGF.loc_eq in *; now rewrite <- Htemp.
+            rewrite HtgtD' in *;
+            assert (Htemp2 : DGF.loc_eq (DGF.Loc l1) (DGF.Loc ld2)) by now (rewrite Hax2).
+            unfold DGF.loc_eq in *; now rewrite <- Htemp2.
+            rewrite Hedge2, He in H.
+            assert (Heq_e2 : Eeq e e1) by apply H.
             assert (Ht : threshold e1 = threshold e).
             now apply threshold_compat.
             rewrite Ht in n. lra.
-         ++ assert (opt_eq Eeq (find_edge l1 l3) (find_edge l l0)).
-            admit.
-            assert (opt_eq Eeq (find_edge l1 l3) (find_edge l2 l0)).
-            admit.
-            rewrite H0 in H.
-            rewrite Hedge2, Hedge in H. contradiction.
+         ++ assert (opt_eq Eeq (find_edge ld1 ld2) (find_edge l2 l0)).
+            apply find_edge_compat. rewrite HsrcD' in *.
+            assert (Htemp : DGF.loc_eq (DGF.Loc l3) (DGF.Loc ld1)) by now rewrite Hax1.
+            unfold DGF.loc_eq in *. now rewrite <- Htemp.
+            rewrite HtgtD' in *.
+            assert (Htemp : DGF.loc_eq (DGF.Loc l1) (DGF.Loc ld2)) by now rewrite Hax2.
+            unfold DGF.loc_eq in *. now rewrite <- Htemp.
+            rewrite Hedge2, He in H.
+            assert (Heq_e2 : Eeq e e1) by apply H.
+            assert (Ht : threshold e1 = threshold e).
+            now apply threshold_compat.
+            rewrite Ht in n. lra.
       ** assert ( Hax := DGF.ax_cont (c' (Good g)) e p HlocD').
          destruct Hax as (ld1, (ld2, ((Hax1, Hax2), He))).
-         assert (opt_eq Eeq (find_edge l1 l3) (find_edge l l0)).
+         assert (opt_eq Eeq (find_edge l3 l1) (find_edge l l0)).
+            apply find_edge_compat.
             admit.
             assert (opt_eq Eeq (find_edge l1 l3) (find_edge l2 l0)).
             admit.
@@ -1688,65 +1691,36 @@ repeat try (split; simpl).
                                                          then src e
                                                          else tgt e
                                                      end |} |})).
-  unfold ConfigD2A, LocD2A. reflexivity. rewrite <- H.
-  
-  destruct (Rdec dist0 0). now rewrite HlocD in *.
-  destruct (Rdec dist0 1). simpl in *. now rewrite HlocD in *.
-destruct dist1 eqn : Hbool;
-  destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
+  unfold ConfigD2A, LocD2A. reflexivity. admit (* rewrite <- H.*).
++ destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
   rewrite <- HlocD in *;
   destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) eqn : HtgtD; try discriminate;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) eqn : HtgtD'; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) eqn : HsrcD; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) eqn : HsrcD'; try discriminate;
-  try (destruct (Rdec dist0 0); try (rewrite HlocD, HsrcD, HtgtD in *; assumption);
-      destruct (Rdec dist0 1); try (simpl in *; rewrite HlocD, HsrcD, HtgtD in *; assumption);
-      destruct (Veq_dec l l1); try (rewrite HlocD, HsrcD, HtgtD in *; assumption);
-      simpl in *; now exfalso);
-  try (destruct (Rdec dist0 0); try (rewrite HlocD, HsrcD, HtgtD in *; assumption);
-      destruct (Rdec dist0 1); try (simpl in *; rewrite HlocD, HsrcD, HtgtD in *; assumption);
-      destruct (Veq_dec l l0); try (rewrite HlocD, HsrcD, HtgtD in *; now exfalso);
-      simpl in *; rewrite HlocD, HsrcD, HtgtD in *; assumption);
-  try (destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-      rewrite HlocD, HsrcD, HtgtD in *; assumption).
-    assert (Hte : threshold e = threshold e0) by now apply threshold_compat.
-    rewrite <- Hte. destruct (Rle_dec (DGF.project_p p) (threshold e)); try contradiction.
-    now apply src_compat.     
-    destruct n1. unfold rcD2A, LocD2A. repeat try (split; simpl in *); 
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) eqn : HtgtD; try discriminate;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) eqn : HtgtD'; try discriminate;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) eqn : HsrcD; try discriminate;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) eqn : HsrcD'; try discriminate;
+  rewrite HstepD in HstepA; destruct (DGF.relocate_byz da b); try assumption; try now exfalso.
+  destruct Hloc as (He, Hp); assert (Hth : (threshold e)= (threshold e0)) by now apply threshold_compat.
+  rewrite Hp, Hth. destruct ( Rle_dec (DGF.project_p p0) (threshold e0)). now apply src_compat.
+  now apply tgt_compat.
+  destruct Hloc as (He, Hp); assert (Hth : (threshold e0)= (threshold e1)) by now apply threshold_compat.
+  rewrite Hp, Hth. destruct ( Rle_dec (DGF.project_p p1) (threshold e1)). now apply src_compat.
+  now apply tgt_compat.
++ destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
+  rewrite <- HlocD in *;
+  destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) eqn : HtgtD; try discriminate;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) eqn : HtgtD'; try discriminate;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) eqn : HsrcD; try discriminate;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) eqn : HsrcD'; try discriminate;
+  rewrite HstepD in HstepA; try assumption.
++ destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
+  rewrite <- HlocD in *;
+  destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) eqn : HtgtD; try discriminate;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) eqn : HtgtD'; try discriminate;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) eqn : HsrcD; try discriminate;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) eqn : HsrcD'; try discriminate;
+  rewrite HstepD in HstepA; try assumption.
+Qed.
 
-
-    try rewrite HlocD; try rewrite HsrcD; try rewrite HtgtD;
-    now destruct (Rle_dec (DGF.project_p p) (threshold e)).
-    destruct (Rle_dec (DGF.project_p p) (threshold e)), (Rle_dec (DGF.project_p p0) (threshold e0)),
-    (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; rewrite HlocD, HtgtD, HsrcD, HtgtD', HsrcD' in *;
-    try (now exfalso).
-    assert (opt_eq Eeq (find_edge ld1' ld2') (find_edge ld1 ld2)).
-    apply find_edge_compat.
-    assert (DGF.loc_eq (DGF.Loc l2) (DGF.Loc ld1')) by now rewrite Hax1'.
-    assert (DGF.loc_eq (DGF.Loc l1) (DGF.Loc ld1)) by now rewrite Hax1.
-    unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
-    assert (DGF.loc_eq (DGF.Loc l0) (DGF.Loc ld2')) by now rewrite Hax2'.
-    assert (DGF.loc_eq (DGF.Loc l) (DGF.Loc ld2)) by now rewrite Hax2.
-    unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
-    rewrite He', He in H.
-    assert (Eeq e0 e) by apply H.
-    now rewrite H0.
-    destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src e;
-             AGF.Config.robot_info := {| AGF.Config.source := l1; AGF.Config.target := l |} |}
-             (rcD2A (c (Good g)))).
-    destruct (Rle_dec (dist0 + DGF.project_p p) (threshold e)) ; try discriminate.
-    destruct Hloc as (He_eq, Hp_eq).
-    rewrite Hp_eq, He_eq in *.
-    rewrite DGF.proj_comm, <- DGF.inv_pro in n. lra.
-    destruct (Rdec 0 dist0).
-    assert (hh := DGF.project_p_image p); assert (ht := threshold_pos e).
-    assert (H' := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
-    lra.
-
-         
-         
-         
-         
