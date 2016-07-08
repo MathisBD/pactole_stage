@@ -1656,39 +1656,12 @@ repeat try (split; simpl).
   try assumption; try (now exfalso). rewrite HstepD in HstepA. 
   unfold AGF.Spect.from_config, DGF.Spect.from_config, DGF.projectS, DGF.projectS_loc, DGF.project in *. 
   rewrite HlocD in *. simpl in *.
-  assert ( (ConfigD2A c) = (λ id : Names.ident,
-       {|
-       AGF.Config.loc := match DGF.Config.loc (c id) with
-                         | DGF.Loc l5 => l5
-                         | DGF.Mvt e p =>
-                             if Rle_dec (DGF.project_p p) (threshold e) then src e else tgt e
-                         end;
-       AGF.Config.robot_info := {|
-                                AGF.Config.source := match
-                                                       DGF.Config.source
-                                                         (DGF.Config.robot_info (c id))
-                                                     with
-                                                     | DGF.Loc l5 => l5
-                                                     | DGF.Mvt e p =>
-                                                         if
-                                                          Rle_dec (DGF.project_p p)
-                                                            (threshold e)
-                                                         then src e
-                                                         else tgt e
-                                                     end;
-                                AGF.Config.target := match
-                                                       DGF.Config.target
-                                                         (DGF.Config.robot_info (c id))
-                                                     with
-                                                     | DGF.Loc l5 => l5
-                                                     | DGF.Mvt e p =>
-                                                         if
-                                                          Rle_dec (DGF.project_p p)
-                                                            (threshold e)
-                                                         then src e
-                                                         else tgt e
-                                                     end |} |})).
-  unfold ConfigD2A, LocD2A. reflexivity. rewrite <- H.
+  cut (Veq l2 match DGF.pgm rbg (ConfigD2A c)
+              with
+                | DGF.Loc l5 => l5
+                | DGF.Mvt e p =>
+                    if Rle_dec (DGF.project_p p) (threshold e) then src e else tgt e
+              end); trivial; [].
   
   destruct (Rdec dist0 0). now rewrite HlocD in *.
   destruct (Rdec dist0 1). simpl in *. now rewrite HlocD in *.
