@@ -37,7 +37,8 @@ Axiom NoAutoLoop : forall e, ~Veq (src e) (tgt e).
 Axiom find_edge_None : forall a b : V,
   find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
 Parameter find_edge_compat : Proper (Veq ==> Veq ==> opt_eq (Eeq)) find_edge.
-
+Axiom find2st : forall v1 v2 e, opt_eq Eeq (find_edge v1 v2) (Some e) ->
+                                Veq v1 (src e) /\ Veq v2 (tgt e).
 
 
 Declare Module N : Size.

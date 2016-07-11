@@ -715,7 +715,8 @@ repeat try (split; simpl).
          assert (Htemp : DGF.loc_eq (DGF.Loc l1) (DGF.Loc ld2)) by (now rewrite Hax2);
          unfold DGF.loc_eq in *; now rewrite <- Htemp.
          assert (Hf := find_edge_Some e). rewrite He in H; rewrite <- H in Hf.
-         admit (* voir Hf *).
+         assert (Hfin := find2st l3 l1 e H). destruct Hfin as (Hfs, Hft). rewrite <- Hft.
+         now symmetry.
       ** destruct n. now repeat split.
    * assert ( Hax := DGF.ax_cont (c (Good g)) e p HlocD).
      destruct Hax as (ld1, (ld2, ((Hax1, Hax2), He))).
@@ -746,7 +747,9 @@ repeat try (split; simpl).
         unfold DGF.loc_eq in *. now rewrite <- H, <- H0.
         assert (DGF.Location.eq (DGF.Loc (tgt e)) (DGF.Loc l0)).
         rewrite Hax2. unfold DGF.Location.eq, DGF.loc_eq.
-        admit (* voir He *).
+        assert (Hhelp : opt_eq Eeq (find_edge ld1 ld2) (Some e)) by now rewrite He.
+        assert (Hfin := find2st ld1 ld2 e Hhelp).
+        destruct Hfin as (Hfs, Hft). now symmetry.
         unfold DGF.Location.eq, DGF.loc_eq in *.
         now rewrite <- H.
      ** destruct (Rdec dist0 0); now exfalso.
@@ -800,16 +803,14 @@ repeat try (split; simpl).
         assert (Hveq2 : DGF.Location.eq (DGF.Loc l) (DGF.Loc ld2)) by now rewrite Hax2.
         assert (Hcompat := find_edge_compat l1 ld1 Hveq1 l ld2 Hveq2).
         now rewrite <- He.
-        rewrite <- find_edge_Some in Heq.
-        admit (* voir He *).
+        apply find2st in Heq. destruct Heq as (Hfs, Hft); now symmetry.
      ** rewrite Heq_e.
         assert (Heq : opt_eq Eeq (find_edge l1 l) (Some e)).
         assert (Hveq1 : DGF.Location.eq (DGF.Loc l1) (DGF.Loc ld1)) by now rewrite Hax1.
         assert (Hveq2 : DGF.Location.eq (DGF.Loc l) (DGF.Loc ld2)) by now rewrite Hax2.
         assert (Hcompat := find_edge_compat l1 ld1 Hveq1 l ld2 Hveq2).
         now rewrite <- He.
-        rewrite <- find_edge_Some in Heq.
-        admit (* voir He *).
+        apply find2st in Heq. destruct Heq as (Hfs, Hft); now symmetry.
   - simpl in *. destruct (DGF.Config.loc (c (Good g))) eqn : HlocD;
     destruct (DGF.Config.loc (c' (Good g))) eqn : HlocD'; simpl in *;
     rewrite <- HlocD in *;
@@ -841,9 +842,9 @@ repeat try (split; simpl).
             assert (Hv2 : DGF.Location.eq (DGF.Loc lax2) (DGF.Loc l1)).
             now rewrite Hax_tgt.
             unfold DGF.Location.eq ,DGF.loc_eq in *.
-            assert (Hsr : Veq (src eD) l3) by admit (* voir Hv1 et HeD *).
-            assert (Htg : Veq (tgt eD) l1) by admit (* voir Hv2 et HeD *).
-            exfalso; apply Hf; now split.
+            assert (Hhelp : opt_eq Eeq (find_edge lax1 lax2) (Some eD)) by now rewrite HeD.
+            apply find2st in Hhelp. destruct Hhelp as (Hfs, Hft).
+            exfalso; apply Hf; split. now rewrite <- Hv1. now rewrite <- Hv2.
          ++ destruct (Veq_dec l l1). now rewrite HlocD in Hloc.
             simpl in *. now exfalso.
    * destruct (AGF.Config.eq_Robotconf_dec
@@ -890,14 +891,17 @@ repeat try (split; simpl).
             rewrite H2 in *.
             destruct (Rle_dec (DGF.project_p p) (threshold e1)); try discriminate.
             destruct (find_edge l l0) eqn : He3.
-            assert (Veq (src e2) l) by admit (* voir He3 *).
+            assert (Hhelp : opt_eq Eeq (find_edge l l0) (Some e2)) by now rewrite He3.
+            apply find2st in Hhelp. destruct Hhelp as (Hfs, Hft).
             now rewrite Heq_e.
             assert (Veq l l2). unfold rcD2A, LocD2A in e0. 
             rewrite HlocD, HsrcD, HtgtD in e0; simpl in *.
             admit (* si on est sur un nœud, soit on est au départ, soit a l'arrivé, et on a n1 *).
             assert (Eeq e eD') by apply H1.
             assert (Eeq e1 eD') by apply H.
-            rewrite H3, H4, <- H5. admit (* apply He' *).
+            rewrite H3, H4, <- H5.
+            assert (Hhelp : opt_eq Eeq (find_edge l2 l0) (Some e1)) by now rewrite He'.
+            apply find2st in Hhelp. destruct Hhelp as (Hfs, Hft). now symmetry.
             now simpl in H.
          ** destruct n. unfold rcD2A, LocD2A; now rewrite HlocD, HsrcD, HtgtD.
    * assert ( Hax := DGF.ax_cont (c (Good g)) e p HlocD).
