@@ -1026,29 +1026,31 @@ Proof.
   destruct Hseg as (k, (Hcolinear, Hinside)).
   destruct (orthogonal_projection S Hneq) as (kh, Hp).
   set (H := (A + kh * (B - A))%R2).
+
   assert (HperpA: perpendicular (A - H) (H - S)).
-  unfold H.
-  replace (A - (A + kh * (B - A)))%R2 with (- kh * (B - A))%R2.
-  auto using perpendicular_mul_compat_l.
-  destruct A, B; compute; f_equal; ring.
+    unfold H.
+    replace (A - (A + kh * (B - A)))%R2 with (- kh * (B - A))%R2.
+    auto using perpendicular_mul_compat_l.
+    destruct A, B; compute; f_equal; ring.
   assert (HperpB: perpendicular (B - H) (H - S)).
-  unfold H.
-  replace (B - (A + kh * (B - A)))%R2 with ((1 + - kh) * (B - A))%R2.
-  auto using perpendicular_mul_compat_l.
-  destruct A, B; compute; f_equal; ring.
+    unfold H.
+    replace (B - (A + kh * (B - A)))%R2 with ((1 + - kh) * (B - A))%R2.
+    auto using perpendicular_mul_compat_l.
+    destruct A, B; compute; f_equal; ring.
   assert (HperpK: perpendicular (K - H) (H - S)).
-  replace ((K - H)%R2) with (((K - A) + (A - H))%R2).
-  rewrite Hcolinear.
-  unfold H.
-  replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
-  rewrite R2.add_morph.
-  auto using perpendicular_mul_compat_l.
-  destruct A, B; compute; f_equal; ring.
-  destruct K, A, H; compute; f_equal; ring.
+    replace ((K - H)%R2) with (((K - A) + (A - H))%R2).
+    rewrite Hcolinear.
+    unfold H.
+    replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
+    rewrite R2.add_morph.
+    auto using perpendicular_mul_compat_l.
+    destruct A, B; compute; f_equal; ring.
+    destruct K, A, H; compute; f_equal; ring.
   clear Hp.
+  
   assert (Kdef: K = (A + k * (B - A))%R2).
-  rewrite <- Hcolinear.
-  destruct K, A; compute; f_equal; ring.
+    rewrite <- Hcolinear.
+    destruct K, A; compute; f_equal; ring.
   clear Hcolinear.
   
   destruct (Rlt_le_dec k kh) as [Hlt | Hle].
@@ -1067,6 +1069,7 @@ Proof.
     unfold H.
     replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
     replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
+
     apply squared_R2norm_le.
     repeat rewrite R2norm_mul.
     apply Rmult_le_compat_r.
@@ -1079,10 +1082,12 @@ Proof.
     left. apply Rle_lt_trans with (r2 := k). tauto.
     assumption.
     left. apply Rlt_Rminus. assumption.
+    
     destruct A, B; compute; f_equal; ring.
     destruct A, B; compute; f_equal; ring.
     destruct A, H, S; compute; f_equal; ring.
     destruct K, H, S; compute; f_equal; ring.
+    
   + right.
     rewrite R2.dist_sym.
     rewrite R2norm_dist.
@@ -1098,6 +1103,7 @@ Proof.
     unfold H.
     replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
     replace (B - (A + kh * (B - A)))%R2 with ((1 - kh) * (B - A))%R2.
+    
     apply squared_R2norm_le.
     repeat rewrite R2norm_mul.
     apply Rmult_le_compat_r.
@@ -1112,10 +1118,12 @@ Proof.
     apply Rge_minus.
     apply Rle_ge.
     assumption.
+    
     destruct A, B; compute; f_equal; ring.
     destruct A, B; compute; f_equal; ring.
     destruct B, H, S; compute; f_equal; ring.
     destruct K, H, S; compute; f_equal; ring.
+
 Qed.
 
 Lemma R2div_reg_l :
@@ -1145,97 +1153,98 @@ Proof.
   set (KQ := (Q + kq * (C - Q))%R2).
   set (KQ' := (Q + kp * (C - Q))%R2).
   assert (Hpos: 0 < 1 - kp).
-  apply Rgt_lt.
-  apply Rgt_minus.
-  apply Rlt_gt.
-  apply Rle_lt_trans with (r2 := kq); assumption.
+  { apply Rgt_lt.
+    apply Rgt_minus.
+    apply Rlt_gt.
+    apply Rle_lt_trans with (r2 := kq); assumption.
+  }
+  assert (Hpoz: 0 <= 1 - kp).
+  { left. assumption. }
+
   assert (Thales: R2.dist KP KQ' <= (1 - kp) * dm).
-  + rewrite R2norm_dist.
+  { rewrite R2norm_dist.
     unfold KP, KQ'.
     replace (P + kp * (C - P) - (Q + kp * (C - Q)))%R2 with ((1 - kp) * (P - Q))%R2.
-    rewrite R2norm_mul.
-    assert (Hpos': 0 <= 1 - kp).
-    left. assumption.
-    rewrite (Rabs_pos_eq _ Hpos').
-    rewrite (Rmult_le_compat_l (1 - kp) (R2norm (P - Q)) dm Hpos').
-    right. reflexivity.
-    rewrite <- R2norm_dist.
-    assumption.
+    { rewrite R2norm_mul.
+      rewrite (Rabs_pos_eq _ Hpoz).
+      rewrite (Rmult_le_compat_l (1 - kp) (R2norm (P - Q)) dm Hpoz).
+      right. reflexivity.
+      rewrite <- R2norm_dist.
+      assumption.
+    }
     destruct P, Q, C; compute; f_equal; ring.
+  }
 
-  + assert (Hseg: on_segment KQ' C KQ).
-    - unfold on_segment.
-      exists (/(1 - kp) * (kq - kp)).
-      split.
-      rewrite <- R2.mul_morph.
+  assert (Hseg: on_segment KQ' C KQ).
+  { unfold on_segment.
+    exists (/(1 - kp) * (kq - kp)).
+    split.
+    + rewrite <- R2.mul_morph.
       apply R2div_reg_l.
-      apply Rgt_not_eq.
-      apply Rlt_gt.
-      assumption.    
+      { apply Rgt_not_eq.
+        apply Rlt_gt.
+        assumption. }    
       unfold KQ, KQ'.
       destruct C, Q; compute; f_equal; ring.
-      split.
-      apply Rmult_le_reg_l with (r := 1 - kp).
-      assumption.
-      rewrite Rmult_0_r.
-      rewrite <- Rmult_assoc.
-      rewrite Rinv_r.
-      rewrite Rmult_1_l.
-      apply Rge_le.
-      apply Rge_minus.
-      apply Rle_ge.
-      assumption.
-      apply Rgt_not_eq.
-      apply Rlt_gt.
-      assumption.    
-      apply Rmult_le_reg_l with (r := 1 - kp).
-      assumption.
-      rewrite Rmult_1_r.
-      rewrite <- Rmult_assoc.
-      rewrite Rinv_r.
-      rewrite Rmult_1_l.
-      apply Rplus_le_reg_l with (r := kp).
-      repeat rewrite Rplus_minus.
-      left. assumption.
-      apply Rgt_not_eq.
-      apply Rlt_gt.
-      assumption.    
-
-    - assert (HneqKQ'C: ~ R2.eq KQ' C).
-      unfold KQ'; unfoldR2.
-      intro Heq.
-      apply R2plus_compat_eq_r with (w := (-Q)%R2) in Heq.
-      replace (Q + kp * (C - Q) - Q)%R2 with (kp * (C - Q))%R2 in Heq; [ | destruct Q, C; compute; f_equal; ring].
-      replace (C - Q)%R2 with (1 * (C - Q))%R2 in Heq at 2; [ | apply R2.mul_1].
-      apply R2.mul_reg_r in Heq.
-      subst.
-      compute in Hpos. rewrite Rplus_opp_r in Hpos. apply (Rlt_irrefl _ Hpos).
-      intro Horigin.
-      apply R2plus_compat_eq_r with (w := Q%R2) in Horigin.
-      rewrite <- R2.add_assoc in Horigin.
-      rewrite R2.add_comm with (u := (-Q)%R2) in Horigin.
-      rewrite R2.add_opp in Horigin.
-      rewrite R2.add_origin in Horigin.
-      rewrite R2.add_comm in Horigin.
-      rewrite R2.add_origin in Horigin.
-      subst.
-      apply HneqQC.
-      unfoldR2.
-      reflexivity.
-
-      destruct (inner_segment KP HneqKQ'C Hseg).
-      * apply Rle_trans with (r2 := R2.dist KP KQ'); assumption.
-      * apply Rle_trans with (r2 := R2.dist KP C); [ assumption | ].
-        unfold KP. rewrite R2norm_dist.
-        replace (P + kp * (C - P) - C)%R2 with ((1 - kp) * (P - C))%R2.
-        rewrite R2norm_mul.
-        rewrite Rabs_pos_eq.
-        apply Rmult_le_compat_l.
-        left; assumption.
-        rewrite <- R2norm_dist.
-        assumption.
-        left; assumption.
-        destruct P, C; compute; f_equal; ring.
+    + split.
+      - apply Rmult_le_reg_l with (r := 1 - kp).
+        { assumption. }
+        rewrite Rmult_0_r.
+        rewrite <- Rmult_assoc.
+        rewrite Rinv_r.
+        * rewrite Rmult_1_l. apply Rge_le. apply Rge_minus. apply Rle_ge.
+          assumption.
+        * apply Rgt_not_eq. apply Rlt_gt. assumption.
+      - apply Rmult_le_reg_l with (r := 1 - kp).
+        { assumption. }
+        rewrite Rmult_1_r.
+        rewrite <- Rmult_assoc.
+        rewrite Rinv_r.
+        * rewrite Rmult_1_l.
+          apply Rplus_le_reg_l with (r := kp).
+          repeat rewrite Rplus_minus.
+          left. assumption.
+        * apply Rgt_not_eq. apply Rlt_gt. assumption.
+  }
+    
+  assert (HneqKQ'C: ~ R2.eq KQ' C).
+  { unfold KQ'; unfoldR2.
+    intro Heq.
+    apply R2plus_compat_eq_r with (w := (-Q)%R2) in Heq.
+    replace (Q + kp * (C - Q) - Q)%R2 with (kp * (C - Q))%R2 in Heq;
+      [ | destruct Q, C; compute; f_equal; ring].
+    replace (C - Q)%R2 with (1 * (C - Q))%R2 in Heq at 2;
+      [ | apply R2.mul_1].
+    apply R2.mul_reg_r in Heq.
+    subst.
+    compute in Hpos. rewrite Rplus_opp_r in Hpos. apply (Rlt_irrefl _ Hpos).
+    intro Horigin.
+    apply R2plus_compat_eq_r with (w := Q%R2) in Horigin.
+    rewrite <- R2.add_assoc in Horigin.
+    rewrite R2.add_comm with (u := (-Q)%R2) in Horigin.
+    rewrite R2.add_opp in Horigin.
+    rewrite R2.add_origin in Horigin.
+    rewrite R2.add_comm in Horigin.
+    rewrite R2.add_origin in Horigin.
+    subst.
+    apply HneqQC.
+    unfoldR2.
+    reflexivity.
+  }
+    
+  destruct (inner_segment KP HneqKQ'C Hseg).
+  + apply Rle_trans with (r2 := R2.dist KP KQ'); assumption.
+  + apply Rle_trans with (r2 := R2.dist KP C); [ assumption | ].
+    unfold KP. rewrite R2norm_dist.
+    replace (P + kp * (C - P) - C)%R2 with ((1 - kp) * (P - C))%R2.
+    rewrite R2norm_mul.
+    rewrite Rabs_pos_eq.
+    apply Rmult_le_compat_l.
+    left; assumption.
+    rewrite <- R2norm_dist.
+    assumption.
+    left; assumption.
+    destruct P, C; compute; f_equal; ring.
 
 Qed.
 
