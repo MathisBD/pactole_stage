@@ -351,30 +351,30 @@ Proof.
   + now apply max_dist_R2_list_list_ex.
 Qed.
 
-Lemma max_dist_exists :
-  forall (conf: Config.t),
-  exists (dm: R),
-    forall r1 r2, R2.dist (conf r1) (conf r2) <= dm /\ exists r1 r2, R2.dist (conf r1) (conf r2) = dm.
-Proof.
-  intros.
-  set (rlist := (*Spect.Names.Internals.fin_map*) Spect.Names.names).
-  set (dm_candidate := fold_left (fun max r0 =>
-                                    Rmax (fold_left (fun max r1 => Rmax (R2.dist (conf r0) (conf r1)) max) rlist 0) max)
-                                 rlist 0).
-  assert (forall r1 r2, In r1 rlist -> In r2 rlist -> R2.dist (conf r1) (conf r2) <= dm_candidate).
-  induction rlist.
-  intros ? ? Hin; elim Hin.
-  intros r1 r2 Hin1 Hin2.
-  destruct (Spect.Names.eq r1 a).
+(* Lemma max_dist_exists : *)
+(*   forall (conf: Config.t), *)
+(*   exists (dm: R), *)
+(*     forall r1 r2, R2.dist (conf r1) (conf r2) <= dm /\ exists r1 r2, R2.dist (conf r1) (conf r2) = dm. *)
+(* Proof. *)
+(*   intros. *)
+(*   set (rlist := (*Spect.Names.Internals.fin_map*) Spect.Names.names). *)
+(*   set (dm_candidate := fold_left (fun max r0 => *)
+(*                                     Rmax (fold_left (fun max r1 => Rmax (R2.dist (conf r0) (conf r1)) max) rlist 0) max) *)
+(*                                  rlist 0). *)
+(*   assert (forall r1 r2, In r1 rlist -> In r2 rlist -> R2.dist (conf r1) (conf r2) <= dm_candidate). *)
+(*   induction rlist. *)
+(*   intros ? ? Hin; elim Hin. *)
+(*   intros r1 r2 Hin1 Hin2. *)
+(*   destruct (Spect.Names.eq r1 a). *)
   
-  exists (fold_left (fun max r0 =>
-                       Rmax (fold_left (fun max r1 => Rmax (R2.dist (conf r0) (conf r1)) max) rlist 0) max)
-                    rlist 0).
-  intros.
-  split.
+(*   exists (fold_left (fun max r0 => *)
+(*                        Rmax (fold_left (fun max r1 => Rmax (R2.dist (conf r0) (conf r1)) max) rlist 0) max) *)
+(*                     rlist 0). *)
+(*   intros. *)
+(*   split. *)
   
   
-Definition max_dist_conf (conf: Config.t) : R :=
+(* Definition max_dist_conf (conf: Config.t) : R := *)
   
 
 Function measure (s : Spect.t) : nat * nat :=
