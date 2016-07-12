@@ -1275,10 +1275,48 @@ Proof.
   rewrite R2.add_assoc.
   apply IHE.
 Qed.
-  
+
+Lemma fold_add_permutation:
+  forall l1 l2 a,
+    PermutationA R2.eq l1 l2 ->
+    fold_left R2.add l1 a = fold_left R2.add l2 a.
+Proof.
+  intros l1 l2 a Hpermut. revert a.
+  induction Hpermut; intro a.
+  + now simpl.
+  + simpl. rewrite H. apply IHHpermut.
+  + simpl. rewrite <- R2.add_assoc. rewrite (R2.add_comm y x). rewrite R2.add_assoc. reflexivity.
+  + now rewrite IHHpermut1.
+Qed.
+    
 Definition barycenter (E: list R2.t) : R2.t :=
   /(INR (List.length E)) * (List.fold_left R2.add E R2.origin).
 
+(* Lemma length_step : forall elt l, List.length  *)
+
+Lemma R2mul_reg_eq_l:
+  forall k u v, R2.eq u v -> R2.eq (k * u) (k * v).
+Proof.
+  unfoldR2.
+  intros k u v H.
+  destruct u, v, H; compute; f_equal.
+Qed.
+  
+Lemma barycenter_compat : Proper (PermutationA R2.eq ==> R2.eq) barycenter.
+Proof.
+  intros l1 l2 Hpermut.
+  unfold barycenter.
+  assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).
+  rewrite Hl; clear Hl; apply R2mul_reg_eq_l.
+  induction Hpermut.
+  + now simpl.  
+  + pattern x₁; rewrite H.
+    simpl. now apply fold_add_permutation.
+  + apply fold_add_permutation.
+    constructor 3.
+  + now rewrite IHHpermut1.
+Qed.
+    
 Lemma Lemme2_aux:
   forall (E: list R2.t) (dm: R) (c: R2.t),
     E <> nil ->
