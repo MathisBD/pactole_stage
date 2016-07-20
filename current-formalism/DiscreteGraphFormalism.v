@@ -22,6 +22,7 @@ Inductive location :=
 
 (* Axiom mvt0_1 : forall e p loc, loc = Mvt e p -> 0 < p < 1. *)
 
+
 Parameter project_p : R -> R.
 Axiom project_p_image : forall p, (0 < project_p p < 1)%R.
 Parameter project_p_inv : R -> R.
@@ -30,6 +31,7 @@ Axiom pro_inv : forall p, p = project_p_inv (project_p p).
 Axiom project_p_inv_image : forall p q, p = project_p_inv q -> (0 < q < 1)%R.
 Axiom subj_proj : forall p q, p = project_p q <-> project_p_inv p = q.
 Axiom proj_comm : forall p q, (project_p (p + q) = (project_p p) + (project_p q))%R.
+
 
 
 (*Definition project_p (p : R) : R := p. fonction de R vers ]0;1[, par exemple utiliser arctan.*)
@@ -713,7 +715,8 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
   Qed.
 
-Definition Conf_init (conf: Config.t) : Prop := forall id, exists l, conf id = 
+Definition Conf_init (conf: Config.t) : Prop := forall id, exists l, 
+Config.eq_RobotConf (conf id)
 {| Config.loc := Loc l;
 Config.robot_info := {| Config.source := Loc l; Config.target := Loc l|} |}.
 
@@ -737,50 +740,46 @@ lra. assert (Hp := project_p_image p0). lra. auto.
 simpl in *. right. exists p. now split.
 Qed.
 
-Definition is_not_loc loc := forall l, ~Location.eq (Loc l) loc.
-
-CoInductive HasNeverBeenLoc (e : execution) g : Prop :=
-  isLoc : is_not_loc (Config.loc ((execution_head e) (Good g))) -> 
-            HasNeverBeenLoc (execution_tail e) g ->
-            HasNeverBeenLoc e g.
-
-Inductive WillNeverBeNode  rbg d conf g: Prop :=
-  | Now : HasNeverBeenLoc (execute rbg d conf) g->
-          WillNeverBeNode rbg d conf g
-  | Later : WillNeverBeNode rbg (demon_tail d) (round rbg (demon_head d) conf) g -> 
-          WillNeverBeNode rbg d conf g.
-
-
-
-
-Lemma ri_loc' : forall (conf : Config.t) g v0 rbg da,
-   loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0) -> 
-   loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0) \/
-   loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0).
+Lemma ri_loc_init : forall conf da rbg g,
+      Conf_init conf -> exists v1' v2',
+      loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1')
+   /\ loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2').
 Proof.
-intros conf g v0 rbg da Hl.
-unfold round in *.
-destruct (step da (Good g) (conf (Good g))) eqn : Hstep.
-Focus 2.
-simpl in *. now left.
-simpl in *.
-destruct (Config.loc (conf (Good g))) as [l| e p ] eqn : Hloc.
-Focus 2.
-destruct (Rle_dec 1 (project_p p + dist)).
-simpl in *.
+intros conf da rbg g Hinit.
+unfold Conf_init in Hinit.
+specialize (Hinit (Good g)).
+destruct Hinit as (l, (Hli, (Hsi, Hti))); simpl in *.
+unfold round.
+destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
+(Config.loc (conf (Good g)))eqn : Hloc; try now simpl in *.
++ destruct (Rdec dist 0). exists l, l; now split.
+  destruct (Rdec dist 1). exists l, l; now split.
+  destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht; try now simpl in *.
+  unfold loc_eq in Hti, Hli.
+  rewrite <-Hti in Hli.
+  destruct (Veq_dec l0 l1); try contradiction.
+  exists l, l; split. apply Hsi. rewrite Ht. now simpl in *.
++ simpl in *.
+  assert (Hsp : Veq (ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))) l).
+  unfold Spect.from_config, projectS, projectS_loc, project.
+  simpl in *. rewrite Hloc.
+  destruct ((Config.source (Config.robot_info (conf (Good g))))); now simpl in *.
+  assert (Hrange := pgm_range rbg (Spect.from_config (project conf)) g l Hsp).
+  destruct Hrange as (l', (_, (Hfin, _))).
+  exists l, l'. split. apply Hli. now rewrite Hfin.
 Qed.
 
-Lemma ri_loc_round : forall conf v0 v1 v2 da rbg g,
-      loc_eq (Config.loc (conf (Good g))) (Loc v0) ->
+Lemma ri_loc_always : forall conf v1 v2 da rbg g,
       loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
       loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
 exists v1' v2',
       loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1')
    /\ loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2').
 Proof.
-intros conf v0 v1 v2 da rbg g Hl Hs Ht.
+intros conf v1 v2 da rbg g Hs Ht.
 unfold round. simpl in *.
-destruct (step da (Good g) (conf (Good g))), (Config.loc (conf (Good g))) eqn : Hloc.
+destruct (step da (Good g) (conf (Good g))) eqn : Hstep,
+(Config.loc (conf (Good g))) eqn : Hloc.
 destruct (Rdec dist 0). exists v1, v2. split;assumption.
 destruct (Rdec dist 1). simpl. exists v1, v2. split; assumption.
 destruct (Veq_dec l
@@ -794,8 +793,7 @@ exists v1, v2; split;assumption.
 simpl in *. exists l.
 assert (Hrbg := pgm_loc rbg (Spect.from_config (project conf))).
 destruct Hrbg as (lspect, Hrbg).
-assert
-(Hsp : Veq (ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))) v1).
+assert (Hsp : Veq (ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))) v1).
 unfold Spect.from_config, projectS, projectS_loc, project. simpl in *.
 rewrite Hloc.
 destruct (Config.source (Config.robot_info (conf (Good g)))) eqn : Hs'; try now exfalso.
@@ -803,231 +801,150 @@ now unfold loc_eq in Hs.
 assert (Hrange := pgm_range rbg (Spect.from_config (project conf)) g v1 Hsp).
 destruct Hrange as (spl, (e, (Hlocs,Hrange))). exists spl. split. reflexivity.
 rewrite Hlocs. reflexivity.
-simpl in *. now exfalso.
-Qed.
-
-Lemma ri_loc_eq1 : forall conf v0 v1 v2 v1' v2' da rbg g,
-   loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1') ->
-   loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2') ->
-   (loc_eq (Config.loc (conf (Good g))) (Config.source (Config.robot_info (conf (Good g)))) \/
-    loc_eq (Config.loc (conf (Good g))) (Config.target (Config.robot_info (conf (Good g))))) ->
-   loc_eq (Config.loc ((round da rbg conf) (Good g))) (Loc v0) ->
-   loc_eq (Config.source (Config.robot_info ((round da rbg conf) (Good g)))) (Loc v1) ->
-   loc_eq (Config.target (Config.robot_info ((round da rbg conf) (Good g)))) (Loc v2) ->
-   Veq v0 v1 \/ Veq v0 v2.
-Proof.
-intros conf v0 v1 v2 v1' v2' da rbg g Hs' Ht' Hbefore Hl Hs Ht.
-unfold round in *.
-destruct (step rbg (Good g) (conf (Good g))) eqn : Hstep, (Config.loc (conf (Good g))) eqn : Hloc,
-Hbefore as [Hbs | Hbt].
-destruct (Rdec dist 0). rewrite Hloc in Hl.
-rewrite Hs in Hbs. unfold loc_eq in *. left. now rewrite Hl in Hbs.
-destruct (Rdec dist 1). simpl in *. unfold loc_eq in *.
-destruct (Config.target (Config.robot_info (conf (Good g)))); try now exfalso.
-rewrite Hl in Ht. now right.
-destruct (Veq_dec l
-                 match Config.target (Config.robot_info (conf (Good g))) with
-                 | Loc l => l
-                 | Mvt e _ => src e
-                 end). rewrite Hloc in Hl.
-rewrite Hs in Hbs. unfold loc_eq in *. left. now rewrite Hl in Hbs.
-simpl in *. now exfalso.
-destruct (Rdec dist 0). rewrite Hloc in Hl.
-rewrite Ht in Hbt. unfold loc_eq in *. right. now rewrite Hl in Hbt.
-destruct (Rdec dist 1). simpl in *. unfold loc_eq in *.
-destruct (Config.target (Config.robot_info (conf (Good g)))); try now exfalso.
-rewrite Hl in Ht. now right.
-destruct (Veq_dec l
-                 match Config.target (Config.robot_info (conf (Good g))) with
-                 | Loc l => l
-                 | Mvt e _ => src e
-                 end). rewrite Hloc in Hl.
-rewrite Ht in Hbt. unfold loc_eq in *. right. now rewrite Hl in Hbt.
-simpl in *. now exfalso.
-destruct (Config.source (Config.robot_info (conf (Good g)))); now unfold loc_eq.
-destruct (Config.target (Config.robot_info (conf (Good g)))); now unfold loc_eq.
-simpl in *. rewrite Hl in Hs. now left.
 simpl in *.
-unfold loc_eq in *; try now exfalso.
-rewrite <- Hs. now left.
-simpl in *. now exfalso.
-simpl in *. now exfalso.
+assert (Hfalse := step_delta da g (conf (Good g)) sim Hstep).
+destruct Hfalse as ((l,Hfalse), _). rewrite Hloc in Hfalse. now exfalso.
 Qed.
 
 
+Axiom ri : forall (conf : Config.t) g, exists v1 v2,
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
 
-Axiom ri_loc_eq' : forall (rc : Config.RobotConf) v0 v1 v2,
-                   loc_eq (Config.loc rc) (Loc v0) ->
-                   loc_eq (Config.source (Config.robot_info rc)) (Loc v1) ->
-                   loc_eq (Config.target (Config.robot_info rc)) (Loc v2) ->
-                   (v0 = v1) \/ (v0 = v2).
 
-(*  Axiom ax_cont : forall rc e p, Config.loc rc = Mvt e p ->
-                               exists l1 l2, (
-                    Config.source (Config.robot_info rc) = Loc l1 /\
-                    Config.target (Config.robot_info rc) = Loc l2) /\
-                    find_edge l1 l2 = Some e.*)
-
-Lemma ax_cont_loc1 : forall conf v0 v1 v2 da (rbg : robogram) g e p,
-       loc_eq (Config.target (Config.robot_info (conf (Good g))))
-              (rbg (Spect.from_config (project conf))) ->
-       loc_eq (Config.loc (conf (Good g))) (Loc v0) ->
-       loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1) ->
-       loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2) ->
-       loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e p) ->
-       opt_eq Eeq (find_edge v1 v2) (Some e).
+Lemma group_lem_init : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
+   Conf_init conf ->
+   (loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0') ->
+    loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0') \/
+    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0')) /\
+   (loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
+    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
+    loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
+    opt_eq Eeq (find_edge v1' v2') (Some e')).
 Proof.
-intros conf v0 v1 v2 da rbg g e p Htr Hl0 Hs Ht Hl.
-assert (Hrbg := pgm_range rbg (Spect.from_config (project conf)) g
-((ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))))
-(reflexivity (ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))))).
-destruct Hrbg as (l', (e',(Hsp, Hedge))).
-assert (Hss := Hs).
-destruct (Config.source (Config.robot_info (round rbg da conf (Good g)))) as [ls'| ms'] eqn : Hs';
-unfold loc_eq in Hs; try now exfalso. rewrite <- Hs' in Hss;
-unfold round in *; simpl in *.
-destruct (step da (Good g) (conf (Good g)))as [dist|sim] eqn : Hstep,
-(Config.loc (conf (Good g))) as [ll'|edge pl'] eqn : Hloc; try discriminate.
-+ destruct (Rdec dist 0). rewrite Hloc in Hl; now unfold loc_eq.
-  destruct (Rdec dist 1).
-  simpl in *. rewrite Ht in Hl; now unfold loc_eq.
-  simpl in *.
-  destruct (Config.target (Config.robot_info (conf (Good g))))as [lt'| mt'] eqn : Ht'.
-  destruct (Veq_dec ll' lt'). rewrite Hloc in Hl. now unfold loc_eq in Hl.
-  simpl in *.
-  assert (Veq ll' (ConfigA.loc (Spect.from_config (project conf) (Good g)))).
-  simpl in *. unfold projectS_loc, project in *.
-  now do 2 rewrite Hloc in *. unfold projectS_loc, project in Hedge.
-  rewrite Hloc in Hedge. simpl in *.
-  assert (Hloc' : loc_eq (Config.loc (conf (Good g))) (Loc ll')) by now rewrite Hloc.
-  rewrite Hsp in Htr.
-  assert (Hax := ri_loc_eq' (conf (Good g)) ll' v1 v2 Hloc' Hss Ht).
-  destruct Hax as [Hleft| Hright].
-  rewrite <- find_edge_Some;
-  apply find_edge_compat; rewrite Ht' in Ht.
-  destruct (find_edge ll' lt') eqn : Hedge'; destruct Hl as (He, Hp).
-  rewrite Hs' in Hedge.
-  assert (Haide : Veq (src e) (src e0)) by now apply src_compat.
-  rewrite Haide.
-  assert (Hedge'' : opt_eq Eeq (find_edge ll' lt') (Some e0)) by now rewrite Hedge'.
-  apply find2st in Hedge''. destruct Hedge''. now rewrite Hleft in H0.
-  destruct (Config.source (Config.robot_info (conf (Good g)))); try discriminate.
-  assert (Hfalse : opt_eq Eeq (find_edge l l') (find_edge ll' lt')). apply find_edge_compat.
-  unfold loc_eq in Hss. rewrite Hss. now rewrite Hleft. now symmetry.
-  now rewrite Hedge', Hedge in Hfalse.
-  destruct (find_edge ll' lt') eqn : Hedge'; destruct Hl as (He, Hp).
-  rewrite Hs' in Hedge.
-  assert (Haide : Veq (tgt e) (tgt e0)) by now apply tgt_compat.
-  rewrite Haide.
-  assert (Hedge'' : opt_eq Eeq (find_edge ll' lt') (Some e0)) by now rewrite Hedge'.
-  apply find2st in Hedge''. destruct Hedge''. unfold loc_eq in Ht. now rewrite Ht in H1.
-  destruct (Config.source (Config.robot_info (conf (Good g)))); try discriminate.
-  assert (Hfalse : opt_eq Eeq (find_edge l l') (find_edge ll' lt')). apply find_edge_compat.
-  unfold loc_eq in Hss. rewrite Hss. now rewrite Hleft. now symmetry.
-  now rewrite Hedge', Hedge in Hfalse.
-  rewrite Ht' in Ht. rewrite <- Hright in Ht. unfold loc_eq in Ht. now symmetry in Ht.
-  rewrite Hsp in Htr. now unfold loc_eq in Htr.
-+ now unfold loc_eq in Hl0.
-+ now simpl in *.
+intros conf rbg da g v0' v1' v2' e' p' Hinit.
+unfold Conf_init in Hinit.
+specialize (Hinit (Good g)).
+destruct Hinit as (l, (Hli, (Hsi, Hti))); simpl in *.
+split.
++ intros Hl0. unfold round in *.
+  destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
+  (Config.loc (conf (Good g)))eqn : Hloc; try now simpl in *.
+  - rewrite <- Hli in *.
+    simpl in *.
+    destruct (Rdec dist 0). rewrite Hloc in Hl0. rewrite <- Hl0. now left.
+    destruct (Rdec dist 1). simpl in *. now right.
+    destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht; try now simpl in *.
+    unfold loc_eq in Hti.
+    destruct (Veq_dec l0 l1); try contradiction.
+    rewrite Hloc in Hl0. rewrite <- Hl0. now left.
+  - simpl in *. now left.
++ intros Hs Ht Hl. unfold round in *.
+  destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
+  (Config.loc (conf (Good g)))eqn : Hloc; try now simpl in *.
+  destruct (Rdec dist 0). rewrite Hloc in Hl; now simpl in *.
+  destruct (Rdec dist 1). simpl in *. rewrite Ht in Hl; now simpl in *.
+  destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht'; try now simpl in *.
+  unfold loc_eq in Hti, Hli. rewrite <- Hti in Hli.
+  destruct (Veq_dec l0 l1); try contradiction.
+  now rewrite Hloc in Hl.
 Qed.
 
 
-Lemma ax_cont_loc2 : forall conf e0 p0 v1 v2 da (rbg : robogram) g e p,
-       loc_eq (Config.target (Config.robot_info (conf (Good g))))
-              (rbg (Spect.from_config (project conf))) ->
-       loc_eq (Config.loc (conf (Good g))) (Mvt e0 p0) ->
-       loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc (src e0)) ->
-       loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc (tgt e0)) ->
-       loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1) ->
-       loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2) ->
-       loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e p) ->
-       opt_eq Eeq (find_edge v1 v2) (Some e).
+Lemma group_lem : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
+   loc_eq (Config.target (Config.robot_info (conf (Good g))))
+          (rbg (Spect.from_config (project conf))) ->
+   (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v0) \/
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v0)) ->
+   (forall e p v1 v2,
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
+    loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
+    opt_eq Eeq (find_edge v1 v2) (Some e)) ->
+   (loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0') ->
+    loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0') \/
+    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0')) /\
+   (loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
+    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
+    loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
+    opt_eq Eeq (find_edge v1' v2') (Some e')).
 Proof.
-intros conf e0 p0 v1 v2 da rbg g e p Htr Hl0 Hs0 Ht0 Hs Ht Hl.
-(* assert (Hrbg := pgm_range rbg (Spect.from_config (project conf)) g
-((ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))))
-(reflexivity (ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))))).
-destruct Hrbg as (l', (e',(Hsp, Hedge'))).
-assert (Hss := Hs).
-destruct (Config.source (Config.robot_info (round rbg da conf (Good g)))) as [ls'| ms'] eqn : Hs';
-unfold loc_eq in Hs;try now exfalso. *)
-unfold round in *.
-
-destruct (step da (Good g) (conf (Good g)))as [dist|sim] eqn : Hstep,
-(Config.loc (conf (Good g))) as [ll'|edge pl'] eqn : Hloc; try discriminate.
-+ now unfold loc_eq in Hl0.
-+ destruct (Rle_dec 1 (project_p pl' + dist)). now simpl in *.
-  simpl in *. destruct (Rdec dist 0).
-  - unfold loc_eq in Hl.
-    destruct Hl as (He, Hp), Hl0 as (He0, Hp0).
-    assert (Hedge : opt_eq Eeq (Some e0) (Some e)).
-    { assert (Hedge'' : opt_eq Eeq (Some edge) (Some e)) by apply He.
-    rewrite <- Hedge''. symmetry; apply He0. }
-    rewrite <- Hedge.
-    rewrite <- find_edge_Some. apply find_edge_compat.
-    * rewrite Hs in Hs0. now unfold loc_eq in Hs0.
-    * rewrite Ht in Ht0; now unfold loc_eq in Ht0.
-  - unfold loc_eq in Hl.
-    destruct Hl as (He, Hp), Hl0 as (He0, Hp0).
-    assert (Hedge : opt_eq Eeq (Some e0) (Some e)).
-    { assert (Hedge'' : opt_eq Eeq (Some edge) (Some e)) by apply He.
-    rewrite <- Hedge''. symmetry; apply He0. }
-    rewrite <- Hedge.
-    rewrite <- find_edge_Some. apply find_edge_compat.
-    * rewrite Hs in Hs0. now unfold loc_eq in Hs0.
-    * rewrite Ht in Ht0; now unfold loc_eq in Ht0.
-+ now simpl in *.
-+ now simpl in *.
+intros conf rbg da g v0' v1' v2' e' p' Hr Hli Hmi. assert (Hri := ri conf g).
+split. 
++ intros Hl0. unfold round in *.
+  destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
+  (Config.loc (conf (Good g))) eqn : Hl.
+  - destruct (Rdec dist 0).
+    specialize (Hli v0'). apply Hli. now rewrite Hl in Hl0.
+    destruct (Rdec dist 1).
+    simpl in *. now right.
+    destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht.
+    * destruct (Veq_dec l l0).
+      specialize (Hli v0'). rewrite Ht. apply Hli. now rewrite Hl in Hl0.
+      destruct (find_edge l l0); now simpl in *.
+    * destruct (Veq_dec l (src e)).
+      specialize (Hli v0').
+      destruct Hli.
+      now rewrite Hl in Hl0.
+      now left.
+      now unfold loc_eq in *.
+      destruct (find_edge l (src e)); now simpl in *.
+  - destruct (Rle_dec 1 (project_p p + dist)); simpl in *.
+    * destruct Hri as (v1, (v2, Hri)). specialize (Hmi e p v1 v2).
+      apply find2st in Hmi.
+      assert (Hproof : Veq (tgt e) v2).
+      now destruct Hmi.
+      right. destruct Hri as (Hsri, Htri).
+      rewrite Htri. simpl in *. now rewrite <- Hproof.
+      apply Hri.
+      apply Hri.
+      now split.
+    * destruct (Rdec dist 0); now simpl in .
+  - simpl in *. now left.
+  - now simpl in *.
++ intros Hs0 Ht0 Hl0. unfold round in *.
+  destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
+  (Config.loc (conf (Good g))) eqn : Hl.
+  - destruct (Rdec dist 0). now rewrite Hl in Hl0.
+    destruct (Rdec dist 1). simpl in *. now rewrite Ht0 in Hl0.
+    destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht.
+    * destruct (Veq_dec l l0).
+      now rewrite Hl in Hl0.
+      destruct (find_edge l l0) eqn : Hedge; simpl in *.
+      specialize (Hli l). destruct Hli as [Hsi |Hti]. reflexivity.
+      destruct Hl0 as (He, Hp).
+      assert (Hedge' : opt_eq Eeq (find_edge l l0) (Some e')) by now (rewrite Hedge; apply He).
+      rewrite Ht in Ht0. unfold loc_eq in Ht0. rewrite Ht0 in Hedge'.
+      rewrite Hsi in Hs0. unfold loc_eq in Hs0. now rewrite Hs0 in Hedge'.
+      now symmetry in Hti.
+      assert (Hrbg := pgm_range rbg (Spect.from_config (project conf)) g).
+      specialize (Hrbg v1').
+      assert (loc_eq (Loc (ConfigA.source (ConfigA.robot_info (Spect.from_config (project conf) (Good g)))))
+                     ((Config.source (Config.robot_info (conf (Good g)))))).
+      unfold project, Spect.from_config, projectS, projectS_loc.
+      simpl in *.
+      destruct (Config.source (Config.robot_info (conf (Good g)))) eqn:Hs'; try now simpl in *.
+      rewrite Hl, Hs'. reflexivity. rewrite Hs0 in H. unfold loc_eq in H.
+      specialize (Hrbg H). destruct Hrbg as (l'', (e'',(Htgt,Hrbg))).
+      rewrite Htgt in Hr.
+      assert (Hfalse : opt_eq Eeq (find_edge l l0) (Some e'')).
+      rewrite Hr.
+      specialize (Hli l). destruct Hli as [Hsi |Hti]. reflexivity.
+      rewrite Hs0 in Hsi. unfold loc_eq in Hsi. now rewrite <- Hsi, Hrbg.
+      now symmetry in Hti.
+      now rewrite Hedge in Hfalse.
+    * destruct Hri as (_,(f, (_, Hf))).
+      now simpl in *.
+  - destruct (Rle_dec 1 (project_p p + dist));try now simpl in *.
+    destruct (Rdec dist 0); simpl in *;
+    specialize (Hmi e' p v1' v2');
+    now apply Hmi.
+  - now simpl in *.
+  - now simpl in *.
 Qed.
 
 
-Lemma round_flow : forall rbg da g conf e p,
-         loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e p) -> 
-         (exists l, loc_eq (Config.loc (conf (Good g))) (Loc l)) \/
-         (exists p', (project_p p' <= project_p p)%R /\
-                     loc_eq (Config.loc (conf (Good g))) (Mvt e p')).
-Proof.
-intros rbg da g conf e p Hl.
-unfold round in *.
-destruct (step da (Good g) (conf (Good g))) eqn : Hstep. simpl in *.
-destruct (Config.loc (conf (Good g))). left; now exists l.
-destruct (Rle_dec 1 (project_p p0 + dist)); simpl in *; try now exfalso.
-destruct (Rdec dist 0). right. exists p0. unfold loc_eq in Hl; destruct Hl.
-repeat split. now rewrite H0. auto. right. exists p0.
-unfold loc_eq in *. destruct Hl.
-repeat split. rewrite <- H0, proj_comm, <- inv_pro;
-assert (Hdist := step_flexibility da (Good g) (conf (Good g)) dist Hstep).
-lra. assert (Hp := project_p_image p0). lra. auto.
-simpl in *. right. exists p. now split.
-Qed.
-
-Lemma ri_loc_eq2 : forall conf v0 v1 v2 e0 p0 v1' v2' da rbg g,
-   loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1') ->
-   loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2') ->
-   loc_eq (Config.loc (conf (Good g))) (Mvt e0 p0) ->
-   loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0) ->
-   loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1) ->
-   loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2) ->
-   Veq v0 v1 \/ Veq v0 v2.
-Proof.
-intros conf v0 v1 v2 e0 p0 v1' v2' da rbg g Hs' Ht' Hl' Hl Hs Ht.
-unfold round in *; simpl in *.
-destruct (step da (Good g) (conf (Good g))) as [dist|sim] eqn : Hstep,
-(Config.loc (conf (Good g))) as [ l | e' p'] eqn : Hl0; try (now unfold loc_eq in Hl').
-destruct (Rle_dec 1 (project_p p' + dist)); simpl in *.
-+ right. unfold loc_eq in *.
-  destruct (Config.target (Config.robot_info (conf (Good g))));
-  try discriminate; try (now exfalso).
-  assert (opt_eq Eeq (find_edge v1 v2) (Some e')).
-  admit.
-  apply find2st in H. destruct H.
-  rewrite <- Hl. now symmetry.
-+ destruct (Rdec dist 0); now unfold loc_eq in *.
-Qed.
-  (* Lemma compat_helper1 : Aom_eq (da.(step) id conf) (Moving mv_r) ->  *)
-
-  (** [execute r d conf] returns an (infinite) execution from an initial global
-      configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)
 
 
 End DGF.
