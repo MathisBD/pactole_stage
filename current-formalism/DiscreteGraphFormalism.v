@@ -874,23 +874,28 @@ assert (Hfalse := step_delta da g (conf (Good g)) sim Hstep).
 destruct Hfalse as ((l,Hfalse), _). rewrite Hloc in Hfalse. now exfalso.
 Qed.
 
-(*
-Definition ri_loc_def (conf: Config.t) g : Prop :=
-    exists v1 v2,
+
+Definition ri_loc_def (conf: Config.t) : Prop :=
+  forall g, exists v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
 
 CoInductive ri : execution -> Prop :=
-PropCons : forall e g, ri_loc_def (execution_head e) g -> ri (execution_tail e) -> ri e.
+PropCons : forall e, ri_loc_def (execution_head e) -> ri (execution_tail e) -> ri e.
 
-Lemma ri_always : forall d conf r, Conf_init conf -> ri (execute r d conf).
+Axiom ri_round : forall r da config, ri_loc_def config -> ri_loc_def (round r da config).
+
+Lemma ri_always : forall r d config, ri_loc_def config -> ri (execute r d config).
 Proof.
-cofix Href.
-intros d conf r Hinit.
+cofix Hrec.
+intros d config r Hinit.
 constructor.
-unfold execute.
-simpl in *.
-Qed. *)
++ unfold execute. simpl. assumption.
++ rewrite execute_tail. simpl. apply Hrec. apply ri_round. assumption.
+Qed.
+
+Corollary ri_always_bis : forall r d config, Conf_init config -> ri (execute r d config).
+Proof. intros. apply ri_always. unfold Conf_init, ri_loc_def in *. firstorder. Qed.
 
 Axiom ri : forall (conf : Config.t) g, exists v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
