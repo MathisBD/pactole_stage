@@ -559,7 +559,6 @@ simpl in Hlen; discriminate || clear Hlen.
       now rewrite InA_singleton in H.
     }
     rewrite <- Hpt in *. clear Hpt.
-    (* CONTINUE HERE. *)
     generalize (Sim.center_prop sim).
     intro Hzero.
     apply step_center with (c := pt) in Hstep.
@@ -575,7 +574,7 @@ simpl in Hlen; discriminate || clear Hlen.
 - simpl.
   rewrite <- sim.(Similarity.Inversion).
   replace (barycenter (pt1' :: pt2' :: l')) with (sim (barycenter (pt1 :: pt2 :: l))).
-  * admit.
+  * admit. (* CONTINUE HERE *)
   * rewrite <- barycenter_sim.
     apply barycenter_compat.
     now rewrite PermutationA_Leibniz.
