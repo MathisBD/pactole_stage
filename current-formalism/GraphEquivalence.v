@@ -966,20 +966,9 @@ repeat try (split; simpl).
     try (now apply src_compat); try (now apply tgt_compat);
     rewrite <- DGF.inv_pro; try (assert (0 < DGF.project_p p + dist0 < 1)%R;
     assert (Hde := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hpp := DGF.project_p_image p); lra). rewrite r0.
-    destruct (Rle_dec (DGF.project_p (p + DGF.project_p_inv dist0)));
+    assert (Hpp := DGF.project_p_image p); lra);
+    destruct (Rle_dec (DGF.project_p p + dist0)); try lra;
     try (now apply src_compat); try (now apply tgt_compat).
-    rewrite <- e1 in e2. destruct e2 as (Hle, _); simpl in *.
-    assert (Hfalse := NoAutoLoop e); now symmetry in Hle.
-    destruct n2. rewrite DGF.proj_comm, <- DGF.inv_pro. lra.
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
-    assert (Hte_p := threshold_pos e). assert (Hpos_p := DGF.project_p_image p). lra.
-    destruct n2. rewrite DGF.proj_comm, <- DGF.inv_pro. lra.
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
-    assert (Hte_p := threshold_pos e). assert (Hpos_p := DGF.project_p_image p). lra.
-    destruct n3. rewrite DGF.proj_comm, <- DGF.inv_pro. lra.
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
-    assert (Hte_p := threshold_pos e). assert (Hpos_p := DGF.project_p_image p). lra.
     rewrite <- e1 in e2. destruct e2 as (Hle, _); simpl in *.
     assert (Hfalse := NoAutoLoop e); now symmetry in Hle.
     destruct (AGF.Config.eq_Robotconf_dec
@@ -994,29 +983,6 @@ repeat try (split; simpl).
     assert (Hfalse := NoAutoLoop e); now symmetry in Hle.
     destruct n2. unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try (split; simpl);
     try assumption. now destruct (Rle_dec (DGF.project_p p) (threshold e)).
-    rewrite <- e1 in e2. destruct e2 as (Hle, _); simpl in *.
-    assert (Hfalse := NoAutoLoop e); now symmetry in Hle.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r0;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r0;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r0;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
-    destruct n1. rewrite DGF.proj_comm, <- DGF.inv_pro in r;
-    assert (Hd := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hte_p := threshold_pos e); assert (Hpos_p := DGF.project_p_image p); lra.
 + destruct dist1 eqn : Hbool;
   destruct (DGF.Config.loc (c (Good g))) eqn : HlocD; simpl in *;
   rewrite <- HlocD in *;
@@ -1061,6 +1027,7 @@ repeat try (split; simpl).
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) eqn : HtgtD'; try discriminate;
   destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) eqn : HsrcD; try discriminate;
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) eqn : HsrcD'; try discriminate;
+  try rewrite HlocD in *;
   try (assumption); try (now exfalso);
   destruct Hloc as (He, Hp); rewrite Hp;
   assert (Hth : threshold e = threshold e0) by (now apply threshold_compat);
