@@ -1292,6 +1292,25 @@ Qed.
 Definition barycenter (E: list R2.t) : R2.t :=
   /(INR (List.length E)) * (List.fold_left R2.add E R2.origin).
 
+Definition sqr_dist_sum_aux (init: R) (pt: R2.t) (E: list R2.t) : R :=
+  List.fold_left (fun acc pt' => acc + (R2.dist pt pt')²) E init.
+
+Definition sqr_dist_sum := sqr_dist_sum_aux 0.
+
+Axiom Barycenter_n_spec :
+  forall (E: list R2.t) (B: R2.t),
+    barycenter E = B -> 
+    forall p,
+      sqr_dist_sum B E <= sqr_dist_sum p E.
+  
+Definition is_barycenter_n (E: list R2.t) (B: R2.t) : Prop :=
+  forall p, sqr_dist_sum B E <= sqr_dist_sum p E.
+
+Axiom barycenter_n_spec : forall (E: list R2.t),
+    is_barycenter_n E (barycenter E).
+Axiom barycenter_n_unique: forall E a b,
+    is_barycenter_n E a -> is_barycenter_n E b -> R2.eq a b.
+
 (* Lemma length_step : forall elt l, List.length  *)
 
 Lemma R2mul_reg_eq_l:
@@ -1316,7 +1335,30 @@ Proof.
     constructor 3.
   + now rewrite IHHpermut1.
 Qed.
-    
+
+
+Lemma sqr_dist_sum_aux_compat : Proper (Logic.eq ==> R2.eq ==> PermutationA R2.eq ==> Logic.eq) sqr_dist_sum_aux.
+Proof.
+  intros i1 i2 Heqi pt1 pt2 Heqpt E1 E2 Hpermut.
+  unfold sqr_dist_sum_aux.
+  revert i1 i2 Heqi.
+  induction Hpermut; intros i1 i2 Heqi.
+  + now simpl.
+  + pattern x₁; rewrite H.
+    simpl. apply IHHpermut.
+    now rewrite Heqpt, Heqi.
+  + simpl. f_equiv.
+    - now rewrite Heqpt.
+    - rewrite Heqi, Heqpt.
+      ring.
+  + rewrite Heqpt in *.
+    rewrite (IHHpermut1 i1 i2 Heqi).
+    now rewrite (IHHpermut2 i2 i2).
+Qed.
+
+Lemma sqr_dist_sum_compat : Proper (R2.eq ==> PermutationA R2.eq ==> Logic.eq) sqr_dist_sum.
+Proof. now apply sqr_dist_sum_aux_compat. Qed.
+
 Lemma Lemme2_aux:
   forall (E: list R2.t) (dm: R) (c: R2.t),
     E <> nil ->

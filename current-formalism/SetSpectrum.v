@@ -123,6 +123,19 @@ induction l as [| x l]; simpl.
   - apply MProp.add_cardinal_2 in Hmem. omega.
 Qed.
 
+
+Instance elements_compat : Proper (M.eq ==> PermutationA Loc.eq) M.elements.
+Proof.
+  intros s1 s2 Heq.
+  assert (Equivalence Loc.eq).
+  auto with typeclass_instances.
+  apply NoDupA_equivlistA_PermutationA. assumption.
+  now apply M.elements_spec2w. now apply M.elements_spec2w.
+  intro x. do 2 rewrite M.elements_spec1.
+  now rewrite Heq.
+Qed.
+
+
 (** Building a spectrum from a configuration *)
 
 (** Inclusion is not possible because M already contains a function [is_ok]. *)
@@ -144,5 +157,102 @@ Definition is_ok s conf := forall l, In l s <-> exists id : Names.ident, Loc.eq 
 
 Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
 Proof. unfold from_config, is_ok. intros. rewrite set_spec, Config.list_InA. reflexivity. Qed.
+
+Definition map f m := M.fold (fun x acc => M.add (f x) acc) m M.empty.
+
+Instance fold_compat :
+    forall f, Proper (Loc.eq ==> eq ==> eq) f -> transpose eq f ->
+    forall a, Proper (eq ==> eq) (fun x => M.fold f x a).
+Proof.
+  intros f Hf Ht a m1 m2 Heq.
+  do 2 rewrite M.fold_spec.
+  rewrite fold_left_symmetry_PermutationA.
+  + reflexivity.
+  + now apply Loc.eq_equiv.
+  + apply eq_equiv.
+  + repeat intro. now apply Hf; rewrite H || rewrite H0.
+  + intros. apply Ht.
+  + apply NoDupA_equivlistA_PermutationA.
+    - now apply Loc.eq_equiv.
+    - eapply NoDupA_strengthen; try apply M.elements_spec2w. apply subrelation_refl.
+    - eapply NoDupA_strengthen; try apply M.elements_spec2w. apply subrelation_refl.
+    - clear -Heq. intros x. now rewrite Heq.
+  + apply eq_equiv.
+Qed.
+  
+Instance map_compat : forall f, Proper (Loc.eq ==> Loc.eq) f -> Proper (eq ==> eq) (map f).
+Proof.
+  intros f Hf m₁ m₂ Hm. unfold map.
+  apply fold_compat.
+  - repeat intro. rewrite H0. now rewrite H.
+  - repeat intro. now rewrite MProp.MP.add_add.
+  - assumption.
+Qed.
+
+Lemma map_empty : forall f, Proper (Loc.eq ==> Loc.eq) f -> map f M.empty [=] M.empty.
+Proof.
+  intros f Hf. unfold map.
+  unfold M.fold. unfold M.Raw.fold.
+  now simpl.
+Qed.
+
+Lemma map_In : forall f, Proper (Loc.eq ==> Loc.eq) f -> forall x m,
+      M.In x m -> M.In (f x) (map f m).
+Proof.
+  intros f Hf x m.
+  unfold map.  
+  apply MProp.MP.fold_rec_bis.
+  + intros s s' a Heq IH Hin.
+    apply IH.
+    now rewrite Heq.
+  + intro Hin.
+    apply MProp.MP.Dec.F.empty_iff in Hin.
+    elim Hin.
+  + intros a s s' Hina Hnotinta IH Hinx.
+    destruct (Loc.eq_dec x a).
+    - rewrite e. now apply F.add_1.
+    - apply F.add_2.
+      apply IH.
+      apply F.add_3 with (x := a).
+      intro Heq. apply n. now rewrite Heq.
+      assumption.
+Qed.
+      
+Lemma map_add : forall f, Proper (Loc.eq ==> Loc.eq) f -> forall x m, map f (M.add x m) [=] M.add (f x) (map f m).
+Proof.
+  intros f Hf x m y.
+  destruct (MSetDecideAuxiliary.dec_In x m).
+  + unfold map at 1. rewrite MProp.MP.add_fold.
+    - assert (M.In (f x) (map f m)).
+      { now apply map_In. }
+      now rewrite MProp.MP.add_equal.
+    - apply eq_equiv.
+    - repeat intro. now rewrite H0, H1.
+    - repeat intro. now rewrite MProp.MP.add_add.
+    - assumption.
+  + unfold map at 1. rewrite MProp.MP.fold_add.
+    - reflexivity.
+    - apply eq_equiv.
+    - repeat intro. now rewrite H0, H1.
+    - repeat intro. now rewrite MProp.MP.add_add.
+    - assumption.
+Qed.
+
+Theorem set_map : forall f, Proper (Loc.eq ==> Loc.eq) f ->
+                            forall l, set (List.map f l) [=] map f (set l).
+Proof.
+intros f Hf l.
+induction l; simpl.
++ now rewrite set_nil, map_empty.
++ do 2 rewrite set_cons. now rewrite map_add, IHl.
+Qed.
+
+
+Lemma from_config_map : forall f, Proper (Loc.eq ==> Loc.eq) f ->
+  forall conf, eq (map f (from_config conf)) (from_config (Config.map f conf)).
+Proof. repeat intro. unfold from_config.
+       now rewrite Config.list_map, set_map.
+Qed.
+
 
 End Make.
