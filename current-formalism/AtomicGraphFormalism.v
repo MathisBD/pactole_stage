@@ -39,7 +39,10 @@ End Spect.
 
 Record robogram := {
   pgm :> Spect.t -> Location.t;
-  pgm_compat : Proper (Spect.eq ==> Location.eq) pgm}.
+  pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
+  pgm_range : forall spect l g,
+    Veq (ConfigA.source (ConfigA.robot_info (spect (Good g)))) l ->
+    exists l0 e, pgm spect = l0 /\ find_edge l l0 = Some e}.
 
 Global Existing Instance pgm_compat.
 
@@ -124,7 +127,7 @@ Qed.
 Record demonic_action := {
   relocate_byz : Names.B -> Location.t;
   step : Names.ident -> Config.RobotConf -> Active_or_Moving;
-  step_delta : forall id Rconfig sim, (step id Rconfig) = (Active sim) ->
+  step_delta : forall g Rconfig sim, (step (Good g) Rconfig) = (Active sim) ->
        Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target);
   step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step}.
 Set Implicit Arguments.

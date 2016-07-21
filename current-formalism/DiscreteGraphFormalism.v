@@ -22,6 +22,71 @@ Inductive location :=
 
 (* Axiom mvt0_1 : forall e p loc, loc = Mvt e p -> 0 < p < 1. *)
 
+(* Open Scope R_scope.
+Definition project_p (p : R) : R :=
+  if Rle_dec p 0 then Rpower 2 (p-1) else (2 - (Rpower 2 (-p)))/2.
+
+Lemma project_p_image : forall p, (0 < project_p p < 1).
+Proof.
+intros p.
+unfold project_p.
+assert (Hln: 0< ln 2). rewrite <- ln_1. apply ln_increasing; lra.
+destruct (Rle_dec p 0).
+split;
+unfold Rpower. apply exp_pos.
+rewrite <- exp_0 at 4.
+apply exp_increasing.
+assert (Hp : (p-1) < 0). lra.
+replace 0 with ((p-1) * 0) by lra.
+apply (Rmult_lt_gt_compat_neg_l (p-1)); assumption.
+assert (e : 0<p) by lra;
+unfold Rpower.
+split.
+replace ((2 - exp (- p * ln 2)) / 2) with (/2*((2 - exp (- p * ln 2)))) by lra.
+rewrite Rmult_minus_distr_l.
+apply Rlt_Rminus.
+replace (/2*2) with 1 by lra.
+replace (/2) with (Rpower 2 (-1)). unfold Rpower.
+rewrite <- exp_0 at 6.
+rewrite <- exp_plus.
+apply exp_increasing.
+assert (H1 : -1*(ln 2)<0) by lra.
+assert (H' : 0< p*(ln 2)).
+apply Rmult_lt_0_compat; assumption.
+assert (H2 : -p*(ln 2)<0) by lra.
+lra.
+rewrite Rpower_Ropp,Rpower_1. reflexivity.
+lra.
+replace ((2 - exp (- p * ln 2)) / 2) with (/2*((2 - exp (- p * ln 2)))) by lra.
+rewrite Rmult_minus_distr_l.
+replace (/2*2) with 1 by lra.
+apply Rminus_lt.
+replace (1 - / 2 * exp (- p * ln 2) - 1) with (- / 2 * exp (- p * ln 2)) by lra.
+replace (/2) with (Rpower 2 (-1)). unfold Rpower.
+replace (- exp (-1 * ln 2) * exp (- p * ln 2)) with (- (exp (-1 * ln 2) * exp (- p * ln 2))) by lra.
+rewrite <- exp_plus.
+apply Ropp_lt_gt_0_contravar.
+apply exp_pos.
+rewrite Rpower_Ropp,Rpower_1. reflexivity.
+lra.
+Qed.
+
+
+
+Lemma impro : forall p q: project_p( p + project_p (
+
+Lemma proj_comm : forall p q, project_p (p + q) = (project_p p) + (project_p q).
+Proof.
+intros p q.
+unfold project_p.
+destruct (Rle_dec (p + q) 0), (Rle_dec p 0), (Rle_dec q 0).
+replace (p+q-1) with (p+(q+(-1))) by lra.
+do 2 rewrite Rpower_plus.
+
+Definition project_p_image  (q : R ) : R := 
+  if Rle_dec q (1/2) then (ln
+
+Qed. *)
 
 Parameter project_p : R -> R.
 Axiom project_p_image : forall p, (0 < project_p p < 1)%R.
@@ -31,7 +96,9 @@ Axiom pro_inv : forall p, p = project_p_inv (project_p p).
 Axiom project_p_inv_image : forall p q, p = project_p_inv q -> (0 < q < 1)%R.
 Axiom subj_proj : forall p q, p = project_p q <-> project_p_inv p = q.
 Axiom proj_comm : forall p q, (project_p (p + q) = (project_p p) + (project_p q))%R.
-
+Axiom proj_crois : forall p q, (p <= q)%R -> (project_p p <= project_p q)%R.
+Axiom proj_crois_inv : forall p q, (p <= q)%R -> (project_p_inv p <= project_p_inv q)%R.
+Axiom proj_inv_crois : forall p q, (project_p_inv p <= project_p_inv q)%R -> (p <= q)%R.
 
 
 (*Definition project_p (p : R) : R := p. fonction de R vers ]0;1[, par exemple utiliser arctan.*)
@@ -593,7 +660,7 @@ Qed.
                 then {| Config.loc := Loc (tgt e); Config.robot_info := Config.robot_info conf |}
                 else {| Config.loc := if Rdec mv_ratio 0 
                                       then Mvt e p
-                                      else Mvt e (p + (project_p_inv mv_ratio));
+                                      else Mvt e (project_p_inv ((project_p p) + mv_ratio));
                         Config.robot_info := Config.robot_info conf |}
             | Loc l, Good g =>
                 if Rdec mv_ratio 0%R then conf else
@@ -734,9 +801,10 @@ destruct (Rle_dec 1 (project_p p0 + dist)); simpl in *; try now exfalso.
 destruct (Rdec dist 0). right. exists p0. unfold loc_eq in Hl; destruct Hl.
 repeat split. now rewrite H0. auto. right. exists p0.
 unfold loc_eq in *. destruct Hl.
-repeat split. rewrite <- H0, proj_comm, <- inv_pro;
-assert (Hdist := step_flexibility da (Good g) (conf (Good g)) dist Hstep).
-lra. assert (Hp := project_p_image p0). lra. auto.
+repeat split. rewrite <- H0, <- inv_pro;
+assert (Hf:=step_flexibility da (Good g) (conf (Good g)) dist Hstep).
+lra.
+assert (Hp := project_p_image p0). lra. auto.
 simpl in *. right. exists p. now split.
 Qed.
 
@@ -806,6 +874,23 @@ assert (Hfalse := step_delta da g (conf (Good g)) sim Hstep).
 destruct Hfalse as ((l,Hfalse), _). rewrite Hloc in Hfalse. now exfalso.
 Qed.
 
+(*
+Definition ri_loc_def (conf: Config.t) g : Prop :=
+    exists v1 v2,
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
+
+CoInductive ri : execution -> Prop :=
+PropCons : forall e g, ri_loc_def (execution_head e) g -> ri (execution_tail e) -> ri e.
+
+Lemma ri_always : forall d conf r, Conf_init conf -> ri (execute r d conf).
+Proof.
+cofix Href.
+intros d conf r Hinit.
+constructor.
+unfold execute.
+simpl in *.
+Qed. *)
 
 Axiom ri : forall (conf : Config.t) g, exists v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\

@@ -25,7 +25,7 @@ Require Import Pactole.Configurations.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
 Import Permutation.
-Require Import Pactole.Gathering.InR.Rcomplements.
+(* Require Import Pactole.Gathering.InR.Rcomplements. *)
 
 
 Set Implicit Arguments.
