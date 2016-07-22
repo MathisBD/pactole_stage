@@ -22,7 +22,7 @@ Inductive location :=
 
 (* Axiom mvt0_1 : forall e p loc, loc = Mvt e p -> 0 < p < 1. *)
 
-(* Open Scope R_scope.
+Open Scope R_scope.
 Definition project_p (p : R) : R :=
   if Rle_dec p 0 then Rpower 2 (p-1) else (2 - (Rpower 2 (-p)))/2.
 
@@ -72,21 +72,99 @@ lra.
 Qed.
 
 
+Definition project_p_inv (q:R) : R :=
+  if Rle_dec q (1/2) then 1+ ln(q)/ln(2) else - ( 1 + ln(1-q)/ln 2).
 
-Lemma impro : forall p q: project_p( p + project_p (
-
-Lemma proj_comm : forall p q, project_p (p + q) = (project_p p) + (project_p q).
+Lemma inv_pro : forall p, (0 < p < 1)%R -> p = project_p (project_p_inv p).
 Proof.
-intros p q.
-unfold project_p.
-destruct (Rle_dec (p + q) 0), (Rle_dec p 0), (Rle_dec q 0).
-replace (p+q-1) with (p+(q+(-1))) by lra.
-do 2 rewrite Rpower_plus.
+intros p Hp. unfold project_p, project_p_inv, Rpower.
+destruct (Rle_dec p (1 / 2)).
++ destruct (Rle_dec (1 + ln p / ln 2) 0). 
+  - replace ((1 + ln p / ln 2 - 1) * ln 2) with (ln p). now rewrite exp_ln.
+    replace (1 + ln p / ln 2 - 1) with (ln p / ln 2) by lra.
+    replace (ln p / ln 2 * ln 2) with ((/ln 2 * ln 2) * ln p) by lra.
+    rewrite <- (Rinv_l_sym (ln 2)).
+    lra. assert (Hlra := ln_lt_2).
+    lra.
+  - destruct (Rdec (1/2) p).
+    rewrite <- e.
+    replace (1/2) with (/2) by lra.
+    rewrite ln_Rinv.
+    replace (- (1 + - ln 2 / ln 2)) with 0.
+    replace (0 * ln 2) with 0 by lra.
+    rewrite exp_0. lra.
+    replace (- ln 2 / ln 2) with (-1). lra.
+    replace (- ln 2 / ln 2) with (-(ln 2 / ln 2)) by lra.
+    replace (ln 2 / ln 2) with (ln 2 * / ln 2) by lra.
+    rewrite <- Rinv_r_sym. reflexivity.
+    assert (Hlra := ln_lt_2). lra.
+    lra.
+    destruct n.
+    replace (1 + ln p / ln 2) with (ln p / ln 2 - (-1)) by lra.
+    apply Rle_minus.
+    assert (ln p / ln 2 <= ln (1/2) / ln 2).
+    assert (Hlra := ln_lt_2).
+    apply Rmult_le_compat_r. admit.
+    destruct Hp as (Hp0, Hp1).
+    assert (Hp' : p < 1/2) by lra.
+    assert (Hl := ln_increasing p (1/2) Hp0 Hp').
+    lra.
+    replace (ln (1/2) / ln 2) with (-1) in H. assumption.
+    replace (ln (1 / 2)) with (ln (1*/2)) by lra.
+    rewrite ln_mult; try lra. rewrite ln_1.
+    replace (0 + ln (/ 2)) with (ln (/2)) by lra.
+    rewrite ln_Rinv.
+    replace (- ln 2 / ln 2) with (-1). lra.
+    replace (- ln 2 / ln 2) with (-(ln 2 / ln 2)) by lra.
+    replace (ln 2 / ln 2) with (ln 2 * / ln 2) by lra.
+    rewrite <- Rinv_r_sym. reflexivity.
+    assert (Hlra := ln_lt_2).
+    lra. lra.
++ assert (Hlra := ln_lt_2).
+  assert (Hln2 : ln 2 / ln 2  = 1).
+  replace (ln 2 / ln 2) with (ln 2 * / ln 2) by lra.
+  rewrite <- Rinv_r_sym. reflexivity.
+  lra.
+  destruct (Rle_dec (- (1 + ln (1 - p) / ln 2)) 0).
+  - destruct (Rdec p (/2)). lra.
+    destruct n.
+    replace(- (1 + ln (1 - p) / ln 2)) with ( -ln (1 - p) / ln 2 -1) in r by lra.
+    apply Rminus_le in r.
+    replace (-ln (1 - p) / ln 2) with (-ln (1 - p) * / ln 2) in r by lra.
+    assert (0 < /ln 2) by admit.
+    assert (- ln (1 - p) <= /ln 2) by admit.
+    
+    
+    
+    rewrite ln_mult in r; try lra.
+    replace (((ln 2 + ln (1 - p)) / ln 2)) with (1 + ln (1-p) / ln 2) in r by lra.
+    replace (- (1 + ln (1 - p) / ln 2)) with (-1 - ln (1 - p) / ln 2) in r by lra.
+    apply Rminus_le in r.
+    replace (-1 <= ln (1 - p) / ln 2) with (-/ln 2 <= ln (1 - p)) in r.
+    destruct (Rdec (- / ln 2) (ln (1 - p))).
+    assert (Hexp : forall x y, x = y -> exp x = exp y).
+    intros x y Hxy.
+    apply ln_inv; try apply exp_pos.
+    now do 2 rewrite ln_exp.
+    apply Hexp in e.
+    rewrite exp_ln, exp_Ropp in e; try lra.
+    assert (H2 :/ ln 2 < //2). 
+    apply Rinv_lt_contravar; lra.
+    replace (//2) with 2 in H2 by lra.
+    apply exp_increasing in H2.
+    apply Rinv_lt_contravar in H2. rewrite e in H2.
+    assert (Hpe : p < 1-/exp 2). lra.
+    replace (- / ln 2) with (-(1/ ln 2)) in e by lra.
+    replace (- (1 / ln 2)) with (1/-(ln 2)) in e.
+    rewrite <- ln_Rinv in e; try lra.
+    rewrite exp_ln in e; try lra.
+    
+    
+    replace (1-p) with (1+(-p)) in r by lra.
+    
+    rewrite <- ln_mult in r.
 
-Definition project_p_image  (q : R ) : R := 
-  if Rle_dec q (1/2) then (ln
-
-Qed. *)
+Qed.
 
 Parameter project_p : R -> R.
 Axiom project_p_image : forall p, (0 < project_p p < 1)%R.
@@ -874,27 +952,29 @@ assert (Hfalse := step_delta da g (conf (Good g)) sim Hstep).
 destruct Hfalse as ((l,Hfalse), _). rewrite Hloc in Hfalse. now exfalso.
 Qed.
 
-(*
+
 Definition ri_loc_def (conf: Config.t) g : Prop :=
     exists v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
 
-CoInductive ri : execution -> Prop :=
-PropCons : forall e g, ri_loc_def (execution_head e) g -> ri (execution_tail e) -> ri e.
+CoInductive ri g : execution -> Prop :=
+PropCons : forall e, ri_loc_def (execution_head e) g -> ri g (execution_tail e) -> ri g e.
 
-Lemma ri_always : forall d conf r, Conf_init conf -> ri (execute r d conf).
+Lemma ri_always : forall g d conf r, ri_loc_def conf g -> ri g (execute r d conf) .
 Proof.
 cofix Href.
-intros d conf r Hinit.
-constructor.
+intros g d conf r Hinit.
+apply PropCons.
+unfold ri_loc_def.
 unfold execute.
 simpl in *.
-Qed. *)
-
-Axiom ri : forall (conf : Config.t) g, exists v1 v2,
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
+now unfold ri_loc_def in *.
+eapply Href. unfold ri_loc_def in *.
+destruct Hinit as (v1, (v2, (Hs, Ht))).
+assert (Hsolve := ri_loc_always conf v1 v2 (demon_head d) r g Hs Ht).
+apply Hsolve.
+Qed.
 
 
 Lemma group_lem_init : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
@@ -936,7 +1016,8 @@ split.
 Qed.
 
 
-Lemma group_lem : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
+Lemma group_lem : forall conf (rbg : robogram) da g v0' v1' v2' e' p' d,
+   da_eq (demon_head d) da ->
    loc_eq (Config.target (Config.robot_info (conf (Good g))))
           (rbg (Spect.from_config (project conf))) ->
    (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
@@ -955,7 +1036,11 @@ Lemma group_lem : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
     loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
     opt_eq Eeq (find_edge v1' v2') (Some e')).
 Proof.
-intros conf rbg da g v0' v1' v2' e' p' Hr Hli Hmi. assert (Hri := ri conf g).
+intros conf rbg da g v0' v1' v2' e' p' d Hda Hr Hli Hmi.
+assert (Hri_aux : ri_loc_def conf g).
+unfold ri_loc_def.
+destruct (Config.loc (conf (Good g))) eqn : Hl.
+specialize (Hli l). exists l, l. apply Hli. assert (Hri := ri_always d rbg g).
 split. 
 + intros Hl0. unfold round in *.
   destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
