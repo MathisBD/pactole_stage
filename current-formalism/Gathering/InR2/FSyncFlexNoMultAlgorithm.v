@@ -509,9 +509,11 @@ Proof.
       intro Hbary_spec.
       unfold is_barycenter_n, sqr_dist_sum, sqr_dist_sum_aux in Hbary_spec.
       now apply Hbary_spec.
-Qed.    
+Qed.
 
-
+(* Multiplicateur par zoom à ajouter par exemple dans le test par rapport à delta.
+   Cela dépend d'une question : cette distance minimale de delta est-elle dans le
+   référentiel global ou le référentiel local ? *)
 Theorem round_simplify : forall da conf delta,
     Config.eq (round delta ffgatherR2 da conf)
               (fun id => match da.(step) id with
@@ -521,8 +523,9 @@ Theorem round_simplify : forall da conf delta,
                            match Spect.M.elements s with
                            | nil => conf id (* only happen with no robots *)
                            | pt :: nil => pt (* done *)
-                           | _ => if Rle_dec delta (R2.dist (barycenter (Spect.M.elements s)) (conf id))
-                                  then ((conf id) + r * (barycenter (Spect.M.elements s) - (conf id)))%R2
+                           | _ => let move := (r * (barycenter (Spect.M.elements s) - (conf id)))%R2 in
+                                  if Rle_bool delta (R2norm move)
+                                  then ((conf id) + move)%R2
                                   else barycenter (Spect.M.elements s)
                            end
                          end).
@@ -571,15 +574,26 @@ simpl in Hlen; discriminate || clear Hlen.
     rewrite <- Similarity.Inversion.
     now rewrite Hzero.
   * now apply Sim.compose_inverse_l.
-- simpl.
-  rewrite <- sim.(Similarity.Inversion).
-  replace (barycenter (pt1' :: pt2' :: l')) with (sim (barycenter (pt1 :: pt2 :: l))).
-  * admit. (* CONTINUE HERE *)
-  * rewrite <- barycenter_sim.
+- assert (Hbarysim: R2.eq (barycenter (pt1' :: pt2' :: l')) (sim (barycenter (pt1 :: pt2 :: l)))).
+  { rewrite <- barycenter_sim.
     apply barycenter_compat.
     now rewrite PermutationA_Leibniz.
-    discriminate.
-    
+    discriminate. }
+  repeat rewrite Hbarysim.
+  clear Hperm Hbarysim.
+  remember (pt1 :: pt2 :: l) as E.
+
+  simpl.
+  rewrite <- sim.(Similarity.Inversion).
+  rewrite R2norm_mul.
+  rewrite <- R2norm_dist.  
+  rewrite <- (step_center da (Good g) pt Hstep) at 4.
+  simpl fst.
+  
+  assert (Hcond: Rle_bool delta (R2.dist (barycenter (pt1 :: pt2 :: l)) pt)
+                 = Rle_bool delta (R2.dist (r * sim (barycenter (pt1 :: pt2 :: l))) pt)).
+  { 
+  
   (* assert (Hbary: R2.eq (barycenter (pt1 :: pt2 :: l) - pt) *)
   (*                      (r * (barycenter (pt1' :: pt2' :: l')) - pt)). *)
   (* { rewrite <- PermutationA_Leibniz in Hperm. *)

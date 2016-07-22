@@ -1311,7 +1311,7 @@ Axiom barycenter_n_spec : forall (E: list R2.t),
 Axiom barycenter_n_unique: forall E a b,
     is_barycenter_n E a -> is_barycenter_n E b -> R2.eq a b.
 
-(* Lemma length_step : forall elt l, List.length  *)
+(* TODO: proof ? *)
 
 Lemma R2mul_reg_eq_l:
   forall k u v, R2.eq u v -> R2.eq (k * u) (k * v).
