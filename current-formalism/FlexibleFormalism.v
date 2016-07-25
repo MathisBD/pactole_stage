@@ -289,9 +289,10 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
           (* apply r on spectrum *)
           let local_target := r (Spect.from_config config_seen_by_g) in
           (* the demon chooses a point on the line from the target by mv_ratio *)
-          let chosen_target := (sim (config (Good g)))⁻¹ (Location.mul mv_ratio local_target) in
+          let chosen_target :=  (Location.mul mv_ratio local_target) in
           (* back to demon ref *)
-          if Rle_bool δ (Location.dist chosen_target conf) then chosen_target else (sim (config (Good g)))⁻¹ local_target
+          (sim (config (Good g)))⁻¹
+             (if Rle_bool δ (Location.dist ((sim (config (Good g)))⁻¹ chosen_target) conf) then chosen_target else local_target)
         end
     end.
 
@@ -307,26 +308,22 @@ SearchAbout Proper Spect.from_config.
 SearchAbout Proper Config.map.
 SearchAbout Proper Location.eq.
  *)
+  assert (Hsimeq: Sim.eq (f1 (conf1 (Good g))) (f2 (conf2 (Good g)))).
+  { apply Hstep. now apply Hconf. }
   assert (Heq : Location.eq
             ((f1 (conf1 (Good g)) ⁻¹) (Location.mul mvr2 (r1 (Spect.from_config (Config.map (f1 (conf1 (Good g))) conf1)))))
             ((f2 (conf2 (Good g)) ⁻¹) (Location.mul mvr2 (r2 (Spect.from_config (Config.map (f2 (conf2 (Good g))) conf2)))))).
-  { f_equiv.
-    + simpl.
-      rewrite Similarity.section_full_compat.
-      unfold Similarity.bij_eq. intros x y Heq.
-      unfold Similarity.bij_inverse.
-      f_equiv. f_equiv.
-      (* simpl. f_equiv. rewrite (Hconf (Good g)). *) apply Hr. do 2 f_equiv; trivial. apply Hstep, Hconf. }
-  rewrite Heq. clear Heq. rewrite (Hconf (Good g)) at 2.
+  { rewrite Hsimeq at 1. f_equiv.
+    simpl. f_equiv. apply Hr. do 2 f_equiv; trivial. }
+  rewrite Heq. rewrite (Hconf (Good g)) at 2.
   destruct (Rle_bool δ (Location.dist
-              (Location.mul mvr2 (r2 (Spect.from_config (Config.map (f2 (conf2 (Good g))) conf2))))
-              (conf2 (Good g)))) eqn:Heq.
-  * f_equiv.
-    -- do 2 f_equiv. apply Hstep, Hconf.
-    -- f_equiv. apply Hr, Spect.from_config_compat, Config.map_compat; trivial. apply Hstep, Hconf.
-  * f_equiv.
-    -- do 2 f_equiv. apply Hstep, Hconf.
-    -- apply Hr, Spect.from_config_compat, Config.map_compat; trivial. apply Hstep, Hconf.
+                          (((f2 (conf2 (Good g)) ⁻¹)
+              (Location.mul mvr2 (r2 (Spect.from_config (Config.map (f2 (conf2 (Good g))) conf2))))))
+              (conf2 (Good g)))) eqn:Heq'.
+  * assumption.
+  * rewrite Hsimeq at 1.
+    f_equiv.
+    apply Hr, Spect.from_config_compat, Config.map_compat; trivial.
 + rewrite Hda. reflexivity.
 Qed.
 

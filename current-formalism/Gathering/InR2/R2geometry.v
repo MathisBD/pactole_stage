@@ -1143,7 +1143,7 @@ Lemma R2plus_compat_eq_r :
 Proof. intros. subst. reflexivity. Qed.
   
 Lemma distance_after_move
-      (P Q C: R2.t) (kp kq dm: R)
+      (C P Q: R2.t) (kp kq dm: R)
       (HneqPC: ~R2.eq P C) (HneqQC: ~R2.eq Q C) (*(HneqPQ: ~R2.eq P Q)*)
       (HdistPC: R2.dist P C <= dm) (*(HdistQC: R2.dist Q C <= dm)*) (HdistPQ: R2.dist P Q <= dm)
       (Hkp: 0 < kp) (Hkpkq: kp <= kq) (Hkq: kq < 1) :
