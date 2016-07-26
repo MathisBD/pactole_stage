@@ -1518,8 +1518,56 @@ Qed.
 (*         f_equiv; ring. *)
 (*       -  *)
     
-  
-  
+
+Lemma not_barycenter_moves:
+  forall delta d conf gid,
+    delta > 0 ->
+    FullySynchronous d ->
+    ~R2.eq (conf gid) (barycenter (Spect.M.elements (!! conf))) ->
+    ~R2.eq (round delta ffgatherR2 (Streams.hd d) conf gid) (conf gid).
+Proof.
+  intros delta d conf gid Hdelta HFSync Hnotbary Hnotmove.
+  apply Hnotbary. clear Hnotbary.
+  rewrite round_simplify in Hnotmove.
+  remember (step (Streams.hd d) gid) as Pact.
+  destruct Pact.
+  - destruct p. simpl in Hnotmove.
+    remember (Spect.M.elements (!! conf)) as elems.
+    destruct elems.
+    + exfalso. now apply (support_non_nil conf).
+    + destruct elems.
+      * unfold barycenter. simpl. destruct e.
+        rewrite Rinv_1.
+        rewrite R2.mul_1.
+        do 2 rewrite Rplus_0_l.
+        now rewrite <- Hnotmove.
+      * remember (e :: e0 :: elems) as elems'.
+        unfold Rle_bool in Hnotmove.
+        destruct (Rle_dec delta (R2norm (r * (barycenter elems' - conf gid)))).
+        -- rewrite <- R2.add_origin with (u := conf gid) in Hnotmove at 3.
+           apply R2.add_reg_l in Hnotmove.
+           apply R2.mul_integral in Hnotmove.
+           destruct Hnotmove as [Hr0 | Heq].
+           ++ exfalso.
+              subst r.
+              rewrite R2norm_mul in r0.
+              rewrite Rabs_R0 in r0.
+              rewrite Rmult_0_l in r0.
+              apply Rlt_irrefl with delta.
+              now apply (Rle_lt_trans _ _ _ r0).
+           ++ now rewrite R2sub_origin in Heq.
+        -- now symmetry.
+  - unfold FullySynchronous in HFSync.
+    unfold FullySynchronousInstant in HFSync.
+    destruct d.
+    simpl in HeqPact.
+    destruct HFSync.
+    destruct (H gid).
+    simpl.
+    now symmetry.
+Qed.
+           
+           
 (** The final theorem. *)
 Theorem FSGathering_in_R2 :
   forall delta d, delta > 0 -> FullySynchronous d -> FullSolGathering ffgatherR2 d delta.
@@ -1576,47 +1624,44 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
           reflexivity.
         }
         clear n.
-        apply H.
-        split.
-        assert (Hg: R2.eq (round delta ffgatherR2 da conf (Good g)) (conf (Good g))).
-        { apply Hnoonemoves. }
-        rewrite round_simplify in Hg.
-        simpl in Hg.
-        destruct (step da (Good g)).
-        
-        
-            +
-      unfold gathered_at.
-      intro g.
-      destruct (Spect.MProp.MP.FM.eq_dec (round delta ffgatherR2 da conf (Good g)) (conf (Good g))).
-      + 
-      
-      assert ((fun id : Spect.Names.ident =>
-                 if Spect.MProp.MP.FM.eq_dec (round delta ffgatherR2 da conf id) (conf id) then false else true)
-                (Good g) = false).
-      apply filter_In.
-      
-  unfold execute.
-  
 
-  
-  apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
-  induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
-  + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
-    destruct (Hind (round gatherR2 (Streams.hd d) conf)) with (Streams.tl d) as [pt Hpt].
-    - apply round_lt_config; assumption.
-    - now destruct Hfair.
-    - now apply never_forbidden.
-    - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
-  + (* Inductive case: we know by induction hypothesis that the wait will end *)
-    apply no_moving_same_conf in Heq.
-    destruct Hrec as [pt Hpt].
-    - setoid_rewrite Heq. apply Hind.
-    - now destruct Hfair.
-    - rewrite Heq. assumption.
-    - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
-Qed.
+        assert (~ R2.eq (conf (Good g)) (barycenter (Spect.M.elements (!! conf))) \/ ~ R2.eq (conf (Good g1)) (barycenter (Spect.M.elements (!! conf)))).
+        { admit.
+          (* Classical (or change the previous assert) *)
+        }
 
+        destruct H0.
+        now apply (not_barycenter_moves conf (Good g) Hdelta HFS).
+        now apply (not_barycenter_moves conf (Good g1) Hdelta HFS).
+    }
+        
+    destruct (Rgt_dec (measure conf) delta).
+    - intro Hroundlt.
+      apply Hroundlt in Hmoving; [|assumption].
+      clear Hroundlt r Hmove HFS.
+      
+      admit.
+      (* Now it is only arithmetic. *)
+
+    - intro Hroundlt. clear Hroundlt.
+
+      admit.
+      (* 0 < 1 *)
+
+  + unfold FullySynchronous in HFS.
+    inversion HFS.
+    simpl in H0.
+    now unfold FullySynchronous.
+
+  + exists pt.
+    unfold WillGather.
+    apply Streams.Later.
+    unfold execute.
+    simpl.
+    apply Hpt.
+
+Admitted.
+    
 Print Assumptions Gathering_in_R2.
 
 
