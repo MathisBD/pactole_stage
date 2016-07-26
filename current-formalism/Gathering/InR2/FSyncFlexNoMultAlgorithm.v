@@ -836,6 +836,124 @@ Proof.
       apply Hex.
       now exists Pid.
     }
+
+    assert (Hrobot_move_less_than_delta:
+              forall Pid,
+                In (conf Pid) elems ->
+                delta > R2.dist (conf Pid) C ->
+                round delta ffgatherR2 da conf Pid = C).
+    { intros Pid HinP HdeltaP.
+      rewrite round_simplify.
+      remember (step da Pid) as Pact.
+      destruct Pact.
+      + simpl.
+        destruct (Spect.M.elements (!! conf)) as [| q [| q' ?]].
+        - subst elems. inversion Hmax.
+        - subst elems. inversion Hmax.
+        - rewrite <- Heqelems.
+          destruct p.
+          unfold Rle_bool.
+          destruct (Rle_dec delta (R2norm (r * (barycenter elems - conf Pid)))) as [ Hdmove | Hdmove ].
+          * assert (Hr: 0 <= snd (t, r) <= 1).
+            { apply (step_flexibility da Pid). now symmetry. } simpl in Hr.
+            destruct Hr as [Hr0 Hr1].
+            destruct Hr1.
+            ++ exfalso.
+               rewrite R2norm_mul in Hdmove.
+               rewrite <- R2norm_dist in Hdmove.
+               rewrite R2.dist_sym in Hdmove.
+               apply Rlt_irrefl with (r := delta).
+               apply (Rle_lt_trans _ _ _ Hdmove).
+               apply Rgt_lt in HdeltaP.
+               apply Rlt_trans with (r2 := R2.dist (conf Pid) C);
+                 [ | assumption].
+               rewrite <- Rmult_1_l.
+               apply Rmult_lt_compat_r.
+               -- apply Rlt_le_trans with (r2 := delta).
+                  ** now apply Rgt_lt.
+                  ** apply (Rle_trans _ _ _ Hdmove).
+                     rewrite <- Rmult_1_l.
+                     apply Rmult_le_compat_r.
+                     +++ apply R2.dist_pos.
+                     +++ apply Rabs_le.
+                         split.
+                     --- apply Rle_trans with (r2 := 0); [|assumption].
+                         admit.
+                     --- now left.
+               -- apply Rabs_def1. assumption. apply Rlt_le_trans with (r2 := 0).
+                  admit. assumption.
+            ++ subst r. rewrite R2.mul_1.
+               rewrite R2.add_assoc.
+               pattern (conf Pid + barycenter elems)%R2.
+               rewrite R2.add_comm.
+               rewrite <- R2.add_assoc.
+               rewrite R2.add_opp.
+               rewrite R2.add_origin.
+               now subst C.
+          * now subst C.
+      + unfold FullySynchronous in HFSync.
+        unfold FullySynchronousInstant in HFSync.
+        destruct d.
+        simpl in Heqda.
+        destruct HFSync.
+        destruct (H Pid).
+        simpl.
+        subst d.
+        now symmetry.
+    }
+          
+    assert (Hrobot_move:
+              forall Pid,
+                In (conf Pid) elems ->
+                delta <= R2.dist (conf Pid) C ->
+                exists k, round delta ffgatherR2 da conf Pid =
+                          (conf Pid + k * (C - (conf Pid)))%R2
+                          /\
+                          k <= 1
+                          /\
+                          delta <= R2norm (k * (C - (conf Pid)))).
+    { intros Pid HinP HdeltaP.
+      remember (round delta ffgatherR2 da conf Pid) as KP.
+      rewrite round_simplify in HeqKP.
+      remember (step da Pid) as Pact.
+      destruct Pact.
+      + simpl in HeqKP.
+        destruct (Spect.M.elements (!! conf)) as [| q [| q' ?]].
+        - subst elems. inversion Hmax.
+        - subst elems. inversion Hmax.
+        - rewrite <- Heqelems in HeqKP.
+          destruct p.
+          unfold Rle_bool in HeqKP.
+          destruct (Rle_dec delta (R2norm (r * (barycenter elems - conf Pid)))) as [ Hdmove | Hdmove ].
+          * assert (Hr: 0 <= snd (t, r) <= 1).
+            { apply (step_flexibility da Pid). now symmetry. } simpl in Hr.
+            exists r.
+            repeat split; tauto.
+          * exists 1.
+            repeat split.
+            ++ rewrite R2.mul_1.
+               rewrite R2.add_comm.
+               rewrite <- R2.add_assoc.
+               pattern (- conf Pid + conf Pid)%R2.
+               rewrite R2.add_comm.
+               rewrite R2.add_opp.
+               rewrite R2.add_origin.
+               tauto.
+            ++ apply Rle_refl.
+            ++ rewrite R2.mul_1.
+               rewrite <- R2norm_dist.
+               now rewrite R2.dist_sym.
+      + unfold FullySynchronous in HFSync.
+        unfold FullySynchronousInstant in HFSync.
+        destruct d.
+        simpl in Heqda.
+        destruct HFSync.
+        destruct (H Pid).
+        simpl.
+        subst d.
+        now symmetry.
+    }
+        
     assert (forall KP KQ, In KP nxt_elems -> In KQ nxt_elems -> R2.dist KP KQ <= max_dist_spect (!! conf) - delta).
     { intros KP KQ HinKP HinKQ.
       apply Hantec in HinKP.
@@ -843,64 +961,89 @@ Proof.
       destruct HinKP as [Pid [HinP HroundP]].
       destruct HinKQ as [Qid [HinQ HroundQ]].
 
-      rewrite round_simplify in HroundP.
-      remember (step da Pid) as Pact.
-      destruct Pact.
-      + simpl in HroundP.
-        destruct (Spect.M.elements (!! conf)) as [| q [| q' ?]].
-        - subst elems. inversion Hmax.
-        - subst elems. inversion Hmax.
-        - rewrite <- Heqelems in HroundP.
-          destruct p.
-          destruct (Rle_bool delta (R2norm (r * (barycenter elems - conf Pid)))).
-          * assert (Hr: 0 <= snd (t, r) <= 1).
-            { apply (step_flexibility da Pid). now symmetry. } simpl in Hr.
-            
-            
-            
-        generalize 
-    
-    
-        simpl.
-        assumption.
-        inversion H1.
-      
-    assert(Htarget_pt: forall id, round delta ffgatherR2 da conf id = pt).
-    { intro.
-      unfold round.
-      destruct (step da id).
-      + destruct p. destruct id.
-        assert (conf (Good g) = pt).
-        { generalize (Spect.from_config_spec conf).
-          intro Hok. unfold Spect.is_ok in Hok.
-          assert (Heq: R2.eq (conf (Good g)) (conf (Good g))) by reflexivity.
-          assert (exists goodg, R2.eq (conf (Good g)) (conf goodg)).
-          { exists (Good g). reflexivity. }
-          rewrite <- Hok in H.
-          rewrite <- Spect.M.elements_spec1 in H.
-          rewrite Hmax in H.
-          inversion H; subst.
-          assumption.
-          inversion H1.
-        }          
-        rewrite H in *.
-        assert (R2.eq (ffgatherR2 (!! (Config.map (Common.Sim.sim_f (t pt)) conf))) pt).
-        { rewrite <- Spect.from_config_map.
-        
-        destruct (R2.eq_dec (conf (Good g)) pt).
-          + auto.
-          + 
-            
-          rewrite <- Hok.
-          rewrite Spect.from_config_spec in Hmax.
-          unfold Spect.M.elements in Hmax.
+      destruct (Rle_dec delta (R2.dist (conf Pid) C)), (Rle_dec delta (R2.dist (conf Qid) C)).
+      + apply Hrobot_move in HinP; [|assumption].
+        apply Hrobot_move in HinQ; [|assumption].
+        destruct HinP as [kp [kp_def [Hkple1 Hkplow]]].
+        destruct HinQ as [kq [kq_def [Hkqle1 Hkqlow]]].
+        rewrite kp_def in HroundP.
+        rewrite kq_def in HroundQ.
 
-        * destruct (Rle_bool delta
-                             (R2.dist
-                                ((Common.Sim.sim_f (t (conf (Good g)) ⁻¹))
-                                   (r * ffgatherR2 (!! (Config.map (Common.Sim.sim_f (t (conf (Good g)))) conf)))%R2)
-                                (conf (Good g)))).
-          - assert (conf (Good g) = pt).
+        destruct (Rle_dec kp kq).
+        apply Rle_trans with (r2 := (1 - kp) * (max_dist_spect (!! conf))).
+        
+        apply distance_after_move.
+
+      destruct Hkple1.
+      
+    (*   rewrite round_simplify in HroundP. *)
+    (*   remember (step da Pid) as Pact. *)
+    (*   destruct Pact. *)
+    (*   + simpl in HroundP. *)
+    (*     destruct (Spect.M.elements (!! conf)) as [| q [| q' ?]]. *)
+    (*     - subst elems. inversion Hmax. *)
+    (*     - subst elems. inversion Hmax. *)
+    (*     - rewrite <- Heqelems in HroundP. *)
+    (*       destruct p. *)
+    (*       unfold Rle_bool in HroundP. *)
+    (*       destruct (Rle_dec delta (R2norm (r * (barycenter elems - conf Pid)))) as [ Hdmove | Hdmove ]. *)
+    (*       * assert (Hr: 0 <= snd (t, r) <= 1). *)
+    (*         { apply (step_flexibility da Pid). now symmetry. } simpl in Hr. *)
+    (*         destruct Hr as [[Hrgt0 | Hreq0] [Hrlt1 | Hreq1]]. *)
+    (*         ++ admit. *)
+    (*         ++ subst r. rewrite R2.mul_1 in HroundP. *)
+    (*            rewrite R2.add_comm in HroundP. *)
+    (*            rewrite <- R2.add_assoc in HroundP. *)
+    (*            pattern (- conf Pid + conf Pid)%R2 in HroundP. *)
+    (*            rewrite R2.add_comm in HroundP. *)
+    (*            rewrite R2.add_opp in HroundP. *)
+    (*            rewrite R2.add_origin in HroundP. *)
+    (*            admit. *)
+    (*         ++ exfalso. subst r. rewrite R2norm_mul in Hdmove. *)
+    (*            rewrite Rabs_R0 in Hdmove. rewrite Rmult_0_l in Hdmove. *)
+    (*            admit. *)
+    (*         ++ subst r. *)
+    (*            admit. *)
+    (*       * admit. *)
+    (*   + admit. *)
+    (* } *)
+        
+    (* assert(Htarget_pt: forall id, round delta ffgatherR2 da conf id = pt). *)
+    (* { intro. *)
+    (*   unfold round. *)
+    (*   destruct (step da id). *)
+    (*   + destruct p. destruct id. *)
+    (*     assert (conf (Good g) = pt). *)
+    (*     { generalize (Spect.from_config_spec conf). *)
+    (*       intro Hok. unfold Spect.is_ok in Hok. *)
+    (*       assert (Heq: R2.eq (conf (Good g)) (conf (Good g))) by reflexivity. *)
+    (*       assert (exists goodg, R2.eq (conf (Good g)) (conf goodg)). *)
+    (*       { exists (Good g). reflexivity. } *)
+    (*       rewrite <- Hok in H. *)
+    (*       rewrite <- Spect.M.elements_spec1 in H. *)
+    (*       rewrite Hmax in H. *)
+    (*       inversion H; subst. *)
+    (*       assumption. *)
+    (*       inversion H1. *)
+    (*     }           *)
+    (*     rewrite H in *. *)
+    (*     assert (R2.eq (ffgatherR2 (!! (Config.map (Common.Sim.sim_f (t pt)) conf))) pt). *)
+    (*     { rewrite <- Spect.from_config_map. *)
+        
+    (*     destruct (R2.eq_dec (conf (Good g)) pt). *)
+    (*       + auto. *)
+    (*       +  *)
+            
+    (*       rewrite <- Hok. *)
+    (*       rewrite Spect.from_config_spec in Hmax. *)
+    (*       unfold Spect.M.elements in Hmax. *)
+
+    (*     * destruct (Rle_bool delta *)
+    (*                          (R2.dist *)
+    (*                             ((Common.Sim.sim_f (t (conf (Good g)) ⁻¹)) *)
+    (*                                (r * ffgatherR2 (!! (Config.map (Common.Sim.sim_f (t (conf (Good g)))) conf)))%R2) *)
+    (*                             (conf (Good g)))). *)
+    (*       - assert (conf (Good g) = pt). *)
         
 
 Admitted.
