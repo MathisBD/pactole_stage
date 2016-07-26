@@ -1146,9 +1146,56 @@ Lemma distance_after_move
       (C P Q: R2.t) (kp kq dm: R)
       (HneqPC: ~R2.eq P C) (HneqQC: ~R2.eq Q C) (*(HneqPQ: ~R2.eq P Q)*)
       (HdistPC: R2.dist P C <= dm) (*(HdistQC: R2.dist Q C <= dm)*) (HdistPQ: R2.dist P Q <= dm)
-      (Hkp: 0 < kp) (Hkpkq: kp <= kq) (Hkq: kq < 1) :
+      (Hkp: 0 < kp) (Hkpkq: kp <= kq) (Hkq: kq <= 1) :
   R2.dist (P + kp * (C - P)) (Q + kq * (C - Q)) <= (1 - kp) * dm.
-Proof.                                              
+Proof.
+  destruct (Req_dec kq 1).
+  subst kq.
+  rewrite R2.mul_1.
+  assert (Q + (C - Q) = C)%R2.
+  { rewrite R2.add_comm.
+    rewrite <- R2.add_assoc.
+    pattern (-Q + Q)%R2.
+    rewrite R2.add_comm.
+    rewrite R2.add_opp.
+    apply R2.add_origin.
+  }
+  rewrite H.
+  rewrite R2norm_dist.
+  assert (P + kp * (C - P) - C = (- 1 + kp) * (C - P))%R2.
+  { rewrite <- R2.add_morph.
+    rewrite R2.minus_morph.  
+    rewrite R2.mul_1.
+    rewrite R2.opp_distr_add.
+    rewrite R2.opp_opp.
+    symmetry.
+    rewrite <- R2.add_assoc.
+    rewrite R2.add_comm.
+    reflexivity.
+    }
+  rewrite H0.
+  rewrite R2norm_mul.
+  rewrite <- Rabs_Ropp.
+  apply Rmult_le_compat.
+  apply Rabs_pos.
+  apply R2norm_pos.
+  right.
+  rewrite Rabs_pos_eq.
+  ring.
+  rewrite Ropp_plus_distr.
+  rewrite Ropp_involutive.
+  apply Rplus_le_reg_r with (r := kp).
+  rewrite Rplus_0_l.
+  rewrite Rplus_assoc.
+  rewrite Rplus_opp_l.
+  rewrite Rplus_0_r.
+  assumption.
+  rewrite <- R2norm_dist.
+  rewrite R2.dist_sym.
+  assumption.
+  destruct Hkq as [Hkq | Hkq]; [| exfalso; now apply H].
+  clear H.
+
   set (KP := (P + kp * (C - P))%R2).
   set (KQ := (Q + kq * (C - Q))%R2).
   set (KQ' := (Q + kp * (C - Q))%R2).
