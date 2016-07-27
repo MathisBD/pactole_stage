@@ -1,3 +1,12 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
 Require Import Reals.
 Require Import Psatz.
 Require Import Equalities.
@@ -41,7 +50,7 @@ Record robogram := {
   pgm :> Spect.t -> Location.t;
   pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
   pgm_range : forall spect l g,
-    Veq (ConfigA.source (ConfigA.robot_info (spect (Good g)))) l ->
+    Veq (ConfigA.loc (spect (Good g))) l ->
     exists l0 e, pgm spect = l0 /\ find_edge l l0 = Some e}.
 
 Global Existing Instance pgm_compat.

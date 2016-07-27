@@ -1,4 +1,11 @@
-(* essai sur la définition de l'exploration*)
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
 
 Require Import Pactole.Preliminary.
 Require Import Arith.Div2.
