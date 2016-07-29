@@ -1644,7 +1644,112 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
       (* Now it is only arithmetic. *)
 
     - intro Hroundlt. clear Hroundlt.
+      
+      assert (Hnxt: (measure (round delta ffgatherR2 da conf) = 0)%R).
+      { unfold measure.
+        remember (Spect.M.elements (!! conf)) as elems.
+        set (C := barycenter elems).
+        remember (Spect.M.elements (!! (round delta ffgatherR2 da conf))) as nxt_elems.
+        assert (Hantec: forall KP, In KP nxt_elems -> exists Pid, In (conf Pid) elems /\ round delta ffgatherR2 da conf Pid = KP).
+        { intros KP HinKP.
+          rewrite Heqnxt_elems in HinKP.
+          apply (In_InA R2.eq_equiv) in HinKP.
+          rewrite Spect.M.elements_spec1 in HinKP.
+          generalize (Spect.from_config_spec (round delta ffgatherR2 da conf)).
+          intro Hok. unfold Spect.is_ok in Hok.
+          rewrite Hok in HinKP. clear Hok.
+          destruct HinKP as (Pid, HPid).
+          exists Pid.
+          split; [|now rewrite HPid].
+          generalize (Spect.from_config_spec conf).
+          intro Hok. unfold Spect.is_ok in Hok.
+          destruct (Hok (conf Pid)) as [_ Hex].
+          apply InA_Leibniz.
+          rewrite Heqelems.
+          apply Spect.M.elements_spec1.
+          apply Hex.
+          now exists Pid.
+        }
 
+        assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
+        { intros KP HinKP.
+          destruct (Hantec KP HinKP) as [Pid [HinP HroundP]].
+          subst KP.
+          rewrite round_simplify.
+          remember (step da Pid) as Pact.
+          destruct Pact.
+          - destruct p. simpl.
+            rewrite <- Heqelems.
+            destruct elems.
+            + inversion HinP.
+            + destruct elems.
+              * unfold C. unfold barycenter.
+                simpl. rewrite Rinv_1.
+                rewrite R2.mul_1.
+                destruct e.
+                now do 2 rewrite Rplus_0_l.
+              * remember (e :: e0 :: elems) as elems'.
+                unfold Rle_bool.
+                destruct (Rle_dec delta (R2norm (r * (barycenter elems' - conf Pid)))).
+                -- assert (Hr: 0 <= snd (t, r) <= 1).
+                   { apply step_flexibility with da Pid. now symmetry. }
+                   simpl in Hr.
+                   destruct Hr as [Hr0 Hr1].
+                   destruct Hr1 as [Hrlt1 | Hreq1].
+                   ++ exfalso.
+                      apply Rlt_irrefl with delta.
+                      apply (Rle_lt_trans _ _ _ r0).
+                      rewrite R2norm_mul.
+                      rewrite (Rabs_pos_eq _ Hr0).
+                      rewrite <- R2norm_dist.
+                      assert (Hd: measure conf <= delta).
+                      { apply Rnot_gt_le. assumption. }
+                      assert (R2.dist (barycenter elems') (conf Pid) <= delta).
+                      { rewrite R2.dist_sym.
+                        apply Rle_trans with (measure conf).
+                        apply Lemme2 with elems'.
+                        rewrite Heqelems'. discriminate.
+                        unfold measure.
+                        intros. apply max_dist_spect_le.
+                        now rewrite <- Heqelems. now rewrite <- Heqelems.
+                        reflexivity.
+                        assumption.
+                        assumption.
+                      }
+
+                      admit.
+                      (* There should be a lemma for this in standard library. *)
+
+                   ++ subst r.
+                      rewrite R2.mul_1.
+                      rewrite R2.add_comm.
+                      rewrite <- R2.add_assoc.
+                      pattern (- conf Pid + conf Pid)%R2.
+                      rewrite R2.add_comm.
+                      rewrite R2.add_opp.
+                      rewrite R2.add_origin.
+                      now unfold C.
+
+                -- now unfold C.
+
+          - unfold FullySynchronous in HFS.
+            inversion HFS.
+            unfold FullySynchronousInstant in H.
+            destruct (H Pid).
+            simpl.
+            now symmetry.
+        }
+            
+        admit.
+        (* max_dist_spect sur un spectre singleton. *)
+
+      }
+
+      assert (Hcurrent: measure conf > 0).
+      { admit.
+        (* Sinon, pas rassemblés. *)
+      }      
+      
       admit.
       (* 0 < 1 *)
 
@@ -1662,7 +1767,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 
 Admitted.
     
-Print Assumptions Gathering_in_R2.
+Print Assumptions FSGathering_in_R2.
 
 
 (* Let us change the assumption over the demon, it is no longer fair
