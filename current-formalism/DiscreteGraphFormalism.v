@@ -26,7 +26,7 @@ Module DGF.
 
 Open Scope R_scope.
 
-(** we define a function from R to ]0;1[ to represent the percentage of the edge already done *)
+(** we define a function from R to ]0;1\[ to represent the percentage of the edge already done *)
 Definition project_p (p : R) : R :=
   if Rle_dec p 0 then Rpower 2 (p-1) else (2 - (Rpower 2 (-p)))/2.
 
@@ -1078,6 +1078,27 @@ Proof. intros. apply ri_always. unfold Conf_init, ri_loc_def in *. firstorder. Q
 
 (** ** starting from a good configuration, we stay in a good configuration *)
 
+(** a good conf is :
+    - [source] and [target] are on node.
+    - if a robot is on a node, it's on its [target] or [source].
+    - if a robot is onan edge, it's the edge between its [source] and [target].
+    - there is a edge between [source] and [target]. *)
+Definition group_good_def (conf: Config.t) : Prop := forall g,
+    ri_loc_def conf /\
+   (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v0) \/
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v0)) /\
+   (forall v1 v2 e p,
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
+    loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
+    opt_eq Eeq (find_edge v1 v2) (Some e)) /\
+   (forall v1 v2,
+    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
+    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
+    exists e, (opt_eq Eeq (find_edge v1 v2) (Some e))).
+
+(** initialisation *)
 Lemma group_lem_init : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
    Conf_init conf ->
    (loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0') ->
@@ -1116,7 +1137,7 @@ split.
   now rewrite Hloc in Hl.
 Qed.
 
-
+(** recurence *)
 Lemma group_lem : forall conf (rbg : robogram) da g,
    ri_loc_def conf ->
    (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
@@ -1144,10 +1165,7 @@ Lemma group_lem : forall conf (rbg : robogram) da g,
    (forall v1' v2',
     loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
     loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
-    exists e, opt_eq Eeq (find_edge v1' v2') (Some e))
- (* /\ 
-    loc_eq (Config.target (Config.robot_info (round rbg da conf (Good g))))
-    (rbg (Spect.from_config (project (round rbg da conf)))) *).
+    exists e, opt_eq Eeq (find_edge v1' v2') (Some e)).
 Proof.
 intros conf rbg da g Hinit Hli Hmi Hex_e.
 repeat split.
@@ -1259,26 +1277,8 @@ repeat split.
   - simpl in *. now intro.
 Qed.
 
-(** a good conf is :
-    - [source] and [target] are on node.
-    - if a robot is on a node, it's on its [target] or [source].
-    - if a robot is onan edge, it's the edge between its [source] and [target].
-    - there is a edge between [source] and [target]. *)
-Definition group_good_def (conf: Config.t) : Prop := forall g,
-    ri_loc_def conf /\
-   (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v0) \/
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v0)) /\
-   (forall v1 v2 e p,
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
-    opt_eq Eeq (find_edge v1 v2) (Some e)) /\
-   (forall v1 v2,
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    exists e, (opt_eq Eeq (find_edge v1 v2) (Some e))).
 
+(** finals proofs*)
 CoInductive group : execution -> Prop :=
 GroupCons : forall e, group_good_def (execution_head e) -> group (execution_tail e) -> group e.
 

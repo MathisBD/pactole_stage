@@ -34,8 +34,11 @@ Module Type Delta.
   Parameter delta: Z.
 End Delta.
 
-Module Make (Location : DiscreteSpace)(N : Size)(Import D: Delta)(Spect : Spectrum(Location)(N))
-            (Import Common : CommonDiscreteFormalism.Sig(Location)(N)(Spect)).
+Module Make (Location : DiscreteSpace)(N : Size)(Import D: Delta)
+                (Names : Robots(N))
+                (Config : Configuration(Location)(N)(Names))
+                (Spect : Spectrum(Location)(N)(Names)(Config))
+                (Import Common : CommonDiscreteFormalism.Sig(Location)(N)(Names)(Config)(Spect)).
 
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
