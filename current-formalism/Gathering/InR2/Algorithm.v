@@ -1086,8 +1086,8 @@ simpl in Hlen; discriminate || clear Hlen.
       assert (Hperm' : PermutationA eq (SECT (!! (Config.map sim conf))) (map sim (SECT (!! conf)))).
       { rewrite PermutationA_Leibniz, <- SECT_morph;auto.
         f_equiv. now rewrite Spect.from_config_map. }
-    rewrite Hperm'. rewrite (mem_injective_map _); trivial; try (now apply Sim.injective); [].
-    destruct (mem R2.eq_dec pt (SECT (!! conf))).
+      rewrite Hperm'. rewrite (mem_injective_map _); trivial; try (now apply Sim.injective); [].
+      destruct (mem R2.eq_dec pt (SECT (!! conf))).
       -- rewrite <- (Sim.center_prop sim), Heqsim, (step_center _ _ _ Hstep). now apply Sim.compose_inverse_l.
       -- simpl. rewrite <- sim.(Similarity.Inversion), <- target_morph;auto.
          f_equiv. now apply Spect.from_config_map.

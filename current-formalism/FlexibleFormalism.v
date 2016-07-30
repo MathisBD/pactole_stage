@@ -278,21 +278,22 @@ Proof. apply Streams.forever_impl_compat. intros s Hs g. constructor. apply Hs. 
 Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
   (** for a given robot, we compute the new configuration *)
   fun id =>
-    let conf := config id in (** t is the current configuration of g seen by the demon *)
-    match da.(step) id with (** first see whether the robot is activated *)
-      | None => conf (** If g is not activated, do nothing *)
-      | Some (sim, mv_ratio) => (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
+    let loc := config id in         (** loc is the current location of id seen by the demon *)
+    match da.(step) id with         (** first see whether the robot is activated *)
+      | None => loc                 (** If g is not activated, do nothing *)
+      | Some (sim, mv_ratio) =>     (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
-        | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
+        | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
         | Good g => (* configuration expressed in the frame of g *)
-          let config_seen_by_g := Config.map (sim (config (Good g))) config in
+          let frame_change := sim (config (Good g)) in
+          let local_config := Config.map frame_change config in
           (* apply r on spectrum *)
-          let local_target := r (Spect.from_config config_seen_by_g) in
+          let local_target := r (Spect.from_config local_config) in
           (* the demon chooses a point on the line from the target by mv_ratio *)
-          let chosen_target :=  (Location.mul mv_ratio local_target) in
+          let chosen_target := Location.mul mv_ratio local_target in
           (* back to demon ref *)
-          (sim (config (Good g)))⁻¹
-             (if Rle_bool δ (Location.dist ((sim (config (Good g)))⁻¹ chosen_target) conf) then chosen_target else local_target)
+          frame_change⁻¹
+            (if Rle_bool δ (Location.dist (frame_change⁻¹ chosen_target) loc) then chosen_target else local_target)
         end
     end.
 
