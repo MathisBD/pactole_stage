@@ -72,22 +72,23 @@ Definition Spect_map f s := Spect.M.fold (fun e acc => Spect.M.add (f e) acc) s 
 Lemma map_sim_support : forall (sim : Sim.t) s,
   Permutation (Spect.M.elements (Spect_map sim s)) (map sim (Spect.M.elements s)).
 Proof.
-(* intros sim s. rewrite <- PermutationA_Leibniz. apply Spect.map_injective_support. *)
-(* - intros ? ? Heq. now rewrite Heq. *)
-(* - apply Sim.injective. *)
-(* Qed. *)
-Admitted.
-  
+intros sim s. rewrite <- PermutationA_Leibniz. apply Spect.map_injective_elements.
+- intros ? ? Heq. now rewrite Heq.
+- apply Sim.injective.
+Qed.
+
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.M.empty.
 Proof. apply spect_non_nil. assert (Hle := Hyp_nG). unfold N.nG. omega. Qed.
 
 Lemma support_non_nil : forall config, Spect.M.elements (!! config) <> nil.
 Proof.
-  (* intros config Habs. *)
-  (* rewrite <- Spect.set_empty in Habs. apply (spect_non_nil _ Habs). Qed. *)
-Admitted.
-  
+intros config Habs.
+rewrite <- Spect.MProp.MP.elements_Empty in Habs.
+apply Spect.MProp.MP.empty_is_empty_1 in Habs.
+apply (spect_non_nil _ Habs).
+Qed.
+
 Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
 Proof.
 intros conf pt.
@@ -193,11 +194,6 @@ Close Scope R_scope.
 
 (** ***  Global decreasing measure  **)
 
-(** It is a lexicographic order on the index of the type of config + the number of robots that should move. *)
-(**
-  -  ]   Gathered: no need
-  - 0]   Regular case
-*)
 
 Open Scope R_scope.
 
@@ -209,8 +205,7 @@ Definition max_dist_R2_pt_list (pt: R2.t) (l: list R2.t) : R :=
 
 (* Lemma max_dist_R2_pt_list_compat : Proper (R2.eq ==> PermutationA R2.eq ==> Logic.eq) max_dist_R2_pt_list. *)
 (* Proof. *)
-  
-  
+
 Lemma max_dist_R2_pt_list_le :
   forall pt l pt1,
     In pt1 l -> R2.dist pt pt1 <= max_dist_R2_pt_list pt l.
@@ -258,7 +253,7 @@ Proof.
   reflexivity.
   now elim Hnotfirst.
 Qed.
-  
+
 Lemma max_dist_R2_pt_list_ex :
   forall pt l,
     l <> nil ->
@@ -285,8 +280,19 @@ Proof.
       split.
       now right.
       now rewrite Hmax.
-Qed.      
-      
+Qed.
+
+Lemma max_dist_R2_pt_list_0 : forall pt l, max_dist_R2_pt_list pt l = 0 <-> forall x, In x l -> x = pt.
+Proof.
+intros pt l. destruct l as [| pt' l].
+* cbn. tauto.
+* split; intro H.
+  + intros x Hin. assert (Hle := max_dist_R2_pt_list_le pt (pt' :: l) x Hin).
+    rewrite H in Hle. symmetry. rewrite <- R2.dist_defined. apply antisymmetry; trivial. apply R2.dist_pos.
+  + destruct (@max_dist_R2_pt_list_ex pt (pt' :: l) ltac:(discriminate)) as [? [Hin Heq]].
+    apply H in Hin. subst. rewrite <- Heq. apply R2_dist_defined_2.
+Qed.
+
 Definition max_dist_R2_list_list (l1: list R2.t) (l2: list R2.t): R :=
   fold_right (fun pt0 max => Rmax max (max_dist_R2_pt_list pt0 l2)) 0 l1.
 
@@ -342,6 +348,12 @@ Proof.
       now split.
 Qed.
 
+Lemma max_dist_R2_list_list_cons_le : forall pt l,
+  max_dist_R2_list_list l l <= max_dist_R2_list_list (pt :: l) (pt :: l).
+Proof.
+Admitted.
+
+
 (* Lemma max_dist_spect: *)
 (*   forall (spect: Spect.t), *)
 (*     Spect.support spect <> nil -> *)
@@ -371,7 +383,7 @@ Lemma max_dist_spect_le :
     In pt1 (Spect.M.elements spect) ->
     R2.dist pt0 pt1 <= max_dist_spect spect.
 Proof. intros. now apply max_dist_R2_list_list_le. Qed.
-  
+
 Lemma max_dist_spect_ex :
   forall (spect: Spect.t),
     Spect.M.elements spect <> nil ->
@@ -381,6 +393,7 @@ Lemma max_dist_spect_ex :
       /\ R2.dist pt0 pt1 = max_dist_spect spect.
 Proof. intros. now apply max_dist_R2_list_list_ex. Qed.
 
+
 (* Lemma max_dist_exists : *)
 (*   forall (conf: Config.t), *)
 (*   exists (dm: R), *)
@@ -389,7 +402,7 @@ Proof. intros. now apply max_dist_R2_list_list_ex. Qed.
 (*   intros. *)
 (*   set (rlist := (*Spect.Names.Internals.fin_map*) Spect.Names.names). *)
 (*   set (dm_candidate := fold_left (fun max r0 => *)
-(*                                     Rmax (fold_left (fun max r1 => Rmax (R2.dist (conf r0) (conf r1)) max) rlist 0) max) *)
+(*                           Rmax (fold_left (fun max r1 => Rmax (R2.dist (conf r0) (conf r1)) max) rlist 0) max) *)
 (*                                  rlist 0). *)
 (*   assert (forall r1 r2, In r1 rlist -> In r2 rlist -> R2.dist (conf r1) (conf r2) <= dm_candidate). *)
 (*   induction rlist. *)
@@ -453,6 +466,71 @@ Proof. intros. now apply max_dist_R2_list_list_ex. Qed.
 
 Definition measure (conf: Config.t) : R :=
   max_dist_spect (!! conf).
+
+Lemma measure_nonneg : forall config, 0 <= measure config.
+Proof.
+intros config. unfold measure.
+destruct (Spect.M.elements (!! config)) as [| pt l] eqn:Heq.
++ elim (support_non_nil _ Heq).
++ rewrite <- (R2_dist_defined_2 pt). apply max_dist_spect_le; rewrite Heq; now left.
+Qed.
+
+Lemma gathered_support : forall config pt,
+  gathered_at pt config <-> PermutationA eq (Spect.M.elements (!! config)) (pt :: nil).
+Proof.
+intros config pt. split; intro H.
+* apply NoDupA_equivlistA_PermutationA; autoclass.
+  + apply Spect.M.elements_spec2w.
+  + repeat constructor. intro Hin. inv Hin.
+  + intro pt'. split; intro Hin.
+    - rewrite Spect.M.elements_spec1, (Spect.from_config_spec config pt') in Hin.
+      destruct Hin as [id Hid]. destruct id as [id | b]; try apply (Fin.case0 _ b); [].
+      specialize (H id). rewrite H in Hid. rewrite Hid. now left.
+    - inv Hin; try inv H1; [].
+      rewrite Spect.M.elements_spec1, (Spect.from_config_spec config pt).
+      destruct Spect.Names.Gnames as [| id l] eqn:Hnames.
+      -- (* absurd case: there are no robots *)
+         assert (N.nG = 0%nat) by now rewrite <- Spect.Names.Gnames_length, Hnames.
+         assert (Hle := Hyp_nG). unfold N.nG in *. omega.
+      -- (* we have a robot name *)
+         exists (Good id). symmetry. apply H.
+* intro id.
+  assert (Hin : InA eq (config (Good id)) (Spect.M.elements (!! config))).
+  { rewrite Spect.M.elements_spec1. apply (Spect.from_config_spec config). eexists; reflexivity. }
+  rewrite H in Hin. now inv Hin.
+Qed.
+
+Lemma gathered_measure : forall config, measure config = 0 <-> exists pt, gathered_at pt config.
+Proof.
+intros config. split; intro H.
+* unfold measure, max_dist_spect in *.
+  assert (Hnil := support_non_nil config).
+  assert (Hdup := Spect.M.elements_spec2w (!! config)).
+(*   assert (Hspec : forall pt, In pt (Spect.M.elements (!! config)) -> exists id, R2.eq pt (config id)).
+  { intro. rewrite <- InA_Leibniz, Spect.M.elements_spec1. apply (Spect.from_config_spec config). } *)
+  setoid_rewrite gathered_support.
+  induction (Spect.M.elements (!! config)) as [| pt l]; try tauto; [].
+  exists pt. destruct l; try reflexivity.
+  inv Hdup. destruct IHl; discriminate || auto.
+  + apply antisymmetry.
+    - rewrite <- H. apply max_dist_R2_list_list_cons_le.
+    - rewrite <- (R2_dist_defined_2 e). apply max_dist_R2_list_list_le; now left.
+  + assert (l = nil).
+    { rewrite <- length_zero_iff_nil.
+      cut (length (e :: l) = length (x :: nil)); try (simpl; omega).
+      f_equiv; eauto. }
+    subst. rewrite PermutationA_1 in H0; autoclass; []. subst.
+    elim H2. left.
+    cbn in H. do 2 rewrite R2_dist_defined_2 in H.
+    cbn in H. setoid_rewrite (Rmax_comm 0) in H. rewrite (Rmax_left 0 0) in H; try reflexivity; [].
+    rewrite R2.dist_sym in H. repeat (rewrite (Rmax_left (R2.dist pt x) 0) in H; try apply R2.dist_pos).
+    rewrite Rmax_left in H; try reflexivity; [].
+    now rewrite <- R2.dist_defined.
+* destruct H as [pt Hgather]. unfold measure.
+  destruct (max_dist_spect_ex (!! config) (support_non_nil config)) as [pt1 [pt2 [Hpt1 [Hpt2 Heq]]]].
+  rewrite <- Heq, R2.dist_defined. rewrite gathered_support in Hgather. rewrite <- InA_Leibniz, Hgather in *.
+  now inv Hpt1; inv Hpt2.
+Qed.
 
 Lemma fold_mult_plus_distr : forall (f: R2.t -> R) (coeff: R) (E: list R2.t) (init: R),
     fold_left (fun acc pt => acc + coeff * (f pt)) E (coeff * init) =
@@ -628,7 +706,8 @@ simpl in Hlen; discriminate || clear Hlen.
   rewrite Similarity.retraction_section.
 
   destruct (Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)).
-  + apply Similarity.Inversion. admit.
+  + apply Similarity.Inversion.
+    admit.
   + rewrite Similarity.retraction_section; [reflexivity | apply R2.eq_equiv].
   + apply R2.eq_equiv.
 
@@ -816,7 +895,8 @@ Proof.
     remember (Spect.M.elements (!! conf)) as elems.
     set (C := barycenter elems).
     remember (Spect.M.elements (!! (round delta ffgatherR2 da conf))) as nxt_elems.
-    assert (Hantec: forall KP, In KP nxt_elems -> exists Pid, In (conf Pid) elems /\ round delta ffgatherR2 da conf Pid = KP).
+    assert (Hantec: forall KP, In KP nxt_elems ->
+              exists Pid, In (conf Pid) elems /\ round delta ffgatherR2 da conf Pid = KP).
     { intros KP HinKP.
       rewrite Heqnxt_elems in HinKP.
       apply (In_InA R2.eq_equiv) in HinKP.
@@ -962,7 +1042,8 @@ Proof.
         now symmetry.
     }
         
-    assert (MainArgument: forall KP KQ, In KP nxt_elems -> In KQ nxt_elems -> R2.dist KP KQ <= max_dist_spect (!! conf) - delta).
+    assert (MainArgument: forall KP KQ, In KP nxt_elems -> In KQ nxt_elems ->
+            R2.dist KP KQ <= max_dist_spect (!! conf) - delta).
     { intros KP KQ HinKP HinKQ.
       apply Hantec in HinKP.
       apply Hantec in HinKQ.
@@ -1411,7 +1492,8 @@ Proof.
       reflexivity.
 Qed.
       
-Lemma gathered_at_forever : forall delta da conf pt, gathered_at pt conf -> gathered_at pt (round delta ffgatherR2 da conf).
+Lemma gathered_at_forever : forall delta da conf pt,
+  gathered_at pt conf -> gathered_at pt (round delta ffgatherR2 da conf).
 Proof.
 intros delta da conf pt Hgather. rewrite round_simplify.
 intro g. destruct (step da (Good g)).
@@ -1566,8 +1648,7 @@ Proof.
     simpl.
     now symmetry.
 Qed.
-           
-           
+
 (** The final theorem. *)
 Theorem FSGathering_in_R2 :
   forall delta d, delta > 0 -> FullySynchronous d -> FullSolGathering ffgatherR2 d delta.
@@ -1599,7 +1680,8 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
             apply in_map. unfold Names.Internals.Gnames.
             apply (@Names.Internals.In_fin_map nG Names.Internals.G g (fun x => x)).
           }
-          assert (Hchoice: (if Spect.MProp.MP.FM.eq_dec (round delta ffgatherR2 da conf (Good g)) (conf (Good g)) then false else true) = true).
+          assert (Hchoice: (if Spect.MProp.MP.FM.eq_dec (round delta ffgatherR2 da conf (Good g)) (conf (Good g))
+                            then false else true) = true).
           { destruct (Spect.MProp.MP.FM.eq_dec (round delta ffgatherR2 da conf (Good g)) (conf (Good g))).
             + exfalso. apply n. assumption.
             + reflexivity.
@@ -1617,7 +1699,8 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
       destruct (R2.eq_dec (conf (Good g)) (conf (Good g1))).
       + assumption.
       + exfalso.
-        assert (~ (R2.eq (conf (Good g)) (barycenter (Spect.M.elements (!! conf))) /\ R2.eq (conf (Good g1)) (barycenter (Spect.M.elements (!! conf))))).
+        assert (~ (R2.eq (conf (Good g)) (barycenter (Spect.M.elements (!! conf)))
+                /\ R2.eq (conf (Good g1)) (barycenter (Spect.M.elements (!! conf))))).
         { intro Hbar. apply n.
           destruct Hbar as [Hbarg Hbarg1].
           rewrite Hbarg, Hbarg1.
@@ -1625,9 +1708,10 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
         }
         clear n.
 
-        assert (~ R2.eq (conf (Good g)) (barycenter (Spect.M.elements (!! conf))) \/ ~ R2.eq (conf (Good g1)) (barycenter (Spect.M.elements (!! conf)))).
-        { admit.
-          (* Classical (or change the previous assert) *)
+        assert (~ R2.eq (conf (Good g)) (barycenter (Spect.M.elements (!! conf)))
+             \/ ~ R2.eq (conf (Good g1)) (barycenter (Spect.M.elements (!! conf)))).
+        { destruct (R2.eq_dec (conf (Good g)) (barycenter (Spect.M.elements (!! conf)))),
+                   (R2.eq_dec (conf (Good g1)) (barycenter (Spect.M.elements (!! conf)))); tauto.
         }
 
         destruct H0.
@@ -1639,9 +1723,14 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     - intro Hroundlt.
       apply Hroundlt in Hmoving; [|assumption].
       clear Hroundlt r Hmove HFS.
-      
-      admit.
-      (* Now it is only arithmetic. *)
+      rewrite <- Z2Nat.inj_lt.
+      ++ apply Zup_lt. field_simplify; try lra; []. unfold Rdiv. apply Rmult_le_compat.
+         -- apply measure_nonneg.
+         -- now apply Rlt_le, Rinv_0_lt_compat.
+         -- lra.
+         -- reflexivity.
+      ++ apply up_le_0_compat. apply Rdiv_le_0_compat; trivial. apply measure_nonneg.
+      ++ apply up_le_0_compat. apply Rdiv_le_0_compat; trivial. apply measure_nonneg.
 
     - intro Hroundlt. clear Hroundlt.
       
@@ -1650,7 +1739,8 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
         remember (Spect.M.elements (!! conf)) as elems.
         set (C := barycenter elems).
         remember (Spect.M.elements (!! (round delta ffgatherR2 da conf))) as nxt_elems.
-        assert (Hantec: forall KP, In KP nxt_elems -> exists Pid, In (conf Pid) elems /\ round delta ffgatherR2 da conf Pid = KP).
+        assert (Hantec: forall KP, In KP nxt_elems ->
+                          exists Pid, In (conf Pid) elems /\ round delta ffgatherR2 da conf Pid = KP).
         { intros KP HinKP.
           rewrite Heqnxt_elems in HinKP.
           apply (In_InA R2.eq_equiv) in HinKP.
@@ -1756,16 +1846,18 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
         now apply R2.dist_defined.
         now subst nxt_elems.
         now subst nxt_elems.
- 
       }
 
       assert (Hcurrent: measure conf > 0).
-      { admit.
-        (* Sinon, pas rassemblés. *)
-      }      
-      
-      admit.
+      { apply Rle_neq_lt; try apply measure_nonneg; [].
+        intro Habs. symmetry in Habs. rewrite gathered_measure in Habs. destruct Habs.
+        apply Hmove. eapply gathered_precise. eauto. }
+
       (* 0 < 1 *)
+      rewrite <- Z2Nat.inj_lt.
+      ++ rewrite Hnxt. (* WRONG! *) admit.
+      ++ apply up_le_0_compat, Rdiv_le_0_compat; trivial; apply measure_nonneg.
+      ++ apply up_le_0_compat, Rdiv_le_0_compat; trivial; apply measure_nonneg.
 
   + unfold FullySynchronous in HFS.
     inversion HFS.

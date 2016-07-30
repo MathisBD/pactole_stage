@@ -1582,6 +1582,8 @@ End List_halves.
 (* ******************************* *)
 
 
+Open Scope R_scope.
+
 (* Should be in Reals from the the std lib! *)
 Global Instance Rle_preorder : PreOrder Rle.
 Proof. split.
@@ -1603,6 +1605,21 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. contradiction.
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
+
+Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.
+Proof. intros a b ? ?. now apply Fourier_util.Rle_mult_inv_pos. Qed.
+
+(* Lemma Rdiv_le_compat : forall a b c, (0 <= a -> a <= b -> 0 < c -> a / c <= b / c)%R.
+Proof.
+intros a b c ? ? ?. unfold Rdiv. apply Rmult_le_compat; try lra.
+rewrite <- Rmult_1_l. apply Fourier_util.Rle_mult_inv_pos; lra.
+Qed. *)
+
+Lemma Zup_lt : forall u v, u <= v - 1 -> (up u < up v)%Z.
+Proof. Admitted. (* TODO *)
+
+Lemma up_le_0_compat : forall x, 0 <= x -> (0 <= up x)%Z.
+Proof. intros x ?. apply le_0_IZR, Rlt_le, Rle_lt_trans with x; trivial; []. now destruct (archimed x). Qed.
 
 (** A boolean equality test. *)
 Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
@@ -1690,6 +1707,8 @@ Existing Instance fold_left_start.
 Existing Instance fold_left_symmetry_PermutationA.
 Existing Instance PermutationA_map.
 
+
+Close Scope R_scope.
 
 Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
 Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.

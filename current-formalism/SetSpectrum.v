@@ -217,7 +217,7 @@ Proof.
       intro Heq. apply n. now rewrite Heq.
       assumption.
 Qed.
-      
+
 Lemma map_add : forall f, Proper (Loc.eq ==> Loc.eq) f -> forall x m, map f (M.add x m) [=] M.add (f x) (map f m).
 Proof.
   intros f Hf x m y.
@@ -238,6 +238,22 @@ Proof.
     - assumption.
 Qed.
 
+Lemma map_spec : forall f, Proper (Loc.eq ==> Loc.eq) f -> forall y s,
+      M.In y (map f s) <-> exists x, M.In x s /\ Loc.eq y (f x).
+Proof.
+intros f Hf y s. split.
+* pattern s. apply MProp.set_rec; clear s.
+  + intros s s' Heq Hrec Hin. rewrite <- F.equal_iff in Heq.
+    rewrite <- Heq in Hin. apply Hrec in Hin. setoid_rewrite <- Heq. apply Hin.
+  + intros s x Hout Hrec Hin. rewrite map_add in Hin; autoclass.
+    rewrite M.add_spec in Hin. destruct Hin as [Hin | Hin].
+    - exists x. fsetdec.
+    - apply Hrec in Hin. destruct Hin as [x' [Hin Heq]].
+      exists x'. fsetdec.
+  + intro. fsetdec.
+* intros [x [Hin Heq]]. rewrite Heq. now apply map_In.
+Qed.
+
 Theorem set_map : forall f, Proper (Loc.eq ==> Loc.eq) f ->
                             forall l, set (List.map f l) [=] map f (set l).
 Proof.
@@ -254,5 +270,18 @@ Proof. repeat intro. unfold from_config.
        now rewrite Config.list_map, set_map.
 Qed.
 
+Lemma map_injective_elements : forall f, Proper (Loc.eq ==> Loc.eq) f -> injective Loc.eq Loc.eq f ->
+  forall s, PermutationA Loc.eq (M.elements (map f s)) (List.map f (M.elements s)).
+Proof.
+intros f Hf Hfinj s.
+apply NoDupA_equivlistA_PermutationA; autoclass.
++ apply M.elements_spec2w.
++ eapply map_injective_NoDupA; autoclass. apply M.elements_spec2w.
++ intro y.
+  rewrite <- F.elements_iff, map_spec, InA_map_iff; autoclass; [].
+  split; intros [x [H1 H2]].
+  - exists x. fsetdec.
+  - exists x. rewrite MProp.MP.Dec.F.elements_iff. now symmetry in H1.
+Qed.
 
 End Make.
