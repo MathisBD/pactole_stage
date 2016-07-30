@@ -1615,8 +1615,13 @@ intros a b c ? ? ?. unfold Rdiv. apply Rmult_le_compat; try lra.
 rewrite <- Rmult_1_l. apply Fourier_util.Rle_mult_inv_pos; lra.
 Qed. *)
 
-Lemma Zup_lt : forall u v, u <= v - 1 -> (up u < up v)%Z.
-Proof. Admitted. (* TODO *)
+Lemma Zup_lt : forall x y, x <= y - 1 -> (up x < up y)%Z.
+Proof.
+intros x y Hle. apply lt_IZR. apply Rle_lt_trans with (x + 1).
+- generalize (proj2 (archimed x)). lra.
+- apply Rle_lt_trans with (y - 1 + 1); try lra; [].
+  generalize (proj1 (archimed y)). lra.
+Qed.
 
 Lemma up_le_0_compat : forall x, 0 <= x -> (0 <= up x)%Z.
 Proof. intros x ?. apply le_0_IZR, Rlt_le, Rle_lt_trans with x; trivial; []. now destruct (archimed x). Qed.

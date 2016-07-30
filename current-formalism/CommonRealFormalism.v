@@ -1,9 +1,20 @@
-(* This file extends the common formalism for real metric spaces and contains a common notion of similarity. *)
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
 
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Export Similarity.
 Require Pactole.CommonFormalism.
+
+
+(* This file extends the common formalism for real metric spaces and contains a common notion of similarity. *)
 
 
 Module Type Sig (Loc : RealMetricSpace)(N : Size)(Spect : Spectrum(Loc)(N)).

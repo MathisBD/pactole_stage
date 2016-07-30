@@ -351,7 +351,11 @@ Qed.
 Lemma max_dist_R2_list_list_cons_le : forall pt l,
   max_dist_R2_list_list l l <= max_dist_R2_list_list (pt :: l) (pt :: l).
 Proof.
-Admitted.
+intros pt [| pt' l].
+- cbn. rewrite R2_dist_defined_2. now repeat rewrite Rmax_left.
+- destruct (@max_dist_R2_list_list_ex (pt' :: l) (pt' :: l)) as [pt1 [pt2 [Hpt1 [Hpt2 Heq]]]]; try discriminate; [].
+  rewrite <- Heq. apply max_dist_R2_list_list_le; now right.
+Qed.
 
 
 (* Lemma max_dist_spect: *)
@@ -1872,7 +1876,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     apply Hpt.
 
 Admitted.
-    
+
 Print Assumptions FSGathering_in_R2.
 
 
