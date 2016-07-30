@@ -1717,9 +1717,16 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
                         assumption.
                       }
 
-                      admit.
                       (* There should be a lemma for this in standard library. *)
-
+                      rewrite <- Rmult_1_l.
+                      destruct H.
+                      ** apply Rmult_le_0_lt_compat; try assumption.
+                         apply R2.dist_pos.
+                      ** subst delta.
+                         apply Rmult_lt_compat_r.
+                         now apply Rlt_gt.
+                         assumption.
+                                               
                    ++ subst r.
                       rewrite R2.mul_1.
                       rewrite R2.add_comm.
@@ -1739,10 +1746,17 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
             simpl.
             now symmetry.
         }
-            
-        admit.
-        (* max_dist_spect sur un spectre singleton. *)
 
+        destruct (max_dist_spect_ex (!! (round delta ffgatherR2 da conf)))
+        as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].
+        apply support_non_nil.
+        rewrite <- Hdist.
+        rewrite HonlyC.
+        rewrite (HonlyC pt1).
+        now apply R2.dist_defined.
+        now subst nxt_elems.
+        now subst nxt_elems.
+ 
       }
 
       assert (Hcurrent: measure conf > 0).
