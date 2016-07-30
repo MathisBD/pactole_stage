@@ -46,7 +46,7 @@ Module GatheringinR2.
 (** **  Framework of the correctness proof: a finite set with at least three elements  **)
 
 Parameter nG: nat.
-Hypothesis Hyp_nG : (2 <= nG)%nat.
+Axiom Hyp_nG : (2 <= nG)%nat.
 
 (** There are nG good robots and no byzantine ones. *)
 Module N : Size with Definition nG := nG with Definition nB := 0%nat.
@@ -640,11 +640,11 @@ assert (Hlen := Permutation_length Hperm).
 destruct (Spect.M.elements (!! conf)) as [| pt1 [| pt2 l]] eqn:Hmax,
          (Spect.M.elements (!! (Config.map sim conf))) as [| pt1' [| pt2' l']];
 simpl in Hlen; discriminate || clear Hlen.
-- elim (support_non_nil _ Hmax).
-- simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
+* elim (support_non_nil _ Hmax).
+* simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
   subst pt1'.
   destruct (Rle_bool delta (R2.dist ((Common.Sim.sim_f (sim ⁻¹)) (r * sim pt1)%R2) pt)).
-  * assert (Hpt: pt = pt1).
+  + assert (Hpt: pt = pt1).
     { generalize (Spect.from_config_spec conf).
       intros Hok.
       assert (Spect.In pt (!! conf)).
@@ -669,9 +669,9 @@ simpl in Hlen; discriminate || clear Hlen.
     simpl.
     rewrite <- Similarity.Inversion.
     now rewrite Hzero.
-  * now apply Sim.compose_inverse_l.
+  + now apply Sim.compose_inverse_l.
 
-- assert (Hbarysim: R2.eq (barycenter (pt1' :: pt2' :: l')) (sim (barycenter (pt1 :: pt2 :: l)))).
+* assert (Hbarysim: R2.eq (barycenter (pt1' :: pt2' :: l')) (sim (barycenter (pt1 :: pt2 :: l)))).
   { rewrite <- barycenter_sim.
     apply barycenter_compat.
     now rewrite PermutationA_Leibniz.
@@ -680,14 +680,14 @@ simpl in Hlen; discriminate || clear Hlen.
   clear Hperm Hbarysim.
   remember (pt1 :: pt2 :: l) as E.
 
-  assert (pt = (sim ⁻¹) (sim pt)).
-  { simpl. rewrite Similarity.retraction_section. reflexivity. apply R2.eq_equiv. }
-  rewrite H at 1.
+  assert (Heq_pt : pt = (sim ⁻¹) (sim pt)).
+  { simpl. rewrite Similarity.retraction_section; autoclass. }
+  rewrite Heq_pt at 1.
   (* simpl. *)
   rewrite dist_prop_retraction.
   rewrite R2norm_mul.
   rewrite <- R2norm_dist.
-  assert (R2.eq (sim pt) (r * (sim pt))).
+  assert (Hsim_pt : R2.eq (sim pt) (r * (sim pt))).
   { generalize (Sim.center_prop sim).
     intro Hzero.
     apply step_center with (c := pt) in Hstep.
@@ -698,25 +698,23 @@ simpl in Hlen; discriminate || clear Hlen.
     rewrite R2.mul_origin.
     reflexivity.
   }
-  rewrite H0.
+  rewrite Hsim_pt.
   rewrite R2mul_dist.
   rewrite <- Rmult_assoc.
   pattern (/ Sim.zoom sim * Rabs r).
   rewrite Rmult_comm.
   rewrite Rmult_assoc.
   rewrite <- dist_prop_retraction.
-  rewrite <- H.
+  rewrite <- Heq_pt.
   simpl.
-  rewrite Similarity.retraction_section.
+  rewrite Similarity.retraction_section; autoclass; [].
 
   destruct (Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)).
   + apply Similarity.Inversion.
     admit.
-  + rewrite Similarity.retraction_section; [reflexivity | apply R2.eq_equiv].
-  + apply R2.eq_equiv.
-
+  + rewrite Similarity.retraction_section; autoclass.
 Admitted.
-    
+
 (*   rewrite <- (step_center da (Good g) pt Hstep) at 4. *)
 (*   simpl fst. *)
   
@@ -858,42 +856,17 @@ Admitted.
 Theorem round_lt_config : forall d conf delta,
     delta > 0 ->
     FullySynchronous d ->
-    moving delta ffgatherR2 (Streams.hd d) conf <> nil ->
     measure conf > delta ->
     measure (round delta ffgatherR2 (Streams.hd d) conf) <= measure conf - delta.
 Proof.
-  intros d conf delta Hdelta HFSync Hmove Hnotdone.
+  intros d conf delta Hdelta HFSync (* Hmove *) Hnotdone.
   destruct (Spect.M.elements (!! conf)) as [| pt [| pt' ?]] eqn:Hmax.
   - (* No robots *)
     exfalso. now apply (support_non_nil conf). 
   - (* Done *)
-    exfalso. clear Hdelta.
-    unfold moving in Hmove.
-    apply Hmove. clear Hmove.
-    induction Names.names.
-    + now simpl.
-    + simpl.
-      rewrite (round_simplify (Streams.hd d) conf delta).
-      simpl.
-      destruct (step (Streams.hd d) a).
-      * rewrite Hmax. destruct p.
-        generalize (Spect.from_config_spec conf).
-        intro Hok. unfold Spect.is_ok in Hok.
-        assert (Heq: R2.eq (conf a) (conf a)) by reflexivity.
-        assert (exists gooda, R2.eq (conf a) (conf gooda)).
-        { exists a. reflexivity. }
-        rewrite <- Hok in H.
-        rewrite <- Spect.M.elements_spec1 in H.
-        rewrite Hmax in H.
-        inversion H; subst.
-        rewrite H1.
-        destruct (Spect.MProp.MP.FM.eq_dec pt pt).
-        -- apply IHl.
-        -- exfalso; now apply n.
-        -- inversion H1.
-      * destruct (Spect.MProp.MP.FM.eq_dec (conf a) (conf a)).
-        -- apply IHl.
-        -- exfalso; now apply n.
+    assert (Habs : measure conf = 0).
+    { rewrite gathered_measure. exists pt. now rewrite gathered_support, Hmax. }
+    rewrite Habs in *. elim (Rlt_irrefl delta). now apply Rlt_trans with 0.
   - (* Now to some real work. *)
     remember (Streams.hd d) as da.
     remember (Spect.M.elements (!! conf)) as elems.
@@ -1664,8 +1637,10 @@ intros conf Hind d HFS.
 destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
 * (* If so, not much to do *)
   exists (conf (Good g1)). now apply Streams.Now, gathered_at_OK.
-* (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
-  destruct d as (da, d).
+* destruct d as (da, d).
+  (* We cannot use [round_lt_config] for the last step does not *)
+  destruct (Rgt_dec (measure conf) delta).
+
   destruct (Hind (round delta ffgatherR2 da conf)) with d as [pt Hpt].
   + unfold lt_config.
     generalize (round_lt_config conf Hdelta HFS).
@@ -1723,7 +1698,6 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
         now apply (not_barycenter_moves conf (Good g1) Hdelta HFS).
     }
         
-    destruct (Rgt_dec (measure conf) delta).
     - intro Hroundlt.
       apply Hroundlt in Hmoving; [|assumption].
       clear Hroundlt r Hmove HFS.
@@ -1820,7 +1794,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
                          apply Rmult_lt_compat_r.
                          now apply Rlt_gt.
                          assumption.
-                                               
+
                    ++ subst r.
                       rewrite R2.mul_1.
                       rewrite R2.add_comm.
