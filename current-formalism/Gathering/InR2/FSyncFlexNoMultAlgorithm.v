@@ -856,7 +856,7 @@ Admitted.
 Theorem round_lt_config : forall d conf delta,
     delta > 0 ->
     FullySynchronous d ->
-    measure conf > delta ->
+    delta <= measure conf ->
     measure (round delta ffgatherR2 (Streams.hd d) conf) <= measure conf - delta.
 Proof.
   intros d conf delta Hdelta HFSync (* Hmove *) Hnotdone.
@@ -866,7 +866,7 @@ Proof.
   - (* Done *)
     assert (Habs : measure conf = 0).
     { rewrite gathered_measure. exists pt. now rewrite gathered_support, Hmax. }
-    rewrite Habs in *. elim (Rlt_irrefl delta). now apply Rlt_trans with 0.
+    rewrite Habs in *. elim (Rlt_irrefl delta). now apply Rle_lt_trans with 0.
   - (* Now to some real work. *)
     remember (Streams.hd d) as da.
     remember (Spect.M.elements (!! conf)) as elems.
@@ -1290,13 +1290,11 @@ Proof.
         assert (R2.dist C C = 0).
         { rewrite R2.dist_defined. apply R2.eq_equiv. }
         rewrite H.
-        left.
-        apply Rplus_lt_reg_r with (r := delta).
+        apply Rplus_le_reg_r with (r := delta).
         rewrite Rplus_0_l.
         assert (max_dist_spect (!! conf) - delta + delta = max_dist_spect (!! conf)) by ring.
         rewrite H0.
-        unfold measure in Hnotdone.
-        now apply Rlt_gt.
+        apply Hnotdone.
         now apply Rnot_le_gt.
         now apply Rnot_le_gt.
     }
@@ -1311,7 +1309,6 @@ Proof.
     destruct (Hmax_dist_ex Hspect_non_nil) as [pt0 [pt1 [Hin0 [Hin1 Hdist]]]].
     rewrite <- Hdist.
     now auto.
-    
 Qed.
 
 Definition lt_config delta x y :=
@@ -1634,13 +1631,14 @@ intros delta d Hdelta HFS conf. revert d HFS. pattern conf.
 apply (well_founded_ind (wf_lt_conf Hdelta)). clear conf.
 intros conf Hind d HFS.
 (* Are we already gathered? *)
-destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
-* (* If so, not much to do *)
+destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove];
+[| destruct (Rlt_dec delta (measure conf))].
+* (* If we are already gathered, not much to do *)
   exists (conf (Good g1)). now apply Streams.Now, gathered_at_OK.
 * destruct d as (da, d).
-  (* We cannot use [round_lt_config] for the last step does not *)
+  (* We cannot use [round_lt_config] for the last step *)
   destruct (Rgt_dec (measure conf) delta).
-
+  + 
   destruct (Hind (round delta ffgatherR2 da conf)) with d as [pt Hpt].
   + unfold lt_config.
     generalize (round_lt_config conf Hdelta HFS).
