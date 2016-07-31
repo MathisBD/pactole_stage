@@ -1358,6 +1358,8 @@ Proof.
   + now rewrite IHHpermut1.
 Qed.
 
+(** Barycenter of a list of locations *)
+
 Definition barycenter (E: list R2.t) : R2.t :=
   /(INR (List.length E)) * (List.fold_left R2.add E R2.origin).
 
