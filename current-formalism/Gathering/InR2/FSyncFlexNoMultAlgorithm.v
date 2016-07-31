@@ -43,7 +43,7 @@ Set Implicit Arguments.
 
 Module GatheringinR2.
 
-(** **  Framework of the correctness proof: a finite set with at least three elements  **)
+(** **  Framework of the correctness proof: a finite set with at least two elements  **)
 
 Parameter nG: nat.
 Axiom Hyp_nG : (2 <= nG)%nat.
@@ -105,6 +105,65 @@ Proof.
 destruct nG eqn:HnG. abstract (pose(Hle := Hyp_nG); omega).
 apply (@Fin.F1 n).
 Defined.
+
+(** **  Description of similarities  **)
+
+(** Similarities can be described by [sim x = r A x + t] with:
+    - [0 < r] the ratio
+    - [t] the translation vector
+    - [A] an orthogonal matrix *)
+(* NB: To have less parameters, [r] is integrated into [A]. *)
+Open Scope R_scope.
+
+Theorem similarity_in_R2 : forall sim : Sim.t,
+  exists u v t, R2norm u = sim.(Sim.zoom) /\ R2norm v = sim.(Sim.zoom) /\ perpendicular u v /\
+    forall pt, sim pt = R2.add (R2.add (R2.mul (product u pt) u) (R2.mul (product v pt) v)) t.
+Proof.
+intros sim. exists (sim (1, 0) - sim (0, 0))%R2, (sim (0, 1) - sim (0, 0))%R2, (sim (0, 0)).
+repeat split.
+* rewrite <- R2norm_dist, sim.(Sim.dist_prop), <- Rmult_1_r. f_equal.
+  unfold R2.dist, R2def.dist, Rsqr. cbn.
+  ring_simplify ((1 - 0) * (1 - 0) + (0 - 0) * (0 - 0)). apply sqrt_1.
+* rewrite <- R2norm_dist, sim.(Sim.dist_prop), <- Rmult_1_r. f_equal.
+  unfold R2.dist, R2def.dist, Rsqr. cbn.
+  ring_simplify ((0 - 0) * (0 - 0) + (1 - 0) * (1 - 0)). apply sqrt_1.
+* assert (Hproduct : forall x y, 2 * product x y = (R2norm x)² + (R2norm y)² - (R2norm (x - y))²).
+  { intros x y. rewrite R2norm_sub. ring. }
+  unfold perpendicular. apply Rmult_eq_reg_l with 2; try lra.
+  rewrite Hproduct, Rmult_0_r.
+  repeat rewrite <- R2norm_dist. rewrite R2add_dist. repeat rewrite sim.(Sim.dist_prop).
+  repeat rewrite R_sqr.Rsqr_mult, square_dist_simpl. unfold Rsqr. cbn. ring.
+* intros [x y].
+  
+Admitted.
+
+Corollary sim_add : forall (sim : Sim.t) x y, (sim (x + y) = sim x + sim y - sim R2.origin)%R2.
+Proof.
+intros sim x y. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
+repeat rewrite Heq, ?product_origin_r, ?product_add_r, <- ?R2.add_morph, ?R2.mul_0.
+rewrite R2.add_origin, (R2.add_comm R2.origin t), R2.add_origin.
+repeat rewrite <- R2.add_assoc. rewrite R2.add_opp, R2.add_origin. f_equal.
+rewrite (R2.add_comm t). repeat rewrite R2.add_assoc. do 2 f_equal. apply R2.add_comm.
+Qed.
+
+Corollary sim_opp : forall (sim : Sim.t) x, (sim (- x) = 2 * sim R2.origin - sim x)%R2.
+Proof.
+intros sim x. apply (R2.add_reg_l (sim x)). apply (R2.add_reg_r (- sim R2.origin)).
+rewrite <- sim_add, R2.add_opp.
+setoid_rewrite R2.add_comm at 3. rewrite R2.add_assoc, R2.add_opp.
+setoid_rewrite R2.add_comm at 2. rewrite R2.add_origin.
+setoid_rewrite <- R2.mul_1 at 8. rewrite <- R2.minus_morph, R2.add_morph.
+ring_simplify (2 + -1). now rewrite R2.mul_1.
+Qed.
+
+Corollary sim_mul : forall (sim : Sim.t) k x, (sim (k * x) = k * sim x + (1 - k) * sim R2.origin)%R2.
+Proof.
+intros sim k x. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
+repeat rewrite Heq, ?product_origin_r, ?product_mul_r, <- ?R2.add_morph, ?R2.mul_0.
+rewrite R2.add_origin, (R2.add_comm R2.origin t), R2.add_origin.
+repeat rewrite R2.mul_distr_add, ?R2.mul_morph. repeat rewrite <- R2.add_assoc. do 2 f_equal.
+rewrite R2.add_morph. ring_simplify (k + (1 - k)). now rewrite R2.mul_1.
+Qed.
 
 
 (** **  Definition of the robogram  **)
@@ -559,9 +618,19 @@ simpl in Hlen; discriminate || clear Hlen.
 
   destruct (Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)).
   + apply Similarity.Inversion.
-    admit.
+    rewrite sim_add, sim_mul, sim_add, sim_opp.
+    do 2 rewrite R2.mul_distr_add.
+    assert (Hsim_pt_0 : R2.eq (sim pt) R2.origin).
+    { apply (step_center da (Good g) pt) in Hstep.
+      rewrite <- sim.(Sim.center_prop), <- Hstep. cbn. now subst sim. }
+    rewrite Hsim_pt_0.
+    rewrite (R2.add_comm R2.origin), R2.add_origin.
+    setoid_rewrite <- R2.add_origin at 25. repeat rewrite <- R2.add_assoc. f_equiv.
+    rewrite R2.opp_origin, R2.add_origin.
+    setoid_rewrite <- R2.mul_1 at 9 15. repeat rewrite <- ?R2.minus_morph, ?R2.mul_morph, ?R2.add_morph.
+    ring_simplify (r * 2 + (r * -1 + (1 - r + -1))). apply R2.mul_0.
   + rewrite Similarity.retraction_section; autoclass.
-Admitted.
+Qed.
 
 
 (* FIXME: cleanup! *)
@@ -1027,7 +1096,7 @@ Qed.
 Theorem round_last_step : forall d conf delta,
     delta > 0 ->
     FullySynchronous d ->
-    measure conf < delta ->
+    measure conf <= delta ->
     measure (round delta ffgatherR2 (Streams.hd d) conf) = 0.
 Proof.
 intros [da d] conf delta Hdelta HFS Hlt.
@@ -1088,7 +1157,6 @@ assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
               rewrite R2norm_mul.
               rewrite (Rabs_pos_eq _ Hr0).
               rewrite <- R2norm_dist.
-              assert (Hd: measure conf <= delta) by now apply Rlt_le.
               assert (R2.dist (barycenter elems') (conf Pid) <= delta).
               { rewrite R2.dist_sym.
                 apply Rle_trans with (measure conf).
@@ -1380,7 +1448,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove];
   exists (round delta ffgatherR2 da conf (Good g1)). now apply Streams.Later, Streams.Now, gathered_at_OK.
 * (* General case, use [round_lt_config] *)
   assert (delta <= measure conf).
-  { apply Rnot_lt_le. intro Habs. eapply round_last_step in Habs; eauto; [].
+  { apply Rnot_lt_le. intro Habs. eapply Rlt_le, round_last_step in Habs; eauto; [].
     rewrite gathered_measure in Habs. destruct Habs as [pt Habs]. simpl in Habs.
     apply Hmove'. apply (gathered_precise Habs (Good g1)). }
   destruct (Hind (round delta ffgatherR2 da conf)) with d as [pt Hpt].

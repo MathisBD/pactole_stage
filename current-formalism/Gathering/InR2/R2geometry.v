@@ -936,7 +936,7 @@ Lemma Rplus_opp_r_rwrt : forall r1 r2,  r1 + - r2 = 0 -> r1 = r2.
 Proof.
   intros. apply Rplus_opp_r_uniq in H. apply Ropp_eq_compat in H. repeat rewrite Ropp_involutive in H. subst. reflexivity.
 Qed.
-  
+
 Lemma Rmult_inv_reg_r : forall r1 r2 r3, r2 <> 0 -> r1 = r3 * r2 -> r1 * / r2 = r3.
 Proof.
   intros. subst. apply Rinv_r_simpl_l. assumption.
@@ -955,7 +955,7 @@ Proof.
   compute.
   f_equal; ring.
 Qed.
-  
+
 Lemma orthogonal_projection_aux :
   forall ptA ptB ptS, ~R2.eq ptA ptB ->
                       exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA)).
@@ -970,9 +970,9 @@ Proof.
   set (yAB := yB + - yA).
   set (xSA := xA + - xS).
   set (ySA := yA + - yS).
-  
+
   exists ( - (xAB * xSA + yAB * ySA) * / (xAB * xAB + yAB * yAB) ).
-  
+
   rewrite Rmult_plus_distr_l.
   rewrite Rplus_assoc.
   apply Rplus_reg_l.
@@ -1057,12 +1057,12 @@ Proof.
     destruct A, B; compute; f_equal; ring.
     destruct K, A, H; compute; f_equal; ring.
   clear Hp.
-  
+
   assert (Kdef: K = (A + k * (B - A))%R2).
     rewrite <- Hcolinear.
     destruct K, A; compute; f_equal; ring.
   clear Hcolinear.
-  
+
   destruct (Rlt_le_dec k kh) as [Hlt | Hle].
   + left.
     rewrite R2.dist_sym.
@@ -1092,12 +1092,12 @@ Proof.
     left. apply Rle_lt_trans with (r2 := k). tauto.
     assumption.
     left. apply Rlt_Rminus. assumption.
-    
+
     destruct A, B; compute; f_equal; ring.
     destruct A, B; compute; f_equal; ring.
     destruct A, H, S; compute; f_equal; ring.
     destruct K, H, S; compute; f_equal; ring.
-    
+
   + right.
     rewrite R2.dist_sym.
     rewrite R2norm_dist.
@@ -1113,7 +1113,7 @@ Proof.
     unfold H.
     replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
     replace (B - (A + kh * (B - A)))%R2 with ((1 - kh) * (B - A))%R2.
-    
+
     apply squared_R2norm_le.
     repeat rewrite R2norm_mul.
     apply Rmult_le_compat_r.
@@ -1128,7 +1128,7 @@ Proof.
     apply Rge_minus.
     apply Rle_ge.
     assumption.
-    
+
     destruct A, B; compute; f_equal; ring.
     destruct A, B; compute; f_equal; ring.
     destruct B, H, S; compute; f_equal; ring.
@@ -1151,7 +1151,7 @@ Qed.
 Lemma R2plus_compat_eq_r :
   forall u v w, (u = v)%R2 -> (u + w = v + w)%R2.
 Proof. intros. subst. reflexivity. Qed.
-  
+
 Lemma distance_after_move
       (C P Q: R2.t) (kp kq dm: R)
       (HneqPC: ~R2.eq P C) (HneqQC: ~R2.eq Q C) (*(HneqPQ: ~R2.eq P Q)*)
@@ -1263,7 +1263,7 @@ Proof.
           left. assumption.
         * apply Rgt_not_eq. apply Rlt_gt. assumption.
   }
-    
+
   assert (HneqKQ'C: ~ R2.eq KQ' C).
   { unfold KQ'; unfoldR2.
     intro Heq.
@@ -1288,7 +1288,7 @@ Proof.
     unfoldR2.
     reflexivity.
   }
-    
+
   destruct (inner_segment KP HneqKQ'C Hseg).
   + apply Rle_trans with (r2 := R2.dist KP KQ'); assumption.
   + apply Rle_trans with (r2 := R2.dist KP C); [ assumption | ].
@@ -1317,7 +1317,7 @@ Proof.
   rewrite R2.add_comm. rewrite R2.add_origin. rewrite R2.opp_opp. reflexivity.
   rewrite R2.opp_origin. rewrite R2.add_origin. reflexivity.
   rewrite R2.opp_opp. reflexivity.
-Qed.  
+Qed.
 
 Lemma fold_add_ac :
   forall E (a b: R2.t),
@@ -1345,7 +1345,7 @@ Proof.
   + simpl. rewrite <- R2.add_assoc. rewrite (R2.add_comm y x). rewrite R2.add_assoc. reflexivity.
   + now rewrite IHHpermut1.
 Qed.
-    
+
 Definition barycenter (E: list R2.t) : R2.t :=
   /(INR (List.length E)) * (List.fold_left R2.add E R2.origin).
 
@@ -1359,7 +1359,7 @@ Axiom Barycenter_n_spec :
     barycenter E = B -> 
     forall p,
       sqr_dist_sum B E <= sqr_dist_sum p E.
-  
+
 Definition is_barycenter_n (E: list R2.t) (B: R2.t) : Prop :=
   forall p, sqr_dist_sum B E <= sqr_dist_sum p E.
 
@@ -1377,7 +1377,7 @@ Proof.
   intros k u v H.
   destruct u, v, H; compute; f_equal.
 Qed.
-  
+
 Lemma barycenter_compat : Proper (PermutationA R2.eq ==> R2.eq) barycenter.
 Proof.
   intros l1 l2 Hpermut.
@@ -1427,7 +1427,7 @@ Proof.
   intros E dm c Hnotempty Hdm Hc p Hp.
   assert (Hlength_pos: 0 < INR (List.length E)).
     apply lt_0_INR. destruct E. elim Hnotempty. reflexivity. simpl. omega.
-  
+
   rewrite R2norm_dist.
   subst.
   unfold barycenter.
@@ -1529,7 +1529,7 @@ Proof.
   elim (Rlt_irrefl _ Hlength_pos).
 
 Qed.
-  
+
 Lemma Lemme2:
   forall (E: list R2.t) (dm: R) (c: R2.t),
     E <> nil ->
@@ -1542,10 +1542,10 @@ Proof.
   intros q Hq.
   apply Hdm; assumption.
 Qed.
-  
+
+
 (** **  Triangles  **)
 
- 
 Inductive triangle_type :=
   | Equilateral
   | Isosceles (vertex : R2.t)
@@ -1801,9 +1801,9 @@ intros ptx pty Hdiff Hin.
 inversion_clear Hin; subst.
 * rewrite middle_eq in H. contradiction.
 * inversion_clear H.
-  -- rewrite middle_comm, middle_eq in H0.
-     symmetry in H0. contradiction.
-  -- inversion H0.
+  - rewrite middle_comm, middle_eq in H0.
+    symmetry in H0. contradiction.
+  - inversion H0.
 Qed.
 
 Lemma middle_spec : forall pt1 pt2, is_middle pt1 pt2 (R2.middle pt1 pt2).
