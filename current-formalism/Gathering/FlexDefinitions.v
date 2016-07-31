@@ -26,7 +26,7 @@ Set Implicit Arguments.
 
 Module FlexGatheringDefs(Loc : RealMetricSpace)(N : Size).
 
-(** The spectrum is a multiset of positions *)
+(** The spectrum is a set of positions *)
 Module Spect := SetSpectrum.Make(Loc)(N).
 
 (* Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]"). *)
