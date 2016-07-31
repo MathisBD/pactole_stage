@@ -8,6 +8,18 @@
 (**************************************************************************)
 
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
+
 Require Import Rbase R_sqrt Rbasic_fun.
 Require Import Psatz.
 Require Import RelationPairs.
@@ -2608,7 +2620,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
     ++ intro. do 2 subst. apply Hsmall. rewrite Exists_exists. exists pt2. repeat split.
        -- now right.
        -- clear -Hon1 Hnodup Hin2. unfold pt2. apply farthest_from_in_except_diff. intro Heq. subst.
-          rewrite <- Heq in Hon1 at 2. unfold c in Hon1. rewrite center_on_circle, SEC_zero_radius_incl_singleton in Hon1.
+          rewrite <- Heq in Hon1 at 2. (*unfold c in Hon1.*) rewrite center_on_circle, SEC_zero_radius_incl_singleton in Hon1.
           destruct Hon1 as [pt Hincl].
           assert (pt = pt1). { specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition. }
           assert (Hpt : pt = pt2). { specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition. }
