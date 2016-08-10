@@ -515,6 +515,8 @@ reflexivity.
 omega.
 Qed.
 
+Print Z.min.
+
 Lemma dist_pos : forall x y, (0 <= dist x y).
 Proof.
 intros.
@@ -533,51 +535,27 @@ rewrite Zmod_0_l.
 reflexivity.
 Qed.
 
-Lemma dist_defined : forall x y, dist x y= 0 <-> eq x y.
+Lemma dist_defined : forall x y, dist x y = 0 <-> eq x y.
 Proof.
 assert (Hpos_n : n > 0). { rewrite Z.gt_lt_iff. apply n_pos. }
 intros x y.
 unfold eq, dist, opp, add.
 do 2 rewrite Zplus_mod_idemp_l.
 unfold Z.min.
-destruct Z.compare.
-+ rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r.
-  simpl.
-  split.
- - rewrite <- Zplus_mod.
-   apply fast_Zplus_comm, dist_defined_0.
- - intros Heq.
-   rewrite <- Zplus_mod.
-   replace (-y+x) with (x - y) by omega.
-   apply dist_defined_1.
-   assumption. 
- - assumption.
- + rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r.
-   simpl.
-   split.
- - rewrite <- Zplus_mod.
-   apply fast_Zplus_comm, dist_defined_0.
- - intros H.
-   rewrite <- Zplus_mod.
-   replace (-y+x) with (x - y) by omega.
-   apply dist_defined_1.
-   assumption. 
- - assumption.
- + rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r.
-   simpl.
-   split.
- - rewrite <- Zplus_mod.
-   replace (-x+y) with (y - x) by omega.
-   intros.
-   symmetry.
-   apply dist_defined_0.
-   assumption.
- - intros H.
-   rewrite <- Zplus_mod.
-   replace (-x+y) with (y - x) by omega.
-   apply dist_defined_1.
-   symmetry; assumption.
- - assumption.
+destruct Z.compare;
+rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r;
+simpl;
+try assumption;
+split;
+rewrite <- Zplus_mod;
+try (apply fast_Zplus_comm, dist_defined_0);
+try (replace (-x+y) with (y - x) by omega);
+try (replace (-y+x) with (x - y) by omega);
+intro Heq.
+- now apply dist_defined_1.
+- now apply dist_defined_1.
+- symmetry; now apply dist_defined_0.
+- now apply dist_defined_1.
 Qed.
 
 Lemma dist_sym : forall x y, dist x y = dist y x.
