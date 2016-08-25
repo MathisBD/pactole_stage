@@ -27,7 +27,6 @@ Parameter kG : nat.
 Axiom kdn : kG mod n = 0.
 Axiom k_inf_n : kG < n.
 
-Check Configurations.Ring.
 
 Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
@@ -40,9 +39,8 @@ Module def : RingDef.
 End def.
 
 (** The setting is a ring. *)
-Declare Module Loc : RingSig (def).
+Module Loc : RingSig.
 
-Check (Configuration.Ring (def)). add.
 (** There are KG good robots and no byzantine ones. *)
 
 
