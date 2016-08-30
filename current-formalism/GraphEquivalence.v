@@ -630,7 +630,8 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
     assert (AGF.Spect.eq (AGF.Spect.from_config c) (DGF.Spect.from_config (ConfigA2D c))).
     unfold AGF.Spect.eq, View.eq.
     unfold ConfigA2D; simpl in *.
-    repeat try (split; simpl); now unfold AGF.Spect.from_config. now rewrite H.
+    repeat try (split; simpl); now unfold AGF.Spect.from_config.
+    now rewrite H.
  - simpl in *; assumption.
 Save.
 
@@ -640,10 +641,6 @@ DGF.Config.eq c' (DGF.round rbg da c) ->
 exists da', AGF.Config.eq (ConfigD2A c') (AGF.round (rbgD2A rbg) da' (ConfigD2A c)).
 Proof.
 intros c c' rbg da Hri HDGF. exists (daD2A da c). intro id.
-(* assert (Hax1 := DGF.ri_Loc (c id)).
-destruct Hax1 as (lax1, (lax2, ((Hax_src, Hax_tgt), (eD, HeD)))).
-assert (Hax2 := DGF.ri_Loc (c' id)).
-destruct Hax2 as (lax1', (lax2', ((Hax_src', Hax_tgt'), (eD',HeD')))). *)
 assert (Heq_rcD: DGF.Config.eq_RobotConf (c id) ({|
              DGF.Config.loc := DGF.Config.loc (c id);
              DGF.Config.robot_info := {|
@@ -665,2107 +662,446 @@ destruct (DGF.step da id
                      DGF.Config.source := DGF.Config.source (DGF.Config.robot_info (c id));
                      DGF.Config.target := DGF.Config.target (DGF.Config.robot_info (c id)) |} |})
 eqn : HstepD'; try (now exfalso);
-unfold AGF.round, DGF.round in *; specialize (HDGF id); destruct (HDGF) as (Hloc, (Hsrc, Htgt));
+unfold AGF.round, DGF.round in *; specialize (HDGF id);
 unfold DGF.loc_eq in *;
 destruct (DGF.step da id (c id)) eqn : HstepD,
 (AGF.step (daD2A da c) id (ConfigD2A c id)) eqn : HstepA, id as [g|b]; try (now exfalso);
 unfold daD2A in *; simpl in *;
 unfold rcA2D, ConfigD2A, LocD2A in *;
-repeat try (split; simpl).
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct dist1 eqn : Hbool.
-  - destruct (DGF.Config.loc (c (Good g))) eqn : HlocD; simpl in *;
-    rewrite <- HlocD in *;
-    destruct (DGF.Config.loc (c' (Good g))) eqn : HlocD';
-    destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) eqn : HtgtD; try discriminate;
-    destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) eqn : HtgtD'; try discriminate;
-    destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) eqn : HsrcD; try discriminate;
-    destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) eqn : HsrcD'; try discriminate;
+repeat try (split; simpl);
+try (destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e)));
+  unfold DGF.ri_loc_def in *;
+  specialize (Hrid g);
+  destruct Hrid as (v1, (v2, (Hv1, Hv2)));
+  destruct (DGF.Config.loc (c (Good g))) as [lld| eld pld] eqn : HlocD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lsd | esd psd] eqn : HsrcD;
+  try discriminate; try (now exfalso));
+try destruct (DGF.Config.loc (c (Byz b))) as [lld| eld pld] eqn : HlocD;
+simpl in *; try (rewrite <- HlocD in *);
+try discriminate; rewrite HstepD in *;
+destruct HDGF as (Hloc, (Hsrc, Htgt));
+try (now (destruct (AGF.Config.eq_Robotconf_dec _); try discriminate;
+  destruct (find_edge _ _) as [etmp|]; try discriminate;
+  destruct (Rle_dec dist0 (threshold etmp)); discriminate));
+try (now (destruct (AGF.Config.eq_Robotconf_dec _); try discriminate;
+  destruct (Rle_dec (DGF.project_p pld) (threshold eld)); try discriminate;
+  destruct (Rle_dec (dist0 + DGF.project_p pld) (threshold eld)); discriminate));
+try (now (destruct (AGF.Config.eq_Robotconf_dec _); try discriminate;
+  destruct (find_edge lsd ltd) as [etmp|]; try discriminate;
+  destruct (Rle_dec dist0 (threshold etmp)); discriminate));
+try ( now (destruct dist eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
+  try (now simpl in *);
+  try (now (destruct (AGF.Config.eq_Robotconf_dec _);
+  try discriminate;
+  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl))));
+try (now (try (now simpl in *);
+  destruct dist eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (AGF.Config.eq_Robotconf_dec _);
+  try discriminate;
+  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; try now simpl)).
++ destruct dist1 eqn : Hbool.
+  - destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+    destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+    destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+    try discriminate;
     try (now simpl in *);
-    try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-    destruct (Veq_dec l l1); try (now (simpl in *; rewrite HtgtD in *))));
-    try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-    destruct (Veq_dec l l1); try (now (simpl in *; rewrite HsrcD in *))));
-    try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Veq_dec l l1); try (now (simpl in *; rewrite HlocD in *)))).
+    try (now (destruct (Rdec dist0 0); try (now (simpl in *; 
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in * ));
+    destruct (Rdec dist0 1); try (now (simpl in *;
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in *));
+    destruct (Veq_dec lld ltd); try (now (simpl in *;
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in *))));
     destruct (AGF.Config.eq_Robotconf_dec
              {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l3; AGF.Config.target := l1 |} |}
-             (rcD2A (c (Good g)))). Focus 2. unfold AGF.Config.eq_RobotConf, LocD2A in *; simpl in n.
-             destruct n. unfold LocD2A. rewrite HlocD, HtgtD, HsrcD. now repeat (split).
-    rewrite HstepD in HstepA.
-    * destruct (Rdec dist0 0) eqn : Hdist. try rewrite HlocD, HsrcD, HtgtD in *;
-      destruct (find_edge l3 l1) eqn : Hedge1.
+             AGF.Config.loc := lld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g)))); try discriminate.
+    * simpl in *.
+      destruct (Rdec dist0 0) eqn : Hdist.
+      try rewrite HlocD, HsrcD, HtgtD in *.
+      destruct (find_edge lsd ltd) eqn : Hedge1.
       ** destruct (Rle_dec (dist0) (threshold e1)); try discriminate; simpl in *.
          rewrite <- HstepD_compat in *.
          intuition.
          assert (Hfalse := threshold_pos e1); lra.
-      ** assert (Hfalse : AGF.Aom_eq (AGF.Moving false) (AGF.Moving true)).
-         now rewrite HstepA. now unfold AGF.Aom_eq in *.
+      ** discriminate.
       ** destruct (Rdec dist0 1); simpl in *; try assumption.
-         destruct (Veq_dec l l1) eqn : Heql.
-          ++ rewrite HlocD in *; now rewrite Hloc.
+         destruct (Veq_dec lld ltd) eqn : Heql.
+          ++ rewrite HlocD in *. now rewrite Hloc.
           ++ simpl in *; now exfalso.
-   * try ((destruct (Rdec dist0 0); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Veq_dec l l0); try (now (simpl in *; rewrite HlocD in *)))).
-    simpl in *.
-    destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-     rewrite HstepD in HstepA.
-     destruct (find_edge l2 l0) eqn : Hedge0; try discriminate.
-     destruct (Rle_dec dist0 (threshold e1)); try discriminate.
-     destruct (find_edge l l0)eqn : HedgeA.
-     destruct Hloc as (Heeq, Hpeq).
-     symmetry in Hpeq.
-     rewrite <- (DGF.subj_proj dist0 p) in Hpeq.
-     assert (opt_eq Eeq (find_edge l2 l0) (find_edge l l0)).
-     apply find_edge_compat; try now simpl in *.
-     specialize (Hli l (reflexivity l));
-     destruct Hli as [Hsi | Hti]; try contradiction.
-     assumption. now symmetry in Hti.
-     rewrite Hedge0, HedgeA in H. simpl in H. rewrite <- Heeq in H. rewrite H in n2.
-     rewrite <-Hpeq. destruct (Rle_dec dist0 (threshold e)); try lra.
-     rewrite Heeq.
-     assert (Hedge : opt_eq Eeq (find_edge l l0) (Some e2)) by now rewrite HedgeA.
-     apply find2st in Hedge.
-     symmetry; now destruct Hedge.
-     assert (Hg := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD); lra.
-     specialize (Hli l (reflexivity l));
-     destruct Hli as [Hsi | Hti]; try (now symmetry in Hti).
-     assert (Hfalse : opt_eq Eeq (find_edge l2 l0) (find_edge l l0)) by now apply find_edge_compat.
-     now rewrite HedgeA, Hedge0 in Hfalse.
-   * try ((destruct (Rdec dist0 0); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Veq_dec l l0); try (now (simpl in *; rewrite HlocD in *)))).
-    simpl in *.
-    destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-     rewrite HstepD in HstepA.
-     destruct (find_edge l2 l0) eqn : Hedge0; try discriminate.
-     destruct (Rle_dec dist0 (threshold e2)); try discriminate.
-     destruct (find_edge l l0)eqn : HedgeA.
-     destruct Hloc as (Heeq, Hpeq).
-     symmetry in Hpeq.
-     rewrite <- (DGF.subj_proj dist0 p) in Hpeq.
-     assert (opt_eq Eeq (find_edge l2 l0) (find_edge l l0)).
-     apply find_edge_compat; try now simpl in *.
-     specialize (Hli l (reflexivity l));
-     destruct Hli as [Hsi | Hti]; try contradiction.
-     assumption. now symmetry in Hti.
-     rewrite Hedge0, HedgeA in H. simpl in H. rewrite <- Heeq in H. rewrite H in n2.
-     rewrite <-Hpeq. destruct (Rle_dec dist0 (threshold e)); try lra.
-     rewrite Heeq.
-     assert (Hedge : opt_eq Eeq (find_edge l l0) (Some e3)) by now rewrite HedgeA.
-     apply find2st in Hedge.
-     symmetry; now destruct Hedge.
-     assert (Hg := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD); lra.
-     specialize (Hli l (reflexivity l));
-     destruct Hli as [Hsi | Hti]; try (now symmetry in Hti).
-     assert (Hfalse : opt_eq Eeq (find_edge l2 l0) (find_edge l l0)) by now apply find_edge_compat.
-     now rewrite HedgeA, Hedge0 in Hfalse.
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HtgtD in *)).
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HsrcD in *)).
-   * destruct(Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-     assert (Hmi_aux : Eeq e e /\ p=p) by (split; reflexivity);
-     specialize (Hmi v1 v2 e p Hv1 Hv2 Hmi_aux);
-     apply find2st in Hmi. rewrite Hv2, Hloc; now destruct Hmi.
-     destruct (Rdec dist0 0); try (now simpl in *). 
-     now rewrite HlocD in Hloc.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-     now rewrite HsrcD in *.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-     now rewrite HtgtD in *.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-     now rewrite HsrcD in *.
-   * destruct (Rle_dec (DGF.project_p p) (threshold e)); rewrite HstepD in HstepA.
-     destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src e;
-             AGF.Config.robot_info := {| AGF.Config.source := l1; AGF.Config.target := l |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-     destruct (Rle_dec (dist0 + DGF.project_p p) (threshold e)); try discriminate.
-     destruct (Rle_dec 1 (DGF.project_p p + dist0)); try now simpl in *.
+   * simpl in *; try ((destruct (Rdec dist0 0); try (now (simpl in *; rewrite HlocD in *));
+     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HlocD in *));
+     destruct (Veq_dec lld ltd); try (now (simpl in *; rewrite HlocD in *)))).
+     destruct (find_edge lsd ltd) eqn : Hedge0; try discriminate.
+     destruct (Rle_dec dist0 (threshold e0)); try discriminate.
+     destruct (find_edge lld ltd)eqn : HedgeA;
      simpl in *.
-     destruct (Rdec dist0 0); rewrite HlocD in *;
-     destruct (Rle_dec (DGF.project_p p0) (threshold e0));
-     try lra.
-     destruct Hloc.
-     rewrite H0, H in r0.
-     rewrite <- (DGF.inv_pro) in r0.
-     lra.
-     assert (Hpro := DGF.project_p_image p);
-     assert (Hdi := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD). lra.
-     assert (Hmi_aux : Eeq e e ∧ p = p) by now split. 
-     specialize (Hmi v1 v2 e p Hv1 Hv2 Hmi_aux).
-     destruct Hloc.
-     symmetry in H.
-     assert (Hf : opt_eq Eeq (Some e) (Some e0)) by now apply H.
-     rewrite Hf in Hmi.
-     apply find2st in Hmi; symmetry; now rewrite Hv2.
-     destruct (AGF.Config.eq_Robotconf_dec
+     ** destruct (Rle_dec (DGF.project_p pld') (threshold eld')).
+        destruct Hloc as (Heeq, Hpeq).
+        symmetry in Hpeq.
+        rewrite <- (DGF.subj_proj dist0 pld') in Hpeq.
+        rewrite Hpeq in n2.
+        assert (opt_eq Eeq (find_edge lld ltd) (find_edge lsd ltd)).
+        apply find_edge_compat; try now simpl in *.
+        specialize (Hli lld (reflexivity lld));
+        destruct Hli as [Hsi | Hti]; try contradiction.
+        now symmetry.
+        now symmetry in Hti.
+        rewrite Hedge0, HedgeA in H.
+        simpl in H.
+        rewrite <- Heeq in H.
+        rewrite <- H in n2.
+        lra.
+        assert (Hg := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD); lra.
+        specialize (Hli lld (reflexivity lld));
+        destruct Hli as [Hsi | Hti]; try (now symmetry in Hti).
+        rewrite HtgtD in *.
+        destruct Hloc as (Heq_e, Heq_p).
+        assert (Hsol : opt_eq Eeq (find_edge lld ltd) (Some eld')) by now rewrite HedgeA.
+        apply find2st in Hsol.
+        symmetry; now destruct Hsol.
+     ** specialize (Hli lld (reflexivity lld)).
+        destruct Hli as [Hsi | Hti]; try now symmetry in Hti.
+        specialize (Hex_e lld ltd Hsi (reflexivity ltd)).
+        destruct Hex_e as (ex_e, Hex_e).
+        rewrite HedgeA in Hex_e.
+        contradiction.
+  - simpl in *.
+    destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+    destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+    destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+    try discriminate;
+    try (now simpl in *); rewrite HlocD in *;
+    try ((destruct (Rdec dist0 0); try (now (simpl in *; 
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in * ));
+    destruct (Rdec dist0 1); try (now (simpl in *;
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in *));
+    destruct (Veq_dec lld ltd); try (now (simpl in *;
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in *))));
+    simpl in *;
+    try (destruct (AGF.Config.eq_Robotconf_dec
              {|
-             AGF.Config.loc := tgt e;
-             AGF.Config.robot_info := {| AGF.Config.source := l1; AGF.Config.target := l |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-   * destruct (Rle_dec (DGF.project_p p) (threshold e)); rewrite HstepD in HstepA.
-     destruct (AGF.Config.eq_Robotconf_dec
+             AGF.Config.loc := lld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g)))) as [e_AGF | n_AGF];
+    try (destruct (find_edge lsd ltd) as [e_st| ]eqn : Hedge0;
+    try (destruct (Rle_dec dist0 (threshold e_st));
+    try (assert (Hfalse := threshold_pos e_st); lra);
+    try (discriminate));
+    try (destruct (Hex_e lsd ltd (reflexivity lsd) (reflexivity ltd)) as (e_ex, He_ex);
+    rewrite Hedge0 in He_ex; contradiction));
+    try (destruct n_AGF;
+    unfold rcD2A, LocD2A;
+    repeat (split; simpl in * );
+    try (now rewrite HlocD);
+    try (now rewrite HsrcD);
+    try now rewrite HtgtD)).
+    destruct (Veq_dec lld ltd);
+    simpl in *. contradiction.
+    destruct Hloc as (Heeq, Hpeq).
+    destruct (find_edge lld ltd) eqn : Hedge. 
+    destruct (Rle_dec (DGF.project_p pld') (threshold eld')).
+    destruct (Hli lld (reflexivity lld)) as [Hsi| Hti]; try now symmetry in Hti.
+    assert (Hsol : opt_eq Eeq (find_edge lld ltd) (Some eld')) by now rewrite Hedge.
+    apply find2st in Hsol.
+    symmetry; now destruct Hsol.
+    symmetry in Hpeq.
+    rewrite <- (DGF.subj_proj dist0 pld') in Hpeq.
+    rewrite Hpeq in r.
+    assert (Hsol : opt_eq Eeq (Some eld') (Some e_st)).
+    assert (Htriv : opt_eq Eeq (Some e) (Some eld')) by now simpl in *.
+    rewrite <- Htriv, <- Hedge, <- Hedge0.
+    apply find_edge_compat.
+    destruct (Hli lld (reflexivity lld)) as [Hsi| Hti]; try now symmetry in Hti.
+    now symmetry.
+    reflexivity.
+    simpl in *.
+    rewrite Hsol in n3.
+    lra.
+    assert (Hf := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
+    lra.
+    destruct (Hli lld (reflexivity lld)) as [Hsi| Hti]; try now symmetry in Hti.
+    destruct (Hex_e lld ltd Hsi (reflexivity ltd)) as (e_ex, He_ex).
+    rewrite Hedge in He_ex. contradiction.
++ destruct (Rle_dec 1 (DGF.project_p pld + dist0)) eqn : Hdp;
+  simpl in *;
+  assert (Hmi_aux : Eeq eld eld /\ pld = pld) by (split; reflexivity);
+  assert (Hmi_0 := (Hmi lsd ltd eld pld (reflexivity lsd) (reflexivity ltd) Hmi_aux));
+  apply find2st in Hmi_0;
+  destruct Hmi_0 as (Hmi_s, Hmi_t);
+  destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  try discriminate;
+  try (now simpl in *);
+  try (now (destruct (Rdec dist0 0); try (now (simpl in *; 
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in * ));
+    destruct (Rdec dist0 1); try (now (simpl in *;
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in *));
+    destruct (Veq_dec lld ltd); try (now (simpl in *;
+    try rewrite HlocD in * ; try rewrite HsrcD in *; try rewrite HtgtD in *)))); simpl in *.
+  - now rewrite <- Hmi_t in Hloc.
+  -  destruct (Rle_dec (DGF.project_p pld) (threshold eld)) eqn : Hpt.
+    * destruct(
+           AGF.Config.eq_Robotconf_dec
              {|
-             AGF.Config.loc := src e;
-             AGF.Config.robot_info := {| AGF.Config.source := l1; AGF.Config.target := l |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-     destruct (Rle_dec (dist0 + DGF.project_p p) (threshold e)); try discriminate.
-     destruct (Rle_dec 1 (DGF.project_p p + dist0)); try now simpl in *.
-     simpl in *.
-     destruct (Rdec dist0 0); rewrite HlocD in *;
-     destruct (Rle_dec (DGF.project_p p0) (threshold e0));
-     try lra.
-     destruct Hloc.
-     rewrite H0, H in r0.
-     rewrite <- (DGF.inv_pro) in r0.
-     lra.
-     assert (Hpro := DGF.project_p_image p);
-     assert (Hdi := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD). lra.
-     assert (Hmi_aux : Eeq e e ∧ p = p) by now split. 
-     specialize (Hmi v1 v2 e p Hv1 Hv2 Hmi_aux).
-     destruct Hloc.
-     symmetry in H.
-     assert (Hf : opt_eq Eeq (Some e) (Some e0)) by now apply H.
-     rewrite Hf in Hmi.
-     apply find2st in Hmi; symmetry; now rewrite Hv2.
-     destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt e;
-             AGF.Config.robot_info := {| AGF.Config.source := l1; AGF.Config.target := l |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-  * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-     now rewrite HtgtD in *.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-     now rewrite HtgtD in *.
- - simpl in *. destruct (DGF.Config.loc (c (Good g))) eqn : HlocD;
-    destruct (DGF.Config.loc (c' (Good g))) eqn : HlocD'; simpl in *;
-    rewrite <- HlocD in *;
-    destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) eqn : HtgtD; try discriminate;
-    destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) eqn : HtgtD'; try discriminate;
-    destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) eqn : HsrcD; try discriminate;
-    destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) eqn : HsrcD'; try discriminate;
-    rewrite <- HtgtD, <- HsrcD in *; try rewrite HsrcD, HtgtD in *; try now simpl in *;
-    rewrite HstepD in *.
-    try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-    destruct (Veq_dec l l1); try (now (simpl in *; rewrite HtgtD in *))));
-    try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-    destruct (Veq_dec l l1); try (now (simpl in *; rewrite HsrcD in *))));
-    try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Rdec dist0 1); try (now (simpl in *; rewrite HlocD in *));
-    destruct (Veq_dec l l1); try (now (simpl in *; rewrite HlocD in *)))).
-    destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l3; AGF.Config.target := l1 |} |}
-             (rcD2A (c (Good g)))). Focus 2. unfold AGF.Config.eq_RobotConf, LocD2A in *; simpl in n.
-             destruct n. unfold LocD2A. rewrite HlocD, HtgtD, HsrcD. now repeat (split).
-    rewrite HstepD in HstepA.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l3; AGF.Config.target := l1 |} |}
-             (rcD2A (c (Good g)))). Focus 2. unfold AGF.Config.eq_RobotConf, LocD2A in *; simpl in n.
-             destruct n. unfold LocD2A. rewrite HlocD, HtgtD, HsrcD. now repeat (split).
-      destruct (Rdec dist0 0).
-      ** now rewrite HlocD in *.
-      ** destruct (Rdec dist0 1).
-         ++ simpl in *. rewrite HtgtD, HlocD, HsrcD in *.
-            destruct (find_edge l3 l1) eqn : Hf.
-            rewrite HstepD_compat in HstepA.
-            destruct (Rle_dec dist (threshold e2)).
-            assert (Hfalse := threshold_pos e2).
-            lra.
-            discriminate.
-            specialize (Hex_e l3 l1 (reflexivity l3) (reflexivity l1)).
-            destruct Hex_e as (efalse, Hfalse).
-            now rewrite Hf in Hfalse.
-         ++ destruct (Veq_dec l l1). now rewrite HlocD in Hloc.
-            simpl in *. now exfalso.
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Veq_dec l l1); try (now (simpl in *; rewrite HsrcD in *)).
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l1); try (now (simpl in *; rewrite HtgtD in *)).
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l1); try (now (simpl in *; rewrite HtgtD in *)).
-   *  destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
+             AGF.Config.loc := src eld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
              (rcD2A (c (Good g)))).
-     rewrite HstepD in *.
-     destruct (Rdec dist0 0).
-      ** now rewrite HlocD in *.
-      ** destruct (Rdec dist0 1).
-         ++ simpl in *. now rewrite HtgtD, HlocD, HsrcD in *.
-         ++ destruct (Veq_dec l l0). now rewrite HlocD in *.
-            simpl in *. destruct Hloc as (Heq_e, Heq_p).
-            rewrite HlocD, HtgtD, HsrcD in *;
-            symmetry in Heq_p;
-            rewrite <- DGF.subj_proj in Heq_p;
-            rewrite HstepD_compat, Heq_p in *.
-            assert (opt_eq Eeq (find_edge l2 l0) (find_edge l3 l1)).
-            now apply find_edge_compat.
-            unfold DGF.Location.eq ,DGF.loc_eq in *.
-            specialize (Hex_e l2 l0 (reflexivity l2) (reflexivity l0)).
-            destruct (find_edge l2 l0) eqn : He'; try discriminate.
-            destruct (Hli l (reflexivity l)) as [Hsi | Hti]; try (now symmetry in Hti).
-            destruct (find_edge l l0) eqn : He3.
-            assert (Hhelp : opt_eq Eeq (find_edge l l0) (Some e2)) by (now rewrite He3);
-            rewrite <- Hsi in Hhelp. rewrite He' in Hhelp.
-            simpl in *.
-            assert (threshold e = threshold e1).
-            apply threshold_compat.
-            now rewrite Hhelp.
-            rewrite H0.
-            destruct (Rle_dec (DGF.project_p p) (threshold e1)); try discriminate.
-            assert (Hhelp' : opt_eq Eeq (find_edge l l0) (Some e2)) by now rewrite He3.
-            apply find2st in Hhelp'. destruct Hhelp' as (Hfs, Hft).
-            now rewrite Heq_e.
-            assert (Hhelp : opt_eq Eeq (find_edge l2 l0) (Some e1)) by now rewrite He'.
-            now rewrite Hsi, He3 in Hhelp.
-            now destruct Hex_e.
-            assert (Hfl := DGF.step_flexibility da (Good g) (c (Good g)) dist HstepD);
-            lra.
-         ** destruct n. unfold rcD2A, LocD2A; now rewrite HlocD, HsrcD, HtgtD.
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HsrcD in *)).
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HtgtD in *)).
-   * try destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HtgtD in *)).
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)) eqn : Hpd; simpl in *;
-     rewrite HlocD, HtgtD, HsrcD, HstepD in *; try (now exfalso).
-     destruct (Rle_dec (DGF.project_p p) (threshold e)).
-     simpl in *.
-     destruct (AGF.Config.eq_Robotconf_dec
+      destruct (Rle_dec (dist0 + DGF.project_p pld) (threshold eld)).
+      assert (Hfalse := threshold_pos eld).
+      lra.
+      discriminate.
+      destruct n.
+      unfold rcD2A, LocD2A; repeat (split; simpl in * ).
+      now rewrite HlocD, Hpt.
+      now rewrite HsrcD.
+      now rewrite HtgtD.
+    * assumption.
+  - destruct(Rle_dec (DGF.project_p pld') (threshold eld')).
+    * destruct(Rdec dist0 0); rewrite HlocD in *.
+      ** destruct (Rle_dec (DGF.project_p pld) (threshold eld)) eqn : Hpt.
+         -- destruct(
+            AGF.Config.eq_Robotconf_dec
              {|
-             AGF.Config.loc := src e;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-             (rcD2A (c (Good g))))
-             .
-     destruct (Rle_dec (dist0 + DGF.project_p p) (threshold e)).
-     assert (Hfalse := threshold_pos e). lra. discriminate.
-     destruct n.
-     unfold rcD2A, LocD2A. simpl in *. repeat split.
-     rewrite HlocD; simpl in *.
-     destruct (Rle_dec(DGF.project_p p) (threshold e)); try lra.
-     reflexivity.
-     simpl in *. rewrite HsrcD. reflexivity.
-     simpl in *. rewrite HtgtD. reflexivity.
-     assumption.
-     now destruct (Rdec dist0 0).
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; now rewrite HsrcD in Hsrc.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; now rewrite HtgtD in Htgt.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; now rewrite HtgtD in Htgt.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *. now exfalso.
-     destruct (Rdec dist0 0).
-     rewrite HlocD in *. destruct Hloc as (He_eq, Hp_eq).
-     assert (Hte : threshold e = threshold e0) by (now apply threshold_compat).
-     rewrite <- Hte, Hp_eq.
-     destruct (Rle_dec (DGF.project_p p) (threshold e)).
-     now apply src_compat. now apply tgt_compat.
-     rewrite HstepD in *.
-     destruct Hloc as (He_eq,Hp_eq). rewrite HsrcD, HtgtD in *. rewrite Hp_eq;
-    assert (Hte : threshold e = threshold e0) by (now apply threshold_compat);
-    rewrite <- Hte;
-     destruct (Rle_dec (DGF.project_p p) (threshold e));
-    destruct (Rle_dec (dist0 + DGF.project_p p) (threshold e));
-    destruct (AGF.Config.eq_Robotconf_dec
-            {|
-            AGF.Config.loc := src e;
-            AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-            (rcD2A (c (Good g))));
-    destruct (AGF.Config.eq_Robotconf_dec
-            {|
-            AGF.Config.loc := tgt e;
-            AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-            (rcD2A (c (Good g))));
-    try (now exfalso); try (
-    assert (Hfalse := threshold_pos e); lra); try assumption;
-    try (now apply src_compat); try (now apply tgt_compat);
-    rewrite <- DGF.inv_pro; try (assert (0 < DGF.project_p p + dist0 < 1)%R;
-    assert (Hde := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD);
-    assert (Hpp := DGF.project_p_image p); lra);
-    destruct (Rle_dec (DGF.project_p p + dist0)); try lra;
-    try (now apply src_compat); try (now apply tgt_compat).
-    rewrite <- e1 in e2. destruct e2 as (Hle, _); simpl in *.
-    assert (Hfalse := NoAutoLoop e); now symmetry in Hle.
-    destruct (AGF.Config.eq_Robotconf_dec
+             AGF.Config.loc := src eld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g)))).
+            ++ destruct (Rle_dec (dist0 + DGF.project_p pld) (threshold eld)).
+               discriminate.
+               lra.
+            ++ discriminate.
+         -- destruct (AGF.Config.eq_Robotconf_dec
              {|
-             AGF.Config.loc := src e;
-             AGF.Config.robot_info := {| AGF.Config.source := l1; AGF.Config.target := l |} |}
-             (rcD2A (c (Good g)))); try discriminate.
-    destruct n4; rewrite <- e1; try (split; now simpl).
-    unfold rcD2A, LocD2A in e1. 
-    rewrite HtgtD, HsrcD, HlocD in *. destruct e1 as (Hle,_). simpl in *.
-    destruct (Rle_dec (DGF.project_p p) (threshold e)) ; try lra.
-    assert (Hfalse := NoAutoLoop e); now symmetry in Hle.
-    destruct n2. unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try (split; simpl);
-    try assumption. now destruct (Rle_dec (DGF.project_p p) (threshold e)).
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; now rewrite HsrcD in Hsrc.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; now rewrite HtgtD in Htgt.
-   * destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *; now rewrite HtgtD in Htgt.
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct dist1 eqn : Hbool;
-  destruct (DGF.Config.loc (c (Good g))) eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) eqn : HtgtD; try discriminate;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) eqn : HtgtD'; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) eqn : HsrcD; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) eqn : HsrcD'; try discriminate;
+             AGF.Config.loc := tgt eld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g))));
+            discriminate.
+      ** destruct (Rle_dec (DGF.project_p pld) (threshold eld)).
+         -- destruct(AGF.Config.eq_Robotconf_dec
+             {|
+             AGF.Config.loc := src eld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g)))).
+            ++ destruct(Rle_dec (dist0 + DGF.project_p pld) (threshold eld)).
+               discriminate.
+               destruct Hloc as (Heeq, Hpeq).
+               symmetry in Hpeq.
+               rewrite <- (DGF.subj_proj (DGF.project_p pld + dist0) pld') in Hpeq.
+               rewrite <- Hpeq in r.
+               assert (Htre : threshold eld = threshold eld').
+               apply threshold_compat.
+               now symmetry.
+               rewrite <- Htre in r.
+               lra.
+               assert (Hsol := threshold_pos eld).
+               lra.
+            ++ discriminate.
+         -- destruct (AGF.Config.eq_Robotconf_dec
+             {|
+             AGF.Config.loc := tgt eld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g))));
+            discriminate.
+    * destruct(Rdec dist0 0);
+      rewrite HlocD in *;
+      destruct Hloc as (Heeq, Hpeq);
+      rewrite Heeq;
+      now symmetry.
+  - destruct (Rdec dist0 0);
+    rewrite HlocD in *;
+    assert (Htr : threshold eld = threshold eld') by (now apply threshold_compat);
+    destruct Hloc as (Heeq, Hpeq);
+    rewrite Htr, Hpeq in *;
+    destruct (Rle_dec (DGF.project_p pld) (threshold eld')) eqn : Hpt'.
+    * now apply src_compat.
+    * now apply tgt_compat.
+    * assert (Hfalse : (DGF.project_p pld < DGF.project_p pld + dist0)%R).
+      assert (Hf_aux := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
+      lra.
+      assert (Hl := DGF.project_p_image pld).
+      rewrite <- (DGF.inv_pro (DGF.project_p pld + dist0)) in *.
+      destruct (Rle_dec (DGF.project_p pld + dist0) (threshold eld')).
+      ** now apply src_compat.
+      ** destruct(AGF.Config.eq_Robotconf_dec
+             {|
+             AGF.Config.loc := src eld;
+             AGF.Config.robot_info := {| AGF.Config.source := lsd; AGF.Config.target := ltd |} |}
+             (rcD2A (c (Good g)))).
+         -- destruct (Rle_dec (dist0 + DGF.project_p pld) (threshold eld')); try lra.
+            discriminate.
+         -- destruct n2.
+            unfold rcD2A, LocD2A; repeat (split;simpl in *).
+            ++ now rewrite HlocD, Htr, Hpt'.
+            ++ now rewrite HsrcD.
+            ++ now rewrite HtgtD.
+      ** lra.
+    * assert (Hfalse : (DGF.project_p pld < DGF.project_p pld + dist0)%R).
+      assert (Hf_aux := DGF.step_flexibility da (Good g) (c (Good g)) dist0 HstepD).
+      lra.
+      assert (Hl := DGF.project_p_image pld).
+      rewrite <- (DGF.inv_pro (DGF.project_p pld + dist0)) in *.
+      destruct (Rle_dec (DGF.project_p pld + dist0) (threshold eld')).
+      ** lra.
+      ** now apply tgt_compat.
+      ** lra.
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  try discriminate;
+  simpl in *;
   try (destruct (Rdec dist0 0); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
       destruct (Rdec dist0 1); try (simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      destruct (Veq_dec l l1); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      simpl in *;  now simpl in *);
-  try (destruct (Rdec dist0 0); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      destruct (Rdec dist0 1); try (simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      destruct (Veq_dec l l0); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-  try (destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
+      destruct (Veq_dec lld ltd); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
+      simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *).
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  try discriminate;
+  simpl in *;
+  try (destruct (Rle_dec 1 (DGF.project_p pld + dist0)); simpl in *;
       rewrite HlocD, HsrcD, HtgtD in *; now simpl in *); try now simpl in *.
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct dist1 eqn : Hbool;
-  destruct (DGF.Config.loc (c (Good g))) eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) eqn : HtgtD; try discriminate;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) eqn : HtgtD'; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) eqn : HsrcD; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) eqn : HsrcD'; try discriminate;
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  try discriminate;
+  simpl in *;
   try (destruct (Rdec dist0 0); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
       destruct (Rdec dist0 1); try (simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      destruct (Veq_dec l l1); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      simpl in *;  now simpl in *);
-  try (destruct (Rdec dist0 0); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      destruct (Rdec dist0 1); try (simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      destruct (Veq_dec l l0); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-      simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
-  try (destruct (Rle_dec 1 (DGF.project_p p + dist0)); simpl in *;
-      rewrite HlocD, HsrcD, HtgtD in *; now simpl in *); try now simpl in *. 
+      destruct (Veq_dec lld ltd); try (rewrite HlocD, HsrcD, HtgtD in *; now simpl in *);
+      simpl in *; rewrite HlocD, HsrcD, HtgtD in *; now simpl in *).
 + destruct dist1 eqn : Hbool;
-  destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) eqn : HtgtD; try discriminate;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) eqn : HtgtD'; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) eqn : HsrcD; try discriminate;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) eqn : HsrcD'; try discriminate;
-  try rewrite HlocD in *;
-  try (assumption); try (now exfalso);
-  destruct Hloc as (He, Hp); rewrite Hp;
-  assert (Hth : threshold e = threshold e0) by (now apply threshold_compat);
-  rewrite Hth; destruct (Rle_dec (DGF.project_p p) (threshold e0));
+  destruct (DGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  try discriminate;
+  simpl in *;
+  try (destruct (Rle_dec 1 (DGF.project_p pld + dist0)); simpl in *;
+      rewrite HlocD, HsrcD, HtgtD in *; now simpl in *); try now simpl in *.
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
+  try (now exfalso);
+  rewrite HlocD in *;
+  try now simpl in *.
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
+  try (now exfalso);
+  rewrite HlocD in *;
+  try (now simpl in *);
+  destruct Hloc as (Hle, Hlp);
+  assert (Htt : threshold eld = threshold eld') by (now apply threshold_compat);
+  rewrite Htt, Hlp;
+  destruct (Rle_dec (DGF.project_p pld) (threshold eld'));
   try (now apply src_compat); try (now apply tgt_compat).
 + destruct dist1 eqn : Hbool;
-  destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
-  try (now simpl in *); try (now exfalso); destruct Hsrc as (Hse, Hsp);
-  assert (Hts : threshold ebs = threshold ebs') by (now apply threshold_compat); rewrite Hts, Hsp;
-  destruct (Rle_dec (DGF.project_p pbs) (threshold ebs'));
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
+  try (now exfalso);
+  rewrite HlocD in *;
+  try (now simpl in *);
+  destruct Hsrc as (Hse, Hsp);
+  assert (Htt : threshold esd = threshold esd') by (now apply threshold_compat);
+  rewrite Htt, Hsp;
+  destruct (Rle_dec (DGF.project_p psd) (threshold esd'));
   try (now apply src_compat); try (now apply tgt_compat).
 + destruct dist1 eqn : Hbool;
-  destruct (DGF.Config.loc (c (Byz b))) eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Byz b))) eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
-  try (now simpl in *); try (now exfalso); destruct Htgt as (Hte, Htp);
-  assert (Htt : threshold ebt = threshold ebt') by (now apply threshold_compat); rewrite Htt, Htp;
-  destruct (Rle_dec (DGF.project_p pbt) (threshold ebt'));
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
+  try (now exfalso);
+  rewrite HlocD in *;
+  try (now simpl in *);
+  destruct Hsrc as (Hse, Hsp);
+  assert (Htt : threshold esd = threshold esd') by (now apply threshold_compat);
+  rewrite Htt, Hsp;
+  destruct (Rle_dec (DGF.project_p psd) (threshold esd'));
   try (now apply src_compat); try (now apply tgt_compat).
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
+  try (now exfalso);
+  rewrite HlocD in *;
+  try (now simpl in *);
+  destruct Htgt as (Hte, Htp);
+  assert (Htt : threshold etd = threshold etd') by (now apply threshold_compat);
+  rewrite Htt, Htp;
+  destruct (Rle_dec (DGF.project_p ptd) (threshold etd'));
+  try (now apply src_compat); try (now apply tgt_compat).
++ destruct dist1 eqn : Hbool;
+  destruct (DGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lsd' | esd' psd'] eqn : HsrcD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [ltd | etd ptd] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
+  try (now exfalso);
+  rewrite HlocD in *;
+  try (now simpl in *);
+  destruct Htgt as (Hte, Htp);
+  assert (Htt : threshold etd = threshold etd') by (now apply threshold_compat);
+  rewrite Htt, Htp;
+  destruct (Rle_dec (DGF.project_p ptd) (threshold etd'));
+  try (now apply src_compat); try (now apply tgt_compat).
++ rewrite HlocD in *.
   destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HsrcD in *))));
-  try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HtgtD in *))));
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lgl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct (find_edge lgs lgt) as [ef| ]; try discriminate;
-  destruct (Rle_dec dist0 (threshold ef)); discriminate);
-  destruct (Rle_dec (DGF.project_p pgl) (threshold egl));
-  try (destruct(AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate);
-  try (destruct(AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate);
-  try (destruct (Rle_dec (dist0 + DGF.project_p pgl) (threshold egl)) ; discriminate).
-+  destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
+  try now simpl in *.
++ rewrite HlocD in *.
   destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HsrcD in *))));
-  try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HtgtD in *))));
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lgl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct (find_edge lgs lgt) as [ef| ]; try discriminate;
-  destruct (Rle_dec dist0 (threshold ef)); discriminate);
-  destruct (Rle_dec (DGF.project_p pgl) (threshold egl));
-  try (destruct(AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate);
-  try (destruct(AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate);
-  try (destruct (Rle_dec (dist0 + DGF.project_p pgl) (threshold egl)) ; discriminate).
-+  destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HsrcD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HsrcD in *))));
-  try (now (destruct (Rdec dist0 0); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Rdec dist0 1); try (now (simpl in *; rewrite HtgtD in *));
-     destruct (Veq_dec l l0); try (now (simpl in *; rewrite HtgtD in *))));
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lgl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct (find_edge lgs lgt) as [ef| ]; try discriminate;
-  destruct (Rle_dec dist0 (threshold ef)); discriminate);
-  destruct (Rle_dec (DGF.project_p pgl) (threshold egl));
-  try (destruct(AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate);
-  try (destruct(AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate);
-  try (destruct (Rle_dec (dist0 + DGF.project_p pgl) (threshold egl)) ; discriminate).
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *;
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate;
-  destruct (find_edge lbs lbt) as [ef | ]; try discriminate;
-  destruct (Rle_dec dist0 (threshold ef)); discriminate).
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) lbt) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) lbt) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge lbs (src ebt)) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge lbs (tgt ebt)) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) (src ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) (tgt ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) (src ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) (tgt ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *;
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate;
-  destruct (find_edge lbs lbt) as [ef | ]; try discriminate;
-  destruct (Rle_dec dist0 (threshold ef)); discriminate).
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) lbt) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) lbt) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge lbs (src ebt)) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge lbs (tgt ebt)) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) (src ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) (tgt ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) (src ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) (tgt ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-      + rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *;
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate;
-  destruct (find_edge lbs lbt) as [ef | ]; try discriminate;
-  destruct (Rle_dec dist0 (threshold ef)); discriminate).
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) lbt) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) lbt) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge lbs (src ebt)) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge lbs (tgt ebt)) as [ef | ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) (src ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (src ebs) (tgt ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) (src ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (find_edge (tgt ebs) (tgt ebt)) as [ef| ]; try discriminate;
-      destruct (Rle_dec dist0 (threshold ef)); discriminate.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl));
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs));
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)).
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct (Rle_dec (dist0 + DGF.project_p pbl) (threshold ebl)); discriminate.
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct dist eqn : Hbool;
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lgl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  destruct (Rle_dec (DGF.project_p pgl) (threshold egl));
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g))))); try discriminate;
-  try (destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g))))); try discriminate;
-  try (destruct n0; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (apply DGF.step_delta in HstepD;
-  destruct HstepD as ((ll, Hll), Hlt); rewrite HlocD in Hll; now simpl in *).
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct dist eqn : Hbool;
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lgl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  destruct (Rle_dec (DGF.project_p pgl) (threshold egl));
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g))))); try discriminate;
-  try (destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g))))); try discriminate;
-  try (destruct n0; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (apply DGF.step_delta in HstepD;
-  destruct HstepD as ((ll, Hll), Hlt); rewrite HlocD in Hll; now simpl in *).
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct dist eqn : Hbool;
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lgl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := l;
-             AGF.Config.robot_info := {| AGF.Config.source := l2; AGF.Config.target := l0 |} |}
-             (rcD2A (c (Good g)))); try discriminate;
-  destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  destruct (Rle_dec (DGF.project_p pgl) (threshold egl));
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g))))); try discriminate;
-  try (destruct n; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt egl;
-             AGF.Config.robot_info := {| AGF.Config.source := lgs; AGF.Config.target := lgt |} |}
-             (rcD2A (c (Good g))))); try discriminate;
-  try (destruct n0; unfold rcD2A, LocD2A; rewrite HlocD, HtgtD, HsrcD; repeat try split; now simpl);
-  try (apply DGF.step_delta in HstepD;
-  destruct HstepD as ((ll, Hll), Hlt); rewrite HlocD in Hll; now simpl in *).
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *.
-  - destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-    destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hn.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hn.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt, Hnl; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n2. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *.
-  - destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-    destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hn.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hn.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt, Hnl; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n2. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *.
-  - destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-    destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hn.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {| AGF.Config.source := lbs; AGF.Config.target := lbt |} |}
-             (rcD2A (c (Byz b)))); try discriminate.
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hn.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hn; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := lbt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnt, Hnl; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := lbs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-     destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := lbl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hns, Hnt; now simpl in *.
-  - destruct (Rle_dec (DGF.project_p pbl) (threshold ebl)) eqn : Hnl;
-    destruct (Rle_dec (DGF.project_p pbs) (threshold ebs)) eqn : Hns;
-    destruct (Rle_dec (DGF.project_p pbt) (threshold ebt)) eqn : Hnt.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := src ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n0. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := src ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := src ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n1. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-    * destruct (AGF.Config.eq_Robotconf_dec
-             {|
-             AGF.Config.loc := tgt ebl;
-             AGF.Config.robot_info := {|
-                                      AGF.Config.source := tgt ebs;
-                                      AGF.Config.target := tgt ebt |} |} 
-             (rcD2A (c (Byz b)))); try discriminate;
-      destruct n2. unfold rcD2A, LocD2A; rewrite HlocD, HsrcD, HtgtD, Hnl, Hns, Hnt; now simpl in *.
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
-  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
-  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
+  try (now simpl in * ); simpl in *;
   destruct Hloc as (Hel, Hpl);
-  assert (Htl : threshold egl = threshold egl') by (now apply threshold_compat);
-  rewrite Hpl, Htl; destruct (Rle_dec (DGF.project_p pgl) (threshold egl'));
+  assert (Htl : threshold eld = threshold egl') by (now apply threshold_compat);
+  rewrite Hpl, Htl; destruct (Rle_dec (DGF.project_p pld) (threshold egl'));
   try (now apply src_compat); try (now apply tgt_compat).
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-  destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
++ rewrite HlocD in *.
   destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  destruct (DGF.Config.source (DGF.Config.robot_info (c (Good g)))) as [lgs | egs pgs] eqn : HsrcD;
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-  rewrite HstepD in HstepA; try (now simpl in *);
-  destruct Hsrc as (Hel, Hpl);
-  assert (Htl : threshold egl = threshold egs') by (now apply threshold_compat);
-  rewrite Hpl, Htl; destruct (Rle_dec (DGF.project_p pgl) (threshold egs'));
+  try (now simpl in * ); simpl in *;
+  destruct Hloc as (Hel, Hpl);
+  assert (Htl : threshold eld = threshold egl') by (now apply threshold_compat);
+  rewrite Hpl, Htl; destruct (Rle_dec (DGF.project_p pld) (threshold egl'));
   try (now apply src_compat); try (now apply tgt_compat).
-+ destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e))).
-  unfold DGF.ri_loc_def in *.
-  specialize (Hrid g).
-  destruct Hrid as (v1, (v2, (Hv1, Hv2))).
-(*   destruct (DGF.Config.loc (c (Good g))) as [lgl | egl pgl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
-  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD'; *)
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Good g)))) as [lgt | egt pgt] eqn : HtgtD;
++ rewrite HlocD in *.
+  destruct (DGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-  rewrite HstepD in HstepA; try (now simpl in *).
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
+  try (now simpl in * ); simpl in *;
+  destruct Hsrc as (Hes, Hps);
+  assert (Htl : threshold eld = threshold egs') by (now apply threshold_compat);
+  rewrite Hps, Htl; destruct (Rle_dec (DGF.project_p pld) (threshold egs'));
+  try (now apply src_compat); try (now apply tgt_compat).
++ destruct (DGF.Config.target (DGF.Config.robot_info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
+  try (now simpl in *).
   - cut (Veq lgt' match DGF.pgm rbg (ConfigD2A c)
               with
                 | DGF.Loc l => l
@@ -2795,11 +1131,25 @@ repeat try (split; simpl).
     now destruct (DGF.pgm rbg (DGF.Spect.from_config (DGF.project c))).
   - assert (Hpgm := DGF.pgm_loc rbg (DGF.Spect.from_config (DGF.project c))).
     destruct Hpgm as (vf, Hfalse). now rewrite Hfalse in Htgt.
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
++ simpl in *.
+  assert (Hfalse := DGF.step_delta da g (c (Good g)) sim0 HstepD).
+  destruct Hfalse as ((lf, Hfalse),_).
+  now rewrite HlocD in Hfalse.
++ destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
   destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
-  destruct (DGF.Config.loc (c (Byz b))) as [lbl | ebl pbl] eqn : HlocD; simpl in *;
-  rewrite <- HlocD in *;
+  simpl in *;
+  destruct (DGF.Config.loc (c' (Byz b))) as [lbl' | ebl' pbl'] eqn : HlocD';
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
+  destruct (DGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  try assumption; try (now exfalso); try (now simpl in *);
+  destruct Hloc as (Hel, Hpl);
+  assert (Hth : (threshold ebl')= (threshold erb)) by (now apply threshold_compat);
+  rewrite <- Hpl, Hth; destruct ( Rle_dec (DGF.project_p pbl') (threshold erb));
+  try (now apply src_compat); try (now apply tgt_compat).
++ destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
+  simpl in *;
   destruct (DGF.Config.loc (c' (Byz b))) as [lbl' | ebl' pbl'] eqn : HlocD';
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
@@ -2812,14 +1162,34 @@ repeat try (split; simpl).
 + destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
   destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
   destruct (DGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  simpl in *;
+  rewrite HsrcD in *;
   try assumption; try (now exfalso); try (now simpl in *);
   destruct Hsrc as (Hes, Hps);
   assert (Hth : (threshold ebs')= (threshold ebs)) by (now apply threshold_compat);
   rewrite <- Hps, Hth; destruct ( Rle_dec (DGF.project_p pbs') (threshold ebs));
   try (now apply src_compat); try (now apply tgt_compat).
-+ rewrite HstepD in HstepA.
-  destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
++ destruct (DGF.Config.source (DGF.Config.robot_info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
+  destruct (DGF.Config.source (DGF.Config.robot_info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
+  destruct (DGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  simpl in *;
+  rewrite HsrcD in *;
+  try assumption; try (now exfalso); try (now simpl in *);
+  destruct Hsrc as (Hes, Hps);
+  assert (Hth : (threshold ebs')= (threshold ebs)) by (now apply threshold_compat);
+  rewrite <- Hps, Hth; destruct ( Rle_dec (DGF.project_p pbs') (threshold ebs));
+  try (now apply src_compat); try (now apply tgt_compat).
++ destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
   destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
+  simpl in *;try rewrite HtgtD in *;
+  try assumption; try (now exfalso); try (now simpl in *);
+  destruct Htgt as (Het, Hpt);
+  assert (Hth : (threshold ebt')= (threshold ebt)) by (now apply threshold_compat);
+  rewrite <- Hpt, Hth; destruct ( Rle_dec (DGF.project_p pbt') (threshold ebt));
+  try (now apply src_compat); try (now apply tgt_compat).
++ destruct (DGF.Config.target (DGF.Config.robot_info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
+  destruct (DGF.Config.target (DGF.Config.robot_info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
+  simpl in *;try rewrite HtgtD in *;
   try assumption; try (now exfalso); try (now simpl in *);
   destruct Htgt as (Het, Hpt);
   assert (Hth : (threshold ebt')= (threshold ebt)) by (now apply threshold_compat);
