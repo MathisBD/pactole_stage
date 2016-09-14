@@ -373,8 +373,7 @@ Qed.
 (* final theorem: In the asynchronous model, if k divide n, 
    then the exploration of a n-node ring is not possible. *)
 
-Theorem no_exploration : forall k, (1<=k)%nat -> Z_of_nat (kG mod n) = 0 -> 
-                          ~(forall d, kFair k d -> ValidSolExplorationStop r d).
+Theorem no_exploration : Z_of_nat (kG mod n) = 0 -> ~ (forall d, ValidSolExplorationStop r d).
 Proof.
 intros k h Hmod Habs. specialize (Habs bad_demon1 (kFair_bad_demon' h) config1).
 revert Habs. 
