@@ -26,6 +26,7 @@ Axiom n_sup_1 : 1 < n.
 Parameter kG : nat.
 Axiom kdn : kG mod n = 0.
 Axiom k_inf_n : kG < n.
+Axiom k_sup_0 : 0 < kG.
 
 
 Module K : Size with Definition nG := kG with Definition nB := 0%nat.
@@ -38,8 +39,10 @@ Module def : RingDef.
  Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
 End def.
 
+
 (** The setting is a ring. *)
-Module Loc : RingSig.
+Module Loc := Ring(def).
+Print Loc.dist.
 
 (** There are KG good robots and no byzantine ones. *)
 
@@ -165,7 +168,7 @@ Definition config1 : Config.t :=
   fun id => match id with
               | Good g => let pos := create_conf1 g in
                           {| Config.loc := pos;
-                             Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
+                             Config.robot_info := {| Config.source := pos; Config.target := Loc.add Loc.unit pos |} |}
               | Byz b => let pos := Loc.origin in
                           {| Config.loc := pos;
                              Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
@@ -174,7 +177,7 @@ Definition config1 : Config.t :=
 Definition loc_add k rconfig :=
   let new_pos := Loc.add k (Config.loc rconfig) in
   {| Config.loc := new_pos;
-     Config.robot_info := {| Config.source := new_pos; Config.target := new_pos |} |}.
+     Config.robot_info := {| Config.source := new_pos; Config.target := Loc.add new_pos new_pos|} |}.
 
 Definition config2 := Config.map (loc_add Loc.unit) config1.
 
@@ -196,7 +199,7 @@ rewrite <- Hlt1, <- Hlt2.
 split. assumption. split; assumption.
 Qed.
 
-Lemma translate_eq : forall id v config, let config' := (Config.map (loc_add v) config) in
+(* Lemma translate_eq : forall id v config, let config' := (Config.map (loc_add v) config) in
                      Config.eq (Config.map (loc_add (Loc.opp (Config.loc (config id)))) config)
                                (Config.map (loc_add (Loc.opp (Config.loc (config' id)))) config').
 Proof.
@@ -207,15 +210,16 @@ apply loceq_to_confeq; intros id'; unfold Config.loc, Config.robot_info.
 + unfold Config.source. reflexivity.
 + unfold Config.target. reflexivity.
 + rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same.
-rewrite <- Zdiv.Zminus_mod_idemp_l with (a := test_modulo.n), Z.mod_same.
-rewrite Zdiv.Zminus_mod_idemp_r. rewrite Z.add_mod_idemp_l. simpl. rewrite <- Z.add_mod. f_equiv.
+  simpl in *. unfold Loc.eq.
+rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same.
+rewrite Zdiv.Zminus_mod_idemp_r. rewrite Z.add_mod_idemp_l. simpl. rewrite <- Z.add_mod. do 2 f_equiv.
 omega.
-generalize test_modulo.n_pos; omega.
-generalize test_modulo.n_pos; omega.
-generalize test_modulo.n_pos; omega.
-generalize test_modulo.n_pos; omega.
+generalize def.n_pos; omega.
+generalize def.n_pos; omega.
+generalize def.n_pos; omega.
+generalize def.n_pos; omega.
 Qed.
-
+ *)
 Definition rc_map (f : Loc.t -> Loc.t) (rc: Config.RobotConf) : Config.RobotConf := 
 {| Config.loc := f (Config.loc rc);
    Config.robot_info := {| Config.source := f (Config.source (Config.robot_info rc));
@@ -270,7 +274,7 @@ abstract (intros x y; split; intro Heq; rewrite <- Heq;
 Defined.
 
 Definition id : Sim.t.
-refine {| Sim.sim_f := bij_id eq_equiv;
+refine {| Sim.sim_f := bij_id Loc.eq_equiv;
           Sim.center := Loc.origin;
           Sim.center_prop := reflexivity _ |}.
 Proof. abstract (intros; auto). Defined.
@@ -307,8 +311,6 @@ Definition move := r (!! config1).
 (** **  First case: the robots exchange their positions  **)
 
 Section Move1.
-
-Hypothesis Hmove : Loc.eq move Loc.unit.
 
 Lemma da1_compat : Proper (Logic.eq ==> opt_eq (Loc.eq ==> Sim.eq))
   (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => swap c))).
@@ -369,13 +371,59 @@ eapply kFair_mon with 1%nat.
 - auto.
 Qed.
 
+Lemma config1_ne_unit : Z_of_nat (n mod kG) = 0 ->
+      forall g:Names.G, ~ Loc.eq (create_conf1 g) Loc.unit.
+Proof.
+intros Hmod g.
+unfold create_conf1, Loc.mul, Loc.unit.
+assert (n mod kG = 0)%nat.
+omega.
+rewrite Nat.mod_divides in H.
+destruct H as (c,H).
+rewrite H in *.
+replace (kG * c / kG)%nat with c%nat.
+intros Hf.
+unfold Fint_to_nat in *.
+simpl in *.
+replace def.n with n in Hf.
+rewrite H in Hf.
+replace ((fix create_conf1 (k : nat) (f : Fin.t k) {struct k} : Loc.t :=
+           (Z.of_nat (match f with
+                      | Fin.F1 => 1
+                      | @Fin.FS n' _ => S n'
+                      end * c) * 1) mod Z.of_nat (kG * c)) K.nG g)
+with
+((fix create_conf1 (k : nat) (f : Fin.t k) {struct k} : Loc.t :=
+           (Z.of_nat (match f with
+                      | Fin.F1 => 1
+                      | @Fin.FS n' _ => S n'
+                      end) mod Z.of_nat kG) * (Z.of_nat c)) K.nG g) in Hf.
+unfold K.nG in *.
+
+destruct (f : Fin.t k) in Hf.
+
+Qed.
+
 
 (* final theorem: In the asynchronous model, if k divide n, 
    then the exploration of a n-node ring is not possible. *)
 
-Theorem no_exploration : Z_of_nat (kG mod n) = 0 -> ~ (forall d, ValidSolExplorationStop r d).
+Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
 Proof.
-intros k h Hmod Habs. specialize (Habs bad_demon1 (kFair_bad_demon' h) config1).
-revert Habs. 
-destruct Habs as [pt Habs]. kFair_bad_demon' config1).
+intros Hmod Habs.
+specialize (Habs bad_demon1).
+unfold FullSolExplorationStop in *.
+destruct (Habs config1) as (Hvisit, Hstop).
+specialize (Hvisit Loc.unit).
+destruct Hvisit as [Hvisited| Hwill_be_visited].
+destruct Hvisited.
+simpl in *. unfold is_visited, config1 in H.
+simpl in *.
+unfold create_conf1 in H.
+unfold has_been_visited in *.
+simpl in *.
+unfold stop_now in *.
+assert (~Will_stop (execution_tail (execute r bad_demon1 config1))).
+admit.
+contradiction.
 Save.

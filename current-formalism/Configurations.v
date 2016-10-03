@@ -388,8 +388,15 @@ Module Type RingSig.
   Parameter non_trivial : ~eq unit origin.
 End RingSig.
 
-Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n.
-  
+Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n
+        with Definition origin := 0%Z
+        with Definition add := fun (x y : Z) => (Zmod (x + y) (Z.of_nat Odef.n))
+        with Definition mul := fun (x y : Z) =>  (Zmod (Z.mul x y) (Z.of_nat Odef.n))
+        with Definition opp := fun (x: Z) => ((Z.of_nat Odef.n) - x) mod (Z.of_nat Odef.n)
+        with Definition eq := fun (x y : Z) => Zmod x (Z.of_nat Odef.n) = Zmod y (Z.of_nat Odef.n)
+        with Definition unit := 1%Z.
+(*         with Definition dist := fun (x y : Z) => Z.min (add (opp y) x) (add (opp x) y). *)
+
   Definition n := Z.of_nat Odef.n.
   Definition t := Z.
   Definition origin := 0%Z.
@@ -514,8 +521,6 @@ do 2 rewrite Z_mod_mult.
 reflexivity.
 omega.
 Qed.
-
-Print Z.min.
 
 Lemma dist_pos : forall x y, (0 <= dist x y).
 Proof.

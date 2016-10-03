@@ -200,10 +200,11 @@ Qed.
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
 Definition FullSolExplorationStop  (r : robogram) (d : demon) := 
-forall l config, Will_be_visited l (execute r d config) -> Will_stop (execute r d config).
+forall config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
 Definition ValidSolExplorationStop (r : robogram) (d : demon) :=
-forall (config : Config.t) l, ~(forbidden config) -> Will_be_visited l (execute r d config) 
-                                           -> Will_stop (execute r d config).
+forall (config : Config.t), ~(forbidden config) ->
+         (forall l, Will_be_visited l (execute r d config))
+         /\ Will_stop (execute r d config).
 
 End ExplorationDefs.
