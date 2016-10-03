@@ -24,16 +24,16 @@ Parameter n : nat.
 Axiom n_sup_1 : 1 < n.
 
 Parameter kG : nat.
-Axiom kdn : kG mod n = 0.
+Axiom kdn : n mod kG = 0.
 Axiom k_inf_n : kG < n.
-Axiom k_sup_0 : 0 < kG.
+Axiom k_sup_1 : 1 < kG.
 
 
 Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
   Definition nB := 0%nat.
 End K.
-Module def : RingDef.
+Module def : RingDef with Definition n := Top.n.
  Definition n:= Top.n.
  Lemma n_pos : n <> 0. Proof. unfold n. generalize Top.n_sup_1. omega. Qed.
  Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
@@ -375,33 +375,81 @@ Lemma config1_ne_unit : Z_of_nat (n mod kG) = 0 ->
       forall g:Names.G, ~ Loc.eq (create_conf1 g) Loc.unit.
 Proof.
 intros Hmod g.
-unfold create_conf1, Loc.mul, Loc.unit.
-assert (n mod kG = 0)%nat.
-omega.
-rewrite Nat.mod_divides in H.
-destruct H as (c,H).
-rewrite H in *.
-replace (kG * c / kG)%nat with c%nat.
-intros Hf.
-unfold Fint_to_nat in *.
-simpl in *.
-replace def.n with n in Hf.
-rewrite H in Hf.
-replace ((fix create_conf1 (k : nat) (f : Fin.t k) {struct k} : Loc.t :=
-           (Z.of_nat (match f with
-                      | Fin.F1 => 1
-                      | @Fin.FS n' _ => S n'
-                      end * c) * 1) mod Z.of_nat (kG * c)) K.nG g)
-with
-((fix create_conf1 (k : nat) (f : Fin.t k) {struct k} : Loc.t :=
-           (Z.of_nat (match f with
-                      | Fin.F1 => 1
-                      | @Fin.FS n' _ => S n'
-                      end) mod Z.of_nat kG) * (Z.of_nat c)) K.nG g) in Hf.
-unfold K.nG in *.
-
-destruct (f : Fin.t k) in Hf.
-
+induction g.
++ simpl in *.
+  assert (Hn : 1 < Z.of_nat (n/kG)).
+  Search kG.
+  generalize k_sup_1, k_inf_n, n_sup_1.
+  intros.
+  rewrite Zdiv.mod_Zmod in Hmod; try omega.
+  rewrite Zdiv.Zmod_divides in *; try omega.
+  destruct Hmod.
+  rewrite Zdiv.div_Zdiv, H2, Z.mul_comm with (m:= x), Zdiv.Z_div_mult_full;
+  try omega.
+  assert (Z.of_nat kG < Z.of_nat n) by omega.
+  apply Zmult_lt_reg_r with (p := Z.of_nat kG); try omega.
+  rewrite Z.mul_comm with (n:= x).
+  rewrite <- H2.
+  omega.
+  unfold Loc.eq, Loc.mul, Loc.unit.
+  rewrite Z.mod_mod.
+  replace (Z.of_nat (n / kG + 0) * 1) with (Z.of_nat (n/kG)).
+  unfold def.n.
+  rewrite Zdiv.Zmod_1_l.
+  rewrite Zdiv.Zmod_small.
+  omega.
+  split.
+  omega.
+  assert (1 < Z.of_nat kG). 
+  generalize k_sup_1; intros.
+  omega.
+  generalize k_inf_n.
+  intros.
+  rewrite Zdiv.div_Zdiv.
+  apply Zdiv.Z_div_lt;
+  omega.
+  omega.
+  generalize n_sup_1; intros; omega.
+  replace (Z.of_nat (n / kG + 0)) with (Z.of_nat (n / kG)) by auto.
+  omega.
+  unfold def.n;
+  generalize n_sup_1; intros; omega.
++ simpl in *.
+  generalize k_sup_1, k_inf_n, n_sup_1.
+  intros.
+  unfold Loc.eq, Loc.mul, Loc.unit, def.n.
+  rewrite Z.mod_mod in *; try omega.
+  replace (Z.of_nat (n / kG + n0 * (n / kG)) * 1) with (Z.of_nat (n / kG + n0 * (n / kG))) by omega.
+  replace (Z.of_nat (n / kG + n0 * (n / kG))) with ((Z.of_nat (1 * (n / kG) + n0 * (n / kG)))).
+  rewrite <- Nat.mul_add_distr_r.
+  rewrite Zdiv.mod_Zmod in Hmod; try omega.
+  rewrite Zdiv.Zmod_divides in *; try omega.
+  destruct Hmod.
+  rewrite Nat2Z.inj_mul, Nat2Z.inj_add, Zdiv.div_Zdiv; try omega.
+  rewrite H2 in *.
+  replace (Z.of_nat kG * x ) with (x * Z.of_nat kG) by intuition.
+  rewrite Zdiv.Z_div_mult_full.
+  replace (x * Z.of_nat kG) with (Z.of_nat kG * x) by intuition.
+  rewrite Zdiv.Zmult_mod_distr_r.
+  assert (1 < x).
+  assert (Z.of_nat kG < Z.of_nat n) by omega.
+  apply Zmult_lt_reg_r with (p := Z.of_nat kG); try omega.
+  rewrite Z.mul_comm with (n:= x).
+  rewrite <- H2.
+  omega.
+  rewrite Zdiv.Zmod_1_l; try omega.
+  intuition.
+  rewrite Z.mul_comm in H4.
+  apply Z.eq_mul_1 in H4.
+  destruct H4; omega.
+  omega.
+  rewrite Nat2Z.inj_add, Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
+  replace (Z.of_nat 1 * (Z.of_nat n / Z.of_nat kG)) with (Z.of_nat n / Z.of_nat kG).
+  rewrite Nat2Z.inj_add, Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
+  assert (1 = Z.of_nat 1).
+  rewrite Nat2Z.inj_succ.
+  now simpl in *.
+  rewrite <- H2; omega.
 Qed.
 
 
@@ -416,14 +464,11 @@ unfold FullSolExplorationStop in *.
 destruct (Habs config1) as (Hvisit, Hstop).
 specialize (Hvisit Loc.unit).
 destruct Hvisit as [Hvisited| Hwill_be_visited].
-destruct Hvisited.
-simpl in *. unfold is_visited, config1 in H.
-simpl in *.
-unfold create_conf1 in H.
-unfold has_been_visited in *.
-simpl in *.
-unfold stop_now in *.
-assert (~Will_stop (execution_tail (execute r bad_demon1 config1))).
-admit.
-contradiction.
++ destruct Hvisited.
+  simpl in *. unfold is_visited, config1 in H.
+  simpl in *.
+  generalize (config1_ne_unit Hmod); intros.
+  destruct H as (g, Hfalse); specialize (H0 g);
+  contradiction.
++  simpl in *.
 Save.
