@@ -454,7 +454,7 @@ Qed.
 
 
 (* final theorem: In the asynchronous model, if k divide n, 
-   then the exploration of a n-node ring is not possible. *)
+   then the exploration with stop of a n-node ring is not possible. *)
 
 Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
 Proof.
@@ -470,5 +470,31 @@ destruct Hvisit as [Hvisited| Hwill_be_visited].
   generalize (config1_ne_unit Hmod); intros.
   destruct H as (g, Hfalse); specialize (H0 g);
   contradiction.
-+  simpl in *.
++ destruct Hwill_be_visited.
+ - destruct H.
+   simpl in *.
+   unfold round in H.
+   hnf in H.
+   destruct H.
+   destruct (step da1 (Good x)); simpl in *. Focus 2.
+   generalize (config1_ne_unit Hmod); intros.
+   specialize (H1 x). contradiction.
+   hnf in *.
+   destruct Hstop eqn : Hs.
+   * destruct s.
+     unfold stop_now in *.
+     generalize (s x). intros sx.
+     simpl in *.
+     hnf in sx.
+     generalize n_sup_1; intros.
+     unfold Loc.add, Loc.unit, def.n in sx.
+     rewrite Z.mod_mod in sx; try omega.
+     admit.
+   * simpl in *.
+   unfold apply_sim, Config.map, DiscreteSimilarity.retraction, Common.Sim.sim_f, Loc.unit, Loc.eq
+   in *;
+   simpl in *.
+   intuition.
+   
+   
 Save.
