@@ -33,7 +33,8 @@ Module Sim := Common.Sim.
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : Loc.t) (conf : Config.t) := forall g : Names.G, let (loc,_) := conf (Good g) in Loc.eq loc pt.
+Definition gathered_at (pt : Loc.t) (conf : Config.t) :=
+           forall g : Names.G, Loc.eq (Config.loc (conf (Good g))) pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution
     [e], robots are gathered at the same position [pt]. *)

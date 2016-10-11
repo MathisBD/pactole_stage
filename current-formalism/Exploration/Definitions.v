@@ -38,58 +38,45 @@ Add Search Blacklist "Spect.M" "Ring".
 Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Names)(Config)(Spect).
 Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
 
+Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
+
 Module Sim := Common.Sim. 
 
-(* already done in DiscreteMultisetSpectrum.
+Definition bij_id := DiscreteSimilarity.bij_id.
 
-Definition count (location : Loc.t) (conf : Config.t)  (n : nat) (id : Names.ident): nat := 
-    if Loc.eq_dec (conf id).(Config.loc) location then (n+1)%nat else n.
-
-Instance count_compat : Proper (Loc.eq ==> Config.eq ==> eq ==> eq ==> eq) count.
+Definition bij_trans (c : Loc.t) : DiscreteSimilarity.bijection Loc.eq.
+refine {|
+  DiscreteSimilarity.section := fun x => Loc.add c (Loc.opp x);
+  DiscreteSimilarity.retraction := fun x => Loc.add c (Loc.opp x) |}.
 Proof.
-intros loc1 loc2 Hl conf1 conf2 Hc n1 n2 Hn id1 id2 Hid.
-unfold count.
-assert (Heqc: Loc.eq (Config.loc (conf1 id2)) (Config.loc (conf2 id2))).
-  { f_equiv. apply Hc. }
-rewrite Hid, Hn. destruct (Loc.eq_dec (Config.loc (conf1 id2)) loc1) .
-+ rewrite Hl, Heqc in e.
-  destruct (Loc.eq_dec (Config.loc (conf2 id2)) loc2).
-    reflexivity.
-    contradiction.
-+ rewrite Hl, Heqc in n.
-  destruct (Loc.eq_dec (Config.loc (conf2 id2)) loc2).
-    contradiction.
-    reflexivity.
-Qed.
-(* with the strong multiplicity,  we can know the exact numbur of robots on a location*)
-Definition multiplicity_strong (loc : Loc.t) (conf : Config.t) : nat := 
-  List.fold_left (count loc conf) Names.names 0.
+abstract (intros x y; split; intro Heq; rewrite <- Heq;
+          now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
+Defined.
 
+Definition id_s : Sim.t.
+refine {| Sim.sim_f := bij_id Loc.eq_equiv;
+          Sim.center := Loc.origin;
+          Sim.center_prop := reflexivity _ |}.
+Proof. abstract (intros; auto). Defined.
 
-Instance multiplicity_strong_compat : Proper (Loc.eq ==> Config.eq ==> eq) multiplicity_strong.
+Definition trans (c : Loc.t) : Sim.t.
+refine {|
+  Sim.sim_f := bij_trans c;
+  Sim.center := c |}.
 Proof.
-intros loc1 loc2 Hl conf1 conf2 Hc. unfold multiplicity_strong.
-assert (Hcount := count_compat Hl Hc). f_equiv.  admit.
-Admitted.
+- abstract (compute; apply Loc.add_opp).
+- intros. simpl. setoid_rewrite Loc.add_comm.
+  rewrite translation_hypothesis. 
+rewrite <- (translation_hypothesis (Loc.add x y)).
+rewrite Loc.add_assoc, (Loc.add_comm _ x), Loc.add_opp, Loc.add_comm, Loc.add_origin.
+rewrite Loc.add_comm, <- Loc.add_assoc, Loc.add_opp, Loc.add_origin.
+apply Loc.dist_sym.
+Defined.
 
-(* a location contain a tower if more than 2 robots are on this location*)
-Definition is_a_tower (conf : Config.t) (loc : Loc.t) := match multiplicity_strong loc conf with
-  |0 => false
-  | 1%nat => false
-  | _ => true
-  end.
 
-Instance is_a_tower_compat : Proper (Config.eq ==> Loc.eq ==> eq) is_a_tower.
-Proof.
-intros conf1 conf2 Hconf loc1 loc2 Hloc.
-unfold is_a_tower.
-assert (Hm := multiplicity_strong_compat Hloc Hconf).
-rewrite Hm. reflexivity.
-Qed.
- *)
+Instance trans_compat : Proper (Loc.eq ==> Sim.eq) trans.
+Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
 
-(*in this probleme, we consider a configuration as a potial initial configuration iff there
-  is no tower in it*)
   
 Definition forbidden (config : Config.t) :=
 (* forall id, 
@@ -143,20 +130,19 @@ intros l1 l2 Hl e1 e2 He. split.
   - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
   Qed.
 
-Definition stop_now (conf : Config.t) :=
-    forall g : Names.G, Loc.eq (conf (Good g)).(Config.loc)
-                               (conf (Good g)).(Config.robot_info).(Config.target).
+Definition stop_now e :=
+    Config.eq (execution_head e) (execution_head (execution_tail e)).
 
-Instance stop_now_compat : Proper (Config.eq ==> iff) stop_now.
+Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
-intros c1 c2 Hc. split; intros Hs; unfold stop_now in *; intros g;
-specialize (Hs g); destruct (Hc (Good g)) as (Hloc, Hrinfo), Hrinfo as (_,Htar).
-now rewrite <- Hloc, <- Htar.
-now rewrite Hloc, Htar.
+intros e1 e2 He. split; intros Hs;
+unfold stop_now in *.
+now rewrite <- He.
+now rewrite He.
 Qed.
 
 CoInductive Stopped (e : execution) : Prop :=
-Stop : stop_now (execution_head e) -> Stopped (execution_tail e) -> Stopped e.
+Stop : stop_now e -> Stopped (execution_tail e) -> Stopped e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
