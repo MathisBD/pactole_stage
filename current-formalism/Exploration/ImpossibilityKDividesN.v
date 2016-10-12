@@ -489,6 +489,18 @@ unfold config2; simpl in *.
 exists ((create_conf1 g + (Z.of_nat n - create_conf1 g') mod Z.of_nat n) mod Z.of_nat n).
 reflexivity.
 exists (Config.loc (config1 (Good g'))); reflexivity.
+assert (Hperm : PermutationA Spect.M.eq_pair (Spect.M.elements (!! config1)) (Spect.M.elements (!! config2))).
+
+unfold Spect.M.eq_pair.
+unfold RelationPairs.RelProd, relation_conjunction.
+unfold predicate_intersection.
+unfold pointwise_extension.
+unfold RelationPairs.RelCompFun.
+About PermutationA.
+unfold Spect.M.elements.
+About Spect.Mraw.elements.
+unfold Spect.from_config.
+unfold Spect.multiset.
 
 admit.
 Admitted.
