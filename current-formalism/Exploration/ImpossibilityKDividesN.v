@@ -437,19 +437,6 @@ unfold def.n.
 repeat rewrite Z.mod_mod; try omega.
 rewrite Zdiv.Zplus_mod_idemp_r.
 unfold Config.map.
-
-assert (Hll : forall l1, (exists g1, Loc.eq l1 (Config.loc (config1 (Good g1)))) ->
- forall g3, exists l2, Loc.eq (Loc.add l1 l2) (Config.loc (config1 (Good g3)))).
-{ intros l1 (g1, Hg1) g2.
-  exists (Loc.add (Config.loc (config1 (Good g2))) (Loc.opp l1)).
-  unfold Loc.eq, Loc.add, Loc.opp, def.n.
-  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Zdiv.Zplus_mod_idemp_r; try omega.
-  simpl in *.
-  replace (l1 + (create_conf1 g2 + - l1 mod Z.of_nat n))
-  with ((l1 + create_conf1 g2) + - l1 mod Z.of_nat n) by omega.
-  rewrite Zdiv.Zplus_mod_idemp_r, Z.mod_mod; try omega.
-  f_equiv.
-  omega. }
 replace (create_conf1 g +
  (Z.of_nat n -
   r
@@ -478,7 +465,6 @@ set (fun id : Names.ident =>
                         mod Z.of_nat n;
           Config.robot_info := Config.robot_info (config1 id) |}) as config2.
 simpl in *.
-
 assert (Spect.eq (!! config1) (!! config2)).
 unfold Spect.eq, Spect.from_config.
 intros pt.
@@ -490,27 +476,81 @@ exists ((create_conf1 g + (Z.of_nat n - create_conf1 g') mod Z.of_nat n) mod Z.o
 reflexivity.
 exists (Config.loc (config1 (Good g'))); reflexivity.
 assert (Hperm : PermutationA Spect.M.eq_pair (Spect.M.elements (!! config1)) (Spect.M.elements (!! config2))).
-
-unfold Spect.M.eq_pair.
-unfold RelationPairs.RelProd, relation_conjunction.
-unfold predicate_intersection.
-unfold pointwise_extension.
-unfold RelationPairs.RelCompFun.
-About PermutationA.
-unfold Spect.M.elements.
-About Spect.Mraw.elements.
-unfold Spect.from_config.
-unfold Spect.multiset.
-
 admit.
+apply Spect.M.elements_injective.
+apply Hperm.
+rewrite pgm_compat.
+f_equiv.
+now rewrite H.
 Admitted.
 
-Lemma no_will_s : ~Will_stop (execute r bad_demon1 config1).
+Lemma n_np1_st : forall conf, Spect.eq (!!conf) (!!config1) -> 
+                              ~Stopped (execute r bad_demon1 conf).
+Proof.
+intros conf Heqc Habs.
+destruct Habs as (Hs, _).
+unfold stop_now in Hs.
+simpl in *.
+specialize (Hs (Good g)).
+unfold Config.eq_RobotConf in Hs.
+destruct Hs as (Hs, _).
+simpl in *.
+unfold move in *.
+unfold apply_sim, trans in Hs;
+simpl in *.
+set (Config.map
+                      (fun infoR : Config.RobotConf =>
+                       {|
+                       Config.loc := Loc.add (Config.loc (conf (Good g)))
+                                       (Loc.opp (Config.loc infoR));
+                       Config.robot_info := Config.robot_info infoR |}) conf)
+as conf2.
+fold conf2 in Hs.
+unfold Loc.eq, Loc.add, Loc.opp in *.
+cut (Loc.eq (Config.loc (conf (Good g)))
+          (Loc.opp
+             (r
+                (!!
+                   (Config.map
+                      (fun infoR : Config.RobotConf =>
+                       {|
+                       Config.loc := Loc.add (Config.loc (conf (Good g))) (Loc.opp (Config.loc infoR));
+                       Config.robot_info := Config.robot_info infoR |}) conf)))))
+       (create_conf1 g +
+         (Z.of_nat def.n -
+          r
+            (!! conf)))).
+intros Hf.
+rewrite Hf, Hmove in Hs.
+clear Hf.
+unfold Loc.eq in Hs.
+replace ((create_conf1 g + (Z.of_nat def.n - 1)) mod Z.of_nat def.n)
+with ((create_conf1 g - 1) mod Z.of_nat def.n) in Hs.
+now apply neq_a_a1 in Hs.
+replace ((create_conf1 g + (Z.of_nat def.n - 1))) with
+(create_conf1 g + Z.of_nat def.n - 1) by omega.
+replace (create_conf1 g + Z.of_nat def.n - 1) with
+(Z.of_nat def.n + (create_conf1 g - 1)) by omega.
+rewrite <- Zdiv.Zplus_mod_idemp_l, Zdiv.Z_mod_same_full.
+replace ((0 + (create_conf1 g - 1))) with ((create_conf1 g - 1)) by omega.
+reflexivity.
+unfold Loc.eq, Loc.add, Loc.opp; simpl in *.
+generalize n_sup_1; intros Hn1.
+unfold def.n.
+repeat rewrite Z.mod_mod; try omega.
+rewrite Zdiv.Zplus_mod_idemp_r.
+unfold Config.map.
+Qed.
+
+Lemma no_will_s : ~ Will_stop (execute r bad_demon1 config1).
+Proof.
 intros Habs.
-destruct Habs.
+destruct Habs eqn : H.
 now apply moving_no_stop.
-admit.
+simpl in *.
+
 auto.
+Qed.
 
 (* final theorem first part: if we move, In the asynchronous model, if k divide n, 
    then the exploration with stop of a n-node ring is not possible. *)
