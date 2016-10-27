@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain, R. Pelle                  *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
@@ -392,6 +392,93 @@ Qed.
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 
+
+Lemma round_move : Loc.eq (Config.loc (round r da1 config1 (Good g)))
+                         (Loc.add (Config.loc (config1 (Good g))) (Loc.opp Loc.unit)).
+Proof.
+  unfold move in Hmove.
+  simpl in *.
+  unfold Loc.add, Loc.opp, Loc.unit.
+  repeat f_equiv.
+  assert (Heq : Spect.eq (!! config1) (!! (Config.map (apply_sim (trans (create_conf1 g))) config1))).
+  { unfold Spect.from_config.
+    unfold Spect.multiset.
+    unfold Spect.eq.
+    intros X.
+    unfold apply_sim, trans; simpl in *.
+    unfold config1; simpl in *.
+    cut (Config.eq (Config.map
+                  (fun infoR : Config.RobotConf =>
+                   {|
+                   Config.loc := Loc.add (create_conf1 g)
+                                   (Loc.opp (Config.loc infoR));
+                   Config.robot_info := Config.robot_info infoR |})
+                  (fun id : Names.ident =>
+                   match id with
+                   | Good g0 =>
+                       {|
+                       Config.loc := create_conf1 g0;
+                       Config.robot_info := {|
+                                            Config.source := create_conf1 g0;
+                                            Config.target := Loc.add Loc.unit
+                                                       (create_conf1 g0) |} |}
+                   | Byz _ =>
+                       {|
+                       Config.loc := Loc.origin;
+                       Config.robot_info := {|
+                                            Config.source := Loc.origin;
+                                            Config.target := Loc.origin |} |}
+                   end))
+                   (fun id => match id with
+                              | Good g0 =>
+                                {|
+                                  Config.loc := Loc.add (create_conf1 g)
+                                                        (Loc.opp (create_conf1 g0));
+                                  Config.robot_info :=
+                                    {|
+                                      Config.source := create_conf1 g0;
+                                      Config.target := Loc.add Loc.unit
+                                                               (create_conf1 g0) |} |}
+                              | Byz b => {|
+                                  Config.loc := Loc.origin;
+                                  Config.robot_info :=
+                                    {|
+                                      Config.source := Loc.origin;
+                                      Config.target := Loc.origin |} |}
+                              end)).
+    + intros Hconf.
+      assert (Hlicp := Config.list_compat (Config.map
+                  (fun infoR : Config.RobotConf =>
+                   {|
+                   Config.loc := Loc.add (create_conf1 g)
+                                   (Loc.opp (Config.loc infoR));
+                   Config.robot_info := Config.robot_info infoR |})
+                  (fun id : Names.ident =>
+                   match id with
+                   | Good g0 =>
+                       {|
+                       Config.loc := create_conf1 g0;
+                       Config.robot_info := {|
+                                            Config.source := create_conf1 g0;
+                                            Config.target := Loc.add Loc.unit
+                                                       (create_conf1 g0) |} |}
+                   | Byz _ =>
+                       {|
+                       Config.loc := Loc.origin;
+                       Config.robot_info := {|
+                                            Config.source := Loc.origin;
+                                            Config.target := Loc.origin |} |}
+                   end)) _ Hconf).
+      do 2 rewrite map_map.
+      rewrite Hlicp.
+      repeat f_equiv.
+      unfold Config.eq, Config.map.
+      intros id; destruct id as [g1| b1] eqn : Hid.
+      - now simpl in *.
+      - admit. (* TODO montrer que c'est pas possible car il n'y a pas de byzantin. *)
+}
+Qed.
+
 Lemma moving_no_stop : ~Stopped (execute r bad_demon1 config1).
 Proof.
 intros Hs.
@@ -401,7 +488,7 @@ simpl in *.
 specialize (Hs (Good g)).
 unfold Config.eq_RobotConf in Hs.
 destruct Hs as (Hs, _).
-simpl in *. unfold move in *.
+unfold move in *.
 unfold apply_sim, trans in Hs;
 simpl in *.
 cut (Loc.eq (Loc.add (create_conf1 g)
