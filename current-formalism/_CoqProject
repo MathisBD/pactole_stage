@@ -4,6 +4,9 @@ Preliminary.v
 Robots.v
 Streams.v
 Configurations.v
+MMaps/MMapInterface.v
+MMaps/MMapFacts.v
+MMaps/MMapWeakList.v
 MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
 #MMultiset/MMultisetMap.v
