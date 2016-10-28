@@ -402,9 +402,9 @@ Proof.
   repeat f_equiv.
   assert (Heq : Spect.eq (!! config1) (!! (Config.map (apply_sim (trans (create_conf1 g))) config1))).
   { unfold Spect.from_config.
-    unfold Spect.multiset.
-    unfold Spect.eq.
-    intros X.
+    (* unfold Spect.multiset. *)
+    (* unfold Spect.eq. *)
+    (* intros X. *)
     unfold apply_sim, trans; simpl in *.
     unfold config1; simpl in *.
     cut (Config.eq (Config.map
@@ -469,10 +469,13 @@ Proof.
                                             Config.source := Loc.origin;
                                             Config.target := Loc.origin |} |}
                    end)) _ Hconf).
-      do 2 rewrite map_map.
       rewrite Hlicp.
-      repeat f_equiv.
-      unfold Config.eq, Config.map.
+      unfold Spect.eq, Spect.multiset.
+      intros X.
+      do 2 rewrite map_map.
+      Config.list_map.
+      
+    + unfold Config.eq, Config.map.
       intros id; destruct id as [g1| b1] eqn : Hid.
       - now simpl in *.
       - admit. (* TODO montrer que c'est pas possible car il n'y a pas de byzantin. *)
