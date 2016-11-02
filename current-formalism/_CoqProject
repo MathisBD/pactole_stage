@@ -3,6 +3,9 @@
 Preliminary.v
 Robots.v
 Configurations.v
+MMaps/MMapInterface.v
+MMaps/MMapFacts.v
+MMaps/MMapWeakList.v
 Similarity.v
 CommonFormalism.v
 CommonRealFormalism.v

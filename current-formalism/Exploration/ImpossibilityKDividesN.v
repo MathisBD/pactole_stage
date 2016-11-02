@@ -103,12 +103,12 @@ Section ExplorationKDivedesN.
 Open Scope Z_scope.
 
 (* Fin.t k c'est l'ensemble de 1 à k.*)
-Definition Fint_to_nat (k:nat) (f:Fin.t k): nat :=
+Fixpoint Fint_to_nat (k:nat) (f:Fin.t k): nat :=
   match f with
   | @Fin.F1 _ => 1%nat
-  | @Fin.FS n' f' => 1 + n'
+  | @Fin.FS n' f' => S (Fint_to_nat f')
   end.
-  
+
 
 Fixpoint create_conf1 (k:nat) (f:Fin.t k) : Loc.t :=
   Loc.mul (((Z_of_nat ((Fint_to_nat f)*(n / kG))))) Loc.unit.
