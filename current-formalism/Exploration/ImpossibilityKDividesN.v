@@ -259,11 +259,50 @@ Proof.
       omega.
       omega. }
     assert (Haux : exists x,
-               Z.of_nat (x * (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
+               (x * Z.of_nat (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
     { exists (loc/Z.of_nat (n/kG)).
-      rewrite Z.mod_eq with (a := loc).
-      set (n' := Z.of_nat n).
-      
+      rewrite Z.mul_comm.
+      rewrite <- Zdiv.Z_div_exact_full_2 with (a := loc) (b:= Z.of_nat (n / kG)).
+      reflexivity.
+      assert (Hns := n_sup_1).
+      rewrite <- Hkg in Hkdn.
+      rewrite <- Nat.div_exact in *.
+      assert (Hk := k_sup_1).
+      assert (Htrue : 0 < Z.of_nat (n/kG)).
+      rewrite <- Nat2Z.inj_0, <- Nat2Z.inj_lt, Nat.mul_lt_mono_pos_l with (p := kG).
+      rewrite <- Hkdn.
+      omega.
+      omega.
+      omega.
+      omega.
+      now rewrite <- Hkg in Hmod.
+    }
+    assert (Haux' : exists x:nat,
+               ((Z.of_nat x) * Z.of_nat (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
+    { exists (Z.to_nat ((loc/Z.of_nat (n/kG)) mod Z.of_nat n)). 
+      rewrite Z2Nat.id.
+      rewrite Zdiv.Zmult_mod_idemp_l.
+      rewrite <- Hkg, <- Z.div_exact in Hmod.
+      rewrite Z.mul_comm, <- Hmod.
+      reflexivity.
+      assert (Hns := n_sup_1).
+      rewrite <- Hkg in Hkdn.
+      rewrite <- Nat.div_exact in *.
+      assert (Hk := k_sup_1).
+      assert (Htrue : 0 < Z.of_nat (n/kG)).
+      rewrite <- Nat2Z.inj_0, <- Nat2Z.inj_lt, Nat.mul_lt_mono_pos_l with (p := kG).
+      rewrite <- Hkdn.
+      omega.
+      omega.
+      omega.
+      omega.
+      apply Zdiv.Z_mod_lt.
+      assert (H:= n_sup_1).
+      omega.
+    }
+    destruct Haux' as (fg', Haux').
+    rewrite <- Nat2Z.inj_mul in Haux'.
+
     (*  (x <= S n0)%nat /\
        forall x, x <= m -> exists g: Fin.t m, Fint_to_nat g = x *)
     
