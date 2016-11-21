@@ -109,13 +109,12 @@ Fixpoint Fint_to_nat (k:nat) (f:Fin.t k): nat :=
   | @Fin.FS n' f' => S (Fint_to_nat f')
   end.
 
-
 Fixpoint create_conf1 (k:nat) (f:Fin.t k) : Loc.t :=
   Loc.mul (((Z_of_nat ((Fint_to_nat f)*(n / kG))))) Loc.unit.
 
 Definition config1 : Config.t :=
   fun id => match id with
-              | Good g => let pos := create_conf1 g in
+              | Good g => let pos := create_conf1 kG g in
                           {| Config.loc := pos;
                              Config.robot_info := {| Config.source := pos; Config.target := Loc.add Loc.unit pos |} |}
               | Byz b => let pos := Loc.origin in
@@ -258,7 +257,7 @@ Proof.
       omega.
       omega.
       omega. }
-    assert (Haux : exists x,
+(*    assert (Haux : exists x,
                (x * Z.of_nat (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
     { exists (loc/Z.of_nat (n/kG)).
       rewrite Z.mul_comm.
@@ -276,14 +275,16 @@ Proof.
       omega.
       omega.
       now rewrite <- Hkg in Hmod.
-    }
-    assert (Haux' : exists x:nat,
+    }  *)
+    assert (Haux' : exists x:nat, (x <= kG)%nat /\ 
                ((Z.of_nat x) * Z.of_nat (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
     { exists (Z.to_nat ((loc/Z.of_nat (n/kG)) mod Z.of_nat n)). 
       rewrite Z2Nat.id.
       rewrite Zdiv.Zmult_mod_idemp_l.
       rewrite <- Hkg, <- Z.div_exact in Hmod.
       rewrite Z.mul_comm, <- Hmod.
+      split.
+      admit.
       reflexivity.
       assert (Hns := n_sup_1).
       rewrite <- Hkg in Hkdn.
@@ -300,9 +301,22 @@ Proof.
       assert (H:= n_sup_1).
       omega.
     }
-    destruct Haux' as (fg', Haux').
+    destruct Haux' as (fg', (Haux, Haux')).
     rewrite <- Nat2Z.inj_mul in Haux'.
-
+    assert (Htest := Fin.of_nat).
+    assert (Hd : forall m, (fg' < m)%nat -> exists g: Fin.t m, Fint_to_nat g = fg').
+    intros.    
+    assert (H' := Fin.of_nat m fg').
+    destruct m.
+    omega.
+    assert (Hs := Fin.of_nat_lt H).
+    exists Hs.
+    unfold Fint_to_nat.
+    simpl in *.
+    specialize (Htest ((S n0) + fg')%nat (S n0)).
+    destruct Htest eqn : Htest'.
+    Focus 2.
+    simpl in *.    
     (*  (x <= S n0)%nat /\
        forall x, x <= m -> exists g: Fin.t m, Fint_to_nat g = x *)
     
