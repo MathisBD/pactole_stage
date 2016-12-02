@@ -8,10 +8,11 @@
 (**************************************************************************)
 
 Require Import Psatz.
-Require Import Morphisms.
+(* Require Import Morphisms. *)
 Require Import Arith.Div2.
 Require Import Omega.
-Require Import List SetoidList.
+(* Require Import List SetoidList. *)
+Require Import List Setoid Compare_dec Morphisms FinFun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
@@ -109,6 +110,81 @@ Fixpoint Fint_to_nat (k:nat) (f:Fin.t k): nat :=
   | @Fin.FS n' f' => S (Fint_to_nat f')
   end.
 
+(* Lemma test : forall k g, (0 < Fint_to_nat (@Fin.FS k g))%nat. *)
+(* Proof. *)
+(*   intros. *)
+(*   destruct g. *)
+(*   simpl in *. *)
+(*   omega. *)
+(* Qed. *)
+  
+(*Lemma Fin_0 : forall k (g: Fin.t (S k)), Fint_to_nat g = O -> g = @Fin.F1 k.
+Proof.
+  intros.
+(* Fin.F1: forall n : nat, Fin.t (S n)
+   Fin.FS: forall n : nat, Fin.t n -> Fin.t (S n) *)
+  replace 0%nat with (Fint_to_nat (@Fin.F1 (S k))) in H.
+  f_equal.
+  case g.
+  Fin.FS_inj
+  assert (Hg := Fin.to_nat g).
+  assert (Hf1 := Fin.to_nat (@Fin.F1 k)).
+  destruct Hg.
+  destruct Hf1.
+  destruct k.
+  assert (x = x0).
+  omega.
+  assert (x = O).
+  omega.
+  
+  assert (Hp : proj1_sig Hg = proj1_sig (Fin.to_nat (@Fin.F1 k))).
+  unfold Fin.to_nat.
+  simpl in *.
+  unfold proj1_sig.
+  destruct k.
+  simpl in *.
+  destruct H'.
+  intros.
+  case g.
+  inversion g.
+  Focus 2.
+  destruct g.
+  set (n := S k) in *.
+  assert (Hn := refl_equal n).
+  unfold n at 2 in Hn.
+  clearbody n.
+  dependent inversion g.
+  destruct k.
+  destruct g.
+Qed.*)
+
+
+Lemma Fint_to_nat_inj : forall k (g1 g2 : Fin.t k) ,
+    Fint_to_nat g1 = Fint_to_nat g2 -> g1 = g2.
+Proof.
+  intros k g1 g2 Hg.
+  unfold Names.G, Names.Internals.G in *.
+(*  dependent inversion g2.
+  
+  simpl in *.
+  case g2.
+  inversion Hg.
+  inversion g2.
+  destruct g2.
+  simpl in *.
+  assert (Heq0 : forall k (g : Fin.t (S k)), Fint_to_nat g = O -> g = Fin.F1).
+  { intros.
+    destruct g.
+
+  } 
+    inversion g2.
+  Focus 2.
+  dependent inversion g2.
+  simpl in *.
+
+Qed.*)
+Admitted.
+  
 Definition create_conf1 (k:nat) (f:Fin.t k) : Loc.t :=
   Loc.mul (((Z_of_nat ((Fint_to_nat f)*(n / kG))))) Loc.unit.
 
@@ -161,49 +237,55 @@ Proof.
   apply conf1_aux.
 Qed.
 
-(*
-Lemma conf1_new_2_aux : forall loc, loc mod Z.of_nat (n / kG) = 0 ->
-                                    forall g: Names.G,~ Loc.eq (create_conf1 g) loc ->
-                                              False.
+
+Lemma conf_aux : forall m k, (1 < k)%nat -> (m < k)%nat ->
+                             exists g: Fin.t k, Fint_to_nat g = m.
 Proof.
-  intros loc Hloc g Hneq.
-  generalize (conf1_new_1 g); intros Hc1.
-  unfold Loc.eq, def.n in Hneq.
-  unfold Names.G, Names.Internals.G, K.nG in *.
-  rewrite <- Z.div_exact in *.
-  do 2 rewrite Zdiv.Zmod_eq in *.
-  rewrite Hc1, Hloc in Hneq.
-  
+  intros m.
+  (* generalize k_sup_1; intros Hk1. *)
+  induction m.
+  intros.
+  unfold Fint_to_nat.
+  destruct k.
+  omega.
+  exists Fin.F1.
+  reflexivity.
+  intros.
+  destruct k eqn : Hk.
+  omega.
+  destruct n0.
+  omega.  
+  destruct n0.
+  destruct m.
+  exists (Fin.FS Fin.F1).
+  now simpl.
+  omega.
+  destruct (IHm (S (S n0))).
+  omega.
+  omega.
+  exists (Fin.FS x).
+  simpl.
+  omega.
+Qed.
 
-  generalize Z.rem_mul_r; intros Hmod.
 
-  assert (Hmod1 := Hmod (create_conf1 g) (Z.of_nat (n/kG)) (Z.of_nat (kG))).
-  assert (Hmod2 := Hmod loc (Z.of_nat (n/kG)) (Z.of_nat kG)).
-  unfold create_conf1 in *; simpl in *.
-  unfold Names.G, Names.Internals.G, K.nG in *.
-  destruct kG eqn : Hkg.
-  generalize k_sup_1; omega.
-  unfold Loc.mul, Loc.unit, def.n in *.
-  set (nskg := Z.of_nat (n / S n0)) in *.
-  
-  set (kg := Z.of_nat (S n0)) in *.
-  set (n' := Z.of_nat n) in *.
-  rewrite Hc1, Hloc in *.
-  replace (nskg*kg) with n' in *.
 
-  (* changer le create_conf en list.fold_left?*)
-  rewrite Hmod1, Hmod2 in Hneq.
-  assert (Hneq' : (((Z.of_nat (Fint_to_nat g * (n / S n0)) * 1) mod n' / nskg) mod kg)
-                    <> ((loc / nskg) mod kg)).
-  admit (* TODO *).
-  do 2 rewrite Zdiv.Zmod_eq with (b := kg) in Hneq'.
-  rewrite Z.mul_comm with (m := kg) in Hneq'.
+Lemma conf_aux' : forall k (g: Fin.t k), 
+                                         exists m, (m < k)%nat /\ Fint_to_nat g = m.
+Proof.
+  intros k g.
+  induction g.
   simpl in *.
-  replace (loc / nskg / kg * kg) with (loc/nskg) in Hneq' by omega.
-rewrite Hloc, Hc1 in Hneq.
-
-Qed. *)
-
+  exists O; omega.
+  simpl in *.
+  destruct n0.
+  destruct IHg.
+  omega.
+  destruct IHg.
+  exists (S x).
+  split;
+  omega.
+Qed.
 
 Lemma conf1_new_2 : forall loc, loc mod Z.of_nat (n / kG) = 0 ->
                                 exists g:Names.G, Loc.eq (create_conf1 g) loc.
@@ -260,25 +342,6 @@ Proof.
       omega.
       omega.
       omega. }
-(*    assert (Haux : exists x,
-               (x * Z.of_nat (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
-    { exists (loc/Z.of_nat (n/kG)).
-      rewrite Z.mul_comm.
-      rewrite <- Zdiv.Z_div_exact_full_2 with (a := loc) (b:= Z.of_nat (n / kG)).
-      reflexivity.
-      assert (Hns := n_sup_1).
-      rewrite <- Hkg in Hkdn.
-      rewrite <- Nat.div_exact in *.
-      assert (Hk := k_sup_1).
-      assert (Htrue : 0 < Z.of_nat (n/kG)).
-      rewrite <- Nat2Z.inj_0, <- Nat2Z.inj_lt, Nat.mul_lt_mono_pos_l with (p := kG).
-      rewrite <- Hkdn.
-      omega.
-      omega.
-      omega.
-      omega.
-      now rewrite <- Hkg in Hmod.
-    }  *)
     assert (Hmod1 :  Z.of_nat (n / kG) <> 0).
       generalize k_inf_n, k_sup_1; intros.
       rewrite Nat.mod_divides, <-Hkg in Hkdn.
@@ -293,7 +356,7 @@ Proof.
       omega.
       omega.
       omega.
-    assert (Haux' : exists x:nat, (x <= kG)%nat /\ 
+    assert (Haux' : exists x:nat, (x < kG)%nat /\ 
                ((Z.of_nat x) * Z.of_nat (n/kG)) mod Z.of_nat n = loc mod Z.of_nat n).
     { exists (Z.to_nat (((loc mod Z.of_nat n)/Z.of_nat (n/kG)))). 
       rewrite Z2Nat.id.
@@ -311,19 +374,19 @@ Proof.
         destruct Hlocm as (loc', Hlocm).
         rewrite Hlocm.
         rewrite <- Zdiv.div_Zdiv, Nat2Z.id.
-        rewrite Nat.div_le_upper_bound with (q := kG).
-        omega.
+        assert (loc' < n)%nat.
+        apply Nat2Z.inj_lt.
+        rewrite <- Hlocm.
+        unfold n'.
+        apply Zdiv.Z_mod_lt.
+        generalize n_sup_1; omega.
+        (* replace n with (kG * (n/kG))%nat in H. *)
+        apply Nat.div_lt_upper_bound with (b := (n/kG)%nat) (q := kG).
         omega.
         rewrite Nat.mul_comm.
         rewrite <- Nat.div_exact in Hkdn.
         rewrite Hkg, <- Hkdn.
-        rewrite Nat2Z.inj_le.
-        rewrite <- Hlocm.
-        unfold n'.
-        assert (Z.of_nat n > 0).
-        generalize n_sup_1; intros; omega.
-        assert (Htrue := Zdiv.Z_mod_lt loc (Z.of_nat n) H).
-        omega.
+        assumption.
         omega.
         omega.
       + assert (forall a, a mod Z.of_nat (n/kG) = 0 -> (a mod n') mod Z.of_nat (n/kG) = 0).
@@ -358,49 +421,19 @@ Proof.
         generalize n_sup_1; intros; omega.
     }
     destruct Haux' as (fg', (Haux, Haux')).
-    assert (exists g' : Fin.t (S n0), fg' = g').(* TODO*)
-    rewrite <- Nat2Z.inj_mul in Haux'.
-    assert (Htest := Fin.of_nat).
-    assert (Hd : forall m, (fg' < m)%nat -> exists g: Fin.t m, Fint_to_nat g = fg').
-    intros.    
-    assert (H' := Fin.of_nat m fg').
-    destruct m.
-    omega.
-    assert (Hs := Fin.of_nat_lt H).
-    exists Hs.
-    unfold Fint_to_nat.
-    simpl in *.
-    specialize (Htest ((S n0) + fg')%nat (S n0)).
-    destruct Htest eqn : Htest'.
-    Focus 2.
-    simpl in *.    
-    (*  (x <= S n0)%nat /\
-       forall x, x <= m -> exists g: Fin.t m, Fint_to_nat g = x *)
-    
-    rewrite Z.mod_eq with (a := loc).
-    rewrite <- Z.div_exact, <- Nat.div_exact in *.
-    rewrite Hkdn, Hmod, Hkg in *.
-    set (k := S n0) in *.
-    destruct (Fin.t).
-    rewrite Z.mod_mod.
-    unfold Fint_to_nat in *.
-    simpl in *.
-    induction Names.Gnames eqn : Hgn.
-  - generalize Names.Gnames_length, k_sup_1.
-    intros Hfalse Hk.
-    rewrite Hgn in Hfalse.
-    unfold K.nG in *.
-    simpl in *.
-    omega.
-  - unfold Names.G, Names.Gnames, Names.Internals.Gnames, Names.Internals.G, K.nG in *.
+    generalize (conf_aux); intros Ha.
+    specialize (Ha fg' kG k_sup_1 Haux).
+    destruct Ha.
     rewrite <- Hkg in *.
-    exists a.
-
-
+    exists x; rewrite H.
+    rewrite <- Nat2Z.inj_mul in Haux'.
+    rewrite Z.mul_1_r, Z.mod_mod.
+    apply Haux'.
+    generalize n_sup_1; omega.
 Qed.
 
 
-Lemma conf1_mult : forall g1 g2, Loc.eq (create_conf1 g1) (create_conf1 g2) -> False.
+(* Lemma conf1_mult : forall g1 g2, Loc.eq (create_conf1 g1) (create_conf1 g2) -> False. *)
 
     
 Definition loc_add k rconfig :=
@@ -449,6 +482,62 @@ reflexivity. assumption.
 Qed.
 
 
+Lemma conf1_inf_n : forall g:Names.G,
+    (Z.of_nat (Fint_to_nat g * (n / kG)) * 1) < Z.of_nat n.
+Proof.
+  intros.
+  unfold Names.G, Names.Internals.G in *.
+  assert (Hf := Fin.to_nat g).
+  destruct Hf.
+  generalize kdn; intros  Hkdn.
+  rewrite <- Nat.div_exact in Hkdn.
+  unfold K.nG in *.
+  rewrite Hkdn at 2.
+  generalize  (conf_aux' g).
+  intros (m0 , (Hm, Hm')).
+  rewrite Hm'.
+  rewrite Z.mul_1_r.
+  rewrite <- Nat2Z.inj_lt.
+  apply mult_lt_compat_r.
+  omega.
+  generalize k_sup_1, k_inf_n; intros.
+  apply Nat.div_str_pos.
+  omega.
+  generalize k_sup_1; omega.
+Qed.
+  
+Lemma unique_g : forall g1 g2,
+               g1 <> g2 -> Loc.eq (Config.loc (config1 (Good g1)))
+                                  (Config.loc (config1 (Good g2))) -> False.
+Proof.
+  intros.
+  unfold config1, Loc.eq in H0.
+  simpl in *.
+  unfold create_conf1 in H0.
+  unfold Loc.mul, Loc.unit, def.n in H0.
+  assert (Fint_to_nat g1 = Fint_to_nat g2).
+  do 2 rewrite Z.mod_mod in H0.
+  generalize (conf1_inf_n g1), (conf1_inf_n g2).
+  intros.
+  do 2 rewrite Z.mod_small in H0; try omega.
+  do 2 rewrite Z.mul_1_r in H0.
+  apply Nat2Z.inj in H0.
+  rewrite Nat.mul_cancel_r in H0.
+  assumption.
+  assert ((0 < (n/kG))%nat).
+  generalize k_sup_1, k_inf_n; intros.
+  apply Nat.div_str_pos.
+  omega.
+  omega.
+  generalize n_sup_1; omega.
+  generalize n_sup_1; omega.
+  generalize n_sup_1; omega.
+  intuition.
+  generalize (conf_aux' g1).
+  apply Fint_to_nat_inj in H1.
+  auto.  
+Qed.
+
 Parameter g : Names.G.
 
 
@@ -479,30 +568,33 @@ Proof.
   apply Nat.div_str_pos.
   omega.
   omega.
+  generalize conf1_new_2; intros Hc1n2.
   unfold Loc.add, Loc.opp, def.n.
   set (n0 := Z.of_nat n).
-  (* unfold create_conf1.
-  rewrite Zdiv.Zmod_eq in Hc_idg; try omega.
-  apply Zminus_eq in Hc_idg.
-  rewrite Hc_idg.
-  rewrite Zdiv.div_Zdiv ; try omega. *)
-  induction Names.Gnames eqn : He.
-  assert (Hfalse := Names.In_Gnames idg).
-  rewrite He in Hfalse.
-  apply in_nil in Hfalse.
-  now exfalso.
-  exists a.
-  rewrite Z.mod_mod.
+  specialize (Hc1n2 (create_conf1 g - create_conf1 idg)).
+  destruct Hc1n2.
+  rewrite Zdiv.Zminus_mod.
+  rewrite Hc_idg, Hc_g.
+  simpl in *.
+  apply Z.mod_0_l.
+  omega.
+  exists x.
+  unfold Loc.eq, def.n in H.
+  rewrite <- Zdiv.Zminus_mod_idemp_r.
+  fold n0 in H.
+  rewrite H.
   rewrite <- Zdiv.Zminus_mod_idemp_l with (a := n0).
   rewrite Z.mod_same.
   rewrite Zdiv.Zplus_mod_idemp_r.
-  replace (create_conf1 g + (0 - create_conf1 a))
-  with (create_conf1 g - create_conf1 a) by omega.
-  unfold create_conf1.
-  unfold K.nG.
-  destruct kG.
-  admit.
-Admitted.
+  rewrite Z.mod_mod.
+  simpl in *.
+  rewrite Z.add_opp_r, Zdiv.Zminus_mod_idemp_r.
+  rewrite Z.sub_sub_distr.
+  rewrite Z.add_comm, Z.sub_diag.
+  now rewrite Z.add_0_r.
+  unfold n0. omega.
+  unfold n0. omega.
+Qed.
 
 Lemma spect_rotation : Spect.eq (!! config1) (!! (Config.map (apply_sim (trans (create_conf1 g))) config1)).
 Proof.
@@ -513,7 +605,7 @@ Proof.
   generalize Spect.from_config_In, conf1_1, Spect.pos_in_config.
   intros HSfcI Hconf1_1 HSpic.
   assert (Htrue : forall x:Spect.elt, Spect.In x (!!config1)
-              <-> Spect.In x (!! (Config.map (apply_sim (trans (create_conf1 g))) config1))).End K.
+              <-> Spect.In x (!! (Config.map (apply_sim (trans (create_conf1 g))) config1))).
   { unfold apply_sim, trans; simpl in *.
     intros x. do 2 rewrite HSfcI.
     split.
@@ -525,7 +617,13 @@ Proof.
         simpl in *.
         rewrite <- Hc1, H.
         reflexivity.
-      - admit (* TODO avec le fait qu'il n'y a pas de byz. *).
+      - assert (Hfalse := Names.Bnames_length).
+        assert (Hfalse' := Names.In_Bnames b).
+        unfold Names.Bnames, K.nB in *.
+        apply length_0 in Hfalse.
+        rewrite Hfalse in Hfalse'.
+        apply in_nil in Hfalse'.
+        now exfalso.
     + intros (gc1,Hc1).
       destruct gc1 as [g1| b] eqn : Hg.
       - simpl in *.
@@ -555,9 +653,46 @@ Proof.
         now simpl in *.
         unfold n0.
         omega.
-      - admit (* TODO avec le fait qu'il n'y a pas de byz. *).
+      - assert (Hfalse := Names.Bnames_length).
+        assert (Hfalse' := Names.In_Bnames b).
+        unfold Names.Bnames, K.nB in *.
+        apply length_0 in Hfalse.
+        rewrite Hfalse in Hfalse'.
+        apply in_nil in Hfalse'.
+        now exfalso.
   }
-  admit.
+  apply Spect.elements_injective.
+  simpl in *.
+  unfold Spect.eq_pair.
+  assert (Ht : forall x : Spect.elt,
+             Spect.In x (!! config1) <-> (!! config1)[x] = 1%nat).
+  { intros x; split; intros Hsp.
+    (* rewrite HSfcI in Hsp. *)
+    (* destruct Hsp. *)
+    (* unfold Spect.from_config. *)
+    (* unfold Spect.multiset. *)
+    generalize unique_g.
+    intros.
+    rewrite Spect.multiset_spec.
+    set (l := map Config.loc (Config.list config1)).
+    fold l.
+    simpl in *.
+    unfold countA_occ.
+    destruct (map Config.loc (Config.list config1)) eqn : Hl.
+    rewrite H.
+    rewrite <-Spect.multiset_In in Hsp.
+    clear HSfcI Hconf1_1 HSpic Htrue.
+    unfold Spect.from_config in *.
+    destruct (Config.list config1) eqn : Hlc.
+    + simpl in *.
+      unfold Spect.multiset in *.
+      simpl in *.
+      now apply Spect.In_empty in Hsp.
+    + apply Spect.multiset_app. (* forall loc,   *)
+      unfold Spect.multiset.
+      unfold Spect.M.from_elements.
+      destruct x.
+    admit.
 Admitted.
 
 Section Move1.
@@ -622,81 +757,58 @@ Hypothesis Hmove : move = 1.
 Lemma config1_ne_unit : Z_of_nat (n mod kG) = 0 ->
       forall g:Names.G, ~ Loc.eq (create_conf1 g) Loc.unit.
 Proof.
-intros Hmod g.
-induction g.
-+ simpl in *.
-  assert (Hn : 1 < Z.of_nat (n/kG)).
-  generalize k_sup_1, k_inf_n, n_sup_1.
-  intros.
-  rewrite Zdiv.mod_Zmod in Hmod; try omega.
-  rewrite Zdiv.Zmod_divides in *; try omega.
-  destruct Hmod.
-  rewrite Zdiv.div_Zdiv, H2, Z.mul_comm with (m:= x), Zdiv.Z_div_mult_full;
-  try omega.
-  assert (Z.of_nat kG < Z.of_nat n) by omega.
-  apply Zmult_lt_reg_r with (p := Z.of_nat kG); try omega.
-  rewrite Z.mul_comm with (n:= x).
-  rewrite <- H2.
-  omega.
-  unfold Loc.eq, Loc.mul, Loc.unit.
-  rewrite Z.mod_mod.
-  replace (Z.of_nat (n / kG + 0) * 1) with (Z.of_nat (n/kG)).
-  unfold def.n.
-  rewrite Zdiv.Zmod_1_l.
-  rewrite Zdiv.Zmod_small.
-  omega.
-  split.
-  omega.
-  assert (1 < Z.of_nat kG). 
-  generalize k_sup_1; intros.
-  omega.
-  generalize k_inf_n.
-  intros.
-  rewrite Zdiv.div_Zdiv.
-  apply Zdiv.Z_div_lt;
-  omega.
-  omega.
-  generalize n_sup_1; intros; omega.
-  replace (Z.of_nat (n / kG + 0)) with (Z.of_nat (n / kG)) by auto.
-  omega.
-  unfold def.n;
-  generalize n_sup_1; intros; omega.
-+ simpl in *.
-  generalize k_sup_1, k_inf_n, n_sup_1.
-  intros.
-  unfold Loc.eq, Loc.mul, Loc.unit, def.n.
-  rewrite Z.mod_mod in *; try omega.
-  replace (Z.of_nat (n / kG + Fint_to_nat g0 * (n / kG)) * 1) with (Z.of_nat (n / kG + Fint_to_nat g0 * (n / kG))) by omega.
-  replace (Z.of_nat (n / kG + Fint_to_nat g0 * (n / kG))) with ((Z.of_nat (1 * (n / kG) + Fint_to_nat g0 * (n / kG)))).
-  rewrite <- Nat.mul_add_distr_r.
-  rewrite Zdiv.mod_Zmod in Hmod; try omega.
-  rewrite Zdiv.Zmod_divides in *; try omega.
-  destruct Hmod.
-  rewrite Nat2Z.inj_mul, Nat2Z.inj_add, Zdiv.div_Zdiv; try omega.
-  rewrite H2 in *.
-  replace (Z.of_nat kG * x ) with (x * Z.of_nat kG) by intuition.
-  rewrite Zdiv.Z_div_mult_full.
-  replace (x * Z.of_nat kG) with (Z.of_nat kG * x) by intuition.
-  rewrite Zdiv.Zmult_mod_distr_r.
-  assert (1 < x).
-  assert (Z.of_nat kG < Z.of_nat n) by omega.
-  apply Zmult_lt_reg_r with (p := Z.of_nat kG); try omega.
-  rewrite Z.mul_comm with (n:= x).
-  rewrite <- H2.
-  omega.
-  rewrite Zdiv.Zmod_1_l; try omega.
-  intuition.
-  rewrite Z.mul_comm in H4.
-  apply Z.eq_mul_1 in H4.
-  destruct H4; omega.
-  omega.
-  rewrite Nat2Z.inj_add, Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
-  replace (Z.of_nat 1 * (Z.of_nat n / Z.of_nat kG)) with (Z.of_nat n / Z.of_nat kG).
-  rewrite Nat2Z.inj_add, Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
-  assert (1 = Z.of_nat 1).
-  rewrite Nat2Z.inj_succ.
-  now simpl in *.
-  rewrite <- H2; omega.
+  intros Hmod g.
+  induction g.
+  + simpl in *.
+    unfold create_conf1.
+    simpl in *.
+    unfold Loc.mul, Loc.eq, Loc.unit, def.n.
+    rewrite Z.mod_mod.
+    simpl in *.
+    rewrite Z.mod_0_l, Z.mod_1_l.
+    omega.
+    generalize n_sup_1; omega.
+    generalize n_sup_1; omega.
+    generalize n_sup_1; omega.
+  +  simpl in *.
+     generalize k_sup_1, k_inf_n, n_sup_1.
+     intros.
+     unfold create_conf1.
+     unfold Loc.eq, Loc.mul, Loc.unit, def.n. 
+     simpl in *.
+     replace (Z.of_nat (n / kG + Fint_to_nat g0 * (n / kG)) * 1) with (Z.of_nat (n / kG + Fint_to_nat g0 * (n / kG))) by omega.
+     replace (Z.of_nat (n / kG + Fint_to_nat g0 * (n / kG))) with ((Z.of_nat (1 * (n / kG) + Fint_to_nat g0 * (n / kG)))).
+     rewrite <- Nat.mul_add_distr_r.
+     rewrite Zdiv.mod_Zmod in Hmod; try omega.
+     rewrite Zdiv.Zmod_divides in *; try omega.
+     rewrite Z.mod_mod.
+     destruct Hmod.
+     rewrite Nat2Z.inj_mul, Nat2Z.inj_add, Zdiv.div_Zdiv; try omega.
+     rewrite H2 in *.
+     replace (Z.of_nat kG * x ) with (x * Z.of_nat kG) by intuition.
+     rewrite Zdiv.Z_div_mult_full.
+     replace (x * Z.of_nat kG) with (Z.of_nat kG * x) by intuition.
+     rewrite Zdiv.Zmult_mod_distr_r.
+     assert (1 < x).
+     assert (Z.of_nat kG < Z.of_nat n) by omega.
+     apply Zmult_lt_reg_r with (p := Z.of_nat kG); try omega.
+     rewrite Z.mul_comm with (n:= x).
+     rewrite <- H2.
+     omega.
+     rewrite Zdiv.Zmod_1_l; try omega.
+     intuition.
+     rewrite Z.mul_comm in H4.
+     apply Z.eq_mul_1 in H4.
+     destruct H4; omega.
+     omega.
+     omega.
+     rewrite Nat2Z.inj_add, Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
+     replace (Z.of_nat 1 * (Z.of_nat n / Z.of_nat kG)) with (Z.of_nat n / Z.of_nat kG).
+     rewrite Nat2Z.inj_add, Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
+     assert (1 = Z.of_nat 1).
+     rewrite Nat2Z.inj_succ.
+     now simpl in *.
+     rewrite <- H2; omega.
 Qed.
 
 
@@ -776,106 +888,40 @@ Proof.
   unfold move in Hmove.
   simpl in *.
   unfold Loc.add, Loc.opp, Loc.unit.
-  repeat f_equiv.
-  unfold apply_sim, trans; simpl.
-  generalize conf1_1, Spect.from_config_In.
-  intros conf1_1 HSfcI.
-
+  generalize spect_rotation; intro.
+  assert (Hpgm := pgm_compat r H).
+  rewrite <- Zdiv.Zminus_mod_idemp_r.
+  rewrite <- Hpgm, Hmove, Z.mod_1_l.
+  reflexivity.
+  generalize n_sup_1; unfold def.n; omega.
 Qed.
 
 Lemma moving_no_stop : ~Stopped (execute r bad_demon1 config1).
 Proof.
-intros Hs.
-destruct Hs as (Hs, _).
-unfold stop_now in Hs.
-simpl in *.
-specialize (Hs (Good g)).
-unfold Config.eq_RobotConf in Hs.
-destruct Hs as (Hs, _).
-unfold move in *.
-unfold apply_sim, trans in Hs;
-simpl in *.
-cut (Loc.eq (Loc.add (create_conf1 g)
-          (Loc.opp
-             (r
-                (!!
-                   (Config.map
-                      (fun infoR : Config.RobotConf =>
-                       {|
-                       Config.loc := Loc.add (create_conf1 g) (Loc.opp (Config.loc infoR));
-                       Config.robot_info := Config.robot_info infoR |}) config1)))))
-       (create_conf1 g +
-         (Z.of_nat def.n -
-          r
-            (!! config1)))).
-intros Hf.
-rewrite Hf, Hmove in Hs.
-clear Hf.
-unfold Loc.eq in Hs.
-replace ((create_conf1 g + (Z.of_nat def.n - 1)) mod Z.of_nat def.n)
-with ((create_conf1 g - 1) mod Z.of_nat def.n) in Hs.
-now apply neq_a_a1 in Hs.
-replace ((create_conf1 g + (Z.of_nat def.n - 1))) with
-(create_conf1 g + Z.of_nat def.n - 1) by omega.
-replace (create_conf1 g + Z.of_nat def.n - 1) with
-(Z.of_nat def.n + (create_conf1 g - 1)) by omega.
-rewrite <- Zdiv.Zplus_mod_idemp_l, Zdiv.Z_mod_same_full.
-replace ((0 + (create_conf1 g - 1))) with ((create_conf1 g - 1)) by omega.
-reflexivity.
-unfold Loc.eq, Loc.add, Loc.opp; simpl in *.
-generalize n_sup_1; intros Hn1.
-unfold def.n.
-repeat rewrite Z.mod_mod; try omega.
-rewrite Zdiv.Zplus_mod_idemp_r.
-unfold Config.map.
-replace (create_conf1 g +
- (Z.of_nat n -
-  r
-    (!!
-       (fun id : Names.ident =>
-        {|
-        Config.loc := (create_conf1 g + (Z.of_nat n - Config.loc (config1 id)) mod Z.of_nat n)
-                      mod Z.of_nat n;
-        Config.robot_info := Config.robot_info (config1 id) |}))))
-with (create_conf1 g +
- Z.of_nat n -
-  r
-    (!!
-       (fun id : Names.ident =>
-        {|
-        Config.loc := (create_conf1 g + (Z.of_nat n - Config.loc (config1 id)) mod Z.of_nat n)
-                      mod Z.of_nat n;
-        Config.robot_info := Config.robot_info (config1 id) |}))) by omega.
-rewrite <- Zdiv.Zminus_mod_idemp_r.
-replace (create_conf1 g + (Z.of_nat n - r (!! config1)))
-with (create_conf1 g + Z.of_nat n - r (!! config1)) by omega.
-rewrite <- Zdiv.Zminus_mod_idemp_r with (b := r (!! config1)).
-set (fun id : Names.ident =>
-          {|
-          Config.loc := (create_conf1 g + (Z.of_nat n - Config.loc (config1 id)) mod Z.of_nat n)
-                        mod Z.of_nat n;
-          Config.robot_info := Config.robot_info (config1 id) |}) as config2.
-simpl in *.
-assert (Spect.eq (!! config1) (!! config2)).
-unfold Spect.eq, Spect.from_config.
-intros pt.
-assert (Hseq : forall g, (exists loc, Loc.eq loc (Config.loc (config1 (Good g)))) <->
-                          exists loc', Loc.eq loc' (Config.loc (config2 (Good g)))).
-intros g'; split; intros (loc,Hl).
-unfold config2; simpl in *.
-exists ((create_conf1 g + (Z.of_nat n - create_conf1 g') mod Z.of_nat n) mod Z.of_nat n).
-reflexivity.
-exists (Config.loc (config1 (Good g'))); reflexivity.
-assert (Hperm : PermutationA Spect.M.eq_pair (Spect.M.elements (!! config1)) (Spect.M.elements (!! config2))).
-admit.
-apply Spect.M.elements_injective.
-apply Hperm.
-rewrite pgm_compat.
-f_equiv.
-now rewrite H.
-Admitted.
+  intros Hs.
+  generalize n_sup_1; intros Hn1.
+  destruct Hs as (Hs, _).
+  unfold stop_now in Hs.
+  simpl in *.
+  specialize (Hs (Good g)).
+  unfold Config.eq_RobotConf in Hs.
+  destruct Hs as (Hs, _).
+  rewrite round_move in Hs.
+  unfold Loc.add, Loc.opp, Loc.unit, def.n in *.
+  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same in Hs.
+  simpl in *.
+  rewrite Zdiv.Zplus_mod_idemp_r in Hs.
+  replace (create_conf1 g + -1) with (create_conf1 g - 1) in Hs by omega.
+  apply neq_a_a1 with (a := create_conf1 g).
+  unfold Loc.eq in *.
+  rewrite Z.mod_mod in Hs.
+  assumption.
+  unfold def.n; omega.
+  omega.
+Qed.  
 
-Lemma n_np1_st : forall conf, Spect.eq (!!conf) (!!config1) -> 
+
+(* Lemma n_np1_st : forall conf, Spect.eq (!!conf) (!!config1) ->
                               ~Stopped (execute r bad_demon1 conf).
 Proof.
 intros conf Heqc Habs.
@@ -941,7 +987,7 @@ now apply moving_no_stop.
 simpl in *.
 
 auto.
-Qed.
+Qed. *)
 
 (* final theorem first part: if we move, In the asynchronous model, if k divide n, 
    then the exploration with stop of a n-node ring is not possible. *)
@@ -955,6 +1001,7 @@ destruct (Habs config1) as (Hvisit, Hstop).
 destruct Hstop.
 now apply moving_no_stop in H.
 destruct Hstop.
+now apply 
 simpl in *.
 + Hstopped.
   clear Hvisit Habs Hstopped.
