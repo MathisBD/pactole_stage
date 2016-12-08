@@ -667,19 +667,221 @@ Proof.
   assert (Ht : forall x : Spect.elt,
              Spect.In x (!! config1) <-> (!! config1)[x] = 1%nat).
   { intros x; split; intros Hsp.
+    assert (Hsp' := Hsp).
     (* rewrite HSfcI in Hsp. *)
     (* destruct Hsp. *)
-    (* unfold Spect.from_config. *)
+    unfold Spect.from_config.
     (* unfold Spect.multiset. *)
     generalize unique_g.
     intros.
-    rewrite Spect.multiset_spec.
-    set (l := map Config.loc (Config.list config1)).
-    fold l.
+    rewrite Spect.multiset_spec. 
+    rewrite Config.list_spec.
+    rewrite map_map.
+    assert (HNoDup_map : NoDup (map (fun x0 : Names.ident => Config.loc (config1 x0)) Names.names)).
+    { apply Injective_map_NoDup.
+      intros id1 id2 Heq.
+      destruct (Names.eq_dec id1 id2).
+      assumption.
+      exfalso.
+      destruct id1 eqn : Hid1,
+      id2 eqn : Hid2.
+      apply (H g0 g1).
+      intuition.
+      rewrite H0 in n0.
+      auto.
+      now rewrite Heq.
+      assert (Hfalse := Names.Bnames_length).
+        assert (Hfalse' := Names.In_Bnames b).
+        unfold Names.Bnames, K.nB in *.
+        apply length_0 in Hfalse.
+        rewrite Hfalse in Hfalse'.
+        apply in_nil in Hfalse'.
+        now exfalso.
+        assert (Hfalse := Names.Bnames_length).
+        assert (Hfalse' := Names.In_Bnames b).
+        unfold Names.Bnames, K.nB in *.
+        apply length_0 in Hfalse.
+        rewrite Hfalse in Hfalse'.
+        apply in_nil in Hfalse'.
+        now exfalso.
+        assert (Hfalse := Names.Bnames_length).
+        assert (Hfalse' := Names.In_Bnames b).
+        unfold Names.Bnames, K.nB in *.
+        apply length_0 in Hfalse.
+        rewrite Hfalse in Hfalse'.
+        apply in_nil in Hfalse'.
+        now exfalso.
+        apply Names.names_NoDup.
+    }
+    assert (HNoDup_map' := HNoDup_map).
+    rewrite NoDup_count_occ' in HNoDup_map.
+    unfold Spect.from_config in Hsp.
+    unfold Config.map in Hsp.
+    rewrite Config.list_spec in Hsp.
+    rewrite map_map in Hsp.
+    assert (Hdec_conf1 : forall g1 g2,
+               {Config.loc (config1 (Good g1)) = Config.loc (config1 (Good g2))}
+                + {Config.loc (config1 (Good g1)) <> Config.loc (config1 (Good g2))}).
+    { 
+      intros.
+      destruct (Loc.eq_dec (Config.loc (config1 (Good g1)))
+               (Config.loc (config1 (Good g2))));
+        unfold Loc.eq in *;
+        simpl in *;
+        unfold create_conf1, Loc.mul, Loc.unit, def.n in *.
+      do 2 rewrite Z.mod_mod in e.
+      auto.
+      generalize n_sup_1; omega.
+      generalize n_sup_1; omega.
+      generalize n_sup_1; omega.
+      do 2 rewrite Z.mod_mod in n0.
+      auto.
+      generalize n_sup_1; omega.
+      generalize n_sup_1; omega.
+      generalize n_sup_1; omega.
+    }
+    assert (Hcount : count_occ Z.eq_dec
+               (map (fun x1 : Names.ident => Config.loc (config1 x1)) Names.names)
+                   x = 1%nat).
+    apply HNoDup_map.
     simpl in *.
-    unfold countA_occ.
-    destruct (map Config.loc (Config.list config1)) eqn : Hl.
-    rewrite H.
+    rewrite <- Spect.support_In in Hsp.
+    rewrite Spect.multiset_support in Hsp.
+    rewrite SetoidList.InA_alt in Hsp.
+    destruct Hsp as (x', (Heq, Hsp)).
+    assert (forall l1 l2,
+           In l1 (map (fun x : Names.ident => Config.loc (config1 x)) Names.names) ->
+           In l2 (map (fun x : Names.ident => Config.loc (config1 x)) Names.names) ->
+           Loc.eq l1 l2 -> l1 = l2).
+    { 
+      intros l1 l2 Hl1 Hl2 Hleq.
+      induction (map (fun x : Names.ident => Config.loc (config1 x)) Names.names).
+      exfalso; apply in_nil in Hl1; assumption.
+      apply in_inv in Hl2.
+      apply in_inv in Hl1.
+      destruct Hl1,Hl2.
+      Focus 4.
+      apply IHl.
+      rewrite NoDup_cons_iff in HNoDup_map'.
+      destruct HNoDup_map' as (_, Hl).
+      assumption.
+      rewrite NoDup_cons_iff in HNoDup_map'.
+      destruct HNoDup_map' as (_, Hl).
+      rewrite NoDup_count_occ' in Hl.
+      intros.
+      specialize (Hl x0 H2).
+      apply Hl;
+      assumption.
+      assumption.
+      assumption.
+      rewrite <- H0; assumption.
+      apply NoDup_cons_iff in HNoDup_map'.
+      destruct l.
+      apply in_nil in H1.
+      now exfalso.
+      destruct HNoDup_map'.
+      apply not_in_cons in H2.
+      rewrite H0 in *.
+
+
+
+      assert (forall elt,
+               In elt (map (fun x0 : Names.ident => Config.loc (config1 x0))
+                           Names.names) ->
+               0 <= elt < Z.of_nat n).
+    { intros elt HSelt.
+      rewrite in_map_iff in HSelt.
+      destruct HSelt as (x0, (Helt,_)).
+      destruct x0 as [g0 | b0].
+      unfold config1 in Helt.
+      simpl in Helt.
+      unfold create_conf1, Loc.mul, Loc.unit, def.n in Helt.
+      rewrite <- Helt.
+      rewrite Z.mod_small.
+      split.
+      omega.
+      apply conf1_inf_n.
+      split; try omega; try apply conf1_inf_n.
+      assert (Hfalse := Names.Bnames_length).
+      assert (Hfalse' := Names.In_Bnames b0).
+      unfold Names.Bnames, K.nB in *.
+      apply length_0 in Hfalse.
+      rewrite Hfalse in Hfalse'.
+      apply in_nil in Hfalse'.
+      now exfalso.
+    }
+    assert (forall elt,
+               Spect.In elt (!! config1) ->
+               0 <= elt < Z.of_nat n).
+    { intros elt Helt.
+      unfold Spect.elt in *.
+      unfold Spect.from_config in Helt.
+      
+      rewrite Spect.multiset_spec in Helt. 
+    rewrite Config.list_spec.
+
+      unfold Loc.eq, def.n in Heq.
+    rewrite Z.mod_small with (a := x') in Heq.
+    rewrite Z.mod_small in Heq.
+    rewrite Heq; assumption.
+    apply H0.
+    assumption.
+    rewrite Heq.
+    apply Zdiv.Z_mod_lt.
+    generalize n_sup_1; omega.
+    split.
+    
+    (* Spect.from_elements_In *)
+
+    inversion n0.
+      simpl in *.
+    revert Hsp.
+    revert x.
+    
+    rewrite <- NoDup_count_occ'.
+    cut (Logic.eq (fun x0 : Names.ident =>
+         Config.loc
+           match x0 with
+           | Good g0 =>
+               {|
+               Config.loc := create_conf1 g0;
+               Config.robot_info := {|
+                                    Config.source := create_conf1 g0;
+                                    Config.target := Loc.add Loc.unit
+                                                       (create_conf1 g0) |} |}
+           | Byz _ =>
+               {|
+               Config.loc := Loc.origin;
+               Config.robot_info := {|
+                                    Config.source := Loc.origin;
+                                    Config.target := Loc.origin |} |}
+           end)
+              (fun x0 : Names.ident =>
+                 match x0 with
+                 | Good g0 => create_conf1 g0
+                 | Byz _ => Loc.origin
+                 end)).
+    + intros.
+      rewrite H0.
+      simpl in *.
+      destruct Names.names eqn : Hname.
+      assert (Ht := Names.names_length).
+      unfold K.nB, K.nG in Ht.
+      simpl in *.
+      rewrite Hname in Ht.
+      simpl in *.
+      generalize k_sup_1; omega.
+      simpl in *.
+      destruct i eqn : Hid.
+      destruct (Loc.eq_dec (create_conf1 g0) x) eqn : Heq.
+      specialize (H g0).
+      generalize Names.names_NoDup.
+      intros Hnd.
+      assert (Hle : forall g', In (Good g') l -> g' <> g0).
+      { intros.
+        apply Hnd.
+      unfold NoDup in Hnd.
+      rewrite H.
     rewrite <-Spect.multiset_In in Hsp.
     clear HSfcI Hconf1_1 HSpic Htrue.
     unfold Spect.from_config in *.
