@@ -654,4 +654,4 @@ induction Hpt using attracted_ind2.
   apply IHHpt. rewrite He. simpl. reflexivity.
 Qed.
 
-Print Assumptions noConvergence.
+(* Print Assumptions noConvergence. *)

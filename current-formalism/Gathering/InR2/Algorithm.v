@@ -2334,18 +2334,8 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
 
                       simpl in hpt1,hpt2;
                       decompose [or False] hpt1;
-                      decompose [or False] hpt2;subst;clear hpt1; clear hpt2;
-                      try match goal with
-                      | H: pt1 = pt2 |- _ =>
-                        absurd (InA R2.eq pt1  (pt2 :: nil));
-                          [rewrite NoDupA_Leibniz in hNoDup;
-                            rewrite NoDup_cons_iff in hNoDup;
-                            destruct hNoDup;
-                            rewrite InA_Leibniz;
-                            assumption
-                          | rewrite H; left;reflexivity
-                          ]
-                          end.
+                      decompose [or False] hpt2; subst; clear hpt1 hpt2;
+                      try now inversion hNoDup as [| ? ? Habs]; elim Habs; left.
                       * assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
                         inversion hNoDup;subst.
                         match goal with
@@ -2361,7 +2351,7 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         | H: ~ InA _ _ _ |- _ => apply H
                         end.
                         left.
-                        reflexivity. 
+                        reflexivity.
                       * rewrite (@barycenter_3_pts_compat pt2 pt1 ptz pt1 pt2 ptz) in H1;repeat econstructor.
                         rewrite(@classify_triangle_compat pt2 pt1 ptz pt1 pt2 ptz) in Htriangle;repeat econstructor.
                         assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
@@ -2433,9 +2423,8 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         rewrite <- H2 in Htarget.
                         rewrite Htarget in H3.
                         subst.
-                        rewrite H3 in hNoDup.
-                        inversion  hNoDup.
-                        apply H6.
+                        inversion hNoDup.
+                        apply H5.
                         left;reflexivity.
                       - assumption. }
                     unfold inclA in H0.
@@ -3243,12 +3232,12 @@ destruct Hid1 as [id1 Hid1], Hid2 as [id2 Hid2], Hid3 as [id3 Hid3], Hid4 as [id
 destruct Hcase as [Hmaj _].
 rewrite round_simplify_clean in Hid1, Hid2, Hid3, Hid4; trivial; [].
 (* These robots are different *)
-assert (Hneqid12 : id1 <> id2). { intro. subst id1. rewrite Hid1 in Hid2. subst pt1'. R2dec. }
-assert (Hneqid13 : id1 <> id3). { intro. subst id1. rewrite Hid1 in Hid3. subst pt1'. R2dec. }
-assert (Hneqid14 : id1 <> id4). { intro. subst id1. rewrite Hid1 in Hid4. subst pt1'. R2dec. }
-assert (Hneqid23 : id2 <> id3). { intro. subst id2. rewrite Hid2 in Hid3. subst pt2'. R2dec. }
-assert (Hneqid24 : id2 <> id4). { intro. subst id2. rewrite Hid2 in Hid4. subst pt2'. R2dec. }
-assert (Hneqid34 : id3 <> id4). { intro. subst id3. rewrite Hid3 in Hid4. subst pt3'. R2dec. }
+assert (Hneqid12 : id1 <> id2). { intro. subst id1. rewrite Hid1 in Hid2. rewrite Hid2 in *. R2dec. }
+assert (Hneqid13 : id1 <> id3). { intro. subst id1. rewrite Hid1 in Hid3. rewrite Hid3 in *. R2dec. }
+assert (Hneqid14 : id1 <> id4). { intro. subst id1. rewrite Hid1 in Hid4. rewrite Hid4 in *. R2dec. }
+assert (Hneqid23 : id2 <> id3). { intro. subst id2. rewrite Hid2 in Hid3. rewrite Hid3 in *. R2dec. }
+assert (Hneqid24 : id2 <> id4). { intro. subst id2. rewrite Hid2 in Hid4. rewrite Hid4 in *. R2dec. }
+assert (Hneqid34 : id3 <> id4). { intro. subst id3. rewrite Hid3 in Hid4. rewrite Hid4 in *. R2dec. }
 (* At most one of these robots was activated during the round *)
 assert (Hex : forall id id' f,
                 In id (id1 :: id2 :: id3 :: id4 :: nil) -> In id' (id1 :: id2 :: id3 :: id4 :: nil) ->
@@ -3666,7 +3655,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
 Qed.
 
-Print Assumptions Gathering_in_R2.
+(* Print Assumptions Gathering_in_R2. *)
 
 
 (* Let us change the assumption over the demon, it is no longer fair

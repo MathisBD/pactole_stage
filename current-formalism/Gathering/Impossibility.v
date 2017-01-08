@@ -36,7 +36,7 @@ Set Implicit Arguments.
 (** The setting is an arbitrary metric space over R. *)
 Declare Module Loc : RealMetricSpace.
 
-(* These two axioms are actually equivalent to saying that we are in a eucliean space. *)
+(* These two axioms are actually equivalent to saying that we are in a euclidean space. *)
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 Axiom homothecy_hypothesis : forall k x y, Loc.dist (Loc.mul k x) (Loc.mul k y) = (Rabs k * Loc.dist x y)%R.
 
@@ -966,4 +966,4 @@ Qed.
 
 End GatheringEven.
 
-Print Assumptions noGathering.
+(* Print Assumptions noGathering. *)

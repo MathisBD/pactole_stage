@@ -1446,7 +1446,8 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove];
 * (* If we are already gathered, not much to do *)
   exists (conf (Good g1)). now apply Streams.Now, gathered_at_OK.
 * (* If we are gathered at the next step, not much to do either. *)
-  exists (round delta ffgatherR2 da conf (Good g1)). now apply Streams.Later, Streams.Now, gathered_at_OK.
+  exists (round delta ffgatherR2 da conf (Good g1)).
+ apply Streams.Later, Streams.Now. rewrite execute_tail. now apply gathered_at_OK.
 * (* General case, use [round_lt_config] *)
   assert (delta <= measure conf).
   { apply Rnot_lt_le. intro Habs. eapply Rlt_le, round_last_step in Habs; eauto; [].

@@ -26,17 +26,17 @@ Definition eq_elt := RelCompFun E.eq (@fst E.t nat).
 
 
 Instance Meq_equiv A : Equivalence (@M.eq_key_elt A).
-Proof. split.
-  intro. reflexivity.
-  intros ? ?. now symmetry.
-  intros ? y ? ? ?. now transitivity y.
+Proof. unfold M.eq_key_elt. split.
+  intro. now split.
+  intros ? ?. now split; symmetry.
+  intros ? y ? ? ?. now split; transitivity (fst y) || transitivity (snd y).
 Qed.
 
 Instance Meq_key_equiv A : Equivalence (@M.eq_key A).
-Proof. split.
+Proof. unfold M.eq_key. split.
   intro. reflexivity.
   intros ? ?. now symmetry.
-  intros ? y ? ? ?. now transitivity y.
+  intros ? y ? ? ?. now transitivity (fst y).
 Qed.
 
 Instance eq_pair_equiv : Equivalence eq_pair.
@@ -934,7 +934,7 @@ rewrite fold_left_symmetry_PermutationA.
 + reflexivity.
 + now apply Meq_equiv.
 + assumption.
-+ repeat intro. now apply Hf; rewrite H1 || rewrite H0.
++ intros ? ? Heq1 ? ? [Heq2 Heq3]. now apply Hf; rewrite ?Heq1, ?Heq2, ?Heq3.
 + intros. apply Hfcomm.
 + apply NoDupA_equivlistA_PermutationA.
   - now apply Meq_equiv.
