@@ -33,23 +33,15 @@ Module Rigid := RigidFormalism.Make(Location)(N)(Spect)(Common).
 Definition rigid da := forall id sim r, da.(Flex.step) id = Some (sim, r) -> r = 1%R.
 
 CoInductive drigid d :=
-  | Drigid : rigid (Stream.hd d) -> drigid (Stream.tl d) -> drigid d.
+  | Drigid : rigid (Streams.hd d) -> drigid (Streams.tl d) -> drigid d.
 
-Lemma drigid_head : forall d, drigid d -> rigid (Stream.hd d).
+Lemma drigid_head : forall d, drigid d -> rigid (Streams.hd d).
 Proof. intros ? []. auto. Qed.
 
-Lemma drigid_tail : forall d, drigid d -> drigid (Stream.tl d).
+Lemma drigid_tail : forall d, drigid d -> drigid (Streams.tl d).
 Proof. intros ? []. auto. Qed.
 
 Import Common.
-
-Lemma the_chosen_one {A} eqA (HeqA : Reflexive eqA) :
-  forall f : Location.t -> A, Proper (Location.eq ==> eqA) f ->
-  forall δ conf local_target,
-  let chosen_target := Location.mul 1%R local_target in
-  eqA (f (if Rle_bool δ (Location.dist chosen_target conf) then chosen_target else local_target))
-      (f local_target).
-Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_1; reflexivity. Qed.
 
 (** **  Conversion at the level of demonic_actions  **)
 
@@ -119,26 +111,30 @@ Proof. unfold rigid. intros [] * H; simpl in *. destruct step; now inversion H. 
 (** **  Conversion at the level of demons  **)
 
 CoFixpoint Rigid_Flex_d (d : Rigid.demon) : Flex.demon :=
-  Stream.cons (Rigid_Flex_da (Stream.hd d)) (Rigid_Flex_d (Stream.tl d)).
+  Streams.cons (Rigid_Flex_da (Streams.hd d)) (Rigid_Flex_d (Streams.tl d)).
 
 CoFixpoint Flex_Rigid_d (d : Flex.demon) : Rigid.demon :=
-  Stream.cons (Flex_Rigid_da (Stream.hd d)) (Flex_Rigid_d (Stream.tl d)).
+  Streams.cons (Flex_Rigid_da (Streams.hd d)) (Flex_Rigid_d (Streams.tl d)).
 
 Lemma Rigid_Flex_head : forall d,
-  Flex.da_eq (Rigid_Flex_da (Stream.hd d)) (Stream.hd (Rigid_Flex_d d)).
+  Flex.da_eq (Rigid_Flex_da (Streams.hd d)) (Streams.hd (Rigid_Flex_d d)).
 Proof. intro d. now destruct d. Qed.
 
 Lemma Flex_Rigid_head : forall d,
-  Rigid.da_eq (Flex_Rigid_da (Stream.hd d)) (Stream.hd (Flex_Rigid_d d)).
+  Rigid.da_eq (Flex_Rigid_da (Streams.hd d)) (Streams.hd (Flex_Rigid_d d)).
 Proof. intro d. now destruct d. Qed.
 
-Lemma Rigid_Flex_tail : forall d, Flex.deq (Rigid_Flex_d (Stream.tl d)) (Stream.tl (Rigid_Flex_d d)).
+Lemma Rigid_Flex_tail : forall d, Flex.deq (Rigid_Flex_d (Streams.tl d)) (Streams.tl (Rigid_Flex_d d)).
 Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
-Lemma Flex_Rigid_tail : forall d, Rigid.deq (Flex_Rigid_d (Stream.tl d)) (Stream.tl (Flex_Rigid_d d)).
+Lemma Flex_Rigid_tail : forall d, Rigid.deq (Flex_Rigid_d (Streams.tl d)) (Streams.tl (Flex_Rigid_d d)).
 Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
 (** **  Equalities on one round  **)
+
+Lemma the_chosen_one : forall (b : bool) target,
+  Location.eq (if b then Location.mul 1%R target else target) target.
+Proof. intros [] ?; try rewrite Location.mul_1; reflexivity. Qed.
 
 Lemma Rigid_Flex_round : forall δ r rda conf,
   Config.eq (Rigid.round r rda conf) (Flex.round δ r (Rigid_Flex_da rda) conf).
@@ -146,7 +142,7 @@ Proof.
 unfold Rigid_Flex_da, Rigid.round, Flex.round.
 intros δ r [] conf [g | b]; simpl.
 + destruct (step (Good g)).
-  - rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - simpl. now rewrite the_chosen_one.
   - reflexivity.
 + now destruct (step (Byz b)).
 Qed.
@@ -157,7 +153,7 @@ Proof.
 unfold Flex_Rigid_da, Rigid.round, Flex.round, rigid.
 intros δ r [] conf Hda [g | b]; simpl in *.
 + specialize (Hda (Good g)). destruct (step (Good g)) as [[sim ρ] |] eqn:Heq.
-  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - specialize (Hda _ _ (reflexivity _)). subst. now rewrite the_chosen_one.
   - reflexivity.
 + now destruct (step (Byz b)) as [[] |].
 Qed.
