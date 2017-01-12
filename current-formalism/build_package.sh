@@ -26,6 +26,6 @@ cp Gathering/InR/Rcomplements.v Gathering/InR/Algorithm.v Gathering/InR/Impossib
 cp Gathering/InR2/R2geometry.v Gathering/InR2/Algorithm.v Gathering/InR2/FSyncFlexNoMultAlgorithm.v ./package/Gathering/InR2/
 
 make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Gathering/InR2/FSyncFlexNoMultAlgorithm.vo Convergence/Impossibility_2G_1B.vo
-make -C package clean
-rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
+make -C package cleanall
+rm -f package/.*.vo.aux package/*/.*.vo.aux package/*/*/.*.vo.aux
 tar cvfz package.tgz package
