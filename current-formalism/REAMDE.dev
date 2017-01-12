@@ -25,7 +25,7 @@ the setting for the rigid formalism in R².
 4° Using these three modules, we can finally define the full setting by applying
    the functor [CommonRealFormalism.Make] and then either
    [FlexibleFormalism.Make] or [RigidFormalism.Make] depending if we want a
-   rigis or flexible formalism.
+   rigid or flexible formalism.
 
 Now everything is defined, in particular the [robogram] type with the selected
 location and spectrum types.
@@ -51,7 +51,7 @@ Module Spect := MultisetSpectrum.Make(R2)(N).
 Module Export Common := CommonRealFormalism.Make(R2)(N)(Spect).
 Module Export Rigid := RigidFormalism.Make(R2)(N)(Spect)(Common).
 
-Notice that we use the rigis formalism, and not the flexible one.
+Notice that we use the rigid formalism, and not the flexible one.
 The "Export" allows to avoid qualifying names, writing [robogram] rather than
 [Rigid.robogram].
 The « with Definition » in [R2def] make the body of definitions transparent to
