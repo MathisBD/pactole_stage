@@ -7,9 +7,6 @@ Preliminary.v
 Robots.v
 Streams.v
 Configurations.v
-MMaps/MMapInterface.v
-MMaps/MMapFacts.v
-MMaps/MMapWeakList.v
 MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
 #MMultiset/MMultisetMap.v
@@ -27,13 +24,13 @@ SetSpectrum.v
 #LimitedSetSpectrum.v
 #LimitedMultisetSpectrum.v
 Lexprod.v
-Convergence/Impossibility_2G_1B.v
 Gathering/Definitions.v
+Gathering/FlexDefinitions.v
 Gathering/Impossibility.v
 Gathering/InR/Rcomplements.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
 Gathering/InR2/R2geometry.v
 Gathering/InR2/Algorithm.v
-Gathering/FlexDefinitions.v
 Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+Convergence/Impossibility_2G_1B.v
