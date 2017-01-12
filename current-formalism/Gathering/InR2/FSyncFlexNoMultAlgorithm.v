@@ -842,7 +842,7 @@ Proof.
         - apply Rle_trans with (r2 := (1 - kp) * (max_dist_spect (!! conf))).
           * subst KP KQ.
             apply distance_after_move; try assumption.
-            apply Lemme2 with (E := elems).
+            apply barycenter_dist_decrease with (E := elems).
             subst elems.
             rewrite Hmax; intro; discriminate.
             clear r1.
@@ -880,7 +880,7 @@ Proof.
             now destruct Hkple1.
             rewrite <- R2norm_dist.
             rewrite R2.dist_sym.
-            apply Lemme2 with (E := elems).
+            apply barycenter_dist_decrease with (E := elems).
             subst elems.
             rewrite Hmax; intro; discriminate.
             intros. apply max_dist_spect_le.
@@ -893,7 +893,7 @@ Proof.
           * subst KP KQ.
             rewrite R2.dist_sym.
             apply distance_after_move; try assumption.
-            apply Lemme2 with (E := elems).
+            apply barycenter_dist_decrease with (E := elems).
             subst elems.
             rewrite Hmax; intro; discriminate.
             clear n.
@@ -932,7 +932,7 @@ Proof.
             now destruct Hkqle1.
             rewrite <- R2norm_dist.
             rewrite R2.dist_sym.
-            apply Lemme2 with (E := elems).
+            apply barycenter_dist_decrease with (E := elems).
             subst elems.
             rewrite Hmax; intro; discriminate.
             intros. apply max_dist_spect_le.
@@ -993,7 +993,7 @@ Proof.
         rewrite Rplus_0_r.
         now destruct Hkple1.
         apply Rplus_le_compat_r.
-        apply Lemme2 with (E := elems).
+        apply barycenter_dist_decrease with (E := elems).
         subst elems.
         rewrite Hmax; intro; discriminate.
         intros. apply max_dist_spect_le.
@@ -1055,7 +1055,7 @@ Proof.
         rewrite Rplus_0_r.
         now destruct Hkqle1.
         apply Rplus_le_compat_r.
-        apply Lemme2 with (E := elems).
+        apply barycenter_dist_decrease with (E := elems).
         subst elems.
         rewrite Hmax; intro; discriminate.
         intros. apply max_dist_spect_le.
@@ -1161,7 +1161,7 @@ assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
               assert (R2.dist (barycenter elems') (conf Pid) <= delta).
               { rewrite R2.dist_sym.
                 apply Rle_trans with (measure conf).
-                apply Lemme2 with elems'.
+                apply barycenter_dist_decrease with elems'.
                 rewrite Heqelems'. discriminate.
                 unfold measure.
                 intros. apply max_dist_spect_le.

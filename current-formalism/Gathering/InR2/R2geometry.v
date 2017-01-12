@@ -1430,7 +1430,7 @@ Qed.
 Lemma sqr_dist_sum_compat : Proper (R2.eq ==> PermutationA R2.eq ==> Logic.eq) sqr_dist_sum.
 Proof. now apply sqr_dist_sum_aux_compat. Qed.
 
-Lemma Lemme2_aux:
+Lemma barycenter_dist_decrease_aux:
   forall (E: list R2.t) (dm: R) (c: R2.t),
     E <> nil ->
     (forall p1 p2, In p1 E -> In p2 E -> R2.dist p1 p2 <= dm) ->
@@ -1544,7 +1544,7 @@ Proof.
 
 Qed.
 
-Lemma Lemme2:
+Lemma barycenter_dist_decrease :
   forall (E: list R2.t) (dm: R) (c: R2.t),
     E <> nil ->
     (forall p1 p2, In p1 E -> In p2 E -> R2.dist p1 p2 <= dm) ->
@@ -1552,7 +1552,7 @@ Lemma Lemme2:
     forall p, In p E -> R2.dist p c <= dm.
 Proof.
   intros E dm c Hnotempty Hdm Hc p Hp.
-  apply (Lemme2_aux Hnotempty Hdm Hc).
+  apply (barycenter_dist_decrease_aux Hnotempty Hdm Hc).
   intros q Hq.
   apply Hdm; assumption.
 Qed.

@@ -55,7 +55,7 @@ Module GatheringinR2.
 (** **  Framework of the correctness proof: a finite set with at least three elements  **)
 
 Parameter nG: nat.
-Hypothesis Hyp_nG : (3 <= nG)%nat.
+Axiom Hyp_nG : (3 <= nG)%nat.
 
 (** There are nG good robots and no byzantine ones. *)
 Module N : Size with Definition nG := nG with Definition nB := 0%nat.
