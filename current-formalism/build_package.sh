@@ -13,9 +13,9 @@ coq_makefile -f _CoqProject -o makefile
 
 cp -r MMaps/MMapInterface.v MMaps/MMapFacts.v MMaps/MMapWeakList.v ./package/MMaps/
 
-cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
+cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
 
-cp Preliminary.v Lexprod.v Robots.v Configurations.v Streams.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v FlexibleFormalism.v MultisetSpectrum.v SetSpectrum.v Similarity.v makefile _CoqProject ./package/
+cp Preliminary.v Lexprod.v Robots.v Configurations.v Streams.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v FlexibleFormalism.v RigidEquivalence.v MultisetSpectrum.v SetSpectrum.v LimitedMultisetSpectrum.v LimitedSetSpectrum.v Similarity.v makefile _CoqProject ./package/
 
 cp Convergence/Impossibility_2G_1B.v ./package/Convergence/
 

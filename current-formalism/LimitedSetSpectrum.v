@@ -51,7 +51,7 @@ Definition eq_dec := M.eq_dec.
 Definition In := M.In.
 
 
-Definition from_config conf : M.t :=
+Definition from_config conf : t :=
   M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.set (Config.list conf)).
 
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.

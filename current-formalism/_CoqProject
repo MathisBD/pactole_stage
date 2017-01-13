@@ -9,7 +9,7 @@ Streams.v
 Configurations.v
 MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
-#MMultiset/MMultisetMap.v
+MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/MMultisetExtraOps.v
 MMultiset/Preliminary.v
@@ -21,8 +21,8 @@ RigidFormalism.v
 RigidEquivalence.v
 MultisetSpectrum.v
 SetSpectrum.v
-#LimitedSetSpectrum.v
-#LimitedMultisetSpectrum.v
+LimitedSetSpectrum.v
+LimitedMultisetSpectrum.v
 Lexprod.v
 Gathering/Definitions.v
 Gathering/FlexDefinitions.v
