@@ -68,16 +68,6 @@ Export DefsE.
 Coercion Sim.sim_f : Sim.t >-> DiscreteSimilarity.bijection.
 Coercion DiscreteSimilarity.section : DiscreteSimilarity.bijection >-> Funclass.
 
-Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
-
-Definition translation_hyp := Sim.translation (translation_hypothesis).
-(*Hypothesis translation_hypothesis : 
-      forall v x y, Loc.dist (Loc.add x v) (Loc.add y v) = Loc.dist x y. *)
-
-Instance translation_hyp_compat : Proper (Loc.eq ==> Sim.eq) translation_hyp.
-Proof. intros l1 l2 Hl x y Hxy. simpl. now rewrite Hxy, Hl. Qed.
-
-
 Ltac ImpByz b := 
   assert (Hfalse := Names.Bnames_length);
   assert (Hfalse' := Names.In_Bnames b);
@@ -94,25 +84,7 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
     | Byz b => Fin.case0 _ b
   end.
 
-CoInductive Always_forbidden (e : execution) : Prop :=
-  CAF : forbidden (execution_head e) ->
-        Always_forbidden (execution_tail e) -> Always_forbidden e.
-
-Lemma Always_forbidden_compat_lemma : forall e1 e2, eeq e1 e2 -> Always_forbidden e1 -> Always_forbidden e2.
-Proof.
-coinduction diff.
-- rewrite <- H. now destruct H0.
-- destruct H. apply (diff _ _ H1). now destruct H0.
-Qed.
-
-Instance Always_forbidden_compat : Proper (eeq ==> iff) Always_forbidden.
-Proof.
-intros e1 e2 He; split; intro.
-- now apply (Always_forbidden_compat_lemma He).
-- now apply (Always_forbidden_compat_lemma (symmetry He)).
-Qed.
-
-Section ExplorationKDivedesN.
+Section Exploration.
 Open Scope Z_scope.
 
   
@@ -132,7 +104,7 @@ Definition config1 : Config.t :=
                              Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
             end.
 
-Lemma conf1_aux:
+Lemma conf1_new_aux:
   forall gg: nat,  
     (Loc.mul (((Z_of_nat (gg*(n / kG))))) Loc.unit) mod Z.of_nat (n/kG) = 0.
 Proof.
@@ -148,7 +120,6 @@ Proof.
   rewrite Hneq at 1; rewrite Nat2Z.inj_mul.
   rewrite Z.mul_comm.
   rewrite Z.mul_mod.
-
   rewrite Zdiv.Z_mod_mult.
   rewrite Zmult_0_r.
   rewrite Zdiv.Zmod_0_l.
@@ -171,7 +142,7 @@ Lemma conf1_new_1 : forall g0: Names.G, (create_conf1 g0) mod Z.of_nat (n/kG) = 
 Proof.
   intros g0.
   unfold create_conf1.
-  apply conf1_aux.
+  apply conf1_new_aux.
 Qed.
 
 
@@ -444,128 +415,108 @@ Proof.
   intros A eqA decA l HeqA.
   split.
   + intros HndA x HinA.
-    (* unfold countA_occ. *)
     induction l.
-    now rewrite SetoidList.InA_nil in HinA.
-    assert (HndA' := SetoidList.NoDupA_cons).
+  - now rewrite SetoidList.InA_nil in HinA.
+  - assert (HndA' := SetoidList.NoDupA_cons).
     simpl in *.
     destruct (decA a x).
-    assert ((a :: l) = (List.cons a nil) ++ l).
-    simpl in *.
-    reflexivity.
-    rewrite H in *.
-    rewrite NoDupA_app_iff in *.
-    simpl in *.
-    destruct HndA as (Hnda, (Hndl, HIn_f)).
-    specialize (HIn_f a).
-    assert (~ SetoidList.InA eqA a l) by intuition.
-    rewrite e in H0.
-    assert (countA_occ eqA decA x l = 0%nat).
-    assert ((countA_occ eqA decA x l > 0)%nat -> False).
-    intros Hcount.
-    apply countA_occ_pos in Hcount.
-    apply H0; assumption.
-    assumption.
-    omega.
-    rewrite H1; omega. 
-    assumption.
-    apply IHl.
-    assert ((a :: l) = (List.cons a nil) ++ l).
-    simpl in *.
-    reflexivity.
-    rewrite H in *.
-    rewrite NoDupA_app_iff in *.
-    destruct HndA as (Hnda, (Hndl, HIn_f)).
-    simpl in *.
-    assumption.
-    assumption.
-    assert ((a :: l) = (List.cons a nil) ++ l).
-    simpl in *.
-    reflexivity.
-    rewrite H in *.
-    rewrite SetoidList.InA_app_iff in *.
-    destruct HinA.
-    rewrite SetoidList.InA_singleton in *.
-    now destruct n0.
-    assumption.
+    * assert ((a :: l) = (List.cons a nil) ++ l).
+      simpl in *.
+      reflexivity.
+      rewrite H in *.
+      rewrite NoDupA_app_iff in *; try assumption.
+      simpl in *.
+      destruct HndA as (Hnda, (Hndl, HIn_f)).
+      specialize (HIn_f a).
+      assert (~ SetoidList.InA eqA a l) by intuition.
+      rewrite e in H0.
+      rewrite <- (countA_occ_pos HeqA decA) in H0.
+      omega.
+    * apply IHl.
+      ++ assert (Hadd_nil : (a :: l) = (List.cons a nil) ++ l) by now simpl. 
+         rewrite Hadd_nil in *.
+         rewrite NoDupA_app_iff in *; try assumption.
+         destruct HndA as (Hnda, (Hndl, HIn_f)); try assumption.
+      ++ assert (Hadd_nil : (a :: l) = (List.cons a nil) ++ l) by now simpl.
+         rewrite Hadd_nil in *.
+         rewrite SetoidList.InA_app_iff in *.
+         destruct HinA; try assumption.
+         rewrite SetoidList.InA_singleton in *.
+         now destruct n0.
   + intros HinA.
-    induction l.
-    intuition.
+    induction l; try intuition.
     simpl in *.
-    induction l as [_|b l0].
-    apply SetoidList.NoDupA_singleton.
-    destruct (decA a b) eqn : Hdec.
-    specialize (HinA a).
-    assert (SetoidList.InA eqA a (a :: b :: l0)) by now apply SetoidList.InA_cons_hd.
-    specialize (HinA H).
-    destruct (decA a a).
-    assert ((countA_occ eqA decA a (b :: l0) > 0)%nat).
-    rewrite countA_occ_pos.
-    rewrite e; intuition.
-    assumption.
-    apply lt_n_S in H0.
-    omega.
-    exfalso.
-    apply n0.
-    reflexivity.
-
-    apply SetoidList.NoDupA_cons.
-    intros Hf.
-    assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
-    specialize (HinA a H).
-    destruct (decA a a).
-    rewrite <- countA_occ_pos in Hf.
-    assert (countA_occ eqA decA a (b :: l0) = 0)%nat by omega.
-    rewrite H0 in Hf.
-    omega.
-    assumption.
-    apply n1; reflexivity.
-    apply IHl.
-    intros c Hc.
-    assert (HinA_aux := HinA a).
-    specialize (HinA c).
-    simpl in *.
-    destruct (decA b c).
-    assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
-    specialize (HinA H).
-    destruct (decA a c).
-    rewrite <- e in e0.
-    contradiction.
-    assumption.
-    destruct (decA a c).
-    assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
-    specialize (HinA H).
-    assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
-    specialize (HinA_aux H0).
-    destruct (decA a a).
-    destruct (decA b a); try discriminate.
-    assert ((countA_occ eqA decA a l0 = 0)%nat) by omega.
-    assert ((countA_occ eqA decA c (b :: l0) > 0)%nat).
-    rewrite countA_occ_pos.
-    assumption.
-    assumption.
-    simpl in *.
-    destruct (decA b c); simpl in *.
-    contradiction.
-    omega.
-    destruct n2.
-    reflexivity.
-    rewrite SetoidList.InA_cons in Hc.
-    destruct Hc.
-    destruct n1.
-    rewrite H.
-    reflexivity.
-    apply HinA.
-    intuition.
+    induction l as [|b l0].
+    - apply SetoidList.NoDupA_singleton.
+    - destruct (decA a b) eqn : Hdec.
+      * specialize (HinA a).
+        assert (SetoidList.InA eqA a (a :: b :: l0)) by
+            now apply SetoidList.InA_cons_hd.
+        specialize (HinA H).
+        destruct (decA a a); try assumption.
+        assert ((countA_occ eqA decA a (b :: l0) > 0)%nat).
+        rewrite countA_occ_pos; try assumption.
+        rewrite e; intuition.
+        apply lt_n_S in H0.
+        omega.
+        exfalso.
+        apply f.
+        reflexivity.
+      * apply SetoidList.NoDupA_cons.
+        ++ intros Hf.
+           assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
+           specialize (HinA a H).
+           destruct (decA a a); try intuition.
+           rewrite <- countA_occ_pos in Hf.
+           assert (countA_occ eqA decA a (b :: l0) = 0)%nat by omega.
+           rewrite H0 in Hf.
+           omega.
+           assumption.
+        ++ apply IHl.
+           intros c Hc.
+           assert (HinA_aux := HinA a).
+           specialize (HinA c).
+           simpl in *.
+           destruct (decA b c).
+           assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
+           specialize (HinA H).
+           destruct (decA a c).
+           rewrite <- e in e0.
+           contradiction.
+           assumption.
+           destruct (decA a c).
+           assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
+           specialize (HinA H).
+           assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
+           specialize (HinA_aux H0).
+           destruct (decA a a); try (now destruct f1).
+           destruct (decA b a); try discriminate.
+           assert ((countA_occ eqA decA a l0 = 0)%nat) by omega.
+           assert ((countA_occ eqA decA c (b :: l0) > 0)%nat).
+           rewrite countA_occ_pos.
+           assumption.
+           assumption.
+           simpl in *.
+           destruct (decA b c); simpl in *.
+           contradiction.
+           omega.
+           rewrite SetoidList.InA_cons in Hc.
+           destruct Hc.
+           destruct f0.
+           rewrite H.
+           reflexivity.
+           apply HinA.
+           intuition.
 Qed.      
-
-
 
 Parameter g : Names.G.
 
 
 Variable r : robogram.
 Definition move := r (!! config1).
+
+Parameter m : Z.
+Hypothesis Hmove : move = m.
 
 (** The key idea is to prove that we can always make robots think that there are in the same configuration.
     If they do not gather in one step, then they will never do so.
@@ -967,6 +918,7 @@ Proof. reflexivity. Qed.
 Lemma bad_demon1_head : demon_head bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
+(*
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof.
 coinduction bad_fair1.
@@ -986,7 +938,7 @@ eapply kFair_mon with 1%nat.
 - apply kFair_bad_demon;auto.
 - auto.
 Qed.
-
+*)
 Lemma config1_ne_unit : Z_of_nat (n mod kG) = 0 ->
       forall g:Names.G, ~ Loc.eq (create_conf1 g) Loc.unit.
 Proof.
@@ -1034,12 +986,12 @@ Proof.
      omega.
 Qed.
 
-
 (** **  First case: the robots moves **)
 
 Section Move1.
+  
+Hypothesis Hm : m mod (Z.of_nat n) <> 0.
 
-Hypothesis Hmove : move = 1.
 
 
 
@@ -1172,7 +1124,7 @@ Qed.
 
   
 Lemma round1_move_g : forall g0, Loc.eq (Config.loc (round r da1 config1 (Good g0)))
-                        (Loc.add (Config.loc (config1 (Good g0))) (Loc.opp Loc.unit)).
+                        (Loc.add (Config.loc (config1 (Good g0))) (Loc.opp m)).
 Proof.
   intros g0.
   unfold move in Hmove.
@@ -1181,9 +1133,9 @@ Proof.
   generalize spect_rotation; intro.
   assert (Hpgm := pgm_compat r (H g0)).
   rewrite <- Zdiv.Zminus_mod_idemp_r.
-  rewrite <- Hpgm, Hmove, Z.mod_1_l.
+  rewrite <- Hpgm, Hmove.
+  rewrite Zdiv.Zminus_mod_idemp_r.
   reflexivity.
-  generalize n_sup_1; unfold def.n; omega.
 Qed.
 
 Lemma moving_no_stop : ~Stopped (execute r bad_demon1 config1).
@@ -1201,13 +1153,52 @@ Proof.
   rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same in Hs.
   simpl in *.
   rewrite Zdiv.Zplus_mod_idemp_r in Hs.
-  replace (create_conf1 g + -1) with (create_conf1 g - 1) in Hs by omega.
-  apply neq_a_a1 with (a := create_conf1 g).
+  rewrite Z.add_opp_r in Hs.
   unfold Loc.eq in *.
   rewrite Z.mod_mod in Hs.
-  assumption.
-  unfold def.n; omega.
+  assert (0 < (m mod Z.of_nat def.n) < Z.of_nat def.n).
+  split.
+  assert (Z.of_nat def.n > 0) by (generalize n_sup_1; unfold def.n ; omega).
+  generalize (Zdiv.Z_mod_lt m (Z.of_nat def.n) H).
+  unfold def.n.
   omega.
+  apply Zdiv.Z_mod_lt.
+  generalize n_sup_1; unfold def.n; omega.
+  rewrite Zdiv.Zminus_mod in Hs.
+  destruct ((create_conf1 g) mod Z.of_nat def.n ?= (m mod Z.of_nat def.n)) eqn : Hcompare_conf1_m;
+    try rewrite Z.compare_eq_iff in *;
+    try rewrite Z.compare_gt_iff in *;
+    try rewrite Z.compare_lt_iff in *.
+  + (* rewrite <- Hcompare_conf1_m in Hm_mod. *)
+    rewrite <- Hcompare_conf1_m, Z.sub_diag, Z.mod_0_l in Hs.
+    omega.
+    unfold def.n; generalize n_sup_1; omega.
+  + rewrite <- Z.lt_sub_0 in Hcompare_conf1_m.
+    rewrite Z.add_lt_mono_l with (p := Z.of_nat def.n) in Hcompare_conf1_m.
+    simpl in *.
+    replace (create_conf1 g mod Z.of_nat def.n - m mod Z.of_nat def.n) with
+    (0 + (create_conf1 g mod Z.of_nat def.n - m mod Z.of_nat def.n)) in Hs by omega.
+    rewrite <- Z.mod_same with (a := Z.of_nat def.n) in Hs.
+    assert (- Z.of_nat def.n < create_conf1 g mod Z.of_nat def.n - m mod Z.of_nat def.n).
+    assert (0 <= create_conf1 g mod Z.of_nat def.n).
+    apply Zdiv.Z_mod_lt.
+    unfold def.n; generalize n_sup_1; omega.
+    omega.
+    rewrite Zdiv.Zplus_mod_idemp_l in Hs.
+    rewrite Z.mod_small with (a :=  (Z.of_nat def.n + (create_conf1 g mod Z.of_nat def.n - m mod Z.of_nat def.n))) in Hs.
+    omega.
+    split; try omega.
+    omega.
+  + rewrite Z.mod_small with (a := (create_conf1 g mod Z.of_nat def.n - m mod Z.of_nat def.n)) in Hs.
+    omega.
+    split.
+    rewrite <- Z.lt_0_sub in Hcompare_conf1_m.
+    omega.
+    assert (Hconf := Zdiv.Z_mod_lt (create_conf1 g) (Z.of_nat def.n)).
+    assert (Hm' := Zdiv.Z_mod_lt m (Z.of_nat def.n)).
+    omega.
+  + unfold def.n; omega.
+  + unfold def.n; lia.   
 Qed.  
 
 
@@ -1474,25 +1465,59 @@ Proof.
   unfold move in Hmove.
   rewrite Hmove in Hstop.
   set (X := Config.loc (conf (Good g))) in *.
-  generalize (neq_a_a1).
-  intros Hneq.
-  specialize (Hneq X).
   unfold Loc.add, Loc.opp, Loc.eq in *.
   rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod, 
-    Zdiv.Zplus_mod_idemp_r in Hstop.
+  Zdiv.Zplus_mod_idemp_r in Hstop;
+    try (unfold def.n; generalize n_sup_1; omega).
   simpl in Hstop.
-  replace (X + -1) with (X - 1) by omega.
-  contradiction.
-  unfold def.n; generalize n_sup_1; omega.
-  unfold def.n; generalize n_sup_1; omega.
-  assumption.
+  replace (X + -m) with (X - m) in * by omega.
+  assert (0 < (m mod Z.of_nat def.n) < Z.of_nat def.n).
+  split.
+  assert (Z.of_nat def.n > 0) by (generalize n_sup_1; unfold def.n ; omega).
+  generalize (Zdiv.Z_mod_lt m (Z.of_nat def.n) H).
+  unfold def.n.
+  omega.
+  apply Zdiv.Z_mod_lt.
+  generalize n_sup_1; unfold def.n; omega.
+  rewrite Zdiv.Zminus_mod in Hstop.
+  destruct (X mod Z.of_nat def.n ?= (m mod Z.of_nat def.n)) eqn : Hcompare_X_m;
+    try rewrite Z.compare_eq_iff in *;
+    try rewrite Z.compare_gt_iff in *;
+    try rewrite Z.compare_lt_iff in *.
+  + rewrite Hcompare_X_m, Z.sub_diag, Zdiv.Zmod_0_l in Hstop.
+    omega.
+  + rewrite <- Z.lt_sub_0 in Hcompare_X_m.
+    rewrite Z.add_lt_mono_l with (p := Z.of_nat def.n) in Hcompare_X_m.
+    simpl in *.
+    replace (X mod Z.of_nat def.n - m mod Z.of_nat def.n) with
+    (0 + (X mod Z.of_nat def.n - m mod Z.of_nat def.n)) in Hstop by omega.
+    rewrite <- Z.mod_same with (a := Z.of_nat def.n) in Hstop.
+    assert (- Z.of_nat def.n < X mod Z.of_nat def.n - m mod Z.of_nat def.n).
+    assert (0 <= X mod Z.of_nat def.n).
+    apply Zdiv.Z_mod_lt.
+    unfold def.n; generalize n_sup_1; omega.
+    omega.
+    rewrite Zdiv.Zplus_mod_idemp_l in Hstop.
+    rewrite Z.mod_small with (a :=  (Z.of_nat def.n + (X mod Z.of_nat def.n - m mod Z.of_nat def.n))) in Hstop.
+    omega.
+    split; try omega.
+    omega.
+  + rewrite Z.mod_small with (a := (X mod Z.of_nat def.n - m mod Z.of_nat def.n)) in Hstop.
+    omega.
+    split.
+    rewrite <- Z.lt_0_sub in Hcompare_X_m.
+    omega.
+    assert (Hconf := Zdiv.Z_mod_lt (X) (Z.of_nat def.n)).
+    assert (Hm' := Zdiv.Z_mod_lt m (Z.of_nat def.n)).
+    omega. 
+  + assumption.
 Qed.
 
 
  (* A configuration where the robots are moved of [k] nodes compared to the 
     starting configuration is moved of [((k-1) mod n) mod n] nodes after a round. *)
 Lemma rec_conf_equiv : forall conf k, Config.eq conf (f_conf config1 k)
-                                      -> Config.eq (round r da1 conf) (f_conf config1 (Loc.add k (Loc.opp 1))).
+                                      -> Config.eq (round r da1 conf) (f_conf config1 (Loc.add k (Loc.opp m))).
 Proof.
   intros conf k Heq [g|b]; try ImpByz b.
   split.
@@ -1574,7 +1599,7 @@ Proof.
     simpl in *.
     unfold equiv_conf.
     destruct H.
-    exists (Loc.add x (Loc.opp 1)).
+    exists (Loc.add x (Loc.opp m)).
     now apply rec_conf_equiv.
 Qed.
 
@@ -1639,8 +1664,8 @@ Save.
 End Move1.
 
 Section Stop.
-  
-  Hypothesis Hmove : move = 0.
+
+  Hypothesis Hm : m mod Z.of_nat n = 0.
 
   
   Lemma config1_eq_round_config1 :
@@ -1652,8 +1677,16 @@ Section Stop.
       rewrite <- spect_rotation.
       unfold move in Hmove.
       rewrite Hmove.
+      unfold Loc.opp.
+      rewrite Zdiv.Zminus_mod, Z.mod_same.
+      unfold def.n.
+      rewrite Hm.
+      simpl.
+      rewrite Z.mod_0_l.
       fold Loc.origin.
-      now rewrite Loc.opp_origin, Loc.add_origin.
+      now rewrite Loc.add_origin.
+      generalize n_sup_1; omega.
+      generalize n_sup_1; unfold def.n; omega.
     Qed.
 
    Lemma NeverVisited_conf1 : forall e,
@@ -1670,7 +1703,7 @@ Section Stop.
       assert (Z.of_nat (n mod kG) = 0) by (generalize kdn; omega).
       now apply (config1_ne_unit H g0).
     + apply IHHl.
-    - rewrite Heq_e.
+      rewrite Heq_e.
       cbn.
       symmetry.
       apply (execute_compat (reflexivity r) (reflexivity bad_demon1)
@@ -1699,4 +1732,16 @@ Qed.
 
 End Stop.
 
- Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
+Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
+Proof.
+  generalize no_exploration_idle, no_exploration_moving.
+  intros.
+  destruct (Loc.eq_dec m 0); unfold Loc.eq, def.n in *;
+  rewrite Z.mod_0_l in *.
+  apply H; try assumption.
+  generalize n_sup_1; omega.
+  apply H0; try assumption.
+  generalize n_sup_1; omega.
+Save.
+
+End Exploration.
