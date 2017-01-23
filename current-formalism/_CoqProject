@@ -6,13 +6,13 @@ MMaps/MMapWeakList.v
 Preliminary.v
 Robots.v
 Streams.v
-Configurations.v
+MMultiset/Preliminary.v
 MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
 MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/MMultisetExtraOps.v
-MMultiset/Preliminary.v
+Configurations.v
 Similarity.v
 CommonFormalism.v
 CommonRealFormalism.v
