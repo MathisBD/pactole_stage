@@ -26,7 +26,8 @@ Require Import Pactole.CommonGraphFormalism.
 Module AGF.
 
 
-(* They come from the common part as they are shared by AGF and DGF. *)
+  (* They come from the common part as they are shared by AGF and DGF. *)
+  
 Module Location := LocationA.
 Module Config := ConfigA.
 
@@ -50,8 +51,8 @@ Record robogram := {
   pgm :> Spect.t -> Location.t;
   pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
   pgm_range : forall spect l g,
-    Veq (ConfigA.loc (spect (Good g))) l ->
-    exists l0 e, pgm spect = l0 /\ find_edge l l0 = Some e}.
+    Graph.Veq (ConfigA.loc (spect (Good g))) l ->
+    exists l0 e, pgm spect = l0 /\ Graph.find_edge l l0 = Some e}.
 
 Global Existing Instance pgm_compat.
 

@@ -248,19 +248,19 @@ Qed.
 (** a robot can be on a node (Loc) or on an edge (Mvt) *)
 
 Inductive location :=
-  | Loc (l : V)
-  | Mvt (e : E) (p : R).
+  | Loc (l : Graph.V)
+  | Mvt (e : Graph.E) (p : R).
 
 
 Definition loc_eq l l' :=
   match l, l' with
-    | Loc l, Loc l' => Veq l l'
-    | Mvt e p, Mvt e' p' => Eeq e e' /\ p = p'
+    | Loc l, Loc l' => Graph.Veq l l'
+    | Mvt e p, Mvt e' p' => Graph.Eeq e e' /\ p = p'
     | _, _ => False
   end.
 
 (* never used if we start from a good conf*)
-Axiom e_default : E.
+Axiom e_default : Graph.E.
 
 Module Location : DecidableType with Definition t := location with Definition eq := loc_eq.
   Definition t := location.
@@ -280,8 +280,8 @@ Module Location : DecidableType with Definition t := location with Definition eq
   Lemma eq_dec : forall l l', {eq l l'} + {~eq l l'}.
   Proof.
   intros l l'.
-  destruct l, l'; unfold eq, loc_eq; auto. apply Veq_dec.
-  destruct (Eeq_dec e e0), (Rdec (p) (p0));
+  destruct l, l'; unfold eq, loc_eq; auto. apply Graph.Veq_dec.
+  destruct (Graph.Eeq_dec e e0), (Rdec (p) (p0));
   intuition.
   Qed.
 End Location.
@@ -294,8 +294,8 @@ Module Config := Configurations.Make (Location)(N)(Names).
     fun id =>
       match Config.loc (config id) with
         | Loc l => config id
-        | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (threshold e) 
-                                               then src e else tgt e);
+        | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (Graph.threshold e) 
+                                               then Graph.src e else Graph.tgt e);
                            Config.robot_info := Config.robot_info (config id) |}
       end.
       
@@ -312,39 +312,39 @@ Module Config := Configurations.Make (Location)(N)(Names).
   try rewrite Hsrc2 in *; try rewrite Htgt1 in *; try rewrite Htgt2 in *;
   unfold loc_eq in *; try (now exfalso); try assumption;
   destruct Hloc;
-  destruct (Rle_dec (project_p p) (threshold e)),(Rle_dec (project_p p0) (threshold e0));
-  try (apply (src_compat e e0 H)); (try now rewrite H ,H0 in r); (try now rewrite H, H0 in n);
-  try now apply tgt_compat.
+  destruct (Rle_dec (project_p p) (Graph.threshold e)),(Rle_dec (project_p p0) (Graph.threshold e0));
+  try (apply (Graph.src_compat e e0 H)); (try now rewrite H ,H0 in r); (try now rewrite H, H0 in n);
+  try now apply Graph.tgt_compat.
   Qed.
 
 
 
-  Definition projectS_loc (loc : Location.t) : V :=
+  Definition projectS_loc (loc : Location.t) : Graph.V :=
      match loc with
        | Loc l =>  l
        | Mvt e p => 
-         (if Rle_dec (project_p p) (threshold e)
-            then src e 
-            else tgt e)
+         (if Rle_dec (project_p p) (Graph.threshold e)
+            then Graph.src e 
+            else Graph.tgt e)
      end.
 
-  Instance projectS_loc_compat : Proper (Location.eq ==> Veq) projectS_loc.
+  Instance projectS_loc_compat : Proper (Location.eq ==> Graph.Veq) projectS_loc.
   Proof.
   intros x y Hxy. simpl in *. unfold Location.eq, loc_eq in *.
   unfold projectS_loc. destruct x,y.
    - assumption.
    - exfalso; assumption.
    - exfalso; assumption.
-   - destruct Hxy as (Hexy, Hpxy), (Rle_dec (project_p p) (threshold e)) eqn : Hx,
-     (Rle_dec (project_p p0) (threshold e0)) eqn:Hy.
-     + now apply src_compat.
-     + assert (Ht := threshold_compat e e0 Hexy).
-       assert (Hr : ((project_p p) <= threshold e)%R) by assumption.
+   - destruct Hxy as (Hexy, Hpxy), (Rle_dec (project_p p) (Graph.threshold e)) eqn : Hx,
+     (Rle_dec (project_p p0) (Graph.threshold e0)) eqn:Hy.
+     + now apply Graph.src_compat.
+     + assert (Ht := Graph.threshold_compat e e0 Hexy).
+       assert (Hr : ((project_p p) <= Graph.threshold e)%R) by assumption.
        now rewrite Ht, Hpxy in Hr.
-     + assert (Hr : ((project_p p0) <= threshold e0)%R) by assumption.
-       assert (Ht := threshold_compat e e0 Hexy).
+     + assert (Hr : ((project_p p0) <= Graph.threshold e0)%R) by assumption.
+       assert (Ht := Graph.threshold_compat e e0 Hexy).
        now rewrite <- Ht, <- Hpxy in Hr.
-     + now apply tgt_compat.
+     + now apply Graph.tgt_compat.
   Qed.
 
   Definition projectS (config : Config.t) : View.t :=
@@ -393,8 +393,8 @@ Module Config := Configurations.Make (Location)(N)(Names).
     pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
     pgm_loc : forall spect, exists l, pgm spect = Loc l;
     pgm_range : forall (spect: Spect.t) g sloc,
-              Veq (ConfigA.loc (spect (Good g))) sloc ->
-              exists l e, pgm spect = Loc l /\ find_edge sloc l = Some e }.
+              Graph.Veq (ConfigA.loc (spect (Good g))) sloc ->
+              exists l e, pgm spect = Loc l /\ Graph.find_edge sloc l = Some e }.
   
   Global Existing Instance pgm_compat.
   
@@ -783,7 +783,7 @@ Qed.
         | Moving mv_ratio =>
           match pos, id with
             | Mvt e p, Good g => if Rle_dec 1%R ((project_p p) + mv_ratio)
-                then {| Config.loc := Loc (tgt e); Config.robot_info := Config.robot_info conf |}
+                then {| Config.loc := Loc (Graph.tgt e); Config.robot_info := Config.robot_info conf |}
                 else {| Config.loc := if Rdec mv_ratio 0 
                                       then Mvt e p
                                       else Mvt e (project_p_inv ((project_p p) + mv_ratio));
@@ -794,11 +794,11 @@ Qed.
                                              Config.robot_info := Config.robot_info conf |} else
                 let new_pos := match Config.target (Config.robot_info conf) with
                                  | Loc l => l
-                                 | Mvt e _ => src e (* never used if we start from a "good conf" *)
+                                 | Mvt e _ => Graph.src e (* never used if we start from a "good conf" *)
                                end in
-                if Veq_dec l new_pos then conf
+                if Graph.Veq_dec l new_pos then conf
                 else 
-                let e := match find_edge l new_pos with
+                let e := match Graph.find_edge l new_pos with
                            | Some e => e
                            | None => e_default (* ici *)
                          end in
@@ -850,30 +850,31 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
          destruct Hrconf as (Hloc, (Hsrc, Htgt)); rewrite Htgt1, Htgt2 in Htgt;
          rewrite Hloc1, Hloc2 in Hloc; rewrite Hsrc1, Hsrc2 in Hsrc; unfold loc_eq in *;
          try (now exfalso).
-         ++ destruct (Veq_dec l l1), (Veq_dec l0 l2).
+         ++ destruct (Graph.Veq_dec l l1), (Graph.Veq_dec l0 l2).
             ** apply Hconf.
             ** now rewrite Hloc, Htgt in v.
             ** now rewrite Hloc, Htgt in n3.
             ** repeat try (split; simpl); try apply Hconf.
-               assert (Hcp := CommonGraphFormalism.find_edge_compat l l0 Hloc l1 l2 Htgt).
-               now destruct (find_edge l l1), (find_edge l0 l2).
+               assert (Hcp := Graph.find_edge_compat l l0 Hloc l1 l2 Htgt).
+               now destruct (Graph.find_edge l l1), (Graph.find_edge l0 l2).
                now rewrite Hstep.
-         ++ destruct (Veq_dec l l1), (Veq_dec l0 l2).
+         ++ destruct (Graph.Veq_dec l l1), (Graph.Veq_dec l0 l2).
             ** apply Hconf.
             ** now rewrite Hloc, Htgt in v.
             ** now rewrite Hloc, Htgt in n3.
             ** repeat try (split; simpl); try apply Hconf.
-               assert (Hcp := find_edge_compat l l0 Hloc l1 l2 Htgt).
-               now destruct (find_edge l l1), (find_edge l0 l2).
+               assert (Hcp := Graph.find_edge_compat l l0 Hloc l1 l2 Htgt).
+               now destruct (Graph.find_edge l l1), (Graph.find_edge l0 l2).
                now rewrite Hstep.
          ++ destruct Htgt as (Hte_eq, Htp_eq).
-            assert (Htsrc: Veq (src e) (src e0)) by now apply src_compat.
-            destruct (Veq_dec l (src e)), (Veq_dec l0 (src e0));
+            assert (Htsrc: Graph.Veq (Graph.src e) (Graph.src e0)) by now apply Graph.src_compat.
+            destruct (Graph.Veq_dec l (Graph.src e)), (Graph.Veq_dec l0 (Graph.src e0));
             try (rewrite Htsrc, Hloc in *; contradiction).
             apply Hconf.
-            assert (opt_eq Eeq (find_edge l (src e)) (find_edge l0 (src e0))) by
-            now apply find_edge_compat.
-            destruct (find_edge l (src e)), (find_edge l0 (src e0));
+            assert (opt_eq Graph.Eeq (Graph.find_edge l (Graph.src e))
+                           (Graph.find_edge l0 (Graph.src e0))) by
+            now apply Graph.find_edge_compat.
+            destruct (Graph.find_edge l (Graph.src e)), (Graph.find_edge l0 (Graph.src e0));
             try (now simpl in *). simpl in *.
             try repeat (split; simpl); auto.
             now rewrite Hstep.
@@ -885,13 +886,14 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
             apply Hconf.
             apply Hconf.
          ++ destruct Htgt as (Hte_eq, Htp_eq).
-            assert (Htsrc: Veq (src e) (src e0)) by now apply src_compat.
-            destruct (Veq_dec l (src e)), (Veq_dec l0 (src e0));
+            assert (Htsrc: Graph.Veq (Graph.src e) (Graph.src e0)) by now apply Graph.src_compat.
+            destruct (Graph.Veq_dec l (Graph.src e)), (Graph.Veq_dec l0 (Graph.src e0));
             try (rewrite Htsrc, Hloc in *; contradiction).
             apply Hconf.
-            assert (opt_eq Eeq (find_edge l (src e)) (find_edge l0 (src e0))) by
-            now apply find_edge_compat.
-            destruct (find_edge l (src e)), (find_edge l0 (src e0));
+            assert (opt_eq Graph.Eeq (Graph.find_edge l (Graph.src e))
+                           (Graph.find_edge l0 (Graph.src e0))) by
+            now apply Graph.find_edge_compat.
+            destruct (Graph.find_edge l (Graph.src e)), (Graph.find_edge l0 (Graph.src e0));
             try (now simpl in *). simpl in *.
             try repeat (split; simpl); auto.
             now rewrite Hstep.
@@ -912,7 +914,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
    rewrite Hp.
    destruct (Rle_dec 1 (project_p p0 + dist0)); 
    repeat try (split;simpl); try apply Hconf.
-   - now apply CommonGraphFormalism.tgt_compat.
+   - now apply Graph.tgt_compat.
    - destruct (Rdec dist0 0); unfold loc_eq; now split.
 + destruct (Config.loc (conf1 (Byz b))) eqn : HconfB1,
   (Config.loc (conf2 (Byz b))) eqn : HconfB2;
@@ -945,7 +947,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   we define an initial configuration where all robot are on nodes,
   and their informations [source] and [target] are on the same node. *) 
 Definition Conf_init (conf: Config.t) : Prop := forall id, exists l l' e,
-find_edge l l' = Some e /\
+Graph.find_edge l l' = Some e /\
 Config.eq_RobotConf (conf id)
 {| Config.loc := Loc l;
 Config.robot_info := {| Config.source := Loc l; Config.target := Loc l'|} |}.
@@ -999,19 +1001,19 @@ destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
   destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht; try now simpl in *.
   unfold loc_eq in Hti, Hli.
   exists l, l'. simpl in *.
-  assert (Hnal := NoAutoLoop e).
-  assert (Hli_aux : opt_eq Eeq (find_edge l l') (Some e)) by now rewrite Hli.
-  apply find2st in Hli_aux.
+  assert (Hnal := Graph.NoAutoLoop e).
+  assert (Hli_aux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e)) by now rewrite Hli.
+  apply Graph.find2st in Hli_aux.
   destruct Hli_aux as (Hsrc, Htgt).
   rewrite <- Htgt, <- Hsrc in Hnal.
   rewrite <- Hti, <- Hl in Hnal.
-  destruct (Veq_dec l0 l1); try contradiction.
+  destruct (Graph.Veq_dec l0 l1); try contradiction.
   split; simpl in *.
   assumption.
   rewrite Ht.
   now simpl in *.
 + simpl in *.
-assert (Hlp : Veq (ConfigA.loc (Spect.from_config (project conf) (Good g))) l).
+assert (Hlp : Graph.Veq (ConfigA.loc (Spect.from_config (project conf) (Good g))) l).
 unfold Spect.from_config, projectS, projectS_loc, project. simpl in *.
 now do 2 rewrite Hloc.
 assert (Hrange := pgm_range rbg (Spect.from_config (project conf)) g l Hlp).
@@ -1034,10 +1036,10 @@ destruct (step da (Good g) (conf (Good g))) eqn : Hstep,
 (Config.loc (conf (Good g))) eqn : Hloc.
 destruct (Rdec dist 0). exists v1, v2. split;assumption.
 destruct (Rdec dist 1). simpl. exists v1, v2. split; assumption.
-destruct (Veq_dec l
+destruct (Graph.Veq_dec l
               match Config.target (Config.robot_info (conf (Good g))) with
               | Loc l0 => l0
-              | Mvt e _ => src e
+              | Mvt e _ => Graph.src e
               end);
 exists v1, v2; split;assumption.
 destruct (Rle_dec 1 (project_p p + dist)); 
@@ -1045,7 +1047,7 @@ exists v1, v2; split;assumption.
 simpl in *. exists l.
 assert (Hrbg := pgm_loc rbg (Spect.from_config (project conf))).
 destruct Hrbg as (lspect, Hrbg).
-assert (Hlp : Veq (ConfigA.loc (Spect.from_config (project conf) (Good g))) l).
+assert (Hlp : Graph.Veq (ConfigA.loc (Spect.from_config (project conf) (Good g))) l).
 unfold Spect.from_config, projectS, projectS_loc, project. simpl in *.
 do 2 rewrite Hloc.
 reflexivity.
@@ -1101,11 +1103,11 @@ Definition group_good_def (conf: Config.t) : Prop := forall g,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
     loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
-    opt_eq Eeq (find_edge v1 v2) (Some e)) /\
+    opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)) /\
    (forall v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    exists e, (opt_eq Eeq (find_edge v1 v2) (Some e))).
+    exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e))).
 
 (** initialisation *)
 Lemma group_lem_init : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
@@ -1116,7 +1118,7 @@ Lemma group_lem_init : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
    (loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
     loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
     loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
-    opt_eq Eeq (find_edge v1' v2') (Some e')).
+    opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e')).
 Proof.
 intros conf rbg da g v0' v1' v2' e' p' Hinit.
 unfold Conf_init in Hinit.
@@ -1132,7 +1134,7 @@ split.
     destruct (Rdec dist 1). simpl in *. now right.
     destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht; try now simpl in *.
     unfold loc_eq in Hti.
-    destruct (Veq_dec l0 l1); try contradiction.
+    destruct (Graph.Veq_dec l0 l1); try contradiction.
     rewrite Hloc in Hl0. rewrite <- Hl0. now left.
   - simpl in *. now left.
 + intros Hs' Ht' Hl'. unfold round in *.
@@ -1142,19 +1144,19 @@ split.
   destruct (Rdec dist 1). simpl in *. rewrite Ht' in Hl'; now simpl in *.
   destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht''; try now simpl in *.
   unfold loc_eq in Hti, Hl.
-  destruct (Veq_dec l0 l1); try rewrite Hloc in *; try contradiction.
+  destruct (Graph.Veq_dec l0 l1); try rewrite Hloc in *; try contradiction.
   simpl in *.
-  assert (opt_eq Eeq (find_edge l0 l1) (find_edge l l')) by now apply find_edge_compat.
+  assert (opt_eq Graph.Eeq (Graph.find_edge l0 l1) (Graph.find_edge l l')) by now apply Graph.find_edge_compat.
   rewrite Hli in H.
-  destruct (find_edge l0 l1); try contradiction.
+  destruct (Graph.find_edge l0 l1); try contradiction.
   destruct Hl' as (He,_).
   simpl in *.
   rewrite He in H.
   rewrite Ht'',Hsi in *.
   simpl in *.
-  assert (opt_eq Eeq (Some e) (Some e')) by now simpl in *.
+  assert (opt_eq Graph.Eeq (Some e) (Some e')) by now simpl in *.
   rewrite <- H0, <- Hli.
-  apply find_edge_compat; try now symmetry. now rewrite <- Ht'.
+  apply Graph.find_edge_compat; try now symmetry. now rewrite <- Ht'.
 Qed.
 
 (** recurence *)
@@ -1167,11 +1169,11 @@ Lemma group_lem : forall conf (rbg : robogram) da g,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
     loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
-    opt_eq Eeq (find_edge v1 v2) (Some e)) ->
+    opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)) ->
    (forall v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    exists e, (opt_eq Eeq (find_edge v1 v2) (Some e))) ->
+    exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e))) ->
    ri_loc_def (round rbg da conf) /\
    (forall v0',
     loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0') ->
@@ -1181,11 +1183,11 @@ Lemma group_lem : forall conf (rbg : robogram) da g,
     loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
     loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
     loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
-    opt_eq Eeq (find_edge v1' v2') (Some e')) /\
+    opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e')) /\
    (forall v1' v2',
     loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
     loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
-    exists e, opt_eq Eeq (find_edge v1' v2') (Some e)).
+    exists e, opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e)).
 Proof.
 intros conf rbg da g Hinit Hli Hmi Hex_e.
 repeat split.
@@ -1198,20 +1200,20 @@ repeat split.
     destruct (Rdec dist 1).
     simpl in *. now right.
     destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht.
-    * destruct (Veq_dec l l0).
+    * destruct (Graph.Veq_dec l l0).
       specialize (Hli v0'). rewrite Ht. apply Hli. now rewrite Hl in H.
-      destruct (find_edge l l0); now simpl in *.
-    * destruct (Veq_dec l (src e)).
+      destruct (Graph.find_edge l l0); now simpl in *.
+    * destruct (Graph.Veq_dec l (Graph.src e)).
       specialize (Hli v0').
       destruct Hli.
       now rewrite Hl in H.
       now left.
       now unfold loc_eq in *.
-      destruct (find_edge l (src e)); now simpl in *.
+      destruct (Graph.find_edge l (Graph.src e)); now simpl in *.
   - destruct (Rle_dec 1 (project_p p + dist)); simpl in *.
     * destruct (Hinit g) as (v1, (v2, Hri)). specialize (Hmi v1 v2 e p).
-      apply find2st in Hmi.
-      assert (Hproof : Veq (tgt e) v2).
+      apply Graph.find2st in Hmi.
+      assert (Hproof : Graph.Veq (Graph.tgt e) v2).
       now destruct Hmi.
       right. destruct Hri as (Hsri, Htri).
       rewrite Htri. simpl in *. now rewrite <- Hproof.
@@ -1227,17 +1229,17 @@ repeat split.
   - destruct (Rdec dist 0). now rewrite Hl in Hl0.
     destruct (Rdec dist 1). simpl in *. now rewrite Ht0 in Hl0.
     destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht.
-    * destruct (Veq_dec l l0).
+    * destruct (Graph.Veq_dec l l0).
       now rewrite Hl in Hl0.
-      destruct (find_edge l l0) eqn : Hedge; simpl in *.
+      destruct (Graph.find_edge l l0) eqn : Hedge; simpl in *.
       specialize (Hli l). destruct Hli as [Hsi |Hti]. reflexivity.
       destruct Hl0 as (He, Hp).
-      assert (Hedge' : opt_eq Eeq (find_edge l l0) (Some e')) by now (rewrite Hedge; apply He).
+      assert (Hedge' : opt_eq Graph.Eeq (Graph.find_edge l l0) (Some e')) by now (rewrite Hedge; apply He).
       rewrite Ht in Ht0. unfold loc_eq in Ht0. rewrite Ht0 in Hedge'.
       rewrite Hsi in Hs0. unfold loc_eq in Hs0. now rewrite Hs0 in Hedge'.
       now symmetry in Hti.
       specialize (Hex_e v1' v2').
-      assert (exists e : E, opt_eq Eeq (find_edge v1' v2') (Some e)).
+      assert (exists e : Graph.E, opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e)).
       apply Hex_e. apply Hs0. rewrite Ht in Ht0; now simpl in *.
       assert (Hrbg := pgm_range rbg (Spect.from_config (project conf)) g).
       specialize (Hrbg v1').
@@ -1265,9 +1267,9 @@ repeat split.
     destruct (Rdec dist 1); simpl in *.
     apply Hex_e.
     destruct (Config.target (Config.robot_info (conf (Good g)))) as [vt| et pt] eqn : Ht.
-    destruct (Veq_dec l vt). rewrite Ht.
+    destruct (Graph.Veq_dec l vt). rewrite Ht.
     apply Hex_e.
-    destruct (find_edge l vt); simpl in *;
+    destruct (Graph.find_edge l vt); simpl in *;
     now rewrite Ht.
     destruct (Hinit g) as (_,(f, (_, Hf))). rewrite Ht in Hf.
     now simpl in *.
@@ -1292,7 +1294,7 @@ repeat split.
     exists er.
     rewrite <- Hedge'.
     rewrite Hr' in Hr.
-    apply find_edge_compat;
+    apply Graph.find_edge_compat;
     now symmetry.
   - simpl in *. now intro.
 Qed.
@@ -1347,15 +1349,15 @@ repeat split.
     left; rewrite Hs', Hl0, Hl'' in *; simpl in *. now rewrite <-Hl0', Hl', Hs.
     destruct (Rdec dist 1); simpl in *. now right.
     rewrite Ht' in *.
-    assert (~Veq l3 l2).
-    assert (Hnal := NoAutoLoop e').
-    assert (Haux : opt_eq Eeq (find_edge l l') (Some e')) by now rewrite Hl.
-    apply find2st in Haux.
+    assert (~Graph.Veq l3 l2).
+    assert (Hnal := Graph.NoAutoLoop e').
+    assert (Haux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e')) by now rewrite Hl.
+    apply Graph.find2st in Haux.
     destruct Haux as (Hls, Hlt).
     assert (Haux2 : loc_eq (Loc l1) (Loc l3)) by now rewrite Hl''.
     simpl in *.
     now rewrite <- Hls, <- Hlt, <- Hl', <- Ht, Haux2 in Hnal.
-    destruct (Veq_dec l3 l2); try contradiction.
+    destruct (Graph.Veq_dec l3 l2); try contradiction.
   - simpl in *. intros v0 Hv. now left.
 + specialize (H (Good g)); destruct H as (l, (l', (e', (Hl, (Hl',(Hs, Ht)))))).
   destruct (Config.source (Config.robot_info (config (Good g)))) eqn : Hs',
@@ -1367,26 +1369,26 @@ repeat split.
   - destruct (Rdec dist 0). now rewrite Hl'' in *.
     destruct (Rdec dist 1). simpl in *. now rewrite Ht' in *.
     rewrite Ht' in *.
-    assert (~Veq l1 l2).
-    assert (Hnal := NoAutoLoop e').
-    assert (Haux : opt_eq Eeq (find_edge l l') (Some e')) by now rewrite Hl.
-    apply find2st in Haux.
+    assert (~Graph.Veq l1 l2).
+    assert (Hnal := Graph.NoAutoLoop e').
+    assert (Haux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e')) by now rewrite Hl.
+    apply Graph.find2st in Haux.
     destruct Haux as (Hls, Hlt).
     now rewrite <- Hls, <- Hlt, <- Hl', <- Ht in Hnal.
-    destruct (Veq_dec l1 l2); try contradiction.
-    assert (opt_eq Eeq (find_edge l1 l2) (find_edge l l')) by now apply find_edge_compat.
+    destruct (Graph.Veq_dec l1 l2); try contradiction.
+    assert (opt_eq Graph.Eeq (Graph.find_edge l1 l2) (Graph.find_edge l l')) by now apply Graph.find_edge_compat.
     rewrite Hl in H0.
-    destruct (find_edge l1 l2); try contradiction.
+    destruct (Graph.find_edge l1 l2); try contradiction.
     simpl in *.
     destruct Hl0 as (Hle,_).
     rewrite Hle in H0.
-    assert (Haux : opt_eq Eeq (Some e) (Some e')) by now simpl in *.
+    assert (Haux : opt_eq Graph.Eeq (Some e) (Some e')) by now simpl in *.
     rewrite Haux.
     rewrite Ht', Hs' in *.
     simpl in *.
     rewrite Hs, Ht in *.
     rewrite <- Hl.
-    now apply find_edge_compat.
+    now apply Graph.find_edge_compat.
   - now simpl in *.
 + specialize (H (Good g)); destruct H as (l, (l', (e', (Hl, (Hl',(Hs, Ht)))))).
   destruct (Config.source (Config.robot_info (config (Good g)))) eqn : Hs',
@@ -1400,30 +1402,30 @@ repeat split.
   - rewrite Hs', Ht' in *.
     simpl in *.
     rewrite Hs, Ht in *.
-    exists e'; rewrite <- Hl; now apply find_edge_compat.
+    exists e'; rewrite <- Hl; now apply Graph.find_edge_compat.
   - destruct (Rdec dist 1); simpl in *.
     * rewrite Hs', Ht' in *.
       simpl in *.
       rewrite Hs, Ht in *.
-      exists e'; rewrite <- Hl; now apply find_edge_compat.
+      exists e'; rewrite <- Hl; now apply Graph.find_edge_compat.
     * rewrite Ht' in *.
-      assert (~Veq l1 l2).
-      assert (Hnal := NoAutoLoop e').
-      assert (Haux : opt_eq Eeq (find_edge l l') (Some e')) by now rewrite Hl.
-      apply find2st in Haux.
+      assert (~Graph.Veq l1 l2).
+      assert (Hnal := Graph.NoAutoLoop e').
+      assert (Haux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e')) by now rewrite Hl.
+      apply Graph.find2st in Haux.
       destruct Haux as (Hls, Hlt).
       now rewrite <- Hls, <- Hlt, <- Hl', <- Ht in Hnal.
-      destruct (Veq_dec l1 l2); try contradiction.
-      assert (opt_eq Eeq (find_edge l1 l2) (find_edge l l')) by now apply find_edge_compat.
+      destruct (Graph.Veq_dec l1 l2); try contradiction.
+      assert (opt_eq Graph.Eeq (Graph.find_edge l1 l2) (Graph.find_edge l l')) by now apply Graph.find_edge_compat.
       rewrite Hl in H0.
-      destruct (find_edge l1 l2); try contradiction.
+      destruct (Graph.find_edge l1 l2); try contradiction.
       simpl in *.
       rewrite Hs', Ht' in *.
       simpl in *.
       rewrite Hs, Ht in *.
-      exists e'; rewrite <- Hl; now apply find_edge_compat.
+      exists e'; rewrite <- Hl; now apply Graph.find_edge_compat.
   - simpl in *.
-    assert (Hpgm_aux : Veq (ConfigA.loc (Spect.from_config (project config) (Good g))) l1).
+    assert (Hpgm_aux : Graph.Veq (ConfigA.loc (Spect.from_config (project config) (Good g))) l1).
     { unfold Spect.from_config, project, projectS, projectS_loc; simpl in *.
       now repeat rewrite Hl''. }
     assert (Hpgm := pgm_range r (Spect.from_config (project config)) g l1 Hpgm_aux).
@@ -1432,7 +1434,7 @@ repeat split.
     simpl in *.
     exists e''.
     rewrite <- Hedge.
-    now apply find_edge_compat.
+    now apply Graph.find_edge_compat.
  Qed.
 
 

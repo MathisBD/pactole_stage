@@ -14,12 +14,13 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
+Module Type GraphDef.  
 
-Parameter V : Type.
-Parameter E : Type.
-Parameter tgt src : E -> V.
-Parameter threshold : E -> R.
-Parameter Veq : V -> V -> Prop.
+Parameter V : Set. (* Z/nZ *)
+Parameter E : Set. (* de base, source et destination (en couple). on peut aussi jsute donner l'un des deux (tjr lle même) car on est dans un cercle (ici) *)
+Parameter tgt src : E -> V. (* fst et snd du couple *)
+Parameter threshold : E -> R. (* ça reste un parametre *)
+Parameter Veq : V -> V -> Prop. 
 Parameter Eeq : E -> E -> Prop.
 Axiom Veq_equiv : Equivalence Veq.
 Axiom Eeq_equiv : Equivalence Eeq.
@@ -39,15 +40,19 @@ Parameter find_edge_compat : Proper (Veq ==> Veq ==> opt_eq (Eeq)) find_edge.
 Axiom find2st : forall v1 v2 e, opt_eq Eeq (find_edge v1 v2) (Some e) ->
                                 Veq v1 (src e) /\ Veq v2 (tgt e).
 
+End GraphDef.
+
+
 
 Declare Module N : Size.
 Declare Module Names : Robots(N).
+Declare Module Graph : GraphDef.
 
-Module LocationA : DecidableType with Definition t := V with Definition eq := Veq.
-  Definition t := V.
-  Definition eq := Veq.
-  Definition eq_equiv : Equivalence eq := Veq_equiv.
-  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := Veq_dec.
+Module LocationA : DecidableType with Definition t := Graph.V with Definition eq := Graph.Veq.
+  Definition t := Graph.V.
+  Definition eq := Graph.Veq.
+  Definition eq_equiv : Equivalence eq := Graph.Veq_equiv.
+  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := Graph.Veq_dec.
 End LocationA.
 
 Module ConfigA := Configurations.Make (LocationA)(N)(Names).

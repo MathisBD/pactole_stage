@@ -345,7 +345,7 @@ Module Type RingSig.
   Parameter n_sup_1 : 1 < n. 
 
   Definition t := Z.
-
+ 
   Parameter eq : Z -> Z -> Prop.
   Parameter dist : Z -> Z -> Z.
   Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.

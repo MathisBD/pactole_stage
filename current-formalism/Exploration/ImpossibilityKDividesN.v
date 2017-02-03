@@ -47,16 +47,15 @@ Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
   Definition nB := 0%nat.
 End K.
-Module def : RingDef with Definition n := Top.n.
- Definition n:= Top.n.
- Lemma n_pos : n <> 0. Proof. unfold n. generalize Top.n_sup_1. omega. Qed.
+Module def : RingDef with Definition n := n.
+ Definition n:= n.
+ Lemma n_pos : n <> 0. Proof. unfold n. generalize n_sup_1. omega. Qed.
  Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
 End def.
 
 
 (** The setting is a ring. *)
 Module Loc := Ring(def).
-Print Loc.dist.
 
 (** There are KG good robots and no byzantine ones. *)
 
@@ -251,7 +250,6 @@ Proof.
         unfold n'.
         apply Zdiv.Z_mod_lt.
         generalize n_sup_1; omega.
-        (* replace n with (kG * (n/kG))%nat in H. *)
         apply Nat.div_lt_upper_bound with (b := (n/kG)%nat) (q := kG).
         omega.
         rewrite Nat.mul_comm.
