@@ -29,8 +29,8 @@ Require Import List Setoid Compare_dec Morphisms FinFun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.Exploration.Definitions.
-Require Import Pactole.Exploration.test_modulo.
+Require Import Pactole.Exploration.ZnZ.Definitions.
+Require Import Pactole.Exploration.ZnZ.test_modulo.
 
 Set Implicit Arguments.
 (* taille de l'anneau*)
@@ -986,14 +986,6 @@ Qed.
 
 (** **  First case: the robots moves **)
 
-Section Move1.
-  
-Hypothesis Hm : m mod (Z.of_nat n) <> 0.
-
-
-
-
-
 Lemma neq_a_1a : forall a, ~Loc.eq a (Loc.add Loc.unit a).
 Proof.
 generalize n_sup_1.
@@ -1028,6 +1020,16 @@ try rewrite Z.compare_gt_iff in *.
   generalize (Z.mod_pos_bound a (Z.of_nat n) Hn0); intros.
   omega.
 Qed.
+
+Section Move1.
+  
+Hypothesis Hm : m mod (Z.of_nat n) <> 0.
+
+
+
+
+
+
 
 
 Lemma neq_a_a1 : forall a, ~Loc.eq a (a - 1).

@@ -32,7 +32,7 @@ CommonGraphFormalism.v
 GraphEquivalence.v
 DiscreteGraphFormalism.v
 AtomicGraphFormalism.v
-Exploration/test_modulo.v
-Exploration/Definitions.v
+Exploration/ZnZ/test_modulo.v
+Exploration/ZnZ/Definitions.v
 Gathering/Definitions.v
-Exploration/ImpossibilityKDividesN.v
+Exploration/ZnZ/ImpossibilityKDividesN.v

@@ -14,6 +14,7 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
+
 Module Type GraphDef.  
 
 Parameter V : Set. (* Z/nZ *)
@@ -46,15 +47,23 @@ End GraphDef.
 
 Declare Module N : Size.
 Declare Module Names : Robots(N).
+
+
+Module LocationAD (GraphD : GraphDef) : DecidableType
+    with Definition t := GraphD.V with Definition eq := GraphD.Veq.
+  Definition t := GraphD.V.
+  Definition eq := GraphD.Veq.
+  Definition eq_equiv : Equivalence eq := GraphD.Veq_equiv.
+  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := GraphD.Veq_dec.
+End LocationAD.
+
+
+
 Declare Module Graph : GraphDef.
 
-Module LocationA : DecidableType with Definition t := Graph.V with Definition eq := Graph.Veq.
-  Definition t := Graph.V.
-  Definition eq := Graph.Veq.
-  Definition eq_equiv : Equivalence eq := Graph.Veq_equiv.
-  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := Graph.Veq_dec.
-End LocationA.
+Module LocationA := LocationAD (Graph).
 
+      
 Module ConfigA := Configurations.Make (LocationA)(N)(Names).
 
 (** For spectra *)
