@@ -17,11 +17,21 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
+Require Import Pactole.AtomicGraphFormalism.
 
 
-Module DGF.
+Module DGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names)).
+  
 
+(** For spectra *)
+Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
+  Definition t := ConfigA.t.
+  Definition eq := ConfigA.eq.
+  Definition eq_equiv := ConfigA.eq_equiv.
+  Definition eq_dec := ConfigA.eq_dec.
+End View.
 
+  
 (** * Projection function*)
 
 Open Scope R_scope.

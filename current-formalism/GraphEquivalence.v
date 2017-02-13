@@ -25,6 +25,13 @@ Require Import Pactole.DiscreteGraphFormalism.
 
 
 
+Module GraphEquivalence (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names)).
+
+Module AGF := AGF (Graph)(N)(Names)(LocationA)(ConfigA).
+Module DGF := DGF (Graph)(N)(Names)(LocationA)(ConfigA).
+
+
+
 Definition ConfigA2D (confA : AGF.Config.t) : DGF.Config.t :=
   fun id =>
     {| DGF.Config.loc := DGF.Loc (AGF.Config.loc (confA id));
@@ -81,7 +88,10 @@ intros SconfD. unfold ConfigA2D, ConfigD2A.
 assert DGF.Config.eq (Sconf *)
 
 Lemma spect_equiv : AGF.Spect.t = DGF.Spect.t.
-Proof. unfold AGF.Spect.t, DGF.Spect.t. reflexivity. Qed.
+Proof.
+  unfold AGF.Spect.t, DGF.Spect.t, DGF.View.t, AGF.View.t. 
+  reflexivity. Qed.
+ 
 
 
 Definition rbgA2D (rbgA : AGF.robogram) : DGF.robogram.
@@ -625,7 +635,7 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
     unfold DGF.project, ConfigA2D; simpl in *. reflexivity.
     specialize (Htest c). rewrite <- Htest.
     assert (AGF.Spect.eq (AGF.Spect.from_config c) (DGF.Spect.from_config (ConfigA2D c))).
-    unfold AGF.Spect.eq, View.eq.
+    unfold AGF.Spect.eq, AGF.View.eq.
     unfold ConfigA2D; simpl in *.
     repeat try (split; simpl); now unfold AGF.Spect.from_config.
     now rewrite H.
@@ -1191,5 +1201,8 @@ try (now (try (now simpl in *);
   destruct Htgt as (Het, Hpt);
   assert (Hth : (Graph.threshold ebt')= (Graph.threshold ebt)) by (now apply Graph.threshold_compat);
   rewrite <- Hpt, Hth; destruct ( Rle_dec (DGF.project_p pbt') (Graph.threshold ebt));
-  try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
+  try (now apply Graph.src_compat);
+  try (now apply Graph.tgt_compat).
 Qed.
+
+End GraphEquivalence.

@@ -22,8 +22,18 @@ Require Import Pactole.CommonGraphFormalism.
 
 (* Record graph_iso :=  *)
 
+Module AGF (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names)).
+  
 
-Module AGF.
+  
+  (** For spectra *)
+  Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
+    Definition t := ConfigA.t.
+    Definition eq := ConfigA.eq.
+    Definition eq_equiv := ConfigA.eq_equiv.
+    Definition eq_dec := ConfigA.eq_dec.
+  End View.
+
 
 
   (* They come from the common part as they are shared by AGF and DGF. *)

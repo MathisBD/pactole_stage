@@ -36,3 +36,5 @@ Exploration/ZnZ/test_modulo.v
 Exploration/ZnZ/Definitions.v
 Gathering/Definitions.v
 Exploration/ZnZ/ImpossibilityKDividesN.v
+Exploration/Graph/GraphFromZnZ.v
+Exploration/Graph/Definitions.v

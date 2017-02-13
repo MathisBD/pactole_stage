@@ -43,33 +43,12 @@ Axiom find2st : forall v1 v2 e, opt_eq Eeq (find_edge v1 v2) (Some e) ->
 
 End GraphDef.
 
+Module Type LocationADef (Graph : GraphDef) <: DecidableType.
+  Definition t := Graph.V.
+  Definition eq := Graph.Veq. (*Graph.V -> Graph.V -> Prop. *)
+  Parameter eq_equiv : Equivalence eq.
+  Parameter eq_dec : forall l l', {eq l l'} + {~eq l l'}.
+End LocationADef.
+  
 
 
-Declare Module N : Size.
-Declare Module Names : Robots(N).
-
-
-Module LocationAD (GraphD : GraphDef) : DecidableType
-    with Definition t := GraphD.V with Definition eq := GraphD.Veq.
-  Definition t := GraphD.V.
-  Definition eq := GraphD.Veq.
-  Definition eq_equiv : Equivalence eq := GraphD.Veq_equiv.
-  Definition eq_dec : forall l l', {eq l l'} + {~eq l l'} := GraphD.Veq_dec.
-End LocationAD.
-
-
-
-Declare Module Graph : GraphDef.
-
-Module LocationA := LocationAD (Graph).
-
-      
-Module ConfigA := Configurations.Make (LocationA)(N)(Names).
-
-(** For spectra *)
-Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
-  Definition t := ConfigA.t.
-  Definition eq := ConfigA.eq.
-  Definition eq_equiv := ConfigA.eq_equiv.
-  Definition eq_dec := ConfigA.eq_dec.
-End View.
