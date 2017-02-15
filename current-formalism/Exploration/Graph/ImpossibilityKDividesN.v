@@ -76,6 +76,8 @@ End Loc.
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
 Module DefsE := Definitions.ExplorationDefs(Gra)(Loc)(K).
 Export DefsE.
+Export Gra.
+Export MakeRing.
 
 Ltac ImpByz b := 
   assert (Hfalse := Names.Bnames_length);
@@ -289,126 +291,22 @@ Qed.
 Lemma config1_ne_unit : Z_of_nat (n mod kG) = 0 ->
       forall g:Names.G, ~ Loc.eq (create_conf1 g) Loc.unit.
 Proof.
-  intros Hmod g.
-  induction g.
-  + simpl in *.
-    unfold create_conf1.
-    simpl in *.
-    unfold Loc.mul, Loc.eq, Loc.unit, def.n.
-    rewrite Z.mod_mod.
-    simpl in *.
-    rewrite Z.mod_0_l, Z.mod_1_l.
-    omega.
-    generalize n_sup_1; omega.
-    generalize n_sup_1; omega.
-    generalize n_sup_1; omega.
-  +  simpl in *.
-     generalize k_sup_1, k_inf_n, n_sup_1.
-     intros.
-     unfold create_conf1.
-     unfold Loc.eq, Loc.mul, Loc.unit, def.n. 
-     rewrite Zdiv.mod_Zmod in Hmod; try omega.
-     rewrite Zdiv.Zmod_divides in *; try omega.
-     rewrite Z.mod_mod.
-     destruct Hmod.
-     rewrite Nat2Z.inj_mul, Zdiv.div_Zdiv; try omega.
-     rewrite H2 in *.
-     replace (Z.of_nat kG * x ) with (x * Z.of_nat kG) by intuition.
-     rewrite Zdiv.Z_div_mult_full.
-     replace (x * Z.of_nat kG) with (Z.of_nat kG * x) by intuition.
-     rewrite Z.mul_1_r.
-     rewrite Zdiv.Zmult_mod_distr_r.
-     assert (1 < x).
-     assert (Z.of_nat kG < Z.of_nat n) by omega.
-     apply Zmult_lt_reg_r with (p := Z.of_nat kG); try omega.
-     rewrite Z.mul_comm with (n:= x).
-     rewrite <- H2.
-     omega.
-     rewrite Zdiv.Zmod_1_l; try omega.
-     intuition.
-     rewrite Z.mul_comm in H4.
-     apply Z.eq_mul_1 in H4.
-     destruct H4; omega.
-     omega.
-     omega.
+  unfold Loc.eq, LocationA.eq, MakeRing.Veq, Loc.unit;
+    apply config1_ne_unit.
 Qed.
 
 (** **  First case: the robots moves **)
 
 Lemma neq_a_1a : forall a, ~Loc.eq a (Loc.add Loc.unit a).
 Proof.
-generalize n_sup_1.
-intros.
-unfold Loc.eq, Loc.add, def.n, Loc.unit.
-rewrite Z.mod_mod, <- Zdiv.Zplus_mod_idemp_r; try omega.
-destruct (a mod Z.of_nat n ?= Z.of_nat n) eqn : Hn;
-try rewrite Z.compare_lt_iff in *;
-try rewrite Z.compare_eq_iff in *;
-try rewrite Z.compare_gt_iff in *.
-+ rewrite Hn, <- Zdiv.Zplus_mod_idemp_r, Zdiv.Z_mod_same_full.
-  simpl in *; rewrite Z.mod_1_l;
-  omega.
-+ destruct (a mod Z.of_nat n) eqn : Hp.
-  - simpl in *.
-    rewrite Z.mod_1_l; omega.
-  - apply Zlt_le_succ in Hn.
-    unfold Z.succ in Hn.
-    apply Zle_lt_or_eq in Hn.
-    destruct Hn.
-    rewrite Zdiv.Zmod_small; try split; try omega.
-    apply Zle_0_pos.
-    rewrite Z.add_comm, H0, Zdiv.Z_mod_same_full.
-    generalize Zle_0_pos.
-    omega.
-  - assert (Hn0: 0 < Z.of_nat n) by omega.
-    generalize (Z.mod_pos_bound a (Z.of_nat n) Hn0); intros.
-    rewrite Hp in H0.
-    generalize (Pos2Z.neg_is_neg p).
-    omega.
-+ assert (Hn0: 0 < Z.of_nat n) by omega.
-  generalize (Z.mod_pos_bound a (Z.of_nat n) Hn0); intros.
-  omega.
+  unfold Loc.eq, LocationA.eq, MakeRing.Veq, Loc.add, Loc.unit.
+  apply neq_a_1a.
 Qed.
 
 Section Move1.
   
 Hypothesis Hm : m mod (Z.of_nat n) <> 0.
 
-
-
-
-
-
-
-
-Lemma neq_a_a1 : forall a, ~Loc.eq a (a - 1).
-Proof.
-generalize n_sup_1.
-intros.
-unfold Loc.eq, Loc.add, def.n, Loc.unit.
-rewrite <- Zdiv.Zminus_mod_idemp_l; try omega.
-destruct (a mod Z.of_nat n ?= Z.of_nat n) eqn : Hn;
-try rewrite Z.compare_lt_iff in *;
-try rewrite Z.compare_eq_iff in *;
-try rewrite Z.compare_gt_iff in *.
-+ rewrite Hn, Zdiv.Zmod_small; omega.
-+ destruct (a mod Z.of_nat n) eqn : Hp.
-  - rewrite <- Zdiv.Z_mod_same_full with (a:= Z.of_nat n) at 2.
-    rewrite Zdiv.Zminus_mod_idemp_l, Zdiv.Zmod_small; omega.
-  - rewrite Zdiv.Zmod_small; try omega.
-    generalize (Pos2Z.is_pos p); omega.
-  - assert (Hn0: 0 < Z.of_nat n) by omega.
-    generalize (Z.mod_pos_bound a (Z.of_nat n) Hn0); intros.
-    rewrite Hp in H0.
-    generalize (Pos2Z.neg_is_neg p).
-    omega.
-+ assert (Hn0: 0 < Z.of_nat n) by omega.
-  generalize (Z.mod_pos_bound a (Z.of_nat n) Hn0); intros.
-  omega.
-Qed.
-
-
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 
 (* This function moves every robots of [k] nodes. *)
 Definition f_conf conf k : Config.t :=
@@ -478,10 +376,17 @@ Proof.
   intros g0.
   unfold move in Hmove.
   simpl in *.
-  unfold Loc.add, Loc.opp, Loc.unit.
-  generalize spect_rotation; intro.
-  assert (Hpgm := pgm_compat r (H g0)).
-  rewrite <- Zdiv.Zminus_mod_idemp_r.
+  assert (Hpgm := pgm_range r (!! config1) (create_conf1 g0) g0).
+  unfold round.
+  simpl.
+  destruct (Loc.eq_dec (create_conf1 g0) (Loc.add Loc.unit (create_conf1 g0))).
+  + simpl.
+    now generalize (neq_a_1a e).
+  + simpl.
+    unfold Gra.find_edge in *.  unfold find_edge in *.
+    
+    generalize (H
+    rewrite <- Zdiv.Zminus_mod_idemp_r.
   rewrite <- Hpgm, Hmove.
   rewrite Zdiv.Zminus_mod_idemp_r.
   reflexivity.

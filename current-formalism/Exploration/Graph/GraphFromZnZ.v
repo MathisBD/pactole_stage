@@ -29,10 +29,14 @@ Require Import Pactole.GraphEquivalence.
 
 Set Implicit Arguments.
 
+Inductive direction := Forward | Backward. 
+
+
 Module MakeRing : GraphDef 
     with Definition V := Loc.t with Definition Veq := Loc.eq.
+   
 
-  Inductive direction := Forward | Backward. 
+  (* Inductive direction := Forward | Backward.  *)
   Definition V := Loc.t.
   Definition E := (Loc.t * direction)%type.
   Definition Veq := Loc.eq.
