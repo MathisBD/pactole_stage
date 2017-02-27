@@ -23,7 +23,7 @@ Require Import Pactole.DiscreteSimilarity.
 Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
 Require Import Pactole.DiscreteMultisetSpectrum.
-
+Require Import Pactole.CommonIsoGraphFormalism.
 
 Close Scope Z_scope.
 Set Implicit Arguments.
@@ -33,9 +33,9 @@ Module ExplorationDefs(Graph : GraphDef)(Loc : LocationADef(Graph))(N : Size).
 
 Module Names := Robots.Make(N).
 Module Config := Configurations.Make(Loc)(N)(Names).
+Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc).
 
-
-Module Export Atom := AtomicGraphFormalism.AGF(Graph)(N)(Names)(Loc)(Config).
+Module Export Atom := AtomicGraphFormalism.AGF(Graph)(N)(Names)(Loc)(Config)(Iso).
 
 Module Spect := Atom.Spect.
 

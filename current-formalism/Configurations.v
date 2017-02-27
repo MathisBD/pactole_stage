@@ -1418,7 +1418,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
-  Parameter eq_Robotconf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
+  Parameter eq_RobotConf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
   Parameter eq_dec : forall c1 c2, {eq c1 c2} + {~eq c1 c2}.
   Declare Instance eq_info_equiv : Equivalence Info_eq.
   Declare Instance eq_bisim : Bisimulation t.
@@ -1510,10 +1510,37 @@ split.
   apply H0.
 Qed.
 
+Lemma eq_RobotConf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2 }.
+Proof.
+  intros.
+  unfold eq_RobotConf, Info_eq.
+  destruct (Location.eq_dec rc1 rc2);
+  destruct (Location.eq_dec (source (robot_info rc1)) (source (robot_info rc2)));
+  destruct (Location.eq_dec (target (robot_info rc1)) (target (robot_info rc2)));
+    try now (right; intuition).
+  left.
+  repeat (split; try assumption).
+Qed.
 
 
 Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
-Proof. Admitted.
+Proof.
+  intros.
+  unfold t in *.
+  unfold eq.
+  assert (forall id, eq_RobotConf (config1 id) (config2 id) \/
+                     ~ eq_RobotConf (config1 id) (config2 id)).
+  intros id.
+  destruct (eq_RobotConf_dec (config1 id) (config2 id)).
+  now left.
+  now right.
+  induction Names.names eqn : Hdec. 
+  left.
+  intros.
+  generalize (Names.In_names id).
+  intros.
+  now rewrite Hdec in H0.
+Admitted.
 
 Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
 Proof. intros l1 l2 Hl info1 info2 Hinfo. split; apply Hl || apply Hinfo. Qed.
@@ -1584,16 +1611,6 @@ Proof.
 intros. unfold list. unfold Names.names, Names.Internals.names.
 rewrite map_app, Gpos_spec, Bpos_spec. now do 2 rewrite map_map.
 Qed.
-
-Lemma eq_RobotConf_dec: forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
-Proof.
-intros. unfold eq_RobotConf, Info_eq.
-destruct (Location.eq_dec (loc rc1) (loc rc2)),
-(Location.eq_dec (source (robot_info rc1)) (source (robot_info rc2))),
-(Location.eq_dec (target (robot_info rc1)) (target (robot_info rc2))); intuition.
-Defined.
-
-Definition eq_Robotconf_dec := eq_RobotConf_dec.
 
 Lemma Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
 Proof. intros. unfold Gpos,eq_RobotConf. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.

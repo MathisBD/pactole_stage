@@ -49,6 +49,6 @@ Module Type LocationADef (Graph : GraphDef) <: DecidableType.
   Parameter eq_equiv : Equivalence eq.
   Parameter eq_dec : forall l l', {eq l l'} + {~eq l l'}.
 End LocationADef.
-  
+
 
 
