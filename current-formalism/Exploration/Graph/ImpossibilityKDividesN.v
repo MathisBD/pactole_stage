@@ -53,23 +53,7 @@ End def.
 
 Module Gra := MakeRing.
 (** The setting is a ring. *)
-Module Loc <: DecidableType.
-  Definition t := LocationA.t.
-  Definition eq := LocationA.eq.
-  Definition eq_dec : forall x y, {eq x y} + {~eq x y} := LocationA.eq_dec.
-  Definition eq_equiv : Equivalence eq := LocationA.eq_equiv.
-  Definition origin := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.origin.
-  
-  Definition add (x y : t) := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add x y.
-  Definition mul (x y : t) := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.mul x y.
-  Definition unit := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.unit.
-  Definition opp (x : t) := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp x.
-  Definition add_reg_l := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_reg_l.
-  Definition add_comm := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_comm.
-  Definition opp_distr_add := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_distr_add.
-  Definition add_assoc := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_assoc.
-  Definition add_origin := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_origin.
-End Loc.
+
   (** There are KG good robots and no byzantine ones. *)
 
 

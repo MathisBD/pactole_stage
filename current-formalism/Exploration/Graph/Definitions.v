@@ -24,14 +24,38 @@ Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
 Require Import Pactole.DiscreteMultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
+Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 
 Close Scope Z_scope.
 Set Implicit Arguments.
 
+Module Graph := MakeRing.
 
-Module ExplorationDefs(Graph : GraphDef)(Loc : LocationADef(Graph))(N : Size).
+Module ExplorationDefs(N : Size).
 
 Module Names := Robots.Make(N).
+
+Module Loc <: DecidableType.
+  Definition t := LocationA.t.
+  Definition eq := LocationA.eq.
+  Definition eq_dec : forall x y, {eq x y} + {~eq x y} := LocationA.eq_dec.
+  Definition eq_equiv : Equivalence eq := LocationA.eq_equiv.
+  Definition origin := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.origin.
+  
+  Definition add (x y : t) := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add x y.
+  Definition mul (x y : t) := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.mul x y.
+  Definition unit := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.unit.
+  Definition opp (x : t) := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp x.
+  Definition add_reg_l := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_reg_l.
+  Definition add_comm := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_comm.
+  Definition opp_distr_add := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_distr_add.
+  Definition add_assoc := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_assoc.
+  Definition add_origin := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_origin.
+  Definition add_opp := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_opp.
+  Definition opp_opp := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_opp.
+  
+End Loc.
+
 Module Config := Configurations.Make(Loc)(N)(Names).
 Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc).
 
@@ -41,6 +65,160 @@ Module Spect := Atom.Spect.
 
 Module View := Atom.View.  
 (* Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").  *)
+Import Iso.
+
+
+Definition bij_trans_V (c : Loc.t) : Isomorphism.bijection Loc.eq.
+refine {|
+  Isomorphism.section := fun x => Loc.add c (Loc.opp x);
+  Isomorphism.retraction := fun x => Loc.add c (Loc.opp x) |}.
+Proof.
+abstract (intros x y; split; intro Heq; rewrite <- Heq;
+          now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
+Defined.
+
+Definition bij_trans_E (c : Loc.t) : Isomorphism.bijection Graph.Eeq.
+  refine {|
+      Isomorphism.section := fun x => ( Loc.add c (Loc.opp (fst x)), match snd x with
+                                          | Graph.Forward => Graph.Backward
+                                          | Graph.Backward => Graph.Forward
+                                          end);
+      Isomorphism.retraction := fun x => (Loc.add c (Loc.opp (fst x)),
+                                          match snd x with
+                                          | Graph.Forward => Graph.Backward
+                                          | Graph.Backward => Graph.Forward
+                                          end) |}.
+Proof.      
+  + intros e1 e2 He_eq.
+    unfold Graph.Eeq.
+    split.
+    unfold Graph.src.
+    simpl.
+    now rewrite He_eq.
+    simpl.
+    destruct He_eq.
+    unfold Loc.t, LocationA.t, Graph.V.
+    rewrite H0.
+    reflexivity.
+  + intros.
+    unfold Loc.t, LocationA.t, Graph.V in *.
+    split.
+    intros.
+    unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *.
+    rewrite <- H.
+    rewrite Loc.opp_distr_add,Loc.opp_opp, Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
+    reflexivity.
+    destruct (snd y) eqn : Hy, (snd x) eqn : Hx;
+    unfold Loc.t, LocationA.t, Graph.V in *;
+    try discriminate.
+    reflexivity.
+    reflexivity.
+    intros.
+    unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *.
+    rewrite <- H.
+    rewrite Loc.opp_distr_add,Loc.opp_opp, Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
+    reflexivity.
+    destruct (snd y) eqn : Hy, (snd x) eqn : Hx;
+    unfold Loc.t, LocationA.t, Graph.V in *;
+    try discriminate;
+    reflexivity.
+Defined.
+
+
+
+Definition id_s := Iso.id.
+
+Definition trans (c : Loc.t) : Iso.t.
+refine {|
+    Iso.sim_V := bij_trans_V c;
+    Iso.sim_E := bij_trans_E c |}.
+Proof.
+- intros; split;destruct H; simpl in *; unfold Graph.src in *.
+  now rewrite H.
+  unfold Graph.tgt in *.
+  simpl in *.
+  unfold Loc.t, LocationA.t, MakeRing.V.
+  destruct (snd e) eqn : Hsnd.
+  rewrite <- H0.
+  rewrite Loc.opp_distr_add.
+  rewrite Loc.add_assoc.
+  f_equiv.
+  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
+  set (N :=  ImpossibilityKDividesN.def.n).
+  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
+  simpl.
+  reflexivity.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+  rewrite <- H0.
+  rewrite Loc.opp_distr_add.
+  rewrite Loc.add_assoc.
+  f_equiv.
+  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
+  set (N :=  ImpossibilityKDividesN.def.n).
+  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
+  simpl.
+  reflexivity.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+- intros. simpl. setoid_rewrite Loc.add_comm.
+  split.
+  unfold Graph.src.
+  reflexivity.
+  unfold Graph.tgt; simpl in *.
+  unfold Loc.t, LocationA.t, Graph.V.
+  destruct (snd e).
+  rewrite Loc.add_comm.
+  rewrite Loc.opp_distr_add.
+  rewrite Loc.add_assoc.
+  f_equiv.
+  now rewrite Loc.add_comm.
+  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
+  set (N :=  ImpossibilityKDividesN.def.n).
+  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
+  simpl.
+  reflexivity.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+  rewrite Loc.add_comm.
+  rewrite Loc.opp_distr_add.
+  rewrite Loc.add_assoc.
+  f_equiv.
+  now rewrite Loc.add_comm.
+  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
+  set (N :=  ImpossibilityKDividesN.def.n).
+  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
+  simpl.
+  reflexivity.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
+  unfold N.
+  omega.
+- intros.
+  simpl.
+  apply Graph.threshold_compat.
+  
+Defined.
+
+
+Instance trans_compat : Proper (Loc.eq ==> Sim.eq) trans.
+Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
+
+
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
