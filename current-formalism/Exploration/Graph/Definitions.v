@@ -80,13 +80,13 @@ Defined.
 Definition bij_trans_E (c : Loc.t) : Isomorphism.bijection Graph.Eeq.
   refine {|
       Isomorphism.section := fun x => ( Loc.add c (Loc.opp (fst x)), match snd x with
-                                          | Graph.Forward => Graph.Backward
-                                          | Graph.Backward => Graph.Forward
+                                          | GraphFromZnZ.Forward => GraphFromZnZ.Backward
+                                          | GraphFromZnZ.Backward => GraphFromZnZ.Forward
                                           end);
       Isomorphism.retraction := fun x => (Loc.add c (Loc.opp (fst x)),
                                           match snd x with
-                                          | Graph.Forward => Graph.Backward
-                                          | Graph.Backward => Graph.Forward
+                                          | GraphFromZnZ.Forward => GraphFromZnZ.Backward
+                                          | GraphFromZnZ.Backward => GraphFromZnZ.Forward
                                           end) |}.
 Proof.      
   + intros e1 e2 He_eq.
@@ -97,11 +97,12 @@ Proof.
     now rewrite He_eq.
     simpl.
     destruct He_eq.
-    unfold Loc.t, LocationA.t, Graph.V.
+    Set Printing Implicit.
+    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *.
     rewrite H0.
     reflexivity.
   + intros.
-    unfold Loc.t, LocationA.t, Graph.V in *.
+    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *.
     split.
     intros.
     unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *.
@@ -109,35 +110,44 @@ Proof.
     rewrite Loc.opp_distr_add,Loc.opp_opp, Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
     reflexivity.
     destruct (snd y) eqn : Hy, (snd x) eqn : Hx;
-    unfold Loc.t, LocationA.t, Graph.V in *;
+    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *;
     try discriminate.
+    rewrite Hy in H0.
+    discriminate.
+    rewrite Hx.
     reflexivity.
+    rewrite Hx.
     reflexivity.
+    rewrite Hy in H0.
+    discriminate.
     intros.
     unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *.
     rewrite <- H.
     rewrite Loc.opp_distr_add,Loc.opp_opp, Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
     reflexivity.
     destruct (snd y) eqn : Hy, (snd x) eqn : Hx;
-    unfold Loc.t, LocationA.t, Graph.V in *;
-    try discriminate;
-    reflexivity.
+    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *;
+    try (rewrite Hx in H0; discriminate);
+    try (rewrite Hy; reflexivity).
 Defined.
 
 
-
+(* Definition bij_trans_T := Isomorphism.bij_id Iso.Req_equiv. *)
+Parameter bij_trans_T : Isomorphism.bijection Iso.Req.
+  
 Definition id_s := Iso.id.
 
 Definition trans (c : Loc.t) : Iso.t.
 refine {|
     Iso.sim_V := bij_trans_V c;
-    Iso.sim_E := bij_trans_E c |}.
+    Iso.sim_E := bij_trans_E c;
+    Iso.sim_T := bij_trans_T |}.
 Proof.
 - intros; split;destruct H; simpl in *; unfold Graph.src in *.
   now rewrite H.
   unfold Graph.tgt in *.
   simpl in *.
-  unfold Loc.t, LocationA.t, MakeRing.V.
+  unfold Loc.t, LocationA.t, MakeRing.V, Graph.E, MakeRing.E, Graph.dir in *.
   destruct (snd e) eqn : Hsnd.
   rewrite <- H0.
   rewrite Loc.opp_distr_add.
@@ -208,9 +218,19 @@ Proof.
   generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
   unfold N.
   omega.
+- simpl. intros.
+  admit.
 - intros.
   simpl.
-  apply Graph.threshold_compat.
+  unfold Loc.t, LocationA.t, Graph.V.
+  destruct (snd e0).
+  destruct (Rle_dec r
+                    (Graph.threshold (Loc.add c (Loc.opp (fst e0)), Graph.Backward))),
+  (Rle_dec r (Graph.threshold e0));
+  unfold Graph.src, Graph.tgt.
+  + unfold Graph.threshold, MakeRing.threshold in *. admit.
+  + 
+    apply Graph.threshold_compat.
   
 Defined.
 

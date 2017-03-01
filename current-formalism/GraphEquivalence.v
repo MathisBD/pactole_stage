@@ -1329,14 +1329,31 @@ try (now (try (now simpl in *);
         try (now apply Hiso_eq_01);
         try (assert (Hthresh1 := Iso.sim_threshold sim1 e0));
         try (assert (Hthresh0 := Iso.sim_threshold sim0 e0));
-        try (rewrite Hthresh0;
-        destruct (Rle_dec (DGF.project_p p)
-                          (Graph.threshold
-                             (Isomorphism.section (Iso.sim_E sim0) e0)));
-        assert (Hutil := Iso.sim_utility sim1 e0); 
-        destruct Hutil as (Hutils, Hutilt);
-          try (now rewrite Hutils; f_equiv; apply Hiso_eq_01);
-          try (now rewrite Hutilt; f_equiv; apply Hiso_eq_01)).
+        try (cut (Graph.Veq
+             (Isomorphism.section
+                (Iso.sim_V sim1)
+                (if Rle_dec (DGF.project_p p) (Graph.threshold e0)
+                 then Graph.src e0
+                 else Graph.tgt e0))
+             (if
+                 Rle_dec (DGF.project_p p)
+                         (Graph.threshold (Isomorphism.section (Iso.sim_E sim1) e0))
+               then Graph.src (Isomorphism.section (Iso.sim_E sim1) e0)
+               else Graph.tgt (Isomorphism.section (Iso.sim_E sim1) e0)));
+             try (intros Hcut;
+             rewrite Hcut;
+      assert ((Graph.threshold (Isomorphism.section (Iso.sim_E sim0) e0)) =
+              (Graph.threshold (Isomorphism.section (Iso.sim_E sim1) e0))) by (
+      f_equiv; now apply Hiso_eq_01);
+      rewrite H;
+      destruct (Rle_dec (DGF.project_p p)
+         (Graph.threshold (Isomorphism.section (Iso.sim_E sim1) e0)));
+      destruct (Iso.sim_utility sim1 e0) as (Hsu, Htu);
+      try (rewrite Hsu); (try rewrite Htu);
+      f_equiv;
+      now apply Hiso_eq_01));
+      try (assert (Hif := Iso.sim_threshold_if sim1 e0 (DGF.project_p p));
+           now apply Isomorphism.Inversion).
       now apply (DGF.pgm_compat rbg ).
     }
     now unfold DGF.Location.eq, DGF.loc_eq.

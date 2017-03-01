@@ -30,13 +30,18 @@ Require Import Pactole.GraphEquivalence.
 Set Implicit Arguments.
 
 
+  Inductive direction := Forward | Backward.
 
 Module MakeRing <: GraphDef 
-    with Definition V := Loc.t with Definition Veq := Loc.eq.
-   
-  Inductive direction := Forward | Backward.
+    with Definition V := Loc.t
+    with Definition Veq := Loc.eq
+    with Definition E := ((Loc.t * direction)%type)
+    with Definition threshold := (fun (e : (Loc.t * direction)%type) => (1/2)%R).
+
+  Definition dir := direction. 
+
   Definition V := Loc.t.
-  Definition E := (Loc.t * direction)%type.
+  Definition E := (Loc.t * dir)%type.
   Definition Veq := Loc.eq.
   Definition tgt (e:E) := match snd e with
                           | Forward => Loc.add (fst e) 1
@@ -44,14 +49,19 @@ Module MakeRing <: GraphDef
                           end.
   Definition src (e:E) := fst e.
 
-  Parameter threshold : E -> R.
-  Axiom threshold_pos : forall e, (0 < threshold e < 1)%R.
+  Definition threshold (e: E) := (1/2)%R.
+  Lemma threshold_pos : forall e, (0 < threshold e < 1)%R.
+  Proof. unfold threshold; split; lra.
+  Qed.
+
   Definition Eeq (e1 e2 : E) := Veq (fst e1) (fst e2)
-                          /\ snd e1 = snd e2
-                          /\ threshold e1 = threshold e2.
+                          /\ snd e1 = snd e2.
   
-  Parameter threshold_compat : Proper (Eeq ==> eq) threshold.
-  
+  Instance threshold_compat : Proper (Eeq ==> eq) threshold.
+  Proof.
+    intros t1 t2 Ht; now unfold threshold.
+  Qed.
+
   Lemma Veq_equiv : Equivalence Veq. Proof. unfold Veq; apply Loc.eq_equiv. Qed.
 
   Lemma Eeq_equiv : Equivalence Eeq.
@@ -63,10 +73,9 @@ Module MakeRing <: GraphDef
     + intros e1 e2 (Hes, Het).
       unfold Eeq.
       repeat split; now symmetry.
-    + intros e1 e2 e3 (Hs12, (Ht12, Hth12)) (Hs23, (Ht23, Hth23)). 
+    + intros e1 e2 e3 (Hs12, Ht12) (Hs23, Ht23). 
       unfold Eeq.
       repeat split. now transitivity (src e2). now transitivity (snd e2).
-      now transitivity (threshold e2).
   Qed.
 
   Instance tgt_compat : Proper (Eeq ==> Veq) tgt.
@@ -74,7 +83,7 @@ Module MakeRing <: GraphDef
     intros e1 e2 He.
     unfold Eeq in He.
     unfold tgt.
-    destruct He as (Ht, (Hd, Hth)); unfold src, Loc.add in *.
+    destruct He as (Ht, Hd); unfold src, Loc.add in *.
     rewrite Hd; destruct (snd e2);
     now rewrite Zdiv.Zplus_mod, Ht, <- Zdiv.Zplus_mod.
   Qed.
@@ -103,7 +112,7 @@ Module MakeRing <: GraphDef
     intros.
     unfold Eeq.
     destruct (Veq_dec (src e) (src e')),
-    (dir_eq_dec (snd e) (snd e')), (Rdec (threshold e) (threshold e')); intuition.
+    (dir_eq_dec (snd e) (snd e')); intuition.
   Qed.
 
   Definition find_edge v1 v2 := if Loc.eq_dec v1 (Loc.add v2 1) then
@@ -165,20 +174,10 @@ Module MakeRing <: GraphDef
         * omega.
       + destruct (Loc.eq_dec (Loc.add (fst e) 1) (Loc.add (fst e) 1)).
         * repeat split; try now simpl.
-          assert (e = (fst e, Forward)).
-          destruct e.
-          rewrite <- Hdir.
-          now simpl.
-          now rewrite H.
         * destruct n0.
           reflexivity.
     - destruct (Loc.eq_dec (fst e) (Loc.add (Loc.add (fst e) (-1)) 1)).
       + repeat split; try now simpl.
-        assert (e = (fst e, Backward)).
-        destruct e.
-        rewrite <- Hdir.
-        now simpl.
-        now rewrite H.
       + destruct n.
         unfold Loc.add.
         rewrite Zdiv.Zplus_mod_idemp_l.
@@ -307,10 +306,6 @@ Module MakeRing <: GraphDef
              (Loc.eq_dec v2 (Loc.add v4 1)).
     simpl.
     repeat split; try reflexivity. assumption.
-    f_equiv.
-    split.
-    unfold Veq, Loc.eq in Hv12.
-    
     unfold Loc.eq, Loc.add in *.
     rewrite Hv12, <- Zdiv.Zplus_mod_idemp_l, Hv34, Zdiv.Zplus_mod_idemp_l in e.
     contradiction.
