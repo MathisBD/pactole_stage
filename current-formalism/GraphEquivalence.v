@@ -1348,7 +1348,7 @@ try (now (try (now simpl in *);
       rewrite H;
       destruct (Rle_dec (DGF.project_p p)
          (Graph.threshold (Isomorphism.section (Iso.sim_E sim1) e0)));
-      destruct (Iso.sim_utility sim1 e0) as (Hsu, Htu);
+      destruct (Iso.sim_morphism sim1 e0) as (Hsu, Htu);
       try (rewrite Hsu); (try rewrite Htu);
       f_equiv;
       now apply Hiso_eq_01));

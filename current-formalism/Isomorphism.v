@@ -6,6 +6,8 @@ Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
+Require Import Reals.
+Require Import Psatz.
 
 
 Set Implicit Arguments.
@@ -120,24 +122,13 @@ Module Make (Graph : GraphDef)(Loc : LocationADef (Graph)).
   Record t :=
     {
       sim_V :> bijection Loc.eq;
-      sim_E :> bijection Graph.Eeq;
-      sim_T :> bijection Req;
-      sim_integrity : forall (e : Graph.E) l1 l2,
-          (Graph.Veq (Graph.src e) l1 /\ (Graph.Veq (Graph.tgt e) l2))
-          -> (Graph.Veq (sim_V l1) (Graph.src (sim_E e)) /\
-              Graph.Veq (sim_V l2) (Graph.tgt (sim_E e)));
-      sim_utility : forall e, Graph.Veq (sim_V (Graph.src e)) (Graph.src (sim_E e))
+      sim_E : bijection Graph.Eeq;
+      sim_T : bijection Req;
+      sim_morphism : forall e, Graph.Veq (sim_V (Graph.src e)) (Graph.src (sim_E e))
                               /\ Graph.Veq (sim_V (Graph.tgt e)) (Graph.tgt (sim_E e));
       sim_threshold : forall e, sim_T (Graph.threshold e) = Graph.threshold (sim_E e);
-      sim_threshold_if : forall e0 r,
-          Loc.eq
-            (retraction sim_V
-               (if Rle_dec r (Graph.threshold (section sim_E e0))
-                then Graph.src (section sim_E e0)
-                else Graph.tgt (section sim_E e0)))
-            (if Rle_dec r (Graph.threshold e0)
-             then Graph.src e0
-             else Graph.tgt e0)
+      sim_croiss : forall a b, (a < b)%R -> (sim_T a < sim_T b)%R;
+      sim_bound_T : forall r, (0 < r < 1)%R -> (0 < sim_T r < 1)%R
   }.
 
   Definition eq sim1 sim2 := bij_eq sim1.(sim_V) sim2.(sim_V)
@@ -187,9 +178,9 @@ Definition id : t.
             sim_E := bij_id Graph.Eeq_equiv;
             sim_T := bij_id Req_equiv |}.
   Proof.
-    + intros e l1 l2 (Hls, Hlt); now split.
     + intros e. now simpl.
     + intro e; now simpl.
+    + intros; now simpl.
     + intros; now simpl.
   Defined.
 
@@ -202,17 +193,9 @@ refine {|
     sim_E := bij_compose _ f.(sim_E) g.(sim_E);
     sim_T := bij_compose _ f.(sim_T) g.(sim_T) |}.
 Proof.
-  + intros e l1 l2 H.
-    split; simpl;
-      generalize (sim_integrity g H); intro Hg;
-        assert (Graph.Veq (Graph.src ((sim_E g) e)) (g l1) ∧
-                Graph.Veq (Graph.tgt ((sim_E g) e)) (g l2))
-        by intuition;
-        generalize (sim_integrity f H0);
-        intro; intuition.
   + intros; simpl.
-    generalize (sim_utility g e).
-    generalize (sim_utility f (g.(sim_E) e)).
+    generalize (sim_morphism g e).
+    generalize (sim_morphism f (g.(sim_E) e)).
     intros.
     destruct H0;
     split.
@@ -224,13 +207,16 @@ Proof.
     generalize (sim_threshold f (g.(sim_E) e)).
     intros.
     now rewrite H0, H.
-  + intros e r.
+  + intros a b.
     simpl.
-    generalize (sim_threshold_if g e r).
-    generalize (sim_threshold_if f (g.(sim_E) e) r).
-    intros Hf Hg.
-    now rewrite Hf, Hg.
+    intros.
+    now apply (sim_croiss f), (sim_croiss g).
+  + intros.
+    simpl.
+    now apply (sim_bound_T f), (sim_bound_T g).
 Defined.
+
+
 Global Infix "∘" := compose (left associativity, at level 59).
 
 Global Instance compose_compat : Proper (eq ==> eq ==> eq) compose.
@@ -245,38 +231,20 @@ Proof.
   apply H0, H2, Hxy.
 Qed.
   
-  Lemma compose_assoc : forall f g h, eq (f ∘ (g ∘ h)) ((f ∘ g) ∘ h).
-  Proof. intros f g h; repeat split; intros x y Hxy; simpl; now rewrite Hxy. Qed.
+Lemma compose_assoc : forall f g h, eq (f ∘ (g ∘ h)) ((f ∘ g) ∘ h).
+Proof. intros f g h; repeat split; intros x y Hxy; simpl; now rewrite Hxy. Qed.
 
-  Set Printing Implicit.
-  
-  Definition inverse (sim : t) : t.
-    refine {| sim_V := bij_inverse _ sim.(sim_V);
-              sim_E := bij_inverse _ sim.(sim_E);
-              sim_T := bij_inverse _ sim.(sim_T)
-           |}.
+Set Printing Implicit.
+
+Definition inverse (sim : t) : t.
+  refine {| sim_V := bij_inverse _ sim.(sim_V);
+            sim_E := bij_inverse _ sim.(sim_E);
+            sim_T := bij_inverse _ sim.(sim_T)
+         |}.
 Proof.
-  + intros. simpl.
-    generalize (sim.(sim_integrity) H).
-    generalize (sim.(sim_utility) (retraction (sim_E sim) e)).
-    intros.
-    destruct H, H1.
-    assert (Hfe := Graph.find_edge_Some (sim.(sim_E) e)).
-    assert (Hinv := Inversion (sim_E sim)).
-    rewrite <- H1, <- H3 in Hfe.
-    rewrite <- H, <- H2.
-    split.
-    apply (Inversion (sim_V sim)).
-    destruct H0 as (Hs, Ht).
-    rewrite Hs.
-    now rewrite (section_retraction Graph.Eeq_equiv).
-    apply (Inversion (sim_V sim)).
-    destruct H0 as (Hs, Ht).
-    rewrite Ht.
-    now rewrite (section_retraction Graph.Eeq_equiv).
   + intros.
     simpl.
-    generalize ((sim_utility sim) (retraction (sim_E sim) e)).
+    generalize ((sim_morphism sim) (retraction (sim_E sim) e)).
     intro.
     destruct H.
     split;
@@ -290,31 +258,39 @@ Proof.
     rewrite Hthresh.
     f_equiv.
     now rewrite ((section_retraction Graph.Eeq_equiv)).
-  + intros e r.
+  + intros a b Hab.
     simpl.
-    assert (Hthresh_if := sim_threshold_if sim (retraction sim.(sim_E) e) r).
-
-    assert (Hsr := section_retraction Graph.Eeq_equiv sim.(sim_E)).
-    assert (Loc.eq (if
-                      Rle_dec r
-                        (Graph.threshold (sim.(sim_E) (@retraction Graph.E Graph.Eeq sim.(sim_E) e)))
-                     then Graph.src (sim.(sim_E) (@retraction Graph.E Graph.Eeq sim.(sim_E) e))
-                      else Graph.tgt (sim.(sim_E) (@retraction Graph.E Graph.Eeq sim.(sim_E) e)))
-                    (if Rle_dec r (Graph.threshold e)
-                     then Graph.src e else Graph.tgt e)).
-    {
-      assert ((Graph.threshold (sim.(sim_E) (@retraction Graph.E Graph.Eeq sim.(sim_E) e))) =  (Graph.threshold e)).
-      apply Graph.threshold_compat.
-      apply (section_retraction Graph.Eeq_equiv).
-      rewrite H; destruct (Rle_dec r (Graph.threshold e));
-        try (apply Graph.src_compat);
-        try (apply Graph.tgt_compat); f_equiv;
-          apply (section_retraction Graph.Eeq_equiv).
+    assert (Hcrois :=sim_croiss (sim)).
+    assert (forall x y, @retraction R Req (sim_T sim) x < @retraction R Req (sim_T sim) y -> x < y)%R.
+    { intros.
+      specialize (Hcrois (@retraction R Req (sim_T sim) x) (@retraction R Req (sim_T sim) y) H).
+      do 2 rewrite section_retraction in Hcrois; try apply Req_equiv.
+      assumption.
     }
-    rewrite H in Hthresh_if.
-    apply (Inversion).
-    now rewrite Hthresh_if.
+    assert (forall x y,  x <= y -> @retraction R Req (sim_T sim) x <= @retraction R Req (sim_T sim) y)%R.
+    {
+      intuition.
+      assert (contra : forall (A B: Prop), (A -> B) -> (~B -> ~A)) by intuition.
+      assert (Hc := contra (@retraction R Req (sim_T sim) y < @retraction R Req (sim_T sim) x)%R (y < x)%R (H y x)).
+      apply Rle_not_lt in H0.
+      apply Rnot_lt_le.
+      apply (Hc H0).
+    }
+    destruct (H0 a b).    
+    intuition.
+    assumption.
+    assert (a = b)%R.
+    assert (Hcomp := section_compat ((sim_T sim)) (@retraction R Req (sim_T sim) a)
+                                    (@retraction R Req (sim_T sim) b) H1).
+    do 2 rewrite section_retraction in Hcomp; try apply Req_equiv.
+    now unfold Req.
+    lra.
+  + intros; simpl.
+    assert (Hbound := sim_bound_T sim);
+      specialize (Hbound (@retraction R Req (sim_T sim) r)).
+    
 Defined.
+
 Global Notation "s ⁻¹" := (inverse s) (at level 99).
 
 Global Instance inverse_compat : Proper (eq ==> eq) inverse.

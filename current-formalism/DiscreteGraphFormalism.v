@@ -782,7 +782,7 @@ Qed.
 Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
   match Config.loc infoR with
     | Mvt e p => 
-    {| Config.loc := Mvt ((Iso.sim_E sim) e) p;
+    {| Config.loc := Mvt ((Iso.sim_E sim) e) (project_p_inv ((Iso.sim_T sim) (project_p p)));
        Config.robot_info := Config.robot_info infoR |}
     | Loc l => {| Config.loc :=Loc ((Iso.sim_V sim) l);
                   Config.robot_info := Config.robot_info infoR |}
@@ -1388,7 +1388,7 @@ repeat split.
     exists ((retraction (Iso.sim_E sim)) e_rbg).
     assert (Hsim_E := Graph.find_edge_Some ((retraction (Iso.sim_E sim)) e_rbg)).
     rewrite <- Hsim_E.
-    generalize (Iso.sim_utility (Iso.inverse sim) e_rbg).
+    generalize (Iso.sim_morphism (Iso.inverse sim) e_rbg).
     intros (s,t).
     clear Hmi.
     apply Graph.find_edge_compat.
@@ -1553,7 +1553,7 @@ repeat split.
     exists ((retraction (Iso.sim_E sim)) e_rbg).
     assert (Hsim_E := Graph.find_edge_Some ((retraction (Iso.sim_E sim)) e_rbg)).
     rewrite <- Hsim_E.
-    generalize (Iso.sim_utility (Iso.inverse sim) e_rbg).
+    generalize (Iso.sim_morphism (Iso.inverse sim) e_rbg).
     intros (s,t).
     apply Graph.find_edge_compat.
     rewrite <- s.
