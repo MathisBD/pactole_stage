@@ -44,3 +44,4 @@ GraphStaticEquivalence/DiscreteGraphFormalism.v
 GraphStaticEquivalence/AtomicGraphFormalism.v
 Isomorphism.v
 CommonIsoGraphFormalism.v
+

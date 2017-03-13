@@ -128,7 +128,7 @@ Module Make (Graph : GraphDef)(Loc : LocationADef (Graph)).
                               /\ Graph.Veq (sim_V (Graph.tgt e)) (Graph.tgt (sim_E e));
       sim_threshold : forall e, sim_T (Graph.threshold e) = Graph.threshold (sim_E e);
       sim_croiss : forall a b, (a < b)%R -> (sim_T a < sim_T b)%R;
-      sim_bound_T : forall r, (0 < r < 1)%R -> (0 < sim_T r < 1)%R
+      sim_bound_T : forall r, (0 < r < 1)%R <-> (0 < sim_T r < 1)%R
   }.
 
   Definition eq sim1 sim2 := bij_eq sim1.(sim_V) sim2.(sim_V)
@@ -213,7 +213,9 @@ Proof.
     now apply (sim_croiss f), (sim_croiss g).
   + intros.
     simpl.
-    now apply (sim_bound_T f), (sim_bound_T g).
+    split; intros.
+    now apply (sim_bound_T g), (sim_bound_T f) in H.
+    now apply (sim_bound_T g), (sim_bound_T f).
 Defined.
 
 
@@ -288,7 +290,9 @@ Proof.
   + intros; simpl.
     assert (Hbound := sim_bound_T sim);
       specialize (Hbound (@retraction R Req (sim_T sim) r)).
-    
+    rewrite section_retraction in Hbound.
+    now symmetry.
+    apply Req_equiv.
 Defined.
 
 Global Notation "s ⁻¹" := (inverse s) (at level 99).

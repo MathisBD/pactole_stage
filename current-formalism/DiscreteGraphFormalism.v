@@ -20,6 +20,13 @@ Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.AtomicGraphFormalism.
 Require Import Pactole.Isomorphism.
 Require Import Pactole.CommonIsoGraphFormalism.
+Require MMapWeakList. (* to build an actual implementation of multisets *)
+Require Import Utf8_core.
+Require Import Arith_base.
+Require Import SetoidList.
+Require MMultisetInterface.
+Require MMultisetExtraOps.
+Require MMultisetWMap.
 
 Module DGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names))(Import Iso : Iso(Graph)(LocationA)).
 
@@ -371,16 +378,21 @@ Module Config := Configurations.Make (Location)(N)(Names).
   split; simpl. now apply projectS_loc_compat. split; simpl; now apply projectS_loc_compat.
   Qed.
 
-  (** the spectrum is what the robots see*)
-  Module Spect : Spectrum(Location)(N)(Names)(Config) with Definition t := View.t 
-  with Definition from_config := (fun x => projectS x) with Definition eq := View.eq.
+  Close Scope R_scope.
 
-    Definition t := ConfigA.t.
+  Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make LocationA.
+  Module M := MMultisetExtraOps.Make LocationA Mraw.
+  
+  (** the spectrum is what the robots see*)
+  Module Spect <: Spectrum(Location)(N)(Names)(Config).
+
+   
+    
+    (*Definition t := ConfigA.t.
     Definition eq := ConfigA.eq.
     Definition eq_equiv := ConfigA.eq_equiv.
     Definition eq_dec := ConfigA.eq_dec.
-
-
+    
     Definition from_config := fun x => (projectS x).
     Instance from_config_compat : Proper (Config.eq ==> View.eq) from_config.
     Proof.
@@ -395,28 +407,228 @@ Module Config := Configurations.Make (Location)(N)(Names).
     destruct n. reflexivity.
     Defined.
 
+*)
+Instance Loc_compat : Proper (ConfigA.eq_RobotConf ==> LocationA.eq) ConfigA.loc.
+Proof. intros [] [] []. now cbn. Qed.
+
+Instance info_compat : Proper (ConfigA.eq_RobotConf ==> ConfigA.Info_eq) ConfigA.robot_info.
+Proof. intros [] [] [] *. now cbn. Qed.
+
+(** Definition of spectra as multisets of locations. *)
+
+Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
+Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
+Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
+Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
+
+Lemma eq_refl_left : forall e A (a b:A), (if LocationA.eq_dec e e then a else b) = a.
+Proof.
+  intros e A a b.
+  destruct (LocationA.eq_dec e e).
+  - reflexivity.
+  - elim n.
+    reflexivity.
+Qed.
+
+
+(** **  Building multisets from lists  **)
+
+Definition multiset l := M.from_elements (List.map (fun x => (x, 1)) l).
+
+Lemma multiset_nil : multiset List.nil [=] M.empty.
+Proof. reflexivity. Qed.
+
+Lemma multiset_cons : forall x l, multiset (x :: l) [=] M.add x 1 (multiset l).
+Proof. reflexivity. Qed.
+
+Lemma multiset_empty : forall l, multiset l [=] M.empty <-> l = List.nil.
+Proof.
+intro l. unfold multiset. rewrite M.from_elements_empty.
+destruct l; simpl; split; intro H; inversion_clear H; intuition; discriminate.
+Qed.
+
+Lemma multiset_app : forall l l', multiset (l ++ l') [=] M.union (multiset l) (multiset l').
+Proof. intros. unfold multiset. now rewrite List.map_app, M.from_elements_append. Qed.
+
+Lemma location_neq_sym: forall x y, ~ LocationA.eq x y -> ~ LocationA.eq y x.
+Proof. intros x y H Habs. now symmetry in Habs. Qed.
+
+Instance multiset_compat : Proper (PermutationA LocationA.eq ==> M.eq) multiset.
+Proof.
+intros l1 l2 Hl. eapply M.from_elements_compat, PermutationA_map; eauto; refine _; [].
+repeat intro; now split.
+Qed.
+
+Lemma multiset_PermutationA : forall x l n, M.multiplicity x (multiset l) = n ->
+  exists l', ~SetoidList.InA LocationA.eq x l' /\ PermutationA LocationA.eq l (alls x n ++ l').
+Proof.
+intros x l. induction l; intros n Hin.
+  exists List.nil. split. now auto. rewrite multiset_nil, M.empty_spec in Hin. subst n. simpl. reflexivity.
+  rewrite multiset_cons in Hin. destruct (LocationA.eq_dec x a) as [Heq | Heq].
+  - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite M.add_spec in Hin. destruct n.
+    + rewrite eq_refl_left in Hin.
+      omega.
+    + rewrite eq_refl_left in Hin.
+      rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+    exists l'. split. assumption. simpl. now constructor.
+  - rewrite M.add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+    exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
+    transitivity (a :: alls x n ++ l'); now constructor || apply (PermutationA_middle _).
+Qed.
+
+Lemma multiset_alls : forall x n, multiset (alls x n) [=] M.singleton x n.
+Proof.
+intros x n. induction n; simpl.
++ now rewrite M.singleton_0, multiset_nil.
++ rewrite multiset_cons. rewrite IHn. intro y. rewrite M.singleton_spec.
+  destruct (LocationA.eq_dec y x) as [Heq | Heq].
+  - rewrite Heq, M.add_spec, M.singleton_spec. destruct (LocationA.eq_dec x x) as [_ | Helim]. omega. now elim Helim.
+  - rewrite M.add_other; auto. rewrite M.singleton_spec. destruct (LocationA.eq_dec y x); trivial. contradiction.
+Qed.
+
+Corollary multiset_In : forall x l, M.multiplicity x (multiset l) > 0 <-> SetoidList.InA LocationA.eq x l.
+Proof.
+intros x l. split; intro Hl.
++ destruct (multiset_PermutationA _ _ _ (eq_refl (M.multiplicity x (multiset l)))) as [l' [Hl' Hperm]].
+  rewrite Hperm. rewrite (SetoidList.InA_app_iff _). left. destruct (M.multiplicity x (multiset l)). omega. now left.
++ induction l. now inversion Hl. rewrite multiset_cons. destruct (LocationA.eq_dec a x) as [Heq | Hneq].
+  - rewrite Heq. rewrite M.add_spec. 
+    rewrite eq_refl_left.
+    omega.
+  - apply location_neq_sym in Hneq.
+    rewrite M.add_other; trivial. apply IHl. inversion_clear Hl; auto. now elim Hneq.
+Qed.
+
+Theorem multiset_map : forall f, Proper (LocationA.eq ==> LocationA.eq) f ->
+  forall l, multiset (List.map f l) [=] M.map f (multiset l).
+Proof. intros f Hf l x. unfold multiset. now rewrite List.map_map, M.map_from_elements, List.map_map. Qed.
+
+Theorem multiset_filter : forall f, Proper (LocationA.eq ==> Logic.eq) f ->
+  forall l, multiset (List.filter f l) [=] M.filter f (multiset l).
+Proof.
+intros f Hf l. induction l as [| e l]; simpl.
++ rewrite (@M.filter_compat f Hf (multiset List.nil)), multiset_nil. now rewrite M.filter_empty. now apply multiset_nil.
++ destruct (f e) eqn:Htest.
+  - do 2 rewrite multiset_cons. rewrite M.filter_add, Htest, IHl; trivial; reflexivity || omega.
+  - rewrite multiset_cons, M.filter_add, Htest, IHl; trivial; reflexivity || omega.
+Qed.
+
+Theorem cardinal_multiset : forall l, M.cardinal (multiset l) = length l.
+Proof.
+induction l; simpl.
++ now rewrite multiset_nil, M.cardinal_empty.
++ rewrite multiset_cons, M.cardinal_add. apply f_equal, IHl.
+Qed.
+
+Theorem multiset_spec : forall x l, M.multiplicity x (multiset l) = countA_occ _ LocationA.eq_dec x l.
+Proof.
+intros x l. induction l; simpl.
++ rewrite multiset_nil. now apply M.empty_spec.
++ rewrite multiset_cons. destruct (LocationA.eq_dec a x) as [Heq | Hneq].
+  - rewrite Heq. rewrite M.add_spec. rewrite IHl.
+    rewrite eq_refl_left.
+    omega.
+  - apply location_neq_sym in Hneq. rewrite M.add_other. now apply IHl. assumption.
+Qed.
+
+Lemma multiset_remove : forall x l,
+  multiset (SetoidList.removeA LocationA.eq_dec x l) [=] M.remove x (M.multiplicity x (multiset l)) (multiset l).
+Proof.
+intros x l y. induction l as [| a l]; simpl.
+* rewrite multiset_nil. do 2 rewrite M.empty_spec. now rewrite M.remove_0, M.empty_spec.
+* rewrite multiset_cons. destruct (LocationA.eq_dec y x) as [Hyx | Hyx], (LocationA.eq_dec x a) as [Hxa | Hxa].
+  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite M.remove_same. setoid_rewrite M.add_same. omega.
+  + rewrite Hyx in *. rewrite multiset_cons, M.add_other; auto. rewrite IHl. do 2 rewrite M.remove_same. omega.
+  + rewrite Hxa in *. rewrite IHl, M.add_same. repeat rewrite M.remove_other; auto. rewrite M.add_other; auto.
+  + rewrite multiset_cons. rewrite M.remove_other; auto. destruct (LocationA.eq_dec y a) as [Hya | Hya].
+    - rewrite Hya in *. do 2 rewrite M.add_same. rewrite IHl. now rewrite M.remove_other.
+    - repeat rewrite M.add_other; trivial. rewrite IHl. rewrite M.remove_other; auto.
+Qed.
+
+Lemma multiset_support : forall x l, SetoidList.InA LocationA.eq x (M.support (multiset l)) <-> SetoidList.InA LocationA.eq x l.
+Proof. intros x l. rewrite M.support_spec. unfold M.In. rewrite multiset_spec. apply countA_occ_pos. refine _. Qed.
+
+
+(** Building a spectrum from a configuration *)
+Include M.
+
+Definition from_config conf : t := multiset (List.map ConfigA.loc
+                                                      (ConfigA.list (projectS conf))).
+
+Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
+Proof.
+intros conf1 conf2 Hconf x. unfold from_config. do 2 f_equiv.
+apply eqlistA_PermutationA_subrelation, (map_extensionalityA_compat LocationA.eq_equiv Loc_compat).
+apply ConfigA.list_compat.
+now apply projectS_compat.
+Qed.
+
+Definition is_ok s conf := forall l,
+  M.multiplicity l s = countA_occ _ LocationA.eq_dec l (List.map ConfigA.loc (ConfigA.list (projectS conf))).
+
+Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
+Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
+
+(*
+Lemma from_config_map : forall f, Proper (LocationA.eq ==> LocationA.eq) f ->
+  forall conf, eq (map f (from_config conf))
+  (from_config (ConfigA.map (fun x => {| ConfigA.loc := f (ConfigA.loc x); ConfigA.robot_info := ConfigA.robot_info x|}) conf)).
+Proof.
+intros f Hf config. unfold from_config. rewrite Config.list_map.
+- now rewrite <- multiset_map, List.map_map, List.map_map.
+- intros ? ? Heq. hnf. split; cbn; try apply Hf; apply Heq.
+Qed.
+*) 
+Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.
+Proof. intro. unfold from_config. now rewrite cardinal_multiset, List.map_length, ConfigA.list_length. Qed.
+
+Property pos_in_config : forall (config : Config.t) id , In ((ConfigA.loc ((projectS config) id))) (from_config config).
+Proof.
+intros conf id. unfold from_config.
+unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
+rewrite InA_map_iff; autoclass. exists ((projectS conf) id).
+split; try reflexivity; [].
+setoid_rewrite ConfigA.list_InA. now exists id.
+Qed.
+
+Property from_config_In : forall config l,
+  In l (from_config config) <-> exists id, LocationA.eq (ConfigA.loc ((projectS config) id)) l.
+Proof.
+intros config l. split; intro Hin.
++ unfold In in Hin. rewrite from_config_spec, (countA_occ_pos _), ConfigA.list_spec in Hin.
+  rewrite (InA_map_iff _ _) in Hin; [setoid_rewrite (InA_map_iff _ _) in Hin |]; try autoclass; [].
+  destruct Hin as [? [Hl [id [? Hid]]]]. exists id. rewrite <- Hl. now f_equiv.
++ destruct Hin as [id Hid]. rewrite <- Hid. apply pos_in_config.
+Qed.
+    
   End Spect.
 
-  (** * robogram *)
 
-  Record robogram := {
-    pgm :> Spect.t -> Location.t;
-    pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
-    pgm_loc : forall spect, exists l, pgm spect = Loc l;
-    pgm_range : forall (spect: Spect.t) g sloc,
-              Graph.Veq (ConfigA.loc (spect (Good g))) sloc ->
-              exists l e, pgm spect = Loc l /\ Graph.find_edge sloc l = Some e }.
+  Record robogram :=
+    {
+      pgm :> Spect.t -> Location.t -> Location.t;
+      pgm_compat : Proper (Spect.eq ==> Location.eq ==> Location.eq) pgm;
+      pgm_range :  forall (spect: Spect.t) lpre l',
+          loc_eq lpre (Loc l') -> 
+          exists l e, pgm spect lpre = Loc l /\ Graph.find_edge l' l = Some e
+    }.
+
+(* pgm s l a du dens si l est dans dans s (s[l] > 0) *)
   
   Global Existing Instance pgm_compat.
-  
-  Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
-  
+
+  Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq ==> Location.eq)%signature r1 r2.
+
   Instance req_equiv : Equivalence req.
   Proof. split.
-  + intros [robogram Hrobogram] x y Heq; simpl. rewrite Heq. reflexivity.
-  + intros r1 r2 H x y Heq. rewrite <- (H _ _ (reflexivity _)). now apply (pgm_compat r1).
-  + intros r1 r2 r3 H1 H2 x y Heq.
-    rewrite (H1 _ _ (reflexivity _)), (H2 _ _ (reflexivity _)). now apply (pgm_compat r3).
+  + intros [robogram Hrobogram] x y Heq g1 g2 Hg; simpl. rewrite Hg, Heq. reflexivity.
+  + intros r1 r2 H x y Heq g1 g2 Hg. rewrite Hg, Heq.
+    unfold req in H.
+    now specialize (H y y (reflexivity y) g2 g2 (reflexivity g2)).
+  + intros r1 r2 r3 H1 H2 x y Heq g1 g2 Hg.
+    specialize (H1 x y Heq g1 g2 Hg). 
+    specialize (H2 y y (reflexivity y) g2 g2 (reflexivity g2)).
+    now rewrite H1.
   Qed.
   
   (** * Executions *)
@@ -849,7 +1061,7 @@ Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
                         Config.robot_info := Config.robot_info conf |}
           | Good g =>
             let local_conf := Config.map (apply_sim sim) config in
-            let target := match (r (Spect.from_config local_conf)) with
+            let target := match (r (Spect.from_config local_conf) (Config.loc (local_conf (Good g)))) with
                           | Loc l => (sim⁻¹).(Iso.sim_V) l
                           | Mvt e _ => (Graph.src e) (* never used : see pgm_range *)
                           end
@@ -960,53 +1172,62 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
 + try repeat (split; simpl); try apply Hrconf.
   destruct (r1
               (Spect.from_config
-                 (Config.map (apply_sim sim) conf1)))
+                 (Config.map (apply_sim sim) conf1)) (Config.loc (Config.map (apply_sim sim) conf1 (Good g))))
            eqn : Hr1.
   destruct (r2
               (Spect.from_config
-                 (Config.map (apply_sim sim0) conf2)))
+                 (Config.map (apply_sim sim0) conf2)) (Config.loc (Config.map (apply_sim sim0) conf2 (Good g))))
            eqn : Hr2.
   f_equiv.
   apply Hstep.
   assert (Location.eq
             (r1
               (Spect.from_config
-                 (Config.map (apply_sim sim) conf1)))
+                 (Config.map (apply_sim sim) conf1)) (Config.loc (Config.map (apply_sim sim) conf1 (Good g))))
             (r2
           (Spect.from_config
-             (Config.map (apply_sim sim0) conf2)))).
+             (Config.map (apply_sim sim0) conf2)) (Config.loc (Config.map (apply_sim sim0) conf2 (Good g))))).
   apply Hr.
   f_equiv.
   rewrite Hstep.
   rewrite Hconf.
   reflexivity.
+  apply apply_sim_compat.
+  apply Hstep.
+  apply Hconf.
   rewrite Hr1, Hr2 in H.
   apply H.
-  generalize (pgm_range r2 (Spect.from_config
-                              (Config.map (apply_sim sim0) conf2)) g
-             (ConfigA.loc
-                (Spect.from_config
-                   (Config.map (apply_sim sim0) conf2) (Good g)))
-             (reflexivity (ConfigA.loc
-                (Spect.from_config
-                   (Config.map (apply_sim sim0) conf2) (Good g))))).
+  assert (Hspect :Spect.eq (Spect.from_config (Config.map (apply_sim sim) conf1))
+                           (Spect.from_config (Config.map (apply_sim sim0) conf2))).
+  { f_equiv.
+    f_equiv.
+    apply apply_sim_compat.
+    apply Hstep.
+    apply Hconf. }
+  specialize (Hr (Spect.from_config (Config.map (apply_sim sim) conf1))
+                 (Spect.from_config (Config.map (apply_sim sim0) conf2)) Hspect).
+  assert (Hrloc : Location.eq
+                    (Config.loc (Config.map (apply_sim sim) conf1 (Good g))) 
+                    (Config.loc (Config.map (apply_sim sim0) conf2 (Good g))))
+    by (apply apply_sim_compat; try apply Hstep; try apply Hconf). 
+  specialize (Hr (Config.loc (Config.map (apply_sim sim) conf1 (Good g))) 
+                 (Config.loc (Config.map (apply_sim sim0) conf2 (Good g))) Hrloc).
+  rewrite Hr1, Hr2 in Hr.
+  now unfold Location.eq, loc_eq in Hr.
+  destruct (Config.loc (Config.map (apply_sim sim) conf1 (Good g))) eqn : Hlr.
+  generalize (pgm_range r1 (Spect.from_config
+                              (Config.map (apply_sim sim) conf1))
+                        (Config.loc (Config.map (apply_sim sim) conf1 (Good g))) l).
   intros Hrange.
   destruct Hrange as (lr, (_, (Hl, _))).
-  rewrite Hl in Hr2.
+  now rewrite Hlr.
+  rewrite <- Hlr, Hl in Hr1.
   discriminate.
-   generalize (pgm_range r1 (Spect.from_config
-                              (Config.map (apply_sim sim) conf1)) g
-             (ConfigA.loc
-                (Spect.from_config
-                   (Config.map (apply_sim sim) 
-                      conf1) (Good g))) (reflexivity (ConfigA.loc
-                (Spect.from_config
-                   (Config.map (apply_sim sim)
-                      conf1) (Good g))))).
-  intros Hrange.
-  destruct Hrange as (lr, (_, (Hl, _))).
-  rewrite Hl in Hr1.
-  discriminate.
+  assert (Hfalse := step_delta da1 g (conf1 (Good g)) sim He1).
+  destruct Hfalse as ((fl,Hfl),_).
+  unfold Config.map, apply_sim in Hlr; simpl in Hlr.
+  destruct ( Config.loc (conf1 (Good g))); try discriminate.
+  now unfold Location.eq, loc_eq in *.
 + try repeat (split; simpl); try apply Hrconf. now rewrite Hda.
 Qed.
 
@@ -1064,19 +1285,18 @@ Qed.
 (** ** if [source] and [target] are on some node, they're still on nodes after a [round] *)
 
 (** defintion of probleme *)
-Definition ri_loc_def (conf: Config.t) : Prop :=
-  forall g, exists v1 v2,
+Definition ri_loc_def (conf: Config.t) : Prop := forall g,
+  exists v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
 
 
 (** it's true starting from the initial configuration *)
-Lemma ri_loc_init : forall conf da rbg g,
-      Conf_init conf -> exists v1' v2',
-      loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1')
-   /\ loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2').
+Lemma ri_loc_init : forall conf da rbg,
+    Conf_init conf ->
+    ri_loc_def (round rbg da conf).
 Proof.
-intros conf da rbg g Hinit.
+intros conf da rbg Hinit g.
 unfold Conf_init in Hinit.
 specialize (Hinit (Good g)).
 destruct Hinit as (l, (l', (e, (Hli, (Hl, (Hsi, Hti)))))); simpl in *.
@@ -1104,30 +1324,31 @@ destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
   destruct (rbg (Spect.from_config (Config.map (apply_sim sim) conf))) eqn : Hr.
   exists (retraction (Iso.sim_V sim) l1).
   now split.
+  destruct (Config.loc (Config.map (apply_sim sim) conf (Good g))) eqn : Hsim_loc. 
   generalize (pgm_range rbg (Spect.from_config
-                              (Config.map (apply_sim sim) conf)) g
-             (ConfigA.loc
-                (Spect.from_config
-                   (Config.map (apply_sim sim) conf) (Good g))) (reflexivity (ConfigA.loc
-                (Spect.from_config
-                   (Config.map (apply_sim sim) conf) (Good g))))).
+                               (Config.map (apply_sim sim) conf))
+                       (Config.loc (Config.map (apply_sim sim) conf (Good g))) l1).
   intros Hrange.
   destruct Hrange as (lr, (_, (Hlr, _))).
-  rewrite Hlr in Hr.
+  now rewrite Hsim_loc.
+  rewrite <-Hsim_loc, Hlr in Hr.
   discriminate.
+  unfold Config.map, apply_sim in *; simpl in *.
+  rewrite Hloc in *.
+  simpl in *; discriminate.
 Qed.
 
 
 (** recurrence's hypothesis*)
-Lemma ri_loc_always : forall conf v1 v2 da rbg g,
-      loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-      loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-exists v1' v2',
-      loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1')
-   /\ loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2').
+Lemma ri_loc_always : forall conf da rbg,
+    ri_loc_def conf ->
+    ri_loc_def (round rbg da conf).
 Proof.
-intros conf v1 v2 da rbg g Hs Ht.
-unfold round. simpl in *.
+intros conf da rbg Hs' g.
+unfold ri_loc_def in *.
+destruct (Hs' g) as (v1, (v2, (Hs, Hg))).
+unfold round.
+simpl in *.
 destruct (step da (Good g) (conf (Good g))) eqn : Hstep,
 (Config.loc (conf (Good g))) eqn : Hloc.
 destruct (Rdec dist 0). exists v1, v2. split;assumption.
@@ -1141,21 +1362,17 @@ exists v1, v2; split;assumption.
 destruct (Rle_dec 1 (project_p p + dist)); 
 exists v1, v2; split;assumption.
 simpl in *. exists l.
-assert (Hrbg := pgm_loc rbg (Spect.from_config (project conf))).
-destruct Hrbg as (lspect, Hrbg).
-assert (Hlp : Graph.Veq (ConfigA.loc (Spect.from_config (project conf) (Good g))) l).
-unfold Spect.from_config, projectS, projectS_loc, project. simpl in *.
-do 2 rewrite Hloc.
-reflexivity.
-assert (Hrange := pgm_range rbg (Spect.from_config (Config.map (apply_sim sim) conf)) g (ConfigA.loc
-                (Spect.from_config (Config.map (apply_sim sim) conf)
-                                   (Good g)))
-       (reflexivity (ConfigA.loc
-                (Spect.from_config (Config.map (apply_sim sim) conf)
-                   (Good g))))).
-destruct Hrange as (spl, (e, (Hlocs,Hrange))). exists (retraction (Iso.sim_V sim) spl). split. reflexivity.
-rewrite Hlocs. reflexivity.
-simpl in *.
+destruct (Config.loc (Config.map (apply_sim sim) conf (Good g))) eqn : Hsim_loc.
+assert (Hrbg := pgm_range rbg (Spect.from_config (project conf))
+                          (Config.loc (Config.map (apply_sim sim) conf (Good g))) l0).
+destruct Hrbg as (lspect, (_, (Hrbg,_))).
+now rewrite Hsim_loc.
+assert (Hrange := pgm_range rbg (Spect.from_config (Config.map (apply_sim sim) conf))  (Config.loc (Config.map (apply_sim sim) conf (Good g))) l0).
+destruct Hrange as (spl, (e, (Hlocs,Hrange))).
+now rewrite Hsim_loc.
+exists (retraction (Iso.sim_V sim) spl). split. reflexivity.
+rewrite <- Hsim_loc, Hlocs. reflexivity.
+unfold Config.map, apply_sim in *; rewrite Hloc in *; now simpl in *.
 assert (Hfalse := step_delta da g (conf (Good g)) sim Hstep).
 destruct Hfalse as ((l,Hfalse), _). rewrite Hloc in Hfalse.  now exfalso.
 Qed.
@@ -1166,13 +1383,10 @@ PropCons : forall e, ri_loc_def (execution_head e) -> ri (execution_tail e) -> r
 
 Lemma ri_round : forall r da config, ri_loc_def config -> ri_loc_def (round r da config).
 Proof.
-intros r da config Hinit.
-unfold ri_loc_def in *.
-intros g.
-specialize (Hinit g).
-destruct Hinit as (v1, (v2, (Hs, Ht))).
-assert (Hfin := ri_loc_always config v1 v2 da r g Hs Ht).
-apply Hfin.
+intros r da config Hinit g.
+destruct (Hinit g) as (v1, (v2, (Hs, Ht))).
+assert (Hfin := @ri_loc_always config da r).
+now apply Hfin.
 Qed.
 
 (** final proof *)
@@ -1195,7 +1409,7 @@ Proof. intros. apply ri_always. unfold Conf_init, ri_loc_def in *. firstorder. Q
     - if a robot is on a node, it's on its [target] or [source].
     - if a robot is onan edge, it's the edge between its [source] and [target].
     - there is a edge between [source] and [target]. *)
-Definition group_good_def (conf: Config.t) : Prop := forall g,
+Definition group_good_def (conf: Config.t) : Prop := forall g,(
     ri_loc_def conf /\
    (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v0) \/
@@ -1208,92 +1422,144 @@ Definition group_good_def (conf: Config.t) : Prop := forall g,
    (forall v1 v2,
     loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
     loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e))).
+    exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)))).
 
 (** initialisation *)
-Lemma group_lem_init : forall conf (rbg : robogram) da g v0' v1' v2' e' p',
-   Conf_init conf ->
-   (loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0') ->
-    loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0') \/
-    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0')) /\
-   (loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
-    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
-    loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
-    opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e')).
+Lemma group_lem_init : forall conf (rbg : robogram) da,
+   Conf_init conf -> (group_good_def (round rbg da conf)).
 Proof.
-intros conf rbg da g v0' v1' v2' e' p' Hinit.
-unfold Conf_init in Hinit.
-specialize (Hinit (Good g)).
-destruct Hinit as (l, (l', (e, (Hli, (Hl, (Hsi, Hti)))))); simpl in *.
-split.
-+ intros Hl0. unfold round in *.
-  destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
-  (Config.loc (conf (Good g)))eqn : Hloc; try now simpl in *.
-  - rewrite <- Hl in *.
-    simpl in *.
-    destruct (Rdec dist 0). rewrite Hloc in Hl0. rewrite <- Hl0. now left.
-    destruct (Rdec dist 1). simpl in *. now right.
-    destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht; try now simpl in *.
-    unfold loc_eq in Hti.
-    destruct (Graph.Veq_dec l0 l1); try contradiction.
-    rewrite Hloc in Hl0. rewrite <- Hl0. now left.
-  - simpl in *. now left.
-+ intros Hs' Ht' Hl'. unfold round in *.
-  destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
-  (Config.loc (conf (Good g)))eqn : Hloc; try now simpl in *.
-  destruct (Rdec dist 0). rewrite Hloc in Hl'; now simpl in *.
-  destruct (Rdec dist 1). simpl in *. rewrite Ht' in Hl'; now simpl in *.
-  destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht''; try now simpl in *.
-  unfold loc_eq in Hti, Hl.
-  destruct (Graph.Veq_dec l0 l1); try rewrite Hloc in *; try contradiction.
-  simpl in *.
-  assert (opt_eq Graph.Eeq (Graph.find_edge l0 l1) (Graph.find_edge l l')) by now apply Graph.find_edge_compat.
-  rewrite Hli in H.
-  destruct (Graph.find_edge l0 l1); try contradiction.
-  destruct Hl' as (He,_).
-  simpl in *.
-  rewrite He in H.
-  rewrite Ht'',Hsi in *.
-  simpl in *.
-  assert (opt_eq Graph.Eeq (Some e) (Some e')) by now simpl in *.
-  rewrite <- H0, <- Hli.
-  apply Graph.find_edge_compat; try now symmetry. now rewrite <- Ht'.
+  intros conf rbg da (*v0' v1' v2' e' p'*) Hinit g.
+  split.
+  - now apply ri_loc_init.
+  - unfold Conf_init in Hinit.
+    specialize (Hinit (Good g)).
+    destruct Hinit as (l, (l', (e, (Hli, (Hl, (Hsi, Hti)))))); simpl in *.
+    unfold round in *.
+    split;
+      destruct (step da (Good g) (conf (Good g)))
+               eqn: Hstep,
+                    (Config.loc (conf (Good g)))eqn : Hloc; try now simpl in *.
+    intro v0.
+    intros Hl0.
+    unfold round in *.
+    + rewrite <- Hl in *.
+      simpl in *.
+      destruct (Rdec dist 0). rewrite Hloc in Hl0. rewrite <- Hl0. now left.
+      destruct (Rdec dist 1).
+      simpl in *.
+      now right.
+      destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht;
+        try now simpl in *.
+      unfold loc_eq in Hti.
+      destruct (Graph.Veq_dec l0 l1); try contradiction.
+      rewrite Hloc in Hl0. rewrite <- Hl0. now left.
+    + simpl in *. now left.
+    + split.
+      * intros v1 v2 e0 p Hs' Ht' Hl'. unfold round in *.
+        destruct (Rdec dist 0). rewrite Hloc in Hl'; now simpl in *.
+        destruct (Rdec dist 1). simpl in *. rewrite Ht' in Hl'; now simpl in *.
+        destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht'';
+          try now simpl in *.
+        unfold loc_eq in Hti, Hl.
+        destruct (Graph.Veq_dec l0 l1); try rewrite Hloc in *; try contradiction.
+        simpl in *.
+        assert (opt_eq Graph.Eeq (Graph.find_edge l0 l1) (Graph.find_edge l l'))
+          by now apply Graph.find_edge_compat.
+        rewrite Hli in H.
+        destruct (Graph.find_edge l0 l1); try contradiction.
+        destruct Hl' as (He,_).
+        simpl in *.
+        rewrite He in H.
+        rewrite Ht'',Hsi in *.
+        simpl in *.
+        assert (opt_eq Graph.Eeq (Some e) (Some e0)) by now simpl in *.
+        rewrite <- H0, <- Hli.
+        apply Graph.find_edge_compat; try now symmetry. now rewrite <- Ht'.
+      * intros v1 v2 Hv1 Hv2.
+        destruct (Rdec dist 0).
+        rewrite Hv1, Hv2 in *.
+        unfold loc_eq in Hsi, Hti.
+        exists e.
+        rewrite <- Hli.
+        now apply Graph.find_edge_compat.
+        destruct (Rdec dist 1). simpl in *.
+        rewrite Hv1, Hv2 in *.
+        unfold loc_eq in Hsi, Hti.
+        exists e.
+        rewrite <- Hli.
+        now apply Graph.find_edge_compat.
+        destruct ( Graph.Veq_dec l0).
+        rewrite Hv1, Hv2 in *.
+        unfold loc_eq in Hsi, Hti.
+        exists e.
+        rewrite <- Hli.
+        now apply Graph.find_edge_compat.
+        simpl in *.
+        rewrite Hv1, Hv2 in *.
+        unfold loc_eq in Hsi, Hti.
+        exists e.
+        rewrite <- Hli.
+        now apply Graph.find_edge_compat.
+    + simpl.
+      split; try now simpl in *.
+      intros v1 v2 Hv1 Hv2.
+      destruct (Config.loc (Config.map (apply_sim sim) conf (Good g))) eqn : Hsim_loc.
+      assert (Hrange := pgm_range rbg (Spect.from_config
+                                         (Config.map (apply_sim sim) conf))
+                                  (Config.loc
+                                     (Config.map (apply_sim sim) conf (Good g))) l1).
+      destruct Hrange as (lrange, (erange, (Hlrange, Herange))).
+      now rewrite Hsim_loc.
+      destruct (rbg (Spect.from_config (Config.map (apply_sim sim) conf)) (Loc l1))
+               eqn : Hrbg.
+      rewrite Hsim_loc, Hrbg in Hlrange.
+      assert (Heq : loc_eq (Loc l2) (Loc lrange)) by now rewrite Hlrange.
+      unfold loc_eq in Heq.
+      rewrite Heq in Hv2.
+      unfold apply_sim, Config.map in Hsim_loc; rewrite Hloc in Hsim_loc; simpl in *.
+      exists (retraction (Iso.sim_E sim) erange).
+      
+      assert (HSome : opt_eq Graph.Eeq (Graph.find_edge l1 lrange)
+                             (Some erange)) by now rewrite Herange.
+      assert (HSome_sim : opt_eq Graph.Eeq (Graph.find_edge (Graph.src ((Isomorphism.retraction (Iso.sim_E sim)) erange)) (Graph.tgt ((Isomorphism.retraction (Iso.sim_E sim)) erange))) (Some ((Isomorphism.retraction (Iso.sim_E sim)) erange))).
+      apply Graph.find_edge_Some.
+      rewrite <- HSome_sim.
+      apply Graph.find_edge_compat;
+      assert (Hmorph := Iso.sim_morphism sim (((Isomorphism.retraction (Iso.sim_E sim)) erange)));
+        destruct Hmorph as (Hms, Hmt);
+      rewrite Inversion in *;
+      rewrite Isomorphism.section_retraction in *; try apply Graph.Eeq_equiv;
+      apply Graph.find2st in HSome;
+      destruct HSome as (HSs, HSt).
+      rewrite <- HSs in Hms.
+      rewrite <- Hms.
+      assert (Hsim_loc' : Location.eq (Loc ((Iso.sim_V sim) l0)) (Loc l1))
+        by now rewrite Hsim_loc.
+      unfold Location.eq, loc_eq in Hsim_loc'.
+      rewrite <- Hsim_loc'.
+      rewrite retraction_section.
+      now rewrite <- Hv1.
+      apply Graph.Veq_equiv.
+      rewrite <- HSt in Hmt; now rewrite <- Hmt.
+      assert (Hrange := pgm_range rbg (Spect.from_config (Config.map (apply_sim sim) conf)) (Loc l1) l1). 
+      destruct Hrange as (lr, (_ , (Hlr, _))).
+      reflexivity.
+      rewrite Hrbg in *; discriminate.
+      unfold Config.map, apply_sim in *; rewrite Hloc in *; now simpl in *.
 Qed.
 
 (** recurence *)
-Lemma group_lem : forall conf (rbg : robogram) da g,
-   ri_loc_def conf ->
-   (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v0) \/
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v0)) ->
-   (forall v1 v2 e p,
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
-    opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)) ->
-   (forall v1 v2,
-    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
-    exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e))) ->
+Lemma group_lem : forall conf (rbg : robogram) da,
+    ri_loc_def conf ->
+    group_good_def conf->
    ri_loc_def (round rbg da conf) /\
-   (forall v0',
-    loc_eq (Config.loc ((round rbg da conf) (Good g))) (Loc v0') ->
-    (loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0') \/
-    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v0'))) /\
-   (forall v1' v2' e' p',
-    loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
-    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
-    loc_eq (Config.loc ((round rbg da conf) (Good g))) (Mvt e' p') ->
-    opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e')) /\
-   (forall v1' v2',
-    loc_eq (Config.source (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v1') ->
-    loc_eq (Config.target (Config.robot_info ((round rbg da conf) (Good g)))) (Loc v2') ->
-    exists e, opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e)).
+   group_good_def (round rbg da conf).
 Proof.
-intros conf rbg da g Hinit Hli Hmi Hex_e.
-repeat split.
-+ now apply ri_round.
-+ intros v0' H. unfold round in *.
+  intros conf rbg da Hinit.
+  unfold group_good_def; intros Hgroup; 
+    repeat split; try (now apply ri_round);
+      destruct (Hgroup g) as (_, (Hli, (Hmi, Hex_e))).
+  + intros v0' H. unfold round in *.
   destruct (step da (Good g) (conf (Good g))) eqn: Hstep,
   (Config.loc (conf (Good g))) eqn : Hl.
   - destruct (Rdec dist 0).
@@ -1339,17 +1605,13 @@ repeat split.
       rewrite Ht in Ht0. unfold loc_eq in Ht0. rewrite Ht0 in Hedge'.
       rewrite Hsi in Hs0. unfold loc_eq in Hs0. now rewrite Hs0 in Hedge'.
       now symmetry in Hti.
-      specialize (Hex_e v1' v2').
-      assert (exists e : Graph.E, opt_eq Graph.Eeq (Graph.find_edge v1' v2') (Some e)).
-      apply Hex_e. apply Hs0. rewrite Ht in Ht0; now simpl in *.
-      assert (Hrbg := pgm_range rbg (Spect.from_config (project conf)) g).
-      specialize (Hrbg v1').
-      destruct H as (e0, Hedge0).
-      specialize (Hli l). destruct Hli as [Hsi |Hti]. reflexivity.
-      rewrite Hs0 in Hsi; rewrite Ht in Ht0. simpl in Ht0, Hsi.
-      rewrite <-Ht0, Hsi in Hedge0.
-      now rewrite Hedge in Hedge0.
-      now symmetry in Hti.
+      specialize (Hli l (reflexivity l)).
+      destruct Hli as [Hsource_e|Hfalse]; try contradiction.
+      specialize (Hex_e l l0 Hsource_e (reflexivity l0)).
+      destruct Hex_e.
+      now rewrite Hedge in H.
+      rewrite Hfalse in n1.
+      now destruct n1.
     * destruct (Hinit g) as (_,(f, (_, Hf))). rewrite Ht in Hf.
       now simpl in *.
   - destruct (Rle_dec 1 (project_p p + dist));try now simpl in *.
@@ -1381,9 +1643,11 @@ repeat split.
     destruct Hdelta as (Hl_delta, Ht_delta).
     intros Hl Hr.
     rewrite Hloc in Ht_delta.
-    assert (Hrange := pgm_range rbg (Spect.from_config (Config.map (apply_sim sim) conf)) g (ConfigA.loc (Spect.from_config (Config.map (apply_sim sim) conf) (Good g)))).
+    destruct (Config.loc (Config.map (apply_sim sim) conf (Good g))) eqn : Hsim_loc.
+    assert (Hrange := pgm_range rbg (Spect.from_config (Config.map (apply_sim sim) conf)) (Config.loc (Config.map (apply_sim sim) conf (Good g))) l0).
     destruct Hrange as (l_rbg, (e_rbg, (Hr_loc, Hedge))).
-    reflexivity.
+    now rewrite Hsim_loc.
+    rewrite Hsim_loc in *.
     rewrite Hr_loc in Hr.
     exists ((retraction (Iso.sim_E sim)) e_rbg).
     assert (Hsim_E := Graph.find_edge_Some ((retraction (Iso.sim_E sim)) e_rbg)).
@@ -1392,29 +1656,33 @@ repeat split.
     intros (s,t).
     clear Hmi.
     apply Graph.find_edge_compat.
+    simpl in *.
     rewrite <- s.
     assert (Hedge' : opt_eq Graph.Eeq ( Graph.find_edge
-            (ConfigA.loc
-               (Spect.from_config (Config.map (apply_sim sim) conf) (Good g))) l_rbg)
+           l0 l_rbg)
           (Some e_rbg)) by now rewrite Hedge.
     apply Graph.find2st in Hedge'.
     destruct Hedge' as (s',t').
     rewrite <- s'.
-    unfold Spect.from_config, Config.map, apply_sim, projectS, projectS_loc.
-    simpl.
-    rewrite Hloc.
-    simpl.
+    unfold Config.map, apply_sim, projectS, projectS_loc in *.
+    rewrite Hloc in Hsim_loc.
+    simpl in *.
+    assert (Location.eq (Loc ((Iso.sim_V sim) l)) (Loc l0)) by now rewrite Hsim_loc.
+    unfold Location.eq, loc_eq in H.
+    rewrite <- H.
     rewrite (retraction_section).
     now symmetry.
     apply LocationA.eq_equiv.
     rewrite <- Hr.
     rewrite <- t.
     assert (Hedge' : opt_eq Graph.Eeq
-                   (Graph.find_edge (ConfigA.loc (Spect.from_config (Config.map (apply_sim sim) conf) (Good g))) l_rbg) (Some e_rbg)) by now rewrite Hedge.
+                   (Graph.find_edge (l0) (l_rbg)) (Some e_rbg)) by now rewrite Hedge.
     apply Graph.find2st in Hedge'.
     destruct Hedge' as (s',t').
     rewrite <- t'.
     now simpl.
+    unfold Config.map, apply_sim in Hsim_loc; rewrite Hloc in Hsim_loc;
+      now simpl in *.
   - simpl in *. now intro.
 Qed.
 
@@ -1423,14 +1691,12 @@ Qed.
 CoInductive group : execution -> Prop :=
 GroupCons : forall e, group_good_def (execution_head e) -> group (execution_tail e) -> group e.
 
-Lemma group_round : forall r da config, group_good_def config -> group_good_def(round r da config).
+Lemma group_round : forall r da config, group_good_def config -> group_good_def (round r da config).
 Proof.
-intros r da config Hinit.
-unfold group_good_def in *.
-intros g.
-destruct (Hinit g) as (Hini, (Hli, (Hmi, Hex_e))).
-assert (Hgr := group_lem r da g Hini Hli Hmi Hex_e).
-apply Hgr.
+  intros r da config Hinit g.
+  apply group_lem.
+  now destruct (Hinit g).
+  assumption.
 Qed.
 
 Lemma group_always : forall r d config, group_good_def config -> group (execute r d config).
@@ -1447,139 +1713,7 @@ Corollary group_always_bis : forall r d config, Conf_init config ->
 Proof.
 intros.
 apply group_always.
-unfold Conf_init, group_good_def in *.
-repeat split.
-+ apply ri_round.
-  unfold ri_loc_def.
-  intros g0.
-  specialize (H (Good g0)).
-  destruct H as (l, (l', (e', (Hl, (Hl',(Hs, Ht)))))).
-  exists l, l'.
-  destruct (Config.source (Config.robot_info (config (Good g0)))) eqn : Hs',
-  (Config.target (Config.robot_info (config (Good g0)))) eqn : Ht'; try now simpl in *.
-+ specialize (H (Good g)); destruct H as (l, (l', (e', (Hl, (Hl',(Hs, Ht)))))).
-  destruct (Config.source (Config.robot_info (config (Good g)))) eqn : Hs',
-  (Config.loc (config (Good g))) eqn : Hl'',
-  (Config.target (Config.robot_info (config (Good g)))) eqn : Ht';
-  simpl in *; try now exfalso. unfold round.
-  destruct (step (demon_head d) (Good g) (config (Good g))) eqn: Hstep,
-  (Config.loc (config (Good g))) eqn : Hl0; try discriminate; try (now exfalso).
-  - destruct (Rdec dist 0); intros v0 Hl0'.
-    left; rewrite Hs', Hl0, Hl'' in *; simpl in *. now rewrite <-Hl0', Hl', Hs.
-    destruct (Rdec dist 1); simpl in *. now right.
-    rewrite Ht' in *.
-    assert (~Graph.Veq l3 l2).
-    assert (Hnal := Graph.NoAutoLoop e').
-    assert (Haux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e')) by now rewrite Hl.
-    apply Graph.find2st in Haux.
-    destruct Haux as (Hls, Hlt).
-    assert (Haux2 : loc_eq (Loc l1) (Loc l3)) by now rewrite Hl''.
-    simpl in *.
-    now rewrite <- Hls, <- Hlt, <- Hl', <- Ht, Haux2 in Hnal.
-    destruct (Graph.Veq_dec l3 l2); try contradiction.
-  - simpl in *. intros v0 Hv. now left.
-+ specialize (H (Good g)); destruct H as (l, (l', (e', (Hl, (Hl',(Hs, Ht)))))).
-  destruct (Config.source (Config.robot_info (config (Good g)))) eqn : Hs',
-  (Config.loc (config (Good g))) eqn : Hl'',
-  (Config.target (Config.robot_info (config (Good g)))) eqn : Ht';
-  simpl in *; try now exfalso. unfold round.
-  destruct (step (demon_head d) (Good g) (config (Good g))) eqn: Hstep;
-  try discriminate; try (now exfalso); intros v1 v2 e p Hs0 Ht0 Hl0; rewrite Hl'' in *.
-  - destruct (Rdec dist 0). now rewrite Hl'' in *.
-    destruct (Rdec dist 1). simpl in *. now rewrite Ht' in *.
-    rewrite Ht' in *.
-    assert (~Graph.Veq l1 l2).
-    assert (Hnal := Graph.NoAutoLoop e').
-    assert (Haux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e')) by now rewrite Hl.
-    apply Graph.find2st in Haux.
-    destruct Haux as (Hls, Hlt).
-    now rewrite <- Hls, <- Hlt, <- Hl', <- Ht in Hnal.
-    destruct (Graph.Veq_dec l1 l2); try contradiction.
-    assert (opt_eq Graph.Eeq (Graph.find_edge l1 l2) (Graph.find_edge l l')) by now apply Graph.find_edge_compat.
-    rewrite Hl in H0.
-    destruct (Graph.find_edge l1 l2); try contradiction.
-    simpl in *.
-    destruct Hl0 as (Hle,_).
-    rewrite Hle in H0.
-    assert (Haux : opt_eq Graph.Eeq (Some e) (Some e')) by now simpl in *.
-    rewrite Haux.
-    rewrite Ht', Hs' in *.
-    simpl in *.
-    rewrite Hs, Ht in *.
-    rewrite <- Hl.
-    now apply Graph.find_edge_compat.
-  - now simpl in *.
-+ specialize (H (Good g)); destruct H as (l, (l', (e', (Hl, (Hl',(Hs, Ht)))))).
-  destruct (Config.source (Config.robot_info (config (Good g)))) eqn : Hs',
-  (Config.loc (config (Good g))) eqn : Hl'',
-  (Config.target (Config.robot_info (config (Good g)))) eqn : Ht';
-  simpl in *; try now exfalso. unfold round.
-  destruct (step (demon_head d) (Good g) (config (Good g))) eqn: Hstep;
-  try discriminate; try (now exfalso); intros v1 v2 Hv1 Hv2;
-  rewrite Hl'' in *.
-  destruct (Rdec dist 0).
-  - rewrite Hs', Ht' in *.
-    simpl in *.
-    rewrite Hs, Ht in *.
-    exists e'; rewrite <- Hl; now apply Graph.find_edge_compat.
-  - destruct (Rdec dist 1); simpl in *.
-    * rewrite Hs', Ht' in *.
-      simpl in *.
-      rewrite Hs, Ht in *.
-      exists e'; rewrite <- Hl; now apply Graph.find_edge_compat.
-    * rewrite Ht' in *.
-      assert (~Graph.Veq l1 l2).
-      assert (Hnal := Graph.NoAutoLoop e').
-      assert (Haux : opt_eq Graph.Eeq (Graph.find_edge l l') (Some e')) by now rewrite Hl.
-      apply Graph.find2st in Haux.
-      destruct Haux as (Hls, Hlt).
-      now rewrite <- Hls, <- Hlt, <- Hl', <- Ht in Hnal.
-      destruct (Graph.Veq_dec l1 l2); try contradiction.
-      assert (opt_eq Graph.Eeq (Graph.find_edge l1 l2) (Graph.find_edge l l')) by now apply Graph.find_edge_compat.
-      rewrite Hl in H0.
-      destruct (Graph.find_edge l1 l2); try contradiction.
-      simpl in *.
-      rewrite Hs', Ht' in *.
-      simpl in *.
-      rewrite Hs, Ht in *.
-      exists e'; rewrite <- Hl; now apply Graph.find_edge_compat.
-  - simpl in *.
-    assert (Hdelta := step_delta (demon_head d) g (config (Good g)) sim Hstep).
-    destruct Hdelta as (Hl_delta, Ht_delta).
-    rewrite Hl'' in Ht_delta.
-    assert (Hrange := pgm_range r (Spect.from_config (Config.map (apply_sim sim) config)) g (ConfigA.loc (Spect.from_config (Config.map (apply_sim sim) config) (Good g)))).
-    destruct Hrange as (l_rbg, (e_rbg, (Hr_loc, Hedge))).
-    reflexivity.
-    exists ((retraction (Iso.sim_E sim)) e_rbg).
-    assert (Hsim_E := Graph.find_edge_Some ((retraction (Iso.sim_E sim)) e_rbg)).
-    rewrite <- Hsim_E.
-    generalize (Iso.sim_morphism (Iso.inverse sim) e_rbg).
-    intros (s,t).
-    apply Graph.find_edge_compat.
-    rewrite <- s.
-    assert (Hedge' : opt_eq Graph.Eeq ( Graph.find_edge
-            (ConfigA.loc
-               (Spect.from_config (Config.map (apply_sim sim) config) (Good g))) l_rbg)
-          (Some e_rbg)) by now rewrite Hedge.
-    apply Graph.find2st in Hedge'.
-    destruct Hedge' as (s',t').
-    rewrite <- s'.
-    unfold Spect.from_config, Config.map, apply_sim, projectS, projectS_loc.
-    simpl.
-    rewrite Hl''.
-    simpl.
-    rewrite (retraction_section).
-    now symmetry.
-    apply LocationA.eq_equiv.
-    rewrite Hr_loc in Hv2.
-    rewrite <- Hv2.
-    rewrite <- t.
-    assert (Hedge' : opt_eq Graph.Eeq
-                   (Graph.find_edge (ConfigA.loc (Spect.from_config (Config.map (apply_sim sim) config) (Good g))) l_rbg) (Some e_rbg)) by now rewrite Hedge.
-    apply Graph.find2st in Hedge'.
-    destruct Hedge' as (s',t').
-    rewrite <- t'.
-    now simpl.
+now apply group_lem_init. 
  Qed.
 
 

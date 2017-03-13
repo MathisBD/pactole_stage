@@ -35,8 +35,7 @@ Set Implicit Arguments.
 Module MakeRing <: GraphDef 
     with Definition V := Loc.t
     with Definition Veq := Loc.eq
-    with Definition E := ((Loc.t * direction)%type)
-    with Definition threshold := (fun (e : (Loc.t * direction)%type) => (1/2)%R).
+    with Definition E := ((Loc.t * direction)%type).
 
   Definition dir := direction. 
 
@@ -49,19 +48,15 @@ Module MakeRing <: GraphDef
                           end.
   Definition src (e:E) := fst e.
 
-  Definition threshold (e: E) := (1/2)%R.
-  Lemma threshold_pos : forall e, (0 < threshold e < 1)%R.
-  Proof. unfold threshold; split; lra.
-  Qed.
+  Parameter threshold : E -> R.
+  Axiom threshold_pos : forall e, (0 < threshold e < 1)%R.
+  
 
   Definition Eeq (e1 e2 : E) := Veq (fst e1) (fst e2)
                           /\ snd e1 = snd e2.
   
-  Instance threshold_compat : Proper (Eeq ==> eq) threshold.
-  Proof.
-    intros t1 t2 Ht; now unfold threshold.
-  Qed.
-
+  Parameter threshold_compat : Proper (Eeq ==> eq) threshold.
+  
   Lemma Veq_equiv : Equivalence Veq. Proof. unfold Veq; apply Loc.eq_equiv. Qed.
 
   Lemma Eeq_equiv : Equivalence Eeq.

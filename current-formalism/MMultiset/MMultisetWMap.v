@@ -18,9 +18,14 @@ Require Import MMultiset.Preliminary.
 Require Import MMultisetInterface.
 Require Import Equalities.
 
-Module FMultisets (MMap : WSfun) (E : DecidableType) : FMultisetsOn E.
+Module FMultisets (MMap : WSfun) (E : DecidableType) <: FMultisetsOn E.
+  
+Module M <: (WSfun E) := MMap(E).
+Import M.
 
-Module M := MMap(E).
+Parameter e : Type -> Type.
+Lemma r : M.t = e.
+unfold M.t.
 
 Definition eq_pair := RelProd E.eq (@Logic.eq nat).
 Definition eq_elt := RelCompFun E.eq (@fst E.t nat).

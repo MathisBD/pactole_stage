@@ -1522,20 +1522,39 @@ Proof.
   repeat (split; try assumption).
 Qed.
 
+  Set Printing Implicit.
 
-Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
-Proof.
-  intros.
-  unfold t in *.
-  unfold eq.
+(* 
   assert (forall id, eq_RobotConf (config1 id) (config2 id) \/
                      ~ eq_RobotConf (config1 id) (config2 id)).
   intros id.
   destruct (eq_RobotConf_dec (config1 id) (config2 id)).
   now left.
-  now right.
-  induction Names.names eqn : Hdec. 
+  now right. 
+*)
+  
+Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
+Proof.
+  unfold t.
+  unfold eq.
+  unfold Names.ident.
+  unfold Names.Internals.ident.
+  unfold Names.Internals.G.
+  unfold Names.Internals.B.
+  generalize N.nB, N.nG.
+  intros nB nG.
+  induction nG eqn : HG.
+  induction nB eqn : HB.
   left.
+  intros [g|b].
+  now apply Fin.case0.
+  now apply Fin.case0.
+  intros [g|b].
+  now apply Fin.case0.
+  apply (H (Byz b)).
+  
+  destruct id.
+  
   intros.
   generalize (Names.In_names id).
   intros.

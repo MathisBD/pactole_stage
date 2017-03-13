@@ -58,7 +58,7 @@ Module Gra := MakeRing.
 
 
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
-Module DefsE := Definitions.ExplorationDefs(Gra)(Loc)(K).
+Module DefsE := Definitions.ExplorationDefs(K).
 Export DefsE.
 Export Gra.
 Export MakeRing.
@@ -168,12 +168,12 @@ Qed.
 Parameter g : Names.G.
 
 
-Variable r : Atom.robogram.
+Variable r : robogram.
 Axiom robogram_symmetry : (* si la conf est sym, alors le robotgram renvoie la même chose *)True .
 Definition move := r (!! config1).
 
 Parameter m : Z.
-Hypothesis Hmove : move = m.
+Hypothesis Hmove : forall g, move g = m.
 
 (** The key idea is to prove that we can always make robots think that there are in the same configuration.
     If they do not gather in one step, then they will never do so.
@@ -224,19 +224,20 @@ simple refine {|
   step :=  (lift_conf (fun (_ : Names.G) Rconf =>
                            if Loc.eq_dec (Config.loc (Rconf))
                                   (Config.target (Config.robot_info (Rconf)))
-                           then Active _ 
+                           then Active (trans (Config.loc (Rconf)) )
                            else Moving true ))|}.
 Proof.
   - intuition.
-  - intros.
-    unfold lift_conf in *.
-    destruct (Loc.eq_dec (Config.loc Rconfig) (Config.target (Config.robot_info Rconfig))).
-    unfold Location.eq, Gra.Veq, Loc.eq, LocationA.eq, MakeRing.Veq in *.
-    assumption.
-    discriminate.
+    unfold lift_conf in H.
+    destruct (Loc.eq_dec (Config.loc Rconfig)
+                         (Config.target (Config.robot_info Rconfig)));
+      try discriminate; try assumption.
   - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
     destruct Hrc, H0, (Loc.eq_dec (Config.loc rc1) (Config.target (Config.robot_info rc1))) , (Loc.eq_dec (Config.loc rc2) (Config.target (Config.robot_info rc2))); try (now auto);
-    unfold Gra.Veq, Loc.eq, LocationA.eq, MakeRing.Veq in *.
+      unfold Gra.Veq, Loc.eq, LocationA.eq, MakeRing.Veq in *.
+    unfold Aom_eq.
+    apply trans_compat.
+    apply H.
     rewrite H, H1 in e.
     contradiction.
     rewrite <-H, <-H1 in e.
@@ -454,10 +455,259 @@ Proof.
 Qed.
 
 
+Lemma config1_Spectre_Equiv : forall conf g0,
+    equiv_conf config1 conf->
+    Spect.eq (!! (Config.map (apply_sim
+                                (trans (Config.loc (conf (Good g0)))))
+                             conf))
+             (!! (Config.map (apply_sim
+                                (trans (Config.loc (config1 (Good g0)))))
+                             config1)).
+Proof.
+  intros conf g0 Hconf_equiv x.
+  unfold Spect.from_config in *.
+  (* unfold Spect.multiset. *)
+  simpl in *.
+  unfold Config.map in *.
+  repeat rewrite Spect.multiset_spec in *.
+  unfold apply_sim, trans; simpl.
+  unfold equiv_conf, f_conf in *.
+  destruct Hconf_equiv.
+  destruct (H (Good g0)) as (Hl, Hri).
+  simpl in *.
+  assert (SetoidList.NoDupA Loc.eq
+                            (map (fun x : Names.ident =>
+                           Config.loc (apply_sim (trans (Config.loc (conf (Good g0))))
+                                                          (conf x)))
+                                 Names.names)).
+  {
+    apply (map_injective_NoDupA eq_equivalence Loc.eq_equiv).
+    + intros a b Hab.
+      rewrite Hab.
+      reflexivity.
+    + intros id1 id2 Hloc.
+      destruct id1 as [g1|b1], id2 as [g2|b2]; try ImpByz b1; try ImpByz b2.
+      unfold apply_sim,trans in *; simpl in *.
+      assert (Hg0 := H (Good g0));
+        assert (Hg1 := H (Good g1));
+        assert (Hg2 := H (Good g2));
+        simpl in *.
+      destruct Hg0 as (Hg0,_), Hg1 as (Hg1,_), Hg2 as (Hg2,_).
+      rewrite Hg0, Hg1, Hg2 in Hloc.
+      simpl in Hloc.
+      clear Hg0 Hg1 Hg2.
+      destruct (Names.eq_dec (Good g1) (Good g2)).
+      assumption.
+      generalize unique_g_2.
+      intros Hu.
+      exfalso.
+      apply (Hu g0 g1 g2).
+      intros Hn; rewrite Hn in n0.
+      apply n0.
+      reflexivity.
+      apply Loc.add_reg_l with (w := x0).
+      do 2 rewrite Loc.add_assoc.
+      rewrite Loc.add_comm.
+      rewrite Loc.add_comm with (v := (Loc.opp (create_conf1 g2))).
+      apply Loc.add_reg_l with (w := Loc.opp x0).
+      do 2 rewrite Loc.add_assoc with (u := Loc.opp x0).
+      do 2 rewrite <- Loc.opp_distr_add.
+      do 2 rewrite Loc.add_comm with (v := Loc.add x0 (create_conf1 g0)).
+      apply Hloc.
+    + assert (Hnames := Names.names_NoDup).
+      apply NoDupA_Leibniz in Hnames.
+      assumption.
+  }
+  set (Spe := (!! (Config.map (apply_sim
+                                (trans (Config.loc (conf (Good g0)))))
+                                                   conf))).
+  unfold Spect.t in *.
+  unfold Atom.View.t, DefsE.Config.t in *.
+  assert (forall elt, Spect.In elt Spe ->
+                      countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
+        (Config.list
+           (fun id : Names.ident =>
+            apply_sim (trans (Config.loc (conf (Good g0)))) (conf id)))) = 1%nat).
+  {
+    intros elt Hspe.
+    assert ((countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
+        (Config.list
+           (fun id : Names.ident =>
+              apply_sim (trans (Config.loc (conf (Good g0)))) (conf id)))) > 1)%nat
+                                              -> False).
+    {
+      intros Hgt.
+      rewrite Config.list_spec, map_map in *.
+     
+      rewrite (NoDupA_countA_occ' Loc.eq_dec) in H0.
+      rewrite <- Spect.support_In in Hspe.
+      unfold Spect.from_config in Hspe.
+      unfold Config.map in Hspe.
+      rewrite Config.list_spec in Hspe.
+      rewrite map_map in Hspe.
+      rewrite Spect.multiset_support in Hspe.
+      specialize (H0 elt Hspe).
+      rewrite H0 in Hgt.
+      omega.
+      apply Loc.eq_equiv.
+    }
+    rewrite <- Spect.support_In in Hspe.
+    unfold Spect.from_config in Hspe.
+    rewrite Spect.multiset_support in Hspe.
+    unfold Config.map in Hspe.
+    rewrite <- (countA_occ_pos Loc.eq_equiv Loc.eq_dec) in Hspe.
+    destruct ( (countA_occ Loc.eq Loc.eq_dec elt
+          (map Config.loc
+             (Config.list
+                (fun id : Names.ident =>
+                   apply_sim (trans (Config.loc (conf (Good g0)))) (conf id))))
+          ?= 1)%nat) eqn : Heq; try rewrite <- nat_compare_lt in *;
+      try rewrite <- nat_compare_gt in *;
+      try apply nat_compare_eq in Heq.
+    - assumption.
+    - assert (countA_occ Loc.eq Loc.eq_dec elt
+           (map Config.loc
+              (Config.list
+                 (fun id : Names.ident =>
+                  apply_sim (trans (Config.loc (conf (Good g0)))) (conf id)))) <= 0)%nat by omega.
+      apply le_not_gt in H2.
+      contradiction.
+    - exfalso; apply H1; apply Heq.
+  }
+  assert (forall elt,
+             Spect.In elt (!! (Config.map (apply_sim (trans (Config.loc (conf (Good g0))))) conf)) <-> Spect.In elt (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))).
+  {  unfold apply_sim, trans; simpl in *.
+     intros elt.
+     do 2 rewrite Spect.from_config_In.
+     split.
+     + intros (gc1,Hc1).
+       destruct gc1 as [g1| b] eqn : Hg.
+     - generalize (conf1_1 g1 g0); intros Hc11.
+       destruct Hc11.
+       exists (Good g1).
+       simpl in *.
+       rewrite <- Hc1.
+       rewrite Hl, (H (Good g1)).
+       simpl.
+       rewrite <- Loc.add_assoc.
+       rewrite Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g1))).
+       rewrite Loc.opp_distr_add.
+       do 2 rewrite Loc.add_assoc.
+       rewrite Loc.add_opp.
+       rewrite Loc.add_comm with (u := Loc.origin).
+       now rewrite Loc.add_origin, Loc.add_comm.
+     - ImpByz b.
+   + intros (gc1,Hc1).
+     destruct gc1 as [g1| b] eqn : Hg.
+     - generalize (conf1_1 g1 g0); intros Hc11.
+       destruct Hc11.
+       exists (Good g1).
+       simpl in *.
+       rewrite <- Hc1.
+       rewrite Hl, (H (Good g1)).
+       simpl.
+       rewrite <- Loc.add_assoc.
+       rewrite Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g1))).
+       rewrite Loc.opp_distr_add.
+       do 2 rewrite Loc.add_assoc.
+       rewrite Loc.add_opp.
+       rewrite Loc.add_comm with (u := Loc.origin).
+       now rewrite Loc.add_origin, Loc.add_comm.
+     - ImpByz b.
+  }
+  assert (Ht_map : forall x : Spect.elt, 
+             Spect.In x (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))
+       <-> (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))[x] = 1%nat).
+  { intros elt; split.
+    intros Hsp_In.
+    assert (Hsp_In' := Hsp_In).
+    (* rewrite HSfcI in Hsp. *)
+    (* destruct Hsp. *)
+    unfold Spect.from_config.
+    (* unfold Spect.multiset. *)
+    generalize unique_g_2.
+    intros.
+    simpl in *.
+    rewrite Spect.multiset_spec. 
+    rewrite Config.list_spec.
+    rewrite map_map.
+    assert (HNoDup_map : SetoidList.NoDupA Loc.eq (map (fun x0 : Names.ident => Config.loc (Config.map (apply_sim (trans (create_conf1 g0))) config1 x0)) Names.names)).
+    { apply (map_injective_NoDupA) with (eqA := Logic.eq).
+      + intuition.
+      + apply Loc.eq_equiv.
+      + intros a b Hab.
+        rewrite Hab.
+        reflexivity.
+      + intros id1 id2 Heq.
+        destruct (Names.eq_dec id1 id2).
+        assumption.
+        exfalso.
+        destruct id1 eqn : Hid1,
+                         id2 eqn : Hid2.
+        assert (H_aux2 := conf1_1 g2 g0);
+          assert (H_aux1 := conf1_1 g1 g0).
+        destruct H_aux1, H_aux2.
+        apply (H3 g0 g1 g2).
+        intuition.
+        rewrite H6 in n0.
+        auto.
+        simpl in *.
+        rewrite Heq.
+        reflexivity.
+        ImpByz b.
+        ImpByz b. 
+        ImpByz b. 
+      + assert (Hnames := Names.names_NoDup).
+        apply NoDupA_Leibniz in Hnames.
+        assumption.
+    }
+    apply NoDupA_countA_occ'.
+    apply Loc.eq_equiv.
+    apply HNoDup_map.
+    unfold Spect.from_config in Hsp_In.
+    unfold Config.map in Hsp_In.
+    rewrite Config.list_spec in Hsp_In.
+    rewrite map_map in Hsp_In.
+    rewrite <- Spect.support_In in Hsp_In.
+    rewrite Spect.multiset_support in Hsp_In.
+    assumption.
+    intros.
+    unfold Spect.from_config in *.
+    unfold Spect.In.
+    omega.
+  }
+  specialize (Ht_map x).
+  destruct (Spect.In_dec x (!! (Config.map (apply_sim
+                                (trans (Config.loc (conf (Good g0)))))
+                             conf))).
+  + assert (i' : Spect.In x (!!
+                             (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))) by now rewrite <- H2.
+    unfold Spect.from_config, Config.map in *.
+    rewrite Spect.multiset_spec in *.
+    unfold apply_sim, trans in *; simpl in *.
+    destruct Ht_map as (Ht1, Ht2).
+    rewrite H1, Ht1.
+    reflexivity.
+    apply i'.
+    apply i.
+  + assert (n0' : ~ Spect.In x (!!
+                                  (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))) by now rewrite <- H2.
+    rewrite Spect.not_In in n0.
+    rewrite Spect.not_In in n0'.
+    unfold Spect.from_config, Config.map in *.
+    rewrite Spect.multiset_spec in *.
+    unfold apply_sim, trans in *; simpl in *.
+    rewrite n0, n0'.
+    reflexivity.
+Qed.
+
+
  (* A configuration where the robots are moved of [k] nodes compared to the 
     starting configuration is moved of [((k-1) mod n) mod n] nodes after a round. *)
-(* Lemma rec_conf_equiv : forall conf k, Config.eq conf (f_conf config1 k)
-                                      -> Config.eq (round r da1 conf) (f_conf config1 (Loc.add k (Loc.opp m))).
+Lemma rec_conf_equiv : forall conf k,
+    Config.eq conf (f_conf config1 k)
+    -> Config.eq (round r da1 conf)
+                 (f_conf config1 (Loc.add k (Loc.opp m))).
 Proof.
   intros conf k Heq [g|b]; try ImpByz b.
   split.
@@ -538,15 +788,35 @@ Proof.
   + now simpl in *.
   + apply AlwaysEquiv_conf1.
     simpl in *.
+    assert (Hrec := rec_conf_equiv).
     unfold equiv_conf.
     destruct H.
     unfold move in *.
-    set (X := round r da1 conf).
-    unfold round in X.
-    unfold Config.t in X.
-    unfold Spect.from_config in *.
+    unfold round, Config.eq, Spect.from_config.
     exists (Loc.add x (Loc.opp m)).
-    now apply rec_conf_equiv.
+    intros id.
+    simpl.
+    unfold lift_conf.
+    destruct id.
+    destruct ( Loc.eq_dec (Config.loc (conf (Good g0)))
+           (Config.target (Config.robot_info (conf (Good g0)))));
+    simpl.
+    unfold f_conf, config1 in *.
+    specialize (H (Good g0)).
+    simpl in *.
+    destruct H as (Hfalse_l,(_,Hfalse_t)).
+    simpl in *.
+    rewrite Hfalse_l, Hfalse_t in e.    
+    assert (Loc.eq (create_conf1 g0) (Loc.add Loc.unit (create_conf1 g0))).
+    apply Loc.add_reg_l with (w := x).
+    apply e.
+    now apply neq_a_1a in H.
+    specialize (H (Good g0)).    
+    unfold f_conf in *.
+    destruct H as (Hl,(Hs,Ht)).
+    simpl in *.
+    try (repeat split; simpl).
+    
 Qed.
 
 (* the starting configuration respect the [AlwaysMoving] predicate *)

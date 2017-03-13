@@ -88,7 +88,7 @@ Definition bij_trans_E (c : Loc.t) : Isomorphism.bijection Graph.Eeq.
                                           | GraphFromZnZ.Forward => GraphFromZnZ.Backward
                                           | GraphFromZnZ.Backward => GraphFromZnZ.Forward
                                           end) |}.
-Proof.      
+Proof.
   + intros e1 e2 He_eq.
     unfold Graph.Eeq.
     split.
@@ -133,23 +133,31 @@ Defined.
 
 
 (* Definition bij_trans_T := Isomorphism.bij_id Iso.Req_equiv. *)
-Parameter bij_trans_T : Isomorphism.bijection Iso.Req.
-  
+Parameter bij_trans_T : Loc.t -> Isomorphism.bijection Iso.Req.
+Axiom bT_morph : forall c (e:Graph.E),
+    (Isomorphism.section (bij_trans_T c)) (Graph.threshold e) =
+    Graph.threshold ((Isomorphism.section (bij_trans_E c)) e).
+Axiom bT_bound : forall c r, (0 < r < 1)%R <->
+                             (0 < (Isomorphism.section (bij_trans_T c) r) < 1)%R.
+Axiom bT_crois : forall c a b, (a < b)%R ->
+                               ((Isomorphism.section (bij_trans_T c) a) <
+                                (Isomorphism.section (bij_trans_T c) b))%R.
+Axiom bT_compat : forall c1 c2, Isomorphism.bij_eq (bij_trans_T c1) (bij_trans_T c2).
+
 Definition id_s := Iso.id.
 
 Definition trans (c : Loc.t) : Iso.t.
 refine {|
     Iso.sim_V := bij_trans_V c;
     Iso.sim_E := bij_trans_E c;
-    Iso.sim_T := bij_trans_T |}.
+    Iso.sim_T := bij_trans_T c |}.
 Proof.
-- intros; split;destruct H; simpl in *; unfold Graph.src in *.
-  now rewrite H.
+- intros e; split; unfold Graph.src in *.
+  simpl. reflexivity.
   unfold Graph.tgt in *.
   simpl in *.
   unfold Loc.t, LocationA.t, MakeRing.V, Graph.E, MakeRing.E, Graph.dir in *.
   destruct (snd e) eqn : Hsnd.
-  rewrite <- H0.
   rewrite Loc.opp_distr_add.
   rewrite Loc.add_assoc.
   f_equiv.
@@ -164,7 +172,6 @@ Proof.
   generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
   unfold N.
   omega.
-  rewrite <- H0.
   rewrite Loc.opp_distr_add.
   rewrite Loc.add_assoc.
   f_equiv.
@@ -179,65 +186,37 @@ Proof.
   generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
   unfold N.
   omega.
-- intros. simpl. setoid_rewrite Loc.add_comm.
-  split.
-  unfold Graph.src.
-  reflexivity.
-  unfold Graph.tgt; simpl in *.
-  unfold Loc.t, LocationA.t, Graph.V.
-  destruct (snd e).
-  rewrite Loc.add_comm.
-  rewrite Loc.opp_distr_add.
-  rewrite Loc.add_assoc.
-  f_equiv.
-  now rewrite Loc.add_comm.
-  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
-  set (N :=  ImpossibilityKDividesN.def.n).
-  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
-  simpl.
-  reflexivity.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-  rewrite Loc.add_comm.
-  rewrite Loc.opp_distr_add.
-  rewrite Loc.add_assoc.
-  f_equiv.
-  now rewrite Loc.add_comm.
-  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
-  set (N :=  ImpossibilityKDividesN.def.n).
-  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
-  simpl.
-  reflexivity.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-- simpl. intros.
-  admit.
 - intros.
-  simpl.
-  unfold Loc.t, LocationA.t, Graph.V.
-  destruct (snd e0).
-  destruct (Rle_dec r
-                    (Graph.threshold (Loc.add c (Loc.opp (fst e0)), Graph.Backward))),
-  (Rle_dec r (Graph.threshold e0));
-  unfold Graph.src, Graph.tgt.
-  + unfold Graph.threshold, MakeRing.threshold in *. admit.
-  + 
-    apply Graph.threshold_compat.
-  
+  apply bT_morph.
+- apply bT_crois.
+- apply bT_bound.
 Defined.
 
 
-Instance trans_compat : Proper (Loc.eq ==> Sim.eq) trans.
-Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
-
+Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
+Proof.
+  intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
+  repeat split; try apply Isomorphism.section_compat.
+  now f_equiv.
+  unfold bij_trans_E in *; simpl in *.  
+  unfold Loc.add, ImpossibilityKDividesN.Loc.add.
+  rewrite <- Zdiv.Zplus_mod_idemp_l.
+  rewrite Hc, Zdiv.Zplus_mod_idemp_l.
+  unfold Graph.Eeq in *.
+  destruct H.
+  unfold Loc.t, LocationA.t, Graph.V.
+  unfold Loc.opp, ImpossibilityKDividesN.Loc.opp, Graph.dir in *.
+  rewrite <- Zdiv.Zminus_mod_idemp_r, H, Zdiv.Zminus_mod_idemp_r.
+  reflexivity.
+  simpl.
+  unfold Graph.Eeq in *.
+  destruct H.
+  unfold Loc.t, LocationA.t, Graph.V.
+  unfold Loc.opp, ImpossibilityKDividesN.Loc.opp, Graph.dir in *.
+  rewrite H0.
+  reflexivity.
+  apply bT_compat.
+Qed.
 
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
