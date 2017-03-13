@@ -31,7 +31,7 @@ DiscreteASyncFormalism.v
 CommonGraphFormalism.v
 GraphEquivalence.v
 DiscreteGraphFormalism.v
-AtomicGraphFormalism.v
+ContinuousDVGraphFormalism.v
 Exploration/ZnZ/test_modulo.v
 Exploration/ZnZ/Definitions.v
 Gathering/Definitions.v

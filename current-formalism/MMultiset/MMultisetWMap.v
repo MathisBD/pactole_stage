@@ -20,12 +20,7 @@ Require Import Equalities.
 
 Module FMultisets (MMap : WSfun) (E : DecidableType) <: FMultisetsOn E.
   
-Module M <: (WSfun E) := MMap(E).
-Import M.
-
-Parameter e : Type -> Type.
-Lemma r : M.t = e.
-unfold M.t.
+Module M := MMap(E).
 
 Definition eq_pair := RelProd E.eq (@Logic.eq nat).
 Definition eq_elt := RelCompFun E.eq (@fst E.t nat).
