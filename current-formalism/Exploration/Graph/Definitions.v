@@ -17,7 +17,7 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.AtomicGraphFormalism.
+Require Import Pactole.DiscreteGraphFormalism.
 Require Import Arith.Div2.
 Require Import Pactole.DiscreteSimilarity.
 Require Import Pactole.CommonDiscreteFormalism.
@@ -25,6 +25,7 @@ Require Import Pactole.DiscreteRigidFormalism.
 Require Import Pactole.DiscreteMultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
+Require Import Pactole.GraphEquivalence.
 
 Close Scope Z_scope.
 Set Implicit Arguments.
@@ -58,36 +59,54 @@ End Loc.
 
 Module Config := Configurations.Make(Loc)(N)(Names).
 Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc).
+Module Equiv := GraphEquivalence (Graph)(N)(Names)(Loc)(Config)(Iso).
+Import Equiv Iso.
+Import Equiv.DGF.
 
-Module Export Atom := AtomicGraphFormalism.AGF(Graph)(N)(Names)(Loc)(Config)(Iso).
 
-Module Spect := Atom.Spect.
-
-Module View := Atom.View.  
-(* Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").  *)
-Import Iso.
-
+Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
+Notation "!!" := Spect.from_config (at level 1).
+Add Search Blacklist "Spect.M" "Ring".
 
 Definition bij_trans_V (c : Loc.t) : Isomorphism.bijection Loc.eq.
 refine {|
-  Isomorphism.section := fun x => Loc.add c (Loc.opp x);
-  Isomorphism.retraction := fun x => Loc.add c (Loc.opp x) |}.
+  Isomorphism.section := fun x => Loc.add x (Loc.opp c);
+  Isomorphism.retraction := fun x => Loc.add x c |}.
 Proof.
-abstract (intros x y; split; intro Heq; rewrite <- Heq;
-          now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
+  + intros x y Hxy. rewrite Hxy.
+    reflexivity.
+  + intros x y; split; intros Heq; rewrite <- Heq; unfold Loc.add, Loc.opp, Loc.eq,
+    LocationA.eq, MakeRing.Veq, ImpossibilityKDividesN.Loc.eq. 
+    rewrite Loc.add_comm.
+    unfold ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp.
+    set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+    rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, (Zdiv.Zplus_mod_idemp_r (0-c)),
+    Zdiv.Zplus_mod_idemp_r, Z.mod_mod.
+    unfold Loc.t, LocationA.t, MakeRing.V, ImpossibilityKDividesN.Loc.t in *.
+    replace (c + (x + (0 - c)))%Z with x by omega.
+    reflexivity.
+    unfold N, ImpossibilityKDividesN.def.n;
+      generalize ImpossibilityKDividesN.n_sup_1; omega.
+    unfold N, ImpossibilityKDividesN.def.n;
+      generalize ImpossibilityKDividesN.n_sup_1; omega.
+    rewrite Loc.add_comm.
+    unfold ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp.
+    set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+    rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, <- Zdiv.Zplus_mod,
+    Z.mod_mod.
+    unfold Loc.t, LocationA.t, MakeRing.V, ImpossibilityKDividesN.Loc.t in *.
+    replace (0 - c + (y + c))%Z with y by omega.
+    reflexivity.
+    unfold N, ImpossibilityKDividesN.def.n;
+      generalize ImpossibilityKDividesN.n_sup_1; omega.
+    unfold N, ImpossibilityKDividesN.def.n;
+      generalize ImpossibilityKDividesN.n_sup_1; omega.
 Defined.
 
 Definition bij_trans_E (c : Loc.t) : Isomorphism.bijection Graph.Eeq.
   refine {|
-      Isomorphism.section := fun x => ( Loc.add c (Loc.opp (fst x)), match snd x with
-                                          | GraphFromZnZ.Forward => GraphFromZnZ.Backward
-                                          | GraphFromZnZ.Backward => GraphFromZnZ.Forward
-                                          end);
-      Isomorphism.retraction := fun x => (Loc.add c (Loc.opp (fst x)),
-                                          match snd x with
-                                          | GraphFromZnZ.Forward => GraphFromZnZ.Backward
-                                          | GraphFromZnZ.Backward => GraphFromZnZ.Forward
-                                          end) |}.
+      Isomorphism.section := fun x => ( Loc.add (fst x) (Loc.opp c), snd x);
+      Isomorphism.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
 Proof.
   + intros e1 e2 He_eq.
     unfold Graph.Eeq.
@@ -97,7 +116,6 @@ Proof.
     now rewrite He_eq.
     simpl.
     destruct He_eq.
-    Set Printing Implicit.
     unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *.
     rewrite H0.
     reflexivity.
@@ -107,28 +125,18 @@ Proof.
     intros.
     unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *.
     rewrite <- H.
-    rewrite Loc.opp_distr_add,Loc.opp_opp, Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
+    rewrite Loc.add_comm, (Loc.add_comm (fst x)).
+    rewrite Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
     reflexivity.
-    destruct (snd y) eqn : Hy, (snd x) eqn : Hx;
-    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *;
-    try discriminate.
-    rewrite Hy in H0.
-    discriminate.
-    rewrite Hx.
-    reflexivity.
-    rewrite Hx.
-    reflexivity.
-    rewrite Hy in H0.
-    discriminate.
+    now symmetry.
     intros.
     unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *.
     rewrite <- H.
-    rewrite Loc.opp_distr_add,Loc.opp_opp, Loc.add_assoc, Loc.add_opp,Loc.add_comm,Loc.add_origin.
+    rewrite Loc.add_comm, (Loc.add_comm (fst y)).
+    rewrite Loc.add_assoc, (Loc.add_comm (Loc.opp c)), Loc.add_opp,
+    Loc.add_comm, Loc.add_origin.
     reflexivity.
-    destruct (snd y) eqn : Hy, (snd x) eqn : Hx;
-    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *;
-    try (rewrite Hx in H0; discriminate);
-    try (rewrite Hy; reflexivity).
+    now symmetry.
 Defined.
 
 
@@ -158,34 +166,10 @@ Proof.
   simpl in *.
   unfold Loc.t, LocationA.t, MakeRing.V, Graph.E, MakeRing.E, Graph.dir in *.
   destruct (snd e) eqn : Hsnd.
-  rewrite Loc.opp_distr_add.
-  rewrite Loc.add_assoc.
-  f_equiv.
-  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
-  set (N :=  ImpossibilityKDividesN.def.n).
-  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
-  simpl.
-  reflexivity.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-  rewrite Loc.opp_distr_add.
-  rewrite Loc.add_assoc.
-  f_equiv.
-  unfold ImpossibilityKDividesN.Loc.eq,ImpossibilityKDividesN.Loc.opp.
-  set (N :=  ImpossibilityKDividesN.def.n).
-  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod;
-  simpl.
-  reflexivity.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
-  generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n in *.
-  unfold N.
-  omega.
+  now rewrite Loc.add_comm with (v := Loc.opp c), Loc.add_assoc,
+                                (Loc.add_comm (Loc.opp c)).
+  now rewrite Loc.add_comm with (v := Loc.opp c), Loc.add_assoc,
+                                (Loc.add_comm (Loc.opp c)).
 - intros.
   apply bT_morph.
 - apply bT_crois.
@@ -197,29 +181,21 @@ Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
   intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
   repeat split; try apply Isomorphism.section_compat.
-  now f_equiv.
+  unfold Isomorphism.bij_eq.
+  intros x y Hxy. simpl.
+  now rewrite Hc, Hxy.
+  f_equiv.
+  simpl.
+  rewrite Hc.
+  destruct H; split; simpl in *.
+  now rewrite H.
+  assumption.
   unfold bij_trans_E in *; simpl in *.  
   unfold Loc.add, ImpossibilityKDividesN.Loc.add.
-  rewrite <- Zdiv.Zplus_mod_idemp_l.
-  rewrite Hc, Zdiv.Zplus_mod_idemp_l.
-  unfold Graph.Eeq in *.
-  destruct H.
-  unfold Loc.t, LocationA.t, Graph.V.
-  unfold Loc.opp, ImpossibilityKDividesN.Loc.opp, Graph.dir in *.
-  rewrite <- Zdiv.Zminus_mod_idemp_r, H, Zdiv.Zminus_mod_idemp_r.
-  reflexivity.
-  simpl.
-  unfold Graph.Eeq in *.
-  destruct H.
-  unfold Loc.t, LocationA.t, Graph.V.
-  unfold Loc.opp, ImpossibilityKDividesN.Loc.opp, Graph.dir in *.
-  rewrite H0.
-  reflexivity.
+  now destruct H.
   apply bT_compat.
 Qed.
 
-Notation "!!" := Spect.from_config (at level 1).
-Add Search Blacklist "Spect.M" "Ring".
 
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)

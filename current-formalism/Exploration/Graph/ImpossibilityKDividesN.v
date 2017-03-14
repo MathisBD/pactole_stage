@@ -168,12 +168,12 @@ Qed.
 Parameter g : Names.G.
 
 
-Variable r : robogram.
-Axiom robogram_symmetry : (* si la conf est sym, alors le robotgram renvoie la même chose *)True .
-Definition move := r (!! config1).
+Variable r : Equiv.DGF.robogram.
+
+Definition move := r.(Equiv.DGF.pgm) (!! config1).
 
 Parameter m : Z.
-Hypothesis Hmove : forall g, move g = m.
+Hypothesis Hmove : forall loc, move loc = m.
 
 (** The key idea is to prove that we can always make robots think that there are in the same configuration.
     If they do not gather in one step, then they will never do so.
@@ -214,8 +214,7 @@ Qed.
 (* The spectre of the initial configuration is the same that the one during 
    its computaion [round]. *)
 
-
-
+Import Equiv.DGF.
 
 Definition da1 : demonic_action.
 
@@ -367,7 +366,7 @@ Proof.
   intros g0.
   unfold move in Hmove.
   simpl in *.
-  assert (Hpgm := pgm_range r (!! config1) (create_conf1 g0) g0).
+  assert (Hpgm := pgm_range r (!! config1) (create_conf1 g0)).
   unfold round.
   destruct (step da1 (Good g0) (config1 (Good g0))) eqn : Hstep.
   +  simpl in *.
@@ -505,25 +504,18 @@ Proof.
       intros Hn; rewrite Hn in n0.
       apply n0.
       reflexivity.
-      apply Loc.add_reg_l with (w := x0).
-      do 2 rewrite Loc.add_assoc.
-      rewrite Loc.add_comm.
-      rewrite Loc.add_comm with (v := (Loc.opp (create_conf1 g2))).
-      apply Loc.add_reg_l with (w := Loc.opp x0).
-      do 2 rewrite Loc.add_assoc with (u := Loc.opp x0).
-      do 2 rewrite <- Loc.opp_distr_add.
-      do 2 rewrite Loc.add_comm with (v := Loc.add x0 (create_conf1 g0)).
-      apply Hloc.
+      rewrite 2 Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g0)))in Hloc.
+      apply Loc.add_reg_l in Hloc.
+      apply Loc.add_reg_l in Hloc.
+      now rewrite Hloc.
     + assert (Hnames := Names.names_NoDup).
       apply NoDupA_Leibniz in Hnames.
       assumption.
   }
-  set (Spe := (!! (Config.map (apply_sim
+  simpl in *.
+  assert (forall elt, Spect.In elt (!! (Config.map (apply_sim
                                 (trans (Config.loc (conf (Good g0)))))
-                                                   conf))).
-  unfold Spect.t in *.
-  unfold Atom.View.t, DefsE.Config.t in *.
-  assert (forall elt, Spect.In elt Spe ->
+                             conf)) ->
                       countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
         (Config.list
            (fun id : Names.ident =>
@@ -547,6 +539,7 @@ Proof.
       rewrite map_map in Hspe.
       rewrite Spect.multiset_support in Hspe.
       specialize (H0 elt Hspe).
+      unfold apply_sim, trans in *; simpl in *.
       rewrite H0 in Hgt.
       omega.
       apply Loc.eq_equiv.
@@ -590,7 +583,7 @@ Proof.
        rewrite Hl, (H (Good g1)).
        simpl.
        rewrite <- Loc.add_assoc.
-       rewrite Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g1))).
+       rewrite Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g0))).
        rewrite Loc.opp_distr_add.
        do 2 rewrite Loc.add_assoc.
        rewrite Loc.add_opp.
@@ -607,7 +600,7 @@ Proof.
        rewrite Hl, (H (Good g1)).
        simpl.
        rewrite <- Loc.add_assoc.
-       rewrite Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g1))).
+       rewrite Loc.add_comm with (v := Loc.opp (Loc.add x0 (create_conf1 g0))).
        rewrite Loc.opp_distr_add.
        do 2 rewrite Loc.add_assoc.
        rewrite Loc.add_opp.
@@ -652,6 +645,8 @@ Proof.
         rewrite H6 in n0.
         auto.
         simpl in *.
+        rewrite 2 Loc.add_comm with (v := Loc.opp (create_conf1 g0))in Heq.
+        apply Loc.add_reg_l in Heq.
         rewrite Heq.
         reflexivity.
         ImpByz b.
@@ -704,35 +699,52 @@ Qed.
 
  (* A configuration where the robots are moved of [k] nodes compared to the 
     starting configuration is moved of [((k-1) mod n) mod n] nodes after a round. *)
-Lemma rec_conf_equiv : forall conf k,
+(*Lemma rec_conf_equiv : forall conf k,
     Config.eq conf (f_conf config1 k)
     -> Config.eq (round r da1 conf)
                  (f_conf config1 (Loc.add k (Loc.opp m))).
 Proof.
   intros conf k Heq [g|b]; try ImpByz b.
+  unfold round, da1. simpl in *.
   split.
   + assert (Hequiv : equiv_conf config1 conf) by (now exists k).
     unfold f_conf in *.
     simpl in *.
     specialize (Heq (Good g)).
-    destruct Heq as (Heq, _).
+    destruct Heq as (Heq, (Hseq, Hteq)).
     simpl in *.
-    rewrite config1_Spectre_Equiv .
-    unfold config1 at 1.
+    destruct (Loc.eq_dec (Config.loc (conf (Good g)))
+              (Config.target (Config.robot_info (conf (Good g))))).
+    simpl in *.
+    rewrite Heq, Hteq in e.
+    apply (Loc.add_reg_l) in e.
+    now assert (Hfalse := neq_a_1a e).    
     simpl.
-    rewrite <- spect_rotation; try assumption.
-    unfold move in *.
+    rewrite Hteq.
+    rewrite Loc.add_assoc.
+    reflexivity.
+    (*     unfold move in *.
     rewrite Hmove.
     rewrite Heq.
     rewrite Loc.add_comm, Loc.add_assoc.
     rewrite Loc.add_comm with (v := k).
     reflexivity.
     assumption.
-  + unfold round; simpl.
-    destruct (Heq (Good g)) as (_,Hif).
-    rewrite Hif.
-    unfold f_conf.
-    simpl.
+    
+    assert (HcSE := config1_Spectre_Equiv). *) 
+  + simpl.
+    destruct (Heq (Good g)) as (Hleq, (Hseq, Hteq)).
+    destruct (Loc.eq_dec (Config.loc (conf (Good g)))
+              (Config.target (Config.robot_info (conf (Good g))))).
+    simpl in *.
+    rewrite Hleq, Hteq in e.
+    apply (Loc.add_reg_l) in e.
+    now assert (Hfalse := neq_a_1a e).    
+    split; simpl.
+    rewrite Hseq.
+    unfold f_conf in *.
+    simpl in *.
+    
     reflexivity.
 Qed.*)
 
@@ -788,12 +800,11 @@ Proof.
   + now simpl in *.
   + apply AlwaysEquiv_conf1.
     simpl in *.
-    assert (Hrec := rec_conf_equiv).
     unfold equiv_conf.
     destruct H.
     unfold move in *.
     unfold round, Config.eq, Spect.from_config.
-    exists (Loc.add x (Loc.opp m)).
+    exists (Loc.add x Loc.unit).
     intros id.
     simpl.
     unfold lift_conf.
@@ -816,6 +827,8 @@ Proof.
     destruct H as (Hl,(Hs,Ht)).
     simpl in *.
     try (repeat split; simpl).
+    now rewrite Ht, Loc.add_assoc.
+    
     
 Qed.
 

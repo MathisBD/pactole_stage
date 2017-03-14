@@ -665,16 +665,39 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
    unfold CGF.Aom_eq in HIso_eq.
    f_equiv.
    apply HIso_eq.
+   apply DGF.pgm_compat.
+   cut (ConfigA.eq
+          (λ id : Names.ident,
+                  {|
+                    DGF.Config.loc := Isomorphism.section (Iso.sim_V sim0)
+                                                          (DGF.Config.loc (c id));
+                    DGF.Config.robot_info := 
+                      {|
+                        DGF.Config.source := DGF.Config.source
+                                               (DGF.Config.robot_info (c id));
+                        DGF.Config.target := DGF.Config.target
+                                               (DGF.Config.robot_info (c id)) |} |})
+          (λ id : Names.ident,
+                  {|
+                    DGF.Config.loc := Isomorphism.section (Iso.sim_V sim)
+                                                          (DGF.Config.loc (c id));
+                    DGF.Config.robot_info := DGF.Config.robot_info (c id) |})).
+   intros Heq_conf.
+   rewrite <- Heq_conf.
    f_equiv.
-   unfold CGF.Spect.eq, CGF.View.eq.
-   try repeat split;simpl; try reflexivity. 
+   f_equiv.
+   intros id.
+   split; simpl; try reflexivity.
+   f_equiv.
+   now rewrite HIso_eq.
+   now split.
+   f_equiv.
    apply HIso_eq.
-   reflexivity.
  - simpl in *; assumption.
 Save.
 
 Theorem graph_equivC2D : forall (c c': CGF.Config.t) (rbg:CGF.robogram) (da : CGF.demonic_action),
-(forall g, CGF.group_good_def c g) ->
+(CGF.group_good_def c) ->
 CGF.Config.eq c' (CGF.round rbg da c) ->
 exists da', DGF.Config.eq (ConfigC2D c') (DGF.round (rbgC2D rbg) da' (ConfigC2D c)).
 Proof.
@@ -709,7 +732,7 @@ unfold rcD2C(* , ConfigC2D, LocC2D *) in *;
 repeat try (split; simpl);
 try (destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e)));
   unfold CGF.ri_loc_def in *;
-  destruct Hrid as (v1, (v2, (Hv1, Hv2)));
+  destruct (Hrid g) as (v1, (v2, (Hv1, Hv2)));
   destruct (CGF.Config.loc (c (Good g))) as [lld| eld pld] eqn : HlocD;
   destruct (CGF.Config.target (CGF.Config.robot_info (c (Good g)))) as [ltd | etd ptd] eqn : HtgtD;
   destruct (CGF.Config.source (CGF.Config.robot_info (c (Good g)))) as [lsd | esd psd] eqn : HsrcD;
@@ -743,9 +766,10 @@ try (now (try (now simpl in *);
   destruct (DGF.Config.eq_RobotConf_dec _);
   try discriminate;
   destruct n; unfold rcC2D, LocC2D; rewrite HlocD, HtgtD, HsrcD; repeat try split; try now simpl)).
-     + unfold ConfigC2D, LocC2D in *; simpl in *;
-         destruct (CGF.Config.loc (c (Good g))) eqn : Habsurd; rewrite HlocD in Habsurd; try discriminate.
-       destruct dist1 eqn : Hbool.
++ unfold ConfigC2D, LocC2D in *; simpl in *.
+  destruct (CGF.Config.loc (c (Good g))) eqn : Habsurd;
+    rewrite HlocD in Habsurd; try discriminate.
+  destruct dist1 eqn : Hbool.
   - destruct (CGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
     destruct (CGF.Config.target (CGF.Config.robot_info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
     destruct (CGF.Config.source (CGF.Config.robot_info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
@@ -1337,101 +1361,79 @@ try (now (try (now simpl in *);
       by now rewrite HstepA.
       unfold DGF.Aom_eq in Hiso_eq_01.
       rewrite <- Hlocpgm, <- Hpgm.
+      apply CGF.pgm_compat.
+      f_equiv.
+      
       unfold CGF.Spect.from_config, DGF.Spect.from_config.
-      assert (CGF.Spect.eq ((CGF.projectS (CGF.Config.map (CGF.apply_sim sim0) c)))
-                           (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c))).
-      unfold CGF.projectS, CGF.Config.map, CGF.apply_sim, CGF.projectS_loc,
-      DGF.Config.map, DGF.apply_sim, ConfigC2D, LocC2D;
-        simpl.
-      unfold CGF.Spect.eq, CGF.View.eq, ConfigA.eq.
-      intro id.
-      simpl in *.
-      destruct (CGF.Config.loc (c id)) eqn : Hloc_id;
-        destruct (CGF.Config.source (CGF.Config.robot_info (c id))) eqn : Hsrc_id;
-        destruct (CGF.Config.target (CGF.Config.robot_info (c id))) eqn : Htgt_id;
-        simpl;
-      try rewrite Hsrc_id, Htgt_id; split;try reflexivity; simpl;
-        try (now apply Hiso_eq_01);
-        try (assert (Hthresh1 := Iso.sim_threshold sim1 e0));
-        try (assert (Hthresh0 := Iso.sim_threshold sim0 e0));
-      destruct (Rle_dec
-         (CGF.project_p
-            (CGF.project_p_inv
-               (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))))
-         (Graph.threshold (Isomorphism.section (Iso.sim_E sim0) e0))),
-      (Rle_dec (CGF.project_p p) (Graph.threshold e0));
-        try (assert (Hcrois := Iso.sim_croiss sim);
-             rewrite <- CGF.inv_pro in r);
-      try (destruct (Iso.sim_morphism sim1 e0) as (Hsu, Htu);
-      try (rewrite Hsu); (try rewrite Htu);
-      f_equiv;
-      now apply Hiso_eq_01);
-      try (assert (Hbound := CGF.project_p_image p);
-      now apply (Iso.sim_bound_T sim0) in Hbound);
-      try (destruct n;
-        assert (forall x y, Isomorphism.retraction (Iso.sim_T sim) x
-                            < Isomorphism.retraction (Iso.sim_T sim) y -> x < y)%R
-             by (intros;
-        specialize (Hcrois (Isomorphism.retraction (Iso.sim_T sim) x)
-                           (Isomorphism.retraction (Iso.sim_T sim) y) H);
-          do 2 rewrite Isomorphism.section_retraction in Hcrois;
-            try apply Iso.Req_equiv;
-          assumption);
-          assert (forall x y,  x <= y ->
-                               Isomorphism.retraction (Iso.sim_T sim) x
-                               <= Isomorphism.retraction (Iso.sim_T sim) y)%R
-            by (
-                intuition;
-                assert (contra : forall (A B: Prop), (A -> B) -> (~B -> ~A))
-                  by intuition;
-                assert (Hc := contra
-                                (Isomorphism.retraction (Iso.sim_T sim) y <
-                                Isomorphism.retraction (Iso.sim_T sim) x)%R (y < x)%R
-                                (H y x));
-          apply Rle_not_lt in H0;
-          apply Rnot_lt_le;
-          apply (Hc H0));
-          destruct (H0 (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
-                       (Isomorphism.section (Iso.sim_T sim0) (Graph.threshold e0)));
-          try (now rewrite Hthresh0);
-        rewrite <- HstepD_compat in H1;
-        do 2 rewrite Isomorphism.retraction_section in H1;try apply Iso.Req_equiv;
-        lra);
-     try (destruct n;
-          rewrite <- CGF.inv_pro; try (rewrite <- (Iso.sim_bound_T sim0);
-      apply CGF.project_p_image);
-          rewrite <- Hthresh0;
-      destruct (Rle_lt_or_eq_dec (CGF.project_p p) (Graph.threshold e0)) as [rx|ex];
-      try (assumption);
-      try assert (Hcrois := Iso.sim_croiss sim0 rx);
-      try (lra);
-      try (now rewrite ex)). 
-      now apply (CGF.pgm_compat rbg).
+      f_equiv.
+      unfold DGF.Config.list.
+      cut (ConfigA.eq (CGF.projectS (CGF.Config.map (CGF.apply_sim sim0) c))
+                      (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c))).
+      intros Hc_eq; now rewrite Hc_eq.
+      intros id;
+      unfold CGF.projectS, CGF.projectS_loc, CGF.Config.map, CGF.apply_sim, DGF.Config.map, DGF.apply_sim, ConfigC2D, LocC2D; simpl.
+      destruct (CGF.Config.loc (c id)) eqn : Hloc_id; simpl in *.
+      split; simpl.
+      f_equiv.
+      apply Hiso_eq_01.
+      split; simpl.
+      reflexivity.
+      reflexivity.
+      split; simpl; try reflexivity.
+      rewrite <- (CGF.inv_pro).
+      assert (Hcroiss := Iso.sim_croiss sim0).
+      destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
+      destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
+         (Graph.threshold (Isomorphism.section (Iso.sim_E sim0) e0))).
+      f_equiv.
+      destruct (Iso.sim_morphism sim0 e0) as (Hs_sim, Ht_sim).
+      rewrite <- Hs_sim;
+        now apply Hiso_eq_01.
+      destruct n;
+      destruct (Rle_lt_or_eq_dec (CGF.project_p p) (Graph.threshold e0)). 
+      assumption.
+      apply Hcroiss in r0.
+      rewrite (Iso.sim_threshold sim0) in r0.
+      now left.
+      rewrite <- (Iso.sim_threshold sim0).
+      now rewrite e1.
+      assert (Graph.threshold e0 < CGF.project_p p)%R by lra.
+      apply Hcroiss in H.
+      rewrite (Iso.sim_threshold sim0) in H.
+      lra.
+      f_equiv.
+      destruct (Iso.sim_morphism sim0 e0) as (Hs_sim, Ht_sim).
+      rewrite <- Ht_sim;
+        now apply Hiso_eq_01.
+      apply (Iso.sim_bound_T).
+      apply CGF.project_p_image.
+      unfold CGF.Config.map, CGF.apply_sim.
+      simpl.
+      rewrite HlocD.
+      simpl.
+      f_equiv; apply Hiso_eq_01.
     }
-    now unfold CGF.Location.eq, CGF.loc_eq.
-    assert (Hrange := CGF.pgm_range rbg (CGF.Spect.from_config (CGF.Config.map (CGF.apply_sim sim0) c)) g ((ConfigA.loc
-                (CGF.Spect.from_config (CGF.Config.map (CGF.apply_sim sim0) c)
-                                       (Good g))))).
-    assert (Graph.Veq (ConfigA.loc ((CGF.Spect.from_config (CGF.Config.map (CGF.apply_sim sim0) c)) (Good g))) l).
-    unfold CGF.Spect.from_config, CGF.Config.map, CGF.apply_sim, CGF.projectS, CGF.projectS_loc; simpl.
-    rewrite HlocD; simpl.
+    now unfold CGF.Location.eq, CGF.loc_eq in *.
+    assert (Hrange :=
+              CGF.pgm_range rbg
+                            (CGF.Spect.from_config
+                               (CGF.Config.map (CGF.apply_sim sim0) c))
+                            (CGF.Config.loc
+                               (CGF.Config.map (CGF.apply_sim sim0) c (Good g)))
+           (Isomorphism.section (Iso.sim_V sim0) lld)).
     destruct Hrange as (lrange, (erange, (Hfalse, _))).
+    unfold CGF.loc_eq, CGF.Config.map, CGF.apply_sim in *.
+    rewrite HlocD; simpl in *.
     reflexivity.
     rewrite Hfalse in Hpgm.
     discriminate.
+  - assert (Hrange :=
+              CGF.pgm_range rbg
+                            (DGF.Spect.from_config
+                               (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c)))
+                            (CGF.Loc (Isomorphism.section (Iso.sim_V sim1) lld))
+                            (Isomorphism.section (Iso.sim_V sim1) lld)).
     destruct Hrange as (lrange, (erange, (Hfalse, _))).
-    reflexivity.
-    rewrite Hfalse in Hpgm.
-    discriminate.
-  - assert (Hrange := CGF.pgm_range rbg  (DGF.Spect.from_config
-                 (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c))) g  (ConfigA.loc
-                (DGF.Spect.from_config
-                   (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c)) 
-                   (Good g)))).
-    destruct Hrange as (lrange, (erange, (Hfalse, _))).
-    unfold DGF.Spect.from_config, DGF.Config.map, DGF.apply_sim, ConfigC2D, LocC2D.
-    simpl.
-    
     reflexivity.
     rewrite Hfalse in Hlocpgm.
     discriminate.

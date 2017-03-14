@@ -1516,13 +1516,15 @@ Qed.
 
  (* A configuration where the robots are moved of [k] nodes compared to the 
     starting configuration is moved of [((k-1) mod n) mod n] nodes after a round. *)
-Lemma rec_conf_equiv : forall conf k, Config.eq conf (f_conf config1 k)
-                                      -> Config.eq (round r da1 conf) (f_conf config1 (Loc.add k (Loc.opp m))).
+Lemma rec_conf_equiv : forall conf k,
+    Config.eq conf (f_conf config1 k)
+    -> Config.eq (round r da1 conf) (f_conf config1 (Loc.add k (Loc.opp m))).
 Proof.
   intros conf k Heq [g|b]; try ImpByz b.
   split.
   + assert (Hequiv : equiv_conf config1 conf) by (now exists k).
     unfold f_conf in *.
+    unfold round.
     simpl in *.
     specialize (Heq (Good g)).
     destruct Heq as (Heq, _).

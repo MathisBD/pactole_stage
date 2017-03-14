@@ -471,7 +471,7 @@ Qed.
              Config.robot_info := Config.robot_info (config id) |}
         | Good g =>
           let local_conf := Config.map (apply_sim sim) config in
-          let target := (sim⁻¹).(Iso.sim_V) (r (Spect.from_config local_conf) pos) in
+          let target := (sim⁻¹).(Iso.sim_V) (r (Spect.from_config local_conf) (Config.loc (local_conf (Good g)))) in
           {| Config.loc := pos ; 
              Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
         end
@@ -514,6 +514,8 @@ Qed.
       intros.
       rewrite Hstep.
       now rewrite Hconf.
+      f_equiv.
+      apply Hstep.
       apply Hconf.
     + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
   Qed.

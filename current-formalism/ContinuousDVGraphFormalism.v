@@ -961,35 +961,6 @@ Qed.
   return a null reference. *)
 
 
-(** A demon is fully synchronous for one particular good robot g at the first
-    step. *)
-Inductive FullySynchronousForOne g d:Prop :=
-  ImmediatelyFair2: forall conf,
-    is_Active (step (demon_head d) g (conf g)) = true -> 
-                      FullySynchronousForOne g d.
-
-(** A demon is fully synchronous if it is fully synchronous for all good robots
-    at all step. *)
-CoInductive FullySynchronous d :=
-  NextfullySynch:
-    (forall g, FullySynchronousForOne g d)
-    -> FullySynchronous (demon_tail d)
-    -> FullySynchronous d.
-
-
-(** A locally synchronous demon is fair *)
-Lemma local_fully_synchronous_implies_fair:
-  forall g d, FullySynchronousForOne g d -> LocallyFairForOne g d.
-Proof. induction 1. now (constructor 1 with conf). Qed.
-
-(** A synchronous demon is fair *)
-Lemma fully_synchronous_implies_fair: forall d, FullySynchronous d -> Fair d.
-Proof.
-  coinduction fully_fair.
-  - intro. apply local_fully_synchronous_implies_fair. apply X.
-  - now inversion X.
-Qed.
-
 
 
 Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
@@ -1248,7 +1219,55 @@ Qed.
   cofix proof. constructor. simpl. assumption.
   apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
   Qed.
+(*
+(** A demon is fully synchronous for one particular good robot g at the first
+    step. *)
+Inductive FullySynchronousForOne g d:Prop :=
+  ImmediatelyFair2: forall conf,
+    (step (demon_head d) g (conf g)) = Moving 1 \/
+    is_Active (step (demon_head d) g (conf g)) = true -> 
+                      FullySynchronousForOne g d.
 
+(** A demon is fully synchronous if it is fully synchronous for all good robots
+    at all step. *)
+CoInductive FullySynchronous d :=
+  NextfullySynch:
+    ((forall g, FullySynchronousForOne g d)
+     /\ forall g conf aom, (step (demon_head d) g (conf g)) = aom)
+    -> FullySynchronous (demon_tail d) 
+    -> FullySynchronous d.
+
+
+(** A locally synchronous demon is fair *)
+ Lemma local_fully_synchronous_implies_fair:
+  forall g d, FullySynchronousForOne g d -> LocallyFairForOne g d.
+ Proof.
+   induction 1.
+   destruct H.
+   constructor 2 with conf.
+   rewrite H.
+   now unfold is_Active.
+   constructor 1 with conf.
+   admit
+   (* normalement si on a [Moving 1], alors a la prochaine étape, 
+on aura forcement un [step] qui donnera un [Active].*).
+   now (constructor 1 with conf). Qed.
+
+(** A synchronous demon is fair *)
+Lemma fully_synchronous_implies_fair: forall d, FullySynchronous d -> Fair d.
+Proof.
+  coinduction fully_fair.
+  - intro.
+    destruct X.
+    destruct (f g).
+    constructor 1.
+    apply local_fully_synchronous_implies_fair. apply X.
+  - now inversion X.
+Qed.
+
+*)
+
+  
 (** * recursive property *)
 
 (** ** starting point 

@@ -9,7 +9,7 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.AtomicGraphFormalism.
+Require Import Pactole.ContinuousDVGraphFormalism.
 Require Import Pactole.Exploration.ZnZ.Definitions.
 Require Import Pactole.Exploration.ZnZ.ImpossibilityKDividesN.
 Require Import Pactole.GraphEquivalence.
@@ -365,9 +365,7 @@ Module Names := Robots.Make (N).
 
 Module ConfigA := Configurations.Make (LocationA)(N)(Names).
 
-Module DGF_G := DGF (MakeRing)(N)(Names)(LocationA)(ConfigA).
 
-Module AGF_G := AGF (MakeRing)(N)(Names)(LocationA)(ConfigA).
 
 
 
