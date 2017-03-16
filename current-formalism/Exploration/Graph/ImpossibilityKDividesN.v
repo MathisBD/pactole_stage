@@ -215,43 +215,99 @@ Qed.
    its computaion [round]. *)
 
 Import Equiv.DGF.
+(* probleme, si je veux faire un demon synchrone, j'ai besoin de savoir quand tous
+les robots sont arrivé à leur cible, donc j'ai besoin d'information sur la 
+configuartion. si j'ai des info sur la configuration dans l'action démoniaque, 
+je dois avoir des information sur l'execution pour le demon.
+et l'execution depend du démon. donc double dépendance, donc problème.
+
+possibilité d'avoir une variable globale comptant le nombre de robots arrivé?
+et de mettre a jour cette variable dans round via une fonction ? et de regarder
+cette variable dans l'action démoniaque au moment de dire si on bouge ou non?
+
+ *)
 
 Definition da1 : demonic_action.
-
 simple refine {|
   relocate_byz := fun b => Loc.origin;
-  step :=  (lift_conf (fun (_ : Names.G) Rconf =>
-                           if Loc.eq_dec (Config.loc (Rconf))
-                                  (Config.target (Config.robot_info (Rconf)))
-                           then Active (trans (Config.loc (Rconf)) )
-                           else Moving true ))|}.
+  step :=  (lift_conf (fun (g : Names.G) Rconf =>
+                         if Config.eq_RobotConf_dec Rconf (config (Good g))
+                         then
+                           (if Loc.eq_dec (Config.loc (config (Good g)))
+                                       (Config.target (Config.robot_info
+                                                         (config (Good g))))
+                            then Active (trans (Config.loc (Rconf)) )
+                            else Moving true)
+                         else Moving false))
+       |}.
 Proof.
   - intuition.
     unfold lift_conf in H.
-    destruct (Loc.eq_dec (Config.loc Rconfig)
-                         (Config.target (Config.robot_info Rconfig)));
-      try discriminate; try assumption.
+    unfold Loc.eq_dec, Names.G in *.
+    destruct (Config.eq_RobotConf_dec Rconfig (config (Good g0))); try discriminate.
+    destruct (LocationA.eq_dec (Config.loc (config (Good g0)))
+                                       (Config.target (Config.robot_info
+                                                         (config (Good g0)))));
+      try discriminate.    
+    destruct e as (Hl, (_, Ht)).
+    unfold Location.eq, LocationA.eq.
+    now rewrite Hl, Ht.
   - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
-    destruct Hrc, H0, (Loc.eq_dec (Config.loc rc1) (Config.target (Config.robot_info rc1))) , (Loc.eq_dec (Config.loc rc2) (Config.target (Config.robot_info rc2))); try (now auto);
-      unfold Gra.Veq, Loc.eq, LocationA.eq, MakeRing.Veq in *.
+    unfold Names.G.
+    destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
+    destruct (Config.eq_RobotConf_dec rc1 (config (Good g1))),
+    (Config.eq_RobotConf_dec rc2 (config (Good g2))),
+    (Loc.eq_dec (Config.loc (config (Good g1)))
+          (Config.target (Config.robot_info (config (Good g1))))),
+    (Loc.eq_dec (Config.loc (config (Good g2)))
+          (Config.target (Config.robot_info (config (Good g2)))));
+      try (now auto); try (now rewrite Hg in *).
     unfold Aom_eq.
     apply trans_compat.
-    apply H.
-    rewrite H, H1 in e.
-    contradiction.
-    rewrite <-H, <-H1 in e.
-    contradiction.
+    apply Hl_rc.
+    destruct n0.
+    destruct e as (Hel, (Hes, Het)).
+    repeat split; try rewrite <- Hl_rc, Hel, Hg;
+      try rewrite <- Hs_rc, Hes, Hg;
+      try rewrite <- Ht_rc, Het, Hg;
+    try reflexivity.
+    destruct n0.
+    destruct e as (Hel, (Hes, Het)).
+    repeat split; try rewrite <- Hl_rc, Hel, Hg;
+      try rewrite <- Hs_rc, Hes, Hg;
+      try rewrite <- Ht_rc, Het, Hg;
+      try reflexivity.
+    destruct n0.
+    destruct e as (Hel, (Hes, Het)).
+    repeat split; try rewrite Hl_rc, Hel, Hg;
+      try rewrite Hs_rc, Hes, Hg;
+      try rewrite Ht_rc, Het, Hg;
+      try reflexivity.
+    destruct n0.
+    destruct e as (Hel, (Hes, Het)).
+    repeat split; try rewrite Hl_rc, Hel, Hg;
+      try rewrite Hs_rc, Hes, Hg;
+      try rewrite Ht_rc, Het, Hg;
+      try reflexivity.
     apply Fin.case0. exact b1.    
 Defined.
 
-CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
 
-Lemma bad_demon1_tail : demon_tail bad_demon1 = bad_demon1.
-Proof. reflexivity. Qed.
+CoFixpoint bad_demon1 e : demon := NextDemon (da1 (execution_head e)) (bad_demon1 (execution_tail e)).
 
-Lemma bad_demon1_head : demon_head bad_demon1 = da1.
-Proof. reflexivity. Qed.
+Lemma bad_demon1_tail : forall e,
+    demon_tail (bad_demon1 e) = (bad_demon1 (execution_tail e)).
+Proof.
+  intros.
+  unfold bad_demon1.
+  now simpl in *.
+Qed.
+  
+Lemma bad_demon1_head : forall e,
+    demon_head (bad_demon1 e) = (da1 (execution_head e)).
+Proof. intros; unfold bad_demon1; reflexivity. Qed.
 
+                           
 (*
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof.
@@ -360,16 +416,31 @@ Qed.
 (* utiliser le prédicat d'équivalence (equiv_conf) pour prouver le spectre. *)
 
   
-Lemma round1_move_g : forall g0, ~ Loc.eq (Config.loc (round r da1 config1 (Good g0)))
-                        (Config.loc (config1 (Good g0))).
+Lemma round1_move_g : forall g0,
+    ~ Loc.eq (Config.loc (round r (da1 config1) config1 (Good g0)))
+      (Config.loc (config1 (Good g0))).
 Proof.
   intros g0.
   unfold move in Hmove.
   simpl in *.
   assert (Hpgm := pgm_range r (!! config1) (create_conf1 g0)).
   unfold round.
-  destruct (step da1 (Good g0) (config1 (Good g0))) eqn : Hstep.
+  destruct (step (da1 config1) (Good g0) (config1 (Good g0))) eqn : Hstep.
   +  simpl in *.
+     destruct (Config.eq_RobotConf_dec
+              {|
+              Config.loc := create_conf1 g0;
+              Config.robot_info := {|
+                                   Config.source := create_conf1 g0;
+                                   Config.target := Loc.add Loc.unit
+                                                      (create_conf1 g0) |} |}
+              {|
+              Config.loc := create_conf1 g0;
+              Config.robot_info := {|
+                                   Config.source := create_conf1 g0;
+                                   Config.target := Loc.add Loc.unit
+                                                            (create_conf1 g0) |} |});
+       try (destruct n0; reflexivity).
      destruct (Loc.eq_dec (create_conf1 g0) (Loc.add Loc.unit (create_conf1 g0))) eqn : Hact; try discriminate.
      assert (Heq_d : dist = true).
      { destruct dist; auto.
@@ -378,12 +449,12 @@ Proof.
      rewrite Heq_d.
      simpl.
      intros He; symmetry in He; contradiction.
-  + assert (Hdelta := step_delta da1 g0 (config1 (Good g0)) sim Hstep).
+  + assert (Hdelta := step_delta (da1 config1) g0 (config1 (Good g0)) sim Hstep).
     simpl in *.
     now generalize (neq_a_1a Hdelta).
 Qed.
 
-Lemma moving_no_stop : ~Stopped (execute r bad_demon1 config1).
+Lemma moving_no_stop : ~Stopped (execute r (bad_demon1 config1) config1).
 Proof.
   intros Hs.
   generalize n_sup_1; intros Hn1.
