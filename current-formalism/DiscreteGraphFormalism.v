@@ -259,7 +259,8 @@ Module Type (Spectrum, GraphDef)
                           /\ opt_eq Graph.Eeq (Graph.find_edge lpre lpost) (Some e)
     }.
 
-  (* pgm s l a du dens si l est dans dans s (s[l] > 0) *)
+  (* pgm s l a du dens si l est dans dans s (s[l] > 0)
+     si l n'est pas occupée par un robot, on doit revoyer un voisin (à cause de pgm_range). *)
   
   Global Existing Instance pgm_compat.
 
@@ -322,8 +323,8 @@ Module Type (Spectrum, GraphDef)
   (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
   Inductive Active_or_Moving := 
-  | Moving (dist : bool)                   (* moving ratio *)
-  | Active (sim : Iso.t). (* change of referential *)
+  | Moving (dist : bool)                   (* moving ratio, le cas "false" facilite l'équivalence entre les modèles. *)
+  | Active (sim : Iso.t).                  (* change of referential *)
 
   Definition Aom_eq (a1 a2: Active_or_Moving) :=
     match a1, a2 with
@@ -348,6 +349,8 @@ Module Type (Spectrum, GraphDef)
     now rewrite H12, H23.
   Qed.
 
+(* on a besoin de Rconfig car ça permet de faire la conversion d'un modèle à l'autre *)
+  
   Record demonic_action :=
     {
       relocate_byz : Names.B -> Location.t;
@@ -355,7 +358,8 @@ Module Type (Spectrum, GraphDef)
       step_delta : forall g Rconfig sim,
           Aom_eq (step (Good g) Rconfig) (Active sim) ->
           Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target);
-      step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step}.
+      step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step
+    }.
   Set Implicit Arguments.
   
   Definition da_eq (da1 da2 : demonic_action) :=
@@ -451,29 +455,33 @@ Module Type (Spectrum, GraphDef)
   
   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
     {| Config.loc := (Iso.sim_V sim) (Config.loc infoR);
-       Config.robot_info := Config.robot_info infoR |}.
+       Config.robot_info :=
+         {| Config.source := (Iso.sim_V sim) (Config.source (Config.robot_info infoR));
+            Config.target := (Iso.sim_V sim) (Config.target (Config.robot_info infoR))
+         |}
+    |}.
   
   Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
   Proof.
     intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
     - apply Hsim, Hconf.
-    - apply Hconf.
+    - split; apply Hsim, Hconf.
   Qed.
   Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
   
   Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
     (** for a given robot, we compute the new configuration *)
     fun id =>
-      let conf := config id in
-      let pos := conf.(Config.loc) in
-      match da.(step) id conf with (** first see whether the robot is activated *)
-      | Moving false => conf
+      let rconf := config id in
+      let pos := rconf.(Config.loc) in
+      match da.(step) id rconf with (** first see whether the robot is activated *)
+      | Moving false => rconf
       | Moving true =>
         match id with
         | Good g =>
-          let tgt := conf.(Config.robot_info).(Config.target) in
-          {| Config.loc := tgt ; Config.robot_info := conf.(Config.robot_info) |}
-        | Byz b => conf
+          let tgt := rconf.(Config.robot_info).(Config.target) in
+          {| Config.loc := tgt ; Config.robot_info := rconf.(Config.robot_info) |}
+        | Byz b => rconf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
@@ -481,8 +489,9 @@ Module Type (Spectrum, GraphDef)
           {| Config.loc := da.(relocate_byz) b;
              Config.robot_info := Config.robot_info (config id) |}
         | Good g =>
-          let local_conf := Config.map (apply_sim sim) config in
-          let target := (sim⁻¹).(Iso.sim_V) (r (Spect.from_config local_conf) (Config.loc (local_conf (Good g)))) in
+          let local_config := Config.map (apply_sim sim) config in
+          let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
+          let target := (sim⁻¹).(Iso.sim_V) local_target in
           {| Config.loc := pos ; 
              Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
         end
@@ -552,60 +561,89 @@ Module Type (Spectrum, GraphDef)
 
   (** ** Fairness *)
 
-  (** A [demon] is [Fair] if at any time it will later activate any robot. *)
-  Inductive LocallyFairForOne g (d : demon) (e : execution) : Prop :=
-  | ImmediatelyFair : (exists sim,
-      Aom_eq (step (demon_head d) (Good g) ((execution_head e) (Good g))) (Active sim))
-      → LocallyFairForOne g d e
-  | LaterFair : (exists dist,
-      Aom_eq (step (demon_head d) (Good g) ((execution_head e) (Good g))) (Moving dist))
-      → LocallyFairForOne g (demon_tail d) (execution_tail e)
-      → LocallyFairForOne g d e.
+  (* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       changer execution en un (execute r d config) 
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+*)
   
-  CoInductive Fair (d : demon) e : Prop :=
-    AlwaysFair : (∀ g, LocallyFairForOne g d e) →
-                 Fair (demon_tail d) (execution_tail e) →
-                 Fair d e.
+  (** A [demon] is [Fair] if at any time it will later activate any robot. *)
+  Inductive LocallyFairForOne g (d : demon) r e : Prop :=
+  | ImmediatelyFair :
+      (exists conf,
+        eeq (execute r d conf) e) -> 
+      (exists sim,
+          Aom_eq (step (demon_head d) (Good g) ((execution_head e)
+                                                  (Good g))) (Active sim))
+      → LocallyFairForOne g d r e
+  | LaterFair :
+      (exists conf,
+        eeq (execute r d conf) e) -> 
+      (exists dist,
+          Aom_eq (step (demon_head d) (Good g) ((execution_head e) (Good g)))
+                 (Moving dist))
+      → LocallyFairForOne g (demon_tail d) r (execution_tail e)
+      → LocallyFairForOne g d r e.
+  
+  CoInductive Fair (d : demon) r e : Prop :=
+    AlwaysFair : (∀ g, LocallyFairForOne g d r e) →
+                 Fair (demon_tail d) r (execution_tail e) →
+                 Fair d r e.
   
   (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
-  Inductive Between g h (d : demon) e: nat -> Prop :=
+  Inductive Between g h (d : demon) r e: nat -> Prop :=
   | kReset : forall k,
+      (exists conf,
+        eeq (execute r d conf) e) -> 
       (exists sim, Aom_eq (step (demon_head d) (Good g) ((execution_head e) (Good g)))
                           (Active sim))
-      -> Between g h d e k 
+      -> Between g h d r e k 
   | kReduce : forall k,
-      (exists dist, Aom_eq (step (demon_head d) (Good g) ((execution_head e) (Good g)))
+      (exists conf,
+        eeq (execute r d conf) e) -> 
+      (exists dist, Aom_eq (step (demon_head d) (Good g) ((execution_head e)
+                                                            (Good g)))
                            (Moving dist))
-      -> (exists sim, Aom_eq (step (demon_head d) (Good h) ((execution_head e) (Good h)))
+      -> (exists sim, Aom_eq (step (demon_head d) (Good h) ((execution_head e)
+                                                              (Good h)))
                              (Active sim))
-      -> Between g h (demon_tail d) (execution_tail e) k -> Between g h d e (S k)
+      -> Between g h (demon_tail d) r (execution_tail e) k -> Between g h d r e (S k)
   | kStall : forall k,
-      (exists dist, Aom_eq (step (demon_head d) (Good g) ((execution_head e) (Good g)))
+      (exists conf,
+        eeq (execute r d conf) e) -> 
+      (exists dist, Aom_eq (step (demon_head d) (Good g) ((execution_head e)
+                                                            (Good g)))
                            (Moving dist)) -> 
-      (exists dist, Aom_eq (step (demon_head d) (Good h) ((execution_head e) (Good h)))
+      (exists dist, Aom_eq (step (demon_head d) (Good h) ((execution_head e)
+                                                            (Good h)))
                            (Moving dist)) ->
-      Between g h (demon_tail d) (execution_tail e) k -> Between g h d e k.
+      Between g h (demon_tail d) r (execution_tail e) k -> Between g h d r e k.
 
   (* k-fair: every robot g is activated within at most k activation of any other robot h *)
-  CoInductive kFair k (d : demon) e: Prop :=
-    AlwayskFair : (forall g h, Between g h d e k) ->
-                  kFair k (demon_tail d) (execution_tail e) ->
-                  kFair k d e.
+  CoInductive kFair k (d : demon) r e: Prop :=
+    AlwayskFair : (forall g h, Between g h d r e k) ->
+                  kFair k (demon_tail d)r  (execution_tail e) ->
+                  kFair k d r e.
 
-  Lemma LocallyFairForOne_compat_aux : forall g d1 d2 e1 e2,
-      deq d1 d2 -> eeq e1 e2 ->
-      LocallyFairForOne g d1 e1 -> LocallyFairForOne g d2 e2.
+  Lemma LocallyFairForOne_compat_aux : forall g d1 d2 e1 e2 r1 r2,
+      deq d1 d2 -> eeq e1 e2 -> req r1 r2 -> 
+      LocallyFairForOne g d1 r1 e1 -> LocallyFairForOne g d2 r2 e2.
   Proof.
-    intros g da1 da2 e1 e2 Hda He Hfair.
-    revert da2 Hda e2 He. induction Hfair; intros da2 Hda.
+    intros g da1 da2 e1 e2 r1 r2 Hda He Hr Hfair.
+    revert da2 Hda e2 He r2 Hr. induction Hfair; intros da2 Hda.
     + constructor 1.
       destruct H.
+      exists x.
+      now rewrite <- He, <- Hr, <- Hda.
+      destruct H0.
       exists x.
       rewrite <- He.
       rewrite da_eq_step_Active; try eassumption. now f_equiv.
     + constructor 2.
       destruct H.
+      exists x.
+      now rewrite <- He, <- Hr, <- Hda.
+      destruct H0.
       exists x.
       rewrite <- He.
       rewrite da_eq_step_Moving; try eassumption. now f_equiv.
@@ -613,65 +651,71 @@ Module Type (Spectrum, GraphDef)
       now f_equiv.
   Qed.
 
-  Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> eeq ==> iff) LocallyFairForOne.
+  Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> req ==> eeq ==> iff) LocallyFairForOne.
   Proof.
     repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
-  Lemma Fair_compat_aux : forall d1 d2 e1 e2,
-      deq d1 d2 -> eeq e1 e2 -> Fair d1 e1 -> Fair d2 e2.
+  Lemma Fair_compat_aux : forall d1 d2 e1 e2 r1 r2,
+      deq d1 d2 -> eeq e1 e2 -> req r1 r2 -> Fair d1 r1 e1 -> Fair d2 r2 e2.
   Proof.
-    cofix be_fair. intros d1 d2 e1 e2 Hdeq Heeq Hfair.
+    cofix be_fair. intros d1 d2 e1 e2 r1 r2 Hdeq Heeq Hreq Hfair.
     destruct Hfair as [Hnow Hlater]. constructor.
-    + intros. now rewrite <- Hdeq, <- Heeq.
+    + intros. now rewrite <- Hdeq, <- Heeq, <- Hreq.
     + eapply be_fair; try eassumption; now f_equiv.
   Qed.
 
-  Instance Fair_compat : Proper (deq ==> eeq ==> iff) Fair.
+  Instance Fair_compat : Proper (deq ==> req ==> eeq ==> iff) Fair.
   Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
 
-  Lemma Between_compat_aux : forall g h k d1 d2 e1 e2,
-      deq d1 d2 -> eeq e1 e2 -> Between g h d1 e1 k -> Between g h d2 e2 k.
+  Lemma Between_compat_aux : forall g h k d1 d2 r1 r2 e1 e2,
+      deq d1 d2 -> eeq e1 e2 -> req r1 r2 ->
+      Between g h d1 r1 e1 k -> Between g h d2 r2 e2 k.
   Proof.
-    intros g h k d1 d2 e1 e2 Hdeq Heeq bet.
-    revert d2 Hdeq e2 Heeq. induction bet; intros d2 Hdeq e2 Heeq.
+    intros g h k d1 d2 r1 r2 e1 e2 Hdeq Heeq Hreq bet.
+    revert d2 Hdeq e2 Heeq r2 Hreq. induction bet; intros d2 Hdeq e2 Heeq.
     + constructor 1.
       destruct H.
+      exists x.
+      now rewrite <- Heeq, <- Hreq, <- Hdeq.
+      destruct H0.
       exists x.
       rewrite <- Heeq.
       rewrite <- da_eq_step_Active; try eassumption. now f_equiv.
     + constructor 2.
-    - destruct H; exists x; rewrite <- Heeq;
-        rewrite <- da_eq_step_Moving; try eassumption. now f_equiv.
+    - destruct H; exists x; now rewrite <- Heeq, <- Hreq, <- Hdeq.
     - destruct H0; exists x; rewrite <- Heeq;
+        rewrite <- da_eq_step_Moving; try eassumption. now f_equiv.
+    - destruct H1; exists x; rewrite <- Heeq;
         rewrite <- da_eq_step_Active; try eassumption. now f_equiv.
     - apply IHbet; now f_equiv.
     + constructor 3.
-    - destruct H; exists x; rewrite <- Heeq;
-        rewrite <- da_eq_step_Moving; try eassumption. now f_equiv.
+    - destruct H; exists x; now rewrite <- Heeq, <- Hreq, <- Hdeq.
     - destruct H0; exists x; rewrite <- Heeq;
+        rewrite <- da_eq_step_Moving; try eassumption. now f_equiv.
+    - destruct H1; exists x; rewrite <- Heeq;
         rewrite <- da_eq_step_Moving; try eassumption. now f_equiv.
     - apply IHbet; now f_equiv.
   Qed.
 
-  Instance Between_compat : Proper (eq ==> eq ==> deq ==> eeq ==> eq ==> iff) Between.
+  Instance Between_compat : Proper (eq ==> eq ==> deq ==> req ==> eeq ==> eq ==> iff) Between.
   Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
-  Lemma kFair_compat_aux : forall k d1 d2 e1 e2,
-      deq d1 d2 -> eeq e1 e2 -> kFair k d1 e1 -> kFair k d2 e2.
+  Lemma kFair_compat_aux : forall k d1 d2 r1 r2 e1 e2,
+      deq d1 d2 -> req r1 r2 -> eeq e1 e2 -> kFair k d1 r1 e1 -> kFair k d2 r2 e2.
   Proof.
-    cofix be_fair. intros k d1 d2 e1 e2 Hdeq Heeq Hkfair.
+    cofix be_fair. intros k d1 d2 e1 e2 r1 r2 Hdeq Hreq Heeq Hkfair.
     destruct Hkfair as [Hnow Hlater]. constructor.
-    + intros. now rewrite <- Hdeq, <- Heeq.
+    + intros. now rewrite <- Hdeq, <- Heeq, <- Hreq.
     + eapply be_fair; try eassumption; now f_equiv.
   Qed.
 
-  Instance kFair_compat : Proper (eq ==> deq ==> eeq ==> iff) kFair.
+  Instance kFair_compat : Proper (eq ==> deq ==> req ==> eeq ==> iff) kFair.
   Proof. repeat intro. subst. split; intro; now eapply kFair_compat_aux; eauto. Qed.
 
-  Lemma Between_LocallyFair : forall g (d : demon) h e k,
-      Between g h d e k -> LocallyFairForOne g d e.
+  Lemma Between_LocallyFair : forall g (d : demon) h r e k,
+      Between g h d r e k -> LocallyFairForOne g d r e.
   Proof.
-    intros g h d e k Hg. induction Hg.
+    intros g h d r e k Hg. induction Hg.
     now constructor 1.
     now constructor 2.
     now constructor 2.
@@ -681,15 +725,15 @@ Module Type (Spectrum, GraphDef)
     fairness hypothesis is necessary, otherwise the robot may never be
     activated. *)
   Lemma Between_same :
-    forall g (d : demon) k e, LocallyFairForOne g d e -> Between g g d e k.
+    forall g (d : demon) k r e, LocallyFairForOne g d r e -> Between g g d r e k.
   Proof.
-    intros g d e k Hd. induction Hd.
+    intros g d r e k Hd. induction Hd.
     now constructor 1.
     now constructor 3.
   Qed.
 
   (** A k-fair demon is fair. *)
-  Theorem kFair_Fair : forall k (d : demon) e, kFair k d e -> Fair d e.
+  Theorem kFair_Fair : forall k (d : demon) r e, kFair k d r e -> Fair d r e.
   Proof.
     coinduction kfair_is_fair.
     destruct H as [Hbetween H]. intro. apply Between_LocallyFair with g k.
@@ -698,10 +742,10 @@ Module Type (Spectrum, GraphDef)
   Qed.
 
   (** [Between g h d k] is monotonic on [k]. *)
-  Lemma Between_mon : forall g h (d : demon) e k,
-      Between g h d e k -> forall k', (k <= k')%nat -> Between g h d e k'.
+  Lemma Between_mon : forall g h (d : demon) r e k,
+      Between g h d r e k -> forall k', (k <= k')%nat -> Between g h d r e k'.
   Proof.
-    intros g h d e k Hd. induction Hd; intros k' Hk.
+    intros g h d r e k Hd. induction Hd; intros k' Hk.
     now constructor 1.
     destruct k'.
     now inversion Hk.
@@ -710,29 +754,31 @@ Module Type (Spectrum, GraphDef)
   Qed.
 
   (** [kFair k d] is monotonic on [k] relation. *)
-  Theorem kFair_mon : forall k (d: demon) e,
-      kFair k d e -> forall k', (k <= k')%nat -> kFair k' d e.
+  Theorem kFair_mon : forall k (d: demon) r e,
+      kFair k d r e -> forall k', (k <= k')%nat -> kFair k' d r e.
   Proof.
     coinduction fair; destruct H.
     - intros. now apply Between_mon with k.
     - now apply (fair k).
   Qed.
 
-  Theorem Fair0 : forall d e,
-      kFair 0 d e->
+  Theorem Fair0 : forall d r e,
+      (exists conf,
+          eeq (execute r d conf) e) -> 
+      kFair 0 d r e->
       forall g h,
         (exists dist,
             Aom_eq ((demon_head d).(step) (Good g) ((execution_head e) (Good g))) (Moving dist))
         <-> exists dist,
           Aom_eq ((demon_head d).(step) (Good h) ((execution_head e) (Good h))) (Moving dist).
   Proof.
-    intros d e Hd g h. destruct Hd as [Hd _]. split; intro H.
-    assert (Hg := Hd g h). inversion Hg. destruct H0, H.
-    rewrite H in H0; now simpl in *.
-    destruct H1; exists x. assumption.
-    assert (Hh := Hd h g). inversion Hh. destruct H0, H.
-    rewrite H in H0; now simpl in *.
-    destruct H1; exists x. assumption.
+    intros d r e Hconf Hd g h. destruct Hd as [Hd _]. split; intro H.
+    assert (Hg := Hd g h). inversion Hg. destruct H1, H.
+    rewrite H in H1; now simpl in *.
+    destruct H2; exists x. assumption.
+    assert (Hh := Hd h g). inversion Hh. destruct H1, H.
+    rewrite H in H1; now simpl in *.
+    destruct H2; exists x. assumption.
   Qed.
 
   (** ** Full synchronicity
@@ -749,17 +795,20 @@ Module Type (Spectrum, GraphDef)
   (*       (step (demon_head d) g) ≠ None →  *)
   (*       FullySynchronousForOne g d. *)
 
-  Definition StepSynchronism d (conf : Config.t) : Prop := forall g, exists aom,
+  Definition StepSynchronism d e r : Prop := forall g,
+      (exists conf,
+          eeq (execute r d conf) e) -> 
+      exists aom,
         ((exists sim, Aom_eq aom (Active sim)) \/ Aom_eq aom (Moving true)) /\
-        step (demon_head d) (Good g) (conf (Good g)) = aom .
+        step (demon_head d) (Good g) ((execution_head e) (Good g)) = aom .
   
   (** A demon is fully synchronous if it is fully synchronous for all good robots
     at all step. *)
-  CoInductive FullySynchronous d e := 
+  CoInductive FullySynchronous d r e := 
     NextfullySynch:
-      StepSynchronism d (execution_head e)
-      → FullySynchronous (demon_tail d) (execution_tail e)
-      → FullySynchronous d e.
+      StepSynchronism d e r
+      → FullySynchronous (demon_tail d) r (execution_tail e)
+      → FullySynchronous d r e.
 
 
   

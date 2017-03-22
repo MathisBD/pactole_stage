@@ -237,15 +237,15 @@ now rewrite He.
 Qed.
 
 CoInductive Stopped (e : execution) : Prop :=
-Stop : stop_now e -> Stopped (execution_tail e) -> Stopped e.
+Stop : stop_now e -> Stopped (execution_tail (execution_tail e)) -> Stopped e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
 intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
   - destruct H. now rewrite <- He.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
+  - destruct H as [_ H], He as [_ [ _ He]]. apply (rec _ _ He H).
   - destruct H. now rewrite He.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
+  - destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
 Qed.
 
 Inductive Will_be_visited (loc: Loc.t) (e : execution) : Prop :=
@@ -254,7 +254,7 @@ Inductive Will_be_visited (loc: Loc.t) (e : execution) : Prop :=
  
 Inductive Will_stop (e : execution) : Prop :=
  | Now_s : Stopped e -> Will_stop e
- | Later_s : Will_stop (execution_tail e) -> Will_stop e.
+ | Later_s : Will_stop (execution_tail (execution_tail e)) -> Will_stop e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
@@ -272,10 +272,10 @@ Proof.
 intros e1 e2 He. split; intros Hw.
 + revert e2 He. induction Hw as [e1 | e1 He1 IHe1]; intros e2 He.
   - apply Now_s. now rewrite <-He.
-  - apply Later_s, IHe1, He.
+  - apply Later_s, IHe1. now repeat f_equiv.
 + revert e1 He. induction Hw as [e2 | e2 He2 IHe2]; intros e1 He.
   - apply Now_s. now rewrite He.
-  - apply Later_s, IHe2, He.
+  - apply Later_s, IHe2. now repeat f_equiv.
 Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
