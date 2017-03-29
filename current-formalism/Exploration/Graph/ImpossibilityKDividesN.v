@@ -180,7 +180,8 @@ Variable r : Equiv.DGF.robogram.
     The new configuration is the same up to scaling, translation and rotation.  *)
 
 (** **  First case: the robots exchange their positions  **)
-
+(* changer conf1 pour que loc et tgt soient égales *)
+stop
 Lemma conf1_1 : forall idg g0: Names.G, exists g2:Names.G,
       Loc.eq (create_conf1 idg)
              (Loc.add (create_conf1 g0) (Loc.opp (create_conf1 g2))).
@@ -224,40 +225,53 @@ cette variable dans l'action démoniaque au moment de dire si on bouge ou non?
  *)
 
 Definition da1 : demonic_action.
-simple refine {|
-  relocate_byz := fun b => Loc.origin;
-  step :=  (lift_conf (fun (g : Names.G) Rconf =>
-                         if Loc.eq_dec (Config.loc (Rconf))
-                                       (Config.target (Config.robot_info
-                                                         (Rconf)))
-                         then 
-                           Active (trans (Config.loc (Rconf)))
-                         else
-                           Moving true))
-
-       |}.
-Proof.
-  - intuition.
-    unfold lift_conf in H.
-    unfold Loc.eq_dec, Names.G in *.
-    destruct (LocationA.eq_dec (Config.loc Rconfig)
-                                       (Config.target (Config.robot_info
-                                                         Rconfig)));
-      try (now simpl in *); try assumption.    
-  - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
-    unfold Names.G.
-    destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
-    destruct 
-    (Loc.eq_dec (Config.loc rc1)
-          (Config.target (Config.robot_info rc1))),
-    (Loc.eq_dec (Config.loc rc2)
-          (Config.target (Config.robot_info rc2)));
-      try (now auto); try (now rewrite Hl_rc, Ht_rc in *).
-    apply Fin.case0. exact b1.    
-Defined.
-
-
-CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
+  refine
+    {|
+      relocate_byz := fun b => Loc.origin;
+      step :=  (lift_conf (fun (g : Names.G) Rconf =>
+                             if Loc.eq_dec (Config.loc (Rconf))
+                                           (Config.target (Config.robot_info
+                                                             (Rconf)))
+                             then 
+                               Active (trans (Config.loc (Rconf)))
+                             else
+                               Moving true))
+                 
+    |}.
+  Proof.
+    - intuition.
+      unfold lift_conf in H.
+      unfold Loc.eq_dec, Names.G in *.
+      destruct (LocationA.eq_dec (Config.loc Rconfig)
+                                 (Config.target (Config.robot_info
+                                                   Rconfig)));
+        try assumption;
+        now simpl in *.
+    - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
+      unfold Names.G.
+      destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
+      destruct 
+        (Loc.eq_dec (Config.loc rc1)
+                    (Config.target (Config.robot_info rc1))),
+      (Loc.eq_dec (Config.loc rc2)
+                  (Config.target (Config.robot_info rc2)));
+        try (now auto);
+        now rewrite Hl_rc, Ht_rc in *.
+      apply Fin.case0.
+      exact b1.    
+  Defined.
+  
+  Definition da2 : demonic_action.
+    refine {|
+        relocate_byz := fun b => Loc.origin;
+        step := fun _ _ => Moving true |}.
+  Proof.
+    - intros.
+      now simpl in *.
+    - intros _ _ _ _ _ _. reflexivity.
+  Defined.
+    
+CoFixpoint bad_demon1 : demon := NextDemon da1 (NextDemon da2 bad_demon1).
 
 Lemma bad_demon1_tail : 
     demon_tail bad_demon1 = bad_demon1.
@@ -325,6 +339,7 @@ Lemma round_2_simplify :
     -> Config.eq
          (round r da1 (round r da1 conf))
          (fun id =>
+            
             match id with
             | Byz b => {| Config.loc := relocate_byz da1 b;
                           Config.robot_info := Config.robot_info (conf (Byz b)) |}
@@ -346,6 +361,12 @@ Lemma round_2_simplify :
                                (Config.robot_info
                                   (conf (Good g)))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
                                                                           local_target in
+                if (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g))))
+                               new_target)
+                then {| Config.loc := Config.target (Config.robot_info (conf id));
+                        Config.robot_info := Config.robot_info (conf id)
+                     |}
+                else
                 {| Config.loc := Config.target (Config.robot_info (conf (Good g)));
                    Config.robot_info :=
                      {| Config.source := Config.target
@@ -365,40 +386,53 @@ Proof.
                          (Config.target (Config.robot_info (conf (Good g)))));
       try now destruct n1.
     simpl in *.
-    repeat split;simpl.
     assert (Hconf_eq' :
               Config.eq
-                (fun id => {|
+                (fun id =>
+                   
+                   {|
                        Config.loc := Config.target
                                        (Config.robot_info (conf id));
                        Config.robot_info := Config.robot_info (conf id) |})
-                (fun id : Names.ident =>
-                  match
-                    lift_conf
-                      (fun (_ : Names.G) (Rconf : Config.RobotConf) =>
-                       if
-                        Loc.eq_dec (Config.loc Rconf)
-                          (Config.target (Config.robot_info Rconf))
-                       then Active (trans (Config.loc Rconf))
-                       else Moving true) id (conf id)
-                  with
-                  | Moving true =>
-                      match id with
-                      | Good _ =>
-                          {|
-                          Config.loc := Config.target (Config.robot_info (conf id));
-                          Config.robot_info := Config.robot_info (conf id) |}
-                      | Byz _ => conf id
-                      end
-                  | Moving false => conf id
-                  | Active sim =>
-                      match id with
-                      | Good g0 =>
-                          {|
-                          Config.loc := Config.loc (conf id);
-                          Config.robot_info := {|
-                                               Config.source := Config.loc (conf id);
-                                               Config.target := Isomorphism.retraction
+               (fun id : Names.ident =>
+                         match
+                           lift_conf
+                             (fun (_ : Names.G) (Rconf : Config.RobotConf) =>
+                              if
+                               Loc.eq_dec (Config.loc Rconf)
+                                 (Config.target (Config.robot_info Rconf))
+                              then Active (trans (Config.loc Rconf))
+                              else Moving true) id (conf id)
+                         with
+                         | Moving true =>
+                             match id with
+                             | Good _ =>
+                                 {|
+                                 Config.loc := Config.target
+                                                 (Config.robot_info (conf id));
+                                 Config.robot_info := Config.robot_info (conf id) |}
+                             | Byz _ => conf id
+                             end
+                         | Moving false => conf id
+                         | Active sim =>
+                             match id with
+                             | Good g0 =>
+                                 if
+                                  Location.eq_dec (Config.loc (conf id))
+                                    (Isomorphism.retraction 
+                                       (Iso.Iso.sim_V sim)
+                                       (r (!! (Config.map (apply_sim sim) conf))
+                                          (Isomorphism.section 
+                                             (Iso.Iso.sim_V sim)
+                                             (Config.loc (conf (Good g0))))))
+                                 then conf id
+                                 else
+                                  {|
+                                  Config.loc := Config.loc (conf id);
+                                  Config.robot_info := {|
+                                                       Config.source := Config.loc
+                                                       (conf id);
+                                                       Config.target := Isomorphism.retraction
                                                        (Iso.Iso.sim_V sim)
                                                        (r
                                                        (!!
@@ -407,12 +441,12 @@ Proof.
                                                        (Isomorphism.section
                                                        (Iso.Iso.sim_V sim)
                                                        (Config.loc (conf (Good g0))))) |} |}
-                      | Byz _ =>
-                          {|
-                          Config.loc := Loc.origin;
-                          Config.robot_info := Config.robot_info (conf id) |}
-                      end
-                  end)).
+                             | Byz _ =>
+                                 {|
+                                 Config.loc := Loc.origin;
+                                 Config.robot_info := Config.robot_info (conf id) |}
+                             end
+                         end)).
     {
       intros [g0| b]; try ImpByz b.
       unfold lift_conf.
@@ -429,9 +463,164 @@ Proof.
                   (trans (Config.target (Config.robot_info (conf (Good g))))))
                (apply_sim_compat (reflexivity _))).
     specialize (Hcompat _ _ Hconf_eq').
-    rewrite <- Hcompat.
+    assert (Hspect :=
+              Spect.from_config_compat _ _ (Hcompat)).
+    clear Hcompat.
+    assert (Hrbg := pgm_compat r _ _ Hspect ((Loc.add (Config.target (Config.robot_info (conf (Good g))))
+                                                      (Loc.opp (Config.target (Config.robot_info (conf (Good g)))))))
+                               _ (reflexivity _)).
+    destruct (Location.eq_dec (Config.target (Config.robot_info (conf (Good g))))
+            (Loc.add
+               (r
+                  (!!
+                     (Config.map
+                        (apply_sim
+                           (trans
+                              (Config.target (Config.robot_info (conf (Good g))))))
+                        (fun id : Names.ident =>
+                         match
+                           lift_conf
+                             (fun (_ : Names.G) (Rconf : Config.RobotConf) =>
+                              if
+                               Loc.eq_dec (Config.loc Rconf)
+                                 (Config.target (Config.robot_info Rconf))
+                              then Active (trans (Config.loc Rconf))
+                              else Moving true) id (conf id)
+                         with
+                         | Moving true =>
+                             match id with
+                             | Good _ =>
+                                 {|
+                                 Config.loc := Config.target
+                                                 (Config.robot_info (conf id));
+                                 Config.robot_info := Config.robot_info (conf id) |}
+                             | Byz _ => conf id
+                             end
+                         | Moving false => conf id
+                         | Active sim =>
+                             match id with
+                             | Good g0 =>
+                                 if
+                                  Location.eq_dec (Config.loc (conf id))
+                                    (Isomorphism.retraction 
+                                       (Iso.Iso.sim_V sim)
+                                       (r (!! (Config.map (apply_sim sim) conf))
+                                          (Isomorphism.section 
+                                             (Iso.Iso.sim_V sim)
+                                             (Config.loc (conf (Good g0))))))
+                                 then conf id
+                                 else
+                                  {|
+                                  Config.loc := Config.loc (conf id);
+                                  Config.robot_info := {|
+                                                       Config.source := Config.loc
+                                                       (conf id);
+                                                       Config.target := Isomorphism.retraction
+                                                       (Iso.Iso.sim_V sim)
+                                                       (r
+                                                       (!!
+                                                       (Config.map 
+                                                       (apply_sim sim) conf))
+                                                       (Isomorphism.section
+                                                       (Iso.Iso.sim_V sim)
+                                                       (Config.loc (conf (Good g0))))) |} |}
+                             | Byz _ =>
+                                 {|
+                                 Config.loc := Loc.origin;
+                                 Config.robot_info := Config.robot_info (conf id) |}
+                             end
+                         end)))
+                  (Loc.add (Config.target (Config.robot_info (conf (Good g))))
+                     (Loc.opp (Config.target (Config.robot_info (conf (Good g)))))))
+               (Config.target (Config.robot_info (conf (Good g))))));
+      rewrite <- Hrbg in *.
+    repeat split;simpl.
     repeat rewrite Loc.add_opp in *.
-    unfold Config.map, apply_sim, trans; simpl in *.
+    unfold Config.map, apply_sim, trans in *; simpl in *.
+    clear Hconf_eq' Hrbg Hspect.
+    destruct (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g))))
+            (Loc.add
+               (r
+                  (!!
+                     (fun id : Names.ident =>
+                      {|
+                      Config.loc := Loc.add
+                                      (Config.target (Config.robot_info (conf id)))
+                                      (Loc.opp
+                                         (Config.target
+                                            (Config.robot_info (conf (Good g)))));
+                      Config.robot_info := {|
+                                           Config.source := Loc.add
+                                                       (Config.source
+                                                       (Config.robot_info (conf id)))
+                                                       (Loc.opp
+                                                       (Config.target
+                                                       (Config.robot_info
+                                                       (conf (Good g)))));
+                                           Config.target := Loc.add
+                                                       (Config.target
+                                                       (Config.robot_info (conf id)))
+                                                       (Loc.opp
+                                                       (Config.target
+                                                       (Config.robot_info
+                                                       (conf (Good g))))) |} |}))
+                  (Loc.add (Config.target (Config.robot_info (conf (Good g))))
+                     (Loc.opp (Config.target (Config.robot_info (conf (Good g)))))))
+               (Config.target (Config.robot_info (conf (Good g))))));
+    repeat rewrite Loc.add_opp in *;
+    now simpl.
+    destruct (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g))))
+               (Loc.add
+                  (r
+                     (!!
+                        (Config.map
+                           (apply_sim
+                              (trans (Config.target (Config.robot_info (conf (Good g))))))
+                           (fun id : Names.ident =>
+                            {|
+                            Config.loc := Config.target (Config.robot_info (conf id));
+                            Config.robot_info := Config.robot_info (conf id) |})))
+                     (Loc.add (Config.target (Config.robot_info (conf (Good g))))
+                        (Loc.opp (Config.target (Config.robot_info (conf (Good g)))))))
+                  (Config.target (Config.robot_info (conf (Good g))))));
+    rewrite Loc.add_opp in *.
+    now simpl in *.
+    simpl.
+    now destruct n1.
+    destruct (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g))))
+               (Loc.add
+                  (r
+                     (!!
+                        (Config.map
+                           (apply_sim
+                              (trans (Config.target (Config.robot_info (conf (Good g))))))
+                           (fun id : Names.ident =>
+                            {|
+                            Config.loc := Config.target (Config.robot_info (conf id));
+                            Config.robot_info := Config.robot_info (conf id) |})))
+                     (Loc.add (Config.target (Config.robot_info (conf (Good g))))
+                        (Loc.opp (Config.target (Config.robot_info (conf (Good g)))))))
+                  (Config.target (Config.robot_info (conf (Good g))))));
+      rewrite Loc.add_opp in *.
+    now simpl.
+    now destruct n1.
+    simpl.
+    destruct (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g))))
+         (Loc.add
+            (r
+               (!!
+                  (Config.map
+                     (apply_sim (trans (Config.target (Config.robot_info (conf (Good g))))))
+                     (fun id : Names.ident =>
+                      {|
+                      Config.loc := Config.target (Config.robot_info (conf id));
+                      Config.robot_info := Config.robot_info (conf id) |})))
+               (Loc.add (Config.target (Config.robot_info (conf (Good g))))
+                  (Loc.opp (Config.target (Config.robot_info (conf (Good g)))))))
+            (Config.target (Config.robot_info (conf (Good g)))))).
+    now destruct n1.
+    repeat split; simpl.
+    rewrite <- Hrbg.
     reflexivity.
   + ImpByz b.
 Qed.
@@ -546,7 +735,7 @@ Proof.
   rewrite round_2_simplify in Hs.
   specialize (Hs (Good g)).
   simpl in *.
-  unfold Config.map, apply_sim, trans in *; simpl in *.
+  unfold Config.map, apply_sim, trans in Hs; simpl in *.
   unfold Config.eq_RobotConf in Hs.
   destruct Hs as (Hl, (Hs, Ht)).
   simpl in *.
@@ -557,8 +746,85 @@ Proof.
   simpl in *.
   destruct (Loc.eq_dec (create_conf1 g) (Loc.add Loc.unit (create_conf1 g)));
     simpl in *.
+  destruct (Location.eq_dec (create_conf1 g)
+                    (Loc.add
+                       (r (!! (Config.map (apply_sim (trans (create_conf1 g))) config1))
+                          (Loc.add (create_conf1 g) (Loc.opp (create_conf1 g))))
+                       (create_conf1 g))); simpl in *;
   now destruct Hfalse.
-  now destruct n0.
+  destruct (Loc.eq_dec (Loc.add Loc.unit (create_conf1 g))
+                   (Loc.add
+                      (r
+                         (!!
+                            (fun id : Names.ident =>
+                             {|
+                             Config.loc := Loc.add
+                                             (Config.target (Config.robot_info (config1 id)))
+                                             (Loc.opp (Loc.add Loc.unit (create_conf1 g)));
+                             Config.robot_info := {|
+                                                  Config.source := Loc.add
+                                                                   (Config.source
+                                                                   (Config.robot_info
+                                                                   (config1 id)))
+                                                                   (Loc.opp
+                                                                   (Loc.add Loc.unit
+                                                                   (create_conf1 g)));
+                                                  Config.target := Loc.add
+                                                                   (Config.target
+                                                                   (Config.robot_info
+                                                                   (config1 id)))
+                                                                   (Loc.opp
+                                                                   (Loc.add Loc.unit
+                                                                   (create_conf1 g))) |} |}))
+                         (Loc.add (Loc.add Loc.unit (create_conf1 g))
+                            (Loc.opp (Loc.add Loc.unit (create_conf1 g)))))
+                      (Loc.add Loc.unit (create_conf1 g)))); simpl in *.
+  specialize (Hmove (Loc.add (Loc.add Loc.unit (create_conf1 g))
+                              (Loc.opp (Loc.add Loc.unit (create_conf1 g))))
+                    ((round r da1 config1) (Good g))).
+  assert (Loc.eq (r
+              (!!
+                 (fun id : Names.ident =>
+                  {|
+                  Config.loc := Loc.add (Config.target (Config.robot_info (config1 id)))
+                                  (Loc.opp (Loc.add Loc.unit (create_conf1 g)));
+                  Config.robot_info := {|
+                                       Config.source := Loc.add
+                                                          (Config.source
+                                                             (Config.robot_info (config1 id)))
+                                                          (Loc.opp
+                                                             (Loc.add Loc.unit (create_conf1 g)));
+                                       Config.target := Loc.add
+                                                          (Config.target
+                                                             (Config.robot_info (config1 id)))
+                                                          (Loc.opp
+                                                             (Loc.add Loc.unit (create_conf1 g))) |} |}))
+              (Loc.add (Loc.add Loc.unit (create_conf1 g))
+                       (Loc.opp (Loc.add Loc.unit (create_conf1 g)))))
+                 m).
+  {
+    rewrite <- Hmove.
+    apply pgm_compat.
+    apply Spect.from_config_compat.
+    intros [g0|b]; try (clear Hfalse; ImpByz b).
+    unfold Config.map, apply_sim, trans; simpl in *.
+    destruct (Loc.eq_dec (create_conf1 g0) (Loc.add Loc.unit (create_conf1 g0)));
+      try now apply neq_a_1a in e0.
+    simpl.
+    unfold round.
+    simpl.
+    rewrite Loc.add_opp in *.
+    destruct (Loc.eq_dec (create_conf1 g)
+                         (Loc.add Loc.unit (create_conf1 g)));
+      try now apply neq_a_1a in e0.
+    simpl.
+    reflexivity.
+    reflexivity.
+  }
+  rewrite H in *.
+  rewrite Hm in e;
+    now apply neq_a_1a in e.
+  now apply neq_a_1a in Hs.
   intros g Hfalse.
   unfold config1 in *; simpl in *.
   now apply neq_a_1a in Hfalse.
@@ -1085,103 +1351,431 @@ Proof.
                                                      (Config.robot_info (config1 (Good g0))))))
                                 (round r da1 config1)))
            (Haux conf g0 Hequiv) Loc.origin _ (reflexivity _)).
+    assert (Hmove' := Hmove).
     specialize (Hmove Loc.origin (config1 (Good g0))).
     rewrite Hmove,Hm in Hmove_eq.
     simpl in *.
-    specialize (H (Good g0)).
-    destruct H as (Hl, (Hs, Ht)).
-    repeat split;simpl.
-    unfold round.
-    simpl.
-    edestruct (Loc.eq_dec (Config.loc (conf (Good g0)))
-                          (Config.target (Config.robot_info (conf (Good g0))))).
-    rewrite Ht, Hl in e.
-    unfold f_conf; simpl in *.
-    apply Loc.add_reg_l in e.
-    now apply neq_a_1a in e.
-    simpl in *.
-    destruct (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g0))))
-                         (Config.target (Config.robot_info (conf (Good g0)))));
-      try now destruct n1.
-    simpl in *.
-    rewrite Ht.
-    rewrite Loc.add_assoc.
-    rewrite Hm; fold ImpossibilityKDividesN.Loc.unit Loc.unit.
-    reflexivity.
-    unfold round.
-    simpl.
-    edestruct (Loc.eq_dec (Config.loc (conf (Good g0)))
-                          (Config.target (Config.robot_info (conf (Good g0))))).
-    rewrite Ht, Hl in e.
-    unfold f_conf; simpl in *.
-    apply Loc.add_reg_l in e.
-    now apply neq_a_1a in e.
-    simpl in *.
-    destruct (Loc.eq_dec (Config.target (Config.robot_info (conf (Good g0))))
-                         (Config.target (Config.robot_info (conf (Good g0)))));
-      try now destruct n1.
-    simpl in *.
-    rewrite Ht.
-    rewrite Loc.add_assoc.
-    rewrite Hm; fold ImpossibilityKDividesN.Loc.unit Loc.unit.
-    reflexivity.
     destruct (Loc.eq_dec (Config.loc (round r da1 conf (Good g0)))
-                 (Config.target (Config.robot_info (round r da1 conf (Good g0))))).
-    simpl in *.
-    rewrite Loc.add_opp.
-    assert (Hr_round_eq :
-              Config.eq
-                (Config.map
-                   (apply_sim (trans (Config.loc (round r da1 conf (Good g0)))))
-                   (round r da1 conf))
-                (Config.map
-                   (apply_sim (trans (Config.target (Config.robot_info
-                                                       (conf (Good g0))))))
-                   (round r da1 conf))).
-    {
-      unfold round at 1.
-      simpl.
-      destruct (Loc.eq_dec (Config.loc (conf (Good g0)))
-                           (Config.target (Config.robot_info (conf (Good g0))))).
-      rewrite Hl ,Ht in e0.
-      now apply Loc.add_reg_l, neq_a_1a in e0.
-      now simpl.
-    }
-    assert (Hr_round := pgm_compat r (!!
-              (Config.map
-                 (apply_sim (trans (Config.loc (round r da1 conf (Good g0)))))
-                 (round r da1 conf)))
-                                   (!!
-              (Config.map
-                 (apply_sim (trans (Config.target (Config.robot_info
-                                                     (conf (Good g0))))))
-                 (round r da1 conf))) (Spect.from_config_compat _ _ Hr_round_eq)
-                                   Loc.origin _ (reflexivity _)).
-    rewrite Hr_round.
-    rewrite Hmove_eq.
-    clear Hr_round_eq Hr_round Hmove_eq Haux Hmove.
-    unfold round in *.
-    simpl in *.
-    destruct (Loc.eq_dec (Config.loc (conf (Good g0)))
-                         (Config.target (Config.robot_info (conf (Good g0)))));
-      try (rewrite Ht, Hl in e0;
-    unfold f_conf; simpl in *;
-    now apply Loc.add_reg_l, neq_a_1a in e0).
-    simpl in *; 
-    rewrite Ht.
-    unfold Loc.unit, ImpossibilityKDividesN.Loc.unit.
-    rewrite Loc.add_assoc, (Loc.add_comm x).
-    rewrite Hm; fold ImpossibilityKDividesN.Loc.unit Loc.unit.
-    reflexivity.
-    unfold round in n0.
-    simpl in n0.
-    destruct (Loc.eq_dec (Config.loc (conf (Good g0)))
-                         (Config.target (Config.robot_info (conf (Good g0)))));
-      try (rewrite Ht, Hl in e;
-    unfold f_conf; simpl in *;
-    now apply Loc.add_reg_l, neq_a_1a in e).
-    simpl in n0.
-    now destruct n0.
+                         (Config.target (Config.robot_info (round r da1 conf (Good g0))))).
+    destruct ( Location.eq_dec (Config.loc (round r da1 conf (Good g0)))
+                               (Isomorphism.retraction
+                                  (Iso.Iso.sim_V
+                                     (trans (Config.loc (round r da1 conf (Good g0)))))
+                                  (r
+                                     (!!
+                                        (Config.map
+                                           (apply_sim
+                                              (trans (Config.loc (round r da1 conf (Good g0)))))
+                                           (round r da1 conf)))
+                                     (Isomorphism.section
+                                        (Iso.Iso.sim_V
+                                           (trans
+                                              (Config.loc (round r da1 conf (Good g0)))))
+                                        (Config.loc (round r da1 conf (Good g0))))))).
+    ++ unfold round in e0; simpl in *.
+       destruct (H (Good g0)) as (Hl, (Hs, Ht)).
+       edestruct (Loc.eq_dec (Config.loc (conf (Good g0)))
+                             (Config.target (Config.robot_info (conf (Good g0))))).
+       rewrite Ht, Hl in e1.
+       unfold f_conf; simpl in *.
+       apply Loc.add_reg_l in e1.
+       now apply neq_a_1a in e1.
+       simpl in *.
+       unfold lift_conf in *.
+       assert (Loc.eq
+                 m
+                 ((r
+                     (!!
+                        (Config.map
+                           (apply_sim (trans
+                                         (Config.target (Config.robot_info (conf (Good g0))))))
+                           (fun id : Names.ident =>
+                              match
+                                match id with
+                                | Good _ =>
+                                  fun Rconf : Config.RobotConf =>
+                                    if
+                                      Loc.eq_dec (Config.loc Rconf)
+                                                 (Config.target (Config.robot_info Rconf))
+                                    then Active (trans (Config.loc Rconf))
+                                    else Moving true
+                                | Byz b =>
+                                  Fin.case0
+                                    (fun _ : Names.Internals.B => Config.RobotConf
+                                                                  -> Active_or_Moving)
+                                    b
+                                end (conf id)
+                              with
+                              | Moving true =>
+                                match id with
+                                | Good _ =>
+                                  {|
+                                    Config.loc := Config.target (Config.robot_info (conf id));
+                                    Config.robot_info := Config.robot_info (conf id) |}
+                                | Byz _ => conf id
+                                end
+                              | Moving false => conf id
+                              | Active sim =>
+                                match id with
+                                | Good g =>
+                                  if
+                                    Location.eq_dec
+                                      (Config.loc (conf id))
+                                      (Isomorphism.retraction
+                                         (Iso.Iso.sim_V sim)
+                                         (r (!! (Config.map (apply_sim sim) conf))
+                                            (Isomorphism.section
+                                               (Iso.Iso.sim_V sim)
+                                               (Config.loc (conf (Good g))))))
+                                  then conf id
+                                  else
+                                    {|
+                                      Config.loc := Config.loc (conf id);
+                                      Config.robot_info :=
+                                        {|
+                                          Config.source := Config.loc (conf id);
+                                          Config.target :=
+                                            Isomorphism.retraction
+                                              (Iso.Iso.sim_V sim)
+                                              (r
+                                                 (!!
+                                                    (Config.map 
+                                                       (apply_sim sim) conf))
+                                                 (Isomorphism.section
+                                                    (Iso.Iso.sim_V sim)
+                                                    (Config.loc (conf (Good g))))) |} |}
+                                | Byz _ =>
+                                  {|
+                                    Config.loc := Loc.origin;
+                                    Config.robot_info := Config.robot_info (conf id) |}
+                                end
+                              end)))
+                     (Loc.add (Config.target (Config.robot_info (conf (Good g0))))
+                              (Loc.opp (Config.target
+                                          (Config.robot_info (conf (Good g0))))))))).
+       {
+         rewrite <- (Hmove' (Loc.add (Config.target (Config.robot_info (conf (Good g0))))
+                                     (Loc.opp
+                                        (Config.target (Config.robot_info (conf (Good g0))))))
+                            (config1 (Good g0))).
+         apply pgm_compat.
+         - apply Spect.from_config_compat.
+           intros [g'|b]; try ImpByz b.
+           unfold round; simpl.
+           unfold Config.map, apply_sim;
+             simpl.
+           destruct (Loc.eq_dec (create_conf1 g') (Loc.add Loc.unit (create_conf1 g')))
+             as [efalse|?];
+             try now apply neq_a_1a in efalse.
+           destruct (Loc.eq_dec (create_conf1 g0) (Loc.add Loc.unit (create_conf1 g0)))
+             as [efalse|?];
+             try now apply neq_a_1a in efalse.
+           simpl.
+           destruct (H (Good g')) as (Hl', (Hs', Ht')).
+           destruct (Loc.eq_dec (Config.loc (conf (Good g0)))
+                                (Config.target (Config.robot_info (conf (Good g0)))))
+             as [efalse|?],
+                (Loc.eq_dec (Config.loc (conf (Good g')))
+                            (Config.target (Config.robot_info (conf (Good g')))))
+               as [efalse'|?];
+             try rewrite Hl', Ht' in efalse';
+             try rewrite Hl, Ht in efalse;
+             try (unfold f_conf; simpl in *;
+                  apply Loc.add_reg_l in efalse;
+                  now apply neq_a_1a in efalse);
+             try (unfold f_conf; simpl in *;
+                  apply Loc.add_reg_l in efalse';
+                  now apply neq_a_1a in efalse').
+           simpl.
+           repeat split; simpl.
+           * rewrite Ht', Ht.
+             unfold f_conf.
+             simpl.
+             unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add,
+             ImpossibilityKDividesN.Loc.opp.
+             set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+             repeat rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same.
+             repeat rewrite <- Zdiv.Zplus_mod.
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             replace ((Loc.unit + create_conf1 g' + (0 - (Loc.unit + create_conf1 g0) mod N)))
+             with (((Loc.unit + create_conf1 g') - (Loc.unit + create_conf1 g0) mod N)) by omega.
+             rewrite Zdiv.Zminus_mod_idemp_r.
+             replace (Loc.unit + create_conf1 g' - (Loc.unit + create_conf1 g0))
+             with ( create_conf1 g' - create_conf1 g0) by omega.
+             replace (x + (Loc.unit + create_conf1 g') mod N +
+                      (0 - (x + (Loc.unit + create_conf1 g0)) mod N))
+             with ((x + (Loc.unit + create_conf1 g') mod N) -
+                   (x + (Loc.unit + create_conf1 g0)) mod N) by omega.
+             rewrite <- (Zdiv.Zminus_mod_idemp_l (x + _)).
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             rewrite <- Zdiv.Zminus_mod.
+             replace (x + (Loc.unit + create_conf1 g') - (x + (Loc.unit + create_conf1 g0)))
+             with (create_conf1 g' - create_conf1 g0) by omega.
+             reflexivity.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+           * rewrite Hs', Ht.
+             unfold f_conf; simpl.
+             unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add,
+             ImpossibilityKDividesN.Loc.opp.
+             set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+             repeat rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same.
+             rewrite Zdiv.Zplus_mod_idemp_r with (b := x).
+             repeat rewrite Zdiv.Zminus_mod_idemp_r.
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             repeat rewrite Zdiv.Zplus_mod_idemp_l.
+             replace (create_conf1 g' + (0 - (Loc.unit + create_conf1 g0)))
+             with (create_conf1 g' - Loc.unit - create_conf1 g0) by omega.
+             now replace (x + create_conf1 g' + (0 - (x + (Loc.unit + create_conf1 g0))))
+             with (create_conf1 g' - Loc.unit - create_conf1 g0) by omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+           * rewrite Ht', Ht.
+             unfold f_conf; simpl.
+             unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add,
+             ImpossibilityKDividesN.Loc.opp.
+             set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+             repeat rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same.
+             repeat rewrite <- Zdiv.Zplus_mod.
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             replace ((Loc.unit + create_conf1 g' + (0 - (Loc.unit + create_conf1 g0) mod N)))
+             with (((Loc.unit + create_conf1 g') - (Loc.unit + create_conf1 g0) mod N)) by omega.
+             rewrite Zdiv.Zminus_mod_idemp_r.
+             replace (Loc.unit + create_conf1 g' - (Loc.unit + create_conf1 g0))
+             with ( create_conf1 g' - create_conf1 g0) by omega.
+             replace (x + (Loc.unit + create_conf1 g') mod N +
+                      (0 - (x + (Loc.unit + create_conf1 g0)) mod N))
+             with ((x + (Loc.unit + create_conf1 g') mod N) -
+                   (x + (Loc.unit + create_conf1 g0)) mod N) by omega.
+             rewrite <- (Zdiv.Zminus_mod_idemp_l (x + _)).
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             rewrite <- Zdiv.Zminus_mod.
+             replace (x + (Loc.unit + create_conf1 g') - (x + (Loc.unit + create_conf1 g0)))
+             with (create_conf1 g' - create_conf1 g0) by omega.
+             reflexivity.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+         - reflexivity.
+       }
+       rewrite <- H0 in e0.
+       rewrite Hm in e0.
+       now apply neq_a_1a in e0.
+    ++ unfold round; simpl.
+       destruct ( Loc.eq_dec (Config.loc (conf (Good g0)))
+                             (Config.target (Config.robot_info (conf (Good g0)))));
+         destruct (H (Good g0)) as (Hl, (Hs, Ht)).
+       rewrite Ht, Hl in e0.
+       unfold f_conf in *.
+       simpl in *.
+       now apply Loc.add_reg_l, neq_a_1a in e0.
+       repeat split; simpl;
+         try (rewrite Ht;
+              unfold f_conf;
+              simpl;
+              now rewrite Hm, Loc.add_assoc).
+       assert (Loc.eq
+                 m
+                 ((r
+                     (!!
+                        (Config.map
+                           (apply_sim (trans
+                                         (Config.target (Config.robot_info (conf (Good g0))))))
+                           (fun id : Names.ident =>
+                              match
+                                match id with
+                                | Good _ =>
+                                  fun Rconf : Config.RobotConf =>
+                                    if
+                                      Loc.eq_dec (Config.loc Rconf)
+                                                 (Config.target (Config.robot_info Rconf))
+                                    then Active (trans (Config.loc Rconf))
+                                    else Moving true
+                                | Byz b =>
+                                  Fin.case0
+                                    (fun _ : Names.Internals.B => Config.RobotConf ->
+                                                                  Active_or_Moving)
+                                    b
+                                end (conf id)
+                              with
+                              | Moving true =>
+                                match id with
+                                | Good _ =>
+                                  {|
+                                    Config.loc := Config.target (Config.robot_info (conf id));
+                                    Config.robot_info := Config.robot_info (conf id) |}
+                                | Byz _ => conf id
+                                end
+                              | Moving false => conf id
+                              | Active sim =>
+                                match id with
+                                | Good g =>
+                                  if
+                                    Location.eq_dec
+                                      (Config.loc (conf id))
+                                      (Isomorphism.retraction
+                                         (Iso.Iso.sim_V sim)
+                                         (r (!! (Config.map (apply_sim sim) conf))
+                                            (Isomorphism.section
+                                               (Iso.Iso.sim_V sim)
+                                               (Config.loc (conf (Good g))))))
+                                  then conf id
+                                  else
+                                    {|
+                                      Config.loc := Config.loc (conf id);
+                                      Config.robot_info :=
+                                        {|
+                                          Config.source := Config.loc (conf id);
+                                          Config.target :=
+                                            Isomorphism.retraction
+                                              (Iso.Iso.sim_V sim)
+                                              (r
+                                                 (!!
+                                                    (Config.map 
+                                                       (apply_sim sim) conf))
+                                                 (Isomorphism.section
+                                                    (Iso.Iso.sim_V sim)
+                                                    (Config.loc (conf (Good g))))) |} |}
+                                | Byz _ =>
+                                  {|
+                                    Config.loc := Loc.origin;
+                                    Config.robot_info := Config.robot_info (conf id) |}
+                                end
+                              end)))
+                     (Loc.add (Config.target (Config.robot_info (conf (Good g0))))
+                              (Loc.opp (Config.target
+                                          (Config.robot_info (conf (Good g0))))))))).
+       {
+         rewrite <- (Hmove' (Loc.add (Config.target (Config.robot_info (conf (Good g0))))
+                                     (Loc.opp
+                                        (Config.target (Config.robot_info (conf (Good g0))))))
+                            (config1 (Good g0))).
+         apply pgm_compat.
+         - apply Spect.from_config_compat.
+           intros [g'|b]; try ImpByz b.
+           unfold round; simpl.
+           unfold Config.map, apply_sim;
+             simpl.
+           destruct (Loc.eq_dec (create_conf1 g') (Loc.add Loc.unit (create_conf1 g')))
+             as [efalse|?];
+             try now apply neq_a_1a in efalse.
+           destruct (Loc.eq_dec (create_conf1 g0) (Loc.add Loc.unit (create_conf1 g0)))
+             as [efalse|?];
+             try now apply neq_a_1a in efalse.
+           simpl.
+           destruct (H (Good g')) as (Hl', (Hs', Ht')).
+           destruct (Loc.eq_dec (Config.loc (conf (Good g0)))
+                                (Config.target (Config.robot_info (conf (Good g0)))))
+             as [efalse|?],
+                (Loc.eq_dec (Config.loc (conf (Good g')))
+                            (Config.target (Config.robot_info (conf (Good g')))))
+               as [efalse'|?];
+             try rewrite Hl', Ht' in efalse';
+             try rewrite Hl, Ht in efalse;
+             try (unfold f_conf; simpl in *;
+                  apply Loc.add_reg_l in efalse;
+                  now apply neq_a_1a in efalse);
+             try (unfold f_conf; simpl in *;
+                  apply Loc.add_reg_l in efalse';
+                  now apply neq_a_1a in efalse').
+           simpl.
+           repeat split; simpl.
+           * rewrite Ht', Ht.
+             unfold f_conf.
+             simpl.
+             unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add,
+             ImpossibilityKDividesN.Loc.opp.
+             set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+             repeat rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same.
+             repeat rewrite <- Zdiv.Zplus_mod.
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             replace ((Loc.unit + create_conf1 g' + (0 - (Loc.unit + create_conf1 g0) mod N)))
+             with (((Loc.unit + create_conf1 g') - (Loc.unit + create_conf1 g0) mod N)) by omega.
+             rewrite Zdiv.Zminus_mod_idemp_r.
+             replace (Loc.unit + create_conf1 g' - (Loc.unit + create_conf1 g0))
+             with ( create_conf1 g' - create_conf1 g0) by omega.
+             replace (x + (Loc.unit + create_conf1 g') mod N +
+                      (0 - (x + (Loc.unit + create_conf1 g0)) mod N))
+             with ((x + (Loc.unit + create_conf1 g') mod N) -
+                   (x + (Loc.unit + create_conf1 g0)) mod N) by omega.
+             rewrite <- (Zdiv.Zminus_mod_idemp_l (x + _)).
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             rewrite <- Zdiv.Zminus_mod.
+             replace (x + (Loc.unit + create_conf1 g') - (x + (Loc.unit + create_conf1 g0)))
+             with (create_conf1 g' - create_conf1 g0) by omega.
+             reflexivity.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+           * rewrite Hs', Ht.
+             unfold f_conf; simpl.
+             unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add,
+             ImpossibilityKDividesN.Loc.opp.
+             set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+             repeat rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same.
+             rewrite Zdiv.Zplus_mod_idemp_r with (b := x).
+             repeat rewrite Zdiv.Zminus_mod_idemp_r.
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             repeat rewrite Zdiv.Zplus_mod_idemp_l.
+             replace (create_conf1 g' + (0 - (Loc.unit + create_conf1 g0)))
+             with (create_conf1 g' - Loc.unit - create_conf1 g0) by omega.
+             now replace (x + create_conf1 g' + (0 - (x + (Loc.unit + create_conf1 g0))))
+             with (create_conf1 g' - Loc.unit - create_conf1 g0) by omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+           * rewrite Ht', Ht.
+             unfold f_conf; simpl.
+             unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add,
+             ImpossibilityKDividesN.Loc.opp.
+             set (N := Z.of_nat ImpossibilityKDividesN.def.n).
+             repeat rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same.
+             repeat rewrite <- Zdiv.Zplus_mod.
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             replace ((Loc.unit + create_conf1 g' + (0 - (Loc.unit + create_conf1 g0) mod N)))
+             with (((Loc.unit + create_conf1 g') - (Loc.unit + create_conf1 g0) mod N)) by omega.
+             rewrite Zdiv.Zminus_mod_idemp_r.
+             replace (Loc.unit + create_conf1 g' - (Loc.unit + create_conf1 g0))
+             with ( create_conf1 g' - create_conf1 g0) by omega.
+             replace (x + (Loc.unit + create_conf1 g') mod N +
+                      (0 - (x + (Loc.unit + create_conf1 g0)) mod N))
+             with ((x + (Loc.unit + create_conf1 g') mod N) -
+                   (x + (Loc.unit + create_conf1 g0)) mod N) by omega.
+             rewrite <- (Zdiv.Zminus_mod_idemp_l (x + _)).
+             repeat rewrite Zdiv.Zplus_mod_idemp_r.
+             rewrite <- Zdiv.Zminus_mod.
+             replace (x + (Loc.unit + create_conf1 g') - (x + (Loc.unit + create_conf1 g0)))
+             with (create_conf1 g' - create_conf1 g0) by omega.
+             reflexivity.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+             unfold N, ImpossibilityKDividesN.def.n;
+               generalize ImpossibilityKDividesN.n_sup_1; omega.
+         - reflexivity.
+       }
+       rewrite <- H0.
+       rewrite Ht;
+         unfold f_conf;
+         simpl;
+         rewrite Hm.
+       rewrite (Loc.add_comm x 1).
+       now rewrite (Loc.add_assoc).
+    ++ unfold round in *; simpl in *.
+       destruct n0.
+       destruct (Loc.eq_dec (Config.loc (conf (Good g0)))
+                            (Config.target (Config.robot_info (conf (Good g0))))).
+       destruct (H (Good g0)) as (Hl, (Hs, Ht)).
+       rewrite Hl, Ht in e.
+       unfold f_conf in *; simpl in *.
+       now apply Loc.add_reg_l, neq_a_1a in e.
+       now simpl in *.
 Qed.
 
 (* the starting configuration respect the [AlwaysMoving] predicate *)
@@ -1254,7 +1848,7 @@ Section Stop.
   Lemma config1_eq_round_config1 :
     Config.eq config1 (round r da1 (round r da1 config1)).
   Proof.
-    unfold round.
+    rewrite round_2_simplify.
     intros [g|b]; try ImpByz b.
     simpl in *.
     destruct (Loc.eq_dec (create_conf1 g) (Loc.add Loc.unit (create_conf1 g))).

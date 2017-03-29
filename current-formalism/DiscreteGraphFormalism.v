@@ -256,7 +256,8 @@ Module Type (Spectrum, GraphDef)
       pgm_compat : Proper (Spect.eq ==> Location.eq ==> Location.eq) pgm;
       pgm_range : forall spect lpre,
           exists lpost e, pgm spect lpre = lpost
-                          /\ opt_eq Graph.Eeq (Graph.find_edge lpre lpost) (Some e)
+                          /\ (opt_eq Graph.Eeq (Graph.find_edge lpre lpost) (Some e)
+                             \/ Location.eq lpre lpost)
     }.
 
   (* pgm s l a du dens si l est dans dans s (s[l] > 0)
@@ -492,6 +493,7 @@ Module Type (Spectrum, GraphDef)
           let local_config := Config.map (apply_sim sim) config in
           let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
           let target := (sim⁻¹).(Iso.sim_V) local_target in
+          if (Location.eq_dec pos target) then rconf else
           {| Config.loc := pos ; 
              Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
         end
@@ -519,24 +521,64 @@ Module Type (Spectrum, GraphDef)
     + unfold Aom_eq in *.
       rewrite Hstep.
       destruct dist0; apply Hrconf.
-    + unfold Aom_eq in *.
-      f_equiv.
-      apply Hconf.
-      unfold Config.Info_eq.
-      split.
-      apply Hconf.
-      simpl.
-      f_equiv.
-      apply Hstep.
-      apply Hr.
-      f_equiv.
-      generalize apply_sim_compat.
-      intros.
-      rewrite Hstep.
-      now rewrite Hconf.
-      f_equiv.
-      apply Hstep.
-      apply Hconf.
+    + destruct (Location.eq_dec
+                  (Config.loc (conf1 (Good g)))
+                  ((Iso.sim_V (sim ⁻¹))
+                     (r1 (Spect.from_config (Config.map (apply_sim sim) conf1))
+                         (Config.loc (Config.map (apply_sim sim) conf1 (Good g)))))),
+      (Location.eq_dec
+         (Config.loc (conf2 (Good g)))
+         ((Iso.sim_V (sim0 ⁻¹))
+            (r2 (Spect.from_config (Config.map (apply_sim sim0) conf2))
+                (Config.loc (Config.map (apply_sim sim0) conf2 (Good g)))))).
+      * apply Hconf.
+      * destruct n.
+        rewrite <- (Hconf (Good g)).
+        rewrite e.
+        f_equiv.
+        unfold Aom_eq in *.
+        now rewrite Hstep.
+        apply Hr.
+        unfold Aom_eq in *.
+        f_equiv.
+        f_equiv.
+        apply apply_sim_compat.
+        apply Hstep.
+        apply Hconf.
+        f_equiv.
+        apply (apply_sim_compat Hstep (Hconf (Good g))).
+      * destruct n.
+        rewrite (Hconf (Good g)).
+        rewrite e.
+        f_equiv.
+        unfold Aom_eq in *.
+        now rewrite Hstep.
+        symmetry.
+        apply Hr.
+        unfold Aom_eq in *.
+        f_equiv.
+        f_equiv.
+        apply apply_sim_compat.
+        apply Hstep.
+        apply Hconf.
+        f_equiv.
+        apply (apply_sim_compat Hstep (Hconf (Good g))).
+      * f_equiv.
+        apply Hconf.
+        unfold Config.Info_eq.
+        split.
+        apply Hconf.
+        simpl.
+        f_equiv.
+        apply Hstep.
+        apply Hr.
+        f_equiv.
+        f_equiv.
+        apply (apply_sim_compat Hstep).
+        apply Hconf.
+        f_equiv.
+        apply Hstep.
+        apply Hconf.
     + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
   Qed.
   
