@@ -30,7 +30,7 @@ Require Import Pactole.GraphEquivalence.
 Set Implicit Arguments.
 
 
-  Inductive direction := Forward | Backward.
+  Inductive direction := Forward | Backward | AutoLoop.
 
 Module MakeRing <: GraphDef 
     with Definition V := Loc.t
@@ -45,6 +45,7 @@ Module MakeRing <: GraphDef
   Definition tgt (e:E) := match snd e with
                           | Forward => Loc.add (fst e) 1
                           | Backward => Loc.add (fst e) (-1)
+                          | AutoLoop => fst e
                           end.
   Definition src (e:E) := fst e.
 
@@ -80,7 +81,7 @@ Module MakeRing <: GraphDef
     unfold tgt.
     destruct He as (Ht, Hd); unfold src, Loc.add in *.
     rewrite Hd; destruct (snd e2);
-    now rewrite Zdiv.Zplus_mod, Ht, <- Zdiv.Zplus_mod.
+    now try (rewrite Zdiv.Zplus_mod, Ht, <- Zdiv.Zplus_mod).
   Qed.
 
   Instance src_compat : Proper (Eeq ==> Veq) src.
@@ -116,7 +117,10 @@ Module MakeRing <: GraphDef
                                   if Loc.eq_dec (Loc.add v1 1) v2 then
                                     Some (v1, Forward)
                                   else
-                                    None.
+                                    if Loc.eq_dec v1 v2 then
+                                      Some (v1, AutoLoop)
+                                    else
+                                      None.
 
   Lemma find_edge_Some : forall e :E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e).
   Proof.
@@ -186,50 +190,15 @@ Module MakeRing <: GraphDef
         reflexivity.
         generalize n_sup_1.
         unfold def.n; omega.
+    - destruct (Loc.eq_dec (fst e) (Loc.add (fst e) 1)).
+      rewrite Loc.add_comm in e0.
+      now apply neq_a_1a in e0.
+      destruct (Loc.eq_dec (Loc.add (fst e) 1) (fst e)).
+      now destruct n.
+      destruct (Loc.eq_dec (fst e) (fst e)).
+      now split; simpl.
+      now destruct n1.
   Qed.
-  
-  Lemma NoAutoLoop : forall e, ~Veq (src e) (tgt e).
-  Proof.
-    intros e.
-    intros Hf.
-    unfold src, tgt in Hf.
-    destruct (snd e).
-    + unfold Veq in *.
-      unfold Loc.eq, Loc.add in *.
-      unfold def.n in *.
-      generalize n_sup_1; intro ns1.
-      rewrite Z.mod_mod in *; try omega.
-      rewrite <- Zdiv.Zplus_mod_idemp_l in Hf.
-      destruct (Z.compare (fst e mod Z.of_nat n + 1)%Z (Z.of_nat n)) eqn : Heq;
-        try rewrite Z.compare_lt_iff in *;
-        try rewrite Z.compare_eq_iff in *;
-        try rewrite Z.compare_gt_iff in *;
-        simpl in *; try omega.
-      rewrite Heq in Hf; rewrite Z.mod_same in Hf; try omega.
-      rewrite Z.mod_small with (a := (fst e mod Z.of_nat n + 1)%Z) in Hf.      
-      omega.
-      split; try omega.
-      generalize Zdiv.Z_mod_lt.
-      intros Ho.
-      specialize (Ho (fst e) (Z.of_nat n)).
-      omega.
-      generalize Zdiv.Z_mod_lt.
-      intros Ho.
-      specialize (Ho (fst e) (Z.of_nat n)).
-      assert (Z.of_nat n > 0)%Z.
-      omega.
-      specialize (Ho H); clear H.
-      omega.
-    + unfold Veq in Hf; generalize neq_a_a1 ; intros Hn.
-      specialize (Hn (fst e)).
-      destruct Hn.
-      unfold Loc.eq, Loc.add in *.
-      rewrite Z.mod_mod in Hf.
-      replace (fst e + -1)%Z with (fst e - 1)%Z in Hf by omega.
-      assumption.
-      unfold def.n; generalize n_sup_1; omega.
-  Qed.
-
 
   Lemma find_edge_None : forall a b : V,
       find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
@@ -238,6 +207,7 @@ Module MakeRing <: GraphDef
     - intros Hnone.
       discriminate.
     - destruct (Loc.eq_dec (Loc.add a 1) b); try discriminate.
+      destruct (Loc.eq_dec a b); try discriminate.
       intros Hnone.
       clear Hnone.
       intros e (Hsrc, Htgt).
@@ -265,6 +235,7 @@ Module MakeRing <: GraphDef
         rewrite H.
         reflexivity.
         unfold def.n; generalize n_sup_1; omega.
+      + destruct n1; now rewrite <- Hsrc, <- Htgt.
     - intros He.
       specialize (He (a, Backward)).
       destruct He.
@@ -290,6 +261,10 @@ Module MakeRing <: GraphDef
       reflexivity.
       rewrite e.
       reflexivity.
+      destruct (Loc.eq_dec a b).
+      specialize (Ho (a,AutoLoop)).
+      destruct Ho; simpl.
+      split; try easy.
       reflexivity.
   Qed.
 
@@ -317,7 +292,11 @@ Module MakeRing <: GraphDef
     unfold Loc.eq, Loc.add in *.
     rewrite <-Hv34, <- Zdiv.Zplus_mod_idemp_l, <- Hv12, Zdiv.Zplus_mod_idemp_l in e.
     contradiction.
-    simpl; now split.
+    destruct (Loc.eq_dec v1 v3), (Loc.eq_dec v2 v4).
+    simpl; try now split.
+    destruct n3. now rewrite Hv12, Hv34 in e.
+    destruct n3. now rewrite <- Hv12, <- Hv34 in e.
+    now split.
   Qed.
 
   Lemma find2st : forall v1 v2 e, opt_eq Eeq (find_edge v1 v2) (Some e) ->
@@ -343,6 +322,11 @@ Module MakeRing <: GraphDef
     split; try reflexivity.
     rewrite e0.
     reflexivity.
+    destruct (Loc.eq_dec v1 v2).
+    cbn in *.
+    rewrite <- Hsome.
+    simpl.
+    split; easy.
     contradiction.
   Qed.
     

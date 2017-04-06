@@ -170,6 +170,7 @@ Proof.
                                 (Loc.add_comm (Loc.opp c)).
   now rewrite Loc.add_comm with (v := Loc.opp c), Loc.add_assoc,
                                 (Loc.add_comm (Loc.opp c)).
+  reflexivity.
 - intros.
   apply bT_morph.
 - apply bT_crois.
@@ -226,7 +227,7 @@ intros l1 l2 Hl e1 e2 He. split.
   Qed.
 
 Definition stop_now e :=
-    Config.eq (execution_head e) (execution_head (execution_tail e)).
+    Config.eq (execution_head e) (execution_head (execution_tail (execution_tail e))).
 
 Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
