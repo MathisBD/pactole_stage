@@ -310,7 +310,7 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
 
 
   Module Config := Configurations.Make (Location)(N)(Names).
-
+(*
   Definition project (config : Config.t) : Config.t :=
     fun id =>
       match Config.loc (config id) with
@@ -350,7 +350,7 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
                   try now apply Graph.tgt_compat.
   Qed.
 
-
+*)
 
   Definition projectS_loc (loc : Location.t) : Graph.V :=
     match loc with
