@@ -757,10 +757,11 @@ Lemma configP_Spectre_Equiv : forall conf g0,
                              (conf)))
              (!! (Config.map (apply_sim
                                 (trans (Config.loc (configP (Good g0)))))
-                             ( configP))).
+                             (configP))).
 Proof.
   clear Hmove.
-  intros conf g0 Hconf_equiv x.
+  intros conf g0 Hconf_equiv.
+  intros x.
   unfold Spect.from_config in *.
   (* unfold Spect.multiset. *)
   simpl in *.
@@ -771,7 +772,6 @@ Proof.
   destruct Hconf_equiv.
   destruct (H (Good g0)) as (Hl, Ht).
   simpl in *.
-  
   assert (Hconf_eq_lt : forall glt,
              Loc.eq (Config.loc (conf (Good glt)))
                     (Config.target (Config.robot_info (conf (Good glt))))).
@@ -782,7 +782,119 @@ Proof.
     simpl in *.
     rewrite Hfalse_l, Hfalse_t.
     reflexivity.
-  } 
+  }
+  (* Un robot est toujours a une position divisable par n/Pkn *)
+  assert (forall g: Names.G, exists k, (create_confP g = k * Z.of_nat (n/Pkn)) ).
+  { intros.
+    unfold create_confP.    
+    unfold Loc.mul, Loc.unit, ImpossibilityKDividesN.Loc.unit, ImpossibilityKDividesN.Loc.mul, ImpossibilityKDividesN.def.n; fold n.
+    rewrite Nat2Z.inj_mul.
+    rewrite Z.mul_1_r.
+    assert (Hgcdn := Nat.gcd_divide_l n kG).
+    destruct Hgcdn as (z, Hgcdn).
+    set (G1 := Z.of_nat (proj1_sig (Fin.to_nat g1))) in *.
+    rewrite Zdiv.Zmod_eq_full.
+    rewrite Z.mul_comm with (m := Z.of_nat n).
+    replace (Z.of_nat n) with (Z.of_nat (z * Nat.gcd n kG)).
+    rewrite Nat.mul_comm in Hgcdn.
+    apply Nat.div_unique_exact in Hgcdn.
+    rewrite Hgcdn.
+    fold Pkn.
+    rewrite Nat2Z.inj_mul.
+    rewrite Z.mul_comm with (m := Z.of_nat (n/Pkn)).
+    exists (G1 - Z.of_nat Pkn *
+                 (Z.of_nat (n / Pkn) * G1 / (Z.of_nat (n / Pkn) * Z.of_nat Pkn))).
+    rewrite <- Z.mul_assoc.
+    rewrite Z.mul_comm with (m := Z.of_nat (n/Pkn)), <- Zmult_minus_distr_l.
+    reflexivity.
+    generalize k_Prime_n;
+      omega.
+    now rewrite Hgcdn at 2.
+    generalize n_sup_1; fold n; omega.
+  }
+  assert (forall t, (t < kG)%nat -> exists k,
+               (create_confP t = k * Z.of_nat (n/Pkn))).
+  (* si un robot est sur une position, alors (Pkn - 1) autres robot y sont aussi
+     il y a donc un Pkn robots sur un tour de l'anneau.
+ *)
+
+
+  assert (let count := countA_occ Location.eq Location.eq_dec x
+     (map Config.loc
+        (Config.list
+           (fun id : Names.ident =>
+            {|
+            Config.loc := Loc.add (Config.loc (configP id))
+                            (Loc.opp (create_confP g0));
+            Config.robot_info := {|
+                                 Config.source := Loc.add
+                                                    (Config.source
+                                                       (Config.robot_info
+                                                       (configP id)))
+                                                    (Loc.opp (create_confP g0));
+                                 Config.target := Loc.add
+                                                    (Config.target
+                                                       (Config.robot_info
+                                                       (configP id)))
+                                                    (Loc.opp (create_confP g0)) |} |}))) in count = Pkn \/ count = O).
+  { simpl.
+    rewrite Config.list_spec, map_map.
+    simpl.
+    induction x.
+    unfold configP, create_confP.
+    simpl.
+    assert (Loc.eq (Config.loc
+              match x with
+              | Good g1 =>
+                  {|
+                  Config.loc := Loc.mul
+                                  (Z.of_nat (proj1_sig (Fin.to_nat g1) * (n / Pkn)))
+                                  Loc.unit;
+                  Config.robot_info := {|
+                                       Config.source := Loc.add 
+                                                       (Loc.opp Loc.unit)
+                                                       (Loc.mul
+                                                       (Z.of_nat
+                                                       (proj1_sig (Fin.to_nat g1) *
+                                                       (n / Pkn))) Loc.unit);
+                                       Config.target := Loc.mul
+                                                       (Z.of_nat
+                                                       (proj1_sig (Fin.to_nat g1) *
+                                                       (n / Pkn))) Loc.unit |} |}
+              | Byz _ =>
+                  {|
+                  Config.loc := Loc.origin;
+                  Config.robot_info := {|
+                                       Config.source := Loc.origin;
+                                       Config.target := Loc.origin |} |}
+              end)
+                   ( Loc.mul
+    rewrite <- countA_occ_map.
+
+    unfold Config.list.
+    unfold DefsE.Config.list.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+  
   assert (SetoidList.NoDupA Loc.eq
                             (map (fun x : Names.ident =>
                            Config.loc (apply_sim (trans (Config.loc (conf (Good g0))))
