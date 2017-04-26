@@ -1512,5 +1512,5 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     - exists pt. constructor; cbn; apply Hpt.
 Qed.
 
-Print Assumptions Gathering_in_R.
+(* Print Assumptions Gathering_in_R. *)
 

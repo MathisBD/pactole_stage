@@ -11,6 +11,8 @@ mkdir ./package/Gathering/InR2
 
 coq_makefile -f _CoqProject -o makefile
 
+cp -r MMaps/MMapInterface.v MMaps/MMapFacts.v MMaps/MMapWeakList.v ./package/MMaps/
+
 cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
 
 cp MMaps/MMapAVL.v MMaps/MMapInterface.v  MMaps/MMapPositive.v  MMaps/MMapWeakList.v MMaps/MMapFacts.v  MMaps/MMapList.v  MMaps/MMaps.v ./package/MMaps

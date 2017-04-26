@@ -2325,80 +2325,28 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
 
                       simpl in hpt1,hpt2;
                       decompose [or False] hpt1;
-                      decompose [or False] hpt2;subst;clear hpt1; clear hpt2;
-                      try match goal with
-                      | H: pt1 = pt2 |- _ =>
-                        absurd (InA R2.eq pt1  (pt2 :: nil));
-                          [rewrite NoDupA_Leibniz in hNoDup;
-                            rewrite NoDup_cons_iff in hNoDup;
-                            destruct hNoDup;
-                            rewrite InA_Leibniz;
-                            assumption
-                          | rewrite H; left;reflexivity
-                          ]
-                          end.
-                      * assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
-                        inversion hNoDup;subst.
-                        match goal with
-                        | H: ~ InA _ _ _ |- _ => apply H
-                        end.
-                        left.
-                        reflexivity.
-                      * rewrite (@barycenter_3_pts_compat pt1 pty pt2 pt1 pt2 pty) in H1;repeat econstructor.
-                        rewrite(@classify_triangle_compat pt1 pty pt2 pt1 pt2 pty) in Htriangle;repeat econstructor.
+                      decompose [or False] hpt2; subst pt1 pt2; clear hpt1 hpt2; try (now inv hNoDup; intuition).
+                      * assert (Heq := middle_barycenter_3_neq _ _ _ Htriangle H1).
+                        inversion hNoDup; subst; intuition.
+                      * rewrite (@barycenter_3_pts_compat ptx pty ptz ptx ptz pty) in H1; repeat econstructor.
+                        rewrite(@classify_triangle_compat ptx pty ptz ptx ptz pty) in Htriangle; repeat econstructor.
                         assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
-                        inversion hNoDup;subst.
-                        match goal with
-                        | H: ~ InA _ _ _ |- _ => apply H
-                        end.
-                        left.
-                        reflexivity. 
-                      * rewrite (@barycenter_3_pts_compat pt2 pt1 ptz pt1 pt2 ptz) in H1;repeat econstructor.
-                        rewrite(@classify_triangle_compat pt2 pt1 ptz pt1 pt2 ptz) in Htriangle;repeat econstructor.
+                        inversion hNoDup; subst; intuition.
+                      * rewrite middle_comm in H1.
                         assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
-                        inversion hNoDup;subst.
-                        match goal with
-                        | H: ~ InA _ _ _ |- _ => apply H
-                        end.
-                        left.
-                        reflexivity.
-
-                      * rewrite (@barycenter_3_pts_compat ptx pt1 pt2 pt1 pt2 ptx) in H1.
-                        -- rewrite (@classify_triangle_compat ptx pt1 pt2 pt1 pt2 ptx) in Htriangle.
-                           ++
-                             assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
-                             inversion hNoDup;subst.
-                             match goal with
-                             | H: ~ InA _ _ _ |- _ => apply H
-                             end.
-                             left.
-                             reflexivity. 
-                           ++ now do 3 econstructor.
-                        -- now do 3 econstructor.
-
-                      * rewrite (@barycenter_3_pts_compat pt2 pty pt1 pt1 pt2 pty) in H1.
-                        -- rewrite (@classify_triangle_compat pt2 pty pt1 pt1 pt2 pty) in Htriangle.
-                           ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
-                              inversion hNoDup;subst.
-                              match goal with
-                              | H: ~ InA _ _ _ |- _ => apply H
-                              end.
-                              left.
-                              reflexivity.
-                           ++ now do 3 econstructor.
-                        -- now do 3 econstructor.
-
-                      * rewrite (@barycenter_3_pts_compat ptx pt2 pt1 pt1 pt2 ptx) in H1.
-                        -- rewrite (@classify_triangle_compat ptx pt2 pt1 pt1 pt2 ptx) in Htriangle.
-                           ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
-                              inversion hNoDup;subst.
-                              match goal with
-                              | H: ~ InA _ _ _ |- _ => apply H
-                              end.
-                              left.
-                              reflexivity. 
-                           ++ permut_3_4.
-                        -- econstructor 4 with (pt2 :: ptx :: pt1 :: nil); now do 3 econstructor.
+                        inversion hNoDup; subst; intuition.
+                      * rewrite (@barycenter_3_pts_compat ptx pty ptz pty ptz ptx) in H1; try (now do 3 econstructor).
+                        rewrite (@classify_triangle_compat ptx pty ptz pty ptz ptx) in Htriangle; try (now do 3 econstructor).
+                        assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
+                        inversion hNoDup; subst; intuition.
+                      * rewrite (@barycenter_3_pts_compat ptx pty ptz ptz ptx pty) in H1; try (now do 3 econstructor).
+                        rewrite (@classify_triangle_compat ptx pty ptz ptz ptx pty) in Htriangle; try (now do 3 econstructor).
+                        assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
+                        inversion hNoDup; subst; intuition.
+                      * rewrite (@barycenter_3_pts_compat ptx pty ptz ptz pty ptx) in H1; try (now do 4 econstructor).
+                        rewrite (@classify_triangle_compat ptx pty ptz ptz pty ptx) in Htriangle; try (now do 4 econstructor).
+                        assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H1).
+                        inversion hNoDup; subst; intuition.
                     + apply middle_diff.
                       inversion hNoDup; subst.
                       intro abs; subst.
@@ -2419,16 +2367,11 @@ destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? 
                         rewrite InA_Leibniz in H1 |-*.
                         apply on_SEC_In.
                         assumption. }
-                      inversion H1.
-                      - exfalso.
-                        rewrite <- H2 in Htarget.
-                        rewrite Htarget in H3.
-                        subst.
-                        rewrite H3 in hNoDup.
-                        inversion  hNoDup.
-                        apply H6.
-                        left;reflexivity.
-                      - assumption. }
+                      inversion H1; trivial; [].
+                      exfalso.
+                      rewrite <- H2 in Htarget.
+                      rewrite Htarget in H3.
+                      subst pt2; inv hNoDup; intuition. }
                     unfold inclA in H0.
                     assert (hmid:InA R2.eq (R2.middle pt1 pt2) (R2.middle pt1 pt2 :: pt1 :: pt2 :: nil)).
                     { left.
@@ -3234,12 +3177,12 @@ destruct Hid1 as [id1 Hid1], Hid2 as [id2 Hid2], Hid3 as [id3 Hid3], Hid4 as [id
 destruct Hcase as [Hmaj _].
 rewrite round_simplify_clean in Hid1, Hid2, Hid3, Hid4; trivial; [].
 (* These robots are different *)
-assert (Hneqid12 : id1 <> id2). { intro. subst id1. rewrite Hid1 in Hid2. subst pt1'. R2dec. }
-assert (Hneqid13 : id1 <> id3). { intro. subst id1. rewrite Hid1 in Hid3. subst pt1'. R2dec. }
-assert (Hneqid14 : id1 <> id4). { intro. subst id1. rewrite Hid1 in Hid4. subst pt1'. R2dec. }
-assert (Hneqid23 : id2 <> id3). { intro. subst id2. rewrite Hid2 in Hid3. subst pt2'. R2dec. }
-assert (Hneqid24 : id2 <> id4). { intro. subst id2. rewrite Hid2 in Hid4. subst pt2'. R2dec. }
-assert (Hneqid34 : id3 <> id4). { intro. subst id3. rewrite Hid3 in Hid4. subst pt3'. R2dec. }
+assert (Hneqid12 : id1 <> id2). { intro. subst id1. rewrite Hid1 in Hid2. rewrite Hid2 in *. R2dec. }
+assert (Hneqid13 : id1 <> id3). { intro. subst id1. rewrite Hid1 in Hid3. rewrite Hid3 in *. R2dec. }
+assert (Hneqid14 : id1 <> id4). { intro. subst id1. rewrite Hid1 in Hid4. rewrite Hid4 in *. R2dec. }
+assert (Hneqid23 : id2 <> id3). { intro. subst id2. rewrite Hid2 in Hid3. rewrite Hid3 in *. R2dec. }
+assert (Hneqid24 : id2 <> id4). { intro. subst id2. rewrite Hid2 in Hid4. rewrite Hid4 in *. R2dec. }
+assert (Hneqid34 : id3 <> id4). { intro. subst id3. rewrite Hid3 in Hid4. rewrite Hid4 in *. R2dec. }
 (* At most one of these robots was activated during the round *)
 assert (Hex : forall id id' f,
                 In id (id1 :: id2 :: id3 :: id4 :: nil) -> In id' (id1 :: id2 :: id3 :: id4 :: nil) ->
@@ -3657,7 +3600,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
 Qed.
 
-Print Assumptions Gathering_in_R2.
+(* Print Assumptions Gathering_in_R2. *)
 
 
 (* Let us change the assumption over the demon, it is no longer fair
