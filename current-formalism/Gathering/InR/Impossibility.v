@@ -766,4 +766,4 @@ Qed.
 
 End GatheringEven.
 
-Print Assumptions noGathering.
+(* Print Assumptions noGathering. *)

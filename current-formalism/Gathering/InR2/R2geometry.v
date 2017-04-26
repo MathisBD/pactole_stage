@@ -1031,7 +1031,6 @@ end;
 split; intro H; discriminate || (progress decompose [or and] H; clear H) || (injection H; intro);
 subst; trivial; try contradiction.
 + right; left. subst. repeat split. intro Heq. rewrite Heq in *. intuition.
-+ match goal with H : ?x <> ?x |- _ => now elim H end.
 + do 2 right. subst. repeat split; trivial. intro Heq. rewrite Heq in *. intuition.
 + repeat match goal with
     | H : R2.dist _ _ = _ |- _ => rewrite H in *; clear H
@@ -1973,7 +1972,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
     ++ unfold d, r, c. rewrite R2.dist_sym. apply SEC_spec1. now right.
     ++ intro. do 2 subst. apply Hsmall. rewrite Exists_exists. exists pt2. repeat split.
        -- now right.
-       -- clear -Hon1 Hnodup Hin2. unfold pt2. apply farthest_from_in_except_diff. intro Heq. subst.
+       -- clear -Hon1 Hnodup Hin2. unfold pt2. apply farthest_from_in_except_diff. intro Heq. unfold c in *.
           rewrite <- Heq in Hon1 at 2. rewrite center_on_circle, SEC_zero_radius_incl_singleton in Hon1.
           destruct Hon1 as [pt Hincl].
           assert (pt = pt1). { specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition. }
