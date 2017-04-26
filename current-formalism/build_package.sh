@@ -2,6 +2,7 @@
 
 rm -rf ./package
 mkdir ./package
+mkdir ./package/MMaps
 mkdir ./package/MMultiset
 mkdir ./package/Convergence
 mkdir ./package/Gathering
@@ -11,6 +12,8 @@ mkdir ./package/Gathering/InR2
 coq_makefile -f _CoqProject -o makefile
 
 cp -r MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
+
+cp MMaps/MMapAVL.v MMaps/MMapInterface.v  MMaps/MMapPositive.v  MMaps/MMapWeakList.v MMaps/MMapFacts.v  MMaps/MMapList.v  MMaps/MMaps.v ./package/MMaps
 
 cp Preliminary.v Lexprod.v Robots.v Configurations.v Streams.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v MultisetSpectrum.v Similarity.v makefile _CoqProject ./package/
 
