@@ -9,7 +9,7 @@ MMaps/MMapFacts.v
 MMaps/MMapWeakList.v
 MMultiset/MMultisetInterface.v
 MMultiset/MMultisetWMap.v
-#MMultiset/MMultisetMap.v
+MMultiset/MMultisetMap.v
 MMultiset/MMultisetFacts.v
 MMultiset/MMultisetExtraOps.v
 MMultiset/Preliminary.v
