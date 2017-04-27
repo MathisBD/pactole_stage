@@ -17,6 +17,7 @@ Require Import RelationPairs.
 Require Import MMultiset.Preliminary.
 Require Import MMultisetInterface.
 Require Import Equalities.
+Require Import Coq.Classes.RelationClasses.
 
 Module FMultisets (MMap : WSfun) (E : DecidableType) <: FMultisetsOn E.
   
