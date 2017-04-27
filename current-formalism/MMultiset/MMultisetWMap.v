@@ -17,10 +17,9 @@ Require Import RelationPairs.
 Require Import MMultiset.Preliminary.
 Require Import MMultisetInterface.
 Require Import Equalities.
-Require Import Coq.Classes.RelationClasses.
 
-Module FMultisets (MMap : WSfun) (E : DecidableType) <: FMultisetsOn E.
-  
+Module FMultisets (MMap : WSfun) (E : DecidableType) : FMultisetsOn E.
+
 Module M := MMap(E).
 
 Definition eq_pair := RelProd E.eq (@Logic.eq nat).
@@ -29,16 +28,16 @@ Definition eq_elt := RelCompFun E.eq (@fst E.t nat).
 
 Instance Meq_equiv A : Equivalence (@M.eq_key_elt A).
 Proof. split.
-  intro. reflexivity.
-  intros ? ?. now symmetry.
-  intros ? y ? ? ?. now transitivity y.
+  intro. now split.
+  intros ? ? []. split; auto; now symmetry.
+  intros ? y ? [] []. split; congruence || now transitivity (fst y).
 Qed.
 
 Instance Meq_key_equiv A : Equivalence (@M.eq_key A).
-Proof. split.
+Proof. split; compute.
   intro. reflexivity.
   intros ? ?. now symmetry.
-  intros ? y ? ? ?. now transitivity y.
+  intros ? y ? ? ?. now transitivity (fst y).
 Qed.
 
 Instance eq_pair_equiv : Equivalence eq_pair.
@@ -936,7 +935,7 @@ rewrite fold_left_symmetry_PermutationA.
 + reflexivity.
 + now apply Meq_equiv.
 + assumption.
-+ repeat intro. now apply Hf; rewrite H1 || rewrite H0.
++ intros ? ? Heq1 ? ? Heq2. apply Hf; trivial; f_equiv; apply Heq2.
 + intros. apply Hfcomm.
 + apply NoDupA_equivlistA_PermutationA.
   - now apply Meq_equiv.
