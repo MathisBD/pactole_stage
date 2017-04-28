@@ -8,6 +8,245 @@ Require Pactole.MMultiset.MMultisetFacts.
 
 Set Implicit Arguments.
 
+Module Type MMultisetExtra :
+    Module MProp := MMultisetFacts.Make(E)(M).
+  Include MProp.
+  
+  (** *  Extra operations  **)
+  
+  (** **  Function [map] and its properties  **)
+  
+  Parameter map f m := fold (fun x n acc => add (f x) n acc) m empty.
+  
+  Section map_results.
+    Variable f : E.t -> E.t.
+    Hypothesis Hf : Proper (E.eq ==> E.eq) f.
+    
+    Declare Global Instance map_compat : Proper (eq ==> eq) (map f).
+        
+    Axiom map_In : forall x m, In x (map f m) <-> exists y, E.eq x (f y) /\ In y m.
+        
+    Axiom map_empty : map f empty [=] empty.
+        
+    Axiom map_add : forall x n m, map f (add x n m) [=] add (f x) n (map f m).
+    
+    Axiom map_spec : forall x m, multiplicity x (map f m) =
+      cardinal (nfilter (fun y _ => if E.eq_dec (f y) x then true else false) m).
+        
+    Declare Global Instance map_sub_compat : Proper (Subset ==> Subset) (map f).
+    
+    Axiom map_singleton : forall x n, map f (singleton x n) [=] singleton (f x) n.
+    
+    Axiom map_remove1 : forall x n m, n <= multiplicity x m -> map f (remove x n m) [=] remove (f x) n (map f m).
+    
+    Axiom map_remove2 : forall x n m,
+      multiplicity x m <= n -> map f (remove x n m) [=] remove (f x) (multiplicity x m) (map f m).
+    
+    Axiom fold_map_union : forall m₁ m₂, fold (fun x n acc => add (f x) n acc) m₁ m₂ [=] union (map f m₁) m₂.
+    
+    Axiom map_union : forall m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
+    
+    Axiom map_inter : forall m₁ m₂, map f (inter m₁ m₂) [<=] inter (map f m₁) (map f m₂).
+    
+    Axiom map_lub : forall m₁ m₂, lub (map f m₁) (map f m₂) [<=] map f (lub m₁ m₂).
+    
+    Axiom map_from_elements : 
+      forall l, map f (from_elements l) [=] from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
+    
+    Axiom map_support : forall m, inclA E.eq (support (map f m)) (List.map f (support m)).
+    
+    Axiom map_cardinal : forall m, cardinal (map f m) = cardinal m.
+    
+    Axiom map_size : forall m, size (map f m) <= size m.
+    
+    Section map_injective_results.
+      Hypothesis Hf2 : injective E.eq E.eq f.
+      
+      Axiom map_injective_spec : forall x m, multiplicity (f x) (map f m) = multiplicity x m.
+      
+      Axiom map_injective_In : forall x m, In (f x) (map f m) <-> In x m.
+      
+      Axiom map_injective_remove : forall x n m, map f (remove x n m) [=] remove (f x) n (map f m).
+      
+      Axiom map_injective_inter : forall m₁ m₂, map f (inter m₁ m₂) [=] inter (map f m₁) (map f m₂).
+      
+      Axiom map_injective_diff : forall m₁ m₂, map f (diff m₁ m₂) [=] diff (map f m₁) (map f m₂).
+      
+      Axiom map_injective_lub_wlog : forall x m₁ m₂, multiplicity x (map f m₂) <= multiplicity x (map f m₁) ->
+        multiplicity x (map f (lub m₁ m₂)) = multiplicity x (map f m₁).
+      
+      Axiom map_injective_lub : forall m₁ m₂, map f (lub m₁ m₂) [=] lub (map f m₁) (map f m₂).
+      
+      Axiom map_injective : injective eq eq (map f).
+      
+      Axiom map_injective_elements : forall m,
+        PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
+      
+      Axiom map_injective_support : forall m, PermutationA E.eq (support (map f m)) (List.map f (support m)).
+      
+      Axiom map_injective_size : forall m, size (map f m) = size m.
+      
+    End map_injective_results.
+  End map_results.
+  
+  Axiom map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
+    (forall x, E.eq (g x) (f x)) -> forall m, map g m [=] map f m.
+  
+  Axiom map_extensionality_compat_strong : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, (forall x, In x m -> E.eq (g x) (f x)) -> map g m [=] map f m.
+  
+  Axiom map_merge : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, map f (map g m) [=] map (fun x => f (g x)) m.
+  
+  Axiom map_injective_fold : forall A eqA, Equivalence eqA ->
+    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m (i : A), eqA (fold f (map g m) i) (fold (fun x => f (g x)) m i).
+  
+  Axiom map_injective_nfilter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, nfilter f (map g m) [=] map g (nfilter (fun x => f (g x)) m).
+  
+  Axiom map_injective_npartition_fst : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, fst (npartition f (map g m)) [=] map g (fst (npartition (fun x => f (g x)) m)).
+  
+  Axiom map_npartition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, snd (npartition f (map g m)) [=] map g (snd (npartition (fun x => f (g x)) m)).
+  
+  Axiom map_injective_for_all : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, for_all f (map g m) = for_all (fun x => f (g x)) m.
+  
+  Axiom map_injective_exists : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, exists_ f (map g m) = exists_ (fun x => f (g x)) m.
+  
+  (** **  Function [max] and its properties  **)
+  
+  (** ***  Function [max_mult] computing the maximal multiplicity  **)
+  
+  Parameter max_mult m := fold (fun _ => max) m 0%nat.
+  
+  Declare Instance max_mult_compat : Proper (eq ==> Logic.eq) max_mult.
+  
+  Axiom max_mult_empty : max_mult empty = 0.
+  
+  Axiom max_mult_singleton : forall x n, max_mult (singleton x n) = n.
+  
+  Axiom max_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, max_mult (map f m) = max_mult m.
+  
+  Axiom max_mult_add : forall m x n, (n > 0)%nat -> ~In x m ->
+    max_mult (add x n m) = Nat.max n (max_mult m).
+  
+  Axiom max_mult_spec : forall m x, (m[x] <= max_mult m)%nat.
+  
+  Axiom max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
+  
+  (** ***  Function [max s] returning the elements of a multiset with maximal multiplicity  **)
+  
+  Parameter max m := nfilter (fun _ => beq_nat (max_mult m)) m.
+  
+  Declare Instance eqb_max_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult m)).
+  
+  Declare Instance eqb_max_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.max).
+  
+  Local Hint Immediate eqb_max_mult_compat eqb_max_compat.
+  
+  Declare Global Instance max_compat : Proper (eq ==> eq) max.
+
+  Axiom max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, (max (map f m)) [=] (map f (max m)).
+  
+  Axiom max_subset : forall m, max m [<=] m.
+  
+  Axiom max_spec1 : forall m x y, In y (max m) -> m[x] <= (max m)[y].
+  
+  Axiom max_spec_non_nil : forall m x, In x m -> exists y, In y (max m).
+  
+  Axiom max_empty : forall m, max m [=] empty <-> m [=] empty.
+  
+  Axiom max_singleton : forall x n, max (singleton x n) [=] singleton x n.
+  
+  Axiom max_2_mult : forall m x, (max m)[x] = 0 \/ (max m)[x] = m[x].
+  
+  Lemma max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
+  Proof. intros m x Hin. unfold In in *. destruct (max_2_mult m x); omega. Qed.
+  
+  Lemma max_spec_mult : forall m x y, In x (max m) -> (In y (max m) <-> (max m)[y] = (max m)[x]).
+  Proof.
+  intros m x y Hx. split.
+  + intro Hy. destruct (max_2_mult m x) as [Hx' | Hx'], (max_2_mult m y) as [Hy' | Hy'];
+    (unfold In in *; omega) || (try congruence); [].
+    apply le_antisym; rewrite Hy' + rewrite Hx'; now apply max_spec1.
+  + intro Heq. unfold In in *. now rewrite Heq.
+  Qed.
+  
+  Theorem max_spec2 : forall m x y,
+    In x (max m) -> ~In y (max m) -> (m[y] < m[x])%nat.
+  Proof.
+  intros m x y Hx Hy. apply le_neq_lt.
+  + assert (Hx' := Hx). rewrite max_In_mult in Hx.
+    - rewrite <- Hx. now apply max_spec1.
+    - now rewrite <- max_subset.
+  + intro Habs. apply Hy. unfold max. rewrite nfilter_In; try now repeat intro; subst. split.
+    - unfold In in *. rewrite Habs. apply lt_le_trans with (max m)[x]; trivial. apply max_subset.
+    - rewrite Habs. unfold max in Hx. rewrite nfilter_In in Hx; try now repeat intro; subst.
+  Qed.
+  
+  Lemma max_max_mult : forall m x, ~m [=] empty -> In x (max m) <-> m[x] = max_mult m.
+  Proof.
+  intros m x Hm. split; intro H.
+  + apply nfilter_In in H; auto.
+    symmetry. apply beq_nat_true. now destruct H.
+  + unfold max. rewrite nfilter_In; auto.
+    split.
+    - red. cut (m[x]<>0). omega.
+      intro Habs. now rewrite H, max_mult_0 in Habs.
+    - now rewrite H, <- beq_nat_refl.
+  Qed.
+  
+  Lemma max_max_mult_ex : forall m, ~m [=] empty -> exists x, max_mult m = m[x].
+  Proof.
+  intros m. pattern m. apply ind; clear m.
+  * intros ? ? Heq. now setoid_rewrite Heq.
+  * intros m x n Hout Hn Hrec _.
+    destruct (empty_or_In_dec m) as [Hm | Hm].
+    + exists x. rewrite Hm, add_empty. rewrite max_mult_singleton. msetdec.
+    + assert (Hempty : ~m [=] empty) by now rewrite not_empty_In.
+      destruct (Hrec Hempty) as [max_m Hmax_m]. rewrite max_mult_add; trivial.
+      destruct (Max.max_spec n (max_mult m)) as [[Hmax1 Hmax2] | [Hmax1 Hmax2]].
+      - exists max_m. msetdec.
+      - exists x. msetdec.
+  * intro. msetdec.
+  Qed.
+  
+  Lemma max_spec_max : forall m x, ~m [=] empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
+  Proof.
+  intros m x Hm H. apply le_antisym.
+  - destruct (@max_max_mult_ex m) as [y Hy]; auto.
+    rewrite Hy. apply H.
+  - apply max_mult_spec.
+  Qed.
+  
+  Corollary max_spec1_iff : forall m, ~m [=] empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
+  Proof.
+  intros m Hm x. assert (Hempty := Hm).
+  rewrite <- max_empty, not_empty_In in Hm. destruct Hm as [z Hz].
+  split; intro Hx.
+  + intro y. assert (Hx' := Hx). rewrite max_In_mult in Hx.
+    - rewrite <- Hx. now apply max_spec1.
+    - now rewrite <- max_subset.
+  + assert (H := max_spec_max Hempty Hx). rewrite max_max_mult; auto.
+  Qed.
+  
+  Lemma size_max_le : forall m, size (max m) <= size m.
+  Proof.
+  intro m. do 2 rewrite size_spec. apply (NoDupA_inclA_length E.eq_equiv).
+  - apply support_NoDupA.
+  - apply support_sub_compat, max_subset.
+  Qed.
+
+End MMultisetExtra.
+
+  
 
 Module Make(E : DecidableType)(M : FMultisetsOn E).
   Module MProp := MMultisetFacts.Make(E)(M).
