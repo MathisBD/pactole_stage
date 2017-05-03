@@ -66,6 +66,48 @@ Proof. intros P Q HPQ s s' Hs. unfold instant. apply HPQ, Hs. Qed.
 Lemma instant_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, instant P s -> instant Q s.
 Proof. unfold instant. auto. Qed.
 
+Definition next_instant {A} (P : A -> Prop) := fun s => P (hd (tl (tl s))).
+
+Instance next_instant_compat {A} (eqA : relation A) : Proper ((eqA ==> iff) ==> eq eqA ==> iff) next_instant.
+Proof. intros P Q HPQ s s' Hs. unfold next_instant. apply HPQ.
+       apply hd_compat.
+       apply tl_compat.
+       apply tl_compat.
+       assumption.
+Qed.
+
+Lemma next_instant_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, next_instant P s -> next_instant Q s.
+Proof. unfold next_instant. auto. Qed.
+
+CoInductive next_forever {A} (P : t A -> Prop) (s : t A) : Prop :=
+  next_Always : P s -> next_forever P (tl (tl s)) -> next_forever P s.
+Arguments next_Always {A} [P] [s] _ _. 
+
+
+Instance next_forever_compat {A} (eqA : relation A) : Proper ((eq eqA ==> iff) ==> eq eqA ==> iff) next_forever.
+Proof.
+intros P Q HPQ s s' Hs. split.
++ revert s s' Hs. coinduction Hrec.
+  - rewrite <- (HPQ _ _ Hs). now inv H.
+  - inv Hs. inv H.
+    apply (Hrec (tl (tl s)) (tl (tl s'))).
+    now apply tl_compat.
+    assumption.
++ revert s s' Hs. coinduction Hrec.
+  - rewrite (HPQ _ _ Hs). now inv H.
+  - inv Hs. inv H. apply (Hrec (tl (tl s)) (tl (tl s'))).
+    now apply tl_compat.
+    assumption.
+Qed.
+
+Lemma next_forever_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, next_forever P s -> next_forever Q s.
+Proof.
+cofix Hrec. intros P Q HPQ s HP. constructor.
+- inv HP. auto.
+- inv HP. revert H0. now apply Hrec.
+Qed.
+
+
 CoInductive forever {A} (P : t A -> Prop) (s : t A) : Prop :=
   Always : P s -> forever P (tl s) -> forever P s.
 Arguments Always {A} [P] [s] _ _.
@@ -111,4 +153,28 @@ Proof.
 intros P Q HPQ s HP. induction HP as [e HP | HP].
 - apply Now. auto.
 - now apply Later.
+Qed.
+
+Inductive next_eventually {A : Type} (P : t A -> Prop) (s : t A) : Prop :=
+| n_Now : P s -> next_eventually P s
+| n_Later : next_eventually P (tl (tl s)) -> next_eventually P s.
+Arguments n_Now {A} [P] [s] _.
+Arguments n_Later {A} [P] [s] _.
+
+Instance next_eventually_compat {A} (eqA : relation A) : Proper ((eq eqA ==> iff) ==> eq eqA ==> iff) next_eventually.
+Proof.
+intros P Q HPQ s s' Hs. split; intro H.
++ revert s' Hs. induction H; intros s' Hs.
+  - apply n_Now. now rewrite <- (HPQ _ _ Hs).
+  - apply n_Later. apply IHnext_eventually. now inv Hs; inv H1.
++ revert s Hs. induction H; intros s' Hs.
+  - apply n_Now. now rewrite (HPQ _ _ Hs).
+  - apply n_Later. apply IHnext_eventually. now inv Hs; inv H1.
+Qed.
+
+Lemma next_eventually_impl_compat {A} : forall P Q : t A -> Prop, (forall s, P s -> Q s) -> forall s, next_eventually P s -> next_eventually Q s.
+Proof.
+intros P Q HPQ s HP. induction HP as [e HP | HP].
+- apply n_Now. auto.
+- now apply n_Later.
 Qed.

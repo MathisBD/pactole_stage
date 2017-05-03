@@ -17,21 +17,24 @@ Set Implicit Arguments.
 Module GatheringDefs(Loc : RealMetricSpace)(N : Size).
 
 (** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(Loc)(N).
+Module Names := Robots.Make(N).
+Module Config := Configurations.Make(Loc)(N)(Names).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Common := CommonRealFormalism.Make(Loc)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(Loc)(N)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(Loc)(N)(Names)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
 
 Module Sim := Common.Sim.
 
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : Loc.t) (conf : Config.t) := forall g : Names.G, Loc.eq (conf (Good g)) pt.
+Definition gathered_at (pt : Loc.t) (conf : Config.t) :=
+           forall g : Names.G, Loc.eq (Config.loc (conf (Good g))) pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution [e],
     robots are gathered at the same position [pt]. *)
@@ -65,8 +68,11 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 (** Compatibility properties *)
 Instance gathered_at_compat : Proper (Loc.eq ==> Config.eq ==> iff) gathered_at.
 Proof.
-intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at. setoid_rewrite Hpt.
-split; intros; rewrite <- (H g); idtac + symmetry; apply Hconfig.
+intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at. 
+split; intros H g; specialize (H g); specialize (Hconfig (Good g));
+destruct (config2 (Good g)) eqn:c2, (config1 (Good g)) eqn:c1 in *.
+rewrite <- Hpt, <- H; unfold Config.eq, Config.eq_RobotConf in Hconfig;
+intuition. rewrite Hpt, <- H. unfold Config.eq, Config.eq_RobotConf in Hconfig; intuition.
 Qed.
 
 Instance Gather_compat : Proper (Loc.eq ==> eeq ==> iff) Gather.
@@ -91,8 +97,8 @@ Proof.
 intros HnG conf Heq.
 unfold Spect.from_config in Heq.
 rewrite Spect.multiset_empty in Heq.
-assert (Hlgth:= Spect.Config.list_length conf).
-rewrite Heq in Hlgth.
+assert (Hlgth:= Config.list_length conf).
+erewrite <- List.map_length, Heq in Hlgth.
 simpl in *.
 omega.
 Qed.

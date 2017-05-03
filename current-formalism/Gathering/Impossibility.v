@@ -220,12 +220,23 @@ intros e He pt Habs. induction Habs as [e IHe | e _ IHe].
   - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+<<<<<<< HEAD
+    destruct id as [g | b]. unfold gathered_at in Hnow. 
+    specialize (Hnow g). destruct (execution_head e). apply Hnow. apply Fin.case0. exact b.
+  - assert (Hin : Spect.In pt2 (!! (execution_head e))).
+    { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
+    rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+    symmetry. destruct id as [g | b]. unfold gathered_at in Hnow; specialize (Hnow g).
+    destruct (execution_head e) in *. apply Hnow. apply Fin.case0. exact b.
++ inversion He. now apply IHHabs.
+=======
     destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
   - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
 + inversion He. auto.
+>>>>>>> master
 Qed.
 
 Section GatheringEven.
@@ -241,25 +252,31 @@ Variable r : robogram.
 
 (** The reference starting configuration **)
 Definition conf1 : Config.t := fun id =>
+  let place := 
   match id with
     | Good g => if left_dec g then Loc.origin else Loc.unit
     | Byz b => Loc.origin
-  end.
+  end in
+  {| Config.loc := place;
+      Config.robot_info := {| Config.source := place; Config.target := place |} |}.
 
 (** The symmetrical configuration of the starting configuration **)
 Definition conf2 : Config.t := fun id =>
+  let place :=
   match id with
     | Good g => if left_dec g then Loc.unit else Loc.origin
     | Byz b => Loc.origin
-  end.
+  end in
+  {| Config.loc := place;
+      Config.robot_info := {| Config.source := place; Config.target := place |} |}.
 
 Definition spectrum := Spect.add Loc.origin (Nat.div2 N.nG) (Spect.singleton Loc.unit (Nat.div2 N.nG)).
 
 Theorem conf1_conf2_spect_eq : Spect.eq (!! conf1) (!! conf2).
 Proof.
 intro pt. unfold conf1, conf2.
-do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames. do 2 rewrite map_map.
-unfold left_dec, left. generalize (Names.Gnames_NoDup).
+do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames. do 4 rewrite map_map.
+unfold left_dec, left. generalize (Names.Gnames_NoDup). unfold Spect.Config.loc.
 apply (@first_last_even_ind _
 (fun l => NoDup l ->
      countA_occ _ Loc.eq_dec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then Loc.origin else Loc.unit) l) =
@@ -299,8 +316,8 @@ Qed.
 Theorem spect_conf1 : Spect.eq (!! conf1) spectrum.
 Proof.
 intro pt. unfold conf1, spectrum.
-rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames, map_map.
-unfold left_dec, left. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
+rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames, map_map, map_map.
+unfold left_dec, left, Spect.Config.loc. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
 apply (@first_last_even_ind _
 (fun l => NoDup l ->
       countA_occ _ Loc.eq_dec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then Loc.origin else Loc.unit) l)
@@ -363,7 +380,7 @@ abstract (intros x y; split; intro Heq; rewrite <- Heq;
           now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
 Defined.
 
-Lemma bij_swap_ratio : forall c x y : Loc.t, Loc.dist (bij_swap c x) (bij_swap c y) = (1 * Loc.dist x y)%R.
+Lemma bij_swap_ratio : forall c x y : Loc.t, Loc.dist ((bij_swap c) x) (bij_swap c y) = (1 * Loc.dist x y)%R.
 Proof.
 intros c x y. rewrite Rmult_1_l. compute.
 setoid_rewrite Loc.add_comm. rewrite translation_hypothesis.
@@ -387,21 +404,39 @@ Defined.
 Instance swap_compat : Proper (Loc.eq ==> Sim.eq) swap.
 Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
 
-Lemma swap_conf1 : Config.eq (Config.map (swap Loc.unit) conf1) conf2.
+Definition rc_map (f : Loc.t -> Loc.t) (rc: Config.RobotConf) : Config.RobotConf := 
+{| Config.loc := f (Config.loc rc);
+   Config.robot_info := {| Config.source := f (Config.source (Config.robot_info rc));
+                           Config.target := f (Config.target (Config.robot_info rc)) |} |}.
+
+Lemma swap_conf1 : Config.eq (Config.map (rc_map (swap Loc.unit)) conf1) conf2.
 Proof.
 intros [g | b].
-+ unfold Config.map. simpl. LR_dec.
-  - now rewrite Loc.opp_origin, Loc.add_origin.
-  - apply Loc.add_opp.
++ unfold Config.map, rc_map. simpl. LR_dec.
+  - unfold Config.eq_RobotConf, Config.Info_eq. split; simpl.
+    rewrite Loc.opp_origin, Loc.add_origin. destruct (left_dec g).
+    reflexivity.
+    contradiction.
+    split; rewrite Loc.opp_origin, Loc.add_origin; destruct (left_dec g);
+    try reflexivity; try contradiction.
+  - split; try split; simpl; destruct (left_dec g).
+    try (exfalso; apply (left_right_exclusive g)); auto.
+    apply Loc.add_opp.
+    try (exfalso; apply (left_right_exclusive g)); auto.
+    apply Loc.add_opp.
+    try (exfalso; apply (left_right_exclusive g)); auto.
+    apply Loc.add_opp.
 + apply Fin.case0. exact b.
 Qed.
 
-Lemma swap_conf2 : Config.eq (Config.map (swap Loc.unit) conf2) conf1.
+Lemma swap_conf2 : Config.eq (Config.map (rc_map (swap Loc.unit)) conf2) conf1.
 Proof.
 intros [g | b].
-+ unfold Config.map. simpl. LR_dec.
-  - apply Loc.add_opp.
-  - now rewrite Loc.opp_origin, Loc.add_origin.
++ unfold Config.map, rc_map. simpl. LR_dec.
+  - split; try split; simpl; destruct (left_dec g);
+    try apply Loc.add_opp; try contradiction.
+  - split; try split; simpl; rewrite Loc.opp_origin, Loc.add_origin; destruct (left_dec g);
+    try reflexivity; exfalso; now apply (left_right_exclusive g).
 + apply Fin.case0. exact b.
 Qed.
 
