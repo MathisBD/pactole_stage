@@ -7,7 +7,6 @@ Configurations.v
 MMaps/MMapInterface.v
 MMaps/MMapFacts.v
 MMaps/MMapWeakList.v
-
 Similarity.v
 CommonFormalism.v
 CommonRealFormalism.v
@@ -41,11 +40,8 @@ Exploration/ZnZ/ImpossibilityKDividesN.v
 Exploration/Graph/GraphFromZnZ.v
 Exploration/Graph/Definitions.v
 Exploration/Graph/ImpossibilityKDividesN.v
-GraphStaticEquivalence/CommonGraphFormalism.v
-GraphStaticEquivalence/GraphEquivalence.v
-GraphStaticEquivalence/DiscreteGraphFormalism.v
-GraphStaticEquivalence/AtomicGraphFormalism.v
 Isomorphism.v
 CommonIsoGraphFormalism.v
+
 
 
