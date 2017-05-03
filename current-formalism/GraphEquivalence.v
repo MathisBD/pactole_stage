@@ -212,7 +212,7 @@ refine {|
 Proof.
   + intros g rcA sim HrcD. unfold DGF.Aom_eq in *.
     destruct (DGF.Config.eq_RobotConf_dec rcA (rcC2D (cD (Good g))));
-      try discriminate.
+      try easy.
     destruct e as (Hl, (Hs, Ht)).
     (*   assert (Hax1 := CGF.ri_Loc (cD (Good g))).
   destruct Hax1 as (lax1, (lax2, ((Hax_src, Hax_tgt), (eD, HeD)))). *)
@@ -238,7 +238,7 @@ Proof.
     now (exists (DGF.Config.loc rcA)).
     unfold CGF.Location.eq, DGF.Location.eq, CGF.loc_eq in *.
     unfold LocC2D in *.
-    destruct HstepD as (Hstl, Hstst).
+    destruct HstepD' as (Hstl, Hstst).
     destruct (CGF.Config.loc (cD (Good g)))
              eqn : HlocD,
                    (CGF.Config.source (CGF.Config.robot_info (cD (Good g))))
@@ -299,7 +299,6 @@ Proof.
       rewrite Hl, Ht;
       try assumption;
       now destruct H.
-    now simpl in *.
   + intros id1 id2 Hid rcA1 rcA2 HrcA. unfold DGF.Aom_eq. 
     assert (Graph.Veq (DGF.Config.source (DGF.Config.robot_info rcA1))
                       (DGF.Config.source (DGF.Config.robot_info rcA2))) by apply HrcA.

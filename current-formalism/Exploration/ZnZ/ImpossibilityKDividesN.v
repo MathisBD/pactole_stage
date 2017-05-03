@@ -908,12 +908,12 @@ Proof.
   + apply Fin.case0. exact b .
 Defined.
 
-CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
 
-Lemma bad_demon1_tail : demon_tail bad_demon1 = bad_demon1.
+Lemma bad_demon1_tail : Streams.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
 
-Lemma bad_demon1_head : demon_head bad_demon1 = da1.
+Lemma bad_demon1_head : Streams.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
 (*
@@ -1548,18 +1548,17 @@ Proof.
     reflexivity.
 Qed.
 
-CoInductive AlwaysEquiv (e : execution) : Prop :=
-  CAE : equiv_conf config1 (execution_head e) ->
-        AlwaysEquiv (execution_tail e) -> AlwaysEquiv e.
+Definition AlwaysEquiv (e : execution) : Prop :=
+  Streams.forever (Streams.instant (equiv_conf config1)) e.
 
-CoInductive AlwaysMoving (e : execution) : Prop :=
-  CAM : (~ Stopped e) -> AlwaysMoving (execution_tail e) -> AlwaysMoving e.
+Definition AlwaysMoving (e : execution) : Prop :=
+  Streams.forever (fun e1 =>  ~ Stopped e1) e.
 
 (* An execution that is satisfing the predicate [AlwaysEquiv]
    satisfy the [AlwaysMoving] one too. *)
 
 Lemma AlwaysEquiv_impl_AlwaysMoving : forall e,
-    e = execute r bad_demon1 (execution_head e)
+    e = execute r bad_demon1 (Streams.hd e)
     -> AlwaysEquiv e -> AlwaysMoving e.
 Proof.
   cofix.
@@ -1625,7 +1624,7 @@ Qed.
    the [Will_Stop] one *)
 
 Lemma AlwaysMoving_impl_not_WillStop : forall e,
-    e = execute r bad_demon1 (execution_head e)
+    e = execute r bad_demon1 (Streams.hd e)
     -> AlwaysMoving e -> ~ Will_stop e.
 Proof.
 intros e Heq_e Hmo Hst.
@@ -1699,7 +1698,7 @@ Section Stop.
     exists Loc.unit.
     intros Hl.
     induction Hl.
-    + destruct H as ((g0, Hvis), Hvis_later).
+    + destruct H as (g0, Hvis).
       rewrite Heq_e in Hvis.
       simpl in Hvis.
       assert (Z.of_nat (n mod kG) = 0) by (generalize kdn; omega).

@@ -25,6 +25,7 @@ Set Implicit Arguments.
 
 
 Ltac autoclass := eauto with typeclass_instances.
+Ltac inv H := inversion H; subst; clear H.
 
 (** A tactic simplifying coinduction proofs. *)
 Global Ltac coinduction proof :=

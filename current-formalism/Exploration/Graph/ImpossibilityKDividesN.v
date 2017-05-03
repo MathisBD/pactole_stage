@@ -258,20 +258,23 @@ Definition da1 : demonic_action.
       (Loc.eq_dec (Config.loc rc2)
                   (Config.target (Config.robot_info rc2)));
         try (now auto);
-        now rewrite Hl_rc, Ht_rc in *.
+        try now rewrite Hl_rc, Ht_rc in *.
+      rewrite Hl_rc.
+      unfold Aom_eq.
+      reflexivity.
       apply Fin.case0.
       exact b1.    
   Defined.
   
     
-CoFixpoint bad_demon1 : demon := NextDemon da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
 
 Lemma bad_demon1_tail : 
-    demon_tail bad_demon1 = bad_demon1.
+    Streams.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
   
 Lemma bad_demon1_head :
-    demon_head bad_demon1 = da1.
+    Streams.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
                            
@@ -384,27 +387,27 @@ Proof.
       apply IHl.
 Qed.
 
+Definition AlwaysEquiv (e : execution) : Prop :=
+  Streams.next_forever (fun e1 => equiv_conf config1
+                                        (Streams.hd e1)) e.
+                                                                    
+Definition AlwaysMoving (e : execution) : Prop :=
+  Streams.next_forever (fun e1 => ~Stopped e1) e.
 
-CoInductive AlwaysEquiv (e : execution) : Prop :=
-  CAE : equiv_conf config1 (execution_head e) ->
-        AlwaysEquiv (execution_tail (execution_tail e)) -> AlwaysEquiv e.
-
-CoInductive AlwaysMoving (e : execution) : Prop :=
-  CAM : (~ Stopped e) -> AlwaysMoving (execution_tail (execution_tail e))
-        -> AlwaysMoving e.
-
+    
 (* An execution that is satisfing the predicate [AlwaysEquiv]
    satisfy the [AlwaysMoving] one too. *)
 
 
 Lemma AlwaysMoving_impl_not_WillStop : forall e,
-    e = execute r bad_demon1 (execution_head e)
+    e = execute r bad_demon1 (Streams.hd e)
     -> AlwaysMoving e -> ~ Will_stop e.
 Proof.
 intros e Heq_e Hmo Hst.
 destruct Hmo.
 induction Hst.
 contradiction.
+
 apply IHHst.
 rewrite Heq_e.
 cbn.
@@ -829,11 +832,11 @@ Qed.
 
 
 
-Lemma moving_no_stop : ~Stopped ((execute r bad_demon1 config1)).
+Lemma moving_no_stop : ~Stopped (((execute r bad_demon1 config1))).
 Proof.
   intros Hs.
   generalize n_sup_1; intros Hn1.
-  destruct Hs as (Hs, _).
+  destruct Hs as (Hs,_).
   unfold stop_now in Hs.
   simpl in *.
   rewrite round_2_simplify_1 in Hs.
@@ -910,17 +913,17 @@ Lemma moving_never_stop : forall conf,
     ~Stopped (execute r bad_demon1 conf).
 Proof.
   intros conf Hconf_equiv Hstop.
-  destruct Hstop as (Hstop, _).
+  destruct Hstop as (Hstop, (Hsl, _)).
   unfold stop_now in *.
   simpl in *.
   apply (round1_move_g_equiv g Hconf_equiv).
   specialize (Hstop (Good g)).
   symmetry.
-  apply Hstop.
+  now destruct Hstop.
 Qed.
 
 Lemma AlwaysEquiv_impl_AlwaysMoving : forall e,
-    e = execute r bad_demon1 (execution_head e)
+    e = execute r bad_demon1 (Streams.hd e)
     -> AlwaysEquiv e -> AlwaysMoving e.
 Proof.
   cofix.
@@ -933,18 +936,17 @@ Proof.
     rewrite Heq_e.
     rewrite Hcomp.
     apply moving_never_stop.
-    unfold round.
-    exists x.
-    reflexivity.
-  -  destruct HAequiv.
-     apply AlwaysEquiv_impl_AlwaysMoving.
-     + rewrite Heq_e at 1.
-       rewrite execute_tail.
-       simpl in *.
-       rewrite Heq_e at 2.
-       simpl in *.
-       reflexivity.
-     + assumption.
+    now exists x.
+  - apply AlwaysEquiv_impl_AlwaysMoving.
+    + rewrite Heq_e at 1.
+      rewrite execute_tail.
+      simpl in *.
+      rewrite Heq_e at 2.
+      simpl in *.
+      reflexivity.
+    + simpl in *.
+      destruct HAequiv.
+      apply HAequiv.
 Qed.
 
 
@@ -955,7 +957,7 @@ Proof.
   cofix.
   intros.
   constructor.
-  + now simpl in *.
+  + now simpl.
   + apply AlwaysEquiv_conf1.
     simpl in *.
     assert (Hequiv' :
@@ -1106,7 +1108,7 @@ Section Stop.
     exists Loc.unit.
     intros Hl.
     induction Hl.
-    + destruct H as ((g0, Hvis), Hvis_later).
+    + destruct H as (g0, Hvis).
       rewrite Heq_e in Hvis.
       simpl in Hvis.
       assert (Z.of_nat (n mod kG) = 0) by (unfold n, kG; generalize kdn; omega).
@@ -1579,13 +1581,13 @@ Qed.
 
 
   CoInductive AlwaysEquiv_m (e : execution) : Prop :=
-    CAE_m : equiv_conf (round r da1 (round r da1 config1)) (execution_head e) ->
-            AlwaysEquiv_m (execution_tail (execution_tail e)) -> AlwaysEquiv_m e.
+    CAE_m : equiv_conf (round r da1 (round r da1 config1)) (Streams.hd e) ->
+            AlwaysEquiv_m (Streams.tl (Streams.tl e)) -> AlwaysEquiv_m e.
 
 
   
   Lemma AlwaysEquiv_impl_AlwaysMoving_m : forall e,
-      e = execute r bad_demon1 (execution_head e)
+      e = execute r bad_demon1 (Streams.hd e)
       -> AlwaysEquiv_m e -> AlwaysMoving e.
   Proof.
     cofix.

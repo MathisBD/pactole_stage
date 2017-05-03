@@ -24,6 +24,7 @@ Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
 Require Import Pactole.DiscreteMultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
+Require Import Streams.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 Require Import Pactole.GraphEquivalence.
 
@@ -187,9 +188,8 @@ Proof.
   now rewrite Hc, Hxy.
   f_equiv.
   simpl.
-  rewrite Hc.
   destruct H; split; simpl in *.
-  now rewrite H.
+  now rewrite H, Hc.
   assumption.
   unfold bij_trans_E in *; simpl in *.  
   unfold Loc.add, ImpossibilityKDividesN.Loc.add.
@@ -200,18 +200,18 @@ Qed.
 
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
-
-Definition is_visited (loc : Loc.t) (conf : Config.t) := 
+Definition is_visited (loc : Loc.t) (e : execution) :=
+  let conf := Streams.hd e in 
     exists g : Names.G, Loc.eq (conf (Good g)).(Config.loc) loc .
     
-Instance is_visited_compat : Proper (Loc.eq ==> Config.eq ==> iff) is_visited.
+Instance is_visited_compat : Proper (Loc.eq ==> eeq ==> iff) is_visited.
 Proof.
 intros l1 l2 Hl c1 c2 Hc.
 split; intros Hv; unfold is_visited in *; destruct Hv as (g, Hv); exists g.
-rewrite <- Hl, <- Hv; symmetry; apply Hc.
-rewrite Hl, <- Hv; apply Hc.
+rewrite <- Hl, <- Hv; symmetry; now rewrite Hc.
+rewrite Hl, <- Hv; now rewrite Hc.
 Qed.
-
+(*
 CoInductive has_been_visited (loc : Loc.t) (e : execution) : Prop :=
 Visit : is_visited loc (execution_head e) -> has_been_visited loc (execution_tail e) -> has_been_visited loc e.
 
@@ -225,9 +225,9 @@ intros l1 l2 Hl e1 e2 He. split.
   - rewrite Hl, He. now destruct H.
   - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
   Qed.
-
-Definition stop_now e :=
-    Config.eq (execution_head e) (execution_head (execution_tail (execution_tail e))).
+*)
+Definition stop_now (e : execution) :=
+    Config.eq (Streams.hd e) (Streams.hd (Streams.tl (Streams.tl e))).
 
 Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
@@ -237,46 +237,32 @@ now rewrite <- He.
 now rewrite He.
 Qed.
 
-CoInductive Stopped (e : execution) : Prop :=
-Stop : stop_now e -> Stopped (execution_tail (execution_tail e)) -> Stopped e.
+Definition Stopped (e : execution) : Prop :=
+  Streams.next_forever ((stop_now)) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
 intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
   - destruct H. now rewrite <- He.
-  - destruct H as [_ H], He as [_ [ _ He]]. apply (rec _ _ He H).
+  - destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
   - destruct H. now rewrite He.
   - destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
 Qed.
 
-Inductive Will_be_visited (loc: Loc.t) (e : execution) : Prop :=
- | Now_v: has_been_visited loc e -> Will_be_visited loc e
- | Later_v : Will_be_visited loc (execution_tail e) -> Will_be_visited loc e.
- 
-Inductive Will_stop (e : execution) : Prop :=
- | Now_s : Stopped e -> Will_stop e
- | Later_s : Will_stop (execution_tail (execution_tail e)) -> Will_stop e.
+Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
+  Streams.eventually (is_visited loc) e.
+
+Definition Will_stop (e : execution) : Prop :=
+  Streams.next_eventually Stopped e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
-intros l1 l2 Hl e1 e2 He. split; intros Hw. 
-+ revert e2 He. induction Hw as [ e1 | e1 He1 IHe1]; intros e2 He.
-  - apply Now_v. now rewrite <- Hl, <- He.
-  - apply Later_v, IHe1, He.
-+ revert e1 He. induction Hw as [ e2 | e2 He2 IHe2]; intros e1 He.
-  - apply Now_v. now rewrite Hl, He.
-  - apply Later_v, IHe2, He.
+intros l1 l2 Hl. now apply Streams.eventually_compat, is_visited_compat. 
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
 Proof.
-intros e1 e2 He. split; intros Hw.
-+ revert e2 He. induction Hw as [e1 | e1 He1 IHe1]; intros e2 He.
-  - apply Now_s. now rewrite <-He.
-  - apply Later_s, IHe1. now repeat f_equiv.
-+ revert e1 He. induction Hw as [e2 | e2 He2 IHe2]; intros e1 He.
-  - apply Now_s. now rewrite He.
-  - apply Later_s, IHe2. now repeat f_equiv.
+  apply Streams.next_eventually_compat, Stopped_compat.
 Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
@@ -284,10 +270,5 @@ Qed.
 Definition FullSolExplorationStop  (r : robogram) (d : demon) := 
 forall config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
-(* Definition ValidSolExplorationStop (r : robogram) (d : demon) :=
-forall (config : Config.t), ~(forbidden config) ->
-         (forall l, Will_be_visited l (execute r d config))
-         /\ Will_stop (execute r d config).
-*)
 
 End ExplorationDefs.
