@@ -8,8 +8,222 @@ Require Pactole.MMultiset.MMultisetFacts.
 
 Set Implicit Arguments.
 
+Module Type MMultisetExtra (E : DecidableType)(M : FMultisetsOn E).
+  Module MProp := MMultisetFacts.Make(E)(M).
+  Include MProp.
+  
+  (** *  Extra operations  **)
+  
+  (** **  Function [map] and its properties  **)
+  
+  Definition map f m := fold (fun x n acc => add (f x) n acc) m empty.
+  
+  Section map_results.
+    Variable f : E.t -> E.t.
+    Hypothesis Hf : Proper (E.eq ==> E.eq) f.
+    
+    Declare Instance map_compat : Proper (E.eq ==> E.eq) f -> Proper (eq ==> eq) (map f).
+    
+    Parameter map_In : Proper (E.eq ==> E.eq) f ->  forall x m, In x (map f m) <-> exists y, E.eq x (f y) /\ In y m.
+        
+    Parameter map_empty : map f empty [=] empty.
+    
+    Parameter map_add : Proper (E.eq ==> E.eq) f -> forall x n m, map f (add x n m) [=] add (f x) n (map f m).
+        
+    Parameter map_spec : Proper (E.eq ==> E.eq) f -> forall x m, multiplicity x (map f m) =
+      cardinal (nfilter (fun y _ => if E.eq_dec (f y) x then true else false) m).
+       
+    Declare Instance map_sub_compat : Proper (E.eq ==> E.eq) f -> Proper (Subset ==> Subset) (map f).
+        
+    Parameter map_singleton : Proper (E.eq ==> E.eq) f -> forall x n, map f (singleton x n) [=] singleton (f x) n.
+    
+    Parameter map_remove1 : Proper (E.eq ==> E.eq) f -> forall x n m, n <= multiplicity x m -> map f (remove x n m) [=] remove (f x) n (map f m).
+        
+    Parameter map_remove2 : Proper (E.eq ==> E.eq) f -> forall x n m,
+      multiplicity x m <= n -> map f (remove x n m) [=] remove (f x) (multiplicity x m) (map f m).
+    
+    Parameter fold_map_union : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, fold (fun x n acc => add (f x) n acc) m₁ m₂ [=] union (map f m₁) m₂.
 
-Module Make(E : DecidableType)(M : FMultisetsOn E).
+    Parameter map_union : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
+    
+    Parameter map_inter : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, map f (inter m₁ m₂) [<=] inter (map f m₁) (map f m₂).
+    
+    Parameter map_lub : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, lub (map f m₁) (map f m₂) [<=] map f (lub m₁ m₂).
+        
+    (*
+    Lemma map_elements : forall m,
+      PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
+    Proof.
+    assert (Proper (eq_pair ==> eq_pair) (fun xn => (f (fst xn), snd xn))). { intros ? ? Heq. now rewrite Heq. }
+    apply ind.
+    + intros ? ? Hm. now rewrite Hm.
+    + intros m x n Hin Hn Hrec. rewrite (map_add _). repeat rewrite elements_add_out; trivial.
+      - simpl. now constructor.
+      - rewrite (map_In _). intros [y [Heq Hy]]. apply Hf2 in Heq. apply Hin. now rewrite Heq.
+    + now rewrite map_empty, elements_empty.
+    Qed.
+    *)
+    
+    Parameter map_from_elements : Proper (E.eq ==> E.eq) f -> 
+      forall l, map f (from_elements l) [=] from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
+        
+    Parameter map_support : Proper (E.eq ==> E.eq) f -> forall m, inclA E.eq (support (map f m)) (List.map f (support m)).
+    
+    Parameter map_cardinal : Proper (E.eq ==> E.eq) f -> forall m, cardinal (map f m) = cardinal m.
+    
+    Parameter map_size : Proper (E.eq ==> E.eq) f -> forall m, size (map f m) <= size m.
+    
+    Section map_injective_results.
+      Hypothesis Hf2 : injective E.eq E.eq f.
+      
+      Parameter map_injective_spec :
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall x m, multiplicity (f x) (map f m) = multiplicity x m.
+      
+      Parameter map_injective_In : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall x m, In (f x) (map f m) <-> In x m.
+      
+      Parameter map_injective_remove :
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall x n m, map f (remove x n m) [=] remove (f x) n (map f m).
+      
+      Parameter map_injective_inter : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall m₁ m₂, map f (inter m₁ m₂) [=] inter (map f m₁) (map f m₂).
+      
+      Parameter map_injective_diff : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall m₁ m₂, map f (diff m₁ m₂) [=] diff (map f m₁) (map f m₂).
+            
+      Parameter map_injective_lub_wlog : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall x m₁ m₂, multiplicity x (map f m₂) <= multiplicity x (map f m₁) ->
+        multiplicity x (map f (lub m₁ m₂)) = multiplicity x (map f m₁).
+      
+      Parameter map_injective_lub : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall m₁ m₂, map f (lub m₁ m₂) [=] lub (map f m₁) (map f m₂).
+      
+      Parameter map_injective : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        injective eq eq (map f).
+      
+      Parameter map_injective_elements : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall m,
+        PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
+      
+      Parameter map_injective_support : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall m, PermutationA E.eq (support (map f m)) (List.map f (support m)).
+      
+      Parameter map_injective_size : 
+        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+        forall m, size (map f m) = size m.
+      
+    End map_injective_results.
+  End map_results.
+  
+  Parameter map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
+    (forall x, E.eq (g x) (f x)) -> forall m, map g m [=] map f m.
+  
+  Parameter map_extensionality_compat_strong : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, (forall x, In x m -> E.eq (g x) (f x)) -> map g m [=] map f m.
+  
+  Parameter map_merge : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, map f (map g m) [=] map (fun x => f (g x)) m.
+  
+  Parameter map_injective_fold : forall A eqA, Equivalence eqA ->
+    forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m (i : A), eqA (fold f (map g m) i) (fold (fun x => f (g x)) m i).
+  
+  Parameter map_injective_nfilter : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, nfilter f (map g m) [=] map g (nfilter (fun x => f (g x)) m).
+  
+  Parameter map_injective_npartition_fst : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, fst (npartition f (map g m)) [=] map g (fst (npartition (fun x => f (g x)) m)).
+  
+  Parameter map_npartition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, snd (npartition f (map g m)) [=] map g (snd (npartition (fun x => f (g x)) m)).
+  
+  Parameter map_injective_for_all : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, for_all f (map g m) = for_all (fun x => f (g x)) m.
+  
+  Parameter map_injective_exists : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+    forall m, exists_ f (map g m) = exists_ (fun x => f (g x)) m.
+  
+  (** **  Function [max] and its properties  **)
+  
+  (** ***  Function [max_mult] computing the maximal multiplicity  **)
+  
+  Definition max_mult m := fold (fun _ => max) m 0%nat.
+  
+  Declare Instance max_mult_compat : Proper (eq ==> Logic.eq) max_mult.
+  
+  Parameter max_mult_empty : max_mult empty = 0.
+  
+  Parameter max_mult_singleton : forall x n, max_mult (singleton x n) = n.
+  
+  Parameter max_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, max_mult (map f m) = max_mult m.
+  
+  Parameter max_mult_add : forall m x n, (n > 0)%nat -> ~In x m ->
+    max_mult (add x n m) = Nat.max n (max_mult m).
+  
+  Parameter max_mult_spec : forall m x, (m[x] <= max_mult m)%nat.
+  
+  Parameter max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
+  
+  (** ***  Function [max s] returning the elements of a multiset with maximal multiplicity  **)
+  
+  Definition max m := nfilter (fun _ => beq_nat (max_mult m)) m.
+  
+  Declare Instance eqb_max_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult m)).
+  
+  Declare Instance eqb_max_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.max).
+  
+  Local Hint Immediate eqb_max_mult_compat eqb_max_compat.
+  
+  Declare Instance max_compat : Proper (eq ==> eq) max.
+  
+  Parameter max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, (max (map f m)) [=] (map f (max m)).
+  
+  Parameter  max_subset : forall m, max m [<=] m.
+  
+  Parameter  max_spec1 : forall m x y, In y (max m) -> m[x] <= (max m)[y].
+  
+  Parameter  max_spec_non_nil : forall m x, In x m -> exists y, In y (max m).
+  
+  Parameter  max_empty : forall m, max m [=] empty <-> m [=] empty.
+  
+  Parameter  max_singleton : forall x n, max (singleton x n) [=] singleton x n.
+  
+  Parameter  max_2_mult : forall m x, (max m)[x] = 0 \/ (max m)[x] = m[x].
+  
+  Parameter  max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
+  
+  Parameter  max_spec_mult : forall m x y, In x (max m) -> (In y (max m) <-> (max m)[y] = (max m)[x]).
+  
+  Parameter  max_spec2 : forall m x y,
+    In x (max m) -> ~In y (max m) -> (m[y] < m[x])%nat.
+  
+  Parameter  max_max_mult : forall m x, ~m [=] empty -> In x (max m) <-> m[x] = max_mult m.
+  
+  Parameter  max_max_mult_ex : forall m, ~m [=] empty -> exists x, max_mult m = m[x].
+  
+  Parameter  max_spec_max : forall m x, ~m [=] empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
+  
+  Parameter max_spec1_iff : forall m, ~m [=] empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
+  
+  Parameter size_max_le : forall m, size (max m) <= size m.
+
+End MMultisetExtra.
+
+
+Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   Module MProp := MMultisetFacts.Make(E)(M).
   Include MProp.
   

@@ -1,12 +1,11 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
+(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
 (*                                                                        *)
 (**************************************************************************)
-
 
 Require MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
@@ -21,9 +20,9 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : RealMetricSpace)(N : Robots.Size)(Names : Robots.Robots(N))
-            (Config : Configuration(Location)(N)(Names)) <: Spectrum (Location)(N)(Names)(Config).
-
+Module Make (Location : DiscreteSpace)(N : Robots.Size)(Names : Robots.Robots(N))
+            (Config : Configuration(Location)(N)(Names))
+            <: Spectrum (Location)(N)(Names)(Config).
 
 Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
 Proof. intros [] [] []. now cbn. Qed.

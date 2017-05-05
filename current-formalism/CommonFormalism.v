@@ -16,6 +16,7 @@ Require Import Morphisms.
 Require Import RelationPairs.
 Require Import Reals.
 Require Import Psatz.
+Require Import Setoid.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Streams.
@@ -23,9 +24,11 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)).
-  Module Names := Spect.Names.
-  Module Config := Spect.Config.
+
+
+Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))
+                (Config : Configuration(Location)(N)(Names))
+                (Spect : Spectrum(Location)(N)(Names)(Config)).
   
   (** ** Good robots have a common program, which we call a robogram *)
   
@@ -36,7 +39,7 @@ Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(
   
   Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
   Declare Instance req_equiv : Equivalence req.
-  
+
   (** Lifting an equivalence relation to an option type. *)
   Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
     match xo, yo with
@@ -48,7 +51,7 @@ Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(
   Declare Instance opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
   Declare Instance opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
   Declare Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
-  
+
   (** ** Executions *)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
@@ -64,10 +67,10 @@ Module Type Sig (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(
 End Sig.
 
 
-Module Make (Location : DecidableType)(N : Size)(Spect : Spectrum(Location)(N)) : Sig (Location)(N)(Spect).
-
-Module Names := Spect.Names.
-Module Config := Spect.Config.
+Module Make (Location : DecidableType)(N : Size)(Names : Robots(N))
+            (Config : Configuration(Location)(N)(Names))
+            (Spect : Spectrum(Location)(N)(Names)(Config))
+            : Sig (Location)(N)(Names)(Config)(Spect).
 
 (** ** Programs for good robots *)
 
@@ -91,29 +94,45 @@ Proof. split.
   rewrite (H1 _ _ (reflexivity _)), (H2 _ _ (reflexivity _)). now apply (pgm_compat r3).
 Qed.
 
-(** ** Prelude for Demonic schedulers *)
+  Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
+    match xo, yo with
+      | None, None => True
+      | None, Some _ | Some _, None => False
+      | Some x, Some y => eqT x y
+    end.
+  Lemma opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
+  Proof.
+    intros.
+    unfold opt_eq.
+    intros x.
+    destruct x.
+    apply H.
+    trivial.
+  Qed.
+  
+  Lemma opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
+  Proof.
+    intros T R HR x y Hxy; unfold opt_eq in *.
+    destruct x, y; trivial.
+    now apply HR.
+  Qed.
 
-(** Lifting an equivalence relation to an option type. *)
-Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
-  match xo, yo with
-    | None, None => True
-    | None, Some _ | Some _, None => False
-    | Some x, Some y => eqT x y
-  end.
-
-Instance opt_eq_refl : forall T (R : relation T), Reflexive R -> Reflexive (opt_eq R).
-Proof. intros T R HR [x |]; simpl; auto. Qed.
-
-Instance opt_eq_sym : forall T (R : relation T), Symmetric R -> Symmetric (opt_eq R).
-Proof. intros T R HR [x |] [y |]; simpl; auto. Qed.
-
-Instance opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
-Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed.
-
-Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
-Proof. split; auto with typeclass_instances. Qed.
-
-(** ** Executions *)
+  Lemma opt_eq_trans : forall T (R : relation T), Transitive R -> Transitive (opt_eq R).
+  Proof.
+    intros T R HR x y z Hxy Hyz; unfold opt_eq in *; destruct x, y, z; trivial. 
+    now transitivity t0.
+    easy.
+  Qed.
+  
+  Lemma opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
+  Proof.
+    repeat split;
+      destruct HeqT as [Hr Hs Ht];
+      (try (now apply opt_eq_refl));
+      try (now apply opt_eq_sym);
+      try now apply (opt_eq_trans).
+  Qed.
+    (** ** Executions *)
 
 (** Now we can [execute] some robogram from a given position with a [demon] *)
 Definition execution := Streams.t Config.t.

@@ -55,6 +55,7 @@ Instance Always_forbidden_compat : Proper (eeq ==> iff) Always_forbidden.
 Proof. apply Streams.forever_compat, Streams.instant_compat. apply forbidden_compat. Qed.
 
 (** ** Linking the different properties *)
+Set Printing Matching.
 
 Theorem different_no_gathering : forall (e : execution),
   N.nG <> 0%nat -> Always_forbidden e -> forall pt, ~WillGather pt e.
@@ -66,8 +67,14 @@ intros e HnG He pt Habs. induction Habs as [e Habs | e].
   - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+<<<<<<< HEAD
+    destruct id as [g | b]. unfold gathered_at in Hnow; specialize (Hnow g).
+    assumption. apply Fin.case0. exact b.
+  - assert (Hin : Spect.In pt2 (!! (execution_head e))).
+=======
     destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
   - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
+>>>>>>> master
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
@@ -195,18 +202,24 @@ Variable r : robogram.
      and you can scale it back on the next round. *)
 
 Open Scope R_scope.
+
+Definition cr_conf l := 
+{| Config.loc := l;
+   Config.robot_info := {| Config.source := l; Config.target := l |} |}.
+
+
 (** The reference starting configuration **)
 Definition conf1 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then 0 else 1
-    | Byz b => 0
+    | Good g => if left_dec g then cr_conf 0 else cr_conf 1
+    | Byz b => cr_conf 0
   end.
 
 (** The symmetrical configuration of the starting configuration **)
 Definition conf2 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then 1 else 0
-    | Byz b => 0
+    | Good g => if left_dec g then cr_conf 1 else cr_conf 0
+    | Byz b => cr_conf 0
   end.
 
 Definition spectrum := Spect.add 0 (Nat.div2 N.nG) (Spect.singleton 1 (Nat.div2 N.nG)).

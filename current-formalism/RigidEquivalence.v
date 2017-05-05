@@ -10,15 +10,18 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.FlexibleFormalism.
 Require Import Pactole.RigidFormalism.
+Require Import Pactole.FlexibleFormalism.
 
 
-Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Spect : Spectrum(Location)(N)).
+Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Names : Robots(N))
+                        (Config : Configuration (Location)(N)(Names))
+                        (Spect : Spectrum(Location)(N)(Names)(Config)).
 
-Module Common := CommonRealFormalism.Make(Location)(N)(Spect).
-Module Flex := FlexibleFormalism.Make(Location)(N)(Spect)(Common).
-Module Rigid := RigidFormalism.Make(Location)(N)(Spect)(Common).
+
+Module Common := CommonRealFormalism.Make(Location)(N)(Names)(Config)(Spect).
+Module Flex := FlexibleFormalism.Make(Location)(N)(Names)(Config)(Spect)(Common).
+Module Rigid := RigidFormalism.Make(Location)(N)(Names)(Config)(Spect)(Common).
 
 Definition rigid da := forall id sim r, da.(Flex.step) id = Some (sim, r) -> r = 1%R.
 

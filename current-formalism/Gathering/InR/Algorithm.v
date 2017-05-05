@@ -152,13 +152,17 @@ rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.s
   unfold N.nB. rewrite plus_0_r. now apply even_div2.
 Qed.
 
-Lemma forbidden_injective_invariant : forall f, injective eq eq f ->
+Definition cr_conf l := 
+{| Config.loc := l;
+   Config.robot_info := {| Config.source := l; Config.target := l |} |}.
+
+(* Lemma forbidden_injective_invariant : forall f, injective eq eq f ->
   forall conf, forbidden conf -> forbidden (Config.map f conf).
 Proof.
 unfold forbidden.
 intros f Hf conf [HnG [? [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 repeat split; trivial; [].
-exists (f pt1), (f pt2). split.
+exists (Config.loc (f (cr_conf pt1))), (Config.loc (f (cr_conf pt2))). split.
 - intro Heq. apply Hdiff. now apply Hf in Heq.
 - split; rewrite <- Spect.from_config_map, Spect.map_injective_spec;
   assumption || (now intros ? ? Heq; rewrite Heq) || apply Hf.
@@ -173,7 +177,7 @@ intros sim conf. split.
   setoid_rewrite <- Config.map_merge at 2; try now intros ? ? Heq; rewrite Heq.
   eapply forbidden_injective_invariant, Similarity.injective_retraction, Sim.injective.
 - apply forbidden_injective_invariant, Sim.injective.
-Qed.
+Qed. *)
 
 Lemma support_max_1_not_forbidden : forall config pt,
   MajTower_at pt config -> ~forbidden config.
