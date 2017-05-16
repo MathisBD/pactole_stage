@@ -67,14 +67,9 @@ intros e HnG He pt Habs. induction Habs as [e Habs | e].
   - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
-<<<<<<< HEAD
     destruct id as [g | b]. unfold gathered_at in Hnow; specialize (Hnow g).
     assumption. apply Fin.case0. exact b.
-  - assert (Hin : Spect.In pt2 (!! (execution_head e))).
-=======
-    destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
   - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
->>>>>>> master
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
@@ -180,12 +175,12 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
   end.
 
 (** Names of robots only contains good robots. *)
-Lemma names_Gnames : Spect.Names.names = map (@Good Spect.Names.G Spect.Names.B) Spect.Names.Gnames.
+Lemma names_Gnames : Names.names = map (@Good Names.G Names.B) Names.Gnames.
 Proof.
-unfold Spect.Names.names, Spect.Names.Internals.names, Spect.Names.Gnames.
-cut (Spect.Names.Internals.Bnames = nil).
+unfold Names.names, Names.Internals.names, Names.Gnames.
+cut (Names.Internals.Bnames = nil).
 - intro Hnil. rewrite Hnil. simpl. now rewrite app_nil_r.
-- rewrite <- length_zero_iff_nil. apply Spect.Names.Internals.fin_map_length.
+- rewrite <- length_zero_iff_nil. apply Names.Internals.fin_map_length.
 Qed.
 
 (** * Proof of the impossiblity of gathering for two robots
@@ -227,12 +222,14 @@ Definition spectrum := Spect.add 0 (Nat.div2 N.nG) (Spect.singleton 1 (Nat.div2 
 Theorem conf1_conf2_spect_eq : Spect.eq (!! conf1) (!! conf2).
 Proof.
 intro pt. unfold conf1, conf2.
-do 2 rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames. do 2 rewrite map_map.
+repeat rewrite Spect.from_config_spec.
+repeat rewrite Config.list_spec.
+repeat rewrite names_Gnames.
+repeat rewrite map_map.
 unfold left_dec, left. generalize (Names.Gnames_NoDup).
-apply (@first_last_even_ind _
-(fun l => NoDup l ->
-          countA_occ eq Rdec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l) =
-          countA_occ eq Rdec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then 1 else 0) l))).
+change Names.Internals.G with Names.G.
+pattern Names.Gnames.
+apply first_last_even_ind.
 * reflexivity.
 * intros gl gr l Heven Hrec Hnodup.
   (* Inversing the NoDup property *)
@@ -250,9 +247,10 @@ apply (@first_last_even_ind _
     - contradiction.
     - apply Hgr. now apply half1_incl.
   + (* valid case *)
-    assert (Heq : forall a b : R,
-                  map (fun x : Fin.t N.nG => if in_dec Fin.eq_dec x (gl :: half1 l) then a else b) l
-                = map (fun x : Fin.t N.nG => if in_dec Fin.eq_dec x (half1 l) then a else b) l).
+    change Names.Internals.G with Names.G in *.
+    assert (Heq : forall a b,
+                  map (fun x => Config.loc (if in_dec Fin.eq_dec x (gl :: half1 l) then a else b)) l
+                = map (fun x => Config.loc (if in_dec Fin.eq_dec x (half1 l) then a else b)) l).
     { intros a b. apply map_ext_in. intros g Hg.
       destruct (in_dec Fin.eq_dec g (gl :: half1 l)) as [Hin | Hout].
       - destruct Hin; try now subst; contradiction.
@@ -262,18 +260,16 @@ apply (@first_last_even_ind _
     Rdec_full; subst; Rdec; try Rdec_full; subst; Rdec; setoid_rewrite plus_comm; simpl; auto.
   + (* absurd case : gr ∉ gl :: half1 l *)
     elim Habs. intuition.
-* change (Fin.t N.nG) with Spect.Names.Internals.G. rewrite Spect.Names.Gnames_length. apply even_nG.
+* change (Fin.t N.nG) with Names.G. rewrite Names.Gnames_length. apply even_nG.
 Qed.
 
 Theorem spect_conf1 : Spect.eq (!! conf1) spectrum.
 Proof.
 intro pt. unfold conf1, spectrum.
-rewrite Spect.from_config_spec, Spect.Config.list_spec. rewrite names_Gnames, map_map.
+rewrite Spect.from_config_spec, Config.list_spec. rewrite names_Gnames, map_map.
 unfold left_dec, left. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
-apply (@first_last_even_ind _
-(fun l => NoDup l ->
-          countA_occ eq Rdec pt (map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l)
-        = (Spect.add 0 (Nat.div2 (length l)) (Spect.singleton 1 (Nat.div2 (length l))))[pt])).
+pattern Names.Gnames.
+apply first_last_even_ind.
 * intros _. simpl. rewrite Spect.add_0, Spect.singleton_0, Spect.empty_spec. reflexivity.
 * intros gl gr l Heven Hrec Hnodup.
   (* Inversing the NoDup property *)
@@ -292,21 +288,69 @@ apply (@first_last_even_ind _
     - contradiction.
     - apply Hgr. now apply half1_incl.
   + (* valid case *)
-    assert (Heq : map (fun x => if in_dec Fin.eq_dec x (gl :: half1 l) then 0 else 1) l
-                = map (fun x => if in_dec Fin.eq_dec x (half1 l) then 0 else 1) l).
-    { apply map_ext_in. intros g Hg.
-      destruct (in_dec Fin.eq_dec g (gl :: half1 l)) as [Hin | Hout].
-      - destruct Hin; try now subst; contradiction.
-        destruct (in_dec Fin.eq_dec g (half1 l)); reflexivity || contradiction.
-      - destruct (in_dec Fin.eq_dec g (half1 l)); trivial. elim Hout. intuition. }
-    rewrite Heq, Hrec.
+    assert (Heq:(map
+                   (fun x : Names.ident =>
+                      Config.loc
+                        match x with
+                        | Good g =>
+                          if in_dec Fin.eq_dec g (gl :: half1 l) then cr_conf 0 else cr_conf 1
+                        | Byz _ => cr_conf 0
+                        end) (map Good (l ++ gr :: Datatypes.nil)))
+                =(map
+                    (fun x : Names.ident =>
+                       Config.loc
+                         match x with
+                         | Good g =>
+                           if in_dec Fin.eq_dec g (half1 l) then cr_conf 0 else cr_conf 1
+                         | Byz _ => cr_conf 0
+                         end) (map Good l)) ++ (1::Datatypes.nil)).
+    { repeat rewrite map_app.
+      apply f_equal2.
+      { apply map_ext_in. intros g Hg.
+        apply in_map_iff in Hg.
+        destruct Hg as [g' [hg' hing'] ];subst.
+        destruct (in_dec Fin.eq_dec g' (gl :: half1 l)) as [Hin | Hout].
+        - destruct Hin.
+          * subst. contradiction.
+          * destruct (in_dec Fin.eq_dec g' (half1 l)); reflexivity || contradiction.
+        - destruct (in_dec Fin.eq_dec g' (half1 l)); trivial. elim Hout. intuition. }
+      { simpl.
+        apply f_equal2;auto.
+        rename gr into g'.
+        destruct (Fin.eq_dec gl g');try contradiction.
+        destruct (in_dec Fin.eq_dec g' (half1 l)).
+        - assert (In g' l).
+          { pose proof half1_incl l as hincl.
+            apply hincl.
+            assumption. }
+          contradiction.
+        - reflexivity.
+      }
+    }
+    change Names.Internals.G with Names.G in *. 
+    (* ©©©©©©©©©©©© *)
     assert (~R.eq 0 1) by auto using R1_neq_R0. assert (~R.eq 1 0) by auto using R1_neq_R0.
-    Rdec_full; subst; Rdec; try Rdec_full; subst; Rdec;
-    repeat rewrite ?Spect.add_same, ?Spect.add_other, ?Spect.singleton_same, ?Spect.singleton_other; trivial;
-    omega || unfoldR; auto.
-  + (* absurd case : gr ∉ gl :: half1 l *)
+    Rdec_full.
+    -- cbn in Heq0.
+       subst.
+       setoid_rewrite Heq.
+       rewrite countA_occ_app.
+       setoid_rewrite Hrec.
+       simpl.
+       subst; Rdec; try Rdec_full; subst; Rdec;
+         repeat rewrite ?Spect.add_same, ?Spect.add_other,
+         ?Spect.singleton_same, ?Spect.singleton_other; trivial; omega || unfoldR; auto.
+    -- cbn in Hneq0.
+       setoid_rewrite Heq.
+       rewrite countA_occ_app.
+       setoid_rewrite Hrec.
+       simpl.
+       subst; Rdec; try Rdec_full; subst; Rdec;
+         repeat rewrite ?Spect.add_same, ?Spect.add_other,
+         ?Spect.singleton_same, ?Spect.singleton_other; trivial; omega || unfoldR; auto.
++ (* absurd case : gr ∉ gl :: half1 l *)
     elim Habs. intuition.
-* change (Fin.t N.nG) with Spect.Names.Internals.G. rewrite Spect.Names.Gnames_length. apply even_nG.
+* change (Fin.t N.nG) with Names.Internals.G. rewrite Names.Gnames_length. apply even_nG.
 Qed.
 
 Corollary conf1_forbidden : forbidden conf1.
