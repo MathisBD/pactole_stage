@@ -383,7 +383,7 @@ destruct (Rcase_abs (x + - y)), (Rcase_abs (c + - x + - (c + - y))); lra.
 Qed.
 
 (* We need to define it with a general center although only 1 will be used. *)
-Definition swap (c : R) : Sim.t.
+Definition swap (c : R.t) : Sim.t.
 refine {|
   Sim.sim_f := bij_swap c;
   Sim.zoom := 1;
@@ -393,18 +393,49 @@ Proof.
 - exact (bij_swap_ratio c).
 Defined.
 
-Lemma swap_conf1 : Config.eq (Config.map (swap 1) conf1) conf2.
+Coercion Config.loc: Config.RobotConf >-> R.t.
+
+Definition swap_conf c (cf : Config.RobotConf): Config.RobotConf :=
+  let swapc := swap c in
+  {| Config.loc := (swapc cf);
+     Config.robot_info := 
+       {| Config.source := swapc (cf.(Config.robot_info).(Config.source));
+          Config.target:= swapc (cf.(Config.robot_info).(Config.target)) |}
+  |}.
+  
+Eval compute in (swap 1).
+
+Print Coercions.
+
+Check (swap 1).
+Check (Sim.sim_f (swap 1)).
+Check (Similarity.section (Sim.sim_f (swap 1))).
+
+Eval compute in (swap_conf (cr_conf 1)).
+
+Lemma swap_conf1 : Config.eq (Config.map (swap_conf 1) conf1) conf2.
 Proof.
-intros [g | b].
-- unfold Config.map. simpl. destruct (left_dec g); hnf; ring.
-- apply Fin.case0. exact b.
+  unfold swap_conf,swap.
+  intros [g | b].
+  - unfold Config.map. simpl. destruct (left_dec g);split;simpl. 
+    + hnf. ring.
+    + red;simpl. split;hnf;ring.
+    + hnf. ring.
+    + hnf. split;hnf;simpl; ring.
+  - apply Fin.case0. exact b.
 Qed.
 
-Lemma swap_conf2 : Config.eq (Config.map (swap 1) conf2) conf1.
+Lemma swap_conf2 : Config.eq (Config.map (swap_conf 1) conf2) conf1.
 Proof.
-intros [g | b].
-- unfold Config.map. simpl. destruct (left_dec g); hnf; ring.
-- apply Fin.case0. exact b.
+Proof.
+  unfold swap_conf,swap.
+  intros [g | b].
+  - unfold Config.map. simpl. destruct (left_dec g);split;simpl. 
+    + hnf. ring.
+    + red;simpl. split;hnf;ring.
+    + hnf. ring.
+    + hnf. split;hnf;simpl; ring.
+  - apply Fin.case0. exact b.
 Qed.
 
 (** The movement of robots in the reference configuration **)
@@ -450,6 +481,7 @@ Qed.
 Lemma round_simplify_1_1 : Config.eq (round r da1 conf1) conf2.
 Proof.
 intros [g | b]; unfold round; simpl.
+hnf;split.
 + destruct (left_dec g) as [Hleft | Hright].
   - Rdec. rewrite Config.map_id. simpl. apply Hmove.
   - Rdec. setoid_rewrite swap_conf1. simpl. replace 0 with (1 - 1) by ring. f_equal.
