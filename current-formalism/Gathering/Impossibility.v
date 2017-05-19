@@ -203,19 +203,19 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
 (** * Proof of the impossiblity of gathering for two robots
     From now on and until the final theorem we give us a robogram [r]. *)
 
-(** [Always_forbidden e] means that (infinite) execution [e] is [forbidden]
+(** [Always_bivalent e] means that (infinite) execution [e] is [bivalent]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-Definition Always_forbidden (e : execution) : Prop := Streams.forever (Streams.instant forbidden) e.
+Definition Always_bivalent (e : execution) : Prop := Streams.forever (Streams.instant bivalent) e.
 
-Instance Always_forbidden_compat : Proper (eeq ==> iff) Always_forbidden.
-Proof. apply Streams.forever_compat, Streams.instant_compat. apply forbidden_compat. Qed.
+Instance Always_bivalent_compat : Proper (eeq ==> iff) Always_bivalent.
+Proof. apply Streams.forever_compat, Streams.instant_compat. apply bivalent_compat. Qed.
 
 Theorem different_no_gathering : forall (e : execution),
-  Always_forbidden e -> forall pt, ~WillGather pt e.
+  Always_bivalent e -> forall pt, ~WillGather pt e.
 Proof.
 intros e He pt Habs. induction Habs as [e IHe | e _ IHe].
-+ destruct IHe as [Hnow Hlater]. destruct He as [Hforbidden He].
-  destruct Hforbidden as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
++ destruct IHe as [Hnow Hlater]. destruct He as [Hbivalent He].
+  destruct Hbivalent as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
   - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
@@ -356,7 +356,7 @@ apply (@first_last_even_ind _
 * change (Fin.t N.nG) with Spect.Names.Internals.G. rewrite Spect.Names.Gnames_length. apply even_nG.
 Qed.
 
-Corollary conf1_forbidden : forbidden conf1.
+Corollary conf1_bivalent : bivalent conf1.
 Proof.
 repeat split; try (exact even_nG || exact nG_ge_2); [].
 exists Loc.origin, Loc.unit. rewrite spect_conf1. repeat split.
@@ -365,8 +365,8 @@ exists Loc.origin, Loc.unit. rewrite spect_conf1. repeat split.
 + unfold spectrum. rewrite Spect.add_other, Spect.singleton_spec; try apply Loc.non_trivial; []. now Ldec.
 Qed.
 
-Corollary conf2_forbidden : forbidden conf2.
-Proof. split; try exact even_nG. cbn. setoid_rewrite <- conf1_conf2_spect_eq. apply conf1_forbidden. Qed.
+Corollary conf2_bivalent : bivalent conf2.
+Proof. split; try exact even_nG. cbn. setoid_rewrite <- conf1_conf2_spect_eq. apply conf1_bivalent. Qed.
 
 (** Two similarities used: the identity and the symmetry wrt a point c. *)
 
@@ -534,18 +534,18 @@ Qed.
 
 (* Trick to perform rewriting in coinductive proofs : assert your property on any configuration
    equal to the one you want, then apply the cofixpoint before performing the required rewrites. *)
-Theorem Always_forbidden1_by_eq : forall conf : Config.t, Config.eq conf conf1 ->
-  Always_forbidden (execute r bad_demon1 conf).
+Theorem Always_bivalent1_by_eq : forall conf : Config.t, Config.eq conf conf1 ->
+  Always_bivalent (execute r bad_demon1 conf).
 Proof.
 cofix differs. intros conf Heq. constructor.
-+ simpl. rewrite Heq. apply conf1_forbidden.
++ simpl. rewrite Heq. apply conf1_bivalent.
 + cbn. constructor.
-  - simpl. rewrite Heq, round_simplify_1_1. apply conf2_forbidden.
+  - simpl. rewrite Heq, round_simplify_1_1. apply conf2_bivalent.
   - cbn. apply differs. now rewrite Heq, round_simplify_1_1, round_simplify_1_2. 
 Qed.
 
-Corollary Always_forbidden1 : Always_forbidden (execute r bad_demon1 conf1).
-Proof. apply Always_forbidden1_by_eq. reflexivity. Qed.
+Corollary Always_bivalent1 : Always_bivalent (execute r bad_demon1 conf1).
+Proof. apply Always_bivalent1_by_eq. reflexivity. Qed.
 
 End Move1.
 
@@ -576,8 +576,8 @@ Qed.
 Lemma confi1_conf2_conjugated : conjugated conf1 conf2.
 Proof. exists (swap Loc.unit). now rewrite (Spect.from_config_map _ _), swap_conf1. Qed.
 
-Lemma conjugated_forbidden_aux : forall config1 config2,
-  conjugated config1 config2 -> forbidden config1 -> forbidden config2.
+Lemma conjugated_bivalent_aux : forall config1 config2,
+  conjugated config1 config2 -> bivalent config1 -> bivalent config2.
 Proof.
 intros config1 config2 [sim Hsim] [? [? [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
 repeat split; trivial; []. exists (sim pt1), (sim pt2). repeat split.
@@ -586,9 +586,9 @@ repeat split; trivial; []. exists (sim pt1), (sim pt2). repeat split.
 - rewrite <- Hsim, Spect.map_injective_spec; autoclass. apply Sim.injective.
 Qed.
 
-Theorem Conjugated_forbidden : forall config1 config2,
-  conjugated config1 config2 -> (forbidden config1 <-> forbidden config2).
-Proof. intros. now split; apply conjugated_forbidden_aux. Qed.
+Theorem Conjugated_bivalent : forall config1 config2,
+  conjugated config1 config2 -> (bivalent config1 <-> bivalent config2).
+Proof. intros. now split; apply conjugated_bivalent_aux. Qed.
 
 
 Section MoveNot1.
@@ -764,11 +764,11 @@ Qed.
 Theorem kFair_bad_demon2 : forall ρ (Hρ : ρ <> 0), kFair 1 (bad_demon2 Hρ).
 Proof. intros. eapply kFair_bad_demon2_by_eq. reflexivity. Qed.
 
-Lemma left_right_dist_forbidden : forall (config : Config.t),
+Lemma left_right_dist_bivalent : forall (config : Config.t),
   (forall g, In g left -> Loc.eq (config (Good g))(config (Good gfirst))) ->
   (forall g, In g right -> Loc.eq (config (Good g)) (config (Good glast))) ->
   Loc.dist (config (Good gfirst)) (config (Good glast)) <> 0 ->
-  forbidden config.
+  bivalent config.
 Proof.
 intros config Hleft Hright Hdist.
 assert (Hlist_left : eqlistA Loc.eq (map config (map Good left)) (alls (config (Good gfirst)) (Nat.div2 N.nG))).
@@ -787,7 +787,7 @@ assert (Heq : eqlistA Loc.eq (map config Spect.Names.names)
                       (alls (config (Good gfirst)) (Nat.div2 N.nG) ++ alls (config (Good glast)) (Nat.div2 N.nG))).
 { now rewrite left_right_partition, map_app, <- Hlist_left, <- Hlist_right. }
 assert (~ Loc.eq (config (Good gfirst)) (config (Good glast))) by now rewrite <- Loc.dist_defined.
-unfold forbidden. repeat split; try (now apply even_nG || apply nG_ge_2); [].
+unfold bivalent. repeat split; try (now apply even_nG || apply nG_ge_2); [].
 exists (config (Good gfirst)), (config (Good glast)).
 repeat split.
 + assumption.
@@ -892,19 +892,19 @@ unfold round. simpl. do 2 LR_dec.
 Admitted.
 
 
-Theorem Always_forbidden2 : forall ρ (Hρ : ρ <> 0) config,
-  forbidden config ->
+Theorem Always_bivalent2 : forall ρ (Hρ : ρ <> 0) config,
+  bivalent config ->
   (forall g, In g left -> Loc.eq (config (Good g))(config (Good gfirst))) ->
   (forall g, In g right -> Loc.eq (config (Good g)) (config (Good glast))) ->
   Loc.dist (config (Good gfirst)) (config (Good glast)) = /ρ ->
-  Always_forbidden (execute r (bad_demon2 Hρ) config).
+  Always_bivalent (execute r (bad_demon2 Hρ) config).
 Proof.
-cofix differs. intros ρ Hρ config Hforbidden Hleft Hright Hdist.
+cofix differs. intros ρ Hρ config Hbivalent Hleft Hright Hdist.
 constructor; [| constructor].
   (* Inital state *)
 - cbn. assumption.
   (* State after one step *)
-- cbn. apply left_right_dist_forbidden.
+- cbn. apply left_right_dist_bivalent.
   + intros g Hg. now apply round_da2_left_next_left.
   + intros g Hg. now apply round_da2_left_next_right.
   + cbn. rewrite round_da2_left_next_dist; trivial; []. now apply ratio_neq_0.
@@ -912,7 +912,7 @@ constructor; [| constructor].
 - do 2 rewrite execute_tail.
   rewrite bad_demon_tail2, bad_demon_head2_1, bad_demon_head2_2.
   apply differs.
-  + cbn. apply left_right_dist_forbidden.
+  + cbn. apply left_right_dist_bivalent.
     * intros. apply round_da2_right_next_left; trivial.
       intros. now apply round_da2_left_next_left.
     * intros. apply round_da2_right_next_right; trivial.
@@ -980,9 +980,9 @@ specialize (Habs bad_demon (kFair_bad_demon' h) conf1).
 destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
 unfold bad_demon.
 destruct (Loc.eq_dec move Loc.unit) as [Hmove | Hmove].
-+ now apply Always_forbidden1.
-+ apply (Always_forbidden2 Hmove).
-  - apply conf1_forbidden.
++ now apply Always_bivalent1.
++ apply (Always_bivalent2 Hmove).
+  - apply conf1_bivalent.
   - assert (Hleft := gfirst_left). intros. cbn. now do 2 LR_dec.
   - assert (Hright := glast_right). intros. cbn. now do 2 LR_dec.
   - assert (Hleft := gfirst_left). assert (Hright := glast_right). intros. cbn. do 2 LR_dec.
