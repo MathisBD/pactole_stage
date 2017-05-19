@@ -24,7 +24,9 @@ End N.
 
 
 (** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(R)(N).
+Module Names := Robots.Make(N).
+Module Config := Configurations.Make(R)(N)(Names).
+Module Spect := MultisetSpectrum.Make(R)(N)(Names)(Config).
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 
@@ -37,8 +39,8 @@ Hint Extern 0 (~R.eq 0 1)%R => intro; apply R1_neq_R0; now symmetry.
 Hint Extern 0 (~R.eq _ _) => match goal with | H : ~R.eq ?x ?y |- ~R.eq ?y ?x => intro; apply H; now symmetry end.
 
 
-Module Export Common := CommonRealFormalism.Make(R)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Config)(Spect)(Common).
 
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
@@ -72,7 +74,7 @@ Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
 Definition imprisoned (center : R.t) (radius : R) (e : execution) : Prop :=
-  Streams.forever (Streams.instant (fun config => forall g, R.dist center (config (Good g)) <= radius)) e.
+  Streams.forever (Streams.instant (fun config => forall g, R.dist center (config (Good g)).(Config.loc) <= radius)) e.
 
 (** The execution will end in a small disk. *)
 Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
@@ -207,19 +209,22 @@ Hint Immediate gfirst_left glast_right left_right_exclusive.
    - the stack with byzantine is activated, good robots cannot move 
      and you can scale it back on the next round. *)
 
+(* TODO: move it to Configurations.v? *)
+Definition init_RobotConf x := {| Config.loc := x; Config.robot_info := {| Config.source := x; Config.target := x |} |}.
+
 Open Scope R_scope.
 (** The reference starting configuration **)
 Definition config1 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then 0 else 1
-    | Byz b => 0
+    | Good g => if left_dec g then init_RobotConf 0 else init_RobotConf 1
+    | Byz b =>  init_RobotConf 0
   end.
 
 (** The second configuration **)
 Definition config2 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then 0 else 1
-    | Byz b => 1
+    | Good g => if left_dec g then init_RobotConf 0 else init_RobotConf 1
+    | Byz b => init_RobotConf 1
   end.
 
 Lemma minus_1 : -1 <> 0.
@@ -270,9 +275,12 @@ Qed.
 Theorem spect_conf1 : Spect.eq (!! config1) spectrum1.
 Proof.
 intro pt. unfold config1, spectrum1.
-rewrite Spect.from_config_spec, Spect.Config.list_spec.
-change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
-rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
+rewrite Spect.from_config_spec, Config.list_spec.
+change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
+rewrite map_map, map_app, map_map, map_map, map_cst, countA_occ_app.
+assert (Hext : forall x, R.eq (Config.loc (if left_dec x then init_RobotConf 0%R else init_RobotConf 1%R))
+                              (if left_dec x then 0%R else 1%R)) by now intro x; destruct (left_dec x).
+rewrite (map_ext _ _ Hext).
 assert (H01 : 0 <> 1) by auto.
 unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | ?]].
@@ -284,16 +292,19 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
     unfold N.nB. omega.
   - rewrite countA_occ_alls_out; auto.
     now repeat rewrite Spect.add_other, Spect.singleton_other.
-+ apply Spect.Names.Gnames_NoDup.
-+ rewrite Names.Gnames_length. reflexivity.
++ apply Names.Gnames_NoDup.
++ unfold Names.G. rewrite Names.Gnames_length. reflexivity.
 Qed.
 
 Theorem spect_conf2 : Spect.eq (!! config2) spectrum2.
 Proof.
 intro pt. unfold config2, spectrum2.
-rewrite Spect.from_config_spec, Spect.Config.list_spec.
-change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
-rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
+rewrite Spect.from_config_spec, Config.list_spec.
+change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
+rewrite map_map, map_app, map_map, map_map, map_cst, countA_occ_app.
+assert (Hext : forall x, R.eq (Config.loc (if left_dec x then init_RobotConf 0%R else init_RobotConf 1%R))
+                              (if left_dec x then 0%R else 1%R)) by now intro x; destruct (left_dec x).
+rewrite (map_ext _ _ Hext).
 assert (H01 : 0 <> 1) by auto.
 unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | Hneq']].
@@ -305,8 +316,8 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
     rewrite Names.Bnames_length. unfold N.nG, N.nB. omega.
   - rewrite countA_occ_alls_out; auto.
     now repeat rewrite Spect.add_other, Spect.singleton_other.
-+ apply Spect.Names.Gnames_NoDup.
-+ rewrite Names.Gnames_length. reflexivity.
++ apply Names.Gnames_NoDup.
++ unfold Names.G. rewrite Names.Gnames_length. reflexivity.
 Qed.
 
 Lemma swap_spect2_spect1 : Spect.eq (Spect.map (homothecy 1 minus_1) spectrum2) spectrum1.
@@ -460,21 +471,23 @@ Qed.
 (** The configuration that will be shifted **)
 Definition config0 pt : Config.t := fun id =>
   match id with
-    | Good _ => pt
-    | Byz b => pt + 1
+    | Good _ => init_RobotConf pt
+    | Byz b => init_RobotConf (pt + 1)
   end.
 
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
 CoFixpoint shifting_execution d pt := Streams.cons (config0 pt) (shifting_execution d (pt + d)).
 
-Lemma spectrum_config0 : forall pt, Spect.eq (!! (Config.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
+Lemma spectrum_config0 : forall pt,
+  Spect.eq (!! (Config.map (apply_sim (translation (R.opp pt))) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
-rewrite Spect.from_config_spec, Spect.Config.list_spec.
-change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
-rewrite map_app, map_map, map_map, countA_occ_app. simpl.
-rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.G => 0)).
-rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.B => 1)).
+rewrite Spect.from_config_spec, Config.list_map, map_map; try (now repeat intro; repeat f_equiv); [].
+simpl. rewrite Config.list_spec.
+change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
+rewrite map_map, map_app, map_map, map_map, countA_occ_app. simpl.
+rewrite (map_ext_in _ (fun _ : Names.Internals.G => 0)).
+rewrite (map_ext_in _ (fun _ : Names.Internals.B => 1)).
 + do 2 rewrite map_cst. destruct (Rdec x 0); [| destruct (Rdec x 1)]; subst.
   - rewrite countA_occ_alls_in, Names.Gnames_length; refine _.
     rewrite countA_occ_alls_out; auto.
@@ -489,7 +502,11 @@ rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.B => 1)).
 Qed.
 
 Corollary spect_config0_0 : Spect.eq (!! (config0 0)) spectrum1.
-Proof. rewrite <- (spectrum_config0 0). f_equiv. intro. compute. ring. Qed.
+Proof.
+rewrite <- (spectrum_config0 0). f_equiv. intro. split.
++ compute. ring.
++ unfold config0. simpl. destruct id; split; compute; ring.
+Qed.
 
 Section AbsurdMove.
 Definition move := r spectrum1.
@@ -497,10 +514,12 @@ Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt, Config.eq (round r (shifting_da (pt + move + 1)) (config0 pt)) (config0 (pt + move)).
 Proof.
-intros pt id. unfold round. cbn.
+intros pt id. unfold round. simpl.
 destruct id as [g | b].
-- rewrite spectrum_config0. simpl. unfoldR. fold move. ring.
-- simpl. now unfoldR.
++ simpl. rewrite R.opp_opp, spectrum_config0. split.
+  - simpl. unfoldR. fold move. ring.
+  - simpl.
++ simpl. now unfoldR.
 Qed.
 
 Lemma keep_moving_by_eq : forall pt config,
