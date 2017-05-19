@@ -42,6 +42,12 @@ Exploration/Graph/Definitions.v
 Exploration/Graph/ImpossibilityKDividesN.v
 Isomorphism.v
 CommonIsoGraphFormalism.v
-
+Convergence/Impossibility_2G_1B.v
+Gathering/Impossibility.v
+Gathering/InR/Rcomplements.v
+Gathering/InR/Impossibility.v
+Gathering/InR/Algorithm.v
+Gathering/InR2/R2geometry.v
+Gathering/InR2/Algorithm.v
 
 
