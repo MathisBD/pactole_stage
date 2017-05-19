@@ -17,13 +17,12 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Loc : RealMetricSpace)(N : Size) <: Spectrum (Loc)(N).
+Module Make(Location : RealMetricSpace)(N : Size)(Names : Robots.Robots(N))
+            (Config : Configuration(Location)(N)(Names)) <: Spectrum (Location)(N)(Names)(Config).
 
-Module Names := Robots.Make(N).
-Module Config := Configurations.Make(Loc)(N)(Names).
 
 (** Definition of spectra as sets of locations. *)
-Module M := MSetWeakList.Make(Loc).
+Module M := MSetWeakList.Make(Location).
 Module Mdec := Decide(M).
 Module MProp := EqProperties(M).
 Export Mdec.
@@ -68,30 +67,30 @@ Lemma set_app : forall l l', set (l ++ l') [=] M.union (set l) (set l').
 Proof.
 induction l as [| e l]; intros l'; simpl.
 + intro. fsetdec. 
-+ do 2 rewrite set_cons. intro x. destruct (Loc.eq_dec x e) as [Heq | Heq].
++ do 2 rewrite set_cons. intro x. destruct (Location.eq_dec x e) as [Heq | Heq].
   - rewrite Heq, M.add_spec, IHl. repeat rewrite M.union_spec. rewrite M.add_spec. tauto.
   - rewrite M.add_spec, IHl; auto. repeat rewrite M.union_spec. rewrite M.add_spec; tauto.
 Qed.
 
-Instance set_compat : Proper (PermutationA Loc.eq ==> M.eq) set.
+Instance set_compat : Proper (PermutationA Location.eq ==> M.eq) set.
 Proof.
 intro l1. induction l1 as [| x l1]; intros l2 Hperm.
 + apply (PermutationA_nil _) in Hperm. now subst.
 + assert (Hx := @PermutationA_InA_inside _ _ _ x _ _ Hperm).
   destruct Hx as [l1' [y [l2' [Hxy Heq]]]]. now left. subst l2.
   intro z. rewrite set_app, M.union_spec. do 2 rewrite set_cons.
-  destruct (Loc.eq_dec x z) as [Heq | Hneq].
+  destruct (Location.eq_dec x z) as [Heq | Hneq].
   - rewrite <- Heq, <- Hxy. repeat rewrite M.add_spec. intuition.
   - rewrite <- (PermutationA_middle _), Hxy in Hperm. apply (PermutationA_cons_inv _) in Hperm.
     repeat rewrite M.add_spec. rewrite (IHl1 _ Hperm). rewrite set_app, M.union_spec, <- Hxy. intuition.
 Qed.
 
 Lemma set_PermutationA : forall x l,
-  exists l' n, ~InA Loc.eq x l' /\ PermutationA Loc.eq l (alls x n ++ l').
+  exists l' n, ~InA Location.eq x l' /\ PermutationA Location.eq l (alls x n ++ l').
 Proof.
 intros x l. induction l.
 * exists nil, 0. split. now auto. simpl. reflexivity.
-* destruct IHl as [l' [n [Hin Hperm]]]. destruct (Loc.eq_dec a x) as [Heq | Heq].
+* destruct IHl as [l' [n [Hin Hperm]]]. destruct (Location.eq_dec a x) as [Heq | Heq].
   + exists l', (S n). split; trivial. simpl. apply PermutationA_cons; assumption.
   + exists (a :: l'), n. split.
     - intro Habs. inversion_clear Habs. elim Heq. now symmetry. contradiction.
@@ -107,7 +106,7 @@ intros x n Hn. induction n; simpl.
   - rewrite IHn. intro. fsetdec. omega.
 Qed.
 
-Theorem set_spec : forall x l, M.In x (set l) <-> InA Loc.eq x l.
+Theorem set_spec : forall x l, M.In x (set l) <-> InA Location.eq x l.
 Proof.
 intros x l. induction l.
 + rewrite set_nil. intuition.
@@ -132,17 +131,25 @@ Definition eq_equiv := M.eq_equiv.
 Definition eq_dec := M.eq_dec.
 Definition In := M.In.
 
-Definition from_config conf : M.t := set (Config.list conf).
+Definition from_config conf : M.t := set (List.map Config.loc (Config.list conf)).
 
 Instance from_config_compat : Proper (Config.eq ==> M.eq) from_config.
 Proof.
 repeat intro. unfold from_config. do 2 f_equiv.
-apply eqlistA_PermutationA_subrelation, Config.list_compat. assumption.
+apply (@PermutationA_map _ _ Config.eq_RobotConf Location.eq _ Config.loc).
++ now intros ? ? [Heq _].
++ apply eqlistA_PermutationA_subrelation, Config.list_compat. assumption.
 Qed.
 
-Definition is_ok s conf := forall l, In l s <-> exists id : Names.ident, Loc.eq l (conf id).
+Definition is_ok s conf := forall l, In l s <-> exists id : Names.ident, Location.eq l (Config.loc (conf id)).
 
-Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
-Proof. unfold from_config, is_ok. intros. rewrite set_spec, Config.list_InA. reflexivity. Qed.
+Theorem from_config_spec : forall config, is_ok (from_config config) config.
+Proof.
+unfold from_config, is_ok. intros config l.
+rewrite set_spec, InA_map_iff; autoclass.
+setoid_rewrite Config.list_InA. split.
+- intros [[pt info] [Heq [id Hid]]]. exists id. now rewrite <- Hid, <- Heq.
+- intros [id Hid]. exists (config id). intuition. now exists id.
+Qed.
 
 End Make.

@@ -21,7 +21,7 @@ MMultiset/MMultisetMap.v
 MMultiset/MMultisetWMap.v
 MMultiset/Preliminary.v
 DiscreteMultisetSpectrum.v
-#SetSpectrum.v
+SetSpectrum.v
 #LimitedSetSpectrum.v
 #LimitedMultisetSpectrum.v
 Lexprod.v

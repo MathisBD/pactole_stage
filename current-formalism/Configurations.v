@@ -1415,7 +1415,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
                                 /\ Info_eq (robot_info g1) (robot_info g2).
 
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
-  
+
   Declare Instance eq_equiv : Equivalence eq.
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
   Parameter eq_RobotConf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
@@ -1424,7 +1424,8 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
   Declare Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
-  
+  Declare Instance loc_compat : Proper (eq_RobotConf ==> Location.eq) loc.
+
   Parameter neq_equiv : forall config₁ config₂,
     ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
 
@@ -1438,7 +1439,7 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Declare Instance Gpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Gpos.
   Declare Instance Bpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Bpos.
   Declare Instance list_compat : Proper (eq ==> eqlistA eq_RobotConf) list.
-  
+
   Parameter Gpos_spec : forall conf, Gpos conf = List.map (fun g => conf (Good g)) Names.Gnames.
   Parameter Bpos_spec : forall conf, Bpos conf = List.map (fun g => conf (Byz g)) Names.Bnames.
   Parameter list_spec : forall conf, list conf = List.map conf Names.names.
@@ -1446,11 +1447,11 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Parameter Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
   Parameter Bpos_InA : forall l conf, InA eq_RobotConf l (Bpos conf) <-> exists b, eq_RobotConf l (conf (Byz b)).
   Parameter list_InA : forall l conf, InA eq_RobotConf l (list conf) <-> exists id, eq_RobotConf l (conf id).
-  
+
   Parameter Gpos_length : forall conf, length (Gpos conf) = N.nG.
   Parameter Bpos_length : forall conf, length (Bpos conf) = N.nB.
   Parameter list_length : forall conf, length (list conf) = N.nG + N.nB.
-  
+
   Parameter list_map : forall f, Proper (eq_RobotConf ==> eq_RobotConf) f -> 
     forall conf, list (map f conf) = List.map f (list conf).
   Parameter map_merge : forall f g, Proper (eq_RobotConf ==> eq_RobotConf) f ->
@@ -1607,6 +1608,9 @@ Admitted.
 
 Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
 Proof. intros l1 l2 Hl info1 info2 Hinfo. split; apply Hl || apply Hinfo. Qed.
+
+Instance loc_compat : Proper (eq_RobotConf ==> Location.eq) loc.
+Proof. now intros ? ? []. Qed.
 
 Instance eq_equiv : Equivalence eq.
 Proof. split.
