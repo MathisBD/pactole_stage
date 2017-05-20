@@ -22,7 +22,7 @@ Require Import Arith.Div2.
 Require Import Pactole.DiscreteSimilarity.
 Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
-Require Import Pactole.DiscreteMultisetSpectrum.
+Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
 Require Import Streams.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.

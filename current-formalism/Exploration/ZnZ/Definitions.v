@@ -15,7 +15,7 @@ Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSimilarity.
 Require Pactole.CommonDiscreteFormalism.
 Require Pactole.DiscreteRigidFormalism.
-Require Import Pactole.DiscreteMultisetSpectrum.
+Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
 Require Import Streams.
 
@@ -29,7 +29,7 @@ Module ExplorationDefs(Loc : RingSig)(N : Size).
 Module Names := Robots.Make(N).
 Module Config := Configurations.Make(Loc)(N)(Names).
 
-Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N)(Names)(Config).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
