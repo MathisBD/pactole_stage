@@ -47,22 +47,22 @@ destruct N.nG as [| [| n]].
 - simpl. omega.
 Qed.
 
-(** [Always_bivalent e] means that (infinite) execution [e] is [bivalent]
+(** [Always_invalid e] means that (infinite) execution [e] is [invalid]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-Definition Always_bivalent (e : execution) := Streams.forever (Streams.instant bivalent) e.
+Definition Always_invalid (e : execution) := Streams.forever (Streams.instant invalid) e.
 
-Instance Always_bivalent_compat : Proper (eeq ==> iff) Always_bivalent.
-Proof. apply Streams.forever_compat, Streams.instant_compat. apply bivalent_compat. Qed.
+Instance Always_invalid_compat : Proper (eeq ==> iff) Always_invalid.
+Proof. apply Streams.forever_compat, Streams.instant_compat. apply invalid_compat. Qed.
 
 (** ** Linking the different properties *)
 Set Printing Matching.
 
 Theorem different_no_gathering : forall (e : execution),
-  N.nG <> 0%nat -> Always_bivalent e -> forall pt, ~WillGather pt e.
+  N.nG <> 0%nat -> Always_invalid e -> forall pt, ~WillGather pt e.
 Proof.
 intros e HnG He pt Habs. induction Habs as [e Habs | e].
-+ destruct Habs as [Hnow Hlater]. destruct He as [Hbivalent He].
-  destruct Hbivalent as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
++ destruct Habs as [Hnow Hlater]. destruct He as [Hinvalid He].
+  destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
   - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
@@ -353,7 +353,7 @@ apply first_last_even_ind.
 * change (Fin.t N.nG) with Names.Internals.G. rewrite Names.Gnames_length. apply even_nG.
 Qed.
 
-Corollary conf1_bivalent : bivalent conf1.
+Corollary conf1_invalid : invalid conf1.
 Proof.
 repeat split; try (exact even_nG || exact nG_ge_2); [].
 exists 0, 1. rewrite spect_conf1. repeat split.
@@ -362,8 +362,8 @@ exists 0, 1. rewrite spect_conf1. repeat split.
 + unfold spectrum. rewrite Spect.add_other, Spect.singleton_spec; try apply R1_neq_R0. now Rdec.
 Qed.
 
-Corollary conf2_bivalent : bivalent conf2.
-Proof. split; try exact even_nG. cbn. setoid_rewrite <- conf1_conf2_spect_eq. apply conf1_bivalent. Qed.
+Corollary conf2_invalid : invalid conf2.
+Proof. split; try exact even_nG. cbn. setoid_rewrite <- conf1_conf2_spect_eq. apply conf1_invalid. Qed.
 
 (** Two similarities used: the identity and the symmetry wrt a point c. *)
 
@@ -499,18 +499,18 @@ Qed.
 
 (* Trick to perform rewriting in coinductive proofs : assert your property on any configuration
    equal to the one you want, then apply the cofixpoint before performing the required rewrites. *)
-Theorem Always_bivalent1_by_eq : forall conf : Config.t, Config.eq conf conf1 ->
-  Always_bivalent (execute r bad_demon1 conf).
+Theorem Always_invalid1_by_eq : forall conf : Config.t, Config.eq conf conf1 ->
+  Always_invalid (execute r bad_demon1 conf).
 Proof.
 cofix differs. intros conf Heq. constructor.
-+ simpl. rewrite Heq. apply conf1_bivalent.
++ simpl. rewrite Heq. apply conf1_invalid.
 + cbn. constructor.
-  - simpl. rewrite Heq, round_simplify_1_1. apply conf2_bivalent.
+  - simpl. rewrite Heq, round_simplify_1_1. apply conf2_invalid.
   - cbn. apply differs. now rewrite Heq, round_simplify_1_1, round_simplify_1_2. 
 Qed.
 
-Corollary Always_bivalent1 : Always_bivalent (execute r bad_demon1 conf1).
-Proof. apply Always_bivalent1_by_eq. reflexivity. Qed.
+Corollary Always_invalid1 : Always_invalid (execute r bad_demon1 conf1).
+Proof. apply Always_invalid1_by_eq. reflexivity. Qed.
 
 End Move1.
 
@@ -645,7 +645,7 @@ Qed.
 Theorem kFair_bad_demon2 : forall ρ (Hρ : ρ <> 0), kFair 1 (bad_demon2 Hρ).
 Proof. intros. eapply kFair_bad_demon2_by_eq. reflexivity. Qed.
 
-(* In a bivalent configuration, half of the robots are in the same place. *)
+(* In a invalid configuration, half of the robots are in the same place. *)
 Lemma dist_left : forall d (Hd : d <> 0) (config : Config.t),
   (forall gr gl, In gr right -> In gl left -> config (Good gr) - config (Good gl) = d) ->
   forall g, In g left -> config (Good g) = config (Good gfirst).
@@ -698,10 +698,10 @@ ring_simplify (// d * 0). rewrite Rplus_0_l. rewrite <- (Hconfig glast gfirst); 
 f_equiv. f_equiv. compute; field.
 Qed.
 
-Lemma dist_bivalent : forall d (Hd : d <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) -> bivalent config.
+Lemma dist_invalid : forall d (Hd : d <> 0) (config : Config.t),
+  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) -> invalid config.
 Proof.
-intros d Hd config Hconfig. unfold bivalent. repeat split; try apply even_nG || apply nG_ge_2; [].
+intros d Hd config Hconfig. unfold invalid. repeat split; try apply even_nG || apply nG_ge_2; [].
 assert (Hdiff : config (Good gfirst) <> config (Good glast)).
 { apply Rminus_not_eq_right. rewrite Hconfig; auto. }
 exists (config (Good gfirst)), (config (Good glast)). repeat split.
@@ -746,12 +746,12 @@ apply Rplus_eq_reg_r with (round r (da2_left Hρ) config (Good glast)).
 setoid_rewrite Rplus_comm. setoid_rewrite round_dist2_left; auto.
 Qed.
 
-Corollary round2_left_bivalent : forall ρ (Hρ : ρ <> 0) config,
+Corollary round2_left_invalid : forall ρ (Hρ : ρ <> 0) config,
   (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
-  bivalent (round r (da2_left Hρ) config).
+  invalid (round r (da2_left Hρ) config).
 Proof.
 intros ρ Hρ config Hconfig.
-apply (dist_bivalent (d := (1 - move) / ρ)).
+apply (dist_invalid (d := (1 - move) / ρ)).
 - rewrite <- Rinv_Rdiv; trivial. now apply Rinv_neq_0_compat, ratio_inv. lra.
 - intros. now apply round_dist2_left.
 Qed.
@@ -784,16 +784,16 @@ destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
   now apply dist_homothecy_spectrum_centered_right.
 Qed.
 
-Theorem Always_bivalent2 : forall ρ (Hρ : ρ <> 0) config,
+Theorem Always_invalid2 : forall ρ (Hρ : ρ <> 0) config,
   (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
-  Always_bivalent (execute r (bad_demon2 Hρ) config).
+  Always_invalid (execute r (bad_demon2 Hρ) config).
 Proof.
 cofix differs. intros ρ Hρ config Hconfig.
 constructor; [| constructor].
   (* Inital state *)
-- cbn. apply (dist_bivalent (Rinv_neq_0_compat _ Hρ)). assumption.
+- cbn. apply (dist_invalid (Rinv_neq_0_compat _ Hρ)). assumption.
   (* State after one step *)
-- cbn. now apply round2_left_bivalent.
+- cbn. now apply round2_left_invalid.
 (* State after two steps *)
 - cbn. apply differs. intros g1 g2 Hg1 Hg2.
   replace (/ (ρ / (1 - move) / (1 - move))) with ((1 - move) / (ρ / (1 - move))) by (field; auto).
@@ -845,8 +845,8 @@ destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
 * exact nG_non_0.
 * unfold bad_demon.
   destruct (Rdec move 1) as [Hmove | Hmove].
-  + now apply Always_bivalent1.
-  + apply (Always_bivalent2 Hmove R1_neq_R0 conf1); try reflexivity.
+  + now apply Always_invalid1.
+  + apply (Always_invalid2 Hmove R1_neq_R0 conf1); try reflexivity.
     intros. simpl. destruct (left_dec g1), (left_dec g2); field || exfalso; eauto.
 (* TODO: correct the type conversion problem, eauto should solve this goal *)
 change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).

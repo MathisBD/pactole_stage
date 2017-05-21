@@ -122,12 +122,12 @@ intros config pt. split; intro Hmaj.
   - rewrite <- Spect.support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
 Qed.
 
-(** **  Some properties of [bivalent]  **)
+(** **  Some properties of [invalid]  **)
 
-Lemma bivalent_even : forall conf, bivalent conf -> Nat.Even nG.
+Lemma invalid_even : forall conf, invalid conf -> Nat.Even nG.
 Proof. now intros conf [? _]. Qed.
 
-Lemma bivalent_support_length : forall config, bivalent config ->
+Lemma invalid_support_length : forall config, invalid config ->
   Spect.size (!! config) = 2.
 Proof.
 intros conf [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
@@ -156,10 +156,10 @@ Definition cr_conf l :=
 {| Config.loc := l;
    Config.robot_info := {| Config.source := l; Config.target := l |} |}.
 
-(* Lemma bivalent_injective_invariant : forall f, injective eq eq f ->
-  forall conf, bivalent conf -> bivalent (Config.map f conf).
+(* Lemma invalid_injective_invariant : forall f, injective eq eq f ->
+  forall conf, invalid conf -> invalid (Config.map f conf).
 Proof.
-unfold bivalent.
+unfold invalid.
 intros f Hf conf [HnG [? [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 repeat split; trivial; [].
 exists (Config.loc (f (cr_conf pt1))), (Config.loc (f (cr_conf pt2))). split.
@@ -168,28 +168,28 @@ exists (Config.loc (f (cr_conf pt1))), (Config.loc (f (cr_conf pt2))). split.
   assumption || (now intros ? ? Heq; rewrite Heq) || apply Hf.
 Qed.
 
-Theorem bivalent_similarity_iff : forall (sim : Sim.t) conf,
-  bivalent (Config.map sim conf) <-> bivalent conf.
+Theorem invalid_similarity_iff : forall (sim : Sim.t) conf,
+  invalid (Config.map sim conf) <-> invalid conf.
 Proof.
 intros sim conf. split.
 - setoid_rewrite <- Config.map_id at 3. change id with (Similarity.section Sim.id).
   rewrite <- Sim.compose_inverse_l. simpl.
   setoid_rewrite <- Config.map_merge at 2; try now intros ? ? Heq; rewrite Heq.
-  eapply bivalent_injective_invariant, Similarity.injective_retraction, Sim.injective.
-- apply bivalent_injective_invariant, Sim.injective.
+  eapply invalid_injective_invariant, Similarity.injective_retraction, Sim.injective.
+- apply invalid_injective_invariant, Sim.injective.
 Qed. *)
 
-Lemma support_max_1_not_bivalent : forall config pt,
-  MajTower_at pt config -> ~bivalent config.
+Lemma support_max_1_not_invalid : forall config pt,
+  MajTower_at pt config -> ~invalid config.
 Proof.
 intros config pt Hmaj. rewrite MajTower_at_equiv in Hmaj.
 assert (Hmax : forall x, Spect.In x (Spect.max (!! config)) <-> x = pt).
 { intro x. rewrite <- Spect.support_spec, Hmaj. split.
   - intro Hin. inversion_clear Hin. assumption. inversion H.
   - intro. subst x. now left. }
-intro Hbivalent.
-assert (Hsuplen := bivalent_support_length Hbivalent).
-destruct Hbivalent as [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
+intro Hinvalid.
+assert (Hsuplen := invalid_support_length Hinvalid).
+destruct Hinvalid as [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 assert (Hsup : Permutation (Spect.support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA eq pt1 (Spect.support (!! config))).
   { rewrite Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_conf. }
@@ -213,17 +213,17 @@ Qed.
 
 Definition no_Majority conf := (Spect.size (Spect.max (!! conf)) > 1)%nat.
 
-(* bivalent_support_length already proves the <- direction *)
-Lemma bivalent_equiv : forall conf,
-  bivalent conf <-> no_Majority conf /\ Spect.size (!! conf) = 2%nat.
+(* invalid_support_length already proves the <- direction *)
+Lemma invalid_equiv : forall conf,
+  invalid conf <-> no_Majority conf /\ Spect.size (!! conf) = 2%nat.
 Proof.
   intro conf. unfold no_Majority. split.
-  - intro Hbivalent. split.
+  - intro Hinvalid. split.
     + rewrite Spect.size_spec. destruct (Spect.support (Spect.max (!! conf))) as [| pt1 [| pt2 l]] eqn:Hmax.
       * exfalso. revert Hmax. apply support_max_non_nil.
-      * exfalso. revert Hmax Hbivalent. rewrite <- MajTower_at_equiv. apply support_max_1_not_bivalent.
+      * exfalso. revert Hmax Hinvalid. rewrite <- MajTower_at_equiv. apply support_max_1_not_invalid.
       * simpl. omega.
-    + now apply bivalent_support_length.
+    + now apply invalid_support_length.
   - intros [Hlen H2]. rewrite Spect.size_spec in *.
     destruct (Spect.support (!! conf)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try (now simpl in H2; omega); [].
     red.
@@ -400,8 +400,8 @@ Proof.
          assumption.
 Qed.
 
-Lemma not_bivalent_not_majority_length : forall conf,
-  no_Majority conf -> ~bivalent conf -> (Spect.size (!! conf) >= 3)%nat.
+Lemma not_invalid_not_majority_length : forall conf,
+  no_Majority conf -> ~invalid conf -> (Spect.size (!! conf) >= 3)%nat.
 Proof.
 intros conf H1 H2.
 assert (Spect.size (!! conf) > 1)%nat.
@@ -410,7 +410,7 @@ assert (Spect.size (!! conf) > 1)%nat.
   - apply Spect.support_NoDupA.
   - unfold Spect.max. apply Spect.support_nfilter. repeat intro. now subst. }
  destruct (Spect.size (!! conf)) as [| [| [| ?]]] eqn:Hlen; try omega.
-exfalso. apply H2. now rewrite bivalent_equiv.
+exfalso. apply H2. now rewrite invalid_equiv.
 Qed.
 
 (** **  Functions for the generic case  **)
@@ -733,9 +733,9 @@ apply le_lt_trans with ((!! conf)[x]); try eapply lt_le_trans; try eassumption; 
 - eapply Majority_grow; eauto.
 Qed.
 
-Theorem Majority_not_bivalent : forall pt config, MajTower_at pt config -> ~bivalent config.
+Theorem Majority_not_invalid : forall pt config, MajTower_at pt config -> ~invalid config.
 Proof.
-intros pt config Hmaj. rewrite bivalent_equiv. unfold no_Majority. intros [Hmaj' _].
+intros pt config Hmaj. rewrite invalid_equiv. unfold no_Majority. intros [Hmaj' _].
 rewrite MajTower_at_equiv in Hmaj. rewrite Spect.size_spec, Hmaj in Hmaj'. simpl in *. omega.
 Qed.
 
@@ -1030,12 +1030,12 @@ intros conf da pt. split.
 Qed.
 
 
-(* Any non-bivalent config without a majority tower contains at least three towers.
+(* Any non-invalid config without a majority tower contains at least three towers.
    All robots move toward the same place (same_destination), wlog pt1.
    |\before(pt2)| >= |\after(pt2)| = nG / 2
    As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
    thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
-Theorem never_bivalent : forall da conf, ~bivalent conf -> ~bivalent (round robogram da conf).
+Theorem never_invalid : forall da conf, ~invalid conf -> ~invalid (round robogram da conf).
 Proof.
 intros da conf Hok.
 (* Three cases for the robogram *)
@@ -1044,11 +1044,11 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
   intros _. apply (support_max_non_nil _ Hmaj). }
 { (* There is a majority tower *)
   rewrite <- MajTower_at_equiv in Hmaj.
-  apply Majority_not_bivalent with pt. now apply MajTower_at_forever. }
+  apply Majority_not_invalid with pt. now apply MajTower_at_forever. }
 { rename Hmaj into Hmaj'.
   assert (Hmaj : no_Majority conf). { unfold no_Majority. rewrite Spect.size_spec, Hmaj'. simpl. omega. }
   clear pt pt' l' Hmaj'.
-  (* A robot has moved otherwise we have the same configuration before and it is bivalent. *)
+  (* A robot has moved otherwise we have the same configuration before and it is invalid. *)
   assert (Hnil := no_moving_same_conf robogram da conf).
   destruct (moving robogram da conf) as [| rmove l] eqn:Heq.
   * now rewrite Hnil.
@@ -1056,7 +1056,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
     assert (Hmove : In rmove (moving robogram da conf)). { rewrite Heq. now left. }
     rewrite moving_spec in Hmove.
     (* the robot moves to one of the two locations in round robogram conf *)
-    assert (Hbivalent := Habs). destruct Habs as [HnG [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
+    assert (Hinvalid := Habs). destruct Habs as [HnG [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
     assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
                                   /\ round robogram da conf rmove = pt).
     { assert (Hperm : Permutation (Spect.support (!! (round robogram da conf))) (pt1 :: pt2 :: nil)).
@@ -1065,7 +1065,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
           - intro Habs. inversion Habs. now elim Hdiff. now inversion H.
           - intro Habs. now inversion Habs.
         + rewrite <- NoDupA_Leibniz. apply Spect.support_NoDupA.
-        + simpl. now rewrite <- Spect.size_spec, bivalent_support_length.
+        + simpl. now rewrite <- Spect.size_spec, invalid_support_length.
         + intros pt Hpt. inversion_clear Hpt.
           - subst. rewrite <- InA_Leibniz, Spect.support_spec. unfold Spect.In. rewrite Hpt1. apply half_size_conf.
           - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz, Spect.support_spec.
@@ -1094,7 +1094,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
     assert (Hlt : forall p, p <> pt' -> (!! conf)[p] < div2 N.nG).
     { assert (Hpt'_in : Spect.In pt' (!! conf)).
       { unfold Spect.In. eapply lt_le_trans; try eassumption. apply half_size_conf. }
-      assert (Hle := not_bivalent_not_majority_length Hmaj Hok).
+      assert (Hle := not_invalid_not_majority_length Hmaj Hok).
       intros p Hp. apply Nat.nle_gt. intro Habs. apply (lt_irrefl N.nG).
       destruct (@towers_elements_3 conf pt' p Hle Hpt'_in) as [pt3' [Hdiff13 [Hdiff23 Hpt3_in]]]; trivial.
       + apply lt_le_trans with (div2 N.nG); try assumption. apply half_size_conf.
@@ -1103,7 +1103,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' l']] eqn:Hmaj.
         unfold Spect.In in Hpt3_in. rewrite <- (even_div2 HnG). omega. }
     assert (Hmaj' : MajTower_at pt' conf).
     { intros x Hx. apply lt_le_trans with (div2 N.nG); trivial. now apply Hlt. }
-    apply (MajTower_at_forever da), Majority_not_bivalent in Hmaj'. contradiction. }
+    apply (MajTower_at_forever da), Majority_not_invalid in Hmaj'. contradiction. }
 Qed.
 
 Close Scope R_scope.
@@ -1226,7 +1226,7 @@ apply (NoDupA_inclA_length _). apply Spect.support_NoDupA.
 Qed.
 
 Theorem round_lt_conf : forall da conf,
-  ~bivalent conf -> moving robogram da conf <> nil ->
+  ~invalid conf -> moving robogram da conf <> nil ->
   lt_conf (round robogram da conf) conf.
 Proof.
 intros da conf Hvalid Hmove.
@@ -1263,7 +1263,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
       assert (Hlen' : Spect.size (!! (round robogram da conf)) = 3).
       { apply le_antisym.
         + apply (support_decrease _ Hmaj Hlen).
-        + apply (not_bivalent_not_majority_length Hmaj'). now apply never_bivalent. }
+        + apply (not_invalid_not_majority_length Hmaj'). now apply never_invalid. }
       rewrite (conf_to_NxN_Three_spec Hmaj' Hlen'). apply right_lex.
       rewrite <- Hlen in Hlen'.
       assert (Hperm : Permutation (Spect.support (!! (round robogram da conf)))
@@ -1378,22 +1378,22 @@ intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
     - destruct Hd. apply IHHfirst; trivial. now apply round_compat.
 Qed.
 
-Lemma not_bivalent_gathered_Majority_size : forall config id,
-  ~bivalent config -> ~gathered_at (config id) config -> no_Majority config ->
+Lemma not_invalid_gathered_Majority_size : forall config id,
+  ~invalid config -> ~gathered_at (config id) config -> no_Majority config ->
   Spect.size (!! config) >= 3.
 Proof.
-intros config id Hbivalent Hgather Hmaj.
+intros config id Hinvalid Hgather Hmaj.
 assert (Spect.size (!! config) > 1).
 { unfold no_Majority in Hmaj. eapply lt_le_trans; try eassumption; []. now rewrite Spect.max_subset. }
-rewrite bivalent_equiv in Hbivalent.
+rewrite invalid_equiv in Hinvalid.
 destruct (Spect.size (!! config)) as [| [| [| n]]]; omega || tauto.
 Qed.
 
-(** Given a non-gathered, non bivalent configuration, then some robot will move some day *)
-Theorem OneMustMove : forall config id, ~ bivalent config -> ~gathered_at (config id) config ->
+(** Given a non-gathered, non invalid configuration, then some robot will move some day *)
+Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (config id) config ->
   exists gmove, forall da, In gmove (active da) -> In gmove (moving robogram da config).
 Proof.
-intros config id Hbivalent Hgather.
+intros config id Hinvalid Hgather.
 destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
 * elim (support_max_non_nil _ Hmaj).
 * rewrite <- MajTower_at_equiv in Hmaj.
@@ -1411,7 +1411,7 @@ destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
     rewrite (round_simplify_Three _ Hmaj Hlen). destruct (step da gmove); auto; now elim Hactive.
   + assert (Hle : Spect.size (!! config) >= 4).
     { hnf. apply le_neq_lt.
-      - now apply not_bivalent_gathered_Majority_size with id.
+      - now apply not_invalid_gathered_Majority_size with id.
       - auto. }
     rewrite Spect.size_spec, Permuted_sort in Hle.
     destruct (sort (Spect.support (!! config))) as [| pt1 [| pt2 [| pt3 [| pt4 l]]]] eqn:Hsup;
@@ -1436,16 +1436,16 @@ destruct (Spect.support (Spect.max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
     unfold is_extremal. repeat Rdec_full; intuition.
 Qed.
 
-(* Given a k-fair demon, in any non gathered, non bivalent configuration, a robot will be the first to move. *)
+(* Given a k-fair demon, in any non gathered, non invalid configuration, a robot will be the first to move. *)
 Theorem Fair_FirstMove : forall d, Fair d ->
-  forall config id, ~bivalent config -> ~gathered_at (config id) config -> FirstMove robogram d config.
+  forall config id, ~invalid config -> ~gathered_at (config id) config -> FirstMove robogram d config.
 Proof.
-intros d Hfair config id Hbivalent Hgathered.
-destruct (OneMustMove id Hbivalent Hgathered) as [gmove Hmove].
+intros d Hfair config id Hinvalid Hgathered.
+destruct (OneMustMove id Hinvalid Hgathered) as [gmove Hmove].
 destruct Hfair as [locallyfair Hfair].
-revert config Hbivalent Hgathered Hmove Hfair.
+revert config Hinvalid Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
-induction locallyfair; intros config Hbivalent Hgathered Hmove Hfair.
+induction locallyfair; intros config Hinvalid Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H. apply Hmove in H. rewrite Habs in H. inversion H.
 + destruct (moving robogram (Streams.hd d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
@@ -1505,7 +1505,7 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove].
     destruct (Hind (round robogram (Streams.hd d) conf)) with (Streams.tl d) as [pt Hpt].
     - apply round_lt_conf; assumption.
     - now destruct Hfair.
-    - now apply never_bivalent.
+    - now apply never_invalid.
     - exists pt. constructor; cbn; apply Hpt.
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_conf in Heq.
