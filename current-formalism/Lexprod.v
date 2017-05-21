@@ -3,7 +3,7 @@ Require Import RelationPairs.
 Require Import Morphisms.
 
 
-Set Implict Arguments.
+Set Implicit Arguments.
 
 
 Section WfLexicographic_Product.
