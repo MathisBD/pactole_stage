@@ -3605,15 +3605,13 @@ Qed.
 
 (* Let us change the assumption over the demon, it is no longer fair
    but instead activates at least a robot that should move at each round *)
-CoInductive OKunfair r (d : demon) config : Prop :=
-  AlwaysOKunfair : moving r (Streams.hd d) config <> nil -> 
-  OKunfair r (Streams.tl d) (round gatherR2 (Streams.hd d) config) -> OKunfair r d config.
+Definition OKunfair r :=
+  Streams.forever (Streams.instant (fun da => forall config, ~bivalent config -> moving r da config <> nil)).
 
-Theorem unfair_Gathering_in_R2 : forall d config,
-  OKunfair gatherR2 d config -> ~bivalent config ->
-  exists pt, WillGather pt (execute gatherR2 d config).
+Theorem unfair_Gathering_in_R2 :
+  forall d, OKunfair gatherR2 d -> ValidSolGathering gatherR2 d.
 Proof.
-intros d config Hunfair. revert d Hunfair. pattern config.
+intros d Hunfair config. revert d Hunfair. pattern config.
 apply (well_founded_ind wf_lt_conf). clear config.
 intros config Hind d Hunfair Hok.
 (* Are we already gathered? *)
@@ -3622,9 +3620,9 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove].
   exists (config (Good g1)). now apply Streams.Now, gathered_at_OK.
 + (* Otherwise, by assumption on the demon, a robot should move
      so we can use our well-founded induction hypothesis. *)
-  destruct Hunfair as [Hstep Hunfair].
+ destruct Hunfair as [Hstep Hunfair]. hnf in Hstep.
   destruct (Hind (round gatherR2 (Streams.hd d) config)) with (Streams.tl d) as [pt Hpt].
-  - apply round_lt_config; assumption.
+  - apply round_lt_config; auto.
   - assumption.
   - now apply never_bivalent.
   - exists pt. apply Streams.Later. rewrite execute_tail. apply Hpt.
