@@ -1,6 +1,7 @@
-Require Import Pactole.Preliminary.
 Require Import Arith.Div2.
 Require Import Omega.
+Require Import Equalities.
+Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.Similarity.
@@ -14,21 +15,37 @@ Close Scope R_scope.
 Set Implicit Arguments.
 
 
+Module Unit : DecidableType with Definition t := unit
+                            with Definition eq := @Logic.eq unit.
+(*                             with Definition eq_equiv := @eq_equivalence unit. *)
+  Definition t := unit.
+  Definition eq := @Logic.eq unit.
+  Instance eq_equiv : Equivalence eq := @eq_equivalence unit.
+  Definition eq_dec : forall x y : t, {x = y} + {x <> y}.
+  Proof. intros [] []. now left. Defined.
+End Unit.
+
+
 Module GatheringDefs(Loc : RealMetricSpace)(N : Size).
 
 (** The spectrum is a multiset of positions *)
+Module Info := Unit.
 Module Names := Robots.Make(N).
-Module Config := Configurations.Make(Loc)(N)(Names).
-Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Config).
+Module Config := Configurations.Make(Loc)(N)(Names)(Info).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Module Export Common := CommonRealFormalism.Make(Loc)(N)(Names)(Config)(Spect).
-Module Export Rigid := RigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect)(Common).
 
 Module Sim := Common.Sim.
+
+(** There is no meaningful information inside Info.t. *)
+Lemma no_info : forall rc1 rc2, Loc.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
+Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
 
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots

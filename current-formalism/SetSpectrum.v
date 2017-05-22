@@ -17,8 +17,8 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : RealMetricSpace)(N : Size)(Names : Robots.Robots(N))
-            (Config : Configuration(Location)(N)(Names)) <: Spectrum (Location)(N)(Names)(Config).
+Module Make(Location : RealMetricSpace)(N : Size)(Names : Robots.Robots(N))(Info : DecidableType)
+            (Config : Configuration(Location)(N)(Names)(Info)) <: Spectrum (Location)(N)(Names)(Info)(Config).
 
 
 (** Definition of spectra as sets of locations. *)

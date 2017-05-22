@@ -1391,28 +1391,21 @@ intros. unfold eq, opp, add.
 repeat rewrite <- Zminus_mod_idemp_l with (a:=n), Z_mod_same_full.
 rewrite <- Zplus_mod, Zminus_mod_idemp_r. simpl. do 2 rewrite Zmod_mod.
 f_equiv. omega.
-Qed. 
+Qed.
 
 End Ring.
 Close Scope Z_scope.
 
 
-Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N)).
-(*                          (Info : DecidableType) *)
+Module Type Configuration (Location : DecidableType)(N : Size)(Names : Robots(N))
+                          (Info : DecidableType).
 
-  (* for now it's only locations, but the content could change *)
-  Record Info : Type := { source: Location.t ; target: Location.t}.
+  Record RobotConf := { loc :> Location.t; info: Info.t }.
 
-  Definition Info_eq i1 i2 :=
-    Location.eq i1.(source) i2.(source) /\
-    Location.eq i1.(target) i2.(target).
+  Definition t := Names.ident -> RobotConf.
 
-  Record RobotConf := { loc :> Location.t; robot_info: Info }.
-
-  Definition t := Names.ident -> RobotConf. 
- 
   Definition eq_RobotConf g1 g2 := Location.eq (loc g1) (loc g2) 
-                                /\ Info_eq (robot_info g1) (robot_info g2).
+                                /\ Info.eq (info g1) (info g2).
 
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
 
@@ -1420,10 +1413,10 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
   Declare Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
   Parameter eq_RobotConf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2}.
   Parameter eq_dec : forall c1 c2, {eq c1 c2} + {~eq c1 c2}.
-  Declare Instance eq_info_equiv : Equivalence Info_eq.
+  Declare Instance eq_info_equiv : Equivalence Info.eq.
   Declare Instance eq_bisim : Bisimulation t.
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
-  Declare Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
+  Declare Instance Build_RobotConf_compat : Proper (Location.eq ==> Info.eq ==> eq_RobotConf) Build_RobotConf.
   Declare Instance loc_compat : Proper (eq_RobotConf ==> Location.eq) loc.
 
   Parameter neq_equiv : forall config₁ config₂,
@@ -1461,20 +1454,15 @@ Module Type Configuration(Location : DecidableType)(N : Size)(Names : Robots(N))
 End Configuration.
 
 
-Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configuration(Location)(N)(Names).
+Module Make(Location : DecidableType)(N : Size)(Names : Robots(N))(Info : DecidableType)
+  : Configuration(Location)(N)(Names)(Info).
 
-  Record Info : Type := { source: Location.t ; target: Location.t}.
-
-  Definition Info_eq i1 i2 :=
-    Location.eq i1.(source) i2.(source) /\
-    Location.eq i1.(target) i2.(target).
-
-  Record RobotConf := { loc :> Location.t; robot_info: Info }.
+  Record RobotConf := { loc :> Location.t; info: Info.t }.
 
   Definition t := Names.ident -> RobotConf. 
 
   Definition eq_RobotConf g1 g2 := Location.eq (loc g1) (loc g2)
-                                   /\ Info_eq (robot_info g1) (robot_info g2).
+                                   /\ Info.eq (info g1) (info g2).
 
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
 
@@ -1482,20 +1470,7 @@ Module Make(Location : DecidableType)(N : Size)(Names : Robots(N)) : Configurati
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
 
-Instance eq_info_equiv : Equivalence Info_eq.
-Proof.
-split.
-+ split; reflexivity.
-+ split; symmetry; apply H.
-+ split. unfold Info_eq in *.
-  transitivity (source y). 
-  apply H.
-  apply H0.
-  transitivity (target y).
-  apply H.
-  apply H0.
-Qed.
- 
+Instance eq_info_equiv :  Equivalence Info.eq := Info.eq_equiv. 
 
 Instance eq_RobotConf_equiv : Equivalence eq_RobotConf.
 Proof.
@@ -1506,24 +1481,21 @@ split.
   transitivity (loc y).
   apply H.
   apply H0.
-  transitivity (robot_info y).
+  transitivity (info y).
   apply H.
   apply H0.
 Qed.
 
 Lemma eq_RobotConf_dec : forall rc1 rc2, {eq_RobotConf rc1 rc2} + {~ eq_RobotConf rc1 rc2 }.
 Proof.
-  intros.
-  unfold eq_RobotConf, Info_eq.
-  destruct (Location.eq_dec rc1 rc2);
-  destruct (Location.eq_dec (source (robot_info rc1)) (source (robot_info rc2)));
-  destruct (Location.eq_dec (target (robot_info rc1)) (target (robot_info rc2)));
-    try now (right; intuition).
-  left.
-  repeat (split; try assumption).
+intros rc1 rc2.
+unfold eq_RobotConf.
+destruct (Location.eq_dec rc1 rc2),
+         (Info.eq_dec (info rc1) (info rc2));
+intuition.
 Qed.
 
-  Set Printing Implicit.
+Set Printing Implicit.
 
 (* 
   assert (forall id, eq_RobotConf (config1 id) (config2 id) \/
@@ -1533,7 +1505,7 @@ Qed.
   now left.
   now right. 
 *)
-  
+
 Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
 Proof.
  (* unfold t.
@@ -1606,10 +1578,13 @@ Proof.
   now rewrite Hdec in H0.*)
 Admitted.
 
-Instance Build_RobotConf_compat : Proper (Location.eq ==> Info_eq ==> eq_RobotConf) Build_RobotConf.
+Instance Build_RobotConf_compat : Proper (Location.eq ==> Info.eq ==> eq_RobotConf) Build_RobotConf.
 Proof. intros l1 l2 Hl info1 info2 Hinfo. split; apply Hl || apply Hinfo. Qed.
 
 Instance loc_compat : Proper (eq_RobotConf ==> Location.eq) loc.
+Proof. now intros ? ? []. Qed.
+
+Instance info_compat : Proper (eq_RobotConf ==> Info.eq) info.
 Proof. now intros ? ? []. Qed.
 
 Instance eq_equiv : Equivalence eq.
@@ -1622,7 +1597,7 @@ Proof. split.
   transitivity (loc (d2 x)).
   apply H12.
   apply H23.
-  transitivity (robot_info (d2 x)).
+  transitivity (info (d2 x)).
   apply H12.
   apply H23.
 Qed.
@@ -1738,8 +1713,8 @@ End Make.
 
 (** **  Spectra  **)
 
-Module Type Spectrum(Location : DecidableType)(N : Size) (Names : Robots(N))
-                    (Config : Configuration(Location)(N)(Names)). (* <: DecidableType *)
+Module Type Spectrum(Location : DecidableType)(N : Size) (Names : Robots(N))(Info : DecidableType)
+                    (Config : Configuration(Location)(N)(Names)(Info)). (* <: DecidableType *)
   
   (** Spectra are a decidable type *)
   Parameter t : Type.

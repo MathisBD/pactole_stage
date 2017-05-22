@@ -22,14 +22,14 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : DecidableType)(N : Robots.Size)(Names : Robots.Robots(N))
-            (Config : Configuration(Location)(N)(Names)) <: Spectrum (Location)(N)(Names)(Config).
+Module Make(Location : DecidableType)(N : Robots.Size)(Names : Robots.Robots(N))(Info : DecidableType)
+            (Config : Configuration(Location)(N)(Names)(Info)) <: Spectrum (Location)(N)(Names)(Info)(Config).
 
 
 Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
 Proof. intros [] [] []. now cbn. Qed.
 
-Instance info_compat : Proper (Config.eq_RobotConf ==> Config.Info_eq) Config.robot_info.
+Instance info_compat : Proper (Config.eq_RobotConf ==> Info.eq) Config.info.
 Proof. intros [] [] [] *. now cbn. Qed.
 
 (** Definition of spectra as multisets of locations. *)
@@ -189,7 +189,7 @@ Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
 Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall conf, eq (map f (from_config conf))
-  (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.robot_info := Config.robot_info x|}) conf)).
+  (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.info := Config.info x|}) conf)).
 Proof.
 intros f Hf config. unfold from_config. rewrite Config.list_map.
 - now rewrite <- multiset_map, map_map, map_map.

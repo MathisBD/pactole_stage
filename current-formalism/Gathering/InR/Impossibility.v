@@ -14,6 +14,7 @@ Require Import Morphisms.
 Require Import Arith.Div2.
 Require Import Omega.
 Require Import List SetoidList.
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Gathering.InR.Rcomplements.
@@ -23,8 +24,6 @@ Set Implicit Arguments.
 
 
 Import GatheringinR.
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
 Close Scope R_scope.
 
 
@@ -198,30 +197,29 @@ Variable r : robogram.
 
 Open Scope R_scope.
 
-Definition cr_conf l := 
-{| Config.loc := l;
-   Config.robot_info := {| Config.source := l; Config.target := l |} |}.
+Definition mk_info l := 
+{| Config.loc := l; Config.info := tt |}.
 
 
 (** The reference starting configuration **)
-Definition conf1 : Config.t := fun id =>
+Definition config1 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then cr_conf 0 else cr_conf 1
-    | Byz b => cr_conf 0
+    | Good g => if left_dec g then mk_info 0 else mk_info 1
+    | Byz b => mk_info 0
   end.
 
 (** The symmetrical configuration of the starting configuration **)
-Definition conf2 : Config.t := fun id =>
+Definition config2 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then cr_conf 1 else cr_conf 0
-    | Byz b => cr_conf 0
+    | Good g => if left_dec g then mk_info 1 else mk_info 0
+    | Byz b => mk_info 0
   end.
 
 Definition spectrum := Spect.add 0 (Nat.div2 N.nG) (Spect.singleton 1 (Nat.div2 N.nG)).
 
-Theorem conf1_conf2_spect_eq : Spect.eq (!! conf1) (!! conf2).
+Theorem config1_config2_spect_eq : Spect.eq (!! config1) (!! config2).
 Proof.
-intro pt. unfold conf1, conf2.
+intro pt. unfold config1, config2.
 repeat rewrite Spect.from_config_spec.
 repeat rewrite Config.list_spec.
 repeat rewrite names_Gnames.
@@ -263,9 +261,9 @@ apply first_last_even_ind.
 * change (Fin.t N.nG) with Names.G. rewrite Names.Gnames_length. apply even_nG.
 Qed.
 
-Theorem spect_conf1 : Spect.eq (!! conf1) spectrum.
+Theorem spect_config1 : Spect.eq (!! config1) spectrum.
 Proof.
-intro pt. unfold conf1, spectrum.
+intro pt. unfold config1, spectrum.
 rewrite Spect.from_config_spec, Config.list_spec. rewrite names_Gnames, map_map.
 unfold left_dec, left. rewrite <- Names.Gnames_length at 1 2. generalize (Names.Gnames_NoDup).
 pattern Names.Gnames.
@@ -293,16 +291,16 @@ apply first_last_even_ind.
                       Config.loc
                         match x with
                         | Good g =>
-                          if in_dec Fin.eq_dec g (gl :: half1 l) then cr_conf 0 else cr_conf 1
-                        | Byz _ => cr_conf 0
+                          if in_dec Fin.eq_dec g (gl :: half1 l) then mk_info 0 else mk_info 1
+                        | Byz _ => mk_info 0
                         end) (map Good (l ++ gr :: Datatypes.nil)))
                 =(map
                     (fun x : Names.ident =>
                        Config.loc
                          match x with
                          | Good g =>
-                           if in_dec Fin.eq_dec g (half1 l) then cr_conf 0 else cr_conf 1
-                         | Byz _ => cr_conf 0
+                           if in_dec Fin.eq_dec g (half1 l) then mk_info 0 else mk_info 1
+                         | Byz _ => mk_info 0
                          end) (map Good l)) ++ (1::Datatypes.nil)).
     { repeat rewrite map_app.
       apply f_equal2.
@@ -353,17 +351,17 @@ apply first_last_even_ind.
 * change (Fin.t N.nG) with Names.Internals.G. rewrite Names.Gnames_length. apply even_nG.
 Qed.
 
-Corollary conf1_invalid : invalid conf1.
+Corollary config1_invalid : invalid config1.
 Proof.
 repeat split; try (exact even_nG || exact nG_ge_2); [].
-exists 0, 1. rewrite spect_conf1. repeat split.
+exists 0, 1. rewrite spect_config1. repeat split.
 + intro. now apply R1_neq_R0.
 + unfold spectrum. rewrite Spect.add_same, Spect.singleton_spec. now Rdec.
 + unfold spectrum. rewrite Spect.add_other, Spect.singleton_spec; try apply R1_neq_R0. now Rdec.
 Qed.
 
-Corollary conf2_invalid : invalid conf2.
-Proof. split; try exact even_nG. cbn. setoid_rewrite <- conf1_conf2_spect_eq. apply conf1_invalid. Qed.
+Corollary config2_invalid : invalid config2.
+Proof. split; try exact even_nG. cbn. setoid_rewrite <- config1_config2_spect_eq. apply config1_invalid. Qed.
 
 (** Two similarities used: the identity and the symmetry wrt a point c. *)
 
@@ -393,53 +391,22 @@ Proof.
 - exact (bij_swap_ratio c).
 Defined.
 
-Coercion Config.loc: Config.RobotConf >-> R.t.
-
-Definition swap_conf c (cf : Config.RobotConf): Config.RobotConf :=
-  let swapc := swap c in
-  {| Config.loc := (swapc cf);
-     Config.robot_info := 
-       {| Config.source := swapc (cf.(Config.robot_info).(Config.source));
-          Config.target:= swapc (cf.(Config.robot_info).(Config.target)) |}
-  |}.
-  
-Eval compute in (swap 1).
-
-Print Coercions.
-
-Check (swap 1).
-Check (Sim.sim_f (swap 1)).
-Check (Similarity.section (Sim.sim_f (swap 1))).
-
-Eval compute in (swap_conf (cr_conf 1)).
-
-Lemma swap_conf1 : Config.eq (Config.map (swap_conf 1) conf1) conf2.
+Lemma swap_config1 : Config.eq (Config.map (apply_sim (swap 1)) config1) config2.
 Proof.
-  unfold swap_conf,swap.
-  intros [g | b].
-  - unfold Config.map. simpl. destruct (left_dec g);split;simpl. 
-    + hnf. ring.
-    + red;simpl. split;hnf;ring.
-    + hnf. ring.
-    + hnf. split;hnf;simpl; ring.
-  - apply Fin.case0. exact b.
+unfold swap. intros [g | b].
+- unfold Config.map. simpl. destruct (left_dec g); repeat split; simpl; hnf; reflexivity || ring.
+- apply Fin.case0. exact b.
 Qed.
 
-Lemma swap_conf2 : Config.eq (Config.map (swap_conf 1) conf2) conf1.
+Lemma swap_config2 : Config.eq (Config.map (apply_sim (swap 1)) config2) config1.
 Proof.
-Proof.
-  unfold swap_conf,swap.
-  intros [g | b].
-  - unfold Config.map. simpl. destruct (left_dec g);split;simpl. 
-    + hnf. ring.
-    + red;simpl. split;hnf;ring.
-    + hnf. ring.
-    + hnf. split;hnf;simpl; ring.
-  - apply Fin.case0. exact b.
+unfold swap. intros [g | b].
+- unfold Config.map. simpl. destruct (left_dec g); repeat split; simpl; hnf; reflexivity || ring.
+- apply Fin.case0. exact b.
 Qed.
 
 (** The movement of robots in the reference configuration **)
-Definition move := r (!! conf1).
+Definition move := r (!! config1).
 
 (** **  First case: the robots exchange their positions  **)
 
@@ -478,38 +445,40 @@ coinduction bad_fair1.
 intros id1 id2. constructor. destruct id1; simpl. discriminate. apply Fin.case0. exact b.
 Qed.
 
-Lemma round_simplify_1_1 : Config.eq (round r da1 conf1) conf2.
+Lemma round_simplify_1_1 : Config.eq (round r da1 config1) config2.
 Proof.
 intros [g | b]; unfold round; simpl.
 + destruct (left_dec g) as [Hleft | Hright].
-  - simpl. Rdec. simpl. split; simpl. rewrite Config.map_id. simpl. apply Hmove.
-  - Rdec. setoid_rewrite swap_conf1. simpl. replace 0 with (1 - 1) by ring. f_equal.
-    rewrite <- conf1_conf2_spect_eq. apply Hmove.
+  - simpl. Rdec. simpl. rewrite apply_sim_id, Config.map_id. split; simpl; reflexivity || apply Hmove.
+  - simpl. Rdec. setoid_rewrite swap_config1. simpl. split; try reflexivity; []. 
+    simpl; hnf. rewrite <- config1_config2_spect_eq. fold move. rewrite Hmove. ring.
 + apply Fin.case0. exact b.
 Qed.
 
-Lemma round_simplify_1_2 : Config.eq (round r da1 conf2) conf1.
+Lemma round_simplify_1_2 : Config.eq (round r da1 config2) config1.
 Proof.
 intros [g | b]; unfold round; simpl.
 + destruct (left_dec g) as [Hleft | Hright].
-  - Rdec. rewrite swap_conf2. simpl. replace 0 with (1 - 1) by ring. hnf. f_equal. apply Hmove.
-  - Rdec. rewrite Config.map_id. simpl. rewrite <- conf1_conf2_spect_eq. apply Hmove.
+  - simpl. Rdec. simpl. split; try reflexivity; [].
+    simpl; hnf. rewrite swap_config2. fold move. rewrite Hmove. ring.
+  - simpl. Rdec. simpl. split; try reflexivity; [].
+    simpl. rewrite apply_sim_id, Config.map_id. rewrite <- config1_config2_spect_eq. apply Hmove.
 + apply Fin.case0. exact b.
 Qed.
 
 (* Trick to perform rewriting in coinductive proofs : assert your property on any configuration
    equal to the one you want, then apply the cofixpoint before performing the required rewrites. *)
-Theorem Always_invalid1_by_eq : forall conf : Config.t, Config.eq conf conf1 ->
+Theorem Always_invalid1_by_eq : forall conf : Config.t, Config.eq conf config1 ->
   Always_invalid (execute r bad_demon1 conf).
 Proof.
 cofix differs. intros conf Heq. constructor.
-+ simpl. rewrite Heq. apply conf1_invalid.
++ simpl. rewrite Heq. apply config1_invalid.
 + cbn. constructor.
-  - simpl. rewrite Heq, round_simplify_1_1. apply conf2_invalid.
+  - simpl. rewrite Heq, round_simplify_1_1. apply config2_invalid.
   - cbn. apply differs. now rewrite Heq, round_simplify_1_1, round_simplify_1_2. 
 Qed.
 
-Corollary Always_invalid1 : Always_invalid (execute r bad_demon1 conf1).
+Corollary Always_invalid1 : Always_invalid (execute r bad_demon1 config1).
 Proof. apply Always_invalid1_by_eq. reflexivity. Qed.
 
 End Move1.
@@ -647,62 +616,75 @@ Proof. intros. eapply kFair_bad_demon2_by_eq. reflexivity. Qed.
 
 (* In a invalid configuration, half of the robots are in the same place. *)
 Lemma dist_left : forall d (Hd : d <> 0) (config : Config.t),
-  (forall gr gl, In gr right -> In gl left -> config (Good gr) - config (Good gl) = d) ->
-  forall g, In g left -> config (Good g) = config (Good gfirst).
+  (forall gr gl, In gr right -> In gl left -> Config.loc (config (Good gr)) - Config.loc (config (Good gl)) = d) ->
+  forall g, In g left -> Config.loc (config (Good g)) = Config.loc (config (Good gfirst)).
 Proof.
 intros d Hd config Hconfig g Hg.
-cut (config (Good glast) - config (Good g) = config (Good glast) - config (Good gfirst)).
+cut (Config.loc (config (Good glast)) - Config.loc (config (Good g))
+     = Config.loc (config (Good glast)) - Config.loc (config (Good gfirst))).
 + intro Heq. unfold Rminus in Heq. apply Rplus_eq_reg_l in Heq. setoid_rewrite <- Ropp_involutive.
   now apply Ropp_eq_compat.
 + assert (Hright := glast_right). repeat rewrite Hconfig; auto.
 Qed.
 
 Lemma dist_right : forall d (Hd : d <> 0) (config : Config.t),
-  (forall gr gl, In gr right -> In gl left -> config (Good gr) - config (Good gl) = d) ->
-  forall g, In g right -> config (Good g) = config (Good glast).
+  (forall gr gl, In gr right -> In gl left -> Config.loc (config (Good gr)) - Config.loc (config (Good gl)) = d) ->
+  forall g, In g right -> Config.loc (config (Good g)) = Config.loc (config (Good glast)).
 Proof.
 intros d Hd config Hconfig g Hg.
-cut (config (Good g) - config (Good gfirst) = config (Good glast) - config (Good gfirst)).
+cut (Config.loc (config (Good g)) - Config.loc (config (Good gfirst))
+     = Config.loc (config (Good glast)) - Config.loc (config (Good gfirst))).
 + intro Heq. unfold Rminus in Heq. now apply Rplus_eq_reg_r in Heq.
 + assert (Hleft := gfirst_left). repeat rewrite Hconfig; auto.
 Qed.
 
 
 Lemma dist_homothecy_spectrum_centered_left : forall ρ (Hρ : ρ <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
-  forall g, In g left -> Spect.eq (!! (Config.map (fun x : R => ρ * (x - config (Good g))) config)) (!! conf1).
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
+  forall g, In g left -> Spect.eq (!! (Config.map (apply_sim (homothecy (config (Good g)) Hρ)) config))
+                                  (!! config1).
 Proof.
-intros ρ Hρ config Hconfig g Hg. f_equiv. intro id. unfold Config.map.
+intros ρ Hρ config Hconfig g Hg. f_equiv. intro id.
+apply no_info. unfold Config.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold conf1. destruct (left_dec id).
-- setoid_rewrite (dist_left (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial. ring_simplify. reflexivity.
-- rewrite Hconfig; trivial. now rewrite Rinv_r. now apply not_left_is_right.
+unfold apply_sim, config1. destruct (left_dec id).
++ simpl. setoid_rewrite (dist_left (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial; [].
+  unfoldR. ring.
++ simpl. unfoldR. unfold Rminus in Hconfig. rewrite Hconfig; trivial; [|].
+  - now rewrite Rinv_r.
+  - now apply not_left_is_right.
 Qed.
 
-(* To prove this equality, we use !! conf1. *)
+(* To prove this equality, we use !! config1. *)
 Lemma dist_spectrum : forall d (Hd : d <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) ->
-  Spect.eq (!! config) (Spect.add (config (Good gfirst)) (Nat.div2 N.nG)
-                 (Spect.singleton (config (Good glast)) (Nat.div2 N.nG))).
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = d) ->
+  Spect.eq (!! config) (Spect.add (Config.loc (config (Good gfirst))) (Nat.div2 N.nG)
+                 (Spect.singleton (Config.loc (config (Good glast))) (Nat.div2 N.nG))).
 Proof.
-intros d Hd config Hconfig.
+(* intros d Hd config Hconfig.
 rewrite <- (Rinv_involutive d) in Hconfig; trivial.
 assert (Hd' := Rinv_neq_0_compat _ Hd).
-rewrite <- Config.map_id at 1. change Datatypes.id with (Similarity.section Sim.id).
-rewrite <- (Sim.compose_inverse_l (homothecy (config (Good gfirst)) Hd')). cbn -[homothecy].
-rewrite <- Config.map_merge, <- Spect.from_config_map; refine _. simpl. unfoldR.
+rewrite <- Config.map_id at 1.
+(*  Time rewrite <- apply_sim_id. (* > 180 sec.! *) *)
+replace (@Datatypes.id Config.RobotConf) with (apply_sim Sim.id) by admit.
+rewrite <- (Sim.compose_inverse_l (homothecy (config (Good gfirst)) Hd')).
+rewrite (apply_sim_compose (homothecy (config (Good gfirst)) Hd' ⁻¹) (homothecy (config (Good gfirst)) Hd')).
+rewrite <- Config.map_merge; autoclass; [].
+Check Spect.from_config_map.
+rewrite <- Spect.from_config_map; refine _. simpl. unfoldR.
 change (fun x : R => / d * (x + - config (Good gfirst))) with (fun x : R => / d * (x - config (Good gfirst))).
 rewrite (dist_homothecy_spectrum_centered_left Hd'); auto.
-rewrite spect_conf1. unfold spectrum. rewrite Spect.map_add, Spect.map_singleton; refine _.
+rewrite spect_config1. unfold spectrum. rewrite Spect.map_add, Spect.map_singleton; refine _.
 ring_simplify (// d * 0). rewrite Rplus_0_l. rewrite <- (Hconfig glast gfirst); auto.
 f_equiv. f_equiv. compute; field.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma dist_invalid : forall d (Hd : d <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = d) -> invalid config.
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = d) -> invalid config.
 Proof.
 intros d Hd config Hconfig. unfold invalid. repeat split; try apply even_nG || apply nG_ge_2; [].
-assert (Hdiff : config (Good gfirst) <> config (Good glast)).
+assert (Hdiff : Config.loc (config (Good gfirst)) <> Config.loc (config (Good glast))).
 { apply Rminus_not_eq_right. rewrite Hconfig; auto. }
 exists (config (Good gfirst)), (config (Good glast)). repeat split.
 - assumption.
@@ -711,9 +693,9 @@ exists (config (Good gfirst)), (config (Good glast)). repeat split.
 Qed.
 
 Lemma round_dist2_left : forall ρ (Hρ : ρ <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
-  forall g1 g2, In g1 right -> In g2 left -> round r (da2_left Hρ) config (Good g1)
-                                             - round r (da2_left Hρ) config (Good g2) = (1 - move) / ρ.
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
+  forall g1 g2, In g1 right -> In g2 left -> Config.loc (round r (da2_left Hρ) config (Good g1))
+                                             - Config.loc (round r (da2_left Hρ) config (Good g2)) = (1 - move) / ρ.
 Proof.
 intros ρ Hρ config Hconfig g1 g2 Hg1 Hg2. unfold round. simpl.
 destruct (left_dec g1), (left_dec g2); try now exfalso.
@@ -721,33 +703,34 @@ destruct (left_dec g1), (left_dec g2); try now exfalso.
 - change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 - cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
   rewrite <- (Hconfig _ _ Hg1 Hg2) at 2. unfoldR. ring_simplify.
-  replace (config (Good g1) - config (Good g2) - move / ρ)
-    with (config (Good g1) - move / ρ - config (Good g2)) by ring.
-   field_simplify; trivial. do 2 f_equal.
-   unfold move. apply pgm_compat. now apply dist_homothecy_spectrum_centered_left.
+  replace (Config.loc (config (Good g1)) - Config.loc (config (Good g2)) - move / ρ)
+    with (Config.loc (config (Good g1)) - move / ρ - Config.loc (config (Good g2))) by ring.
+  field_simplify; trivial. do 2 f_equal.
+  unfold move. apply pgm_compat. unfold apply_sim. simpl.
+  now apply (dist_homothecy_spectrum_centered_left Hρ).
 Qed.
 
 Corollary round2_left_right : forall ρ (Hρ : ρ <> 0) config,
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
   forall g1 g2, In g1 right -> In g2 right ->
-    round r (da2_left Hρ) config (Good g1) = round r (da2_left Hρ) config (Good g2).
+    Config.eq_RobotConf (round r (da2_left Hρ) config (Good g1)) (round r (da2_left Hρ) config (Good g2)).
 Proof.
-intros. apply Rplus_eq_reg_l with (- round r (da2_left Hρ) config (Good gfirst)).
+intros. apply no_info. apply Rplus_eq_reg_l with (- Config.loc (round r (da2_left Hρ) config (Good gfirst))).
 setoid_rewrite Rplus_comm. setoid_rewrite round_dist2_left; auto.
 Qed.
 
 Corollary round2_left_left : forall ρ (Hρ : ρ <> 0) config,
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
   forall g1 g2, In g1 left -> In g2 left ->
-    round r (da2_left Hρ) config (Good g1) = round r (da2_left Hρ) config (Good g2).
+    Config.eq_RobotConf (round r (da2_left Hρ) config (Good g1)) (round r (da2_left Hρ) config (Good g2)).
 Proof.
-intros. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
-apply Rplus_eq_reg_r with (round r (da2_left Hρ) config (Good glast)).
+intros. apply no_info. setoid_rewrite <- Ropp_involutive. apply Ropp_eq_compat.
+apply Rplus_eq_reg_r with (Config.loc (round r (da2_left Hρ) config (Good glast))).
 setoid_rewrite Rplus_comm. setoid_rewrite round_dist2_left; auto.
 Qed.
 
 Corollary round2_left_invalid : forall ρ (Hρ : ρ <> 0) config,
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
   invalid (round r (da2_left Hρ) config).
 Proof.
 intros ρ Hρ config Hconfig.
@@ -756,23 +739,55 @@ apply (dist_invalid (d := (1 - move) / ρ)).
 - intros. now apply round_dist2_left.
 Qed.
 
+(*
 Lemma dist_homothecy_spectrum_centered_right : forall ρ (Hρ : ρ <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
-  forall g, In g right -> Spect.eq (!! (Config.map (fun x : R => -ρ * (x - config (Good g))) config)) (!! conf2).
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
+  forall g, In g right -> Spect.eq (!! (Config.map (apply_sim (homothecy (config (Good g)) Hρ)) config))
+                                   (!! config2).
 Proof.
+intros ρ Hρ config Hconfig g Hg. f_equiv. intro id.
+apply no_info. unfold Config.map.
+destruct id as [id | b]; try now apply Fin.case0; [].
+unfold apply_sim, config1. simpl. destruct (left_dec id).
++ simpl. unfoldR. unfold Rminus in Hconfig. rewrite Hconfig. ; trivial; [|].
+  - now rewrite Rinv_r.
+  - now apply not_left_is_right.
++ simpl. setoid_rewrite (dist_right (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial; [].
+  unfoldR. ring.
+
 intros ρ Hρ config Hconfig g Hg. f_equiv. intro id. unfold Config.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold conf2. destruct (left_dec id).
-- replace (- ρ * (config (Good id) - config (Good g))) with (ρ * (config (Good g) - config (Good id))) by ring.
+unfold config2. destruct (left_dec id).
+- replace (- ρ * (Config.loc (config (Good id)) - Config.loc (config (Good g))))
+    with (ρ * (Config.loc (config (Good g)) - Config.loc (config (Good id)))) by ring.
   rewrite Hconfig; trivial. now rewrite Rinv_r.
 - setoid_rewrite (dist_right (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial.
   ring_simplify. reflexivity. now apply not_left_is_right.
 Qed.
+*)
+
+Lemma dist_homothecy_spectrum_centered_right : forall ρ (Hρ : ρ <> 0) (config : Config.t),
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
+  forall g, In g right -> Spect.eq (!! (Config.map (apply_sim (homothecy (config (Good g)) (Ropp_neq_0_compat _ Hρ))) config))
+                                   (!! config2).
+Proof.
+intros ρ Hρ config Hconfig g Hg. f_equiv. intro id.
+apply no_info. unfold Config.map.
+destruct id as [id | b]; try now apply Fin.case0; [].
+unfold apply_sim, config1. simpl. destruct (left_dec id).
++ simpl. unfoldR.
+  replace (- ρ * (Config.loc (config (Good id)) + - Config.loc (config (Good g))))
+    with (ρ * (Config.loc (config (Good g)) - Config.loc (config (Good id)))) by ring.
+  rewrite Hconfig; trivial; []. now rewrite Rinv_r.
++ simpl. setoid_rewrite (dist_right (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial; [|].
+  - unfoldR. ring.
+  - now apply not_left_is_right.
+Qed.
 
 Lemma round_dist2_right : forall ρ (Hρ : ρ <> 0) (config : Config.t),
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
-  forall g1 g2, In g1 right -> In g2 left -> round r (da2_right Hρ) config (Good g1)
-                                             - round r (da2_right Hρ) config (Good g2) = (1 - move) / ρ.
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
+  forall g1 g2, In g1 right -> In g2 left -> Config.loc (round r (da2_right Hρ) config (Good g1))
+                                             - Config.loc (round r (da2_right Hρ) config (Good g2)) = (1 - move) / ρ.
 Proof.
 intros ρ Hρ config Hconfig g1 g2 Hg1 Hg2. unfold round. simpl.
 destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
@@ -780,12 +795,12 @@ destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
 - change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 - cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
   rewrite <- (Hconfig _ _ Hg1 Hg2). unfoldR. rewrite <- Ropp_inv_permute; trivial. field_simplify; trivial.
-  do 3 f_equal. unfold move. apply pgm_compat. rewrite conf1_conf2_spect_eq.
+  do 3 f_equal. unfold move. apply pgm_compat. rewrite config1_config2_spect_eq.
   now apply dist_homothecy_spectrum_centered_right.
 Qed.
 
 Theorem Always_invalid2 : forall ρ (Hρ : ρ <> 0) config,
-  (forall g1 g2, In g1 right -> In g2 left -> config (Good g1) - config (Good g2) = /ρ) ->
+  (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
   Always_invalid (execute r (bad_demon2 Hρ) config).
 Proof.
 cofix differs. intros ρ Hρ config Hconfig.
@@ -839,17 +854,17 @@ Theorem noGathering :
   forall k, (1<=k)%nat -> ~(forall d, kFair k d -> FullSolGathering r d).
 Proof.
 intros k h Habs.
-specialize (Habs bad_demon (kFair_bad_demon' h) conf1).
-(* specialize (Habs 1%nat (bad_demon 1) (kFair_bad_demon R1_neq_R0) gconf1). *)
+specialize (Habs bad_demon (kFair_bad_demon' h) config1).
+(* specialize (Habs 1%nat (bad_demon 1) (kFair_bad_demon R1_neq_R0) gconfig1). *)
 destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
 * exact nG_non_0.
 * unfold bad_demon.
   destruct (Rdec move 1) as [Hmove | Hmove].
   + now apply Always_invalid1.
-  + apply (Always_invalid2 Hmove R1_neq_R0 conf1); try reflexivity.
-    intros. simpl. destruct (left_dec g1), (left_dec g2); field || exfalso; eauto.
+  + apply (Always_invalid2 Hmove R1_neq_R0 config1); try reflexivity; [].
+    intros. simpl. destruct (left_dec g1), (left_dec g2); simpl; field || exfalso; eauto; [].
 (* TODO: correct the type conversion problem, eauto should solve this goal *)
-change  (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
+change (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 Qed.
 
 End GatheringEven.
