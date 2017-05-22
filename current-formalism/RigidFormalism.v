@@ -394,8 +394,8 @@ intros r da conf Hactive. split; simpl; unfold round.
     rewrite <- active_spec, Hactive in Heq'. inversion Heq'.
   + destruct (step da id) eqn : Heq. 
     assert (Heq': step da id <> None). intro. rewrite Heq in H. discriminate.
-    rewrite <- active_spec, Hactive in Heq'. inversion Heq'. 
-    reflexivity. 
+    rewrite <- active_spec, Hactive in Heq'. inversion Heq'.
+    reflexivity.
 Qed.
 
 

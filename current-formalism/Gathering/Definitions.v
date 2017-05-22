@@ -37,6 +37,15 @@ Module Sim := Common.Sim.
 Lemma no_info : forall rc1 rc2, Loc.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
 Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
 
+(** Not true in general as the info may change even if the robot does not move. *)
+Lemma no_moving_same_conf : forall r da config,
+  moving r da config = List.nil -> Config.eq (round r da config) config.
+Proof.
+intros r da config Hmove id. apply no_info.
+destruct (Loc.eq_dec (Config.loc (round r da config id)) (Config.loc (config id))) as [Heq | Heq]; trivial; [].
+rewrite <- moving_spec, Hmove in Heq. inversion Heq.
+Qed.
+
 (** The full information for a robot only depends on its location. *)
 Definition mk_info l := {| Config.loc := l; Config.info := tt |}.
 
