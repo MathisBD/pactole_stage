@@ -14,6 +14,7 @@ Require Import Reals.
 Require Import List SetoidList.
 Require Import RelationClasses.
 Require Import Morphisms.
+Require Import Equalities.
 Require Import Sorting.Permutation.
 Require Import Psatz.
 Require Import SetoidList.

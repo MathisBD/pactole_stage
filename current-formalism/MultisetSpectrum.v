@@ -22,7 +22,10 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : DecidableType)(N : Robots.Size)(Names : Robots.Robots(N))(Info : DecidableType)
+Module Make (Location : DecidableType)
+            (N : Robots.Size)
+            (Names : Robots.Robots(N))
+            (Info : DecidableTypeWithApplication(Location))
             (Config : Configuration(Location)(N)(Names)(Info)) <: Spectrum (Location)(N)(Names)(Info)(Config).
 
 
@@ -189,11 +192,11 @@ Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
 Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall conf, eq (map f (from_config conf))
-  (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.info := Config.info x|}) conf)).
+  (from_config (Config.map (Config.app f) conf)).
 Proof.
 intros f Hf config. unfold from_config. rewrite Config.list_map.
 - now rewrite <- multiset_map, map_map, map_map.
-- intros ? ? Heq. hnf. split; cbn; try apply Hf; apply Heq.
+- intros ? ? Heq. now f_equiv.
 Qed.
 
 Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.

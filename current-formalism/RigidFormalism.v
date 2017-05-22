@@ -20,6 +20,7 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Pactole.CommonRealFormalism.
 
 
@@ -27,7 +28,7 @@ Require Pactole.CommonRealFormalism.
 Module Make (Location : RealMetricSpace)
             (N : Size)
             (Names : Robots(N))
-            (Info : DecidableType)
+            (Info : DecidableTypeWithApplication(Location))
             (Config : Configuration(Location)(N)(Names)(Info))
             (Spect : Spectrum(Location)(N)(Names)(Info)(Config))
             (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Info)(Config)(Spect)).
@@ -40,7 +41,7 @@ Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
-  relocate_byz : Names.B → Location.t;
+  relocate_byz : Names.B → Config.RobotConf;
   step : Names.ident → option (Location.t → Sim.t);
   step_compat : Proper (eq ==> opt_eq (Location.eq ==> Sim.eq)) step;
   step_zoom :  forall id sim c, step id = Some sim -> (sim c).(Sim.zoom) <> R0;
@@ -48,15 +49,15 @@ Record demonic_action := {
 
 Definition da_eq (da1 da2 : demonic_action) :=
   (forall id, opt_eq (Location.eq ==> Sim.eq)%signature (da1.(step) id) (da2.(step) id)) /\
-  (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
+  (forall b : Names.B, Config.eq_RobotConf (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
 + split; intuition. now apply step_compat.
-+ intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
++ intros d1 d2 [H1 H2]. split; repeat intro; try symmetry; auto; [].
   specialize (H1 id). destruct (step d1 id), (step d2 id); trivial.
   intros x y Hxy. simpl in H1. symmetry. apply H1. now symmetry.
-+ intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
++ intros d1 d2 d3 [H1 H2] [H3 H4]. split; intros; try etransitivity; eauto; [].
   specialize (H1 id). specialize (H3 id). destruct (step d1 id), (step d2 id), (step d3 id); simpl in *; trivial.
   - simpl in *. intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
   - elim H1.
@@ -65,7 +66,7 @@ Qed.
 Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> Sim.eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
-Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
+Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Config.eq_RobotConf) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
 Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id, step da1 id = None <-> step da2 id = None.
@@ -262,22 +263,30 @@ Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 (* FIXME: the Info type should also carry the way to apply similarities on Info.t *)
 Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
   {| Config.loc := sim (Config.loc infoR);
-     Config.info := Config.info infoR |}.
+     Config.info := Info.app sim (Config.info infoR) |}.
 
 Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
 Proof.
 intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
 - apply Hsim, Hconf.
-- apply Hconf.
+- apply Info.app_compat, Hconf; []. now do 2 f_equiv.
 Qed.
 
 Lemma apply_sim_id : (Config.eq_RobotConf ==> Config.eq_RobotConf)%signature (apply_sim Sim.id) Datatypes.id.
-Proof. intros [? ?] [? ?] [? ?]; simpl in *; now repeat split. Qed.
+Proof.
+intros [? ?] [? ?] [? ?]; split; simpl in *.
+- assumption.
+- now apply Info.app_id.
+Qed.
 
 Lemma apply_sim_compose : forall sim1 sim2,
   (Config.eq_RobotConf ==> Config.eq_RobotConf)%signature (apply_sim (Sim.compose sim1 sim2))
                                                           (fun infoR => apply_sim sim1 (apply_sim sim2 infoR)).
-Proof. unfold apply_sim. simpl. intros ? ? [] [] []. split; simpl in *; trivial; now repeat f_equiv. Qed.
+Proof.
+intros ? ? [? ?] [? ?] [? ?]; split; simpl in *.
+- now do 2 f_equiv.
+- now apply Info.app_compose.
+Qed.
 
 
 (** [round r da conf] return the new configuration of robots (that is a function
@@ -314,7 +323,7 @@ destruct (step da1 id), (step da2 id), id; try now elim Hstep.
     - apply Hstep, Hconf.
     - apply Hr, Spect.from_config_compat, Config.map_compat; trivial. f_equiv. apply Hstep, Hconf.
   + apply Hconf.
-* hnf. split; try apply Hconf; []. simpl. rewrite Hda. reflexivity.
+* hnf. split; try apply Hconf; []. simpl. f_equiv. rewrite Hda. reflexivity.
 Qed.
 
 (** A third subset of robots, moving ones *)

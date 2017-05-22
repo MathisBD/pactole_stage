@@ -25,8 +25,8 @@ End N.
 
 (** The spectrum is a multiset of positions *)
 Module Names := Robots.Make(N).
-Module Config := Configurations.Make(R)(N)(Names).
-Module Spect := MultisetSpectrum.Make(R)(N)(Names)(Config).
+Module Config := Configurations.Make(R)(N)(Names)(Unit).
+Module Spect := MultisetSpectrum.Make(R)(N)(Names)(Unit)(Config).
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 
@@ -37,10 +37,11 @@ Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; a
 Hint Extern 0 (~R.eq 1 0)%R => apply R1_neq_R0.
 Hint Extern 0 (~R.eq 0 1)%R => intro; apply R1_neq_R0; now symmetry.
 Hint Extern 0 (~R.eq _ _) => match goal with | H : ~R.eq ?x ?y |- ~R.eq ?y ?x => intro; apply H; now symmetry end.
+Hint Extern 0 (~Rdef.eq _ _) => change Rdef.eq with R.eq.
 
 
-Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Config)(Spect).
-Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Config)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Unit)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Unit)(Config)(Spect)(Common).
 
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
@@ -210,7 +211,7 @@ Hint Immediate gfirst_left glast_right left_right_exclusive.
      and you can scale it back on the next round. *)
 
 (* TODO: move it to Configurations.v? *)
-Definition init_RobotConf x := {| Config.loc := x; Config.robot_info := {| Config.source := x; Config.target := x |} |}.
+Definition init_RobotConf x := {| Config.loc := x; Config.info := tt |}.
 
 Open Scope R_scope.
 (** The reference starting configuration **)
@@ -290,8 +291,9 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
   - unfoldR in Heq. subst. rewrite countA_occ_alls_out; trivial; refine _.
     repeat rewrite Spect.add_other, Spect.singleton_same; trivial.
     unfold N.nB. omega.
-  - rewrite countA_occ_alls_out; auto.
-    now repeat rewrite Spect.add_other, Spect.singleton_other.
+  - rewrite countA_occ_alls_out; simpl.
+    * now repeat rewrite Spect.add_other, Spect.singleton_other.
+    * auto.
 + apply Names.Gnames_NoDup.
 + unfold Names.G. rewrite Names.Gnames_length. reflexivity.
 Qed.
@@ -516,9 +518,8 @@ Lemma round_move : forall pt, Config.eq (round r (shifting_da (pt + move + 1)) (
 Proof.
 intros pt id. unfold round. simpl.
 destruct id as [g | b].
-+ simpl. rewrite R.opp_opp, spectrum_config0. split.
-  - simpl. unfoldR. fold move. ring.
-  - simpl.
++ simpl. rewrite R.opp_opp, spectrum_config0. split; trivial; [].
+  simpl. unfoldR. fold move. ring.
 + simpl. now unfoldR.
 Qed.
 
@@ -564,10 +565,11 @@ destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (Config.map (homothecy  1 minus_1) config2 )) = 0.
+Corollary no_move2 : r (!! (Config.map (apply_sim (homothecy  1 minus_1)) config2)) = 0.
 Proof.
 assert (1 <> 0) by apply R1_neq_R0.
-rewrite <- Spect.from_config_map; refine _.
+Check Spect.from_config_map.
+rewrite <- Spect.from_config_map; autoclass.
 rewrite spect_conf2. rewrite swap_spect2_spect1. apply no_move1.
 Qed.
 

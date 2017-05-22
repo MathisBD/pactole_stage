@@ -8,6 +8,7 @@ MMaps/MMapInterface.v
 MMaps/MMapFacts.v
 MMaps/MMapWeakList.v
 Similarity.v
+RealMetricSpace.v
 CommonFormalism.v
 CommonRealFormalism.v
 FlexibleFormalism.v

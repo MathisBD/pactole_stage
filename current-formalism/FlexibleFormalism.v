@@ -22,6 +22,7 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Pactole.CommonRealFormalism.
 
 
@@ -33,9 +34,10 @@ Ltac coinduction proof :=
 Module Make (Location : RealMetricSpace)
             (N : Size)
             (Names : Robots(N))
-            (Info : DecidableType)
-            (Spect : Spectrum(Location)(N))
-            (Common : CommonRealFormalism.Sig(Location)(N)(Spect)).
+            (Info : DecidableTypeWithApplication(Location))
+            (Config : Configuration(Location)(N)(Names)(Info))
+            (Spect : Spectrum(Location)(N)(Names)(Info)(Config))
+            (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Info)(Config)(Spect)).
 
 Import Common.
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
@@ -161,11 +163,11 @@ Definition Fair : demon -> Prop := Streams.forever (fun d => ∀ g, LocallyFairF
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k, step (Streams.hd d) g <> None -> Between g h d k
-| kReduce : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h <> None ->
-                      Between g h (Streams.tl d) k -> Between g h d (S k)
-| kStall : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h = None ->
-                     Between g h (Streams.tl d) k -> Between g h d k.
+  | kReset : forall k, step (Streams.hd d) g <> None -> Between g h d k
+  | kReduce : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h <> None ->
+                        Between g h (Streams.tl d) k -> Between g h d (S k)
+  | kStall : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h = None ->
+                       Between g h (Streams.tl d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
 (* CoInductive kFair k (d : demon) : Prop := *)

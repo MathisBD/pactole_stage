@@ -20,6 +20,7 @@ Require Import RelationPairs.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Import Pactole.Similarity.
 Require Pactole.CommonRealFormalism.
 Require Pactole.RigidFormalism.

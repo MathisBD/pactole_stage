@@ -394,14 +394,14 @@ Defined.
 Lemma swap_config1 : Config.eq (Config.map (apply_sim (swap 1)) config1) config2.
 Proof.
 unfold swap. intros [g | b].
-- unfold Config.map. simpl. destruct (left_dec g); repeat split; simpl; hnf; reflexivity || ring.
+- apply no_info. unfold Config.map. simpl. destruct (left_dec g); simpl; hnf; ring.
 - apply Fin.case0. exact b.
 Qed.
 
 Lemma swap_config2 : Config.eq (Config.map (apply_sim (swap 1)) config2) config1.
 Proof.
 unfold swap. intros [g | b].
-- unfold Config.map. simpl. destruct (left_dec g); repeat split; simpl; hnf; reflexivity || ring.
+- apply no_info. unfold Config.map. simpl. destruct (left_dec g); simpl; hnf; ring.
 - apply Fin.case0. exact b.
 Qed.
 
@@ -432,7 +432,7 @@ intros id sim c Heq. destruct id; simpl in Heq.
 Qed.
 
 Definition da1 : demonic_action := {|
-  relocate_byz := fun b => 0;
+  relocate_byz := fun b => mk_info 0;
   step := lift_conf (fun g => Some (fun c => if Rdec c 0 then Sim.id else swap c));
   step_zoom := da1_ratio;
   step_center := da1_center |}.
@@ -527,7 +527,7 @@ intros ρ Hρ [g | b] sim c.
 Qed.
 
 Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
-  relocate_byz := fun b => 0;
+  relocate_byz := fun b => mk_info 0;
   step := lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None);
   step_zoom := homothecy_ratio_1 Hρ;
   step_center := homothecy_center_1 Hρ |}.
@@ -557,7 +557,7 @@ intros ρ Hρ [g | b] sim c.
 Qed.
 
 Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
-  relocate_byz := fun b => 0;
+  relocate_byz := fun b => mk_info 0;
   step := lift_conf (fun g => if left_dec g
                              then None else Some (fun c => homothecy c (Ropp_neq_0_compat _ Hρ)));
   step_zoom := homothecy_ratio_2 Hρ;

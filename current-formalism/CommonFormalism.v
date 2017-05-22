@@ -25,7 +25,10 @@ Require Import Pactole.Configurations.
 
 
 
-Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))(Info : DecidableType)
+Module Type Sig (Location : DecidableType)
+                (N : Size)
+                (Names : Robots(N))
+                (Info : DecidableTypeWithApplication(Location))
                 (Config : Configuration(Location)(N)(Names)(Info))
                 (Spect : Spectrum(Location)(N)(Names)(Info)(Config)).
   
@@ -66,7 +69,10 @@ Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))(Info : D
 End Sig.
 
 
-Module Make (Location : DecidableType)(N : Size)(Names : Robots(N))(Info : DecidableType)
+Module Make (Location : DecidableType)
+            (N : Size)
+            (Names : Robots(N))
+            (Info : DecidableTypeWithApplication(Location))
             (Config : Configuration(Location)(N)(Names)(Info))
             (Spect : Spectrum(Location)(N)(Names)(Info)(Config))
             : Sig (Location)(N)(Names)(Info)(Config)(Spect).

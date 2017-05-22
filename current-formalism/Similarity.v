@@ -5,6 +5,7 @@ Require Import Morphisms.
 Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 
 
 Set Implicit Arguments.
