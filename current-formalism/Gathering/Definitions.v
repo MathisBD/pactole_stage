@@ -37,6 +37,9 @@ Module Sim := Common.Sim.
 Lemma no_info : forall rc1 rc2, Loc.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
 Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
 
+(** The full information for a robot only depends on its location. *)
+Definition mk_info l := {| Config.loc := l; Config.info := tt |}.
+
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)

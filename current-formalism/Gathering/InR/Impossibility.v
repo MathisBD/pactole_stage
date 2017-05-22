@@ -197,9 +197,6 @@ Variable r : robogram.
 
 Open Scope R_scope.
 
-Definition mk_info l := 
-{| Config.loc := l; Config.info := tt |}.
-
 
 (** The reference starting configuration **)
 Definition config1 : Config.t := fun id =>
@@ -391,14 +388,14 @@ Proof.
 - exact (bij_swap_ratio c).
 Defined.
 
-Lemma swap_config1 : Config.eq (Config.map (apply_sim (swap 1)) config1) config2.
+Lemma swap_config1 : Config.eq (Config.map (Config.app (swap 1)) config1) config2.
 Proof.
 unfold swap. intros [g | b].
 - apply no_info. unfold Config.map. simpl. destruct (left_dec g); simpl; hnf; ring.
 - apply Fin.case0. exact b.
 Qed.
 
-Lemma swap_config2 : Config.eq (Config.map (apply_sim (swap 1)) config2) config1.
+Lemma swap_config2 : Config.eq (Config.map (Config.app (swap 1)) config2) config1.
 Proof.
 unfold swap. intros [g | b].
 - apply no_info. unfold Config.map. simpl. destruct (left_dec g); simpl; hnf; ring.
@@ -449,7 +446,7 @@ Lemma round_simplify_1_1 : Config.eq (round r da1 config1) config2.
 Proof.
 intros [g | b]; unfold round; simpl.
 + destruct (left_dec g) as [Hleft | Hright].
-  - simpl. Rdec. simpl. rewrite apply_sim_id, Config.map_id. split; simpl; reflexivity || apply Hmove.
+  - simpl. Rdec. simpl. rewrite Config.app_id, Config.map_id. split; simpl; reflexivity || apply Hmove.
   - simpl. Rdec. setoid_rewrite swap_config1. simpl. split; try reflexivity; []. 
     simpl; hnf. rewrite <- config1_config2_spect_eq. fold move. rewrite Hmove. ring.
 + apply Fin.case0. exact b.
@@ -462,7 +459,7 @@ intros [g | b]; unfold round; simpl.
   - simpl. Rdec. simpl. split; try reflexivity; [].
     simpl; hnf. rewrite swap_config2. fold move. rewrite Hmove. ring.
   - simpl. Rdec. simpl. split; try reflexivity; [].
-    simpl. rewrite apply_sim_id, Config.map_id. rewrite <- config1_config2_spect_eq. apply Hmove.
+    simpl. rewrite Config.app_id, Config.map_id. rewrite <- config1_config2_spect_eq. apply Hmove.
 + apply Fin.case0. exact b.
 Qed.
 
@@ -641,13 +638,13 @@ Qed.
 
 Lemma dist_homothecy_spectrum_centered_left : forall ρ (Hρ : ρ <> 0) (config : Config.t),
   (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
-  forall g, In g left -> Spect.eq (!! (Config.map (apply_sim (homothecy (config (Good g)) Hρ)) config))
+  forall g, In g left -> Spect.eq (!! (Config.map (Config.app (homothecy (config (Good g)) Hρ)) config))
                                   (!! config1).
 Proof.
 intros ρ Hρ config Hconfig g Hg. f_equiv. intro id.
 apply no_info. unfold Config.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold apply_sim, config1. destruct (left_dec id).
+unfold Config.app, config1. destruct (left_dec id).
 + simpl. setoid_rewrite (dist_left (Rinv_neq_0_compat _ Hρ) _ Hconfig); trivial; [].
   unfoldR. ring.
 + simpl. unfoldR. unfold Rminus in Hconfig. rewrite Hconfig; trivial; [|].
@@ -665,10 +662,10 @@ Proof.
 rewrite <- (Rinv_involutive d) in Hconfig; trivial.
 assert (Hd' := Rinv_neq_0_compat _ Hd).
 rewrite <- Config.map_id at 1.
-(*  Time rewrite <- apply_sim_id. (* > 180 sec.! *) *)
-replace (@Datatypes.id Config.RobotConf) with (apply_sim Sim.id) by admit.
+(*  Time rewrite <- Config.app_id. (* > 180 sec.! *) *)
+replace (@Datatypes.id Config.RobotConf) with (Config.app Sim.id) by admit.
 rewrite <- (Sim.compose_inverse_l (homothecy (config (Good gfirst)) Hd')).
-rewrite (apply_sim_compose (homothecy (config (Good gfirst)) Hd' ⁻¹) (homothecy (config (Good gfirst)) Hd')).
+rewrite (Config.app_compose (homothecy (config (Good gfirst)) Hd' ⁻¹) (homothecy (config (Good gfirst)) Hd')).
 rewrite <- Config.map_merge; autoclass; [].
 Check Spect.from_config_map.
 rewrite <- Spect.from_config_map; refine _. simpl. unfoldR.
@@ -706,7 +703,7 @@ destruct (left_dec g1), (left_dec g2); try now exfalso.
   replace (Config.loc (config (Good g1)) - Config.loc (config (Good g2)) - move / ρ)
     with (Config.loc (config (Good g1)) - move / ρ - Config.loc (config (Good g2))) by ring.
   field_simplify; trivial. do 2 f_equal.
-  unfold move. apply pgm_compat. unfold apply_sim. simpl.
+  unfold move. apply pgm_compat. unfold Config.app. simpl.
   now apply (dist_homothecy_spectrum_centered_left Hρ).
 Qed.
 
@@ -742,13 +739,13 @@ Qed.
 (*
 Lemma dist_homothecy_spectrum_centered_right : forall ρ (Hρ : ρ <> 0) (config : Config.t),
   (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
-  forall g, In g right -> Spect.eq (!! (Config.map (apply_sim (homothecy (config (Good g)) Hρ)) config))
+  forall g, In g right -> Spect.eq (!! (Config.map (Config.app (homothecy (config (Good g)) Hρ)) config))
                                    (!! config2).
 Proof.
 intros ρ Hρ config Hconfig g Hg. f_equiv. intro id.
 apply no_info. unfold Config.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold apply_sim, config1. simpl. destruct (left_dec id).
+unfold Config.app, config1. simpl. destruct (left_dec id).
 + simpl. unfoldR. unfold Rminus in Hconfig. rewrite Hconfig. ; trivial; [|].
   - now rewrite Rinv_r.
   - now apply not_left_is_right.
@@ -768,13 +765,13 @@ Qed.
 
 Lemma dist_homothecy_spectrum_centered_right : forall ρ (Hρ : ρ <> 0) (config : Config.t),
   (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = /ρ) ->
-  forall g, In g right -> Spect.eq (!! (Config.map (apply_sim (homothecy (config (Good g)) (Ropp_neq_0_compat _ Hρ))) config))
+  forall g, In g right -> Spect.eq (!! (Config.map (Config.app (homothecy (config (Good g)) (Ropp_neq_0_compat _ Hρ))) config))
                                    (!! config2).
 Proof.
 intros ρ Hρ config Hconfig g Hg. f_equiv. intro id.
 apply no_info. unfold Config.map.
 destruct id as [id | b]; try now apply Fin.case0; [].
-unfold apply_sim, config1. simpl. destruct (left_dec id).
+unfold Config.app, config1. simpl. destruct (left_dec id).
 + simpl. unfoldR.
   replace (- ρ * (Config.loc (config (Good id)) + - Config.loc (config (Good g))))
     with (ρ * (Config.loc (config (Good g)) - Config.loc (config (Good id)))) by ring.
@@ -796,7 +793,7 @@ destruct (left_dec g1), (left_dec g2); try now exfalso; eauto.
 - cbn. replace ((1 - move) / ρ) with (/ρ - move / ρ) by now field.
   rewrite <- (Hconfig _ _ Hg1 Hg2). unfoldR. rewrite <- Ropp_inv_permute; trivial. field_simplify; trivial.
   do 3 f_equal. unfold move. apply pgm_compat. rewrite config1_config2_spect_eq.
-  now apply dist_homothecy_spectrum_centered_right.
+  now apply (dist_homothecy_spectrum_centered_right Hρ).
 Qed.
 
 Theorem Always_invalid2 : forall ρ (Hρ : ρ <> 0) config,

@@ -260,6 +260,7 @@ Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 
 (** ** One step executions *)
 
+(*
 (* FIXME: the Info type should also carry the way to apply similarities on Info.t *)
 Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
   {| Config.loc := sim (Config.loc infoR);
@@ -287,7 +288,7 @@ intros ? ? [? ?] [? ?] [? ?]; split; simpl in *.
 - now do 2 f_equiv.
 - now apply Info.app_compose.
 Qed.
-
+*)
 
 (** [round r da conf] return the new configuration of robots (that is a function
     giving the position of each robot) from the previous one [conf] by applying
@@ -305,7 +306,7 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
                Config.info := Config.info (conf id) |}
         | Good g => (* configuration expressed in the frame of g *)
           let frame_change := sim (conf id) in
-          let local_conf := Config.map (apply_sim frame_change) conf in
+          let local_conf := Config.map (Config.app frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
           {| Config.loc := frame_change⁻¹ (r (Spect.from_config local_conf));
              Config.info := Config.info (conf id) |}
