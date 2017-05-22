@@ -6,7 +6,7 @@ Require Import SetoidPermutation.
 Require Import Omega.
 Import List Permutation SetoidList.
 Require Import Pactole.Preliminary.
-Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 
 
 Set Implicit Arguments.

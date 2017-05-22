@@ -11,7 +11,7 @@ Similarity.v
 RealMetricSpace.v
 CommonFormalism.v
 CommonRealFormalism.v
-FlexibleFormalism.v
+£FlexibleFormalism.v
 RigidFormalism.v
 #RigidEquivalence.v
 MultisetSpectrum.v
@@ -22,8 +22,8 @@ MMultiset/MMultisetMap.v
 MMultiset/MMultisetWMap.v
 MMultiset/Preliminary.v
 SetSpectrum.v
-#LimitedSetSpectrum.v
-#LimitedMultisetSpectrum.v
+LimitedSetSpectrum.v
+LimitedMultisetSpectrum.v
 Lexprod.v
 DiscreteSimilarity.v
 CommonDiscreteFormalism.v

@@ -293,13 +293,13 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
         | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
         | Good g => (* configuration expressed in the frame of g *)
           let frame_change := sim (config (Good g)) in
-          let local_config := Config.map frame_change config in
+          let local_config := Config.map (Config.app frame_change) config in
           (* apply r on spectrum *)
           let local_target := r (Spect.from_config local_config) in
           (* the demon chooses a point on the line from the target by mv_ratio *)
           let chosen_target := Location.mul mv_ratio local_target in
           (* back to demon ref *)
-          frame_change⁻¹
+          Config.app (frame_change⁻¹)
             (if Rle_bool δ (Location.dist (frame_change⁻¹ chosen_target) loc) then chosen_target else local_target)
         end
     end.

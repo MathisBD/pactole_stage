@@ -7,6 +7,8 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
+Require Import Configurations.
+Require Pactole.RigidFormalism.
 Require Import Pactole.Gathering.InR.Rcomplements.
 
 
@@ -25,8 +27,9 @@ End N.
 
 (** The spectrum is a multiset of positions *)
 Module Names := Robots.Make(N).
-Module Config := Configurations.Make(R)(N)(Names)(Unit).
-Module Spect := MultisetSpectrum.Make(R)(N)(Names)(Unit)(Config).
+Module Info := Unit(R).
+Module Config := Configurations.Make(R)(N)(Names)(Info).
+Module Spect := MultisetSpectrum.Make(R)(N)(Names)(Info)(Config).
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 
@@ -40,8 +43,8 @@ Hint Extern 0 (~R.eq _ _) => match goal with | H : ~R.eq ?x ?y |- ~R.eq ?y ?x =>
 Hint Extern 0 (~Rdef.eq _ _) => change Rdef.eq with R.eq.
 
 
-Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Unit)(Config)(Spect).
-Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Unit)(Config)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Info)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Info)(Config)(Spect)(Common).
 
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
@@ -50,6 +53,21 @@ Close Scope R_scope.
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
 
+(** There is no meaningful information inside Info.t. *)
+Lemma no_info : forall rc1 rc2, R.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
+Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
+
+(** Not true in general as the info may change even if the robot does not move. *)
+Lemma no_moving_same_conf : forall r da config,
+  moving r da config = List.nil -> Config.eq (round r da config) config.
+Proof.
+intros r da config Hmove id. apply no_info.
+destruct (R.eq_dec (Config.loc (round r da config id)) (Config.loc (config id))) as [Heq | Heq]; trivial; [].
+rewrite <- moving_spec, Hmove in Heq. inversion Heq.
+Qed.
+
+(** The full information for a robot only depends on its location. *)
+Definition mk_info l := {| Config.loc := l; Config.info := tt |}.
 
 Lemma nG_nB : N.nG = 2 * N.nB.
 Proof. reflexivity. Qed.
@@ -357,7 +375,7 @@ Qed.
 
 Definition bad_da1 : demonic_action := {|
   step := step1;
-  relocate_byz := fun _ => 1;
+  relocate_byz := fun _ => mk_info 1;
   step_zoom := step1_zoom;
   step_center := step1_center |}.
 
@@ -384,7 +402,7 @@ Qed.
 
 Definition bad_da2 : demonic_action := {|
   step := step2;
-  relocate_byz := fun _ => 0;
+  relocate_byz := fun _ => mk_info 0;
   step_zoom := step2_zoom;
   step_center := step2_center |}.
 
@@ -453,7 +471,7 @@ Hypothesis sol : solution r.
 
 Definition shifting_da (pt : R) : demonic_action.
 refine {| step := fun _ => Some (fun c => translation (R.opp c));
-          relocate_byz := fun _ => pt |}.
+          relocate_byz := fun _ => mk_info pt |}.
 Proof.
 + abstract (intros _ sim c Heq; inversion_clear Heq; simpl; apply R1_neq_R0).
 + abstract (intros _ sim c Heq; inversion_clear Heq; simpl; now rewrite R.opp_opp).
@@ -481,7 +499,7 @@ Definition config0 pt : Config.t := fun id =>
 CoFixpoint shifting_execution d pt := Streams.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt,
-  Spect.eq (!! (Config.map (apply_sim (translation (R.opp pt))) (config0 pt))) spectrum1.
+  Spect.eq (!! (Config.map (Config.app (translation (R.opp pt))) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
 rewrite Spect.from_config_spec, Config.list_map, map_map; try (now repeat intro; repeat f_equiv); [].
@@ -504,11 +522,7 @@ rewrite (map_ext_in _ (fun _ : Names.Internals.B => 1)).
 Qed.
 
 Corollary spect_config0_0 : Spect.eq (!! (config0 0)) spectrum1.
-Proof.
-rewrite <- (spectrum_config0 0). f_equiv. intro. split.
-+ compute. ring.
-+ unfold config0. simpl. destruct id; split; compute; ring.
-Qed.
+Proof. rewrite <- (spectrum_config0 0). f_equiv. intro. apply no_info. compute. ring. Qed.
 
 Section AbsurdMove.
 Definition move := r spectrum1.
@@ -516,11 +530,11 @@ Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt, Config.eq (round r (shifting_da (pt + move + 1)) (config0 pt)) (config0 (pt + move)).
 Proof.
-intros pt id. unfold round. simpl.
+intros pt id. apply no_info. unfold round. simpl.
 destruct id as [g | b].
-+ simpl. rewrite R.opp_opp, spectrum_config0. split; trivial; [].
-  simpl. unfoldR. fold move. ring.
-+ simpl. now unfoldR.
+- assert (Htranslate := spectrum_config0 pt). simpl in Htranslate.
+  simpl. rewrite R.opp_opp, Htranslate. unfoldR. fold move. ring.
+- simpl. now unfoldR.
 Qed.
 
 Lemma keep_moving_by_eq : forall pt config,
@@ -565,27 +579,28 @@ destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (Config.map (apply_sim (homothecy  1 minus_1)) config2)) = 0.
+Corollary no_move2 : R.eq (r (!! (Config.map (Config.app (homothecy 1 minus_1)) config2))) 0.
 Proof.
 assert (1 <> 0) by apply R1_neq_R0.
-Check Spect.from_config_map.
 rewrite <- Spect.from_config_map; autoclass.
-rewrite spect_conf2. rewrite swap_spect2_spect1. apply no_move1.
+rewrite <- no_move1. apply pgm_compat.
+rewrite <- swap_spect2_spect1. apply Spect.map_compat; autoclass; [].
+apply spect_conf2.
 Qed.
 
 Lemma round_config1 : Config.eq (round r bad_da1 config1) config2.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; []. unfold translation.
-rewrite R.opp_origin, Sim.translation_origin, Config.map_id, spect_conf1.
-simpl. apply no_move1.
+rewrite R.opp_origin, Sim.translation_origin, Config.app_id, Config.map_id, spect_conf1.
+simpl. apply no_info. simpl. apply no_move1.
 Qed.
 
 Lemma round_config2 : Config.eq (round r bad_da2 config2) config1.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-rewrite no_move2. simpl. unfoldR. field.
+rewrite no_move2. simpl. unfoldR. apply no_info. simpl. unfoldR. field.
 Qed.
 
 Lemma execute_bad_demon_aux : forall e, eeq (execute r bad_demon config1) e -> eeq e exec.
