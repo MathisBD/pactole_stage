@@ -14,6 +14,7 @@ Require Import Rbase.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Pactole.SetSpectrum.
 
 
@@ -22,11 +23,14 @@ Module Type Radius.
 End Radius.
 
 
-Module Make(Loc : RealMetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
+Module Make (Loc : RealMetricSpace) (* for the distance *)
+            (N : Size)
+            (R : Radius)
+            (Names : Robots.Robots(N))
+            (Info : DecidableTypeWithApplication(Loc))
+            (Config : Configuration(Loc)(N)(Names)(Info)) <: Spectrum (Loc)(N)(Names)(Info)(Config).
 
-Module M := SetSpectrum.Make(Loc)(N).
-Module Names := M.Names.
-Module Config := M.Config.
+Module M := SetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
 
 Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
 Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
@@ -43,7 +47,7 @@ Definition In := M.In.
 
 
 Definition from_config conf : M.t :=
-  M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.set (Config.list conf)).
+  M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.set (map Config.loc (Config.list conf))).
 
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
 Proof.
@@ -51,17 +55,23 @@ intros conf1 conf2 Hconf x. unfold from_config.
 f_equiv. apply M.MProp.MP.Dec.F.filter_ext.
 + intros y z Hyz. rewrite Hyz. reflexivity.
 + intro. reflexivity.
-+ now apply M.set_compat, eqlistA_PermutationA_subrelation, Config.list_compat.
++ apply M.set_compat, (@PermutationA_map _ _ Config.eq_RobotConf Loc.eq),
+        eqlistA_PermutationA_subrelation, Config.list_compat;
+  autoclass; apply Config.loc_compat.
 Qed.
 
 Definition is_ok s conf := forall l,
-  In l s <-> (Loc.dist l Loc.origin <= R.radius)%R /\ exists id : Names.ident, Loc.eq l (conf id).
+  In l s <-> (Loc.dist l Loc.origin <= R.radius)%R /\ exists id : Names.ident, Loc.eq l (Config.loc (conf id)).
 
 Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
 Proof.
 unfold from_config, is_ok. intros. rewrite M.M.filter_spec, Rle_bool_true_iff.
-- rewrite M.set_spec, Config.list_InA. intuition.
-- intros x y Hxy. now rewrite Hxy.
++ rewrite M.set_spec, InA_map_iff; autoclass; []. setoid_rewrite Config.list_InA. split.
+  - intros [[rc [Heq Hin]] ?]. split; trivial; [].
+    destruct Hin as [id Hid]. exists id. now rewrite <- Hid, Heq.
+  - intros [? [id Hid]]. split; trivial; [].
+    exists (conf id). rewrite Hid. split; try reflexivity; []. now exists id.
++ intros x y Hxy. now rewrite Hxy.
 Qed.
 
 End Make.

@@ -29,12 +29,6 @@ Module Make (Location : DecidableType)
             (Config : Configuration(Location)(N)(Names)(Info)) <: Spectrum (Location)(N)(Names)(Info)(Config).
 
 
-Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
-Proof. intros [] [] []. now cbn. Qed.
-
-Instance info_compat : Proper (Config.eq_RobotConf ==> Info.eq) Config.info.
-Proof. intros [] [] [] *. now cbn. Qed.
-
 (** Definition of spectra as multisets of locations. *)
 Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
 Module M := MMultisetExtraOps.Make Location Mraw.
@@ -180,8 +174,8 @@ Definition from_config conf : t := multiset (List.map Config.loc (Config.list co
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
 Proof.
 intros conf1 conf2 Hconf x. unfold from_config. do 2 f_equiv.
-apply eqlistA_PermutationA_subrelation, (map_extensionalityA_compat Location.eq_equiv Loc_compat).
-apply Config.list_compat. assumption.
+apply eqlistA_PermutationA_subrelation, (map_extensionalityA_compat _ Config.loc_compat).
+now apply Config.list_compat.
 Qed.
 
 Definition is_ok s conf := forall l,

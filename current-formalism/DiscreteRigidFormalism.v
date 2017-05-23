@@ -20,15 +20,19 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.DiscreteSpace.
 Require Pactole.CommonDiscreteFormalism.
 Require Pactole.Streams.
 
 
 
-Module Make (Location : DiscreteSpace)(N : Size)(Names : Robots(N))
-            (Config : Configuration(Location)(N)(Names))
-            (Spect : Spectrum(Location)(N)(Names)(Config))
-            (Common : CommonDiscreteFormalism.Sig(Location)(N)(Names)(Config)(Spect)).
+Module Make (Loc : DiscreteSpace)
+            (N : Size)
+            (Names : Robots(N))
+            (Info : DecidableTypeWithApplication(Loc))
+            (Config : Configuration(Loc)(N)(Names)(Info))
+            (Spect : Spectrum(Loc)(N)(Names)(Info)(Config))
+            (Common : CommonDiscreteFormalism.Sig(Loc)(N)(Names)(Info)(Config)(Spect)).
 
 Import Common.
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
@@ -38,14 +42,14 @@ Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
-  relocate_byz : Names.B → Location.t;
-  step : Names.ident → option (Location.t → Sim.t);
-  step_compat : Proper (eq ==> opt_eq (Location.eq ==> Sim.eq)) step;
-  step_center : forall id sim c, step id = Some sim -> Location.eq (sim c).(Sim.center) c}.
+  relocate_byz : Names.B → Loc.t;
+  step : Names.ident → option (Loc.t → Sim.t);
+  step_compat : Proper (eq ==> opt_eq (Loc.eq ==> Sim.eq)) step;
+  step_center : forall id sim c, step id = Some sim -> Loc.eq (sim c).(Sim.center) c}.
 
 Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id, opt_eq (Location.eq ==> Sim.eq)%signature (da1.(step) id) (da2.(step) id)) /\
-  (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
+  (forall id, opt_eq (Loc.eq ==> Sim.eq)%signature (da1.(step) id) (da2.(step) id)) /\
+  (forall b : Names.B, Loc.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
@@ -59,10 +63,10 @@ Proof. split.
   - elim H1.
 Qed.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Location.eq ==> Sim.eq)) step.
+Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Loc.eq ==> Sim.eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
-Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
+Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Loc.eq) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
 Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id, step da1 id = None <-> step da2 id = None.
@@ -262,7 +266,7 @@ Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 (** ** One step executions *)
 
 Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
-  {| Config.loc := sim infoR; Config.robot_info := Config.robot_info infoR |}.
+  {| Config.loc := sim infoR; Config.info := Info.app sim (Config.info infoR) |}.
 
 Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
 Proof.
@@ -310,7 +314,7 @@ Qed.
 
 (** A third subset of robots, moving ones *)
 Definition moving r da config := List.filter
-  (fun id => if Location.eq_dec (round r da config id) (config id) then false else true)
+  (fun id => if Loc.eq_dec (round r da config id) (config id) then false else true)
   Names.names.
 
 Instance moving_compat : Proper (req ==> da_eq ==> Config.eq ==> eq) moving.
@@ -318,8 +322,8 @@ Proof.
 intros r1 r2 Hr da1 da2 Hda c1 c2 Hc. unfold moving.
 induction Names.names as [| id l]; simpl.
 * reflexivity.
-* destruct (Location.eq_dec (round r1 da1 c1 id) (c1 id)) as [Heq1 | Heq1],
-           (Location.eq_dec (round r2 da2 c2 id) (c2 id)) as [Heq2 | Heq2].
+* destruct (Loc.eq_dec (round r1 da1 c1 id) (c1 id)) as [Heq1 | Heq1],
+           (Loc.eq_dec (round r2 da2 c2 id) (c2 id)) as [Heq2 | Heq2].
   + apply IHl.
   + elim Heq2. transitivity (round r1 da1 c1 id).
     - symmetry. now apply round_compat.
@@ -331,15 +335,15 @@ induction Names.names as [| id l]; simpl.
 Qed.
 
 Lemma moving_spec : forall r da config id,
-  List.In id (moving r da config) <-> ~Location.eq (round r da config id) (config id).
+  List.In id (moving r da config) <-> ~Loc.eq (round r da config id) (config id).
 Proof.
 intros r da config id. unfold moving. rewrite List.filter_In.
 split; intro H.
 + destruct H as [_ H].
-  destruct (Location.eq_dec (round r da config id) (config id)) as [_ | Hneq]; intuition.
+  destruct (Loc.eq_dec (round r da config id) (config id)) as [_ | Hneq]; intuition.
 + split.
   - apply Names.In_names.
-  - destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | _]; intuition.
+  - destruct (Loc.eq_dec (round r da config id) (config id)) as [Heq | _]; intuition.
 Qed.
 
 Lemma moving_active : forall r da config, List.incl (moving r da config) (active da).
@@ -357,7 +361,7 @@ Lemma no_moving_same_conf : forall r da config,
   moving r da config = List.nil -> Config.eq (round r da config) config.
 Proof.
 (* intros r da config Hmove id. hnf. split; simpl.
-+ destruct (Location.eq_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
++ destruct (Loc.eq_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
   rewrite <- moving_spec, Hmove in Heq. inversion Heq.
 + hnf. unfold moving in *. unfold round. 
   destruct (step da id) eqn:Hstep. 

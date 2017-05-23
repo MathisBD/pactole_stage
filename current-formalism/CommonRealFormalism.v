@@ -7,7 +7,7 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Export Similarity.
 Require Import Pactole.Preliminary.
-Require Import Pactole.RealMetricSpace.
+Require Export Pactole.RealMetricSpace.
 Require Pactole.CommonFormalism.
 
 

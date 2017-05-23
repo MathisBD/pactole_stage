@@ -15,6 +15,7 @@ Require Import Rbase.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Pactole.MultisetSpectrum.
 
 
@@ -23,11 +24,14 @@ Module Type Radius.
 End Radius.
 
 
-Module Make(Loc : RealMetricSpace)(N : Size)(R : Radius) <: Spectrum (Loc)(N).
+Module Make (Loc : RealMetricSpace) (* for the distance *)
+            (N : Robots.Size)
+            (R : Radius)
+            (Names : Robots.Robots(N))
+            (Info : DecidableTypeWithApplication(Loc))
+            (Config : Configuration(Loc)(N)(Names)(Info)) <: Spectrum (Loc)(N)(Names)(Info)(Config).
 
-Module M := MultisetSpectrum.Make(Loc)(N).
-Module Names := M.Names.
-Module Config := M.Config.
+Module M := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
 
 Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
 Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
@@ -46,18 +50,20 @@ Definition In := M.In.
 
 
 Definition from_config conf : M.t :=
-  M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.multiset (Config.list conf)).
+  M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.multiset (map Config.loc (Config.list conf))).
 
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
 Proof.
-intros conf1 conf2 Hconf x. unfold from_config.
-f_equiv. apply M.M.filter_compat, M.multiset_compat, eqlistA_PermutationA_subrelation, Config.list_compat; trivial.
-intros ? ? Heq. rewrite Heq. reflexivity.
+intros conf1 conf2 Hconf x. unfold from_config. f_equiv.
+apply M.M.filter_compat, M.multiset_compat, (@PermutationA_map _ Loc.t Config.eq_RobotConf Loc.eq _ Config.loc),
+      eqlistA_PermutationA_subrelation, Config.list_compat; trivial; [|].
+- intros ? ? Heq. rewrite Heq. reflexivity.
+- apply Config.loc_compat.
 Qed.
 
 Definition is_ok s conf := forall l,
   M.multiplicity l s = if Rle_dec (Loc.dist l Loc.origin) R.radius
-                       then countA_occ _ Loc.eq_dec l (Config.list conf) else 0.
+                       then countA_occ _ Loc.eq_dec l (map Config.loc (Config.list conf)) else 0.
 
 Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
 Proof.

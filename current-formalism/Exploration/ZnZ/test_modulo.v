@@ -14,6 +14,7 @@ Require Import Ensembles.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.DiscreteSpace.
 (* Require Import Pactole.Similarity. *)
 
 Local Open Scope Z_scope. 
@@ -1062,5 +1063,5 @@ Qed.
 Definition non_trivial: ~eq unit origin := non_trivial_lem.
 End Ddef.
 
-Module ring := Configurations.MakeDiscreteSpace(Ddef).
+Module ring := MakeDiscreteSpace(Ddef).
 

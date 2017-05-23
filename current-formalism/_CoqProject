@@ -9,11 +9,12 @@ MMaps/MMapFacts.v
 MMaps/MMapWeakList.v
 Similarity.v
 RealMetricSpace.v
+DiscreteSpace.v
 CommonFormalism.v
 CommonRealFormalism.v
-£FlexibleFormalism.v
+FlexibleFormalism.v
 RigidFormalism.v
-#RigidEquivalence.v
+RigidEquivalence.v
 MultisetSpectrum.v
 MMultiset/MMultisetExtraOps.v
 MMultiset/MMultisetFacts.v
