@@ -207,79 +207,6 @@ Definition t := Names.ident -> RobotConf.
 
 Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
 
-Lemma eq_dec : forall config1 config2, {eq config1 config2} + {~eq config1 config2}.
-Proof.
- (* unfold t.
-  unfold eq.
-  generalize Names.eq_dec.
-  generalize eq_RobotConf_dec.
-  unfold Names.ident in *.
-  unfold Names.Internals.ident in *.
-  unfold Names.Internals.G in *.
-  unfold Names.Internals.B in *.
-  generalize Names.In_Bnames;
-    generalize Names.In_Gnames;
-  generalize Names.Bnames_length;
-  generalize Names.Gnames_length.
-  unfold Names.G, Names.B.
-  generalize (@Good Names.Internals.G Names.Internals.B).
-  generalize (@Byz Names.Internals.G Names.Internals.B).
-  generalize Names.Bnames, Names.Gnames;
-    try unfold Names.Internals.B in *;
-    try unfold Names.Internals.G in *.
-  generalize N.nG, N.nB.
-  simpl in *.
-  intros nG nB lB lG Bz Gd HGl HBl HinG HinB Hrc_dec Hid_dec config1 config2.
-  induction lG eqn : Hlg, lB eqn : Hlb;
-    simpl in *.
-  rewrite <- HGl, <- HBl in *; simpl in *.
-  left.
-  intros [g0|b0].
-  apply Fin.case0.
-  now rewrite <- HGl in g0.
-  apply Fin.case0.
-  now rewrite <- HBl in b0.
-  induction nG eqn : HG; try (simpl in *; generalize (gt_Sn_O n); intros; omega).
-  induction nB eqn : HB; try (simpl in *; generalize (gt_Sn_O n); intros; omega).
-  left.
-  intros [g0|b0].
-  now apply Fin.case0.
-  now apply Fin.case0.
-  simpl in *.
-  destruct (Hrc_dec (config1 (Byz t0)) (config2 (Byz t0))).
-  left.
-  intros [g0|b0].
-  now specialize (HinG g0).
-  destruct (Hid_dec (Byz b0) (Byz t0)); try intuition.
-  rewrite e0.
-  apply e.
-  specialize (HinB b0).
-  destruct HinB.
-  rewrite H in n0.
-  now destruct n0.
-  simpl in *.
-  intros
-  apply e.
-  generalize (gt_Sn_O n).
-  intros; omega.
-  simpl in *.
-  induction nB eqn : HB.
-  intros.
-
-  unfold N.nB.
-  intros [g|b].
-  now apply Fin.case0.
-  apply (H (Byz b)).
-  
-  destruct id.
-  
-  intros.
-  generalize (Names.In_names id).
-  intros.
-  now rewrite Hdec in H0.*)
-Admitted.
-
-
 Instance eq_equiv : Equivalence eq.
 Proof. split.
 + intros conf x. split; reflexivity.
@@ -394,6 +321,17 @@ intros config₁ config₂. split; intro Hneq.
     - apply IHl. intro Heq. apply Hlist. now constructor.
     - eauto.
 * destruct Hneq as [id Hneq]. intro Habs. apply Hneq, Habs.
+Qed.
+
+Lemma eq_dec : forall config₁ config₂, {eq config₁ config₂} + {~eq config₁ config₂}.
+Proof.
+intros config₁ config₂.
+destruct (eqlistA_dec _ eq_RobotConf_dec (list config₁) (list config₂)) as [Heq | Hneq].
++ left. unfold list in *. apply eqlistA_split in Heq; try (now repeat rewrite Gpos_length); [].
+  destruct Heq as [Heq1 Heq2]. intros [g | b].
+  - apply (Names.Internals.fin_map_eq Heq1 g).
+  - apply (Names.Internals.fin_map_eq Heq2 b).
++ right. intro Habs. apply Hneq. now rewrite Habs.
 Qed.
 
 End Make.

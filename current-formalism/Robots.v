@@ -20,13 +20,6 @@ Require Vector.
 Set Implicit Arguments.
 
 
-(* TODO: change the name: it is merely an equivalence *)
-Class Bisimulation (T : Type) := {
-  bisim : T -> T -> Prop;
-  bisim_equiv : Equivalence bisim}.
-Infix "≈" := bisim (at level 30).
-
-
 (** *  Identification of robots  **)
 
 (** The number of good and byzantine robots *)
@@ -50,6 +43,7 @@ Module Type RobotInternals(N : Size).
   Parameter InA_fin_map : ∀ (n : nat) (A : Type) (eqA : relation A), Equivalence eqA →
     ∀ (g : Fin.t n) (f : Fin.t n → A), InA eqA (f g) (fin_map f).
   Parameter In_fin_map : ∀ (n : nat) (A : Type) (g : Fin.t n) (f : Fin.t n → A), In (f g) (fin_map f).
+  Parameter fin_map_eq : forall n A (eqA : relation A) f g, eqlistA eqA (@fin_map n A f) (@fin_map n A g) -> forall x, eqA (f x) (g x).
   Parameter fin_map_InA :
     ∀ (A : Type) (eqA : relation A), Equivalence eqA → (∀ x y : A, {eqA x y} + {¬eqA x y}) →
     ∀ (n : nat) (f : Fin.t n → A) (x : A), InA eqA x (fin_map f) ↔ (∃ id : Fin.t n, eqA x (f id)).
@@ -143,6 +137,17 @@ intros n A eqA HeqA g f. destruct n.
 + revert n g f. apply (Fin.rectS (fun n g => ∀ f : Fin.t (S n) → A, InA eqA (f g) (fin_map f))).
   - intros n f. now left.
   - intros n g IHn f. right. apply (IHn (fun x => f (Fin.FS x))).
+Qed.
+
+Lemma fin_map_eq n A eqA : forall f g, eqlistA eqA (@fin_map n A f) (@fin_map n A g) -> forall x, eqA (f x) (g x).
+Proof.
+induction n; intros f g Heq x.
+* now apply Fin.case0.
+* remember (S n) as m. destruct x as [m | m x].
+  + simpl in Heq. unfold eq_rec_r, eq_sym, eq_rec, eq_rect in Heq. now inv Heq.
+  + assert (m = n) by omega. subst m. clear Heqm.
+    simpl in Heq. unfold eq_rec_r, eq_sym, eq_rec, eq_rect in Heq. inv Heq.
+    now apply (IHn (fun x => f (Fin.FS x)) (fun x => g (Fin.FS x))).
 Qed.
 
 Corollary In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
