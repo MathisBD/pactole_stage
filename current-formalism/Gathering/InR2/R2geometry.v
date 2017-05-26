@@ -910,6 +910,7 @@ intros pt1 pt2 pt Hnull. split; intro Hpt.
         perpendicular_mul_compat_l, perpendicular_mul_compat_r, orthogonal_perpendicular.
 Qed.
 
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=

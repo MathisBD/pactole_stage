@@ -245,7 +245,7 @@ Proof. intros c H10 x y Hxy. rewrite Hxy. simpl. now rewrite Loc.mul_1. Qed.
 
 End Normed_Results.
 
-(** Composition of similarity *)
+(** Composition of similarities *)
 
 Definition compose (f g : t) : t.
 refine {|
@@ -296,5 +296,15 @@ rewrite <- Loc.dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
 apply Rmult_integral in Heqf. destruct Heqf; trivial.
 assert (Hsim := zoom_non_null sim). contradiction.
 Qed.
+
+(** Given two pairs of distinct points, there exists a similarity sending the first pair over the second one.
+    If the lines going through both pairs of points are parallel, we just need an homothecy (to adjust the length of the segment)
+    and a translation to move onto the other one.
+    It the lines are not parallel, we simply add a rotation whose center is the intersection of the lines. *)
+Theorem four_points_similarity : forall pt1 pt2 pt3 pt4, ~Loc.eq pt1 pt2 -> ~Loc.eq pt3 pt4 ->
+  {sim : t | Loc.eq (sim pt1) pt3 /\ Loc.eq (sim pt2) pt4}.
+Proof.
+intros pt1 pt2 pt3 pt4 Hneq12 Hneq34.
+Admitted.
 
 End Make.

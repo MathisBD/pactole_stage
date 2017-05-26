@@ -1587,8 +1587,9 @@ intros l. induction l as [| x l1]; intros [| y l2].
   - right. intro Habs. inv Habs. contradiction.
 Qed.
 
-Lemma eqlistA_split : forall l1 l2 l1' l2',
+Lemma eqlistA_app_split : forall l1 l2 l1' l2',
   eqlistA eqA (l1 ++ l2) (l1' ++ l2') -> length l1 = length l1' -> eqlistA eqA l1 l1' /\ eqlistA eqA l2 l2'.
+
 Proof.
 intro l. induction l as [| x l1];
 intros l2 [| y l1'] l2' Heq Hlen; simpl in *; auto; try omega; [].

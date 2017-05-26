@@ -31,7 +31,6 @@ Add Search Blacklist "Spect.M" "Ring".
 Module Export Common := CommonRealFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect).
 Module Export Rigid := RigidFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect)(Common).
 
-Module Sim := Common.Sim.
 
 (** There is no meaningful information inside Info.t. *)
 Lemma no_info : forall rc1 rc2, Loc.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
@@ -120,6 +119,38 @@ assert (Hlgth:= Config.list_length conf).
 erewrite <- List.map_length, Heq in Hlgth.
 simpl in *.
 omega.
+Qed.
+
+Lemma invalid_support_length : N.nB = 0 -> forall config, invalid config ->
+  Spect.size (!! config) = 2.
+Proof.
+intros HnB conf [Heven [HsizeG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
+rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.singleton pt1 (Nat.div2 N.nG)))
+                                        (!! conf)).
++ rewrite Spect.size_add.
+  destruct (Spect.In_dec pt2 (Spect.singleton pt1 (Nat.div2 N.nG))) as [Hin | Hin].
+  - exfalso. rewrite Spect.In_singleton in Hin.
+    destruct Hin. now elim Hdiff.
+  - rewrite Spect.size_singleton; trivial.
+    apply Exp_prop.div2_not_R0. apply HsizeG.
+  - apply Exp_prop.div2_not_R0. apply HsizeG.
++ intro pt. destruct (Loc.eq_dec pt pt2) as [Heq2 | Heq2], (Loc.eq_dec pt pt1) as [Heq1 | Heq1].
+  - rewrite Heq1, Heq2 in *. now elim Hdiff.
+  - rewrite Spect.add_spec, Spect.singleton_spec.
+    destruct (Loc.eq_dec pt pt2); try contradiction.
+    destruct (Loc.eq_dec pt pt1); try contradiction.
+    simpl.
+    rewrite Heq2.
+    now apply Nat.eq_le_incl.
+  - rewrite Spect.add_other, Spect.singleton_spec;auto.
+    destruct (Loc.eq_dec pt pt1); try contradiction.
+    rewrite Heq1.
+    now apply Nat.eq_le_incl.
+  - rewrite Spect.add_other, Spect.singleton_spec; auto.
+    destruct (Loc.eq_dec pt pt1); try contradiction.
+    auto with arith.
++ rewrite Spect.cardinal_add, Spect.cardinal_singleton, Spect.cardinal_from_config.
+  rewrite HnB. rewrite plus_0_r. now apply even_div2.
 Qed.
 
 End GatheringDefs.

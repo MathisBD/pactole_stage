@@ -327,7 +327,7 @@ Lemma eq_dec : forall config₁ config₂, {eq config₁ config₂} + {~eq confi
 Proof.
 intros config₁ config₂.
 destruct (eqlistA_dec _ eq_RobotConf_dec (list config₁) (list config₂)) as [Heq | Hneq].
-+ left. unfold list in *. apply eqlistA_split in Heq; try (now repeat rewrite Gpos_length); [].
++ left. unfold list in *. apply eqlistA_app_split in Heq; try (now repeat rewrite Gpos_length); [].
   destruct Heq as [Heq1 Heq2]. intros [g | b].
   - apply (Names.Internals.fin_map_eq Heq1 g).
   - apply (Names.Internals.fin_map_eq Heq2 b).

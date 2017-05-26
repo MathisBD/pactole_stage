@@ -107,6 +107,7 @@ Export Defs.
 
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
+Existing Instance Spect.map_compat.
 
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
@@ -517,16 +518,17 @@ End Move1.
 
 (** **  Second case: Only one robot is activated at a time **)
 
+
 (* FIXME: We cannot reuse directly the proof on R as the situation is more complicated here:
           in addition to scaling and shift, we also need rotation to move back to conf1. *)
-
+(*
 Definition conjugated config1 config2 := exists sim : Sim.t, Spect.eq (Spect.map sim (!! config1)) (!! config2).
 
 Instance conjugated_equiv : Equivalence conjugated.
 Proof. split.
 - intro config. exists Sim.id. rewrite Spect.from_config_map; autoclass.
   simpl. now rewrite Config.app_id, Config.map_id.
-(* - intros ? ? [sim Hconj]. exists (sim ⁻¹). rewrite <- Hconj.
+- intros ? ? [sim Hconj]. exists (sim ⁻¹). rewrite <- Hconj.
   rewrite Spect.map_merge; autoclass.
   assert (Heq := Sim.compose_inverse_l sim).
   apply Sim.f_compat, Similarity.section_full_compat in Heq.
@@ -534,11 +536,10 @@ Proof. split.
     by now setoid_rewrite Sim.compose_inverse_l.
   assert (Hid : Proper (Loc.eq ==> Loc.eq) Sim.id) by autoclass.
   rewrite (Spect.map_extensionality_compat _ Hid Hext).
-  now rewrite (Spect.from_config_map _ _), Config.map_id.
+  now rewrite (Spect.from_config_map _ _), Config.app_id, Config.map_id.
 - intros ? ? ? [f Hf] [g Hg]. exists (Sim.compose g f).
   rewrite <- Hg, <- Hf. rewrite Spect.map_merge; autoclass. reflexivity.
-Qed. *)
-Admitted.
+Qed.
 
 Lemma confi1_conf2_conjugated : conjugated conf1 conf2.
 Proof. exists (swap Loc.unit). now rewrite (Spect.from_config_map _ _), swap_conf1. Qed.
@@ -553,10 +554,61 @@ repeat split; trivial; []. exists (sim pt1), (sim pt2). repeat split.
 - rewrite <- Hsim, Spect.map_injective_spec; autoclass. apply Sim.injective.
 Qed.
 
-Theorem Conjugated_invalid : forall config1 config2,
+Theorem conjugated_invalid : forall config1 config2,
   conjugated config1 config2 -> (invalid config1 <-> invalid config2).
 Proof. intros. now split; apply conjugated_invalid_aux. Qed.
 
+Theorem invalid_conjugated : forall config1 config2,
+  invalid config1 -> invalid config2 -> conjugated config1 config2.
+Proof.
+intros config1 config2 Hconfig1 Hconfig2.
+assert (Hconfig1' := Hconfig1). assert (Hconfig2' := Hconfig2).
+destruct Hconfig1 as [_ [_ [pt1 [pt2 [Hneq12 [Hpt1 Hpt2]]]]]],
+         Hconfig2 as [_ [_ [pt3 [pt4 [Hneq34 [Hpt3 Hpt4]]]]]].
+destruct (Sim.four_points_similarity Hneq12 Hneq34) as [sim [Heq13 Heq24]].
+exists sim.
+assert (Hsupp1 : PermutationA Loc.eq (Spect.support (!! config1)) (pt1 :: pt2 :: nil)).
+{ symmetry. apply NoDupA_inclA_length_PermutationA; autoclass.
+  + repeat constructor.
+    - intro Hin. inv Hin; contradiction || now rewrite InA_nil in *.
+    - now rewrite InA_nil in *.
+  + apply Spect.support_NoDupA.
+  + intros x Hin.
+    assert (Hx : Loc.eq x pt1 \/ Loc.eq x pt2).
+    { inv Hin; auto; inv H0; auto; now rewrite InA_nil in *. }
+    rewrite Spect.support_In. hnf. destruct Hx as [Hx | Hx]; rewrite Hx, ?Hpt1, ?Hpt2; apply half_size_conf.
+  + rewrite <- Spect.size_spec, invalid_support_length; auto. }
+assert (Heq1 : Spect.eq (!! config1) (Spect.M.add pt1 (Nat.div2 N.nG) (Spect.M.singleton pt2 (Nat.div2 N.nG)))).
+{ intro pt. destruct (Loc.eq_dec pt pt1) as [Heq | Hneq1];
+         [| destruct (Loc.eq_dec pt pt2) as [Heq | Hneq2]]; try rewrite Heq in *.
+  + now rewrite Hpt1, Spect.add_same, Spect.singleton_other.
+  + now rewrite Hpt2, Spect.add_other, Spect.singleton_same.
+  + rewrite Spect.add_other, Spect.singleton_other; trivial; [].
+    rewrite <- Spect.not_In. rewrite <- Spect.support_In, Hsupp1. intro Hin.
+    inv Hin; auto; inv H0; auto; now rewrite InA_nil in *. }
+assert (Hsupp2 : PermutationA Loc.eq (Spect.support (!! config2)) (pt3 :: pt4 :: nil)).
+{ symmetry. apply NoDupA_inclA_length_PermutationA; autoclass.
+  + repeat constructor.
+    - intro Hin. inv Hin; contradiction || now rewrite InA_nil in *.
+    - now rewrite InA_nil in *.
+  + apply Spect.support_NoDupA.
+  + intros x Hin.
+    assert (Hx : Loc.eq x pt3 \/ Loc.eq x pt4).
+    { inv Hin; auto; inv H0; auto; now rewrite InA_nil in *. }
+    rewrite Spect.support_In. hnf. destruct Hx as [Hx | Hx]; rewrite Hx, ?Hpt3, ?Hpt4; apply half_size_conf.
+  + rewrite <- Spect.size_spec, invalid_support_length; auto. }
+assert (Heq2 : Spect.eq (!! config2) (Spect.M.add pt3 (Nat.div2 N.nG) (Spect.M.singleton pt4 (Nat.div2 N.nG)))).
+{ intro pt. destruct (Loc.eq_dec pt pt3) as [Heq | Hneq3];
+         [| destruct (Loc.eq_dec pt pt4) as [Heq | Hneq4]]; try rewrite Heq in *.
+  + now rewrite Hpt3, Spect.add_same, Spect.singleton_other.
+  + now rewrite Hpt4, Spect.add_other, Spect.singleton_same.
+  + rewrite Spect.add_other, Spect.singleton_other; trivial; [].
+    rewrite <- Spect.not_In. rewrite <- Spect.support_In, Hsupp2. intro Hin.
+    inv Hin; auto; inv H0; auto; now rewrite InA_nil in *. }
+rewrite Heq1, Heq2. rewrite Spect.map_add, Spect.map_singleton; autoclass; [].
+rewrite Heq13, Heq24. reflexivity.
+Qed.
+*)
 
 Section MoveNot1.
 
@@ -615,14 +667,26 @@ intros ρ Hρ [g | b] sim c.
 + apply Fin.case0. exact b.
 Qed.
 
-Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action.
-refine {|
+Definition da2_left (pt_l pt_r : Loc.t) (Hdiff : ~Loc.eq pt_l pt_r) : demonic_action.
+unshelve refine {|
   relocate_byz := fun b => mk_info Loc.origin;
-  step := lift_conf (fun g => if left_dec g then Some (fun c => homothecy c Hρ) else None) |}.
+  step := lift_conf (fun g => if left_dec g then Some _ else None) |}.
 Proof.
-+ apply da2_left_compat.
-+ apply homothecy_ratio_1.
-+ apply homothecy_center_1.
+* intro x. destruct (@Sim.four_points_similarity pt_l pt_r Loc.origin Loc.unit) as [sim _].
+  + assumption.
+  + abstract(intro; now apply Loc.non_trivial).
+  + exact sim.
+* intros x id ?. subst x. destruct id; simpl; try LR_dec.
+  + intros pt1 pt2 Hpt. reflexivity.
+  + reflexivity.
+  + apply Fin.case0, b.
+* intros. apply Sim.zoom_non_null.
+* intros [g | b] sim c.
+  + simpl. LR_dec; try discriminate; []. intro Heq. inv Heq.
+    destruct (Sim.four_points_similarity Hdiff da2_left_subproof) as [sim [Hpt_l Hpt_r]].
+    (* PB: the need to prove a property about the position x of the current point
+           whereas we assume it is pt_l (which will be true for the counter-example) *)
+  + apply Fin.case0, b.
 Defined.
 
 Lemma da2_right_compat : forall ρ (Hρ : ρ <> 0), Proper (eq ==> opt_eq (Loc.eq ==> Common.Sim.eq))
@@ -635,8 +699,8 @@ intros ρ Hρ ? [g | b] ?; subst; simpl.
 Qed.
 
 Lemma homothecy_ratio_2 : forall ρ (Hρ : ρ <> 0) id sim c,
-  lift_conf (fun g => if left_dec g 
-                     then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
+  lift_conf (fun g => if left_dec g
+                      then None else Some (fun c => homothecy c (Ropp_neq_0_compat ρ Hρ))) id = Some sim ->
   Sim.zoom (sim c) <> 0.
 Proof.
 intros ρ Hρ [g | b] sim c.
@@ -814,16 +878,16 @@ Qed.
 Lemma round_da2_left_next_dist : forall (config : Config.t) ρ (Hρ : ρ <> 0),
   (forall g, In g left  -> Config.eq_RobotConf (config (Good g)) (config (Good gfirst))) ->
   (forall g, In g right -> Config.eq_RobotConf (config (Good g)) (config (Good glast))) ->
-  Loc.dist (Config.loc (config (Good gfirst))) (Config.loc (config (Good glast))) = /ρ ->
+  Loc.dist (Config.loc (config (Good gfirst))) (Config.loc (config (Good glast))) = Loc.dist Loc.unit move / ρ ->
   Loc.dist (Config.loc (round r (da2_left Hρ) config (Good gfirst)))
            (Config.loc (round r (da2_left Hρ) config (Good glast))) = Loc.dist Loc.unit move / ρ.
 Proof.
 intros config ρ Hρ Hleft Hright Hdist.
 assert (Hin' := gfirst_left). assert (Hin'' := glast_right).
-unfold round. simpl. do 2 LR_dec.
-(*rewrite dist_homothecy_spectrum_centered_left; auto; [].
+unfold round. simpl. do 2 LR_dec. cbn -[homothecy].
+rewrite dist_homothecy_spectrum_centered_left; auto.
 simpl. rewrite Hdist. setoid_rewrite Loc.add_comm at 1 2. rewrite Loc.add_assoc.
-f_equiv.*)
+f_equiv.
 (* This lemma is wrong. See FIXME *)
 Admitted.
 
@@ -916,7 +980,7 @@ Definition bad_demon : demon.
   destruct (Loc.eq_dec move Loc.unit) as [Hmove | Hmove].
   (** Robots exchange positions **)
   - exact bad_demon1.
-    (** Robots do no exchange positions **)
+    (** Robots do not exchange positions **)
   - assert (Hneq : / Loc.dist Loc.unit Loc.origin <> 0).
     { apply Rinv_neq_0_compat. rewrite Loc.dist_defined. apply Loc.non_trivial. }
     exact (bad_demon2 Hmove Hneq).

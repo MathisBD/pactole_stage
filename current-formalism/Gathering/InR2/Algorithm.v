@@ -428,38 +428,6 @@ Ltac get_case config :=
 
 (** ***  Equivalent formulations of [invalid]  **)
 
-Lemma invalid_support_length : forall config, invalid config ->
-  Spect.size (!! config) = 2.
-Proof.
-intros conf [Heven [HsizeG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
-rewrite <- (@Spect.cardinal_total_sub_eq (Spect.add pt2 (Nat.div2 N.nG) (Spect.singleton pt1 (Nat.div2 N.nG)))
-                                        (!! conf)).
-+ rewrite Spect.size_add.
-  destruct (Spect.In_dec pt2 (Spect.singleton pt1 (Nat.div2 N.nG))) as [Hin | Hin].
-  - exfalso. rewrite Spect.In_singleton in Hin.
-    destruct Hin. now elim Hdiff.
-  - rewrite Spect.size_singleton; trivial.
-    apply Exp_prop.div2_not_R0. apply HsizeG.
-  - apply Exp_prop.div2_not_R0. apply HsizeG.
-+ intro pt. destruct (R2.eq_dec pt pt2), (R2.eq_dec pt pt1); subst.
-  - elim Hdiff. congruence.
-  - rewrite Spect.add_spec, Spect.singleton_spec.
-    destruct (R2.eq_dec pt pt2); try contradiction.
-    destruct (R2.eq_dec pt pt1); try contradiction.
-    simpl.
-    rewrite e0.
-    now apply Nat.eq_le_incl.
-  - rewrite Spect.add_other, Spect.singleton_spec;auto.
-    destruct (R2.eq_dec pt pt1); try contradiction.
-    rewrite e0.
-    now apply Nat.eq_le_incl.
-  - rewrite Spect.add_other, Spect.singleton_spec;auto.
-    destruct (R2.eq_dec pt pt1); try contradiction.
-    auto with arith.
-+ rewrite Spect.cardinal_add, Spect.cardinal_singleton, Spect.cardinal_from_config.
-  unfold N.nB. rewrite plus_0_r. now apply even_div2.
-Qed.
-
 Lemma Majority_not_invalid : forall config pt,
   MajTower_at pt config -> ~invalid config.
 Proof.

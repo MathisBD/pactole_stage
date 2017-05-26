@@ -99,22 +99,15 @@ Definition imprisoned (center : R.t) (radius : R) (e : execution) : Prop :=
 Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
 
 Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
-Proof. Admitted.
-(* TODO
+Proof.
 intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
-* revert c1 c2 e1 e2 Hc He. coinduction Hrec.
-  + intro g. rewrite <- He, <- Hc. apply H.
-  + constructor. unfold Streams.instant. intro. rewrite <- He. apply H. simpl. apply (Hrec c1 c2 (execution_tail e1) _).
-    - assumption.
-    - now destruct He.
-    - now destruct H.
-* revert c1 c2 e1 e2 Hc He. coinduction Hrec.
-  + intro g. rewrite He, Hc. apply H.
-  + apply (Hrec c1 c2 _ (execution_tail e2)).
-    - assumption.
-    - now destruct He.
-    - now destruct H.
-Qed.*)
++ revert c1 c2 e1 e2 Hc He. coinduction Hrec.
+  - intro g. rewrite <- He, <- Hc. apply H.
+  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 (Streams.tl e1)); auto; now destruct He.
++ revert c1 c2 e1 e2 Hc He. coinduction Hrec.
+  - intro g. rewrite He, Hc. apply H.
+  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 _ (Streams.tl e2)); auto; now destruct He.
+Qed.
 
 Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
 Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Streams.eventually_compat, imprisoned_compat. Qed.
