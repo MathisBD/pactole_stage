@@ -415,6 +415,9 @@ Export Defs.
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
 
+Instance translation_compat : Proper (R.eq ==> Sim.eq) translation := Sim.translation_compat translation_hypothesis.
+Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (R.eq ==> R.eq) (homothecy c Hρ) :=
+  Sim.homothecy_compat translation_hypothesis homothecy_hypothesis eq_refl I.
 
 (** **  Some results about R with respect to distance and similarities  **)
 

@@ -1321,12 +1321,12 @@ Section Equilateral_results.
   Variables pt1 pt2 pt3 : R2.t.
   Hypothesis Htriangle : classify_triangle pt1 pt2 pt3 = Equilateral.
   
-  (* The base of the altitude of an equilateral triangle is hte middle of the opposite side. *)
+  (* The base of the altitude of an equilateral triangle is the middle of the opposite side. *)
   Lemma equilateral_altitude_base : perpendicular (pt3 - pt2) (pt1 - R2.middle pt2 pt3).
   Proof.
   null (pt3 - pt2)%R2.
   + apply perpendicular_origin_l.
-  + assert (Heq := decompose_on Hnull (pt1 - R2.middle pt2 pt3)).
+  + 
   Admitted.
   
   (* The altitude of an equilateral triangle of side length a is (sqrt 2 / 3) * a. *)

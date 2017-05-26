@@ -57,9 +57,9 @@ Proof. apply Streams.forever_compat, Streams.instant_compat. apply invalid_compa
 Set Printing Matching.
 
 Theorem different_no_gathering : forall (e : execution),
-  N.nG <> 0%nat -> Always_invalid e -> forall pt, ~WillGather pt e.
+  Always_invalid e -> forall pt, ~WillGather pt e.
 Proof.
-intros e HnG He pt Habs. induction Habs as [e Habs | e].
+intros e He pt Habs. induction Habs as [e Habs | e].
 + destruct Habs as [Hnow Hlater]. destruct He as [Hinvalid He].
   destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
@@ -658,24 +658,23 @@ Lemma dist_spectrum : forall d (Hd : d <> 0) (config : Config.t),
   Spect.eq (!! config) (Spect.add (Config.loc (config (Good gfirst))) (Nat.div2 N.nG)
                  (Spect.singleton (Config.loc (config (Good glast))) (Nat.div2 N.nG))).
 Proof.
-(* intros d Hd config Hconfig.
+intros d Hd config Hconfig.
 rewrite <- (Rinv_involutive d) in Hconfig; trivial.
 assert (Hd' := Rinv_neq_0_compat _ Hd).
 rewrite <- Config.map_id at 1.
-(*  Time rewrite <- Config.app_id. (* > 180 sec.! *) *)
-replace (@Datatypes.id Config.RobotConf) with (Config.app Sim.id) by admit.
+Time rewrite <- Config.app_id. (* Bug? : > 180 sec.! *)
+change (@Datatypes.id R.t) with (Similarity.section (Sim.sim_f Sim.id)).
 rewrite <- (Sim.compose_inverse_l (homothecy (config (Good gfirst)) Hd')).
-rewrite (Config.app_compose (homothecy (config (Good gfirst)) Hd' ⁻¹) (homothecy (config (Good gfirst)) Hd')).
-rewrite <- Config.map_merge; autoclass; [].
-Check Spect.from_config_map.
-rewrite <- Spect.from_config_map; refine _. simpl. unfoldR.
-change (fun x : R => / d * (x + - config (Good gfirst))) with (fun x : R => / d * (x - config (Good gfirst))).
-rewrite (dist_homothecy_spectrum_centered_left Hd'); auto.
-rewrite spect_config1. unfold spectrum. rewrite Spect.map_add, Spect.map_singleton; refine _.
-ring_simplify (// d * 0). rewrite Rplus_0_l. rewrite <- (Hconfig glast gfirst); auto.
+rewrite (Config.app_compose (homothecy (config (Good gfirst)) Hd' ⁻¹) (homothecy (config (Good gfirst)) Hd')),
+        <- Config.map_merge, <- Spect.from_config_map; autoclass; [].
+transitivity (Spect.map (homothecy (config (Good gfirst)) Hd' ⁻¹) spectrum).
+- apply Spect.map_compat; autoclass; []. rewrite <- spect_config1.
+  apply (dist_homothecy_spectrum_centered_left Hd' _ Hconfig gfirst); auto.
+- unfold spectrum, homothecy, Sim.homothecy. simpl. unfoldR.
+  rewrite Spect.map_add, Spect.map_singleton; autoclass.
+  ring_simplify (// d * 0). rewrite Rplus_0_l. rewrite <- (Hconfig glast gfirst); auto.
 f_equiv. f_equiv. compute; field.
-Qed. *)
-Admitted.
+Qed.
 
 Lemma dist_invalid : forall d (Hd : d <> 0) (config : Config.t),
   (forall g1 g2, In g1 right -> In g2 left -> Config.loc (config (Good g1)) - Config.loc (config (Good g2)) = d) -> invalid config.
@@ -854,12 +853,11 @@ intros k h Habs.
 specialize (Habs bad_demon (kFair_bad_demon' h) config1).
 (* specialize (Habs 1%nat (bad_demon 1) (kFair_bad_demon R1_neq_R0) gconfig1). *)
 destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
-* exact nG_non_0.
-* unfold bad_demon.
-  destruct (Rdec move 1) as [Hmove | Hmove].
-  + now apply Always_invalid1.
-  + apply (Always_invalid2 Hmove R1_neq_R0 config1); try reflexivity; [].
-    intros. simpl. destruct (left_dec g1), (left_dec g2); simpl; field || exfalso; eauto; [].
+unfold bad_demon.
+destruct (Rdec move 1) as [Hmove | Hmove].
++ now apply Always_invalid1.
++ apply (Always_invalid2 Hmove R1_neq_R0 config1); try reflexivity; [].
+  intros. simpl. destruct (left_dec g1), (left_dec g2); simpl; field || exfalso; eauto; [].
 (* TODO: correct the type conversion problem, eauto should solve this goal *)
 change (Fin.t N.nG) with Names.Internals.G in i, i0. exfalso. now apply (left_right_exclusive g1).
 Qed.
