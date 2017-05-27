@@ -173,31 +173,10 @@ Open Scope R_scope.
 
 (** The robogram solving the gathering problem in R². *)
 Definition ffgatherR2_pgm (s : Spect.t) : R2.t :=
-  let spect := Spect.M.elements s in
-  match spect with
-    | nil => (0, 0) (* no robot *)
-    | pt :: nil => pt (* gathered *)
-    | _ :: _ :: _ =>
-      barycenter spect
-  end.
+  barycenter (Spect.M.elements s).
 
 Instance ffgatherR2_pgm_compat : Proper (Spect.eq ==> R2.eq) ffgatherR2_pgm.
-Proof.
-intros s1 s2 Hs. unfold ffgatherR2_pgm.
-assert (Hsize : length (Spect.M.elements s1) = length (Spect.M.elements s2)).
-{ f_equiv. now do 2 f_equiv. }
-destruct (Spect.M.elements s1) as [| pt1 [| ? ?]] eqn:Hs1,
-         (Spect.M.elements s2) as [| pt2 [| ? ?]] eqn:Hs2;
-simpl in Hsize; omega || clear Hsize.
-+ reflexivity.
-+ apply Spect.elements_compat in Hs. rewrite Hs1, Hs2 in Hs.
-  rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
-+ apply Spect.elements_compat in Hs.
-  apply barycenter_compat.
-  rewrite Hs1 in Hs.
-  rewrite Hs2 in Hs.
-  assumption.
-Qed.
+Proof. intros ? ? ?. unfold ffgatherR2_pgm. apply barycenter_compat. now f_equiv. Qed.
 
 Definition ffgatherR2 : robogram := {| pgm := ffgatherR2_pgm |}.
 
@@ -524,15 +503,11 @@ Theorem round_simplify : forall da conf delta,
               (fun id => match da.(step) id with
                          | None => conf id
                          | Some (f, r) =>
-                           let s := !! conf in
-                           match Spect.M.elements s with
-                           | nil => conf id (* only happen with no robots *)
-                           | pt :: nil => pt (* done *)
-                           | _ => let move := (r * (barycenter (Spect.M.elements s) - (conf id)))%R2 in
+                           let bary := barycenter (Spect.M.elements (!! conf)) in
+                           let move := (r * (bary - (conf id)))%R2 in
                                   if Rle_bool delta (R2norm move)
                                   then ((conf id) + move)%R2
-                                  else barycenter (Spect.M.elements s)
-                           end
+                                  else bary
                          end).
 Proof.
 intros da conf delta id. hnf. unfold round.
@@ -545,92 +520,56 @@ simpl pgm. unfold ffgatherR2_pgm.
 assert (Hperm : Permutation (map sim (Spect.M.elements (!! conf)))
                             (Spect.M.elements (!! (Config.map sim conf))))
   by (now rewrite <- map_sim_support, <- PermutationA_Leibniz, Spect.from_config_map).
-assert (Hlen := Permutation_length Hperm).
-destruct (Spect.M.elements (!! conf)) as [| pt1 [| pt2 l]] eqn:Hmax,
-         (Spect.M.elements (!! (Config.map sim conf))) as [| pt1' [| pt2' l']];
-simpl in Hlen; discriminate || clear Hlen.
-* elim (support_non_nil _ Hmax).
-* simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
-  subst pt1'.
-  destruct (Rle_bool delta (R2.dist ((Common.Sim.sim_f (sim ⁻¹)) (r * sim pt1)%R2) pt)).
-  + assert (Hpt: pt = pt1).
-    { generalize (Spect.from_config_spec conf).
-      intros Hok.
-      assert (Spect.In pt (!! conf)).
-      { unfold Spect.is_ok in Hok.
-        unfold Spect.In.
-        rewrite (Hok pt).
-        now exists (Good g).
-      }
-      apply Spect.Mdec.F.elements_1 in H.
-      rewrite Hmax in H.
-      now rewrite InA_singleton in H.
-    }
-    rewrite <- Hpt in *. clear Hpt.
-    generalize (Sim.center_prop sim).
-    intro Hzero.
-    apply step_center with (c := pt) in Hstep.
-    simpl in Hstep.
-    rewrite <- Heqsim in Hstep.
-    rewrite <- Hstep.
-    rewrite Hzero.
-    rewrite R2.mul_origin.
-    simpl.
-    rewrite <- Similarity.Inversion.
-    now rewrite Hzero.
-  + now apply Sim.compose_inverse_l.
-
-* assert (Hbarysim: R2.eq (barycenter (pt1' :: pt2' :: l')) (sim (barycenter (pt1 :: pt2 :: l)))).
-  { rewrite <- barycenter_sim.
-    apply barycenter_compat.
-    now rewrite PermutationA_Leibniz.
-    discriminate. }
-  repeat rewrite Hbarysim.
-  clear Hperm Hbarysim.
-  remember (pt1 :: pt2 :: l) as E.
-
-  assert (Heq_pt : pt = (sim ⁻¹) (sim pt)).
-  { simpl. rewrite Similarity.retraction_section; autoclass. }
-  rewrite Heq_pt at 1.
-  rewrite dist_prop_retraction.
+change Common.Sim.sim_f with Sim.sim_f.
+remember (Spect.M.elements (!! conf)) as E.
+remember (Spect.M.elements (!! (Config.map sim conf))) as E'.
   rewrite R2norm_mul.
   rewrite <- R2norm_dist.
+assert (Hsimbary : (sim ⁻¹) (barycenter E') = barycenter E).
+{ rewrite HeqE' in *.
+  rewrite <- barycenter_sim.
+  + apply barycenter_compat.
+    rewrite <- Spect.map_injective_elements; autoclass.
+    - rewrite Spect.from_config_map, Config.map_merge; autoclass.
+      rewrite HeqE. do 2 f_equiv.
+      rewrite <- (Config.map_id conf) at 2. f_equiv.
+      apply Sim.compose_inverse_l.
+    - apply Sim.injective.
+  + rewrite <- length_zero_iff_nil, <- Spect.from_config_map; autoclass.
+    rewrite Spect.map_injective_elements; autoclass; try apply Sim.injective.
+    now rewrite map_length, <- HeqE, length_zero_iff_nil. }
+assert (Htest : Rle_bool delta (R2.dist ((sim ⁻¹) (r * barycenter E')%R2) pt)
+                = Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)).
+{ f_equal.
+  assert (Heq_pt : pt = (sim ⁻¹) (sim pt)).
+  { simpl. rewrite Similarity.retraction_section; autoclass. }
   assert (Hsim_pt : R2.eq (sim pt) (r * (sim pt))).
   { generalize (Sim.center_prop sim).
     intro Hzero.
     apply step_center with (c := pt) in Hstep.
-    simpl in Hstep.
-    rewrite <- Heqsim in Hstep.
-    rewrite <- Hstep.
-    rewrite Hzero.
-    rewrite R2.mul_origin.
-    reflexivity.
-  }
-  rewrite Hsim_pt.
-  rewrite R2mul_dist.
-  rewrite <- Rmult_assoc.
+    simpl in Hstep. rewrite <- Heqsim in Hstep.
+    now rewrite <- Hstep, Hzero, R2.mul_origin. }
+  rewrite Heq_pt at 1.
+  rewrite dist_prop_retraction, Hsim_pt, R2mul_dist, <- Rmult_assoc.
   pattern (/ Sim.zoom sim * Rabs r).
-  rewrite Rmult_comm.
-  rewrite Rmult_assoc.
-  rewrite <- dist_prop_retraction.
-  rewrite <- Heq_pt.
-  simpl.
-  rewrite Similarity.retraction_section; autoclass; [].
-
-  destruct (Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)).
-  + apply Similarity.Inversion.
-    rewrite sim_add, sim_mul, sim_add, sim_opp.
-    do 2 rewrite R2.mul_distr_add.
-    assert (Hsim_pt_0 : R2.eq (sim pt) R2.origin).
-    { apply (step_center da (Good g) pt) in Hstep.
-      rewrite <- sim.(Sim.center_prop), <- Hstep. cbn. now subst sim. }
-    rewrite Hsim_pt_0.
-    rewrite (R2.add_comm R2.origin), R2.add_origin.
-    setoid_rewrite <- R2.add_origin at 25. repeat rewrite <- R2.add_assoc. f_equiv.
-    rewrite R2.opp_origin, R2.add_origin.
-    setoid_rewrite <- R2.mul_1 at 9 15. repeat rewrite <- ?R2.minus_morph, ?R2.mul_morph, ?R2.add_morph.
-    ring_simplify (r * 2 + (r * -1 + (1 - r + -1))). apply R2.mul_0.
-  + rewrite Similarity.retraction_section; autoclass.
+  rewrite Rmult_comm, Rmult_assoc. f_equal.
+  rewrite <- dist_prop_retraction, <- Heq_pt. f_equal. assumption. }
+rewrite Htest.
+destruct (Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)); trivial; [].
+apply Similarity.Inversion.
+simpl Similarity.retraction. change Common.Sim.sim_f with Sim.sim_f.
+rewrite sim_add, sim_mul, sim_add, sim_opp.
+do 2 rewrite R2.mul_distr_add.
+assert (Hsim_pt_0 : R2.eq (sim pt) R2.origin).
+{ apply (step_center da (Good g) pt) in Hstep.
+  rewrite <- sim.(Sim.center_prop), <- Hstep. cbn. now subst sim. }
+rewrite Hsim_pt_0.
+rewrite (R2.add_comm R2.origin), R2.add_origin.
+setoid_rewrite <- R2.add_origin at 25. repeat rewrite <- R2.add_assoc. f_equiv.
++ f_equiv. rewrite Similarity.Inversion. apply Hsimbary.
++ rewrite R2.opp_origin, R2.add_origin.
+  setoid_rewrite <- R2.mul_1 at 9 15. repeat rewrite <- ?R2.minus_morph, ?R2.mul_morph, ?R2.add_morph.
+  ring_simplify (r * 2 + (r * -1 + (1 - r + -1))). apply R2.mul_0.
 Qed.
 
 
@@ -1134,73 +1073,47 @@ assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
   rewrite round_simplify.
   remember (step da Pid) as Pact.
   destruct Pact.
-  - destruct p. simpl.
+  * destruct p. simpl.
     rewrite <- Heqelems.
-    destruct elems.
-    + inversion HinP.
-    + destruct elems.
-      * unfold C. unfold barycenter.
-        simpl. rewrite Rinv_1.
-        rewrite R2.mul_1.
-        destruct e.
-        now do 2 rewrite Rplus_0_l.
-      * remember (e :: e0 :: elems) as elems'.
-        unfold Rle_bool.
-        destruct (Rle_dec delta (R2norm (r * (barycenter elems' - conf Pid)))).
-        -- assert (Hr: 0 <= snd (t, r) <= 1).
-           { apply step_flexibility with da Pid. now symmetry. }
-           simpl in Hr.
-           destruct Hr as [Hr0 Hr1].
-           destruct Hr1 as [Hrlt1 | Hreq1].
-           ++ exfalso.
-              apply Rlt_irrefl with delta.
-              apply (Rle_lt_trans _ _ _ r0).
-              rewrite R2norm_mul.
-              rewrite (Rabs_pos_eq _ Hr0).
-              rewrite <- R2norm_dist.
-              assert (R2.dist (barycenter elems') (conf Pid) <= delta).
-              { rewrite R2.dist_sym.
-                apply Rle_trans with (measure conf).
-                apply barycenter_dist_decrease with elems'.
-                rewrite Heqelems'. discriminate.
-                unfold measure.
-                intros. apply max_dist_spect_le.
-                now rewrite <- Heqelems. now rewrite <- Heqelems.
-                reflexivity.
-                assumption.
-                assumption.
-              }
-
-              (* There should be a lemma for this in standard library. *)
-              rewrite <- Rmult_1_l.
-              destruct H.
-              ** apply Rmult_le_0_lt_compat; try assumption.
-                 apply R2.dist_pos.
-              ** subst delta.
-                 apply Rmult_lt_compat_r.
-                 now apply Rlt_gt.
-                 assumption.
-
-           ++ subst r.
-              rewrite R2.mul_1.
-              rewrite R2.add_comm.
-              rewrite <- R2.add_assoc.
-              pattern (- conf Pid + conf Pid)%R2.
-              rewrite R2.add_comm.
-              rewrite R2.add_opp.
-              rewrite R2.add_origin.
-              now unfold C.
-
-        -- now unfold C.
-
-  - unfold FullySynchronous in HFS.
+    unfold Rle_bool.
+    destruct (Rle_dec delta (R2norm (r * (barycenter elems - conf Pid)))).
+    + assert (Hr: 0 <= snd (t, r) <= 1).
+      { apply step_flexibility with da Pid. now symmetry. }
+      simpl in Hr.
+      destruct Hr as [Hr0 Hr1].
+      destruct Hr1 as [Hrlt1 | Hreq1].
+      - exfalso.
+        apply Rlt_irrefl with delta.
+        apply (Rle_lt_trans _ _ _ r0).
+        rewrite R2norm_mul.
+        rewrite (Rabs_pos_eq _ Hr0).
+        rewrite <- R2norm_dist.
+        assert (Hle : R2.dist (barycenter elems) (conf Pid) <= delta).
+        { rewrite R2.dist_sym.
+          apply Rle_trans with (measure conf); trivial; [].
+          apply barycenter_dist_decrease with elems; auto; [|].
+          - rewrite Heqelems, <- Spect.MProp.MP.elements_Empty.
+            intro Hempty. now apply Spect.MProp.MP.empty_is_empty_1, spect_non_nil in Hempty.
+          - intros. unfold measure. apply max_dist_spect_le; now rewrite <- Heqelems. }
+        (* There should be a lemma for this in standard library. *)
+        rewrite <- Rmult_1_l.
+        destruct Hle.
+        -- apply Rmult_le_0_lt_compat; try assumption.
+           apply R2.dist_pos.
+        -- subst delta.
+           apply Rmult_lt_compat_r.
+           now apply Rlt_gt.
+           assumption.
+      - subst r.
+        rewrite R2.mul_1, R2.add_comm, <- R2.add_assoc.
+        pattern (- conf Pid + conf Pid)%R2.
+        rewrite R2.add_comm, R2.add_opp, R2.add_origin.
+        now unfold C.
+    + now unfold C.
+  * unfold FullySynchronous in HFS.
     inversion HFS.
     unfold FullySynchronousInstant in H.
-    destruct (H Pid).
-    simpl.
-    now symmetry.
-}
-
+    destruct (H Pid). now symmetry. }
 destruct (max_dist_spect_ex (!! (round delta ffgatherR2 da conf)))
 as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].
 apply support_non_nil.
@@ -1300,7 +1213,9 @@ Lemma gathered_at_forever : forall delta da conf pt,
   gathered_at pt conf -> gathered_at pt (round delta ffgatherR2 da conf).
 Proof.
 intros delta da conf pt Hgather. rewrite round_simplify.
-intro g. destruct (step da (Good g)).
+intro g.
+assert (Hpt : R2.eq (conf (Good g)) pt) by now rewrite Hgather.
+destruct (step da (Good g)); trivial; [].
 
 assert (Hptinspect: Spect.M.In pt (!!conf)).
 { unfold Spect.from_config.
@@ -1366,14 +1281,13 @@ assert (Hspect: Spect.M.elements (!!conf) = pt :: nil).
   assumption.
 }
 
-simpl.
 rewrite Hspect.
 destruct p.
-reflexivity.
-
-rewrite Hgather.
-reflexivity.
-
+unfold barycenter. simpl.
+assert (Heq : (let '(y1, y2) := pt in (0 + y1, 0 + y2)) = pt).
+{ destruct pt. f_equal; field. }
+rewrite Heq, Rinv_1. repeat rewrite R2.mul_1, ?Hpt, ?R2.add_opp, ?R2.mul_origin, ?R2.add_origin.
+now destruct (Rle_bool delta (R2norm R2.origin)).
 Qed.
 
 Lemma gathered_at_OK : forall delta d conf pt, gathered_at pt conf -> Gather pt (execute delta ffgatherR2 d conf).
@@ -1396,33 +1310,22 @@ Proof.
   rewrite round_simplify in Hnotmove.
   remember (step (Streams.hd d) gid) as Pact.
   destruct Pact.
-  - destruct p. simpl in Hnotmove.
+  * destruct p. simpl in Hnotmove.
     remember (Spect.M.elements (!! conf)) as elems.
-    destruct elems.
-    + exfalso. now apply (support_non_nil conf).
-    + destruct elems.
-      * unfold barycenter. simpl. destruct e.
-        rewrite Rinv_1.
-        rewrite R2.mul_1.
-        do 2 rewrite Rplus_0_l.
-        now rewrite <- Hnotmove.
-      * remember (e :: e0 :: elems) as elems'.
-        unfold Rle_bool in Hnotmove.
-        destruct (Rle_dec delta (R2norm (r * (barycenter elems' - conf gid)))).
-        -- rewrite <- R2.add_origin with (u := conf gid) in Hnotmove at 3.
-           apply R2.add_reg_l in Hnotmove.
-           apply R2.mul_integral in Hnotmove.
-           destruct Hnotmove as [Hr0 | Heq].
-           ++ exfalso.
-              subst r.
-              rewrite R2norm_mul in r0.
-              rewrite Rabs_R0 in r0.
-              rewrite Rmult_0_l in r0.
-              apply Rlt_irrefl with delta.
-              now apply (Rle_lt_trans _ _ _ r0).
-           ++ now rewrite R2sub_origin in Heq.
-        -- now symmetry.
-  - unfold FullySynchronous in HFSync.
+    unfold Rle_bool in Hnotmove.
+    destruct (Rle_dec delta (R2norm (r * (barycenter elems - conf gid)))).
+    + rewrite <- R2.add_origin with (u := conf gid) in Hnotmove at 3.
+      apply R2.add_reg_l in Hnotmove.
+      apply R2.mul_integral in Hnotmove.
+      destruct Hnotmove as [Hr0 | Heq].
+      - exfalso.
+        subst r.
+        rewrite R2norm_mul, Rabs_R0, Rmult_0_l in r0.
+        apply Rlt_irrefl with delta.
+        now apply (Rle_lt_trans _ _ _ r0).
+      - now rewrite R2sub_origin in Heq.
+    + now symmetry.
+  * unfold FullySynchronous in HFSync.
     unfold FullySynchronousInstant in HFSync.
     destruct d.
     simpl in HeqPact.
@@ -1461,8 +1364,6 @@ destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove];
   + exists pt. apply Streams.Later. apply Hpt.
 Qed.
 
-
 Print Assumptions FSGathering_in_R2.
-
 
 End GatheringinR2.
