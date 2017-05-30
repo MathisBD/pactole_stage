@@ -31,6 +31,17 @@ Declare Module Loc : RealMetricSpace.
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 Axiom homothecy_hypothesis : forall k x y, Loc.dist (Loc.mul k x) (Loc.mul k y) = (Rabs k * Loc.dist x y)%R.
 
+(** Given two pairs of distinct points, there exists a similarity sending the first pair over the second one.
+    If the lines going through both pairs of points are parallel, we just need an homothecy (to adjust the length of the segment)
+    and a translation to move onto the other one.
+    It the lines are not parallel, we simply add a rotation whose center is the intersection of the lines. *)
+Theorem four_points_similarity : forall pt1 pt2 pt3 pt4, ~Loc.eq pt1 pt2 -> ~Loc.eq pt3 pt4 ->
+  {sim : Sim.t | Loc.eq (sim pt1) pt3 /\ Loc.eq (sim pt2) pt4}.
+Proof.
+intros pt1 pt2 pt3 pt4 Hneq12 Hneq34.
+Admitted.
+
+
 Ltac Ldec :=
   repeat match goal with
     | |- context[Loc.eq_dec ?x ?x] =>
@@ -207,10 +218,10 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
 
 (** [Always_invalid e] means that (infinite) execution [e] is [invalid]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-Definition Always_invalid (e : execution) : Prop := Streams.forever (Streams.instant invalid) e.
+Definition Always_invalid (e : execution) : Prop := Stream.forever (Stream.instant invalid) e.
 
 Instance Always_invalid_compat : Proper (eeq ==> iff) Always_invalid.
-Proof. apply Streams.forever_compat, Streams.instant_compat. apply invalid_compat. Qed.
+Proof. apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat. Qed.
 
 Theorem different_no_gathering : forall (e : execution),
   Always_invalid e -> forall pt, ~WillGather pt e.
@@ -219,11 +230,11 @@ intros e He pt Habs. induction Habs as [e IHe | e _ IHe].
 + destruct IHe as [Hnow Hlater]. destruct He as [Hinvalid He].
   destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
-  - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
+  - assert (Hin : Spect.In pt1 (!! (Stream.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
-  - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
+  - assert (Hin : Spect.In pt2 (!! (Stream.hd e))).
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
@@ -464,12 +475,12 @@ Proof.
 - exact da1_center.
 Defined.
 
-CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Stream.cons da1 bad_demon1.
 
-Lemma bad_demon1_tail : Streams.tl bad_demon1 = bad_demon1.
+Lemma bad_demon1_tail : Stream.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
 
-Lemma bad_demon1_head : Streams.hd bad_demon1 = da1.
+Lemma bad_demon1_head : Stream.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
@@ -734,27 +745,27 @@ Proof.
 Defined.
 
 CoFixpoint bad_demon2 ρ (Hρ : ρ <> 0) : demon :=
-   Streams.cons (da2_left Hρ)
-  (Streams.cons (da2_right (ratio_inv Hρ))
+   Stream.cons (da2_left Hρ)
+  (Stream.cons (da2_right (ratio_inv Hρ))
    (bad_demon2 (ratio_inv (ratio_inv Hρ)))). (* ρ updated *)
 
-Lemma bad_demon_head2_1 : forall ρ (Hρ : ρ <> 0), Streams.hd (bad_demon2 Hρ) = da2_left Hρ.
+Lemma bad_demon_head2_1 : forall ρ (Hρ : ρ <> 0), Stream.hd (bad_demon2 Hρ) = da2_left Hρ.
 Proof. reflexivity. Qed.
 
 Lemma bad_demon_head2_2 : forall ρ (Hρ : ρ <> 0),
-  Streams.hd (Streams.tl (bad_demon2 Hρ)) = da2_right (ratio_inv Hρ).
+  Stream.hd (Stream.tl (bad_demon2 Hρ)) = da2_right (ratio_inv Hρ).
 Proof. reflexivity. Qed.
 
 Lemma bad_demon_tail2 :
-  forall ρ (Hρ : ρ <> 0), Streams.tl (Streams.tl (bad_demon2 Hρ)) = bad_demon2 (ratio_inv (ratio_inv Hρ)).
+  forall ρ (Hρ : ρ <> 0), Stream.tl (Stream.tl (bad_demon2 Hρ)) = bad_demon2 (ratio_inv (ratio_inv Hρ)).
 Proof. reflexivity. Qed.
 
 Lemma da_eq_step_None : forall d1 d2, deq d1 d2 ->
-  forall g, step (Streams.hd d1) (Good g) = None <-> step (Streams.hd d2) (Good g) = None.
+  forall g, step (Stream.hd d1) (Good g) = None <-> step (Stream.hd d2) (Good g) = None.
 Proof.
 intros d1 d2 Hd g.
 assert (Hopt_eq : opt_eq (Loc.eq ==> Sim.eq)%signature
-                    (step (Streams.hd d1) (Good g)) (step (Streams.hd d2) (Good g))).
+                    (step (Stream.hd d1) (Good g)) (step (Stream.hd d2) (Good g))).
 { apply step_da_compat; trivial. now rewrite Hd. }
   split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
 Qed.

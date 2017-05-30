@@ -56,10 +56,10 @@ Definition gathered_at (pt : Loc.t) (conf : Config.t) :=
 
 (** [Gather pt e] means that at all rounds of (infinite) execution [e],
     robots are gathered at the same position [pt]. *)
-Definition Gather (pt: Loc.t) (e : execution) : Prop := Streams.forever (Streams.instant (gathered_at pt)) e.
+Definition Gather (pt: Loc.t) (e : execution) : Prop := Stream.forever (Stream.instant (gathered_at pt)) e.
 
 (** [WillGather pt e] means that (infinite) execution [e] is *eventually* [Gather]ed. *)
-Definition WillGather (pt : Loc.t) (e : execution) : Prop := Streams.eventually (Gather pt) e.
+Definition WillGather (pt : Loc.t) (e : execution) : Prop := Stream.eventually (Gather pt) e.
 
 (** When all robots are on two towers of the same height,
     there is no solution to the gathering problem.
@@ -95,12 +95,12 @@ Qed.
 
 Instance Gather_compat : Proper (Loc.eq ==> eeq ==> iff) Gather.
 Proof.
-intros pt1 pt2 Hpt. apply Streams.forever_compat, Streams.instant_compat.
+intros pt1 pt2 Hpt. apply Stream.forever_compat, Stream.instant_compat.
 intros config1 config2 Hconfig. now rewrite Hpt, Hconfig.
 Qed.
 
 Instance WillGather_compat : Proper (Loc.eq ==> eeq ==> iff) WillGather.
-Proof. intros pt1 pt2 Hpt. apply Streams.eventually_compat. now apply Gather_compat. Qed.
+Proof. intros pt1 pt2 Hpt. apply Stream.eventually_compat. now apply Gather_compat. Qed.
 
 Instance invalid_compat : Proper (Config.eq ==> iff) invalid.
 Proof.

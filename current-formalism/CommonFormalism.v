@@ -19,7 +19,7 @@ Require Import Psatz.
 Require Import Setoid.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
-Require Import Pactole.Streams.
+Require Import Pactole.Stream.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
@@ -57,11 +57,11 @@ Module Type Sig (Location : DecidableType)
   (** ** Executions *)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-  Definition execution := Streams.t Config.t.
+  Definition execution := Stream.t Config.t.
   
   (** *** Destructors for executions *)
   
-  Definition eeq : execution -> execution -> Prop := Streams.eq Config.eq.
+  Definition eeq : execution -> execution -> Prop := Stream.eq Config.eq.
   
   Declare Instance eeq_equiv : Equivalence eeq.
   Declare Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _).
@@ -140,13 +140,13 @@ Qed.
     (** ** Executions *)
 
 (** Now we can [execute] some robogram from a given position with a [demon] *)
-Definition execution := Streams.t Config.t.
+Definition execution := Stream.t Config.t.
 
-Definition eeq (e1 e2 : execution) : Prop := Streams.eq Config.eq e1 e2.
+Definition eeq (e1 e2 : execution) : Prop := Stream.eq Config.eq e1 e2.
 
 Instance eeq_equiv : Equivalence eeq.
-Proof. apply Streams.eq_equiv. apply Config.eq_equiv. Qed.
+Proof. apply Stream.eq_equiv. apply Config.eq_equiv. Qed.
 
-Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _) := Streams.hd_compat _.
-Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _) := Streams.tl_compat _.
+Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _) := Stream.hd_compat _.
+Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _) := Stream.tl_compat _.
 End Make.

@@ -24,7 +24,7 @@ Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
-Require Import Streams.
+Require Import Stream.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 Require Import Pactole.GraphEquivalence.
 
@@ -201,7 +201,7 @@ Qed.
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
 Definition is_visited (loc : Loc.t) (e : execution) :=
-  let conf := Streams.hd e in 
+  let conf := Stream.hd e in 
     exists g : Names.G, Loc.eq (conf (Good g)).(Config.loc) loc .
     
 Instance is_visited_compat : Proper (Loc.eq ==> eeq ==> iff) is_visited.
@@ -227,7 +227,7 @@ intros l1 l2 Hl e1 e2 He. split.
   Qed.
 *)
 Definition stop_now (e : execution) :=
-    Config.eq (Streams.hd e) (Streams.hd (Streams.tl (Streams.tl e))).
+    Config.eq (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e))).
 
 Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
@@ -238,7 +238,7 @@ now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Streams.next_forever ((stop_now)) e.
+  Stream.next_forever ((stop_now)) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
@@ -250,19 +250,19 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
-  Streams.eventually (is_visited loc) e.
+  Stream.eventually (is_visited loc) e.
 
 Definition Will_stop (e : execution) : Prop :=
-  Streams.next_eventually Stopped e.
+  Stream.next_eventually Stopped e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
-intros l1 l2 Hl. now apply Streams.eventually_compat, is_visited_compat. 
+intros l1 l2 Hl. now apply Stream.eventually_compat, is_visited_compat. 
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
 Proof.
-  apply Streams.next_eventually_compat, Stopped_compat.
+  apply Stream.next_eventually_compat, Stopped_compat.
 Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been

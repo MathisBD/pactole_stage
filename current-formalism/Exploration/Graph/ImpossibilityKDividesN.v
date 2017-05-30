@@ -267,14 +267,14 @@ Definition da1 : demonic_action.
   Defined.
   
     
-CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Stream.cons da1 bad_demon1.
 
 Lemma bad_demon1_tail : 
-    Streams.tl bad_demon1 = bad_demon1.
+    Stream.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
   
 Lemma bad_demon1_head :
-    Streams.hd bad_demon1 = da1.
+    Stream.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
                            
@@ -388,11 +388,11 @@ Proof.
 Qed.
 
 Definition AlwaysEquiv (e : execution) : Prop :=
-  Streams.next_forever (fun e1 => equiv_conf config1
-                                        (Streams.hd e1)) e.
+  Stream.next_forever (fun e1 => equiv_conf config1
+                                        (Stream.hd e1)) e.
                                                                     
 Definition AlwaysMoving (e : execution) : Prop :=
-  Streams.next_forever (fun e1 => ~Stopped e1) e.
+  Stream.next_forever (fun e1 => ~Stopped e1) e.
 
     
 (* An execution that is satisfing the predicate [AlwaysEquiv]
@@ -400,7 +400,7 @@ Definition AlwaysMoving (e : execution) : Prop :=
 
 
 Lemma AlwaysMoving_impl_not_WillStop : forall e,
-    e = execute r bad_demon1 (Streams.hd e)
+    e = execute r bad_demon1 (Stream.hd e)
     -> AlwaysMoving e -> ~ Will_stop e.
 Proof.
 intros e Heq_e Hmo Hst.
@@ -923,7 +923,7 @@ Proof.
 Qed.
 
 Lemma AlwaysEquiv_impl_AlwaysMoving : forall e,
-    e = execute r bad_demon1 (Streams.hd e)
+    e = execute r bad_demon1 (Stream.hd e)
     -> AlwaysEquiv e -> AlwaysMoving e.
 Proof.
   cofix.
@@ -1581,13 +1581,13 @@ Qed.
 
 
   CoInductive AlwaysEquiv_m (e : execution) : Prop :=
-    CAE_m : equiv_conf (round r da1 (round r da1 config1)) (Streams.hd e) ->
-            AlwaysEquiv_m (Streams.tl (Streams.tl e)) -> AlwaysEquiv_m e.
+    CAE_m : equiv_conf (round r da1 (round r da1 config1)) (Stream.hd e) ->
+            AlwaysEquiv_m (Stream.tl (Stream.tl e)) -> AlwaysEquiv_m e.
 
 
   
   Lemma AlwaysEquiv_impl_AlwaysMoving_m : forall e,
-      e = execute r bad_demon1 (Streams.hd e)
+      e = execute r bad_demon1 (Stream.hd e)
       -> AlwaysEquiv_m e -> AlwaysMoving e.
   Proof.
     cofix.

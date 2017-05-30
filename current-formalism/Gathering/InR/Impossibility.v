@@ -48,10 +48,10 @@ Qed.
 
 (** [Always_invalid e] means that (infinite) execution [e] is [invalid]
     forever. We will prove that with [bad_demon], robots are always apart. *)
-Definition Always_invalid (e : execution) := Streams.forever (Streams.instant invalid) e.
+Definition Always_invalid (e : execution) := Stream.forever (Stream.instant invalid) e.
 
 Instance Always_invalid_compat : Proper (eeq ==> iff) Always_invalid.
-Proof. apply Streams.forever_compat, Streams.instant_compat. apply invalid_compat. Qed.
+Proof. apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat. Qed.
 
 (** ** Linking the different properties *)
 Set Printing Matching.
@@ -63,12 +63,12 @@ intros e He pt Habs. induction Habs as [e Habs | e].
 + destruct Habs as [Hnow Hlater]. destruct He as [Hinvalid He].
   destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
-  - assert (Hin : Spect.In pt1 (!! (Streams.hd e))).
+  - assert (Hin : Spect.In pt1 (!! (Stream.hd e))).
     { unfold Spect.In. rewrite Hin1. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     destruct id as [g | b]. unfold gathered_at in Hnow; specialize (Hnow g).
     assumption. apply Fin.case0. exact b.
-  - assert (Hin : Spect.In pt2 (!! (Streams.hd e))).
+  - assert (Hin : Spect.In pt2 (!! (Stream.hd e))).
     { unfold Spect.In. rewrite Hin2. now apply half_size_conf. }
     rewrite Spect.from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. destruct id as [g | b]. apply Hnow. apply Fin.case0. exact b.
@@ -434,7 +434,7 @@ Definition da1 : demonic_action := {|
   step_zoom := da1_ratio;
   step_center := da1_center |}.
 
-Definition bad_demon1 : demon := Streams.constant da1.
+Definition bad_demon1 : demon := Stream.constant da1.
 
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof.
@@ -561,16 +561,16 @@ Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
   step_center := homothecy_center_2 Hρ |}.
 
 CoFixpoint bad_demon2 ρ (Hρ : ρ <> 0) : demon :=
-  Streams.cons (da2_left Hρ)
-  (Streams.cons (da2_right (ratio_inv Hρ))
+  Stream.cons (da2_left Hρ)
+  (Stream.cons (da2_right (ratio_inv Hρ))
   (bad_demon2 (ratio_inv (ratio_inv Hρ)))). (* ρ updated *)
 
 Lemma da_eq_step_None : forall d1 d2, deq d1 d2 ->
-  forall g, step (Streams.hd d1) (Good g) = None <-> step (Streams.hd d2) (Good g) = None.
+  forall g, step (Stream.hd d1) (Good g) = None <-> step (Stream.hd d2) (Good g) = None.
 Proof.
 intros d1 d2 Hd g.
 assert (Hopt_eq : opt_eq (R.eq ==> Sim.eq)%signature
-                    (step (Streams.hd d1) (Good g)) (step (Streams.hd d2) (Good g))).
+                    (step (Stream.hd d1) (Good g)) (step (Stream.hd d2) (Good g))).
 { apply step_da_compat; trivial. now rewrite Hd. }
   split; intro Hnone; rewrite Hnone in Hopt_eq; destruct step; reflexivity || elim Hopt_eq.
 Qed.

@@ -1360,9 +1360,9 @@ destruct (forallb (fun x => Rdec_bool (Config.loc (config x)) pt) Names.names) e
 Qed.
 
 Inductive FirstMove r d config : Prop :=
-  | MoveNow : moving r (Streams.hd d) config <> nil -> FirstMove r d config
-  | MoveLater : moving r (Streams.hd d) config = nil ->
-                FirstMove r (Streams.tl d) (round r (Streams.hd d) config) -> FirstMove r d config.
+  | MoveNow : moving r (Stream.hd d) config <> nil -> FirstMove r d config
+  | MoveLater : moving r (Stream.hd d) config = nil ->
+                FirstMove r (Stream.tl d) (round r (Stream.hd d) config) -> FirstMove r d config.
 
 Instance FirstMove_compat : Proper (req ==> deq ==> Config.eq ==> iff) FirstMove.
 Proof.
@@ -1448,7 +1448,7 @@ revert config Hinvalid Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
 induction locallyfair; intros config Hinvalid Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H. apply Hmove in H. rewrite Habs in H. inversion H.
-+ destruct (moving robogram (Streams.hd d) config) eqn:Hnil.
++ destruct (moving robogram (Stream.hd d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
     rewrite (no_moving_same_conf _ _ _ Hnil).
     apply (IHlocallyfair); trivial.
@@ -1503,7 +1503,7 @@ destruct (gathered_at_dec conf (Config.loc (conf (Good g1)))) as [Hmove | Hmove]
   apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d conf Hmove | d conf Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
-    destruct (Hind (round robogram (Streams.hd d) conf)) with (Streams.tl d) as [pt Hpt].
+    destruct (Hind (round robogram (Stream.hd d) conf)) with (Stream.tl d) as [pt Hpt].
     - apply round_lt_conf; assumption.
     - now destruct Hfair.
     - now apply never_invalid.

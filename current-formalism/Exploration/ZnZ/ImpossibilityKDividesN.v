@@ -908,12 +908,12 @@ Proof.
   + apply Fin.case0. exact b .
 Defined.
 
-CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Stream.cons da1 bad_demon1.
 
-Lemma bad_demon1_tail : Streams.tl bad_demon1 = bad_demon1.
+Lemma bad_demon1_tail : Stream.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
 
-Lemma bad_demon1_head : Streams.hd bad_demon1 = da1.
+Lemma bad_demon1_head : Stream.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
 (*
@@ -1549,16 +1549,16 @@ Proof.
 Qed.
 
 Definition AlwaysEquiv (e : execution) : Prop :=
-  Streams.forever (Streams.instant (equiv_conf config1)) e.
+  Stream.forever (Stream.instant (equiv_conf config1)) e.
 
 Definition AlwaysMoving (e : execution) : Prop :=
-  Streams.forever (fun e1 =>  ~ Stopped e1) e.
+  Stream.forever (fun e1 =>  ~ Stopped e1) e.
 
 (* An execution that is satisfing the predicate [AlwaysEquiv]
    satisfy the [AlwaysMoving] one too. *)
 
 Lemma AlwaysEquiv_impl_AlwaysMoving : forall e,
-    e = execute r bad_demon1 (Streams.hd e)
+    e = execute r bad_demon1 (Stream.hd e)
     -> AlwaysEquiv e -> AlwaysMoving e.
 Proof.
   cofix.
@@ -1624,7 +1624,7 @@ Qed.
    the [Will_Stop] one *)
 
 Lemma AlwaysMoving_impl_not_WillStop : forall e,
-    e = execute r bad_demon1 (Streams.hd e)
+    e = execute r bad_demon1 (Stream.hd e)
     -> AlwaysMoving e -> ~ Will_stop e.
 Proof.
 intros e Heq_e Hmo Hst.

@@ -2,7 +2,7 @@
 -R . Pactole
 Preliminary.v
 Robots.v
-Streams.v
+Stream.v
 Configurations.v
 MMaps/MMapInterface.v
 MMaps/MMapFacts.v

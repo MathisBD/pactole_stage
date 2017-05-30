@@ -31,7 +31,7 @@ Require Import MMaps.MMapInterface.
 Require Import MMultiset.MMultisetInterface.
 Require Import MMultiset.MMultisetExtraOps.
 Require Pactole.MMultiset.MMultisetFacts.
-Require Streams.
+Require Stream.
 (* Record graph_iso :=  *)
 
 Module DGF (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names))(Import Iso : Iso(Graph) (LocationA))(MMapWL : WSfun)(Mraw : (FMultisetsOn)(LocationA))(M : MMultisetExtra(LocationA)(Mraw)).
@@ -283,9 +283,9 @@ Module Type (Spectrum, GraphDef)
   (** ** Executions *)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-  Definition execution := Streams.t Config.t.
+  Definition execution := Stream.t Config.t.
  
-  Definition eeq : execution -> execution -> Prop := Streams.eq Config.eq.
+  Definition eeq : execution -> execution -> Prop := Stream.eq Config.eq.
 
   Instance eeq_equiv : Equivalence eeq.
   Proof.
@@ -293,19 +293,19 @@ Module Type (Spectrum, GraphDef)
     + coinduction eeq_refl. reflexivity.
     + coinduction eeq_sym. symmetry. now inversion H. now inversion H.
     + coinduction eeq_trans. 
-    - inversion H. inversion H0. now transitivity (Streams.hd y).
-    - apply (eeq_trans (Streams.tl x) (Streams.tl y) (Streams.tl z)).
+    - inversion H. inversion H0. now transitivity (Stream.hd y).
+    - apply (eeq_trans (Stream.tl x) (Stream.tl y) (Stream.tl z)).
       now inversion H. now inversion H0.
   Qed.
   
   Instance eeq_bisim : Bisimulation execution.
   Proof. exists eeq. apply eeq_equiv. Qed.
   
-  Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@Streams.hd _ ).
-  Proof. apply Streams.hd_compat. Qed.
+  Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@Stream.hd _ ).
+  Proof. apply Stream.hd_compat. Qed.
   
-  Instance eeq_tl_compat : Proper (eeq ==> eeq) (@Streams.tl _).
-  Proof. apply Streams.tl_compat. Qed.
+  Instance eeq_tl_compat : Proper (eeq ==> eeq) (@Stream.tl _).
+  Proof. apply Stream.tl_compat. Qed.
   
   (** ** Demonic schedulers *)
   
@@ -399,18 +399,18 @@ Module Type (Spectrum, GraphDef)
   Qed.
   
   (** A [demon] is just a stream of [demonic_action]s. *)
-  Definition demon := Streams.t demonic_action.
+  Definition demon := Stream.t demonic_action.
   
-  Definition deq (d1 d2 : demon) : Prop := Streams.eq da_eq d1 d2.
+  Definition deq (d1 d2 : demon) : Prop := Stream.eq da_eq d1 d2.
   
   Instance deq_equiv : Equivalence deq.
-  Proof. apply Streams.eq_equiv, da_eq_equiv. Qed.
+  Proof. apply Stream.eq_equiv, da_eq_equiv. Qed.
   
-  Instance demon_hd_compat : Proper (deq ==> da_eq) (@Streams.hd _) :=
-  Streams.hd_compat _.
+  Instance demon_hd_compat : Proper (deq ==> da_eq) (@Stream.hd _) :=
+  Stream.hd_compat _.
   
-  Instance demon_tl_compat : Proper (deq ==> deq) (@Streams.tl _) :=
-    Streams.tl_compat _.
+  Instance demon_tl_compat : Proper (deq ==> deq) (@Stream.tl _) :=
+    Stream.tl_compat _.
   
   (** [round r da conf] return the new configuration of robots (that is a function
     giving the configuration of each robot) from the previous one [conf] by applying
@@ -550,11 +550,11 @@ Module Type (Spectrum, GraphDef)
     configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)
   Definition execute (r : robogram): demon -> Config.t -> execution :=
     cofix execute d conf :=
-      Streams.cons conf (execute (Streams.tl d) (round r (Streams.hd d) conf)).
+      Stream.cons conf (execute (Stream.tl d) (round r (Stream.hd d) conf)).
   
   (** Decomposition lemma for [execute]. *)
   Lemma execute_tail : forall (r : robogram) (d : demon) (conf : Config.t),
-      Streams.tl (execute r d conf) = execute r (Streams.tl d) (round r (Streams.hd d) conf).
+      Stream.tl (execute r d conf) = execute r (Stream.tl d) (round r (Stream.hd d) conf).
   Proof. intros. destruct d. reflexivity. Qed.
   
   Instance execute_compat : Proper (req ==> deq ==> Config.eq ==> eeq) execute.
@@ -577,21 +577,21 @@ Module Type (Spectrum, GraphDef)
       (exists conf,
         eeq (execute r d conf) e) -> 
       (exists sim,
-          Aom_eq (step (Streams.hd d) (Good g) ((Streams.hd e)
+          Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e)
                                                   (Good g))) (Active sim))
       → LocallyFairForOne g d r e
   | LaterFair :
       (exists conf,
         eeq (execute r d conf) e) -> 
       (exists dist,
-          Aom_eq (step (Streams.hd d) (Good g) ((Streams.hd e) (Good g)))
+          Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e) (Good g)))
                  (Moving dist))
-      → LocallyFairForOne g (Streams.tl d) r (Streams.tl e)
+      → LocallyFairForOne g (Stream.tl d) r (Stream.tl e)
       → LocallyFairForOne g d r e.
   
   CoInductive Fair (d : demon) r e : Prop :=
     AlwaysFair : (∀ g, LocallyFairForOne g d r e) →
-                 Fair (Streams.tl d) r (Streams.tl e) →
+                 Fair (Stream.tl d) r (Stream.tl e) →
                  Fair d r e.
   
   (** [Between g h d] means that [g] will be activated before at most [k]
@@ -600,34 +600,34 @@ Module Type (Spectrum, GraphDef)
   | kReset : forall k,
       (exists conf,
         eeq (execute r d conf) e) -> 
-      (exists sim, Aom_eq (step (Streams.hd d) (Good g) ((Streams.hd e) (Good g)))
+      (exists sim, Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e) (Good g)))
                           (Active sim))
       -> Between g h d r e k 
   | kReduce : forall k,
       (exists conf,
         eeq (execute r d conf) e) -> 
-      (exists dist, Aom_eq (step (Streams.hd d) (Good g) ((Streams.hd e)
+      (exists dist, Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e)
                                                             (Good g)))
                            (Moving dist))
-      -> (exists sim, Aom_eq (step (Streams.hd d) (Good h) ((Streams.hd e)
+      -> (exists sim, Aom_eq (step (Stream.hd d) (Good h) ((Stream.hd e)
                                                               (Good h)))
                              (Active sim))
-      -> Between g h (Streams.tl d) r (Streams.tl e) k -> Between g h d r e (S k)
+      -> Between g h (Stream.tl d) r (Stream.tl e) k -> Between g h d r e (S k)
   | kStall : forall k,
       (exists conf,
         eeq (execute r d conf) e) -> 
-      (exists dist, Aom_eq (step (Streams.hd d) (Good g) ((Streams.hd e)
+      (exists dist, Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e)
                                                             (Good g)))
                            (Moving dist)) -> 
-      (exists dist, Aom_eq (step (Streams.hd d) (Good h) ((Streams.hd e)
+      (exists dist, Aom_eq (step (Stream.hd d) (Good h) ((Stream.hd e)
                                                             (Good h)))
                            (Moving dist)) ->
-      Between g h (Streams.tl d) r (Streams.tl e) k -> Between g h d r e k.
+      Between g h (Stream.tl d) r (Stream.tl e) k -> Between g h d r e k.
 
   (* k-fair: every robot g is activated within at most k activation of any other robot h *)
   CoInductive kFair k (d : demon) r e: Prop :=
     AlwayskFair : (forall g h, Between g h d r e k) ->
-                  kFair k (Streams.tl d)r  (Streams.tl e) ->
+                  kFair k (Stream.tl d)r  (Stream.tl e) ->
                   kFair k d r e.
 
   Lemma LocallyFairForOne_compat_aux : forall g d1 d2 e1 e2 r1 r2,
@@ -773,9 +773,9 @@ Module Type (Spectrum, GraphDef)
       kFair 0 d r e->
       forall g h,
         (exists dist,
-            Aom_eq ((Streams.hd d).(step) (Good g) ((Streams.hd e) (Good g))) (Moving dist))
+            Aom_eq ((Stream.hd d).(step) (Good g) ((Stream.hd e) (Good g))) (Moving dist))
         <-> exists dist,
-          Aom_eq ((Streams.hd d).(step) (Good h) ((Streams.hd e) (Good h))) (Moving dist).
+          Aom_eq ((Stream.hd d).(step) (Good h) ((Stream.hd e) (Good h))) (Moving dist).
   Proof.
     intros d r e Hconf Hd g h. destruct Hd as [Hd _]. split; intro H.
     assert (Hg := Hd g h). inversion Hg. destruct H1, H.
@@ -797,7 +797,7 @@ Module Type (Spectrum, GraphDef)
    (*     step. *) *)
   (*   Inductive FullySynchronousForOne g d:Prop := *)
   (*     ImmediatelyFair2: *)
-  (*       (step (Streams.hd d) g) ≠ None →  *)
+  (*       (step (Stream.hd d) g) ≠ None →  *)
   (*       FullySynchronousForOne g d. *)
 
   Definition StepSynchronism d e r : Prop := forall g,
@@ -805,14 +805,14 @@ Module Type (Spectrum, GraphDef)
           eeq (execute r d conf) e) -> 
       exists aom,
         ((exists sim, Aom_eq aom (Active sim)) \/ Aom_eq aom (Moving true)) /\
-        step (Streams.hd d) (Good g) ((Streams.hd e) (Good g)) = aom .
+        step (Stream.hd d) (Good g) ((Stream.hd e) (Good g)) = aom .
   
   (** A demon is fully synchronous if it is fully synchronous for all good robots
     at all step. *)
   CoInductive FullySynchronous d r e := 
     NextfullySynch:
       StepSynchronism d e r
-      → FullySynchronous (Streams.tl d) r (Streams.tl e)
+      → FullySynchronous (Stream.tl d) r (Stream.tl e)
       → FullySynchronous d r e.
 
 

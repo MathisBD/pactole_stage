@@ -93,24 +93,24 @@ Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
 Definition imprisoned (center : R.t) (radius : R) (e : execution) : Prop :=
-  Streams.forever (Streams.instant (fun config => forall g, R.dist center (config (Good g)).(Config.loc) <= radius)) e.
+  Stream.forever (Stream.instant (fun config => forall g, R.dist center (config (Good g)).(Config.loc) <= radius)) e.
 
 (** The execution will end in a small disk. *)
-Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
+Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
 
 Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
 Proof.
 intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
 + revert c1 c2 e1 e2 Hc He. coinduction Hrec.
   - intro g. rewrite <- He, <- Hc. apply H.
-  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 (Streams.tl e1)); auto; now destruct He.
+  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 (Stream.tl e1)); auto; now destruct He.
 + revert c1 c2 e1 e2 Hc He. coinduction Hrec.
   - intro g. rewrite He, Hc. apply H.
-  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 _ (Streams.tl e2)); auto; now destruct He.
+  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 _ (Stream.tl e2)); auto; now destruct He.
 Qed.
 
 Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
-Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Streams.eventually_compat, imprisoned_compat. Qed.
+Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
@@ -342,7 +342,7 @@ repeat rewrite ?Spect.add_same, ?Spect.singleton_same, ?Spect.singleton_other, ?
 Qed.
 
 (* An execution alternating config1 and config2 *)
-Definition exec : execution := Streams.alternate config1 config2.
+Definition exec : execution := Stream.alternate config1 config2.
 
 (** The demon defeating any robogram *)
 
@@ -399,7 +399,7 @@ Definition bad_da2 : demonic_action := {|
   step_zoom := step2_zoom;
   step_center := step2_center |}.
 
-Definition bad_demon : demon := Streams.alternate bad_da1 bad_da2.
+Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
@@ -471,7 +471,7 @@ Proof.
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
-CoFixpoint shifting_demon d pt := Streams.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
+CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
@@ -489,7 +489,7 @@ Definition config0 pt : Config.t := fun id =>
   end.
 
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
-CoFixpoint shifting_execution d pt := Streams.cons (config0 pt) (shifting_execution d (pt + d)).
+CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt,
   Spect.eq (!! (Config.map (Config.app (translation (R.opp pt))) (config0 pt))) spectrum1.
@@ -617,14 +617,14 @@ End PropRobogram.
 (** A 2-step induction scheme for attracted. *)
 Definition attracted_ind2 (c : R.t) (r : R) (P : execution → Prop)
   (P0 : ∀ e : execution, imprisoned c r e → P e)
-  (P1 : ∀ e : execution, imprisoned c r (Streams.tl e) → P e)
-  (Ps : ∀ e : execution, attracted c r (Streams.tl (Streams.tl e)) →
-                         P (Streams.tl (Streams.tl e)) → P e)
+  (P1 : ∀ e : execution, imprisoned c r (Stream.tl e) → P e)
+  (Ps : ∀ e : execution, attracted c r (Stream.tl (Stream.tl e)) →
+                         P (Stream.tl (Stream.tl e)) → P e)
   := fix F (e : execution) (a : attracted c r e) {struct a} : P e :=
     match a with
-      | Streams.Now i => P0 e i
-      | Streams.Later (Streams.Now i) => P1 e i
-      | Streams.Later (Streams.Later a0) => Ps e a0 (F (Streams.tl (Streams.tl e)) a0)
+      | Stream.Now i => P0 e i
+      | Stream.Later (Stream.Now i) => P1 e i
+      | Stream.Later (Stream.Later a0) => Ps e a0 (F (Stream.tl (Stream.tl e)) a0)
     end.
 
 Theorem noConvergence : forall r, ~solution r.
