@@ -437,7 +437,7 @@ assert (Hmax : forall x, Spect.In x (Spect.max (!! config)) <-> x = pt).
   - intro Hin. inversion_clear Hin. assumption. inversion H.
   - intro. subst x. now left. }
 intro Hvalid.
-assert (Hsuplen := invalid_support_length Hvalid).
+assert (Hsuplen := invalid_support_length eq_refl Hvalid).
 destruct Hvalid as [Heven [? [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 assert (Hsup : Permutation (Spect.support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA eq pt1 (Spect.support (!! config))).
