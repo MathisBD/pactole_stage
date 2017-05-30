@@ -1,3 +1,4 @@
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
@@ -40,13 +41,12 @@ Proof. intros ? []. auto. Qed.
 
 Import Common.
 
-Lemma the_chosen_one {A} eqA (HeqA : Reflexive eqA) :
-  forall f : Location.t -> A, Proper (Location.eq ==> eqA) f ->
+Lemma the_chosen_one : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall δ conf local_target,
   let chosen_target := Location.mul 1%R local_target in
-  eqA (f (if Rle_bool δ (Location.dist chosen_target conf) then chosen_target else local_target))
-      (f local_target).
-Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_1; reflexivity. Qed.
+  Location.eq (f (if Rle_bool δ (Location.dist (f chosen_target) conf) then chosen_target else local_target))
+              (f local_target).
+Proof. intros f Hf ? ? ?. simpl. f_equiv. destruct Rle_bool; try rewrite Location.mul_1; reflexivity. Qed.
 
 (** **  Conversion at the level of demonic_actions  **)
 
@@ -137,15 +137,16 @@ Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
 (** **  Equalities on one round  **)
 
-Lemma Rigid_Flex_round : forall δ r rda conf,
-  Config.eq (Rigid.round r rda conf) (Flex.round δ r (Rigid_Flex_da rda) conf).
+Lemma Rigid_Flex_round : forall δ r rda config,
+  Config.eq (Rigid.round r rda config) (Flex.round δ r (Rigid_Flex_da rda) config).
 Proof.
 unfold Rigid_Flex_da, Rigid.round, Flex.round.
-intros δ r [] conf [g | b]; simpl.
+intros δ r [] config [g | b]; simpl.
 + destruct (step (Good g)).
-  - rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - split; try reflexivity; []. cbn [Config.loc].
+    rewrite the_chosen_one. reflexivity. refine _.
   - reflexivity.
-+ now destruct (step (Byz b)).
++ destruct (step (Byz b)); split; reflexivity.
 Qed.
 
 Lemma Flex_Rigid_round : forall δ r fda conf, rigid fda ->
@@ -154,7 +155,7 @@ Proof.
 unfold Flex_Rigid_da, Rigid.round, Flex.round, rigid.
 intros δ r [] conf Hda [g | b]; simpl in *.
 + specialize (Hda (Good g)). destruct (step (Good g)) as [[sim ρ] |] eqn:Heq.
-  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one. reflexivity. refine _.
   - reflexivity.
 + now destruct (step (Byz b)) as [[] |].
 Qed.

@@ -15,7 +15,7 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Type GraphDef.  
+Module Type GraphDef.
 
 Parameter V : Set. (* Z/nZ *)
 Parameter E : Set. (* de base, source et destination (en couple). on peut aussi jsute donner l'un des deux (tjr lle même) car on est dans un cercle (ici) *)
@@ -49,3 +49,14 @@ Module Type LocationADef (Graph : GraphDef) <: DecidableType.
   Parameter eq_dec : forall l l', {eq l l'} + {~eq l l'}.
 End LocationADef.
 
+(** Specialized version with SourceTarget as info. *)
+Module Type InfoSig (Graph : GraphDef)
+                    (Loc : LocationADef(Graph)).
+  
+  Module Info := SourceTarget(Loc).
+End InfoSig.
+
+Module Make (Graph : GraphDef) (Loc : LocationADef(Graph)) : InfoSig (Graph) (Loc).
+  
+  Module Info := SourceTarget(Loc).
+End Make.

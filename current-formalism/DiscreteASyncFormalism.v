@@ -27,13 +27,16 @@ Require Pactole.CommonDiscreteFormalism.
 Require Pactole.Stream.
 (* Require Pactole.Similarity. *)
 
+
 Module Type Delta.
   Parameter delta: Z.
 End Delta.
 
-Module Make (Location : DiscreteSpace)
-            (N : Size)
-            (Info : DecidableTypeWithApplication(Location))
+Module preMake (Location : DiscreteSpace).
+
+Module Info := SourceTarget(Location).
+
+Module Make (N : Size)
             (Import D: Delta)
             (Names : Robots(N))
             (Config : Configuration(Location)(N)(Names)(Info))
@@ -77,8 +80,8 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Config.RobotConf -> Active_or_Moving;
   step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
-       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Config.target)) \/
-       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.info).(Config.source) >= delta)%Z;
+       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Info.target)) \/
+       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.info).(Info.source) >= delta)%Z;
   step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
   step_center : forall id config sim c , step id config = Active sim -> 
                                          Location.eq (sim c).(Sim.center) c;
@@ -92,9 +95,9 @@ Definition da_eq (da1 da2 : demonic_action) :=
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
 + split; intuition. now apply step_compat.
-+ intros da1 da2 [Hda1 Hda2]. repeat split; repeat intro; try symmetry; auto.
++ intros da1 da2 [Hda1 Hda2]. split; repeat intro; try symmetry; auto.
 + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
-  repeat split; intros; try etransitivity; eauto.
+  split; intros; try etransitivity; eauto.
 Qed.
 
 Instance step_da_compat : Proper (da_eq ==> eq ==> Config.eq_RobotConf ==> Aom_eq) step.
@@ -514,18 +517,6 @@ Qed.
 
 (** ** One step executions *)
 
-(* TODO: apply sim to info? *)
-Definition apply_sim (sim : Sim.t) (rconf : Config.RobotConf) :=
-  {| Config.loc := sim rconf; Config.robot_info := Config.robot_info rconf |}.
-
-Instance apply_sim_compat : 
-        Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
-Proof.
-intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
-- apply Hsim, Hconf.
-- apply Hconf.
-Qed.
-
 (** [round r da conf] return the new configuration of robots (that is a function
     giving the configuration of each robot) from the previous one [conf] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
@@ -539,24 +530,24 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
       | Moving mv_ratio =>
         match id with
         | Good g =>
-           let tgt := conf.(Config.robot_info).(Config.target) in
+           let tgt := conf.(Config.info).(Info.target) in
            let new_loc :=  (** If g is not activated, it moves toward its destination *)
               Location.add pos
               (Location.mul mv_ratio (Location.add tgt (Location.opp pos))) in
-           {| Config.loc := new_loc ; Config.robot_info := conf.(Config.robot_info) |}
+           {| Config.loc := new_loc ; Config.info := conf.(Config.info) |}
         | Byz b => conf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => (* byzantine robot are relocated by the demon *)
                    {| Config.loc := da.(relocate_byz) b;
-                      Config.robot_info := Config.robot_info (config id) |}
+                      Config.info := Config.info (config id) |}
         | Good g => 
           let frame_change := sim (Config.loc (config (Good g))) in
-          let local_conf := Config.map (apply_sim frame_change) config in
+          let local_conf := Config.map (Config.app frame_change) config in
           let target := frame_change⁻¹ (r (Spect.from_config local_conf)) in
            {| Config.loc := pos ; 
-              Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
+              Config.info := {| Info.source := pos ; Info.target := target|} |}
         end
     end.
 
@@ -582,7 +573,6 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   do 2 f_equiv.
   apply Hrconf.
   f_equiv; apply Hrconf.
-  unfold Config.Info_eq.
   split; apply Hrconf.
 + unfold Aom_eq in *. exfalso; auto.
 + unfold Aom_eq in *. exfalso; auto.
@@ -591,7 +581,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   simpl in Hstep. f_equiv.
   - f_equiv. apply Hstep, Hrconf.
   - apply Hr. do 3 f_equiv; trivial; []. apply Hstep, Hconf.
-+ rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
++ rewrite Hda. destruct (Hconf (Byz b)) as [? [Heq1 Heq2]]. now repeat split; simpl; rewrite ?Heq1, ?Heq2.
 Qed.
 
 
@@ -659,7 +649,7 @@ unfold round, Config.eq, Config.eq_RobotConf; split;
 destruct (step da id (conf id)) eqn : Heq. apply moving_no_sup_0_same_conf with (r:=r) in Heq; trivial.
 rewrite Heq.
 assert (Location.eq (Location.mul 0 (Location.add 
-        (Config.target (Config.info (conf id))) (Location.opp (conf id))))
+        (Info.target (Config.info (conf id))) (Location.opp (conf id))))
         Location.origin). apply Location.mul_0. destruct id as [g |b]. simpl.
         rewrite H. apply Location.add_origin. reflexivity.
         unfold active in Hactive.
@@ -709,6 +699,7 @@ apply proof; clear proof. now inversion H. apply round_compat; trivial. inversio
 Qed.
 
 End Make.
+End preMake.
 
 (* 
  *** Local Variables: ***

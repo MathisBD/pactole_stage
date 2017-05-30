@@ -12,6 +12,7 @@ Require Import Arith.Div2.
 Require Import Omega.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.DiscreteSpace.
 Require Import Pactole.DiscreteSimilarity.
 Require Pactole.CommonDiscreteFormalism.
 Require Pactole.DiscreteRigidFormalism.
@@ -24,20 +25,22 @@ Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs(Loc : RingSig)(N : Size).
+Module ExplorationDefs (Loc : RingSig)
+                       (N : Size)
+                       (Info : DecidableTypeWithApplication(Loc)).
 
 Module Names := Robots.Make(N).
-Module Config := Configurations.Make(Loc)(N)(Names).
+Module Config := Configurations.Make(Loc)(N)(Names)(Info).
 
-Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Config).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
 
-Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Names)(Config)(Spect).
-Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
+Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect).
+Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect)(Common).
 
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 

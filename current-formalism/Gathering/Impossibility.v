@@ -30,17 +30,17 @@ Declare Module Loc : RealMetricSpace.
 (* These two axioms are actually equivalent to saying that we are in a eucliean space. *)
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 Axiom homothecy_hypothesis : forall k x y, Loc.dist (Loc.mul k x) (Loc.mul k y) = (Rabs k * Loc.dist x y)%R.
-
+(*
 (** Given two pairs of distinct points, there exists a similarity sending the first pair over the second one.
     If the lines going through both pairs of points are parallel, we just need an homothecy (to adjust the length of the segment)
     and a translation to move onto the other one.
     It the lines are not parallel, we simply add a rotation whose center is the intersection of the lines. *)
 Theorem four_points_similarity : forall pt1 pt2 pt3 pt4, ~Loc.eq pt1 pt2 -> ~Loc.eq pt3 pt4 ->
-  {sim : Sim.t | Loc.eq (sim pt1) pt3 /\ Loc.eq (sim pt2) pt4}.
+  {sim : Config.Sim.t | Loc.eq (sim pt1) pt3 /\ Loc.eq (sim pt2) pt4}.
 Proof.
 intros pt1 pt2 pt3 pt4 Hneq12 Hneq34.
 Admitted.
-
+*)
 
 Ltac Ldec :=
   repeat match goal with
@@ -683,7 +683,7 @@ unshelve refine {|
   relocate_byz := fun b => mk_info Loc.origin;
   step := lift_conf (fun g => if left_dec g then Some _ else None) |}.
 Proof.
-* intro x. destruct (@Sim.four_points_similarity pt_l pt_r Loc.origin Loc.unit) as [sim _].
+* intro x. destruct (@four_points_similarity pt_l pt_r Loc.origin Loc.unit) as [sim _].
   + assumption.
   + abstract(intro; now apply Loc.non_trivial).
   + exact sim.
@@ -694,7 +694,7 @@ Proof.
 * intros. apply Sim.zoom_non_null.
 * intros [g | b] sim c.
   + simpl. LR_dec; try discriminate; []. intro Heq. inv Heq.
-    destruct (Sim.four_points_similarity Hdiff da2_left_subproof) as [sim [Hpt_l Hpt_r]].
+    destruct (four_points_similarity Hdiff da2_left_subproof) as [sim [Hpt_l Hpt_r]].
     (* PB: the need to prove a property about the position x of the current point
            whereas we assume it is pt_l (which will be true for the counter-example) *)
   + apply Fin.case0, b.

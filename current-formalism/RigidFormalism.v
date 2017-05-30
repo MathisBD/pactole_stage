@@ -301,9 +301,7 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
       | None => conf id (** If g is not activated, do nothing *)
       | Some sim => (** g is activated and [sim (conf g)] is its similarity *)
         match id with
-        | Byz b => (* byzantine robots are relocated by the demon *)
-            {| Config.loc := da.(relocate_byz) b;
-               Config.info := Config.info (conf id) |}
+        | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
         | Good g => (* configuration expressed in the frame of g *)
           let frame_change := sim (conf id) in
           let local_conf := Config.map (Config.app frame_change) conf in
@@ -324,7 +322,7 @@ destruct (step da1 id), (step da2 id), id; try now elim Hstep.
     - apply Hstep, Hconf.
     - apply Hr, Spect.from_config_compat, Config.map_compat; trivial. f_equiv. apply Hstep, Hconf.
   + apply Hconf.
-* hnf. split; try apply Hconf; []. simpl. f_equiv. rewrite Hda. reflexivity.
+* now rewrite Hda.
 Qed.
 
 (** A third subset of robots, moving ones *)

@@ -34,8 +34,18 @@ Require Pactole.MMultiset.MMultisetFacts.
 Require Stream.
 (* Record graph_iso :=  *)
 
-Module DGF (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names))(Import Iso : Iso(Graph) (LocationA))(MMapWL : WSfun)(Mraw : (FMultisetsOn)(LocationA))(M : MMultisetExtra(LocationA)(Mraw)).
 
+Module DGF (Graph : GraphDef)
+           (N : Size)
+           (Names : Robots(N))
+           (LocationA : LocationADef(Graph))
+           (MkInfoA : InfoSig(Graph)(LocationA))
+           (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
+           (Import Iso : Iso(Graph) (LocationA))
+           (MMapWL : WSfun)
+           (Mraw : (FMultisetsOn)(LocationA))
+           (M : MMultisetExtra(LocationA)(Mraw)).
+  
   
   (** For spectra *)
   Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
@@ -48,17 +58,18 @@ Module DGF (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationA
 
 
   (* They come from the common part as they are shared by AGF and DGF. *)
-  
+  Module InfoA := MkInfoA.Info.
   Module Location := LocationA.
+  Module Info := InfoA.
   Module Config := ConfigA.
   
   (* Identity spectrum *)
-  Module Spect <: Spectrum(Location)(N)(Names)(Config). 
+  Module Spect <: Spectrum(Location)(N)(Names)(Info)(Config). 
 
     Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
     Proof. intros [] [] []. now cbn. Qed.
 
-    Instance info_compat : Proper (Config.eq_RobotConf ==> Config.Info_eq) Config.robot_info.
+    Instance info_compat : Proper (Config.eq_RobotConf ==> Info.eq) Config.info.
     Proof. intros [] [] [] *. now cbn. Qed.
 
     (** Definition of spectra as multisets of locations. *)
@@ -219,8 +230,8 @@ Module Type (Spectrum, GraphDef)
     Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
     Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
-                                      forall conf, eq (map f (from_config conf))
-                                                      (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.robot_info := Config.robot_info x|}) conf)).
+      forall conf, eq (map f (from_config conf))
+                      (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.info := Config.info x|}) conf)).
     Proof.
       intros f Hf config. unfold from_config. rewrite Config.list_map.
       - now rewrite <- multiset_map, List.map_map, List.map_map.
@@ -298,9 +309,6 @@ Module Type (Spectrum, GraphDef)
       now inversion H. now inversion H0.
   Qed.
   
-  Instance eeq_bisim : Bisimulation execution.
-  Proof. exists eeq. apply eeq_equiv. Qed.
-  
   Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@Stream.hd _ ).
   Proof. apply Stream.hd_compat. Qed.
   
@@ -342,26 +350,26 @@ Module Type (Spectrum, GraphDef)
   
   Record demonic_action :=
     {
-      relocate_byz : Names.B -> Location.t;
+      relocate_byz : Names.B -> Config.RobotConf;
       step : Names.ident -> Config.RobotConf -> Active_or_Moving;
       step_delta : forall g Rconfig sim,
           Aom_eq (step (Good g) Rconfig) (Active sim) ->
-          Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target);
+          Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Info.target);
       step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step
     }.
   Set Implicit Arguments.
   
   Definition da_eq (da1 da2 : demonic_action) :=
     (forall id config, (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
-    (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
+    (forall b : Names.B, Config.eq_RobotConf (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
   
   Instance da_eq_equiv : Equivalence da_eq.
   Proof.
     split.
     + split; intuition. now apply step_compat.
-    + intros da1 da2 [Hda1 Hda2]. repeat split; repeat intro; try symmetry; auto.
+    + intros da1 da2 [Hda1 Hda2]. split; repeat intro; try symmetry; auto.
     + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
-      repeat split; intros; try etransitivity; eauto.
+      split; intros; try etransitivity; eauto.
   Qed.
   
   Instance step_da_compat : Proper (da_eq ==> eq ==> Config.eq_RobotConf ==> Aom_eq) step.
@@ -372,7 +380,7 @@ Module Type (Spectrum, GraphDef)
     - apply (step_compat da2); auto.
   Qed.
   
-  Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
+  Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Config.eq_RobotConf) relocate_byz.
   Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
   
   Lemma da_eq_step_Moving : forall da1 da2,
@@ -423,9 +431,9 @@ Module Type (Spectrum, GraphDef)
   
   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
     {| Config.loc := (Iso.sim_V sim) (Config.loc infoR);
-       Config.robot_info :=
-         {| Config.source := (Iso.sim_V sim) (Config.source (Config.robot_info infoR));
-            Config.target := (Iso.sim_V sim) (Config.target (Config.robot_info infoR))
+       Config.info :=
+         {| Info.source := (Iso.sim_V sim) (Info.source (Config.info infoR));
+            Info.target := (Iso.sim_V sim) (Info.target (Config.info infoR))
          |}
     |}.
   
@@ -447,22 +455,20 @@ Module Type (Spectrum, GraphDef)
       | Moving true =>
         match id with
         | Good g =>
-          let tgt := rconf.(Config.robot_info).(Config.target) in
-          {| Config.loc := tgt ; Config.robot_info := rconf.(Config.robot_info) |}
+          let tgt := rconf.(Config.info).(Info.target) in
+          {| Config.loc := tgt ; Config.info := rconf.(Config.info) |}
         | Byz b => rconf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
-        | Byz b => (* byzantine robot are relocated by the demon *)
-          {| Config.loc := da.(relocate_byz) b;
-             Config.robot_info := Config.robot_info (config id) |}
+        | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
         | Good g =>
           let local_config := Config.map (apply_sim sim) config in
           let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
           let target := (sim⁻¹).(Iso.sim_V) local_target in
           if (Location.eq_dec (target) pos) then rconf else
           {| Config.loc := pos ; 
-             Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
+             Config.info := {| Info.source := pos ; Info.target := target|} |}
         end
       end.
   
@@ -528,7 +534,7 @@ Module Type (Spectrum, GraphDef)
       apply (symmetry Hconf).
       f_equiv.
       apply Hconf.
-      unfold Config.Info_eq.
+      unfold Info.eq.
       split.
       apply Hconf.
       simpl.
@@ -542,7 +548,7 @@ Module Type (Spectrum, GraphDef)
       f_equiv.
       apply Hstep.
       apply Hconf.
-    + rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
+    + rewrite Hda. now destruct (Hconf (Byz b)).
   Qed.
   
   
@@ -814,7 +820,5 @@ Module Type (Spectrum, GraphDef)
       StepSynchronism d e r
       → FullySynchronous (Stream.tl d) r (Stream.tl e)
       → FullySynchronous d r e.
-
-
   
 End DGF.

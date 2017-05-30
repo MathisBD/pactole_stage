@@ -22,8 +22,12 @@ Module Type DecidableTypeWithApplication(Location : DecidableType) <: DecidableT
   Parameter app : (Location.t -> Location.t) -> t -> t.
   Declare Instance app_compat : Proper ((Location.eq ==> Location.eq) ==> eq ==> eq) app.
   Axiom app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
-  Axiom app_compose : forall f g, (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+  Axiom app_compose : forall f g,
+    Proper (Location.eq ==> Location.eq) f ->
+    Proper (Location.eq ==> Location.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
 End DecidableTypeWithApplication.
+
 
 (** [unit] is a valid information type that does not contain any information. *)
 Module Unit(Location : DecidableType)
@@ -44,9 +48,48 @@ Module Unit(Location : DecidableType)
   Lemma app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
   Proof. now intros [] [] _. Qed.
   
-  Lemma app_compose : forall f g, (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
-  Proof. now intros f g [] [] _. Qed.
+  Lemma app_compose : forall f g,
+    Proper (Location.eq ==> Location.eq) f ->
+    Proper (Location.eq ==> Location.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+  Proof. now intros f g _ _ [] [] _. Qed.
 End Unit.
+
+(** A pair of locations (source, target) also constitutes a valid information type. *)
+Module SourceTarget (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
+  Record t' := {source : Loc.t; target : Loc.t}.
+  Definition t := t'.
+  
+  Definition eq info1 info2 := Loc.eq info1.(source) info2.(source) /\ Loc.eq info1.(target) info2.(target).
+  
+  Instance eq_equiv : Equivalence eq.
+  Proof. split.
+  + intros []; split; simpl; reflexivity.
+  + intros [] [] []; split; simpl in *; now symmetry.
+  + intros [] [] [] [] []; split; simpl in *; etransitivity; eauto.
+  Qed.
+  
+  Lemma eq_dec : forall x y : t, {eq x y} + {~eq x y}.
+  Proof.
+  intros [s1 t1] [s2 t2].
+  destruct (Loc.eq_dec s1 s2); [destruct (Loc.eq_dec t1 t2) |].
+  + now left.
+  + right. intros []. contradiction.
+  + right. intros []. contradiction.
+  Qed.
+  
+  Definition app f info := {| source := f info.(source); target := f info.(target) |}.
+  
+  Instance app_compat : Proper ((Loc.eq ==> Loc.eq) ==> eq ==> eq) app.
+  Proof. intros f g Hfg x y Hxy. unfold app. split; simpl; apply Hfg, Hxy. Qed.
+  
+  Lemma app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
+  Proof. intros x y Hxy. apply Hxy. Qed.
+  
+  Lemma app_compose : forall f g, Proper (Loc.eq ==> Loc.eq) f -> Proper (Loc.eq ==> Loc.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+  Proof. intros ? ? ? ? [] [] []. split; simpl in *; now do 2 f_equiv. Qed.
+End SourceTarget.
 
 
 (** * Configurations *)

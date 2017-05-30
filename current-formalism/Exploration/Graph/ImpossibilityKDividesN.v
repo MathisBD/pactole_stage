@@ -31,6 +31,7 @@ Require Import List Setoid Compare_dec Morphisms FinFun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.DiscreteSpace.
 Require Import Pactole.Exploration.ZnZ.Definitions.
 Require Import Pactole.Exploration.ZnZ.ImpossibilityKDividesN.
 Require Import Pactole.Exploration.Graph.Definitions.
@@ -93,12 +94,12 @@ Definition config1 : Config.t :=
   fun id => match id with
               | Good g => let pos := create_conf1 g in
                           {| Config.loc :=  pos;
-                             Config.robot_info :=
-                               {| Config.source := Loc.add (Loc.opp Loc.unit) pos;
-                                  Config.target := pos  |} |}
+                             Config.info :=
+                               {| Info.source := Loc.add (Loc.opp Loc.unit) pos;
+                                  Info.target := pos  |} |}
               | Byz b => let pos := Loc.origin in
                           {| Config.loc := pos;
-                             Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
+                             Config.info := {| Info.source := pos; Info.target := pos |} |}
             end.
 
 Lemma conf1_new_aux:
@@ -216,7 +217,7 @@ Qed.
 Import Equiv.DGF.
 (* probleme, si je veux faire un demon synchrone, j'ai besoin de savoir quand tous
 les robots sont arrivé à leur cible, donc j'ai besoin d'information sur la 
-configuartion. si j'ai des info sur la configuration dans l'action démoniaque, 
+configuration.  Si j'ai des info sur la configuration dans l'action démoniaque, 
 je dois avoir des information sur l'execution pour le demon.
 et l'execution depend du démon. donc double dépendance, donc problème.
 
@@ -229,10 +230,10 @@ cette variable dans l'action démoniaque au moment de dire si on bouge ou non?
 Definition da1 : demonic_action.
   refine
     {|
-      relocate_byz := fun b => Loc.origin;
+      relocate_byz := fun b => Fin.case0 _ b;
       step :=  (lift_conf (fun (g : Names.G) Rconf =>
                              if Loc.eq_dec (Config.loc (Rconf))
-                                           (Config.target (Config.robot_info
+                                           (Info.target (Config.info
                                                              (Rconf)))
                              then 
                                Active (trans (Config.loc (Rconf)))
@@ -245,7 +246,7 @@ Definition da1 : demonic_action.
       unfold lift_conf in H.
       unfold Loc.eq_dec, Names.G in *.
       destruct (LocationA.eq_dec (Config.loc Rconfig)
-                                 (Config.target (Config.robot_info
+                                 (Info.target (Config.info
                                                    Rconfig)));
         try assumption;
         now simpl in *.
@@ -254,9 +255,9 @@ Definition da1 : demonic_action.
       destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
       destruct 
         (Loc.eq_dec (Config.loc rc1)
-                    (Config.target (Config.robot_info rc1))),
+                    (Info.target (Config.info rc1))),
       (Loc.eq_dec (Config.loc rc2)
-                  (Config.target (Config.robot_info rc2)));
+                  (Info.target (Config.info rc2)));
         try (now auto);
         try now rewrite Hl_rc, Ht_rc in *.
       rewrite Hl_rc.
@@ -316,8 +317,8 @@ Qed.
 (*
 Definition move := r.(Equiv.DGF.pgm)
                        (!! (Config.map
-                              (apply_sim (trans (Config.target
-                                                   (Config.robot_info (conf (Good g0))))))
+                              (apply_sim (trans (Info.target
+                                                   (Config.info (conf (Good g0))))))
                               (round r da1 config1))).
 *)
 Parameter m : Z.
@@ -331,9 +332,9 @@ Definition f_conf conf k : Config.t :=
   fun id =>
       match id with
       | Good g => {| Config.loc := Loc.add k (Config.loc (conf (Good g)));
-                     Config.robot_info :=
-                       {| Config.source := Loc.add k (Config.source (Config.robot_info (conf (Good g))));
-                          Config.target := Loc.add k (Config.target (Config.robot_info (conf (Good g))))
+                     Config.info :=
+                       {| Info.source := Loc.add k (Info.source (Config.info (conf (Good g))));
+                          Info.target := Loc.add k (Info.target (Config.info (conf (Good g))))
                        |}
                   |}
       | Byz b => conf (Byz b)
@@ -431,8 +432,8 @@ Lemma config1_Spectre_Equiv : forall conf g0,
       (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
             /\
-            Location.eq (Config.target (Config.robot_info (conf id)))
-                        (Loc.add k (Config.target (Config.robot_info (config1 id)))))
+            Location.eq (Info.target (Config.info (conf id)))
+                        (Loc.add k (Info.target (Config.info (config1 id)))))
             ->
     Spect.eq (!! (Config.map (apply_sim
                                 (trans (Config.loc (conf (Good g0)))))
@@ -456,7 +457,7 @@ Proof.
   
   assert (Hconf_eq_lt : forall glt,
              Loc.eq (Config.loc (conf (Good glt)))
-                    (Config.target (Config.robot_info (conf (Good glt))))).
+                    (Info.target (Config.info (conf (Good glt))))).
   { intros glt.
     specialize (H (Good glt)).
     simpl in *.
@@ -723,8 +724,7 @@ Lemma round_2_simplify_1 :
          (round r da1 (round r da1 conf))
          (fun id =>
             match id with
-            | Byz b => {| Config.loc := relocate_byz da1 b;
-                          Config.robot_info := Config.robot_info (conf (Byz b)) |}
+            | Byz b => Fin.case0 _ b
             | Good g =>
               let local_config := Config.map
                                     (apply_sim
@@ -740,9 +740,9 @@ Lemma round_2_simplify_1 :
                            (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
                                                                   local_target in
                 {| Config.loc := new_target;
-                   Config.robot_info :=
-                     {| Config.source := Config.loc (conf (Good g));
-                        Config.target := new_target
+                   Config.info :=
+                     {| Info.source := Config.loc (conf (Good g));
+                        Info.target := new_target
                      |}
                 |}
               end).
@@ -751,8 +751,8 @@ Proof.
   assert (Hequiv' : (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
             /\
-            Location.eq (Config.target (Config.robot_info (conf id)))
-                        (Loc.add k (Config.target (Config.robot_info (config1 id)))))
+            Location.eq (Info.target (Config.info (conf id)))
+                        (Loc.add k (Info.target (Config.info (config1 id)))))
             ).
   { destruct Hconf_eq.
     exists x.
@@ -769,7 +769,7 @@ Proof.
   simpl.
   unfold round; simpl.
   destruct (Loc.eq_dec (Config.loc (conf (Good g)))
-                         (Config.target (Config.robot_info (conf (Good g)))))
+                         (Info.target (Config.info (conf (Good g)))))
       as [e_lt|nfalse] eqn : Hlt_eqdec; try now destruct nfalse; rewrite Hlg0, Htg0.
   simpl in *.
   destruct ( Location.eq_dec
@@ -882,8 +882,8 @@ Proof.
   assert (Hequiv' : (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
             /\
-            Location.eq (Config.target (Config.robot_info (conf id)))
-                        (Loc.add k (Config.target (Config.robot_info (config1 id)))))
+            Location.eq (Info.target (Config.info (conf id)))
+                        (Loc.add k (Info.target (Config.info (config1 id)))))
             ).
   { destruct Hequiv.
     exists x.
@@ -965,9 +965,9 @@ Proof.
                     Location.eq (Config.loc (conf id))
                                 (Loc.add k (Config.loc (config1 id)))
                     /\
-                    Location.eq (Config.target (Config.robot_info (conf id)))
-                                (Loc.add k (Config.target
-                                              (Config.robot_info (config1 id)))))).
+                    Location.eq (Info.target (Config.info (conf id)))
+                                (Loc.add k (Info.target
+                                              (Config.info (config1 id)))))).
     { destruct H.
       exists x.
       intros [g0|b]; try ImpByz b.
@@ -1066,7 +1066,7 @@ Section Stop.
     unfold lift_conf; simpl.
     intros [g|b]; try ImpByz b.
     destruct (Loc.eq_dec (Config.loc (conf (Good g)))
-                         (Config.target (Config.robot_info (conf (Good g))))).
+                         (Info.target (Config.info (conf (Good g))))).
     simpl in *.
     destruct (Location.eq_dec
          (Loc.add
@@ -1162,9 +1162,9 @@ Section Move_minus1.
                  match id with
                  | Good g =>
                    {| Config.loc := Loc.add (Loc.opp 1) (create_conf1 g);
-                      Config.robot_info :=
-                        {| Config.source := create_conf1 g;
-                           Config.target := Loc.add (Loc.opp 1) (create_conf1 g)
+                      Config.info :=
+                        {| Info.source := create_conf1 g;
+                           Info.target := Loc.add (Loc.opp 1) (create_conf1 g)
                         |} |}
                  | Byz b => (config1 (Byz b))
                  end).
@@ -1235,20 +1235,20 @@ Section Move_minus1.
                                         Config.loc := Loc.add 
                                                         (Loc.opp 1) 
                                                         (create_conf1 g0);
-                                        Config.robot_info :=
+                                        Config.info :=
                                           {|
-                                            Config.source := create_conf1 g0;
-                                            Config.target := Loc.add
+                                            Info.source := create_conf1 g0;
+                                            Info.target := Loc.add
                                                                (Loc.opp 1)
                                                                (create_conf1 g0)
                                           |} |}
                                     | Byz _ =>
                                       {|
                                         Config.loc := Loc.origin;
-                                        Config.robot_info :=
+                                        Config.info :=
                                           {|
-                                            Config.source := Loc.origin;
-                                            Config.target := Loc.origin |} |}
+                                            Info.source := Loc.origin;
+                                            Info.target := Loc.origin |} |}
                                     end)))
                            (Loc.add (Loc.add (Loc.opp 1) (create_conf1 g))
                                     (Loc.opp (Loc.add (Loc.opp 1)
@@ -1311,17 +1311,17 @@ Section Move_minus1.
                                    Config.loc := Loc.add 
                                                    (Loc.opp 1) 
                                                    (create_conf1 g0);
-                                   Config.robot_info := {|
-                                                         Config.source := create_conf1
+                                   Config.info := {|
+                                                         Info.source := create_conf1
                                                                             g0;
-                                                         Config.target := Loc.add
+                                                         Info.target := Loc.add
                                                                             (Loc.opp 1) (create_conf1 g0) |} |}
                                | Byz _ =>
                                  {|
                                    Config.loc := Loc.origin;
-                                   Config.robot_info := {|
-                                                         Config.source := Loc.origin;
-                                                         Config.target := Loc.origin |} |}
+                                   Config.info := {|
+                                                         Info.source := Loc.origin;
+                                                         Info.target := Loc.origin |} |}
                                end)))
                       (Loc.add (Loc.add (Loc.opp 1) (create_conf1 g))
                                (Loc.opp (Loc.add (Loc.opp 1) (create_conf1 g)))))
@@ -1354,19 +1354,19 @@ Section Move_minus1.
                                    {|
                                      Config.loc := Loc.add (Loc.opp 1)
                                                            (create_conf1 g0);
-                                     Config.robot_info :=
+                                     Config.info :=
                                        {|
-                                         Config.source := create_conf1 g0;
-                                         Config.target := Loc.add
+                                         Info.source := create_conf1 g0;
+                                         Info.target := Loc.add
                                                             (Loc.opp 1)
                                                             (create_conf1 g0) |} |}
                                  | Byz _ =>
                                    {|
                                      Config.loc := Loc.origin;
-                                     Config.robot_info :=
+                                     Config.info :=
                                        {|
-                                         Config.source := Loc.origin;
-                                         Config.target := Loc.origin |} |}
+                                         Info.source := Loc.origin;
+                                         Info.target := Loc.origin |} |}
                                  end)))
                         (Loc.add (Loc.add (Loc.opp 1) (create_conf1 g))
                                  (Loc.opp (Loc.add (Loc.opp 1) (create_conf1 g)))))
@@ -1420,8 +1420,7 @@ Lemma round_2_simplify_m1 :
          (round r da1 (round r da1 conf))
          (fun id =>
             match id with
-            | Byz b => {| Config.loc := relocate_byz da1 b;
-                          Config.robot_info := Config.robot_info (conf (Byz b)) |}
+            | Byz b => Fin.case0 _ b
             | Good g =>
               let local_config := Config.map
                                     (apply_sim
@@ -1437,9 +1436,9 @@ Lemma round_2_simplify_m1 :
                            (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
                                                                   local_target in
                 {| Config.loc := new_target;
-                   Config.robot_info :=
-                     {| Config.source := Config.loc (conf (Good g));
-                        Config.target := new_target
+                   Config.info :=
+                     {| Info.source := Config.loc (conf (Good g));
+                        Info.target := new_target
                      |}
                 |}
               end).
@@ -1448,8 +1447,8 @@ Proof.
   assert (Hequiv' : (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
             /\
-            Location.eq (Config.target (Config.robot_info (conf id)))
-                        (Loc.add k (Config.target (Config.robot_info (config1 id)))))
+            Location.eq (Info.target (Config.info (conf id)))
+                        (Loc.add k (Info.target (Config.info (config1 id)))))
             ).
   { destruct Hconf_eq.
     exists (Loc.add (Loc.opp 1) x).
@@ -1475,7 +1474,7 @@ Proof.
   simpl.
   unfold round; simpl.
   destruct (Loc.eq_dec (Config.loc (conf (Good g)))
-                         (Config.target (Config.robot_info (conf (Good g)))))
+                         (Info.target (Config.info (conf (Good g)))))
       as [e_lt|nfalse] eqn : Hlt_eqdec; try now destruct nfalse; rewrite Hlg0, Htg0.
   simpl in *.
   destruct ( Location.eq_dec
@@ -1528,9 +1527,9 @@ Qed.
                     Location.eq (Config.loc (conf id))
                                 (Loc.add k (Config.loc (config1 id)))
                     /\
-                    Location.eq (Config.target (Config.robot_info (conf id)))
-                                (Loc.add k (Config.target
-                                              (Config.robot_info (config1 id)))))).
+                    Location.eq (Info.target (Config.info (conf id)))
+                                (Loc.add k (Info.target
+                                              (Config.info (config1 id)))))).
     { destruct Hequiv.
       exists (Loc.add (Loc.opp 1) x).
       intros [g'|b]; try ImpByz b.
@@ -1630,9 +1629,9 @@ Qed.
                       Location.eq (Config.loc (conf id))
                                   (Loc.add k (Config.loc (config1 id)))
                       /\
-                      Location.eq (Config.target (Config.robot_info (conf id)))
-                                  (Loc.add k (Config.target
-                                                (Config.robot_info (config1 id)))))).
+                      Location.eq (Info.target (Config.info (conf id)))
+                                  (Loc.add k (Info.target
+                                                (Config.info (config1 id)))))).
       { destruct H.
         exists (Loc.add (Loc.opp 1) x).
         intros [g'|b]; try ImpByz b.

@@ -42,23 +42,24 @@ Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
-  relocate_byz : Names.B → Loc.t;
+  relocate_byz : Names.B → Config.RobotConf;
   step : Names.ident → option (Loc.t → Sim.t);
   step_compat : Proper (eq ==> opt_eq (Loc.eq ==> Sim.eq)) step;
   step_center : forall id sim c, step id = Some sim -> Loc.eq (sim c).(Sim.center) c}.
 
 Definition da_eq (da1 da2 : demonic_action) :=
   (forall id, opt_eq (Loc.eq ==> Sim.eq)%signature (da1.(step) id) (da2.(step) id)) /\
-  (forall b : Names.B, Loc.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
+  (forall b : Names.B, Config.eq_RobotConf (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
 Instance da_eq_equiv : Equivalence da_eq.
 Proof. split.
 + split; intuition. now apply step_compat.
-+ intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
-  specialize (H1 id). destruct (step d1 id), (step d2 id); trivial.
++ intros d1 d2 [H1 H2]. split; repeat intro; try symmetry; auto; [].
+  specialize (H1 id). destruct (step d1 id), (step d2 id); trivial; [].
   intros x y Hxy. simpl in H1. symmetry. apply H1. now symmetry.
-+ intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
-  specialize (H1 id). specialize (H3 id). destruct (step d1 id), (step d2 id), (step d3 id); simpl in *; trivial.
++ intros d1 d2 d3 [H1 H2] [H3 H4]. split; intros; try etransitivity; eauto; [].
+  specialize (H1 id). specialize (H3 id).
+  destruct (step d1 id), (step d2 id), (step d3 id); simpl in *; trivial; [|].
   - simpl in *. intros x y Hxy. rewrite (H1 _ _ (reflexivity x)). now apply H3.
   - elim H1.
 Qed.
@@ -66,7 +67,7 @@ Qed.
 Instance step_da_compat : Proper (da_eq ==> eq ==> opt_eq (Loc.eq ==> Sim.eq)) step.
 Proof. intros da1 da2 [Hd1 Hd2] p1 p2 Hp. subst. apply Hd1. Qed.
 
-Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Loc.eq) relocate_byz.
+Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Config.eq_RobotConf) relocate_byz.
 Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
 Lemma da_eq_step_None : forall da1 da2, da_eq da1 da2 -> forall id, step da1 id = None <-> step da2 id = None.
@@ -265,16 +266,6 @@ Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 
 (** ** One step executions *)
 
-Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
-  {| Config.loc := sim infoR; Config.info := Info.app sim (Config.info infoR) |}.
-
-Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
-Proof.
-intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
-- apply Hsim, Hconf.
-- apply Hconf.
-Qed.
-
 (** [round r da conf] return the new configuration of robots (that is a function
     giving the position of each robot) from the previous one [conf] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
@@ -286,15 +277,13 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
       | None => conf id (** If g is not activated, do nothing *)
       | Some sim => (** g is activated and [sim (conf g)] is its similarity *)
         match id with
-        | Byz b => (* byzantine robots are relocated by the demon *)
-            {| Config.loc := da.(relocate_byz) b;
-               Config.robot_info := Config.robot_info (conf id) |}
+        | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
         | Good g => (* configuration expressed in the frame of g *)
           let frame_change := sim (conf id) in
-          let local_conf := Config.map (apply_sim frame_change) conf in
+          let local_conf := Config.map (Config.app frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
           {| Config.loc := frame_change⁻¹ (r (Spect.from_config local_conf));
-             Config.robot_info := Config.robot_info (conf id) |}
+             Config.info := Config.info (conf id) |}
         end
     end.
 
@@ -309,7 +298,7 @@ destruct (step da1 id), (step da2 id), id; try now elim Hstep.
     - apply Hstep, Hconf.
     - apply Hr, Spect.from_config_compat, Config.map_compat; trivial. f_equiv. apply Hstep, Hconf.
   + apply Hconf.
-* hnf. split; try apply Hconf; []. simpl. rewrite Hda. reflexivity.
+* now f_equiv.
 Qed.
 
 (** A third subset of robots, moving ones *)

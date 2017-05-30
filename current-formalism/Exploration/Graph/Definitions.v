@@ -58,9 +58,11 @@ Module Loc <: DecidableType.
   
 End Loc.
 
-Module Config := Configurations.Make(Loc)(N)(Names).
 Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc).
-Module Equiv := GraphEquivalence (Graph)(N)(Names)(Loc)(Config)(Iso).
+Module MkInfo := CommonGraphFormalism.Make(Graph)(LocationA).
+Module Info := MkInfo.Info.
+Module Config := Configurations.Make(Loc)(N)(Names)(Info).
+Module Equiv := GraphEquivalence (Graph)(N)(Names)(Loc)(MkInfo)(Config)(Iso).
 Import Equiv Iso.
 Import Equiv.DGF.
 
