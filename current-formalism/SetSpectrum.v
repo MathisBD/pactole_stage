@@ -7,6 +7,16 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
 
 Require Import Utf8_core.
 Require Import Omega.
@@ -125,6 +135,10 @@ induction l as [| x l]; simpl.
   - apply MProp.add_cardinal_2 in Hmem. omega.
 Qed.
 
+Instance elements_compat : Proper (M.eq ==> PermutationA Location.eq) M.elements.
+Proof. repeat intro. apply NoDupA_equivlistA_PermutationA; autoclass; now apply M.elements_spec2w. Qed.
+
+
 (** Building a spectrum from a configuration *)
 
 (** Inclusion is not possible because M already contains a function [is_ok]. *)
@@ -144,7 +158,8 @@ apply (@PermutationA_map _ _ Config.eq_RobotConf Location.eq _ Config.loc).
 + apply eqlistA_PermutationA_subrelation, Config.list_compat. assumption.
 Qed.
 
-Definition is_ok s conf := forall l, In l s <-> exists id : Names.ident, Location.eq l (Config.loc (conf id)).
+Definition is_ok s conf := forall l,
+  In l s <-> exists id : Names.ident, Location.eq l (Config.loc (conf id)).
 
 Theorem from_config_spec : forall config, is_ok (from_config config) config.
 Proof.
@@ -153,6 +168,122 @@ rewrite set_spec, InA_map_iff; autoclass.
 setoid_rewrite Config.list_InA. split.
 - intros [[pt info] [Heq [id Hid]]]. exists id. now rewrite <- Hid, <- Heq.
 - intros [id Hid]. exists (config id). intuition. now exists id.
+Qed.
+
+Definition map f m := M.fold (fun x acc => M.add (f x) acc) m M.empty.
+
+Instance fold_compat :
+    forall f, Proper (Location.eq ==> eq ==> eq) f -> transpose eq f ->
+    forall a, Proper (eq ==> eq) (fun x => M.fold f x a).
+Proof.
+intros f Hf Ht a m1 m2 Heq. do 2 rewrite M.fold_spec.
+rewrite fold_left_symmetry_PermutationA; autoclass; try reflexivity; [|].
+- repeat intro. now apply Hf.
+- apply NoDupA_equivlistA_PermutationA; autoclass; apply M.elements_spec2w.
+Qed.
+  
+Instance map_compat : forall f, Proper (Location.eq ==> Location.eq) f ->
+  Proper (eq ==> eq) (map f).
+Proof.
+intros f Hf m₁ m₂ Hm. unfold map. apply fold_compat; autoclass; [|].
+- repeat intro. now repeat f_equiv.
+- repeat intro. now rewrite MProp.MP.add_add.
+Qed.
+
+Lemma map_empty : forall f, map f M.empty [=] M.empty.
+Proof. reflexivity. Qed.
+
+Lemma map_In : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall x m, M.In x m -> M.In (f x) (map f m).
+Proof.
+intros f Hf x m.
+unfold map.
+apply MProp.MP.fold_rec_bis.
++ intros s s' a Heq IH Hin.
+  apply IH.
+  now rewrite Heq.
++ intro Hin.
+  apply MProp.MP.Dec.F.empty_iff in Hin.
+  elim Hin.
++ intros a s s' Hina Hnotinta IH Hinx.
+  destruct (Location.eq_dec x a).
+  - rewrite e. now apply F.add_1.
+  - apply F.add_2.
+    apply IH.
+    apply F.add_3 with (x := a).
+    intro Heq. apply n. now rewrite Heq.
+    assumption.
+Qed.
+
+Lemma map_add : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall x m, map f (M.add x m) [=] M.add (f x) (map f m).
+Proof.
+  intros f Hf x m y.
+  destruct (MSetDecideAuxiliary.dec_In x m).
+  + unfold map at 1. rewrite MProp.MP.add_fold.
+    - assert (M.In (f x) (map f m)).
+      { now apply map_In. }
+      now rewrite MProp.MP.add_equal.
+    - apply eq_equiv.
+    - repeat intro. now rewrite H0, H1.
+    - repeat intro. now rewrite MProp.MP.add_add.
+    - assumption.
+  + unfold map at 1. rewrite MProp.MP.fold_add.
+    - reflexivity.
+    - apply eq_equiv.
+    - repeat intro. now rewrite H0, H1.
+    - repeat intro. now rewrite MProp.MP.add_add.
+    - assumption.
+Qed.
+
+Lemma map_spec : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall y s, M.In y (map f s) <-> exists x, M.In x s /\ Location.eq y (f x).
+Proof.
+intros f Hf y s. split.
+* pattern s. apply MProp.set_rec; clear s.
+  + intros s s' Heq Hrec Hin. rewrite <- F.equal_iff in Heq.
+    rewrite <- Heq in Hin. apply Hrec in Hin. setoid_rewrite <- Heq. apply Hin.
+  + intros s x Hout Hrec Hin. rewrite map_add in Hin; autoclass.
+    rewrite M.add_spec in Hin. destruct Hin as [Hin | Hin].
+    - exists x. fsetdec.
+    - apply Hrec in Hin. destruct Hin as [x' [Hin Heq]].
+      exists x'. fsetdec.
+  + intro. fsetdec.
+* intros [x [Hin Heq]]. rewrite Heq. now apply map_In.
+Qed.
+
+Theorem set_map : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall l, set (List.map f l) [=] map f (set l).
+Proof.
+intros f Hf l.
+induction l; simpl.
++ now rewrite set_nil, map_empty.
++ do 2 rewrite set_cons. now rewrite map_add, IHl.
+Qed.
+
+
+Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall config, eq (map f (from_config config)) (from_config (Config.map (Config.app f) config)).
+Proof.
+intros f Hf config. unfold from_config.
+rewrite Config.list_map, <- set_map; autoclass.
+do 2 rewrite List.map_map. f_equiv.
+Qed.
+
+Lemma map_injective_elements : forall f,
+  Proper (Location.eq ==> Location.eq) f ->
+  injective Location.eq Location.eq f ->
+  forall s, PermutationA Location.eq (M.elements (map f s)) (List.map f (M.elements s)).
+Proof.
+intros f Hf Hfinj s.
+apply NoDupA_equivlistA_PermutationA; autoclass.
++ apply M.elements_spec2w.
++ eapply map_injective_NoDupA; autoclass. apply M.elements_spec2w.
++ intro y.
+  rewrite <- F.elements_iff, map_spec, InA_map_iff; autoclass; [].
+  split; intros [x [H1 H2]].
+  - exists x. fsetdec.
+  - exists x. rewrite MProp.MP.Dec.F.elements_iff. now symmetry in H1.
 Qed.
 
 End Make.

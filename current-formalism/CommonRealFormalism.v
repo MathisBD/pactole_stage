@@ -1,4 +1,23 @@
 (* This file specialises the common formalism to real metric spaces and contains a common notion of similarity. *)
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
 
 Require Import Reals.
 Require Import Morphisms.

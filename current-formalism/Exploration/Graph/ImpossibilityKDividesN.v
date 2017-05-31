@@ -24,7 +24,6 @@ Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
 Require Import Omega.
-(* Require Import List SetoidList. *)
 Require Import Decidable.
 Require Import Equalities.
 Require Import List Setoid Compare_dec Morphisms FinFun.

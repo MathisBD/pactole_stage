@@ -270,11 +270,6 @@ Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousIn
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
-(* Proof. *)
-(*   coinduction fully_fair. *)
-(*   - intro. apply local_fully_synchronous_implies_fair. apply X. *)
-(*   - now inversion X. *)
-(* Qed. *)
 Proof. apply Stream.forever_impl_compat. intros s Hs g. constructor. apply Hs. Qed.
 
 (** ** One step executions *)
@@ -282,7 +277,11 @@ Proof. apply Stream.forever_impl_compat. intros s Hs g. constructor. apply Hs. Q
 (** [round r da conf] return the new configuration of robots (that is a function
     giving the configuration of each robot) from the previous one [conf] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
-    is used for byzantine robots. *)
+    is used for byzantine robots.
+    
+    As similarities preserve distance ratios, we can perform the multiplication by [mv_ratio]
+    either in the local frame or in the global one. *)
+
 (* FIXME: what to do with the extra information contained in RobotConf? Who should update it? *)
 Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
   (** for a given robot, we compute the new configuration *)

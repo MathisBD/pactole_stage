@@ -1,10 +1,11 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
 (**************************************************************************)
 
 
@@ -117,6 +118,8 @@ Module Type Configuration (Location : DecidableType)
   Axiom app_id : (eq_RobotConf ==> eq_RobotConf)%signature (app Datatypes.id) Datatypes.id.
   Axiom app_compose : forall f g, Proper (Location.eq ==> Location.eq) f -> Proper (Location.eq ==> Location.eq) g ->
      (eq_RobotConf ==> eq_RobotConf)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+  Axiom loc_app : forall f, Proper (Location.eq ==> Location.eq) f ->
+    (eq_RobotConf ==> Location.eq)%signature (fun x => loc (app f x)) (fun x => f (loc x)).
 
   Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id) (config₂ id).
 
@@ -236,14 +239,9 @@ intros f g Hf Hg rc1 rc2 [? Heq]. split; simpl.
 - now apply Info.app_compose.
 Qed.
 
-(* 
-  assert (forall id, eq_RobotConf (config1 id) (config2 id) \/
-                     ~ eq_RobotConf (config1 id) (config2 id)).
-  intros id.
-  destruct (eq_RobotConf_dec (config1 id) (config2 id)).
-  now left.
-  now right. 
-*)
+Lemma loc_app : forall f, Proper (Location.eq ==> Location.eq) f ->
+  (eq_RobotConf ==> Location.eq)%signature (fun x => loc (app f x)) (fun x => f (loc x)).
+Proof. repeat intro. simpl. now do 2 f_equiv. Qed.
 
 (** A configuration is a mapping from identifiers to locations.  Equality is extensional. *)
 Definition t := Names.ident -> RobotConf. 

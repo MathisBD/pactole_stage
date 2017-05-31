@@ -8,6 +8,18 @@
 (**************************************************************************)
 
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
+
 Require Import Arith.Div2.
 Require Import Omega.
 Require Import Reals.
@@ -1596,6 +1608,28 @@ intros l2 [| y l1'] l2' Heq Hlen; simpl in *; auto; try omega; [].
 inv Heq. edestruct IHl1; eauto.
 Qed.
 
+Lemma singleton_characterization: forall (Aeq_dec: forall (a b: A), {a=b} + {a<>b}) (l: list A) (a: A),
+    NoDup l ->
+    In a l ->
+    (forall b, ~ a = b -> ~ In b l) ->
+    l = a :: nil.
+Proof.
+  intros Aeq_dec l a Hnodup Hin Hnotin.
+  destruct l.
+  + inversion Hin.
+  + destruct (Aeq_dec a a0).
+    - subst. f_equal.
+      destruct l.
+      * reflexivity.
+      * exfalso. apply (Hnotin a).
+        -- inversion Hnodup.
+           intro Heq.
+           apply H1. now left.
+        -- intuition.
+    - exfalso.
+      apply (Hnotin a0); intuition.
+Qed.
+
 End ToSortOut_results.
 
 Global Arguments mem [A] [eqA] eq_dec x l.
@@ -1605,6 +1639,8 @@ Global Arguments mem [A] [eqA] eq_dec x l.
 (** *  The same for real numbers. **)
 (* ******************************* *)
 
+
+Open Scope R_scope.
 
 (* Should be in Reals from the the std lib! *)
 Global Instance Rle_preorder : PreOrder Rle.
@@ -1627,6 +1663,26 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. contradiction.
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
+
+Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.
+Proof. intros a b ? ?. now apply Fourier_util.Rle_mult_inv_pos. Qed.
+
+(* Lemma Rdiv_le_compat : forall a b c, (0 <= a -> a <= b -> 0 < c -> a / c <= b / c)%R.
+Proof.
+intros a b c ? ? ?. unfold Rdiv. apply Rmult_le_compat; try lra.
+rewrite <- Rmult_1_l. apply Fourier_util.Rle_mult_inv_pos; lra.
+Qed. *)
+
+Lemma Zup_lt : forall x y, x <= y - 1 -> (up x < up y)%Z.
+Proof.
+intros x y Hle. apply lt_IZR. apply Rle_lt_trans with (x + 1).
+- generalize (proj2 (archimed x)). lra.
+- apply Rle_lt_trans with (y - 1 + 1); try lra; [].
+  generalize (proj1 (archimed y)). lra.
+Qed.
+
+Lemma up_le_0_compat : forall x, 0 <= x -> (0 <= up x)%Z.
+Proof. intros x ?. apply le_0_IZR, Rlt_le, Rle_lt_trans with x; trivial; []. now destruct (archimed x). Qed.
 
 (** A boolean equality test. *)
 Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
@@ -1714,6 +1770,8 @@ Existing Instance fold_left_start.
 Existing Instance fold_left_symmetry_PermutationA.
 Existing Instance PermutationA_map.
 
+
+Close Scope R_scope.
 
 Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
 Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.

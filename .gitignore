@@ -1,7 +1,9 @@
 *.vo
+*.vio
 *.glob
 *.v.d
 .*.aux
+.*.vo.aux
 .coq-native/
 *.v.crashcoqide
 

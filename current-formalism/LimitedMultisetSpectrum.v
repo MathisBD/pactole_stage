@@ -6,7 +6,16 @@
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
 (*                                                                        *)
 (**************************************************************************)
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
 
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
 
 Require Import Utf8_core.
 Require Import SetoidList.
@@ -49,7 +58,7 @@ Definition eq_dec := M.eq_dec.
 Definition In := M.In.
 
 
-Definition from_config conf : M.t :=
+Definition from_config conf : t :=
   M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.multiset (map Config.loc (Config.list conf))).
 
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.

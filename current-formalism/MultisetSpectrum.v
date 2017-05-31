@@ -7,8 +7,18 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
 
-Require MMapWeakList. (* to build an actual implementation of multisets *)
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
+Require MMaps.MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.

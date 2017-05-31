@@ -35,7 +35,7 @@ Proof. split.
 Qed.
 
 Instance Meq_key_equiv A : Equivalence (@M.eq_key A).
-Proof. split; compute.
+Proof. unfold M.eq_key. split.
   intro. reflexivity.
   intros ? ?. now symmetry.
   intros ? y ? ? ?. now transitivity (fst y).
@@ -936,7 +936,7 @@ rewrite fold_left_symmetry_PermutationA.
 + reflexivity.
 + now apply Meq_equiv.
 + assumption.
-+ intros ? ? Heq1 ? ? Heq2. apply Hf; trivial; f_equiv; apply Heq2.
++ intros ? ? ? ? ? Heq. repeat f_equiv; trivial; apply Heq.
 + intros. apply Hfcomm.
 + apply NoDupA_equivlistA_PermutationA.
   - now apply Meq_equiv.
