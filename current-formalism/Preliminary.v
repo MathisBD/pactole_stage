@@ -574,15 +574,6 @@ Lemma PermutationA_InA_inside : forall (x : A) l l',
   PermutationA eqA l l' -> InA eqA x l -> exists l1 y l2, eqA x y /\ l' = l1 ++ y :: l2.
 Proof. intros x l l' Hperm Hin. rewrite Hperm in Hin. apply (InA_split Hin). Qed.
 
-Lemma PermutationA_cons_split : forall (x : A) l l',
-  PermutationA eqA (x :: l) l' -> exists l'', PermutationA eqA l' (x :: l'').
-Proof.
-intros x l l' Hperm. assert (Hin : InA eqA x l'). { rewrite <- Hperm. now left. }
-symmetry in Hperm. destruct (PermutationA_InA_inside Hperm Hin) as [l1 [y [l2 [Heq Hll]]]].
-exists (l1 ++ l2). rewrite Hperm, Hll. etransitivity. symmetry. apply (PermutationA_middle _).
-constructor. now symmetry. reflexivity.
-Qed.
-
 Theorem PermutationA_ind_bis :
  forall P : list A -> list A -> Prop,
    P nil nil ->
