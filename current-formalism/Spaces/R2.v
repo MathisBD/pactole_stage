@@ -994,7 +994,6 @@ end;
 split; intro H; discriminate || (progress decompose [or and] H; clear H) || (injection H; intro);
 subst; trivial; try contradiction.
 + right; left. subst. repeat split. intro Heq. rewrite Heq in *. intuition.
-+ match goal with H : ?x <> ?x |- _ => now elim H end.
 + do 2 right. subst. repeat split; trivial. intro Heq. rewrite Heq in *. intuition.
 + repeat match goal with
     | H : dist _ _ = _ |- _ => rewrite H in *; clear H
@@ -2309,7 +2308,7 @@ Proof. intros. apply SEC_add_same, middle_in_SEC_diameter. Qed.
 
 (* Require Pactole.MMultiset.Preliminary. *)
 Lemma on_SEC_NoDupA : forall l, NoDupA equiv l -> NoDupA equiv (on_SEC l).
-Proof. intros. unfold on_SEC. SearchAbout filter NoDupA. now apply (Util.Preliminary.NoDupA_filter_compat _). Qed.
+Proof. intros. unfold on_SEC. now apply (Util.Preliminary.NoDupA_filter_compat _). Qed.
 
 Lemma on_SEC_middle_diameter : forall pt1 pt2, ~pt1 == pt2 ->
   PermutationA equiv (on_SEC (middle pt1 pt2 :: pt1 :: pt2 :: nil)) (on_SEC (pt1 :: pt2 :: nil)).

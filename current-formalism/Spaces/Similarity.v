@@ -167,7 +167,7 @@ Section Normed_Results.
 (** The existence of homothecy and translation similarities (implied by these two hypotheses)
     is actually equivalent to defining a normed vector space. *)
 Context (T : Type).
-Context `(RealMetricSpace T).
+Context `(rmsT : RealMetricSpace T).
 Hypothesis translation_hypothesis : forall v x y : T, dist (add x v) (add y v) = dist x y.
 Hypothesis homothecy_hypothesis : forall ρ x y, dist (mul ρ x) (mul ρ y) = Rabs ρ * dist x y.
 
@@ -219,7 +219,7 @@ Qed.
 
 Definition bij_homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : @bijection T _.
 refine {|
-  section := fun x => mul ρ (add x (opp c));
+  section := fun x => @mul _ _ _ rmsT ρ (@add _ _ _ rmsT x (@opp _ _ _ rmsT c));
   retraction := fun x => add (mul (/ρ) x) c |}.
 Proof.
 + intros x y Hxy; now rewrite Hxy. (* TODO: make abstract work *)

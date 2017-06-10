@@ -56,8 +56,7 @@ Proof. apply spect_non_nil. apply size_G. Qed.
 Corollary sort_non_nil : forall config, sort (support (!! config)) <> nil.
 Proof.
 intros config Habs. apply (spect_non_nil config).
-rewrite <- (@support_nil R _ R_EqDec multiset_FMOps _).
-(* FIXME: why do we need to provide all the arguments? *)
+setoid_rewrite <- support_nil.
 apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
 
@@ -137,7 +136,7 @@ Proof. now intros conf [? _]. Qed.
 Lemma forbidden_support_length : forall config, forbidden config ->
   size (!! config) = 2.
 Proof.
-intros config [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]]. Locate "!!".
+intros config [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).
 + rewrite size_add; try (now apply half_size_config); [].
   destruct (In_dec pt2 (singleton pt1 (Nat.div2 nG))) as [Hin | Hin].

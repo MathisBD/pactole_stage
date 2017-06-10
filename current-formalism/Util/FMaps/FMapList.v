@@ -280,8 +280,7 @@ Proof. split.
     - reflexivity.
     - intro i. inversion_clear Hm. now rewrite IHl.
 * (* equal *)
-  admit.
-  (*
+(*   admit. *)
   split.
   + unfold Equivb, Equiv, In. intros elt [m Hm] [m' Hm'] cmp. simpl.
     revert m' Hm'. induction m as [| [y p] l]; simpl; intros m' Hm' Heq.
@@ -295,9 +294,8 @@ Proof. split.
         assert (Habs : exists e : elt, InA eq_pair (y, e) ((y, p) :: l)) by now exists p; left.
         rewrite Heq in Habs. destruct Habs as [? Habs]. inversion Habs. }
       destruct m' as [| [x n] m']; try now elim Heqm'.
-      unfold list_equal. simpl.
-  + 
-  *)
+      unfold list_equal. simpl. admit.
+  + admit.
 * (* map *)
   split.
   + intros elt elt' [m Hm] x e f Hin. simpl in *. induction m as [| [y p] m].

@@ -12,12 +12,12 @@ Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
+Require Import SetoidDec.
 Require Import Pactole.Util.FMaps.FMapList.
 Require Import Pactole.Util.MMultiset.MMultisetWMap.
 Require Export Pactole.Util.MMultiset.MMultisetInterface.
 Require Export Pactole.Util.MMultiset.MMultisetFacts.
 Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
-Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 
@@ -37,8 +37,8 @@ Context {loc_RMS : RealMetricSpace loc}.
 Context {RobotsDef : NamesDef}.
 Context {Robots : Names}.
 
-Global Instance multiset_FMOps : FMOps loc _ := FMOps_WMap loc _ _ _.
-Global Instance multiset_Facts : FMultisetsOn loc _ := MakeFMultisetsFacts _ _ _ _ _.
+Existing Instance FMOps_WMap.
+Existing Instance MakeFMultisetsFacts.
 
 
 Lemma eq_refl_left : forall (e : loc) A (a b:A), (if equiv_dec e e then a else b) = a.
@@ -163,7 +163,7 @@ intros x l y. induction l as [| a l].
 * rewrite make_multiset_nil. rewrite empty_spec. now rewrite remove_0, empty_spec.
 * rewrite make_multiset_cons. simpl removeA.
   destruct (equiv_dec y x) as [Hyx | Hyx], (equiv_dec x a) as [Hxa | Hxa].
-  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite remove_same. rewrite Hxa, add_same, add_same. omega.
+  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite remove_same. rewrite Hxa, add_same. omega.
   + rewrite Hyx in *. rewrite make_multiset_cons, add_other; auto.
     rewrite IHl. do 2 rewrite remove_same. simpl. omega.
   + rewrite IHl. repeat rewrite remove_other; auto; [].
@@ -195,10 +195,9 @@ Global Instance multiset_spectrum : Spectrum loc := {|
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
 Defined.
 
-
 Lemma spect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->
   forall config : configuration,
-  @equiv spectrum spectrum_Setoid (map f (spect_from_config config)) (spect_from_config (map_config f config)).
+  @equiv spectrum _ (map f (spect_from_config config)) (spect_from_config (map_config f config)).
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum.
 now rewrite config_list_map, make_multiset_map.

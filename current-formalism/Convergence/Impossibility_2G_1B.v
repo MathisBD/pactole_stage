@@ -565,7 +565,7 @@ Qed.
 
 Corollary no_move2 : r (!! (map_config (homothecy  1 minus_1) config2 )) = 0.
 Proof.
-assert (1 <> 0) by apply R1_neq_R0. SearchAbout robogram.
+assert (1 <> 0) by apply R1_neq_R0.
 rewrite <- (@spect_from_config_map _ _ _ _ _ _ (homothecy 1 minus_1) ltac:(autoclass) config2).
 rewrite spect_conf2. rewrite swap_spect2_spect1. apply no_move1.
 Qed.
