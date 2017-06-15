@@ -62,6 +62,18 @@ Defined.
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
 Ltac Rdec := repeat
   match goal with
+    | |- context[@equiv_dec _ _ R_EqDec ?x ?x] =>
+        let Heq := fresh "Heq" in destruct (@equiv_dec _ _ R_EqDec x x) as [Heq | Heq];
+        [clear Heq | exfalso; elim Heq; reflexivity]
+    | |- context[@equiv_dec _ _ R_EqDec 1 0] =>
+        let Heq := fresh "Heq" in destruct (@equiv_dec _ _ R_EqDec 1 0) as [Heq | Heq];
+        [now elim R1_neq_R0 | clear Heq]
+    | |- context[@equiv_dec _ _ R_EqDec 0 1] =>
+        let Heq := fresh "Heq" in destruct (@equiv_dec _ _ R_EqDec 0 1) as [Heq | Heq];
+        [now symmetry in Heq; elim R1_neq_R0 | clear Heq]
+    | H : context[@equiv_dec _ _ R_EqDec ?x ?x] |- _ =>
+        let Heq := fresh "Heq" in destruct (@equiv_dec _ _ R_EqDec x x) as [Heq | Heq];
+        [clear Heq | exfalso; elim Heq; reflexivity]
     | |- context[Rdec ?x ?x] =>
         let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
         [clear Heq | exfalso; elim Heq; reflexivity]
@@ -79,6 +91,9 @@ Ltac Rdec := repeat
 
 Ltac Rdec_full :=
   match goal with
+    | |- context[@equiv_dec _ _ R_EqDec ?x ?y] =>
+      let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
+      destruct (@equiv_dec _ _ R_EqDec x y) as [Heq | Hneq]
     | |- context[Rdec ?x ?y] =>
       let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
       destruct (Rdec x y) as [Heq | Hneq]
@@ -88,16 +103,11 @@ Ltac Rdec_full :=
 Ltac Rabs :=
   match goal with
     | Hx : ?x <> ?x |- _ => now elim Hx
+    | Heq : ?x == ?y, Hneq : ?y =/= ?x |- _ => symmetry in Heq; contradiction
+    | Heq : ?x == ?y, Hneq : ?y <> ?x |- _ => symmetry in Heq; contradiction
+    | Heq : ?x = ?y, Hneq : ?y =/= ?x |- _ => symmetry in Heq; contradiction
     | Heq : ?x = ?y, Hneq : ?y <> ?x |- _ => symmetry in Heq; contradiction
     | _ => contradiction
-  end.
-
-Ltac Rdec_aux H :=
-  match type of H with
-    | context[Rdec ?x ?y] =>
-      let Heq := fresh "Heq" in let Hneq := fresh "Hneq" in
-      destruct (Rdec x y) as [Heq | Hneq]
-    | _ => fail
   end.
 
 Ltac Rle_dec :=
