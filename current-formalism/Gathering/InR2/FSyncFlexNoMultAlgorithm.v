@@ -134,8 +134,10 @@ repeat split.
   repeat rewrite <- R2norm_dist. rewrite R2add_dist. repeat rewrite sim.(Sim.dist_prop).
   repeat rewrite R_sqr.Rsqr_mult, square_dist_simpl. unfold Rsqr. cbn. ring.
 * intros [x y].
-  
-Admitted.
+  assert (H01 : ~R2.eq (0, 1) R2.origin).
+  { compute. intro Habs. inv Habs. now apply R1_neq_R0. }
+  rewrite (decompose_on H01 (x, y)) at 1.
+Admitted. (* similarity_in_R2 *)
 
 Corollary sim_add : forall (sim : Sim.t) x y, (sim (x + y) = sim x + sim y - sim R2.origin)%R2.
 Proof.
