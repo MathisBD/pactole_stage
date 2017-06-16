@@ -8,14 +8,13 @@
 (**************************************************************************)
 
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
-
-   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
-
-   PACTOLE project                                                      
-                                                                        
-   This file is distributed under the terms of the CeCILL-C licence     
-                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                                
+                                                                            
+   PACTOLE project                                                          
+                                                                            
+   This file is distributed under the terms of the CeCILL-C licence         
+                                                                          *)
 (**************************************************************************)
 
 Require Import Utf8.
@@ -23,12 +22,125 @@ Require Import Morphisms.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
+Require Import Eqdep.
 Require Import Pactole.Preliminary.
-Open Scope list_scope.
-Require Vector.
 
+
+Open Scope list_scope.
 Set Implicit Arguments.
 
+(* Taken fron CoLoR *)
+Scheme le_ind_dep := Induction for le Sort Prop.
+Lemma le_unique : forall n m (h1 h2 : le n m), h1 = h2.
+Proof.
+intro n.
+assert (forall m : nat, forall h1 : le n m, forall p : nat, forall h2 : le n p,
+  m=p -> eq_dep nat (le n) m h1 p h2).
+ intros m h1; elim h1 using le_ind_dep.
+  intros p h2; case h2; intros.
+   auto.
+   subst n. absurd (S m0 <= m0); auto with arith.
+ intros m0 l Hrec p h2.
+  case h2; intros.
+   subst n; absurd (S m0 <= m0); auto with arith.
+   assert (m0=m1); auto ; subst m0.
+   replace l0 with l; auto.
+   apply eq_dep_eq; auto.
+ intros; apply eq_dep_eq; auto.
+Qed.
+
+Lemma subset_dec : forall N (x y : {n : nat | n < N}), {x = y} + {x <> y}.
+Proof.
+intros N [x Hx] [y Hy]. destruct (Nat.eq_dec x y).
++ subst. left. f_equal. apply le_unique.
++ right. intro Habs. inv Habs. auto.
+Qed.
+
+Program Fixpoint build_enum N k (Hle : k <= N) acc : list {n : nat | n < N} :=
+  match k with
+    | 0 => acc
+    | S m => @build_enum N m _ (exist (fun x => x < N) m _ :: acc)
+  end.
+Next Obligation.
+omega.
+Qed.
+ 
+Definition enum N : list {n : nat | n < N} := build_enum (Nat.le_refl N) nil.
+
+Lemma In_build_enum : forall N k (Hle : k <= N) l x, In x (build_enum Hle l) <-> In x l \/ proj1_sig x < k.
+Proof.
+intros N k. induction k; intros Hle l x; simpl.
++ intuition. destruct x; omega.
++ rewrite IHk. simpl. split; intro Hin.
+  - destruct Hin as [[Hin | Hin] | Hin]; intuition; [].
+    subst. simpl. right. omega.
+  - destruct Hin as [Hin | Hin]; intuition; [].
+    assert (Hcase : proj1_sig x < k \/ proj1_sig x = k) by omega.
+    destruct Hcase as [Hcase | Hcase]; intuition; [].
+    subst. do 2 left. destruct x; f_equal; simpl in *. apply le_unique.
+Qed.
+
+Lemma In_enum : forall N x, In x (enum N) <-> proj1_sig x < N.
+Proof. intros. unfold enum. rewrite In_build_enum. simpl. intuition. Qed.
+
+Lemma build_enum_length : forall N k (Hle : k <= N) l, length (build_enum Hle l) = k + length l.
+Proof.
+intros N k. induction k; intros Hle l; simpl.
++ reflexivity.
++ rewrite IHk. simpl. omega.
+Qed.
+
+Lemma enum_length : forall N, length (enum N) = N.
+Proof. intro. unfold enum. now rewrite build_enum_length. Qed.
+
+Lemma build_enum_NoDup : forall N k (Hle : k <= N) l,
+  (forall x, In x l -> k <= proj1_sig x) ->  NoDup l -> NoDup (build_enum Hle l).
+Proof.
+intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
+apply IHk.
++ intros x [Hx | Hx].
+  - now subst.
+  - apply Hin in Hx. omega.
++ constructor; trivial; [].
+  intro Habs. apply Hin in Habs. simpl in Habs. omega.
+Qed.
+
+Lemma enum_NoDup : forall N, NoDup (enum N).
+Proof. intros. unfold enum. apply build_enum_NoDup; simpl; intuition; constructor. Qed.
+
+Lemma build_enum_app_nil : forall N k (Hle : k <= N) l,
+  build_enum Hle l = build_enum Hle nil ++ l.
+Proof.
+intros N k. induction k; intros Hle l; simpl.
++ reflexivity.
++ setoid_rewrite IHk. now rewrite <- app_assoc.
+Qed.
+
+Theorem build_enum_eq : forall {A} eqA N (f g : {n : nat | n < N} -> A) k (Hle : k <= N) l,
+  eqlistA eqA (List.map f (build_enum Hle l)) (List.map g (build_enum Hle l)) ->
+  forall x, proj1_sig x < k -> eqA (f x) (g x).
+Proof.
+intros A eqA N f g k. induction k; intros Hle l Heq x Hx; simpl.
+* destruct x; simpl in *; omega.
+* assert (Hlt : k <= N) by omega.
+  assert (Hcase : proj1_sig x < k \/ proj1_sig x = k) by omega.
+  destruct Hcase as [Hcase | Hcase].
+  + apply IHk with (x := x) in Heq; auto.
+  + subst k. simpl in Heq. rewrite build_enum_app_nil, map_app, map_app in Heq.
+    destruct (eqlistA_app_split _ _ _ _ Heq) as [_ Heq'].
+    - now do 2 rewrite map_length, build_enum_length.
+    - simpl in Heq'. inv Heq'.
+      assert (Heqx : x = exist (λ x : nat, x < N) (proj1_sig x) Hle).
+      { clear. destruct x; simpl. f_equal. apply le_unique. }
+      now rewrite Heqx.
+Qed.
+
+Corollary enum_eq : forall {A} eqA N (f g : {n : nat | n < N} -> A),
+  eqlistA eqA (List.map f (enum N)) (List.map g (enum N)) -> forall x, eqA (f x) (g x).
+Proof.
+unfold enum. intros A eqA N f g Heq x.
+apply build_enum_eq with (x := x) in Heq; auto; []. apply proj2_sig.
+Qed.
 
 (** *  Identification of robots  **)
 
@@ -40,313 +152,24 @@ End Size.
 
 Inductive identifier {G} {B} : Type :=  Good : G → identifier | Byz : B → identifier.
 
-
-Module Type RobotInternals(N : Size).
-  Parameter Vfin_map : ∀ (n : nat) (A : Type), (Fin.t n → A) → Vector.t A n.
-  Parameter fin_map : ∀ (n : nat) (A : Type), (Fin.t n → A) → list A.
-  Parameter Vfin_fin_map : ∀ (n : nat) (A : Type) (f : Fin.t n → A),
-    fin_map f = Vector.to_list (Vfin_map f).
-  Parameter fin_map_compatA : ∀ (n : nat) (A : Type) (eqA : relation A),
-    Proper ((eq ==> eqA) ==> eqlistA eqA) (@fin_map n A).
-  Parameter eqlistA_Leibniz : ∀ (A : Type) (l1 l2 : list A), eqlistA eq l1 l2 ↔ l1 = l2.
-  Parameter fin_map_compat : ∀ (n : nat) (A : Type), Proper ((eq ==> eq) ==> eq) (@fin_map n A).
-  Parameter InA_fin_map : ∀ (n : nat) (A : Type) (eqA : relation A), Equivalence eqA →
-    ∀ (g : Fin.t n) (f : Fin.t n → A), InA eqA (f g) (fin_map f).
-  Parameter In_fin_map : ∀ (n : nat) (A : Type) (g : Fin.t n) (f : Fin.t n → A), In (f g) (fin_map f).
-  Parameter fin_map_eq : forall n A (eqA : relation A) f g, eqlistA eqA (@fin_map n A f) (@fin_map n A g) -> forall x, eqA (f x) (g x).
-  Parameter fin_map_InA :
-    ∀ (A : Type) (eqA : relation A), Equivalence eqA → (∀ x y : A, {eqA x y} + {¬eqA x y}) →
-    ∀ (n : nat) (f : Fin.t n → A) (x : A), InA eqA x (fin_map f) ↔ (∃ id : Fin.t n, eqA x (f id)).
-  Parameter fin_map_In : ∀ A : Type, (∀ x y : A, {x = y} + {x ≠ y}) →
-    ∀ (n : nat) (f : Fin.t n → A) (x : A), In x (fin_map f) ↔ (∃ id : Fin.t n, x = f id).
-  Parameter map_fin_map : ∀ (n : nat) (A B : Type) (f : A → B) (h : Fin.t n → A),
-    fin_map (λ x : Fin.t n, f (h x)) = map f (fin_map h).
-  Parameter fin_map_id : ∀ (n : nat) (A : Type) (f : Fin.t n → A), fin_map f = map f (fin_map (fun x => x)).
-  Parameter fin_map_length : ∀ (n : nat) (A : Type) (f : Fin.t n → A), length (fin_map f) = n.
-  Parameter fin_map_NoDup : forall n A (f : Fin.t n -> A),
-    (forall x y : A, {x = y} + {x <> y}) -> injective eq eq f -> NoDup (fin_map f).
-  Parameter Rinv : ∀ n m : nat, m ≠ 0 → Fin.t (n + m) → Fin.t m.
-  Parameter Rinv_R : ∀ (n m : nat) (Hm : m ≠ 0) (x : Fin.t m), Rinv n Hm (Fin.R n x) = x.
-  Parameter combine : ∀ (n m : nat) (A : Type), (Fin.t n → A) → (Fin.t m → A) → Fin.t (n + m) → A.
-  Parameter combine_0_r : ∀ (n : nat) (A : Type) (f : Fin.t n → A) (g : Fin.t 0 → A),
-    (eq ==> eq)%signature (combine f g) (λ x : Fin.t (n + 0), f (eq_rec (n + 0) Fin.t x n (plus_0_r n))).
-  Parameter combine_0_l : ∀ (m : nat) (A : Type) (f : Fin.t 0 → A) (g : Fin.t m → A),
-    (eq ==> eq)%signature (combine f g) g.
-  Parameter combine_compat : ∀ (n m : nat) (A : Type),
-    Proper ((eq ==> eq) ==> (eq ==> eq) ==> eq ==> eq) (@combine n m A).
-  Parameter fin_map_app : ∀ (n m : nat) (A : Type) (f : Fin.t n → A) (g : Fin.t m → A),
-    fin_map f ++ fin_map g = fin_map (combine f g).
-  Definition G : Set := Fin.t N.nG.
-  Definition B := Fin.t N.nB.
-  Definition ident : Type := @identifier G B.
-  Definition Gnames : list G := fin_map (fun x : G => x).
-  Definition Bnames : list B := fin_map (fun x : B => x).
-  Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
-End RobotInternals.
-
-
-Module Names (N : Size) : RobotInternals(N).
-
-(** **  Finite sets of names  **)
-
-Fixpoint Vfin_map n A (f : Fin.t n -> A) {struct n} : Vector.t A n :=
-  match n as n' return n = n' -> Vector.t A n' with
-    | 0 => fun _ => (Vector.nil _)
-    | S m => fun Heq => Vector.cons A (f (eq_rec_r _ Fin.F1 Heq)) m
-                                      (Vfin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
-  end (eq_refl n).
-
-Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
-  match n as n' return n = n' -> list A with
-    | 0 => fun _ => nil
-    | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (eq_rec_r _ (Fin.FS x) Heq)))
-  end (eq_refl n).
-(*
-Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
-  match n as n' return n = n' -> list A with
-    | 0 => fun _ => nil
-    | S m => fun Heq => cons (f (eq_rec_r _ Fin.F1 Heq)) (fin_map (fun x => f (Fin.FS x)))
-  end (eq_refl n).
-*)
-Lemma Vfin_fin_map : forall n A (f : Fin.t n -> A), fin_map f = Vector.to_list (Vfin_map f).
-Proof.
-induction n; intros A f; simpl; unfold Vector.to_list.
-  reflexivity.
-  f_equal. rewrite IHn. reflexivity.
-Qed.
-
-Instance fin_map_compatA n A eqA : Proper ((eq ==> eqA) ==> eqlistA eqA) (@fin_map n A).
-Proof.
-intros f g Hext. induction n; simpl.
-+ constructor.
-+ constructor.
-  - apply Hext. reflexivity.
-  - apply IHn. repeat intro. apply Hext. subst. reflexivity.
-Qed.
-
-Lemma eqlistA_Leibniz A : forall (l1 l2 : list A), eqlistA eq l1 l2 <-> l1 = l2.
-Proof.
-intro l1. induction l1 as [| x1 l1]; intros l2.
-* destruct l2.
-  + split; intro; reflexivity.
-  + split; intro Habs; inversion Habs.
-* destruct l2.
-  + split; intro Habs; inversion Habs.
-  + split; intro Heq; inversion_clear Heq.
-    - subst. f_equal. rewrite <- IHl1. assumption.
-    - reflexivity.
-Qed.
-
-Instance fin_map_compat n A : Proper ((eq ==> eq) ==> eq) (@fin_map n A).
-Proof. intros f g Hext. rewrite <- eqlistA_Leibniz. apply fin_map_compatA. repeat intro. subst. now apply Hext. Qed.
-
-Theorem InA_fin_map : forall n A eqA `(Equivalence A eqA) g (f : Fin.t n -> A), InA eqA (f g) (fin_map f).
-Proof.
-intros n A eqA HeqA g f. destruct n.
-+ now apply Fin.case0.
-+ revert n g f. apply (Fin.rectS (fun n g => ∀ f : Fin.t (S n) → A, InA eqA (f g) (fin_map f))).
-  - intros n f. now left.
-  - intros n g IHn f. right. apply (IHn (fun x => f (Fin.FS x))).
-Qed.
-
-Lemma fin_map_eq n A eqA : forall f g, eqlistA eqA (@fin_map n A f) (@fin_map n A g) -> forall x, eqA (f x) (g x).
-Proof.
-induction n; intros f g Heq x.
-* now apply Fin.case0.
-* remember (S n) as m. destruct x as [m | m x].
-  + simpl in Heq. unfold eq_rec_r, eq_sym, eq_rec, eq_rect in Heq. now inv Heq.
-  + assert (m = n) by omega. subst m. clear Heqm.
-    simpl in Heq. unfold eq_rec_r, eq_sym, eq_rec, eq_rect in Heq. inv Heq.
-    now apply (IHn (fun x => f (Fin.FS x)) (fun x => g (Fin.FS x))).
-Qed.
-
-Corollary In_fin_map : forall n A g (f : Fin.t n -> A), In (f g) (fin_map f).
-Proof. intros. rewrite <- InA_Leibniz. apply (InA_fin_map _). Qed.
-
-Theorem fin_map_InA : forall A eqA `(Equivalence A eqA) (eq_dec : forall x y : A, {eqA x y} + {~eqA x y}),
-  forall n (f : Fin.t n -> A) x, InA eqA x (fin_map f) <-> exists id : Fin.t n, eqA x (f id).
-Proof.
-intros A eqA HeqA eq_dec n. induction n; intros f x.
-* simpl. rewrite InA_nil. split; intro Habs; try elim Habs. destruct Habs. now apply Fin.case0.
-* destruct (eq_dec x (f Fin.F1)) as [Heq | Heq].
-  + subst. split; intro Hin. 
-    - firstorder.
-    - rewrite Heq. apply (InA_fin_map _).
-  + simpl. unfold eq_rec_r. simpl. split; intro Hin.
-    - inversion_clear Hin; try contradiction. rewrite (IHn (fun id => f (Fin.FS id)) x) in H.
-      destruct H as [id Hin]; subst; try now elim Heq. now exists (Fin.FS id).
-    - right. destruct Hin as [id Hin]. rewrite Hin in *. clear Hin.
-      rewrite (IHn (fun id => f (Fin.FS id)) (f id)). revert f Heq.
-      apply (Fin.caseS  (λ n (t : Fin.t (S n)), ∀ f : Fin.t (S n) → A,
-                         ~eqA (f t) (f Fin.F1) → ∃ id0 : Fin.t n, eqA (f t) (f (Fin.FS id0)))).
-        clear -HeqA. intros n f Hn. elim Hn. reflexivity.
-        clear -HeqA. intros n id f Hn. exists id. reflexivity.
-Qed.
-
-Corollary fin_map_In : forall A (eq_dec : forall x y : A, {x =  y} + {x <> y}),
-  forall n (f : Fin.t n -> A) x, In x (fin_map f) <-> exists id : Fin.t n, x = (f id).
-Proof. intros. rewrite <- InA_Leibniz. rewrite (fin_map_InA _); trivial. reflexivity. Qed.
-
-Theorem map_fin_map : forall n A B (f : A -> B) (h : Fin.t n -> A),
-  fin_map (fun x => f (h x)) = List.map f (fin_map h).
-Proof.
-intros n A B f h. induction n.
-  reflexivity.
-  simpl. f_equal. now rewrite IHn.
-Qed.
-
-Corollary fin_map_id : forall n A (f : Fin.t n -> A), fin_map f = List.map f (fin_map (fun x => x)).
-Proof. intros. apply map_fin_map. Qed.
-
-Lemma fin_map_length : forall n A (f : Fin.t n -> A), length (fin_map f) = n.
-Proof.
-intros n A f. induction n.
-  reflexivity.
-  simpl. now rewrite IHn.
-Qed.
-
-Lemma fin_map_NoDup : forall n A (f : Fin.t n -> A),
-  (forall x y : A, {x = y} + {x <> y}) -> injective eq eq f -> NoDup (fin_map f).
-Proof.
-intros n A f HeqA Hinj. induction n.
-* assert (Heq : fin_map f = nil). { rewrite <- length_zero_iff_nil. apply fin_map_length. }
-  rewrite Heq. constructor.
-* simpl. constructor.
-  + rewrite <- InA_Leibniz, (fin_map_InA _).
-    - intros [id Heq]. apply Hinj in Heq. inversion Heq.
-    - apply HeqA.
-  + apply IHn. intros x y Heq. apply Hinj in Heq. compute in Heq. now apply Fin.FS_inj.
-Qed.
-
-Unset Implicit Arguments.
-
-Fixpoint Rinv n m (Hm : m <> 0) (x : Fin.t (n + m)) : Fin.t m.
-  refine (match n as n', x in Fin.t x' return n = n' -> x' = n + m -> Fin.t m with
-            | 0, _ => fun Hn _ => _
-            | S n', Fin.F1 => fun _ _ => _
-            | S n', Fin.FS x' => fun Hn Heq => Rinv n' m Hm _
-          end eq_refl eq_refl).
-- subst n. exact x.
-- destruct m. now elim Hm. now apply Fin.F1.
-- rewrite Hn in Heq. simpl in Heq. apply eq_add_S in Heq. rewrite <- Heq. exact x'.
-Defined.
-
-Theorem Rinv_R : forall n m (Hm : m <> 0) x, Rinv n m Hm (Fin.R n x) = x.
-Proof. now induction n. Qed.
-
-(*
-Fixpoint Linv n m (Hn : n <> 0) (x : Fin.t (n + m)) {struct n} : Fin.t n.
-  refine (match n as n' return n = n' -> Fin.t n' with
-    | 0 => fun Hn => _
-    | 1 => fun Hn => Fin.F1
-    | S (S n'' as rec) => fun Hn => 
-      match x in Fin.t x' return x' = n + m -> Fin.t (S rec) with
-        | Fin.F1 _ => fun Heq => Fin.F1
-        | Fin.FS _ x' => fun Heq => Fin.FS (Linv rec m _ _)
-      end eq_refl
-  end eq_refl).
-- apply False_rec. now apply Hn.
-- abstract (unfold rec0 in *; omega).
-- subst n. simpl in Heq. apply eq_add_S in Heq. rewrite Heq in x'. exact x'. (* bug *)
-Defined.
-*)
-Set Implicit Arguments.
-
-Definition combine n m A (f : Fin.t n -> A) (g : Fin.t m -> A) : Fin.t (n + m) -> A.
-  unshelve refine (fun x =>
-      if eq_nat_dec m 0 then f _ else
-      if (lt_dec (proj1_sig (Fin.to_nat x)) n) then f (Fin.of_nat_lt _) else g (Rinv n m _ x)).
-- exact (proj1_sig (Fin.to_nat x)).
-- subst m. rewrite plus_0_r in x. exact x.
-- assumption.
-- assumption.
-Defined.
-
-Lemma combine_0_r : forall n A f g,
-  (eq ==> eq)%signature (@combine n 0 A f g) (fun x => f (eq_rec (n+0) Fin.t x n (plus_0_r n))).
-Proof. intros. intros x y ?. subst y. unfold combine. destruct (Fin.to_nat x) eqn:Hx. simpl. reflexivity. Qed.
-
-Lemma combine_0_l : forall m A f g, (eq ==> eq)%signature (@combine 0 m A f g) g.
-Proof.
-intros m *. intros x y ?. subst y. unfold combine. destruct (eq_nat_dec m) as [Hm | Hm]; simpl.
-- apply Fin.case0. now rewrite Hm in x.
-- reflexivity.
-Qed.
-
-Instance combine_compat n m A : Proper ((eq ==> eq) ==> (eq ==> eq) ==> (eq ==> eq)) (@combine n m A).
-Proof.
-intros f₁ f₂ Hf g₁ g₂ Hg x y ?. subst y. unfold combine.
-destruct (Fin.to_nat x). destruct m; simpl.
-- now apply Hf.
-- destruct (lt_dec x0 n). now apply Hf. now apply Hg.
-Qed.
-
-(* To illustrate
-Example ex_f := fun x : Fin.t 2 => 10 + proj1_sig (Fin.to_nat x).
-Example ex_g := fun x : Fin.t 3 => 20 + proj1_sig (Fin.to_nat x).
-
-Eval compute in combine ex_f ex_g (Fin.F1).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.F1)).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.F1))).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS Fin.F1))).
-Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.F1)))).
-Fail Eval compute in combine ex_f ex_g (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.FS (Fin.F1))))).
-*)
-
-Theorem fin_map_app : forall n m A (f : Fin.t n -> A) (g : Fin.t m -> A),
-  fin_map f ++ fin_map g = fin_map (combine f g).
-Proof.
-intros n m A f g. destruct m; simpl.
-+ rewrite (combine_0_r f g). rewrite app_nil_r. now rewrite plus_0_r.
-+ induction n; simpl.
-  - reflexivity.
-  - f_equal. rewrite IHn. apply fin_map_compat. intros x y ?. subst y. unfold eq_rec_r. simpl.
-    unfold combine. simpl. destruct (Fin.to_nat x) as [x0 Hx0]. simpl.
-    destruct (lt_dec x0 n) as [Hle | Hle], (lt_dec (S x0) (S n)) as [HleS | HleS]; try omega.
-      now rewrite (le_unique _ _ (lt_S_n x0 n HleS) Hle).
-      reflexivity.
-Qed.
-
-
-(** ** Byzantine Robots *)
-
-(** We have finetely many robots. Some are good, other are evil. *)
-
-Definition G : Set := Fin.t N.nG.
-Definition B := Fin.t N.nB.
-
-(** Disjoint union of both kinds of robots is obtained by a sum type. *)
-(* TODO: replace this by (G ⊎ B). *)
-Definition ident := @identifier G B.
-
-(** Names of robots **)
-
-Definition Gnames : list G := fin_map (fun x : G => x).
-Definition Bnames : list B := fin_map (fun x : B => x).
-Definition names : list ident := List.map Good Gnames ++ List.map Byz Bnames.
-
-End Names.
-
-
 Module Type Robots(N : Size).
-  Declare Module Internals : RobotInternals(N).
-(*    with Definition ident := identifier Internals.G Internals.B.*)
   
-  Definition G := Internals.G.
-  Definition B := Internals.B.
+  (** We have finetely many robots. Some are good, others are byzantine. *)
+  Definition G := {n : nat | n < N.nG}.
+  Definition B := {n : nat | n < N.nB}.
   
   (** Disjoint union of both kinds of robots is obtained by a sum type. *)
   (* TODO: replace this by (G ⊎ B). *)
-  Definition ident := Internals.ident.
+  Definition ident := @identifier G B.
   
   (** Names of robots **)
-  Definition Gnames := Internals.Gnames.
-  Definition Bnames := Internals.Bnames.
-  Definition names := Internals.names.
+  Definition Gnames : list G := enum N.nG.
+  Definition Bnames : list B := enum N.nB.
+  Definition names : list identifier := map Good Gnames ++ map Byz Bnames.
   
   Parameter In_Gnames : forall g : G, In g Gnames.
   Parameter In_Bnames : forall b : B, In b Bnames.
-  Parameter In_names : forall r : ident, In r names.
+  Parameter In_names : forall id : ident, In id names.
   
   Parameter Gnames_NoDup : NoDup Gnames.
   Parameter Bnames_NoDup : NoDup Bnames.
@@ -356,44 +179,43 @@ Module Type Robots(N : Size).
   Parameter Bnames_length : length Bnames = N.nB.
   Parameter names_length : length names = N.nG + N.nB.
   Parameter eq_dec: forall n m: ident, {n=m}+{n<>m}.
+  
+  Parameter fun_Gnames_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x).
+  Parameter fun_Bnames_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f Bnames) (List.map g Bnames) -> forall x, eqA (f x) (g x).
+  Parameter fun_names_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).
 End Robots.
 
-Module Make(N : Size) <: Robots(N).
-  Module Internals := Names(N).
-  
-  Definition G := Internals.G.
-  Definition B := Internals.B.
-  Definition ident := Internals.ident.
-  Definition Gnames := Internals.Gnames.
-  Definition Bnames := Internals.Bnames.
-  Definition names := Internals.names.
+
+Module Make(N : Size) : Robots(N).
+  Definition G := {n : nat | n < N.nG}.
+  Definition B := {n : nat | n < N.nB}.
+  Definition ident := @identifier G B.
+
+  Definition Gnames : list G := enum N.nG.
+  Definition Bnames : list B := enum N.nB.
+  Definition names : list identifier := map Good Gnames ++ map Byz Bnames.
   
   Lemma In_Gnames : forall g : G, In g Gnames.
-  Proof. intro g. unfold Gnames. change g with (Datatypes.id g). apply Internals.In_fin_map. Qed.
+  Proof. intro g. unfold Gnames, G. rewrite In_enum. apply proj2_sig. Qed.
   
   Lemma In_Bnames : forall b : B, In b Bnames.
-  Proof. intro b. unfold Bnames. change b with (Datatypes.id b). apply Internals.In_fin_map. Qed.
+  Proof. intro b. unfold Bnames, B. rewrite In_enum. apply proj2_sig. Qed.
   
-  Lemma In_names : forall r : ident, In r names.
+  Lemma In_names : forall id, In id names.
   Proof.
-  intro r. unfold names, Internals.names. rewrite in_app_iff. destruct r as [g | b].
+  intro id. unfold names. rewrite in_app_iff. destruct id as [g | b].
   - left. apply in_map, In_Gnames.
   - right. apply in_map, In_Bnames.
   Qed.
   
   Lemma Gnames_NoDup : NoDup Gnames.
-  Proof.
-  unfold Gnames. apply Internals.fin_map_NoDup.
-  - apply Fin.eq_dec.
-  - now intro.
-  Qed.
+  Proof. unfold Gnames. apply enum_NoDup. Qed.
   
   Lemma Bnames_NoDup : NoDup Bnames.
-  Proof.
-  unfold Bnames. apply Internals.fin_map_NoDup.
-  - apply Fin.eq_dec.
-  - now intro.
-  Qed.
+  Proof. unfold Bnames. apply enum_NoDup. Qed.
   
   Lemma names_NoDup : NoDup names.
   Proof.
@@ -413,31 +235,45 @@ Module Make(N : Size) <: Robots(N).
   Qed.
   
   Lemma Gnames_length : length Gnames = N.nG.
-  Proof. unfold Gnames, Internals.Gnames. apply Internals.fin_map_length. Qed.
+  Proof. unfold Gnames. apply enum_length. Qed.
   
   Lemma Bnames_length : length Bnames = N.nB.
-  Proof. unfold Bnames, Internals.Bnames. apply Internals.fin_map_length. Qed.
+  Proof. unfold Bnames. apply enum_length. Qed.
   
   Lemma names_length : length names = N.nG + N.nB.
   Proof.
-  unfold names, Internals.names. rewrite app_length, map_length, map_length.
-  fold Gnames Bnames. now rewrite Gnames_length, Bnames_length.
+  unfold names. rewrite app_length, map_length, map_length.
+  now rewrite Gnames_length, Bnames_length.
   Qed.
-
-  Lemma eq_dec: forall n m: ident, {n=m}+{n<>m}.
+  
+  Lemma eq_dec: forall n m: ident, {n = m} + {n <> m}.
   Proof.
-    intros n m.
-    destruct n;destruct m; try now (right;intro abs;discriminate).
-    - destruct (Fin.eq_dec g g0).
-      + left;subst;auto.
-      + right;intro abs.
-        injection abs.
-        auto.
-    - destruct (Fin.eq_dec b b0).
-      + left;subst;auto.
-      + right;intro abs.
-        injection abs.
-        auto.
+  intros id id'.
+  destruct id as [g | b], id' as [g' | b']; try (now right; discriminate); [|].
+  + destruct (subset_dec g g').
+    - left; subst; auto.
+    - right; intro Habs. now injection Habs.
+  + destruct (subset_dec b b').
+    - left; subst; auto.
+    - right; intro Habs. now injection Habs.
   Qed.
-
+  
+  Lemma fun_Gnames_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x).
+  Proof. intros. now apply enum_eq. Qed.
+  
+  Lemma fun_Bnames_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f Bnames) (List.map g Bnames) -> forall x, eqA (f x) (g x).
+  Proof. intros. now apply enum_eq. Qed.
+  
+  Lemma fun_names_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).
+  Proof.
+  intros A eqA f h Heq id.
+  unfold names in Heq. repeat rewrite ?map_app, map_map in Heq. apply eqlistA_app_split in Heq.
+  + destruct id as [g | b].
+    - change (eqA ((fun x => f (Good x)) g) ((fun x => h (Good x)) g)). apply fun_Gnames_eq, Heq.
+    - change (eqA ((fun x => f (Byz x)) b) ((fun x => h (Byz x)) b)). apply fun_Bnames_eq, Heq.
+  + now do 2 rewrite map_length.
+  Qed.
 End Make.

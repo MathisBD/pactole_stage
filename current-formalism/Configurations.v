@@ -12,10 +12,10 @@
 Require Import Omega.
 Require Import Equalities.
 Require Import SetoidList.
-Require Import Pactole.Preliminary.
-Require Import Robots.
 Require Import ZArith.
 Require Import Decidable.
+Require Import Pactole.Preliminary.
+Require Import Pactole.Robots.
 
 
 Module Type DecidableTypeWithApplication(Location : DecidableType) <: DecidableType.
@@ -137,7 +137,7 @@ Module Type Configuration (Location : DecidableType)
     ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
 
 
-  Definition map (f : RobotConf -> RobotConf) (conf : t) : t := fun id => f (conf id).
+  Definition map (f : RobotConf -> RobotConf) (config : t) : t := fun id => f (config id).
   Declare Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
 
   Parameter Gpos : t -> list RobotConf.
@@ -147,24 +147,27 @@ Module Type Configuration (Location : DecidableType)
   Declare Instance Bpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Bpos.
   Declare Instance list_compat : Proper (eq ==> eqlistA eq_RobotConf) list.
 
-  Parameter Gpos_spec : forall conf, Gpos conf = List.map (fun g => conf (Good g)) Names.Gnames.
-  Parameter Bpos_spec : forall conf, Bpos conf = List.map (fun g => conf (Byz g)) Names.Bnames.
-  Parameter list_spec : forall conf, list conf = List.map conf Names.names.
+  Parameter Gpos_spec : forall config, Gpos config = List.map (fun g => config (Good g)) Names.Gnames.
+  Parameter Bpos_spec : forall config, Bpos config = List.map (fun g => config (Byz g)) Names.Bnames.
+  Parameter list_spec : forall config, list config = List.map config Names.names.
 
-  Parameter Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
-  Parameter Bpos_InA : forall l conf, InA eq_RobotConf l (Bpos conf) <-> exists b, eq_RobotConf l (conf (Byz b)).
-  Parameter list_InA : forall l conf, InA eq_RobotConf l (list conf) <-> exists id, eq_RobotConf l (conf id).
+  Parameter Gpos_InA : forall l config,
+    InA eq_RobotConf l (Gpos config) <-> exists g, eq_RobotConf l (config (Good g)).
+  Parameter Bpos_InA : forall l config,
+    InA eq_RobotConf l (Bpos config) <-> exists b, eq_RobotConf l (config (Byz b)).
+  Parameter list_InA : forall l config,
+    InA eq_RobotConf l (list config) <-> exists id, eq_RobotConf l (config id).
 
-  Parameter Gpos_length : forall conf, length (Gpos conf) = N.nG.
-  Parameter Bpos_length : forall conf, length (Bpos conf) = N.nB.
-  Parameter list_length : forall conf, length (list conf) = N.nG + N.nB.
+  Parameter Gpos_length : forall config, length (Gpos config) = N.nG.
+  Parameter Bpos_length : forall config, length (Bpos config) = N.nB.
+  Parameter list_length : forall config, length (list config) = N.nG + N.nB.
 
   Parameter list_map : forall f, Proper (eq_RobotConf ==> eq_RobotConf) f -> 
-    forall conf, list (map f conf) = List.map f (list conf).
+    forall config, list (map f config) = List.map f (list config).
   Parameter map_merge : forall f g, Proper (eq_RobotConf ==> eq_RobotConf) f ->
     Proper (eq_RobotConf ==> eq_RobotConf) g ->
-    forall conf, eq (map g (map f conf)) (map (fun x => g (f x)) conf).
-  Parameter map_id : forall conf, eq (map Datatypes.id conf) conf.
+    forall config, eq (map g (map f config)) (map (fun x => g (f x)) config).
+  Parameter map_id : forall config, eq (map Datatypes.id config) config.
 End Configuration.
 
 
@@ -250,7 +253,7 @@ Definition eq (config₁ config₂ : t) := forall id, eq_RobotConf (config₁ id
 
 Instance eq_equiv : Equivalence eq.
 Proof. split.
-+ intros conf x. split; reflexivity.
++ intros config x. split; reflexivity.
 + intros d1 d2 H r. split; symmetry; apply H.
 + intros d1 d2 d3 H12 H23 x. 
   split;
@@ -265,85 +268,85 @@ Qed.
 
 Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
 Proof.
-intros ? ? Hconf ? id ?.
+intros ? ? Hconfig ? id ?.
 subst.
-destruct Hconf with id.
+destruct Hconfig with id.
 unfold eq_RobotConf.
 auto.
 Qed.
 
 (** Pointwise mapping of a function on a configuration *)
-Definition map (f : RobotConf -> RobotConf) (conf : t) := fun id => f (conf id).
+Definition map (f : RobotConf -> RobotConf) (config : t) := fun id => f (config id).
 
 Instance map_compat : Proper ((eq_RobotConf ==> eq_RobotConf) ==> eq ==> eq) map.
 Proof.
-intros f g Hfg ? ? Hconf id.
+intros f g Hfg ? ? Hconfig id.
 unfold map.
 apply Hfg.
-unfold eq in Hconf.
+unfold eq in Hconfig.
 auto.
 Qed.
 
 (** Configurations seen as lists *)
-Definition Gpos (conf : t) := Names.Internals.fin_map (fun g => conf (Good g)).
-Definition Bpos (conf : t) := Names.Internals.fin_map (fun b => conf (Byz b)).
-Definition list conf := Gpos conf ++ Bpos conf.
+Definition Gpos (config : t) := List.map (fun g => config (Good g)) Names.Gnames.
+Definition Bpos (config : t) := List.map (fun b => config (Byz b)) Names.Bnames.
+Definition list (config : t) := List.map config Names.names.
 
 Instance Gpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Gpos.
-Proof. repeat intro. unfold Gpos. apply Names.Internals.fin_map_compatA. repeat intro. now subst. Qed.
+Proof. repeat intro. unfold Gpos. f_equiv. repeat intro. now subst. Qed.
 
 Instance Bpos_compat : Proper (eq ==> eqlistA eq_RobotConf) Bpos.
-Proof. repeat intro. unfold Bpos. apply Names.Internals.fin_map_compatA. repeat intro. now subst. Qed.
+Proof. repeat intro. unfold Bpos. f_equiv. repeat intro. now subst. Qed.
 
 Instance list_compat : Proper (eq ==> eqlistA eq_RobotConf) list.
-Proof. repeat intro. unfold list. apply (eqlistA_app _); apply Gpos_compat || apply Bpos_compat; auto. Qed.
+Proof. repeat intro. unfold list. f_equiv. repeat intro. now subst. Qed.
+(* Proof. repeat intro. unfold list. apply (eqlistA_app _); apply Gpos_compat || apply Bpos_compat; auto. Qed. *)
 
-Lemma Gpos_spec : forall conf, Gpos conf = List.map (fun g => conf (Good g)) Names.Gnames.
-Proof. intros. unfold Gpos, Names.Gnames, Names.Internals.Gnames. now rewrite <- Names.Internals.map_fin_map. Qed.
+Lemma Gpos_spec : forall config, Gpos config = List.map (fun g => config (Good g)) Names.Gnames.
+Proof. reflexivity. Qed.
 
-Lemma Bpos_spec : forall conf, Bpos conf = List.map (fun g => conf (Byz g)) Names.Bnames.
-Proof. intros. unfold Bpos, Names.Bnames, Names.Internals.Bnames. now rewrite <- Names.Internals.map_fin_map. Qed.
+Lemma Bpos_spec : forall config, Bpos config = List.map (fun g => config (Byz g)) Names.Bnames.
+Proof. reflexivity. Qed.
 
-Lemma list_spec : forall conf, list conf = List.map conf Names.names.
+Lemma list_spec : forall config, list config = List.map config Names.names.
+Proof. reflexivity. Qed.
+
+Lemma Gpos_InA : forall l config, InA eq_RobotConf l (Gpos config) <-> exists g, eq_RobotConf l (config (Good g)).
 Proof.
-intros. unfold list. unfold Names.names, Names.Internals.names.
-rewrite map_app, Gpos_spec, Bpos_spec. now do 2 rewrite map_map.
+intros. unfold Gpos. rewrite InA_map_iff; autoclass; []. setoid_rewrite InA_Leibniz.
+split; intros [g Hg]; exists g; intuition. apply Names.In_Gnames.
 Qed.
 
-Lemma Gpos_InA : forall l conf, InA eq_RobotConf l (Gpos conf) <-> exists g, eq_RobotConf l (conf (Good g)).
-Proof. intros. unfold Gpos,eq_RobotConf. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.
-
-Lemma Bpos_InA : forall l conf, InA eq_RobotConf l (Bpos conf) <-> exists b, eq_RobotConf l (conf (Byz b)).
-Proof. intros. unfold Bpos. rewrite (Names.Internals.fin_map_InA _ eq_RobotConf_dec). reflexivity. Qed.
-
-Lemma list_InA : forall l conf, InA eq_RobotConf l (list conf) <-> exists id, eq_RobotConf l (conf id).
+Lemma Bpos_InA : forall l config, InA eq_RobotConf l (Bpos config) <-> exists b, eq_RobotConf l (config (Byz b)).
 Proof.
-intros. unfold list. rewrite (InA_app_iff _). split; intro Hin.
-+ destruct Hin as [Hin | Hin]; rewrite Gpos_InA in Hin || rewrite Bpos_InA in Hin; destruct Hin; eauto.
-+ rewrite Gpos_InA, Bpos_InA. destruct Hin as [[g | b] Hin]; eauto.
+intros. unfold Bpos. rewrite InA_map_iff; autoclass; []. setoid_rewrite InA_Leibniz.
+split; intros [b Hb]; exists b; intuition. apply Names.In_Bnames.
 Qed.
 
-Lemma Gpos_length : forall conf, length (Gpos conf) = N.nG.
-Proof. intro. unfold Gpos. apply Names.Internals.fin_map_length. Qed.
+Lemma list_InA : forall l config, InA eq_RobotConf l (list config) <-> exists id, eq_RobotConf l (config id).
+Proof.
+intros. unfold list. rewrite InA_map_iff; autoclass; []. setoid_rewrite InA_Leibniz.
+split; intros [id Hid]; exists id; intuition. apply Names.In_names.
+Qed.
 
-Lemma Bpos_length : forall conf, length (Bpos conf) = N.nB.
-Proof. intro. unfold Bpos. apply Names.Internals.fin_map_length. Qed.
+Lemma Gpos_length : forall config, length (Gpos config) = N.nG.
+Proof. intro. unfold Gpos. rewrite List.map_length. apply Names.Gnames_length. Qed.
 
-Lemma list_length : forall conf, length (list conf) = N.nG + N.nB.
-Proof. intro. unfold list. now rewrite app_length, Gpos_length, Bpos_length. Qed.
+Lemma Bpos_length : forall config, length (Bpos config) = N.nB.
+Proof. intro. unfold Bpos. rewrite List.map_length. apply Names.Bnames_length. Qed.
+
+Lemma list_length : forall config, length (list config) = N.nG + N.nB.
+Proof. intro. unfold list, Names.ident. now rewrite map_length, Names.names_length. Qed.
 
 Lemma list_map : forall f, Proper (eq_RobotConf ==> eq_RobotConf) f -> 
-  forall conf, list (map f conf) = List.map f (list conf).
-Proof.
-intros f Hf conf. unfold list, map, Gpos, Bpos.
-repeat rewrite Names.Internals.map_fin_map. rewrite List.map_app. reflexivity.
-Qed.
+  forall config, list (map f config) = List.map f (list config).
+Proof. intros f Hf conf. unfold list, map, Gpos, Bpos. now repeat rewrite ?List.map_app, List.map_map. Qed.
 
 Lemma map_merge : forall f g, Proper (eq_RobotConf ==> eq_RobotConf) f -> Proper (eq_RobotConf ==> eq_RobotConf) g ->
-  forall conf, eq (map g (map f conf)) (map (fun x => g (f x)) conf).
+  forall config, eq (map g (map f config)) (map (fun x => g (f x)) config).
 Proof. repeat intro. split; reflexivity. Qed.
 
-Lemma map_id : forall conf, eq (map Datatypes.id conf) conf.
+Lemma map_id : forall config, eq (map Datatypes.id config) config.
 Proof. repeat intro. split; reflexivity. Qed.
 
 Lemma neq_equiv : forall config₁ config₂,
@@ -368,10 +371,7 @@ Lemma eq_dec : forall config₁ config₂, {eq config₁ config₂} + {~eq confi
 Proof.
 intros config₁ config₂.
 destruct (eqlistA_dec _ eq_RobotConf_dec (list config₁) (list config₂)) as [Heq | Hneq].
-+ left. unfold list in *. apply eqlistA_app_split in Heq; try (now repeat rewrite Gpos_length); [].
-  destruct Heq as [Heq1 Heq2]. intros [g | b].
-  - apply (Names.Internals.fin_map_eq Heq1 g).
-  - apply (Names.Internals.fin_map_eq Heq2 b).
++ left. unfold eq. apply Names.fun_names_eq, Heq.
 + right. intro Habs. apply Hneq. now rewrite Habs.
 Qed.
 

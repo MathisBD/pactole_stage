@@ -256,7 +256,7 @@ Qed.
 
 (** ***  Results about [map]  **)
 
-Instance map_extensionalityA_compat : Proper ((eqA ==> eqB) ==> eqlistA eqA ==> eqlistA eqB) (@map A B).
+Global Instance map_extensionalityA_compat : Proper ((eqA ==> eqB) ==> eqlistA eqA ==> eqlistA eqB) (@map A B).
 Proof.
 intros f g Hfg l. induction l as [| e l]; intros l' Hl.
 - destruct l'; reflexivity || inversion Hl.
@@ -265,7 +265,7 @@ intros f g Hfg l. induction l as [| e l]; intros l' Hl.
   simpl. constructor; auto.
 Qed.
 
-Instance map_extensionality_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@map A B).
+Global Instance map_extensionality_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@map A B).
 Proof.
 intros f g Hfg l. induction l as [| e l]; intros l' Hl.
 - destruct l'; reflexivity || inversion Hl.
@@ -896,7 +896,7 @@ intros x l. split; intro Hl.
 + rewrite Hl. apply remove_alls.
 Qed.
 
-Instance remove_Perm_proper : Proper (eq ==> @Permutation A ==> @Permutation A) (@remove A eq_dec).
+Global Instance remove_Perm_proper : Proper (eq ==> @Permutation A ==> @Permutation A) (@remove A eq_dec).
 Proof.
 intros x y ? l1 l2 Hl. subst. induction Hl.
 - apply Permutation_refl.
