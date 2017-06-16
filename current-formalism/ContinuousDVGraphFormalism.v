@@ -23,18 +23,26 @@ Require MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import SetoidList.
-Require MMultisetInterface.
-Require MMultisetExtraOps.
-Require MMultisetWMap.
 Require Import MMaps.MMapInterface.
 Require Import MMultiset.MMultisetInterface.
 Require Import MMultiset.MMultisetExtraOps.
 Require Pactole.MMultiset.MMultisetFacts.
-Require Streams.
-
-Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : LocationADef(Graph))(ConfigA : Configuration (LocationA)(N)(Names))(Import Iso : Iso(Graph)(LocationA))(MMapWL : WSfun) (Mraw : (FMultisetsOn)(LocationA))(M : MMultisetExtra(LocationA)(Mraw)).
+Require Stream.
 
 
+Module CGF (Graph : GraphDef)
+           (N : Size)
+           (Names : Robots(N))
+           (LocationA : LocationADef(Graph))
+           (MkInfoA : InfoSig(Graph)(LocationA))
+           (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
+           (Import Iso : Iso(Graph)(LocationA))
+           (MMapWL : WSfun)
+           (Mraw : (FMultisetsOn)(LocationA))
+           (M : MMultisetExtra(LocationA)(Mraw)).
+  
+  Module InfoA := MkInfoA.Info.
+  
   (** For spectra *)
   Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
     Definition t := ConfigA.t.
@@ -42,13 +50,14 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
     Definition eq_equiv := ConfigA.eq_equiv.
     Definition eq_dec := ConfigA.eq_dec.
   End View.
-
+  
   
   (** * Projection function*)
 
   Open Scope R_scope.
 
-  (** we define a function from R to ]0;1\[ to represent the percentage of the edge already done *)
+  (** We define a function from R to (0; 1) to represent the percentage of the edge already done. *)
+  (* Exclusing 0 and 1 avoids having multiple reprensentation while being on a node. *)
   Definition project_p (p : R) : R :=
     if Rle_dec p 0 then Rpower 2 (p-1) else (2 - (Rpower 2 (-p)))/2.
 
@@ -309,8 +318,8 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
   End Location.
 
 
-
-  Module Config := Configurations.Make (Location)(N)(Names).
+  Module Info := SourceTarget(Location).
+  Module Config := Configurations.Make (Location)(N)(Names)(Info).
 (*
   Definition project (config : Config.t) : Config.t :=
     fun id =>
@@ -318,7 +327,7 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
       | Loc l => config id
       | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (Graph.threshold e) 
                                          then Graph.src e else Graph.tgt e);
-                      Config.robot_info := Config.robot_info (config id) |}
+                      Config.info := Config.info (config id) |}
       end.
   
   Instance project_compat : Proper (Config.eq ==> Config.eq) project.
@@ -331,14 +340,14 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
           eqn : Hloc1,
                 (Config.loc (c2 id))
                   eqn : Hloc2,
-                        (Config.source (Config.robot_info (c1 id)))
+                        (Info.source (Config.info (c1 id)))
                           eqn : Hsrc1,
-                                (Config.source (Config.robot_info (c2 id)))
+                                (Info.source (Config.info (c2 id)))
                                   eqn : Hsrc2,
-                                        (Config.target (Config.robot_info (c1 id)))
+                                        (Info.target (Config.info (c1 id)))
                                           eqn : Htgt1,
-                                                (Config.target
-                                                   (Config.robot_info (c2 id)))
+                                                (Info.target
+                                                   (Config.info (c2 id)))
                                                   eqn : Htgt2; simpl;
           try rewrite Hloc1 in *; try rewrite Hloc2 in *; try rewrite Hsrc1 in *;
             try rewrite Hsrc2 in *; try rewrite Htgt1 in *; try rewrite Htgt2 in *;
@@ -387,11 +396,9 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
   Definition projectS (config : Config.t) : View.t :=
     fun id =>
       {| ConfigA.loc := (projectS_loc (Config.loc (config id)));
-         ConfigA.robot_info := 
-           {| ConfigA.source := (projectS_loc (Config.source
-                                                 (Config.robot_info (config id))));
-              ConfigA.target := (projectS_loc (Config.target
-                                                 (Config.robot_info (config id)))) |}
+         ConfigA.info := 
+           {| InfoA.source := (projectS_loc (Info.source (Config.info (config id))));
+              InfoA.target := (projectS_loc (Info.target (Config.info (config id)))) |}
       |}.
 
   Instance projectS_compat : Proper (Config.eq ==> ConfigA.eq) projectS.
@@ -403,7 +410,7 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
   Close Scope R_scope.
 
   (** the spectrum is what the robots see*)
-  Module Spect <: Spectrum(Location)(N)(Names)(Config).
+  Module Spect <: Spectrum(Location)(N)(Names)(Info)(Config).
 
     
     
@@ -430,7 +437,7 @@ Module CGF  (Graph : GraphDef)(N : Size)(Names : Robots(N))(LocationA : Location
     Instance Loc_compat : Proper (ConfigA.eq_RobotConf ==> LocationA.eq) ConfigA.loc.
     Proof. intros [] [] []. now cbn. Qed.
 
-    Instance info_compat : Proper (ConfigA.eq_RobotConf ==> ConfigA.Info_eq) ConfigA.robot_info.
+    Instance info_compat : Proper (ConfigA.eq_RobotConf ==> InfoA.eq) ConfigA.info.
     Proof. intros [] [] [] *. now cbn. Qed.
 
     (** Definition of spectra as multisets of locations. *)
@@ -654,29 +661,26 @@ Qed.
   (** * Executions *)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-  Definition execution := Streams.t Config.t.
+  Definition execution := Stream.t Config.t.
   
   Definition eeq (e1 e2 : execution) : Prop :=
-    Streams.eq Config.eq e1 e2.
+    Stream.eq Config.eq e1 e2.
   
   Instance eeq_equiv : Equivalence eeq.
   Proof. split.
          + coinduction eeq_refl. reflexivity.
          + coinduction eeq_sym. symmetry. now inversion H. now inversion H.
          + coinduction eeq_trans. 
-         - inversion H. inversion H0. now transitivity (Streams.hd y).
-         - apply (eeq_trans (Streams.tl x) (Streams.tl y) (Streams.tl z)).
+         - inversion H. inversion H0. now transitivity (Stream.hd y).
+         - apply (eeq_trans (Stream.tl x) (Stream.tl y) (Stream.tl z)).
            now inversion H. now inversion H0.
   Qed.
   
-  Instance eeq_bisim : Bisimulation execution.
-  Proof. exists eeq. apply eeq_equiv. Qed.
+  Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@Stream.hd _).
+  Proof. apply Stream.hd_compat. Qed.
   
-  Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@Streams.hd _).
-  Proof. apply Streams.hd_compat. Qed.
-  
-  Instance eeq_tl_compat : Proper (eeq ==> eeq) (@Streams.tl _).
-  Proof. apply Streams.tl_compat. Qed.
+  Instance eeq_tl_compat : Proper (eeq ==> eeq) (@Stream.tl _).
+  Proof. apply Stream.tl_compat. Qed.
 
   (** ** Demonic schedulers *)
 
@@ -715,13 +719,13 @@ Qed.
 
   Record demonic_action :=
     {
-      relocate_byz : Names.B -> Location.t;
+      relocate_byz : Names.B -> Config.RobotConf;
       step : Names.ident -> Config.RobotConf -> Active_or_Moving;
       step_delta : forall g Rconfig sim,
           Aom_eq (step (Good g) Rconfig) (Active sim) ->
           ((exists l, Location.eq Rconfig.(Config.loc) (Loc l)) /\
            Location.eq Rconfig.(Config.loc)
-                                 Rconfig.(Config.robot_info).(Config.target));
+                                 Rconfig.(Config.info).(Info.target));
       step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
       step_flexibility : forall id config r,
           Aom_eq (step id config) (Moving r) -> (0 <= r <= 1)%R}.
@@ -731,14 +735,14 @@ Qed.
   Definition da_eq (da1 da2 : demonic_action) :=
     (forall id config,
         (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
-    (forall b : Names.B, Location.eq (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
+    (forall b : Names.B, Config.eq_RobotConf (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
 
   Instance da_eq_equiv : Equivalence da_eq.
   Proof. split.
-         + split; intuition. now apply step_compat.
-         + intros da1 da2 [Hda1 Hda2]. repeat split; repeat intro; try symmetry; auto.
-         + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
-           repeat split; intros; try etransitivity; eauto.
+  + split; intuition. now apply step_compat.
+  + intros da1 da2 [Hda1 Hda2]. split; repeat intro; try symmetry; auto.
+  + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
+    split; intros; try etransitivity; eauto.
   Qed.
 
   Instance step_da_compat : Proper (da_eq ==> eq ==> Config.eq_RobotConf ==> Aom_eq) step.
@@ -749,9 +753,8 @@ Qed.
     - apply (step_compat da2); auto.
   Qed.
 
-  Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Location.eq) relocate_byz.
-  Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2].
-         simpl in *. apply (H2 p2). Qed.
+  Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Config.eq_RobotConf) relocate_byz.
+  Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
 
   Lemma da_eq_step_Moving : forall da1 da2,
       da_eq da1 da2 -> 
@@ -775,23 +778,23 @@ Qed.
   
   (** A [demon] is just a stream of [demonic_action]s. *)
   Definition demon :=
-    Streams.t demonic_action.
+    Stream.t demonic_action.
 
   (** Destructors for demons, getting the head demonic action or the
       tail of the demon. *)
 
   Definition deq (d1 d2 : demon) : Prop :=
-    Streams.eq da_eq d1 d2.
+    Stream.eq da_eq d1 d2.
     
   Instance deq_equiv : Equivalence deq.
   Proof. split.
-         + coinduction deq_refl. reflexivity.
-         + coinduction deq_sym. symmetry. now inversion H. now inversion H.
-         + coinduction deq_trans.
-         - inversion H. inversion H0. now transitivity (Streams.hd y).
-         - apply (deq_trans (Streams.tl x) (Streams.tl y) (Streams.tl z)).
-           now inversion H.
-           now inversion H0.
+  + coinduction deq_refl. reflexivity.
+  + coinduction deq_sym. symmetry. now inversion H. now inversion H.
+  + coinduction deq_trans.
+    - inversion H. inversion H0. now transitivity (Stream.hd y).
+    - apply (deq_trans (Stream.tl x) (Stream.tl y) (Stream.tl z)).
+      * now inversion H.
+      * now inversion H0.
   Qed.
 
   Definition is_Active aom :=
@@ -816,9 +819,9 @@ Qed.
     | Loc l => Loc ((Iso.sim_V sim) l)
     end) in
     {| Config.loc := fpos (Config.loc infoR);
-       Config.robot_info :=
-         {| Config.source := fpos (Config.source (Config.robot_info infoR));
-            Config.target := fpos (Config.target (Config.robot_info infoR)) |} |}.  
+       Config.info :=
+         {| Info.source := fpos (Info.source (Config.info infoR));
+            Info.target := fpos (Info.target (Config.info infoR)) |} |}.
 
   Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==>
                                              Config.eq_RobotConf) apply_sim.
@@ -835,21 +838,21 @@ Qed.
       rewrite H0.
       simpl.
       now rewrite Hsim, H.
-    - destruct (Config.source (Config.robot_info conf)),
-           (Config.source (Config.robot_info conf')); try contradiction;
+    - destruct (Info.source (Config.info conf)),
+           (Info.source (Config.info conf')); try contradiction;
         simpl in *.
       * now rewrite Hsim, Hsrc.
       * destruct Hsrc.
         now rewrite Hsim, H, H0.
-    - destruct (Config.target (Config.robot_info conf)),
-           (Config.target (Config.robot_info conf')); try contradiction;
+    - destruct (Info.target (Config.info conf)),
+           (Info.target (Config.info conf')); try contradiction;
         simpl in *.
       * now rewrite Hsim, Htgt.
       * destruct Htgt.
         now rewrite Hsim, H, H0.
   Qed.
   Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
-  
+
 
   (** [round r da conf] return the new configuration of robots (that is a function
       giving the configuration of each robot) from the previous one [conf] by applying
@@ -866,13 +869,13 @@ Qed.
       | Moving mv_ratio =>
         match pos, id with
         | Mvt e p, Good g => if Rle_dec 1%R ((project_p p) + mv_ratio)
-                             then {| Config.loc := Loc (Graph.tgt e); Config.robot_info := Config.robot_info conf |}
+                             then {| Config.loc := Loc (Graph.tgt e); Config.info := Config.info conf |}
                              else {| Config.loc := if Rdec mv_ratio 0 
                                                    then Mvt e p
                                                    else Mvt e (project_p_inv ((project_p p) + mv_ratio));
-                                     Config.robot_info := Config.robot_info conf |}
+                                     Config.info := Config.info conf |}
         | Loc l, Good g =>
-          let node_of_tgt := match Config.target (Config.robot_info conf) with
+          let node_of_tgt := match Info.target (Config.info conf) with
                              | Loc lt => lt
                              | Mvt e _ => Graph.src e (* never used if we start from a
                                                                   "good conf" *)
@@ -885,8 +888,8 @@ Qed.
           then conf
           else
             if Rdec mv_ratio 1%R
-            then {| Config.loc := Config.target (Config.robot_info conf);
-                                         Config.robot_info := Config.robot_info conf |}
+            then {| Config.loc := Info.target (Config.info conf);
+                                         Config.info := Config.info conf |}
             else
               let e := match Graph.find_edge l node_of_tgt with
                          | Some e => e
@@ -894,14 +897,13 @@ Qed.
                                                               "good conf" *)
                          end in
                 {| Config.loc := Mvt e (project_p_inv mv_ratio);
-                   Config.robot_info := Config.robot_info conf |}
+                   Config.info := Config.info conf |}
         | _, Byz b => conf
         end
       | Active sim => 
         (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with 
-        | Byz b => {| Config.loc := da.(relocate_byz) b ; 
-                      Config.robot_info := Config.robot_info conf |}
+        | Byz b => da.(relocate_byz) b
         | Good g =>
           let local_conf := Config.map (apply_sim sim) config in
           let target :=
@@ -913,7 +915,7 @@ Qed.
           in
           if (Location.eq_dec (Loc target) pos) then conf else
           {| Config.loc := pos ; 
-             Config.robot_info := {| Config.source := pos ; Config.target := Loc target|} |}
+             Config.info := {| Info.source := pos ; Info.target := Loc target|} |}
         end
       end.
   
@@ -928,25 +930,21 @@ Qed.
     assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
     apply step_da_compat; try reflexivity.
     apply Hrconf.
-    destruct (step da1 id (conf1 id))
-             eqn : He1,
-                   (step da2 id (conf2 id))
-                     eqn : He2,
-                           (step da1 id (conf2 id))
-                             eqn : He3,
-                                   id as [ g| b];
+    destruct (step da1 id (conf1 id)) eqn:He1,
+             (step da2 id (conf2 id)) eqn:He2,
+             (step da1 id (conf2 id)) eqn:He3,
+             id as [ g| b];
       try (now elim Hstep); unfold Aom_eq in *; try now exfalso.
-    - assert (Location.eq (Config.target (Config.robot_info (conf1 (Good g))))
-                            (Config.target (Config.robot_info (conf2 (Good g)))))
+    - assert (Location.eq (Info.target (Config.info (conf1 (Good g))))
+                          (Info.target (Config.info (conf2 (Good g)))))
         by now apply Hconf.
       assert (Location.eq (Config.loc (conf1 (Good g)))
-                            (Config.loc (conf2 (Good g))))
+                          (Config.loc (conf2 (Good g))))
         by now apply Hconf.
-      destruct (Config.loc (conf1 (Good g)))
-               eqn: Hloc1,
-                    (Config.loc (conf2 (Good g))) eqn : Hloc2;
-        destruct (Config.target (Config.robot_info (conf1 (Good g)))) eqn : Htgt1;
-        destruct (Config.target (Config.robot_info (conf2 (Good g)))) eqn : Htgt2;
+      destruct (Config.loc (conf1 (Good g))) eqn:Hloc1,
+               (Config.loc (conf2 (Good g))) eqn:Hloc2,
+               (Info.target (Config.info (conf1 (Good g)))) eqn:Htgt1,
+               (Info.target (Config.info (conf2 (Good g)))) eqn:Htgt2;
         try easy.
       + destruct (Graph.Veq_dec l1 l), (Graph.Veq_dec l2 l0); simpl in *; try easy.
         now destruct n; rewrite <- H, v, H0.
@@ -959,16 +957,12 @@ Qed.
           -- now f_equiv; simpl; try apply Hconf.
           -- now rewrite Hstep in e.
           -- now rewrite Hstep in n3.
-          -- destruct (Config.source (Config.robot_info
-                                        (conf1 (Good g))))
-                      eqn : Hsrc1,
-                            (Config.source (Config.robot_info
-                                              (conf2 (Good g))))
-                              eqn : Hsrc2;
-               destruct Hrconf as (Hloc, (Hsrc, Htgt)); rewrite Htgt1, Htgt2 in Htgt;
-                 rewrite Hloc1, Hloc2 in Hloc; rewrite Hsrc1, Hsrc2 in Hsrc;
-                   unfold loc_eq in *;
-                   try (now exfalso).
+          -- destruct (Info.source (Config.info (conf1 (Good g)))) eqn:Hsrc1,
+                      (Info.source (Config.info (conf2 (Good g)))) eqn:Hsrc2,
+                      Hrconf as (Hloc, (Hsrc, Htgt));
+             rewrite Htgt1, Htgt2 in Htgt;
+             rewrite Hloc1, Hloc2 in Hloc; rewrite Hsrc1, Hsrc2 in Hsrc;
+             unfold loc_eq in *; try (now exfalso).
              ++ repeat try (split; simpl); try apply Hconf.
                 assert (Hcp := Graph.find_edge_compat l l0 Hloc l1 l2 Htgt).
                 now destruct (Graph.find_edge l l1), (Graph.find_edge l0 l2).
@@ -991,10 +985,10 @@ Qed.
           -- now f_equiv; simpl; try apply Hconf.
           -- now rewrite Hstep in e1.
           -- now rewrite Hstep in n3.
-          -- destruct (Config.source (Config.robot_info
+          -- destruct (Info.source (Config.info
                                         (conf1 (Good g))))
                       eqn : Hsrc1,
-                            (Config.source (Config.robot_info
+                            (Info.source (Config.info
                                               (conf2 (Good g))))
                               eqn : Hsrc2;
                destruct Hrconf as (Hloc, (Hsrc, Htgt)); rewrite Htgt1, Htgt2 in Htgt;
@@ -1226,11 +1220,11 @@ Qed.
   
   Definition execute (r : robogram): demon -> Config.t -> execution :=
     cofix execute d conf :=
-      Streams.cons conf (execute (Streams.tl d) (round r (Streams.hd d) conf)).
+      Stream.cons conf (execute (Stream.tl d) (round r (Stream.hd d) conf)).
   
   (** Decomposition lemma for [execute]. *)
   Lemma execute_tail : forall (r : robogram) (d : demon) (conf : Config.t),
-      Streams.tl (execute r d conf) = execute r (Streams.tl d) (round r (Streams.hd d) conf).
+      Stream.tl (execute r d conf) = execute r (Stream.tl d) (round r (Stream.hd d) conf).
   Proof. intros. destruct d. reflexivity. Qed.
   
   Instance execute_compat : Proper (req ==> deq ==> Config.eq ==> eeq) execute.
@@ -1242,44 +1236,44 @@ Qed.
 
 
   Inductive LocallyFairForOne id (d : demon) : Prop :=
-  | ImmediatelyFair : forall config, is_Active (step (Streams.hd d) id (config id)) = true -> 
+  | ImmediatelyFair : forall config, is_Active (step (Stream.hd d) id (config id)) = true -> 
                                      LocallyFairForOne id d
-  | LaterFair : forall config, is_Active (step (Streams.hd d) id (config id)) = false ->
-                               LocallyFairForOne id (Streams.tl d) -> LocallyFairForOne id d.
+  | LaterFair : forall config, is_Active (step (Stream.hd d) id (config id)) = false ->
+                               LocallyFairForOne id (Stream.tl d) -> LocallyFairForOne id d.
 
   CoInductive Fair (d : demon) : Prop :=
-    AlwaysFair : (forall g, LocallyFairForOne g d) -> Fair (Streams.tl d) ->
+    AlwaysFair : (forall g, LocallyFairForOne g d) -> Fair (Stream.tl d) ->
                  Fair d.
 
   (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
   Inductive Between g h (d : demon) : nat -> Prop :=
-  | kReset : forall k conf, is_Active (step (Streams.hd d) g (conf g)) = true -> Between g h d k
-  | kReduce : forall k conf, is_Active (step (Streams.hd d) g (conf g)) = false ->
-                             is_Active (step (Streams.hd d) h (conf g)) = true ->
-                             Between g h (Streams.tl d) k -> Between g h d (S k)
-  | kStall : forall k conf, is_Active (step (Streams.hd d) g (conf g)) = false ->
-                            is_Active (step (Streams.hd d) h (conf g)) = false ->
-                            Between g h (Streams.tl d) k -> Between g h d k.
+  | kReset : forall k conf, is_Active (step (Stream.hd d) g (conf g)) = true -> Between g h d k
+  | kReduce : forall k conf, is_Active (step (Stream.hd d) g (conf g)) = false ->
+                             is_Active (step (Stream.hd d) h (conf g)) = true ->
+                             Between g h (Stream.tl d) k -> Between g h d (S k)
+  | kStall : forall k conf, is_Active (step (Stream.hd d) g (conf g)) = false ->
+                            is_Active (step (Stream.hd d) h (conf g)) = false ->
+                            Between g h (Stream.tl d) k -> Between g h d k.
 
   (* k-fair: every robot g is activated within at most k activation of any other robot h *)
   (*
   CoInductive kFair k (d : demon) : Prop :=
-    AlwayskFair : (forall g h, Between g h d k) -> kFair k (Streams.tl d) ->
+    AlwayskFair : (forall g h, Between g h d k) -> kFair k (Stream.tl d) ->
                   kFair k d.
 
   Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> 
                                                        LocallyFairForOne g d1 -> LocallyFairForOne g d2.
   Proof.
     intros g d1 d2 Hd Hfair. revert d2 Hd. induction Hfair; intros d2 Hd.
-    + assert (Heq : is_Active (step (Streams.hd d2) g (config g)) = true) by now rewrite <- Hd, H.
-      destruct (step (Streams.hd d2) g) eqn:?; simpl in Heq.
+    + assert (Heq : is_Active (step (Stream.hd d2) g (config g)) = true) by now rewrite <- Hd, H.
+      destruct (step (Stream.hd d2) g) eqn:?; simpl in Heq.
     - easy.
     - constructor 1 with config.
       unfold is_Active.
       rewrite Heqa; auto.
-      + assert (Heq : is_Active (step (Streams.hd d2) g (config g)) = false) by now rewrite <- Hd, H.
-        destruct (step (Streams.hd d2) g) eqn:?; simpl in Heq.
+      + assert (Heq : is_Active (step (Stream.hd d2) g (config g)) = false) by now rewrite <- Hd, H.
+        destruct (step (Stream.hd d2) g) eqn:?; simpl in Heq.
     - constructor 2 with config.
       unfold is_Active.
       rewrite Heqa.
@@ -1308,18 +1302,18 @@ Qed.
   Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
   Proof.
     intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
-    + assert (Heqa : is_Active (step (Streams.hd d2) g (conf g)) = true) by now rewrite <- Heq, H.
-      destruct (step (Streams.hd d2) g (conf g)) eqn:?; simpl in Heqa.
+    + assert (Heqa : is_Active (step (Stream.hd d2) g (conf g)) = true) by now rewrite <- Heq, H.
+      destruct (step (Stream.hd d2) g (conf g)) eqn:?; simpl in Heqa.
     - easy.
     - constructor 1 with conf. unfold is_Active. rewrite Heqa0; auto.
-      + assert (Heqa : is_Active (step (Streams.hd d2) h (conf g)) = true) by now rewrite <- Heq, H0.
-        destruct (step (Streams.hd d2) h (conf g)) eqn:?; simpl in Heq.
+      + assert (Heqa : is_Active (step (Stream.hd d2) h (conf g)) = true) by now rewrite <- Heq, H0.
+        destruct (step (Stream.hd d2) h (conf g)) eqn:?; simpl in Heq.
     - easy.
     - constructor 2 with conf.
       * unfold is_Active in *.
-        destruct (step (Streams.hd d2) g (conf g)) eqn:?,
-                 (step (Streams.hd d) g (conf g)) eqn:?; intuition.
-        rewrite <- da_eq_step_Moving with (da1 := (Streams.hd d2)) in *. 
+        destruct (step (Stream.hd d2) g (conf g)) eqn:?,
+                 (step (Stream.hd d) g (conf g)) eqn:?; intuition.
+        rewrite <- da_eq_step_Moving with (da1 := (Stream.hd d2)) in *. 
         rewrite Heqa1 in Heqa2. discriminate.
         symmetry.
         apply Heq.
@@ -1327,13 +1321,13 @@ Qed.
       * apply IHbet; now f_equiv.
       + constructor 3 with conf.
     - unfold is_Active in *.
-      destruct (step (Streams.hd d2) g (conf g)) eqn:?, (step (Streams.hd d) g (conf g)) eqn:?; intuition.
-      rewrite <- da_eq_step_Moving with (da1 := (Streams.hd d2)) in *.
+      destruct (step (Stream.hd d2) g (conf g)) eqn:?, (step (Stream.hd d) g (conf g)) eqn:?; intuition.
+      rewrite <- da_eq_step_Moving with (da1 := (Stream.hd d2)) in *.
       rewrite Heqa in Heqa0; discriminate.
       symmetry; apply Heq.
     - unfold is_Active in *.
-      destruct (step (Streams.hd d2) h (conf g)) eqn:?, (step (Streams.hd d) h (conf g)) eqn:?; intuition.
-      rewrite <- da_eq_step_Moving with (da1 := (Streams.hd d2)) in *.
+      destruct (step (Stream.hd d2) h (conf g)) eqn:?, (step (Stream.hd d) h (conf g)) eqn:?; intuition.
+      rewrite <- da_eq_step_Moving with (da1 := (Stream.hd d2)) in *.
       rewrite Heqa in Heqa0; discriminate. symmetry; apply Heq.
     - apply IHbet. now f_equiv.
   Qed.
@@ -1412,8 +1406,8 @@ Qed.
     step. *)
 Inductive FullySynchronousForOne g d:Prop :=
   ImmediatelyFair2: forall conf,
-    (step (Streams.hd d) g (conf g)) = Moving 1 \/
-    is_Active (step (Streams.hd d) g (conf g)) = true -> 
+    (step (Stream.hd d) g (conf g)) = Moving 1 \/
+    is_Active (step (Stream.hd d) g (conf g)) = true -> 
                       FullySynchronousForOne g d.
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
@@ -1421,8 +1415,8 @@ Inductive FullySynchronousForOne g d:Prop :=
 CoInductive FullySynchronous d :=
   NextfullySynch:
     ((forall g, FullySynchronousForOne g d)
-     /\ forall g conf aom, (step (Streams.hd d) g (conf g)) = aom)
-    -> FullySynchronous (Streams.tl d) 
+     /\ forall g conf aom, (step (Stream.hd d) g (conf g)) = aom)
+    -> FullySynchronous (Stream.tl d) 
     -> FullySynchronous d.
 
 
@@ -1466,7 +1460,7 @@ Qed.
         Graph.find_edge l l' = Some e /\
         Config.eq_RobotConf (conf id)
                             {| Config.loc := Loc l;
-                               Config.robot_info := {| Config.source := Loc l; Config.target := Loc l'|} |}.
+                               Config.info := {| Info.source := Loc l; Info.target := Loc l'|} |}.
 
 
   Lemma round_flow : forall rbg da g conf e p,
@@ -1509,8 +1503,8 @@ Qed.
   (** defintion of probleme *)
   Definition ri_loc_def (conf: Config.t) : Prop := forall g,
       exists v1 v2,
-        loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) /\
-        loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2).
+        loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v1) /\
+        loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v2).
 
 
   (** it's true starting from the initial configuration *)
@@ -1527,7 +1521,7 @@ Qed.
              eqn: Hstep,
                   (Config.loc (conf (Good g)))
                     eqn : Hloc,
-                          (Config.target (Config.robot_info (conf (Good g))))
+                          (Info.target (Config.info (conf (Good g))))
                             eqn : Htgt;
       try (destruct (Graph.Veq_dec l1 l0));
       try now simpl in *.
@@ -1593,7 +1587,7 @@ Qed.
              eqn : Hstep,
                    (Config.loc (conf (Good g)))
                      eqn : Hloc,
-                           (Config.target (Config.robot_info (conf (Good g))))
+                           (Info.target (Config.info (conf (Good g))))
                              eqn : Htgt;
       try easy;
       try (destruct (Graph.Veq_dec l0 l)).
@@ -1627,7 +1621,7 @@ Qed.
 
 
   CoInductive ri : execution -> Prop :=
-    PropCons : forall e, ri_loc_def (Streams.hd e) -> ri (Streams.tl e) -> ri e.
+    PropCons : forall e, ri_loc_def (Stream.hd e) -> ri (Stream.tl e) -> ri e.
 
   Lemma ri_round : forall r da config, ri_loc_def config -> ri_loc_def (round r da config).
   Proof.
@@ -1660,16 +1654,16 @@ Qed.
   Definition group_good_def (conf: Config.t) : Prop := forall g,(
         ri_loc_def conf /\
         (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
-                    loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v0) \/
-                    loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v0)) /\
+                    loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v0) \/
+                    loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v0)) /\
         (forall v1 v2 e p,
-            loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-            loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
+            loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v1) ->
+            loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v2) ->
             loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
             opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)) /\
         (forall v1 v2,
-            loc_eq (Config.source (Config.robot_info (conf (Good g)))) (Loc v1) ->
-            loc_eq (Config.target (Config.robot_info (conf (Good g)))) (Loc v2) ->
+            loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v1) ->
+            loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v2) ->
             exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)))
 
        (* 
@@ -1694,20 +1688,20 @@ find_edge loc tgt = e
             ->
             (exists l, Location.eq (Config.loc (conf' (Good g))) (Loc l))
             ->
-            Location.eq (Config.source (Config.robot_info (conf' (Good g))))
-                        (Config.target (Config.robot_info (conf' (Good g))))
+            Location.eq (Info.source (Config.info (conf' (Good g))))
+                        (Info.target (Config.info (conf' (Good g))))
             ->
             (exists e ll lt,
                 Location.eq (Config.loc (conf' (Good g))) (Loc ll)
                 /\
-                Location.eq (Config.target (Config.robot_info
+                Location.eq (Info.target (Config.info
                                               (conf' (Good g)))) (Loc lt)
                 /\
                 opt_eq Graph.Eeq
                        (Graph.find_edge ll lt)
                        (Some e))
             -> Location.eq (Config.loc (conf' (Good g)))
-                           (Config.source (Config.robot_info (conf' (Good g))))*)).
+                           (Info.source (Config.info (conf' (Good g))))*)).
 
 
   Axiom AutoLoop : forall l, exists e, (Graph.find_edge l l) = Some e.
@@ -1727,7 +1721,7 @@ find_edge loc tgt = e
                  eqn: Hstep,
                       (Config.loc (conf (Good g)))
                         eqn : Hloc,
-                              (Config.target (Config.robot_info (conf (Good g))))
+                              (Info.target (Config.info (conf (Good g))))
                                 eqn : Htgt;
         try now unfold round in *; simpl in *.
       intro v0.
@@ -1743,7 +1737,7 @@ find_edge loc tgt = e
         destruct (Rdec dist 1).
         simpl in *.
         now rewrite Htgt; right.
-        destruct (Config.target (Config.robot_info (conf (Good g)))) eqn : Ht;
+        destruct (Info.target (Config.info (conf (Good g)))) eqn : Ht;
           try now simpl in *.
       + unfold round.
         rewrite Hstep in *.
@@ -1885,7 +1879,7 @@ find_edge loc tgt = e
                eqn: Hstep,
                     (Config.loc (conf (Good g)))
                       eqn : Hl,
-                            (Config.target (Config.robot_info (conf (Good g))))
+                            (Info.target (Config.info (conf (Good g))))
                               eqn : Htgt;
       try easy.
     - destruct (Graph.Veq_dec l0 l).
@@ -1934,7 +1928,7 @@ find_edge loc tgt = e
                eqn: Hstep,
                     (Config.loc (conf (Good g)))
                       eqn : Hl,
-                            (Config.target (Config.robot_info (conf (Good g))))
+                            (Info.target (Config.info (conf (Good g))))
                               eqn : Htgt;
       try easy.
     - destruct (Graph.Veq_dec l0 l). now rewrite Hl in Hl0.
@@ -2001,7 +1995,7 @@ find_edge loc tgt = e
                eqn : Hstep,
                      (Config.loc (conf (Good g)))
             as [l| e p] eqn : Hloc,
-               (Config.target (Config.robot_info (conf (Good g))))
+               (Info.target (Config.info (conf (Good g))))
                  as [lt | ? ?] eqn : Htgt;
         try easy
         ; simpl in *.
@@ -2087,7 +2081,7 @@ find_edge loc tgt = e
 
   (** finals proofs*)
   CoInductive group : execution -> Prop :=
-    GroupCons : forall e, group_good_def (Streams.hd e) -> group (Streams.tl e) -> group e.
+    GroupCons : forall e, group_good_def (Stream.hd e) -> group (Stream.tl e) -> group e.
 
   Lemma group_round : forall r da config, group_good_def config -> group_good_def (round r da config).
   Proof.
@@ -2107,16 +2101,11 @@ find_edge loc tgt = e
   Qed.
 
   Corollary group_always_bis : forall r d config, Conf_init config ->
-                                                  group (execute r d (round r (Streams.hd d) config)).
+                                                  group (execute r d (round r (Stream.hd d) config)).
   Proof.
     intros.
     apply group_always.
     now apply group_lem_init. 
   Qed.
 
-
-
-
 End CGF.
-
-

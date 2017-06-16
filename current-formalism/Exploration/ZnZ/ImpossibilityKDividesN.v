@@ -29,6 +29,7 @@ Require Import List Setoid Compare_dec Morphisms FinFun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.DiscreteSpace.
 Require Import Pactole.Exploration.ZnZ.Definitions.
 Require Import Pactole.Exploration.ZnZ.test_modulo.
 
@@ -47,6 +48,7 @@ Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
   Definition nB := 0%nat.
 End K.
+
 Module def : RingDef with Definition n := n.
  Definition n:= n.
  Lemma n_pos : n <> 0. Proof. unfold n. generalize n_sup_1. omega. Qed.
@@ -59,9 +61,10 @@ Module Loc := Ring(def).
 
 (** There are KG good robots and no byzantine ones. *)
 
+Module Info := SourceTarget(Loc).
 
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
-Module DefsE := Definitions.ExplorationDefs(Loc)(K).
+Module DefsE := Definitions.ExplorationDefs(Loc)(K)(Info).
 Export DefsE.
 
 Coercion Sim.sim_f : Sim.t >-> DiscreteSimilarity.bijection.
@@ -97,10 +100,10 @@ Definition config1 : Config.t :=
   fun id => match id with
               | Good g => let pos := create_conf1 g in
                           {| Config.loc := pos;
-                             Config.robot_info := {| Config.source := pos; Config.target := Loc.add Loc.unit pos |} |}
+                             Config.info := {| Info.source := pos; Info.target := Loc.add Loc.unit pos |} |}
               | Byz b => let pos := Loc.origin in
                           {| Config.loc := pos;
-                             Config.robot_info := {| Config.source := pos; Config.target := pos |} |}
+                             Config.info := {| Info.source := pos; Info.target := pos |} |}
             end.
 
 Lemma conf1_new_aux:
@@ -505,7 +508,7 @@ Proof.
            reflexivity.
            apply HinA.
            intuition.
-Qed.      
+Qed.
 
 Parameter g : Names.G.
 
@@ -690,18 +693,19 @@ Qed.
 (* The spectre of the initial configuration is the same that the one during 
    its computaion [round]. *)
 
-Lemma spect_rotation : forall g0 : Names.G, Spect.eq (!! config1) (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1)).
+Lemma spect_rotation : forall g : Names.G,
+  Spect.eq (!! config1) (!! (Config.map (Config.app (trans (create_conf1 g))) config1)).
 Proof.
 (* unfold Spect.multiset. *)
 (* unfold Spect.eq. *)
   (* intros X. *)
   intros g0.
-  unfold apply_sim, trans; simpl in *.
+  unfold Config.app, trans; simpl in *.
   generalize Spect.from_config_In, conf1_1, Spect.pos_in_config.
   intros HSfcI Hconf1_1 HSpic.
   assert (Htrue : forall x:Spect.elt, Spect.In x (!!config1)
-              <-> Spect.In x (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1))).
-  { unfold apply_sim, trans; simpl in *.
+              <-> Spect.In x (!! (Config.map (Config.app (trans (create_conf1 g0))) config1))).
+  { unfold Config.app, trans; simpl in *.
     intros x. do 2 rewrite HSfcI.
     split.
     + intros (gc1,Hc1).
@@ -799,8 +803,8 @@ Proof.
     unfold Spect.In.
     omega.
   } assert (Ht_map : forall x : Spect.elt, 
-             Spect.In x (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1))
-       <-> (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1))[x] = 1%nat).
+             Spect.In x (!! (Config.map (Config.app (trans (create_conf1 g0))) config1))
+       <-> (!! (Config.map (Config.app (trans (create_conf1 g0))) config1))[x] = 1%nat).
   { intros x; split.
     intros Hsp_In.
     assert (Hsp_In' := Hsp_In).
@@ -814,7 +818,7 @@ Proof.
     rewrite Spect.multiset_spec. 
     rewrite Config.list_spec.
     rewrite map_map.
-    assert (HNoDup_map : SetoidList.NoDupA Loc.eq (map (fun x0 : Names.ident => Config.loc (Config.map (apply_sim (trans (create_conf1 g0))) config1 x0)) Names.names)).
+    assert (HNoDup_map : SetoidList.NoDupA Loc.eq (map (fun x0 : Names.ident => Config.loc (Config.map (Config.app (trans (create_conf1 g0))) config1 x0)) Names.names)).
     { apply (map_injective_NoDupA) with (eqA := Logic.eq).
       + intuition.
       + apply Loc.eq_equiv.
@@ -866,14 +870,16 @@ Proof.
          (fun infoR : Config.RobotConf =>
           {|
           Config.loc := Loc.add (create_conf1 g0) (Loc.opp (Config.loc infoR));
-          Config.robot_info := Config.robot_info infoR |}) config1)
-                 (Config.map (apply_sim (trans (create_conf1 g0))) config1)).
-  intros Heq_conf; rewrite Heq_conf.
+          Config.info := Info.app
+                        (fun x0 : Z => Loc.add (create_conf1 g0) (Loc.opp x0))
+                        (Config.info infoR) |}) config1)
+                 (Config.map (Config.app (trans (create_conf1 g0))) config1)).
+  intros Heq_conf. rewrite Heq_conf.
   destruct (Spect.In_dec x (!! config1)).
   rewrite (Ht x) in i.
   rewrite i.
   rewrite Htrue in i; now rewrite i.
-  assert (n0' : ~ Spect.In x (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1))).
+  assert (n0' : ~ Spect.In x (!! (Config.map (Config.app (trans (create_conf1 g0))) config1))).
   { intros Hn.
     apply n0.
     rewrite <- Ht, <- Ht_map in Htrue.
@@ -882,7 +888,7 @@ Proof.
   unfold Spect.In in n0;
     unfold Spect.In in n0'.
   omega.
-  unfold apply_sim, trans;
+  unfold Config.app, trans;
   simpl in *.
   reflexivity.
 Qed.
@@ -897,23 +903,23 @@ intros ? [g | b] ?; subst; simpl.
 Qed.
 
 Definition da1 : demonic_action.
-
-refine {|
-  relocate_byz := fun b => Loc.origin;
-  step := (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => trans c))) |}.
+refine ({|
+  relocate_byz := fun b => {| Config.loc := Loc.origin;
+                              Config.info := {| Info.source := Loc.origin; Info.target := Loc.origin |} |};
+  step := (lift_conf (fun _ : Names.G => Some (fun c : Loc.t => trans c))) |}).
 Proof.
 - exact da1_compat.
 - intros id sim c Heq. destruct id; simpl in Heq.
   + inversion Heq. now simpl.
-  + apply Fin.case0. exact b .
+  + apply Fin.case0. exact b.
 Defined.
 
-CoFixpoint bad_demon1 : demon := Streams.cons da1 bad_demon1.
+CoFixpoint bad_demon1 : demon := Stream.cons da1 bad_demon1.
 
-Lemma bad_demon1_tail : Streams.tl bad_demon1 = bad_demon1.
+Lemma bad_demon1_tail : Stream.tl bad_demon1 = bad_demon1.
 Proof. reflexivity. Qed.
 
-Lemma bad_demon1_head : Streams.hd bad_demon1 = da1.
+Lemma bad_demon1_head : Stream.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
 
 (*
@@ -1025,13 +1031,6 @@ Section Move1.
   
 Hypothesis Hm : m mod (Z.of_nat n) <> 0.
 
-
-
-
-
-
-
-
 Lemma neq_a_a1 : forall a, ~Loc.eq a (a - 1).
 Proof.
 generalize n_sup_1.
@@ -1066,7 +1065,7 @@ Definition f_conf conf k : Config.t :=
   fun id =>
       match id with
       | Good g => {| Config.loc := Loc.add k (Config.loc (conf (Good g)));
-                     Config.robot_info := Config.robot_info (conf (Good g)) |}
+                     Config.info := Config.info (conf (Good g)) |}
       | Byz b => conf (Byz b)
       end.
 
@@ -1081,7 +1080,7 @@ Proof.
   destruct (Hc (Good g)) as (Hc',_). 
   rewrite Hc'.
   reflexivity.
-  now destruct (Hc (Good g)) as (_,Hc'); rewrite Hc'.
+  apply Hc.
 Qed.
 
 
@@ -1129,9 +1128,9 @@ Proof.
   intros g0.
   unfold move in Hmove.
   simpl in *.
-  unfold Loc.add, Loc.opp, Loc.unit.
   generalize spect_rotation; intro.
-  assert (Hpgm := pgm_compat r (H g0)).
+  assert (Hpgm := pgm_compat r (H g0)). simpl in Hpgm.
+  unfold Loc.add, Loc.opp, Loc.unit in *.
   rewrite <- Zdiv.Zminus_mod_idemp_r.
   rewrite <- Hpgm, Hmove.
   rewrite Zdiv.Zminus_mod_idemp_r.
@@ -1207,10 +1206,10 @@ Qed.
    during the same computation [round] *)
 Lemma config1_Spectre_Equiv : forall conf g0,
     equiv_conf config1 conf->
-    Spect.eq (!! (Config.map (apply_sim
+    Spect.eq (!! (Config.map (Config.app
                                 (trans (Config.loc (conf (Good g0)))))
                              conf))
-             (!! (Config.map (apply_sim
+             (!! (Config.map (Config.app
                                 (trans (Config.loc (config1 (Good g0)))))
                              config1)).
 Proof.
@@ -1220,14 +1219,14 @@ Proof.
   simpl in *.
   unfold Config.map in *.
   repeat rewrite Spect.multiset_spec in *.
-  unfold apply_sim, trans; simpl.
+  unfold Config.app, trans; simpl.
   unfold equiv_conf, f_conf in *.
   destruct Hconf_equiv.
   destruct (H (Good g0)) as (Hl, Hri).
   simpl in *.
   assert (SetoidList.NoDupA Loc.eq
                             (map (fun x : Names.ident =>
-                           Config.loc (apply_sim (trans (Config.loc (conf (Good g0))))
+                           Config.loc (Config.app (trans (Config.loc (conf (Good g0))))
                                                           (conf x)))
                                  Names.names)).
   {
@@ -1237,7 +1236,7 @@ Proof.
       reflexivity.
     + intros id1 id2 Hloc.
       destruct id1 as [g1|b1], id2 as [g2|b2]; try ImpByz b1; try ImpByz b2.
-      unfold apply_sim,trans in *; simpl in *.
+      unfold Config.app,trans in *; simpl in *.
       rewrite (H (Good g0)), (H (Good g1)), (H (Good g2)) in Hloc.
       simpl in Hloc.
       destruct (Names.eq_dec (Good g1) (Good g2)).
@@ -1262,19 +1261,19 @@ Proof.
       apply NoDupA_Leibniz in Hnames.
       assumption.
   }
-  assert (forall elt, Spect.In elt (!! (Config.map (apply_sim
+  assert (forall elt, Spect.In elt (!! (Config.map (Config.app
                                 (trans (Config.loc (conf (Good g0)))))
                                                    conf)) ->
                       countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
         (Config.list
            (fun id : Names.ident =>
-            apply_sim (trans (Config.loc (conf (Good g0)))) (conf id)))) = 1%nat).
+            Config.app (trans (Config.loc (conf (Good g0)))) (conf id)))) = 1%nat).
   {
     intros elt Hspe.
     assert ((countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
         (Config.list
            (fun id : Names.ident =>
-              apply_sim (trans (Config.loc (conf (Good g0)))) (conf id)))) > 1)%nat
+              Config.app (trans (Config.loc (conf (Good g0)))) (conf id)))) > 1)%nat
                                               -> False).
     {
       intros Hgt.
@@ -1301,7 +1300,7 @@ Proof.
           (map Config.loc
              (Config.list
                 (fun id : Names.ident =>
-                   apply_sim (trans (Config.loc (conf (Good g0)))) (conf id))))
+                   Config.app (trans (Config.loc (conf (Good g0)))) (conf id))))
           ?= 1)%nat) eqn : Heq; try rewrite <- nat_compare_lt in *;
       try rewrite <- nat_compare_gt in *;
       try apply nat_compare_eq in Heq.
@@ -1310,14 +1309,14 @@ Proof.
            (map Config.loc
               (Config.list
                  (fun id : Names.ident =>
-                  apply_sim (trans (Config.loc (conf (Good g0)))) (conf id)))) <= 0)%nat by omega.
+                  Config.app (trans (Config.loc (conf (Good g0)))) (conf id)))) <= 0)%nat by omega.
       apply le_not_gt in H2.
       contradiction.
     - exfalso; apply H1; apply Heq.
   }
   assert (forall elt,
-             Spect.In elt (!! (Config.map (apply_sim (trans (Config.loc (conf (Good g0))))) conf)) <-> Spect.In elt (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))).
-  {  unfold apply_sim, trans; simpl in *.
+             Spect.In elt (!! (Config.map (Config.app (trans (Config.loc (conf (Good g0))))) conf)) <-> Spect.In elt (!! (Config.map (Config.app (trans (Config.loc (config1 (Good g0))))) config1))).
+  {  unfold Config.app, trans; simpl in *.
      intros elt.
      do 2 rewrite Spect.from_config_In.
      split.
@@ -1357,8 +1356,8 @@ Proof.
      - ImpByz b.
   }
   assert (Ht_map : forall x : Spect.elt, 
-             Spect.In x (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))
-       <-> (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))[x] = 1%nat).
+             Spect.In x (!! (Config.map (Config.app (trans (Config.loc (config1 (Good g0))))) config1))
+       <-> (!! (Config.map (Config.app (trans (Config.loc (config1 (Good g0))))) config1))[x] = 1%nat).
   { intros elt; split.
     intros Hsp_In.
     assert (Hsp_In' := Hsp_In).
@@ -1372,7 +1371,7 @@ Proof.
     rewrite Spect.multiset_spec. 
     rewrite Config.list_spec.
     rewrite map_map.
-    assert (HNoDup_map : SetoidList.NoDupA Loc.eq (map (fun x0 : Names.ident => Config.loc (Config.map (apply_sim (trans (create_conf1 g0))) config1 x0)) Names.names)).
+    assert (HNoDup_map : SetoidList.NoDupA Loc.eq (map (fun x0 : Names.ident => Config.loc (Config.map (Config.app (trans (create_conf1 g0))) config1 x0)) Names.names)).
     { apply (map_injective_NoDupA) with (eqA := Logic.eq).
       + intuition.
       + apply Loc.eq_equiv.
@@ -1418,26 +1417,26 @@ Proof.
     omega.
   }
   specialize (Ht_map x).
-  destruct (Spect.In_dec x (!! (Config.map (apply_sim
+  destruct (Spect.In_dec x (!! (Config.map (Config.app
                                 (trans (Config.loc (conf (Good g0)))))
                              conf))).
   + assert (i' : Spect.In x (!!
-                             (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))) by now rewrite <- H2.
+                             (Config.map (Config.app (trans (Config.loc (config1 (Good g0))))) config1))) by now rewrite <- H2.
     unfold Spect.from_config, Config.map in *.
     rewrite Spect.multiset_spec in *.
-    unfold apply_sim, trans in *; simpl in *.
+    unfold Config.app, trans in *; simpl in *.
     destruct Ht_map as (Ht1, Ht2).
     rewrite H1, Ht1.
     reflexivity.
     apply i'.
     apply i.
   + assert (n0' : ~ Spect.In x (!!
-                                  (Config.map (apply_sim (trans (Config.loc (config1 (Good g0))))) config1))) by now rewrite <- H2.
+                                  (Config.map (Config.app (trans (Config.loc (config1 (Good g0))))) config1))) by now rewrite <- H2.
     rewrite Spect.not_In in n0.
     rewrite Spect.not_In in n0'.
     unfold Spect.from_config, Config.map in *.
     rewrite Spect.multiset_spec in *.
-    unfold apply_sim, trans in *; simpl in *.
+    unfold Config.app, trans in *; simpl in *.
     rewrite n0, n0'.
     reflexivity.
 Qed.
@@ -1454,19 +1453,18 @@ Proof.
   unfold stop_now in *.
   simpl in *.
   unfold Config.eq, round in Hstop.
-  simpl in Hstop.
   specialize (Hstop (Good g)).
-  simpl in Hstop.
   destruct Hstop as (Hstop,_).
-  simpl in Hstop.
+  cbn -[trans] in Hstop.
   rewrite (config1_Spectre_Equiv) in Hstop.
-  unfold config1 in Hstop; simpl in Hstop.
+  unfold config1 in Hstop; cbn -[trans] in Hstop.
   rewrite <- spect_rotation in Hstop.
   unfold move in Hmove.
   rewrite Hmove in Hstop.
   set (X := Config.loc (conf (Good g))) in *.
+  unfold trans in Hstop. simpl in Hstop.
   unfold Loc.add, Loc.opp, Loc.eq in *.
-  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod, 
+  rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same, Z.mod_mod,
   Zdiv.Zplus_mod_idemp_r in Hstop;
     try (unfold def.n; generalize n_sup_1; omega).
   simpl in Hstop.
@@ -1509,7 +1507,7 @@ Proof.
     omega.
     assert (Hconf := Zdiv.Z_mod_lt (X) (Z.of_nat def.n)).
     assert (Hm' := Zdiv.Z_mod_lt m (Z.of_nat def.n)).
-    omega. 
+    omega.
   + assumption.
 Qed.
 
@@ -1525,40 +1523,34 @@ Proof.
   + assert (Hequiv : equiv_conf config1 conf) by (now exists k).
     unfold f_conf in *.
     unfold round.
-    simpl in *.
+    cbn -[trans] in *.
     specialize (Heq (Good g)).
     destruct Heq as (Heq, _).
-    simpl in *.
+    cbn -[trans] in *.
     rewrite config1_Spectre_Equiv .
     unfold config1 at 1.
-    simpl.
+    cbn -[trans].
     rewrite <- spect_rotation; try assumption.
     unfold move in *.
-    rewrite Hmove.
-    rewrite Heq.
+    rewrite Hmove, Heq. simpl.
     rewrite Loc.add_comm, Loc.add_assoc.
     rewrite Loc.add_comm with (v := k).
     reflexivity.
     assumption.
-  + unfold round; simpl.
-    destruct (Heq (Good g)) as (_,Hif).
-    rewrite Hif.
-    unfold f_conf.
-    simpl.
-    reflexivity.
+  + apply Heq.
 Qed.
 
 Definition AlwaysEquiv (e : execution) : Prop :=
-  Streams.forever (Streams.instant (equiv_conf config1)) e.
+  Stream.forever (Stream.instant (equiv_conf config1)) e.
 
 Definition AlwaysMoving (e : execution) : Prop :=
-  Streams.forever (fun e1 =>  ~ Stopped e1) e.
+  Stream.forever (fun e1 =>  ~ Stopped e1) e.
 
 (* An execution that is satisfing the predicate [AlwaysEquiv]
    satisfy the [AlwaysMoving] one too. *)
 
 Lemma AlwaysEquiv_impl_AlwaysMoving : forall e,
-    e = execute r bad_demon1 (Streams.hd e)
+    e = execute r bad_demon1 (Stream.hd e)
     -> AlwaysEquiv e -> AlwaysMoving e.
 Proof.
   cofix.
@@ -1624,7 +1616,7 @@ Qed.
    the [Will_Stop] one *)
 
 Lemma AlwaysMoving_impl_not_WillStop : forall e,
-    e = execute r bad_demon1 (Streams.hd e)
+    e = execute r bad_demon1 (Stream.hd e)
     -> AlwaysMoving e -> ~ Will_stop e.
 Proof.
 intros e Heq_e Hmo Hst.
@@ -1674,8 +1666,8 @@ Section Stop.
     Proof.
       intros [g|b]; try ImpByz b.
       unfold round.
-      split; simpl; try reflexivity.
-      rewrite <- spect_rotation.
+      split; cbn -[trans]; try reflexivity.
+      rewrite <- spect_rotation. simpl.
       unfold move in Hmove.
       rewrite Hmove.
       unfold Loc.opp.
@@ -1688,6 +1680,7 @@ Section Stop.
       now rewrite Loc.add_origin.
       generalize n_sup_1; omega.
       generalize n_sup_1; unfold def.n; omega.
+      split; reflexivity.
     Qed.
 
    Lemma NeverVisited_conf1 : forall e,

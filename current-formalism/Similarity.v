@@ -1,3 +1,23 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
 Require Import Utf8.
 Require Import Setoid.
 Require Import Equalities.
@@ -5,6 +25,7 @@ Require Import Morphisms.
 Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 
 
 Set Implicit Arguments.
@@ -244,7 +265,7 @@ Proof. intros c H10 x y Hxy. rewrite Hxy. simpl. now rewrite Loc.mul_1. Qed.
 
 End Normed_Results.
 
-(** Composition of similarity *)
+(** Composition of similarities *)
 
 Definition compose (f g : t) : t.
 refine {|

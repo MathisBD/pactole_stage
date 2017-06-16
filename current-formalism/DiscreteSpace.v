@@ -1,68 +1,251 @@
-(**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
-(**************************************************************************)
-
 Require Import ZArith.
-Require Import Omega.
-Require Import SetoidList.
-Require Import Ensembles.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.DiscreteSpace.
-(* Require Import Pactole.Similarity. *)
-
-Local Open Scope Z_scope. 
-
-Parameter n : Z.
-Axiom n_pos : (n > 0)%Z.
-
-Axiom n_sup_1: (1 < n)%Z. (* at first, it was 0 < n, but for the "non_trivial" definition,
-there was a probleme: 1 mod n have to be different to 0 mod n, so n ~= 1*)
+Require Import Morphisms.
+Require Import Equalities.
 
 
-
-Definition origin := 0 mod n. 
-
-Definition add (x y : Z) : Z :=  (Zmod (x + y) n).
-
-Definition mul (x y : Z): Z :=  (Zmod (Z.mul x y) n).
-
-Definition eq (x y : Z): Prop := Zmod x n = Zmod y n.
-
-Lemma eq_equiv_lemme : Equivalence eq.
-Proof.
-split.
- - split.
- - intros x y Hxy. unfold eq in *. symmetry. assumption.
- - intros x y z Hxy Hyz. unfold eq in *. transitivity (y mod n); assumption.
-Qed.
-
-Definition eq_equiv := eq_equiv_lemme.
-
-Lemma eq_dec_lem : forall x y, {~eq x y} + {eq x y}.
-Proof.
-intros. unfold eq. apply Z_noteq_dec.
-Qed.
-
-
-Definition eq_dec : forall x y, {~ eq x y} + {eq x y}:= eq_dec_lem.
-
-Lemma n_not_0: n <> 0.
-Proof.
-  assert (n>0) by apply n_pos. intuition.
-Qed.
+Module Type DiscreteSpaceDef <: DecidableType.
+  Parameter t : Type.
+  Parameter origin : t.
+  Parameter eq : t -> t -> Prop.
+  Parameter dist : t -> t -> Z.
+  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
   
-Lemma mod_pos_z : forall (x:Z), ( 0 <= (Zmod x n) < n ).
+  Parameter add : t -> t -> t.
+  Parameter mul : Z -> t -> t.
+  Parameter opp : t -> t.
+  
+  Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
+  Declare Instance mul_compat : Proper (Logic.eq ==> eq  ==> eq) mul.
+  Declare Instance opp_compat : Proper (eq  ==> eq) opp.
+  
+  Parameter eq_equiv : Equivalence eq.
+  Parameter dist_defined : forall x y, dist x y = 0%Z <-> eq x y.
+  Parameter dist_sym : forall x y, dist x y = dist y x.
+  Parameter triang_ineq : forall x y z, (dist x z <= (dist x y) + (dist y z))%Z.
+
+  Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Parameter add_comm : forall u v, eq (add u v) (add v u).
+  Parameter add_origin : forall u, eq (add u origin) u.
+  Parameter add_opp: forall u, eq (add u (opp u)) origin.
+  Parameter mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
+  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Parameter add_morph : forall a b u, eq (add (mul a u ) (mul b u ) ) (mul (a + b) u ).
+  
+  Parameter mul_1 : forall u, eq (mul 1 u ) u.
+  Parameter unit : t. (* TODO: is it really a good name? *)
+  Parameter non_trivial : ~eq unit origin.
+End DiscreteSpaceDef.
+
+Module Type DiscreteSpace.
+  Include DiscreteSpaceDef.
+  
+  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
+  Parameter mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  Parameter opp_origin : eq (opp origin) origin.
+  Parameter opp_opp : forall u, eq (opp (opp u)) u.
+  Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
+  Parameter mul_0 : forall u, eq (mul 0 u) origin.
+  Parameter mul_origin : forall a, eq (mul a origin) origin.
+  Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+
+End DiscreteSpace.
+
+
+Module MakeDiscreteSpace (Def : DiscreteSpaceDef) : DiscreteSpace
+    with Definition t := Def.t
+    with Definition eq := Def.eq
+    with Definition eq_dec := Def.eq_dec
+    with Definition origin := Def.origin
+    with Definition dist := Def.dist
+    with Definition add := Def.add
+    with Definition mul := Def.mul
+    with Definition opp := Def.opp.
+  
+  Include Def.
+
+  (** Proofs of two derivable properties about DiscreteSpace *)
+  Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Proof.
+  intros x x' Hx y y' Hy. apply Zle_antisym.
+  + replace (dist x' y') with (0 + dist x' y' + 0)%Z by ring. symmetry in Hy.
+    rewrite <- dist_defined in Hx. rewrite <- dist_defined in Hy.
+    rewrite <- Hx at 1. rewrite <- Hy. eapply Zle_trans. apply triang_ineq.
+    rewrite <- Zplus_assoc. apply Zplus_le_compat_l, triang_ineq.
+  + replace (dist x y) with (0 + dist x y + 0)%Z by ring. symmetry in Hx.
+    rewrite <- dist_defined in Hx. rewrite <- dist_defined in Hy.
+    rewrite <- Hx at 1. rewrite <- Hy. eapply Zle_trans. apply triang_ineq.
+    rewrite <- Zplus_assoc. apply Zplus_le_compat_l, triang_ineq.
+  Qed.
+
+
+  Lemma dist_pos : forall x y, (0 <= dist x y)%Z.
+  Proof.
+  intros. unfold dist. apply Zmult_le_reg_r with 2%Z. 
+  + omega.
+  + do 2 rewrite <- Zplus_diag_eq_mult_2. simpl.
+    assert (Hx : eq x x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
+    setoid_rewrite dist_sym at 3. apply triang_ineq.
+  Qed.
+
+  Lemma add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  Proof.
+  intros w u v Heq. setoid_rewrite <- add_origin.
+  now rewrite <- (add_opp w), add_assoc, Heq, <- add_assoc.
+  Qed.
+  
+  Lemma add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Proof. setoid_rewrite add_comm. apply add_reg_r. Qed.
+  
+  Lemma opp_origin : eq (opp origin) origin.
+  Proof. apply (add_reg_r origin). now rewrite add_comm, add_opp, add_origin. Qed.
+  
+  Lemma opp_opp : forall u, eq (opp (opp u)) u.
+  Proof. intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.
+  
+  Lemma opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
+  Proof.
+  intros u v. apply (add_reg_l (add u v)). rewrite add_opp, add_assoc. setoid_rewrite add_comm at 3.
+  setoid_rewrite <- add_assoc at 2. now rewrite add_opp, add_origin, add_opp.
+  Qed.
+  
+  Lemma mul_0 : forall u, eq (mul 0 u) origin.
+  Proof.
+  intro u. apply (add_reg_l u).
+  rewrite add_origin. rewrite <- (mul_1 u) at 1. rewrite add_morph.
+  ring_simplify (1 + 0)%Z. now rewrite mul_1.
+  Qed.
+  
+  Lemma minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+  Proof.
+  intros k u. apply (add_reg_l (mul k u)).
+  rewrite add_opp. rewrite add_morph. ring_simplify (k + - k)%Z.
+  apply mul_0.
+  Qed.
+  
+  Lemma mul_origin : forall k, eq (mul k origin) origin.
+  Proof.
+  intro k. apply add_reg_l with (mul k origin).
+  rewrite <- mul_distr_add. setoid_rewrite add_origin. reflexivity.
+  Qed.
+  
+  Lemma mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Proof.
+  intros a u. apply (add_reg_l (mul a u)). rewrite <- mul_distr_add.
+  setoid_rewrite add_opp. now rewrite mul_origin.
+  Qed.
+  
+End MakeDiscreteSpace.
+
+
+Module Type RingDef.
+  Parameter n : nat.
+  Parameter n_pos : n <> 0.
+  Parameter n_sup_1 : n > 1.
+End RingDef.
+
+Open Scope Z_scope.
+
+(* Another possiblity is to only define [eq] and [dist], the operations being inherited from [Z].
+   Do not forget [dist] and the compatibility lemmas.  *)
+Module Type RingSig.
+
+  Parameter n : Z.
+  Parameter n_pos : 0 < n.
+  Parameter n_sup_1 : 1 < n. 
+
+  Definition t := Z.
+ 
+  Parameter eq : Z -> Z -> Prop.
+  Parameter dist : Z -> Z -> Z.
+  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
+  Parameter origin : Z.
+  Parameter unit : Z.
+  Parameter add : Z -> Z -> Z.
+  Parameter mul : Z -> Z -> Z.
+  Parameter opp : Z -> Z.
+  
+  Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
+  Declare Instance mul_compat : Proper (Logic.eq ==> eq  ==> eq) mul.
+  Declare Instance opp_compat : Proper (eq  ==> eq) opp.
+  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  
+  Declare Instance eq_equiv : Equivalence eq.
+  Parameter dist_defined : forall x y, dist x y = 0%Z <-> eq x y.
+  Parameter dist_sym : forall x y, dist x y = dist y x.
+  Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
+  Parameter triang_ineq : forall x y z, (dist x z <= (dist x y) + (dist y z))%Z.
+  Parameter opp_opp : forall u, eq (opp (opp u)) u.
+  Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
+
+  Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
+  Parameter add_comm : forall u v, eq (add u v) (add v u).
+  Parameter add_origin : forall u, eq (add u origin) u.
+  Parameter add_opp: forall u, eq (add u (opp u)) origin.
+  Parameter mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Parameter mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
+  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
+  Parameter add_morph : forall a b u, eq (add (mul a u ) (mul b u ) ) (mul (a + b) u ).
+  Parameter mul_0 : forall u, eq (mul 0 u) origin.
+  Parameter mul_origin : forall a, eq (mul a origin) origin.
+  Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+  Parameter opp_origin : eq (opp origin) origin.
+  
+  Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  
+  Parameter mul_1 : forall u, eq (mul 1 u ) u.
+  Parameter non_trivial : ~eq unit origin.
+End RingSig.
+
+Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n
+        with Definition origin := 0%Z
+        with Definition add := fun (x y : Z) => (Zmod (x + y) (Z.of_nat Odef.n))
+        with Definition mul := fun (x y : Z) =>  (Zmod (Z.mul x y) (Z.of_nat Odef.n))
+        with Definition opp := fun (x: Z) => ((Z.of_nat Odef.n) - x) mod (Z.of_nat Odef.n)
+        with Definition eq := fun (x y : Z) => Zmod x (Z.of_nat Odef.n) = Zmod y (Z.of_nat Odef.n)
+        with Definition unit := 1%Z.
+(*         with Definition dist := fun (x y : Z) => Z.min (add (opp y) x) (add (opp x) y). *)
+
+  Definition n := Z.of_nat Odef.n.
+  Definition t := Z.
+  Definition origin := 0%Z.
+  Definition add (x y : Z) : Z :=  (Zmod (x + y) n).
+  Definition mul (x y : Z): Z :=  (Zmod (Z.mul x y) n).
+  Definition opp (x: Z): Z := (n - x) mod n. 
+  Definition eq (x y : Z): Prop := Zmod x n = Zmod y n.
+  Definition unit := 1%Z.
+
+  Instance eq_equiv : Equivalence eq.
+  Proof.
+  split.
+   - split.
+   - intros x y Hxy. unfold eq in *. symmetry. assumption.
+   - intros x y z Hxy Hyz. unfold eq in *. transitivity (y mod n); assumption.
+  Qed.
+
+(* Definition eq_equiv := eq_equiv_lemme. *)
+
+  Lemma eq_dec : forall x y, {eq x y} + {~eq x y}.
+  Proof.
+  intros. unfold eq. apply Z.eq_dec.
+  Qed.
+
+  Lemma n_pos : 0 < n.
+  Proof.
+  unfold n. rewrite <- Nat2Z.inj_0. apply inj_lt. generalize Odef.n_pos. omega.
+  Qed.
+
+  Lemma n_sup_1 : 1 < n.
+  Proof. unfold n. generalize Odef.n_sup_1. omega. Qed.
+
+(* Lemma mod_pos_z : forall (x:Z), ( 0 <= (Zmod x n) < n ).
 Proof.
 intros. apply Z_mod_lt. apply n_pos.
 Qed. 
-
+ *)
 
 
 Instance add_compat : Proper (eq ==> eq ==> eq) add.
@@ -75,7 +258,7 @@ Proof.
  reflexivity.
 Qed.
 
-Lemma mul_proper : Proper (eq ==> eq ==> eq) mul.
+Instance mul_compat : Proper (Logic.eq ==> eq ==> eq) mul.
 Proof.
 intros x x' Hx y y' Hy. 
 unfold mul, eq in *. 
@@ -84,9 +267,8 @@ rewrite Zmult_mod, Hx, Hy, <- Zmult_mod.
 reflexivity.
 Qed.
 
-Definition opp (x: Z): Z := (n - x) mod n. 
 
-Lemma opp_proper : Proper (eq ==> eq) opp.
+Instance opp_compat : Proper (eq ==> eq) opp.
 Proof.
 intros x x' Hx.
 unfold opp, eq in *.
@@ -97,115 +279,27 @@ Qed.
 
 Definition dist (x y : Z) : Z := Z.min (add (opp y) x) (add (opp x) y).
 
-
-
-
-Module Ddef : DiscreteSpaceDef with Definition t := Z
-                                 with Definition eq := eq
-                                 with Definition origin := origin
-                                 with Definition dist := dist
-                                 with Definition add := add
-                                 with Definition mul := mul
-                                 with Definition opp := opp.
-
-Definition t := Z.
-
-Definition origin := 0 mod n.
-
-Definition add (x y : Z) : Z :=  (Zmod (x + y) n).
-
-Definition mul (x y : Z): Z :=  (Zmod (Z.mul x y) n).
-
-Definition eq (x y : Z): Prop := Zmod x n = Zmod y n.
-
-Lemma eq_equiv_lemme : Equivalence eq.
+Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
 Proof.
-split.
- - split.
- - intros x y Hxy. unfold eq in *. symmetry. assumption.
- - intros x y z Hxy Hyz. unfold eq in *. transitivity (y mod n); assumption.
+intros x1 x2 Hx y1 y2 Hy. unfold dist.
+unfold add, opp. generalize n_pos as Hn0. intros.
+rewrite <- Z.add_mod_idemp_r, <- Z.add_mod_idemp_r with (b:=y1).
+rewrite Zminus_mod, Zminus_mod with (b:= x1), Hx, Hy.
+rewrite Z.add_mod_idemp_r with (b := x2), Z.add_mod_idemp_r with (b := y2),
+<- Zminus_mod, <- Zminus_mod. reflexivity.
+omega. omega. omega. omega.
 Qed.
 
-Definition eq_equiv := eq_equiv_lemme.
-
-Lemma eq_dec_lem : forall x y, {eq x y} + {~ eq x y}.
-Proof.
-intros. apply Sumbool.sumbool_not. unfold eq. apply Z_noteq_dec.
-Qed.
-
-
-Definition eq_dec : forall x y, {eq x y} + {~ eq x y}:= eq_dec_lem.
-
-Lemma n_not_0: n <> 0.
-Proof.
-  assert (n>0) by apply n_pos. intuition.
-Qed.
-  
-Lemma mod_pos_z : forall (x:Z), ( 0 <= (Zmod x n) < n ).
-Proof.
-intros. apply Z_mod_lt. apply n_pos.
-Qed. 
-
-
-
-Instance add_compat : Proper (eq ==> eq ==> eq) add.
-Proof.
- intros x x' Hx y y' Hy.
- unfold add, eq.
- do 2 rewrite Zmod_mod.
- unfold eq in *.
- rewrite Zplus_mod, Hx, Hy, <- Zplus_mod.
- reflexivity.
-Qed.
-
-Lemma mul_compat : Proper (Logic.eq ==> eq ==> eq) mul.
-Proof.
-intros x x' Hx y y' Hy. 
-unfold mul, eq in *. 
-repeat rewrite Zmod_mod.
-rewrite Zmult_mod, Hx, Hy, <- Zmult_mod.
-reflexivity.
-Qed.
-
-Definition opp (x: Z): Z := (n - x) mod n. 
-
-Lemma opp_compat : Proper (eq ==> eq) opp.
-Proof.
-intros x x' Hx.
-unfold opp, eq in *.
-repeat rewrite Zmod_mod.
-rewrite Zminus_mod, Hx, <- Zminus_mod.
-reflexivity.
-Qed.
-
-Definition dist (x y : Z) : Z := Z.min (add (opp y) x) (add (opp x) y) .
-
-Lemma dist_pos : forall x y, (0 <= dist x y).
-Proof.
-intros.
-unfold dist, Z.min. 
-destruct (Z.compare (add (opp y) x) (add (opp x) y) ); 
-unfold add;
-apply mod_pos_z.
-Qed.
-
-Lemma dist_proper: Proper (eq ==> eq ==> eq) dist.
-Proof.
-intros x x' Hx y y' Hy.
-unfold dist, eq in *; unfold add, opp. 
-rewrite Zminus_mod, Zplus_mod, (Zminus_mod n x), (Zplus_mod ((n mod n - x mod n) mod n) y).
-rewrite Hx, Hy, <- Zminus_mod, <- Zplus_mod, <- Zminus_mod, <- Zplus_mod.
-reflexivity.
-Qed.
 
 
 Lemma dist_defined_0 : forall a b, (a - b) mod n = 0 -> a mod n = b mod n.
 Proof.
-intros.
+assert (Hpos_n : n > 0). { rewrite Z.gt_lt_iff. apply n_pos. }
+intros a b Heq.
 assert (Hdiv1:let (q1, r1) := Z.div_eucl a n in a = n * q1 + r1 /\ 0 <= r1 < n).
-apply Z_div_mod, n_pos.
+{ now apply Z_div_mod. }
 assert (Hdiv2:let (q2, r2) := Z.div_eucl b n in b = n * q2 + r2 /\ 0 <= r2 < n).
-apply Z_div_mod, n_pos.
+{ now apply Z_div_mod. }
 destruct (Z.div_eucl a n), (Z.div_eucl b n).
 destruct Hdiv1 as (Ha, Hr1) , Hdiv2 as (Hb, Hr2).
 assert (Hab: (a-b) mod n = (z0 - z2) mod n).
@@ -215,11 +309,10 @@ do 2 rewrite Z_mod_mult.
 simpl.
 do 2 rewrite Zmod_mod.
 symmetry; apply Zminus_mod. 
-rewrite Hab, Zmod_divides in H.
-destruct H.
+rewrite Hab, Zmod_divides in Heq.
+destruct Heq.
 assert (Hz_lt_n: z0 - z2 < n * 1) by omega.
 rewrite H in Hz_lt_n.
-assert (axiom: n > 0) by apply n_pos.
 assert (Hz_gt_mn: n*(-1)  < z0 - z2 ) by omega.
 rewrite H in Hz_gt_mn.
 assert (Hgt1:x < 1).
@@ -239,8 +332,16 @@ apply fast_Zmult_comm, (fast_Zmult_comm n z1).
 do 2 rewrite Z_mod_mult.
 reflexivity.
 omega.
-Qed. 
+Qed.
 
+Lemma dist_pos : forall x y, (0 <= dist x y).
+Proof.
+intros.
+unfold dist, Z.min. 
+destruct (Z.compare (add (opp y) x) (add (opp x) y) ); 
+unfold add;
+apply Z_mod_lt, Z.gt_lt_iff, n_pos.
+Qed.
 
 Lemma dist_defined_1 : forall a b, a mod n = b mod n -> (a - b) mod n = 0.
 Proof.
@@ -251,52 +352,28 @@ rewrite Zmod_0_l.
 reflexivity.
 Qed.
 
-Lemma dist_defined : forall x y, dist x y= 0 <-> eq x y.
+Lemma dist_defined : forall x y, dist x y = 0 <-> eq x y.
 Proof.
-intros.
+assert (Hpos_n : n > 0). { rewrite Z.gt_lt_iff. apply n_pos. }
+intros x y.
 unfold eq, dist, opp, add.
 do 2 rewrite Zplus_mod_idemp_l.
 unfold Z.min.
-destruct Z.compare.
-+ rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r.
-  simpl.
-  split.
- - rewrite <- Zplus_mod.
-   apply fast_Zplus_comm, dist_defined_0.
- - intros Heq.
-   rewrite <- Zplus_mod.
-   replace (-y+x) with (x - y) by omega.
-   apply dist_defined_1.
-   assumption. 
- - apply n_pos.
- + rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r.
-   simpl.
-   split.
- - rewrite <- Zplus_mod.
-   apply fast_Zplus_comm, dist_defined_0.
- - intros H.
-   rewrite <- Zplus_mod.
-   replace (-y+x) with (x - y) by omega.
-   apply dist_defined_1.
-   assumption. 
- - apply n_pos.
- + rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r.
-   simpl.
-   split.
- - rewrite <- Zplus_mod.
-   replace (-x+y) with (y - x) by omega.
-   intros.
-   symmetry.
-   apply dist_defined_0.
-   assumption.
- - intros H.
-   rewrite <- Zplus_mod.
-   replace (-x+y) with (y - x) by omega.
-   apply dist_defined_1.
-   symmetry; assumption.
- - apply n_pos. 
+destruct Z.compare;
+rewrite Zplus_mod, Zminus_mod, Z_mod_same, Zminus_mod_idemp_r;
+simpl;
+try assumption;
+split;
+rewrite <- Zplus_mod;
+try (apply fast_Zplus_comm, dist_defined_0);
+try (replace (-x+y) with (y - x) by omega);
+try (replace (-y+x) with (x - y) by omega);
+intro Heq.
+- now apply dist_defined_1.
+- now apply dist_defined_1.
+- symmetry; now apply dist_defined_0.
+- now apply dist_defined_1.
 Qed.
-
 
 Lemma dist_sym : forall x y, dist x y = dist y x.
 Proof.
@@ -310,11 +387,11 @@ intros.
 unfold add.
 rewrite Zplus_mod.
 apply Zmod_le.
-apply Z.gt_lt_iff, n_pos.
+apply n_pos.
 assert (0 <= a mod n).
-apply Z_mod_lt, n_pos. 
+apply Z_mod_lt, Z.gt_lt_iff, n_pos. 
 assert (0 <= b mod n).
-apply Z_mod_lt, n_pos.
+apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.    
 Qed.
 
@@ -360,7 +437,7 @@ destruct (a mod n ?= 0) eqn : Heq.
 + rewrite Z.compare_lt_iff in *.
   exfalso.
   assert (0 <= a mod n).
-  apply Z_mod_lt, n_pos.
+  apply Z_mod_lt, Z.gt_lt_iff, n_pos.
   apply Zle_not_gt in H0.
   omega.
 + rewrite Z.compare_gt_iff in *.
@@ -374,12 +451,12 @@ destruct (a mod n ?= 0) eqn : Heq.
     replace (0-n) with (-n) in H0 by omega.
     apply Z.opp_inj in H0.
     assert (a mod n < n).
-    apply Z_mod_lt, n_pos.
+    apply Z_mod_lt, Z.gt_lt_iff, n_pos.
     omega.
   - rewrite Z.compare_lt_iff in *.
     exfalso.
     assert (0 <= b mod n).
-    apply Z_mod_lt, n_pos.
+    apply Z_mod_lt, Z.gt_lt_iff, n_pos.
     omega.
   - rewrite Z.compare_gt_iff in *.
     assert (b mod n <> 0) by omega.
@@ -427,7 +504,7 @@ Proof.
   destruct (eq_dec x 0).
   - left. unfold eq in e. rewrite e, Zmod_0_l in *. simpl.
     apply Z_mod_zero_opp_full. assumption.
-  - right. rewrite Z.mod_opp_l_nz. omega. apply n_not_0.
+  - right. rewrite Z.mod_opp_l_nz. omega. generalize n_pos. omega.
     unfold eq in n0. rewrite Zmod_0_l in n0. assumption.
 Qed.
 
@@ -456,7 +533,7 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
     - left.
       rewrite Z.mod_opp_l_nz.
       omega.
-      assert (n>0) by apply n_pos.
+      assert (n>0) by apply Z.gt_lt_iff, n_pos.
       omega.
       unfold eq in n0.
       assert ((x - y) mod n = 0 -> x mod n = y mod n).
@@ -470,7 +547,7 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
       assert (n = 2*(n/2)).
       apply Z_div_exact_2; omega. 
       omega.
-      assert (n>0) by apply n_pos.
+      assert (n>0) by apply Z.gt_lt_iff, n_pos.
       assert (0 <= n/2).
       apply Z.div_pos; omega.
       omega.
@@ -478,13 +555,13 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
    assert ((- (x - y) mod n + (x - y) mod n) = n).
    rewrite Z.mod_opp_l_nz.
    omega.
-   assert (n>0) by apply n_pos.
+   assert (n>0) by apply Z.gt_lt_iff, n_pos.
    omega.
    assert ((x - y) mod n <> - (x - y) mod n) by omega.
    destruct ((x - y) mod n ?= 0) eqn : H0.
     - assert (0 < -(x - y) mod n). 
       apply (Z.le_lt_trans 0 ((x - y) mod n) (- (x - y) mod n)).
-      apply mod_pos_z.
+      apply Z_mod_lt, Z.gt_lt_iff, n_pos.
       assumption.
       assert (- (x - y) mod n <> 0) by omega.
       rewrite Z.compare_eq_iff in *. 
@@ -515,7 +592,7 @@ destruct ((x - y) mod n ?= - (x - y) mod n) eqn : Heq.
    assert ((- (x - y) mod n + (x - y) mod n) = n).
    rewrite Z.mod_opp_l_nz.
    omega.
-   assert (n>0) by apply n_pos.
+   assert (n>0) by apply Z.gt_lt_iff, n_pos.
    omega.
    assert ((x - y) mod n <> - (x - y) mod n) by omega.
    destruct (-(x - y) mod n ?= 0) eqn : H0.
@@ -569,7 +646,7 @@ split.
    replace (--(a-b)) with (a-b) in H0 by omega.
    rewrite H0 in H; simpl in H.
    assert (n>0).
-   apply n_pos.
+   apply Z.gt_lt_iff, n_pos.
    omega. 
 Qed.
 
@@ -607,13 +684,13 @@ rewrite <- Heq1 in n_div_2 at 2.
 omega.
 omega.
 assert (lt_0_yz: 0<(y-z) mod n).
-assert (0 <= (z-y) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (z-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zy: 0<(z-y) mod n).
 assert ((y-z) mod n <> 0) by omega. 
 replace (y-z) with (-(z-y)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (z-y) with (-(y-z)) by omega.
-assert (0<=-(y-z) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(y-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (n_div_2: n = 2*(n/2)).
 assert ((x-z) mod n + (z-x) mod n = n).
@@ -657,7 +734,7 @@ apply fast_Zmult_comm.
 rewrite <- Zplus_diag_eq_mult_2.
 omega.
 assert (Hlt2: ((y - z) mod n + (z - x) mod n) < n+n/2).
-assert ((y-z) mod n < n) by apply Z_mod_lt, n_pos.
+assert ((y-z) mod n < n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (Heq2': 0 < ((y - z) mod n + (z - x) mod n) - n < n/2) by omega.
 assert (Hmod: 0 < ((y - z) mod n + (z - x) mod n - n) mod n < n/2).
@@ -693,13 +770,13 @@ rewrite <- Heq1 in n_div_2 at 2.
 omega.
 omega.
 assert (lt_0_yz: 0<(z-y) mod n).
-assert (0 <= (y-z) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (y-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zy: 0<(y-z) mod n).
 assert ((z-y) mod n <> 0) by omega. 
 replace (z-y) with (-(y-z)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (y-z) with (-(z-y)) by omega.
-assert (0<=-(z-y) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(z-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (n_div_2: n = 2*(n/2)).
 assert ((x-z) mod n + (z-x) mod n = n).
@@ -738,7 +815,7 @@ assert (Hgt2: n < (z - y) mod n + (z - x) mod n).
 rewrite n_div_2 at 1.
 omega.
 assert (Hlt2: ((z - y) mod n + (z - x) mod n) < n+n/2).
-assert ((z-y) mod n < n) by apply Z_mod_lt, n_pos.
+assert ((z-y) mod n < n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (Heq2': 0 < ((z - y) mod n + (z - x) mod n) - n < n/2).
 omega.
@@ -765,22 +842,22 @@ Lemma tri_ineq_help_lt_lt_lt: forall x y z,  (x - z) mod n < (z - x) mod n ->
 Proof.
 intros x y z Heq1 eq0 Heq2 Hdxy Heq3 hdzy Hdxz.
 assert (lt_0_xy: 0<(y-x) mod n).
-assert (0 <= (x-y) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (x-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_yx: 0<(x-y) mod n).
 assert ((y-x) mod n <> 0) by omega.
 replace (y-x) with (-(x-y)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (x-y) with (-(y-x)) by omega.
-assert (0<=-(y-x) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(y-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (lt_0_xz: 0<(z-x) mod n).
-assert (0 <= (x-z) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (x-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zx: 0<(x-z) mod n).
 assert ((z-x) mod n <> 0) by omega.
 replace (z-x) with (-(x-z)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (x-z) with (-(z-x)) by omega.
-assert (0<=-(z-x) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(z-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert ((x - y) mod n + (z - y) mod n < n).
 destruct (Z.odd n) eqn: Hpar.
@@ -798,8 +875,8 @@ rewrite eq_nz_opp_n in H.
 replace (-(y-x)) with (x-y) in H by omega;
 replace (-(x-y)) with (y-x) in H by omega.
 omega. omega. omega.
-assert (0<=(x-y) mod n) by apply Z_mod_lt, n_pos.
-assert (0<=(z-y) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=(x-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
+assert (0<=(z-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 rewrite (Zmod_small ((x - y) mod n + (z - y) mod n) n); try omega.
 replace (x-y) with (x-z+(z-y)) by omega.
 assert ((x - z) mod n + (z - y) mod n < n).
@@ -833,22 +910,22 @@ Lemma tri_ineq_help_lt_lt_lt2: forall x y z,  (x - z) mod n < (z - x) mod n ->
 Proof.
 intros x y z Heq1 eq0 Heq2 Hdxy Heq3 hdzy Hdxz.
 assert (lt_0_xy: 0<(x-y) mod n).
-assert (0 <= (y-x) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (y-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_yx: 0<(y-x) mod n).
 assert ((x-y) mod n <> 0) by omega.
 replace (x-y) with (-(y-x)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (y-x) with (-(x-y)) by omega.
-assert (0<=-(x-y) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(x-y) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert (lt_0_xz: 0<(x-z) mod n).
-assert (0 <= (z-x) mod n) by apply Z_mod_lt, n_pos; omega.
+assert (0 <= (z-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos; omega.
 assert (lt_0_zx: 0<(z-x) mod n).
 assert ((x-z) mod n <> 0) by omega.
 replace (x-z) with (-(z-x)) in H by omega. 
 rewrite eq_nz_opp_n, Z.add_comm,<- eq_nz_opp_n in H.
 replace (z-x) with (-(x-z)) by omega.
-assert (0<=-(x-z) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=-(x-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 omega.
 assert ((y - x) mod n + (y - z) mod n < n).
 destruct (Z.odd n) eqn: Hpar.
@@ -866,8 +943,8 @@ rewrite eq_nz_opp_n in H.
 replace (-(x-y)) with (y-x) in H by omega;
 replace (-(y-x)) with (x-y) in H by omega.
 omega. omega. omega.
-assert (0<=(y-x) mod n) by apply Z_mod_lt, n_pos.
-assert (0<=(y-z) mod n) by apply Z_mod_lt, n_pos.
+assert (0<=(y-x) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
+assert (0<=(y-z) mod n) by apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 rewrite (Zmod_small ((y - x) mod n + (y - z) mod n) n); try omega.
 replace (y-z) with (y-x+(x-z)) by omega.
 assert ((y - x) mod n + (x - z) mod n < n).
@@ -897,7 +974,7 @@ intros.
 destruct (dist x z ?= 0) eqn:eq0.
 unfold add.
 rewrite Z.compare_eq_iff, eq0 in *.
-apply Z_mod_lt, n_pos.
+apply Z_mod_lt, Z.gt_lt_iff, n_pos.
 rewrite Z.compare_lt_iff in *.
 exfalso.
 assert (0 <= dist x z).
@@ -972,8 +1049,7 @@ Lemma add_mod_to_add : forall a b, 0<= a -> 0 <= b -> add a b <= a + b.
 Proof.
 intros.
 unfold add.
-apply Zmod_le.
-apply Z.gt_lt, n_pos.
+apply Zmod_le. apply n_pos.
 omega.
 Qed.
 
@@ -995,12 +1071,11 @@ replace(x + (y + z)) with ( x + y + z) by omega;
 reflexivity.
 Qed.
 
-
 Lemma add_origin: forall x, eq (add x origin) x.
 Proof.
 intros;
 unfold add, origin.
-rewrite Zplus_mod_idemp_r, Zplus_0_r_reverse.
+replace (x + 0) with x by omega.
 unfold eq.
 apply Zmod_mod.
 Qed.
@@ -1008,11 +1083,10 @@ Qed.
 Lemma add_opp: forall x, eq (add x (opp x)) origin.
 Proof.
 intros.
-unfold add, opp.
+unfold add, opp, origin.
 rewrite Zplus_mod_idemp_r.
 replace (x + (n - x)) with (n) by omega.
-unfold origin.
-rewrite Zmod_0_l, Z_mod_same_full;
+rewrite Z_mod_same_full;
 reflexivity.
 Qed.
 
@@ -1050,18 +1124,87 @@ rewrite Zmod_mod,Z.mul_1_l.
 reflexivity.
 Qed.
 
-Definition unit := 1.
-
-Lemma non_trivial_lem : ~eq unit origin.
+Lemma non_trivial : ~eq unit origin.
 Proof.
-unfold eq, unit, origin;
-rewrite Zmod_mod, Zmod_0_l, Zmod_1_l.
-omega.
-apply n_sup_1.
+unfold eq, unit, origin. generalize n_sup_1. intros; rewrite Z.mod_1_l, Z.mod_0_l; omega.
 Qed.
 
-Definition non_trivial: ~eq unit origin := non_trivial_lem.
-End Ddef.
+Lemma mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+Proof.
+intros a u.
+unfold eq, add, mul, opp. rewrite Zmult_mod_idemp_r, Z.mul_sub_distr_l.
+rewrite Zminus_mod, Z_mod_mult, <- Zminus_mod_idemp_l with (a := n), Z_mod_same_full.
+reflexivity.
+Qed.
 
-Module ring := MakeDiscreteSpace(Ddef).
+Lemma mul_0 : forall u, eq (mul 0 u) origin.
+Proof.
+intros u.
+unfold eq, mul, origin. simpl. apply Zmod_mod.
+Qed.
+
+Lemma mul_origin: forall a, eq (mul a origin) origin.
+Proof. 
+intros a. unfold eq, mul, origin. rewrite Zmod_mod. now replace (a*0) with 0 by omega.
+Qed.
+
+Lemma minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+Proof.
+intros k u.
+unfold eq, mul, opp. rewrite <- Zminus_mod_idemp_l, Z_mod_same_full.
+repeat rewrite Zmod_mod. rewrite <- Zminus_mod_idemp_l.
+rewrite <- Zminus_mod. simpl. replace (-(k*u)) with (-k*u). reflexivity.
+replace (-k) with (-1*k) by omega. replace (-(k*u)) with (-1*(k*u)) by omega.
+apply Zmult_assoc_reverse.
+Qed.
+
+
+Lemma add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+Proof.
+intros w u v Hw. unfold eq, add in *.
+repeat rewrite Zmod_mod in Hw. assert (Hh := add_compat (w+u) (w+v) Hw).
+specialize (Hh (-w) (-w)). 
+unfold eq, add in Hh.
+replace (w + u + -w) with u in * by omega.
+replace (w + v + -w) with v in * by omega.
+do 2 rewrite Zmod_mod in Hh. apply Hh. reflexivity.
+Qed.
+
+Lemma add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+Proof.
+intros w u v Hw. unfold eq, add in *.
+repeat rewrite Zmod_mod in Hw. assert (Hh := add_compat (u+w) (v+w) Hw).
+specialize (Hh (-w) (-w)). 
+unfold eq, add in Hh.
+replace (u + w + -w) with u in * by omega.
+replace (v + w + -w) with v in * by omega.
+do 2 rewrite Zmod_mod in Hh. apply Hh. reflexivity.
+Qed.
+
+Lemma opp_origin : eq (opp origin) origin.
+Proof.
+unfold eq, opp, origin. replace (n-0) with n by omega. now rewrite Z_mod_same_full.
+Qed.
+
+(* Parameter opp_opp : forall u, eq (opp (opp u)) u.
+  Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)). *)
+
+Lemma opp_opp : forall u, eq (opp (opp u)) u.
+Proof.
+intros u. unfold eq, opp. rewrite <- Zminus_mod_idemp_l, Z_mod_same_full.
+rewrite <- Zminus_mod_idemp_l with (a:= n), Z_mod_same_full.
+rewrite Zmod_mod. rewrite Zminus_mod_idemp_r. 
+now replace (0-(0-u)) with u by omega.
+Qed.
+
+Lemma opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
+Proof.
+intros. unfold eq, opp, add.
+repeat rewrite <- Zminus_mod_idemp_l with (a:=n), Z_mod_same_full.
+rewrite <- Zplus_mod, Zminus_mod_idemp_r. simpl. do 2 rewrite Zmod_mod.
+f_equiv. omega.
+Qed.
+
+End Ring.
+Close Scope Z_scope.
 

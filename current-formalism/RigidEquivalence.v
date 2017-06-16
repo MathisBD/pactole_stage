@@ -1,3 +1,14 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
@@ -10,18 +21,22 @@ Require Import SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Import Pactole.RigidFormalism.
 Require Import Pactole.FlexibleFormalism.
 
 
-Module RigidEquivalence (Location : RealMetricSpace)(N : Size)(Names : Robots(N))
-                        (Config : Configuration (Location)(N)(Names))
-                        (Spect : Spectrum(Location)(N)(Names)(Config)).
+Module RigidEquivalence (Location : RealMetricSpace)
+                        (N : Size)
+                        (Names : Robots(N))
+                        (Info : DecidableTypeWithApplication(Location))
+                        (Config : Configuration (Location)(N)(Names)(Info))
+                        (Spect : Spectrum(Location)(N)(Names)(Info)(Config)).
 
 
-Module Common := CommonRealFormalism.Make(Location)(N)(Names)(Config)(Spect).
-Module Flex := FlexibleFormalism.Make(Location)(N)(Names)(Config)(Spect)(Common).
-Module Rigid := RigidFormalism.Make(Location)(N)(Names)(Config)(Spect)(Common).
+Module Common := CommonRealFormalism.Make(Location)(N)(Names)(Info)(Config)(Spect).
+Module Flex := FlexibleFormalism.Make(Location)(N)(Names)(Info)(Config)(Spect)(Common).
+Module Rigid := RigidFormalism.Make(Location)(N)(Names)(Info)(Config)(Spect)(Common).
 
 Definition rigid da := forall id sim r, da.(Flex.step) id = Some (sim, r) -> r = 1%R.
 
@@ -35,14 +50,6 @@ Lemma drigid_tail : forall d, drigid d -> drigid (Stream.tl d).
 Proof. intros ? []. auto. Qed.
 
 Import Common.
-
-Lemma the_chosen_one {A} eqA (HeqA : Reflexive eqA) :
-  forall f : Location.t -> A, Proper (Location.eq ==> eqA) f ->
-  forall δ conf local_target,
-  let chosen_target := Location.mul 1%R local_target in
-  eqA (f (if Rle_bool δ (Location.dist chosen_target conf) then chosen_target else local_target))
-      (f local_target).
-Proof. intros f Hf ? ? ?. simpl. destruct Rle_bool; apply Hf; try rewrite Location.mul_1; reflexivity. Qed.
 
 (** **  Conversion at the level of demonic_actions  **)
 
@@ -133,15 +140,26 @@ Proof. coinduction next_tail. now destruct d as [da1 [da2 d]]. Qed.
 
 (** **  Equalities on one round  **)
 
-Lemma Rigid_Flex_round : forall δ r rda conf,
-  Config.eq (Rigid.round r rda conf) (Flex.round δ r (Rigid_Flex_da rda) conf).
+(* Lemma the_chosen_one : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall δ conf local_target,
+  let chosen_target := Location.mul 1%R local_target in
+  Location.eq (f (if Rle_bool δ (Location.dist (f chosen_target) conf) then chosen_target else local_target))
+              (f local_target).
+Proof. intros f Hf ? ? ?. simpl. f_equiv. destruct Rle_bool; try rewrite Location.mul_1; reflexivity. Qed. *)
+
+Lemma the_chosen_one : forall (b : bool) target,
+  Location.eq (if b then Location.mul 1%R target else target) target.
+Proof. intros [] ?; try rewrite Location.mul_1; reflexivity. Qed.
+
+Lemma Rigid_Flex_round : forall δ r rda config,
+  Config.eq (Rigid.round r rda config) (Flex.round δ r (Rigid_Flex_da rda) config).
 Proof.
 unfold Rigid_Flex_da, Rigid.round, Flex.round.
-intros δ r [] conf [g | b]; simpl.
+intros δ r [] config [g | b]; simpl.
 + destruct (step (Good g)).
-  - rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - simpl. now rewrite the_chosen_one.
   - reflexivity.
-+ now destruct (step (Byz b)).
++ destruct (step (Byz b)); split; reflexivity.
 Qed.
 
 Lemma Flex_Rigid_round : forall δ r fda conf, rigid fda ->
@@ -150,7 +168,7 @@ Proof.
 unfold Flex_Rigid_da, Rigid.round, Flex.round, rigid.
 intros δ r [] conf Hda [g | b]; simpl in *.
 + specialize (Hda (Good g)). destruct (step (Good g)) as [[sim ρ] |] eqn:Heq.
-  - specialize (Hda _ _ (reflexivity _)). subst. rewrite the_chosen_one; autoclass. reflexivity. refine _.
+  - specialize (Hda _ _ (reflexivity _)). subst. now rewrite the_chosen_one.
   - reflexivity.
 + now destruct (step (Byz b)) as [[] |].
 Qed.

@@ -7,6 +7,16 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
 
 Require Import Bool.
 Require Import Arith.Div2.
@@ -20,6 +30,7 @@ Require Import RelationPairs.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Import Pactole.Similarity.
 Require Pactole.CommonRealFormalism.
 Require Pactole.RigidFormalism.
@@ -414,6 +425,9 @@ Export Defs.
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
 
+Instance translation_compat : Proper (R.eq ==> Sim.eq) translation := Sim.translation_compat translation_hypothesis.
+Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (R.eq ==> R.eq) (homothecy c Hρ) :=
+  Sim.homothecy_compat translation_hypothesis homothecy_hypothesis eq_refl I.
 
 (** **  Some results about R with respect to distance and similarities  **)
 

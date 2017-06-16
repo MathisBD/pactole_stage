@@ -12,32 +12,35 @@ Require Import Arith.Div2.
 Require Import Omega.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.DiscreteSpace.
 Require Import Pactole.DiscreteSimilarity.
 Require Pactole.CommonDiscreteFormalism.
 Require Pactole.DiscreteRigidFormalism.
-Require Import Pactole.DiscreteMultisetSpectrum.
+Require Import Pactole.MultisetSpectrum.
 Require Import Morphisms.
-Require Import Streams.
+Require Import Stream.
 
 
 Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs(Loc : RingSig)(N : Size).
+Module ExplorationDefs (Loc : RingSig)
+                       (N : Size)
+                       (Info : DecidableTypeWithApplication(Loc)).
 
 Module Names := Robots.Make(N).
-Module Config := Configurations.Make(Loc)(N)(Names).
+Module Config := Configurations.Make(Loc)(N)(Names)(Info).
 
-Module Spect := DiscreteMultisetSpectrum.Make(Loc)(N)(Names)(Config).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
 
-Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Names)(Config)(Spect).
-Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Config)(Spect)(Common).
+Module Export Common := CommonDiscreteFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect).
+Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Info)(Config)(Spect)(Common).
 
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 
@@ -107,7 +110,7 @@ now rewrite Hc. rewrite Hc. auto.
 Qed.
 
 Definition is_visited (loc : Loc.t) (e : execution) :=
-  let conf := Streams.hd e in 
+  let conf := Stream.hd e in 
     exists g : Names.G, Loc.eq (conf (Good g)).(Config.loc) loc .
     
 Instance is_visited_compat : Proper (Loc.eq ==> eeq ==> iff) is_visited.
@@ -133,7 +136,7 @@ intros l1 l2 Hl e1 e2 He. split.
   Qed.
 *)
 Definition stop_now (e : execution) :=
-    Config.eq (Streams.hd e) (Streams.hd (Streams.tl e)).
+    Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
 
 Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
@@ -144,7 +147,7 @@ now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Streams.forever ((stop_now)) e.
+  Stream.forever ((stop_now)) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
@@ -156,19 +159,19 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
-  Streams.eventually (is_visited loc) e.
+  Stream.eventually (is_visited loc) e.
 
 Definition Will_stop (e : execution) : Prop :=
-  Streams.eventually Stopped e.
+  Stream.eventually Stopped e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
-intros l1 l2 Hl. now apply Streams.eventually_compat, is_visited_compat. 
+intros l1 l2 Hl. now apply Stream.eventually_compat, is_visited_compat. 
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
 Proof.
-  apply Streams.eventually_compat, Stopped_compat.
+  apply Stream.eventually_compat, Stopped_compat.
 Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been

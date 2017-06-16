@@ -1,10 +1,29 @@
-(* Complements to the standard library on streams. *)
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
 
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
 Require Import Relations.
 Require Import Morphisms.
 Require Import RelationClasses.
 Require Import Pactole.Preliminary.
+
+
+(* Complements to the standard library on streams. *)
 
 
 Set Implicit Arguments.

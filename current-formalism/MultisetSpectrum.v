@@ -7,12 +7,23 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
 
-Require MMapWeakList. (* to build an actual implementation of multisets *)
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
+Require MMaps.MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
+Require Import Equalities.
 Require MMultisetInterface.
 Require MMultisetExtraOps.
 Require MMultisetWMap.
@@ -21,15 +32,12 @@ Require Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
-Module Make(Location : RealMetricSpace)(N : Robots.Size)(Names : Robots.Robots(N))
-            (Config : Configuration(Location)(N)(Names)) <: Spectrum (Location)(N)(Names)(Config).
+Module Make (Location : DecidableType)
+            (N : Robots.Size)
+            (Names : Robots.Robots(N))
+            (Info : DecidableTypeWithApplication(Location))
+            (Config : Configuration(Location)(N)(Names)(Info)) <: Spectrum (Location)(N)(Names)(Info)(Config).
 
-
-Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
-Proof. intros [] [] []. now cbn. Qed.
-
-Instance info_compat : Proper (Config.eq_RobotConf ==> Config.Info_eq) Config.robot_info.
-Proof. intros [] [] [] *. now cbn. Qed.
 
 (** Definition of spectra as multisets of locations. *)
 Module Mraw := MMultisetWMap.FMultisets MMapWeakList.Make Location.
@@ -176,8 +184,8 @@ Definition from_config conf : t := multiset (List.map Config.loc (Config.list co
 Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
 Proof.
 intros conf1 conf2 Hconf x. unfold from_config. do 2 f_equiv.
-apply eqlistA_PermutationA_subrelation, (map_extensionalityA_compat Location.eq_equiv Loc_compat).
-apply Config.list_compat. assumption.
+apply eqlistA_PermutationA_subrelation, (map_extensionalityA_compat _ Config.loc_compat).
+now apply Config.list_compat.
 Qed.
 
 Definition is_ok s conf := forall l,
@@ -188,11 +196,11 @@ Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
 
 Lemma from_config_map : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall conf, eq (map f (from_config conf))
-  (from_config (Config.map (fun x => {| Config.loc := f (Config.loc x); Config.robot_info := Config.robot_info x|}) conf)).
+  (from_config (Config.map (Config.app f) conf)).
 Proof.
 intros f Hf config. unfold from_config. rewrite Config.list_map.
 - now rewrite <- multiset_map, map_map, map_map.
-- intros ? ? Heq. hnf. split; cbn; try apply Hf; apply Heq.
+- intros ? ? Heq. now f_equiv.
 Qed.
 
 Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.

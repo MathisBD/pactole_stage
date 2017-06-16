@@ -1937,7 +1937,7 @@ Section Elt.
     + intros p p' <- acc acc' Hacc.
       destruct p as (k,e); unfold op, uncurry; simpl.
       destruct (f k e); now rewrite Hacc.
-    + apply complement_Symmetric. compute. intros [] [] ?. now symmetry.
+    + apply complement_Symmetric. unfold eq_key. repeat intro. now symmetry.
     + intros (k,e) (k',e') z z'.
       unfold op, complement, uncurry, eq_key; simpl.
       intros Hk Hz.

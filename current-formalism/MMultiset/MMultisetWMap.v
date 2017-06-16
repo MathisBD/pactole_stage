@@ -8,8 +8,7 @@
 (*                                        *)
 (******************************************)
 
-
-Require Import MMapInterface.
+Require Import MMaps.MMapInterface.
 Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
@@ -34,7 +33,7 @@ Proof. split.
 Qed.
 
 Instance Meq_key_equiv A : Equivalence (@M.eq_key A).
-Proof. split; compute.
+Proof. unfold M.eq_key. split.
   intro. reflexivity.
   intros ? ?. now symmetry.
   intros ? y ? ? ?. now transitivity (fst y).

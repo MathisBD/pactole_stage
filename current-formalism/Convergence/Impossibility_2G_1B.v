@@ -1,3 +1,23 @@
+(**************************************************************************)
+(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
+(*   PACTOLE project                                                      *)
+(*                                                                        *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*                                                                        *)
+(**************************************************************************)
+
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
 Require Import Utf8.
 Require Import Reals.
 Require Import Psatz.
@@ -7,6 +27,8 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
+Require Import Configurations.
+Require Pactole.RigidFormalism.
 Require Import Pactole.Gathering.InR.Rcomplements.
 
 
@@ -24,7 +46,10 @@ End N.
 
 
 (** The spectrum is a multiset of positions *)
-Module Spect := MultisetSpectrum.Make(R)(N).
+Module Names := Robots.Make(N).
+Module Info := Unit(R).
+Module Config := Configurations.Make(R)(N)(Names)(Info).
+Module Spect := MultisetSpectrum.Make(R)(N)(Names)(Info)(Config).
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 
@@ -35,10 +60,11 @@ Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; a
 Hint Extern 0 (~R.eq 1 0)%R => apply R1_neq_R0.
 Hint Extern 0 (~R.eq 0 1)%R => intro; apply R1_neq_R0; now symmetry.
 Hint Extern 0 (~R.eq _ _) => match goal with | H : ~R.eq ?x ?y |- ~R.eq ?y ?x => intro; apply H; now symmetry end.
+Hint Extern 0 (~Rdef.eq _ _) => change Rdef.eq with R.eq.
 
 
-Module Export Common := CommonRealFormalism.Make(R)(N)(Spect).
-Module Export Rigid := RigidFormalism.Make(R)(N)(Spect)(Common).
+Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Info)(Config)(Spect).
+Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Info)(Config)(Spect)(Common).
 
 Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
 Coercion Similarity.section : Similarity.bijection >-> Funclass.
@@ -47,6 +73,21 @@ Close Scope R_scope.
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.
 
+(** There is no meaningful information inside Info.t. *)
+Lemma no_info : forall rc1 rc2, R.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
+Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
+
+(** Not true in general as the info may change even if the robot does not move. *)
+Lemma no_moving_same_conf : forall r da config,
+  moving r da config = List.nil -> Config.eq (round r da config) config.
+Proof.
+intros r da config Hmove id. apply no_info.
+destruct (R.eq_dec (Config.loc (round r da config id)) (Config.loc (config id))) as [Heq | Heq]; trivial; [].
+rewrite <- moving_spec, Hmove in Heq. inversion Heq.
+Qed.
+
+(** The full information for a robot only depends on its location. *)
+Definition mk_info l := {| Config.loc := l; Config.info := tt |}.
 
 Lemma nG_nB : N.nG = 2 * N.nB.
 Proof. reflexivity. Qed.
@@ -72,31 +113,24 @@ Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
 Definition imprisoned (center : R.t) (radius : R) (e : execution) : Prop :=
-  Streams.forever (Streams.instant (fun config => forall g, R.dist center (config (Good g)) <= radius)) e.
+  Stream.forever (Stream.instant (fun config => forall g, R.dist center (config (Good g)).(Config.loc) <= radius)) e.
 
 (** The execution will end in a small disk. *)
-Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Streams.eventually (imprisoned c r) e.
+Definition attracted (c : R.t) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
 
 Instance imprisoned_compat : Proper (R.eq ==> eq ==> eeq ==> iff) imprisoned.
-Proof. Admitted.
-(* TODO
+Proof.
 intros c1 c2 Hc r1 r2 Hr e1 e2 He. subst. split.
-* revert c1 c2 e1 e2 Hc He. coinduction Hrec.
-  + intro g. rewrite <- He, <- Hc. apply H.
-  + constructor. unfold Streams.instant. intro. rewrite <- He. apply H. simpl. apply (Hrec c1 c2 (execution_tail e1) _).
-    - assumption.
-    - now destruct He.
-    - now destruct H.
-* revert c1 c2 e1 e2 Hc He. coinduction Hrec.
-  + intro g. rewrite He, Hc. apply H.
-  + apply (Hrec c1 c2 _ (execution_tail e2)).
-    - assumption.
-    - now destruct He.
-    - now destruct H.
-Qed.*)
++ revert c1 c2 e1 e2 Hc He. coinduction Hrec.
+  - intro g. rewrite <- He, <- Hc. apply H.
+  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 (Stream.tl e1)); auto; now destruct He.
++ revert c1 c2 e1 e2 Hc He. coinduction Hrec.
+  - intro g. rewrite He, Hc. apply H.
+  - destruct H as [Hnow Hlater]. apply (Hrec c1 c2 _ (Stream.tl e2)); auto; now destruct He.
+Qed.
 
 Instance attracted_compat : Proper (R.eq ==> eq ==> eeq ==> iff) attracted.
-Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Streams.eventually_compat, imprisoned_compat. Qed.
+Proof. intros ? ? Heq ? ? ?. unfoldR in Heq. subst. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
@@ -207,19 +241,22 @@ Hint Immediate gfirst_left glast_right left_right_exclusive.
    - the stack with byzantine is activated, good robots cannot move 
      and you can scale it back on the next round. *)
 
+(* TODO: move it to Configurations.v? *)
+Definition init_RobotConf x := {| Config.loc := x; Config.info := tt |}.
+
 Open Scope R_scope.
 (** The reference starting configuration **)
 Definition config1 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then 0 else 1
-    | Byz b => 0
+    | Good g => if left_dec g then init_RobotConf 0 else init_RobotConf 1
+    | Byz b =>  init_RobotConf 0
   end.
 
 (** The second configuration **)
 Definition config2 : Config.t := fun id =>
   match id with
-    | Good g => if left_dec g then 0 else 1
-    | Byz b => 1
+    | Good g => if left_dec g then init_RobotConf 0 else init_RobotConf 1
+    | Byz b => init_RobotConf 1
   end.
 
 Lemma minus_1 : -1 <> 0.
@@ -270,9 +307,12 @@ Qed.
 Theorem spect_conf1 : Spect.eq (!! config1) spectrum1.
 Proof.
 intro pt. unfold config1, spectrum1.
-rewrite Spect.from_config_spec, Spect.Config.list_spec.
-change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
-rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
+rewrite Spect.from_config_spec, Config.list_spec.
+change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
+rewrite map_map, map_app, map_map, map_map, map_cst, countA_occ_app.
+assert (Hext : forall x, R.eq (Config.loc (if left_dec x then init_RobotConf 0%R else init_RobotConf 1%R))
+                              (if left_dec x then 0%R else 1%R)) by now intro x; destruct (left_dec x).
+rewrite (map_ext _ _ Hext).
 assert (H01 : 0 <> 1) by auto.
 unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | ?]].
@@ -282,18 +322,22 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
   - unfoldR in Heq. subst. rewrite countA_occ_alls_out; trivial; refine _.
     repeat rewrite Spect.add_other, Spect.singleton_same; trivial.
     unfold N.nB. omega.
-  - rewrite countA_occ_alls_out; auto.
-    now repeat rewrite Spect.add_other, Spect.singleton_other.
-+ apply Spect.Names.Gnames_NoDup.
-+ rewrite Names.Gnames_length. reflexivity.
+  - rewrite countA_occ_alls_out; simpl.
+    * now repeat rewrite Spect.add_other, Spect.singleton_other.
+    * auto.
++ apply Names.Gnames_NoDup.
++ unfold Names.G. rewrite Names.Gnames_length. reflexivity.
 Qed.
 
 Theorem spect_conf2 : Spect.eq (!! config2) spectrum2.
 Proof.
 intro pt. unfold config2, spectrum2.
-rewrite Spect.from_config_spec, Spect.Config.list_spec.
-change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
-rewrite map_app, map_map, map_map, map_cst, countA_occ_app.
+rewrite Spect.from_config_spec, Config.list_spec.
+change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
+rewrite map_map, map_app, map_map, map_map, map_cst, countA_occ_app.
+assert (Hext : forall x, R.eq (Config.loc (if left_dec x then init_RobotConf 0%R else init_RobotConf 1%R))
+                              (if left_dec x then 0%R else 1%R)) by now intro x; destruct (left_dec x).
+rewrite (map_ext _ _ Hext).
 assert (H01 : 0 <> 1) by auto.
 unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | Hneq']].
@@ -305,8 +349,8 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
     rewrite Names.Bnames_length. unfold N.nG, N.nB. omega.
   - rewrite countA_occ_alls_out; auto.
     now repeat rewrite Spect.add_other, Spect.singleton_other.
-+ apply Spect.Names.Gnames_NoDup.
-+ rewrite Names.Gnames_length. reflexivity.
++ apply Names.Gnames_NoDup.
++ unfold Names.G. rewrite Names.Gnames_length. reflexivity.
 Qed.
 
 Lemma swap_spect2_spect1 : Spect.eq (Spect.map (homothecy 1 minus_1) spectrum2) spectrum1.
@@ -318,7 +362,7 @@ repeat rewrite ?Spect.add_same, ?Spect.singleton_same, ?Spect.singleton_other, ?
 Qed.
 
 (* An execution alternating config1 and config2 *)
-Definition exec : execution := Streams.alternate config1 config2.
+Definition exec : execution := Stream.alternate config1 config2.
 
 (** The demon defeating any robogram *)
 
@@ -344,7 +388,7 @@ Qed.
 
 Definition bad_da1 : demonic_action := {|
   step := step1;
-  relocate_byz := fun _ => 1;
+  relocate_byz := fun _ => mk_info 1;
   step_zoom := step1_zoom;
   step_center := step1_center |}.
 
@@ -371,11 +415,11 @@ Qed.
 
 Definition bad_da2 : demonic_action := {|
   step := step2;
-  relocate_byz := fun _ => 0;
+  relocate_byz := fun _ => mk_info 0;
   step_zoom := step2_zoom;
   step_center := step2_center |}.
 
-Definition bad_demon : demon := Streams.alternate bad_da1 bad_da2.
+Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
@@ -440,14 +484,14 @@ Hypothesis sol : solution r.
 
 Definition shifting_da (pt : R) : demonic_action.
 refine {| step := fun _ => Some (fun c => translation (R.opp c));
-          relocate_byz := fun _ => pt |}.
+          relocate_byz := fun _ => mk_info pt |}.
 Proof.
 + abstract (intros _ sim c Heq; inversion_clear Heq; simpl; apply R1_neq_R0).
 + abstract (intros _ sim c Heq; inversion_clear Heq; simpl; now rewrite R.opp_opp).
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
-CoFixpoint shifting_demon d pt := Streams.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
+CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
@@ -460,21 +504,23 @@ Qed.
 (** The configuration that will be shifted **)
 Definition config0 pt : Config.t := fun id =>
   match id with
-    | Good _ => pt
-    | Byz b => pt + 1
+    | Good _ => init_RobotConf pt
+    | Byz b => init_RobotConf (pt + 1)
   end.
 
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
-CoFixpoint shifting_execution d pt := Streams.cons (config0 pt) (shifting_execution d (pt + d)).
+CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
-Lemma spectrum_config0 : forall pt, Spect.eq (!! (Config.map (fun x => R.add x (R.opp pt)) (config0 pt))) spectrum1.
+Lemma spectrum_config0 : forall pt,
+  Spect.eq (!! (Config.map (Config.app (translation (R.opp pt))) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
-rewrite Spect.from_config_spec, Spect.Config.list_spec.
-change Spect.Names.names with (map Good Spect.Names.Gnames ++ map Byz Spect.Names.Bnames).
-rewrite map_app, map_map, map_map, countA_occ_app. simpl.
-rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.G => 0)).
-rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.B => 1)).
+rewrite Spect.from_config_spec, Config.list_map, map_map; try (now repeat intro; repeat f_equiv); [].
+simpl. rewrite Config.list_spec.
+change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
+rewrite map_map, map_app, map_map, map_map, countA_occ_app. simpl.
+rewrite (map_ext_in _ (fun _ : Names.Internals.G => 0)).
+rewrite (map_ext_in _ (fun _ : Names.Internals.B => 1)).
 + do 2 rewrite map_cst. destruct (Rdec x 0); [| destruct (Rdec x 1)]; subst.
   - rewrite countA_occ_alls_in, Names.Gnames_length; refine _.
     rewrite countA_occ_alls_out; auto.
@@ -489,7 +535,7 @@ rewrite (map_ext_in _ (fun _ : Spect.Names.Internals.B => 1)).
 Qed.
 
 Corollary spect_config0_0 : Spect.eq (!! (config0 0)) spectrum1.
-Proof. rewrite <- (spectrum_config0 0). f_equiv. intro. compute. ring. Qed.
+Proof. rewrite <- (spectrum_config0 0). f_equiv. intro. apply no_info. compute. ring. Qed.
 
 Section AbsurdMove.
 Definition move := r spectrum1.
@@ -497,9 +543,10 @@ Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt, Config.eq (round r (shifting_da (pt + move + 1)) (config0 pt)) (config0 (pt + move)).
 Proof.
-intros pt id. unfold round. cbn.
+intros pt id. apply no_info. unfold round. simpl.
 destruct id as [g | b].
-- rewrite spectrum_config0. simpl. unfoldR. fold move. ring.
+- assert (Htranslate := spectrum_config0 pt). simpl in Htranslate.
+  simpl. rewrite R.opp_opp, Htranslate. unfoldR. fold move. ring.
 - simpl. now unfoldR.
 Qed.
 
@@ -545,26 +592,28 @@ destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (Config.map (homothecy  1 minus_1) config2 )) = 0.
+Corollary no_move2 : R.eq (r (!! (Config.map (Config.app (homothecy 1 minus_1)) config2))) 0.
 Proof.
 assert (1 <> 0) by apply R1_neq_R0.
-rewrite <- Spect.from_config_map; refine _.
-rewrite spect_conf2. rewrite swap_spect2_spect1. apply no_move1.
+rewrite <- Spect.from_config_map; autoclass.
+rewrite <- no_move1. apply pgm_compat.
+rewrite <- swap_spect2_spect1. apply Spect.map_compat; autoclass; [].
+apply spect_conf2.
 Qed.
 
 Lemma round_config1 : Config.eq (round r bad_da1 config1) config2.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; []. unfold translation.
-rewrite R.opp_origin, Sim.translation_origin, Config.map_id, spect_conf1.
-simpl. apply no_move1.
+rewrite R.opp_origin, Sim.translation_origin, Config.app_id, Config.map_id, spect_conf1.
+simpl. apply no_info. simpl. apply no_move1.
 Qed.
 
 Lemma round_config2 : Config.eq (round r bad_da2 config2) config1.
 Proof.
 intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-rewrite no_move2. simpl. unfoldR. field.
+rewrite no_move2. simpl. unfoldR. apply no_info. simpl. unfoldR. field.
 Qed.
 
 Lemma execute_bad_demon_aux : forall e, eeq (execute r bad_demon config1) e -> eeq e exec.
@@ -588,14 +637,14 @@ End PropRobogram.
 (** A 2-step induction scheme for attracted. *)
 Definition attracted_ind2 (c : R.t) (r : R) (P : execution → Prop)
   (P0 : ∀ e : execution, imprisoned c r e → P e)
-  (P1 : ∀ e : execution, imprisoned c r (Streams.tl e) → P e)
-  (Ps : ∀ e : execution, attracted c r (Streams.tl (Streams.tl e)) →
-                         P (Streams.tl (Streams.tl e)) → P e)
+  (P1 : ∀ e : execution, imprisoned c r (Stream.tl e) → P e)
+  (Ps : ∀ e : execution, attracted c r (Stream.tl (Stream.tl e)) →
+                         P (Stream.tl (Stream.tl e)) → P e)
   := fix F (e : execution) (a : attracted c r e) {struct a} : P e :=
     match a with
-      | Streams.Now i => P0 e i
-      | Streams.Later (Streams.Now i) => P1 e i
-      | Streams.Later (Streams.Later a0) => Ps e a0 (F (Streams.tl (Streams.tl e)) a0)
+      | Stream.Now i => P0 e i
+      | Stream.Later (Stream.Now i) => P1 e i
+      | Stream.Later (Stream.Later a0) => Ps e a0 (F (Stream.tl (Stream.tl e)) a0)
     end.
 
 Theorem noConvergence : forall r, ~solution r.

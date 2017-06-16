@@ -6,6 +6,14 @@
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
 (*                                                                        *)
 (**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
 
 
 Set Implicit Arguments.
@@ -19,16 +27,18 @@ Require Import Psatz.
 Require Import Setoid.
 Require Import SetoidList.
 Require Import Pactole.Preliminary.
-Require Import Pactole.Streams.
+Require Import Pactole.Stream.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 
 
 
-
-Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))
-                (Config : Configuration(Location)(N)(Names))
-                (Spect : Spectrum(Location)(N)(Names)(Config)).
+Module Type Sig (Location : DecidableType)
+                (N : Size)
+                (Names : Robots(N))
+                (Info : DecidableTypeWithApplication(Location))
+                (Config : Configuration(Location)(N)(Names)(Info))
+                (Spect : Spectrum(Location)(N)(Names)(Info)(Config)).
   
   (** ** Good robots have a common program, which we call a robogram *)
   
@@ -55,11 +65,11 @@ Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))
   (** ** Executions *)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-  Definition execution := Streams.t Config.t.
+  Definition execution := Stream.t Config.t.
   
   (** *** Destructors for executions *)
   
-  Definition eeq : execution -> execution -> Prop := Streams.eq Config.eq.
+  Definition eeq : execution -> execution -> Prop := Stream.eq Config.eq.
   
   Declare Instance eeq_equiv : Equivalence eeq.
   Declare Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _).
@@ -67,10 +77,13 @@ Module Type Sig (Location : DecidableType)(N : Size)(Names : Robots(N))
 End Sig.
 
 
-Module Make (Location : DecidableType)(N : Size)(Names : Robots(N))
-            (Config : Configuration(Location)(N)(Names))
-            (Spect : Spectrum(Location)(N)(Names)(Config))
-            : Sig (Location)(N)(Names)(Config)(Spect).
+Module Make (Location : DecidableType)
+            (N : Size)
+            (Names : Robots(N))
+            (Info : DecidableTypeWithApplication(Location))
+            (Config : Configuration(Location)(N)(Names)(Info))
+            (Spect : Spectrum(Location)(N)(Names)(Info)(Config))
+            : Sig (Location)(N)(Names)(Info)(Config)(Spect).
 
 (** ** Programs for good robots *)
 
@@ -135,13 +148,13 @@ Qed.
     (** ** Executions *)
 
 (** Now we can [execute] some robogram from a given position with a [demon] *)
-Definition execution := Streams.t Config.t.
+Definition execution := Stream.t Config.t.
 
-Definition eeq (e1 e2 : execution) : Prop := Streams.eq Config.eq e1 e2.
+Definition eeq (e1 e2 : execution) : Prop := Stream.eq Config.eq e1 e2.
 
 Instance eeq_equiv : Equivalence eeq.
-Proof. apply Streams.eq_equiv. apply Config.eq_equiv. Qed.
+Proof. apply Stream.eq_equiv. apply Config.eq_equiv. Qed.
 
-Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _) := Streams.hd_compat _.
-Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _) := Streams.tl_compat _.
+Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@hd _) := Stream.hd_compat _.
+Instance eeq_tl_compat : Proper (eeq ==> eeq) (@tl _) := Stream.tl_compat _.
 End Make.
