@@ -52,6 +52,21 @@ repeat rewrite Hsim; unfold R.t, Rdef.t in *; field.
 Qed.
 Close Scope R_scope.
 
+Lemma no_byz : forall P (config : Config.t), (forall g, P (config (Good g))) -> forall id, P (config id).
+Proof.
+intros P config Hconfig [g | b].
++ apply Hconfig.
++ destruct b. unfold N.nB in *. omega.
+Qed.
+
+Lemma no_byz_eq : forall config1 config2 : Config.t,
+  (forall g, R.eq (Config.loc (config1 (Good g))) (Config.loc (config2 (Good g)))) ->
+  Config.eq config1 config2.
+Proof.
+intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
++ apply Heq.
++ destruct b. unfold N.nB in *. omega.
+Qed.
 
 (* We assume that we have at least two robots. *)
 Axiom size_G : nG >= 2.
@@ -589,8 +604,8 @@ Lemma round_simplify : forall da conf,
                              end
                        end).
 Proof.
-intros da conf id. apply no_info. unfold round.
-destruct (step da id) as [simc |] eqn:Hstep, id as [g | b]; try reflexivity || now eapply Fin.case0; exact b.
+intros da conf. apply no_byz_eq. intro g. unfold round.
+destruct (step da (Good g)) as [simc |] eqn:Hstep; try reflexivity; [].
 remember (Config.loc (conf (Good g))) as pt.
 (* Simplify the similarity *)
 assert (Hratio : (simc pt).(Sim.zoom) <> 0). { eapply da.(step_zoom). eassumption. }
@@ -1334,9 +1349,8 @@ Qed.
 
 
 Definition g1 : Names.G.
-unfold Names.G, Names.Internals.G, N.nG.
-destruct nG eqn:HnG. abstract (pose (Hle := size_G); omega).
-apply (@Fin.F1 n).
+Proof.
+exists 0. unfold N.nG. abstract (generalize size_G; omega).
 Defined.
 
 
@@ -1351,7 +1365,7 @@ Lemma gathered_precise : forall config pt,
 Proof.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
-- symmetry. destruct id as [? | b]. apply Hgather. apply Fin.case0. exact b.
+- symmetry. apply no_byz. apply Hgather.
 Qed.
 
 Corollary not_gathered_generalize : forall config id,
@@ -1477,7 +1491,7 @@ intros da conf pt Hgather. rewrite (round_simplify_Majority).
     induction Names.names as [| id l].
     + reflexivity.
     + unfold R.eq_dec, Rdef.eq_dec in *. simpl. Rdec_full.
-      - elim Hdiff. rewrite <- Heq. destruct id as [g | b]. apply Hgather. apply Fin.case0. exact b.
+      - elim Hdiff. rewrite <- Heq. apply no_byz. intro g. apply Hgather.
       - apply IHl. }
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
 Qed.
@@ -1488,7 +1502,7 @@ intros conf pt.
 destruct (forallb (fun id => Rdec_bool (Config.loc (conf id)) pt) Names.names) eqn:Hall.
 + left. rewrite forallb_forall in Hall. intro g. rewrite <- Rdec_bool_true_iff. apply Hall. apply Names.In_names.
 + right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  revert Heq. apply no_byz. intro g. intros Heq Habs. specialize (Habs g).
   rewrite negb_true_iff, Rdec_bool_false_iff in Heq. contradiction.
 Qed.
 

@@ -17,7 +17,8 @@ Set Implicit Arguments.
 (** *  Bijections  **)
 (********************)
 
-(** Bijections on a type [T] with an equivalence relation [eqT] *)
+(* FIXME: Factor it with the one in Similarity.v
+          Why the hell was it duplicated in the first place? *)
 
 Section Bijections.
 Context (T : Type).

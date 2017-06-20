@@ -64,7 +64,7 @@ Program Fixpoint build_enum N k (Hle : k <= N) acc : list {n : nat | n < N} :=
 Next Obligation.
 omega.
 Qed.
- 
+
 Definition enum N : list {n : nat | n < N} := build_enum (Nat.le_refl N) nil.
 
 Lemma In_build_enum : forall N k (Hle : k <= N) l x, In x (build_enum Hle l) <-> In x l \/ proj1_sig x < k.
@@ -142,6 +142,71 @@ unfold enum. intros A eqA N f g Heq x.
 apply build_enum_eq with (x := x) in Heq; auto; []. apply proj2_sig.
 Qed.
 
+Lemma firstn_build_enum_le : forall N k (Hle : k <= N) l k' (Hk : k' <= N), k' <= k ->
+  firstn k' (build_enum Hle l) = @build_enum N k' Hk nil.
+Proof.
+intros N k. induction k; intros Hk l k' Hk' Hle.
+* assert (k' = 0) by omega. now subst.
+* rewrite build_enum_app_nil, firstn_app, build_enum_length.
+  replace (k' - (S k + length (@nil {n : nat | n < N}))) with 0 by omega.
+  rewrite app_nil_r.
+  destruct (Nat.eq_dec k' (S k)) as [Heq | Heq].
+  + subst k'. rewrite firstn_all2.
+    - f_equal. apply le_unique.
+    - rewrite build_enum_length. simpl. omega.
+  + simpl build_enum. erewrite IHk.
+    - f_equal.
+    - omega.
+Qed.
+
+Lemma firstn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
+  firstn k' (build_enum Hle l) = build_enum Hle (firstn (k' - k) l).
+Proof.
+intros N k. induction k; intros Hle l k' Hk.
++ now rewrite Nat.sub_0_r.
++ rewrite build_enum_app_nil, firstn_app, build_enum_length, Nat.add_0_r.
+  rewrite firstn_all2, <- build_enum_app_nil; trivial; [].
+  rewrite build_enum_length. simpl. omega.
+Qed.
+
+Lemma firstn_enum_le : forall N k (Hle : k <= N), firstn k (enum N) = build_enum Hle nil.
+Proof. intros. unfold enum. now apply firstn_build_enum_le. Qed.
+
+Lemma firstn_enum_lt : forall N k, N <= k -> firstn k (enum N) = enum N.
+Proof. intros. unfold enum. now rewrite firstn_build_enum_lt, firstn_nil. Qed.
+
+Lemma skipn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
+  skipn k' (build_enum Hle l) = skipn (k' - k) l.
+Proof.
+intros N k Hle l k' Hk'. apply app_inv_head with (firstn k' (build_enum Hle l)).
+rewrite firstn_skipn, firstn_build_enum_lt; trivial; [].
+setoid_rewrite build_enum_app_nil. now rewrite <- app_assoc, firstn_skipn.
+Qed.
+
+Lemma skipn_enum_lt : forall N k, N <= k -> skipn k (enum N) = nil.
+Proof. intros. unfold enum. now rewrite skipn_build_enum_lt, skipn_nil. Qed.
+
+Lemma firstn_enum_spec : forall N k x, In x (firstn k (enum N)) <-> proj1_sig x < k.
+Proof.
+intros N k x. destruct (le_lt_dec k N) as [Hle | Hlt].
++ rewrite (firstn_enum_le Hle), In_build_enum. simpl. intuition.
++ rewrite (firstn_enum_lt (lt_le_weak _ _ Hlt)). split; intro Hin.
+  - transitivity N; trivial; []. apply proj2_sig.
+  - apply In_enum, proj2_sig.
+Qed.
+
+Lemma skipn_enum_spec : forall N k x, In x (skipn k (enum N)) <-> k <= proj1_sig x < N.
+Proof.
+intros N k x. split; intro Hin.
++ assert (Hin' : ~In x (firstn k (enum N))).
+  { intro Habs. rewrite <- InA_Leibniz in *. revert x Habs Hin. apply NoDupA_app_iff; autoclass; [].
+    rewrite firstn_skipn. rewrite NoDupA_Leibniz. apply enum_NoDup. }
+  rewrite firstn_enum_spec in Hin'. split; auto with zarith; []. apply proj2_sig.
++ assert (Hin' : In x (enum N)) by apply In_enum, proj2_sig.
+  rewrite <- (firstn_skipn k), in_app_iff, firstn_enum_spec in Hin'. intuition omega.
+Qed.
+
+
 (** *  Identification of robots  **)
 
 (** The number of good and byzantine robots *)
@@ -178,7 +243,10 @@ Module Type Robots(N : Size).
   Parameter Gnames_length : length Gnames = N.nG.
   Parameter Bnames_length : length Bnames = N.nB.
   Parameter names_length : length names = N.nG + N.nB.
-  Parameter eq_dec: forall n m: ident, {n=m}+{n<>m}.
+  
+  Parameter Geq_dec : forall g g' : G, {g = g'} + {g <> g'}.
+  Parameter Beq_dec : forall b b' : B, {b = b'} + {b <> b'}.
+  Parameter eq_dec : forall id id' : ident, {id = id'} + { id <> id'}.
   
   Parameter fun_Gnames_eq : forall {A : Type} eqA f g,
     @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x).
@@ -246,14 +314,20 @@ Module Make(N : Size) : Robots(N).
   now rewrite Gnames_length, Bnames_length.
   Qed.
   
-  Lemma eq_dec: forall n m: ident, {n = m} + {n <> m}.
+  Lemma Geq_dec: forall g g' : G, {g = g'} + {g <> g'}.
+  Proof. intros g g'. destruct (subset_dec g g'); auto. Qed.
+  
+  Lemma Beq_dec: forall b b' : B, {b = b'} + {b <> b'}.
+  Proof. intros b b'. destruct (subset_dec b b'); auto. Qed.
+  
+  Lemma eq_dec: forall id id' : ident, {id = id'} + {id <> id'}.
   Proof.
   intros id id'.
   destruct id as [g | b], id' as [g' | b']; try (now right; discriminate); [|].
-  + destruct (subset_dec g g').
+  + destruct (Geq_dec g g').
     - left; subst; auto.
     - right; intro Habs. now injection Habs.
-  + destruct (subset_dec b b').
+  + destruct (Beq_dec b b').
     - left; subst; auto.
     - right; intro Habs. now injection Habs.
   Qed.

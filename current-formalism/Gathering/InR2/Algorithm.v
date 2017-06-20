@@ -78,6 +78,22 @@ intro. rewrite Config.list_spec, map_cst.
 setoid_rewrite Names.names_length. unfold N.nB. now rewrite plus_0_r.
 Qed.
 
+Lemma no_byz : forall P (config : Config.t), (forall g, P (config (Good g))) -> forall id, P (config id).
+Proof.
+intros P config Hconfig [g | b].
++ apply Hconfig.
++ destruct b. unfold N.nB in *. omega.
+Qed.
+
+Lemma no_byz_eq : forall config1 config2 : Config.t,
+  (forall g, R2.eq (Config.loc (config1 (Good g))) (Config.loc (config2 (Good g)))) ->
+  Config.eq config1 config2.
+Proof.
+intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
++ apply Heq.
++ destruct b. unfold N.nB in *. omega.
+Qed.
+
 Lemma map_sim_support : forall (sim : Sim.t) s,
   Permutation (Spect.support (Spect.map sim s)) (map sim (Spect.support s)).
 Proof.
@@ -106,7 +122,7 @@ intros config pt.
 destruct (forallb (fun id => R2dec_bool (Config.loc (config id)) pt) Names.names) eqn:Hall.
 + left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
 + right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  destruct id as [g | b]; try now destruct b; unfold N.nB in *; omega. intro Habs. specialize (Habs g).
   rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
 Qed.
 
@@ -1041,10 +1057,9 @@ Theorem round_simplify : forall da conf,
                            end
                          end).
 Proof.
-intros da conf id. apply no_info. hnf. unfold round.
+intros da conf. apply no_byz_eq. intro g. hnf. unfold round.
 assert (supp_nonempty:=support_non_nil conf).
-destruct (step da id) as [f |] eqn:Hstep; trivial.
-destruct id as [g | b]; try now eapply Fin.case0; exact b.
+destruct (step da (Good g)) as [f |] eqn:Hstep; trivial; [].
 remember (Config.loc (conf (Good g))) as pt. remember (f pt) as sim.
 assert (Hsim : Proper (R2.eq ==> R2.eq) sim). { intros ? ? Heq. now rewrite Heq. }
 simpl pgm. unfold gatherR2_pgm.
@@ -3437,7 +3452,7 @@ Lemma gathered_precise : forall config pt,
 Proof.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
-- symmetry. destruct id as [? | b]. apply Hgather. apply Fin.case0. exact b.
+- apply no_byz. symmetry. apply Hgather.
 Qed.
 
 Corollary not_gathered_generalize : forall config id,
@@ -3538,11 +3553,8 @@ induction locallyfair; intros config Hvalid Hgathered Hmove Hfair.
 Qed.
 
 (** Define one robot to get the location whenever they are gathered. *)
-Definition g1 : Fin.t nG.
-Proof.
-destruct nG eqn:HnG. abstract (pose(Hle := Hyp_nG); omega).
-apply (@Fin.F1 n).
-Defined.
+Definition g1 : {n : nat | n < N.nG}.
+Proof. exists 0. unfold N.nG. generalize Hyp_nG; abstract omega. Defined.
 
 Lemma gathered_at_forever : forall da conf pt, gathered_at pt conf -> gathered_at pt (round gatherR2 da conf).
 Proof.
@@ -3554,7 +3566,7 @@ intros da conf pt Hgather. rewrite (round_simplify_Majority).
     induction Names.names as [| id l].
     + reflexivity.
     + cbn. R2dec_full.
-      - elim Hdiff. rewrite <- Heq. destruct id as [g | b]. apply Hgather. apply Fin.case0. exact b.
+      - elim Hdiff. rewrite <- Heq. apply no_byz. intro g. apply Hgather.
       - apply IHl. }
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply Spect.pos_in_config.
 Qed.

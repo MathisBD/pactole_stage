@@ -45,6 +45,7 @@ Module Type DiscreteSpace.
   Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
   Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
   Parameter opp_origin : eq (opp origin) origin.
+  Parameter opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
   Parameter opp_opp : forall u, eq (opp (opp u)) u.
   Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
   Parameter mul_0 : forall u, eq (mul 0 u) origin.
@@ -102,6 +103,9 @@ Module MakeDiscreteSpace (Def : DiscreteSpaceDef) : DiscreteSpace
   Lemma opp_origin : eq (opp origin) origin.
   Proof. apply (add_reg_r origin). now rewrite add_comm, add_opp, add_origin. Qed.
   
+  Lemma opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
+  Proof. intros u v Heq. apply (add_reg_r (opp u)). rewrite add_opp, Heq, add_opp. reflexivity. Qed.
+  
   Lemma opp_opp : forall u, eq (opp (opp u)) u.
   Proof. intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.
   
@@ -150,7 +154,7 @@ Open Scope Z_scope.
 
 (* Another possiblity is to only define [eq] and [dist], the operations being inherited from [Z].
    Do not forget [dist] and the compatibility lemmas.  *)
-Module Type RingSig.
+Module Type RingSig <: DiscreteSpace.
 
   Parameter n : Z.
   Parameter n_pos : 0 < n.
@@ -178,6 +182,7 @@ Module Type RingSig.
   Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
   Parameter triang_ineq : forall x y z, (dist x z <= (dist x y) + (dist y z))%Z.
   Parameter opp_opp : forall u, eq (opp (opp u)) u.
+  Parameter opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
   Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
 
   Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
@@ -392,7 +397,7 @@ assert (0 <= a mod n).
 apply Z_mod_lt, Z.gt_lt_iff, n_pos. 
 assert (0 <= b mod n).
 apply Z_mod_lt, Z.gt_lt_iff, n_pos.
-omega.    
+omega.
 Qed.
 
 Lemma Zmod_minus_n: forall x, (n-x) mod n = -x mod n. 
@@ -1186,8 +1191,8 @@ Proof.
 unfold eq, opp, origin. replace (n-0) with n by omega. now rewrite Z_mod_same_full.
 Qed.
 
-(* Parameter opp_opp : forall u, eq (opp (opp u)) u.
-  Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)). *)
+Lemma opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
+Proof. intros u v Heq. apply (add_reg_r (opp u)). rewrite add_opp, Heq, add_opp. reflexivity. Qed.
 
 Lemma opp_opp : forall u, eq (opp (opp u)) u.
 Proof.

@@ -30,7 +30,7 @@ Require Import Pactole.GraphEquivalence.
 Set Implicit Arguments.
 
 
-  Inductive direction := Forward | Backward | AutoLoop.
+Inductive direction := Forward | Backward | AutoLoop.
 
 Module MakeRing <: GraphDef 
     with Definition V := Loc.t
@@ -91,7 +91,6 @@ Module MakeRing <: GraphDef
   Qed.
 
 
-    
   Lemma Veq_dec : forall l l' : V, {Veq l l'} + {~Veq l l'}.
   Proof.
     unfold V, Veq; apply Loc.eq_dec.
@@ -111,16 +110,11 @@ Module MakeRing <: GraphDef
     (dir_eq_dec (snd e) (snd e')); intuition.
   Qed.
 
-  Definition find_edge v1 v2 := if Loc.eq_dec v1 (Loc.add v2 1) then
-                                  Some (v1, Backward)
-                                else
-                                  if Loc.eq_dec (Loc.add v1 1) v2 then
-                                    Some (v1, Forward)
-                                  else
-                                    if Loc.eq_dec v1 v2 then
-                                      Some (v1, AutoLoop)
-                                    else
-                                      None.
+  Definition find_edge v1 v2 :=
+    if Loc.eq_dec v1 (Loc.add v2 1) then Some (v1, Backward)
+    else if Loc.eq_dec (Loc.add v1 1) v2 then Some (v1, Forward)
+    else if Loc.eq_dec v1 v2 then Some (v1, AutoLoop)
+    else None.
 
   Lemma find_edge_Some : forall e :E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e).
   Proof.
@@ -329,7 +323,7 @@ Module MakeRing <: GraphDef
     split; easy.
     contradiction.
   Qed.
-    
+
 End MakeRing.
 
 

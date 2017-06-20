@@ -46,6 +46,7 @@ Module Type RealMetricSpace.
   Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
   Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
   Parameter opp_origin : eq (opp origin) origin.
+  Parameter opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
   Parameter opp_opp : forall u, eq (opp (opp u)) u.
   Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
   Parameter mul_0 : forall u, eq (mul 0 u) origin.
@@ -105,6 +106,9 @@ Module MakeRealMetricSpace (Def : RealMetricSpaceDef) : RealMetricSpace
   
   Lemma opp_origin : eq (opp origin) origin.
   Proof. apply (add_reg_r origin). now rewrite add_comm, add_opp, add_origin. Qed.
+  
+  Lemma opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
+  Proof. intros u v Heq. apply (add_reg_r (opp u)). rewrite add_opp, Heq, add_opp. reflexivity. Qed.
   
   Lemma opp_opp : forall u, eq (opp (opp u)) u.
   Proof. intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.

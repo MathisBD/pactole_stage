@@ -98,7 +98,7 @@ Proof. exists N.nB. apply nG_nB. Qed.
 Corollary nG_non_0 : N.nG <> 0.
 Proof. rewrite nG_nB. assert (H0 := nB_non_0). unfold N.nB. omega. Qed.
 
-Corollary half_size_conf : Nat.div2 N.nG > 0.
+Corollary half_size_pos : Nat.div2 N.nG > 0.
 Proof.
 assert (H0 := nB_non_0). rewrite nG_nB. unfold N.nB.
 destruct nB as [| n].
@@ -149,18 +149,21 @@ Proof. unfold solution. repeat intro. auto using fully_synchronous_implies_fair.
 Close Scope R_scope.
 
 
-(** We split robots into two halves. *)
+(** We split good robots into two halves. *)
 
 Definition left  := half1 Names.Gnames.
 Definition right := half2 Names.Gnames.
 
-Definition left_dec (e : Names.G) := List.in_dec Fin.eq_dec e left.
+Lemma merge_left_right : left ++ right = Names.Gnames.
+Proof. apply merge_halves. Qed.
+
+Definition left_dec (g : Names.G) := List.in_dec Names.Geq_dec g left.
 
 Lemma not_left_is_right : forall g : Names.G, ~In g left -> In g right.
 Proof.
 intros g Hleft.
 assert (Hin : In g Names.Gnames) by apply Names.In_Gnames.
-rewrite <- merge_halves, in_app_iff in Hin.
+rewrite <- merge_left_right, in_app_iff in Hin.
 destruct Hin; contradiction || assumption.
 Qed.
 
@@ -171,64 +174,35 @@ eapply firstn_skipn_nodup_exclusive; try eassumption.
 apply Names.Gnames_NoDup.
 Qed.
 
+Lemma left_spec : forall g, In g left <-> proj1_sig g < Nat.div2 N.nG.
+Proof.
+intro g. unfold left, half1. rewrite Names.Gnames_length. unfold Names.Gnames.
+apply firstn_enum_spec.
+Qed.
+
+Lemma right_spec : forall g, In g right <-> Nat.div2 N.nG <= proj1_sig g.
+Proof.
+intro g. unfold right, half2. rewrite Names.Gnames_length. unfold Names.Gnames.
+rewrite (skipn_enum_spec (Nat.div2 N.nG) g). intuition. apply proj2_sig.
+Qed.
+
 (** First and last robots are resp. in the first and in the second half. *)
 
-(*
-Section foo.
-Variable nG : nat.
-Hypothesis nG_non_0 : nG <> 0.
+Definition gfirst : Names.G.
+Proof. exists 0. abstract (generalize nG_non_0; omega). Defined.
 
-Definition gfirst' : Fin.t nG :=
-  match nG as n0 return (nG = n0 -> Fin.t n0) with
-    | 0 => fun Habs : nG = 0 => False_rec (Fin.t 0) (nG_non_0 Habs)
-    | S n0 => fun _ => Fin.F1
-  end (reflexivity nG).
-
-Definition glast' : Fin.t nG :=
-  match nG as n return (nG = n -> Fin.t n) with
-    | 0 => fun Habs : nG = 0 => False_rec _ (nG_non_0 Habs)
-    | S n => fun _ => nat_rec _ Fin.F1 (fun m (IHn : Fin.t (S m)) => Fin.FS IHn) n
-  end (reflexivity nG).
-End foo.
-
-Require Import Coq.Program.Equality.
-Lemma gfirst'_in : forall nG nG_non_0 (even_nG : Nat.Even nG),
-  In (@gfirst' nG nG_non_0) (firstn (Nat.div2 nG) (Names.Internals.fin_map (fun x => x))).
-Proof.
-intros nG nG_non_0.
-dependent destruction nG; intros.
-+ exfalso; omega.
-+ dependent destruction nG0.
-  - exfalso; destruct even_nG0; omega.
-  - simpl. compute. Print Spect.Names.Internals.fin_map.
-      intro abs.
-      inversion abs.
-Qed.
-*)
-
-Definition gfirst : Names.G :=
-  match N.nG as n0 return (N.nG = n0 -> Fin.t n0) with
-    | 0 => fun Habs : N.nG = 0 => False_rec (Fin.t 0) (nG_non_0 Habs)
-    | S n0 => fun _ => Fin.F1
-  end (reflexivity N.nG).
-
-Definition glast :=
-  match N.nG as n return (N.nG = n -> Fin.t n) with
-    | 0 => fun Habs : N.nG = 0 => False_rec _ (nG_non_0 Habs)
-    | S n => fun _ => nat_rec _ Fin.F1 (fun m (IHn : Fin.t (S m)) => Fin.FS IHn) n
-  end (reflexivity N.nG).
+Definition glast : Names.G.
+Proof. exists (pred N.nG). abstract (generalize nG_non_0; omega). Defined.
 
 Lemma gfirst_left : In gfirst left.
-Proof.
-destruct N.nG as [| [| nG]] eqn:HnG.
-+ now elim nG_non_0.
-+ elim even_nG. intros. omega.
-+ unfold left, gfirst.
-Admitted.
+Proof. rewrite left_spec. simpl. apply half_size_pos. Qed.
 
 Lemma glast_right : In glast right.
 Proof.
-Admitted.
+rewrite right_spec. simpl. assert (Heven := even_nG).
+destruct N.nG as [| [| ]]; simpl; auto; [].
+apply le_n_S, Nat.div2_decr, le_n_Sn.
+Qed.
 
 Hint Immediate gfirst_left glast_right left_right_exclusive.
 
@@ -266,7 +240,7 @@ Definition spectrum1 := Spect.add 0 N.nG (Spect.singleton 1 N.nB).
 Definition spectrum2 := Spect.add 0 N.nB (Spect.singleton 1 N.nG).
 
 (* An auxiliary lemma to avoid trouble with dependent types. *)
-Lemma spect_conf_aux : forall A (eq_dec : forall x y : A, {x = y} + {x <> y}) pt1 pt2, pt1 <> pt2 ->
+Lemma spect_config_aux : forall A (eq_dec : forall x y : A, {x = y} + {x <> y}) pt1 pt2, pt1 <> pt2 ->
   forall pt n (l : list A), NoDup l -> length l = (2 * n)%nat ->
   countA_occ R.eq R.eq_dec pt (map (fun x  => if in_dec eq_dec x (half1 l) then pt1 else pt2) l)
   = (Spect.add pt1 n (Spect.singleton pt2 n))[pt].
@@ -304,7 +278,7 @@ intros A eq_dec pt1 pt2 Hdiff pt n. induction n; simpl; intros l Hnodup Hlen.
   + elim Habs. intuition.
 Qed.
 
-Theorem spect_conf1 : Spect.eq (!! config1) spectrum1.
+Theorem spect_config1 : Spect.eq (!! config1) spectrum1.
 Proof.
 intro pt. unfold config1, spectrum1.
 rewrite Spect.from_config_spec, Config.list_spec.
@@ -314,19 +288,19 @@ assert (Hext : forall x, R.eq (Config.loc (if left_dec x then init_RobotConf 0%R
                               (if left_dec x then 0%R else 1%R)) by now intro x; destruct (left_dec x).
 rewrite (map_ext _ _ Hext).
 assert (H01 : 0 <> 1) by auto.
-unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
+unfold left_dec, left. rewrite (spect_config_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | ?]].
-  - unfoldR in Heq. subst. rewrite countA_occ_alls_in; refine _.
-    repeat rewrite Spect.add_same, Spect.singleton_other; trivial.
+  - unfoldR in Heq. subst. rewrite countA_occ_alls_in; autoclass; [].
+    repeat rewrite Spect.add_same, Spect.singleton_other; trivial; simpl; [].
     rewrite Names.Bnames_length. unfold N.nG, N.nB. omega.
-  - unfoldR in Heq. subst. rewrite countA_occ_alls_out; trivial; refine _.
-    repeat rewrite Spect.add_other, Spect.singleton_same; trivial.
+  - unfoldR in Heq. subst. rewrite countA_occ_alls_out; autoclass; [].
+    repeat rewrite Spect.add_other, Spect.singleton_same; trivial; [].
     unfold N.nB. omega.
   - rewrite countA_occ_alls_out; simpl.
     * now repeat rewrite Spect.add_other, Spect.singleton_other.
     * auto.
 + apply Names.Gnames_NoDup.
-+ unfold Names.G. rewrite Names.Gnames_length. reflexivity.
++ rewrite Names.Gnames_length. reflexivity.
 Qed.
 
 Theorem spect_conf2 : Spect.eq (!! config2) spectrum2.
@@ -339,7 +313,7 @@ assert (Hext : forall x, R.eq (Config.loc (if left_dec x then init_RobotConf 0%R
                               (if left_dec x then 0%R else 1%R)) by now intro x; destruct (left_dec x).
 rewrite (map_ext _ _ Hext).
 assert (H01 : 0 <> 1) by auto.
-unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
+unfold left_dec, left. rewrite (spect_config_aux _ H01 _ nB).
 + destruct (R.eq_dec pt 0) as [Heq | Hneq]; [| destruct (R.eq_dec pt 1) as [Heq | Hneq']].
   - unfoldR in Heq. subst. rewrite countA_occ_alls_out; auto.
     repeat rewrite Spect.add_same, Spect.singleton_other; trivial.
@@ -350,7 +324,7 @@ unfold left_dec, left. rewrite (spect_conf_aux _ H01 _ nB).
   - rewrite countA_occ_alls_out; auto.
     now repeat rewrite Spect.add_other, Spect.singleton_other.
 + apply Names.Gnames_NoDup.
-+ unfold Names.G. rewrite Names.Gnames_length. reflexivity.
++ rewrite Names.Gnames_length. reflexivity.
 Qed.
 
 Lemma swap_spect2_spect1 : Spect.eq (Spect.map (homothecy 1 minus_1) spectrum2) spectrum1.
@@ -519,14 +493,14 @@ rewrite Spect.from_config_spec, Config.list_map, map_map; try (now repeat intro;
 simpl. rewrite Config.list_spec.
 change Names.names with (map Good Names.Gnames ++ map Byz Names.Bnames).
 rewrite map_map, map_app, map_map, map_map, countA_occ_app. simpl.
-rewrite (map_ext_in _ (fun _ : Names.Internals.G => 0)).
-rewrite (map_ext_in _ (fun _ : Names.Internals.B => 1)).
+rewrite (map_ext_in _ (fun _ : Names.G => 0)),
+        (map_ext_in _ (fun _ : Names.B => 1)).
 + do 2 rewrite map_cst. destruct (Rdec x 0); [| destruct (Rdec x 1)]; subst.
-  - rewrite countA_occ_alls_in, Names.Gnames_length; refine _.
-    rewrite countA_occ_alls_out; auto.
+  - rewrite countA_occ_alls_in, Names.Gnames_length; autoclass; [].
+    rewrite countA_occ_alls_out; auto; [].
     rewrite Spect.add_same, Spect.singleton_other; auto.
-  - rewrite countA_occ_alls_in, Names.Bnames_length; refine _.
-    rewrite countA_occ_alls_out; auto.
+  - rewrite countA_occ_alls_in, Names.Bnames_length; autoclass; [].
+    rewrite countA_occ_alls_out; auto; [].
     rewrite Spect.add_other, Spect.singleton_same; auto.
   - repeat rewrite countA_occ_alls_out; auto.
     rewrite Spect.add_other, Spect.singleton_other; auto.
@@ -603,17 +577,19 @@ Qed.
 
 Lemma round_config1 : Config.eq (round r bad_da1 config1) config2.
 Proof.
-intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
+intros id. apply no_info. unfold round. simpl.
+destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; []. unfold translation.
-rewrite R.opp_origin, Sim.translation_origin, Config.app_id, Config.map_id, spect_conf1.
-simpl. apply no_info. simpl. apply no_move1.
+rewrite R.opp_origin, Sim.translation_origin, Config.app_id, Config.map_id, spect_config1.
+simpl. apply no_move1.
 Qed.
 
 Lemma round_config2 : Config.eq (round r bad_da2 config2) config1.
 Proof.
-intros id. unfold round. simpl. destruct id as [g | b]; simpl; try reflexivity; [].
+intros id. apply no_info. unfold round. simpl.
+destruct id as [g | b]; simpl; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-rewrite no_move2. simpl. unfoldR. apply no_info. simpl. unfoldR. field.
+rewrite no_move2. simpl. unfoldR. field.
 Qed.
 
 Lemma execute_bad_demon_aux : forall e, eeq (execute r bad_demon config1) e -> eeq e exec.

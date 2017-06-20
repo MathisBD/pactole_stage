@@ -45,6 +45,15 @@ Global Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
 
+(* Destruct matches from innermost to outermost. *)
+Ltac destr_match A :=
+  match A with | context[match ?x with | _ => _ end] =>
+    destr_match x (* recursive call *)
+    || let H := fresh in destruct x eqn:H (* if innermost match, destruct it *)
+  end.
+
+Ltac destruct_match := match goal with | |- ?A => destr_match A end.
+
 
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
 Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.
@@ -1210,6 +1219,9 @@ End CountA.
 Section List_halves.
 Variable A : Type.
 
+Lemma skipn_nil : forall k, skipn k (@nil A) = nil.
+Proof. now intros []. Qed.
+
 Theorem skipn_length : forall (l : list A) n, length (skipn n l) = length l - n.
 Proof.
 induction l.
@@ -1576,6 +1588,13 @@ Proof. intros f Hf l x Hin. now rewrite filter_InA in Hin. Qed.
 
 Lemma filter_incl : forall f (l : list A), incl (filter f l) l.
 Proof. intros f l x Hin. now rewrite filter_In in Hin. Qed.
+
+Lemma filter_app : forall f (l1 l2 : list A), filter f (l1 ++ l2) = filter f l1 ++ filter f l2.
+Proof.
+intros f l1 l2. induction l1 as [| x l1]; simpl.
++ reflexivity.
++ destruct (f x); now rewrite IHl1.
+Qed.
 
 Lemma eqlistA_dec (eqA_dec : forall x y, {eqA x y} + {~eqA x y}) :
   forall l1 l2, {eqlistA eqA l1 l2} + {~eqlistA eqA l1 l2}.

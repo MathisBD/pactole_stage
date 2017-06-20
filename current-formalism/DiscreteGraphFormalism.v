@@ -7,6 +7,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Psatz.
 Require Import Omega.
@@ -63,7 +65,7 @@ Module DGF (Graph : GraphDef)
   Module Info := InfoA.
   Module Config := ConfigA.
   
-  (* Identity spectrum *)
+  (* FIXME: Factor it with MultisetSpectrum.v *)
   Module Spect <: Spectrum(Location)(N)(Names)(Info)(Config). 
 
     Instance Loc_compat : Proper (Config.eq_RobotConf ==> Location.eq) Config.loc.
@@ -428,23 +430,8 @@ Module Type (Spectrum, GraphDef)
          We could use :
          1) bool in da, 2 states for robots (Loc / MoveTo)
          2) 3 states in da (Compute, Move, Wait), 2 states for robots *)
-  
-  Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
-    {| Config.loc := (Iso.sim_V sim) (Config.loc infoR);
-       Config.info :=
-         {| Info.source := (Iso.sim_V sim) (Info.source (Config.info infoR));
-            Info.target := (Iso.sim_V sim) (Info.target (Config.info infoR))
-         |}
-    |}.
-  
-  Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
-  Proof.
-    intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
-    - apply Hsim, Hconf.
-    - split; apply Hsim, Hconf.
-  Qed.
   Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
-  
+
   Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
     (** for a given robot, we compute the new configuration *)
     fun id =>
@@ -463,7 +450,7 @@ Module Type (Spectrum, GraphDef)
         match id with
         | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
         | Good g =>
-          let local_config := Config.map (apply_sim sim) config in
+          let local_config := Config.map (Config.app sim) config in
           let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
           let target := (sim⁻¹).(Iso.sim_V) local_target in
           if (Location.eq_dec (target) pos) then rconf else
@@ -495,35 +482,30 @@ Module Type (Spectrum, GraphDef)
       rewrite Hstep.
       destruct dist0; apply Hrconf.
     + assert (Location.eq (((Iso.sim_V (sim ⁻¹))
-            (r1 (Spect.from_config (Config.map (apply_sim sim) conf1))
-                (Config.loc (Config.map (apply_sim sim) conf1 (Good g))))))
+            (r1 (Spect.from_config (Config.map (Config.app sim) conf1))
+                (Config.loc (Config.map (Config.app sim) conf1 (Good g))))))
                           (((Iso.sim_V (sim0 ⁻¹))
-            (r2 (Spect.from_config (Config.map (apply_sim sim0) conf2))
-                (Config.loc (Config.map (apply_sim sim0) conf2 (Good g))))))).
+            (r2 (Spect.from_config (Config.map (Config.app sim0) conf2))
+                (Config.loc (Config.map (Config.app sim0) conf2 (Good g))))))).
       f_equiv.
       simpl in Hstep.
       f_equiv.
       f_equiv.
       apply Hstep.
-      apply Hr.
-      apply Spect.from_config_compat.
+      apply Hr. now repeat f_equiv.
       apply Config.map_compat.
-      apply apply_sim_compat.
-      now simpl in *.
-      apply Hconf.
-      apply Config.map_compat.
-      apply apply_sim_compat.
-      now simpl in *.
+      apply Config.app_compat.
+      apply Hstep.
       apply Hconf.
       destruct (Location.eq_dec
          ((Iso.sim_V (sim ⁻¹))
-            (r1 (Spect.from_config (Config.map (apply_sim sim) conf1))
-               (Config.loc (Config.map (apply_sim sim) conf1 (Good g)))))
+            (r1 (Spect.from_config (Config.map (Config.app sim) conf1))
+               (Config.loc (Config.map (Config.app sim) conf1 (Good g)))))
          (Config.loc (conf1 (Good g)))),
        (Location.eq_dec
          ((Iso.sim_V (sim0 ⁻¹))
-            (r2 (Spect.from_config (Config.map (apply_sim sim0) conf2))
-               (Config.loc (Config.map (apply_sim sim0) conf2 (Good g)))))
+            (r2 (Spect.from_config (Config.map (Config.app sim0) conf2))
+               (Config.loc (Config.map (Config.app sim0) conf2 (Good g)))))
          (Config.loc (conf2 (Good g)))).
       now apply Hconf.
       rewrite e in H; destruct n.
@@ -540,14 +522,8 @@ Module Type (Spectrum, GraphDef)
       simpl.
       f_equiv.
       apply Hstep.
-      apply Hr.
-      f_equiv.
-      f_equiv.
-      apply (apply_sim_compat Hstep).
-      apply Hconf.
-      f_equiv.
-      apply Hstep.
-      apply Hconf.
+      apply Hr. now repeat f_equiv.
+      f_equiv; apply Hstep || apply Hconf.
     + rewrite Hda. now destruct (Hconf (Byz b)).
   Qed.
   

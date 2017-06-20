@@ -811,6 +811,7 @@ Qed.
     exfalso; auto.
   Qed.
 
+  (* FIXME: Try to factor it with Config.app *)
   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
     let fpos := (fun loc => 
     match loc with
@@ -819,9 +820,7 @@ Qed.
     | Loc l => Loc ((Iso.sim_V sim) l)
     end) in
     {| Config.loc := fpos (Config.loc infoR);
-       Config.info :=
-         {| Info.source := fpos (Info.source (Config.info infoR));
-            Info.target := fpos (Info.target (Config.info infoR)) |} |}.
+       Config.info := Info.app fpos (Config.info infoR) |}.
 
   Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==>
                                              Config.eq_RobotConf) apply_sim.

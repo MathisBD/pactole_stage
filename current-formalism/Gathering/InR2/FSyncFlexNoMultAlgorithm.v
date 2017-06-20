@@ -61,6 +61,17 @@ End N.
 Module Defs := FlexDefinitions.FlexGatheringDefs(R2)(N).
 Import Defs.
 
+Lemma no_byz : forall (id : Names.ident) P, (forall g, P (Good g)) -> P id.
+Proof.
+intros [g | b] P HP.
++ apply HP.
++ destruct b. unfold N.nB in *. omega.
+Qed.
+
+Lemma no_byz_eq : forall config1 config2 : Config.t,
+  (forall g, R2.eq (Config.loc (config1 (Good g))) (Config.loc (config2 (Good g)))) -> Config.eq config1 config2.
+Proof. intros config1 config2 Heq id. apply no_info, (no_byz id). intro g. apply Heq. Qed.
+
 Lemma Config_list_alls : forall pt, Config.list (fun _ => pt) = alls pt N.nG.
 Proof.
 intro. rewrite Config.list_spec, map_cst.
@@ -89,21 +100,20 @@ apply Spect.MProp.MP.empty_is_empty_1 in Habs.
 apply (spect_non_nil _ Habs).
 Qed.
 
-Lemma gathered_at_dec : forall conf pt, {gathered_at pt conf} + {~gathered_at pt conf}.
+Lemma gathered_at_dec : forall config pt, {gathered_at pt config} + {~gathered_at pt config}.
 Proof.
-intros conf pt.
-destruct (forallb (fun id => R2dec_bool (conf id) pt) Names.names) eqn:Hall.
+intros config pt.
+destruct (forallb (fun id => R2dec_bool (config id) pt) Names.names) eqn:Hall.
 + left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply Names.In_names.
 + right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  destruct id as [g | b]; try now apply Fin.case0; exact b. intro Habs. specialize (Habs g).
+  revert Hin Heq. apply (no_byz id). clear id. intros g Hin Heq Habs. specialize (Habs g).
   rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
 Qed.
 
 (** Define one robot to get their location whenever they are gathered. *)
-Definition g1 : Fin.t nG.
+Definition g1 : Names.G.
 Proof.
-destruct nG eqn:HnG. abstract (pose(Hle := Hyp_nG); omega).
-apply (@Fin.F1 n).
+exists 0. unfold N.nG. abstract (pose(Hle := Hyp_nG); omega).
 Defined.
 
 (** **  Description of similarities  **)
@@ -392,8 +402,8 @@ intros config pt. split; intro H.
   + repeat constructor. intro Hin. inv Hin.
   + intro pt'. split; intro Hin.
     - rewrite Spect.M.elements_spec1, (Spect.from_config_spec config pt') in Hin.
-      destruct Hin as [id Hid]. destruct id as [id | b]; try apply (Fin.case0 _ b); [].
-      specialize (H id). rewrite H in Hid. rewrite Hid. now left.
+      destruct Hin as [id Hid]. revert Hid. apply (no_byz id). clear id; intros g Hid.
+      specialize (H g). rewrite H in Hid. rewrite Hid. now left.
     - inv Hin; try inv H1; [].
       rewrite Spect.M.elements_spec1, (Spect.from_config_spec config pt).
       exists (Good g1). symmetry. apply H.
@@ -508,10 +518,9 @@ Theorem round_simplify : forall da config delta,
                                       else bary)
                          end).
 Proof.
-intros da config delta id. apply no_info. hnf. unfold round.
+intros da config delta. apply no_byz_eq. intro g. hnf. unfold round.
 assert (supp_nonempty:=support_non_nil config).
-destruct (step da id) as [[f r] |] eqn:Hstep; trivial.
-destruct id as [g | b]; try now eapply Fin.case0; exact b.
+destruct (step da (Good g)) as [[f r] |] eqn:Hstep; trivial.
 remember (Config.loc (config (Good g))) as pt. remember (f pt) as sim.
 assert (Hsim : Proper (R2.eq ==> R2.eq) sim). { intros ? ? Heq. now rewrite Heq. }
 simpl pgm. unfold ffgatherR2_pgm.
@@ -1150,7 +1159,7 @@ Lemma gathered_precise : forall config pt,
 Proof.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
-- symmetry. destruct id as [? | b]. apply Hgather. apply Fin.case0. exact b.
+- symmetry. apply (no_byz id), Hgather.
 Qed.
 
 Corollary not_gathered_generalize : forall (config : Config.t) id,
@@ -1190,11 +1199,8 @@ assert (Hptinspect: Spect.M.In pt (!!conf)).
 
   destruct Names.names.
   - exfalso; now apply H.
-  - simpl. destruct i.
-    * pattern (Config.loc (conf (Good g0))); rewrite Hgather.
-      apply InA_cons_hd.
-      apply R2.eq_equiv.
-    * exfalso; apply (Fin.case0 _ b).
+  - revert dependent i. intro id. apply (no_byz id). intros g' **.
+    now apply InA_cons_hd.
 }
 
 assert (Hnotpt_notinspect: forall q, ~ R2.eq q pt -> ~Spect.M.In q (!!conf)).
@@ -1210,9 +1216,7 @@ assert (Hnotpt_notinspect: forall q, ~ R2.eq q pt -> ~Spect.M.In q (!!conf)).
   rewrite map_map, HInMapIff in HinA; autoclass.
   destruct HinA as [x [Heq Hin]].
   rewrite <- Heq.
-  destruct x.
-  - apply Hgather.
-  - exfalso; apply (Fin.case0 _ b).
+  apply (no_byz x), Hgather.
 }
 
 assert (Hspect: Spect.M.elements (!!conf) = pt :: nil).
