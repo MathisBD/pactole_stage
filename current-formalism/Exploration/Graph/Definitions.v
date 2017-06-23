@@ -55,6 +55,7 @@ Module Loc <: DecidableType.
   Definition add_origin := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_origin.
   Definition add_opp := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_opp.
   Definition opp_opp := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_opp.
+  Definition opp_origin := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_origin.
   
 End Loc.
 
@@ -199,6 +200,13 @@ Proof.
   apply bT_compat.
 Qed.
 
+Lemma trans_origin : Iso.eq (trans Loc.origin) Iso.id.
+Proof.
+split; [| split].
++ hnf. intros. simpl. now rewrite Loc.opp_origin, Loc.add_origin.
++ intros [] [] []. hnf. simpl. now rewrite Loc.opp_origin, Loc.add_origin.
++ intros x y Heq. rewrite Heq. hnf. cbn. (* bij_trans_T is a still parameter... *) admit.
+Admitted.
 
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
@@ -240,7 +248,7 @@ now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Stream.next_forever ((stop_now)) e.
+  Stream.next_forever stop_now e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
