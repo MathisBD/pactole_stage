@@ -146,7 +146,6 @@ End MakeDiscreteSpace.
 
 Module Type RingDef.
   Parameter n : nat.
-  Parameter n_pos : n <> 0.
   Parameter n_sup_1 : n > 1.
 End RingDef.
 
@@ -240,7 +239,7 @@ Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n
 
   Lemma n_pos : 0 < n.
   Proof.
-  unfold n. rewrite <- Nat2Z.inj_0. apply inj_lt. generalize Odef.n_pos. omega.
+  unfold n. rewrite <- Nat2Z.inj_0. apply inj_lt. generalize Odef.n_sup_1. omega.
   Qed.
 
   Lemma n_sup_1 : 1 < n.

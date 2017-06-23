@@ -453,7 +453,8 @@ Module Type (Spectrum, GraphDef)
           let local_config := Config.map (Config.app sim) config in
           let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
           let target := (sim⁻¹).(Iso.sim_V) local_target in
-          if (Location.eq_dec (target) pos) then rconf else
+(* This if is unnecessary: with the invariant on da: inside rconf, loc = target *)
+(*           if (Location.eq_dec (target) pos) then rconf else *)
           {| Config.loc := pos ; 
              Config.info := {| Info.source := pos ; Info.target := target|} |}
         end
@@ -497,7 +498,7 @@ Module Type (Spectrum, GraphDef)
       apply Config.app_compat.
       apply Hstep.
       apply Hconf.
-      destruct (Location.eq_dec
+(*       destruct (Location.eq_dec
          ((Iso.sim_V (sim ⁻¹))
             (r1 (Spect.from_config (Config.map (Config.app sim) conf1))
                (Config.loc (Config.map (Config.app sim) conf1 (Good g)))))
@@ -507,23 +508,10 @@ Module Type (Spectrum, GraphDef)
             (r2 (Spect.from_config (Config.map (Config.app sim0) conf2))
                (Config.loc (Config.map (Config.app sim0) conf2 (Good g)))))
          (Config.loc (conf2 (Good g)))).
-      now apply Hconf.
-      rewrite e in H; destruct n.
-      rewrite <- H.
-      apply Hconf.
-      rewrite e in H; destruct n.
-      rewrite H.
-      apply (symmetry Hconf).
-      f_equiv.
-      apply Hconf.
-      unfold Info.eq.
-      split.
-      apply Hconf.
-      simpl.
-      f_equiv.
-      apply Hstep.
-      apply Hr. now repeat f_equiv.
-      f_equiv; apply Hstep || apply Hconf.
+      now apply Hconf. *)
+      repeat split; simpl; f_equiv; try apply Hconf; [|].
+      - now f_equiv.
+      - apply Hr. repeat (f_equiv; trivial). now do 2 f_equiv.
     + rewrite Hda. now destruct (Hconf (Byz b)).
   Qed.
   

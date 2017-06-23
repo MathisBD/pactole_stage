@@ -45,11 +45,19 @@ Global Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
 
-(* Destruct matches from innermost to outermost. *)
+(** Destruct matches from innermost to outermost, with or without keeping the associated equality. *)
+Ltac destr_match_eq A :=
+  match A with | context[match ?x with | _ => _ end] =>
+    destr_match_eq x (* recursive call *)
+    || let H := fresh in destruct x eqn:H (* if innermost match, destruct it *)
+  end.
+
+Ltac destruct_match_eq := match goal with | |- ?A => destr_match_eq A end.
+
 Ltac destr_match A :=
   match A with | context[match ?x with | _ => _ end] =>
     destr_match x (* recursive call *)
-    || let H := fresh in destruct x eqn:H (* if innermost match, destruct it *)
+    || destruct x (* if innermost match, destruct it *)
   end.
 
 Ltac destruct_match := match goal with | |- ?A => destr_match A end.
@@ -1321,6 +1329,12 @@ intros l Hnodup n. rewrite <- (firstn_skipn n) in Hnodup.
 rewrite <- NoDupA_Leibniz, NoDupA_app_iff in Hnodup; autoclass.
 destruct Hnodup as [Hleft [Hright Hboth]]. now setoid_rewrite InA_Leibniz in Hboth.
 Qed.
+
+Lemma firstn_map_swap : forall {B} (f : A -> B) k l, firstn k (map f l) = map f (firstn k l).
+Proof. intros B f k. induction k; intros [| x l]; simpl; now try rewrite IHk. Qed.
+
+Lemma skipn_map_swap : forall {B} (f : A -> B) k l, skipn k (map f l) = map f (skipn k l).
+Proof. intros B f k. induction k; intros [| x l]; simpl; now try rewrite IHk. Qed.
 
 (** ***  Cutting a list in two halves: [half1] and [half2]  **)
 

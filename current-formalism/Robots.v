@@ -24,7 +24,7 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import Eqdep.
 Require Import Pactole.Preliminary.
-
+(* TODO: should we add a fold operator? *)
 
 Open Scope list_scope.
 Set Implicit Arguments.

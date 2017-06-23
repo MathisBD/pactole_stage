@@ -70,6 +70,12 @@ Module SourceTarget (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
   + intros [] [] [] [] []; split; simpl in *; etransitivity; eauto.
   Qed.
   
+  Instance source_compat : Proper (eq ==> Loc.eq) source.
+  Proof. now intros [] [] []. Qed.
+  
+  Instance target_compat : Proper (eq ==> Loc.eq) target.
+  Proof. now intros [] [] []. Qed.
+  
   Lemma eq_dec : forall x y : t, {eq x y} + {~eq x y}.
   Proof.
   intros [s1 t1] [s2 t2].
@@ -92,6 +98,25 @@ Module SourceTarget (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
   Proof. intros ? ? ? ? [] [] []. split; simpl in *; now do 2 f_equiv. Qed.
 End SourceTarget.
 
+(** We can also keep only the target location. *)
+Module Target (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
+  Definition t := Loc.t.
+  Definition eq := Loc.eq.
+  Instance eq_equiv : Equivalence eq := Loc.eq_equiv.
+  Definition eq_dec : forall x y : t, {eq x y} + {~eq x y} := Loc.eq_dec.
+  
+  Definition app (f : Loc.t -> Loc.t) info := f info.
+  
+  Instance app_compat : Proper ((Loc.eq ==> Loc.eq) ==> eq ==> eq) app.
+  Proof. intros f g Hfg x y Hxy. unfold app. apply Hfg, Hxy. Qed.
+  
+  Lemma app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
+  Proof. intros x y Hxy. apply Hxy. Qed.
+  
+  Lemma app_compose : forall f g, Proper (Loc.eq ==> Loc.eq) f -> Proper (Loc.eq ==> Loc.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+  Proof. repeat intro. unfold app. now do 2 f_equiv. Qed.
+End Target.
 
 (** * Configurations *)
 
