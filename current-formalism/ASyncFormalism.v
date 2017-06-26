@@ -562,7 +562,7 @@ specialize (moving_sup_0 r da conf id). in Hmoving.
 unfold moving_sup_0, round in Hmoving. specialize (Hmoving id). rewrite Hratio in Hmoving.
 
  *)
-Admitted.
+Qed.
 
 
 Lemma no_active_no_moving_same_conf : forall r da conf rconf, active da rconf = List.nil

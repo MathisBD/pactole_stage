@@ -1430,10 +1430,10 @@ CoInductive FullySynchronous d :=
    rewrite H.
    now unfold is_Active.
    constructor 1 with conf.
-   admit
    (* normalement si on a [Moving 1], alors a la prochaine étape, 
 on aura forcement un [step] qui donnera un [Active].*).
-   now (constructor 1 with conf). Qed.
+   now (constructor 1 with conf).
+Qed.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: forall d, FullySynchronous d -> Fair d.
