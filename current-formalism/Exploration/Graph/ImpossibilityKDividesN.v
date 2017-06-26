@@ -79,7 +79,7 @@ Definition lift_conf {A} (conf : Names.G -> A) : Names.ident -> A := fun id =>
     | Byz b => Fin.case0 _ b
   end.
 
-Section Exploration.
+Section DiscreteExploration.
 Open Scope Z_scope.
 
   
@@ -2259,4 +2259,32 @@ Proof.
   now apply H1; rewrite Hmove in H2; try rewrite <- loc_fin, <- Loc_eq_mod.
 Save.
 
-End Exploration.
+End DiscreteExploration.
+
+Section ContinuousExploration.
+
+  Theorem no_explorationC :
+    forall (r : Equiv.CGF.robogram),
+      Z_of_nat (n mod kG) = 0%Z  ->
+      (forall g : Names.Internals.G,
+          Loc
+            (Equiv.DGF.pgm (Equiv.rbgC2D r)
+                           (!!
+                              (Equiv.DGF.Config.map
+                                 (Equiv.DGF.apply_sim
+                                    (trans
+                                       (Equiv.DGF.Config.loc
+                                          (config1
+                                             (@Good Names.Internals.G
+                                                    Names.Internals.B g)))))
+                                 config1)) Loc.origin) = m)
+      -> ~ (forall (d : Equiv.CGF.demon) c,
+               FullSolExplorationStop (Equiv.rbgC2D r)
+                                      (Equiv.demonC2D d (Equiv.CGF.execute r d c))).
+  Proof.
+    intros r H.
+    generalize Equiv.graph_equivD2C.
+    intros.
+    generalize (no_exploration H1 H).
+    intros Hf HfC.
+    apply Hf.
