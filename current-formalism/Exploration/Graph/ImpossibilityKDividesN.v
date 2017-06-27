@@ -2264,11 +2264,12 @@ End DiscreteExploration.
 Section ContinuousExploration.
 
   Theorem no_explorationC :
-    forall (r : Equiv.CGF.robogram),
+    forall r,
+    let r' := Equiv.rbgD2C r in
       Z_of_nat (n mod kG) = 0%Z  ->
       (forall g : Names.Internals.G,
           Loc
-            (Equiv.DGF.pgm (Equiv.rbgC2D r)
+            (Equiv.DGF.pgm (Equiv.rbgC2D r')
                            (!!
                               (Equiv.DGF.Config.map
                                  (Equiv.DGF.apply_sim
@@ -2279,12 +2280,31 @@ Section ContinuousExploration.
                                                     Names.Internals.B g)))))
                                  config1)) Loc.origin) = m)
       -> ~ (forall (d : Equiv.CGF.demon) c,
-               FullSolExplorationStop (Equiv.rbgC2D r)
-                                      (Equiv.demonC2D d (Equiv.CGF.execute r d c))).
+               FullSolExplorationStop (Equiv.rbgC2D r')
+                                      (Equiv.demonC2D d (Equiv.CGF.execute r' d c))).
   Proof.
-    intros r H.
+    intros r r' H.
+    generalize no_exploration_idle, no_exploration_moving, no_exploration_moving_m,
+    range_r.
+    intros Hnei Hnem Hnemm Hrange.
     generalize Equiv.graph_equivD2C.
-    intros.
-    generalize (no_exploration H1 H).
+    intros HgeD2C Hm.
+    generalize (no_exploration Hm H).
     intros Hf HfC.
     apply Hf.
+    unfold r' in *.
+    intros d c.
+    specialize (HfC (Equiv.demonD2C d (Equiv.DGF.execute r d c)) (Equiv.ConfigD2C c) (c)). 
+    assert (Equiv.DGF.deq (Equiv.demonC2D (Equiv.demonD2C d (Equiv.DGF.execute r d c))
+                                          (Equiv.CGF.execute r' (Equiv.demonD2C d (Equiv.DGF.execute r d c))
+                    (Equiv.ConfigD2C c))) d).
+    {
+      cofix.
+      constructor.
+      simpl.
+      
+      simpl in *.
+    }
+
+    apply HfC.
+    rewrite Equiv.RA_RD_RA_equiv.

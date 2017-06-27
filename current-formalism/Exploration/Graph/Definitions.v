@@ -52,10 +52,10 @@ Module Loc <: DecidableType.
   Definition eq_equiv : Equivalence eq := LocationA.eq_equiv.
   Definition origin := Loc_inv Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.origin.
 
-  Definition add (x y : t) := Loc_inv ((Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add (Loc x) (Loc y)) mod Z.of_nat n)%Z.
-  Definition mul (x y : t) := Loc_inv ((Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.mul (Loc x) (Loc y)) mod (Z.of_nat n))%Z.
-  Definition unit := Loc_inv (Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.unit mod Z.of_nat n)%Z.
-  Definition opp (x : t) := Loc_inv ((Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp (Loc x)) mod Z.of_nat n)%Z.
+  Definition add (x y : t) := Loc_inv ((ZnZ.ImpossibilityKDividesN.Loc.add (Loc x) (Loc y)) mod Z.of_nat n)%Z.
+  Definition mul (x y : t) := Loc_inv ((ZnZ.ImpossibilityKDividesN.Loc.mul (Loc x) (Loc y)) mod (Z.of_nat n))%Z.
+  Definition unit := Loc_inv (ZnZ.ImpossibilityKDividesN.Loc.unit mod Z.of_nat n)%Z.
+  Definition opp (x : t) := Loc_inv ((ZnZ.ImpossibilityKDividesN.Loc.opp (Loc x)) mod Z.of_nat n)%Z.
 
   Instance add_compat : Proper (eq ==> eq ==> Veq) add.
   Proof.

@@ -249,6 +249,7 @@ CoFixpoint SequencialExection (e : execution) :
          (exists id, forall id', id' <> id /\ step (Stream.hd d) id' (conf id')
                                               = Moving false)) e.
 
+
 Definition list_of_conf_diff (l : list Config.t) :  list (list Config.t) :=
   fold_left
     (fun acc c =>
@@ -275,7 +276,9 @@ Definition list_of_conf_diff (l : list Config.t) :  list (list Config.t) :=
 Definition MRS r d conf : List Config.t :=
   fold_left 
     (fun (acc : nat) l =>
-       if length 
+       if length
+
+            
 Theorem TowerOnFinalConf :
   forall (conf : Config.t) (r : robogram) (d : demon),
     (exists conf_start,
