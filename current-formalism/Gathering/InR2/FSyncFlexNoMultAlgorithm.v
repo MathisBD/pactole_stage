@@ -1298,7 +1298,7 @@ Theorem FSGathering_in_R2 :
 Proof.
 intros delta d Hdelta HFS conf. revert d HFS. pattern conf.
 apply (well_founded_ind (wf_lt_conf Hdelta)). clear conf.
-intros conf Hind [da d] HFS. 
+intros conf Hind [da d] HFS.
 (* Are we already gathered? *)
 destruct (gathered_at_dec conf (conf (Good g1))) as [Hmove | Hmove];
 [| destruct (gathered_at_dec (round delta ffgatherR2 da conf)

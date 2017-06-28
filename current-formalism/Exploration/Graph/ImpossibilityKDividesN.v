@@ -488,7 +488,7 @@ repeat split; cbn -[trans].
 - rewrite spect_trans_config1. simpl. now rewrite Loc.add_opp, Loc.opp_opp, Loc.add_comm.
 - admit. (* Wrong for source *)
 - rewrite spect_trans_config1. simpl. now rewrite Loc.add_opp, Loc.opp_opp, Loc.add_comm.
-Admitted.
+Admitted. (* round_round is wrong if the info contains the source *)
 
 Corollary round_config1 : equiv_config_k move config1 (round r da (round r da config1)).
 Proof. apply round_round. Qed.

@@ -22,32 +22,11 @@ Require Import Morphisms.
 Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
-Require Import Eqdep.
 Require Import Pactole.Preliminary.
 (* TODO: should we add a fold operator? *)
 
 Open Scope list_scope.
 Set Implicit Arguments.
-
-(* Taken fron CoLoR *)
-Scheme le_ind_dep := Induction for le Sort Prop.
-Lemma le_unique : forall n m (h1 h2 : le n m), h1 = h2.
-Proof.
-intro n.
-assert (forall m : nat, forall h1 : le n m, forall p : nat, forall h2 : le n p,
-  m=p -> eq_dep nat (le n) m h1 p h2).
- intros m h1; elim h1 using le_ind_dep.
-  intros p h2; case h2; intros.
-   auto.
-   subst n. absurd (S m0 <= m0); auto with arith.
- intros m0 l Hrec p h2.
-  case h2; intros.
-   subst n; absurd (S m0 <= m0); auto with arith.
-   assert (m0=m1); auto ; subst m0.
-   replace l0 with l; auto.
-   apply eq_dep_eq; auto.
- intros; apply eq_dep_eq; auto.
-Qed.
 
 Lemma subset_dec : forall N (x y : {n : nat | n < N}), {x = y} + {x <> y}.
 Proof.
