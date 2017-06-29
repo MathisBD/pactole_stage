@@ -2299,12 +2299,12 @@ Section ContinuousExploration.
                                           (Equiv.CGF.execute r' (Equiv.demonD2C d (Equiv.DGF.execute r d c))
                     (Equiv.ConfigD2C c))) d).
     {
-      cofix.
-      constructor.
-      simpl.
-      
-      simpl in *.
+      admit.
     }
-
-    apply HfC.
-    rewrite Equiv.RA_RD_RA_equiv.
+    unfold r' in *.
+    rewrite H0 in HfC.
+    split; destruct HfC as (Hvis, Hst); intros.
+    specialize (Hvis l).
+    now rewrite <- H0.
+    assumption.
+Qed.

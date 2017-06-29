@@ -249,55 +249,82 @@ CoFixpoint SequencialExection (e : execution) :
          (exists id, forall id', id' <> id /\ step (Stream.hd d) id' (conf id')
                                               = Moving false)) e.
 
-
-Definition list_of_conf_diff (l : list Config.t) :  list (list Config.t) :=
-  fold_left
-    (fun acc c =>
-       match acc with
-       | nil => (c :: nil) :: nil
-       | a :: l' => match l' with | nil => 
-         if (Config.eq_dec c)
-                    then (c::nil)::acc
-                    else ((a ++ (c :: nil)) :: nil)
-       end) nil  .
-                                   
+Fixpoint Biggest_list_of_exe (l : list Config.t) (e : execution) : Prop :=
   match l with
-  | nil => nil
-  | a :: nil => (a :: nil) :: nil
-  | a :: b :: l' => if Config.eq_dec a b
-  then (match (list_of_conf_diff l) with
-                  | c :: d => (a :: c) :: d
-                  | nil => (a :: nil) :: nil
-                  end)
-                     else (a::nil) ::(list_of_conf_diff (b :: l'))
+  | nil => Stopped e
+  | x :: y => if Config.eq_dec x (Stream.hd e)
+              then if Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl e))
+                   then False
+                   else Biggest_list_of_exe y (Stream.tl e)
+              else False
   end.
-           
-
-Definition MRS r d conf : List Config.t :=
-  fold_left 
-    (fun (acc : nat) l =>
-       if length
-
             
-Theorem TowerOnFinalConf :
-  forall (conf : Config.t) (r : robogram) (d : demon),
-    (exists conf_start,
-        ValidStartingConf conf_start /\
-    let e_start := execute r d conf_start in
-    Stream.eventually (fun e1 => Config.eq (Stream.hd e1) conf) e_start ) -> 
+Theorem TowerOnFinalConf : forall l r d c e,
+    ValidStartingConf c->
+    eeq e (execute r d c) -> 
+    Biggest_list_of_exe l e ->
     ValidStartingConfSolExplorationStop r d ->
-    let e := execute r d conf in
-    Stopped e ->
-    (forall loc, HasBeenVisited loc e) ->
-    forall l : Loc.t, let m := Spect.from_config(conf)  in
-                      m[l] <= 1 -> False.
+    exists loc, (!! (List.last l c))[loc] > 1.
 Proof.
-  intros.
-  simpl in *.
-  destruct H.
-  destruct H.
-  simpl in *.
-  destruct (H0 x).
+  intros l r d c e Hconf Heq_e Hlist Hvalid.
+  destruct l.
+  - simpl in *.
+    assert (exists l, ~ Will_be_visited l e).
+    destruct (Hvalid c Hconf).
+    assert (Hfalse :=  ConfExistsEmpty c).
+    unfold is_visited in *.
+    assert (exists loc, ~ Spect.In loc (!! c)).
+    admit.
+    destruct H1.
+    specialize (H x).
+    exists x.
+    intro Hf.
+    induction Hf.
+    unfold is_visited in *.
+    destruct H2.
+    rewrite Heq_e in H2.
+    simpl in *.
+    rewrite Spect.from_config_In in H1;
+    destruct H1.
+    exists (Good x0).
+    apply H2.
+    unfold Stopped in Hlist.
+    apply IHHf.
+    rewrite Heq_e.
+    cbn.
+    unfold eeq.
+    simpl in *.
+    unfold Stream.eq.
+    simpl.
+    symmetry.
+    assert (Hequiv : equiv_conf config1 config1).
+    { exists Loc.origin.
+      unfold f_conf.
+      intros id.
+      simpl in *.
+      destruct id as [g|b]; try ImpByz b.
+      repeat split; simpl; rewrite (Loc.add_comm Loc.origin), Loc.add_origin;
+        reflexivity.
+    }
+    apply (execute_compat (reflexivity r) (reflexivity bad_demon1)
+                          (symmetry (round_simplify_0 Hequiv))).
+    admit.
+
+    destruct H; simpl in *.
+    Show 2.
+    simpl in *.
+    apply Hfalse.
+    
+    intuition.
+    intros.
+    intuition.
+    destruct H1.
+    
+    destruct H.
+    exfalso; apply Hfalse.
+    intros loc'.
+    
+    destruct (H0 x).
   assumption.
   destruct H4.
   simpl in *.
