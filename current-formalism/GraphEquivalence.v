@@ -563,6 +563,10 @@ unfold daD2C; split; simpl.
 Qed.
 
 
+Lemma daD2C2D : forall (d: DGF.demonic_action) c,
+    DGF.da_eq d (daC2D (daD2C d c) (ConfigD2C c)).
+
+
 CoFixpoint demonC2D (demonC : CGF.demon) (e : CGF.execution) : DGF.demon :=
   Stream.cons (daC2D (Stream.hd demonC) (Stream.hd e))
               ((demonC2D (Stream.tl demonC) (Stream.tl e))).
