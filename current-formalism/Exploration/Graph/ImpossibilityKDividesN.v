@@ -1414,8 +1414,17 @@ Section Stop.
         repeat split; simpl; rewrite (Loc.add_comm Loc.origin), Loc.add_origin;
           reflexivity.
       }
-      apply (execute_compat (reflexivity r) (reflexivity bad_demon1)
+      rewrite (execute_compat (reflexivity r) (reflexivity bad_demon1)
                             (symmetry (round_simplify_0 Hequiv))).
+      constructor.
+      simpl.
+      rewrite round_simplify_0.
+      now rewrite round_simplify_0.
+      easy.
+      apply execute_compat; try easy.
+      rewrite round_simplify_0.
+      now rewrite round_simplify_0.
+      easy.
   Qed.
 
 
@@ -2260,7 +2269,7 @@ Proof.
 Save.
 
 End DiscreteExploration.
-
+(*
 Section ContinuousExploration.
 
   Theorem no_explorationC :
@@ -2307,4 +2316,4 @@ Section ContinuousExploration.
     specialize (Hvis l).
     now rewrite <- H0.
     assumption.
-Qed.
+Qed. *)

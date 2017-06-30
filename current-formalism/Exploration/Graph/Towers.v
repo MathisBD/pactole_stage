@@ -252,103 +252,98 @@ CoFixpoint SequencialExection (e : execution) :
 Fixpoint Biggest_list_of_exe (l : list Config.t) (e : execution) : Prop :=
   match l with
   | nil => Stopped e
-  | x :: y => if Config.eq_dec x (Stream.hd e)
-              then if Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl e))
-                   then False
-                   else Biggest_list_of_exe y (Stream.tl e)
-              else False
+  | x :: nil => Config.eq x (Stream.hd e) /\ Stopped (Stream.tl (Stream.tl e))
+  | x :: y => Config.eq x (Stream.hd e) /\
+                if Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e)))
+                then False
+                else Biggest_list_of_exe y (Stream.tl (Stream.tl e))
+
   end.
-            
+
+Theorem test : forall c r d,
+    ValidStartingConfSolExplorationStop r d ->
+    ValidStartingConf c ->
+    ~Stopped (execute r d c).
+Proof.  
+  intros c r d Hexp Hvalid Hsto.
+  destruct (Hexp c Hvalid) as (Hvisit, Hstop).
+  assert (Hfalse :=  ConfExistsEmpty c).
+  unfold is_visited in *.
+  assert (Hfalse' : exists loc, ~ Spect.In loc (!! c)).
+  { now apply Logic.Classical_Pred_Type.not_all_ex_not. }
+  clear Hfalse.
+  destruct Hfalse' as (loc, Hfalse). 
+  specialize (Hvisit loc).
+  remember (execute r d c) as e;
+    revert Heqe.
+  destruct (execute r d c) eqn : He.
+  induction Hvisit.
+  intro.
+  rewrite Heqe in *.
+  destruct H.
+  rewrite <- He in *.
+  simpl in *.
+  rewrite Spect.from_config_In in Hfalse;
+    destruct Hfalse.
+  exists (Good x).
+  apply H.
+  intros.
+  apply IHHvisit.
+  split.
+  now destruct Hsto, Hsto.
+  now destruct Hsto, Hsto.
+  constructor.  
+  split.
+  now destruct Hsto, Hsto.
+  now destruct Hsto, Hsto.
+  
+  Show 2.
+
+
+
+
+Qed.
+
+
 Theorem TowerOnFinalConf : forall l r d c e,
     ValidStartingConf c->
-    eeq e (execute r d c) -> 
+    eeq e (execute r d c) ->
     Biggest_list_of_exe l e ->
     ValidStartingConfSolExplorationStop r d ->
     exists loc, (!! (List.last l c))[loc] > 1.
 Proof.
   intros l r d c e Hconf Heq_e Hlist Hvalid.
-  destruct l.
+  destruct l eqn : Hl.
   - simpl in *.
-    assert (exists l, ~ Will_be_visited l e).
     destruct (Hvalid c Hconf).
     assert (Hfalse :=  ConfExistsEmpty c).
     unfold is_visited in *.
     assert (exists loc, ~ Spect.In loc (!! c)).
-    admit.
+    { now apply Logic.Classical_Pred_Type.not_all_ex_not. }
     destruct H1.
     specialize (H x).
-    exists x.
-    intro Hf.
-    induction Hf.
+    unfold Stopped in *.
+    destruct Hlist.
+    unfold stop_now in H2.
+    rewrite <- Heq_e in H.
+    induction H.
     unfold is_visited in *.
-    destruct H2.
-    rewrite Heq_e in H2.
+    destruct H.
+    rewrite Heq_e in H.
     simpl in *.
     rewrite Spect.from_config_In in H1;
     destruct H1.
     exists (Good x0).
-    apply H2.
-    unfold Stopped in Hlist.
-    apply IHHf.
-    rewrite Heq_e.
-    cbn.
-    unfold eeq.
-    simpl in *.
-    unfold Stream.eq.
-    simpl.
-    symmetry.
-    assert (Hequiv : equiv_conf config1 config1).
-    { exists Loc.origin.
-      unfold f_conf.
-      intros id.
-      simpl in *.
-      destruct id as [g|b]; try ImpByz b.
-      repeat split; simpl; rewrite (Loc.add_comm Loc.origin), Loc.add_origin;
-        reflexivity.
-    }
-    apply (execute_compat (reflexivity r) (reflexivity bad_demon1)
-                          (symmetry (round_simplify_0 Hequiv))).
+    apply H.
     admit.
-
-    destruct H; simpl in *.
-    Show 2.
-    simpl in *.
-    apply Hfalse.
-    
-    intuition.
-    intros.
-    intuition.
-    destruct H1.
-    
-    destruct H.
-    exfalso; apply Hfalse.
-    intros loc'.
-    
-    destruct (H0 x).
-  assumption.
-  destruct H4.
-  simpl in *.
-  destruct H6.
-  unfold e in *.
-  rewrite H4 in *.
-  assert (exists l', (!! conf)[l'] = 0).
-  { induction Names.names eqn : Hnames.
-    exists Loc.origin.
-    assert (Spect.cardinal (!! conf) = 0).
-    rewrite Spect.cardinal_from_config.
-    rewrite <- Names.names_length.
-    rewrite Hnames.
-    easy.
-    rewrite Equiv.M.cardinal_0 in H7.
-    rewrite H7.
-    apply Equiv.M.empty_spec.
-    generalize 
-    unfold Spect.multiplicity.
-    
-  }
-  now rewrite <- H4.
-  constructor.
-  intros.
-  specialize (H1 l0).
-  constructor.
-  
+  -  unfold Biggest_list_of_exe in *.
+     destruct l0 eqn : Hl'.
+     + simpl in *.
+       destruct (Hvalid c Hconf) as (Hvisit, Hstop).
+       generalize k_inf_n.
+       intros.
+       destruct kG eqn : HkG.
+       admit.
+       (* idée: si Hvisit et Hstop sont vrai, alors comme  *)
+       admit.
+     +

@@ -439,14 +439,14 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
-  Stream.eventually (is_visited loc) e.
+  Stream.next_eventually (is_visited loc) e.
 
 Definition Will_stop (e : execution) : Prop :=
   Stream.next_eventually Stopped e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
-intros l1 l2 Hl. now apply Stream.eventually_compat, is_visited_compat. 
+intros l1 l2 Hl. now apply Stream.next_eventually_compat, is_visited_compat. 
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
