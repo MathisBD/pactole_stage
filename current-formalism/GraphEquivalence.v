@@ -34,16 +34,12 @@ Module GraphEquivalence (Graph : GraphDef)
                         (LocationA : LocationADef(Graph))
                         (MkInfoA : InfoSig(Graph)(LocationA))
                         (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
+                        (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
                         (Import Iso : Iso(Graph)(LocationA)).
 
-  Module MapWL := MMapWeakList.Make.
-  
-  Module Mraw := MMultisetWMap.FMultisets MapWL LocationA.
-  Module M := MMultisetExtraOps.Make LocationA Mraw.
-  
+Module DGF := DGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(SpectA)(Iso).
+Module CGF := CGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(SpectA)(Iso).
 
-Module DGF := DGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(Iso)(MapWL)(Mraw)(M).
-Module CGF := CGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(Iso)(MapWL)(Mraw)(M).
 
 
 (** Conversion from Discrete to Continuous settings. *)
@@ -93,14 +89,14 @@ Proof. intros [? []] [? []] [? []]. simpl in *. now repeat split; simpl; apply L
 Instance ConfigC2D_compat : Proper (CGF.Config.eq ==> DGF.Config.eq) ConfigC2D.
 Proof. intros ? ? Hcd id. specialize (Hcd id). unfold ConfigC2D. now rewrite Hcd. Qed.
 
-Lemma DGF_CGF_DGF_Config : forall confA: DGF.Config.t,  DGF.Config.eq confA
-                                                                     (ConfigC2D (ConfigD2C confA)).
+Lemma DGF_CGF_DGF_Config : forall confA: DGF.Config.t,
+  DGF.Config.eq confA (ConfigC2D (ConfigD2C confA)).
 Proof.
 intros confA id. unfold ConfigC2D, ConfigD2C. now repeat try (split; simpl).
 Qed.
 
 Lemma Mraw_equiv : DGF.Spect.t = CGF.Spect.t.
-Proof. now unfold DGF.Spect.t, CGF.Spect.t. Qed.
+Proof. reflexivity. Qed.
 
 (*
 Lemma CGFS_DGF_CGFS_Config : forall SconfD : CGF.Config.t, 
