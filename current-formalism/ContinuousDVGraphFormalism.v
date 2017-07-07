@@ -19,15 +19,11 @@ Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.Isomorphism.
 Require Import Pactole.CommonIsoGraphFormalism.
-Require MMapWeakList. (* to build an actual implementation of multisets *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import SetoidList.
-Require Import MMaps.MMapInterface.
-Require Import MMultiset.MMultisetInterface.
-Require Import MMultiset.MMultisetExtraOps.
-Require Pactole.MMultiset.MMultisetFacts.
 Require Stream.
+Require MultisetSpectrum.
 
 
 Module CGF (Graph : GraphDef)
@@ -36,10 +32,8 @@ Module CGF (Graph : GraphDef)
            (LocationA : LocationADef(Graph))
            (MkInfoA : InfoSig(Graph)(LocationA))
            (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
-           (Import Iso : Iso(Graph)(LocationA))
-           (MMapWL : WSfun)
-           (Mraw : (FMultisetsOn)(LocationA))
-           (M : MMultisetExtra(LocationA)(Mraw)).
+           (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
+           (Import Iso : Iso(Graph)(LocationA)).
   
   Module InfoA := MkInfoA.Info.
   
@@ -57,7 +51,7 @@ Module CGF (Graph : GraphDef)
   Open Scope R_scope.
 
   (** We define a function from R to (0; 1) to represent the percentage of the edge already done. *)
-  (* Exclusing 0 and 1 avoids having multiple reprensentation while being on a node. *)
+  (* Excluding 0 and 1 avoids having multiple reprensentation while being on a node. *)
   Definition project_p (p : R) : R :=
     if Rle_dec p 0 then Rpower 2 (p-1) else (2 - (Rpower 2 (-p)))/2.
 
@@ -409,226 +403,27 @@ Module CGF (Graph : GraphDef)
 
   Close Scope R_scope.
 
-  (** the spectrum is what the robots see*)
+  (** The spectrum for continuous setting is the same as for the discrete one:
+      we simply project robots on edges either to the source or target of the edge
+      depending on where they are located compared to the threshold of the edge. *)
   Module Spect <: Spectrum(Location)(N)(Names)(Info)(Config).
-
     
+    Definition t := SpectA.t.
+    Definition eq := SpectA.eq.
+    Definition eq_equiv := SpectA.eq_equiv.
+    Definition eq_dec := SpectA.eq_dec.
     
-    (*Definition t := ConfigA.t.
-    Definition eq := ConfigA.eq.
-    Definition eq_equiv := ConfigA.eq_equiv.
-    Definition eq_dec := ConfigA.eq_dec.
+    Definition from_config conf : t := SpectA.from_config (projectS conf).
     
-    Definition from_config := fun x => (projectS x).
-    Instance from_config_compat : Proper (Config.eq ==> View.eq) from_config.
-    Proof.
-    intros x y Hxy. unfold from_config. now apply projectS_compat.
-    Defined.
-    Definition is_ok : t -> Config.t -> Prop := fun t c => if (eq_dec t (projectS c)) 
-                                                then True else False.
-    Definition from_config_spec : forall config, is_ok (from_config config) config.
-    Proof.
-    intro.
-    unfold is_ok, from_config. destruct (eq_dec (projectS config) (projectS config)); auto.
-    destruct n. reflexivity.
-    Defined.
-
-     *)
-    Instance Loc_compat : Proper (ConfigA.eq_RobotConf ==> LocationA.eq) ConfigA.loc.
-    Proof. intros [] [] []. now cbn. Qed.
-
-    Instance info_compat : Proper (ConfigA.eq_RobotConf ==> InfoA.eq) ConfigA.info.
-    Proof. intros [] [] [] *. now cbn. Qed.
-
-    (** Definition of spectra as multisets of locations. *)
-
-    Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
-    Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
-    Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
-    Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
-
-    Lemma eq_refl_left : forall e A (a b:A), (if LocationA.eq_dec e e then a else b) = a.
-    Proof.
-      intros e A a b.
-      destruct (LocationA.eq_dec e e).
-      - reflexivity.
-      - elim n.
-        reflexivity.
-    Qed.
-
-
-    (** **  Building multisets from lists  **)
-
-    Definition multiset l := M.from_elements (List.map (fun x => (x, 1)) l).
-
-    Lemma multiset_nil : multiset List.nil [=] M.empty.
-    Proof. reflexivity. Qed.
-
-    Lemma multiset_cons : forall x l, multiset (x :: l) [=] M.add x 1 (multiset l).
-    Proof. reflexivity. Qed.
-
-    Lemma multiset_empty : forall l, multiset l [=] M.empty <-> l = List.nil.
-    Proof.
-      intro l. unfold multiset. rewrite M.from_elements_empty.
-      destruct l; simpl; split; intro H; inversion_clear H; intuition; discriminate.
-    Qed.
-
-    Lemma multiset_app : forall l l', multiset (l ++ l') [=] M.union (multiset l) (multiset l').
-    Proof. intros. unfold multiset. now rewrite List.map_app, M.from_elements_append. Qed.
-
-    Lemma location_neq_sym: forall x y, ~ LocationA.eq x y -> ~ LocationA.eq y x.
-    Proof. intros x y H Habs. now symmetry in Habs. Qed.
-
-    Instance multiset_compat : Proper (PermutationA LocationA.eq ==> M.eq) multiset.
-    Proof.
-      intros l1 l2 Hl. eapply M.from_elements_compat, PermutationA_map; eauto; refine _; [].
-      repeat intro; now split.
-    Qed.
-
-    Lemma multiset_PermutationA : forall x l n, M.multiplicity x (multiset l) = n ->
-                                                exists l', ~SetoidList.InA LocationA.eq x l' /\ PermutationA LocationA.eq l (alls x n ++ l').
-    Proof.
-      intros x l. induction l; intros n Hin.
-      exists List.nil. split. now auto. rewrite multiset_nil, M.empty_spec in Hin. subst n. simpl. reflexivity.
-      rewrite multiset_cons in Hin. destruct (LocationA.eq_dec x a) as [Heq | Heq].
-      - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite M.add_spec in Hin. destruct n.
-        + rewrite eq_refl_left in Hin.
-          omega.
-        + rewrite eq_refl_left in Hin.
-          rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
-          exists l'. split. assumption. simpl. now constructor.
-      - rewrite M.add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
-        exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
-        transitivity (a :: alls x n ++ l'); now constructor || apply (PermutationA_middle _).
-    Qed.
-
-    Lemma multiset_alls : forall x n, multiset (alls x n) [=] M.singleton x n.
-    Proof.
-      intros x n. induction n; simpl.
-      + now rewrite M.singleton_0, multiset_nil.
-      + rewrite multiset_cons. rewrite IHn. intro y. rewrite M.singleton_spec.
-        destruct (LocationA.eq_dec y x) as [Heq | Heq].
-      - rewrite Heq, M.add_spec, M.singleton_spec. destruct (LocationA.eq_dec x x) as [_ | Helim]. omega. now elim Helim.
-      - rewrite M.add_other; auto. rewrite M.singleton_spec. destruct (LocationA.eq_dec y x); trivial. contradiction.
-    Qed.
-
-    Corollary multiset_In : forall x l, M.multiplicity x (multiset l) > 0 <-> SetoidList.InA LocationA.eq x l.
-    Proof.
-      intros x l. split; intro Hl.
-      + destruct (multiset_PermutationA _ _ _ (eq_refl (M.multiplicity x (multiset l)))) as [l' [Hl' Hperm]].
-        rewrite Hperm. rewrite (SetoidList.InA_app_iff _). left. destruct (M.multiplicity x (multiset l)). omega. now left.
-      + induction l. now inversion Hl. rewrite multiset_cons. destruct (LocationA.eq_dec a x) as [Heq | Hneq].
-      - rewrite Heq. rewrite M.add_spec. 
-        rewrite eq_refl_left.
-        omega.
-      - apply location_neq_sym in Hneq.
-        rewrite M.add_other; trivial. apply IHl. inversion_clear Hl; auto. now elim Hneq.
-    Qed.
-
-    Theorem multiset_map : forall f, Proper (LocationA.eq ==> LocationA.eq) f ->
-                                     forall l, multiset (List.map f l) [=] M.map f (multiset l).
-    Proof. intros f Hf l x. unfold multiset. now rewrite List.map_map, M.map_from_elements, List.map_map. Qed.
-
-    Theorem multiset_filter : forall f, Proper (LocationA.eq ==> Logic.eq) f ->
-                                        forall l, multiset (List.filter f l) [=] M.filter f (multiset l).
-    Proof.
-      intros f Hf l. induction l as [| e l]; simpl.
-      + rewrite (@M.filter_compat f Hf (multiset List.nil)), multiset_nil. now rewrite M.filter_empty. now apply multiset_nil.
-      + destruct (f e) eqn:Htest.
-      - do 2 rewrite multiset_cons. rewrite M.filter_add, Htest, IHl; trivial; reflexivity || omega.
-      - rewrite multiset_cons, M.filter_add, Htest, IHl; trivial; reflexivity || omega.
-    Qed.
-
-    Theorem cardinal_multiset : forall l, M.cardinal (multiset l) = length l.
-    Proof.
-      induction l; simpl.
-      + now rewrite multiset_nil, M.cardinal_empty.
-      + rewrite multiset_cons, M.cardinal_add. apply f_equal, IHl.
-    Qed.
-
-    Theorem multiset_spec : forall x l, M.multiplicity x (multiset l) = countA_occ _ LocationA.eq_dec x l.
-    Proof.
-      intros x l. induction l; simpl.
-      + rewrite multiset_nil. now apply M.empty_spec.
-      + rewrite multiset_cons. destruct (LocationA.eq_dec a x) as [Heq | Hneq].
-      - rewrite Heq. rewrite M.add_spec. rewrite IHl.
-        rewrite eq_refl_left.
-        omega.
-      - apply location_neq_sym in Hneq. rewrite M.add_other. now apply IHl. assumption.
-    Qed.
-
-    Lemma multiset_remove : forall x l,
-        multiset (SetoidList.removeA LocationA.eq_dec x l) [=] M.remove x (M.multiplicity x (multiset l)) (multiset l).
-    Proof.
-      intros x l y. induction l as [| a l]; simpl.
-      * rewrite multiset_nil. do 2 rewrite M.empty_spec. now rewrite M.remove_0, M.empty_spec.
-      * rewrite multiset_cons. destruct (LocationA.eq_dec y x) as [Hyx | Hyx], (LocationA.eq_dec x a) as [Hxa | Hxa].
-      + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite M.remove_same. setoid_rewrite M.add_same. omega.
-      + rewrite Hyx in *. rewrite multiset_cons, M.add_other; auto. rewrite IHl. do 2 rewrite M.remove_same. omega.
-      + rewrite Hxa in *. rewrite IHl, M.add_same. repeat rewrite M.remove_other; auto. rewrite M.add_other; auto.
-      + rewrite multiset_cons. rewrite M.remove_other; auto. destruct (LocationA.eq_dec y a) as [Hya | Hya].
-      - rewrite Hya in *. do 2 rewrite M.add_same. rewrite IHl. now rewrite M.remove_other.
-      - repeat rewrite M.add_other; trivial. rewrite IHl. rewrite M.remove_other; auto.
-    Qed.
-
-    Lemma multiset_support : forall x l, SetoidList.InA LocationA.eq x (M.support (multiset l)) <-> SetoidList.InA LocationA.eq x l.
-    Proof. intros x l. rewrite M.support_spec. unfold M.In. rewrite multiset_spec. apply countA_occ_pos. refine _. Qed.
-
-
-    (** Building a spectrum from a configuration *)
-    Include M.
-
-    Definition from_config conf : t := multiset (List.map ConfigA.loc
-                                                          (ConfigA.list (projectS conf))).
-
     Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
-    Proof.
-      intros conf1 conf2 Hconf x. unfold from_config. do 2 f_equiv.
-      apply eqlistA_PermutationA_subrelation, (map_extensionalityA_compat LocationA.eq_equiv Loc_compat).
-      apply ConfigA.list_compat.
-      now apply projectS_compat.
-    Qed.
-
-    Definition is_ok s conf := forall l,
-        M.multiplicity l s = countA_occ _ LocationA.eq_dec l (List.map ConfigA.loc (ConfigA.list (projectS conf))).
-
+    Proof. repeat intro. unfold from_config. now repeat f_equiv. Qed.
+    
+    Definition is_ok s conf := SpectA.is_ok s (projectS conf).
+    
     Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
-    Proof. unfold from_config, is_ok. intros. apply multiset_spec. Qed.
-
-    (*
-Lemma from_config_map : forall f, Proper (LocationA.eq ==> LocationA.eq) f ->
-  forall conf, eq (map f (from_config conf))
-  (from_config (ConfigA.map (fun x => {| ConfigA.loc := f (ConfigA.loc x); ConfigA.robot_info := ConfigA.robot_info x|}) conf)).
-Proof.
-intros f Hf config. unfold from_config. rewrite Config.list_map.
-- now rewrite <- multiset_map, List.map_map, List.map_map.
-- intros ? ? Heq. hnf. split; cbn; try apply Hf; apply Heq.
-Qed.
-     *) 
-    Theorem cardinal_from_config : forall conf, cardinal (from_config conf) = N.nG + N.nB.
-    Proof. intro. unfold from_config. now rewrite cardinal_multiset, List.map_length, ConfigA.list_length. Qed.
-
-    Property pos_in_config : forall (config : Config.t) id , In ((ConfigA.loc ((projectS config) id))) (from_config config).
-    Proof.
-      intros conf id. unfold from_config.
-      unfold In. rewrite multiset_spec. rewrite (countA_occ_pos _).
-      rewrite InA_map_iff; autoclass. exists ((projectS conf) id).
-      split; try reflexivity; [].
-      setoid_rewrite ConfigA.list_InA. now exists id.
-    Qed.
-
-    Property from_config_In : forall config l,
-        In l (from_config config) <-> exists id, LocationA.eq (ConfigA.loc ((projectS config) id)) l.
-    Proof.
-      intros config l. split; intro Hin.
-      + unfold In in Hin. rewrite from_config_spec, (countA_occ_pos _), ConfigA.list_spec in Hin.
-        rewrite (InA_map_iff _ _) in Hin; [setoid_rewrite (InA_map_iff _ _) in Hin |]; try autoclass; [].
-        destruct Hin as [? [Hl [id [? Hid]]]]. exists id. rewrite <- Hl. now f_equiv.
-      + destruct Hin as [id Hid]. rewrite <- Hid. apply pos_in_config.
-    Qed.
+    Proof. intro. unfold from_config, is_ok. apply SpectA.from_config_spec. Qed.
     
   End Spect.
-
 
   Record robogram :=
     {
@@ -1649,7 +1444,7 @@ Qed.
   (** a good conf is :
     - [source] and [target] are on node.
     - if a robot is on a node, it's on its [target] or [source].
-    - if a robot is onan edge, it's the edge between its [source] and [target].
+    - if a robot is on an edge, it's the edge between its [source] and [target].
     - there is a edge between [source] and [target]. *)
   Definition group_good_def (conf: Config.t) : Prop := forall g,(
         ri_loc_def conf /\
