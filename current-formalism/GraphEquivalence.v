@@ -483,40 +483,36 @@ destruct HdaD as (_,Hb). intros b. apply RobotConfC2D_compat, Hb.
 Qed.
 
 
-Definition daD2C_step daA cA id rcD :=
-  if CGF.Config.eq_RobotConf_dec rcD (rcD2C (cA id))
-  then match ((DGF.step daA) id (cA id)) with
+Definition daD2C_step daA cA id :=
+  match ((DGF.step daA) id (cA id)) with
          | DGF.Active sim =>  (* if CGF.Location.eq_dec (CGF.Config.loc rcD)
                                  (CGF.Info.target (CGF.Config.info rcD))
                                 then *) CGF.Active sim
                                 (* else CGF.Moving 1%R *)
          | DGF.Moving b => if b then CGF.Moving 1%R else CGF.Moving 0%R
-       end
-  else CGF.Moving 0%R.
+  end.
 
-Lemma daD2C_step_delta : forall daA cA g Rconfig sim,
-  CGF.Aom_eq (daD2C_step daA cA (Good g) Rconfig) (CGF.Active sim) ->
+Lemma daD2C_step_delta : forall daA cA g sim Rconfig,
+    CGF.Config.eq_RobotConf Rconfig (rcD2C (cA (Good g))) ->
+  CGF.Aom_eq (daD2C_step daA cA (Good g)) (CGF.Active sim) ->
   (∃ l : Graph.V, CGF.Location.eq Rconfig (CGF.Loc l))
   ∧ CGF.Location.eq Rconfig (CGF.Info.target (CGF.Config.info Rconfig)).
 Proof.
-intros daA cA g rcD sim HrcA. unfold daD2C_step in *.
-destruct (DGF.step daA (Good g) (cA (Good g))) eqn : HstepA,
-(CGF.Config.eq_RobotConf_dec rcD (rcD2C (cA (Good g)))) eqn : HrcD; unfold rcC2D, LocC2D in *; simpl in *.
- - assert (e' := e); destruct e' as (Hl, (Hs, Ht)); unfold CGF.loc_eq in *; simpl in *.
-   destruct (CGF.Config.loc rcD), ( CGF.Info.source (CGF.Config.info rcD)),
-            (CGF.Info.target (CGF.Config.info rcD)); try (now exfalso).
-   destruct dist; now exfalso.
- - now exfalso.
- - assert (e' := e); destruct e' as (Hl, (Hs, Ht)); unfold CGF.loc_eq in *; simpl in *.
-   destruct (CGF.Config.loc rcD), ( CGF.Info.source (CGF.Config.info rcD)),
-            ( CGF.Info.target (CGF.Config.info rcD)); try (now exfalso).
-   assert (HstepA' : DGF.Aom_eq
+intros daA cA g sim rcD HrcA Hstep. unfold daD2C_step in *.
+destruct (DGF.step daA (Good g) (cA (Good g))) eqn : HstepA; unfold rcC2D, LocC2D in *; simpl in *.
+ - destruct dist; now exfalso.
+ - assert (HstepA' : DGF.Aom_eq
                        (DGF.step daA (Good g) (cA (Good g))) (DGF.Active sim0))
           by now rewrite HstepA.
    apply (DGF.step_delta daA) in HstepA'.
+   unfold rcD2C in *.
+   destruct HrcA as (Hrl, (Hrs, Hrt)).
+   simpl in *.
    unfold CGF.Location.eq, CGF.loc_eq, DGF.Location.eq, rcC2D in *; simpl in *.
-   split ; try (exists l1); now rewrite Ht, Hl.
- - now exfalso.
+   destruct (CGF.Config.loc rcD) eqn : Hlr,
+            (CGF.Info.target (CGF.Config.info rcD)) eqn : Htr;
+     simpl in *; try easy.
+   split ; try (exists l0); try now rewrite Hrt, Hrl.
 Qed.
 
 Lemma daD2C_step_compat daA cA : Proper (eq ==> CGF.Config.eq_RobotConf ==> CGF.Aom_eq) (daD2C_step daA cA).
@@ -603,12 +599,13 @@ Lemma daD2C2D : forall (d: DGF.demonic_action) c,
     DGF.da_eq d (daC2D (daD2C d c) (ConfigD2C c)).
 Proof.
   intros d c Hc. unfold daC2D. unfold daD2C. simpl. unfold DGF.da_eq.
+  simpl in *.
+  unfold daD2C_step, daC2D_step.
+  simpl.
   split.
   - intros.
-    simpl.
-    unfold daC2D_step.
-    simpl.
     destruct ( DGF.Config.eq_RobotConf_dec config (rcC2D (ConfigD2C c id))).
+    Show 2.
     + unfold rcC2D, ConfigD2C in e.
       simpl in *.
       unfold daD2C_step, ConfigC2D.
@@ -643,6 +640,7 @@ Proof.
            assert (Hg := Graph.find_edge_compat _ _ H3 _ _ e).
            now rewrite Hedge, H in Hg.
            admit.
+        (* comment faire pour dire qu'on ne puisse pas apply step avec un [b] *)
         -- destruct (Graph.find_edge (DGF.Info.source (DGF.Config.info config))
                                      (DGF.Info.target (DGF.Config.info config)))
                     eqn : Hedge;
@@ -660,7 +658,12 @@ Proof.
              simpl in *.
            now rewrite Hstep1 in *.
       * destruct n; unfold rcD2C, ConfigD2C, RobotConfD2C; now simpl in *. 
-    + 
+    + admit.
+  - intros.
+    simpl in *.
+    unfold RobotConfD2C, RobotConfC2D.
+    simpl in *.
+    now repeat split.    
 Abort.
 
 CoFixpoint demonC2D (demonC : CGF.demon) (e : CGF.execution) : DGF.demon :=

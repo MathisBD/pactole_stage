@@ -242,30 +242,40 @@ Qed.
   omega.
 Qed.
 
-CoFixpoint SequencialExection (e : execution) :
+Definition SequencialExection (e : execution) : Prop :=
   Stream.forever
     (fun e' => forall r d conf,
-         e' = execute r d conf /\
+         eeq e' (execute r d conf) /\
          (exists id, forall id', id' <> id /\ step (Stream.hd d) id' (conf id')
                                               = Moving false)) e.
 
 Fixpoint Biggest_list_of_exe (l : list Config.t) (e : execution) : Prop :=
   match l with
   | nil => Stopped e
-  | x :: nil => Config.eq x (Stream.hd e) /\ Stopped (Stream.tl (Stream.tl e))
+  | x :: nil => Config.eq x (Stream.hd e) /\ Stopped e
   | x :: y => Config.eq x (Stream.hd e) /\
                 if Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e)))
                 then False
                 else Biggest_list_of_exe y (Stream.tl (Stream.tl e))
 
   end.
+Axiom stop_tl : forall e, Stopped e -> Stopped (Stream.tl e).
 
-Theorem test : forall c r d,
+
+Lemma stop_tl_tl : forall e, Stopped e -> eeq e (Stream.tl (Stream.tl e)).
+Proof.
+  intros.
+  destruct H.
+Admitted.
+
+
+Theorem test : forall c r d e,
     ValidStartingConfSolExplorationStop r d ->
+    eeq e (execute r d c) -> 
     ValidStartingConf c ->
-    ~Stopped (execute r d c).
+    ~Stopped e.
 Proof.  
-  intros c r d Hexp Hvalid Hsto.
+  intros c r d e Hexp Heqe Hvalid Hsto.
   destruct (Hexp c Hvalid) as (Hvisit, Hstop).
   assert (Hfalse :=  ConfExistsEmpty c).
   unfold is_visited in *.
@@ -274,76 +284,165 @@ Proof.
   clear Hfalse.
   destruct Hfalse' as (loc, Hfalse). 
   specialize (Hvisit loc).
-  remember (execute r d c) as e;
-    revert Heqe.
-  destruct (execute r d c) eqn : He.
+  rewrite <- Heqe in *.
   induction Hvisit.
-  intro.
   rewrite Heqe in *.
   destruct H.
-  rewrite <- He in *.
   simpl in *.
   rewrite Spect.from_config_In in Hfalse;
     destruct Hfalse.
   exists (Good x).
   apply H.
-  intros.
   apply IHHvisit.
-  split.
-  now destruct Hsto, Hsto.
-  now destruct Hsto, Hsto.
-  constructor.  
-  split.
-  now destruct Hsto, Hsto.
-  now destruct Hsto, Hsto.
-  
-  Show 2.
+  rewrite Heqe.
+  symmetry; 
+  apply stop_tl_tl.
+  now rewrite Heqe in *.
+  destruct Hsto.
+  apply Hsto.
+  destruct Hsto.
+  constructor.
+  apply Hsto.
+Qed.
 
-
-
-
+Lemma finalconf_towerOn : forall r,
+    (forall d, ValidStartingConfSolExplorationStop r d) ->
+    forall c d e, eeq e (execute r d c) -> 
+                  Stopped e -> 
+                  exists loc, (!! c)[loc] > 1.
+Proof.
+  intros.
+  generalize (test (H d) H0).
+  intros.
+  destruct (Classical_Prop.classic (ValidStartingConf c)).
+  now specialize (H2 H3).
+  apply Classical_Pred_Type.not_all_not_ex.
+  intros Hf.
+  destruct H3.
+  unfold ValidStartingConf.
+  intros (ex, Hex).
+  now specialize (Hf ex).
 Qed.
 
 
-Theorem TowerOnFinalConf : forall l r d c e,
+Fixpoint last_init_conf (l : list Config.t) (a : Config.t) :=
+  match l with
+  | nil => (False, nil)
+  | conf :: l' => if Config.eq_dec a conf
+                  then (((List.Forall (fun x => ~ ValidStartingConf x ) l')
+                        /\ ValidStartingConf a),l')
+                  else last_init_conf l' a
+  end.
+  
+  
+
+Theorem TowerOnFinalConf : forall l r d c e x,
     ValidStartingConf c->
     eeq e (execute r d c) ->
     Biggest_list_of_exe l e ->
+    let (P,l') := last_init_conf l c in
+    P ->
     ValidStartingConfSolExplorationStop r d ->
-    exists loc, (!! (List.last l c))[loc] > 1.
+    SequencialExection e ->
+    (forall conf, In conf l' ->
+                  exists loc, (!! conf)[loc] = x
+                              -> 1 < x -> x < kG)
+      
+      -> length l' >= n - kG + 1.
+
+
 Proof.
-  intros l r d c e Hconf Heq_e Hlist Hvalid.
-  destruct l eqn : Hl.
+  intros l r d c e x Hconf Heq_e Hlist.
+  destruct (last_init_conf l c) as (P, l') eqn : Hlic.
+  intros HP Hvalid Hsequ Hl_conf.
+  assert (length l' < n - kG + 1
+         -> False).
+  { intros Hf.
+    unfold last_init_conf in Hlic.
+    induction l.
+    simpl in *.
+    rewrite surjective_pairing in Hlic.
+    simpl in *.
+    assert (P = fst (P, l')) by intuition.
+    rewrite <- Hlic in *.
+    simpl in *.
+    now rewrite <- H.
+    destruct (Config.eq_dec c a).
+    assert (P = fst (P, l')) by intuition.
+    assert (l' = snd (P, l')) by intuition.
+    rewrite <- Hlic in *; simpl in *.
+    Show 2.
+    destruct HP.
+    apply H in HP.
+    apply Hlic.
+    intuition.
+    assert (ValidStartingConf a).
+    destruct (last_init_conf l) eqn : Hl.
+    
+    
+  split.
+  - intros.
+    destruct Hsequ.
+    specialize (H0 r d conf). 
+    destruct H0 as (He_conf, (id,Hid)).
+    
+    destruct l eqn : Hl.
   - simpl in *.
-    destruct (Hvalid c Hconf).
+    destruct (Hvalid c Hconf) as (Hvisit, Hstop).
     assert (Hfalse :=  ConfExistsEmpty c).
     unfold is_visited in *.
-    assert (exists loc, ~ Spect.In loc (!! c)).
-    { now apply Logic.Classical_Pred_Type.not_all_ex_not. }
-    destruct H1.
-    specialize (H x).
-    unfold Stopped in *.
-    destruct Hlist.
-    unfold stop_now in H2.
-    rewrite <- Heq_e in H.
-    induction H.
-    unfold is_visited in *.
-    destruct H.
-    rewrite Heq_e in H.
-    simpl in *.
-    rewrite Spect.from_config_In in H1;
-    destruct H1.
-    exists (Good x0).
-    apply H.
-    admit.
-  -  unfold Biggest_list_of_exe in *.
-     destruct l0 eqn : Hl'.
+    rewrite Heq_e in Hlist.
+    now generalize (test Hvalid Heq_e Hconf Hlist).
+  - destruct l0 eqn : Hl'.
      + simpl in *.
-       destruct (Hvalid c Hconf) as (Hvisit, Hstop).
-       generalize k_inf_n.
-       intros.
-       destruct kG eqn : HkG.
-       admit.
-       (* idée: si Hvisit et Hstop sont vrai, alors comme  *)
-       admit.
-     +
+       destruct Hlist as (Hceq, Hstp).
+       generalize (test Hvalid Heq_e Hconf).
+       intros Htest.
+       assert (Hval_t: ValidStartingConf t).
+       rewrite Hceq.
+       rewrite Heq_e.
+       now simpl in *.
+       assert (He_eq : eeq e (execute r d t)).
+       rewrite Hceq.
+       now rewrite Heq_e.
+       generalize (test Hvalid He_eq Hval_t). 
+       intros Htest'.
+       destruct Htest.
+       now rewrite <- Heq_e.
+     + destruct (Classical_Prop.classic (ValidStartingConf (last (t :: t0 :: l1) c)))
+         as [Hv|Hnv].
+       simpl in *.
+       destruct ( Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e))));
+         try easy.
+       destruct Hlist as (Hceq, Hlist).       
+       assert (Hse : ~Stopped e).
+       intros Hs.
+       destruct Hs as (Hse, Hs).
+       now unfold stop_now in Hse.
+       destruct l1.
+       * destruct (Classical_Prop.classic
+                     (ValidStartingConfSolExplorationStop
+                     r (Stream.tl (Stream.tl d)))) as [Hvrd|Hnvrd].
+         assert (Heeq_to : eeq (Stream.tl (Stream.tl e)) (execute r (Stream.tl (Stream.tl d)) t0)).  
+         { rewrite Heq_e.
+           destruct Hlist as (Hlist, Hstp).
+           rewrite Heq_e in Hlist.
+           repeat rewrite execute_tail in *.
+           apply execute_compat; try easy.
+         }
+         destruct (test Hvrd Heeq_to Hv).
+         now rewrite <- Heeq_to.
+         unfold ValidStartingConfSolExplorationStop in *.
+         apply Classical_Prop.NNPP.
+         intro.
+         apply Hnvrd.
+         intros.
+         destruct (Hvrd t0 Hv).  Heeq_to).
+         admit.
+       apply Classical_Pred_Type.not_all_not_ex.
+       intros Hf.
+       destruct Hnv.
+       unfold ValidStartingConf.
+       intros (ex, Hex).
+       now specialize (Hf ex).
+Qed.       

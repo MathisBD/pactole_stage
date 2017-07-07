@@ -427,15 +427,15 @@ now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Stream.next_forever ((stop_now)) e.
+  Stream.forever ((stop_now)) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
 intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
   - destruct H. now rewrite <- He.
-  - destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
+  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
   - destruct H. now rewrite He.
-  - destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
+  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
@@ -460,15 +460,15 @@ Definition FullSolExplorationStop  (r : robogram) (d : demon) :=
 forall config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
 Definition ValidStartingConf conf :=
-  exists l : Loc.t,
+  (exists l : Loc.t,
     let m := Spect.from_config(conf) in
-    m[l] > 1 -> False.
+    m[l] > 1) -> False.
 
 Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
 Proof.
   intros c1 c2 Hc.
-  split; intros Hv; unfold ValidStartingConf in *;
-  destruct Hv as (l, Hv); exists l; try now rewrite <- Hc.
+  split; intros Hv Hf; unfold ValidStartingConf in *;
+  destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
   now rewrite Hc.
 Qed.
   
