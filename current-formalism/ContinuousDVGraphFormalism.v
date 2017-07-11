@@ -499,21 +499,14 @@ Module CGF (Graph : GraphDef)
   Instance Active_compat : Proper (Iso.eq ==> Aom_eq) Active.
   Proof. intros ? ? ?. auto. Qed.
 
-
-  Instance Aom_eq_Symmetric : Symmetric Aom_eq.
-  Proof.
-    intros x y H. unfold Aom_eq in *. destruct x, y; auto.
+  Instance Aom_eq_equiv : Equivalence Aom_eq.
+  Proof. split.
+  + now intros [].
+  + intros x y H. unfold Aom_eq in *. destruct x, y; auto.
     now symmetry.
-  Qed.
-
-  Instance Aom_eq_Transitive : Transitive Aom_eq.
-  Proof.
-    intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
+  + intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
     now rewrite H12, H23.
   Qed.
-
-  Instance Aom_eq_refl : Reflexive Aom_eq.
-  Proof. now intros []. Qed.
 
   Record demonic_action :=
     {
