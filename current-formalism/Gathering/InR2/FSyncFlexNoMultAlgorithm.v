@@ -544,7 +544,7 @@ assert (Htest : Rle_bool delta (R2.dist ((sim ⁻¹) (r * barycenter E')%R2) pt)
                 = Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)).
 { f_equal.
   assert (Heq_pt : pt = (sim ⁻¹) (sim pt)).
-  { simpl. rewrite Similarity.retraction_section; autoclass. }
+  { simpl. rewrite Bijection.retraction_section; autoclass. }
   assert (Hsim_pt : R2.eq (sim pt) (r * (sim pt))).
   { generalize (Sim.center_prop sim).
     intro Hzero.
@@ -558,8 +558,8 @@ assert (Htest : Rle_bool delta (R2.dist ((sim ⁻¹) (r * barycenter E')%R2) pt)
   rewrite <- dist_prop_retraction, <- Heq_pt. f_equal. assumption. }
 rewrite Htest.
 destruct (Rle_bool delta (Rabs r * R2.dist (barycenter E) pt)); trivial; [].
-apply Similarity.Inversion.
-simpl Similarity.retraction. change Common.Sim.sim_f with Sim.sim_f.
+apply Bijection.Inversion.
+simpl Bijection.retraction. change Common.Sim.sim_f with Sim.sim_f.
 rewrite sim_add, sim_mul, sim_add, sim_opp.
 do 2 rewrite R2.mul_distr_add.
 assert (Hsim_pt_0 : R2.eq (sim pt) R2.origin).
@@ -568,7 +568,7 @@ assert (Hsim_pt_0 : R2.eq (sim pt) R2.origin).
 rewrite Hsim_pt_0.
 rewrite (R2.add_comm R2.origin), R2.add_origin.
 setoid_rewrite <- R2.add_origin at 25. repeat rewrite <- R2.add_assoc. f_equiv.
-+ f_equiv. rewrite Similarity.Inversion. apply Hsimbary.
++ f_equiv. rewrite Bijection.Inversion. apply Hsimbary.
 + rewrite R2.opp_origin, R2.add_origin.
   setoid_rewrite <- R2.mul_1 at 9 15. repeat rewrite <- ?R2.minus_morph, ?R2.mul_morph, ?R2.add_morph.
   ring_simplify (r * 2 + (r * -1 + (1 - r + -1))). apply R2.mul_0.

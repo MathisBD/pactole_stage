@@ -7,6 +7,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Omega.
 Require Import Psatz.
@@ -498,19 +499,14 @@ Module CGF (Graph : GraphDef)
   Instance Active_compat : Proper (Iso.eq ==> Aom_eq) Active.
   Proof. intros ? ? ?. auto. Qed.
 
-
-  Instance Aom_eq_Symmetric : Symmetric Aom_eq.
-  Proof.
-    intros x y H. unfold Aom_eq in *. destruct x, y; auto.
+  Instance Aom_eq_equiv : Equivalence Aom_eq.
+  Proof. split.
+  + now intros [].
+  + intros x y H. unfold Aom_eq in *. destruct x, y; auto.
     now symmetry.
-  Qed.
-
-  Instance Aom_eq_Transitive : Transitive Aom_eq.
-  Proof.
-    intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
+  + intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
     now rewrite H12, H23.
   Qed.
-
 
   Record demonic_action :=
     {
@@ -534,7 +530,7 @@ Module CGF (Graph : GraphDef)
 
   Instance da_eq_equiv : Equivalence da_eq.
   Proof. split.
-  + split; intuition. now apply step_compat.
+  + split; intuition.
   + intros da1 da2 [Hda1 Hda2]. split; repeat intro; try symmetry; auto.
   + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
     split; intros; try etransitivity; eauto.
@@ -1639,19 +1635,22 @@ find_edge loc tgt = e
         rewrite Hloc in *;
         rewrite Hlrange in Hv2;
         exists (retraction (Iso.sim_E sim) erange);
-        assert (HSome_sim : opt_eq Graph.Eeq (Graph.find_edge (Graph.src ((Isomorphism.retraction (Iso.sim_E sim)) erange)) (Graph.tgt ((Isomorphism.retraction (Iso.sim_E sim)) erange))) (Some ((Isomorphism.retraction (Iso.sim_E sim)) erange)))
+        assert (HSome_sim : opt_eq Graph.Eeq
+          (Graph.find_edge (Graph.src ((retraction (Iso.sim_E sim)) erange))
+                           (Graph.tgt ((retraction (Iso.sim_E sim)) erange)))
+          (Some ((retraction (Iso.sim_E sim)) erange)))
           by (apply Graph.find_edge_Some);
         rewrite <- HSome_sim;
           apply Graph.find_edge_compat;
-          assert (Hmorph := Iso.sim_morphism sim (((Isomorphism.retraction (Iso.sim_E sim)) erange)));
+          assert (Hmorph := Iso.sim_morphism sim (((retraction (Iso.sim_E sim)) erange)));
           destruct Hmorph as (Hms, Hmt);
           rewrite Inversion in *;
-          rewrite Isomorphism.section_retraction in *; try apply Graph.Eeq_equiv);
+          rewrite section_retraction in *; try apply Graph.Eeq_equiv);
         try (apply Graph.find2st in Herange;
              destruct Herange as (HSs, HSt);
              try (rewrite <- HSs in Hms;
                   rewrite <- Hms;
-                  rewrite Isomorphism.retraction_section;
+                  rewrite retraction_section;
                   try (now symmetry);
                   try apply Graph.Veq_equiv);
              try (rewrite <- HSt in Hmt; now rewrite <- Hmt)).

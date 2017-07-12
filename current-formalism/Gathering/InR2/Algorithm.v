@@ -19,6 +19,7 @@
 (**************************************************************************)
 
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega Field.
@@ -68,9 +69,6 @@ End N.
 (** We instantiate in our setting the generic definitions of the gathering problem. *)
 Module Defs := Definitions.GatheringDefs(R2)(N).
 Import Defs.
-
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
 Lemma Config_list_alls : forall pt, Config.list (fun _ => pt) = alls pt N.nG.
 Proof.
@@ -865,7 +863,7 @@ intros sim l. symmetry. apply SEC_unicity.
     rewrite (Sim.dist_prop (sim ⁻¹)). simpl. apply Rmult_le_reg_l with (/ (Sim.zoom sim))%R; trivial.
     do 2 (apply Rmult_le_compat_l; try lra; []).
     apply SEC_spec1. now apply in_map.
-  - simpl. apply (Similarity.retraction_section _).
+  - simpl. apply (Bijection.retraction_section _).
 Qed.
 
 Lemma barycenter_3_morph: forall (sim : Sim.t) pt1 pt2 pt3,
@@ -910,7 +908,7 @@ Proof.
   red.
   intros p.
   unfold is_middle in hmid.
-  rewrite <- (@Similarity.section_retraction _ _ _ (sim.(Sim.sim_f)) p).
+  rewrite <- (@Bijection.section_retraction _ _ _ (sim.(Sim.sim_f)) p).
   setoid_rewrite sim.(Sim.dist_prop).
   setoid_rewrite R_sqr.Rsqr_mult.
   setoid_rewrite <- Rmult_plus_distr_l.
@@ -942,7 +940,7 @@ Proof.
   red.
   intros p.
   unfold is_barycenter_3_pts in hmid.
-  rewrite <- (@Similarity.section_retraction _ _ _ (sim.(Sim.sim_f)) p).
+  rewrite <- (@Bijection.section_retraction _ _ _ (sim.(Sim.sim_f)) p).
   setoid_rewrite sim.(Sim.dist_prop).
   setoid_rewrite R_sqr.Rsqr_mult.
   repeat setoid_rewrite <- Rmult_plus_distr_l.
@@ -1069,7 +1067,7 @@ simpl in Hlen; discriminate || clear Hlen.
       rewrite Hperm'. rewrite (mem_injective_map _); trivial; try (now apply Sim.injective); [].
       destruct (mem R2.eq_dec pt (SECT (!! conf))).
       -- rewrite <- (Sim.center_prop sim), Heqsim, (step_center _ _ _ Hstep). now apply Sim.compose_inverse_l.
-      -- simpl. rewrite <- sim.(Similarity.Inversion), <- target_morph; auto.
+      -- simpl. rewrite <- sim.(Bijection.Inversion), <- target_morph; auto.
          f_equiv. now apply Spect.from_config_map.
 Qed.
 

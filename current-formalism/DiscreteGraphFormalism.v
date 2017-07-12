@@ -123,19 +123,14 @@ Module DGF (Graph : GraphDef)
   Instance Active_compat : Proper (Iso.eq ==> Aom_eq) Active.
   Proof. intros ? ? ?. auto. Qed.
   
-  (* as Active give a function, Aom_eq is not reflexive. It's still symmetric and transitive.*)
-  Instance Aom_eq_Symmetric : Symmetric Aom_eq.
-  Proof.
-    intros x y H. unfold Aom_eq in *. destruct x, y; auto.
-    now symmetry.
-  Qed.
-  
-  Instance Aom_eq_Transitive : Transitive Aom_eq.
-  Proof.
-    intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
+  Instance Aom_eq_equiv : Equivalence Aom_eq.
+  Proof. split.
+  + now intros [].
+  + intros x y H. unfold Aom_eq in *. destruct x, y; auto. now symmetry.
+  + intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
     now rewrite H12, H23.
   Qed.
-
+  
 (* on a besoin de Rconfig car ça permet de faire la conversion d'un modèle à l'autre *)
   
   Record demonic_action :=
@@ -156,7 +151,7 @@ Module DGF (Graph : GraphDef)
   Instance da_eq_equiv : Equivalence da_eq.
   Proof.
     split.
-    + split; intuition. now apply step_compat.
+    + now split.
     + intros da1 da2 [Hda1 Hda2]. split; repeat intro; try symmetry; auto.
     + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
       split; intros; try etransitivity; eauto.
