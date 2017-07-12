@@ -945,7 +945,7 @@ Lemma round_2_simplify_1 :
                 let new_target :=
                     ((trans
                         (Config.loc
-                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
+                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Bijection.section)
                                                                   local_target in
                 {| Config.loc := new_target;
                    Config.info :=
@@ -1896,7 +1896,7 @@ Lemma round_2_simplify_m1 :
                 let new_target :=
                     ((trans
                         (Config.loc
-                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
+                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Bijection.section)
                                                                   local_target in
                 {| Config.loc := new_target;
                    Config.info :=
@@ -2001,6 +2001,90 @@ Proof.
     reflexivity.
   }
   simpl.
+  unfold Location.eq, Veq in H0.
+  rewrite <- loc_fin in H0.
+  unfold ImpossibilityKDividesN.Loc.add in *.
+  unfold Location.eq, Veq, ImpossibilityKDividesN.Loc.eq, ImpossibilityKDividesN.def.n, n in *.
+  rewrite 3 Zdiv.Zplus_mod.
+  rewrite H0.
+  rewrite Hrp.
+  repeat rewrite Zdiv.Zplus_mod_idemp_l;
+    repeat rewrite Zdiv.Zplus_mod_idemp_r.
+  assert ((exists k : Loc.t,
+     forall id : Names.ident,
+     Location.eq (Config.loc (round r da1 conf id)) (Loc.add k (Config.loc (config1 id))) /\
+     Location.eq (Info.target (Config.info (round r da1 conf id)))
+       (Loc.add k (Info.target (Config.info (config1 id)))))).
+  { exists (Loc.add (Loc_inv m) x).
+    intros [g'|b]; try ImpByz b.
+    destruct (H (Good g')) as (Hlr, (_, Htr));
+      unfold f_conf in *.
+    assert (Hrs := round_2_config1).
+    simpl in Hrs.
+    specialize (Hrs (Good g')).
+    destruct Hrs as (Hls, (_,Hts)).
+    simpl in *.
+    rewrite Hls in Hlr.
+    simpl in *.
+    rewrite Hts in *.
+    rewrite config1_Spectre_Equiv.
+    rewrite Loc.add_opp.
+    unfold Loc.add; simpl;
+      rewrite Hmove.
+    repeat rewrite <- loc_fin.
+    unfold ImpossibilityKDividesN.Loc.add;
+      rewrite (Zdiv.Zplus_mod _ (Loc (Config.loc (conf (Good g'))))). 
+    rewrite Hlr.
+    unfold Loc.add, ImpossibilityKDividesN.Loc.add.
+    rewrite (Zdiv.Zplus_mod (Loc (Loc.opp _))), <- Hm.
+    repeat rewrite <- loc_fin.
+    unfold ImpossibilityKDividesN.def.n, n.
+    repeat rewrite Zdiv.Zplus_mod_idemp_l;
+      repeat rewrite Zdiv.Zplus_mod_idemp_r.
+    replace ((m mod Z.of_nat ImpossibilityKDividesN.n +
+          (((m + Graph.Loc x) mod Z.of_nat ImpossibilityKDividesN.n)
+           mod Z.of_nat ImpossibilityKDividesN.n) mod Z.of_nat ImpossibilityKDividesN.n +
+          Graph.Loc (create_conf1 g')))
+            with (m mod Z.of_nat ImpossibilityKDividesN.n +
+          ((((m + Graph.Loc x) mod Z.of_nat ImpossibilityKDividesN.n)
+           mod Z.of_nat ImpossibilityKDividesN.n) mod Z.of_nat ImpossibilityKDividesN.n +
+          Graph.Loc (create_conf1 g'))) by lia.
+    rewrite Zdiv.Zplus_mod_idemp_l, <- (Zdiv.Zplus_mod_idemp_r (((((m + (Loc _)) mod _)mod _) mod _)+_) m).
+    repeat rewrite Z.mod_mod;try (generalize n_sup_1; unfold n; lia).
+    repeat rewrite Zdiv.Zplus_mod_idemp_l.
+    repeat rewrite Zdiv.Zplus_mod_idemp_r.
+    rewrite <- (Zdiv.Zplus_mod_idemp_r (Loc x + _) m).
+    rewrite (Zdiv.Zplus_mod_idemp_r _ (Loc x)).
+    rewrite Zdiv.Zplus_mod_idemp_r.
+    now replace (m + (Loc x + (m + Graph.Loc (create_conf1 g')))) with
+        (m + (m + Loc x + Graph.Loc (create_conf1 g'))) by lia.
+    apply Hequiv'.
+  }
+  rewrite (Zdiv.Zplus_mod (Loc (r _ _))).
+  fold ImpossibilityKDividesN.def.n.
+  rewrite (pgm_compat r _ _ (config1_Spectre_Equiv (round r da1 conf) g H1)
+                      _ _ (reflexivity Loc.origin)).
+  simpl.
+  rewrite Hmove.
+  unfold Loc.add, ImpossibilityKDividesN.Loc.add;
+    fold ImpossibilityKDividesN.def.n;
+  rewrite (Zdiv.Zplus_mod (Loc (r _ _ ))).
+  rewrite (pgm_compat r _ _ (reflexivity _) _ _ (Loc.add_opp (Config.loc (conf (Good g))))).
+  rewrite (pgm_compat r _ _ (config1_Spectre_Equiv conf g Hequiv') _ _ (reflexivity _)).
+  simpl.
+  rewrite Hmove.
+  repeat rewrite <- loc_fin.
+  unfold ImpossibilityKDividesN.def.n in *.
+  rewrite Hl.
+  unfold Loc.add, ImpossibilityKDividesN.Loc.add;
+    fold ImpossibilityKDividesN.def.n;
+  rewrite (Zdiv.Zplus_mod (Loc (r _ _ ))).
+  rewrite (pgm_compat r _ _ (reflexivity _) _ _ (Loc.add_opp (create_conf1 g))).
+  rewrite Hmove.
+  rewrite <- loc_fin.
+
+
+  
   unfold round; simpl.
   destruct (Loc.eq_dec (Config.loc (conf (Good g)))
                          (Info.target (Config.info (conf (Good g)))))
