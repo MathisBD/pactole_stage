@@ -511,9 +511,9 @@ destruct (DGF.step daA (Good g) (cA (Good g))) eqn : HstepA; unfold rcC2D, LocC2
    split ; try (exists l0); try now rewrite Hrt, Hrl.
 Qed.
 
-Lemma daD2C_step_compat daA cA : Proper (eq ==> CGF.Config.eq_RobotConf ==> CGF.Aom_eq) (daD2C_step daA cA).
+Lemma daD2C_step_compat daA cA : Proper (eq ==> CGF.Aom_eq) (daD2C_step daA cA).
 Proof.
-intros id1 id2 Hid rcD1 rcD2 HrcD. unfold daD2C_step, CGF.Aom_eq.
+intros id1 id2 Hid. unfold daD2C_step, CGF.Aom_eq.
 assert (HcA : DGF.Config.eq_RobotConf (cA id1) (cA id2)) by now rewrite Hid.
 assert(Hs1_eq := DGF.step_compat daA id1 id2 Hid (cA id1) (cA id2) (HcA)).
 destruct (DGF.step daA id1 (cA id1)) eqn:Hstep1,
