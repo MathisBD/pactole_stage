@@ -374,7 +374,7 @@ Proof. split; try exact even_nG. cbn. setoid_rewrite <- config1_config2_spect_eq
 (** Two similarities used: the identity and the symmetry wrt a point c. *)
 
 (** The swapping similarity *)
-Definition bij_swap (c : R) : Bijection.bijection R.eq.
+Definition bij_swap (c : R) : Bijection.t R.eq.
 refine {|
   Bijection.section := fun x => c - x;
   Bijection.retraction := fun x => c - x |}.

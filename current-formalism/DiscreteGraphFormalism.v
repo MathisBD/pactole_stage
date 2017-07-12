@@ -7,6 +7,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Psatz.
 Require Import Omega.
@@ -34,14 +36,6 @@ Module DGF (Graph : GraphDef)
            (ConfigA : Configuration(LocationA)(N)(Names)(MkInfoA.Info))
            (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
            (Import Iso : Iso(Graph)(LocationA)).
-  
-  (** For spectra *)
-  Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
-    Definition t := ConfigA.t.
-    Definition eq := ConfigA.eq.
-    Definition eq_equiv := ConfigA.eq_equiv.
-    Definition eq_dec := ConfigA.eq_dec.
-  End View.
 
 
   (* They come from the common part as they are shared by AGF and DGF. *)

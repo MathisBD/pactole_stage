@@ -7,6 +7,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Psatz.
 Require Import Omega.

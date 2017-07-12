@@ -16,6 +16,7 @@ Require Import Decidable.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.Bijection.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.DiscreteGraphFormalismSSync.
 Require Import Arith.Div2.
@@ -37,7 +38,7 @@ Import Graph.
 Module ExplorationDefs(N : Size).
 
 Module Names := Robots.Make(N).
-  
+
 Lemma Loc_eq_mod : forall x, ImpossibilityKDividesN.Loc.eq x (x mod Z.of_nat n).
 Proof.
   intros; unfold ImpossibilityKDividesN.Loc.eq; rewrite Z.mod_mod;
@@ -358,7 +359,7 @@ Defined.
 Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
   intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
-  repeat split; try apply Bijection.section_compat.
+  repeat split; try apply section_compat.
   unfold Bijection.bij_eq.
   intros x y Hxy. simpl.
   unfold Iso.eq;

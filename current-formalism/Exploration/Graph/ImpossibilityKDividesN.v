@@ -20,6 +20,8 @@
                        - commecer par la fin (comme avec la preuve)
 *)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
@@ -260,7 +262,7 @@ Qed.
 Parameter g : Names.G.
 
 
-Variable r : Equiv.DGF.robogram.
+Variable r : DGF.robogram.
 
 
 (** The key idea is to prove that we can always make robots think that there are in the same configuration.
@@ -277,7 +279,7 @@ Variable r : Equiv.DGF.robogram.
 Lemma conf1_1 : forall idg g0: Names.G, exists g2:Names.G,
       Loc.eq (create_conf1 idg)
              (Loc.add (create_conf1 g0) (Loc.opp (create_conf1 g2))).
-Proof.                                                                    
+Proof.
   generalize Pactole.Exploration.ZnZ.ImpossibilityKDividesN.conf1_1.
   unfold Loc.eq, LocationA.eq, MakeRing.Veq, create_conf1, Loc.eq, Loc.add, Loc.opp,
   Loc.mul, Loc.unit, n, kG, ImpossibilityKDividesN.Loc.eq,
@@ -351,7 +353,7 @@ Qed.
 (* The spectre of the initial configuration is the same that the one during 
    its computaion [round]. *)
 
-Import Equiv.DGF.
+Import DGF.
 (* probleme, si je veux faire un demon synchrone, j'ai besoin de savoir quand tous
 les robots sont arrivé à leur cible, donc j'ai besoin d'information sur la 
 configuration.  Si j'ai des info sur la configuration dans l'action démoniaque, 
@@ -376,35 +378,26 @@ Definition da1 : demonic_action.
                                Active (trans (Config.loc (Rconf)))
                              else
                                Moving true))
-                 
     |}.
   Proof.
-    - intuition.
-      unfold lift_conf in H.
-      unfold Loc.eq_dec, Names.G in *.
-      destruct (LocationA.eq_dec (Config.loc Rconfig)
-                                 (Info.target (Config.info
-                                                   Rconfig)));
-        try assumption;
-        now simpl in *.
-    - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
-      unfold Names.G.
-      destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
-      destruct 
-        (Loc.eq_dec (Config.loc rc1)
-                    (Info.target (Config.info rc1))),
-      (Loc.eq_dec (Config.loc rc2)
-                  (Info.target (Config.info rc2)));
-        try (now auto);
-        try now rewrite Hl_rc, Ht_rc in *.
-      rewrite Hl_rc.
-      unfold Aom_eq.
-      reflexivity.
-      apply Fin.case0.
-      exact b1.    
+  + intuition.
+    unfold lift_conf in H.
+    unfold Loc.eq_dec, Names.G in *.
+    destruct (LocationA.eq_dec (Config.loc Rconfig)
+                               (Info.target (Config.info
+                                                 Rconfig)));
+      try assumption;
+      now simpl in *.
+  + intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
+    - unfold Names.G.
+      destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)),
+               (Loc.eq_dec (Config.loc rc1) (Info.target (Config.info rc1))),
+               (Loc.eq_dec (Config.loc rc2) (Info.target (Config.info rc2)));
+      now rewrite Hl_rc, Ht_rc in *.
+    - apply Fin.case0. exact b1.
   Defined.
   
-    
+  
 CoFixpoint bad_demon1 : demon := Stream.cons da1 bad_demon1.
 
 Lemma bad_demon1_tail : 
@@ -491,7 +484,7 @@ Definition move := r.(Equiv.DGF.pgm)
 *)
 Parameter m : Z.
 Hypothesis Hmove : forall g,
-    Loc (r.(Equiv.DGF.pgm)
+    Loc (r.(DGF.pgm)
         (!! (Config.map
                (apply_sim (trans (Config.loc (config1 (Good g)))))
                (config1))) Loc.origin) = m.
@@ -934,7 +927,7 @@ Lemma round_2_simplify_1 :
                 let new_target :=
                     ((trans
                         (Config.loc
-                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
+                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Bijection.section)
                                                                   local_target in
                 {| Config.loc := new_target;
                    Config.info :=
@@ -1842,7 +1835,7 @@ Lemma round_2_simplify_m1 :
                 let new_target :=
                     ((trans
                         (Config.loc
-                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Isomorphism.section)
+                           (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Bijection.section)
                                                                   local_target in
                 {| Config.loc := new_target;
                    Config.info :=

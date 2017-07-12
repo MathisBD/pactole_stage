@@ -5,7 +5,7 @@ Require Import Morphisms.
 Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
-Require Export Pactole.Bijection.
+Require Import Pactole.Bijection.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Reals.
 Require Import Psatz.
@@ -31,9 +31,9 @@ Module Make (Graph : GraphDef)(Loc : LocationADef (Graph)).
 
   Record t :=
     {
-      sim_V :> bijection Loc.eq;
-      sim_E : bijection Graph.Eeq;
-      sim_T : bijection Req;
+      sim_V :> Bijection.t Loc.eq;
+      sim_E : Bijection.t Graph.Eeq;
+      sim_T : Bijection.t Req;
       sim_morphism : forall e, Graph.Veq (sim_V (Graph.src e)) (Graph.src (sim_E e))
                               /\ Graph.Veq (sim_V (Graph.tgt e)) (Graph.tgt (sim_E e));
       sim_threshold : forall e, sim_T (Graph.threshold e) = Graph.threshold (sim_E e);
@@ -41,12 +41,12 @@ Module Make (Graph : GraphDef)(Loc : LocationADef (Graph)).
       sim_bound_T : forall r, (0 < r < 1)%R <-> (0 < sim_T r < 1)%R
   }.
 
-  Definition eq sim1 sim2 := bij_eq sim1.(sim_V) sim2.(sim_V)
-                             /\ bij_eq sim1.(sim_E) sim2.(sim_E)
-                             /\ bij_eq sim1.(sim_T) sim2.(sim_T).
+  Definition eq sim1 sim2 := Bijection.eq sim1.(sim_V) sim2.(sim_V)
+                          /\ Bijection.eq sim1.(sim_E) sim2.(sim_E)
+                          /\ Bijection.eq sim1.(sim_T) sim2.(sim_T).
   
 Global Instance eq_equiv : Equivalence eq.
-Proof. unfold eq, bij_eq. split.
+Proof. unfold eq, Bijection.eq. split.
 + intros f. repeat split; intros l1 l2 Hl; rewrite Hl; reflexivity.
 + intros f g Hfg; destruct Hfg as (H, (H0, H1)); repeat split; intros x y Hxy;
   symmetry in Hxy.
@@ -69,21 +69,21 @@ Proof. unfold eq, bij_eq. split.
   reflexivity.
 Qed.
 
-Instance V_compat : Proper (eq ==> @bij_eq _ Loc.eq) sim_V.
+Instance V_compat : Proper (eq ==> @Bijection.eq _ Loc.eq) sim_V.
 Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
 
-Instance E_compat : Proper (eq ==> @bij_eq _ Graph.Eeq) sim_E.
+Instance E_compat : Proper (eq ==> @Bijection.eq _ Graph.Eeq) sim_E.
 Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
 
-Instance T_compat : Proper (eq ==> @bij_eq _ Req) sim_T.
+Instance T_compat : Proper (eq ==> @Bijection.eq _ Req) sim_T.
 Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
 
 
 
 Definition id : t.
-  refine {| sim_V := bij_id Loc.eq_equiv;
-            sim_E := bij_id Graph.Eeq_equiv;
-            sim_T := bij_id Req_equiv |}.
+  refine {| sim_V := Bijection.id Loc.eq_equiv;
+            sim_E := Bijection.id Graph.Eeq_equiv;
+            sim_T := Bijection.id Req_equiv |}.
   Proof.
     + intros e. now simpl.
     + intro e; now simpl.
@@ -94,9 +94,9 @@ Definition id : t.
 
 Definition compose (f g : t) : t.
 refine {|
-    sim_V := bij_compose _ f.(sim_V) g.(sim_V);
-    sim_E := bij_compose _ f.(sim_E) g.(sim_E);
-    sim_T := bij_compose _ f.(sim_T) g.(sim_T) |}.
+    sim_V := Bijection.compose _ f.(sim_V) g.(sim_V);
+    sim_E := Bijection.compose _ f.(sim_E) g.(sim_E);
+    sim_T := Bijection.compose _ f.(sim_T) g.(sim_T) |}.
 Proof.
   + intros; simpl.
     generalize (sim_morphism g e).
@@ -129,24 +129,19 @@ Global Infix "∘" := compose (left associativity, at level 59).
 Global Instance compose_compat : Proper (eq ==> eq ==> eq) compose.
 Proof.
   intros f1 f2 Hf g1 g2 Hg.
-  unfold eq, bij_eq in *.     
-  repeat split; intros x y Hxy;
-  cbn;
-  destruct Hf, Hg.
-  apply H, H1, Hxy.
-  apply H0, H2, Hxy.
-  apply H0, H2, Hxy.
+  unfold eq, Bijection.eq in *.
+  repeat split; intros x y Hxy; cbn; intuition.
 Qed.
-  
+
 Lemma compose_assoc : forall f g h, eq (f ∘ (g ∘ h)) ((f ∘ g) ∘ h).
 Proof. intros f g h; repeat split; intros x y Hxy; simpl; now rewrite Hxy. Qed.
 
 Set Printing Implicit.
 
 Definition inverse (sim : t) : t.
-  refine {| sim_V := bij_inverse _ sim.(sim_V);
-            sim_E := bij_inverse _ sim.(sim_E);
-            sim_T := bij_inverse _ sim.(sim_T)
+  refine {| sim_V := Bijection.inverse _ sim.(sim_V);
+            sim_E := Bijection.inverse _ sim.(sim_E);
+            sim_T := Bijection.inverse _ sim.(sim_T)
          |}.
 Proof.
   + intros.

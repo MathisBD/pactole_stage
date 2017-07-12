@@ -432,60 +432,58 @@ intros dad1 dad2 HdaD cD1 cD2 HrcD'.
 unfold daC2D, daC2D_step, DGF.da_eq in *;
 simpl.
 split.
-intros id confA.  assert (HrcD := HrcD' id).
-assert (HrcC2D_eq : DGF.Config.eq_RobotConf (rcC2D (cD1 id)) (rcC2D (cD2 id))).
-apply rcC2D_compat, HrcD.
-assert (Hda_cD := CGF.step_da_compat HdaD (reflexivity id) HrcD).
-unfold CGF.Aom_eq in Hda_cD.
-destruct HdaD as (HdaD_G, _).
-specialize (HdaD_G id (rcD2C confA)).
-destruct (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD1 id))) eqn : HrcD1,
-         (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD2 id))) eqn : HrcD2;
-destruct (CGF.step dad1 id (cD1 id)),
-         (CGF.step dad2 id (cD2 id));
-destruct (CGF.Config.loc (cD1 id)) eqn : Hc1, (CGF.Config.loc (cD2 id)) eqn : Hc2;
-destruct (Graph.find_edge (DGF.Info.source (DGF.Config.info confA))
-      (DGF.Info.target (DGF.Config.info confA))); try rewrite Hda_cD;
-unfold CGF.loc_eq in *;
-try (destruct HrcD as (Hl,_); now rewrite Hc1, Hc2 in Hl).
-destruct (Rle_dec dist0 (Graph.threshold e1)); now unfold DGF.Aom_eq.
-destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
-destruct Hl as (He, Hp).
-assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
-rewrite Hth, Hp.
-destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)); try (
-destruct (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2)); now unfold DGF.Aom_eq).
-destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
-destruct Hl as (He, Hp).
-assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
-rewrite Hth, Hp.
-destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)); try (
-destruct (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2)); now unfold DGF.Aom_eq).
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-destruct HdaD as (_,Hb). intros b. apply RobotConfC2D_compat, Hb.
++ intros id confA.  assert (HrcD := HrcD' id).
+  assert (HrcC2D_eq : DGF.Config.eq_RobotConf (rcC2D (cD1 id)) (rcC2D (cD2 id))).
+  { apply rcC2D_compat, HrcD. }
+  assert (Hda_cD := CGF.step_da_compat HdaD (reflexivity id) HrcD).
+  unfold CGF.Aom_eq in Hda_cD.
+  destruct HdaD as (HdaD_G, _).
+  specialize (HdaD_G id (rcD2C confA)).
+  destruct (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD1 id))) eqn : HrcD1,
+           (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD2 id))) eqn : HrcD2;
+  destruct (CGF.step dad1 id (cD1 id)),
+           (CGF.step dad2 id (cD2 id));
+  destruct (CGF.Config.loc (cD1 id)) eqn : Hc1, (CGF.Config.loc (cD2 id)) eqn : Hc2;
+  destruct (Graph.find_edge (DGF.Info.source (DGF.Config.info confA))
+        (DGF.Info.target (DGF.Config.info confA))); try rewrite Hda_cD;
+  unfold CGF.loc_eq in *;
+  try (destruct HrcD as (Hl,_); now rewrite Hc1, Hc2 in Hl).
+  - destruct (Rle_dec dist0 (Graph.threshold e1)); unfold DGF.Aom_eq.
+    destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
+    destruct Hl as (He, Hp).
+    assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
+    rewrite Hth, Hp.
+    destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)); try (
+    destruct (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2)); now unfold DGF.Aom_eq).
+    destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
+    destruct Hl as (He, Hp).
+    assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
+    rewrite Hth, Hp.
+    destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)),
+             (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2));
+    now unfold DGF.Aom_eq.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
++ destruct HdaD as (_,Hb). intros b. apply RobotConfC2D_compat, Hb.
 Qed.
 
 
-Definition daD2C_step daA cA id :=
-  match ((DGF.step daA) id (cA id)) with
-         | DGF.Active sim =>  (* if CGF.Location.eq_dec (CGF.Config.loc rcD)
-                                 (CGF.Info.target (CGF.Config.info rcD))
-                                then *) CGF.Active sim
-                                (* else CGF.Moving 1%R *)
-         | DGF.Moving b => if b then CGF.Moving 1%R else CGF.Moving 0%R
+Definition daD2C_step daA (cA : ConfigA.t) id :=
+  match DGF.step daA id (cA id) with
+    | DGF.Active sim => CGF.Active sim
+    | DGF.Moving b => if b then CGF.Moving 1%R else CGF.Moving 0%R
   end.
 
 Lemma daD2C_step_delta : forall daA cA g sim Rconfig,
@@ -512,51 +510,21 @@ destruct (DGF.step daA (Good g) (cA (Good g))) eqn : HstepA; unfold rcC2D, LocC2
 Qed.
 
 Lemma daD2C_step_compat daA cA : Proper (eq ==> CGF.Aom_eq) (daD2C_step daA cA).
-Proof.
-intros id1 id2 Hid. unfold daD2C_step, CGF.Aom_eq.
-assert (HcA : DGF.Config.eq_RobotConf (cA id1) (cA id2)) by now rewrite Hid.
-assert(Hs1_eq := DGF.step_compat daA id1 id2 Hid (cA id1) (cA id2) (HcA)).
-destruct (DGF.step daA id1 (cA id1)) eqn:Hstep1,
-         (DGF.step daA id2 (cA id2)) eqn:Hstep2,
-         (CGF.Config.eq_RobotConf_dec rcD1 (rcD2C (cA id1))),
-         (CGF.Config.eq_RobotConf_dec rcD2 (rcD2C (cA id2))); auto.
-  destruct dist, dist0; auto. unfold DGF.Aom_eq in *. discriminate.
-  unfold DGF.Aom_eq in *. discriminate.
-  rewrite e in HrcD. rewrite HcA in HrcD. symmetry in HrcD. contradiction.
-  rewrite e in HrcD. rewrite <- HcA in HrcD. contradiction.
-  destruct dist; now unfold DGF.Aom_eq in *.
-  destruct dist; now unfold DGF.Aom_eq.
-  destruct dist; now unfold DGF.Aom_eq.
-  destruct dist; now unfold DGF.Aom_eq.
-  rewrite e in HrcD. rewrite HcA in HrcD. symmetry in HrcD. contradiction.
-  rewrite e in HrcD. rewrite <- HcA in HrcD. contradiction.
-Qed.
+Proof. repeat intro. now subst. Qed.
 
-Lemma daD2C_step_flexibility : forall daA cA id config r,
-  CGF.Aom_eq (daD2C_step daA cA id config) (CGF.Moving r) -> (0 <= r <= 1)%R.
+Lemma daD2C_step_flexibility : forall daA cA id r,
+  CGF.Aom_eq (daD2C_step daA cA id) (CGF.Moving r) -> (0 <= r <= 1)%R.
 Proof.
-+ intros daA cA id confD r. unfold daD2C_step.
-  destruct (DGF.step daA id (cA id));
-  destruct (CGF.Config.eq_RobotConf_dec confD (rcD2C (cA id))).
-  destruct dist; intros Hm. assert (Heqm : CGF.Aom_eq (CGF.Moving 1) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  destruct dist; intros Hm. assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  destruct (CGF.Location.eq_dec (CGF.Config.loc confD)
-                                (CGF.Info.target (CGF.Config.info confD)));
-  intros Hm; now simpl in *. 
-  intros Hm; assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
+intros daA cA id r. unfold daD2C_step.
+destruct (DGF.step daA id (cA id)); simpl.
++ destruct dist; intros Hm; unfold CGF.Aom_eq in *; subst; lra.
++ intuition.
 Qed.
 
 (* TODO : trouver une définition vrai, ou rajouter des axioms car la sinon c'est pas vrai.*)
 Definition daD2C (daA : DGF.demonic_action) (cA : DGF.Config.t) : CGF.demonic_action.
 refine {| CGF.relocate_byz := fun b => RobotConfD2C (DGF.relocate_byz daA b);
-          CGF.step := daD2C_step daA cA |}.
+          CGF.step := fun id _ => daD2C_step daA cA id |}.
 Proof.
 + apply daD2C_step_delta.
 + apply daD2C_step_compat.
