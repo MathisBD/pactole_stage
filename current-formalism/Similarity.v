@@ -18,6 +18,7 @@
                                                                         *)
 (**************************************************************************)
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8.
 Require Import Setoid.
 Require Import Equalities.
@@ -26,7 +27,7 @@ Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
 Require Import Pactole.RealMetricSpace.
-Require Export Pactole.Bijection.
+Require Import Pactole.Bijection.
 
 
 Set Implicit Arguments.
@@ -44,22 +45,23 @@ Open Scope R_scope.
 Module Make (Loc : RealMetricSpace).
 
 Record t := {
-  sim_f :> bijection Loc.eq;
+  sim_f :> Bijection.t Loc.eq;
   zoom : R;
   center : Loc.t;
   center_prop : Loc.eq (sim_f center) Loc.origin;
   dist_prop : forall x y, Loc.dist (sim_f x) (sim_f y) = zoom * Loc.dist x y}.
 
-Definition eq sim1 sim2 := bij_eq sim1.(sim_f) sim2.(sim_f).
+Definition eq sim1 sim2 := Bijection.eq sim1.(sim_f) sim2.(sim_f).
 
 Global Instance eq_equiv : Equivalence eq.
 Proof. unfold eq. split.
 + intros [f k c Hc Hk]. simpl. reflexivity.
 + intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] Hfg. simpl in *. now symmetry.
-+ intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] [h kh ch Hch Hkh] ? ?. simpl in *. etransitivity; eassumption.
++ intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] [h kh ch Hch Hkh] ? ?.
+  simpl in *. etransitivity; eassumption.
 Qed.
 
-Instance f_compat : Proper (eq ==> @bij_eq _ Loc.eq) sim_f.
+Instance f_compat : Proper (eq ==> @Bijection.eq _ Loc.eq) sim_f.
 Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
 
 (** As similarities are defined as bijections, we can prove that k <> 0
@@ -87,7 +89,7 @@ Qed.
 
 (** The identity similarity *)
 Definition id : t.
-refine {| sim_f := bij_id Loc.eq_equiv;
+refine {| sim_f := Bijection.id Loc.eq_equiv;
           zoom := 1;
           center := Loc.origin;
           center_prop := reflexivity _ |}.
@@ -107,7 +109,7 @@ intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- Loc.add_asso
 - setoid_rewrite Loc.add_comm at 2. now rewrite Loc.add_opp, Loc.add_origin.
 Qed.
 
-Definition bij_translation (v : Loc.t) : bijection Loc.eq.
+Definition bij_translation (v : Loc.t) : Bijection.t Loc.eq.
 refine {|
   section := fun x => Loc.add x v;
   retraction := fun x => Loc.add x (Loc.opp v) |}.
@@ -146,7 +148,7 @@ intros. split; intro Heq; rewrite <- Heq; clear Heq.
   rewrite Loc.mul_1, <- Loc.add_assoc. now rewrite Loc.mul_opp, Loc.add_opp, Loc.add_origin.
 Qed.
 
-Definition bij_homothecy (c : Loc.t) (ρ : R) (Hρ : ρ <> 0) : bijection Loc.eq.
+Definition bij_homothecy (c : Loc.t) (ρ : R) (Hρ : ρ <> 0) : Bijection.t Loc.eq.
 refine {|
   section := fun x => Loc.mul ρ (Loc.add x (Loc.opp c));
   retraction := fun x => Loc.add (Loc.mul (/ρ) x) c |}.
@@ -182,7 +184,7 @@ End Normed_Results.
 
 Definition compose (f g : t) : t.
 refine {|
-  sim_f := bij_compose _ f g;
+  sim_f := Bijection.compose _ f g;
   zoom := f.(zoom) * g.(zoom);
   center := retraction g (retraction f Loc.origin) |}.
 Proof.
@@ -199,7 +201,7 @@ Proof. intros f g h x y Hxy. simpl. now rewrite Hxy. Qed.
 
 (** Inverse of a similarity *)
 Definition inverse (sim : t) : t.
-refine {| sim_f := bij_inverse _ sim.(sim_f);
+refine {| sim_f := Bijection.inverse _ sim.(sim_f);
           zoom := /sim.(zoom);
           center := sim Loc.origin |}.
 Proof.

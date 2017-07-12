@@ -20,6 +20,7 @@
                        - commecer par la fin (comme avec la preuve)
 *)
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Psatz.
 (* Require Import Morphisms. *)
 Require Import Arith.Div2.
@@ -66,9 +67,6 @@ Module Info := SourceTarget(Loc).
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
 Module DefsE := Definitions.ExplorationDefs(Loc)(K)(Info).
 Export DefsE.
-
-Coercion Sim.sim_f : Sim.t >-> DiscreteSimilarity.bijection.
-Coercion DiscreteSimilarity.section : DiscreteSimilarity.bijection >-> Funclass.
 
 Ltac ImpByz b := 
   assert (Hfalse := Names.Bnames_length);

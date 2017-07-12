@@ -7,6 +7,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Omega.
 Require Import Psatz.
@@ -26,7 +27,7 @@ Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
 Require Import Stream.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
-Require Import Pactole.GraphEquivalence.
+
 
 Close Scope Z_scope.
 Set Implicit Arguments.
@@ -184,23 +185,24 @@ Module Loc <: DecidableType.
   
 End Loc.
 
-Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc).
+
+Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc). (* Careful! It also contains a module called Iso *)
 Module MkInfo := CommonGraphFormalism.Make(Graph)(LocationA).
 Module Info := MkInfo.Info.
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
-Module Equiv := GraphEquivalence (Graph)(N)(Names)(Loc)(MkInfo)(Config)(Iso).
-Import Equiv Iso.
-Import Equiv.DGF.
-
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
+Module DGF := DiscreteGraphFormalism.DGF(Graph)(N)(Names)(Loc)(MkInfo)(Config)(Spect)(Iso).
+Import Iso DGF.
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Definition bij_trans_V (c : Loc.t) : Isomorphism.bijection Veq.
+
+Definition bij_trans_V (c : Loc.t) : Bijection.t Veq.
 refine {|
-  Isomorphism.section := fun x => (Loc.add x (Loc.opp c));
-  Isomorphism.retraction := fun x => Loc.add x c |}.
+  Bijection.section := fun x => (Loc.add x (Loc.opp c));
+  Bijection.retraction := fun x => Loc.add x c |}.
 Proof.
   + intros x y Hxy. unfold Veq, Loc.add, Loc.opp in *.
     rewrite <- 3 loc_fin.
@@ -234,10 +236,10 @@ Proof.
     unfold ImpossibilityKDividesN.def.n; omega.
 Qed.
 
-Definition bij_trans_E (c : Loc.t) : Isomorphism.bijection Graph.Eeq.
+Definition bij_trans_E (c : Loc.t) : Bijection.t Graph.Eeq.
   refine {|
-      Isomorphism.section := fun x =>  (Loc.add (fst x) (Loc.opp c), snd x);
-      Isomorphism.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
+      Bijection.section := fun x =>  (Loc.add (fst x) (Loc.opp c), snd x);
+      Bijection.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
 Proof.
   + intros e1 e2 He_eq.
     unfold Loc.add, Loc.opp.
@@ -297,16 +299,16 @@ Defined.
 
 
 (* Definition bij_trans_T := Isomorphism.bij_id Iso.Req_equiv. *)
-Parameter bij_trans_T : Loc.t -> Isomorphism.bijection Iso.Req.
+Parameter bij_trans_T : Loc.t -> Bijection.t Iso.Req.
 Axiom bT_morph : forall c (e:Graph.E),
-    (Isomorphism.section (bij_trans_T c)) (Graph.threshold e) =
-    Graph.threshold ((Isomorphism.section (bij_trans_E c)) e).
+    (Bijection.section (bij_trans_T c)) (Graph.threshold e) =
+    Graph.threshold ((Bijection.section (bij_trans_E c)) e).
 Axiom bT_bound : forall c r, (0 < r < 1)%R <->
-                             (0 < (Isomorphism.section (bij_trans_T c) r) < 1)%R.
+                             (0 < (Bijection.section (bij_trans_T c) r) < 1)%R.
 Axiom bT_crois : forall c a b, (a < b)%R ->
-                               ((Isomorphism.section (bij_trans_T c) a) <
-                                (Isomorphism.section (bij_trans_T c) b))%R.
-Axiom bT_compat : forall c1 c2, Isomorphism.bij_eq (bij_trans_T c1) (bij_trans_T c2).
+                               ((Bijection.section (bij_trans_T c) a) <
+                                (Bijection.section (bij_trans_T c) b))%R.
+Axiom bT_compat : forall c1 c2, Bijection.eq (bij_trans_T c1) (bij_trans_T c2).
 
 Definition id_s := Iso.id.
 
@@ -358,8 +360,8 @@ Defined.
 Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
   intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
-  repeat split; try apply Isomorphism.section_compat.
-  unfold Isomorphism.bij_eq.
+  repeat split; try apply Bijection.section_compat.
+  unfold Bijection.eq.
   intros x y Hxy. simpl.
   unfold Iso.eq;
   unfold Loc.eq, LocationA.eq, MakeRing.Veq, Loc.add, Loc.opp in *;
@@ -385,7 +387,6 @@ Proof.
   now destruct H.
   apply bT_compat.
 Qed.
-
 
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)

@@ -16,6 +16,7 @@ Require Import Decidable.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.Bijection.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.DiscreteGraphFormalismSSync.
 Require Import Arith.Div2.
@@ -37,7 +38,7 @@ Import Graph.
 Module ExplorationDefs(N : Size).
 
 Module Names := Robots.Make(N).
-  
+
 Lemma Loc_eq_mod : forall x, ImpossibilityKDividesN.Loc.eq x (x mod Z.of_nat n).
 Proof.
   intros; unfold ImpossibilityKDividesN.Loc.eq; rewrite Z.mod_mod;
@@ -197,10 +198,10 @@ Notation "s [ pt ]" := (Spect.M.multiplicity pt s) (at level 5, format "s [ pt ]
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Definition bij_trans_V (c : Loc.t) : Isomorphism.bijection Veq.
+Definition bij_trans_V (c : Loc.t) : Bijection.t Veq.
 refine {|
-  Isomorphism.section := fun x => (Loc.add x (Loc.opp c));
-  Isomorphism.retraction := fun x => Loc.add x c |}.
+  section := fun x => (Loc.add x (Loc.opp c));
+  retraction := fun x => Loc.add x c |}.
 Proof.
   + intros x y Hxy. unfold Veq, Loc.add, Loc.opp in *.
     rewrite <- 3 loc_fin.
@@ -234,10 +235,10 @@ Proof.
     unfold ImpossibilityKDividesN.def.n; omega.
 Qed.
 
-Definition bij_trans_E (c : Loc.t) : Isomorphism.bijection Graph.Eeq.
+Definition bij_trans_E (c : Loc.t) : Bijection.t Graph.Eeq.
   refine {|
-      Isomorphism.section := fun x =>  (Loc.add (fst x) (Loc.opp c), snd x);
-      Isomorphism.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
+      section := fun x =>  (Loc.add (fst x) (Loc.opp c), snd x);
+      retraction := fun x => (Loc.add (fst x) c, snd x) |}.
 Proof.
   + intros e1 e2 He_eq.
     unfold Loc.add, Loc.opp.
@@ -297,16 +298,16 @@ Defined.
 
 
 (* Definition bij_trans_T := Isomorphism.bij_id Iso.Req_equiv. *)
-Parameter bij_trans_T : Loc.t -> Isomorphism.bijection Iso.Req.
+Parameter bij_trans_T : Loc.t -> Bijection.t Iso.Req.
 Axiom bT_morph : forall c (e:Graph.E),
-    (Isomorphism.section (bij_trans_T c)) (Graph.threshold e) =
-    Graph.threshold ((Isomorphism.section (bij_trans_E c)) e).
+    (section (bij_trans_T c)) (Graph.threshold e) =
+    Graph.threshold ((section (bij_trans_E c)) e).
 Axiom bT_bound : forall c r, (0 < r < 1)%R <->
-                             (0 < (Isomorphism.section (bij_trans_T c) r) < 1)%R.
+                             (0 < (section (bij_trans_T c) r) < 1)%R.
 Axiom bT_crois : forall c a b, (a < b)%R ->
-                               ((Isomorphism.section (bij_trans_T c) a) <
-                                (Isomorphism.section (bij_trans_T c) b))%R.
-Axiom bT_compat : forall c1 c2, Isomorphism.bij_eq (bij_trans_T c1) (bij_trans_T c2).
+                               ((section (bij_trans_T c) a) <
+                                (section (bij_trans_T c) b))%R.
+Axiom bT_compat : forall c1 c2, Bijection.eq (bij_trans_T c1) (bij_trans_T c2).
 
 Definition id_s := Iso.id.
 
@@ -358,8 +359,8 @@ Defined.
 Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
   intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
-  repeat split; try apply Isomorphism.section_compat.
-  unfold Isomorphism.bij_eq.
+  repeat split; try apply section_compat.
+  unfold Bijection.eq.
   intros x y Hxy. simpl.
   unfold Iso.eq;
   unfold Loc.eq, LocationA.eq, MakeRing.Veq, Loc.add, Loc.opp in *;

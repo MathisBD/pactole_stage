@@ -836,9 +836,9 @@ Module CGF (Graph : GraphDef)
                   (Config.loc (Config.map (apply_sim sim0) conf2 (Good g))))
                eqn : Hr2.
       simpl.
-      destruct (Location.eq_dec (Loc (retraction (Iso.sim_V sim) l))
+      destruct (Location.eq_dec (Loc (Bijection.retraction (Iso.sim_V sim) l))
                                  (Config.loc (conf1 (Good g)))),
-      (Location.eq_dec (Loc (retraction (Iso.sim_V sim0) l0))
+      (Location.eq_dec (Loc (Bijection.retraction (Iso.sim_V sim0) l0))
                         (Config.loc (conf2 (Good g))));
       try (repeat (split); try apply Hrconf);
         destruct Hrconf as (Hloc, (Hsrc, Htgt)).
@@ -1328,11 +1328,11 @@ Qed.
       rewrite Hloc in *.
       destruct (rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                       (Loc ((Iso.sim_V sim) l0))) eqn : Hr.
-      destruct (Location.eq_dec (Loc (retraction (Iso.sim_V sim) l2)) (Loc l0)).
+      destruct (Location.eq_dec (Loc (Bijection.retraction (Iso.sim_V sim) l2)) (Loc l0)).
       exists l, l'.
       now rewrite Htgt; split.
       simpl.
-      exists l0, (retraction (Iso.sim_V sim) l2).
+      exists l0, (Bijection.retraction (Iso.sim_V sim) l2).
       now split.
       generalize (pgm_range rbg (Spect.from_config
                                    (Config.map (apply_sim sim) conf))
@@ -1347,11 +1347,11 @@ Qed.
       rewrite Hloc in *.
       destruct (rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                       (Loc ((Iso.sim_V sim) l0))) eqn : Hr.
-      destruct (Location.eq_dec (Loc (retraction (Iso.sim_V sim) l2)) (Loc l0)).
+      destruct (Location.eq_dec (Loc (Bijection.retraction (Iso.sim_V sim) l2)) (Loc l0)).
       exists l, l'.
       now rewrite Htgt; split.
       simpl.
-      exists l0, (retraction (Iso.sim_V sim) l2).
+      exists l0, (Bijection.retraction (Iso.sim_V sim) l2).
       now split.
       generalize (pgm_range rbg (Spect.from_config
                                    (Config.map (apply_sim sim) conf))
@@ -1360,7 +1360,7 @@ Qed.
       intros Hrange.
       destruct Hrange as (lr, (er, (Hlr, Her))).
       rewrite Hr in Hlr.
-      discriminate. 
+      discriminate.
   Qed.
 
 
@@ -1390,24 +1390,24 @@ Qed.
       try (simpl; exists v1, v2; now rewrite Htgt; split).
     destruct (rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                       (Loc ((Iso.sim_V sim) l))).
-    destruct (Location.eq_dec (Loc (retraction (Iso.sim_V sim) l1)) (Loc l)).
+    destruct (Location.eq_dec (Loc (Bijection.retraction (Iso.sim_V sim) l1)) (Loc l)).
     exists v1, v2; now rewrite Htgt; split.
-    simpl. exists l, (retraction (Iso.sim_V sim) l1); now split.
+    simpl. exists l, (Bijection.retraction (Iso.sim_V sim) l1); now split.
     destruct (Location.eq_dec (Loc (Graph.src e)) (Loc l)).
     exists v1, v2; now rewrite Htgt; split.
     simpl in *. exists l, (Graph.src e); now split.
     destruct (rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                       (Loc ((Iso.sim_V sim) l))).
-    destruct (Location.eq_dec (Loc (retraction (Iso.sim_V sim) l1)) (Loc l)).
+    destruct (Location.eq_dec (Loc (Bijection.retraction (Iso.sim_V sim) l1)) (Loc l)).
     exists v1, v2; now rewrite Htgt; split.
-    simpl. exists l, (retraction (Iso.sim_V sim) l1); now split.
+    simpl. exists l, (Bijection.retraction (Iso.sim_V sim) l1); now split.
     destruct (Location.eq_dec (Loc (Graph.src e)) (Loc l)).
     exists v1, v2; now rewrite Htgt; split.
     simpl in *. exists l, (Graph.src e); now split.
     assert (Hstep' : Aom_eq (step da (Good g) (conf (Good g))) (Active sim))
       by now rewrite Hstep.
     assert (Hfalse := step_delta da g (conf (Good g)) sim Hstep').
-    destruct Hfalse as ((l',Hfalse), _). rewrite Hloc in Hfalse.  now exfalso.
+    destruct Hfalse as ((l',Hfalse), _). rewrite Hloc in Hfalse. now exfalso.
   Qed.
 
 
@@ -1540,7 +1540,7 @@ find_edge loc tgt = e
                     rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                       (Loc ((Iso.sim_V sim) l0))
                   with
-                  | Loc l => retraction (Iso.sim_V sim) l
+                  | Loc l => Bijection.retraction (Iso.sim_V sim) l
                   | Mvt e _ => Graph.src e
                   end) (Loc l0)).
         rewrite Hsi, Hloc, <- H in *.
@@ -1607,7 +1607,7 @@ find_edge loc tgt = e
                      rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                        (Loc ((Iso.sim_V sim) l0))
                    with
-                   | Loc l1 => retraction (Iso.sim_V sim) l1
+                   | Loc l1 => Bijection.retraction (Iso.sim_V sim) l1
                    | Mvt e1 _ => Graph.src e1
                    end) (Loc l0)).
         split; try now simpl in *.
@@ -1621,36 +1621,36 @@ find_edge loc tgt = e
         now apply Graph.find_edge_compat.
         split.
         now intros.
-        intros v1 v2 Hv1 Hv2;
+        intros v1 v2 Hv1 Hv2.
         assert (Hrange :=
                   pgm_range rbg (Spect.from_config
                                    (Config.map (apply_sim sim) conf))
                             (Config.loc
                                (Config.map (apply_sim sim) conf (Good g)))
-                            ((Iso.sim_V sim) l0));
+                            ((Iso.sim_V sim) l0)).
         destruct Hrange as (lrange, (erange, (Hlrange, Herange)));
         simpl in *;
-        try (now rewrite Hloc);
-        try (simpl in *;
-        rewrite Hloc in *;
-        rewrite Hlrange in Hv2;
-        exists (retraction (Iso.sim_E sim) erange);
+        try (now rewrite Hloc).
+        simpl in *.
+        rewrite Hloc in *.
+        rewrite Hlrange in Hv2.
+        exists (Bijection.retraction (Iso.sim_E sim) erange).
         assert (HSome_sim : opt_eq Graph.Eeq
-          (Graph.find_edge (Graph.src ((retraction (Iso.sim_E sim)) erange))
-                           (Graph.tgt ((retraction (Iso.sim_E sim)) erange)))
-          (Some ((retraction (Iso.sim_E sim)) erange)))
-          by (apply Graph.find_edge_Some);
-        rewrite <- HSome_sim;
-          apply Graph.find_edge_compat;
-          assert (Hmorph := Iso.sim_morphism sim (((retraction (Iso.sim_E sim)) erange)));
-          destruct Hmorph as (Hms, Hmt);
-          rewrite Inversion in *;
-          rewrite section_retraction in *; try apply Graph.Eeq_equiv);
+          (Graph.find_edge (Graph.src ((Bijection.retraction (Iso.sim_E sim)) erange))
+                           (Graph.tgt ((Bijection.retraction (Iso.sim_E sim)) erange)))
+          (Some ((Bijection.retraction (Iso.sim_E sim)) erange)))
+          by (apply Graph.find_edge_Some).
+        rewrite <- HSome_sim.
+        apply Graph.find_edge_compat;
+        assert (Hmorph := Iso.sim_morphism sim (((Bijection.retraction (Iso.sim_E sim)) erange)));
+        destruct Hmorph as (Hms, Hmt);
+          rewrite Bijection.Inversion in *;
+          rewrite Bijection.section_retraction in *; try apply Graph.Eeq_equiv;
         try (apply Graph.find2st in Herange;
              destruct Herange as (HSs, HSt);
              try (rewrite <- HSs in Hms;
                   rewrite <- Hms;
-                  rewrite retraction_section;
+                  rewrite Bijection.retraction_section;
                   try (now symmetry);
                   try apply Graph.Veq_equiv);
              try (rewrite <- HSt in Hmt; now rewrite <- Hmt)).
@@ -1808,7 +1808,7 @@ find_edge loc tgt = e
                     rbg (Spect.from_config (Config.map (apply_sim sim) conf))
                       (Loc ((Iso.sim_V sim) l))
                   with
-                  | Loc l0 => retraction (Iso.sim_V sim) l0
+                  | Loc l0 => Bijection.retraction (Iso.sim_V sim) l0
                   | Mvt e _ => Graph.src e
                   end) (Loc l)).
       destruct (Hgroup g) as (_, (_, (_, Hsome))).
@@ -1827,8 +1827,8 @@ find_edge loc tgt = e
       simpl in *; rewrite Hloc in *.
       rewrite Hsim_loc in *.
       rewrite Hr_loc in Hr.
-      exists ((retraction (Iso.sim_E sim)) e_rbg).
-      assert (Hsim_E := Graph.find_edge_Some ((retraction (Iso.sim_E sim)) e_rbg)).
+      exists ((Bijection.retraction (Iso.sim_E sim)) e_rbg).
+      assert (Hsim_E := Graph.find_edge_Some ((Bijection.retraction (Iso.sim_E sim)) e_rbg)).
       rewrite <- Hsim_E.
       generalize (Iso.sim_morphism (Iso.inverse sim) e_rbg).
       intros (s,t).
@@ -1847,7 +1847,7 @@ find_edge loc tgt = e
       assert (Location.eq (Loc ((Iso.sim_V sim) l)) (Loc l0)) by now rewrite Hsim_loc.
       unfold Location.eq, loc_eq in H.
       rewrite <- H.
-      rewrite (retraction_section).
+      rewrite (Bijection.retraction_section).
       now symmetry.
       apply LocationA.eq_equiv.
       rewrite <- Hr.
@@ -1867,7 +1867,7 @@ find_edge loc tgt = e
                       (Mvt ((Iso.sim_E sim) e)
                          (project_p_inv ((Iso.sim_T sim) (project_p p))))
                   with
-                  | Loc l => retraction (Iso.sim_V sim) l
+                  | Loc l => Bijection.retraction (Iso.sim_V sim) l
                   | Mvt e0 _ => Graph.src e0
                   end) (Mvt e p)); try now simpl in *.
   Qed.

@@ -7,6 +7,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Pactole.Preliminary.
 Require Import Arith.Div2.
 Require Import Omega.
@@ -44,14 +46,16 @@ Module Export Rigid := DiscreteRigidFormalism.Make(Loc)(N)(Names)(Info)(Config)(
 
 Axiom translation_hypothesis : forall z x y, Loc.dist (Loc.add x z) (Loc.add y z) = Loc.dist x y.
 
-Module Sim := Common.Sim. 
+Module Sim := Common.Sim.
 
-Definition bij_id := DiscreteSimilarity.bij_id.
+Definition bij_id := Bijection.id.
 
-Definition bij_trans (c : Loc.t) : DiscreteSimilarity.bijection Loc.eq.
+(** Unlike what the name suggest, this is not a translation but a reflection with center c/2.
+    A translation would be x ↦ x - c and not x ↦ c - x. *)
+Definition bij_trans (c : Loc.t) : Bijection.t Loc.eq.
 refine {|
-  DiscreteSimilarity.section := fun x => Loc.add c (Loc.opp x);
-  DiscreteSimilarity.retraction := fun x => Loc.add c (Loc.opp x) |}.
+  Bijection.section := fun x => Loc.add c (Loc.opp x);
+  Bijection.retraction := fun x => Loc.add c (Loc.opp x) |}.
 Proof.
 abstract (intros x y; split; intro Heq; rewrite <- Heq;
           now rewrite Loc.opp_distr_add, Loc.add_assoc, Loc.add_opp, Loc.opp_opp, Loc.add_comm, Loc.add_origin).
@@ -81,12 +85,12 @@ Defined.
 Instance trans_compat : Proper (Loc.eq ==> Sim.eq) trans.
 Proof. intros c1 c2 Hc x y Hxy. simpl. now rewrite Hc, Hxy. Qed.
 
-  
+
 Definition forbidden (config : Config.t) :=
 (* forall id, 
     exists id1, Loc.eq (Config.loc (config id)) 
                        (Loc.add (Config.loc (config id1)) (Loc.mul (Z_of_nat N.nG) Loc.unit)). *)
-let m := Spect.from_config(config) in 
+let m := Spect.from_config(config) in
   forall loc, m[loc] <=1 /\ 
    m[loc] = m[Loc.add loc (Loc.mul (Z_of_nat N.nG /Loc.n ) Loc.unit)].
 

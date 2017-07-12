@@ -20,6 +20,8 @@
                        - commecer par la fin (comme avec la preuve)
 *)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
@@ -37,9 +39,8 @@ Require Import Pactole.Exploration.Graph.DefinitionsSSync.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 
 Set Implicit Arguments.
-(* taille de l'anneau*)
 
-
+(** Taille de l'anneau*)
 Definition n := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.n.
 Definition kG := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.kG.
 
