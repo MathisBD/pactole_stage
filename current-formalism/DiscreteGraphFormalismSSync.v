@@ -327,8 +327,8 @@ Module DGF (Graph : GraphDef)
 *)
   
   (** A [demon] is [Fair] if at any time it will later activate any robot. *)
-(* Inductive LocallyFairForOne g (d : demon) config : Prop :=
-  | NowFair : step (Stream.hd d) g (config (Good g)) ≠ None → LocallyFairForOne g d config
+(* Inductive LocallyFairForOne g (d : demon) : Prop :=
+  | NowFair :forall c, step (Stream.hd d) g (c (Good g)) ≠ None → LocallyFairForOne g d
   | LaterFair : step (Stream.hd d) g (conig (Good g)) = None → LocallyFairForOne g (Stream.tl d) (Stream.hd (Stream.tl (execute r d config))) → LocallyFairForOne g d config.
 
 Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ g, LocallyFairForOne g d).

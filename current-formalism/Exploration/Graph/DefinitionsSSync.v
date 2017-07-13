@@ -198,7 +198,7 @@ Notation "s [ pt ]" := (Spect.M.multiplicity pt s) (at level 5, format "s [ pt ]
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-Definition bij_trans_V (c : Loc.t) : Bijection.bijection Veq.
+Definition bij_trans_V (c : Loc.t) : Bijection.t Veq.
 refine {|
   Bijection.section := fun x => (Loc.add x (Loc.opp c));
   Bijection.retraction := fun x => Loc.add x c |}.
@@ -235,7 +235,7 @@ Proof.
     unfold ImpossibilityKDividesN.def.n; omega.
 Qed.
 
-Definition bij_trans_E (c : Loc.t) : Bijection.bijection Graph.Eeq.
+Definition bij_trans_E (c : Loc.t) : Bijection.t Graph.Eeq.
   refine {|
       Bijection.section := fun x =>  (Loc.add (fst x) (Loc.opp c), snd x);
       Bijection.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
@@ -298,7 +298,7 @@ Defined.
 
 
 (* Definition bij_trans_T := Bijection.bij_id Iso.Req_equiv. *)
-Parameter bij_trans_T : Loc.t -> Bijection.bijection Iso.Req.
+Parameter bij_trans_T : Loc.t -> Bijection.t Iso.Req.
 Axiom bT_morph : forall c (e:Graph.E),
     (Bijection.section (bij_trans_T c)) (Graph.threshold e) =
     Graph.threshold ((Bijection.section (bij_trans_E c)) e).
@@ -307,7 +307,7 @@ Axiom bT_bound : forall c r, (0 < r < 1)%R <->
 Axiom bT_crois : forall c a b, (a < b)%R ->
                                ((Bijection.section (bij_trans_T c) a) <
                                 (Bijection.section (bij_trans_T c) b))%R.
-Axiom bT_compat : forall c1 c2, Bijection.bij_eq (bij_trans_T c1) (bij_trans_T c2).
+Axiom bT_compat : forall c1 c2, Bijection.eq (bij_trans_T c1) (bij_trans_T c2).
 
 Definition id_s := Iso.id.
 
@@ -360,7 +360,7 @@ Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
   intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
   repeat split; try apply section_compat.
-  unfold Bijection.bij_eq.
+  unfold Bijection.eq.
   intros x y Hxy. simpl.
   unfold Iso.eq;
   unfold Loc.eq, LocationA.eq, MakeRing.Veq, Loc.add, Loc.opp in *;

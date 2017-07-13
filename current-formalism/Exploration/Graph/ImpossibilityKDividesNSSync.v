@@ -1877,11 +1877,11 @@ Section Move_minus1.
     now apply (round1_move_g_1_m g).
   Qed.  
 
-Lemma round_2_simplify_m1 :
+(* Lemma round_2_simplify_m1 :
   forall conf,
          equiv_conf (round r da1 (config1)) conf
     -> Config.eq
-         (round r da1 (round r da1 conf))
+         (round r da1 conf)
          (fun id =>
             match id with
             | Byz b => Fin.case0 _ b
@@ -1908,7 +1908,8 @@ Lemma round_2_simplify_m1 :
               end).
 Proof.
   intros conf Hconf_eq [g|b]; unfold round at 1; try ImpByz b.
-  assert (Hequiv' : (exists k, forall id,
+ now split. (* 
+ assert (Hequiv' : (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
             /\
             Location.eq (Info.target (Config.info (conf id)))
@@ -1931,6 +1932,7 @@ Proof.
     now split; rewrite Loc.add_assoc, (Loc.add_comm x).
   }
   simpl.
+  now split
   destruct Hconf_eq.
   destruct (H (Good g)) as (Hl, (Hs, Ht)).
   split; simpl in *;
@@ -2143,13 +2145,13 @@ Proof.
   simpl in *.
   destruct Hr as (Hl, (_, Ht)).
   simpl in *.
-  now rewrite Hl, Ht.
-Qed.
+  now rewrite Hl, Ht. *) 
+Qed.*)
 
   
   Lemma round1_move_g_equiv_m : forall g0 conf,
-      equiv_conf (round r da1 (round r da1 config1)) conf ->
-      ~ Loc.eq (Config.loc (round r da1 (round r da1 conf) (Good g0)))
+      equiv_conf (round r da1 (config1)) conf ->
+      ~ Loc.eq (Config.loc ((round r da1 conf) (Good g0)))
         (Config.loc (conf (Good g0))).
   Proof.
     intros g0 conf Hequiv.
@@ -2172,34 +2174,30 @@ Qed.
       rewrite Hl', Ht' in *.
       unfold f_conf in *.
       simpl in *.
-      rewrite Hl, Ht in *.
+      rewrite Hl in *.
       repeat split;simpl; 
         rewrite Loc.add_assoc, (Loc.add_comm x); easy.
     }
-    rewrite (round_2_simplify_m1 Hequiv (Good g0)) in *.
     assert (HSequiv := config1_Spectre_Equiv conf g0 Hequiv').
-    unfold equiv_conf, f_conf in Hequiv.
-    destruct Hequiv as (k, Hequiv).
-    destruct (Hequiv (Good g0)) as (Hl0, (Hs0, Ht0)).
-    simpl in *.
+    simpl.
+    rewrite Loc.add_opp.
+    rewrite (config1_Spectre_Equiv conf g0 Hequiv').
+    unfold Loc.add;
+      rewrite Hmove.
+    unfold Loc.eq, LocationA.eq, Veq in Hm.
+    rewrite <- loc_fin in Hm.
+    rewrite <- Loc_eq_mod in Hm.
+    rewrite (ImpossibilityKDividesN.Loc.add_compat _ _ Hm _ _ (reflexivity _)).
     intros Hf.
-    rewrite HSequiv in Hf.
-    specialize (Hmove g0).
-    simpl in *.
-    rewrite Loc.add_opp in Hf; fold Loc.origin in Hf.
-    assert (Hmove' : Loc.eq
-                       (r (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1))
-                          Loc.origin)
-                       (Loc_inv m)) by now rewrite <- Hmove, <- fin_loc.
-    unfold Location.eq,LocationA.eq, Veq, ImpossibilityKDividesN.Loc.eq in Hf.
-    rewrite Hm in *.
-    rewrite (Loc.add_compat Hmove' (reflexivity _)) in Hf.
     exfalso.
     apply (@neq_a_1a (Config.loc (conf (Good g0)))).
     unfold Location.eq, Veq, ImpossibilityKDividesN.Loc.eq.
+    unfold Loc.eq, LocationA.eq, Veq, ImpossibilityKDividesN.Loc.eq,
+    Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp,
+    n, ZnZ.ImpossibilityKDividesN.def.n in *.
+    rewrite <- 3 loc_fin in *. 
     rewrite <- Hf at 1.
-    unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp, n, ZnZ.ImpossibilityKDividesN.def.n.
-    rewrite Zdiv.Zminus_mod, Z.mod_same;
+    rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same;
       repeat rewrite <- loc_fin;
       repeat rewrite Z.mod_mod;
       repeat rewrite Zdiv.Zminus_mod_idemp_r;
@@ -2213,7 +2211,7 @@ Qed.
   (* any configuration equivalent to the starting one will not stop if executed with 
    [r] and [bad_demon1] *)
   Lemma moving_never_stop_m : forall conf,
-      equiv_conf (round r da1 (round r da1 config1)) conf ->
+      equiv_conf (round r da1 (config1)) conf ->
       ~Stopped (execute r bad_demon1 conf).
   Proof.
     intros conf Hconf_equiv Hstop.
@@ -2228,8 +2226,8 @@ Qed.
 
 
   CoInductive AlwaysEquiv_m (e : execution) : Prop :=
-    CAE_m : equiv_conf (round r da1 (round r da1 config1)) (Stream.hd e) ->
-            AlwaysEquiv_m (Stream.tl (Stream.tl e)) -> AlwaysEquiv_m e.
+    CAE_m : equiv_conf (round r da1 (config1)) (Stream.hd e) ->
+            AlwaysEquiv_m ((Stream.tl e)) -> AlwaysEquiv_m e.
 
 
   
@@ -2263,16 +2261,14 @@ Qed.
 
 
   Lemma AlwaysEquiv_conf1_m : forall conf,
-      equiv_conf (round r da1 (round r da1 config1)) conf
+      equiv_conf (round r da1 (config1)) conf
       -> AlwaysEquiv_m (execute r bad_demon1 conf).
   Proof.
     cofix.
     intros.
     constructor.
     + now simpl in *.
-    + apply AlwaysEquiv_conf1_m.
-      assert (Hr := round_2_config1).
-      assert (Hequiv' :
+    + assert (Hequiv' :
                 (exists k, forall id,
                       Location.eq (Config.loc (conf id))
                                   (Loc.add k (Config.loc (config1 id)))
@@ -2283,105 +2279,57 @@ Qed.
       { destruct H.
         exists (Loc.add (Loc.opp (Loc_inv 1)) x).
         intros [g'|b]; try ImpByz b.
-        assert (Hr' :=  round_2_config1).
-        specialize (Hr' (Good g')).
-        destruct Hr' as (Hl', (_, Ht')).
+        assert (Hr :=  round_2_config1).
+        specialize (Hr (Good g')).
+        destruct Hr as (Hl, (_, Ht)).
         simpl in *.
-        destruct (H (Good g')) as (Hl'', (_,Ht'')).
-        rewrite Hl'', Ht'' in *.
+        destruct (H (Good g')) as (Hl', (_,Ht')).
+        rewrite Hl', Ht' in *.
         unfold f_conf in *.
         simpl in *.
-        rewrite Hl', Ht' in *.
+        rewrite Hl in *.
         repeat split;simpl; 
           rewrite Loc.add_assoc, (Loc.add_comm x); easy.
       }
-      unfold equiv_conf.
+      apply AlwaysEquiv_conf1_m.
+      assert (Hr := round_2_config1).
+      simpl.
       destruct H.
       exists (Loc.add x (Loc_inv m)).
-      rewrite (round_2_config1) in *.
-      simpl.
-      rewrite round_2_simplify_m1.
       simpl.
       intros id.
       simpl.
       destruct id; try ImpByz b.
+      simpl.
       specialize (Hr (Good g0));
-      simpl in *.
       destruct Hr as (Hl, (_, Ht)).
-      simpl in *.
       assert (Haux := config1_Spectre_Equiv).
-      assert (Hmove_eq :=
-                pgm_compat
-                  r
-                  (!!
-                     (Config.map (apply_sim (trans (Config.loc (conf (Good g0)))))
-                                 (conf)))
-                  (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g0)))))
-                                  (config1)))
-                  (Haux conf g0 Hequiv') Loc.origin _ (reflexivity _)).
-      assert (Hmove' := Hmove).
-      specialize (Hmove' g0).
-      simpl in *.
-      assert (Hmove'' : Loc.eq
-                          (r (!! (Config.map (apply_sim (trans (create_conf1 g0)))
-                                             config1))
-                             Loc.origin)
-                          (Loc_inv m)) by now rewrite <- (Hmove g0), <- fin_loc.
       repeat split; simpl;
-      unfold Location.eq,LocationA.eq, Veq, ImpossibilityKDividesN.Loc.eq in *;
-      try rewrite Hm in Hmove'';
-      unfold Loc.add, ImpossibilityKDividesN.Loc.add; rewrite Zdiv.Zplus_mod;
-      try rewrite (pgm_compat r
-                  _ _ (reflexivity _) (Loc.add (Config.loc (conf (Good g0)))
-             (Loc.opp (Config.loc (conf (Good g0))))) Loc.origin (Loc.add_opp _));
-      try rewrite Hmove_eq, Hmove'', <- (Zdiv.Zplus_mod_idemp_r (Loc (Loc_inv m))), Hm;
-      destruct (H (Good g0)) as (Hl', _); simpl in Hl';
-      unfold Location.eq, Veq, ImpossibilityKDividesN.Loc.eq in *;
-      unfold Loc.add, Loc.opp, ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp, n, ZnZ.ImpossibilityKDividesN.def.n in *;
-      try rewrite Zdiv.Zminus_mod, Z.mod_same;
-        repeat rewrite <- loc_fin;
-        repeat rewrite Z.mod_mod;
-        repeat rewrite Zdiv.Zminus_mod_idemp_r;
-        repeat rewrite Zdiv.Zplus_mod_idemp_l;
-        repeat rewrite Zdiv.Zplus_mod_idemp_r;
-        try (generalize n_sup_1; unfold n; lia);
-        try rewrite <- Zdiv.Zplus_mod_idemp_r;
-        try rewrite Hl';
-        try rewrite Zdiv.Zminus_mod, Z.mod_same;
-        repeat rewrite <- loc_fin;
-        repeat rewrite Z.mod_mod;
-        repeat rewrite Zdiv.Zminus_mod_idemp_r;
-        repeat rewrite Zdiv.Zplus_mod_idemp_l;
-        repeat rewrite Zdiv.Zplus_mod_idemp_r;
-        try (generalize n_sup_1; unfold n; lia);
-        try (rewrite <- (Z.mod_mod m), (loc_fin m); unfold n; try rewrite Hm);
-        try rewrite Zdiv.Zminus_mod, Z.mod_same;
-        repeat rewrite <- loc_fin;
-        repeat rewrite Z.mod_mod;
-        repeat rewrite Zdiv.Zminus_mod_idemp_r;
-        repeat rewrite Zdiv.Zplus_mod_idemp_l;
-        repeat rewrite Zdiv.Zplus_mod_idemp_r;
-        try (generalize n_sup_1; unfold n; lia);
-      try rewrite Z.add_comm;
-      fold n;
-      try rewrite <- Zdiv.Zplus_mod_idemp_r,
-      <- (Zdiv.Zplus_mod_idemp_r (0-1+Loc (create_conf1 g0))), Zplus_assoc_reverse,
-      (Z.add_comm ((0 - 1 + Loc (create_conf1 g0)) mod Z.of_nat n)
-                  ((0 - 1) mod Z.of_nat n));
-      symmetry; 
-      try now rewrite Zplus_assoc_reverse.
-      rewrite Z.add_comm.
-      rewrite <- Zdiv.Zplus_mod_idemp_r, (Zdiv.Zplus_mod_idemp_r (0-1)),
-      Zdiv.Zplus_mod_idemp_r.
-      f_equiv; lia.
-      now exists x; rewrite round_2_config1.
+        try (
+            rewrite (Haux conf g0 Hequiv'), 2 Loc.add_opp;
+            try (destruct (H (Good g0)) as (Hlf, (_ , Htf));
+                 rewrite Hlf;
+                 simpl in *;
+                 rewrite Hl;
+                 rewrite Hm;
+                 rewrite (Loc.add_assoc x);
+                 rewrite Loc.add_comm;
+                 rewrite <- Loc.add_assoc;
+                 now rewrite (Loc.add_comm (create_conf1 g0)))).
+      destruct (H (Good g0)) as (Hlf, (_ , Htf));
+        rewrite Hlf.
+      simpl.
+      rewrite <- (Hmove g0).
+      rewrite Loc.add_opp.
+      simpl.
+      rewrite <- fin_loc.
+      now rewrite Loc.add_assoc.
   Qed.
 
   (* the starting configuration respect the [AlwaysMoving] predicate *)
 
   Lemma config1_AlwaysMoving_m : AlwaysMoving (execute r bad_demon1
-                                                       (round r da1 (round r da1
-                                                                           config1))).
+                                                       (round r da1 (config1))).
   Proof.
     apply AlwaysEquiv_impl_AlwaysMoving_m.
     now simpl.
@@ -2392,7 +2340,7 @@ Qed.
     now repeat split;simpl; rewrite (Loc.add_comm Loc.origin), Loc.add_origin.
   Qed.
   
-  Lemma never_stop_m : ~ Will_stop (execute r bad_demon1 (round r da1 (round r da1 (config1)))).
+  Lemma never_stop_m : ~ Will_stop (execute r bad_demon1 (round r da1 ((config1)))).
   Proof.
     apply AlwaysMoving_impl_not_WillStop.
     cbn.
@@ -2406,7 +2354,7 @@ Qed.
     intros Hmod Habs.
     specialize (Habs bad_demon1).
     unfold FullSolExplorationStop in *.
-    destruct (Habs (round r da1 (round r da1 (config1)))) as (_, Hstop).
+    destruct (Habs (round r da1 ((config1)))) as (_, Hstop).
     now apply never_stop_m.
   Save.
 

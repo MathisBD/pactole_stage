@@ -32,7 +32,7 @@ CommonDiscreteFormalism.v
 DiscreteRigidFormalism.v
 DiscreteASyncFormalism.v
 CommonGraphFormalism.v
-GraphEquivalence.v
+#GraphEquivalence.v
 DiscreteGraphFormalism.v
 ContinuousDVGraphFormalism.v
 Exploration/ZnZ/test_modulo.v
