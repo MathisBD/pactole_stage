@@ -20,39 +20,45 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSpace.
-Require Import Pactole.Exploration.ZnZ.Definitions.
-Require Import Pactole.Exploration.ZnZ.ImpossibilityKDividesN.
+(* Require Import Pactole.Exploration.ZnZ.Definitions. *)
+(* Require Import Pactole.Exploration.ZnZ.ImpossibilityKDividesN. *)
 Require Import Pactole.Exploration.Graph.Definitions.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 
 
 Set Implicit Arguments.
+
+
+(* taille de l'anneau*)
+Parameter n : nat.
+Axiom n_sup_1 : 1 < n.
+
+(** There are kG good robots and no byzantine ones. *)
+Parameter kG : nat.
+Axiom kdn : n mod kG = 0.
+Axiom k_inf_n : kG < n.
+Axiom k_sup_1 : 1 < kG.
+
+
+Module K : Size with Definition nG := kG with Definition nB := 0%nat.
+  Definition nG := kG.
+  Definition nB := 0%nat.
+End K.
+
+Module Def : RingDef with Definition n := n.
+ Definition n:= n.
+ Lemma n_pos : n <> 0. Proof. unfold n. generalize n_sup_1. omega. Qed.
+ Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
+End Def.
+
+
 Open Scope Z_scope.
 
 
-(** Size of the ring. *)
-Definition n := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.n.
-
-(** Number of good robots. *)
-Definition kG := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.kG.
-
-Module K := Pactole.Exploration.ZnZ.ImpossibilityKDividesN.K.
-
-Module def : RingDef with Definition n := n.
- Definition n:= n.
- Definition n_sup_1 : (n > 1)%nat := n_sup_1.
-End def.
-
-(** The setting is a ring. *)
-Module Gra := MakeRing.
-
-
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
-Module DefsE := Definitions.ExplorationDefs(K).
+Module DefsE := Definitions.ExplorationDefs(Def)(K).
 Export DefsE.
-Export Gra.
-Export MakeRing.
-Import Equiv.DGF.
+
 
 (** There is no byzantine robot so we can simplify properties about identifiers and configurations. *)
 Lemma no_byz : forall (id : Names.ident) P, (forall g, P (Good g)) -> P id.
@@ -72,7 +78,7 @@ Definition dummy_val := {| Config.loc := Loc.origin;
 
 
 Section Exploration.
-Variable r : Equiv.DGF.robogram.
+Variable r : DGF.robogram.
 
 Hypothesis Hdiv : (n mod kG = 0)%nat.
 
@@ -83,7 +89,8 @@ Hypothesis Hdiv : (n mod kG = 0)%nat.
 (** ***  Definition of the starting configuration and demon used in the proof  **)
 
 Definition create_config1 (k : nat) (g : {n : nat | (n < k)%nat}) : Loc.t :=
-  Loc.mul (((Z_of_nat ((proj1_sig g) * (n / kG))))) Loc.unit.
+(*   Loc.mul (Loc (Z_of_nat ((proj1_sig g) * (n / kG)))) Loc.unit. *)
+  Ring.of_Z (((Z_of_nat ((proj1_sig g) * (n / kG))))).
 
 (** The starting configuration where robots are evenly spaced:
     each robot is at a distance of [n / kG] from the previous one, starting from the origin. *)
@@ -98,90 +105,70 @@ Definition config1 : Config.t :=
 Lemma config1_injective : forall id1 id2,
   Loc.eq (Config.loc (config1 id1)) (Config.loc (config1 id2)) -> id1 = id2.
 Proof.
-intros id1 id2. apply (no_byz id2), (no_byz id1). clear id1 id2.
-intros g1 g2 Heq. f_equal. revert Heq. apply unique_g.
+generalize k_sup_1, k_inf_n. intros Hk1 Hkn id1 id2.
+assert (n / kG <> 0)%nat by (rewrite Nat.div_small_iff; omega).
+apply (no_byz id2), (no_byz id1). clear id1 id2.
+intros g1 g2 Heq. f_equal. hnf in Heq.
+unfold config1, create_config1 in *. simpl in *.
+rewrite 2 Ring.Z2Z, 2 Z.mod_small in Heq.
++ apply Nat2Z.inj in Heq. rewrite Nat.mul_cancel_r in Heq; trivial; [].
+  destruct g1, g2; simpl in *; subst. f_equal. apply le_unique.
++ split; try apply Zle_0_nat; []. apply Nat2Z.inj_lt.
+  apply Nat.lt_le_trans with (kG * (n / kG))%nat.
+  - destruct g2 as [g2 Hg2]. simpl. unfold K.nG in *. apply mult_lt_compat_r; omega.
+  - apply Nat.mul_div_le. omega.
++ split; try apply Zle_0_nat; []. apply Nat2Z.inj_lt.
+  apply Nat.lt_le_trans with (kG * (n / kG))%nat.
+  - destruct g1 as [g1 Hg1]. simpl. unfold K.nG in *. apply mult_lt_compat_r; omega.
+  - apply Nat.mul_div_le. omega.
 Qed.
 
-(**  Translating [config1] by multiple of [n / kG] does not change its spectrum. *)
+(**  Translating [config1] by multiples of [n / kG] does not change its spectrum. *)
 Lemma spect_trans_config1 : forall g : Names.G,
   Spect.eq (!! (Config.map (Config.app (trans (create_config1 g))) config1)) (!! config1).
 Proof.
 intro g. unfold Spect.from_config. f_equiv. do 2 rewrite Config.list_spec, map_map.
 apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
 * apply map_injective_NoDupA with eq; autoclass; [|].
-  + intros id1 id2 Heq. apply Loc.add_reg_r in Heq.
+  + intros id1 id2 Heq. simpl in Heq. apply Loc.add_reg_r in Heq.
     now apply config1_injective.
   + rewrite NoDupA_Leibniz. apply Names.names_NoDup.
 * apply map_injective_NoDupA with eq; autoclass; [|].
   + intros ? ? ?. now apply config1_injective.
   + rewrite NoDupA_Leibniz. apply Names.names_NoDup.
 * intro pt. repeat rewrite InA_map_iff; autoclass; [].
-  assert (HkG : kG <> 0%nat). { generalize k_sup_1. unfold kG. omega. }
-  assert (Z.of_nat n <> 0). { generalize n_sup_1. unfold n. omega. }
+  assert (HkG : kG <> 0%nat). { generalize k_sup_1. omega. }
+  assert (Z.of_nat n <> 0). { generalize n_sup_1. omega. }
   split; intros [id [Hpt _]]; revert Hpt; apply (no_byz id); clear id; intros g' Hpt.
   + assert (Hlt : ((proj1_sig g' + (kG - proj1_sig g)) mod kG < kG)%nat) by now apply Nat.mod_upper_bound.
     pose (id' := exist (fun x => lt x kG) _ Hlt).
     exists (Good id'). split.
-    - simpl. rewrite <- Hpt. simpl. unfold create_config1. simpl. clear Hpt.
+    - simpl. rewrite <- Hpt. simpl. unfold create_config1, Loc.add, Loc.opp. simpl.
       (* This part is a proof about modular arithmetic *)
-      rewrite Nat.add_mod, <- Loc.minus_morph, Loc.add_morph; trivial; [].
-      unfold Loc.mul, ImpossibilityKDividesN.Loc.mul, Loc.unit, ImpossibilityKDividesN.Loc.unit.
-      destruct g as [g Hg], g' as [g' Hg']. simpl in *. change K.nG with kG in *.
-      destruct (Nat.eq_dec g 0).
-      ++ (* particular case when g = 0 *)
-         subst g. rewrite Nat.sub_0_r, Nat.mul_0_l, Nat.mod_same, Nat.add_0_r, Nat.mod_mod; trivial; [].
-         hnf. do 2 f_equal. rewrite Nat.mod_small; trivial; nia.
-      ++ assert (kG - g < kG)%nat by omega.
-         rewrite (Nat.mod_small (kG - g)), (Nat.mod_small g'); trivial. 
-         hnf. repeat rewrite Z.mod_mod, Z.mul_1_r; trivial; [].
-         assert (Hcase : ((g' + (kG - g)) mod kG = g' + (kG - g) /\ g' < g
-                       \/ (g' + (kG - g)) mod kG = g' - g /\ g <= g')%nat).
-         { assert (Hadd : (g' + (kG - g) < kG + kG)%nat) by now apply Nat.add_lt_mono.
-           destruct (le_lt_dec g g').
-           - right. split; trivial; []. rewrite Nat.mod_eq; trivial; [].
-             cut ((g' + (kG - g)) / kG = 1)%nat; try nia; [].
-             assert ((0 <= (g' + (kG - g)) mod kG < kG)%nat) by (apply Nat.mod_bound_pos; omega).
-             assert (Hle : (kG <= (g' + (kG - g)))%nat) by omega.
-             rewrite (Nat.div_mod (g' + (kG - g)) kG HkG) in Hadd, Hle.
-             destruct ((g' + (kG - g)) / kG)%nat as [| [| n]]; nia.
-           - left. split; trivial; []. rewrite Nat.mod_small; omega. }
-         destruct Hcase as [[Hcase Hwhy] | [Hcase Hwhy]]; rewrite Hcase.
-         -- rewrite Nat.mul_add_distr_r, Nat.mul_sub_distr_r, Nat2Z.inj_add, Nat2Z.inj_sub; [| nia].
-            rewrite Z.add_sub_assoc, Z.add_comm, <- Z.add_sub_assoc, Z.add_mod; trivial; [].
-            rewrite <- (proj2 (Nat.div_exact n kG HkG) Hdiv), Z.mod_same; trivial; [].
-            simpl. now rewrite Z.mod_mod.
-         -- f_equal. nia.
+      assert (Hn : (kG * (n / kG) = n)%nat). { symmetry. now rewrite Nat.div_exact. }
+      hnf. rewrite 5 Ring.Z2Z, <- Z.add_mod, Nat2Z.inj_mul, Zdiv.mod_Zmod; trivial; [].
+      assert (Heq : forall x y, x + - y = x - y) by (intros; ring). rewrite Heq. clear Heq.
+      rewrite Nat2Z.inj_add, Nat2Z.inj_sub; try (now apply lt_le_weak, proj2_sig); [].
+      replace (Z.of_nat (proj1_sig g') + (Z.of_nat kG - Z.of_nat (proj1_sig g)))
+        with (Z.of_nat (proj1_sig g') - Z.of_nat (proj1_sig g) + 1 * Z.of_nat kG) by ring.
+      rewrite Zdiv.Z_mod_plus_full, Z.mul_comm, <- Zdiv.Zmult_mod_distr_l, Zdiv.Zminus_mod_idemp_r.
+      rewrite Nat.mul_comm in Hn. rewrite <- Nat2Z.inj_mul, Hn, Z.mod_mod; trivial; [].
+      f_equal. lia.
     - rewrite InA_Leibniz. apply Names.In_names.
   + assert (Hlt : ((proj1_sig g' + proj1_sig g) mod kG < kG)%nat) by now apply Nat.mod_upper_bound.
     pose (id' := exist (fun x => lt x kG) _ Hlt).
     exists (Good id'). split.
-    - simpl. rewrite <- Hpt. simpl. unfold create_config1. simpl.
+    - simpl. rewrite <- Hpt. simpl. unfold create_config1, Loc.add, Loc.opp. simpl.
       (* This part is a proof about modular arithmetic *)
-      rewrite Nat.add_mod, <- Loc.minus_morph, Loc.add_morph; trivial; [].
-      unfold Loc.mul, ImpossibilityKDividesN.Loc.mul, Loc.unit, ImpossibilityKDividesN.Loc.unit.
-      destruct g as [g Hg], g' as [g' Hg']. simpl in *.
-      rewrite (Nat.mod_small g), (Nat.mod_small g'); trivial; [].
-      hnf. repeat rewrite Z.mod_mod, Z.mul_1_r; trivial; [].
-      assert (Hcase : ((g' + g) mod kG = g' + g /\ g' + g < kG
-                    \/ (g' + g) mod kG = g' + g - kG /\ kG <= g' + g)%nat).
-      { assert (Hadd : (g' + g < kG + kG)%nat) by now apply Nat.add_lt_mono.
-        destruct (le_lt_dec kG (g' + g)) as [Hle |].
-        - right. rewrite Nat.mod_eq; trivial; [].
-          cut ((g' + g) / kG = 1)%nat; try nia; [].
-          assert (0 <= (g' + g) mod kG < kG)%nat by (apply Nat.mod_bound_pos; omega).
-          rewrite (Nat.div_mod (g' + g) kG HkG) in Hadd, Hle.
-          destruct ((g' + g) / kG)%nat as [| [| n]]; nia.
-        - left. now rewrite Nat.mod_small. }
-      destruct Hcase as [[Hcase Hwhy] | [Hcase Hwhy]]; rewrite Hcase.
-      ++ f_equal. nia.
-      ++ rewrite Nat.mul_sub_distr_r. rewrite Nat2Z.inj_sub; try nia; [].
-         repeat rewrite Nat2Z.inj_mul, ?Nat2Z.inj_add. rewrite <- (Nat2Z.inj_mul kG).
-         rewrite <- (proj2 (Nat.div_exact n kG HkG) Hdiv).
-         unfold Z.sub. rewrite Z.add_mod, (Z.add_mod _ (-Z.of_nat n)); trivial; [].
-         rewrite Zdiv.Z_mod_zero_opp_full; try apply Z.mod_same; trivial; [].
-         rewrite Z.add_0_r, Z.mod_mod, Z.mul_add_distr_r, <- Z.add_mod; trivial; []. f_equal. lia.
+      assert (Hn : (kG * (n / kG) = n)%nat). { symmetry. now rewrite Nat.div_exact. }
+      hnf. rewrite 5 Ring.Z2Z, <- Z.add_mod, Nat2Z.inj_mul, Zdiv.mod_Zmod; trivial; [].
+      assert (Heq : forall x y, x + - y = x - y) by (intros; ring). rewrite Heq. clear Heq.
+      rewrite Nat.mul_comm in Hn.
+      rewrite Z.mul_comm, <- Zdiv.Zmult_mod_distr_l, <- (Nat2Z.inj_mul _ kG), Hn, <- Zdiv.Zminus_mod.
+      f_equal. lia.
     - rewrite InA_Leibniz. apply Names.In_names.
 Qed.
+
 
 Program Definition da : demonic_action := {|
   relocate_byz := fun _ => dummy_val;
@@ -189,8 +176,7 @@ Program Definition da : demonic_action := {|
                 if Loc.eq_dec (Config.loc Rconfig) (Info.target (Config.info Rconfig))
                 then Active (trans (Config.loc Rconfig)) else Moving true |}.
 Next Obligation.
-intuition. unfold Loc.eq_dec in *.
-now destruct (LocationA.eq_dec (Config.loc Rconfig) (Info.target (Config.info Rconfig))).
+revert_one Aom_eq. destruct_match; simpl; intuition.
 Qed.
 Next Obligation.
 intros [g1 | b1] [g2 | b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
@@ -198,8 +184,7 @@ destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
 destruct (Loc.eq_dec (Config.loc rc1) (Info.target (Config.info rc1))),
          (Loc.eq_dec (Config.loc rc2) (Info.target (Config.info rc2)));
 try (now auto); try now rewrite Hl_rc, Ht_rc in *.
-- rewrite Hl_rc. now unfold Aom_eq.
-- destruct b1. unfold K.nB in *. omega.
+destruct b1. unfold K.nB in *. omega.
 Qed.
 
 CoFixpoint bad_demon : demon := Stream.cons da bad_demon.
@@ -221,7 +206,7 @@ apply no_byz_eq. intro g. unfold round. simpl.
 destruct_match; try congruence; [].
 repeat split; []. cbn -[trans].
 rewrite spect_trans_config1. simpl. rewrite Loc.add_opp.
-change (Graph.Veq (Loc.add move (create_config1 g)) (create_config1 g)).
+change (Ring.Veq (Loc.add move (create_config1 g)) (create_config1 g)).
 now rewrite Hmove, Loc.add_comm, Loc.add_origin.
 Qed.
 
@@ -229,13 +214,23 @@ Lemma NeverVisited_config1 : forall e,
   eeq e (execute r bad_demon config1) ->
   exists pt, ~ Will_be_visited pt e.
 Proof.
-intros e Heq_e.
-exists Loc.unit.
+intros e Heq_e. exists Loc.unit.
 intro Hl. induction Hl as [e [g Hvisited] | e Hlater IHvisited].
-+ rewrite Heq_e in Hvisited. simpl in Hvisited.
-  assert (Heq : Z.of_nat (n mod kG) = 0) by (unfold n, kG; generalize kdn; omega).
-  now apply (config1_ne_unit Heq g).
-+ apply IHvisited. rewrite Heq_e. cbn. f_equiv. apply round_id.
+* rewrite Heq_e in Hvisited. simpl in Hvisited. revert Hvisited.
+  assert (Hn := n_sup_1). assert (Hk := k_sup_1). assert (Hk' := k_inf_n).
+  assert (Heq : Z.of_nat (n mod kG) = 0) by (generalize kdn; omega).
+  unfold create_config1, Loc.eq, Ring.Veq, Loc.unit.
+  rewrite 2 Ring.Z2Z, Z.mod_1_l; try (unfold Ring.n, Def.n; omega); [].
+  assert (1 < n / kG)%nat.
+  { apply <- Nat.div_exact in Hdiv; try omega; [].
+    rewrite Hdiv in Hk'. destruct (n / kG)%nat as [| [| ?]]; omega. }
+  rewrite Z.mod_small.
+  + change 1 with (Z.of_nat 1). intro Habs. apply Nat2Z.inj in Habs. nia.
+  + split; try apply Zle_0_nat; [].
+    apply inj_lt, Nat.lt_le_trans with (kG * (n / kG))%nat.
+    - apply mult_lt_compat_r; try omega; []. apply proj2_sig.
+    - rewrite <- Nat.div_exact in Hdiv; try omega; []. now rewrite <- Hdiv.
+* apply IHvisited. rewrite Heq_e. cbn. f_equiv. now rewrite 2 round_id.
 Qed.
 
 Lemma never_visited : ~(forall pt, Will_be_visited pt (execute r bad_demon config1)).
@@ -322,7 +317,7 @@ Qed.
 
 Instance equiv_config_equiv : Equivalence equiv_config.
 Proof. split.
-+ intro config. exists 0. unfold equiv_config_k. now rewrite f_config_origin.
++ intro config. exists Loc.origin. unfold equiv_config_k. now rewrite f_config_origin.
 + intros config1 config2 [k Hk]. exists (Loc.opp k). now apply equiv_config_k_sym.
 + intros ? ? ? [k1 Hk1] [k2 Hk2]. exists (Loc.add k1 k2).
   revert Hk1 Hk2. apply equiv_config_k_trans.
@@ -349,7 +344,7 @@ repeat split; simpl;
 rewrite (Hequiv (Good g)), (Hequiv (Good g')); unfold f_config; simpl;
 rewrite Loc.opp_opp, Loc.opp_distr_add, <- Loc.add_assoc; f_equiv;
 setoid_rewrite Loc.add_comm at 2;
-now rewrite <- Loc.add_assoc, (Loc.add_comm _ offset), Loc.add_opp, Loc.add_origin.
+now rewrite Loc.add_assoc, Loc.add_opp, Loc.add_comm, Loc.add_origin.
 Qed.
 
 Theorem equiv_config_k_round : forall k config1 config2,
@@ -486,7 +481,7 @@ destruct_match; try discriminate; []. inv Hstep2.
 unfold round. destruct_match; try discriminate; []. inv Hstep1. cbn -[trans].
 repeat split; cbn -[trans].
 - rewrite spect_trans_config1. simpl. now rewrite Loc.add_opp, Loc.opp_opp, Loc.add_comm.
-- admit. (* Wrong for source *)
+- (* Wrong for source *) admit.
 - rewrite spect_trans_config1. simpl. now rewrite Loc.add_opp, Loc.opp_opp, Loc.add_comm.
 Admitted. (* round_round is wrong if the info contains the source *)
 

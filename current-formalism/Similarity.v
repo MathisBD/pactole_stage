@@ -18,6 +18,7 @@
                                                                         *)
 (**************************************************************************)
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8.
 Require Import Setoid.
 Require Import Equalities.
@@ -26,97 +27,10 @@ Require Import Rbase Rbasic_fun.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
 Require Import Pactole.RealMetricSpace.
+Require Import Pactole.Bijection.
 
 
 Set Implicit Arguments.
-
-
-(********************)
-(** *  Bijections  **)
-(********************)
-
-(** Bijections on a type [T] with an equivalence relation [eqT] *)
-
-Section Bijections.
-Context (T : Type).
-Context (eqT : T -> T -> Prop).
-Context (HeqT : Equivalence eqT).
-
-Record bijection := {
-  section :> T → T;
-  retraction : T → T;
-  section_compat : Proper (eqT ==> eqT) section;
-  Inversion : ∀ x y, eqT (section x) y ↔ eqT (retraction y) x}.
-
-Definition bij_eq (f g : bijection) := (eqT ==> eqT)%signature f.(section) g.
-
-Global Instance bij_eq_equiv : Equivalence bij_eq.
-Proof. split.
-+ intros f x y Hxy. apply section_compat. assumption.
-+ intros f g Heq x y Hxy. symmetry. apply Heq. symmetry. assumption.
-+ intros f g h Hfg Hgh x y Hxy. rewrite (Hfg _ _ Hxy). apply Hgh. reflexivity.
-Qed.
-
-Global Existing Instance section_compat.
-
-Global Instance section_full_compat : Proper (bij_eq ==> (eqT ==> eqT)) section.
-Proof. intros f g Hfg x y Hxy. now apply Hfg. Qed.
-
-(** The identity bijection *)
-Definition bij_id := {|
-  section := fun x => x;
-  retraction := fun x => x;
-  section_compat := fun x y Heq => Heq;
-  Inversion := ltac:(easy) |}.
-
-(** Composition of bijections *)
-Definition bij_compose (f g : bijection) : bijection.
-refine {| section := fun x => f (g x);
-          retraction := fun x => g.(retraction) (f.(retraction) x) |}.
-Proof.
-+ abstract (intros x y Hxy; now apply f.(section_compat), g.(section_compat)).
-+ abstract (intros x y; now rewrite f.(Inversion), <- g.(Inversion)).
-Defined.
-Infix "∘" := bij_compose (left associativity, at level 59).
-
-Lemma bij_compose_assoc : forall f g h : bijection, bij_eq (f ∘ (g ∘ h)) ((f ∘ g) ∘ h).
-Proof. intros f g h x y Hxy. rewrite Hxy. reflexivity. Qed.
-
-(** Properties about inverse functions *)
-Global Instance retraction_compat : Proper (bij_eq ==> (eqT ==> eqT)) retraction.
-Proof.
-intros f g Hfg x y Hxy. rewrite <- f.(Inversion), (Hfg _ _ (reflexivity _)), Hxy, g.(Inversion). reflexivity.
-Qed.
-
-Definition bij_inverse (bij : bijection) : bijection.
-refine {| section := bij.(retraction);
-          retraction := bij.(section) |}.
-Proof. abstract (intros; rewrite bij.(Inversion); reflexivity). Defined.
-
-Notation "bij ⁻¹" := (bij_inverse bij) (at level 99).
-
-Lemma retraction_section : forall (bij : bijection) x, eqT (bij.(retraction) (bij.(section) x)) x.
-Proof. intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
-
-Corollary bij_inv_bij_id : forall (bij : bijection), bij_eq (bij ⁻¹ ∘ bij) bij_id.
-Proof. repeat intro. simpl. now rewrite retraction_section. Qed.
-
-Lemma section_retraction : forall (bij : bijection) x, eqT (bij.(section) (bij.(retraction) x)) x.
-Proof. intros bij x. rewrite bij.(Inversion). now apply retraction_compat. Qed.
-
-Corollary inv_bij_bij_id : forall (bij : bijection),
-  (eqT ==> eqT)%signature (fun x => bij (bij ⁻¹ x)) bij_id.
-Proof. repeat intro. simpl. now rewrite section_retraction. Qed.
-
-Lemma injective_retraction : forall bij : bijection, injective eqT eqT bij -> injective eqT eqT (bij ⁻¹).
-Proof.
-intros bij Hinj x y Heq. rewrite <- (section_retraction bij x), Heq. simpl. now rewrite section_retraction.
-Qed.
-
-Lemma compose_inverse : forall f g : bijection, bij_eq ((f ∘ g)⁻¹) ((g ⁻¹) ∘ (f ⁻¹)).
-Proof. intros f g x y Hxy. rewrite Hxy. reflexivity. Qed.
-
-End Bijections.
 
 
 (**********************)
@@ -131,22 +45,23 @@ Open Scope R_scope.
 Module Make (Loc : RealMetricSpace).
 
 Record t := {
-  sim_f :> bijection Loc.eq;
+  sim_f :> Bijection.t Loc.eq;
   zoom : R;
   center : Loc.t;
   center_prop : Loc.eq (sim_f center) Loc.origin;
   dist_prop : forall x y, Loc.dist (sim_f x) (sim_f y) = zoom * Loc.dist x y}.
 
-Definition eq sim1 sim2 := bij_eq sim1.(sim_f) sim2.(sim_f).
+Definition eq sim1 sim2 := Bijection.eq sim1.(sim_f) sim2.(sim_f).
 
 Global Instance eq_equiv : Equivalence eq.
 Proof. unfold eq. split.
 + intros [f k c Hc Hk]. simpl. reflexivity.
 + intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] Hfg. simpl in *. now symmetry.
-+ intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] [h kh ch Hch Hkh] ? ?. simpl in *. etransitivity; eassumption.
++ intros [f kf cf Hcf Hkf] [g kg cg Hcg Hkg] [h kh ch Hch Hkh] ? ?.
+  simpl in *. etransitivity; eassumption.
 Qed.
 
-Instance f_compat : Proper (eq ==> @bij_eq _ Loc.eq) sim_f.
+Instance f_compat : Proper (eq ==> @Bijection.eq _ Loc.eq) sim_f.
 Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
 
 (** As similarities are defined as bijections, we can prove that k <> 0
@@ -174,7 +89,7 @@ Qed.
 
 (** The identity similarity *)
 Definition id : t.
-refine {| sim_f := bij_id Loc.eq_equiv;
+refine {| sim_f := Bijection.id Loc.eq_equiv;
           zoom := 1;
           center := Loc.origin;
           center_prop := reflexivity _ |}.
@@ -194,7 +109,7 @@ intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- Loc.add_asso
 - setoid_rewrite Loc.add_comm at 2. now rewrite Loc.add_opp, Loc.add_origin.
 Qed.
 
-Definition bij_translation (v : Loc.t) : bijection Loc.eq.
+Definition bij_translation (v : Loc.t) : Bijection.t Loc.eq.
 refine {|
   section := fun x => Loc.add x v;
   retraction := fun x => Loc.add x (Loc.opp v) |}.
@@ -233,7 +148,7 @@ intros. split; intro Heq; rewrite <- Heq; clear Heq.
   rewrite Loc.mul_1, <- Loc.add_assoc. now rewrite Loc.mul_opp, Loc.add_opp, Loc.add_origin.
 Qed.
 
-Definition bij_homothecy (c : Loc.t) (ρ : R) (Hρ : ρ <> 0) : bijection Loc.eq.
+Definition bij_homothecy (c : Loc.t) (ρ : R) (Hρ : ρ <> 0) : Bijection.t Loc.eq.
 refine {|
   section := fun x => Loc.mul ρ (Loc.add x (Loc.opp c));
   retraction := fun x => Loc.add (Loc.mul (/ρ) x) c |}.
@@ -269,7 +184,7 @@ End Normed_Results.
 
 Definition compose (f g : t) : t.
 refine {|
-  sim_f := bij_compose _ f g;
+  sim_f := Bijection.compose _ f g;
   zoom := f.(zoom) * g.(zoom);
   center := retraction g (retraction f Loc.origin) |}.
 Proof.
@@ -286,7 +201,7 @@ Proof. intros f g h x y Hxy. simpl. now rewrite Hxy. Qed.
 
 (** Inverse of a similarity *)
 Definition inverse (sim : t) : t.
-refine {| sim_f := bij_inverse _ sim.(sim_f);
+refine {| sim_f := Bijection.inverse _ sim.(sim_f);
           zoom := /sim.(zoom);
           center := sim Loc.origin |}.
 Proof.

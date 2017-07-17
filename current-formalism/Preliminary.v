@@ -46,13 +46,13 @@ Global Ltac coinduction proof :=
    [ clear proof | try (apply proof; clear proof) ].
 
 (** Destruct matches from innermost to outermost, with or without keeping the associated equality. *)
-Ltac destr_match_eq A :=
+Ltac destr_match_eq name A :=
   match A with | context[match ?x with | _ => _ end] =>
-    destr_match_eq x (* recursive call *)
-    || let H := fresh in destruct x eqn:H (* if innermost match, destruct it *)
+    destr_match_eq name x (* recursive call *)
+    || let H := fresh name in destruct x eqn:H (* if innermost match, destruct it *)
   end.
 
-Ltac destruct_match_eq := match goal with | |- ?A => destr_match_eq A end.
+Ltac destruct_match_eq name := match goal with | |- ?A => destr_match_eq name A end.
 
 Ltac destr_match A :=
   match A with | context[match ?x with | _ => _ end] =>
@@ -61,6 +61,26 @@ Ltac destr_match A :=
   end.
 
 Ltac destruct_match := match goal with | |- ?A => destr_match A end.
+
+(** Tactics to revert hypotheses based on their head symbol *)
+Ltac get_head_symbol term :=
+  match term with
+    | ?f _ => get_head_symbol f
+    | _ => term
+  end.
+
+(* Revert one hypothesis whose head symbol is [sym]. *)
+Ltac revert_one sym :=
+  match goal with
+    | H : ?A |- _ => let f := get_head_symbol A in let g := get_head_symbol sym in unify f g; revert H
+    | |- _ => fail "Symbol" sym "not found"
+  end.
+
+(* Revert all hypotheses with the same head symbol as the goal. *)
+Ltac revert_all :=
+  match goal with
+    | |- ?B => repeat revert_one B
+  end.
 
 
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
@@ -1831,3 +1851,20 @@ Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed
 
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split; auto with typeclass_instances. Qed.
+
+
+(** *  The same for integers. **)
+
+Open Scope Z.
+
+Lemma Zincr_mod : forall k n, 0 < n -> (k + 1) mod n = k mod n + 1 \/ (k + 1) mod n = 0 /\ k mod n = n - 1.
+Proof.
+intros k n Hn.
+destruct (Z.eq_dec (k mod n) (n - 1)) as [Heq | Heq].
++ right. rewrite <- Zdiv.Zplus_mod_idemp_l, Heq.
+  ring_simplify (n - 1 + 1). split; trivial; []. apply Z.mod_same. omega.
++ left. rewrite <- Zdiv.Zplus_mod_idemp_l. apply Z.mod_small.
+  assert (Hle := Z.mod_pos_bound k n Hn). omega.
+Qed.
+
+Close Scope Z.

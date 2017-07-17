@@ -20,7 +20,7 @@ Require Import Pactole.Stream.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.DiscreteGraphFormalism.
+Require Import Pactole.DiscreteGraphFormalismSSync.
 Require Import Pactole.DiscreteSimilarity.
 Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
@@ -223,44 +223,42 @@ rewrite Hl, <- Hv; now rewrite Hc.
 Qed.
 
 Definition stop_now (e : execution) :=
-  Config.eq (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e))).
+    Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
 
 Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
-intros e1 e2 He. split; intros Hs; unfold stop_now in *;
-(now rewrite <- He) || now rewrite He.
+intros e1 e2 He. split; intros Hs;
+unfold stop_now in *.
+now rewrite <- He.
+now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Stream.next_forever stop_now e.
-(* TODO: Was this version correct instead?
-         I guess this depends if we only consider configurations every other round.
-
-  Stream.forever ((stop_now)) e. *)
+  Stream.forever (stop_now) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
 intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
-- destruct H. now rewrite <- He.
-- destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
-- destruct H. now rewrite He.
-- destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
+  - destruct H. now rewrite <- He.
+  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
+  - destruct H. now rewrite He.
+  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
-  Stream.next_eventually (is_visited loc) e.
+  Stream.eventually (is_visited loc) e.
 
 Definition Will_stop (e : execution) : Prop :=
-  Stream.next_eventually Stopped e.
+  Stream.eventually Stopped e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
-intros l1 l2 Hl. now apply Stream.next_eventually_compat, is_visited_compat. 
+intros l1 l2 Hl. now apply Stream.eventually_compat, is_visited_compat. 
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
 Proof.
-apply Stream.next_eventually_compat, Stopped_compat.
+  apply Stream.eventually_compat, Stopped_compat.
 Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
@@ -275,10 +273,10 @@ Definition ValidStartingConf conf :=
 
 Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
 Proof.
-intros c1 c2 Hc.
-split; intros Hv Hf; unfold ValidStartingConf in *;
-destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
-now rewrite Hc.
+  intros c1 c2 Hc.
+  split; intros Hv Hf; unfold ValidStartingConf in *;
+  destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
+  now rewrite Hc.
 Qed.
   
 Definition ValidStartingConfSolExplorationStop (r : robogram) (d : demon) :=

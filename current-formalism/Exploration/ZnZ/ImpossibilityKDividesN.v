@@ -20,6 +20,7 @@
                        - commecer par la fin (comme avec la preuve)
 *)
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Psatz.
 (* Require Import Morphisms. *)
 Require Import Arith.Div2.
@@ -33,11 +34,14 @@ Require Import Pactole.DiscreteSpace.
 Require Import Pactole.Exploration.ZnZ.Definitions.
 Require Import Pactole.Exploration.ZnZ.test_modulo.
 
+
 Set Implicit Arguments.
+
 (* taille de l'anneau*)
 Parameter n : nat.
 Axiom n_sup_1 : 1 < n.
 
+(** There are KG good robots and no byzantine ones. *)
 Parameter kG : nat.
 Axiom kdn : n mod kG = 0.
 Axiom k_inf_n : kG < n.
@@ -59,16 +63,11 @@ End def.
 (** The setting is a ring. *)
 Module Loc := Ring(def).
 
-(** There are KG good robots and no byzantine ones. *)
-
 Module Info := SourceTarget(Loc).
 
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
 Module DefsE := Definitions.ExplorationDefs(Loc)(K)(Info).
 Export DefsE.
-
-Coercion Sim.sim_f : Sim.t >-> DiscreteSimilarity.bijection.
-Coercion DiscreteSimilarity.section : DiscreteSimilarity.bijection >-> Funclass.
 
 Lemma no_byz : forall (id : Names.ident) P, (forall g, P (Good g)) -> P id.
 Proof.

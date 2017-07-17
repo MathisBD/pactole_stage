@@ -1,12 +1,14 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
+(*   P. Courtieu, R. Pelle, L. Rieg, X. Urbain                            *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence     *)
 (*                                                                        *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import Omega.
@@ -32,16 +34,12 @@ Module GraphEquivalence (Graph : GraphDef)
                         (LocationA : LocationADef(Graph))
                         (MkInfoA : InfoSig(Graph)(LocationA))
                         (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
+                        (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
                         (Import Iso : Iso(Graph)(LocationA)).
 
-  Module MapWL := MMapWeakList.Make.
-  
-  Module Mraw := MMultisetWMap.FMultisets MapWL LocationA.
-  Module M := MMultisetExtraOps.Make LocationA Mraw.
-  
+Module DGF := DGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(SpectA)(Iso).
+Module CGF := CGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(SpectA)(Iso).
 
-Module DGF := DGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(Iso)(MapWL)(Mraw)(M).
-Module CGF := CGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(Iso)(MapWL)(Mraw)(M).
 
 
 (** Conversion from Discrete to Continuous settings. *)
@@ -91,14 +89,14 @@ Proof. intros [? []] [? []] [? []]. simpl in *. now repeat split; simpl; apply L
 Instance ConfigC2D_compat : Proper (CGF.Config.eq ==> DGF.Config.eq) ConfigC2D.
 Proof. intros ? ? Hcd id. specialize (Hcd id). unfold ConfigC2D. now rewrite Hcd. Qed.
 
-Lemma DGF_CGF_DGF_Config : forall confA: DGF.Config.t,  DGF.Config.eq confA
-                                                                     (ConfigC2D (ConfigD2C confA)).
+Lemma DGF_CGF_DGF_Config : forall confA: DGF.Config.t,
+  DGF.Config.eq confA (ConfigC2D (ConfigD2C confA)).
 Proof.
 intros confA id. unfold ConfigC2D, ConfigD2C. now repeat try (split; simpl).
 Qed.
 
 Lemma Mraw_equiv : DGF.Spect.t = CGF.Spect.t.
-Proof. now unfold DGF.Spect.t, CGF.Spect.t. Qed.
+Proof. reflexivity. Qed.
 
 (*
 Lemma CGFS_DGF_CGFS_Config : forall SconfD : CGF.Config.t, 
@@ -195,31 +193,32 @@ Proof.
 intros rcA1 rcA2 HrcA. unfold rcD2C. repeat try (split;simpl); apply HrcA.
 Qed.
 
+Definition daC2D_step daD cD id rcA :=
+  if DGF.Config.eq_RobotConf_dec rcA (rcC2D (cD id))
+  then match (CGF.step daD) id (cD id) with
+         | CGF.Active sim => DGF.Active sim
+         | CGF.Moving dist => 
+             match (CGF.Config.loc (cD id)) with
+               | CGF.Loc _ =>
+                   match (Graph.find_edge (DGF.Info.source (DGF.Config.info rcA))
+                                          (DGF.Info.target (DGF.Config.info rcA))) with
+                     | Some e =>
+                         if Rle_dec (dist) (Graph.threshold e) then DGF.Moving false else DGF.Moving true
+                     | None => DGF.Moving false
+                   end
+               | CGF.Mvt e p => if Rle_dec (CGF.project_p p) (Graph.threshold e) then 
+                                if Rle_dec (dist + (CGF.project_p p)) (Graph.threshold e) 
+                                then DGF.Moving false else DGF.Moving true
+                                else DGF.Moving false
+             end
+       end
+  else DGF.Moving false.
 
-Definition daC2D (daD : CGF.demonic_action) (cD : CGF.Config.t): DGF.demonic_action.
-refine {|
-  DGF.relocate_byz := fun b => RobotConfC2D (CGF.relocate_byz daD b);
-  DGF.step := fun id rcA => if DGF.Config.eq_RobotConf_dec rcA (rcC2D (cD id)) then
-     match (CGF.step daD) id (cD id) with
-      | CGF.Active sim => DGF.Active sim
-      | CGF.Moving dist => 
-        match (CGF.Config.loc (cD id)) with
-          | CGF.Loc _ =>
-            match (Graph.find_edge (DGF.Info.source (DGF.Config.info rcA))
-                             (DGF.Info.target (DGF.Config.info rcA))) with
-             | Some e =>
-                if Rle_dec (dist) (Graph.threshold e) then DGF.Moving false else DGF.Moving true
-             | None => DGF.Moving false
-            end
-          | CGF.Mvt e p => if Rle_dec (CGF.project_p p) (Graph.threshold e) then 
-                              if Rle_dec (dist + (CGF.project_p p)) (Graph.threshold e) 
-                              then DGF.Moving false else DGF.Moving true
-                           else DGF.Moving false
-        end
-      end
-      else DGF.Moving false |}.
+Lemma daC2D_step_delta : forall daD cD g Rconfig sim,
+  DGF.Aom_eq (daC2D_step daD cD (Good g) Rconfig) (DGF.Active sim) ->
+  DGF.Location.eq Rconfig (DGF.Info.target (DGF.Config.info Rconfig)).
 Proof.
-  + intros g rcA sim HrcD. unfold DGF.Aom_eq in *.
+intros daD cD g rcA sim HrcD. unfold DGF.Aom_eq, daC2D_step in *.
     destruct (DGF.Config.eq_RobotConf_dec rcA (rcC2D (cD (Good g))));
       try easy.
     destruct e as (Hl, (Hs, Ht)).
@@ -308,7 +307,11 @@ Proof.
       rewrite Hl, Ht;
       try assumption;
       now destruct H.
-  + intros id1 id2 Hid rcA1 rcA2 HrcA. unfold DGF.Aom_eq. 
+Qed.
+
+Lemma daC2D_step_compat daD cD : Proper (eq ==> DGF.Config.eq_RobotConf ==> DGF.Aom_eq) (daC2D_step daD cD).
+Proof.
+intros id1 id2 Hid rcA1 rcA2 HrcA. unfold DGF.Aom_eq, daC2D_step.
     assert (Graph.Veq (DGF.Info.source (DGF.Config.info rcA1))
                       (DGF.Info.source (DGF.Config.info rcA2))) by apply HrcA.
     assert (Graph.Veq (DGF.Info.target (DGF.Config.info rcA1))
@@ -413,133 +416,125 @@ Proof.
     assert (e' := e1); rewrite HrcD in *; rewrite HrcA in e'; contradiction.
     assert (e' := e1); rewrite <- HrcD in *; rewrite <- HrcA in e'; contradiction.
     assert (e' := e1); rewrite <- HrcD in *; rewrite <- HrcA in e'; contradiction.
+Qed.
+
+Definition daC2D (daD : CGF.demonic_action) (cD : CGF.Config.t): DGF.demonic_action.
+refine {| DGF.relocate_byz := fun b => RobotConfC2D (CGF.relocate_byz daD b);
+          DGF.step := daC2D_step daD cD |}.
+Proof.
++ apply daC2D_step_delta.
++ apply daC2D_step_compat.
 Defined.
 
 Instance daC2D_compat : Proper (CGF.da_eq ==> CGF.Config.eq ==> DGF.da_eq) daC2D.
 Proof.
 intros dad1 dad2 HdaD cD1 cD2 HrcD'.
-unfold daC2D, DGF.da_eq in *;
+unfold daC2D, daC2D_step, DGF.da_eq in *;
 simpl.
 split.
-intros id confA.  assert (HrcD := HrcD' id).
-assert (HrcC2D_eq : DGF.Config.eq_RobotConf (rcC2D (cD1 id)) (rcC2D (cD2 id))).
-apply rcC2D_compat, HrcD.
-assert (Hda_cD := CGF.step_da_compat HdaD (reflexivity id) HrcD).
-unfold CGF.Aom_eq in Hda_cD.
-destruct HdaD as (HdaD_G, _).
-specialize (HdaD_G id (rcD2C confA)).
-destruct (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD1 id))) eqn : HrcD1,
-         (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD2 id))) eqn : HrcD2;
-destruct (CGF.step dad1 id (cD1 id)),
-         (CGF.step dad2 id (cD2 id));
-destruct (CGF.Config.loc (cD1 id)) eqn : Hc1, (CGF.Config.loc (cD2 id)) eqn : Hc2;
-destruct (Graph.find_edge (DGF.Info.source (DGF.Config.info confA))
-      (DGF.Info.target (DGF.Config.info confA))); try rewrite Hda_cD;
-unfold CGF.loc_eq in *;
-try (destruct HrcD as (Hl,_); now rewrite Hc1, Hc2 in Hl).
-destruct (Rle_dec dist0 (Graph.threshold e1)); now unfold DGF.Aom_eq.
-destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
-destruct Hl as (He, Hp).
-assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
-rewrite Hth, Hp.
-destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)); try (
-destruct (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2)); now unfold DGF.Aom_eq).
-destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
-destruct Hl as (He, Hp).
-assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
-rewrite Hth, Hp.
-destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)); try (
-destruct (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2)); now unfold DGF.Aom_eq).
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
-destruct HdaD as (_,Hb). intros b. apply RobotConfC2D_compat, Hb.
++ intros id confA.  assert (HrcD := HrcD' id).
+  assert (HrcC2D_eq : DGF.Config.eq_RobotConf (rcC2D (cD1 id)) (rcC2D (cD2 id))).
+  { apply rcC2D_compat, HrcD. }
+  assert (Hda_cD := CGF.step_da_compat HdaD (reflexivity id) HrcD).
+  unfold CGF.Aom_eq in Hda_cD.
+  destruct HdaD as (HdaD_G, _).
+  specialize (HdaD_G id (rcD2C confA)).
+  destruct (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD1 id))) eqn : HrcD1,
+           (DGF.Config.eq_RobotConf_dec confA (rcC2D (cD2 id))) eqn : HrcD2;
+  destruct (CGF.step dad1 id (cD1 id)),
+           (CGF.step dad2 id (cD2 id));
+  destruct (CGF.Config.loc (cD1 id)) eqn : Hc1, (CGF.Config.loc (cD2 id)) eqn : Hc2;
+  destruct (Graph.find_edge (DGF.Info.source (DGF.Config.info confA))
+        (DGF.Info.target (DGF.Config.info confA))); try rewrite Hda_cD;
+  unfold CGF.loc_eq in *;
+  try (destruct HrcD as (Hl,_); now rewrite Hc1, Hc2 in Hl).
+  - destruct (Rle_dec dist0 (Graph.threshold e1)); unfold DGF.Aom_eq.
+    destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
+    destruct Hl as (He, Hp).
+    assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
+    rewrite Hth, Hp.
+    destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)); try (
+    destruct (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2)); now unfold DGF.Aom_eq).
+    destruct HrcD as (Hl,_); rewrite Hc1, Hc2 in Hl;
+    destruct Hl as (He, Hp).
+    assert (Hth : (Graph.threshold e1) = (Graph.threshold e2)) by apply Graph.threshold_compat, He.
+    rewrite Hth, Hp.
+    destruct (Rle_dec (CGF.project_p p0) (Graph.threshold e2)),
+             (Rle_dec (dist0 + CGF.project_p p0) (Graph.threshold e2));
+    now unfold DGF.Aom_eq.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
+  - assert (e' := e); rewrite <- HrcC2D_eq in e'; contradiction.
++ destruct HdaD as (_,Hb). intros b. apply RobotConfC2D_compat, Hb.
 Qed.
 
 
-(* TODO : trouver une définition vrai, ou rajouter des axioms car la sinon c'est pas vrai.*)
-Definition daD2C (daA : DGF.demonic_action) (cA : DGF.Config.t) : CGF.demonic_action.
-refine {| 
-  CGF.relocate_byz := fun b => RobotConfD2C (DGF.relocate_byz daA b);
-  CGF.step := fun id rcD =>
-                if CGF.Config.eq_RobotConf_dec rcD (rcD2C (cA id)) then
-              match ((DGF.step daA) id (cA id)) with
-                | DGF.Active sim =>  (* if CGF.Location.eq_dec (CGF.Config.loc rcD)
-                                                    (CGF.Info.target (CGF.Config.info rcD))
-                                     then *) CGF.Active sim
-                                     (* else CGF.Moving 1%R *)
-                | DGF.Moving b => if b then CGF.Moving 1%R else CGF.Moving 0%R
-              end
-              else CGF.Moving 0%R
-  (* CGF.step_delta := forall id rcD sim, *) |}.
+Definition daD2C_step daA (cA : ConfigA.t) id :=
+  match DGF.step daA id (cA id) with
+    | DGF.Active sim => CGF.Active sim
+    | DGF.Moving b => if b then CGF.Moving 1%R else CGF.Moving 0%R
+  end.
+
+Lemma daD2C_step_delta : forall daA cA g sim Rconfig,
+    CGF.Config.eq_RobotConf Rconfig (rcD2C (cA (Good g))) ->
+  CGF.Aom_eq (daD2C_step daA cA (Good g)) (CGF.Active sim) ->
+  (∃ l : Graph.V, CGF.Location.eq Rconfig (CGF.Loc l))
+  ∧ CGF.Location.eq Rconfig (CGF.Info.target (CGF.Config.info Rconfig)).
 Proof.
-+ intros g rcD sim HrcA .
-destruct (DGF.step daA (Good g) (cA (Good g))) eqn : HstepA, 
-(CGF.Config.eq_RobotConf_dec rcD (rcD2C (cA (Good g)))) eqn : HrcD; unfold rcC2D, LocC2D in *; simpl in *.
- - assert (e' := e); destruct e' as (Hl, (Hs, Ht)); unfold CGF.loc_eq in *; simpl in *.
-   destruct (CGF.Config.loc rcD), ( CGF.Info.source (CGF.Config.info rcD)),
-            ( CGF.Info.target (CGF.Config.info rcD)); try (now exfalso).
-   destruct dist; now exfalso.
- - now exfalso.
- - assert (e' := e); destruct e' as (Hl, (Hs, Ht)); unfold CGF.loc_eq in *; simpl in *.
-   destruct (CGF.Config.loc rcD), ( CGF.Info.source (CGF.Config.info rcD)),
-            ( CGF.Info.target (CGF.Config.info rcD)); try (now exfalso).
-   assert (HstepA' : DGF.Aom_eq
+intros daA cA g sim rcD HrcA Hstep. unfold daD2C_step in *.
+destruct (DGF.step daA (Good g) (cA (Good g))) eqn : HstepA; unfold rcC2D, LocC2D in *; simpl in *.
+ - destruct dist; now exfalso.
+ - assert (HstepA' : DGF.Aom_eq
                        (DGF.step daA (Good g) (cA (Good g))) (DGF.Active sim0))
           by now rewrite HstepA.
    apply (DGF.step_delta daA) in HstepA'.
+   unfold rcD2C in *.
+   destruct HrcA as (Hrl, (Hrs, Hrt)).
+   simpl in *.
    unfold CGF.Location.eq, CGF.loc_eq, DGF.Location.eq, rcC2D in *; simpl in *.
-   split ; try (exists l1); now rewrite Ht, Hl.
- - now exfalso.
-+ intros id1 id2 Hid rcD1 rcD2 HrcD. unfold CGF.Aom_eq.
-  assert (HcA : DGF.Config.eq_RobotConf (cA id1) (cA id2)) by now rewrite Hid.
-  assert(Hs1_eq := DGF.step_compat daA id1 id2 Hid (cA id1) (cA id2) (HcA)).
-  destruct (DGF.step daA id1 (cA id1)) eqn : Hstep1,
-  (DGF.step daA id2 (cA id2)) eqn:Hstep2;
-  destruct (CGF.Config.eq_RobotConf_dec rcD1 (rcD2C (cA id1))),
-           (CGF.Config.eq_RobotConf_dec rcD2 (rcD2C (cA id2))); auto.
-  destruct dist, dist0; auto. unfold DGF.Aom_eq in *. discriminate.
-  unfold DGF.Aom_eq in *. discriminate.
-  rewrite e in HrcD. rewrite HcA in HrcD. symmetry in HrcD. contradiction.
-  rewrite e in HrcD. rewrite <- HcA in HrcD. contradiction.
-  destruct dist; now unfold DGF.Aom_eq in *.
-  destruct dist; now unfold DGF.Aom_eq.
-  destruct dist; now unfold DGF.Aom_eq.
-  destruct dist; now unfold DGF.Aom_eq.
-  rewrite e in HrcD. rewrite HcA in HrcD. symmetry in HrcD. contradiction.
-  rewrite e in HrcD. rewrite <- HcA in HrcD. contradiction.
-+ intros id confD r. destruct (DGF.step daA id (cA id));
-  destruct (CGF.Config.eq_RobotConf_dec confD (rcD2C (cA id))).
-  destruct dist; intros Hm. assert (Heqm : CGF.Aom_eq (CGF.Moving 1) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  destruct dist; intros Hm. assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
-  destruct (CGF.Location.eq_dec (CGF.Config.loc confD)
-                                (CGF.Info.target (CGF.Config.info confD)));
-  intros Hm; now simpl in *. 
-  intros Hm; assert (Heqm : CGF.Aom_eq (CGF.Moving 0) (CGF.Moving r)).
-  now rewrite Hm. unfold CGF.Aom_eq in *. rewrite <- Heqm. lra.
+   destruct (CGF.Config.loc rcD) eqn : Hlr,
+            (CGF.Info.target (CGF.Config.info rcD)) eqn : Htr;
+     simpl in *; try easy.
+   split ; try (exists l0); try now rewrite Hrt, Hrl.
+Qed.
+
+Lemma daD2C_step_compat daA cA : Proper (eq ==> CGF.Aom_eq) (daD2C_step daA cA).
+Proof. repeat intro. now subst. Qed.
+
+Lemma daD2C_step_flexibility : forall daA cA id r,
+  CGF.Aom_eq (daD2C_step daA cA id) (CGF.Moving r) -> (0 <= r <= 1)%R.
+Proof.
+intros daA cA id r. unfold daD2C_step.
+destruct (DGF.step daA id (cA id)); simpl.
++ destruct dist; intros Hm; unfold CGF.Aom_eq in *; subst; lra.
++ intuition.
+Qed.
+
+(* TODO : trouver une définition vrai, ou rajouter des axioms car la sinon c'est pas vrai.*)
+Definition daD2C (daA : DGF.demonic_action) (cA : DGF.Config.t) : CGF.demonic_action.
+refine {| CGF.relocate_byz := fun b => RobotConfD2C (DGF.relocate_byz daA b);
+          CGF.step := fun id _ => daD2C_step daA cA id |}.
+Proof.
++ apply daD2C_step_delta.
++ apply daD2C_step_compat.
++ apply daD2C_step_flexibility.
 Defined.
 
 Instance daD2C_compat : Proper (DGF.da_eq ==> DGF.Config.eq ==> CGF.da_eq) daD2C.
 Proof.
 intros daA1 daA2 HdaA cA1 cA2 HrcA.
-unfold daD2C; split; simpl.
+unfold daD2C, daD2C_step; split; simpl.
 + intros id rc. destruct HdaA as (HdaA_G,_).
   specialize (HdaA_G id (cA1 id)).
   assert (Hda' : DGF.Aom_eq (DGF.step daA2 id (cA1 id)) (DGF.step daA2 id (cA2 id))).
@@ -562,13 +557,87 @@ unfold daD2C; split; simpl.
   auto.
 Qed.
 
-(* 
-CoFixpoint demonC2D (demonD : CGF.demon) : DGF.demon :=
-  DGF.NextDemon (daC2D (CGF.demon_head demonD)) (demonC2D demonD).
 
-CoFixpoint demonD2C (demonA : DGF.demon) : CGF.demon :=
-  CGF.NextDemon (daD2C (DGF.demon_head demonA)) (demonD2C demonA).
- *)
+Lemma daD2C2D : forall (d: DGF.demonic_action) c,
+    CGF.group_good_def (ConfigD2C c) ->
+    DGF.da_eq d (daC2D (daD2C d c) (ConfigD2C c)).
+Proof.
+  intros d c Hc. unfold daC2D. unfold daD2C. simpl. unfold DGF.da_eq.
+  simpl in *.
+  unfold daD2C_step, daC2D_step.
+  simpl.
+  split.
+  - intros.
+    destruct ( DGF.Config.eq_RobotConf_dec config (rcC2D (ConfigD2C c id))).
+    Show 2.
+    + unfold rcC2D, ConfigD2C in e.
+      simpl in *.
+      unfold daD2C_step, ConfigC2D.
+      destruct ( CGF.Config.eq_RobotConf_dec (ConfigD2C c id) (rcD2C (c id))).
+      * simpl in *.
+        destruct (DGF.step d id (c id)) eqn : Hstep1; try destruct  dist.
+        -- unfold DGF.Aom_eq.
+           assert (Hstep_compat := DGF.step_compat d _ _ (reflexivity id) _ _ e).
+           destruct (c id), info.
+           simpl in *.
+           rewrite Hstep1 in Hstep_compat.
+           destruct ( DGF.step d id config); try easy.
+           destruct ( Graph.find_edge (DGF.Info.source (DGF.Config.info config))
+                                      (DGF.Info.target (DGF.Config.info config)))
+                    eqn : Hedge; try easy.
+           unfold DGF.Aom_eq in Hstep_compat.
+           destruct (Rle_dec 1 (Graph.threshold e1)).
+           generalize (Graph.threshold_pos e1).
+           intros.
+           lra.
+           assumption.
+           destruct id.
+           destruct (Hc g) as (Hri,(Ha, (Hb, He))). 
+           specialize (He source target).
+           destruct He; try unfold ConfigD2C, RobotConfD2C; simpl;
+           unfold rcD2C, ConfigD2C, RobotConfD2C in e0;
+           repeat destruct e0 as (?, e0);
+           try easy.
+           simpl in *.
+           repeat destruct e as (?, e).
+           simpl in *.
+           assert (Hg := Graph.find_edge_compat _ _ H3 _ _ e).
+           now rewrite Hedge, H in Hg.
+           admit.
+        (* comment faire pour dire qu'on ne puisse pas apply step avec un [b] *)
+        -- destruct (Graph.find_edge (DGF.Info.source (DGF.Config.info config))
+                                     (DGF.Info.target (DGF.Config.info config)))
+                    eqn : Hedge;
+             assert (Hstep_compat := DGF.step_compat d _ _ (reflexivity id) _ _ e);
+             destruct (c id), info;
+             simpl in *. 
+           ++ destruct (Rle_dec 0 (Graph.threshold e1)).
+              simpl in *.
+              now rewrite Hstep1 in Hstep_compat.
+              generalize (Graph.threshold_pos e1).
+              lra.
+           ++ now rewrite Hstep1 in *. 
+        -- assert (Hstep_compat := DGF.step_compat d _ _ (reflexivity id) _ _ e);
+             destruct (c id), info;
+             simpl in *.
+           now rewrite Hstep1 in *.
+      * destruct n; unfold rcD2C, ConfigD2C, RobotConfD2C; now simpl in *. 
+    + admit.
+  - intros.
+    simpl in *.
+    unfold RobotConfD2C, RobotConfC2D.
+    simpl in *.
+    now repeat split.    
+Abort.
+
+CoFixpoint demonC2D (demonC : CGF.demon) (e : CGF.execution) : DGF.demon :=
+  Stream.cons (daC2D (Stream.hd demonC) (Stream.hd e))
+              ((demonC2D (Stream.tl demonC) (Stream.tl e))).
+
+CoFixpoint demonD2C (demonD : DGF.demon) (e : DGF.execution) : CGF.demon :=
+  Stream.cons (daD2C (Stream.hd demonD) (Stream.hd e))
+              (demonD2C (Stream.tl demonD) (Stream.tl e)).
+
 (* Instance demonC2D_compat : Proper (CGF.Deq  *)
 
 (*Ensuite, pour montrer l'équivalence, on écrit des fonctions de
@@ -584,7 +653,7 @@ Theorem graph_equivD2C : forall (c c': DGF.Config.t) (rbg:DGF.robogram) (da:DGF.
 DGF.Config.eq c' (DGF.round rbg da c) ->
 exists da', CGF.Config.eq (ConfigD2C c') (CGF.round (rbgD2C rbg) da' (ConfigD2C c)).
 Proof.
-(*
+
 intros c c' rbg da HDGF.
 exists (daD2C da c). intros id.
 assert ( HeqDd : CGF.Config.eq_RobotConf
@@ -633,7 +702,7 @@ assert (HstepA_compat := DGF.step_compat da id id (reflexivity id)
               Heq_rcA);
 destruct (DGF.step da id (c id)) eqn : HstepA,
          (CGF.step (daD2C da c) id (ConfigD2C c id)) eqn:HstepD; unfold ConfigD2C in HstepD;
-  simpl in *; unfold rcC2D in HstepD; simpl in *;
+  simpl in *; unfold daD2C_step, RobotConfD2C in HstepD; simpl in *;
          destruct (DGF.step da id
              {|
              DGF.Config.loc := DGF.Config.loc (c id);
@@ -677,7 +746,7 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
   destruct (Rdec dist0 0).
     * destruct dist; simpl in *; destruct dist1; try auto; try discriminate.
       rewrite e0 in *.
-      simpl in HstepD.
+      unfold daD2C_step in HstepD. simpl in HstepD.
       assert (Hfalse : CGF.Aom_eq (CGF.Moving 1) (CGF.Moving 0)) by now rewrite HstepD.
       unfold CGF.Aom_eq in *. lra.
     * destruct (Rdec dist0 1).
@@ -703,22 +772,18 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
  - destruct dist; simpl in *; discriminate.
  - simpl in *.
    destruct (CGF.Location.eq_dec
-           (CGF.Loc
-              (Isomorphism.retraction (Iso.sim_V sim0)
-                 (DGF.pgm rbg
-                    (CGF.Spect.from_config
-                       (CGF.Config.map (CGF.apply_sim sim0) (ConfigD2C c)))
-                    (Isomorphism.section (Iso.sim_V sim0)
-                       (DGF.Config.loc (c (Good g)))))))
-           (CGF.Loc (DGF.Config.loc (c (Good g)))));
+          (CGF.Loc
+             (Isomorphism.retraction sim0
+                (rbg
+                   (CGF.Spect.from_config
+                      (CGF.Config.map (CGF.apply_sim sim0) (ConfigD2C c)))
+                   (sim0 (c (Good g)))))) (CGF.Loc (c (Good g))));
    destruct (DGF.Location.eq_dec
-                      (Isomorphism.retraction (Iso.sim_V sim)
-                         (DGF.pgm rbg
+                      (Isomorphism.retraction sim
+                         (rbg
                             (DGF.Spect.from_config
                                (DGF.Config.map (DGF.apply_sim sim) c))
-                            (Isomorphism.section (Iso.sim_V sim)
-                                                 (DGF.Config.loc (c (Good g))))))
-                      (DGF.Config.loc (c (Good g))));
+                            (sim (c (Good g))))) (c (Good g)));
    simpl in *; try assumption.
  - simpl in *. assumption.
  - destruct (Graph.Veq_dec (DGF.Info.target (DGF.Config.info (c (Good g))))
@@ -735,24 +800,19 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
  - destruct dist; assumption.
  - destruct dist; discriminate.
  - destruct dist; discriminate.
- - destruct ( CGF.Location.eq_dec
-           (CGF.Loc
-              (Isomorphism.retraction (Iso.sim_V sim0)
-                 (DGF.pgm rbg
-                    (CGF.Spect.from_config
-                       (CGF.Config.map (CGF.apply_sim sim0) (ConfigD2C c)))
-                    (Isomorphism.section (Iso.sim_V sim0)
-                       (DGF.Config.loc (c (Good g)))))))
-           (CGF.Loc (DGF.Config.loc (c (Good g)))));
+ - destruct (CGF.Location.eq_dec
+             (CGF.Loc
+                (Isomorphism.retraction sim0
+                   (rbg
+                      (CGF.Spect.from_config
+                         (CGF.Config.map (CGF.apply_sim sim0) (ConfigD2C c)))
+                      (sim0 (c (Good g)))))) (CGF.Loc (c (Good g))));
    destruct (DGF.Location.eq_dec
-               (Isomorphism.retraction
-                  (Iso.sim_V sim)
-                  (DGF.pgm rbg
-                           (DGF.Spect.from_config
-                              (DGF.Config.map (DGF.apply_sim sim) c))
-                           (Isomorphism.section (Iso.sim_V sim)
-                                                (DGF.Config.loc (c (Good g))))))
-               (DGF.Config.loc (c (Good g))));
+                      (Isomorphism.retraction sim
+                         (rbg
+                            (DGF.Spect.from_config
+                               (DGF.Config.map (DGF.apply_sim sim) c))
+                            (sim (c (Good g))))) (c (Good g)));
    simpl in *; try assumption.
    * destruct n.
      rewrite <- e0.
@@ -827,24 +887,19 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
  - destruct dist; simpl in *; discriminate.
  - destruct dist; simpl in *; discriminate.
  -
-   destruct ( CGF.Location.eq_dec
-           (CGF.Loc
-              (Isomorphism.retraction (Iso.sim_V sim0)
-                 (DGF.pgm rbg
-                    (CGF.Spect.from_config
-                       (CGF.Config.map (CGF.apply_sim sim0) (ConfigD2C c)))
-                    (Isomorphism.section (Iso.sim_V sim0)
-                       (DGF.Config.loc (c (Good g)))))))
-           (CGF.Loc (DGF.Config.loc (c (Good g)))));
-   destruct (DGF.Location.eq_dec 
-               (Isomorphism.retraction
-                  (Iso.sim_V sim)
-                  (DGF.pgm rbg
-                           (DGF.Spect.from_config
-                              (DGF.Config.map (DGF.apply_sim sim) c))
-                           (Isomorphism.section (Iso.sim_V sim)
-                                                (DGF.Config.loc (c (Good g))))))
-               (DGF.Config.loc (c (Good g))));
+   destruct (CGF.Location.eq_dec
+             (CGF.Loc
+                (Isomorphism.retraction sim0
+                   (rbg
+                      (CGF.Spect.from_config
+                         (CGF.Config.map (CGF.apply_sim sim0) (ConfigD2C c)))
+                      (sim0 (c (Good g)))))) (CGF.Loc (c (Good g))));
+   destruct ( DGF.Location.eq_dec
+                       (Isomorphism.retraction sim
+                          (rbg
+                             (DGF.Spect.from_config
+                                (DGF.Config.map (DGF.apply_sim sim) c))
+                             (sim (c (Good g))))) (c (Good g)));
    simpl in *; try assumption.
    * destruct n.
      rewrite <- e0.
@@ -948,15 +1003,12 @@ destruct id as [g|b]; try (now exfalso); simpl in *; rewrite HstepA in *; try di
      f_equiv.
      apply HIso_eq.
  - simpl in *; assumption.
-*)
-Admitted.
-
+Qed.
 Theorem graph_equivC2D : forall (c c': CGF.Config.t) (rbg:CGF.robogram) (da : CGF.demonic_action),
 (CGF.group_good_def c) ->
 CGF.Config.eq c' (CGF.round rbg da c) ->
 exists da', DGF.Config.eq (ConfigC2D c') (DGF.round (rbgC2D rbg) da' (ConfigC2D c)).
 Proof.
-(*
 intros c c' rbg da Hri HCGF. exists (daC2D da c). intro id.
 assert (Heq_rcD: CGF.Config.eq_RobotConf (c id) ({|
              CGF.Config.loc := CGF.Config.loc (c id);
@@ -984,7 +1036,7 @@ unfold CGF.loc_eq in *;
 destruct (CGF.step da id (c id)) eqn : HstepD,
 (DGF.step (daC2D da c) id (ConfigC2D c id)) eqn : HstepA, id as [g|b]; try (now exfalso);
 unfold daC2D in *; simpl in *;
-unfold rcD2C(* , ConfigC2D, LocC2D *) in *;
+unfold RobotConfC2D, daC2D_step(* , ConfigC2D, LocC2D *) in *;
 repeat try (split; simpl);
 try (destruct (Hri g) as (Hrid, (Hli, (Hmi, Hex_e)));
   unfold CGF.ri_loc_def in *;
@@ -1022,7 +1074,8 @@ try (now (try (now simpl in * );
   destruct (DGF.Config.eq_RobotConf_dec _);
   try discriminate;
   destruct n; unfold rcC2D, LocC2D; rewrite HlocD, HtgtD, HsrcD; repeat try split; try now simpl)).
-+ unfold ConfigC2D, LocC2D in *; simpl in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; simpl in *;
+    rewrite HlocD, HsrcD, HtgtD in *;
   destruct (CGF.Config.loc (c (Good g))) eqn : Habsurd;
     rewrite HlocD in Habsurd; try discriminate.
   destruct dist1 eqn : Hbool.
@@ -1042,7 +1095,7 @@ try (now (try (now simpl in * );
              {|
              DGF.Config.loc := lld;
              DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g)))); try discriminate;
+              (rcC2D (c (Good g)))); try discriminate;
     try (destruct (Graph.Veq_dec ltd lld);
         try (destruct (Rdec dist0 0));
         try (destruct (Rdec dist0 1));
@@ -1057,54 +1110,29 @@ try (now (try (now simpl in * );
       ** destruct (Rle_dec (dist0) (Graph.threshold e1)); try discriminate; simpl in *.
          rewrite <- HstepD_compat in *.
          intuition.
-         destruct (DGF.Config.eq_RobotConf_dec
-               {|
-               DGF.Config.loc := l;
-               DGF.Config.info := {|
-                                        DGF.Info.source := lsd;
-                                        DGF.Info.target := ltd |} |}
-               (rcC2D (c (Good g)))); try contradiction; try discriminate.
          assert (Hfalse := Graph.threshold_pos e1). lra.
-      ** destruct (DGF.Config.eq_RobotConf_dec
-               {|
-               DGF.Config.loc := l;
-               DGF.Config.info := {|
-                                        DGF.Info.source := lsd;
-                                        DGF.Info.target := ltd |} |}); discriminate.
+      ** discriminate.
       ** destruct (Rdec dist0 1); simpl in *; try assumption;
          destruct (Graph.Veq_dec lld ltd)
                   eqn : Heql,
                         (Graph.Veq_dec ltd lld);
            try (try destruct n0; try destruct n1;easy).
-    * unfold rcC2D, LocC2D in *; simpl in *.
-      rewrite HtgtD, Habsurd, HsrcD in *.
-      now destruct n.
     * destruct (Graph.Veq_dec ltd lld).
       rewrite Habsurd in *.
       now rewrite v.
       destruct (Rdec dist0 0) eqn : Hdist.
       try now rewrite Habsurd, HsrcD, HtgtD in *.
       destruct (Rdec dist0 1); simpl in *; try now rewrite HtgtD in *.
-    * unfold rcC2D, LocC2D in *; simpl in *.
-      rewrite HtgtD, Habsurd, HsrcD in *.
-      now destruct n.
     * destruct (Graph.Veq_dec ltd lld);
         try (destruct (Rdec dist0 0));
         try (destruct (Rdec dist0 1));
         simpl in *; try rewrite Habsurd in *; try easy.
       destruct (Rle_dec (CGF.project_p pld') (Graph.threshold eld'));
         rewrite HsrcD, HtgtD in *; simpl in *.
-      destruct ( DGF.Config.eq_RobotConf_dec
-               {|
-               DGF.Config.loc := l;
-               DGF.Config.info := {|
-                                        DGF.Info.source := lsd;
-                                        DGF.Info.target := ltd |} |}
-               (rcC2D (c (Good g))));try contradiction; try discriminate.
       specialize (Hex_e lsd ltd (reflexivity lsd) (reflexivity ltd)).
       destruct Hex_e as (e_st, He_st).
       destruct (Graph.find_edge lsd ltd) eqn : Hfe; try discriminate.
-      destruct (Rle_dec dist0 (Graph.threshold e1)); try discriminate.
+      destruct (Rle_dec dist0 (Graph.threshold e0)); try discriminate.
       destruct (Graph.find_edge lld ltd)eqn : HedgeA;
         simpl in *; try rewrite HedgeA in Hloc.
       simpl in *.
@@ -1120,7 +1148,7 @@ try (now (try (now simpl in * );
       rewrite Hfe, HedgeA in H.
       simpl in H.
       rewrite <- Heeq in H.
-      assert (Hfalse := Graph.threshold_compat eld' e1 H).
+      assert (Hfalse := Graph.threshold_compat eld' e0 H).
       now rewrite Hfalse in r.
       assert (HstepD_aux : CGF.Aom_eq (CGF.step da (Good g) (c (Good g)))
                                       (CGF.Moving dist0))
@@ -1151,18 +1179,11 @@ try (now (try (now simpl in * );
       rewrite HedgeA in Hex_e.
       contradiction.
       now destruct n.
-    * unfold rcC2D, LocC2D in *; simpl in *.
-      rewrite HtgtD, Habsurd, HsrcD in *.
-      now destruct n.
     * destruct (Graph.Veq_dec ltd lld);
         try (destruct (Rdec dist0 0));
         try (destruct (Rdec dist0 1));
         simpl in *; try rewrite HtgtD in *; try easy.
-    * destruct (Graph.Veq_dec ltd lld);
-        try (destruct (Rdec dist0 0));
-        try (destruct (Rdec dist0 1));
-        simpl in *; try rewrite HtgtD in *; try easy.
-  - simpl in *. rewrite HsrcD, HtgtD in *.
+  - simpl in *. 
     destruct (CGF.Config.loc (c' (Good g))) as [lld' | eld' pld' ] eqn : HlocD';
     destruct (CGF.Info.target (CGF.Config.info (c' (Good g)))) as [ltd' | etd' pdt'] eqn : HtgtD';
     destruct (CGF.Info.source (CGF.Config.info (c' (Good g)))) as [lsd' | esd' psd'] eqn : HsrcD';
@@ -1176,10 +1197,12 @@ try (now (try (now simpl in * );
     try rewrite Habsurd in * ; try rewrite HsrcD in *; try rewrite HtgtD in * ))));
     simpl in *;
     try (destruct (DGF.Config.eq_RobotConf_dec
-             {|
-             DGF.Config.loc := l;
-             DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g)))) as [e_DGF | n_DGF];
+               {|
+               DGF.Config.loc := lld;
+               DGF.Config.info := {|
+                                  CGF.InfoA.source := lsd;
+                                  CGF.InfoA.target := ltd |} |} 
+               (rcC2D (c (Good g)))) as [e_DGF | n_DGF];
     try (destruct (Graph.find_edge lsd ltd) as [e_st| ]eqn : Hedge0;
     try (destruct (Rle_dec dist0 (Graph.threshold e_st));
     try (assert (Hfalse := Graph.threshold_pos e_st); lra);
@@ -1231,7 +1254,7 @@ try (now (try (now simpl in * );
     destruct (Hex_e lld ltd Hsi (reflexivity ltd)) as (e_ex, He_ex).
     rewrite Hedge in He_ex.
     contradiction.    
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD, HtgtD, HsrcD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD, HsrcD, HtgtD in *;
   destruct (Rle_dec 1 (CGF.project_p pld + dist0)) eqn : Hdp;
   simpl in *;
   assert (Hmi_aux : Graph.Eeq eld eld /\ pld = pld) by (split; reflexivity);
@@ -1257,16 +1280,17 @@ try (now (try (now simpl in * );
              {|
              DGF.Config.loc := Graph.src eld;
              DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g)))).
+              (rcC2D (c (Good g)))).
       destruct (Rle_dec (dist0 + CGF.project_p pld) (Graph.threshold eld)).
       assert (Hfalse := Graph.threshold_pos eld).
       lra.
       discriminate.
       destruct n.
-      unfold rcC2D, LocC2D; repeat (split; simpl in * ).
-      now rewrite HlocD, Hpt.
-      now rewrite HsrcD.
-      now rewrite HtgtD.
+      unfold rcC2D, LocC2D; repeat (split; simpl in * );
+        try rewrite HlocD;
+        try rewrite HsrcD;
+        try rewrite HtgtD;
+      try now  destruct (Rle_dec (CGF.project_p pld) (Graph.threshold eld)).
   * assumption.
   - destruct(Rle_dec (CGF.project_p pld') (Graph.threshold eld')).
     * destruct(Rdec dist0 0).
@@ -1274,8 +1298,10 @@ try (now (try (now simpl in * );
          -- destruct(
             DGF.Config.eq_RobotConf_dec
              {|
-             DGF.Config.loc := Graph.src eld;
-             DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
+               DGF.Config.loc := Graph.src eld;
+               DGF.Config.info := {|
+                                   DGF.Info.source := lsd;
+                                   DGF.Info.target := ltd |} |}
              (rcC2D (c (Good g)))).
             ++ destruct (Rle_dec (dist0 + CGF.project_p pld) (Graph.threshold eld)).
                discriminate.
@@ -1285,14 +1311,14 @@ try (now (try (now simpl in * );
              {|
              DGF.Config.loc := Graph.tgt eld;
              DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g))));
+  (rcC2D (c (Good g))));
             discriminate.
       ** destruct (Rle_dec (CGF.project_p pld) (Graph.threshold eld)).
          -- destruct(DGF.Config.eq_RobotConf_dec
              {|
              DGF.Config.loc := Graph.src eld;
              DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g)))).
+               (rcC2D (c (Good g)))).
             ++ destruct(Rle_dec (dist0 + CGF.project_p pld) (Graph.threshold eld)).
                discriminate.
                destruct Hloc as (Heeq, Hpeq).
@@ -1311,12 +1337,12 @@ try (now (try (now simpl in * );
              {|
              DGF.Config.loc := Graph.tgt eld;
              DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g))));
+              (rcC2D (c (Good g))));
             discriminate.
     * destruct(Rdec dist0 0);
-      destruct Hloc as (Heeq, Hpeq);
-      rewrite Heeq;
-      now symmetry.
+      try destruct Hloc as (Heeq, Hpeq);
+      try rewrite Heeq;
+      try now symmetry.
   - destruct (Rdec dist0 0);
     assert (Htr : Graph.threshold eld = Graph.threshold eld') by (now apply Graph.threshold_compat);
     destruct Hloc as (Heeq, Hpeq);
@@ -1338,16 +1364,18 @@ try (now (try (now simpl in * );
       -- destruct(DGF.Config.eq_RobotConf_dec
                     {|
                       DGF.Config.loc := Graph.src eld;
-             DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |}
-             (rcC2D (c (Good g)))).
+             DGF.Config.info := {| DGF.Info.source := lsd; DGF.Info.target := ltd |} |} (rcC2D (c (Good g)))).
          ++ destruct (Rle_dec (dist0 + CGF.project_p pld) (Graph.threshold eld')); try lra.
             discriminate.
          ++ destruct n2.
             unfold rcC2D, LocC2D;
-              repeat split;simpl in *.
-            ** now rewrite HlocD, Htr, Hpt'.
-            ** now rewrite HsrcD.
-            ** now rewrite HtgtD.
+              try rewrite HlocD;
+              try rewrite HsrcD;
+              try rewrite HtgtD.
+            try destruct (Rle_dec (CGF.project_p pld) (Graph.threshold eld)).
+            reflexivity.
+            rewrite Htr in n2.
+            now destruct n2.
       -- lra.
     * assert (Hfalse : (CGF.project_p pld < CGF.project_p pld + dist0)%R).
       assert (HstepD_aux : CGF.Aom_eq (CGF.step da (Good g) (c (Good g)))
@@ -1402,7 +1430,7 @@ try (now (try (now simpl in * );
   simpl in *;
   try (destruct (Rle_dec 1 (CGF.project_p pld + dist0)); simpl in *;
       rewrite HlocD, HsrcD, HtgtD in *; now simpl in * ); try now simpl in *.
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD in *.
   destruct dist1 eqn : Hbool;
   destruct (CGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
@@ -1411,7 +1439,7 @@ try (now (try (now simpl in * );
   destruct (CGF.Info.target (CGF.Config.info (c' (Byz b)))) as [ltd' | etd' ptd'] eqn : HtgtD';
   try (now exfalso);
   try now simpl in *.
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD in *.
   destruct dist1 eqn : Hbool;
   destruct (CGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
@@ -1425,7 +1453,7 @@ try (now (try (now simpl in * );
   rewrite Htt, Hlp;
   destruct (Rle_dec (CGF.project_p pld) (Graph.threshold eld'));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD in *.
   destruct dist1 eqn : Hbool;
   destruct (CGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
@@ -1439,7 +1467,7 @@ try (now (try (now simpl in * );
   rewrite Htt, Hsp;
   destruct (Rle_dec (CGF.project_p psd) (Graph.threshold esd'));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD in *.
   destruct dist1 eqn : Hbool;
   destruct (CGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
@@ -1453,7 +1481,7 @@ try (now (try (now simpl in * );
   rewrite Htt, Hsp;
   destruct (Rle_dec (CGF.project_p psd) (Graph.threshold esd'));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD in *.
   destruct dist1 eqn : Hbool;
   destruct (CGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
@@ -1467,7 +1495,7 @@ try (now (try (now simpl in * );
   rewrite Htt, Htp;
   destruct (Rle_dec (CGF.project_p ptd) (Graph.threshold etd'));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD in *.
++ unfold ConfigC2D, RobotConfC2D, LocC2D in *; rewrite HlocD in *.
   destruct dist1 eqn : Hbool;
   destruct (CGF.Config.loc (c' (Byz b))) as [lld' | eld' pld'] eqn : HlocD';
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lsd | esd psd] eqn : HsrcD;
@@ -1481,122 +1509,89 @@ try (now (try (now simpl in * );
   rewrite Htt, Htp;
   destruct (Rle_dec (CGF.project_p ptd) (Graph.threshold etd'));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
-+ unfold ConfigC2D, LocC2D in *; rewrite HlocD, HtgtD, HsrcD in *.
-  destruct (CGF.Location.eq_dec
-              (CGF.Loc
-                 match
-                   CGF.pgm rbg
-                           (CGF.Spect.from_config
-                              (CGF.Config.map (CGF.apply_sim sim0) c))
-                           (CGF.Loc (Isomorphism.section (Iso.sim_V sim0) lld))
-                 with
-                 | CGF.Loc l => Isomorphism.retraction (Iso.sim_V sim0) l
-                 | CGF.Mvt e _ => Graph.src e
-                 end) (CGF.Loc lld));
-  destruct (CGF.Config.loc (c' (Good g))) as [lgl' | egl' pgl'] eqn : HlocD';
-    destruct (CGF.Info.target (CGF.Config.info (c' (Good g)))) as [lgt' | egt' pgt'] eqn : HtgtD';
-    destruct (CGF.Info.source (CGF.Config.info (c' (Good g)))) as [lgs' | egs' pgs'] eqn : HsrcD';
-    try (simpl in *; now exfalso); simpl in *;
-      destruct dist; simpl in *;
-        destruct ( DGF.Config.eq_RobotConf_dec
-                     {|
-                       DGF.Config.loc := lld;
-                       DGF.Config.info := {|
-                                                 DGF.Info.source := lsd;
-                                                 DGF.Info.target := ltd |} |}
-                     (rcC2D (c (Good g)))); try discriminate;
-          try (rewrite HlocD in *;
-               assumption);
-          (try (now (rewrite HlocD in * ))).
-  destruct n0.
-  unfold rcC2D, LocC2D.
-  now rewrite HlocD, HsrcD, HtgtD.
-+ destruct dist;
-  destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
-    try discriminate.
++ unfold ConfigC2D, RobotConfC2D, rcC2D, LocC2D in *; rewrite HlocD, HsrcD, HtgtD in *.
+  destruct (DGF.Config.eq_RobotConf_dec
+               {|
+               DGF.Config.loc := lld;
+               DGF.Config.info := {|
+                                  CGF.InfoA.source := lsd;
+                                  CGF.InfoA.target := ltd |} |}
+               {|
+               DGF.Config.loc := lld;
+               DGF.Config.info := {|
+                                  CGF.InfoA.source := lsd;
+                                  CGF.InfoA.target := ltd |} |});
+  try (destruct (Graph.find_edge lsd ltd));
+  try destruct (Rle_dec dist0 (Graph.threshold e0));
+  try easy.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try destruct (Graph.find_edge
+                 (LocC2D (CGF.Info.source (CGF.Config.info (c (Good g)))))
+                 (LocC2D (CGF.Info.target (CGF.Config.info (c (Good g))))));
+        try destruct (Rle_dec dist0 (Graph.threshold e0));
+    try easy.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try destruct (Graph.find_edge
+                 (LocC2D (CGF.Info.source (CGF.Config.info (c (Good g)))))
+                 (LocC2D (CGF.Info.target (CGF.Config.info (c (Good g))))));
+        try destruct (Rle_dec dist0 (Graph.threshold e0));
+    try easy.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try easy.
   destruct n.
-  unfold rcC2D, ConfigC2D, LocC2D in *.
-  rewrite HlocD, HtgtD, HsrcD.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
-+ destruct dist,
-  (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
-    try discriminate.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
+    try easy.
   destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  simpl in *.
-  reflexivity.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
++ destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Byz b)) (rcC2D (c (Byz b))));
+    try easy.
+  destruct n.
+  now unfold ConfigC2D, RobotConfC2D, rcC2D in *.
 + simpl in *.
-  unfold LocC2D.
   destruct (CGF.Config.loc (c' (Good g))) eqn : HlocD'; try now rewrite HlocD in Hloc.
   destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g)))).
   assert (HstepA' : DGF.Aom_eq (DGF.Active sim0) (DGF.Active sim1))
     by now rewrite HstepA.
   unfold DGF.Aom_eq in HstepA'.
   destruct (CGF.pgm rbg
-                   (DGF.Spect.from_config
+                    (DGF.Spect.from_config
                       (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c)))
                    (CGF.Loc (Isomorphism.section (Iso.sim_V sim1) lld))
            )eqn : Hr.
@@ -1615,7 +1610,7 @@ try (now (try (now simpl in * );
   unfold DGF.Spect.from_config, CGF.Spect.from_config.
   assert (ConfigA.eq (DGF.Config.map (DGF.apply_sim sim1) (ConfigC2D c))
                      (CGF.projectS (CGF.Config.map (CGF.apply_sim sim0) c))).
-  unfold DGF.Config.map, DGF.apply_sim, CGF.apply_sim, CGF.Config.map, CGF.projectS,
+  unfold DGF.Config.map, DGF.apply_sim, CGF.Config.app, CGF.Config.map, CGF.projectS,
   CGF.projectS_loc, ConfigC2D, LocC2D. 
   simpl in *.
   intros id; repeat split; simpl.
@@ -1623,6 +1618,7 @@ try (now (try (now simpl in * );
   f_equiv.
   apply (symmetry HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D in *.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -1653,6 +1649,7 @@ try (now (try (now simpl in * );
   f_equiv.
   apply (symmetry HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D in *.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -1683,6 +1680,7 @@ try (now (try (now simpl in * );
   f_equiv.
   apply (symmetry HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D in *.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -1726,14 +1724,15 @@ try (now (try (now simpl in * );
   destruct (DGF.Location.eq_dec (Isomorphism.retraction (Iso.sim_V sim1) l0) lld).
   destruct (CGF.Location.eq_dec
                   (CGF.Loc (Isomorphism.retraction (Iso.sim_V sim0) l1))
-                  (CGF.Loc lld)); simpl in *; try rewrite HlocD in Hloc;
+                  (CGF.Loc lld)); simpl in *; try rewrite HlocD in Hloc.
   unfold LocC2D;
   now rewrite HlocD.
   simpl.
+  unfold LocC2D.
   destruct (CGF.Location.eq_dec
                   (CGF.Loc (Isomorphism.retraction (Iso.sim_V sim0) l1))
-                  (CGF.Loc lld)); now simpl in *; try rewrite HlocD in Hloc;
-    unfold LocC2D.
+                  (CGF.Loc lld));
+    try (now rewrite HlocD in *); try rewrite HlocD in Hloc.
   assert (Hrange :=
             CGF.pgm_range
               rbg
@@ -1742,11 +1741,26 @@ try (now (try (now simpl in * );
               (CGF.Loc (Isomorphism.section (Iso.sim_V sim1) lld))
               (Isomorphism.section (Iso.sim_V sim1) lld) (reflexivity _)).
   destruct Hrange as (lrange, (_, (Hlrange, _))). 
-  now rewrite Hlrange in Hr.
-  destruct n.
-  unfold ConfigC2D, rcC2D, LocC2D.
-  reflexivity.
+  simpl. 
   destruct (CGF.Location.eq_dec
+                  (CGF.Loc (Isomorphism.retraction (Iso.sim_V sim0) l1))
+                  (CGF.Loc lld)).
+  try (now simpl in *); try rewrite HlocD in Hloc.
+  now simpl in *.
+  now simpl in *.
+  assert (Hrange :=
+            CGF.pgm_range
+              rbg
+              (DGF.Spect.from_config (DGF.Config.map (DGF.apply_sim sim1)
+                                                     (ConfigC2D c)))
+              (CGF.Loc (Isomorphism.section (Iso.sim_V sim1) lld))
+              (Isomorphism.section (Iso.sim_V sim1) lld) (reflexivity _)).
+  destruct Hrange as (lrange, (_, (Hlrange, _))). 
+  now rewrite Hr in Hlrange.
+  destruct n.
+  unfold ConfigC2D, rcC2D, RobotConfC2D, LocC2D in *.
+  reflexivity.
+  destruct ( CGF.Location.eq_dec
                   (CGF.Loc
                      match
                        CGF.pgm rbg
@@ -1756,9 +1770,8 @@ try (now (try (now simpl in * );
                      with
                      | CGF.Loc l => Isomorphism.retraction (Iso.sim_V sim0) l
                      | CGF.Mvt e _ => Graph.src e
-                     end) (CGF.Loc lld)).
+                     end) (CGF.Loc lld)); try (now simpl in *).
   simpl in *. now rewrite HlocD in *.
-  now simpl in *.
 + simpl in *.
   unfold LocC2D.
   destruct (CGF.Config.loc (c' (Good g))) eqn : HlocD'; try rewrite HlocD in Hloc;
@@ -1802,7 +1815,7 @@ try (now (try (now simpl in * );
   destruct Hdelta as ((lf, Hf),_).
   rewrite HlocD in Hf.
   now simpl in *.
-+ simpl in *; unfold LocC2D.
++ simpl in *; unfold LocC2D in *.
   destruct (DGF.Config.eq_RobotConf_dec (ConfigC2D c (Good g)) (rcC2D (c (Good g))));
     try discriminate.
   (* faire sim1 => sim0;
@@ -1813,7 +1826,6 @@ try (now (try (now simpl in * );
   assert (CGF.Location.eq (CGF.Loc (Isomorphism.section (Iso.sim_V sim0) lld))
                           (CGF.Loc (Isomorphism.section (Iso.sim_V sim1) lld))).
   now apply HstepA'.
-  
   assert (CGF.Spect.eq (CGF.Spect.from_config
                           (CGF.Config.map (CGF.apply_sim sim0) c))
                        (DGF.Spect.from_config
@@ -1825,12 +1837,13 @@ try (now (try (now simpl in * );
                      (DGF.Config.map
                         (DGF.apply_sim sim1)
                         (ConfigC2D c))).
-  intros id; unfold DGF.Config.map, CGF.Config.map, DGF.apply_sim, CGF.apply_sim, CGF.projectS, CGF.projectS_loc, ConfigC2D, LocC2D.
+  intros id; unfold DGF.Config.map, CGF.Config.map, DGF.apply_sim, CGF.Config.app, CGF.projectS, CGF.projectS_loc, ConfigC2D, LocC2D.
   repeat split; simpl.
   destruct (CGF.Config.loc (c id)).
   f_equiv.
   apply (HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -1860,6 +1873,7 @@ try (now (try (now simpl in * );
   apply (HstepA').
   reflexivity.
   rewrite <- CGF.inv_pro.
+  unfold LocC2D.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -1889,6 +1903,7 @@ try (now (try (now simpl in * );
   f_equiv.
   apply (HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -2000,12 +2015,13 @@ try (now (try (now simpl in * );
                      (DGF.Config.map
                         (DGF.apply_sim sim1)
                         (ConfigC2D c))).
-  intros id; unfold DGF.Config.map, CGF.Config.map, DGF.apply_sim, CGF.apply_sim, CGF.projectS, CGF.projectS_loc, ConfigC2D, LocC2D.
+  intros id; unfold DGF.Config.map, CGF.Config.map, DGF.apply_sim, CGF.Config.app, CGF.projectS, CGF.projectS_loc, ConfigC2D, LocC2D.
   repeat split; simpl.
   destruct (CGF.Config.loc (c id)).
   f_equiv.
   apply (HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -2035,6 +2051,7 @@ try (now (try (now simpl in * );
   apply (HstepA').
   reflexivity.
   rewrite <- CGF.inv_pro.
+  unfold LocC2D.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -2064,6 +2081,7 @@ try (now (try (now simpl in * );
   f_equiv.
   apply (HstepA').
   rewrite <- CGF.inv_pro.
+  unfold LocC2D.
   assert (Hcroiss := Iso.sim_croiss sim0).
   destruct (Rle_dec (CGF.project_p p) (Graph.threshold e0));
     destruct (Rle_dec (Isomorphism.section (Iso.sim_T sim0) (CGF.project_p p))
@@ -2172,18 +2190,18 @@ try (now (try (now simpl in * );
   destruct Hdelta as ((ldelta, Hldelta),Heq_delta).
   rewrite HlocD in Hldelta.
   now unfold CGF.Location.eq in Hldelta.
-+ unfold ConfigC2D, rcC2D, LocC2D in *;
++ unfold ConfigC2D, RobotConfC2D, rcC2D, LocC2D in *;
   destruct (CGF.Info.target (CGF.Config.info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
   simpl in *;
   destruct (CGF.Config.loc (c' (Byz b))) as [lbl' | ebl' pbl'] eqn : HlocD';
   destruct (CGF.Info.target (CGF.Config.info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
   destruct (CGF.Info.source (CGF.Config.info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
-  destruct (CGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  destruct (CGF.Config.loc (CGF.relocate_byz da b)) as [lrb | erb prb] eqn : Hrb;
   try assumption; try (now exfalso); try (now simpl in * );
-  destruct Hloc as (Hel, Hpl);
-  assert (Hth : (Graph.threshold ebl')= (Graph.threshold erb)) by (now apply Graph.threshold_compat);
-  rewrite <- Hpl, Hth; destruct ( Rle_dec (CGF.project_p pbl') (Graph.threshold erb));
+  try destruct Hloc as (Hel, Hpl);
+  try assert (Hth : (Graph.threshold ebl')= (Graph.threshold erb)) by (now apply Graph.threshold_compat);
+  try rewrite <- Hpl, Hth; try destruct ( Rle_dec (CGF.project_p pbl') (Graph.threshold erb));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
 + unfold ConfigC2D, rcC2D, LocC2D in *;
     destruct (CGF.Info.target (CGF.Config.info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
@@ -2192,7 +2210,7 @@ try (now (try (now simpl in * );
   destruct (CGF.Config.loc (c' (Byz b))) as [lbl' | ebl' pbl'] eqn : HlocD';
   destruct (CGF.Info.target (CGF.Config.info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
   destruct (CGF.Info.source (CGF.Config.info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
-  destruct (CGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  destruct (CGF.Config.loc (CGF.relocate_byz da b)) as [lrb | erb prb] eqn : Hrb;
   try assumption; try (now exfalso); try (now simpl in * );
   destruct Hloc as (Hel, Hpl);
   assert (Hth : (Graph.threshold ebl')= (Graph.threshold erb)) by (now apply Graph.threshold_compat);
@@ -2201,45 +2219,53 @@ try (now (try (now simpl in * );
 + unfold ConfigC2D, rcC2D, LocC2D in *;
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
   destruct (CGF.Info.source (CGF.Config.info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
-  destruct (CGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  destruct (CGF.Info.source (CGF.Config.info (CGF.relocate_byz da b)))
+    as [lrbs | erbs prbs] eqn : Hrbs;
   simpl in *;
-  rewrite HsrcD in *;
+  try rewrite Hrbs in *;
   try assumption; try (now exfalso); try (now simpl in * );
   destruct Hsrc as (Hes, Hps);
-  assert (Hth : (Graph.threshold ebs')= (Graph.threshold ebs)) by (now apply Graph.threshold_compat);
-  rewrite <- Hps, Hth; destruct ( Rle_dec (CGF.project_p pbs') (Graph.threshold ebs));
+  assert (Hth : (Graph.threshold ebs')= (Graph.threshold erbs)) by (now apply Graph.threshold_compat);
+  rewrite <- Hps, Hth; destruct ( Rle_dec (CGF.project_p pbs') (Graph.threshold erbs));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
 + unfold ConfigC2D, rcC2D, LocC2D in *;
   destruct (CGF.Info.source (CGF.Config.info (c (Byz b)))) as [lbs | ebs pbs] eqn : HsrcD;
   destruct (CGF.Info.source (CGF.Config.info (c' (Byz b)))) as [lbs' | ebs' pbs'] eqn : HsrcD';
-  destruct (CGF.relocate_byz da b) as [lrb | erb prb] eqn : Hrb;
+  destruct (CGF.Info.source (CGF.Config.info (CGF.relocate_byz da b)))
+    as [lrbs | erbs prbs] eqn : Hrbs;
   simpl in *;
-  rewrite HsrcD in *;
+  try rewrite Hrbs in *;
   try assumption; try (now exfalso); try (now simpl in * );
   destruct Hsrc as (Hes, Hps);
-  assert (Hth : (Graph.threshold ebs')= (Graph.threshold ebs)) by (now apply Graph.threshold_compat);
-  rewrite <- Hps, Hth; destruct ( Rle_dec (CGF.project_p pbs') (Graph.threshold ebs));
+  assert (Hth : (Graph.threshold ebs')= (Graph.threshold erbs)) by (now apply Graph.threshold_compat);
+  rewrite <- Hps, Hth; destruct ( Rle_dec (CGF.project_p pbs') (Graph.threshold erbs));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
 + unfold ConfigC2D, rcC2D, LocC2D in *;
   destruct (CGF.Info.target (CGF.Config.info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
   destruct (CGF.Info.target (CGF.Config.info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
+  destruct (CGF.Info.target (CGF.Config.info (CGF.relocate_byz da b)))
+    as [lrbt | erbt prbt] eqn : Hrbt;
+  simpl in *;
+  try rewrite Hrbt in *;
   simpl in *;try rewrite HtgtD in *;
   try assumption; try (now exfalso); try (now simpl in * );
   destruct Htgt as (Het, Hpt);
-  assert (Hth : (Graph.threshold ebt')= (Graph.threshold ebt)) by (now apply Graph.threshold_compat);
-  rewrite <- Hpt, Hth; destruct ( Rle_dec (CGF.project_p pbt') (Graph.threshold ebt));
+  assert (Hth : (Graph.threshold ebt')= (Graph.threshold erbt)) by (now apply Graph.threshold_compat);
+  rewrite <- Hpt, Hth; destruct ( Rle_dec (CGF.project_p pbt') (Graph.threshold erbt));
   try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
 + unfold ConfigC2D, rcC2D, LocC2D in *;
   destruct (CGF.Info.target (CGF.Config.info (c (Byz b)))) as [lbt | ebt pbt] eqn : HtgtD;
   destruct (CGF.Info.target (CGF.Config.info (c' (Byz b)))) as [lbt' | ebt' pbt'] eqn : HtgtD';
+  destruct (CGF.Info.target (CGF.Config.info (CGF.relocate_byz da b)))
+    as [lrbt | erbt prbt] eqn : Hrbt;
+  simpl in *;
+  try rewrite Hrbt in *;
   simpl in *;try rewrite HtgtD in *;
   try assumption; try (now exfalso); try (now simpl in * );
   destruct Htgt as (Het, Hpt);
-  assert (Hth : (Graph.threshold ebt')= (Graph.threshold ebt)) by (now apply Graph.threshold_compat);
-  rewrite <- Hpt, Hth; destruct ( Rle_dec (CGF.project_p pbt') (Graph.threshold ebt));
-  try (now apply Graph.src_compat);
-  try (now apply Graph.tgt_compat).
-*)
-Admitted.
+  assert (Hth : (Graph.threshold ebt')= (Graph.threshold erbt)) by (now apply Graph.threshold_compat);
+  rewrite <- Hpt, Hth; destruct ( Rle_dec (CGF.project_p pbt') (Graph.threshold erbt));
+    try (now apply Graph.src_compat); try (now apply Graph.tgt_compat).
+Qed.
 
 End GraphEquivalence.

@@ -18,13 +18,14 @@
                                                                         *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
 Require Import Omega.
 Require Import List SetoidList.
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Gathering.InR.Rcomplements.
@@ -355,10 +356,10 @@ Proof. split; try exact even_nG. cbn. setoid_rewrite <- config1_config2_spect_eq
 (** Two similarities used: the identity and the symmetry wrt a point c. *)
 
 (** The swapping similarity *)
-Definition bij_swap (c : R) : Similarity.bijection R.eq.
+Definition bij_swap (c : R) : Bijection.t R.eq.
 refine {|
-  Similarity.section := fun x => c - x;
-  Similarity.retraction := fun x => c - x |}.
+  Bijection.section := fun x => c - x;
+  Bijection.retraction := fun x => c - x |}.
 Proof.
 abstract (intros; unfold R.eq, Rdef.eq; split; intro; subst; field).
 Defined.
@@ -639,8 +640,8 @@ intros d Hd config Hconfig.
 rewrite <- (Rinv_involutive d) in Hconfig; trivial.
 assert (Hd' := Rinv_neq_0_compat _ Hd).
 rewrite <- Config.map_id at 1.
-Time rewrite <- Config.app_id. (* Bug? : > 200 sec.! *)
-change (@Datatypes.id R.t) with (Similarity.section (Sim.sim_f Sim.id)).
+Time rewrite <- Config.app_id. (* Bug? : > 180 sec.! *)
+change (@Datatypes.id R.t) with (Bijection.section (Sim.sim_f Sim.id)).
 rewrite <- (Sim.compose_inverse_l (homothecy (config (Good gfirst)) Hd')).
 rewrite (Config.app_compose (homothecy (config (Good gfirst)) Hd' ⁻¹) (homothecy (config (Good gfirst)) Hd')),
         <- Config.map_merge, <- Spect.from_config_map; autoclass; [].

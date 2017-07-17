@@ -18,6 +18,8 @@
                                                                         *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8.
 Require Import Reals.
 Require Import Psatz.
@@ -33,6 +35,7 @@ Require Import Pactole.Gathering.InR.Rcomplements.
 
 
 Set Implicit Arguments.
+Close Scope R_scope.
 
 
 Parameter nB: nat.
@@ -65,10 +68,6 @@ Hint Extern 0 (~Rdef.eq _ _) => change Rdef.eq with R.eq.
 
 Module Export Common := CommonRealFormalism.Make(R)(N)(Names)(Info)(Config)(Spect).
 Module Export Rigid := RigidFormalism.Make(R)(N)(Names)(Info)(Config)(Spect)(Common).
-
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
-Close Scope R_scope.
 
 Definition translation := Sim.translation translation_hypothesis.
 Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis.

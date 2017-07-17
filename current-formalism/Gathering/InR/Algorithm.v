@@ -18,6 +18,8 @@
                                                                         *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
@@ -31,7 +33,6 @@ Require Import Inverse_Image.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-(* Require Import Pactole.Gathering.InR.SortingR. *)
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.Lexprod.
 Import Permutation.
@@ -42,8 +43,6 @@ Set Implicit Arguments.
 
 
 Import GatheringinR.
-Coercion Sim.sim_f : Sim.t >-> Similarity.bijection.
-Coercion Similarity.section : Similarity.bijection >-> Funclass.
 
 Lemma similarity_middle : forall (sim : Sim.t) x y, sim ((x + y) / 2) = (sim x + sim y) / 2.
 Proof.
@@ -641,13 +640,13 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt' [| pt2' l']].
     destruct (Spect.support (!! conf)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
     destruct (similarity_monotonic (simc pt)) as [Hinc | Hdec].
     - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (simc pt 0)), map_nth, <- Hinvsim.
-      simpl. rewrite <- (simc pt).(Similarity.Inversion); try reflexivity.
+      simpl. rewrite <- (simc pt).(Bijection.Inversion); try reflexivity.
       rewrite map_length, <- Permuted_sort. simpl. omega.
     - { rewrite (sort_map_decreasing Hdec).
         assert (Heq1 : Nat.div2 (length (map (simc pt) (sort (pt1 :: pt2 :: pt3 :: nil)))) = 1%nat).
         { now rewrite map_length, <- Permuted_sort. }
         rewrite <- Heq1 at 1. rewrite odd_middle, (nth_indep _ 0 (simc pt 0)).
-        + rewrite map_nth, <- Hinvsim. simpl. rewrite <- (simc pt).(Similarity.Inversion), <- Heq1; reflexivity.
+        + rewrite map_nth, <- Hinvsim. simpl. rewrite <- (simc pt).(Bijection.Inversion), <- Heq1; reflexivity.
         + rewrite map_length, <- Permuted_sort. simpl. omega.
         + rewrite map_length, <- Permuted_sort. simpl. exists 1%nat. omega. }
   + (* Generic case *)
@@ -659,7 +658,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt' [| pt2' l']].
     - (* The current robot is not exremal *)
       rewrite <- Spect.from_config_map, extreme_center_similarity; apply spect_non_nil || trivial.
       hnf. rewrite <- (da.(step_center) _ pt Hstep) at 2.
-      rewrite <- Hinvsim. simpl. now rewrite <- (simc pt).(Similarity.Inversion).
+      rewrite <- Hinvsim. simpl. now rewrite <- (simc pt).(Bijection.Inversion).
 Qed.
 
 (** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)

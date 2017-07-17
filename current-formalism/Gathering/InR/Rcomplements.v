@@ -18,6 +18,8 @@
                                                                         *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
@@ -475,7 +477,7 @@ Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 
 Corollary inverse_similarity_in_R : forall (sim : Sim.t) k, k <> 0 ->
   (forall x, sim x = k * (x - sim.(Sim.center))) -> forall x, (sim ⁻¹) x = x / k + sim.(Sim.center).
-Proof. intros sim k Hk Hdirect x. simpl. rewrite <- sim.(Inversion), Hdirect. hnf. now field. Qed.
+Proof. intros sim k Hk Hdirect x. simpl. rewrite <- sim.(Bijection.Inversion), Hdirect. hnf. now field. Qed.
 
 Lemma sim_Minjective : forall (sim : Sim.t), MMultiset.Preliminary.injective R.eq R.eq sim.
 Proof. apply Sim.injective. Qed.

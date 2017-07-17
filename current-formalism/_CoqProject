@@ -13,6 +13,7 @@ Preliminary.v
 Robots.v
 Stream.v
 Configurations.v
+Bijection.v
 Similarity.v
 RealMetricSpace.v
 DiscreteSpace.v
@@ -31,7 +32,7 @@ CommonDiscreteFormalism.v
 DiscreteRigidFormalism.v
 DiscreteASyncFormalism.v
 CommonGraphFormalism.v
-GraphEquivalence.v
+#GraphEquivalence.v
 DiscreteGraphFormalism.v
 ContinuousDVGraphFormalism.v
 Exploration/ZnZ/test_modulo.v
@@ -42,6 +43,7 @@ Exploration/Graph/Definitions.v
 Exploration/Graph/ImpossibilityKDividesN.v
 Isomorphism.v
 CommonIsoGraphFormalism.v
+FiniteGraphFormalism.v
 Convergence/Impossibility_2G_1B.v
 Gathering/Definitions.v
 Gathering/FlexDefinitions.v
@@ -52,3 +54,5 @@ Gathering/InR/Algorithm.v
 Gathering/InR2/R2geometry.v
 Gathering/InR2/Algorithm.v
 Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+DiscreteGraphFormalismSSync.v
+Exploration/Graph/DefinitionsSSync.v

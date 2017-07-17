@@ -13,11 +13,12 @@ Require Import Morphisms.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.CommonGraphFormalism.
 
-
-Module Type GraphDef.
-  Parameter V : Set. (* Z/nZ *)
-  Parameter E : Set. (* de base, source et destination (en couple). on peut aussi jsute donner l'un des deux (tjr lle même) car on est dans un cercle (ici) *)
+Module Type FiniteGraphDef <: GraphDef.
+  Parameter n : nat.
+  Definition V : Set := {m | m < n}.
+  Parameter E : Set. (* possibility to pass it to a finite set later *)
   Parameter tgt src : E -> V. (* fst et snd du couple *)
   Parameter threshold : E -> R. (* ça reste un parametre *)
   Parameter Veq : V -> V -> Prop. 
@@ -30,31 +31,19 @@ Module Type GraphDef.
   Declare Instance tgt_compat : Proper (Eeq ==> Veq) tgt.
   Declare Instance src_compat : Proper (Eeq ==> Veq) src.
   Declare Instance threshold_compat : Proper (Eeq ==> eq) threshold.
-
+  
   Parameter find_edge : V -> V -> option E.
   Declare Instance find_edge_compat : Proper (Veq ==> Veq ==> opt_eq (Eeq)) find_edge.
   Axiom find_edge_None : forall a b : V,
-    find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
-  Axiom find_edge_Some : forall v1 v2 e,
-    opt_eq Eeq (find_edge v1 v2) (Some e) <-> Veq v1 (src e) /\ Veq v2 (tgt e).
+      find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
+  Axiom find_edge_Some : forall v1 v2 e, opt_eq Eeq (find_edge v1 v2) (Some e) <->
+                                Veq v1 (src e) /\ Veq v2 (tgt e).
 (*   Axiom find_some_edge : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e). *)
-End GraphDef.
+End FiniteGraphDef.
 
-Module Type LocationADef (Graph : GraphDef) <: DecidableType.
+Module Type LocationAFiniteDef (Graph : FiniteGraphDef) <: DecidableType.
   Definition t := Graph.V.
   Definition eq := Graph.Veq. (*Graph.V -> Graph.V -> Prop. *)
   Parameter eq_equiv : Equivalence eq.
   Parameter eq_dec : forall l l', {eq l l'} + {~eq l l'}.
-End LocationADef.
-
-(** Specialized version with SourceTarget as info. *)
-Module Type InfoSig (Graph : GraphDef)
-                    (Loc : LocationADef(Graph)).
-  
-  Module Info := SourceTarget(Loc).
-End InfoSig.
-
-Module Make (Graph : GraphDef) (Loc : LocationADef(Graph)) : InfoSig (Graph) (Loc).
-  
-  Module Info := SourceTarget(Loc).
-End Make.
+End LocationAFiniteDef.
