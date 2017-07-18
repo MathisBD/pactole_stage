@@ -21,30 +21,30 @@ Set Implicit Arguments.
 
 Module Make (Graph : GraphDef)(Loc : LocationADef (Graph)).
 
-  Definition Req (r1 r2: R) := Logic.eq r1 r2.
-  Definition Req_equiv : Equivalence Req.
-  Proof. 
-    unfold Req.
-    split; intuition.
-    intros r s t Hrs Hst; now transitivity s.
-  Qed.
+Definition Req (r1 r2: R) := Logic.eq r1 r2.
+Definition Req_equiv : Equivalence Req.
+Proof.
+  unfold Req.
+  split; intuition.
+  intros r s t Hrs Hst; now transitivity s.
+Qed.
 
-  Record t :=
-    {
-      sim_V :> Bijection.t Loc.eq;
-      sim_E : Bijection.t Graph.Eeq;
-      sim_T : Bijection.t Req;
-      sim_morphism : forall e, Graph.Veq (sim_V (Graph.src e)) (Graph.src (sim_E e))
-                              /\ Graph.Veq (sim_V (Graph.tgt e)) (Graph.tgt (sim_E e));
-      sim_threshold : forall e, sim_T (Graph.threshold e) = Graph.threshold (sim_E e);
-      sim_croiss : forall a b, (a < b)%R -> (sim_T a < sim_T b)%R;
-      sim_bound_T : forall r, (0 < r < 1)%R <-> (0 < sim_T r < 1)%R
-  }.
+Record t :=
+  {
+    sim_V :> Bijection.t Loc.eq;
+    sim_E : Bijection.t Graph.Eeq;
+    sim_T : Bijection.t Req;
+    sim_morphism : forall e, Graph.Veq (sim_V (Graph.src e)) (Graph.src (sim_E e))
+                            /\ Graph.Veq (sim_V (Graph.tgt e)) (Graph.tgt (sim_E e));
+    sim_threshold : forall e, sim_T (Graph.threshold e) = Graph.threshold (sim_E e);
+    sim_croiss : forall a b, (a < b)%R -> (sim_T a < sim_T b)%R;
+    sim_bound_T : forall r, (0 < r < 1)%R <-> (0 < sim_T r < 1)%R
+}.
 
-  Definition eq sim1 sim2 := Bijection.eq sim1.(sim_V) sim2.(sim_V)
-                          /\ Bijection.eq sim1.(sim_E) sim2.(sim_E)
-                          /\ Bijection.eq sim1.(sim_T) sim2.(sim_T).
-  
+Definition eq sim1 sim2 := Bijection.eq sim1.(sim_V) sim2.(sim_V)
+                        /\ Bijection.eq sim1.(sim_E) sim2.(sim_E)
+                        /\ Bijection.eq sim1.(sim_T) sim2.(sim_T).
+
 Global Instance eq_equiv : Equivalence eq.
 Proof. unfold eq, Bijection.eq. split.
 + intros f. repeat split; intros l1 l2 Hl; rewrite Hl; reflexivity.
@@ -79,17 +79,16 @@ Instance T_compat : Proper (eq ==> @Bijection.eq _ Req) sim_T.
 Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
 
 
-
 Definition id : t.
   refine {| sim_V := Bijection.id Loc.eq_equiv;
             sim_E := Bijection.id Graph.Eeq_equiv;
             sim_T := Bijection.id Req_equiv |}.
-  Proof.
-    + intros e. now simpl.
-    + intro e; now simpl.
-    + intros; now simpl.
-    + intros; now simpl.
-  Defined.
+Proof.
++ now intros.
++ now intros.
++ now intros.
++ now intros.
+Defined.
 
 
 Definition compose (f g : t) : t.
@@ -209,6 +208,13 @@ Proof. intros sim; repeat split; intros x y Hxy; simpl; try now rewrite section_
 
 Lemma inverse_compose : forall f g : t, eq ((f ∘ g) ⁻¹) ((g ⁻¹) ∘ (f ⁻¹)).
 Proof. intros f g; repeat split; intros x y Hxy; simpl; rewrite Hxy; reflexivity. Qed.
+
+Lemma injective : forall f : t, injective Loc.eq Loc.eq f.
+Proof.
+intros f x y Heq. transitivity (id x); try reflexivity; [].
+rewrite <- (compose_inverse_l f). simpl. rewrite Heq.
+now apply compose_inverse_l.
+Qed.
 
 End Make.
 

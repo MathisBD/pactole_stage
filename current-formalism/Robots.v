@@ -28,6 +28,7 @@ Require Import Pactole.Preliminary.
 Open Scope list_scope.
 Set Implicit Arguments.
 
+
 Lemma subset_dec : forall N (x y : {n : nat | n < N}), {x = y} + {x <> y}.
 Proof.
 intros N [x Hx] [y Hy]. destruct (Nat.eq_dec x y).
@@ -184,6 +185,9 @@ intros N k x. split; intro Hin.
 + assert (Hin' : In x (enum N)) by apply In_enum, proj2_sig.
   rewrite <- (firstn_skipn k), in_app_iff, firstn_enum_spec in Hin'. intuition omega.
 Qed.
+
+Lemma eq_proj1 : forall N (x y : {n : nat | n < N}), proj1_sig x = proj1_sig y -> x = y.
+Proof. intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qed.
 
 
 (** *  Identification of robots  **)

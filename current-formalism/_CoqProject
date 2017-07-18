@@ -31,6 +31,7 @@ RigidEquivalence.v
 
 ## Discrete setting
 DiscreteSpace.v
+Isomorphism.v
 DiscreteSimilarity.v
 CommonDiscreteFormalism.v
 DiscreteRigidFormalism.v
@@ -38,7 +39,6 @@ DiscreteASyncFormalism.v
 CommonGraphFormalism.v
 DiscreteGraphFormalism.v
 ContinuousDVGraphFormalism.v
-Isomorphism.v
 CommonIsoGraphFormalism.v
 FiniteGraphFormalism.v
 DiscreteGraphFormalismSSync.v
@@ -54,12 +54,12 @@ Convergence/Impossibility_2G_1B.v
 
 ## Case Study: Gathering
 Gathering/Definitions.v
-Gathering/FlexDefinitions.v
 Gathering/InR/Rcomplements.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
 Gathering/InR2/R2geometry.v
 Gathering/InR2/Algorithm.v
+Gathering/FlexDefinitions.v
 Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
 ## Case Study: Ring Exploration
@@ -70,14 +70,13 @@ Exploration/Graph/GraphFromZnZ.v
 Exploration/Graph/Definitions.v
 Exploration/Graph/ImpossibilityKDividesN.v
 Exploration/Graph/DefinitionsSSync.v
+Exploration/Graph/ImpossibilityKDividesNSSync.v
 
 ## Files Commented out
 #GraphEquivalence.v
 #Gathering/Impossibility.v
 #ASyncFormalism.v
-#DiscreteASyncFormalism.v
 #GraphRigidFormalism.v
-#Exploration/Graph/ImpossibilityKDividesNSSync.v
 #Exploration/Graph/ImpossibilityKNotPrimeN.v
 #Exploration/Graph/TowersSSync.v
 #Exploration/Graph/Towers.v

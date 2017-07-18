@@ -33,9 +33,20 @@ Close Scope Z_scope.
 Set Implicit Arguments.
 
 
-Module ExplorationDefs (Import Def : RingDef)
-                       (N : Size).
+(** Definition of the ring. *)
+Parameter n : nat.
+Axiom n_sup_1 : 1 < n.
 
+Module Def : RingDef with Definition n := n.
+ Definition n:= n.
+ Lemma n_pos : n <> 0. Proof. unfold n. generalize n_sup_1. omega. Qed.
+ Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
+End Def.
+
+
+Module ExplorationDefs (N : Size).
+
+Import Def.
 Module Names := Robots.Make(N).
 Module Ring := MakeRing(Def).
 
@@ -65,28 +76,30 @@ Module Loc <: DecidableType.
   Proof.
   generalize (Def.n_sup_1).
   intros Hn u. hnf. unfold add, origin.
-  rewrite 2 Ring.Z2Z, Z.mod_0_l, Z.add_0_r; try (unfold Ring.n; omega); [].
-  apply Z.mod_small. apply Z.mod_pos_bound. unfold Ring.n; omega.
+  rewrite Ring.Z2Z, Z.mod_0_l, Z.add_0_r, Ring.V2V; trivial; unfold Ring.n; omega.
   Qed.
   
   Lemma add_opp : forall u, eq (add u (opp u)) origin.
   Proof.
-  intro u. unfold add, opp, origin. hnf. rewrite 3 Ring.Z2Z.
-  unfold Ring.n in *. rewrite Zdiv.Zplus_mod_idemp_r.
-  f_equal. ring.
+  intro u. unfold add, opp, origin. hnf. rewrite Ring.Z2Z.
+  apply eq_proj1. unfold Ring.of_Z. simpl. rewrite Zdiv.Zplus_mod_idemp_r.
+  ring_simplify (Ring.to_Z u + - Ring.to_Z u)%Z.
+  rewrite Z.mod_0_l; trivial; [].
+  generalize (Def.n_sup_1). unfold Ring.n. omega.
   Qed.
   
   Lemma add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
   Proof.
   intros u v w. hnf. unfold eq, add.
-  rewrite 4 Ring.Z2Z, Zdiv.Zplus_mod_idemp_r, Zdiv.Zplus_mod_idemp_l.
-  f_equal. ring.
+  rewrite 2 Ring.Z2Z. apply eq_proj1. unfold Ring.of_Z. simpl.
+  rewrite Zdiv.Zplus_mod_idemp_r, Zdiv.Zplus_mod_idemp_l.
+  do 2 f_equal. ring.
   Qed.
   
   Lemma add_comm : forall u v, eq (add u v) (add v u).
   Proof.
   unfold eq, add. intros u v. hnf.
-  now rewrite 2 Ring.Z2Z, Z.add_comm.
+  now rewrite Z.add_comm.
   Qed.
   
   Lemma add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
@@ -103,14 +116,13 @@ Module Loc <: DecidableType.
   Lemma opp_opp : forall u, eq (opp (opp u)) u.
   Proof.
   generalize (Def.n_sup_1).
-  unfold opp. intros Hn [u Hu]. hnf. rewrite 2 Ring.Z2Z.
-  unfold Ring.to_Z. simpl.
-  destruct u. (* required for the proofs about Z.opp and mod *)
-  - rewrite 2 Z.mod_0_l; unfold Ring.n; omega.
-  - rewrite (Z.mod_small (Z.of_nat (S u))); try lia; [].
-    rewrite (Zdiv.Z_mod_nz_opp_full (Z.of_nat (S u))); try (rewrite Z.mod_small; lia); [].
-    rewrite Zdiv.Z_mod_nz_opp_full;
-    rewrite (Z.mod_small (Z.of_nat (S u))), Z.mod_small; lia.
+  intros Hn [u Hu]. unfold opp. hnf. rewrite Ring.Z2Z.
+  apply eq_proj1. unfold Ring.of_Z. simpl.
+  destruct (Nat.eq_dec u 0); try (now subst); []. (* required for the proofs about Z.opp and mod *)
+  unfold Ring.to_Z. simpl proj1_sig.
+  rewrite (Z.mod_opp_l_nz (Z.of_nat u)), (Z.mod_small (Z.of_nat u)), Z.mod_opp_l_nz, Z.mod_small;
+  try lia || (rewrite Z.mod_small; lia); [].
+  ring_simplify (Z.of_nat Ring.n - (Z.of_nat Ring.n - Z.of_nat u))%Z. apply Nat2Z.id.
   Qed.
   
   Lemma opp_origin : eq (opp origin) origin.
@@ -142,9 +154,8 @@ refine {|
   Bijection.section := fun x => (Loc.add x (Loc.opp c));
   Bijection.retraction := fun x => Loc.add x c |}.
 Proof.
-+ abstract (intros x y Hxy; hnf; now do 2 f_equiv).
-+ abstract (intros x y; split; intro Heq;
-            now rewrite <- Heq, <- Loc.add_assoc, ?(Loc.add_comm _ c), Loc.add_opp, Loc.add_origin).
+abstract (intros x y; split; intro Heq;
+          now rewrite <- Heq, <- Loc.add_assoc, ?(Loc.add_comm _ c), Loc.add_opp, Loc.add_origin).
 Defined.
 
 Definition bij_trans_E (c : Loc.t) : Bijection.t Ring.Eeq.
@@ -179,14 +190,13 @@ refine {|
 Proof.
 * intro e. split.
   + unfold Ring.src. simpl. reflexivity.
-  + unfold Ring.tgt. simpl. unfold Loc.t, Loc.add.
+  + apply eq_proj1.
+    unfold Ring.tgt. simpl. unfold Loc.t, Loc.add. rewrite 2 Ring.Z2Z.
     destruct (snd e) eqn:Hsnd.
-    - hnf. rewrite 4 Ring.Z2Z, 2 Zdiv.Zplus_mod_idemp_l. f_equal. ring.
-    - hnf. rewrite 4 Ring.Z2Z, Zdiv.Zplus_mod_idemp_l, <- (Z.mod_1_l (Z.of_nat n)),
-                   <- Zdiv.Zminus_mod, Z.mod_1_l; try (generalize Def.n_sup_1; omega); [].
-      f_equal. ring.
-    - hnf. rewrite 4 Ring.Z2Z, Zdiv.Zplus_mod_idemp_l, Z.mod_mod;
-      unfold Ring.n; generalize Def.n_sup_1; omega.
+    - rewrite 2 Zdiv.Zplus_mod_idemp_l. do 2 f_equal. ring.
+    - rewrite Zdiv.Zplus_mod_idemp_l, Zdiv.Zminus_mod_idemp_l. do 2 f_equal. ring.
+    - rewrite Zdiv.Zplus_mod_idemp_l, Z.mod_mod; trivial; [].
+      unfold Ring.n. generalize Def.n_sup_1. omega.
 * apply bT_morph.
 * apply bT_crois.
 * apply bT_bound.
@@ -223,7 +233,7 @@ rewrite Hl, <- Hv; now rewrite Hc.
 Qed.
 
 Definition stop_now (e : execution) :=
-    Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
+  Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
 
 Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
 Proof.
@@ -239,10 +249,10 @@ Definition Stopped (e : execution) : Prop :=
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
 intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
-  - destruct H. now rewrite <- He.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
-  - destruct H. now rewrite He.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
+- destruct H. now rewrite <- He.
+- destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
+- destruct H. now rewrite He.
+- destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
@@ -257,9 +267,7 @@ intros l1 l2 Hl. now apply Stream.eventually_compat, is_visited_compat.
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
-Proof.
-  apply Stream.eventually_compat, Stopped_compat.
-Qed.
+Proof. apply Stream.eventually_compat, Stopped_compat. Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
@@ -273,12 +281,12 @@ Definition ValidStartingConf conf :=
 
 Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
 Proof.
-  intros c1 c2 Hc.
-  split; intros Hv Hf; unfold ValidStartingConf in *;
-  destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
-  now rewrite Hc.
+intros c1 c2 Hc.
+split; intros Hv Hf; unfold ValidStartingConf in *;
+destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
+now rewrite Hc.
 Qed.
-  
+
 Definition ValidStartingConfSolExplorationStop (r : robogram) (d : demon) :=
   forall config,
     ValidStartingConf config -> 

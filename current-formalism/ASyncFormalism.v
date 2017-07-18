@@ -22,6 +22,7 @@ Require Import RelationClasses.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.RealMetricSpace.
 Require Pactole.CommonRealFormalism.
 (* Require Pactole.Similarity. *)
 
@@ -34,12 +35,19 @@ Module Type Delta.
   Parameter delta: R.
 End Delta.
 
-Module Make (Location : RealMetricSpace)(N : Size)(Import D: Delta)(Spect : Spectrum(Location)(N))
-            (Import Common : CommonRealFormalism.Sig(Location)(N)(Spect)).
+Module Make (Location : RealMetricSpace)
+            (N : Size)
+            (Import D: Delta)
+            (Names : Robots(N))
+            (Info : DecidableTypeWithApplication(Location))
+            (Config : Configuration(Location)(N)(Names)(Info))
+            (Spect : Spectrum(Location)(N)(Names)(Info)(Config))
+            (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Info)(Config)(Spect)).
 
+Import Common.
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
-(** **  Demonic schedulers  **)
+(** ** Demonic schedulers *)
 
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
@@ -74,7 +82,7 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Config.RobotConf -> Active_or_Moving;
   step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
-       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.target)) \/
+       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Config.target)) \/
        (Location.dist Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.source) >= delta)%R;
   step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
   step_zoom :  forall id config sim c, step id config = Active sim -> (sim c).(Sim.zoom) <> 0%R;

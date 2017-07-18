@@ -1867,4 +1867,11 @@ destruct (Z.eq_dec (k mod n) (n - 1)) as [Heq | Heq].
   assert (Hle := Z.mod_pos_bound k n Hn). omega.
 Qed.
 
+Lemma Zopp_mod : forall k n, 0 <= k < n -> (-k) mod n = (n - (k mod n)) mod n.
+Proof.
+intros k n Hn. destruct (Z.eq_dec k 0).
+- subst. rewrite 2 Z.mod_0_l, Z.sub_0_r, Z.mod_same; omega.
+- rewrite Z.mod_opp_l_nz, Z.mod_small; try rewrite Z.mod_small; omega.
+Qed.
+
 Close Scope Z.

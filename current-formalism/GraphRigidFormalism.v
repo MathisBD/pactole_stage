@@ -30,10 +30,13 @@ Ltac coinduction proof :=
 
 
 Module Make (Graph : GraphDef)
-            (Location : LocationADef(Graph))(N : Size)(Names : Robots(N))
-            (Config : Configuration(Location)(N)(Names))
-            (Spect : Spectrum(Location)(N)(Names)(Config))
-            (Common : CommonFormalism.Sig(Location)(N)(Names)(Config)(Spect)).
+            (N : Size)
+            (Names : Robots(N))
+            (Location : LocationADef(Graph))
+            (MkInfo : InfoSig(Graph)(Location))
+            (Config : Configuration(Location)(N)(Names)(MkInfo.Info))
+            (Spect : Spectrum(Location)(N)(Names)(MkInfo.Info)(Config))
+            (Common : CommonFormalism.Sig(Location)(N)(Names)(MkInfo.Info)(Config)(Spect)).
 
 Import Common.
 (*Notation "s ⁻¹" := (Sim.inverse s) (at level 99). *)

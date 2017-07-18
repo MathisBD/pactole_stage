@@ -9,6 +9,7 @@
 
 
 Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
+Set Implicit Arguments.
 Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
@@ -20,44 +21,27 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSpace.
-(* Require Import Pactole.Exploration.ZnZ.Definitions. *)
-(* Require Import Pactole.Exploration.ZnZ.ImpossibilityKDividesN. *)
 Require Import Pactole.Exploration.Graph.Definitions.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
+Open Scope Z_scope.
 
-
-Set Implicit Arguments.
-
-
-(* taille de l'anneau*)
-Parameter n : nat.
-Axiom n_sup_1 : 1 < n.
 
 (** There are kG good robots and no byzantine ones. *)
 Parameter kG : nat.
-Axiom kdn : n mod kG = 0.
-Axiom k_inf_n : kG < n.
-Axiom k_sup_1 : 1 < kG.
-
 
 Module K : Size with Definition nG := kG with Definition nB := 0%nat.
   Definition nG := kG.
   Definition nB := 0%nat.
 End K.
 
-Module Def : RingDef with Definition n := n.
- Definition n:= n.
- Lemma n_pos : n <> 0. Proof. unfold n. generalize n_sup_1. omega. Qed.
- Lemma n_sup_1 : n > 1. Proof. unfold n; apply n_sup_1. Qed.
-End Def.
-
-
-Open Scope Z_scope.
-
-
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
-Module DefsE := Definitions.ExplorationDefs(Def)(K).
+Module DefsE := Definitions.ExplorationDefs(K).
 Export DefsE.
+
+(** Assumptions on the number of robots: it is non zero, less than n and divides n (the size of the ring). *)
+Axiom kdn : (n mod kG = 0)%nat.
+Axiom k_inf_n : (kG < n)%nat.
+Axiom k_sup_1 : (1 < kG)%nat.
 
 
 (** There is no byzantine robot so we can simplify properties about identifiers and configurations. *)
@@ -109,10 +93,9 @@ generalize k_sup_1, k_inf_n. intros Hk1 Hkn id1 id2.
 assert (n / kG <> 0)%nat by (rewrite Nat.div_small_iff; omega).
 apply (no_byz id2), (no_byz id1). clear id1 id2.
 intros g1 g2 Heq. f_equal. hnf in Heq.
-unfold config1, create_config1 in *. simpl in *.
-rewrite 2 Ring.Z2Z, 2 Z.mod_small in Heq.
-+ apply Nat2Z.inj in Heq. rewrite Nat.mul_cancel_r in Heq; trivial; [].
-  destruct g1, g2; simpl in *; subst. f_equal. apply le_unique.
+unfold config1, create_config1, Ring.of_Z in *. simpl in *.
+apply eq_proj1.
+inv Heq. revert_all. rewrite 2 Z.mod_small, 2 Nat2Z.id, Nat.mul_cancel_r; auto; [|].
 + split; try apply Zle_0_nat; []. apply Nat2Z.inj_lt.
   apply Nat.lt_le_trans with (kG * (n / kG))%nat.
   - destruct g2 as [g2 Hg2]. simpl. unfold K.nG in *. apply mult_lt_compat_r; omega.
@@ -139,33 +122,43 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
 * intro pt. repeat rewrite InA_map_iff; autoclass; [].
   assert (HkG : kG <> 0%nat). { generalize k_sup_1. omega. }
   assert (Z.of_nat n <> 0). { generalize n_sup_1. omega. }
+  assert (n / kG <> 0)%nat by (rewrite Nat.div_small_iff; generalize k_sup_1, k_inf_n; omega).
   split; intros [id [Hpt _]]; revert Hpt; apply (no_byz id); clear id; intros g' Hpt.
   + assert (Hlt : ((proj1_sig g' + (kG - proj1_sig g)) mod kG < kG)%nat) by now apply Nat.mod_upper_bound.
     pose (id' := exist (fun x => lt x kG) _ Hlt).
     exists (Good id'). split.
     - simpl. rewrite <- Hpt. simpl. unfold create_config1, Loc.add, Loc.opp. simpl.
-      (* This part is a proof about modular arithmetic *)
+      (* This part is a proof about modular arithmetic; we stay in Z to use the ring structure *)
       assert (Hn : (kG * (n / kG) = n)%nat). { symmetry. now rewrite Nat.div_exact. }
-      hnf. rewrite 5 Ring.Z2Z, <- Z.add_mod, Nat2Z.inj_mul, Zdiv.mod_Zmod; trivial; [].
-      assert (Heq : forall x y, x + - y = x - y) by (intros; ring). rewrite Heq. clear Heq.
-      rewrite Nat2Z.inj_add, Nat2Z.inj_sub; try (now apply lt_le_weak, proj2_sig); [].
-      replace (Z.of_nat (proj1_sig g') + (Z.of_nat kG - Z.of_nat (proj1_sig g)))
-        with (Z.of_nat (proj1_sig g') - Z.of_nat (proj1_sig g) + 1 * Z.of_nat kG) by ring.
-      rewrite Zdiv.Z_mod_plus_full, Z.mul_comm, <- Zdiv.Zmult_mod_distr_l, Zdiv.Zminus_mod_idemp_r.
-      rewrite Nat.mul_comm in Hn. rewrite <- Nat2Z.inj_mul, Hn, Z.mod_mod; trivial; [].
-      f_equal. lia.
+      hnf. rewrite 3 Ring.Z2Z. apply eq_proj1. unfold Ring.of_Z, Ring.n, Def.n. simpl. f_equal.
+      (* Simplifying the left-hand side *)
+      rewrite <- Nat.mul_mod_distr_r, Hn, Zdiv.mod_Zmod, Z.mod_mod; try omega; [].
+      (* Simplifying the right-hand side *)
+      rewrite Z.add_mod_idemp_l, Zopp_mod, Z.mod_mod, Z.add_mod_idemp_r;
+      try (try apply Z.mod_pos_bound; omega); [].
+      f_equal. rewrite 2 Nat2Z.inj_mul, Nat2Z.inj_add, Nat2Z.inj_sub, Z.mod_small.
+      ++ ring_simplify. now rewrite <- (Nat2Z.inj_mul kG), Hn, Nat2Z.inj_mul.
+      ++ split; try apply Zle_0_nat; [].
+         apply Nat2Z.inj_lt. rewrite <- Hn at 2. rewrite <- Nat.mul_lt_mono_pos_r; lia || apply proj2_sig.
+      ++ apply lt_le_weak, proj2_sig.
     - rewrite InA_Leibniz. apply Names.In_names.
   + assert (Hlt : ((proj1_sig g' + proj1_sig g) mod kG < kG)%nat) by now apply Nat.mod_upper_bound.
     pose (id' := exist (fun x => lt x kG) _ Hlt).
     exists (Good id'). split.
     - simpl. rewrite <- Hpt. simpl. unfold create_config1, Loc.add, Loc.opp. simpl.
-      (* This part is a proof about modular arithmetic *)
+      (* This part is a proof about modular arithmetic; we stay in Z to use the ring structure *)
       assert (Hn : (kG * (n / kG) = n)%nat). { symmetry. now rewrite Nat.div_exact. }
-      hnf. rewrite 5 Ring.Z2Z, <- Z.add_mod, Nat2Z.inj_mul, Zdiv.mod_Zmod; trivial; [].
-      assert (Heq : forall x y, x + - y = x - y) by (intros; ring). rewrite Heq. clear Heq.
-      rewrite Nat.mul_comm in Hn.
-      rewrite Z.mul_comm, <- Zdiv.Zmult_mod_distr_l, <- (Nat2Z.inj_mul _ kG), Hn, <- Zdiv.Zminus_mod.
-      f_equal. lia.
+      hnf. rewrite 3 Ring.Z2Z. apply eq_proj1. unfold Ring.of_Z, Ring.n, Def.n. simpl. f_equal.
+      (* Simplifying the left-hand side *)
+      rewrite <- Nat.mul_mod_distr_r, Hn, Zdiv.mod_Zmod, Z.mod_mod; try omega; [].
+      (* Simplifying the right-hand side *)
+      rewrite Z.add_mod_idemp_l, Zopp_mod, Z.mod_mod, Z.add_mod_idemp_r;
+      try (try apply Z.mod_pos_bound; omega); [].
+      rewrite 2 Nat2Z.inj_mul, Nat2Z.inj_add, Z.add_mod, Zdiv.Zminus_mod_idemp_r, <- Z.add_mod; trivial; [].
+      ring_simplify ((Z.of_nat (proj1_sig g') + Z.of_nat (proj1_sig g)) * Z.of_nat (n / kG)
+                     + (Z.of_nat n - Z.of_nat (proj1_sig g) * Z.of_nat (n / kG))).
+      rewrite <- (Z.mul_1_l (Z.of_nat n)) at 1.
+      rewrite Z.mod_add; trivial; []. f_equal. lia.
     - rewrite InA_Leibniz. apply Names.In_names.
 Qed.
 
@@ -216,16 +209,16 @@ Lemma NeverVisited_config1 : forall e,
 Proof.
 intros e Heq_e. exists Loc.unit.
 intro Hl. induction Hl as [e [g Hvisited] | e Hlater IHvisited].
-* rewrite Heq_e in Hvisited. simpl in Hvisited. revert Hvisited.
+* rewrite Heq_e in Hvisited. simpl in Hvisited.
+  apply (f_equal (@proj1_sig _ (fun x => lt x n))) in Hvisited. revert Hvisited.
   assert (Hn := n_sup_1). assert (Hk := k_sup_1). assert (Hk' := k_inf_n).
   assert (Heq : Z.of_nat (n mod kG) = 0) by (generalize kdn; omega).
   unfold create_config1, Loc.eq, Ring.Veq, Loc.unit.
-  rewrite 2 Ring.Z2Z, Z.mod_1_l; try (unfold Ring.n, Def.n; omega); [].
   assert (1 < n / kG)%nat.
   { apply <- Nat.div_exact in Hdiv; try omega; [].
     rewrite Hdiv in Hk'. destruct (n / kG)%nat as [| [| ?]]; omega. }
-  rewrite Z.mod_small.
-  + change 1 with (Z.of_nat 1). intro Habs. apply Nat2Z.inj in Habs. nia.
+  unfold Ring.of_Z. simpl. rewrite Z.mod_1_l, Z.mod_small; try (unfold Ring.n, Def.n; lia); [|].
+  + change 1 with (Z.of_nat 1). rewrite 2 Nat2Z.id. nia.
   + split; try apply Zle_0_nat; [].
     apply inj_lt, Nat.lt_le_trans with (kG * (n / kG))%nat.
     - apply mult_lt_compat_r; try omega; []. apply proj2_sig.
