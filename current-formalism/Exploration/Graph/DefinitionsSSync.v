@@ -457,8 +457,8 @@ Qed.
 
 (* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
-Definition FullSolExplorationStop  (r : robogram) (d : demon) := 
-forall config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
+Definition FullSolExplorationStop  (r : robogram) := 
+forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
 Definition ValidStartingConf conf :=
   (exists l : Loc.t,
@@ -473,8 +473,8 @@ Proof.
   now rewrite Hc.
 Qed.
   
-Definition ValidStartingConfSolExplorationStop (r : robogram) (d : demon) :=
-  forall config,
+Definition ValidStartingConfSolExplorationStop (r : robogram) :=
+  forall d config,
     ValidStartingConf config -> 
     (forall l, Will_be_visited l (execute r d config)) /\
     Will_stop (execute r d config).

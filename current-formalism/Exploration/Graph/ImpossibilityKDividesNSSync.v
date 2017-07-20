@@ -1374,7 +1374,7 @@ Qed.
   (* final theorem first part: if we move, In the asynchronous model, and if k 
      divide n, then the exploration with stop of a n-node ring is not possible. *)
 
-Theorem no_exploration_moving : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
+Theorem no_exploration_moving : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
 Proof.
   intros Hmod Habs.
   specialize (Habs bad_demon1).
@@ -1500,7 +1500,7 @@ Section Stop.
     contradiction.
 Qed.
     
-  Theorem no_exploration_idle : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
+  Theorem no_exploration_idle : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
   Proof.
     intros Hmod Habs.
     specialize (Habs bad_demon1).
@@ -2349,7 +2349,7 @@ Qed.*)
   Qed.
 
   
-  Theorem no_exploration_moving_m : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
+  Theorem no_exploration_moving_m : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
   Proof.
     intros Hmod Habs.
     specialize (Habs bad_demon1).
@@ -2405,7 +2405,7 @@ Proof.
 Qed.
 
 
-Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (forall d, FullSolExplorationStop r d).
+Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
 Proof.
   generalize no_exploration_idle, no_exploration_moving, no_exploration_moving_m,
   range_r.

@@ -275,14 +275,14 @@ Proof.
 Qed.
 
   
-Theorem test : forall c r d e,
-    ValidStartingConfSolExplorationStop r d ->
+Theorem finalconf_towerOn_aux : forall c r d e,
+    ValidStartingConfSolExplorationStop r ->
     eeq e (execute r d c) -> 
     ValidStartingConf c ->
     ~Stopped e.
 Proof.  
   intros c r d e Hexp Heqe Hvalid Hsto.
-  destruct (Hexp c Hvalid) as (Hvisit, Hstop).
+  destruct (Hexp d c Hvalid) as (Hvisit, Hstop).
   assert (Hfalse :=  ConfExistsEmpty c).
   unfold is_visited in *.
   assert (Hfalse' : exists loc, ~ Spect.In loc (!! c)).
@@ -312,13 +312,13 @@ Proof.
 Qed.
 
 Lemma finalconf_towerOn : forall r,
-    (forall d, ValidStartingConfSolExplorationStop r d) ->
+    (ValidStartingConfSolExplorationStop r) ->
     forall c d e, eeq e (execute r d c) -> 
                   Stopped e -> 
                   exists loc, (!! c)[loc] > 1.
 Proof.
   intros.
-  generalize (test (H d) H0).
+  generalize (finalconf_towerOn_aux d (H) H0).
   intros.
   destruct (Classical_Prop.classic (ValidStartingConf c)).
   now specialize (H2 H3).
@@ -330,7 +330,68 @@ Proof.
   now specialize (Hf ex).
 Qed.
 
+Corollary finalconf_towerOn_bis : forall c,
+    forall r, ValidStartingConfSolExplorationStop r ->
+              forall d, Stopped (execute r d c) ->
+                        exists loc, (!! c)[loc] > 1.
+Proof.
+  intros.
+  now apply (finalconf_towerOn H c d (reflexivity (execute r d c))).
+Qed.
 
+
+Parameter c : Config.t.
+Axiom Vc : ValidStartingConf c.
+Parameter d: demon.
+Parameter e : execution.
+Axiom Ve : ValidStartingConf (Stream.hd e).
+
+(* CoFixpoint In_Stream {A} (s : Stream.t A) (a : A) (eqA : A -> A -> Prop) :=
+  match s with
+  | cons e s' => eqA a e \/ In_Stream s' a eqA
+  end.
+ *)
+
+Definition exec_r_comp (e:execution) (r: robogram) :=
+  exists d c, eeq e (execute r d c).
+
+Lemma exec_stopped r : forall d c, Will_stop (execute r d c)
+                        -> exists d' c', Stopped (execute r d' c').
+(*exists e, exec_r_comp e r /\ Stopped e.*)
+Proof.
+  intros.
+  remember (execute r d0 c0) as s.
+  revert Heqs.
+  revert d0 c0.
+  induction H.
+  intros.
+  exists d0, c0; now rewrite Heqs in H.
+  intros d0 c0 Hs.
+  apply (IHeventually (Stream.tl d0) (Stream.hd (Stream.tl s))).
+  rewrite Hs, execute_tail.
+  now simpl.
+Qed.
+
+
+  
+Lemma no_exploration_k_inf_2 : forall r,
+    ValidStartingConfSolExplorationStop r ->
+    kG > 1.
+Proof.
+  intros.
+  assert (Hexr := exec_stopped r).
+  assert (Htower := finalconf_towerOn_bis).  
+  destruct (H d c Vc).
+  specialize (Hexr d c H1).
+  destruct Hexr as (d', ( c', Hstop)).
+  specialize (Htower c' r H d' Hstop).
+  destruct Htower.
+  assert (Hcard := Spect.cardinal_lower x (!! c')).
+  rewrite Spect.cardinal_from_config in Hcard.
+  unfold K.nG, K.nB in *.
+  lia.
+Qed.
+  
 Fixpoint last_init_conf (l : list Config.t) (a : Config.t) :=
   match l with
   | nil => (False, nil)
