@@ -73,7 +73,6 @@ Hypothesis Hdiv : (n mod kG = 0)%nat.
 (** ***  Definition of the starting configuration and demon used in the proof  **)
 
 Definition create_config1 (k : nat) (g : {n : nat | (n < k)%nat}) : Loc.t :=
-(*   Loc.mul (Loc (Z_of_nat ((proj1_sig g) * (n / kG)))) Loc.unit. *)
   Ring.of_Z (((Z_of_nat ((proj1_sig g) * (n / kG))))).
 
 (** The starting configuration where robots are evenly spaced:
@@ -180,7 +179,7 @@ try (now auto); try now rewrite Hl_rc, Ht_rc in *.
 destruct b1. unfold K.nB in *. omega.
 Qed.
 
-CoFixpoint bad_demon : demon := Stream.cons da bad_demon.
+Definition bad_demon : demon := Stream.constant da.
 
 (** As all robots see the same spectrum, we take for instance the one at location [Loc.origin]. *)
 Definition move := pgm r (!! config1) Loc.origin.

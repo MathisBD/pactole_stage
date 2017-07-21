@@ -221,15 +221,23 @@ split; [| split].
 Admitted.
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
-Definition is_visited (loc : Loc.t) (e : execution) :=
-  exists g, Loc.eq (Stream.hd e (Good g)).(Config.loc) loc.
+Definition is_visited (loc : Loc.t) (config : Config.t) :=
+  exists g, Loc.eq (config (Good g)) loc.
 
-Instance is_visited_compat : Proper (Loc.eq ==> eeq ==> iff) is_visited.
+Instance is_visited_compat : Proper (Loc.eq ==> Config.eq ==> iff) is_visited.
 Proof.
 intros l1 l2 Hl c1 c2 Hc.
 split; intros Hv; unfold is_visited in *; destruct Hv as (g, Hv); exists g.
-rewrite <- Hl, <- Hv; symmetry; now rewrite Hc.
-rewrite Hl, <- Hv; now rewrite Hc.
+- rewrite <- Hl, <- Hv. symmetry. apply Hc.
+- rewrite Hl, <- Hv. apply Hc.
+Qed.
+
+Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
+  Stream.next_eventually (Stream.instant (is_visited loc)) e.
+
+Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
+Proof.
+intros ? ? ?. now apply Stream.next_eventually_compat, Stream.instant_compat, is_visited_compat.
 Qed.
 
 Definition stop_now (e : execution) :=
@@ -257,16 +265,8 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
 - destruct H as [_ H], He as [_ [_ He]]. apply (rec _ _ He H).
 Qed.
 
-Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
-  Stream.next_eventually (is_visited loc) e.
-
 Definition Will_stop (e : execution) : Prop :=
   Stream.next_eventually Stopped e.
- 
-Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
-Proof.
-intros l1 l2 Hl. now apply Stream.next_eventually_compat, is_visited_compat. 
-Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
 Proof.

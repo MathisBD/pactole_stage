@@ -180,7 +180,7 @@ try (now auto); try now rewrite Hl_rc, Ht_rc in *.
 destruct b1. unfold K.nB in *. omega.
 Qed.
 
-CoFixpoint bad_demon : demon := Stream.cons da bad_demon.
+Definition bad_demon : demon := Stream.constant da.
 
 (** As all robots see the same spectrum, we take for instance the one at location [Loc.origin]. *)
 Definition move := pgm r (!! config1) Loc.origin.
