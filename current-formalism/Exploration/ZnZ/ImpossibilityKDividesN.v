@@ -33,11 +33,12 @@ Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSpace.
 Require Import Pactole.Exploration.ZnZ.Definitions.
 Require Import Pactole.Exploration.ZnZ.test_modulo.
+Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 
 Set Implicit Arguments.
 (* taille de l'anneau*)
-Parameter n : nat.
-Axiom n_sup_1 : 1 < n.
+
+Definition n := n.
 
 Parameter kG : nat.
 Axiom kdn : n mod kG = 0.

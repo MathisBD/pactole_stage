@@ -38,7 +38,7 @@ Import Graph.
 Module ExplorationDefs(N : Size).
 
 Module Names := Robots.Make(N).
-
+(*
 Lemma Loc_eq_mod : forall x, ImpossibilityKDividesN.Loc.eq x (x mod Z.of_nat n).
 Proof.
   intros; unfold ImpossibilityKDividesN.Loc.eq; rewrite Z.mod_mod;
@@ -185,7 +185,18 @@ Module Loc <: DecidableType.
   
 End Loc.
 
-Module Iso := CommonIsoGraphFormalism.Make(Graph)(Loc).
+  
+Module N : Size with Definition nG := kG with Definition nB := 0%nat.
+  Definition nG := kG.
+  Definition nB := 0%nat.
+End N.
+
+Module Names := Robots.Make (N).
+
+Module ConfigA := Configurations.Make (LocationA)(N)(Names).
+
+*)
+Module Iso := CommonIsoGraphFormalism.Make(Graph)(Graph.Loc).
 Module MkInfo := CommonGraphFormalism.Make(Graph)(LocationA).
 Module Info := MkInfo.Info.
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
@@ -205,35 +216,15 @@ refine {|
 Proof.
   + intros x y Hxy. unfold Veq, Loc.add, Loc.opp in *.
     rewrite <- 3 loc_fin.
-    unfold Loc.add, ImpossibilityKDividesN.Loc.add.
     rewrite <- (Zdiv.Zplus_mod_idemp_l), Hxy,
     Zdiv.Zplus_mod_idemp_l.
     reflexivity.
-  + intros x y; split; unfold Veq, Loc.opp, Loc.add;
-      repeat rewrite <- loc_fin in *; intro Heq;
-    repeat rewrite <- Loc_eq_mod in *;
+  + intros x y; split;
+    intro Heq;
     rewrite <- Heq;
-    try (rewrite <- ImpossibilityKDividesN.Loc.add_assoc).
-    rewrite (ImpossibilityKDividesN.Loc.add_comm (ImpossibilityKDividesN.Loc.opp _)).
-    rewrite ImpossibilityKDividesN.Loc.add_opp, ImpossibilityKDividesN.Loc.add_origin.
-    easy.
-    unfold Loc.add, Loc.opp in *.
-    repeat rewrite <- loc_fin in *.
-    rewrite ImpossibilityKDividesN.Loc.add_opp.
-    apply ImpossibilityKDividesN.Loc.add_origin.
+    try now rewrite <- Loc.add_assoc, Loc.add_opp', Loc.add_origin.
+    now rewrite <- Loc.add_assoc, Loc.add_opp, Loc.add_origin.
 Defined.
-
-
-Lemma Loc_opp_mod : forall x,
-    ImpossibilityKDividesN.Loc.eq
-      ((ImpossibilityKDividesN.Loc.opp x) mod Z.of_nat ImpossibilityKDividesN.def.n)
-      (ImpossibilityKDividesN.Loc.opp x).
-Proof.
-  intros.
-  unfold ImpossibilityKDividesN.Loc.eq.
-  rewrite Z.mod_mod; generalize ImpossibilityKDividesN.n_sup_1;
-    unfold ImpossibilityKDividesN.def.n; omega.
-Qed.
 
 Definition bij_trans_E (c : Loc.t) : Bijection.t Graph.Eeq.
   refine {|
@@ -241,59 +232,19 @@ Definition bij_trans_E (c : Loc.t) : Bijection.t Graph.Eeq.
       Bijection.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
 Proof.
   + intros e1 e2 He_eq.
-    unfold Loc.add, Loc.opp.
     unfold Graph.Eeq.
-    split; unfold Veq; simpl. repeat rewrite <- loc_fin.
-    destruct He_eq.
-    unfold Loc.t, LocationA.t,V in *.
-    unfold n, MakeRing.n, ImpossibilityKDividesN.Loc.add in *.
-    now rewrite <- Zdiv.Zplus_mod_idemp_l, H, Zdiv.Zplus_mod_idemp_l.
-    destruct He_eq.
-    now unfold Loc.t, LocationA.t in *.
+    split; unfold Veq, Loc.t in *; simpl;
+    destruct He_eq;
+    destruct (Nat.eq_dec n 2);
+    destruct (snd e1), (snd e2); try easy;
+      try now rewrite (Loc.add_compat H (reflexivity _)).
   + intros.
-    unfold Loc.t, LocationA.t, Graph.V, Graph.E, Graph.dir in *.
-    unfold Eeq, Veq; simpl.
-    repeat rewrite <- loc_fin.
-    split;
-    intros;
-    unfold Graph.Eeq, Graph.src in *; destruct H; split; simpl in *;
-      unfold Loc.add,V,n, Loc.opp in *; try rewrite <- loc_fin in *;
-        try rewrite <- Loc_eq_mod in *; try rewrite <- loc_fin in *;
-          try rewrite <- Loc_eq_mod in *.
-    rewrite <- H.
-    rewrite ImpossibilityKDividesN.Loc.add_comm,
-    (ImpossibilityKDividesN.Loc.add_comm (Loc (fst x))).
-    unfold ImpossibilityKDividesN.Loc.eq.
-    assert (Hac := ImpossibilityKDividesN.Loc.add_compat).
-    specialize (Hac (ImpossibilityKDividesN.Loc.opp (Loc c)
-                                                    mod Z.of_nat ImpossibilityKDividesN.def.n)%Z
-                    (ImpossibilityKDividesN.Loc.opp (Loc c))
-                    (symmetry (Loc_eq_mod (ImpossibilityKDividesN.Loc.opp (Loc c))))
-    (Loc (fst x)) _ (reflexivity _)).
-    rewrite Hac.
-    assert (Hl := (Loc_eq_mod)).
-    unfold n in Hl.
-    fold ImpossibilityKDividesN.def.n in Hl.
-    clear Hac.
-    rewrite Loc_eq_mod.
-    unfold n; fold ImpossibilityKDividesN.def.n.
-    unfold ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp.
-    rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same; simpl;
-    try (rewrite Zdiv.Zplus_mod_idemp_l, 2 Zdiv.Zplus_mod_idemp_r, 2 Z.mod_mod);
-    try (generalize ImpossibilityKDividesN.n_sup_1;
-         unfold ImpossibilityKDividesN.def.n; omega).
-    now rewrite Z.add_opp_l, Zplus_minus.
-    now symmetry.
-    rewrite (ImpossibilityKDividesN.Loc.add_compat _ _ (symmetry H)
-                                                   _ _ (reflexivity _)).
-    unfold ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp.
-    rewrite <- Zdiv.Zminus_mod_idemp_l, Z.mod_same;
-    try (rewrite 2 Z.mod_mod, <- Zdiv.Zplus_mod); simpl;
-    replace (Loc (fst y) + Loc c + - Loc c)%Z with (Loc (fst y)) by lia;
-    try (generalize ImpossibilityKDividesN.n_sup_1;
-         unfold ImpossibilityKDividesN.def.n; lia);
-    try now rewrite <- Loc_eq_mod.
-    now symmetry.
+    unfold Loc.t in *.
+    split; intro; split; destruct H; simpl in *.
+    now rewrite <- H, <- Loc.add_assoc, Loc.add_opp', Loc.add_origin.
+    destruct (Nat.eq_dec n 2), (snd y), (snd x); try easy.
+    now rewrite <- H, <- Loc.add_assoc, Loc.add_opp, Loc.add_origin.
+    destruct (Nat.eq_dec n 2), (snd y), (snd x); try easy.
 Defined.
 
 
@@ -321,34 +272,11 @@ Proof.
   simpl. reflexivity.
   unfold Graph.tgt in *.
   simpl in *.
-  unfold Loc.t, V, LocationA.t, MakeRing.V, Graph.E, MakeRing.E, Graph.dir, Veq,
-    Loc.add, Loc.opp in *.
-  repeat rewrite <- loc_fin.
-  destruct (snd e) eqn : Hsnd;
-    unfold V in *;
-    rewrite Hsnd in *;
-    simpl in *;
-    unfold ImpossibilityKDividesN.Loc.eq;
-      repeat rewrite <- loc_fin;
-    unfold ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.opp;
-    repeat (rewrite <- (Zdiv.Zplus_mod_idemp_l (Loc (Loc_inv _))), <- loc_fin,
-           Zdiv.Zplus_mod_idemp_l);
-    repeat (rewrite <- (Zdiv.Zplus_mod_idemp_r (Loc (Loc_inv _))), <- loc_fin,
-            Zdiv.Zplus_mod_idemp_r);
-    set (N := Z.of_nat ImpossibilityKDividesN.def.n);
-    try (rewrite <- Zdiv.Zplus_mod_idemp_r with (a := (N - Loc c)%Z);
-    (rewrite <- (Zdiv.Zminus_mod_idemp_l N), Z.mod_same);
-    repeat rewrite Z.mod_mod; try (unfold N, ImpossibilityKDividesN.def.n;
-      generalize ImpossibilityKDividesN.n_sup_1; lia)); simpl;
-      try rewrite Zdiv.Zplus_mod_idemp_r, Zdiv.Zplus_mod_idemp_l;
-      try (repeat rewrite Z.mod_mod; try (unfold N, n, ImpossibilityKDividesN.def.n;
-      generalize ImpossibilityKDividesN.n_sup_1; lia)).
-  repeat rewrite Zdiv.Zplus_mod_idemp_l; repeat rewrite Zdiv.Zplus_mod_idemp_r.
-  now rewrite 2 Z.add_comm with (m := 1%Z), <- Zplus_assoc_reverse,
-                            Zdiv.Zplus_mod_idemp_r.
-  repeat rewrite Zdiv.Zplus_mod_idemp_l; repeat rewrite Zdiv.Zplus_mod_idemp_r.
-  now rewrite 2 Z.add_comm with (m := (-1)%Z), <- Zplus_assoc_reverse,
-                                  Zdiv.Zplus_mod_idemp_r.
+  unfold Loc.t in *.
+  destruct (snd e); simpl.
+  now rewrite <- Loc.add_assoc, (Loc.add_comm (Z2V 1)), Loc.add_assoc.
+  now rewrite <- Loc.add_assoc, (Loc.add_comm (Z2V (-1))), Loc.add_assoc.
+  reflexivity.
 - intros.
   apply bT_morph.
 - apply bT_crois.
@@ -362,28 +290,12 @@ Proof.
   repeat split; try apply section_compat.
   unfold Bijection.eq.
   intros x y Hxy. simpl.
-  unfold Iso.eq;
-  unfold Loc.eq, LocationA.eq, MakeRing.Veq, Loc.add, Loc.opp in *;
-  repeat rewrite <- loc_fin.
-  unfold n; fold ImpossibilityKDividesN.def.n.
-  rewrite ( (ImpossibilityKDividesN.Loc.opp_compat (Loc c1) (Loc c2) Hc)).
-  rewrite (ImpossibilityKDividesN.Loc.add_compat
-               (Loc x) (Loc y) Hxy
-               _ _ (reflexivity _)).
-  reflexivity.
+  now rewrite Hxy, Hc.
+  now simpl; rewrite H, Hc.
+  simpl.
+  unfold Loc.t.
   destruct H.
-  simpl.
-  unfold Loc.eq, LocationA.eq, Veq, Loc.add, Loc.opp in *; repeat rewrite <- loc_fin.
-  simpl.
-  unfold n; fold ImpossibilityKDividesN.def.n.
-  rewrite ( (ImpossibilityKDividesN.Loc.opp_compat (Loc c1) (Loc c2) Hc)).
-  rewrite (ImpossibilityKDividesN.Loc.add_compat
-               (Loc (fst x)) (Loc (fst y)) H
-               _ _ (reflexivity _)).
-  reflexivity.
-  unfold bij_trans_E in *; simpl in *.  
-  unfold Loc.add, ImpossibilityKDividesN.Loc.add.
-  now destruct H.
+  destruct (Nat.eq_dec n 2), (snd y), (snd x); try easy.
   apply bT_compat.
 Qed.
 
@@ -463,7 +375,7 @@ forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop
 Definition ValidStartingConf conf :=
   (exists l : Loc.t,
     let m := Spect.from_config(conf) in
-    m[l] > 1) -> False.
+    m[l] > 1)%nat -> False.
 
 Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
 Proof.
@@ -485,9 +397,11 @@ Definition HasBeenVisited loc e :=
   exists conf_start,
     let e_start := execute r d conf_start in
     Stream.eventually (fun e1 => Config.eq (Stream.hd e1) conf) e_start
-    -> ((Spect.from_config(conf_start))[loc])>0.
+    -> (((Spect.from_config(conf_start))[loc])>0)%nat.
 
 End ExplorationDefs.
+
+
 
  
                                                                             
