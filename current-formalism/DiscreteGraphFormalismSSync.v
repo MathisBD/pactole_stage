@@ -33,15 +33,10 @@ Require Import MMaps.MMapInterface.
 Require Import MMultiset.MMultisetInterface.
 Require Import MMultiset.MMultisetExtraOps.
 Require Pactole.MMultiset.MMultisetFacts.
+Require Import Pactole.PointedMultisetSpectrum.
 Require Stream.
 (* Record graph_iso :=  *)
 
-
-Module Type UnitSig (Graph : GraphDef)
-                    (Loc : LocationADef(Graph)).
-  
-  Module Info := Unit(Loc).
-End UnitSig.
 
        
 Module DGF (Graph : GraphDef)
@@ -50,7 +45,7 @@ Module DGF (Graph : GraphDef)
            (LocationA : LocationADef(Graph))
            (MkInfoA : UnitSig(Graph)(LocationA))
            (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
-           (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
+           (SpectA : PointedSpectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
            (Import Iso : Iso(Graph) (LocationA)).
            
   
@@ -70,36 +65,36 @@ Module DGF (Graph : GraphDef)
   Module Info := Unit.
   Module Config := ConfigA.
   Module Spect :=  SpectA.
-  
  
 
 
   Record robogram :=
     {
-      pgm :> Spect.t -> Location.t -> Location.t;
-      pgm_compat : Proper (Spect.eq ==> Location.eq ==> Location.eq) pgm;
-      pgm_range : forall spect lpre,
-          exists lpost e, pgm spect lpre = lpost
-                          /\ (opt_eq Graph.Eeq (Graph.find_edge lpre lpost) (Some e))
-    }.
+      pgm :> Spect.t -> Location.t;
+      pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
+      pgm_range : forall (spect: Spect.t),
+          exists lpost e, pgm spect = lpost
+                          /\ (opt_eq Graph.Eeq (Graph.find_edge (Spect.get_location spect)
+                                                                lpost)
+                                     (Some e)) }.
 
   (* pgm s l a du dens si l est dans dans s (s[l] > 0)
      si l n'est pas occupée par un robot, on doit revoyer un voisin (à cause de pgm_range). *)
   
   Global Existing Instance pgm_compat.
 
-  Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq ==> Location.eq)%signature r1 r2.
+  Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq)%signature r1 r2.
   
   Instance req_equiv : Equivalence req.
   Proof.
     split.
-    + intros [robogram Hrobogram] x y Heq g1 g2 Hg; simpl. rewrite Hg, Heq. reflexivity.
-    + intros r1 r2 H x y Heq g1 g2 Hg. rewrite Hg, Heq.
-      unfold req in H.
-      now specialize (H y y (reflexivity y) g2 g2 (reflexivity g2)).
-    + intros r1 r2 r3 H1 H2 x y Heq g1 g2 Hg.
-      specialize (H1 x y Heq g1 g2 Hg). 
-      specialize (H2 y y (reflexivity y) g2 g2 (reflexivity g2)).
+    + intros [robogram Hrobogram] g1 g2 Hg; simpl. rewrite Hg. reflexivity.
+    + intros r1 r2 Hr g1 g2 Hg. rewrite Hg.
+      unfold req in Hr.
+      now specialize (Hr g2 g2 (reflexivity g2)).
+    + intros r1 r2 r3 H1 H2 g1 g2 Hg.
+      specialize (H1 g1 g2 Hg). 
+      specialize (H2 g2 g2 (reflexivity g2)).
       now rewrite H1.
   Qed.
   
@@ -259,7 +254,7 @@ Module DGF (Graph : GraphDef)
         | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
         | Good g =>
           let local_config := Config.map (apply_sim sim) config in
-          let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
+          let local_target := (r ((Spect.from_config local_config) (Config.loc (local_config (Good g))))) in
           let target := (sim⁻¹).(Iso.sim_V) local_target in (* configuration expressed in the frame of g *)
           {| Config.loc := target;
              Config.info := Config.info rconf |}

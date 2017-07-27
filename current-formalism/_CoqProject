@@ -44,6 +44,7 @@ FiniteGraphFormalism.v
 DiscreteGraphFormalismSSync.v
 
 ## Spectra
+PointedMultisetSpectrum.v
 MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v

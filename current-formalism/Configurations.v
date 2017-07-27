@@ -398,3 +398,27 @@ Module Type Spectrum (Location : DecidableType)
   Parameter is_ok : t -> Config.t -> Prop.
   Parameter from_config_spec : forall config, is_ok (from_config config) config.
 End Spectrum.
+
+Module Type PointedSpectrum (Location : DecidableType)
+                            (N : Size)
+                            (Names : Robots(N))
+                            (Info : DecidableTypeWithApplication(Location))
+                            (Config : Configuration(Location)(N)(Names)(Info)).
+  (* <: DecidableType *)
+  
+  (** Spectra are a decidable type *)
+  Parameter t : Type.
+  Parameter eq : t -> t -> Prop.
+  Parameter eq_equiv : Equivalence eq.
+  Parameter eq_dec : forall x y : t, {eq x y} + {~eq x y}.
+  
+  (** A predicate characterizing correct spectra for a given local configuration *)
+  Parameter from_config : Config.t -> Location.t -> t.
+  Declare Instance from_config_compat : Proper (Config.eq ==> Location.eq ==> eq) from_config.
+  Parameter is_ok : t -> Config.t -> Location.t -> Prop.
+  Parameter from_config_spec : forall config l, is_ok (from_config config l) config l.
+  
+  Parameter get_location : t -> Location.t.
+  Parameter get_location_ok : forall config l, Location.eq (get_location (from_config config l)) l.
+  
+End PointedSpectrum.

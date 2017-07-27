@@ -200,7 +200,7 @@ Module Iso := CommonIsoGraphFormalism.Make(Graph)(Graph.Loc).
 Module MkUnit := CommonGraphFormalism.MakeUnit(Graph)(LocationA).
 Module Info := MkUnit.Info.
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
-Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
+Module Spect := PointedMultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
 Module DGF := DGF(Graph)(N)(Names)(Loc)(MkUnit)(Config)(Spect)(Iso).
 Import Iso DGF.
 
@@ -373,15 +373,16 @@ Definition FullSolExplorationStop  (r : robogram) :=
 forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
 Definition ValidStartingConf conf :=
-  (exists l : Loc.t,
-    let m := Spect.from_config(conf) in
-    m[l] > 1)%nat -> False.
+  forall l',
+    (exists l : Loc.t,
+    let m := Spect.from_config(conf) l' in
+    (snd m)[l] > 1)%nat -> False.
 
 Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
 Proof.
   intros c1 c2 Hc.
-  split; intros Hv Hf; unfold ValidStartingConf in *;
-  destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
+  split; intros Hv l' Hf; unfold ValidStartingConf in *;
+  destruct (Hv l'), Hf  as (l ,Hf); exists l; simpl in *; try now rewrite <- Hc.
   now rewrite Hc.
 Qed.
   
@@ -397,7 +398,7 @@ Definition HasBeenVisited loc e :=
   exists conf_start,
     let e_start := execute r d conf_start in
     Stream.eventually (fun e1 => Config.eq (Stream.hd e1) conf) e_start
-    -> (((Spect.from_config(conf_start))[loc])>0)%nat.
+    -> forall l, (((snd (Spect.from_config(conf_start) l))[loc])>0)%nat.
 
 End ExplorationDefs.
 

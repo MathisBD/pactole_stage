@@ -441,7 +441,7 @@ Lemma conf1_1 : forall idg g0: Names.G, exists g2:Names.G,
       Loc.eq (create_conf1 idg)
              (Loc.add (create_conf1 g0) (Loc.opp (create_conf1 g2))).
 Proof.
-    intros.
+  intros.
   generalize conf1_new_1, k_sup_1, k_inf_n; intros Hc1n Hks1 Hkin.
   unfold Loc.eq.
   assert (Hc_idg := Hc1n idg).
@@ -754,13 +754,464 @@ Proof.
 Qed.
 
 
-Parameter m : Z.
-Hypothesis Hmove : forall g,
+Definition m := 
     V2Z (r.(pgm)
         (!! (Config.map
                (apply_sim (trans (Config.loc (config1 (Good g)))))
-               (config1))) Loc.origin) = m.
+               (config1)) Loc.origin)).
 
+
+Lemma NoDupA_countA_occ' :
+              forall (A : Type) (eqA : A -> A -> Prop)
+                     (decA : forall x y : A, {eqA x y} + {~eqA x y})
+                     (l : list A), Equivalence eqA -> 
+                SetoidList.NoDupA eqA l <->
+                (forall x : A, SetoidList.InA eqA x l ->
+                               countA_occ eqA decA x l = 1%nat).
+Proof.
+  intros A eqA decA l HeqA.
+  split.
+  + intros HndA x HinA.
+    induction l.
+  - now rewrite SetoidList.InA_nil in HinA.
+  - assert (HndA' := SetoidList.NoDupA_cons).
+    simpl in *.
+    destruct (decA a x).
+    * assert ((a :: l) = (List.cons a nil) ++ l).
+      simpl in *.
+      reflexivity.
+      rewrite H in *.
+      rewrite NoDupA_app_iff in *; try assumption.
+      simpl in *.
+      destruct HndA as (Hnda, (Hndl, HIn_f)).
+      specialize (HIn_f a).
+      assert (~ SetoidList.InA eqA a l) by intuition.
+      rewrite e in H0.
+      rewrite <- (countA_occ_pos HeqA decA) in H0.
+      omega.
+    * apply IHl.
+      ++ assert (Hadd_nil : (a :: l) = (List.cons a nil) ++ l) by now simpl. 
+         rewrite Hadd_nil in *.
+         rewrite NoDupA_app_iff in *; try assumption.
+         destruct HndA as (Hnda, (Hndl, HIn_f)); try assumption.
+      ++ assert (Hadd_nil : (a :: l) = (List.cons a nil) ++ l) by now simpl.
+         rewrite Hadd_nil in *.
+         rewrite SetoidList.InA_app_iff in *.
+         destruct HinA; try assumption.
+         rewrite SetoidList.InA_singleton in *.
+         now destruct n0.
+  + intros HinA.
+    induction l; try intuition.
+    simpl in *.
+    induction l as [|b l0].
+    - apply SetoidList.NoDupA_singleton.
+    - destruct (decA a b) eqn : Hdec.
+      * specialize (HinA a).
+        assert (SetoidList.InA eqA a (a :: b :: l0)) by
+            now apply SetoidList.InA_cons_hd.
+        specialize (HinA H).
+        destruct (decA a a); try assumption.
+        assert ((countA_occ eqA decA a (b :: l0) > 0)%nat).
+        rewrite countA_occ_pos; try assumption.
+        rewrite e; intuition.
+        apply lt_n_S in H0.
+        omega.
+        exfalso.
+        apply f.
+        reflexivity.
+      * apply SetoidList.NoDupA_cons.
+        ++ intros Hf.
+           assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
+           specialize (HinA a H).
+           destruct (decA a a); try intuition.
+           rewrite <- countA_occ_pos in Hf.
+           assert (countA_occ eqA decA a (b :: l0) = 0)%nat by omega.
+           rewrite H0 in Hf.
+           omega.
+           assumption.
+        ++ apply IHl.
+           intros c Hc.
+           assert (HinA_aux := HinA a).
+           specialize (HinA c).
+           simpl in *.
+           destruct (decA b c).
+           assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
+           specialize (HinA H).
+           destruct (decA a c).
+           rewrite <- e in e0.
+           contradiction.
+           assumption.
+           destruct (decA a c).
+           assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
+           specialize (HinA H).
+           assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
+           specialize (HinA_aux H0).
+           destruct (decA a a); try (now destruct f1).
+           destruct (decA b a); try discriminate.
+           assert ((countA_occ eqA decA a l0 = 0)%nat) by omega.
+           assert ((countA_occ eqA decA c (b :: l0) > 0)%nat).
+           rewrite countA_occ_pos.
+           assumption.
+           assumption.
+           simpl in *.
+           destruct (decA b c); simpl in *.
+           contradiction.
+           omega.
+           rewrite SetoidList.InA_cons in Hc.
+           destruct Hc.
+           destruct f0.
+           rewrite H.
+           reflexivity.
+           apply HinA.
+           intuition.
+Qed.
+
+
+Lemma spectre_forall_g : forall g0,
+    Spect.eq (!! (Config.map
+                    (apply_sim (trans (Config.loc (config1 (Good g)))))
+                    (config1)) Loc.origin)
+             (!! (Config.map
+                    (apply_sim (trans (Config.loc (config1 (Good g0)))))
+                    (config1)) Loc.origin).
+Proof.
+  intros.
+  simpl; split; try easy.
+  unfold Spect.from_config.
+  simpl.
+  unfold Spect.M.eq.
+  intro x.
+  rewrite 2 Spect.multiset_spec.
+  unfold Spect.from_config in *.
+  unfold Config.map in *.
+  assert (HndAg : SetoidList.NoDupA Loc.eq
+                                    (map (fun x : Names.ident =>
+                                            Config.loc (apply_sim (trans (create_conf1 g)) (config1 x))) Names.names)).
+  {
+    apply (map_injective_NoDupA eq_equivalence Loc.eq_equiv).
+    + intros a b Hab.
+      rewrite Hab.
+      reflexivity.
+    + intros id1 id2 Hloc.
+      destruct id1 as [g1|b1], id2 as [g2|b2]; try ImpByz b1; try ImpByz b2.
+      unfold apply_sim,trans in *; simpl in *.
+      destruct (Names.eq_dec (Good g1) (Good g2)).
+      assumption.
+      assert (Hg : g1 <> g2).
+      { intuition.
+        apply n0.
+        now rewrite H.
+      }
+      generalize (unique_g_2 g Hg).
+      intros Hu.
+      destruct Hu.
+      simpl in *;
+        rewrite 2 Loc.add_comm with (y := (Loc.opp (create_conf1 g)))
+        in Hloc;
+        apply Loc.add_reg_l in Hloc.
+      now rewrite Hloc.
+    + assert (Hnames := Names.names_NoDup).
+      apply NoDupA_Leibniz in Hnames.
+      assumption.
+  }
+  assert (Hkn : forall x, x mod Z.of_nat n = 0
+                          -> x mod Z.of_nat (n / kG) = 0).
+  { intros.
+    generalize k_sup_1; intros Hk.
+    assert (Hkdn := kdn).
+    rewrite Nat.mod_divides in Hkdn; try omega.
+    destruct Hkdn.
+    rewrite Nat.mul_comm in H0.
+    rewrite H0 in *.
+    rewrite Nat.div_mul in *; try lia.
+    destruct x1.
+    now rewrite Zdiv.Zmod_0_r.
+    rewrite Nat2Z.inj_mul, Z.rem_mul_r in H.
+    generalize Z_of_nat_complete; intros Haux.
+    assert (Ha1 := Haux (x0 mod Z.of_nat (S x1))).
+    assert (Ha2 := Haux ((x0 / Z.of_nat (S x1)) mod Z.of_nat kG)).
+    destruct Ha1.
+    { now apply Zdiv.Z_mod_lt. }
+    destruct Ha2.
+    { apply Zdiv.Z_mod_lt. generalize k_sup_1; lia. }
+    rewrite H1, H2 in H.
+    assert (forall x y, 0 <= x -> 0 <= y -> x + y = 0 -> x = 0 /\ y = 0).
+    { intros s t Hr Hs Hrs.
+      omega. }
+    apply H3 in H.
+    destruct H; rewrite H1 in *; assumption.
+    omega.
+    rewrite <- Nat2Z.inj_mul.
+    omega.
+    assert ( (0 < S x1)%nat ) by omega.
+    assert ( 0<Z.of_nat (S x1)).
+    rewrite <- Nat2Z.inj_0.
+    now apply inj_lt.
+    omega.
+    generalize k_sup_1; 
+      lia.
+  }
+  simpl in *.
+  assert (forall l elt, Spect.M.In elt (snd (!! (Config.map (apply_sim
+                                                               (trans (create_conf1 g)))
+                                                            config1) l)) ->
+                        countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
+                                                              (Config.list
+                                                                 (fun id : Names.ident =>
+                                                                    apply_sim (trans (create_conf1 g)) (config1 id)))) = 1%nat).
+  {
+    intros l elt Hspe.
+    simpl in *.
+    assert ((countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
+                                                   (Config.list
+                                                      (fun id : Names.ident =>
+                                                         apply_sim (trans (create_conf1 g)) (config1 id)))) > 1)%nat
+            -> False).
+    {
+      intros Hgt.
+      rewrite Config.list_spec, map_map in *.     
+      rewrite (NoDupA_countA_occ' Loc.eq_dec) in HndAg.
+      rewrite <- Spect.M.support_In in Hspe.
+      unfold Spect.from_config in Hspe.
+      unfold Config.map in Hspe.
+      rewrite Spect.multiset_support in Hspe.
+      specialize (HndAg elt Hspe).
+      unfold apply_sim, trans in *; simpl in *.
+      rewrite HndAg in Hgt.
+      omega.
+      apply Loc.eq_equiv.
+    }
+    rewrite <- Spect.M.support_In in Hspe.
+    unfold Spect.from_config in Hspe.
+    rewrite Spect.multiset_support in Hspe.
+    unfold Config.map in Hspe.
+    rewrite <- (countA_occ_pos Loc.eq_equiv Loc.eq_dec) in Hspe.
+    destruct ( (countA_occ Loc.eq Loc.eq_dec elt
+                           (map Config.loc
+                                (Config.list
+                                   (fun id : Names.ident =>
+                                      apply_sim (trans (create_conf1 g)) (config1 id))))
+                           ?= 1)%nat) eqn : Heq; try rewrite <- nat_compare_lt in *;
+      try rewrite <- nat_compare_gt in *;
+      try apply nat_compare_eq in Heq.
+    - assumption.
+    - assert (countA_occ Loc.eq Loc.eq_dec elt
+                         (map Config.loc
+                              (Config.list
+                                 (fun id : Names.ident =>
+                                    apply_sim (trans (create_conf1 g))
+                                              (config1 id)))) <= 0)%nat by omega.
+      apply le_not_gt in H0.
+      contradiction.
+    - exfalso; apply H; apply Heq.
+  }
+  assert (forall l elt,
+             Spect.M.In elt (snd (!! (Config.map (apply_sim (trans (Config.loc
+                                                                      (config1 (Good g)))))
+                                                 config1) l))
+             <->
+             Spect.M.In elt (snd (!! (Config.map (apply_sim (trans (Config.loc
+                                                                      (config1 (Good g0)))))
+                                                 config1) l))).
+  {  intros l elt.
+     do 2 rewrite Spect.from_config_In.
+     assert (Hcc1 := conf1_1 g g0).
+     destruct Hcc1 as (g2', Hcc1).
+     assert (Hg_opp : forall g1 : Names.G, exists g': Names.G, Loc.eq (create_conf1 g') (Loc.opp (create_conf1 g1))).
+     { intros.
+       generalize conf1_new_2.
+       intros.
+       unfold Loc.eq, Veq, Loc.opp.
+       rewrite <- loc_fin.
+       repeat rewrite Z.mod_mod.
+       specialize (H0 (((Z.of_nat MakeRing.n - V2Z (create_conf1 g1))))).
+         assert (((Z.of_nat MakeRing.n - V2Z (create_conf1 g1)))
+                   mod Z.of_nat (n / kG) = 0).
+         rewrite Zdiv.Zminus_mod.
+         rewrite conf1_new_1.
+         rewrite Hkn; try easy.
+         rewrite Hkn; try easy.
+         apply Z.mod_same.
+         generalize n_sup_1; fold n; lia.
+         specialize (H0 H1).
+         unfold Loc.eq, Veq in H0; rewrite <- loc_fin, Z.mod_mod in H0.
+         apply H0.
+         generalize n_sup_1; lia.
+         generalize n_sup_1; lia.
+         generalize n_sup_1; lia.
+     }
+     
+     assert (forall (g1 g2:Names.G), exists (g':Names.G), Loc.eq (create_conf1 g') (Loc.add (create_conf1 g1)
+                                                                      (create_conf1 g2))).
+       { generalize conf1_new_2.
+         intros.
+         unfold Loc.eq, Veq, Loc.add.
+         rewrite <- loc_fin.
+         repeat rewrite Z.mod_mod.
+         
+         specialize (H0 (((V2Z (create_conf1 g1) + V2Z (create_conf1 g2))))).
+         assert (((V2Z (create_conf1 g1) + V2Z (create_conf1 g2)))
+                   mod Z.of_nat (n / kG) = 0).
+         rewrite Zdiv.Zplus_mod.
+         rewrite 2 conf1_new_1.
+         simpl; rewrite Z.mod_0_l.
+         reflexivity.
+         destruct kG eqn : Hkg.
+         generalize k_sup_1; lia.
+         generalize k_inf_n, k_sup_1, kdn; intros ? ? Hkdn.
+         rewrite Hkg in *.
+         rewrite Nat.mod_divides, <-Hkg in Hkdn.
+         destruct Hkdn.      
+         rewrite H3, Nat.mul_comm.
+         rewrite Hkg in *.
+         rewrite Nat.div_mul.
+         destruct x0.
+         omega.
+         rewrite <- Nat2Z.inj_0.
+         intuition.
+         apply Nat2Z.inj in H4.
+         omega.
+         omega.
+         omega.
+         specialize (H0 H1).
+         unfold Loc.eq, Veq in H0; rewrite <- loc_fin, Z.mod_mod in H0.
+         apply H0.
+         generalize n_sup_1; lia.
+         generalize n_sup_1; lia.
+         generalize n_sup_1; lia.
+       }
+       split.
+     + intros (gc1,Hc1).
+       destruct gc1 as [g1| b] eqn : Hg; try ImpByz b.
+       unfold Config.map, apply_sim, trans, config1; simpl in *.
+       destruct (H0 g1 g2').
+       exists (Good x0).
+       simpl.
+       rewrite <- Hc1, H1.
+       rewrite Hcc1.
+       rewrite Loc.opp_distr_add, Loc.opp_opp.
+       rewrite Loc.add_assoc, (Loc.add_comm (create_conf1 g1)), <- Loc.add_assoc.
+       now rewrite (Loc.add_comm).
+     + assert (Hcc2 : Loc.eq (create_conf1 g0)
+                             (Loc.add (create_conf1 g) (create_conf1 g2'))).
+       rewrite Hcc1.
+       rewrite <- Loc.add_assoc.
+       now rewrite Loc.add_opp', Loc.add_origin.
+       intros (gc1,Hc1).
+       destruct gc1 as [g1| b] eqn : Hg; try ImpByz b.
+       unfold Config.map, apply_sim, trans, config1; simpl in *.
+       destruct (Hg_opp g2').
+       destruct (H0 g1 x0).
+       rewrite Hcc2 in Hc1.
+       exists (Good x1).
+       simpl.
+       rewrite <- Hc1.
+       rewrite H2, H1.
+       now rewrite Loc.opp_distr_add, (Loc.add_comm (Loc.opp _) (Loc.opp _)),
+       Loc.add_assoc.
+  }
+  assert (Ht_map : forall (x : Spect.M.elt) l, 
+             Spect.M.In x (snd (!! (Config.map (apply_sim (trans (Config.loc
+                                                                (config1 (Good g0)))))
+                                        config1) l))
+             <-> (snd (!! (Config.map (apply_sim (trans (Config.loc
+                                                         (config1 (Good g0)))))
+                                 config1) l))[x] = 1%nat).
+  { intros elt; split.
+    intros Hsp_In.
+    assert (Hsp_In' := Hsp_In).
+    (* rewrite HSfcI in Hsp. *)
+    (* destruct Hsp. *)
+    unfold Spect.from_config.
+    (* unfold Spect.multiset. *)
+    generalize unique_g_2.
+    intros.
+    simpl in *.
+    rewrite Spect.multiset_spec. 
+    rewrite Config.list_spec.
+    rewrite map_map.
+    assert (HNoDup_map :
+              SetoidList.NoDupA Loc.eq
+                                (map (fun x0 : Names.ident =>
+                                        Config.loc (Config.map
+                                                      (apply_sim (trans ( (create_conf1 g0))))
+                                                      config1 x0)) Names.names)).
+    { apply (map_injective_NoDupA) with (eqA := Logic.eq).
+      + intuition.
+      + apply Loc.eq_equiv.
+      + intros a b Hab.
+        rewrite Hab.
+        reflexivity.
+      + intros id1 id2 Heq.
+        destruct (Names.eq_dec id1 id2).
+        assumption.
+        exfalso.
+        destruct id1 eqn : Hid1,
+                         id2 eqn : Hid2; try ImpByz b.
+        assert (H_aux2 := conf1_1 g2 g0);
+          assert (H_aux1 := conf1_1 g1 g0).
+        destruct H_aux1, H_aux2.
+        apply (H1 g0 g1 g2).
+        intuition.
+        rewrite H4 in n0.
+        auto.
+        simpl in *;
+        do 2 rewrite Loc.add_comm with (y := Loc.opp _) in Heq;
+        apply Loc.add_reg_l in Heq;
+        rewrite Heq;
+        reflexivity.
+      + assert (Hnames := Names.names_NoDup).
+        apply NoDupA_Leibniz in Hnames.
+        assumption.
+    }
+    apply NoDupA_countA_occ'.
+    apply Loc.eq_equiv.
+    apply HNoDup_map.
+    unfold Spect.from_config in Hsp_In.
+    unfold Config.map in Hsp_In.
+    rewrite Config.list_spec in Hsp_In.
+    rewrite map_map in Hsp_In.
+    rewrite <- Spect.M.support_In in Hsp_In.
+    rewrite Spect.multiset_support in Hsp_In.
+    assumption.
+    intros.
+    unfold Spect.from_config in *.
+    unfold Spect.M.In.
+    omega.
+  }
+  specialize (Ht_map x Loc.origin).
+  destruct (Spect.M.In_dec x (snd (!! (Config.map (apply_sim
+                                                (trans (Config.loc
+                                                          (config1 (Good g)))))
+                             config1) Loc.origin))).
+  + assert (i' : Spect.M.In x  (snd (!! (Config.map (apply_sim
+                                                (trans (Config.loc
+                                                          (config1 (Good g0)))))
+                             config1) Loc.origin))) by now rewrite <- H0.
+    unfold Spect.from_config, Config.map in *.
+    simpl in *.
+    rewrite Spect.multiset_spec in *.
+    unfold apply_sim, trans in *; simpl in *.
+    destruct Ht_map as (Ht1, Ht2).
+    rewrite H, Ht1.
+    reflexivity.
+    apply i'.
+    apply Loc.origin.
+    apply i.
+  + assert (n0' : ~ Spect.M.In x (snd (!! (Config.map (apply_sim
+                                                (trans (Config.loc
+                                                          (config1 (Good g0)))))
+                             config1) Loc.origin))) by now rewrite <- H0.
+    rewrite Spect.M.not_In in n0.
+    rewrite Spect.M.not_In in n0'.
+    unfold Spect.from_config, Config.map in *.
+    simpl in *.
+    rewrite Spect.multiset_spec in *.
+    unfold apply_sim, trans in *; simpl in *.
+    rewrite n0, n0'.
+    reflexivity.  
+Qed.
+  
 Definition f_conf conf k : Config.t :=
   fun id =>
       match id with
@@ -884,111 +1335,6 @@ now destruct Hmo.
 Qed.
 
   
-Lemma NoDupA_countA_occ' :
-              forall (A : Type) (eqA : A -> A -> Prop)
-                     (decA : forall x y : A, {eqA x y} + {~eqA x y})
-                     (l : list A), Equivalence eqA -> 
-                SetoidList.NoDupA eqA l <->
-                (forall x : A, SetoidList.InA eqA x l ->
-                               countA_occ eqA decA x l = 1%nat).
-Proof.
-  intros A eqA decA l HeqA.
-  split.
-  + intros HndA x HinA.
-    induction l.
-  - now rewrite SetoidList.InA_nil in HinA.
-  - assert (HndA' := SetoidList.NoDupA_cons).
-    simpl in *.
-    destruct (decA a x).
-    * assert ((a :: l) = (List.cons a nil) ++ l).
-      simpl in *.
-      reflexivity.
-      rewrite H in *.
-      rewrite NoDupA_app_iff in *; try assumption.
-      simpl in *.
-      destruct HndA as (Hnda, (Hndl, HIn_f)).
-      specialize (HIn_f a).
-      assert (~ SetoidList.InA eqA a l) by intuition.
-      rewrite e in H0.
-      rewrite <- (countA_occ_pos HeqA decA) in H0.
-      omega.
-    * apply IHl.
-      ++ assert (Hadd_nil : (a :: l) = (List.cons a nil) ++ l) by now simpl. 
-         rewrite Hadd_nil in *.
-         rewrite NoDupA_app_iff in *; try assumption.
-         destruct HndA as (Hnda, (Hndl, HIn_f)); try assumption.
-      ++ assert (Hadd_nil : (a :: l) = (List.cons a nil) ++ l) by now simpl.
-         rewrite Hadd_nil in *.
-         rewrite SetoidList.InA_app_iff in *.
-         destruct HinA; try assumption.
-         rewrite SetoidList.InA_singleton in *.
-         now destruct n0.
-  + intros HinA.
-    induction l; try intuition.
-    simpl in *.
-    induction l as [|b l0].
-    - apply SetoidList.NoDupA_singleton.
-    - destruct (decA a b) eqn : Hdec.
-      * specialize (HinA a).
-        assert (SetoidList.InA eqA a (a :: b :: l0)) by
-            now apply SetoidList.InA_cons_hd.
-        specialize (HinA H).
-        destruct (decA a a); try assumption.
-        assert ((countA_occ eqA decA a (b :: l0) > 0)%nat).
-        rewrite countA_occ_pos; try assumption.
-        rewrite e; intuition.
-        apply lt_n_S in H0.
-        omega.
-        exfalso.
-        apply f.
-        reflexivity.
-      * apply SetoidList.NoDupA_cons.
-        ++ intros Hf.
-           assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
-           specialize (HinA a H).
-           destruct (decA a a); try intuition.
-           rewrite <- countA_occ_pos in Hf.
-           assert (countA_occ eqA decA a (b :: l0) = 0)%nat by omega.
-           rewrite H0 in Hf.
-           omega.
-           assumption.
-        ++ apply IHl.
-           intros c Hc.
-           assert (HinA_aux := HinA a).
-           specialize (HinA c).
-           simpl in *.
-           destruct (decA b c).
-           assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
-           specialize (HinA H).
-           destruct (decA a c).
-           rewrite <- e in e0.
-           contradiction.
-           assumption.
-           destruct (decA a c).
-           assert (SetoidList.InA eqA c (a :: b :: l0)) by intuition.
-           specialize (HinA H).
-           assert (SetoidList.InA eqA a (a :: b :: l0)) by intuition.
-           specialize (HinA_aux H0).
-           destruct (decA a a); try (now destruct f1).
-           destruct (decA b a); try discriminate.
-           assert ((countA_occ eqA decA a l0 = 0)%nat) by omega.
-           assert ((countA_occ eqA decA c (b :: l0) > 0)%nat).
-           rewrite countA_occ_pos.
-           assumption.
-           assumption.
-           simpl in *.
-           destruct (decA b c); simpl in *.
-           contradiction.
-           omega.
-           rewrite SetoidList.InA_cons in Hc.
-           destruct Hc.
-           destruct f0.
-           rewrite H.
-           reflexivity.
-           apply HinA.
-           intuition.
-Qed.
-
 Lemma config1_Spectre_Equiv : forall conf g0,
       (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id))))
