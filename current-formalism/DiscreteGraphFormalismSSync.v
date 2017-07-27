@@ -37,11 +37,18 @@ Require Stream.
 (* Record graph_iso :=  *)
 
 
+Module Type UnitSig (Graph : GraphDef)
+                    (Loc : LocationADef(Graph)).
+  
+  Module Info := Unit(Loc).
+End UnitSig.
+
+       
 Module DGF (Graph : GraphDef)
            (N : Size)
            (Names : Robots(N))
            (LocationA : LocationADef(Graph))
-           (MkInfoA : InfoSig(Graph)(LocationA))
+           (MkInfoA : UnitSig(Graph)(LocationA))
            (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
            (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
            (Import Iso : Iso(Graph) (LocationA)).
@@ -60,7 +67,7 @@ Module DGF (Graph : GraphDef)
   (* They come from the common part as they are shared by AGF and DGF. *)
   Module InfoA := MkInfoA.Info.
   Module Location := LocationA.
-  Module Info := InfoA.
+  Module Info := Unit.
   Module Config := ConfigA.
   Module Spect :=  SpectA.
   
@@ -229,17 +236,14 @@ Module DGF (Graph : GraphDef)
   
   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
     {| Config.loc := (Iso.sim_V sim) (Config.loc infoR);
-       Config.info :=
-         {| Info.source := (Iso.sim_V sim) (Info.source (Config.info infoR));
-            Info.target := (Iso.sim_V sim) (Info.target (Config.info infoR))
-         |}
+       Config.info := Config.info infoR
     |}.
   
   Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
   Proof.
     intros sim sim' Hsim conf conf' Hconf. unfold apply_sim. hnf. split; simpl.
     - apply Hsim, Hconf.
-    - split; apply Hsim, Hconf.
+    - apply Hconf.
   Qed.
   Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
   
@@ -258,7 +262,7 @@ Module DGF (Graph : GraphDef)
           let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
           let target := (sim⁻¹).(Iso.sim_V) local_target in (* configuration expressed in the frame of g *)
           {| Config.loc := target;
-             Config.info := {| Info.source := pos ; Info.target := target|} |}
+             Config.info := Config.info rconf |}
         end
     end. (** for a given robot, we compute the new configuration *)
   
@@ -291,12 +295,6 @@ Module DGF (Graph : GraphDef)
         apply Hstep.
         apply Hconf.
       - apply Hconf.
-      - f_equiv.
-        apply Hstep.
-        apply Hr.
-        apply Hsfcc.
-        apply Hstep.
-        apply Hconf.
     + rewrite Hda. now destruct (Hconf (Byz b)).
   Qed.
   

@@ -103,12 +103,10 @@ Definition config1 : Config.t :=
   fun id => match id with
               | Good g => let pos := create_conf1 g in
                           {| Config.loc :=  pos;
-                             Config.info :=
-                               {| Info.source := pos;
-                                  Info.target := pos  |} |}
+                             Config.info := tt |}
               | Byz b => let pos := Loc.origin in
                           {| Config.loc := pos;
-                             Config.info := {| Info.source := pos; Info.target := pos |} |}
+                             Config.info := tt |}
             end.
 
 Unset Printing Dependent Evars Line.
@@ -629,14 +627,8 @@ Definition da1 : demonic_action.
   Proof.
     - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
       unfold Names.G.
-      destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
-      destruct 
-        (Loc.eq_dec (Config.loc rc1)
-                    (Info.target (Config.info rc1))),
-      (Loc.eq_dec (Config.loc rc2)
-                  (Info.target (Config.info rc2)));
-        try (now auto);
-        try now rewrite Hl_rc, Ht_rc in *.
+      destruct Hrc as (Hl_rc, _).
+      now apply trans_compat.
       apply Fin.case0.
       exact b1.    
   Defined.
@@ -773,11 +765,8 @@ Definition f_conf conf k : Config.t :=
   fun id =>
       match id with
       | Good g => {| Config.loc := Loc.add k (Config.loc (conf (Good g)));
-                     Config.info :=
-                       {| Info.source := Loc.add k (Info.source (Config.info (conf (Good g))));
-                          Info.target := Loc.add k (Info.target (Config.info (conf (Good g))))
-                       |}
-                  |}
+                     Config.info := tt |}
+                      
       | Byz b => conf (Byz b)
       end.
 
@@ -788,17 +777,7 @@ Proof.
   unfold Config.eq.
   intros [g|b]; try ImpByz b.
   split; simpl in *.
-  unfold Loc.add.
-  rewrite Zdiv.Zplus_mod, Hk.
-  destruct (Hc (Good g)) as (Hc',_). 
-  rewrite Hc'.
-  rewrite <- Zdiv.Zplus_mod.
-  reflexivity.
-  unfold Loc.add.
-  rewrite 2 (Zdiv.Zplus_mod (V2Z k1)) , Hk.
-  split; simpl;
-    destruct (Hc (Good g)) as (_,(Hcs', Hct')); try rewrite Hcs'; try rewrite Hct';
-      try rewrite <- Zdiv.Zplus_mod;
+  now rewrite Hk, (Hc (Good g)).
   reflexivity.
 Qed.
 
@@ -854,8 +833,7 @@ Lemma rconfig1_simpl :
                         match id with
                         | Good g =>
                           {| Config.loc := n_pos g;
-                             Config.info := {| Info.source := create_conf1 g;
-                                               Info.target := n_pos g |}
+                             Config.info := tt
                           |}
                         | Byz b => (config1 (Byz b))
                      end).
@@ -1013,10 +991,7 @@ Qed.
 
 Lemma config1_Spectre_Equiv : forall conf g0,
       (exists k, forall id,
-            Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
-            /\
-            Location.eq (Info.target (Config.info (conf id)))
-                        (Loc.add k (Info.target (Config.info (config1 id)))))
+            Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id))))
             ->
     Spect.eq (!! (Config.map (apply_sim
                                 (trans (Config.loc (conf (Good g0)))))
@@ -1035,20 +1010,7 @@ Proof.
   unfold apply_sim, trans; simpl.
   unfold equiv_conf, f_conf in *.
   destruct Hconf_equiv.
-  destruct (H (Good g0)) as (Hl, Ht).
   simpl in *.
-  
-  assert (Hconf_eq_lt : forall glt,
-             Loc.eq (Config.loc (conf (Good glt)))
-                    (Info.target (Config.info (conf (Good glt))))).
-  { intros glt.
-    specialize (H (Good glt)).
-    simpl in *.
-    destruct H as (Hfalse_l, Hfalse_t).
-    simpl in *.
-    rewrite Hfalse_l, Hfalse_t.
-    reflexivity.
-  } 
   assert (SetoidList.NoDupA Loc.eq
                             (map (fun x : Names.ident =>
                            Config.loc (apply_sim (trans (Config.loc (conf (Good g0))))
@@ -1074,12 +1036,12 @@ Proof.
        apply (Hu g0 g1 g2).
        intros Hn; rewrite Hn in n0.
        apply n0.
+       
        reflexivity.
         simpl in *;
         rewrite 2 Loc.add_comm with (y := (Loc.opp (Config.loc (conf (Good g0)))))
           in Hloc;
         apply Loc.add_reg_l in Hloc;
-        destruct Hg1 as (Hg1,_), Hg2 as (Hg2,_);
         rewrite Hg1, Hg2 in Hloc;
         simpl in *;
         apply Loc.add_reg_l in Hloc.
@@ -1168,10 +1130,9 @@ Proof.
        exists (Good g1).
        simpl in *.
        rewrite <- Hc1.
-       destruct (H (Good g1)) as (Hl_g1, Ht_g1).
        simpl in *.
        unfold Location.eq in *.
-       rewrite Hl, Hl_g1.
+       rewrite (H (Good g0)), (H (Good g1)).
        rewrite Loc.opp_distr_add.
        rewrite Loc.add_assoc.
        rewrite (Loc.add_comm _ (Loc.opp x0)).
@@ -1185,16 +1146,17 @@ Proof.
      exists (Good g1).
      simpl in *.
      rewrite <- Hc1.
-     destruct (H (Good g1)) as (Hl_g1, Ht_g1).
      unfold round.
      simpl in *.
-     rewrite Hl_g1, Hl;
+     rewrite (H (Good g0)), (H (Good g1)).
        rewrite <- Loc.add_assoc;
        rewrite (Loc.opp_distr_add x0);
        rewrite (Loc.add_comm (create_conf1 g1));
-       rewrite Loc.add_assoc;
-       rewrite Loc.add_assoc;
-       rewrite Loc.add_opp, (Loc.add_comm Loc.origin), Loc.add_origin;
+       rewrite Loc.add_assoc.
+       rewrite Loc.add_assoc.
+       rewrite (Loc.add_comm x0), <- (Loc.add_assoc _ x0),
+       Loc.add_opp, Loc.add_origin.
+       simpl.
        now rewrite Loc.add_comm.
   }
   assert (Ht_map : forall x : Spect.elt, 
@@ -1322,36 +1284,29 @@ Lemma round_2_simplify_1 :
                            (conf (Good g))))⁻¹).(Iso.Iso.sim_V).(Bijection.section)
                                                                   local_target in
                 {| Config.loc := new_target;
-                   Config.info :=
-                     {| Info.source := Config.loc (conf (Good g));
-                        Info.target := new_target
-                     |}
-                |}
+                   Config.info := tt |}
               end).
 Proof.
   intros conf Hconf_eq [g|b]; unfold round at 1; simpl in *; try ImpByz b.
   assert (Hequiv' : (exists k, forall id,
-            Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
-            /\
-            Location.eq (Info.target (Config.info (conf id)))
-                        (Loc.add k (Info.target (Config.info (config1 id)))))
-            ).
+            Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id))))).
   { destruct Hconf_eq.
     exists (Loc.add (Z2V 1) x).
     intros [g'|b]; try ImpByz b.
-    destruct (H (Good g')) as (Hl, (_, Ht));
+    destruct (H (Good g')) as (Hl, _);
       unfold f_conf in *.
     assert (Hrs := rconfig1_simpl).
     simpl in Hrs.
     specialize (Hrs (Good g')).
-    destruct Hrs as (Hls, (_,Hts)).
+    destruct Hrs as (Hls, _).
     rewrite Hls in Hl.
     simpl in *.
-    rewrite Hts in *.
-    rewrite Hl, Ht.
-    now split; rewrite Loc.add_assoc, (Loc.add_comm x).
+    rewrite Hl.
+    now rewrite Loc.add_assoc, (Loc.add_comm x).
   }
   repeat split; simpl.
+  destruct Hconf_eq.
+  apply H.
 Qed.
 
 Unset Printing Implicit.
@@ -1367,9 +1322,7 @@ Proof.
   assert ((exists k : Loc.t,
          forall id : Names.ident,
          Location.eq (Config.loc (rconfig1 id))
-           (Loc.add k (Config.loc (config1 id))) /\
-         Location.eq (Info.target (Config.info (rconfig1 id)))
-           (Loc.add k (Info.target (Config.info (config1 id)))))).
+           (Loc.add k (Config.loc (config1 id))))).
   { unfold rconfig1.
     unfold round.
     simpl in *.
@@ -1379,7 +1332,7 @@ Proof.
     rewrite Loc.add_opp.
     unfold Loc.add.
     rewrite Hmove.
-    split; rewrite <- loc_fin;
+    rewrite <- loc_fin;
       now repeat rewrite Zdiv.Zplus_mod_idemp_l.
   }
   specialize (H H0).
@@ -1413,7 +1366,7 @@ Proof.
   intros Hrmg1.
   simpl in Hs.
   specialize (Hs (Good g)).
-  destruct Hs as (Hl, (Hs, Ht)).
+  destruct Hs as (Hl, _).
   specialize (Hrmg1 g).
   destruct Hrmg1.
   apply (symmetry Hl).
@@ -1427,31 +1380,26 @@ Lemma round1_move_g_equiv : forall g0 conf,
 Proof.
   intros g0 conf Hequiv.
   assert (Hequiv' : (exists k, forall id,
-            Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id)))
-            /\
-            Location.eq (Info.target (Config.info (conf id)))
-                        (Loc.add k (Info.target (Config.info (config1 id)))))
-            ).
+            Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (config1 id))))).
   { destruct Hequiv.
     exists (Loc.add (Z2V 1) x).
     intros [g'|b]; try ImpByz b.
-    destruct (H (Good g')) as (Hl, (_, Ht));
-      unfold f_conf in *.
+    destruct (H (Good g')) as (Hl, _);
+    unfold f_conf in *.
     assert (Hrs := rconfig1_simpl).
     simpl in Hrs.
     specialize (Hrs (Good g')).
-    destruct Hrs as (Hls, (_,Hts)).
+    destruct Hrs as (Hls, _).
     rewrite Hls in Hl.
     simpl in *.
-    rewrite Hts in *.
-    rewrite Hl, Ht.
-    now split; rewrite Loc.add_assoc, (Loc.add_comm x).
+    rewrite Hl.
+    now rewrite Loc.add_assoc, (Loc.add_comm x).
   }
   rewrite (round_2_simplify_1 Hequiv (Good g0)) in *.
   assert (HSequiv := config1_Spectre_Equiv conf g0 Hequiv').
   unfold equiv_conf, f_conf in Hequiv.
   destruct Hequiv as (k, Hequiv).
-  destruct (Hequiv (Good g0)) as (Hl0, (Hs0, Ht0)).
+  destruct (Hequiv (Good g0)) as (Hl0, _).
   simpl in *.
   intros Hf.
   rewrite HSequiv in Hf.
@@ -1539,22 +1487,16 @@ Proof.
     assert (Hequiv' :
               (exists k, forall id,
                     Location.eq (Config.loc (conf id))
-                                (Loc.add k (Config.loc (config1 id)))
-                    /\
-                    Location.eq (Info.target (Config.info (conf id)))
-                                (Loc.add k (Info.target
-                                              (Config.info (config1 id)))))).
+                                (Loc.add k (Config.loc (config1 id))))).
     { destruct H.
       exists (Loc.add (Z2V 1) x).
       intros [g0|b]; try ImpByz b.
-      destruct (H (Good g0)) as (Hl, (_, Ht)).
-      destruct (rconfig1_simpl (Good g0)) as (Hrl, (_,Hrt)).
-      simpl in Ht.
-      rewrite Hrt in Ht.
+      destruct (H (Good g0)) as (Hl, _).
+      destruct (rconfig1_simpl (Good g0)) as (Hrl,_).
       simpl in Hl.
       rewrite Hrl in Hl.
       simpl in *.
-      rewrite Ht,Hl.
+      rewrite Hl.
       now rewrite Loc.add_assoc, (Loc.add_comm x).
     }
     unfold equiv_conf.
@@ -1586,31 +1528,14 @@ Proof.
     rewrite Hmove_eq, Hmg.
     repeat rewrite Zdiv.Zplus_mod_idemp_l;
       repeat rewrite Zdiv.Zplus_mod_idemp_r;
-    destruct (H (Good g0)) as (Hl,( _ , Ht));
+    destruct (H (Good g0)) as (Hl, _);
     try rewrite Zdiv.Zplus_mod, Hl, <- Zdiv.Zplus_mod;
     try rewrite Zdiv.Zplus_mod, Ht, <- Zdiv.Zplus_mod;
     unfold f_conf;
-    destruct (rconfig1_simpl (Good g0)) as (Hl0,(_, Ht0));
+    destruct (rconfig1_simpl (Good g0)) as (Hl0, _);
     simpl in *;
     rewrite Hl, Loc.add_opp, (Loc.add_compat Hmg (reflexivity _));
     rewrite Hm;
-    now rewrite Loc.add_assoc, (Loc.add_comm _ x).
-    destruct (H (Good g0)) as (Hl,( _ , Ht)).
-    rewrite Hl.
-    simpl.
-    rewrite Loc.add_opp.
-    rewrite (Loc.add_compat Hmg (reflexivity _)).
-    rewrite Hm.
-    now rewrite Loc.add_assoc.
-    rewrite (Loc.add_compat Hmove_eq (reflexivity _)).
-    rewrite 2 (Loc.add_compat Hmg (reflexivity _)).
-    rewrite Hm.
-    destruct (H (Good g0)) as (Hl,( _ , Ht)).
-    rewrite Hl.
-    simpl.
-    rewrite Loc.add_opp.
-    rewrite (Loc.add_compat Hmg (reflexivity _)).
-    rewrite Hm.
     now rewrite Loc.add_assoc, (Loc.add_comm _ x).
     now exists x.
 Qed.
@@ -1696,18 +1621,8 @@ Section Stop.
     try (now rewrite H0, Loc.add_comm, Loc.add_origin); destruct H.
     exists x.
     intros [g0|b]; try ImpByz b.
-    destruct (H (Good g0)) as (Hl,( _,Ht)).
-    rewrite Hl, Ht.
-    now unfold f_conf; simpl.
-    destruct (H (Good g)) as (Hl,(Hs,_)).
-    rewrite Hl, Hs.
-    now simpl.
-    destruct (H (Good g)) as (Hl,(_, Ht)).
-    rewrite H0, Hl ,Ht, Loc.add_comm, Loc.add_origin; now simpl.
-    exists x.
-    intros [g0|b]; try ImpByz b.
-    destruct (H (Good g0)) as (Hl,( _,Ht)).
-    rewrite Hl, Ht.
+    destruct (H (Good g0)) as (Hl, _).
+    rewrite Hl.
     now unfold f_conf; simpl.
   Qed.
   
@@ -1777,10 +1692,7 @@ Section Move_minus1.
                  match id with
                  | Good g =>
                    {| Config.loc := Loc.add (Loc.opp (Z2V 1)) (create_conf1 g);
-                      Config.info :=
-                        {| Info.source := create_conf1 g;
-                           Info.target := Loc.add (Loc.opp (Z2V 1)) (create_conf1 g)
-                        |} |}
+                      Config.info := tt |}
                  | Byz b => (config1 (Byz b))
                  end).
   Proof.
@@ -1862,17 +1774,11 @@ Section Move_minus1.
                                     | Good g0 =>
                                        {|
                      Config.loc := Loc.add (Loc.opp (Z2V 1)) (create_conf1 g0);
-                     Config.info := {|
-                                    Info.source := create_conf1 g0;
-                                    Info.target := Loc.add 
-                                                     (Loc.opp (Z2V 1))
-                                                     (create_conf1 g0) |} |}
+                     Config.info := tt |}
                  | Byz _ =>
                      {|
                      Config.loc := Loc.origin;
-                     Config.info := {|
-                                    Info.source := Loc.origin;
-                                    Info.target := Loc.origin |} |}
+                     Config.info := tt |}
                                     end)))
                            (Loc.add (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g))
                                     (Loc.opp (Loc.add (Loc.opp (Z2V 1))
@@ -1914,11 +1820,10 @@ Section Move_minus1.
       intros [g'|b]; try ImpByz b.
       assert (Hr :=  round_2_config1).
       specialize (Hr (Good g')).
-      destruct Hr as (Hl, (_, Ht)).
+      destruct Hr as (Hl, _).
       simpl in *.
       repeat split;simpl.
       now rewrite Hl.
-      now rewrite Ht.
     }
     specialize (Hmove g).
     destruct (Location.eq_dec
@@ -1936,17 +1841,11 @@ Section Move_minus1.
                                    Config.loc := Loc.add 
                                                    (Loc.opp (Z2V 1)) 
                                                    (create_conf1 g0);
-                                   Config.info :=
-                                     {|
-                                       Info.source := create_conf1 g0;
-                                       Info.target := Loc.add (Loc.opp (Z2V 1))
-                                                                (create_conf1 g0)
-                                     |} |}| Byz _ =>
+                                   Config.info := tt |}
+                               | Byz _ =>
                                  {|
                                    Config.loc := Loc.origin;
-                                   Config.info := {|
-                                                         Info.source := Loc.origin;
-                                                         Info.target := Loc.origin |} |}
+                                   Config.info := tt |}
                                end)))
                       (Loc.add (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g))
                                (Loc.opp (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g)))))
@@ -1991,20 +1890,11 @@ Section Move_minus1.
                                    {|
                                      Config.loc := Loc.add (Loc.opp (Z2V 1))
                                                            (create_conf1 g0);
-                                     Config.info :=
-                                       {|
-
-                                         Info.source := create_conf1 g0;
-                                         Info.target := Loc.add
-                                                            (Loc.opp (Z2V 1))
-                                                            (create_conf1 g0) |} |}
+                                     Config.info := tt |}
                                  | Byz _ =>
                                    {|
                                      Config.loc := Loc.origin;
-                                     Config.info :=
-                                       {|
-                                         Info.source := Loc.origin;
-                                         Info.target := Loc.origin |} |}
+                                     Config.info := tt |}
                                  end)))
                         (Loc.add (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g))
                                  (Loc.opp (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g)))))
@@ -2030,7 +1920,7 @@ Section Move_minus1.
     rewrite <- (round_2_2_simplify (Good g0)).
     unfold f_conf.
     assert (Hr2c := round_2_config1 (Good g0)). 
-    destruct Hr2c as (Hl2c, (Hs2c, Ht2c)).
+    destruct Hr2c as (Hl2c, _).
     simpl in *.
     intros Hf.
     apply (@neq_a_1a (Loc.add
@@ -2059,7 +1949,7 @@ Section Move_minus1.
     unfold stop_now in Hs.
     simpl in *.
     specialize (Hs (Good g)).
-    destruct Hs as (Hl, (Hs, Ht)).
+    destruct Hs as (Hl, _).
     simpl in *.
     now apply (round1_move_g_1_m g).
   Qed.  
@@ -2345,20 +2235,16 @@ Qed.*)
     assert (Hequiv' :
               (exists k, forall id,
                     Location.eq (Config.loc (conf id))
-                                (Loc.add k (Config.loc (config1 id)))
-                    /\
-                    Location.eq (Info.target (Config.info (conf id)))
-                                (Loc.add k (Info.target
-                                              (Config.info (config1 id)))))).
+                                (Loc.add k (Config.loc (config1 id))))).
     { destruct Hequiv.
       exists (Loc.add (Loc.opp (Z2V 1)) x).
       intros [g'|b]; try ImpByz b.
       assert (Hr :=  round_2_config1).
       specialize (Hr (Good g')).
-      destruct Hr as (Hl, (_, Ht)).
+      destruct Hr as (Hl, _).
       simpl in *.
-      destruct (H (Good g')) as (Hl', (_,Ht')).
-      rewrite Hl', Ht' in *.
+      destruct (H (Good g')) as (Hl', _).
+      rewrite Hl' in *.
       unfold f_conf in *.
       simpl in *.
       rewrite Hl in *.
@@ -2450,20 +2336,16 @@ Qed.*)
     + assert (Hequiv' :
                 (exists k, forall id,
                       Location.eq (Config.loc (conf id))
-                                  (Loc.add k (Config.loc (config1 id)))
-                      /\
-                      Location.eq (Info.target (Config.info (conf id)))
-                                  (Loc.add k (Info.target
-                                                (Config.info (config1 id)))))).
+                                  (Loc.add k (Config.loc (config1 id))))).
       { destruct H.
         exists (Loc.add (Loc.opp (Z2V 1)) x).
         intros [g'|b]; try ImpByz b.
         assert (Hr :=  round_2_config1).
         specialize (Hr (Good g')).
-        destruct Hr as (Hl, (_, Ht)).
+        destruct Hr as (Hl, _).
         simpl in *.
-        destruct (H (Good g')) as (Hl', (_,Ht')).
-        rewrite Hl', Ht' in *.
+        destruct (H (Good g')) as (Hl', _).
+        rewrite Hl' in *.
         unfold f_conf in *.
         simpl in *.
         rewrite Hl in *.
@@ -2481,12 +2363,12 @@ Qed.*)
       destruct id; try ImpByz b.
       simpl.
       specialize (Hr (Good g0));
-      destruct Hr as (Hl, (_, Ht)).
+      destruct Hr as (Hl, _).
       assert (Haux := config1_Spectre_Equiv).
       repeat split; simpl;
         try (
             rewrite (Haux conf g0 Hequiv'), 2 Loc.add_opp;
-            try (destruct (H (Good g0)) as (Hlf, (_ , Htf));
+            try (destruct (H (Good g0)) as (Hlf, _);
                  rewrite Hlf;
                  simpl in *;
                  rewrite Hl;
@@ -2495,14 +2377,7 @@ Qed.*)
                  rewrite Loc.add_comm;
                  rewrite <- Loc.add_assoc;
                  now rewrite (Loc.add_comm (create_conf1 g0)))).
-      destruct (H (Good g0)) as (Hlf, (_ , Htf));
-        rewrite Hlf.
-      simpl.
-      rewrite <- (Hmove g0).
-      rewrite Loc.add_opp.
-      simpl.
-      rewrite <- fin_loc.
-      now rewrite Loc.add_assoc.
+      apply H.
   Qed.
 
   (* the starting configuration respect the [AlwaysMoving] predicate *)

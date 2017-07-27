@@ -60,3 +60,16 @@ Module Make (Graph : GraphDef) (Loc : LocationADef(Graph)) : InfoSig (Graph) (Lo
   
   Module Info := SourceTarget(Loc).
 End Make.
+
+
+Module Type UnitSig (Graph : GraphDef)
+                    (Loc : LocationADef(Graph)).
+  
+  Module Info := Unit(Loc).
+End UnitSig.
+
+Module MakeUnit  (Graph : GraphDef) (Loc : LocationADef(Graph)) :
+  UnitSig (Graph) (Loc).
+  
+  Module Info := Unit(Loc).
+End MakeUnit.

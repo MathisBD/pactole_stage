@@ -197,11 +197,11 @@ Module ConfigA := Configurations.Make (LocationA)(N)(Names).
 
 *)
 Module Iso := CommonIsoGraphFormalism.Make(Graph)(Graph.Loc).
-Module MkInfo := CommonGraphFormalism.Make(Graph)(LocationA).
-Module Info := MkInfo.Info.
+Module MkUnit := CommonGraphFormalism.MakeUnit(Graph)(LocationA).
+Module Info := MkUnit.Info.
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
 Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
-Module DGF := DGF(Graph)(N)(Names)(Loc)(MkInfo)(Config)(Spect)(Iso).
+Module DGF := DGF(Graph)(N)(Names)(Loc)(MkUnit)(Config)(Spect)(Iso).
 Import Iso DGF.
 
 
