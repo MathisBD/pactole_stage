@@ -110,6 +110,7 @@ Definition config1 : Config.t :=
             end.
 
 Unset Printing Dependent Evars Line.
+  
 
 Lemma conf1_new_aux:
   forall gg: nat,  
@@ -620,15 +621,16 @@ Definition da1 : demonic_action.
   refine
     {|
       relocate_byz := fun b => Fin.case0 _ b;
-      step :=  (lift_conf (fun (g : Names.G) Rconf =>
-                             Some (trans (Config.loc (Rconf)))))
+      step :=  (lift_conf (fun (g : Names.G) =>
+                             Some (fun Rconf => trans (Config.loc Rconf))))
                  
     |}.
   Proof.
-    - intros [g1|b1] [g2|b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
+    - intros [g1|b1] [g2|b2] Hg; try discriminate; simpl in *.
       unfold Names.G.
-      destruct Hrc as (Hl_rc, _).
-      now apply trans_compat.
+      intros x y Hxy.
+      apply trans_compat.
+      apply Hxy.
       apply Fin.case0.
       exact b1.    
   Defined.
@@ -753,14 +755,6 @@ Proof.
     omega.
 Qed.
 
-
-Definition m := 
-    V2Z (r.(pgm)
-        (!! (Config.map
-               (apply_sim (trans (Config.loc (config1 (Good g)))))
-               (config1)) Loc.origin)).
-
-
 Lemma NoDupA_countA_occ' :
               forall (A : Type) (eqA : A -> A -> Prop)
                      (decA : forall x y : A, {eqA x y} + {~eqA x y})
@@ -865,6 +859,163 @@ Proof.
            apply HinA.
            intuition.
 Qed.
+
+Lemma  ValidConfig1 : ValidStartingConf config1.
+Proof.
+  unfold ValidStartingConf.
+  intros l' Hf.
+  simpl in *.
+  destruct Hf as (l, Hf).
+  rewrite Spect.multiset_spec in Hf.
+  assert (HndAg : SetoidList.NoDupA Loc.eq
+                                    (map (fun x : Names.ident => Config.loc (config1 x))
+                                    Names.names)).
+  {
+    apply (map_injective_NoDupA eq_equivalence Loc.eq_equiv).
+    + intros a b Hab.
+      rewrite Hab.
+      reflexivity.
+    + intros id1 id2 Hloc.
+      destruct id1 as [g1|b1], id2 as [g2|b2]; try ImpByz b1; try ImpByz b2.
+      destruct (Names.eq_dec (Good g1) (Good g2)).
+      assumption.
+      assert (Hg : g1 <> g2).
+      { intuition.
+        apply n0.
+        now rewrite H.
+      }
+      generalize (unique_g_2 g Hg).
+      intros Hu.
+      destruct Hu.
+      simpl in *;
+        now rewrite Hloc.
+    + assert (Hnames := Names.names_NoDup).
+      apply NoDupA_Leibniz in Hnames.
+      assumption.
+  }
+  assert (Hkn : forall x, x mod Z.of_nat n = 0
+                          -> x mod Z.of_nat (n / kG) = 0).
+  { intros.
+    generalize k_sup_1; intros Hk.
+    assert (Hkdn := kdn).
+    rewrite Nat.mod_divides in Hkdn; try omega.
+    destruct Hkdn.
+    rewrite Nat.mul_comm in H0.
+    rewrite H0 in *.
+    rewrite Nat.div_mul in *; try lia.
+    destruct x0.
+    now rewrite Zdiv.Zmod_0_r.
+    rewrite Nat2Z.inj_mul, Z.rem_mul_r in H.
+    generalize Z_of_nat_complete; intros Haux.
+    assert (Ha1 := Haux (x mod Z.of_nat (S x0))).
+    assert (Ha2 := Haux ((x / Z.of_nat (S x0)) mod Z.of_nat kG)).
+    destruct Ha1.
+    { now apply Zdiv.Z_mod_lt. }
+    destruct Ha2.
+    { apply Zdiv.Z_mod_lt. generalize k_sup_1; lia. }
+    rewrite H1, H2 in H.
+    assert (forall x y, 0 <= x -> 0 <= y -> x + y = 0 -> x = 0 /\ y = 0).
+    { intros s t Hr Hs Hrs.
+      omega. }
+    apply H3 in H.
+    destruct H; rewrite H1 in *; assumption.
+    omega.
+    rewrite <- Nat2Z.inj_mul.
+    omega.
+    assert ( (0 < S x0)%nat ) by omega.
+    assert ( 0<Z.of_nat (S x0)).
+    rewrite <- Nat2Z.inj_0.
+    now apply inj_lt.
+    omega.
+    generalize k_sup_1; 
+      lia.
+  }
+  simpl in *.
+  assert (forall elt, Spect.M.In elt (snd (!! (config1) l)) ->
+                        countA_occ Loc.eq Loc.eq_dec elt (map Config.loc
+                                                              (Config.list
+                                                                 config1)) = 1%nat).
+  {
+
+    intros elt Hspe.
+    assert ((countA_occ Loc.eq Loc.eq_dec elt (map DefsE.Config.loc
+                                                 (DefsE.Config.list
+                                                    config1)) > 1)%nat
+            -> False).
+    {
+      intros Hgt.     
+      rewrite (NoDupA_countA_occ' Loc.eq_dec) in HndAg.
+      rewrite <- Spect.M.support_In in Hspe.
+      unfold Spect.from_config in Hspe.
+      unfold Config.map in Hspe.
+      simpl in *.
+      rewrite Config.list_spec, map_map in *.
+      rewrite Spect.multiset_support in Hspe.
+      specialize (HndAg elt Hspe).
+      unfold apply_sim, trans in *; simpl in *.
+      lia.
+      apply Loc.eq_equiv.
+    }
+    simpl in *.
+    rewrite <- Spect.M.support_In in Hspe.
+    unfold Spect.from_config in Hspe.
+    rewrite Spect.multiset_support in Hspe.
+    unfold Config.map in Hspe.
+    rewrite <- (countA_occ_pos Loc.eq_equiv Loc.eq_dec) in Hspe.
+    destruct ( (countA_occ Loc.eq Loc.eq_dec elt
+                           (map Config.loc
+                                (Config.list
+                                   (fun id : Names.ident => (config1 id))))
+                           ?= 1)%nat) eqn : Heq; try rewrite <- nat_compare_lt in *;
+      try rewrite <- nat_compare_gt in *;
+      try apply nat_compare_eq in Heq.
+    - assumption.
+    - assert (countA_occ Loc.eq Loc.eq_dec elt
+                         (map Config.loc
+                              (Config.list
+                                 (fun id : Names.ident => (config1 id)))) <= 0)%nat by omega.
+      apply le_not_gt in H0.
+      contradiction.
+    - exfalso; apply H; apply Heq.
+  }
+  specialize (H l).
+  simpl in *.
+  rewrite Config.list_spec, map_map in *.
+  simpl.
+  unfold Loc.eq in H.
+  assert (Hdec := Spect.M.In_dec).
+  unfold Spect.M.elt in *.
+  specialize (Hdec l
+                   (Spect.multiset (map
+                                      (fun x : Names.ident => Config.loc (config1 x))
+                                        Names.names))).
+  destruct Hdec;
+  simpl in *.
+  rewrite H in Hf.
+  lia.
+  apply i.
+ assert (n0' : ~ Spect.M.In l (snd (!! (config1) Loc.origin))).
+ simpl in *.
+ rewrite Config.list_spec, map_map.
+ simpl in *.
+ apply n0.
+ rewrite Spect.M.not_In in n0.
+ unfold Spect.from_config, Config.map in *.
+ simpl in *.
+ rewrite Spect.multiset_spec in *.
+ unfold apply_sim, trans in *; simpl in *.
+ lia.
+Qed.  
+
+ 
+
+
+Definition m := 
+    V2Z (r.(pgm)
+        (!! (Config.map
+               (apply_sim (trans (Config.loc (config1 (Good g)))))
+               (config1)) Loc.origin)).
+
 
 
 Lemma spectre_forall_g : forall g0,
@@ -1922,12 +2073,13 @@ Qed.
   (* final theorem first part: if we move, In the asynchronous model, and if k 
      divide n, then the exploration with stop of a n-node ring is not possible. *)
 
-Theorem no_exploration_moving : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
+Theorem no_exploration_moving : Z_of_nat (n mod kG) = 0 -> ~ (ValidStartingConfSolExplorationStop r).
 Proof.
   intros Hmod Habs.
   specialize (Habs bad_demon1).
   unfold FullSolExplorationStop in *.
   destruct (Habs config1) as (_, Hstop).
+  apply ValidConfig1.
   destruct Hstop;
     try now apply never_stop.
   destruct H.
@@ -2024,11 +2176,12 @@ Section Stop.
     contradiction.
 Qed.
     
-  Theorem no_exploration_idle : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
+  Theorem no_exploration_idle : Z_of_nat (n mod kG) = 0 -> ~ (ValidStartingConfSolExplorationStop r).
   Proof.
     intros Hmod Habs.
     specialize (Habs bad_demon1).
     destruct (Habs config1) as (Hexpl, _).
+    apply ValidConfig1.
     now apply never_visited.
   Save.
 
@@ -2721,15 +2874,29 @@ Qed.*)
   Qed.
 
   
-  Theorem no_exploration_moving_m : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
+  Theorem no_exploration_moving_m : Z_of_nat (n mod kG) = 0 -> ~ (ValidStartingConfSolExplorationStop r).
   Proof.
     intros Hmod Habs.
     specialize (Habs bad_demon1).
-    unfold FullSolExplorationStop in *.
-    destruct (Habs (round r da1 ((config1)))) as (_, Hstop).
-    now apply never_stop_m.
+    destruct (Habs config1) as (_, Hstop).
+  apply ValidConfig1.
+  destruct Hstop;
+    try now apply never_stop_m.
+  destruct H.
+  unfold stop_now in H.
+  simpl in *.
+  destruct (H (Good g)) as (Hl, _);
+    unfold m in Hm; rewrite <- fin_loc in Hm.
+  simpl in *.
+  rewrite Loc.add_opp, Hm in Hl.
+  assert (Hn := @neq_a_1a (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g))).
+  unfold Loc.unit in *; rewrite Z.mod_1_l in Hn; try (generalize n_sup_1; lia).
+  destruct Hn.
+  rewrite Loc.add_assoc, Loc.add_opp, (Loc.add_comm Loc.origin), Loc.add_origin.
+  now symmetry.
   Save.
 
+    
 End Move_minus1.
 
 
@@ -2763,7 +2930,7 @@ Proof.
 Qed.
 
 
-Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (FullSolExplorationStop r).
+Theorem no_exploration : Z_of_nat (n mod kG) = 0 -> ~ (ValidStartingConfSolExplorationStop r).
 Proof.
   generalize no_exploration_idle, no_exploration_moving, no_exploration_moving_m,
   range_r.

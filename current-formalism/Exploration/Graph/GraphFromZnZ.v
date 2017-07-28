@@ -8,8 +8,6 @@ Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.ContinuousDVGraphFormalism.
 Require Import Pactole.FiniteGraphFormalism.
 
 (* On a un espace V/E qui représente un graphe.
