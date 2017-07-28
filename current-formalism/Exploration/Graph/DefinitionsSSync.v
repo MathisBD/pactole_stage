@@ -388,7 +388,8 @@ Qed.
   
 Definition ValidStartingConfSolExplorationStop (r : robogram) :=
   forall d config,
-    ValidStartingConf config -> 
+    ValidStartingConf config ->
+    Fair d -> 
     (forall l, Will_be_visited l (execute r d config)) /\
     Will_stop (execute r d config).
 

@@ -645,7 +645,18 @@ Proof. reflexivity. Qed.
 Lemma bad_demon1_head :
     Stream.hd bad_demon1 = da1.
 Proof. reflexivity. Qed.
+Theorem kFair_bad_demon : kFair 1 bad_demon1.
+Proof.
+cofix.
+constructor; [| constructor].
+* intros [g1 | b1] id2; try ImpByz b1.  apply kReset. simpl. discriminate.
+* intros [g1 | b1] id2; try ImpByz b1. 
+  apply kReset. simpl. discriminate. 
+* simpl. assumption.
+Qed.
 
+Lemma Fair_demon : Fair bad_demon1.
+Proof. apply (@kFair_Fair 1%nat). apply kFair_bad_demon. Qed.
                            
 (*
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
@@ -2080,6 +2091,7 @@ Proof.
   unfold FullSolExplorationStop in *.
   destruct (Habs config1) as (_, Hstop).
   apply ValidConfig1.
+  apply Fair_demon.
   destruct Hstop;
     try now apply never_stop.
   destruct H.
@@ -2182,6 +2194,7 @@ Qed.
     specialize (Habs bad_demon1).
     destruct (Habs config1) as (Hexpl, _).
     apply ValidConfig1.
+    apply Fair_demon.
     now apply never_visited.
   Save.
 
@@ -2879,24 +2892,25 @@ Qed.*)
     intros Hmod Habs.
     specialize (Habs bad_demon1).
     destruct (Habs config1) as (_, Hstop).
-  apply ValidConfig1.
-  destruct Hstop;
-    try now apply never_stop_m.
-  destruct H.
-  unfold stop_now in H.
-  simpl in *.
-  destruct (H (Good g)) as (Hl, _);
-    unfold m in Hm; rewrite <- fin_loc in Hm.
-  simpl in *.
-  rewrite Loc.add_opp, Hm in Hl.
-  assert (Hn := @neq_a_1a (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g))).
-  unfold Loc.unit in *; rewrite Z.mod_1_l in Hn; try (generalize n_sup_1; lia).
-  destruct Hn.
-  rewrite Loc.add_assoc, Loc.add_opp, (Loc.add_comm Loc.origin), Loc.add_origin.
-  now symmetry.
+    apply ValidConfig1.
+    apply Fair_demon.
+    destruct Hstop;
+      try now apply never_stop_m.
+    destruct H.
+    unfold stop_now in H.
+    simpl in *.
+    destruct (H (Good g)) as (Hl, _);
+      unfold m in Hm; rewrite <- fin_loc in Hm.
+    simpl in *.
+    rewrite Loc.add_opp, Hm in Hl.
+    assert (Hn := @neq_a_1a (Loc.add (Loc.opp (Z2V 1)) (create_conf1 g))).
+    unfold Loc.unit in *; rewrite Z.mod_1_l in Hn; try (generalize n_sup_1; lia).
+    destruct Hn.
+    rewrite Loc.add_assoc, Loc.add_opp, (Loc.add_comm Loc.origin), Loc.add_origin.
+    now symmetry.
   Save.
 
-    
+  
 End Move_minus1.
 
 
@@ -2912,7 +2926,7 @@ Proof.
   destruct Hrange as (lp, (ep, (Hl, He))).
   unfold Graph.find_edge, Graph.Eeq in *.
   destruct (Loc.eq_dec (Loc.origin)
-                        (Loc.add (lp) (Z2V 1))).
+                       (Loc.add (lp) (Z2V 1))).
   do 2 right.
   rewrite Hl.
   rewrite <- (Loc.add_origin (Loc.opp (Z2V 1))).
@@ -2948,8 +2962,8 @@ Proof.
     try generalize n_sup_1; lia.
 Save.
 
-End DiscreteExploration.
-(*
+         End DiscreteExploration.
+         (*
 Section ContinuousExploration.
 
   Theorem no_explorationC :
