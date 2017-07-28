@@ -10,21 +10,10 @@ Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.FiniteGraphFormalism.
 
-(* On a un espace V/E qui représente un graphe.
-   On veux transposer Z/nZ sur un graphe V/E.
-   Apres on veux utiliser ConfigA2D pour avoir un graph continu.
-   pourquoi V/E <=> Z/nZ?
-    - Z/nZ représente un anneau donc un graphe.
-    - V c'est tout les entiers entre 0 et n
-    - E c'est entre les nombres qui se suivent.
 
-
-   un anneau avec V et E c'est : 
-   [n] noeuds V et pour tout E [(src : V) * (tgt : V)], src = tgt (+/-) 1.
- *)
 
 Set Implicit Arguments.
-(* in a ring, edges can only be in three directions *)
+(** in a ring, edges can only be in three directions *)
 Inductive direction := Forward | Backward | AutoLoop.
 
 Module MakeRing <: FiniteGraphDef.
@@ -34,17 +23,21 @@ Module MakeRing <: FiniteGraphDef.
   Definition V := Fin.t n.
 
   Open Scope Z_scope.
-
+(** ** Vertices *)
   
-  (* Loc is a function to pass from a node as in a finite set to a integer, 
-     which can be easily computate *)
+  (** [V2Z] is a function to pass from a vertex as a finite set of integer, to a Z *)
   Definition V2Z (v : V): Z := ((Z.of_nat (proj1_sig (Fin.to_nat v))) mod Z.of_nat n)%Z.
 
-  Definition dir := direction. 
-
-  Definition E := (V * dir)%type.
   Definition Veq v1 v2 := (V2Z v1) mod Z.of_nat n =  (V2Z v2) mod Z.of_nat n.
 
+   Instance V2Z_compat : Proper (Veq ==>
+                                    (fun x y => x mod Z.of_nat n = y mod Z.of_nat n))
+                                    V2Z.
+  Proof.
+    intros v1 v2 Hv.
+    now unfold Veq in *.
+  Qed.  
+  
   (* the following lemmas are used to easily prove that 
            (Z.to_nat (l mod Z.of_nat n)) = (l mod Z.of_nat n) *)
   Lemma Loc_sup_0 : forall l : Z, (0 <= l mod Z.of_nat n)%Z.
@@ -65,24 +58,13 @@ Module MakeRing <: FiniteGraphDef.
     omega.
   Qed.
 
-  (* a function to pass a integer to a finit set *)
+  
+  (** a function to pass a integer to a finit set *)
   Definition Z2V (l : Z) : V := (Fin.of_nat_lt (Loc_inf_n l)).
 
-  Lemma Veq_equiv : Equivalence Veq.
-  Proof.
-    unfold Veq.
-    split.
-    - now intro v.
-    - now intros v1 v2 Hv.
-    - intros v1 v2 v3 Hv1 Hv3. now transitivity (V2Z v2 mod Z.of_nat n).
-  Qed.
 
- Lemma Veq_dec : forall l l' : V, {Veq l l'} + {~Veq l l'}.
-  Proof.
-    unfold V, Veq. intros. apply Z_eq_dec.
-  Qed.
 
-   Lemma loc_fin : forall l, (l mod Z.of_nat n = (V2Z (Z2V l)))%Z.
+  Lemma loc_fin : forall l, (l mod Z.of_nat n = (V2Z (Z2V l)))%Z.
   Proof.
     intros.
     unfold V2Z, Z2V.
@@ -106,7 +88,36 @@ Module MakeRing <: FiniteGraphDef.
     reflexivity.
     generalize n_sup_1; omega.
   Qed.
+ 
+
+  Instance Z2V_compat : Proper ((fun x y => x mod Z.of_nat n = y mod Z.of_nat n)
+                                  ==> Veq) Z2V.
+  Proof.
+    intros l1 l2 Hl.
+    unfold Veq.
+    rewrite <- 2 loc_fin.
+    rewrite 2 Z.mod_mod; try (generalize n_sup_1; omega).
+  Qed.
   
+
+  
+
+  
+  Lemma Veq_equiv : Equivalence Veq.
+  Proof.
+    unfold Veq.
+    split.
+    - now intro v.
+    - now intros v1 v2 Hv.
+    - intros v1 v2 v3 Hv1 Hv3. now transitivity (V2Z v2 mod Z.of_nat n).
+  Qed.
+
+ Lemma Veq_dec : forall l l' : V, {Veq l l'} + {~Veq l l'}.
+  Proof.
+    unfold V, Veq. intros. apply Z_eq_dec.
+  Qed.
+
+  (** the module representing the ring, using the vertices as positions. *)
   Module Loc <: DecidableType.
     Definition t := V.
   Definition eq := Veq.
@@ -238,17 +249,12 @@ Qed.
   Qed.
   
 End Loc.
-  
- 
+(** ** Edges *) 
 
-  Instance Z2V_compat : Proper ((fun x y => x mod Z.of_nat n = y mod Z.of_nat n)
-                                  ==> Veq) Z2V.
-  Proof.
-    intros l1 l2 Hl.
-    unfold Veq.
-    rewrite <- 2 loc_fin.
-    rewrite 2 Z.mod_mod; try (generalize n_sup_1; omega).
-  Qed.
+  Definition dir := direction. 
+
+  (** An edge is starting from a node, and have a direction. to simulate a non oriented edge, it is needed to replicate this edge to the destination of the edge, in the opposite direction *)
+  Definition E := (V * dir)%type.
     
   Definition tgt (e:E) : V:= let t :=
                               match snd e with
@@ -275,16 +281,6 @@ End Loc.
                                      snd e1 = snd e2.
   
   Parameter threshold_compat : Proper (Eeq ==> eq) threshold.
-  
-
-  
-  Instance V2Z_compat : Proper (Veq ==>
-                                    (fun x y => x mod Z.of_nat n = y mod Z.of_nat n))
-                                    V2Z.
-  Proof.
-    intros v1 v2 Hv.
-    now unfold Veq in *.
-  Qed.  
   
   
   Lemma Eeq_equiv : Equivalence Eeq.
@@ -686,7 +682,7 @@ End Loc.
     
 End MakeRing.
 
-
+(** a decidable type create from the ring *)
 Module LocationA : LocationADef (MakeRing).
   Definition t := MakeRing.V.
   Definition eq := MakeRing.Veq.
