@@ -415,8 +415,8 @@ Module Type PointedSpectrum (Location : DecidableType)
   (** A predicate characterizing correct spectra for a given local configuration *)
   Parameter from_config : Config.t -> Location.t -> t.
   Declare Instance from_config_compat : Proper (Config.eq ==> Location.eq ==> eq) from_config.
-  Parameter is_ok : t -> Config.t -> Location.t -> Prop.
-  Parameter from_config_spec : forall config l, is_ok (from_config config l) config l.
+  Parameter is_ok : t -> Config.t -> Prop.
+  Parameter from_config_spec : forall config l, is_ok (from_config config l) config.
   
   Parameter get_location : t -> Location.t.
   Parameter get_location_ok : forall config l, Location.eq (get_location (from_config config l)) l.

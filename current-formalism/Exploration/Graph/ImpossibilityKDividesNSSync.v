@@ -1791,9 +1791,22 @@ Proof.
     now rewrite Loc.add_opp.
   }
   specialize (H H0).
-  simpl in *.
   rewrite Loc.add_opp in *.
-  rewrite H.
+  assert (Spect.eq (!! (Config.map (apply_sim (trans (Config.loc (rconfig1 (Good g0))))) rconfig1) Loc.origin)
+                   (!!
+             (Config.map
+                (apply_sim
+                   (trans
+                      (Graph.Loc.add
+                         (r
+                            (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1)
+                               Loc.origin)) (create_conf1 g0)))) rconfig1) Loc.origin)).
+  { simpl in *.
+    split; try easy.
+    rewrite Loc.add_opp in *.
+    reflexivity.
+  }
+  rewrite <- H1, H.
   assert (Hmg : Loc.eq
             (r (!! (Config.map (apply_sim (trans (create_conf1 g0))) config1)
                Loc.origin)) (Z2V m)).
@@ -1853,7 +1866,6 @@ Proof.
   unfold equiv_conf, f_conf in Hequiv.
   destruct Hequiv as (k, Hequiv).
   destruct (Hequiv (Good g0)) as (Hl0, _).
-  simpl in *.
   intros Hf.
   rewrite HSequiv in Hf.
   simpl in *.
