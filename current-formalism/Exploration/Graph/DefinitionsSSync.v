@@ -38,164 +38,6 @@ Import Graph.
 Module ExplorationDefs(N : Size).
 
 Module Names := Robots.Make(N).
-(*
-Lemma Loc_eq_mod : forall x, ImpossibilityKDividesN.Loc.eq x (x mod Z.of_nat n).
-Proof.
-  intros; unfold ImpossibilityKDividesN.Loc.eq; rewrite Z.mod_mod;
-    generalize ImpossibilityKDividesN.n_sup_1; unfold ImpossibilityKDividesN.def.n;
-      lia.
-Qed.
-
-Module Loc <: DecidableType.
-  Definition t := LocationA.t.
-  Definition eq := LocationA.eq.
-  Definition eq_dec : forall x y, {eq x y} + {~eq x y} := LocationA.eq_dec.
-  Definition eq_equiv : Equivalence eq := LocationA.eq_equiv.
-  Definition origin := Loc_inv Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.origin.
-
-  Definition add (x y : t) := Loc_inv ((ZnZ.ImpossibilityKDividesN.Loc.add (Loc x) (Loc y)) mod Z.of_nat n)%Z.
-  Definition mul (x y : t) := Loc_inv ((ZnZ.ImpossibilityKDividesN.Loc.mul (Loc x) (Loc y)) mod (Z.of_nat n))%Z.
-  Definition unit := Loc_inv (ZnZ.ImpossibilityKDividesN.Loc.unit mod Z.of_nat n)%Z.
-  Definition opp (x : t) := Loc_inv ((ZnZ.ImpossibilityKDividesN.Loc.opp (Loc x)) mod Z.of_nat n)%Z.
-
-  Instance add_compat : Proper (eq ==> eq ==> Veq) add.
-  Proof.
-    intros x1 x2 Hx y1 y2 Hy.
-    unfold Veq, add.
-    rewrite <- 2 loc_fin.
-    unfold ImpossibilityKDividesN.Loc.eq.
-    rewrite <- 4 Loc_eq_mod.
-    now rewrite (ImpossibilityKDividesN.Loc.add_compat _ _ (Loc_compat Hx)
-                                                   _ _ (Loc_compat Hy)).
-  Qed.
-
-  Instance mul_compat : Proper (eq ==> eq ==> Veq) mul.
-  Proof.
-    intros x1 x2 Hx y1 y2 Hy.
-    unfold Veq, mul.
-    rewrite <- 2 loc_fin.
-    unfold ImpossibilityKDividesN.Loc.eq.
-    rewrite <- 4 Loc_eq_mod.
-    unfold ImpossibilityKDividesN.Loc.mul.
-    rewrite 2 (Z.mul_mod (Loc _) _), (Loc_compat Hx), (Loc_compat Hy);
-      try (generalize ImpossibilityKDividesN.n_sup_1;
-           unfold ImpossibilityKDividesN.def.n, n; lia).
-  Qed.
-
-  Instance opp_compat : Proper (eq ==> Veq) opp.
-  Proof.
-    intros x y Hxy.
-    unfold Veq, opp.
-    rewrite <- 2 loc_fin.
-    unfold ImpossibilityKDividesN.Loc.eq.
-    rewrite <- 4 Loc_eq_mod.
-    now rewrite (ImpossibilityKDividesN.Loc.opp_compat _ _ (Loc_compat Hxy)).
-  Qed.
-
-  
-  Lemma add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq, add in *.
-    repeat rewrite <- loc_fin in *.
-    apply (Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_reg_l (Loc w)).
-    unfold ImpossibilityKDividesN.Loc.add in *.
-    unfold ImpossibilityKDividesN.Loc.eq in *; 
-    rewrite 6 Z.mod_mod in *;
-    generalize ImpossibilityKDividesN.n_sup_1;
-    unfold ImpossibilityKDividesN.def.n; try omega.
-    intros; assumption.
-  Qed.
-
-  
-  Lemma add_comm : forall u v, eq (add u v) (add v u). 
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq, add.
-    rewrite <- 2 loc_fin.
-    unfold ImpossibilityKDividesN.Loc.eq, n.
-    rewrite 2 Z.mod_mod;
-      unfold Loc.eq, ImpossibilityKDividesN.def.n in *;
-      try rewrite 2 Z.mod_mod in *;
-      try (generalize ImpossibilityKDividesN.n_sup_1;
-           unfold ImpossibilityKDividesN.def.n; lia).
-    apply Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_comm.
-  Qed.
-  
-  Lemma opp_distr_add : forall u v, eq (opp (add u v))
-                                       (add (opp u) (opp v)).
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq.
-    unfold opp, add.
-    unfold n.
-    repeat rewrite <- loc_fin.
-    unfold ImpossibilityKDividesN.Loc.eq, ImpossibilityKDividesN.def.n.
-    repeat fold n Loc.opp.
-    rewrite 7 Z.mod_mod;
-    unfold ImpossibilityKDividesN.Loc.add;
-      try (rewrite <- Zdiv.Zplus_mod);
-      try (generalize ImpossibilityKDividesN.n_sup_1;
-           unfold n, ImpossibilityKDividesN.def.n; lia).
-    generalize (Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_distr_add (Loc u) (Loc v)).
-    unfold ImpossibilityKDividesN.Loc.add, ImpossibilityKDividesN.Loc.eq, n,
-      ImpossibilityKDividesN.def.n in *;
-      intros Hfin; rewrite 2 Z.mod_mod in *; try apply Hfin;
-        try (generalize ImpossibilityKDividesN.n_sup_1;
-             unfold n, ImpossibilityKDividesN.def.n; lia).
-  Qed.
-
-
-    
-  Lemma add_assoc : forall u v w, eq (add u (add v w))
-                                     (add (add u v) w).
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq, opp, add.
-    repeat rewrite <- loc_fin.
-    repeat rewrite <- Loc_eq_mod.
-    apply Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_assoc.
-  Qed.
-  
-  Lemma add_origin : forall u, eq (add u origin) u.
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq, origin, add.
-    repeat rewrite <- loc_fin.
-    repeat rewrite <- Loc_eq_mod.
-    apply Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_origin.
-  Qed.
-  
-  Lemma add_opp : forall u, eq (add u (opp u)) origin.
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq, origin, add, opp.
-    repeat rewrite <- loc_fin; repeat rewrite <- Loc_eq_mod.
-    apply Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.add_opp.
-  Qed.
-  
-  Lemma opp_opp : forall u, eq (opp (opp u)) u.
-  Proof.
-    intros.
-    unfold eq, LocationA.eq, MakeRing.Veq, origin, add, opp.
-    repeat rewrite <- loc_fin.
-    repeat rewrite <- Loc_eq_mod.
-    apply Pactole.Exploration.ZnZ.ImpossibilityKDividesN.Loc.opp_opp.
-  Qed.
-  
-End Loc.
-
-  
-Module N : Size with Definition nG := kG with Definition nB := 0%nat.
-  Definition nG := kG.
-  Definition nB := 0%nat.
-End N.
-
-Module Names := Robots.Make (N).
-
-Module ConfigA := Configurations.Make (LocationA)(N)(Names).
-
-*)
 Module Iso := CommonIsoGraphFormalism.Make(Graph)(Graph.Loc).
 Module MkUnit := CommonGraphFormalism.MakeUnit(Graph)(LocationA).
 Module Info := MkUnit.Info.
@@ -209,6 +51,7 @@ Notation "s [ pt ]" := (Spect.M.multiplicity pt s) (at level 5, format "s [ pt ]
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
+(** Definition of the Isomorphism of translation on the ring *)
 Definition bij_trans_V (c : Loc.t) : Bijection.t Veq.
 refine {|
   Bijection.section := fun x => (Loc.add x (Loc.opp c));
@@ -300,8 +143,8 @@ Proof.
 Qed.
 
 
+(** Formalisation of the exploration with stop *)
 
-(* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
 Definition Visited_now (loc : Loc.t) (e : execution) :=
   let conf := Stream.hd e in 
     exists g : Names.G, Loc.eq (conf (Good g)).(Config.loc) loc .
@@ -313,21 +156,7 @@ split; intros Hv; unfold Visited_now in *; destruct Hv as (g, Hv); exists g.
 rewrite <- Hl, <- Hv; symmetry; now rewrite Hc.
 rewrite Hl, <- Hv; now rewrite Hc.
 Qed.
-(*
-CoInductive has_been_visited (loc : Loc.t) (e : execution) : Prop :=
-Visit : is_visited loc (execution_head e) -> has_been_visited loc (execution_tail e) -> has_been_visited loc e.
 
-Instance has_been_visited_compat : Proper (Loc.eq ==> eeq ==> iff) has_been_visited.
-Proof.
-intros l1 l2 Hl e1 e2 He. split. 
-+ revert e1 e2 He. coinduction rec.
-  - rewrite <- Hl, <- He. now destruct H.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
-+ revert e1 e2 He. coinduction rec.
-  - rewrite Hl, He. now destruct H.
-  - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
-  Qed.
-*)
 Definition Stall (e : execution) :=
     Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
 
@@ -367,7 +196,7 @@ Proof.
   apply Stream.eventually_compat, Stopped_compat.
 Qed.
 
-(* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
+(** [Exploration_with_stop e] mean that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
 Definition FullSolExplorationStop  (r : robogram) := 
 forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).

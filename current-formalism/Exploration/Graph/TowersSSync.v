@@ -27,13 +27,13 @@ Require Import Arith_base.
 Open Scope list_scope.
 Require Import Utf8.
 
-Parameter kG : nat.
+Parameter k : nat.
 
 
-Module Gra := MakeRing.
 (** The setting is a ring. *)
+Module Gra := MakeRing.
 
-  (** There are KG good robots and no byzantine ones. *)
+(** There are k good robots and no byzantine ones. *)
 
 Module def : RingDef with Definition n := MakeRing.n.
  Definition n:= MakeRing.n.
@@ -42,12 +42,12 @@ Module def : RingDef with Definition n := MakeRing.n.
 End def.
 
 
-Axiom k_inf_n : kG < MakeRing.n.
+Axiom k_inf_n : k < MakeRing.n.
 
 
 (** We instantiate in our setting the generic definitions of the exploration problem. *)
-Module K : Size with Definition nG := kG with Definition nB := 0%nat.
-  Definition nG := kG.
+Module K : Size with Definition nG := k with Definition nB := 0%nat.
+  Definition nG := k.
   Definition nB := 0%nat.
 End K.
 
@@ -67,7 +67,9 @@ Ltac ImpByz b :=
 
 Import DGF.
 
+(** ** First part: Proof that the starting configuration of a protocole that satify the [Explores_and_stop] property cannot be stall  *)
 
+(** Some definitions and lemmas on Fin.t objects. *)
 Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
   match n as n' return n = n' -> list A with
     | 0%nat => fun _ => nil
@@ -200,14 +202,16 @@ Qed.
     generalize n_sup_1. lia.
     generalize n_sup_1. lia.
   Qed.
- 
+
+(** All location cannot be filled, as we have the axiom [k_inf_n] *)
+  
  Lemma ConfExistsEmpty :
   forall (conf:Config.t),
     (∀ l : Spect.M.elt, Spect.M.In l (snd (!! conf Loc.origin))) -> False.
  Proof.
   intro.
   generalize k_inf_n; intros Hkin.
-  assert (Hcard : Spect.M.cardinal (snd (!! conf Loc.origin)) = kG).
+  assert (Hcard : Spect.M.cardinal (snd (!! conf Loc.origin)) = k).
   { unfold Spect.from_config.
     simpl.
     rewrite Spect.cardinal_multiset,
@@ -243,24 +247,6 @@ Qed.
   omega.
 Qed.
 
-Definition SequencialExection (e : execution) : Prop :=
-  Stream.forever
-    (fun e' => forall r d conf,
-         eeq e' (execute r d conf) /\
-         (exists id, forall id', id' <> id /\ step (Stream.hd d) id'
-                                              = None)) e.
-
-Fixpoint Biggest_list_of_exe (l : list Config.t) (e : execution) : Prop :=
-  match l with
-  | nil => Stopped e
-  | x :: nil => Config.eq x (Stream.hd e) /\ Stopped e
-  | x :: y => Config.eq x (Stream.hd e) /\
-                if Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e)))
-                then False
-                else Biggest_list_of_exe y (Stream.tl (Stream.tl e))
-
-  end.
-
 Lemma stop_tl : forall e, Stopped e -> Stopped (Stream.tl e).
 Proof.
   intros.
@@ -275,7 +261,7 @@ Proof.
   apply H.
 Qed.
 
-  
+(** Any starting configuration cannot be stalled. *)  
 Theorem no_stop_on_starting_conf : forall c r d e,
     Explores_and_stop r ->
     eeq e (execute r d c) -> 
@@ -313,6 +299,10 @@ Proof.
   apply Hsto.
 Qed.
 
+
+(** ** Second Part : To performe the exploration with stop, a least 2 robot are needed. *)
+
+(** A configuartion that is stalled have a towen on, that means a location with more than 1 robot *)
 Lemma finalconf_towerOn : forall r,
     (Explores_and_stop r) ->
     forall c d e,
@@ -336,37 +326,14 @@ Proof.
   easy.
 Qed.
 
-Corollary finalconf_towerOn_bis : forall c,
-    forall r, Explores_and_stop r ->
-              forall d,
-                Fair d ->
-                Stopped (execute r d c) ->
-                exists loc, ((snd (!! c Loc.origin))[loc] > 1)%nat.
-Proof.
-  intros.
-  now apply (finalconf_towerOn H c H0 (reflexivity (execute r d c))).
-Qed.
-
 
 Parameter c : Config.t.
 Axiom Vc : Valid_starting_conf c.
 Parameter d: demon.
 Axiom fair_d : Fair d.
-Parameter e : execution.
-Axiom Ve : Valid_starting_conf (Stream.hd e).
-
-(* CoFixpoint In_Stream {A} (s : Stream.t A) (a : A) (eqA : A -> A -> Prop) :=
-  match s with
-  | cons e s' => eqA a e \/ In_Stream s' a eqA
-  end.
- *)
-
-Definition exec_r_comp (e:execution) (r: robogram) :=
-  exists d c, eeq e (execute r d c).
 
 Lemma exec_stopped r : forall d c, Fair d -> Will_stop (execute r d c)
                         -> exists d' c', Fair d'/\ Stopped (execute r d' c').
-(*exists e, exec_r_comp e r /\ Stopped e.*)
 Proof.
   intros.
   remember (execute r d0 c0) as s.
@@ -386,143 +353,22 @@ Proof.
 Qed.
 
 
-  
+(** final theorem: to permform the exploration with stop, a at least 2 robots are needed *)  
 Lemma no_exploration_k_inf_2 : forall r,
     Explores_and_stop r ->
-    (kG > 1)%nat.
+    (k > 1)%nat.
 Proof.
   intros.
   assert (Hexr := exec_stopped r).
-  assert (Htower := finalconf_towerOn_bis).  
+  assert (Htower := finalconf_towerOn).  
   destruct (H d c Vc).
   apply fair_d.
   specialize (Hexr d c fair_d H1).
   destruct Hexr as (d', ( c', (Hfair, Hstop))).
-  specialize (Htower c' r H d' Hfair Hstop).
+  specialize (Htower r H c' d'(execute r d' c') Hfair (reflexivity _) Hstop).
   destruct Htower.
   assert (Hcard := Spect.M.cardinal_lower x (snd (!! c' Loc.origin))).
   rewrite Spect.cardinal_from_config in Hcard.
   unfold K.nG, K.nB in *.
   lia.
 Qed.
-  
-Fixpoint last_init_conf (l : list Config.t) (a : Config.t) :=
-  match l with
-  | nil => (False, nil)
-  | conf :: l' => if Config.eq_dec a conf
-                  then (((List.Forall (fun x => ~ Valid_starting_conf x ) l')
-                        /\ Valid_starting_conf a),l')
-                  else last_init_conf l' a
-  end.
-  
-  
-(*
-Theorem TowerOnFinalConf : forall l r d c e x,
-    Valid_starting_conf c->
-    eeq e (execute r d c) ->
-    Biggest_list_of_exe l e ->
-    let (P,l') := last_init_conf l c in
-    P ->
-    Explores_and_stop r ->
-    SequencialExection e ->
-    (forall conf, In conf l' ->
-                  exists loc, (snd (!! conf Loc.origin))[loc] = x
-                              -> (1 < x)%nat  -> (x < kG)%nat)
-      
-      -> (length l' >= n - kG + 1)%nat.
-
-
-Proof.
-  intros l r d c e x Hconf Heq_e Hlist.
-  destruct (last_init_conf l c) as (P, l') eqn : Hlic.
-  intros HP Hvalid Hsequ Hl_conf.
-  assert ((length l' < n - kG + 1)%nat
-         -> False).
-  { intros Hf.
-    unfold last_init_conf in Hlic.
-    induction l.
-    simpl in *.
-    rewrite surjective_pairing in Hlic.
-    simpl in *.
-    assert (P = fst (P, l')) by intuition.
-    rewrite <- Hlic in *.
-    simpl in *.
-    now rewrite <- H.
-    destruct (Config.eq_dec c a).
-    assert (P = fst (P, l')) by intuition.
-    assert (l' = snd (P, l')) by intuition.
-    rewrite <- Hlic in *; simpl in *.
-    destruct HP.
-    apply H in HP.
-    apply Hlic.
-    intuition.
-    assert (ValidStartingConf a).
-    destruct (last_init_conf l) eqn : Hl.
-    
-    
-  split.
-  - intros.
-    destruct Hsequ.
-    specialize (H0 r d conf). 
-    destruct H0 as (He_conf, (id,Hid)).
-    
-    destruct l eqn : Hl.
-  - simpl in *.
-    destruct (Hvalid c Hconf) as (Hvisit, Hstop).
-    assert (Hfalse :=  ConfExistsEmpty c).
-    unfold is_visited in *.
-    rewrite Heq_e in Hlist.
-    now generalize (test Hvalid Heq_e Hconf Hlist).
-  - destruct l0 eqn : Hl'.
-     + simpl in *.
-       destruct Hlist as (Hceq, Hstp).
-       generalize (test Hvalid Heq_e Hconf).
-       intros Htest.
-       assert (Hval_t: ValidStartingConf t).
-       rewrite Hceq.
-       rewrite Heq_e.
-       now simpl in *.
-       assert (He_eq : eeq e (execute r d t)).
-       rewrite Hceq.
-       now rewrite Heq_e.
-       generalize (test Hvalid He_eq Hval_t). 
-       intros Htest'.
-       destruct Htest.
-       now rewrite <- Heq_e.
-     + destruct (Classical_Prop.classic (ValidStartingConf (last (t :: t0 :: l1) c)))
-         as [Hv|Hnv].
-       simpl in *.
-       destruct ( Config.eq_dec (Stream.hd e) (Stream.hd (Stream.tl (Stream.tl e))));
-         try easy.
-       destruct Hlist as (Hceq, Hlist).       
-       assert (Hse : ~Stopped e).
-       intros Hs.
-       destruct Hs as (Hse, Hs).
-       now unfold stop_now in Hse.
-       destruct l1.
-       * destruct (Classical_Prop.classic
-                     (ValidStartingConfSolExplorationStop
-                     r (Stream.tl (Stream.tl d)))) as [Hvrd|Hnvrd].
-         assert (Heeq_to : eeq (Stream.tl (Stream.tl e)) (execute r (Stream.tl (Stream.tl d)) t0)).  
-         { rewrite Heq_e.
-           destruct Hlist as (Hlist, Hstp).
-           rewrite Heq_e in Hlist.
-           repeat rewrite execute_tail in *.
-           apply execute_compat; try easy.
-         }
-         destruct (test Hvrd Heeq_to Hv).
-         now rewrite <- Heeq_to.
-         unfold ValidStartingConfSolExplorationStop in *.
-         apply Classical_Prop.NNPP.
-         intro.
-         apply Hnvrd.
-         intros.
-         destruct (Hvrd t0 Hv).  Heeq_to).
-         admit.
-       apply Classical_Pred_Type.not_all_not_ex.
-       intros Hf.
-       destruct Hnv.
-       unfold ValidStartingConf.
-       intros (ex, Hex).
-       now specialize (Hf ex).
-Qed.       *)
