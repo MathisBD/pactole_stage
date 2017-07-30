@@ -133,7 +133,7 @@ Module DGF (Graph : GraphDef)
       step : Names.ident -> Config.RobotConf -> Active_or_Moving;
       step_delta : forall g Rconfig sim,
           Aom_eq (step (Good g) Rconfig) (Active sim) ->
-          Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Info.target);
+          Location.eq Rconfig.(Config.loc) Rconfig.(Config.state).(Info.target);
       step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step
     }.
   Set Implicit Arguments.
@@ -210,9 +210,9 @@ Module DGF (Graph : GraphDef)
   
   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
     {| Config.loc := (Iso.sim_V sim) (Config.loc infoR);
-       Config.info :=
-         {| Info.source := (Iso.sim_V sim) (Info.source (Config.info infoR));
-            Info.target := (Iso.sim_V sim) (Info.target (Config.info infoR))
+       Config.state :=
+         {| Info.source := (Iso.sim_V sim) (Info.source (Config.state infoR));
+            Info.target := (Iso.sim_V sim) (Info.target (Config.state infoR))
          |}
     |}.
   
@@ -234,8 +234,8 @@ Module DGF (Graph : GraphDef)
       | Moving true =>
         match id with
         | Good g =>
-          let tgt := rconf.(Config.info).(Info.target) in
-          {| Config.loc := tgt ; Config.info := rconf.(Config.info) |}
+          let tgt := rconf.(Config.state).(Info.target) in
+          {| Config.loc := tgt ; Config.state := rconf.(Config.state) |}
         | Byz b => rconf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
@@ -247,7 +247,7 @@ Module DGF (Graph : GraphDef)
           let target := (sim⁻¹).(Iso.sim_V) local_target in
           if (Location.eq_dec (target) pos) then rconf else
           {| Config.loc := pos ; 
-             Config.info := {| Info.source := pos ; Info.target := target|} |}
+             Config.state := {| Info.source := pos ; Info.target := target|} |}
         end
       end.
   

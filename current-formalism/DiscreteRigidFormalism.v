@@ -283,7 +283,7 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
           let local_conf := Config.map (Config.app frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
           {| Config.loc := frame_change⁻¹ (r (Spect.from_config local_conf));
-             Config.info := Config.info (conf id) |}
+             Config.state := Config.state (conf id) |}
         end
     end.
 

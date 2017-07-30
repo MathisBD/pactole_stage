@@ -74,7 +74,7 @@ Module DGF (Graph : GraphDef)
       pgm_compat : Proper (Spect.eq ==> Location.eq) pgm;
       pgm_range : forall (spect: Spect.t),
           exists lpost e, pgm spect = lpost
-                          /\ (opt_eq Graph.Eeq (Graph.find_edge (Spect.get_location spect)
+                          /\ (opt_eq Graph.Eeq (Graph.find_edge (Spect.get_current spect)
                                                                 lpost)
                                      (Some e)) }.
 
@@ -225,7 +225,7 @@ Qed.
   
   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
     {| Config.loc := (Iso.sim_V sim) (Config.loc infoR);
-       Config.info := Config.info infoR
+       Config.state := Config.state infoR
     |}.
   
   Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
@@ -251,7 +251,7 @@ Qed.
           let local_target := (r ((Spect.from_config local_config) (Config.loc (local_config (Good g))))) in
           let target := ((sim rconf)⁻¹).(Iso.sim_V) local_target in (* configuration expressed in the frame of g *)
           {| Config.loc := target;
-             Config.info := Config.info rconf |}
+             Config.state := Config.state rconf |}
         end
     end. (** for a given robot, we compute the new configuration *)
   

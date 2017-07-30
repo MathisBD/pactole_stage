@@ -86,7 +86,7 @@ rewrite <- moving_spec, Hmove in Heq. inversion Heq.
 Qed.
 
 (** The full information for a robot only depends on its location. *)
-Definition mk_info l := {| Config.loc := l; Config.info := tt |}.
+Definition mk_info l := {| Config.loc := l; Config.state := tt |}.
 
 Lemma nG_nB : N.nG = 2 * N.nB.
 Proof. reflexivity. Qed.
@@ -241,7 +241,7 @@ Hint Immediate gfirst_left glast_right left_right_exclusive.
      and you can scale it back on the next round. *)
 
 (* TODO: move it to Configurations.v? *)
-Definition init_RobotConf x := {| Config.loc := x; Config.info := tt |}.
+Definition init_RobotConf x := {| Config.loc := x; Config.state := tt |}.
 
 Open Scope R_scope.
 (** The reference starting configuration **)

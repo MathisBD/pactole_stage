@@ -80,8 +80,8 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Config.RobotConf -> Active_or_Moving;
   step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
-       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Info.target)) \/
-       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.info).(Info.source) >= delta)%Z;
+       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.state).(Info.target)) \/
+       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.state).(Info.source) >= delta)%Z;
   step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
   step_center : forall id config sim c , step id config = Active sim -> 
                                          Location.eq (sim c).(Sim.center) c;
@@ -530,24 +530,24 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
       | Moving mv_ratio =>
         match id with
         | Good g =>
-           let tgt := conf.(Config.info).(Info.target) in
+           let tgt := conf.(Config.state).(Info.target) in
            let new_loc :=  (** If g is not activated, it moves toward its destination *)
               Location.add pos
               (Location.mul mv_ratio (Location.add tgt (Location.opp pos))) in
-           {| Config.loc := new_loc ; Config.info := conf.(Config.info) |}
+           {| Config.loc := new_loc ; Config.state := conf.(Config.state) |}
         | Byz b => conf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => (* byzantine robot are relocated by the demon *)
                    {| Config.loc := da.(relocate_byz) b;
-                      Config.info := Config.info (config id) |}
+                      Config.state := Config.state (config id) |}
         | Good g => 
           let frame_change := sim (Config.loc (config (Good g))) in
           let local_conf := Config.map (Config.app frame_change) config in
           let target := frame_change⁻¹ (r (Spect.from_config local_conf)) in
            {| Config.loc := pos ; 
-              Config.info := {| Info.source := pos ; Info.target := target|} |}
+              Config.state := {| Info.source := pos ; Info.target := target|} |}
         end
     end.
 
@@ -649,7 +649,7 @@ unfold round, Config.eq, Config.eq_RobotConf; split;
 destruct (step da id (conf id)) eqn : Heq. apply moving_no_sup_0_same_conf with (r:=r) in Heq; trivial.
 rewrite Heq.
 assert (Location.eq (Location.mul 0 (Location.add 
-        (Info.target (Config.info (conf id))) (Location.opp (conf id))))
+        (Info.target (Config.state (conf id))) (Location.opp (conf id))))
         Location.origin). apply Location.mul_0. destruct id as [g |b]. simpl.
         rewrite H. apply Location.add_origin. reflexivity.
         unfold active in Hactive.

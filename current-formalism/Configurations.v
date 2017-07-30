@@ -61,7 +61,7 @@ Module SourceTarget (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
   Record t' := {source : Loc.t; target : Loc.t}.
   Definition t := t'.
   
-  Definition eq info1 info2 := Loc.eq info1.(source) info2.(source) /\ Loc.eq info1.(target) info2.(target).
+  Definition eq state1 state2 := Loc.eq state1.(source) state2.(source) /\ Loc.eq state1.(target) state2.(target).
   
   Instance eq_equiv : Equivalence eq.
   Proof. split.
@@ -79,7 +79,7 @@ Module SourceTarget (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
   + right. intros []. contradiction.
   Qed.
   
-  Definition app f info := {| source := f info.(source); target := f info.(target) |}.
+  Definition app f state := {| source := f state.(source); target := f state.(target) |}.
   
   Instance app_compat : Proper ((Loc.eq ==> Loc.eq) ==> eq ==> eq) app.
   Proof. intros f g Hfg x y Hxy. unfold app. split; simpl; apply Hfg, Hxy. Qed.
@@ -106,14 +106,14 @@ Module Type Configuration (Location : DecidableType)
                           (Names : Robots(N))
                           (Info : DecidableTypeWithApplication(Location)).
 
-  Record RobotConf := { loc :> Location.t; info: Info.t }.
+  Record RobotConf := { loc :> Location.t; state: Info.t }.
 
   Definition t := Names.ident -> RobotConf.
 
   Definition eq_RobotConf g1 g2 := Location.eq (loc g1) (loc g2)
-                                /\ Info.eq (info g1) (info g2).
+                                /\ Info.eq (state g1) (state g2).
 
-  Definition app f rc := {| loc := f (loc rc); info := Info.app f (info rc) |}.
+  Definition app f rc := {| loc := f (loc rc); state := Info.app f (state rc) |}.
   Declare Instance app_compat : Proper ((Location.eq ==> Location.eq) ==> eq_RobotConf ==> eq_RobotConf) app.
   Axiom app_id : (eq_RobotConf ==> eq_RobotConf)%signature (app Datatypes.id) Datatypes.id.
   Axiom app_compose : forall f g, Proper (Location.eq ==> Location.eq) f -> Proper (Location.eq ==> Location.eq) g ->
@@ -131,7 +131,7 @@ Module Type Configuration (Location : DecidableType)
   Declare Instance eq_subrelation : subrelation eq (Logic.eq ==> eq_RobotConf)%signature.
   Declare Instance Build_RobotConf_compat : Proper (Location.eq ==> Info.eq ==> eq_RobotConf) Build_RobotConf.
   Declare Instance loc_compat : Proper (eq_RobotConf ==> Location.eq) loc.
-  Declare Instance info_compat : Proper (eq_RobotConf ==> Info.eq) info.
+  Declare Instance state_compat : Proper (eq_RobotConf ==> Info.eq) state.
 
   Parameter neq_equiv : forall config₁ config₂,
     ~eq config₁ config₂ <-> exists id, ~eq_RobotConf (config₁ id) (config₂ id).
@@ -174,10 +174,10 @@ Module Make (Location : DecidableType)
             (Info : DecidableTypeWithApplication(Location))
   : Configuration(Location)(N)(Names)(Info).
 
-Record RobotConf := { loc :> Location.t; info: Info.t }.
+Record RobotConf := { loc :> Location.t; state: Info.t }.
 
 Definition eq_RobotConf g1 g2 := Location.eq (loc g1) (loc g2)
-                                 /\ Info.eq (info g1) (info g2).
+                                 /\ Info.eq (state g1) (state g2).
 
 Instance eq_info_equiv :  Equivalence Info.eq := Info.eq_equiv. 
 
@@ -190,7 +190,7 @@ split.
   transitivity (loc y).
   apply H.
   apply H0.
-  transitivity (info y).
+  transitivity (state y).
   apply H.
   apply H0.
 Qed.
@@ -200,22 +200,22 @@ Proof.
 intros rc1 rc2.
 unfold eq_RobotConf.
 destruct (Location.eq_dec rc1 rc2),
-         (Info.eq_dec (info rc1) (info rc2));
+         (Info.eq_dec (state rc1) (state rc2));
 intuition.
 Qed.
 
 Set Printing Implicit.
 
 Instance Build_RobotConf_compat : Proper (Location.eq ==> Info.eq ==> eq_RobotConf) Build_RobotConf.
-Proof. intros l1 l2 Hl info1 info2 Hinfo. split; apply Hl || apply Hinfo. Qed.
+Proof. intros l1 l2 Hl state1 state2 Hstate. split; apply Hl || apply Hstate. Qed.
 
 Instance loc_compat : Proper (eq_RobotConf ==> Location.eq) loc.
 Proof. now intros ? ? []. Qed.
 
-Instance info_compat : Proper (eq_RobotConf ==> Info.eq) info.
+Instance state_compat : Proper (eq_RobotConf ==> Info.eq) state.
 Proof. now intros ? ? []. Qed.
 
-Definition app f rc := {| loc := f (loc rc); info := Info.app f (info rc) |}.
+Definition app f rc := {| loc := f (loc rc); state := Info.app f (state rc) |}.
 
 Instance app_compat : Proper ((Location.eq ==> Location.eq) ==> eq_RobotConf ==> eq_RobotConf) app.
 Proof.
@@ -258,7 +258,7 @@ Proof. split.
   transitivity (loc (d2 x)).
   apply H12.
   apply H23.
-  transitivity (info (d2 x)).
+  transitivity (state (d2 x)).
   apply H12.
   apply H23.
 Qed.
@@ -418,7 +418,7 @@ Module Type PointedSpectrum (Location : DecidableType)
   Parameter is_ok : t -> Config.t -> Prop.
   Parameter from_config_spec : forall config l, is_ok (from_config config l) config.
   
-  Parameter get_location : t -> Location.t.
-  Parameter get_location_ok : forall config l, Location.eq (get_location (from_config config l)) l.
+  Parameter get_current : t -> Location.t.
+  Parameter get_current_ok : forall config l, Location.eq (get_current (from_config config l)) l.
   
 End PointedSpectrum.

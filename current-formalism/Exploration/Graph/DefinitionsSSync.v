@@ -302,14 +302,14 @@ Qed.
 
 
 (* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
-Definition is_visited (loc : Loc.t) (e : execution) :=
+Definition Visited_now (loc : Loc.t) (e : execution) :=
   let conf := Stream.hd e in 
     exists g : Names.G, Loc.eq (conf (Good g)).(Config.loc) loc .
     
-Instance is_visited_compat : Proper (Loc.eq ==> eeq ==> iff) is_visited.
+Instance Visited_now_compat : Proper (Loc.eq ==> eeq ==> iff) Visited_now.
 Proof.
 intros l1 l2 Hl c1 c2 Hc.
-split; intros Hv; unfold is_visited in *; destruct Hv as (g, Hv); exists g.
+split; intros Hv; unfold Visited_now in *; destruct Hv as (g, Hv); exists g.
 rewrite <- Hl, <- Hv; symmetry; now rewrite Hc.
 rewrite Hl, <- Hv; now rewrite Hc.
 Qed.
@@ -328,19 +328,19 @@ intros l1 l2 Hl e1 e2 He. split.
   - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
   Qed.
 *)
-Definition stop_now (e : execution) :=
+Definition Stall (e : execution) :=
     Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
 
-Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
+Instance Stall_compat : Proper (eeq ==> iff) Stall.
 Proof.
 intros e1 e2 He. split; intros Hs;
-unfold stop_now in *.
+unfold Stall in *.
 now rewrite <- He.
 now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Stream.forever (stop_now) e.
+  Stream.forever (Stall) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
@@ -352,14 +352,14 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
 Qed.
 
 Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
-  Stream.eventually (is_visited loc) e.
+  Stream.eventually (Visited_now loc) e.
 
 Definition Will_stop (e : execution) : Prop :=
   Stream.eventually Stopped e.
  
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
-intros l1 l2 Hl. now apply Stream.eventually_compat, is_visited_compat. 
+intros l1 l2 Hl. now apply Stream.eventually_compat, Visited_now_compat. 
 Qed.
 
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
@@ -372,23 +372,23 @@ Qed.
 Definition FullSolExplorationStop  (r : robogram) := 
 forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
-Definition ValidStartingConf conf :=
+Definition Valid_starting_conf conf :=
   forall l',
     (exists l : Loc.t,
     let m := Spect.from_config(conf) l' in
     (snd m)[l] > 1)%nat -> False.
 
-Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
+Instance Valid_starting_conf_compat : Proper (Config.eq ==> iff) Valid_starting_conf.
 Proof.
   intros c1 c2 Hc.
-  split; intros Hv l' Hf; unfold ValidStartingConf in *;
+  split; intros Hv l' Hf; unfold Valid_starting_conf in *;
   destruct (Hv l'), Hf  as (l ,Hf); exists l; simpl in *; try now rewrite <- Hc.
   now rewrite Hc.
 Qed.
   
-Definition ValidStartingConfSolExplorationStop (r : robogram) :=
+Definition Explores_and_stop (r : robogram) :=
   forall d config,
-    ValidStartingConf config ->
+    Valid_starting_conf config ->
     Fair d -> 
     (forall l, Will_be_visited l (execute r d config)) /\
     Will_stop (execute r d config).
