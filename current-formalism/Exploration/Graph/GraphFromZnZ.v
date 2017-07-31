@@ -1,3 +1,13 @@
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+   T. Balabonski, R. Pelle, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
 Require Import Reals.
 Require Import Omega.
 Require Import Psatz.
@@ -13,7 +23,7 @@ Require Import Pactole.FiniteGraphFormalism.
 
 
 Set Implicit Arguments.
-(** in a ring, edges can only be in three directions *)
+(** In a ring, an edge with a fixed source is characterized by one of these three directions. *)
 Inductive direction := Forward | Backward | AutoLoop.
 
 Module MakeRing <: FiniteGraphDef.
@@ -25,7 +35,7 @@ Module MakeRing <: FiniteGraphDef.
   Open Scope Z_scope.
 (** ** Vertices *)
   
-  (** [V2Z] is a function to pass from a vertex as a finite set of integer, to a Z *)
+  (** [V2Z] is a function to pass from a vertex to an integer. *)
   Definition V2Z (v : V): Z := ((Z.of_nat (proj1_sig (Fin.to_nat v))) mod Z.of_nat n)%Z.
 
   Definition Veq v1 v2 := (V2Z v1) mod Z.of_nat n =  (V2Z v2) mod Z.of_nat n.
@@ -59,7 +69,7 @@ Module MakeRing <: FiniteGraphDef.
   Qed.
 
   
-  (** a function to pass a integer to a finit set *)
+  (** A function to pass a integer to a vertex. *)
   Definition Z2V (l : Z) : V := (Fin.of_nat_lt (Loc_inf_n l)).
 
 
@@ -117,7 +127,7 @@ Module MakeRing <: FiniteGraphDef.
     unfold V, Veq. intros. apply Z_eq_dec.
   Qed.
 
-  (** the module representing the ring, using the vertices as positions. *)
+  (** The module representing the ring, using the vertices as positions. *)
   Module Loc <: DecidableType.
     Definition t := V.
   Definition eq := Veq.
@@ -253,7 +263,7 @@ End Loc.
 
   Definition dir := direction. 
 
-  (** An edge is starting from a node, and have a direction. to simulate a non oriented edge, it is needed to replicate this edge to the destination of the edge, in the opposite direction *)
+  (** An edge is starting from a node, and has a direction. To simulate a non oriented edge, the considered edge has to be replicated in the opposite direction. *)
   Definition E := (V * dir)%type.
     
   Definition tgt (e:E) : V:= let t :=
@@ -682,7 +692,7 @@ End Loc.
     
 End MakeRing.
 
-(** a decidable type create from the ring *)
+(** A decidable type created from the ring *)
 Module LocationA : LocationADef (MakeRing).
   Definition t := MakeRing.V.
   Definition eq := MakeRing.Veq.

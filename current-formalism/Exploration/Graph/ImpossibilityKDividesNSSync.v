@@ -1,10 +1,10 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain, R. Pelle                  *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms
+      R. Pelle                 
+      PACTOLE project                                                      
+                                                                        
+      This file is distributed under the terms of the CeCILL-C licence     
+                                                                          *)
 (**************************************************************************)
 
 
@@ -44,13 +44,13 @@ Module Gra := MakeRing.
 Export Gra.
 Export MakeRing.
 
-(** Ring Size*)
+(** Ring Size *)
 
 Definition n := MakeRing.n.
 
 (** Number of Robots *)
 Parameter k : nat.
-Axiom kdn : (n mod k)%nat = 0%nat.
+Axiom k_div_n : (n mod k)%nat = 0%nat.
 Axiom k_inf_n : (k < n)%nat.
 Axiom k_sup_1 : (1 < k)%nat.
 
@@ -99,8 +99,8 @@ Definition loc_equi (k:nat) (f:Fin.t k) : Loc.t :=
   Loc.mul (Z2V (((Z_of_nat ((proj1_sig (Fin.to_nat f))*(n / k)))))) Loc.unit.
 
 
-(** the starting configuration where a robots is on the origin, 
-   and every other robot is at a distance of [x*(k/n)] where x is between 1 and k *)
+(** The starting configuration where a robot is on the origin, 
+   and every other robot is at a distance of [x*(k/n)] where x is between 1 and k-1 *)
 Definition conf_equi : Config.t :=
   fun id => match id with
               | Good g => let pos := loc_equi g in
@@ -130,9 +130,9 @@ Proof.
   fold n in *.
   rewrite Z.mul_1_r.
   repeat rewrite Z.mod_mod; try lia.
-  assert (Hkdn := kdn).
-  rewrite <- Nat.div_exact in Hkdn.
-  rewrite Hkdn at 2.
+  assert (Hk_div_n := k_div_n).
+  rewrite <- Nat.div_exact in Hk_div_n.
+  rewrite Hk_div_n at 2.
   rewrite (Nat.mul_comm k _).
   rewrite 2 Nat2Z.inj_mul.
   rewrite Z.rem_mul_r.
@@ -149,7 +149,7 @@ Qed.
 
 
 
-(** A position where a robot is in conf_equi divied [k/n] *)
+(** A position where a robot is in conf_equi is divisible by [k/n] *)
 Lemma conf1_new_1 : forall g0: Names.G, V2Z (loc_equi g0) mod Z.of_nat (n/k) = 0.
 Proof.
   intros g0.
@@ -171,16 +171,16 @@ Proof.
 Qed.
 
 
-(** if a position divides [n/k] then a robot is at this position in conf_equi *)
+(** If a position divides [n/k] then a robot is at this position in conf_equi *)
 Lemma conf1_new_2 : forall loc, loc mod Z.of_nat (n / k) = 0 ->
                                 exists g:Names.G,
                                   Loc.eq (loc_equi g) (Z2V loc).
 Proof.
   intros loc Hmod.
   intros.
-  generalize kdn n_sup_1.
+  generalize k_div_n n_sup_1.
   fold n in *.
-  intros Hkdn Hns1.
+  intros Hk_div_n Hns1.
   unfold Names.G, Names.Gnames, Names.Internals.Gnames, Names.Internals.G, K.nG in *.
   destruct k eqn : Hkg.
   + generalize k_sup_1; intros; omega. 
@@ -189,8 +189,8 @@ Proof.
     assert (Hkn : forall x, x mod Z.of_nat n = 0
                               -> x mod Z.of_nat (n / S n0) = 0).
     { intros.
-      rewrite Nat.mod_divides in Hkdn; try omega.
-      destruct Hkdn.
+      rewrite Nat.mod_divides in Hk_div_n; try omega.
+      destruct Hk_div_n.
       rewrite Nat.mul_comm in H0.
       rewrite H0 in *.
       rewrite Nat.div_mul in *; try lia.
@@ -222,8 +222,8 @@ Proof.
     }
     assert (Hmod1 :  Z.of_nat (n / k) <> 0).
       generalize k_inf_n, k_sup_1; intros.
-      rewrite Nat.mod_divides, <-Hkg in Hkdn.
-      destruct Hkdn.      
+      rewrite Nat.mod_divides, <-Hkg in Hk_div_n.
+      destruct Hk_div_n.      
       rewrite H1, Nat.mul_comm.
       rewrite Nat.div_mul.
       destruct x.
@@ -259,16 +259,16 @@ Proof.
         apply Nat.div_lt_upper_bound with (b := (n/k)%nat) (q := k).
         omega.
         rewrite Nat.mul_comm.
-        rewrite <- Nat.div_exact in Hkdn.
-        rewrite Hkg, <- Hkdn.
+        rewrite <- Nat.div_exact in Hk_div_n.
+        rewrite Hkg, <- Hk_div_n.
         assumption.
         omega.
         omega.
       + assert (forall a, a mod Z.of_nat (n/k) = 0 -> (a mod n') mod Z.of_nat (n/k) = 0).
         intros.
-        rewrite <- Nat.div_exact, <- Hkg in Hkdn.
+        rewrite <- Nat.div_exact, <- Hkg in Hk_div_n.
         unfold n'.
-        rewrite Hkdn at 1.
+        rewrite Hk_div_n at 1.
         rewrite Nat.mul_comm, Nat2Z.inj_mul, Z.rem_mul_r.
         rewrite <- Zdiv.Zplus_mod_idemp_r.
         rewrite Z.mul_comm, Zdiv.Z_mod_mult.
@@ -322,10 +322,10 @@ Proof.
   unfold Names.G, Names.Internals.G in *.
   assert (Hf := Fin.to_nat g).
   destruct Hf.
-  generalize kdn; intros  Hkdn.
-  rewrite <- Nat.div_exact in Hkdn.
+  generalize k_div_n; intros  Hk_div_n.
+  rewrite <- Nat.div_exact in Hk_div_n.
   unfold K.nG in *.
-  rewrite Hkdn at 2.
+  rewrite Hk_div_n at 2.
   generalize ((Fin.to_nat g)).
   intros.
   destruct s.
@@ -341,7 +341,7 @@ Proof.
 Qed.
 
 
-(** an Injection theorem about conf_equi *)
+(** An injection theorem about conf_equi *)
 Lemma unique_g : forall g1 g2,
                g1 <> g2 -> Loc.eq (Config.loc (conf_equi (Good g1)))
                                   (Config.loc (conf_equi (Good g2))) -> False.
@@ -363,7 +363,7 @@ Proof.
     unfold K.nG in *.
     destruct s.
     simpl.
-    generalize kdn.
+    generalize k_div_n.
     intros.
     rewrite <- Nat.div_exact in H1.
     split.
@@ -383,7 +383,7 @@ Proof.
     unfold K.nG in *.
     destruct s.
     simpl.
-    generalize kdn.
+    generalize k_div_n.
     intros.
     rewrite <- Nat.div_exact in H1.
     split.
@@ -629,7 +629,7 @@ constructor; [| constructor].
 * simpl. assumption.
 Qed.
 
-(** fairness properties *)
+(** Fairness properties *)
 Lemma equi_fair : Fair demon_equi.
 Proof. apply (@kFair_Fair 1%nat). apply equi_kFair. Qed.
                            
@@ -822,7 +822,7 @@ Proof.
            intuition.
 Qed.
 
-(** Conf_Equi is a valid conf *)
+(** Conf_equi is a valid initial conf *)
 Lemma  equi_valid : Valid_starting_conf conf_equi.
 Proof.
   unfold Valid_starting_conf.
@@ -860,9 +860,9 @@ Proof.
                           -> x mod Z.of_nat (n / k) = 0).
   { intros.
     generalize k_sup_1; intros Hk.
-    assert (Hkdn := kdn).
-    rewrite Nat.mod_divides in Hkdn; try omega.
-    destruct Hkdn.
+    assert (Hk_div_n := k_div_n).
+    rewrite Nat.mod_divides in Hk_div_n; try omega.
+    destruct Hk_div_n.
     rewrite Nat.mul_comm in H0.
     rewrite H0 in *.
     rewrite Nat.div_mul in *; try lia.
@@ -976,7 +976,7 @@ Qed.
 Definition m := 
     V2Z (r.(pgm) (spect_equi conf_equi (Good g))).
 
-(** For each robot on conf_equi, the vision is the same*) 
+(** For each robot on conf_equi, the vision is the same *) 
 
 Lemma same_Spectrum : forall g0,
     Spect.eq (spect_equi conf_equi (Good g)) (spect_equi conf_equi (Good g0)).
@@ -1024,9 +1024,9 @@ Proof.
                           -> x mod Z.of_nat (n / k) = 0).
   { intros.
     generalize k_sup_1; intros Hk.
-    assert (Hkdn := kdn).
-    rewrite Nat.mod_divides in Hkdn; try omega.
-    destruct Hkdn.
+    assert (Hk_div_n := k_div_n).
+    rewrite Nat.mod_divides in Hk_div_n; try omega.
+    destruct Hk_div_n.
     rewrite Nat.mul_comm in H0.
     rewrite H0 in *.
     rewrite Nat.div_mul in *; try lia.
@@ -1164,10 +1164,10 @@ Proof.
          reflexivity.
          destruct k eqn : Hkg.
          generalize k_sup_1; lia.
-         generalize k_inf_n, k_sup_1, kdn; intros ? ? Hkdn.
+         generalize k_inf_n, k_sup_1, k_div_n; intros ? ? Hk_div_n.
          rewrite Hkg in *.
-         rewrite Nat.mod_divides, <-Hkg in Hkdn.
-         destruct Hkdn.      
+         rewrite Nat.mod_divides, <-Hkg in Hk_div_n.
+         destruct Hk_div_n.      
          rewrite H3, Nat.mul_comm.
          rewrite Hkg in *.
          rewrite Nat.div_mul.
@@ -1318,7 +1318,7 @@ Proof.
     reflexivity.  
 Qed.
 
-(** Two configuration are equivalent if all robots of the first are moved of the same [k] numbur to have the second. *)
+(** Two configurations are equivalent if one is obtained by translating all the robots from the other configuration by the same number [k] of vertices. *)
 Definition f_conf conf k : Config.t :=
   fun id =>
       match id with
@@ -1373,8 +1373,8 @@ Qed.
 
 Definition rconf_equi := round r da_equi conf_equi.
 
-(** for each configuration [c], if c is equivalent to [conf_equi] as described before, 
-     then the vision for each robot is the same in the two configuration [c] and [conf_equi].  *)
+(** For each configuration [c], if [c] is equivalent to [conf_equi] as described before, 
+     then the vision for each robot is the same in the two configurations [c] and [conf_equi].  *)
 Lemma equiv_spectrum : forall conf g0,
       (exists k, forall id,
             Location.eq (Config.loc (conf id)) (Loc.add k (Config.loc (conf_equi id))))
@@ -1622,11 +1622,10 @@ Qed.
 
 (** The key idea is to prove that we can always make robots think that there are in the same configuration.
 
-    So, in [conf1], if a robot moves, it can be in two direction, Forward or Backward, and for each direction, all robots move in the same direction.
-the configuration is then the same that before the movement.
-    If it does not, it either move to the Backward direction, and it is approximatively the same proof, or it de  *)
+    So, in [conf_equi], if a robot moves, it can be in two direction, [Forward] or [Backward], and for each direction, all robots move in the same direction.
+The configuration is then the same that before the movement. *)
 
-(** **  First case: the robots move to the forward direction  **)
+(** **  First case: the robots move forward direction  **)
 
 Section Move1.
   
@@ -1671,8 +1670,8 @@ Definition Always_moving (e : execution) : Prop :=
   Stream.forever (fun e1 => ~Stopped e1) e.
 
     
-(** An execution that is satisfing the predicate [Always_equiv]
-   satisfy the [Always_moving] one too. *)
+(** An execution that is satisfying the predicate [Always_equiv]
+   also satisfies [Always_moving]. *)
 
 
 Lemma Always_moving_impl_not_WillStop : forall e,
@@ -1857,8 +1856,8 @@ Proof.
   now destruct Hn.
 Qed.
 
-(** any configuration equivalent to the starting one will not stop if executed with 
-   [r] and [demon_equi] *)
+(** The robogram [r] will never stop under the demon [demon_equi] starting from
+    a configuration equivalent to the initial configuration [conf_equi]. *)
 Lemma moving_never_stop : forall conf,
     equiv_conf rconf_equi conf ->
     ~Stopped (execute r demon_equi conf).
@@ -1977,7 +1976,7 @@ Proof.
     now exists x.
 Qed.
 
-(** the starting configuration respect the [Always_moving] predicate *)
+(** The starting configuration satisfies the [Always_moving] predicate. *)
 
 Lemma conf_equi_Always_moving : Always_moving (execute r demon_equi rconf_equi).
 Proof.
@@ -1993,7 +1992,7 @@ Qed.
 
 
 
-(** The starting configuration will not stop *)
+(** The execution from the starting configuration will not stop. *)
 Lemma never_stop : ~ Will_stop ((execute r demon_equi rconf_equi)).
 Proof.
   apply Always_moving_impl_not_WillStop.
@@ -2002,8 +2001,8 @@ Proof.
   apply conf_equi_Always_moving.
 Qed.
 
-  (** final theorem first part: if we move, In the asynchronous model, and if k 
-     divide n, then the exploration with stop of a n-node ring is not possible. *)
+(** Final theorem first part: if [k] divides [n], a robogram that decides to
+    move in the configuration [conf_equi] cannot solve epxloration with stop. *)
 
 Theorem no_exploration_moving : Z_of_nat (n mod k) = 0 -> ~ (Explores_and_stop r).
 Proof.
@@ -2030,7 +2029,7 @@ Save.
 
 End Move1.
 
-(** ** second part: The robots never move. *)
+(** ** Second part: The robots never move. *)
 Section Stop.
 
   Hypothesis Hm : Loc.eq (Z2V m) (Z2V 0).
@@ -2064,7 +2063,7 @@ Section Stop.
     now unfold f_conf; simpl.
   Qed.
 
-  (** exists a position that will never be visited starting from [conf_equi]*)
+  (** There is a position that will never be visited starting from [conf_equi]. *)
   Lemma NeverVisited_conf1 : forall e,
        eeq e (execute r demon_equi conf_equi) ->
        exists l, ~ Will_be_visited l e.
@@ -2076,7 +2075,7 @@ Section Stop.
     + destruct H as (g0, Hvis).
       rewrite Heq_e in Hvis.
       simpl in Hvis.
-      assert (Z.of_nat (n mod k) = 0) by (generalize kdn; fold n in *; lia).
+      assert (Z.of_nat (n mod k) = 0) by (generalize k_div_n; fold n in *; lia).
       now apply (conf_equi_ne_unit H g0).
     + apply IHHl.
       rewrite Heq_e.
@@ -2099,7 +2098,7 @@ Section Stop.
       now rewrite round_simplify_0.
   Qed.
 
-(** it is false that all position will be visited startion from [conf_equi] *)
+(** It is false that all position will be visited startion from [conf_equi]. *)
   Lemma never_visited :
       ~ (forall l : Loc.t, Will_be_visited l (execute r demon_equi conf_equi)).
   Proof.
@@ -2112,7 +2111,8 @@ Section Stop.
 Qed.
 
 
- (** The exploration is not posiible if the robots never move.*) 
+ (** If [k] divides [n], a robogram that decides not to move in the
+     configuration [conf_equi] cannot solve exploration with stop. *)
   Theorem no_exploration_idle : Z_of_nat (n mod k) = 0 -> ~ (Explores_and_stop r).
   Proof.
     intros Hmod Habs.
@@ -2342,7 +2342,7 @@ Section Move_minus1.
   Qed.
 
 
-  (** When starting from [conf_equi], the execution move at leat at the begining *)
+  (* When starting from [conf_equi], the execution move at leat at the begining *)
   Lemma moving_no_stop_m : ~Stopped ((execute r demon_equi (round r da_equi conf_equi))).
   Proof.
     intros Hs.
@@ -2404,8 +2404,8 @@ Section Move_minus1.
     generalize n_sup_1; lia.
   Qed.
 
-  (** any configuration equivalent to the starting one will not stop if executed with 
-   [r] and [demon_equi] *)
+  (** On any configuration equivalent to the initial configuration [conf_equi],
+      the robogram [r] is not stopped. *)
   Lemma moving_never_stop_m : forall conf,
       equiv_conf (round r da_equi (conf_equi)) conf ->
       ~Stopped (execute r demon_equi conf).
@@ -2515,7 +2515,7 @@ Section Move_minus1.
       now rewrite (pgm_compat r _ _ (same_Spectrum g0)).
   Qed.
 
-  (** the starting configuration respect the [Always_moving] predicate *)
+  (** The starting configuration satisfies the [Always_moving] predicate. *)
 
   Lemma conf_equi_Always_moving_m : Always_moving (execute r demon_equi
                                                        (round r da_equi (conf_equi))).
@@ -2529,7 +2529,7 @@ Section Move_minus1.
     now repeat split;simpl; rewrite (Loc.add_comm Loc.origin), Loc.add_origin.
   Qed.
 
-  (** starting from the configuration after a round on [conf_equi], the execution will never stop *)
+  (** The execution will never stop. *)
   Lemma never_stop_m : ~ Will_stop (execute r demon_equi (round r da_equi ((conf_equi)))).
   Proof.
     apply Always_moving_impl_not_WillStop.
@@ -2538,7 +2538,7 @@ Section Move_minus1.
     apply conf_equi_Always_moving_m.
   Qed.
 
-(** The exploration with stop is not possible if the robots moves backward. *)  
+  (** The exploration with stop is not possible if the robots moves backward. *)  
   Theorem no_exploration_moving_m : Z_of_nat (n mod k) = 0 -> ~ (Explores_and_stop r).
   Proof.
     intros Hmod Habs.
@@ -2596,7 +2596,7 @@ Proof.
   now rewrite Hl,e.
 Qed.
 
-(** ** Finale theorem: if the nuber of robot [k] divides the number of position on the ring [n], then the exploration with stop cannot be performed, and this, for any robogram [r]. *)
+(** ** Final theorem: if the number [k] of robot divides the number [n] of positions of the ring, then no robogram [r] can solve the exploration with stop. *)
 
 Theorem no_exploration_k_divides_n : Z_of_nat (n mod k) = 0 -> ~ (Explores_and_stop r).
 Proof.

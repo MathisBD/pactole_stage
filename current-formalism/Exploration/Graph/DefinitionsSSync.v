@@ -1,10 +1,11 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms
+      T. Balabonski, R. Pelle , L. Rieg, X. Urbain
+               
+      PACTOLE project                                                      
+                                                                          
+      This file is distributed under the terms of the CeCILL-C licence     
+                                                                          *)
 (**************************************************************************)
 
 Require Import Reals.
@@ -51,7 +52,7 @@ Notation "s [ pt ]" := (Spect.M.multiplicity pt s) (at level 5, format "s [ pt ]
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-(** Definition of the Isomorphism of translation on the ring *)
+(** Definition of the isomorphism of translation on the ring *)
 Definition bij_trans_V (c : Loc.t) : Bijection.t Veq.
 refine {|
   Bijection.section := fun x => (Loc.add x (Loc.opp c));
@@ -196,7 +197,7 @@ Proof.
   apply Stream.eventually_compat, Stopped_compat.
 Qed.
 
-(** [Exploration_with_stop e] mean that after a finite time, every node of the space has been
+(** [Exploration_with_stop e] means that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
 Definition FullSolExplorationStop  (r : robogram) := 
 forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).

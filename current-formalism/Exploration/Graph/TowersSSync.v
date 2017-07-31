@@ -1,10 +1,11 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain, R. Pelle                  *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+      T. Balabonski, L. Rieg, X. Urbain, R. Pelle                  
+
+      PACTOLE project                                                      
+                                                                        
+      This file is distributed under the terms of the CeCILL-C licence     
+                                                                          *)
 (**************************************************************************)
 
 Require Import Psatz.
@@ -67,7 +68,7 @@ Ltac ImpByz b :=
 
 Import DGF.
 
-(** ** First part: Proof that the starting configuration of a protocole that satify the [Explores_and_stop] property cannot be stall  *)
+(** ** First part: Proof that the starting configuration of a protocole that satifies the [Explores_and_stop] property cannot stall  *)
 
 (** Some definitions and lemmas on Fin.t objects. *)
 Fixpoint fin_map n A (f : Fin.t n -> A) {struct n} : list A :=
@@ -203,7 +204,7 @@ Qed.
     generalize n_sup_1. lia.
   Qed.
 
-(** All location cannot be filled, as we have the axiom [k_inf_n] *)
+(** All locations cannot be filled, as we have the axiom [k_inf_n]. *)
   
  Lemma ConfExistsEmpty :
   forall (conf:Config.t),
@@ -261,7 +262,7 @@ Proof.
   apply H.
 Qed.
 
-(** Any starting configuration cannot be stalled. *)  
+(** Any starting configuration cannot stall. *)  
 Theorem no_stop_on_starting_conf : forall c r d e,
     Explores_and_stop r ->
     eeq e (execute r d c) -> 
@@ -300,9 +301,9 @@ Proof.
 Qed.
 
 
-(** ** Second Part : To performe the exploration with stop, a least 2 robot are needed. *)
+(** ** Second Part : To perform the exploration with stop, a least 2 robots are needed. *)
 
-(** A configuartion that is stalled have a towen on, that means a location with more than 1 robot *)
+(** A configuartion that stalls have a tower, that means a location with more than 1 robot. *)
 Lemma finalconf_towerOn : forall r,
     (Explores_and_stop r) ->
     forall c d e,
@@ -353,7 +354,7 @@ Proof.
 Qed.
 
 
-(** final theorem: to permform the exploration with stop, a at least 2 robots are needed *)  
+(** Final theorem: to perform the exploration with stop, at least 2 robots are needed. *)  
 Lemma no_exploration_k_inf_2 : forall r,
     Explores_and_stop r ->
     (k > 1)%nat.
