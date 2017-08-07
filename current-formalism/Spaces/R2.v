@@ -1,10 +1,19 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence.    *)
+(*   This file is distributed under the terms of the CeCILL-C licence     *)
 (*                                                                        *)
+(**************************************************************************)
+
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                           
+   PACTOLE project                                                          
+                                                                            
+   This file is distributed under the terms of the CeCILL-C licence         
+                                                                          *)
 (**************************************************************************)
 
 
@@ -16,9 +25,7 @@ Require Import Omega.
 Import List Permutation SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Spaces.RealMetricSpaces.
-
-
+Require Import Pactole.Spaces.RealMetricSpace.
 Set Implicit Arguments.
 Open Scope R_scope.
 
@@ -61,7 +68,6 @@ Defined.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
-(* We use the square of the distance in order to avoid sqrt, hence we can use any field of charactistic 0. *)
 Instance R2_RMS : RealMetricSpace R2 := {|
   origin := (0, 0);
   unit := (1, 0);
@@ -188,8 +194,17 @@ Ltac R2dec := repeat
         let Heq := fresh "Heq" in destruct (Rdec x x) as [Heq | Heq];
         [clear Heq | exfalso; elim Heq; reflexivity]
     | H : ?x <> ?x |- _ => elim H; reflexivity
+    | H : ?x =/= ?x |- _ => elim H; reflexivity
     | Heq : ?x == ?y, Hneq : ~?y == ?x |- _ => symmetry in Heq; contradiction
     | Heq : ?x == ?y, Hneq : ~?x == ?y |- _ => contradiction
+    | Heq : ?x == ?y |- context[@equiv_dec _ _ R2_EqDec ?x ?y] =>
+        destruct (x =?= y); try contradiction; []
+    | Heq : ?x =/= ?y |- context[@equiv_dec _ _ R2_EqDec ?x ?y] =>
+        destruct (x =?= y); try contradiction; []
+    | Heq : ?y == ?x |- context[@equiv_dec _ _ R2_EqDec ?x ?y] =>
+        symmetry in Heq; destruct (x =?= y); try contradiction; []
+    | Heq : ?y =/= ?x |- context[@equiv_dec _ _ R2_EqDec ?x ?y] =>
+        let HH := fresh in destruct (x =?= y) as [HH | ?]; try symmetry in HH; try contradiction; []
   end.
 
 Ltac R2dec_full :=
@@ -877,6 +892,469 @@ intros pt1 pt2 pt Hnull. split; intro Hpt.
         perpendicular_mul_compat_l, perpendicular_mul_compat_r, orthogonal_perpendicular.
 Qed.
 
+(** ** Segments **)
+
+Lemma Rplus_reg_r : forall r1 r2 r3, r1 = r3 + - r2 -> r1 + r2 = r3.
+Proof.
+  intros. subst. rewrite Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_r. reflexivity.
+Qed.
+
+Lemma Rplus_reg_l : forall r1 r2 r3, r2 = r3 + -r1 -> r1 + r2 = r3.
+Proof.
+  intros. subst. rewrite Rplus_comm, Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_r. reflexivity.
+Qed.
+
+Lemma Rplus_opp_r_rwrt : forall r1 r2,  r1 + - r2 = 0 -> r1 = r2.
+Proof.
+intros. apply Rplus_opp_r_uniq in H. apply Ropp_eq_compat in H.
+repeat rewrite Ropp_involutive in H. subst. reflexivity.
+Qed.
+
+Lemma Rmult_inv_reg_r : forall r1 r2 r3, r2 <> 0 -> r1 = r3 * r2 -> r1 * / r2 = r3.
+Proof. intros. subst. now apply Rinv_r_simpl_l. Qed.
+
+Lemma R2plus_opp_assoc_comm : forall u1 u2 u3, (u1 + u2 + - u3 = u1 + - u3 + u2)%R2.
+Proof. intros. now rewrite <- add_assoc, (add_comm u2), add_assoc. Qed.
+
+Lemma R2_opp_dist : forall u v, (- (u + v) = -u + -v)%R2.
+Proof. intros [? ?] [? ?]. compute. f_equal; ring. Qed.
+
+Lemma orthogonal_projection_aux :
+  forall ptA ptB ptS, ~ptA == ptB ->
+                      exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA))%R2.
+Proof.
+  intros A B S Hineq.
+  destruct A as (xA, yA).
+  destruct B as (xB, yB).
+  destruct S as (xS, yS).
+  unfold perpendicular, product.
+  simpl.
+  set (xAB := xB + - xA).
+  set (yAB := yB + - yA).
+  set (xSA := xA + - xS).
+  set (ySA := yA + - yS).
+
+  exists ( - (xAB * xSA + yAB * ySA) * / (xAB * xAB + yAB * yAB) ).
+
+  rewrite Rmult_plus_distr_l.
+  rewrite Rplus_assoc.
+  apply Rplus_reg_l.
+  rewrite Rplus_0_l.
+  rewrite Rplus_comm.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rplus_assoc.
+  apply Rplus_reg_l.
+  rewrite Rplus_comm.
+
+  rewrite Rmult_comm with (r2 := xAB).
+  rewrite <- Rmult_assoc.
+  rewrite <- Rmult_assoc.
+  rewrite Rplus_comm.
+  rewrite Rmult_comm with (r2 := yAB).
+  rewrite <- Rmult_assoc.
+  rewrite <- Rmult_assoc.
+  rewrite <- Rmult_plus_distr_r.
+
+  apply Rmult_inv_reg_r.
+
+  + intro Hsqr_sum.
+    destruct (Rplus_sqr_eq_0 _ _ Hsqr_sum) as (Hx, Hy).
+    apply Hineq.
+    simpl.
+    rewrite (Rplus_opp_r_rwrt Hx).
+    rewrite (Rplus_opp_r_rwrt Hy).
+    reflexivity.
+
+  + ring.
+
+Qed.
+
+Lemma orthogonal_projection :
+  forall ptA ptB ptS, ~ptA == ptB ->
+  exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS)%R2.
+Proof.
+intros A B S Hineq.
+destruct (orthogonal_projection_aux S Hineq) as (k, Hp).
+exists k.
+now rewrite R2plus_opp_assoc_comm.
+Qed.
+
+Lemma squared_R2norm_le : forall u v, (R2norm u)² <= (R2norm v)² <-> R2norm u <= R2norm v.
+Proof. intros. apply pos_Rsqr_le; auto using R2norm_pos. Qed.
+
+Definition on_segment (ptA ptB pt : R2) :=
+  exists k, (pt - ptA)%R2 = (k * (ptB - ptA))%R2 /\ (0 <= k <= 1)%R.
+
+Lemma inner_segment : forall ptA ptB ptS ptK,
+  ~ ptA == ptB ->
+  on_segment ptA ptB ptK ->
+  dist ptS ptK <= dist ptS ptA \/ dist ptS ptK <= dist ptS ptB.
+Proof.
+intros A B S K Hneq Hseg.
+destruct Hseg as (k, (Hcolinear, Hinside)).
+destruct (orthogonal_projection S Hneq) as (kh, Hp).
+set (H := (A + kh * (B - A))%R2).
+
+assert (HperpA: perpendicular (A - H) (H - S)).
+{ unfold H.
+  replace (A - (A + kh * (B - A)))%R2 with (- kh * (B - A))%R2.
+  auto using perpendicular_mul_compat_l.
+  destruct A, B; compute; f_equal; ring. }
+assert (HperpB: perpendicular (B - H) (H - S)).
+{ unfold H.
+  replace (B - (A + kh * (B - A)))%R2 with ((1 + - kh) * (B - A))%R2.
+  auto using perpendicular_mul_compat_l.
+  destruct A, B; compute; f_equal; ring. }
+assert (HperpK: perpendicular (K - H) (H - S)).
+{ replace ((K - H)%R2) with (((K - A) + (A - H))%R2).
+  rewrite Hcolinear.
+  unfold H.
+  replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
+  rewrite add_morph.
+  auto using perpendicular_mul_compat_l.
+  destruct A, B; compute; f_equal; ring.
+  destruct K, A, H; compute; f_equal; ring. }
+clear Hp.
+
+assert (Kdef: K = (A + k * (B - A))%R2).
+{ rewrite <- Hcolinear. destruct K, A; compute; f_equal; ring. }
+clear Hcolinear.
+
+destruct (Rlt_le_dec k kh) as [Hlt | Hle].
++ left.
+  rewrite dist_sym, R2norm_dist, dist_sym, R2norm_dist.
+  apply squared_R2norm_le.
+  replace (K - S)%R2 with ((K - H) + (H - S))%R2.
+  apply Pythagoras in HperpK. rewrite HperpK.
+  replace (A - S)%R2 with ((A - H) + (H - S))%R2.
+  apply Pythagoras in HperpA. rewrite HperpA.
+  apply Rplus_le_compat_r.
+  rewrite Kdef.
+  unfold H.
+  replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
+  replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
+
+  apply squared_R2norm_le.
+  repeat rewrite R2norm_mul.
+  apply Rmult_le_compat_r.
+  apply R2norm_pos.
+  rewrite Rabs_Ropp, Rabs_minus_sym.
+  repeat rewrite Rabs_pos_eq.
+  apply Rplus_le_reg_pos_r with (r2 := k). tauto.
+  right. ring.
+  left. apply Rle_lt_trans with (r2 := k). tauto.
+  assumption.
+  left. apply Rlt_Rminus. assumption.
+
+  destruct A, B; compute; f_equal; ring.
+  destruct A, B; compute; f_equal; ring.
+  destruct A, H, S; compute; f_equal; ring.
+  destruct K, H, S; compute; f_equal; ring.
+
++ right.
+  rewrite dist_sym, R2norm_dist, dist_sym, R2norm_dist.
+  apply squared_R2norm_le.
+  replace (K - S)%R2 with ((K - H) + (H - S))%R2.
+  apply Pythagoras in HperpK. rewrite HperpK.
+  replace (B - S)%R2 with ((B - H) + (H - S))%R2.
+  apply Pythagoras in HperpB. rewrite HperpB.
+  apply Rplus_le_compat_r.
+  rewrite Kdef.
+  unfold H.
+  replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
+  replace (B - (A + kh * (B - A)))%R2 with ((1 - kh) * (B - A))%R2.
+
+  apply squared_R2norm_le.
+  repeat rewrite R2norm_mul.
+  apply Rmult_le_compat_r.
+  apply R2norm_pos.
+  repeat rewrite Rabs_pos_eq.
+  apply Rplus_le_compat_r. tauto.
+  apply Rge_le.
+  apply Rge_minus.
+  apply Rle_ge.
+  apply Rle_trans with (r2 := k). assumption. tauto.
+  apply Rge_le.
+  apply Rge_minus.
+  apply Rle_ge.
+  assumption.
+
+  destruct A, B; compute; f_equal; ring.
+  destruct A, B; compute; f_equal; ring.
+  destruct B, H, S; compute; f_equal; ring.
+  destruct K, H, S; compute; f_equal; ring.
+Qed.
+
+Lemma R2div_reg_l : forall k u v, k <> 0 -> (k * u = v)%R2 -> (u = /k * v)%R2.
+Proof. intros k u v Hneqz Heq. subst. now rewrite mul_morph, Rinv_l, mul_1. Qed.
+
+Lemma R2plus_compat_eq_r :
+  forall u v w, (u = v)%R2 -> (u + w = v + w)%R2.
+Proof. intros. subst. reflexivity. Qed.
+
+Lemma distance_after_move
+      (C P Q : R2) (kp kq dm : R)
+      (HneqPC : ~ P == C) (HneqQC: ~ Q == C) (*(HneqPQ: ~R2.eq P Q)*)
+      (HdistPC : dist P C <= dm) (*(HdistQC: dist Q C <= dm)*) (HdistPQ : dist P Q <= dm)
+      (Hkp: 0 < kp) (Hkpkq : kp <= kq) (Hkq : kq <= 1) :
+  dist (P + kp * (C - P))%R2 (Q + kq * (C - Q))%R2 <= (1 - kp) * dm.
+Proof.
+destruct (Req_dec kq 1).
++ subst kq.
+  rewrite mul_1.
+  assert (Heq : (Q + (C - Q) = C)%R2).
+  { rewrite add_comm, <- add_assoc, (add_comm _ Q), add_opp.
+    change eq with equiv. apply add_origin.
+  }
+  rewrite Heq, R2norm_dist.
+  assert (Heq' : (P + kp * (C - P) - C = (- 1 + kp) * (C - P))%R2).
+  { rewrite <- add_morph, minus_morph, mul_1, opp_distr_add, opp_opp.
+    symmetry. now rewrite <- add_assoc, add_comm. }
+  rewrite Heq', R2norm_mul, <- Rabs_Ropp.
+  apply Rmult_le_compat.
+  - apply Rabs_pos.
+  - apply R2norm_pos.
+  - right.
+    rewrite Rabs_pos_eq.
+    ring.
+    rewrite Ropp_plus_distr, Ropp_involutive.
+    apply Rplus_le_reg_r with (r := kp).
+    now rewrite Rplus_0_l, Rplus_assoc, Rplus_opp_l, Rplus_0_r.
+  - now rewrite <- R2norm_dist, dist_sym.
++ destruct Hkq as [Hkq | Hkq]; [| exfalso; now apply H].
+  clear H.
+
+  set (KP := (P + kp * (C - P))%R2).
+  set (KQ := (Q + kq * (C - Q))%R2).
+  set (KQ' := (Q + kp * (C - Q))%R2).
+  assert (Hpos: 0 < 1 - kp).
+  { apply Rgt_lt.
+    apply Rgt_minus.
+    apply Rlt_gt.
+    apply Rle_lt_trans with (r2 := kq); assumption.
+  }
+  assert (Hpoz: 0 <= 1 - kp).
+  { left. assumption. }
+
+  assert (Thales: dist KP KQ' <= (1 - kp) * dm).
+  { rewrite R2norm_dist.
+    unfold KP, KQ'.
+    replace (P + kp * (C - P) - (Q + kp * (C - Q)))%R2 with ((1 - kp) * (P - Q))%R2.
+    { rewrite R2norm_mul.
+      rewrite (Rabs_pos_eq _ Hpoz).
+      rewrite (Rmult_le_compat_l (1 - kp) (R2norm (P - Q)) dm Hpoz).
+      right. reflexivity.
+      rewrite <- R2norm_dist.
+      assumption.
+    }
+    destruct P, Q, C; compute; f_equal; ring.
+  }
+
+  assert (Hseg: on_segment KQ' C KQ).
+  { unfold on_segment.
+    exists (/(1 - kp) * (kq - kp)).
+    split.
+    + rewrite <- mul_morph.
+      apply R2div_reg_l.
+      { apply Rgt_not_eq.
+        apply Rlt_gt.
+        assumption. }    
+      unfold KQ, KQ'.
+      destruct C, Q; compute; f_equal; ring.
+    + split.
+      - apply Rmult_le_reg_l with (r := 1 - kp).
+        { assumption. }
+        rewrite Rmult_0_r.
+        rewrite <- Rmult_assoc.
+        rewrite Rinv_r.
+        * rewrite Rmult_1_l. apply Rge_le. apply Rge_minus. apply Rle_ge.
+          assumption.
+        * apply Rgt_not_eq. apply Rlt_gt. assumption.
+      - apply Rmult_le_reg_l with (r := 1 - kp).
+        { assumption. }
+        rewrite Rmult_1_r.
+        rewrite <- Rmult_assoc.
+        rewrite Rinv_r.
+        * rewrite Rmult_1_l.
+          apply Rplus_le_reg_l with (r := kp).
+          repeat rewrite Rplus_minus.
+          left. assumption.
+        * apply Rgt_not_eq. apply Rlt_gt. assumption.
+  }
+
+  assert (HneqKQ'C: ~ KQ' == C).
+  { unfold KQ'.
+    intro Heq.
+    apply R2plus_compat_eq_r with (w := (-Q)%R2) in Heq.
+    replace (Q + kp * (C - Q) - Q)%R2 with (kp * (C - Q))%R2 in Heq;
+      [ | destruct Q, C; compute; f_equal; ring].
+    rewrite <- (mul_1 (C - Q)%R2) in Heq at 2.
+    change eq with equiv in Heq.
+    apply mul_reg_r in Heq.
+    - subst.
+      compute in Hpos. rewrite Rplus_opp_r in Hpos. apply (Rlt_irrefl _ Hpos).
+    - intro Horigin.
+      apply R2plus_compat_eq_r with (w := Q%R2) in Horigin.
+      rewrite <- add_assoc in Horigin.
+      rewrite add_comm with (u := (-Q)%R2) in Horigin.
+      rewrite add_opp in Horigin.
+      rewrite add_origin in Horigin.
+      rewrite add_comm in Horigin.
+      rewrite add_origin in Horigin.
+      subst.
+      now apply HneqQC. }
+
+  destruct (inner_segment KP HneqKQ'C Hseg).
+  - apply Rle_trans with (r2 := dist KP KQ'); assumption.
+  - apply Rle_trans with (r2 := dist KP C); [ assumption | ].
+    unfold KP. rewrite R2norm_dist.
+    replace (P + kp * (C - P) - C)%R2 with ((1 - kp) * (P - C))%R2.
+    rewrite R2norm_mul.
+    rewrite Rabs_pos_eq.
+    apply Rmult_le_compat_l.
+    left; assumption.
+    rewrite <- R2norm_dist.
+    assumption.
+    left; assumption.
+    destruct P, C; compute; f_equal; ring.
+Qed.
+
+Lemma R2norm_ineq : forall u v, R2norm (u + v) <= R2norm u + R2norm v.
+Proof.
+intros u v.
+replace (R2norm (u+v)) with (R2norm (u - -v)%R2).
+replace (R2norm u) with (R2norm (u - origin)).
+replace (R2norm v) with (R2norm (origin - - v)%R2).
+- repeat rewrite <- R2norm_dist. apply triang_ineq.
+- now rewrite add_comm, add_origin, opp_opp.
+- now rewrite opp_origin, add_origin.
+- now rewrite opp_opp.
+Qed.
+
+Lemma fold_add_ac : forall E a b, fold_left add E (a + b)%R2 = ((fold_left add E a) + b)%R2.
+Proof.
+induction E as [| x E].
++ reflexivity.
++ intros a b.
+  cbn [fold_left].
+  rewrite <- add_assoc, add_comm with (u := b), add_assoc.
+  apply IHE.
+Qed.
+
+Lemma fold_add_permutation : forall l1 l2 a,
+  PermutationA equiv l1 l2 ->
+  fold_left add l1 a = fold_left add l2 a.
+Proof.
+intros l1 l2 a Hpermut. revert a.
+induction Hpermut; intro a.
++ now simpl.
++ simpl. rewrite H. apply IHHpermut.
++ cbn [fold_left]. now rewrite <- add_assoc, (add_comm y x), add_assoc.
++ now rewrite IHHpermut1.
+Qed.
+
+(** Barycenter of a list of locations *)
+
+Definition barycenter (E: list R2) : R2 :=
+  /(INR (List.length E)) * (List.fold_left add E origin).
+
+Definition sqr_dist_sum_aux (init: R) (pt: R2) (E: list R2) : R :=
+  List.fold_left (fun acc pt' => acc + (dist pt pt')²) E init.
+
+Definition sqr_dist_sum := sqr_dist_sum_aux 0.
+
+Axiom Barycenter_n_spec :
+  forall (E: list R2) (B: R2),
+    barycenter E = B -> 
+    forall p,
+      sqr_dist_sum B E <= sqr_dist_sum p E.
+
+Definition is_barycenter_n (E: list R2) (B: R2) : Prop :=
+  forall p, sqr_dist_sum B E <= sqr_dist_sum p E.
+
+Axiom barycenter_n_spec : forall (E: list R2),
+    is_barycenter_n E (barycenter E).
+Axiom barycenter_n_unique: forall E a b,
+    is_barycenter_n E a -> is_barycenter_n E b -> a == b.
+
+
+Instance barycenter_compat : Proper (PermutationA equiv ==> equiv) barycenter.
+Proof.
+intros l1 l2 Hpermut. unfold barycenter.
+assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).
+rewrite Hl; clear Hl. f_equiv. now apply fold_add_permutation.
+Qed.
+
+
+Lemma sqr_dist_sum_aux_compat : Proper (Logic.eq ==> equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum_aux.
+Proof.
+intros i1 i2 Heqi pt1 pt2 Heqpt E1 E2 Hpermut.
+unfold sqr_dist_sum_aux.
+revert i1 i2 Heqi.
+induction Hpermut; intros i1 i2 Heqi.
++ now simpl.
++ pattern x₁; rewrite H.
+  simpl. apply IHHpermut.
+  now rewrite Heqpt, Heqi.
++ simpl. f_equiv.
+  - now rewrite Heqpt.
+  - rewrite Heqi, Heqpt.
+    ring.
++ rewrite Heqpt in *.
+  rewrite (IHHpermut1 i1 i2 Heqi).
+  now rewrite (IHHpermut2 i2 i2).
+Qed.
+
+Lemma sqr_dist_sum_compat : Proper (equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum.
+Proof. now apply sqr_dist_sum_aux_compat. Qed.
+
+Lemma barycenter_dist_decrease_aux : forall E dm,
+    E <> nil ->
+    (forall p1 p2, In p1 E -> In p2 E -> dist p1 p2 <= dm) ->
+    forall p, (forall q, In q E -> dist p q <= dm) ->
+              dist p (barycenter E) <= dm.
+Proof.
+intros E dm Hnotempty Hdm p Hp.
+assert (Hlength_pos: 0 < INR (List.length E)).
+{ apply lt_0_INR. destruct E; try (now elim Hnotempty); []. simpl. omega. }
+rewrite R2norm_dist. subst. unfold barycenter.
+replace p%R2 with (- / INR (length E) * (- INR (length E) * p))%R2
+  by (rewrite mul_morph, Ropp_inv_permute, <- Rinv_l_sym, mul_1; lra || reflexivity).
+rewrite <- minus_morph, <- mul_distr_add, R2norm_mul, Rabs_Ropp, Rabs_right;
+try (now apply Rle_ge, Rlt_le, Rinv_0_lt_compat); [].
+apply Rmult_le_reg_l with (r := INR (length E)); trivial; [].
+rewrite <- Rmult_assoc, Rinv_r, Rmult_1_l; try lra; [].
+induction E as [| a [| b E]].
++ now elim Hnotempty.
++ specialize (Hp a ltac:(now left)). cbn -[mul add].
+  replace ((-1 * p) + ((0, 0) + a))%R2 with (a - p)%R2 by (destruct a, p; simpl; f_equal; ring).
+  now rewrite Rmult_1_l, <- R2norm_dist, dist_sym.
++ clear Hlength_pos Hnotempty.
+  set (F := b :: E). fold F in IHE, Hdm, Hp.
+  set (lF := length F). fold lF in IHE.
+  replace (length (a :: F)) with (1 + lF)%nat; [ | simpl; reflexivity ].
+  rewrite add_comm, S_INR, Ropp_plus_distr, <- add_morph, Rmult_plus_distr_r, Rmult_1_l.
+  cbn [fold_left].
+  rewrite fold_add_ac, <- add_assoc, (add_comm a), <- add_assoc, add_assoc.
+  replace (-1 * p + a)%R2 with (a - p)%R2 by (destruct a, p; simpl; f_equal; ring).
+  rewrite R2norm_ineq.
+  apply Rplus_le_compat.
+  - rewrite add_comm. apply IHE; intuition; unfold lF, F; try discriminate; [].
+    cbn [length]. rewrite S_INR.
+    apply Rplus_le_lt_0_compat; apply pos_INR || apply Rlt_0_1.
+  - rewrite <- R2norm_dist, dist_sym. apply Hp. now left.
+Qed.
+
+Lemma barycenter_dist_decrease : forall E dm,
+    E <> nil ->
+    (forall p1 p2, In p1 E -> In p2 E -> dist p1 p2 <= dm) ->
+    forall p, In p E -> dist p (barycenter E) <= dm.
+Proof.
+intros E dm Hnotempty Hdm p Hp.
+apply (barycenter_dist_decrease_aux Hnotempty Hdm).
+intros q Hq. now apply Hdm.
+Qed.
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=
@@ -1115,9 +1593,9 @@ intros ptx pty Hdiff Hin.
 inversion_clear Hin; subst.
 * rewrite middle_eq in H. contradiction.
 * inversion_clear H.
-  -- rewrite middle_comm, middle_eq in H0.
-     symmetry in H0. contradiction.
-  -- inversion H0.
+  - rewrite middle_comm, middle_eq in H0.
+    symmetry in H0. contradiction.
+  - inversion H0.
 Qed.
 
 Lemma middle_spec : forall pt1 pt2, is_middle pt1 pt2 (middle pt1 pt2).
@@ -1218,58 +1696,51 @@ Lemma middle_barycenter_3_neq: forall pt1 pt2 ptopp,
     middle pt1 pt2 = barycenter_3_pts pt1 pt2 ptopp ->
     pt1 = pt2.
 Proof.
-  intros pt1 pt2 ptopp Htriangle h_middle_eq_bary.
-  unfold barycenter_3_pts,middle in h_middle_eq_bary;
-    functional inversion Htriangle; rewrite -> ?Rdec_bool_true_iff in *;
-    (* I prefer hdist1 hdist2 later :) *)
-    repeat progress match goal with
-                    | HH: dist ?p ?p' = dist ?p'' ?p''' |- _ =>
-                      let hdist := fresh "hdist" in
-                      assert (hdist:Rsqr (dist p p') = Rsqr (dist p'' p'''))
-                      ; [ setoid_rewrite HH; try reflexivity;clear HH | clear HH ]
-                    end.
-  rename hdist into hdist2.
-  rename hdist0 into hdist1.
-
-  destruct pt1 as [xA yA], pt2 as [xB yB], ptopp as [xC yC]; cbn in *.
-  setoid_rewrite Rsqr_sqrt in hdist2.
-  setoid_rewrite Rsqr_sqrt in hdist1; try now (apply Rplus_le_le_0_compat;apply Rle_0_sqr).
-  * inversion h_middle_eq_bary as [[heqx heqy]].
-    assert (hand:xA=xB /\ yA = yB).
-    { clear -hdist1 hdist2 heqx heqy.
-      assert (heqxC:(xC = / 2 * (xA + xB))%R) by lra.
-      assert (heqyC:(yC = / 2 * (yA + yB))%R) by lra.
-      rewrite heqxC,heqyC in hdist1.
-      unfold Rsqr in *.
-      apply Rminus_diag_eq in hdist1.
-      revert hdist1.
-      clear.
-      match goal with |- ?v = _ -> _ => replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field end.
-      intros h.
-      apply (Rmult_eq_compat_l (4/3)%R) in h.
-      rewrite <- Rmult_assoc in h.
-      replace (4 / 3)%R with (/ (3 / 4))%R in h.
-      ++ rewrite <- Rinv_l_sym in h.
-         ** rewrite Rmult_1_l in h.
-            rewrite Rmult_0_r in h.
-            apply Rplus_sqr_eq_0 in h.
-            inversion h.
-            intuition.
-         ** clear.
-            lra.
-      ++ lra. }
-    destruct hand ; subst.
-    reflexivity.
-  * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
-  * apply Rplus_le_le_0_compat; apply Rle_0_sqr.
+intros pt1 pt2 ptopp Htriangle h_middle_eq_bary.
+unfold barycenter_3_pts,middle in h_middle_eq_bary;
+  functional inversion Htriangle; rewrite -> ?Rdec_bool_true_iff in *;
+  (* I prefer hdist1 hdist2 later :) *)
+  repeat progress match goal with
+                  | HH: dist ?p ?p' = dist ?p'' ?p''' |- _ =>
+                    let hdist := fresh "hdist" in
+                    assert (hdist:Rsqr (dist p p') = Rsqr (dist p'' p'''))
+                    ; [ setoid_rewrite HH; try reflexivity;clear HH | clear HH ]
+                  end.
+rename hdist into hdist2, hdist0 into hdist1.
+destruct pt1 as [xA yA], pt2 as [xB yB], ptopp as [xC yC]; cbn in *.
+setoid_rewrite Rsqr_sqrt in hdist2; try now (apply Rplus_le_le_0_compat; apply Rle_0_sqr).
+setoid_rewrite Rsqr_sqrt in hdist1; try now (apply Rplus_le_le_0_compat; apply Rle_0_sqr).
+inversion h_middle_eq_bary as [[heqx heqy]].
+assert (hand:xA=xB /\ yA = yB).
+{ clear -hdist1 hdist2 heqx heqy.
+  assert (heqxC:(xC = / 2 * (xA + xB))%R) by lra.
+  assert (heqyC:(yC = / 2 * (yA + yB))%R) by lra.
+  rewrite heqxC,heqyC in hdist1.
+  unfold Rsqr in *.
+  apply Rminus_diag_eq in hdist1.
+  revert hdist1.
+  clear.
+  match goal with |- ?v = _ -> _ => replace v with (3/4*((xA-xB)*(xA-xB) + (yA-yB)*(yA-yB)))%R by field end.
+  intros h.
+  apply (Rmult_eq_compat_l (4/3)%R) in h.
+  rewrite <- Rmult_assoc in h.
+  replace (4 / 3)%R with (/ (3 / 4))%R in h.
+  + rewrite <- Rinv_l_sym in h.
+    - rewrite Rmult_1_l, Rmult_0_r in h.
+      apply Rplus_sqr_eq_0 in h.
+      inversion h.
+      intuition.
+    - lra.
+  + lra. }
+destruct hand. now subst.
 Qed.
 
-(** Some results about equilateral circles *)
+(** Some results about equilateral triangles. *)
 Section Equilateral_results.
   Variables pt1 pt2 pt3 : R2.
   Hypothesis Htriangle : classify_triangle pt1 pt2 pt3 = Equilateral.
   
-  (* The base of the altitude of an equilateral triangle is hte middle of the opposite side. *)
+  (* The base of the altitude of an equilateral triangle is the middle of the opposite side. *)
   Lemma equilateral_altitude_base : perpendicular (pt3 - pt2) (pt1 - middle pt2 pt3).
   Proof.
   null (pt3 - pt2)%R2.
@@ -1314,128 +1785,127 @@ Section Equilateral_results.
   rewrite R2norm_mul, <- R2norm_dist, dist_sym.
   rewrite equilateral_altitude. rewrite Rabs_pos_eq; lra.
   Qed.
-  
 End Equilateral_results.
 
 Lemma same_dist_vertex_notin_sub_circle: forall ptx pty c,
-    dist pty c = dist ptx c
-    -> (dist (middle c ptx) pty <= dist c (middle c ptx))%R
-    -> pty == ptx.
+  dist pty c = dist ptx c ->
+  (dist (middle c ptx) pty <= dist c (middle c ptx))%R ->
+  pty == ptx.
 Proof.
-  intros ptx pty c h_dist_iso hdist.
-  destruct (Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))) as [Hlt | [Heq | Hlt]].
-  - assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
-    { rewrite R2dist_middle.
-      lra. }
-    assert (h_ineq:=triang_ineq pty (middle c ptx) c).
-    setoid_rewrite dist_sym in h_ineq at 2 3.
-    rewrite h_dist_iso in h_ineq.
-    rewrite dist_sym in h_ineq at 1.
-    rewrite Heq in h_ineq.
-    exfalso.
-    lra.
-  - pose (m := middle c ptx). fold m in Heq.
-    assert (Htriang_eq : (dist c pty = dist c m + dist m pty)%R).
-    { rewrite Heq. ring_simplify. unfold m. rewrite R2dist_middle.
-      rewrite dist_sym, h_dist_iso, dist_sym. field. }
-    apply triang_ineq_eq in Htriang_eq. destruct Htriang_eq as [Hcol1 Hcol2].
-    assert (Hmiddle : colinear (m - c) (ptx - c)).
-    { symmetry. unfold m. rewrite middle_shift. apply colinear_middle. }
-    (* Let us eliminate the cases where m = c and pty = c. *)
-    null (m - c)%R2.
-    { unfold m in Hnull. rewrite R2sub_origin in Hnull. rewrite middle_eq in Hnull.
-      rewrite <- dist_defined. rewrite Hnull in h_dist_iso. rewrite h_dist_iso. apply R2_dist_defined_2. }
-    null (pty - c)%R2.
-    { rewrite R2sub_origin in Hnull0. rewrite <- dist_defined.
-      rewrite Hnull0 in *. rewrite dist_sym, <- h_dist_iso. apply R2_dist_defined_2. }
-    assert (Hcol3 := colinear_trans Hnull Hcol1 Hmiddle).
-    symmetry in Hcol3. setoid_rewrite dist_sym in h_dist_iso.
-    assert (Hcol4 := colinear_trans Hnull0 Hcol3 Hcol2).
-    destruct (equiv_dec ptx c) as [Hxc | Hxc].
-    + rewrite Hxc in *. rewrite <- dist_defined. rewrite dist_sym, h_dist_iso. apply R2_dist_defined_2.
-    + apply colinear_decompose in Hcol4; try (now rewrite R2sub_origin); [].
-      rewrite dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol4.
-      unfold m in Hcol4. rewrite R2dist_middle in Hcol4. rewrite minus_morph in Hcol4.
-      rewrite dist_sym, R2norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
-      destruct Hcol4 as [Hcol4 | Hcol4].
-      * assert (Hpty : pty == (m + /2 * (ptx - c))%R2 ).
-        { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
-          now rewrite <- add_assoc, add_opp, add_origin. }
-        rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field.
-      * assert (Hpty : pty == (m - /2 * (ptx - c))%R2).
-        { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
-          now rewrite <- add_assoc, add_opp, add_origin. }
-        assert (Hyc : pty == c).
-        { rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field. }
-        rewrite Hyc, <- dist_defined, <- h_dist_iso, Hyc. apply R2_dist_defined_2.
-  - exfalso; lra.
+intros ptx pty c h_dist_iso hdist.
+destruct (Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))) as [Hlt | [Heq | Hlt]].
+- assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
+  { rewrite R2dist_middle.
+    lra. }
+  assert (h_ineq:=triang_ineq pty (middle c ptx) c).
+  setoid_rewrite dist_sym in h_ineq at 2 3.
+  rewrite h_dist_iso in h_ineq.
+  rewrite dist_sym in h_ineq at 1.
+  rewrite Heq in h_ineq.
+  exfalso.
+  lra.
+- pose (m := middle c ptx). fold m in Heq.
+  assert (Htriang_eq : (dist c pty = dist c m + dist m pty)%R).
+  { rewrite Heq. ring_simplify. unfold m. rewrite R2dist_middle.
+    rewrite dist_sym, h_dist_iso, dist_sym. field. }
+  apply triang_ineq_eq in Htriang_eq. destruct Htriang_eq as [Hcol1 Hcol2].
+  assert (Hmiddle : colinear (m - c) (ptx - c)).
+  { symmetry. unfold m. rewrite middle_shift. apply colinear_middle. }
+  (* Let us eliminate the cases where m = c and pty = c. *)
+  null (m - c)%R2.
+  { unfold m in Hnull. rewrite R2sub_origin in Hnull. rewrite middle_eq in Hnull.
+    rewrite <- dist_defined. rewrite Hnull in h_dist_iso. rewrite h_dist_iso. apply R2_dist_defined_2. }
+  null (pty - c)%R2.
+  { rewrite R2sub_origin in Hnull0. rewrite <- dist_defined.
+    rewrite Hnull0 in *. rewrite dist_sym, <- h_dist_iso. apply R2_dist_defined_2. }
+  assert (Hcol3 := colinear_trans Hnull Hcol1 Hmiddle).
+  symmetry in Hcol3. setoid_rewrite dist_sym in h_dist_iso.
+  assert (Hcol4 := colinear_trans Hnull0 Hcol3 Hcol2).
+  destruct (equiv_dec ptx c) as [Hxc | Hxc].
+  + rewrite Hxc in *. rewrite <- dist_defined. rewrite dist_sym, h_dist_iso. apply R2_dist_defined_2.
+  + apply colinear_decompose in Hcol4; try (now rewrite R2sub_origin); [].
+    rewrite dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol4.
+    unfold m in Hcol4. rewrite R2dist_middle in Hcol4. rewrite minus_morph in Hcol4.
+    rewrite dist_sym, R2norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
+    destruct Hcol4 as [Hcol4 | Hcol4].
+    * assert (Hpty : pty == (m + /2 * (ptx - c))%R2 ).
+      { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
+        now rewrite <- add_assoc, add_opp, add_origin. }
+      rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field.
+    * assert (Hpty : pty == (m - /2 * (ptx - c))%R2).
+      { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
+        now rewrite <- add_assoc, add_opp, add_origin. }
+      assert (Hyc : pty == c).
+      { rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field. }
+      rewrite Hyc, <- dist_defined, <- h_dist_iso, Hyc. apply R2_dist_defined_2.
+- exfalso; lra.
 Qed.
 
 Lemma isosceles_vertex_notin_sub_circle: forall ptx pty c,
-    classify_triangle ptx pty c = Isosceles c
-    -> (dist (middle c ptx) pty <= dist c (middle c ptx))%R
-    -> pty == ptx.
+  classify_triangle ptx pty c = Isosceles c ->
+  (dist (middle c ptx) pty <= dist c (middle c ptx))%R ->
+  pty == ptx.
 Proof.
-  intros ptx pty c Hhiso hdist.
-  assert (h_dist_iso:dist pty c = dist ptx c).
-  { apply classify_triangle_Isosceles_spec in Hhiso.
-    decompose [or and] Hhiso.
-    + subst.
-      rewrite <- H.
-      apply dist_sym.
-    + subst.
-      rewrite <- H0.
-      apply dist_sym.
-    + setoid_rewrite dist_sym.
-      symmetry.
-      assumption. }
-  assert (h:=Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))).
-  destruct h as [Hlt | [Heq | Hlt]].
-  - assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
-    { rewrite R2dist_middle.
-      lra. }
-    assert (h_ineq:=triang_ineq pty (middle c ptx) c).
-    setoid_rewrite dist_sym in h_ineq at 2 3.
-    rewrite h_dist_iso in h_ineq.
-    rewrite dist_sym in h_ineq at 1.
-    rewrite Heq in h_ineq.
-    exfalso.
-    lra.
-  - pose (m := middle c ptx). fold m in Heq.
-    assert (Htriang_eq : (dist c pty = dist c m + dist m pty)%R).
-    { rewrite Heq. ring_simplify. unfold m. rewrite R2dist_middle.
-      rewrite dist_sym, h_dist_iso, dist_sym. field. }
-    apply triang_ineq_eq in Htriang_eq. destruct Htriang_eq as [Hcol1 Hcol2].
-    assert (Hmiddle : colinear (m - c) (ptx - c)).
-    { symmetry. unfold m. rewrite middle_shift. apply colinear_middle. }
-    (* Let us eliminate the cases where m = c and pty = c. *)
-    null (m - c)%R2.
-    { unfold m in Hnull. rewrite R2sub_origin in Hnull. rewrite middle_eq in Hnull.
-      rewrite <- dist_defined. rewrite Hnull in h_dist_iso. rewrite h_dist_iso. apply R2_dist_defined_2. }
-    null (pty - c)%R2.
-    { rewrite R2sub_origin in Hnull0. rewrite <- dist_defined.
-      rewrite Hnull0 in *. rewrite dist_sym, <- h_dist_iso. apply R2_dist_defined_2. }
-    assert (Hcol3 := colinear_trans Hnull Hcol1 Hmiddle).
-    symmetry in Hcol3. setoid_rewrite dist_sym in h_dist_iso.
-    assert (Hcol4 := colinear_trans Hnull0 Hcol3 Hcol2).
-    destruct (equiv_dec ptx c) as [Hxc | Hxc].
-    + rewrite Hxc in *. rewrite <- dist_defined. rewrite dist_sym, h_dist_iso. apply R2_dist_defined_2.
-    + apply colinear_decompose in Hcol4; try (now rewrite R2sub_origin); [].
-      rewrite dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol4.
-      unfold m in Hcol4. rewrite R2dist_middle in Hcol4. rewrite minus_morph in Hcol4.
-      rewrite dist_sym, R2norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
-      destruct Hcol4 as [Hcol4 | Hcol4].
-      * assert (Hpty : pty == (m + /2 * (ptx - c))%R2).
-        { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
-          now rewrite <- add_assoc, add_opp, add_origin. }
-        rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field.
-      * assert (Hpty : pty == (m - /2 * (ptx - c))%R2).
-        { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
-          now rewrite <- add_assoc, add_opp, add_origin. }
-        assert (Hyc : pty == c).
-        { rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field. }
-        rewrite Hyc, <- dist_defined, <- h_dist_iso, Hyc. apply R2_dist_defined_2.
-  - exfalso; lra.
+intros ptx pty c Hhiso hdist.
+assert (h_dist_iso:dist pty c = dist ptx c).
+{ apply classify_triangle_Isosceles_spec in Hhiso.
+  decompose [or and] Hhiso.
+  + subst.
+    rewrite <- H.
+    apply dist_sym.
+  + subst.
+    rewrite <- H0.
+    apply dist_sym.
+  + setoid_rewrite dist_sym.
+    symmetry.
+    assumption. }
+assert (h:=Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))).
+destruct h as [Hlt | [Heq | Hlt]].
+- assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
+  { rewrite R2dist_middle.
+    lra. }
+  assert (h_ineq:=triang_ineq pty (middle c ptx) c).
+  setoid_rewrite dist_sym in h_ineq at 2 3.
+  rewrite h_dist_iso in h_ineq.
+  rewrite dist_sym in h_ineq at 1.
+  rewrite Heq in h_ineq.
+  exfalso.
+  lra.
+- pose (m := middle c ptx). fold m in Heq.
+  assert (Htriang_eq : (dist c pty = dist c m + dist m pty)%R).
+  { rewrite Heq. ring_simplify. unfold m. rewrite R2dist_middle.
+    rewrite dist_sym, h_dist_iso, dist_sym. field. }
+  apply triang_ineq_eq in Htriang_eq. destruct Htriang_eq as [Hcol1 Hcol2].
+  assert (Hmiddle : colinear (m - c) (ptx - c)).
+  { symmetry. unfold m. rewrite middle_shift. apply colinear_middle. }
+  (* Let us eliminate the cases where m = c and pty = c. *)
+  null (m - c)%R2.
+  { unfold m in Hnull. rewrite R2sub_origin in Hnull. rewrite middle_eq in Hnull.
+    rewrite <- dist_defined. rewrite Hnull in h_dist_iso. rewrite h_dist_iso. apply R2_dist_defined_2. }
+  null (pty - c)%R2.
+  { rewrite R2sub_origin in Hnull0. rewrite <- dist_defined.
+    rewrite Hnull0 in *. rewrite dist_sym, <- h_dist_iso. apply R2_dist_defined_2. }
+  assert (Hcol3 := colinear_trans Hnull Hcol1 Hmiddle).
+  symmetry in Hcol3. setoid_rewrite dist_sym in h_dist_iso.
+  assert (Hcol4 := colinear_trans Hnull0 Hcol3 Hcol2).
+  destruct (equiv_dec ptx c) as [Hxc | Hxc].
+  + rewrite Hxc in *. rewrite <- dist_defined. rewrite dist_sym, h_dist_iso. apply R2_dist_defined_2.
+  + apply colinear_decompose in Hcol4; try (now rewrite R2sub_origin); [].
+    rewrite dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol4.
+    unfold m in Hcol4. rewrite R2dist_middle in Hcol4. rewrite minus_morph in Hcol4.
+    rewrite dist_sym, R2norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
+    destruct Hcol4 as [Hcol4 | Hcol4].
+    * assert (Hpty : pty == (m + /2 * (ptx - c))%R2).
+      { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
+        now rewrite <- add_assoc, add_opp, add_origin. }
+      rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field.
+    * assert (Hpty : pty == (m - /2 * (ptx - c))%R2).
+      { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
+        now rewrite <- add_assoc, add_opp, add_origin. }
+      assert (Hyc : pty == c).
+      { rewrite Hpty. unfold m, middle. destruct ptx, c; simpl; hnf; f_equal; field. }
+      rewrite Hyc, <- dist_defined, <- h_dist_iso, Hyc. apply R2_dist_defined_2.
+- exfalso; lra.
 Qed.
 
 (** **  Circles and SEC  *)
@@ -1464,21 +1934,21 @@ Proof. intros c pt. unfold on_circle. now rewrite Rdec_bool_true_iff. Qed.
 
 (* If the radius of circle is not zero then the center is not part of it. *)
 Lemma center_not_on_circle : forall c,
-    on_circle c (center c) = false <-> radius  c<> 0%R.
+    on_circle c (center c) = false <-> radius c <> 0%R.
 Proof.
-  intro.
-  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
-  - rewrite Rdec_bool_false_iff in *. auto.
-  - apply Rdec_bool_false_iff. auto.
+intro.
+split; [intros hrad | intro honcirc]; unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
+- rewrite Rdec_bool_false_iff in *. auto.
+- apply Rdec_bool_false_iff. auto.
 Qed.
 
 Lemma center_on_circle : forall c,
   on_circle c (center c) = true <-> radius c = 0%R.
 Proof.
-  intro.
-  split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
-  - rewrite Rdec_bool_true_iff in *. auto.
-  - apply Rdec_bool_true_iff. auto.
+intro.
+split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
+- rewrite Rdec_bool_true_iff in *. auto.
+- apply Rdec_bool_true_iff. auto.
 Qed.
 
 (* Given a circle of center [c] and a point pt outside this circle, 
@@ -1913,7 +2383,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   { intros. unfold d, pt2. now apply farthest_from_in_except_le. }
   assert (Hr2 : 0 < r). { apply Rle_neq_lt; auto. unfold r. apply SEC_radius_pos. }
   assert (Hr' : 0 <= r'). { assert (0 <= d). { unfold d. apply dist_pos. } unfold r'. lra. }
-  (* The new circle has a smaller radius *)
+  (** The new circle has a smaller radius... *)
   assert (Hlt : r' < r).
   { unfold r'. cut (d < r); try lra; [].
     apply Rle_neq_lt.
@@ -1928,7 +2398,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
           assert (Hpt : pt = pt2). { specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition. }
           subst pt. inversion_clear Hnodup. apply H. now rewrite Hpt.
        -- rewrite on_circle_true_iff. now rewrite dist_sym. }
-  (* Yet, it is still enclosing *)
+  (** Yet, it is still enclosing, *)
   assert (Hnew : enclosing_circle {| center := c'; radius := r' |} (pt1 :: l)).
   { intros pt Hin. simpl center. simpl radius. destruct Hin.
     * subst pt. unfold c'. rewrite R2dist_ref_0.
@@ -1950,7 +2420,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
         rewrite Rabs_pos_eq.
         - unfold r'. now field_simplify.
         - cut (r' / r <= 1); try lra. unfold Rdiv. rewrite <- (Rinv_r r); trivial. auto with real. }
-  (* A contradiction *)
+  (** A contradiction. *)
   apply (Rle_not_lt r' r); trivial.
   unfold r. change r' with (radius {| center := c'; radius := r' |}).
   now apply SEC_spec2.
@@ -2037,22 +2507,21 @@ destruct (equiv_dec pt1 pt2) as [Heq | Heq].
   rewrite <- SEC_dueton. apply SEC_incl_compat. intro. cbn. intuition.
 Qed.
 
-Lemma SEC_add_same :
-  forall pt l, dist pt (center (SEC l)) <= radius (SEC l)
-               -> (SEC (pt :: l)) = SEC l.
+Lemma SEC_add_same : forall pt l,
+  dist pt (center (SEC l)) <= radius (SEC l) -> (SEC (pt :: l)) = SEC l.
 Proof.
-  intros pt l H.
-  apply SEC_unicity.
-  - intro.
-    intros H0.
-    apply SEC_spec1.
-    simpl.
-    right;auto.
-  - apply SEC_spec2.
-    intros x hin.
-    simpl in hin.
-    destruct hin; subst; trivial.
-    now apply SEC_spec1.
+intros pt l H.
+apply SEC_unicity.
+- intro.
+  intros H0.
+  apply SEC_spec1.
+  simpl.
+  right;auto.
+- apply SEC_spec2.
+  intros x hin.
+  simpl in hin.
+  destruct hin; subst; trivial.
+  now apply SEC_spec1.
 Qed.
 
 (* Actually, we have a strongler result stating that we can remove multiple copies of elements. *)
@@ -2210,28 +2679,19 @@ destruct Hl as [Hl | [[pt1 [Hl Hnil]] | [pt1 [pt2 [Hneq [Hpt1 Hpt2]]]]]].
       now apply SEC_spec2.
 Admitted.
 
-Lemma SEC_add_same':
-  forall pt l, dist pt (center (SEC (pt::l))) < radius (SEC (pt::l))
-               -> (SEC (pt :: l)) = SEC l.
+Lemma SEC_add_same' : forall pt l,
+  dist pt (center (SEC (pt::l))) < radius (SEC (pt::l)) -> (SEC (pt :: l)) = SEC l.
 Proof.
-  intros pt l H.
-  apply SEC_unicity.
-  - intro.
-    intros H0.
-    apply SEC_spec1.
-    simpl.
-    right;auto.
-  - apply Rnot_lt_le.
-    intro abs.
-    absurd (InA equiv pt (on_SEC (pt::l))).
-    + rewrite InA_Leibniz.
-      rewrite on_SEC_In.
-      intro abs'.
-      destruct abs'.
-      apply on_circle_true_iff in H1.
-      lra.
-    + apply on_SEC_critical_on_SEC.
-      assumption.
+intros pt l H.
+apply SEC_unicity.
++ intros ? ?. apply SEC_spec1. now right.
++ apply Rnot_lt_le. intro abs.
+  absurd (InA equiv pt (on_SEC (pt::l))).
+  - rewrite InA_Leibniz, on_SEC_In.
+    intros [_ Hcirc].
+    apply on_circle_true_iff in Hcirc.
+    lra.
+  - now apply on_SEC_critical_on_SEC.
 Qed.
 
 
@@ -2340,47 +2800,31 @@ destruct Hin' as [_ Hin']. rewrite Hin'. now apply SEC_spec1.
 Qed.
 
 Lemma split_on_SEC: forall l,
-    PermutationA equiv l ((on_SEC l)++filter (fun x => negb (on_circle (SEC l) x)) l).
+  PermutationA equiv l ((on_SEC l)++filter (fun x => negb (on_circle (SEC l) x)) l).
 Proof.
-  intros l.
-  unfold on_SEC.
-  change (filter (on_circle (SEC l)) l)
-         with
-         (filter (fun x : R2 => (on_circle (SEC l) x)) l).
-  rewrite <- (map_id (filter (fun x : R2 => on_circle (SEC l) x) l)).
-  rewrite <- (map_id (filter (fun x : R2 => negb (on_circle (SEC l) x)) l)).
-  rewrite PermutationA_Leibniz.
-  rewrite <- map_cond_Permutation.
-  rewrite (map_ext (fun x : R2 => if on_circle (SEC l) x then x else x) (fun x => x)).
-  - rewrite map_id.
-    reflexivity.
-  - intros a.
-    destruct (on_circle (SEC l) a);reflexivity.
+intros l. unfold on_SEC.
+change (on_circle (SEC l)) with (fun x : R2 => (on_circle (SEC l) x)).
+rewrite <- (map_id (filter (fun x : R2 => on_circle (SEC l) x) l)).
+rewrite <- (map_id (filter (fun x : R2 => negb (on_circle (SEC l) x)) l)).
+rewrite PermutationA_Leibniz, <- map_cond_Permutation.
+rewrite (map_ext (fun x : R2 => if on_circle (SEC l) x then x else x) (fun x => x)).
+- now rewrite map_id.
+- intro. now destruct_match.
 Qed.
 
 Lemma SEC_on_SEC : forall l,  SEC l = SEC (on_SEC l) .
 Proof.
-  intros l.
-  rewrite (split_on_SEC l) at 1.
-  rewrite PermutationA_app_comm;autoclass.
-  apply SEC_append_same'.
-  intros pt H.
-  apply Rle_neq_lt.
-  - apply SEC_spec1.
-    apply in_or_app.
-    now left.
-  - apply filter_In in H.
-    destruct H.
-    rewrite Bool.negb_true_iff in H0.
-    rewrite <- Bool.not_true_iff_false in H0.
-    rewrite on_circle_true_iff in H0.
-    rewrite PermutationA_app_comm;autoclass.
-    rewrite <- split_on_SEC.
-    assumption.
-(* Still relies on two admitted results: [disk_dist] and [on_SEC_critical_on_SEC]. *)
-Admitted.
-
-
+intros l.
+rewrite (split_on_SEC l) at 1.
+rewrite PermutationA_app_comm;autoclass.
+apply SEC_append_same'.
+intros pt H.
+apply Rle_neq_lt.
+- apply SEC_spec1, in_or_app. now left.
+- apply filter_In in H. destruct H as [? H'].
+  rewrite Bool.negb_true_iff, <- Bool.not_true_iff_false, on_circle_true_iff in H'.
+  rewrite PermutationA_app_comm, <- split_on_SEC; autoclass.
+Qed.
 
 Corollary on_SEC_idempotent : forall l, PermutationA equiv (on_SEC (on_SEC l)) (on_SEC l).
 Proof. intro l. unfold on_SEC at 1 3. unfold on_SEC at 2. rewrite (SEC_on_SEC l). now rewrite filter_twice. Qed.

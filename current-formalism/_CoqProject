@@ -2,8 +2,9 @@
 -R . Pactole
 Util/Preliminary.v
 Util/FinComplements.v
+Util/Bijection.v
 Robots.v
-Util/Streams.v
+Util/Stream.v
 Configurations.v
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
@@ -14,7 +15,7 @@ Util/MMultiset/MMultisetWMap.v
 Util/MMultiset/MMultisetFacts.v
 Util/MMultiset/MMultisetExtraOps.v
 Util/MMultiset/Preliminary.v
-Spaces/RealMetricSpaces.v
+Spaces/RealMetricSpace.v
 Spaces/Similarity.v
 Spaces/R.v
 Spaces/R2.v
@@ -30,8 +31,32 @@ Spectra/MultisetSpectrum.v
 #Spectra/LimitedMultisetSpectrum.v
 Util/Lexprod.v
 Convergence/Impossibility_2G_1B.v
+
+## Case Study: Gathering
 Gathering/Definitions.v
-Gathering/Impossibility.v
+#Gathering/Impossibility.v
+Gathering/InR/Rcomplements.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
 Gathering/InR2/Algorithm.v
+Gathering/FlexDefinitions.v
+Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+
+## Case Study: Ring Exploration
+Exploration/ZnZ/test_modulo.v
+Exploration/ZnZ/Definitions.v
+Exploration/ZnZ/ImpossibilityKDividesN.v
+Exploration/Graph/GraphFromZnZ.v
+Exploration/Graph/Definitions.v
+Exploration/Graph/ImpossibilityKDividesN.v
+Exploration/Graph/DefinitionsSSync.v
+Exploration/Graph/ImpossibilityKDividesNSSync.v
+
+## Files Commented out
+#GraphEquivalence.v
+#Gathering/Impossibility.v
+#ASyncFormalism.v
+#GraphRigidFormalism.v
+#Exploration/Graph/ImpossibilityKNotPrimeN.v
+#Exploration/Graph/TowersSSync.v
+#Exploration/Graph/Towers.v

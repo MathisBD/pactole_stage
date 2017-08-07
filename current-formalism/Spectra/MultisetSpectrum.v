@@ -20,22 +20,19 @@ Require Export Pactole.Util.MMultiset.MMultisetFacts.
 Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
-
-
 Close Scope R_scope.
 Set Implicit Arguments.
 Set Default Proof Using "All".
+
+
 Existing Instance multiplicity_compat.
 
 
 Section MultisetSpectrum.
 
 Context {loc : Type}.
-Context {loc_Setoid : Setoid loc}.
-Context {loc_EqDec : EqDec loc_Setoid}.
-Context {loc_RMS : RealMetricSpace loc}.
-Context {RobotsDef : NamesDef}.
-Context {Robots : Names}.
+Context {Sloc : Setoid loc} {Eloc : EqDec Sloc}.
+Context {RMS : RealMetricSpace loc}.
 
 Existing Instance FMOps_WMap.
 Existing Instance MakeFMultisetsFacts.
@@ -71,12 +68,12 @@ Qed.
 Lemma make_multiset_app : forall l l', make_multiset (l ++ l') == union (make_multiset l) (make_multiset l').
 Proof. intros. unfold make_multiset. now rewrite List.map_app, from_elements_append. Qed.
 
-Lemma nequiv_sym: forall x y, ~x == y -> ~y == x.
+Lemma nequiv_sym : forall x y, ~x == y -> ~y == x.
 Proof.
-  intros x y H.
-  intro abs.
-  symmetry in abs.
-  contradiction.
+intros x y H.
+intro abs.
+symmetry in abs.
+contradiction.
 Qed.
 
 Instance make_multiset_compat : Proper (PermutationA equiv ==> equiv) make_multiset.
@@ -90,17 +87,17 @@ Lemma make_multiset_PermutationA : forall x l n, (make_multiset l)[x] = n ->
   exists l', ~InA equiv x l' /\ PermutationA equiv l (alls x n ++ l').
 Proof.
 intros x l. induction l; intros n Hin.
-  exists nil. split. now auto. rewrite make_multiset_nil, empty_spec in Hin. subst n. simpl. reflexivity.
-  rewrite make_multiset_cons in Hin. destruct (equiv_dec x a) as [Heq | Heq].
-  - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite add_spec in Hin. destruct n.
-    + rewrite eq_refl_left in Hin.
-      omega.
-    + rewrite eq_refl_left in Hin.
-      rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S in Hin. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
-    exists l'. split. assumption. simpl. now constructor.
-  - rewrite add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
-    exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
-    transitivity (a :: alls x n ++ l'); now constructor || apply (PermutationA_middle _).
+exists nil. split. now auto. rewrite make_multiset_nil, empty_spec in Hin. subst n. simpl. reflexivity.
+rewrite make_multiset_cons in Hin. destruct (equiv_dec x a) as [Heq | Heq].
+- setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite add_spec in Hin. destruct n.
+  + rewrite eq_refl_left in Hin.
+    omega.
+  + rewrite eq_refl_left in Hin.
+    rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S, IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+  exists l'. split. assumption. simpl. now constructor.
+- rewrite add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
+  exists (a :: l'). split. intro Hin; inversion_clear Hin; contradiction.
+  transitivity (a :: alls x n ++ l'); now constructor || apply (PermutationA_middle _).
 Qed.
 
 Lemma make_multiset_alls : forall x n, make_multiset (alls x n) == singleton x n.
@@ -121,7 +118,7 @@ intros x l. unfold make_multiset. rewrite from_elements_In.
 setoid_rewrite InA_map_iff; autoclass.
 + split; intro Hin.
   - destruct Hin as [n [[y [[Heq _] Hy]] Hn]]. hnf in *. cbn in *. now rewrite <- Heq.
-  - exists 1. firstorder.
+  - exists 1. split; try omega; []. now exists x.
 + intros ? ? Heq. now split.
 Qed.
 
@@ -181,49 +178,70 @@ Qed.
 
 (** Building a spectrum from a configuration *)
 
-Global Instance multiset_spectrum : Spectrum loc := {|
-  spectrum := multiset;
-  spectrum_Setoid := MMultiset_Setoid;
-  spectrum_EqDec := MMultisetEqDec;
+Context {info: Type}.
+Context {Sinfo : Setoid info} {Einfo : EqDec Sinfo}.
+Context {Info : Information loc _ _ info _ _}.
+Context {RobotsDef : NamesDef}.
+Context {Robots : Names}.
+
+Notation configuration := (@configuration loc info _ _ _ _ _ _).
+Notation map_config := (@map_config loc info _ _ _ _ _ _).
+Notation config_list := (@config_list loc info _ _ _ _ Info _ Robots _).
+
+
+Global Instance multiset_spectrum : Spectrum loc info := {
+  spectrum := @multiset loc _ _ _;
+  spectrum_Setoid := @MMultiset_Setoid loc _ _ _;
+  spectrum_EqDec := @MMultisetEqDec loc _ _ _ _;
   
-  spect_from_config conf := make_multiset (config_list conf);
-  spect_is_ok s conf := forall l, s[l] = countA_occ _ equiv_dec l (config_list conf) |}.
-(* BUG? [Proof.] is forbidden now? *)
-(* Proof. *)
-+ intros conf1 conf2 Hconf x. unfold spect_from_config. do 2 f_equiv.
-  apply eqlistA_PermutationA_subrelation. apply config_list_compat. assumption.
+  spect_from_config config := make_multiset (List.map fst (config_list config));
+  spect_is_ok s config := forall l, s[l] = countA_occ _ equiv_dec l (List.map fst (config_list config)) }.
+Proof.
+(* BUG?: bullet forbidden here? *)
+{ intros conf1 conf2 Hconf x. unfold spect_from_config. do 2 f_equiv.
+  apply eqlistA_PermutationA_subrelation, (@map_eqlistA_compat _ _ equiv equiv _ fst).
+  - now repeat intros [].
+  - apply config_list_compat. assumption. }
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
 Defined.
 
+Notation spectrum := (@spectrum loc _ _ info _ _ _ _ _ _).
+Notation spect_from_config := (@spect_from_config loc _ _ info _ _ _ _ _ multiset_spectrum).
+
+
 Lemma spect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->
   forall config : configuration,
-  @equiv spectrum _ (map f (spect_from_config config)) (spect_from_config (map_config f config)).
+  map f (spect_from_config config) == spect_from_config (map_config f config).
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum.
-now rewrite config_list_map, make_multiset_map.
+now rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 Qed.
 
 Theorem cardinal_spect_from_config : forall conf, cardinal (spect_from_config conf) = nG + nB.
 Proof.
 intro. unfold spect_from_config, multiset_spectrum.
-now rewrite cardinal_make_multiset, config_list_length.
+now rewrite cardinal_make_multiset, map_length, config_list_length.
 Qed.
 
-Property pos_in_config : forall conf id, In (conf id) (spect_from_config conf).
+Property pos_in_config : forall conf id, In (fst (conf id)) (spect_from_config conf).
 Proof.
 intros conf id. cbn. unfold In.
 rewrite make_multiset_spec. rewrite (countA_occ_pos _).
-rewrite config_list_InA. now exists id.
+rewrite InA_map_iff. 
+- eexists. split; auto; []. apply config_list_InA. now exists id.
+- autoclass.
+- autoclass.
+- now repeat intros [].
 Qed.
 
 Property spect_from_config_In : forall config l,
-  In l (spect_from_config config) <-> exists id, equiv (config id) l.
+  In l (spect_from_config config) <-> exists id, fst (config id) == l.
 Proof.
 intros config l. split; intro Hin.
 + assert (Heq := spect_from_config_spec config).
   unfold spect_is_ok, spect_from_config, multiset_spectrum in *.
   unfold In in Hin. rewrite Heq, (countA_occ_pos _), config_list_spec in Hin.
-  rewrite (InA_map_iff _ _) in Hin.
+  rewrite map_map, (InA_map_iff _ _) in Hin.
   - firstorder.
   - repeat intro. cbn in *. now subst.
 + destruct Hin as [id Hid]. rewrite <- Hid. apply pos_in_config.

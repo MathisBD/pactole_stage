@@ -7,7 +7,19 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
 
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
@@ -18,16 +30,21 @@ Require Import Relations.
 Require Import RelationPairs.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Bijection.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.Spaces.RealMetricSpaces.
+Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 Require Pactole.CommonFormalism.
+(* =======
+Require Pactole.CommonRealFormalism.
+Require Pactole.RigidFormalism.
+Require Import Pactole.Gathering.Definitions.
+Require Import Pactole.MultisetSpectrum.
+Require Import Morphisms.
+>>>>>>> new-names:dev_coq/current-formalism/Gathering/InR/Rcomplements.v *)
 Require Import Psatz.
 Import Permutation.
-
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Open Scope R_scope.
 
@@ -39,7 +56,6 @@ Instance R_EqDec : @EqDec R _ := Rdec.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
-(* We use the square of the distance in order to avoid sqrt, hence we can use any field of charactistic 0. *)
 Instance R_RMS : RealMetricSpace R := {|
   origin := 0;
   unit := 1;
@@ -337,9 +353,12 @@ apply Rmult_le_compat_l; lra.
 Qed.
 
 
-Definition translation := translation _ translation_hypothesis.
-Definition homothecy := homothecy _ translation_hypothesis homothecy_hypothesis.
+Definition translation := translation translation_hypothesis.
+Definition homothecy := homothecy translation_hypothesis homothecy_hypothesis.
 
+Instance translation_compat : Proper (equiv ==> equiv) translation := translation_compat translation_hypothesis.
+Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (equiv ==> equiv) (homothecy c Hρ).
+Proof. intros ? ? Heq. simpl. now rewrite Heq. Qed.
 
 (** **  Some results about R with respect to distance and similarities  **)
 
@@ -388,7 +407,7 @@ Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 Corollary inverse_similarity_in_R : forall (sim : similarity R) k, k <> 0 ->
   (forall x, sim x == k * (x - sim.(center))) -> forall x, (sim ⁻¹) x == x / k + sim.(center).
 Proof.
-intros sim k Hk Hdirect x. change ((sim ⁻¹) x) with (retraction sim x).
+intros sim k Hk Hdirect x. unfold inverse. simpl. change eq with equiv.
 rewrite <- sim.(Inversion), Hdirect. hnf. now field.
 Qed.
 

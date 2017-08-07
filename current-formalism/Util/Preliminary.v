@@ -8,20 +8,32 @@
 (**************************************************************************)
 
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+
+   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
+
 Require Import Arith.Div2.
 Require Import Omega.
 Require Import Reals.
 Require Import List SetoidList.
 Require Import RelationClasses.
 Require Import Morphisms.
+Require Import Equalities.
+Require Import SetoidDec.
 Require Import Sorting.Permutation.
 Require Import Psatz.
 Require Import SetoidList.
 Require Export SetoidPermutation.
 Require Import Bool.
 Require Import SetoidClass.
-
-
 Set Implicit Arguments.
 
 
@@ -33,6 +45,43 @@ Ltac inv H := inversion H; subst; clear H.
 Global Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
+
+(** Destruct matches from innermost to outermost, with or without keeping the associated equality. *)
+Ltac destr_match_eq name A :=
+  match A with | context[match ?x with | _ => _ end] =>
+    destr_match_eq name x (* recursive call *)
+    || (* let H := fresh name in *) destruct x eqn:name (* if innermost match, destruct it *)
+  end.
+
+Ltac destruct_match_eq name := match goal with | |- ?A => destr_match_eq name A end.
+
+Ltac destr_match A :=
+  match A with | context[match ?x with | _ => _ end] =>
+    destr_match x (* recursive call *)
+    || destruct x (* if innermost match, destruct it *)
+  end.
+
+Ltac destruct_match := match goal with | |- ?A => destr_match A end.
+
+(** Tactics to revert hypotheses based on their head symbol *)
+Ltac get_head_symbol term :=
+  match term with
+    | ?f _ => get_head_symbol f
+    | _ => term
+  end.
+
+(* Revert one hypothesis whose head symbol is [sym]. *)
+Ltac revert_one sym :=
+  match goal with
+    | H : ?A |- _ => let f := get_head_symbol A in let g := get_head_symbol sym in unify f g; revert H
+    | |- _ => fail "Symbol" sym "not found"
+  end.
+
+(* Revert all hypotheses with the same head symbol as the goal. *)
+Ltac revert_all :=
+  match goal with
+    | |- ?B => repeat revert_one B
+  end.
 
 
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
@@ -49,9 +98,9 @@ Definition nat_ind2 P P0 P1 PSS :=
       | S (S m) => PSS m (F m)
     end.
 
-Lemma div2_le_compat : Proper (le ==> le) div2.
+Lemma div2_le_compat : Proper (le ==> le) Nat.div2.
 Proof.
-intro n. induction n using ind_0_1_SS; intros m Heq; auto with arith.
+intro n. induction n using nat_ind2; intros m Heq; auto with arith.
 destruct m as [| [| m]]; try now inversion Heq.
 simpl. do 2 apply le_S_n in Heq. apply IHn in Heq. omega.
 Qed.
@@ -59,7 +108,7 @@ Qed.
 Lemma even_div2 : forall n, Nat.Even n -> Nat.div2 n + Nat.div2 n = n.
 Proof.
 intros n Hn. replace (Nat.div2 n + Nat.div2 n) with (2 * Nat.div2 n) by lia.
-rewrite <- Nat.double_twice. symmetry. apply even_double. now rewrite Even.even_equiv.
+rewrite <- Nat.double_twice. symmetry. apply Div2.even_double. now rewrite Even.even_equiv.
 Qed.
 
 Definition injective {A B : Type} eqA eqB (f : A -> B) := (forall x y, eqB (f x) (f y) -> eqA x y).
@@ -77,14 +126,19 @@ Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
 Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
 
-Definition fun_equiv T U `(Setoid U) : Setoid (T -> U).
-Proof. exists (fun f g : T -> U => forall x, equiv (f x) (g x)).
+Definition fun_equiv A B `(Setoid B) : Setoid (A -> B).
+Proof. exists (fun f g : A -> B => forall x, f x == g x).
 split.
 + repeat intro. reflexivity.
 + intros ? ? Heq ?. symmetry. apply Heq.
 + repeat intro. etransitivity; eauto.
 Defined.
 
+Instance fun_equiv_pointwise_compat A B `{Setoid B} :
+  subrelation (@equiv _ (fun_equiv A _)) (pointwise_relation _ equiv).
+Proof. intros f g Hfg x. apply Hfg. Qed.
+
+Notation "x =?= y" := (equiv_dec x y) (at level 70, no associativity).
 
 (** Lifting an equivalence relation to an option type. *)
 Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
@@ -276,7 +330,7 @@ Qed.
 
 (** ***  Results about [map]  **)
 
-Instance map_extensionalityA_compat : Proper ((eqA ==> eqB) ==> eqlistA eqA ==> eqlistA eqB) (@map A B).
+Global Instance map_extensionalityA_compat : Proper ((eqA ==> eqB) ==> eqlistA eqA ==> eqlistA eqB) (@map A B).
 Proof.
 intros f g Hfg l. induction l as [| e l]; intros l' Hl.
 - destruct l'; reflexivity || inversion Hl.
@@ -285,7 +339,10 @@ intros f g Hfg l. induction l as [| e l]; intros l' Hl.
   simpl. constructor; auto.
 Qed.
 
-Instance map_extensionality_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@map A B).
+Global Instance map_eqlistA_compat f : Proper (eqA ==> eqB) f -> Proper (eqlistA eqA ==> eqlistA eqB) (map f).
+Proof. intro Hf. apply map_extensionalityA_compat. apply Hf. Qed.
+
+Global Instance map_extensionality_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@map A B).
 Proof.
 intros f g Hfg l. induction l as [| e l]; intros l' Hl.
 - destruct l'; reflexivity || inversion Hl.
@@ -435,9 +492,6 @@ intros x n l. split.
       subst. simpl in *. f_equal. apply IHn. apply (Permutation_cons_inv Hl).
 * intro Hl. now rewrite Hl.
 Qed.
-
-Lemma map_alls : forall f pt n, map f (alls pt n) = alls (f pt) n.
-Proof. intros f pt n. induction n. reflexivity. simpl. now rewrite IHn. Qed.
 
 Lemma map_cst : forall x l, map (fun _ : B => x) l = alls x (length l).
 Proof. intros x l. now induction l; simpl; try f_equal. Qed.
@@ -594,15 +648,6 @@ Lemma PermutationA_InA_inside : forall (x : A) l l',
   PermutationA eqA l l' -> InA eqA x l -> exists l1 y l2, eqA x y /\ l' = l1 ++ y :: l2.
 Proof. intros x l l' Hperm Hin. rewrite Hperm in Hin. apply (InA_split Hin). Qed.
 
-Lemma PermutationA_cons_split : forall (x : A) l l',
-  PermutationA eqA (x :: l) l' -> exists l'', PermutationA eqA l' (x :: l'').
-Proof.
-intros x l l' Hperm. assert (Hin : InA eqA x l'). { rewrite <- Hperm. now left. }
-symmetry in Hperm. destruct (PermutationA_InA_inside Hperm Hin) as [l1 [y [l2 [Heq Hll]]]].
-exists (l1 ++ l2). rewrite Hperm, Hll. etransitivity. symmetry. apply (PermutationA_middle _).
-constructor. now symmetry. reflexivity.
-Qed.
-
 Theorem PermutationA_ind_bis :
  forall P : list A -> list A -> Prop,
    P nil nil ->
@@ -723,7 +768,7 @@ Lemma PermutationA_3 : forall x y z x' y' z',
   eqA x x' /\ eqA y y' /\ eqA z z' \/ eqA x x' /\ eqA y z' /\ eqA z y' \/
   eqA x y' /\ eqA y x' /\ eqA z z' \/ eqA x y' /\ eqA y z' /\ eqA z x' \/
   eqA x z' /\ eqA y y' /\ eqA z x' \/ eqA x z' /\ eqA y x' /\ eqA z y'.
-Proof.
+Proof using eqA HeqA.
 intros. split.
 + generalize (eq_refl (x :: y :: z :: nil)). generalize (x :: y :: z :: nil) at -2. intros l1 Hl1.
   generalize (eq_refl (x' :: y' :: z' :: nil)). generalize (x' :: y' :: z' :: nil) at -2. intros l2 Hl2 perm.
@@ -761,6 +806,9 @@ intros x l Hin. induction l; inversion_clear Hin.
 Qed.
 
 End List_results.
+
+Lemma map_alls {A B} : forall (f : A -> B) pt n, map f (alls pt n) = alls (f pt) n.
+Proof. intros f pt n. induction n. reflexivity. simpl. now rewrite IHn. Qed.
 
 Global Hint Immediate eqlistA_Leibniz_equiv PermutationA_Leibniz_equiv.
 
@@ -925,7 +973,7 @@ intros x l. split; intro Hl.
 + rewrite Hl. apply remove_alls.
 Qed.
 
-Instance remove_Perm_proper : Proper (eq ==> @Permutation A ==> @Permutation A) (@remove A eq_dec).
+Global Instance remove_Perm_proper : Proper (eq ==> @Permutation A ==> @Permutation A) (@remove A eq_dec).
 Proof.
 intros x y ? l1 l2 Hl. subst. induction Hl.
 - apply Permutation_refl.
@@ -1100,188 +1148,6 @@ Qed.
 
 End inclA_results.
 
-(** ***  To sort out  **)
-
-Section ToSortOut_results.
-Context (A B : Type).
-Context (eqA eqA' : relation A) (eqB : relation B).
-Context (HeqA : Equivalence eqA) (HeqB : Equivalence eqB).
-
-Global Instance fold_left_start : forall f, Proper (eqB ==> eqA ==> eqB) f ->
-  forall l, Proper (eqB ==> eqB) (fold_left f l).
-Proof.
-intros f Hf l. induction l; intros i1 i2 Hi; simpl.
-  assumption.
-  rewrite IHl. reflexivity. now rewrite Hi.
-Qed.
-
-Global Instance fold_left_symmetry_PermutationA : forall (f : B -> A -> B),
-  Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
-  Proper (PermutationA eqA ==> eqB ==> eqB) (fold_left f).
-Proof.
-intros f Hfcomm Hf l1 l2 perm. induction perm; simpl.
-- now repeat intro.
-- intros ? ? Heq. rewrite H, Heq. now apply IHperm.
-- intros ? ? Heq. now rewrite Hf, Heq.
-- repeat intro. etransitivity. now apply IHperm1. now apply IHperm2.
-Qed.
-
-Lemma HdRel_app : forall l1 l2 R (a : A), HdRel R a l1 -> HdRel R a l2 -> HdRel R a (l1++l2).
-Proof. induction l1; simpl; auto. intros. inversion_clear H. now constructor. Qed.
-
-Lemma sort_app : forall R,
-  forall l1 l2 : list A, sort R l1 -> sort R l2 -> (forall x y, In x l1 -> In y l2 -> R x y) -> sort R (l1 ++ l2).
-Proof.
-induction l1; simpl in *; intuition. constructor.
-+ apply IHl1.
-  - now inversion_clear H.
-  - assumption.
-  - intros. apply H1. now right. assumption.
-+ apply HdRel_app.
-  - now inversion H.
-  - destruct l2; constructor. apply H1; now left.
-Qed.
-
-Theorem PermutationA_rev : forall l, PermutationA eqA l (rev l).
-Proof. intro. apply (Permutation_PermutationA_weak _). apply Permutation_rev. Qed.
-
-(* A boolean version of membership *)
-Definition mem eq_dec (x : A) l := if @InA_dec A eqA eq_dec x l then true else false.
-
-Lemma mem_true_iff : forall eq_dec x l, mem eq_dec x l = true <-> InA eqA x l.
-Proof. intros eq_dec x l. unfold mem. destruct (InA_dec eq_dec x l); intuition discriminate. Qed.
-
-Lemma mem_false_iff : forall eq_dec x l, mem eq_dec x l = false <-> ~InA eqA x l.
-Proof. intros eq_dec x l. unfold mem. destruct (InA_dec eq_dec x l); intuition discriminate. Qed.
-
-Global Instance mem_compat : forall eq_dec, Proper (eqA ==> equivlistA eqA ==> eq) (mem eq_dec).
-Proof.
-intros eq_dec x y Hxy l1 l2 Hl. unfold mem.
-destruct (InA_dec eq_dec x l1), (InA_dec eq_dec y l2); trivial; rewrite Hl, Hxy in *; contradiction.
-Qed.
-
-Lemma mem_map : forall eq_dec f, Proper (eqA ==> eqA) f ->
-  forall x l, mem eq_dec x l = true -> mem eq_dec (f x) (map f l) = true.
-Proof.
-intros eq_dec f Hf x l Hin.
-rewrite mem_true_iff in *. rewrite (InA_map_iff _); trivial.
-exists x. now split.
-Qed.
-
-Lemma mem_injective_map : forall eq_dec f, Proper (eqA ==> eqA) f -> injective eqA eqA f ->
-  forall x l, mem eq_dec (f x) (map f l) = mem eq_dec x l.
-Proof.
-intros eq_dec f Hf Hinj x l.
-destruct (mem eq_dec x l) eqn:Hmem.
-- now apply mem_map.
-- rewrite mem_false_iff in *. intro Hin. apply Hmem. rewrite (InA_map_iff _ _ _) in Hin.
-  destruct Hin as [x' [Heq Hin]]. apply Hinj in Heq. now rewrite <- Heq.
-Qed.
-
-Lemma odd_middle : forall l (d : A), Nat.Odd (length l) ->
-  nth (div2 (length l)) (rev l) d = nth (div2 (length l)) l d.
-Proof.
-intros l d. generalize (eq_refl (length l)). generalize (length l) at 2 3 4 5. intro n. revert l.
-induction n using nat_ind2; intros l Hl [m Hm].
-+ omega.
-+ destruct l as [| a [| b l]]; try discriminate Hl. reflexivity.
-+ simpl. destruct l as [| a [| b l]]; try reflexivity.
-  assert (Hnil : b :: l <> nil) by discriminate. revert Hl Hnil. generalize (b :: l). clear l.
-  intros l Hlen Hnil. destruct (exists_last Hnil) as [l' [z Heq]]. subst l. simpl.
-  rewrite rev_app_distr. simpl in *. apply eq_add_S in Hlen.
-  rewrite app_length, plus_comm in Hlen. simpl in Hlen. apply eq_add_S in Hlen. clear Hnil.
-  destruct n as [| n].
-  - clear -Hm. omega.
-  - assert (div2 (S n) < length l'). { rewrite Hlen. apply lt_div2. omega. }
-    repeat rewrite app_nth1; trivial. apply IHn.
-      assumption.
-      destruct m as [| m]. omega. exists m. omega.
-      now rewrite rev_length.
-Qed.
-
-Theorem partition_filter : forall (f : A -> bool) l, partition f l = (filter f l, filter (fun x => negb (f x)) l).
-Proof.
-intros f l. induction l as [| a l]; simpl.
-  reflexivity.
-  rewrite IHl. now destruct (f a).
-Qed.
-
-Corollary partition_fst_In : forall (x : A) f l, In x (fst (partition f l)) <-> In x l /\ f x = true.
-Proof. intros. rewrite partition_filter. apply filter_In. Qed.
-
-Corollary partition_snd_In : forall (x : A) f l, In x (snd (partition f l)) <-> In x l /\ f x = false.
-Proof. intros. rewrite partition_filter. rewrite <- negb_true_iff. apply filter_In. Qed.
-
-Theorem partition_Permutation : forall f (l : list A),
-  Permutation (fst (partition f l) ++ snd (partition f l)) l.
-Proof.
-intros f l. induction l as [| x l].
-+ reflexivity.
-+ simpl. destruct (partition f l) as [lg ld] eqn:Hpart. destruct (f x); simpl in *.
-  - now rewrite IHl.
-  - now rewrite <- Permutation_middle, IHl.
-Qed.
-
-Corollary partition_length : forall f (l : list A),
-  length (fst (partition f l)) + length (snd (partition f l)) = length l.
-Proof. intros. now rewrite <- app_length, partition_Permutation. Qed.
-
-Corollary filter_length : forall f (l : list A),
-  length (filter f l) = length l - length (filter (fun x => negb (f x)) l).
-Proof. intros. apply plus_minus. rewrite <- (partition_length f), partition_filter. simpl. apply plus_comm. Qed.
-
-Lemma map_cond_Permutation : forall (f : A -> bool) (g₁ g₂ : A -> B) l,
-  Permutation (map (fun x => if f x then g₁ x else g₂ x) l)
-              (map g₁ (filter f l) ++ map g₂ (filter (fun x => negb (f x)) l)).
-Proof.
-intros f ? ? l. induction l; simpl.
-+ reflexivity.
-+ destruct (f a); simpl.
-  - apply Permutation_cons; trivial.
-  - rewrite IHl. apply Permutation_middle.
-Qed.
-
-Global Instance filter_PermutationA_compat : forall f, Proper (eqA ==> eq) f ->
-  Proper (PermutationA eqA ==> PermutationA eqA) (@filter A f).
-Proof.
-intros f Hf l1 l2 Hperm. pattern l1, l2.
-apply (PermutationA_ind_bis _); easy || simpl; clear l1 l2 Hperm.
-+ intros x y l1 l2 Hxy Hperm Hrec. destruct (f x) eqn:Hfx;
-  rewrite (Hf _ _ Hxy) in Hfx; now rewrite Hfx, ?Hxy, Hrec.
-+ intros x y l1 l2 Hperm Hrec. destruct (f x), (f y); rewrite Hrec; easy || now constructor; auto.
-+ intros l1 l2 l3 Hperm12 Hrec12 Hperm23 Hrec23. now rewrite Hrec12.
-Qed.
-
-Global Instance filter_extensionality_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@filter A).
-Proof.
-intros f g Hfg ? l ?; subst. induction l as [| x l]; simpl.
-+ trivial.
-+ destruct (f x) eqn:Hfx; rewrite (Hfg _ _ (reflexivity _)) in Hfx; now rewrite Hfx, IHl.
-Qed.
-
-Lemma filter_twice : forall f (l : list A), filter f (filter f l) = filter f l.
-Proof.
-intros f l. induction l as [| e l]; simpl; auto.
-destruct (f e) eqn:Hfe; simpl; try rewrite Hfe; rewrite IHl; auto.
-Qed.
-
-Lemma filter_inclA : forall f, Proper (eqA ==> eq) f -> forall l, inclA eqA (filter f l) l.
-Proof. intros f Hf l x Hin. now rewrite filter_InA in Hin. Qed.
-
-Lemma filter_incl : forall f (l : list A), incl (filter f l) l.
-Proof. intros f l x Hin. now rewrite filter_In in Hin. Qed.
-
-Lemma NoDupA_filter_compat : forall f, Proper (eqA ==> eq) f -> forall l, NoDupA eqA l -> NoDupA eqA (filter f l).
-Proof.
-intros f Hf l Hnodup. induction Hnodup; simpl.
-- constructor.
-- destruct (f x) eqn:Hfx; trivial. constructor; trivial. rewrite filter_InA; intuition.
-Qed.
-
-End ToSortOut_results.
-
-Global Arguments mem [A] [eqA] eq_dec x l.
-
 (** ***  Counting occurences in a list modulo some setoid equality  **)
 
 Section CountA.
@@ -1416,10 +1282,22 @@ Qed.
 
 End CountA.
 
+Lemma countA_occ_map {A B} (eqA : relation A) (eqB : relation B) Aeq_dec Beq_dec :
+  forall (f : A -> B), Proper (eqA ==> eqB) f -> injective eqA eqB f ->
+  forall x l, countA_occ eqB Beq_dec (f x) (map f l) = countA_occ eqA Aeq_dec x l.
+Proof.
+intros f Hf Hinj x l. induction l as [| y l].
++ reflexivity.
++ simpl. do 2 destruct_match; simpl; rewrite IHl; intuition.
+Qed.
+
 (** ***  Results about [firstn] and [skipn]  **)
 
 Section List_halves.
 Variable A : Type.
+
+Lemma skipn_nil : forall k, skipn k (@nil A) = nil.
+Proof. now intros []. Qed.
 
 Theorem skipn_length : forall (l : list A) n, length (skipn n l) = length l - n.
 Proof.
@@ -1521,6 +1399,12 @@ rewrite <- NoDupA_Leibniz, NoDupA_app_iff in Hnodup; autoclass.
 destruct Hnodup as [Hleft [Hright Hboth]]. now setoid_rewrite InA_Leibniz in Hboth.
 Qed.
 
+Lemma firstn_map_swap : forall {B} (f : A -> B) k l, firstn k (map f l) = map f (firstn k l).
+Proof. intros B f k. induction k; intros [| x l]; simpl; now try rewrite IHk. Qed.
+
+Lemma skipn_map_swap : forall {B} (f : A -> B) k l, skipn k (map f l) = map f (skipn k l).
+Proof. intros B f k. induction k; intros [| x l]; simpl; now try rewrite IHk. Qed.
+
 (** ***  Cutting a list in two halves: [half1] and [half2]  **)
 
 Definition half1 (l : list A) := firstn (Nat.div2 (length l)) l.
@@ -1617,10 +1501,246 @@ Qed.
 
 End List_halves.
 
+(** ***  To sort out  **)
+
+Section ToSortOut_results.
+Context (A B : Type).
+Context (eqA eqA' : relation A) (eqB : relation B).
+Context (HeqA : Equivalence eqA) (HeqB : Equivalence eqB).
+
+Global Instance fold_left_start : forall f, Proper (eqB ==> eqA ==> eqB) f ->
+  forall l, Proper (eqB ==> eqB) (fold_left f l).
+Proof.
+intros f Hf l. induction l; intros i1 i2 Hi; simpl.
+  assumption.
+  rewrite IHl. reflexivity. now rewrite Hi.
+Qed.
+
+Global Instance fold_left_symmetry_PermutationA : forall (f : B -> A -> B),
+  Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
+  Proper (PermutationA eqA ==> eqB ==> eqB) (fold_left f).
+Proof.
+intros f Hfcomm Hf l1 l2 perm. induction perm; simpl.
+- now repeat intro.
+- intros ? ? Heq. rewrite H, Heq. now apply IHperm.
+- intros ? ? Heq. now rewrite Hf, Heq.
+- repeat intro. etransitivity. now apply IHperm1. now apply IHperm2.
+Qed.
+
+Lemma HdRel_app : forall l1 l2 R (a : A), HdRel R a l1 -> HdRel R a l2 -> HdRel R a (l1++l2).
+Proof. induction l1; simpl; auto. intros. inversion_clear H. now constructor. Qed.
+
+Lemma sort_app : forall R,
+  forall l1 l2 : list A, sort R l1 -> sort R l2 -> (forall x y, In x l1 -> In y l2 -> R x y) -> sort R (l1 ++ l2).
+Proof.
+induction l1; simpl in *; intuition. constructor.
++ apply IHl1.
+  - now inversion_clear H.
+  - assumption.
+  - intros. apply H1. now right. assumption.
++ apply HdRel_app.
+  - now inversion H.
+  - destruct l2; constructor. apply H1; now left.
+Qed.
+
+Theorem PermutationA_rev : forall l, PermutationA eqA l (rev l).
+Proof. intro. apply (Permutation_PermutationA_weak _). apply Permutation_rev. Qed.
+
+(* A boolean version of membership *)
+Definition mem eq_dec (x : A) l := if @InA_dec A eqA eq_dec x l then true else false.
+
+Lemma mem_true_iff : forall eq_dec x l, mem eq_dec x l = true <-> InA eqA x l.
+Proof. intros eq_dec x l. unfold mem. destruct (InA_dec eq_dec x l); intuition discriminate. Qed.
+
+Lemma mem_false_iff : forall eq_dec x l, mem eq_dec x l = false <-> ~InA eqA x l.
+Proof. intros eq_dec x l. unfold mem. destruct (InA_dec eq_dec x l); intuition discriminate. Qed.
+
+Global Instance mem_compat : forall eq_dec, Proper (eqA ==> equivlistA eqA ==> eq) (mem eq_dec).
+Proof.
+intros eq_dec x y Hxy l1 l2 Hl. unfold mem.
+destruct (InA_dec eq_dec x l1), (InA_dec eq_dec y l2); trivial; rewrite Hl, Hxy in *; contradiction.
+Qed.
+
+Lemma mem_map : forall eq_dec f, Proper (eqA ==> eqA) f ->
+  forall x l, mem eq_dec x l = true -> mem eq_dec (f x) (map f l) = true.
+Proof.
+intros eq_dec f Hf x l Hin.
+rewrite mem_true_iff in *. rewrite (InA_map_iff _); trivial.
+exists x. now split.
+Qed.
+
+Lemma mem_injective_map : forall eq_dec f, Proper (eqA ==> eqA) f -> injective eqA eqA f ->
+  forall x l, mem eq_dec (f x) (map f l) = mem eq_dec x l.
+Proof.
+intros eq_dec f Hf Hinj x l.
+destruct (mem eq_dec x l) eqn:Hmem.
+- now apply mem_map.
+- rewrite mem_false_iff in *. intro Hin. apply Hmem. rewrite (InA_map_iff _ _ _) in Hin.
+  destruct Hin as [x' [Heq Hin]]. apply Hinj in Heq. now rewrite <- Heq.
+Qed.
+
+Lemma odd_middle : forall l (d : A), Nat.Odd (length l) ->
+  nth (div2 (length l)) (rev l) d = nth (div2 (length l)) l d.
+Proof.
+intros l d. generalize (eq_refl (length l)). generalize (length l) at 2 3 4 5. intro n. revert l.
+induction n using nat_ind2; intros l Hl [m Hm].
++ omega.
++ destruct l as [| a [| b l]]; try discriminate Hl. reflexivity.
++ simpl. destruct l as [| a [| b l]]; try reflexivity.
+  assert (Hnil : b :: l <> nil) by discriminate. revert Hl Hnil. generalize (b :: l). clear l.
+  intros l Hlen Hnil. destruct (exists_last Hnil) as [l' [z Heq]]. subst l. simpl.
+  rewrite rev_app_distr. simpl in *. apply eq_add_S in Hlen.
+  rewrite app_length, plus_comm in Hlen. simpl in Hlen. apply eq_add_S in Hlen. clear Hnil.
+  destruct n as [| n].
+  - clear -Hm. omega.
+  - assert (div2 (S n) < length l'). { rewrite Hlen. apply Nat.lt_div2. omega. }
+    repeat rewrite app_nth1; trivial. apply IHn.
+      assumption.
+      destruct m as [| m]. omega. exists m. omega.
+      now rewrite rev_length.
+Qed.
+
+Theorem partition_filter : forall (f : A -> bool) l, partition f l = (filter f l, filter (fun x => negb (f x)) l).
+Proof.
+intros f l. induction l as [| a l]; simpl.
+  reflexivity.
+  rewrite IHl. now destruct (f a).
+Qed.
+
+Corollary partition_fst_In : forall (x : A) f l, In x (fst (partition f l)) <-> In x l /\ f x = true.
+Proof. intros. rewrite partition_filter. apply filter_In. Qed.
+
+Corollary partition_snd_In : forall (x : A) f l, In x (snd (partition f l)) <-> In x l /\ f x = false.
+Proof. intros. rewrite partition_filter. rewrite <- negb_true_iff. apply filter_In. Qed.
+
+Theorem partition_Permutation : forall f (l : list A),
+  Permutation (fst (partition f l) ++ snd (partition f l)) l.
+Proof.
+intros f l. induction l as [| x l].
++ reflexivity.
++ simpl. destruct (partition f l) as [lg ld] eqn:Hpart. destruct (f x); simpl in *.
+  - now rewrite IHl.
+  - now rewrite <- Permutation_middle, IHl.
+Qed.
+
+Corollary partition_length : forall f (l : list A),
+  length (fst (partition f l)) + length (snd (partition f l)) = length l.
+Proof. intros. now rewrite <- app_length, partition_Permutation. Qed.
+
+Corollary filter_length : forall f (l : list A),
+  length (filter f l) = length l - length (filter (fun x => negb (f x)) l).
+Proof. intros. apply plus_minus. rewrite <- (partition_length f), partition_filter. simpl. apply plus_comm. Qed.
+
+Lemma map_cond_Permutation : forall (f : A -> bool) (g₁ g₂ : A -> B) l,
+  Permutation (map (fun x => if f x then g₁ x else g₂ x) l)
+              (map g₁ (filter f l) ++ map g₂ (filter (fun x => negb (f x)) l)).
+Proof.
+intros f ? ? l. induction l; simpl.
++ reflexivity.
++ destruct (f a); simpl.
+  - apply Permutation_cons; trivial.
+  - rewrite IHl. apply Permutation_middle.
+Qed.
+
+Global Instance filter_PermutationA_compat : forall f, Proper (eqA ==> eq) f ->
+  Proper (PermutationA eqA ==> PermutationA eqA) (@filter A f).
+Proof.
+intros f Hf l1 l2 Hperm. pattern l1, l2.
+apply (PermutationA_ind_bis _); easy || simpl; clear l1 l2 Hperm.
++ intros x y l1 l2 Hxy Hperm Hrec. destruct (f x) eqn:Hfx;
+  rewrite (Hf _ _ Hxy) in Hfx; now rewrite Hfx, ?Hxy, Hrec.
++ intros x y l1 l2 Hperm Hrec. destruct (f x), (f y); rewrite Hrec; easy || now constructor; auto.
++ intros l1 l2 l3 Hperm12 Hrec12 Hperm23 Hrec23. now rewrite Hrec12.
+Qed.
+
+Global Instance filter_extensionality_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@filter A).
+Proof.
+intros f g Hfg ? l ?; subst. induction l as [| x l]; simpl.
++ trivial.
++ destruct (f x) eqn:Hfx; rewrite (Hfg _ _ (reflexivity _)) in Hfx; now rewrite Hfx, IHl.
+Qed.
+
+Lemma filter_twice : forall f (l : list A), filter f (filter f l) = filter f l.
+Proof.
+intros f l. induction l as [| e l]; simpl; auto.
+destruct (f e) eqn:Hfe; simpl; try rewrite Hfe; rewrite IHl; auto.
+Qed.
+
+Lemma filter_inclA : forall f, Proper (eqA ==> eq) f -> forall l, inclA eqA (filter f l) l.
+Proof. intros f Hf l x Hin. now rewrite filter_InA in Hin. Qed.
+
+Lemma filter_incl : forall f (l : list A), incl (filter f l) l.
+Proof. intros f l x Hin. now rewrite filter_In in Hin. Qed.
+
+Lemma filter_app : forall f (l1 l2 : list A), filter f (l1 ++ l2) = filter f l1 ++ filter f l2.
+Proof.
+intros f l1 l2. induction l1 as [| x l1]; simpl.
++ reflexivity.
++ destruct (f x); now rewrite IHl1.
+Qed.
+
+Lemma NoDupA_filter_compat : forall f, Proper (eqA ==> eq) f -> forall l, NoDupA eqA l -> NoDupA eqA (filter f l).
+Proof.
+intros f Hf l Hnodup. induction Hnodup; simpl.
+- constructor.
+- destruct (f x) eqn:Hfx; trivial. constructor; trivial. rewrite filter_InA; intuition.
+Qed.
+
+Lemma eqlistA_dec (eqA_dec : forall x y, {eqA x y} + {~eqA x y}) :
+  forall l1 l2, {eqlistA eqA l1 l2} + {~eqlistA eqA l1 l2}.
+Proof.
+intros l. induction l as [| x l1]; intros [| y l2].
++ now left.
++ now right.
++ now right.
++ destruct (eqA_dec x y) as [Hxy | Hxy]; [destruct (IHl1 l2) as [Hrec | Hrec] |].
+  - auto.
+  - right. intro Habs. inv Habs. contradiction.
+  - right. intro Habs. inv Habs. contradiction.
+Qed.
+
+Lemma eqlistA_app_split : forall l1 l2 l1' l2',
+  eqlistA eqA (l1 ++ l2) (l1' ++ l2') -> length l1 = length l1' -> eqlistA eqA l1 l1' /\ eqlistA eqA l2 l2'.
+
+Proof.
+intro l. induction l as [| x l1];
+intros l2 [| y l1'] l2' Heq Hlen; simpl in *; auto; try omega; [].
+inv Heq. edestruct IHl1; eauto.
+Qed.
+
+Lemma singleton_characterization: forall (Aeq_dec : forall (a b : A), {a = b} + {a <> b}) (l : list A) (a : A),
+    NoDup l ->
+    In a l ->
+    (forall b, ~ a = b -> ~ In b l) ->
+    l = a :: nil.
+Proof.
+intros Aeq_dec l a Hnodup Hin Hnotin.
+destruct l.
++ inversion Hin.
++ destruct (Aeq_dec a a0).
+  - subst. f_equal.
+    destruct l.
+    * reflexivity.
+    * exfalso. apply (Hnotin a).
+      -- inversion Hnodup.
+         intro Heq.
+         apply H1. now left.
+      -- intuition.
+  - exfalso.
+    apply (Hnotin a0); intuition.
+Qed.
+
+End ToSortOut_results.
+
+Global Arguments mem [A] [eqA] eq_dec x l.
+
+
 (* ******************************* *)
 (** *  The same for real numbers. **)
 (* ******************************* *)
 
+
+Open Scope R_scope.
 
 (* Should be in Reals from the the std lib! *)
 Global Instance Rle_preorder : PreOrder Rle.
@@ -1643,6 +1763,26 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. contradiction.
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
+
+Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.
+Proof. intros a b ? ?. now apply Fourier_util.Rle_mult_inv_pos. Qed.
+
+(* Lemma Rdiv_le_compat : forall a b c, (0 <= a -> a <= b -> 0 < c -> a / c <= b / c)%R.
+Proof.
+intros a b c ? ? ?. unfold Rdiv. apply Rmult_le_compat; try lra.
+rewrite <- Rmult_1_l. apply Fourier_util.Rle_mult_inv_pos; lra.
+Qed. *)
+
+Lemma Zup_lt : forall x y, x <= y - 1 -> (up x < up y)%Z.
+Proof.
+intros x y Hle. apply lt_IZR. apply Rle_lt_trans with (x + 1).
+- generalize (proj2 (archimed x)). lra.
+- apply Rle_lt_trans with (y - 1 + 1); try lra; [].
+  generalize (proj1 (archimed y)). lra.
+Qed.
+
+Lemma up_le_0_compat : forall x, 0 <= x -> (0 <= up x)%Z.
+Proof. intros x ?. apply le_0_IZR, Rlt_le, Rle_lt_trans with x; trivial; []. now destruct (archimed x). Qed.
 
 (** A boolean equality test. *)
 Definition Rdec_bool x y := match Rdec x y with left _ => true | right _ => false end.
@@ -1731,6 +1871,8 @@ Existing Instance fold_left_symmetry_PermutationA.
 Existing Instance PermutationA_map.
 
 
+Close Scope R_scope.
+
 Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
 Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
 
@@ -1746,3 +1888,26 @@ intros x Habs. assert (Heq : x = x + 0) by ring. rewrite Heq in Habs at 1. clear
 apply Rplus_eq_reg_l in Habs. symmetry in Habs. revert Habs. exact R1_neq_R0.
 Qed.
 
+
+(** *  The same for integers. **)
+
+Open Scope Z.
+
+Lemma Zincr_mod : forall k n, 0 < n -> (k + 1) mod n = k mod n + 1 \/ (k + 1) mod n = 0 /\ k mod n = n - 1.
+Proof.
+intros k n Hn.
+destruct (Z.eq_dec (k mod n) (n - 1)) as [Heq | Heq].
++ right. rewrite <- Zdiv.Zplus_mod_idemp_l, Heq.
+  ring_simplify (n - 1 + 1). split; trivial; []. apply Z.mod_same. omega.
++ left. rewrite <- Zdiv.Zplus_mod_idemp_l. apply Z.mod_small.
+  assert (Hle := Z.mod_pos_bound k n Hn). omega.
+Qed.
+
+Lemma Zopp_mod : forall k n, 0 <= k < n -> (-k) mod n = (n - (k mod n)) mod n.
+Proof.
+intros k n Hn. destruct (Z.eq_dec k 0).
+- subst. rewrite 2 Z.mod_0_l, Z.sub_0_r, Z.mod_same; omega.
+- rewrite Z.mod_opp_l_nz, Z.mod_small; try rewrite Z.mod_small; omega.
+Qed.
+
+Close Scope Z.

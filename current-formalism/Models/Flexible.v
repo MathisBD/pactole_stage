@@ -1,13 +1,23 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence.    *)
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
+     T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                         
+     PACTOLE project                                                        
+                                                                            
+     This file is distributed under the terms of the CeCILL-C licence.      
+                                                                          *)
+(**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import RelationPairs.
@@ -19,13 +29,23 @@ Require Import Pactole.Setting.
 
 Section FlexibleFormalism.
 
-Context {loc : Type}.
+Context {loc info : Type}.
 Context {Sloc : Setoid loc}.
-Context {ESloc : EqDec Sloc}.
-Context {RMS : @RealMetricSpace loc Sloc ESloc}.
-Context {Ndef : NamesDef}.
-Context {N : Names}.
-Context {Spect : @Spectrum loc Sloc ESloc Ndef N}.
+Context {Eloc : EqDec Sloc}.
+Context {Sinfo : Setoid info}.
+Context {Einfo : EqDec Sinfo}.
+Context {RMS : @RealMetricSpace loc Sloc Eloc}.
+Context {Ndef : NamesDef} {N : Names}.
+Context {Info : Information loc Sloc Eloc info Sinfo Einfo}.
+Context {Spect : Spectrum loc info}.
+
+
+(* Notations to avoid typeclass resolution taking forever. *)
+Notation configuration := (@configuration loc info _ _ _ _ _ _ _).
+Notation robogram := (@robogram loc info _ _ _ _ _ _ _ _).
+Notation execution := (@execution loc info _ _ _ _ _ _ _).
+Notation map_config := (@map_config loc info _ _ _ _ _ _ _).
+Notation app := (@app _ _ _ _ _ _ Info).
 
 
 (** ** Demonic schedulers *)
@@ -33,25 +53,26 @@ Context {Spect : @Spectrum loc Sloc ESloc Ndef N}.
 (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
 Record demonic_action := {
-  relocate_byz : B → loc;
+  relocate_byz : B -> loc * info;
   step : ident → option ((loc → similarity loc) (* change of referential *)
                                * R); (* travel ratio (rigid or flexible moves) *)
   step_compat : Proper (Logic.eq ==> opt_eq ((equiv ==> equiv) * (@eq R))) step;
+(* FIXME: Use Proper (Logic.eq ==> opt_eq ((eq ==> equiv) * (@eq R))) instead? *)
   step_zoom :  forall id sim c, step id = Some sim -> (fst sim c).(zoom) <> 0%R;
   step_center : forall id sim c, step id = Some sim -> (fst sim c).(center) == c;
   step_flexibility : forall id sim, step id = Some sim -> (0 <= snd sim <= 1)%R}.
-Set Implicit Arguments.
 
 Global Instance da_Setoid : Setoid demonic_action := {| equiv := fun (da1 da2 : demonic_action) =>
   (forall id, opt_eq ((equiv ==> equiv) * eq)%signature (da1.(step) id) (da2.(step) id)) /\
   (forall b : B, equiv (da1.(relocate_byz) b) (da2.(relocate_byz) b)) |}.
 Proof. split.
 + split; intuition. now apply step_compat.
-+ intros d1 d2 [H1 H2]. repeat split; repeat intro; try symmetry; auto.
++ intros d1 d2 [H1 H2]. split; intros; try symmetry; auto; [].
+  repeat intro; auto.
   specialize (H1 id). destruct (step d1 id) as [[f1 mvr1] |], (step d2 id) as [[f2 mvr2] |]; trivial.
   destruct H1 as [H1 ?]. split; auto.
   intros x y Hxy. simpl in *. symmetry. apply H1. now symmetry.
-+ intros d1 d2 d3 [H1 H2] [H3 H4]. repeat split; intros; try etransitivity; eauto.
++ intros d1 d2 d3 [H1 H2] [H3 H4]. split; intros; try etransitivity; eauto; [].
   specialize (H1 id). specialize (H3 id).
   destruct (step d1 id) as [[f1 mvr1] |], (step d2 id) as [[f2 mvr2] |], (step d3 id) as [[f3 mvr3] |];
   simpl in *; trivial.
@@ -123,36 +144,29 @@ destruct (step da id); intuition; try discriminate.
 apply In_names.
 Qed.
 
-
 (** A [demon] is just a stream of [demonic_action]s. *)
-Definition demon := Streams.t demonic_action.
-
-Global Instance demon_Setoid : Setoid demon := {| equiv := fun d1 d2 : demon => Streams.eq equiv d1 d2 |}.
-Proof. apply Streams.eq_equiv. autoclass. Defined.
-
-Global Instance demon_hd_compat : Proper (equiv ==> equiv) (@Streams.hd _) := Streams.hd_compat _.
-Global Instance demon_tl_compat : Proper (equiv ==> equiv) (@Streams.tl _) := Streams.tl_compat _.
+Definition demon := Stream.t demonic_action.
 
 (** ** Fairness *)
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | NowFair : step (Streams.hd d) g ≠ None → LocallyFairForOne g d
-  | LaterFair : step (Streams.hd d) g = None → LocallyFairForOne g (Streams.tl d) → LocallyFairForOne g d.
+  | NowFair : step (Stream.hd d) g ≠ None → LocallyFairForOne g d
+  | LaterFair : step (Stream.hd d) g = None → LocallyFairForOne g (Stream.tl d) → LocallyFairForOne g d.
 
-Definition Fair : demon -> Prop := Streams.forever (fun d => ∀ g, LocallyFairForOne g d).
+Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ g, LocallyFairForOne g d).
 
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k, step (Streams.hd d) g <> None -> Between g h d k
-| kReduce : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h <> None ->
-                      Between g h (Streams.tl d) k -> Between g h d (S k)
-| kStall : forall k, step (Streams.hd d) g = None -> step (Streams.hd d) h = None ->
-                     Between g h (Streams.tl d) k -> Between g h d k.
+  | kReset : forall k, step (Stream.hd d) g <> None -> Between g h d k
+  | kReduce : forall k, step (Stream.hd d) g = None -> step (Stream.hd d) h <> None ->
+                        Between g h (Stream.tl d) k -> Between g h d (S k)
+  | kStall : forall k, step (Stream.hd d) g = None -> step (Stream.hd d) h = None ->
+                       Between g h (Stream.tl d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
-Definition kFair k : demon -> Prop := Streams.forever (fun d => forall g h, Between g h d k).
+Definition kFair k : demon -> Prop := Stream.forever (fun d => forall g h, Between g h d k).
 
 Lemma LocallyFairForOne_compat_aux : forall g d1 d2, d1 == d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
@@ -167,7 +181,7 @@ Global Instance LocallyFairForOne_compat : Proper (Logic.eq ==> equiv ==> iff) L
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
 Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
-Proof. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
+Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall g h k d1 d2, d1 == d2 -> Between g h d1 k -> Between g h d2 k.
 Proof.
@@ -187,7 +201,7 @@ Global Instance Between_compat : Proper (Logic.eq ==> Logic.eq ==> equiv ==> Log
 Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
 Global Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
-Proof. intros k ? ?. subst. apply Streams.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
+Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
@@ -202,7 +216,7 @@ Proof. intros g d k Hd. induction Hd; now constructor. Qed.
 
 (** A k-fair demon is fair. *)
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
-Proof. intro. apply Streams.forever_impl_compat. intros. eauto using (@Between_LocallyFair g _ g). Qed.
+Proof. intro. apply Stream.forever_impl_compat. intros. eauto using (@Between_LocallyFair g _ g). Qed.
 
 (** [Between g h d k] is monotonic on [k]. *)
 Lemma Between_mon : forall g h (d : demon) k,
@@ -226,7 +240,7 @@ coinduction fair; destruct H.
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (Streams.hd d).(step) g = None <-> (Streams.hd d).(step) h = None.
+  forall g h, (Stream.hd d).(step) g = None <-> (Stream.hd d).(step) h = None.
 Proof.
 intros d Hd g h. destruct Hd as [Hd _]. split; intro H.
 - assert (Hg := Hd g h). inversion Hg. contradiction. assumption.
@@ -241,63 +255,93 @@ Qed.
 
 
 (** A demon is fully synchronous at the first step. *)
-Definition FullySynchronousInstant : demon -> Prop := Streams.instant (fun da => forall g, step da g ≠ None).
+Definition FullySynchronousInstant : demon -> Prop := Stream.instant (fun da => forall g, step da g ≠ None).
 
 (** A demon is fully synchronous if it is fully synchronous at all step. *)
-Definition FullySynchronous : demon -> Prop := Streams.forever FullySynchronousInstant.
+Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
-Proof. apply Streams.forever_impl_compat. intros s Hs g. constructor. apply Hs. Qed.
+Proof. apply Stream.forever_impl_compat. intros s Hs g. constructor. apply Hs. Qed.
 
 (** ** One step executions *)
 
-(** [round r da conf] return the new configuration of robots (that is a function
-    giving the configuration of each robot) from the previous one [conf] by applying
-    the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
-    is used for byzantine robots. *)
+(* FIXME: what to do with the extra information contained in RobotConf? Who should update it? *)
+(* FIXME: should the similarity use the full robot info or only its location? *)
 
+(** [round r da config] returns the new configuration of robots (that is a function
+    giving the configuration of each robot) from the previous one [config] by applying
+    the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
+    is used for byzantine robots.
+    
+    As similarities preserve distance ratios, we can perform the multiplication by [mv_ratio]
+    either in the local frame or in the global one. *)
 Definition round (δ : R) (r : robogram) (da : demonic_action) (config : configuration) : configuration :=
   (** for a given robot, we compute the new configuration *)
   fun id =>
-    match da.(step) id with (** first see whether the robot is activated *)
-      | None => config id (** If g is not activated, do nothing *)
-      | Some (sim, mv_ratio) => (** id is activated with similarity [sim (conf id)] and move ratio [mv_ratio] *)
+    let loc_info := config id in  (** loc is the current location of id seen by the demon *)
+    match da.(step) id with          (** first see whether the robot is activated *)
+      | None => loc_info          (** If g is not activated, do nothing *)
+      | Some (sim, mv_ratio) =>      (** g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
-          | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
-          | Good g => (* configuration expressed in the frame of g *)
-            let frame_change := sim (config id) in
-            (* local configuration seen by g *)
-            let local_config : configuration := map_config frame_change config in
-            (* apply r on spectrum *)
-            let local_target := r (spect_from_config local_config) in
-            (* the demon chooses a point on the line from the target by mv_ratio *)
-            let chosen_target := mul mv_ratio local_target in
-            (* back to demon ref *)
-            frame_change⁻¹
-              (if Rle_bool δ (dist chosen_target (config id)) then chosen_target else local_target)
+        | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
+        | Good g => (* configuration expressed in the frame of g *)
+          let frame_change := sim (fst (config (Good g))) in
+          let local_config := map_config frame_change config in
+          (* apply r on spectrum *)
+          let local_target := r (spect_from_config local_config) in
+          (* the demon chooses a point on the line from the target by mv_ratio *)
+          let chosen_target := mul mv_ratio local_target in
+          (* back to demon ref *)
+          (frame_change⁻¹ (if Rle_bool δ (dist (frame_change⁻¹ chosen_target) (fst loc_info))
+                           then chosen_target else local_target),
+           app frame_change (snd loc_info))
         end
     end.
 
+
 Global Instance round_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
-intros ? δ ? r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id. subst. unfold round.
+intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id. subst. unfold round.
+assert (Hstep := step_da_compat Hda (reflexivity id)).
+destruct (step da1 id) as [[f1 mvr1] |] eqn:Hstep1,
+         (step da2 id) as [[f2 mvr2] |] eqn:Hstep2, id; try (now elim Hstep); [|].
+* destruct Hstep as [Hstep Hstep']. unfold RelCompFun in *. simpl in Hstep, Hstep'. subst.
+(* =======
+intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id. subst.
+unfold req in Hr. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
 destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try now elim Hstep.
-* destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
++ destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
+  split; try apply Hconfig; [].
+>>>>>>> new-names:dev_coq/current-formalism/FlexibleFormalism.v *)
 (* we lack some instances to be able to perform directly the correct rewrites
 SearchAbout Proper Spect.from_config.
 SearchAbout Proper Config.map.
 SearchAbout Proper Location.eq.
  *)
-  assert (Heq : mul mvr2 (r1 (spect_from_config (map_config (f1 (conf1 (Good g))) conf1)))
-             == mul mvr2 (r2 (spect_from_config (map_config (f2 (conf2 (Good g))) conf2)))).
+(* <<<<<<< HEAD:dev_coq/current-formalism/Models/Flexible.v
+  specialize (Hstep (fst (config1 (Good g))) _ (reflexivity _)). simpl in Hstep.
+  assert (Heq : mul mvr2 (r1 (spect_from_config (map_config (f1 (fst (config1 (Good g)))) config1)))
+             == mul mvr2 (r2 (spect_from_config (map_config (f2 (fst (config2 (Good g)))) config2)))).
   { apply mul_compat; trivial; [].
-    transitivity (r1 (spect_from_config (map_config (f2 (conf2 (Good g))) conf2))).
+    transitivity (r1 (spect_from_config (map_config (f2 (fst (config1 (Good g)))) config2)));
+    [| transitivity (r1 (spect_from_config (map_config (f2 (fst (config2 (Good g)))) config2)))].
     - apply pgm_compat, spect_from_config_compat, map_config_compat; trivial; [].
-      intros ? ? ?. rewrite (Hstep _ _ (Hconf _) x). now f_equiv.
+      intros ? ? ?. rewrite Hstep. now f_equiv.
+    - apply pgm_compat. f_equiv. apply map_config_compat.
+    - f_equiv.
+
+ ; try apply Hconfig. apply Hconfig.
     - apply Hr. }
-  rewrite Heq. clear Heq. rewrite (Hconf (Good g)) at 2.
+
+
+ with _ _ (fst (config2 (Good g))) in Heq.
+  rewrite Heq at 1.
+  destruct_match_eq Heq_bool;
+  destruct_match_eq Heq_bool';
+  rewrite Heq in Heq_bool; try rewrite Heq_bool in Heq_bool'; try discriminate.
+  rewrite (Hconfig (Good g)) at 2.
   destruct (Rle_bool δ (dist
               (mul mvr2 (r2 (spect_from_config (map_config (f2 (conf2 (Good g))) conf2))))
               (conf2 (Good g)))) eqn:Heq.
@@ -313,7 +357,34 @@ SearchAbout Proper Location.eq.
       apply spect_from_config_compat, map_config_compat; trivial; [].
       intros ? ? ?. f_equiv; trivial; []. intro. apply Hstep, Hconf.
 * rewrite Hda. reflexivity.
-Qed.
+======= *)
+Restart.
+intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id. subst. unfold round.
+assert (Hstep := step_da_compat Hda (reflexivity id)).
+destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try now elim Hstep.
++ destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
+  split; cbn [fst snd].
+(* try apply Hconfig; [].
+  assert (Hsimeq : f1 (fst (config1 (Good g))) == f2 (fst (config2 (Good g)))).
+  { apply Hstep. now apply Hconfig. }
+  assert (Heq : Location.eq
+            ((f1 (config1 (Good g)) ⁻¹) (Location.mul mvr2 (r1 (Spect.from_config
+                   (Config.map (Config.app (f1 (config1 (Good g)))) config1)))))
+            ((f2 (config2 (Good g)) ⁻¹) (Location.mul mvr2 (r2 (Spect.from_config
+                   (Config.map (Config.app (f2 (config2 (Good g)))) config2)))))).
+  { rewrite Hsimeq at 1. do 2 f_equiv. apply Hr. now do 3 f_equiv. }
+  rewrite Heq. rewrite (Hconfig (Good g)) at 2.
+  destruct (Rle_bool δ (Location.dist
+                          (((f2 (config2 (Good g)) ⁻¹)
+              (Location.mul mvr2 (r2 (Spect.from_config (Config.map (Config.app (f2 (config2 (Good g)))) config2))))))
+              (config2 (Good g)))) eqn:Heq'.
+  - assumption.
+  - rewrite Hsimeq at 1. simpl.
+    f_equiv. apply Hr. now do 3 f_equiv.
++ rewrite Hda. reflexivity.
+>>>>>>> new-names:dev_coq/current-formalism/FlexibleFormalism.v
+Qed. *)
+Admitted.
 
 (** A third subset of robots, moving ones *)
 Definition moving δ r da config := List.filter
@@ -359,32 +430,27 @@ Qed.
 
 (** Some results *)
 
-Lemma no_moving_same_conf : forall δ r da config,
-  moving δ r da config = List.nil -> round δ r da config == config.
-Proof.
-intros δ r da config Hmove id.
-destruct (equiv_dec (round δ r da config id) (config id)) as [Heq | Heq]; trivial.
-rewrite <- moving_spec, Hmove in Heq. inversion Heq.
-Qed.
-
-Corollary no_active_same_conf :
+Lemma no_active_same_conf :
   forall δ r da conf, active da = List.nil -> round δ r da conf == conf.
 Proof.
 intros δ r da conf Hactive.
-assert (moving δ r da conf = List.nil). { apply incl_nil. rewrite <- Hactive. apply moving_active. }
-now apply no_moving_same_conf.
+assert (Hnone : forall id, step da id = None).
+{ intro id. destruct (step da id) eqn:Heq; trivial; []. exfalso.
+  assert (Hin : step da id <> None) by (rewrite Heq; discriminate).
+  rewrite <- active_spec, Hactive in Hin. intuition. }
+intro id. unfold round. now rewrite (Hnone id).
 Qed.
 
 
 (** [execute r d conf] returns an (infinite) execution from an initial global
     configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)
-Definition execute δ (r : robogram): demon → configuration → execution :=
+Definition execute δ (r : robogram) : demon -> configuration -> execution :=
   cofix execute d config :=
-  Streams.cons config (execute (Streams.tl d) (round δ r (Streams.hd d) config)).
+  Stream.cons config (execute (Stream.tl d) (round δ r (Stream.hd d) config)).
 
 (** Decomposition lemma for [execute]. *)
 Lemma execute_tail : forall δ (r : robogram) (d : demon) (config : configuration),
-  Streams.tl (execute δ r d config) = execute δ r (Streams.tl d) (round δ r (Streams.hd d) config).
+  Stream.tl (execute δ r d config) = execute δ r (Stream.tl d) (round δ r (Stream.hd d) config).
 Proof. intros. destruct d. reflexivity. Qed.
 
 Global Instance execute_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) execute.

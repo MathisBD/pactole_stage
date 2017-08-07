@@ -1,3 +1,14 @@
+(******************************************)
+(*   Finite multiset library              *)
+(*   Developped for the PACTOLE project   *)
+(*   L. Rieg                              *)
+(*                                        *)
+(*   This file is distributed under       *)
+(*   the terms of the CeCILL-C licence    *)
+(*                                        *)
+(******************************************)
+
+
 Require Import Omega.
 Require Import SetoidList.
 Require Import SetoidDec.
@@ -20,7 +31,6 @@ Section MMultisetExtra.
   Hint Rewrite is_empty_spec nfilter_spec filter_spec npartition_spec_fst npartition_spec_snd : FMsetdec.
   Hint Rewrite partition_spec_fst partition_spec_snd for_all_spec exists_spec : FMsetdec.
   Hint Unfold In : FMsetdec.
-  
   
   (** *  Extra operations  **)
   

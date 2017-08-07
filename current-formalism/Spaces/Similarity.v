@@ -1,10 +1,19 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence.    *)
 (*                                                                        *)
+(**************************************************************************)
+
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                           
+   PACTOLE project                                                          
+                                                                            
+   This file is distributed under the terms of the CeCILL-C licence         
+                                                                          *)
 (**************************************************************************)
 
 
@@ -12,95 +21,9 @@ Require Import Utf8.
 Require Import SetoidDec.
 Require Import Rbase Rbasic_fun.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Spaces.RealMetricSpaces.
-
-
+Require Import Pactole.Util.Bijection.
+Require Import Pactole.Spaces.RealMetricSpace.
 Set Implicit Arguments.
-
-
-(********************)
-(** *  Bijections  **)
-(********************)
-
-(** Bijections on a type [T] with an equivalence relation [eqT] *)
-
-Section Bijections.
-Context {T : Type}.
-Context {HeqT : Setoid T}.
-
-Record bijection := {
-  section :> T → T;
-  retraction : T → T;
-  section_compat : Proper (equiv ==> equiv) section;
-  Inversion : ∀ x y, section x == y ↔ retraction y == x}.
-Global Existing Instance section_compat.
-
-Global Instance bij_Setoid : Setoid bijection := {| equiv := fun f g => forall x, f.(section) x == g x |}.
-Proof. split.
-+ repeat intro. reflexivity.
-+ repeat intro. now symmetry.
-+ repeat intro. etransitivity; eauto.
-Defined.
-
-Global Instance section_full_compat : Proper (equiv ==> (equiv ==> equiv)) section.
-Proof. intros f g Hfg x y Hxy. rewrite Hxy. now apply Hfg. Qed.
-
-(** The identity bijection *)
-Definition bij_id := {|
-  section := fun x => x;
-  retraction := fun x => x;
-  section_compat := fun x y Heq => Heq;
-  Inversion := ltac:(easy) |}.
-
-(** Composition of bijections *)
-Definition bij_compose (f g : bijection) : bijection.
-refine {| section := fun x => f (g x);
-          retraction := fun x => g.(retraction) (f.(retraction) x) |}.
-Proof.
-+ abstract (intros x y Hxy; now apply f.(section_compat), g.(section_compat)).
-+ abstract (intros x y; now rewrite f.(Inversion), <- g.(Inversion)).
-Defined.
-
-Infix "∘" := bij_compose (left associativity, at level 40).
-
-Lemma bij_compose_assoc : forall f g h : bijection, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
-Proof. repeat intro. reflexivity. Qed.
-
-(** Properties about inverse functions *)
-Global Instance retraction_compat : Proper (equiv ==> (equiv ==> equiv)) retraction.
-Proof. intros f g Hfg x y Hxy. now rewrite <- f.(Inversion), Hxy, Hfg, g.(Inversion). Qed.
-
-Definition bij_inverse (bij : bijection) : bijection.
-refine {| section := bij.(retraction);
-          retraction := bij.(section) |}.
-Proof. abstract (intros; rewrite bij.(Inversion); reflexivity). Defined.
-
-Notation "bij ⁻¹" := (bij_inverse bij) (at level 99).
-
-Lemma retraction_section : forall (bij : bijection) x, bij.(retraction) (bij.(section) x) == x.
-Proof. intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
-
-Corollary bij_inv_bij_id : forall (bij : bijection), bij ⁻¹ ∘ bij == bij_id.
-Proof. repeat intro. simpl. now rewrite retraction_section. Qed.
-
-Lemma section_retraction : forall (bij : bijection) x, bij.(section) (bij.(retraction) x) == x.
-Proof. intros bij x. rewrite bij.(Inversion). now apply retraction_compat. Qed.
-
-Corollary inv_bij_bij_id : forall (bij : bijection),
-  (equiv ==> equiv)%signature (fun x => bij (bij ⁻¹ x)) bij_id.
-Proof. repeat intro. simpl. now rewrite section_retraction. Qed.
-
-Lemma injective_retraction : forall bij : bijection, injective equiv equiv bij -> injective equiv equiv (bij ⁻¹).
-Proof.
-intros bij Hinj x y Heq. rewrite <- (section_retraction bij x), Heq. simpl. now rewrite section_retraction.
-Qed.
-
-Lemma compose_inverse : forall f g : bijection, (f ∘ g)⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
-Proof. repeat intro. reflexivity. Qed.
-
-End Bijections.
-
-Arguments bijection T {_}.
 
 
 (**********************)
@@ -114,7 +37,7 @@ Open Scope R_scope.
     For convenience, we also add their center, that is the location from which robots locally observe. *)
 
 Record similarity T `{RealMetricSpace T} := {
-  sim_f :> @bijection T _;
+  sim_f :> bijection T;
   zoom : R;
   center : T;
   center_prop : sim_f center == origin;
@@ -147,7 +70,7 @@ Proof.
 intros sim. apply Preliminary.Rle_neq_lt.
 - destruct sim as [f k c Hc Hk]. simpl. clear c Hc.
   assert (Hnon_triv := non_trivial). specialize (Hk unit origin).
-  rewrite <- dist_defined in Hnon_triv.
+  unfold complement in Hnon_triv. rewrite <- dist_defined in Hnon_triv.
   assert (Hdist := dist_pos unit origin).
   generalize (dist_pos (f unit) (f origin)).
   rewrite <- (Rmult_0_l (dist unit origin)) at 1.
@@ -157,7 +80,7 @@ Qed.
 
 (** The identity similarity *)
 Definition id {T} `{RealMetricSpace T} : similarity T.
-refine {| sim_f := bij_id;
+refine {| sim_f := @bij_id T _;
           zoom := 1;
           center := origin;
           center_prop := reflexivity _ |}.
@@ -167,7 +90,7 @@ Section Normed_Results.
 (** The existence of homothecy and translation similarities (implied by these two hypotheses)
     is actually equivalent to defining a normed vector space. *)
 Context (T : Type).
-Context `(rmsT : RealMetricSpace T).
+Context `{rmsT : RealMetricSpace T}.
 Hypothesis translation_hypothesis : forall v x y : T, dist (add x v) (add y v) = dist x y.
 Hypothesis homothecy_hypothesis : forall ρ x y, dist (mul ρ x) (mul ρ y) = Rabs ρ * dist x y.
 
@@ -249,7 +172,7 @@ Proof. intros c H10 ?. simpl. now rewrite mul_1. Qed.
 
 End Normed_Results.
 
-(** Composition of similarity *)
+(** Composition of similarities *)
 
 Definition compose {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
 refine {|
