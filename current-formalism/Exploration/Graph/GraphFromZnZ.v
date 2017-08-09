@@ -1,3 +1,13 @@
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+   T. Balabonski, R. Pelle, L. Rieg, X. Urbain                            
+
+   PACTOLE project                                                      
+                                                                        
+   This file is distributed under the terms of the CeCILL-C licence     
+                                                                        *)
+(**************************************************************************)
+
 Require Import Reals.
 Require Import Omega.
 Require Import Psatz.
@@ -9,9 +19,8 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSpace.
 Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.ContinuousDVGraphFormalism.
 Require Import Pactole.FiniteGraphFormalism.
+Set Implicit Arguments.
 
 
 (* On a un espace V/E qui représente un graphe.
@@ -20,35 +29,28 @@ Require Import Pactole.FiniteGraphFormalism.
    pourquoi V/E <=> Z/nZ?
     - Z/nZ représente un anneau donc un graphe.
     - V c'est tout les entiers entre 0 et n
-    - E c'est entre les nombres qui se suivent.
+    - E c'est entre les nombres qui se suivent. *)
 
-
-   un anneau avec V et E c'est : 
-   [n] noeuds V et pour tout E [(src : V) * (tgt : V)], src = tgt (+/-) 1.
- *)
-
-Set Implicit Arguments.
-
-(* in a ring, edges can only be in three directions *)
+(** In a ring, an edge with a fixed source is characterized by one of these three directions. *)
 Inductive direction := Forward | Backward | AutoLoop.
 
 Module MakeRing (Import Def : DiscreteSpace.RingDef) <: FiniteGraphDef
     with Definition n := Def.n (* ring size *)
     with Definition V := {m : nat | m < Def.n} (* set of nodes *)
     with Definition E := (({m : nat | m < Def.n} * direction)%type). (* set of edges *)
-
+  
   Definition n := n.
   Definition V := {m : nat | m < n}.
-
+  
   (* to_Z is a function to pass from a node as in a finite set to a integer, 
      which can be easily computate *)
   Definition to_Z (v : V): Z := Z.of_nat (proj1_sig v).
-
+  
   Definition dir := direction.
-
+  
   Definition E := (V * dir)%type.
   Definition Veq := @Logic.eq V.
-
+  
   Instance to_Z_compat : Proper (Veq ==> Z.eq) to_Z.
   Proof. unfold Veq. repeat intro. now subst. Qed.
   
@@ -64,38 +66,40 @@ Module MakeRing (Import Def : DiscreteSpace.RingDef) <: FiniteGraphDef
   
   Lemma to_Z_inf_n (l : Z): Z.to_nat (l mod Z.of_nat n)%Z < n.
   Proof.
-    intros.
-    rewrite <- Nat2Z.id, <- Z2Nat.inj_lt;
-    try apply Zdiv.Z_mod_lt;
-    assert (Hn := n_sup_1); unfold n in *; omega.
+  intros.
+  rewrite <- Nat2Z.id, <- Z2Nat.inj_lt;
+  try apply Zdiv.Z_mod_lt;
+  assert (Hn := n_sup_1); unfold n in *; omega.
   Qed.
-
+  
   Lemma to_Z_injective : injective Veq Z.eq to_Z.
   Proof.
   intros [x Hx] [y Hy] Heq.
   unfold to_Z in Heq. hnf in Heq |- *. simpl in Heq.
   apply Nat2Z.inj in Heq. subst. f_equal. apply le_unique.
   Qed.
-
+  
   (* a function to pass a integer to a finit set *)
   Definition of_Z (l : Z) : V := exist _ (Z.to_nat (l mod Z.of_nat n)) (to_Z_inf_n l).
-
+  
   Lemma Z2Z : forall l, (to_Z (of_Z l) = l mod Z.of_nat n)%Z.
   Proof.
   intros. unfold to_Z, of_Z. simpl.
   rewrite Z2Nat.id; trivial; [].
   apply Z.mod_pos_bound. generalize n_sup_1; unfold n; omega.
   Qed.
-
+  
   Instance of_Z_compat : Proper (Z.eq ==> Veq) of_Z.
   Proof. intros l1 l2 Hl. hnf. now rewrite Hl. Qed.
-
+  
   Lemma V2V : forall v, Veq (of_Z (to_Z v)) v.
   Proof.
   intros [k Hk]. hnf. unfold to_Z, of_Z. apply eq_proj1. simpl.
   rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; omega.
   Qed.
-
+  
+  Definition src (e : E) : V := (fst e).
+  
   Definition tgt (e : E) : V :=
     let t := match snd e with
                | Forward => (to_Z (fst e) + 1)%Z
@@ -103,76 +107,82 @@ Module MakeRing (Import Def : DiscreteSpace.RingDef) <: FiniteGraphDef
                | AutoLoop => to_Z (fst e)
              end
     in of_Z t.
-  Definition src (e : E) : V := (fst e).
-
+  
   Parameter threshold : E -> R.
   Axiom threshold_pos : forall e, (0 < threshold e < 1)%R.
-
-
+  
   Definition Eeq (e1 e2 : E) := Veq (fst e1) (fst e2)
-                          /\ snd e1 = snd e2.
-
+                                /\ if (Nat.eq_dec n 2)
+                                   then
+                                     match snd e1, snd e2 with
+                                     | AutoLoop, AutoLoop => True
+                                     | AutoLoop, _ | _, AutoLoop  => False
+                                     | _, _ => True
+                                     end
+                                   else
+                                     snd e1 = snd e2.
+  
   Parameter threshold_compat : Proper (Eeq ==> eq) threshold.
-
+  
   Instance Veq_equiv : Equivalence Veq := eq_equivalence.
-
+  
   Lemma Eeq_equiv : Equivalence Eeq.
-  Proof.
-  split.
+  Proof. unfold Eeq. split.
   + intros e.
-    unfold Eeq.
-    repeat split; reflexivity.
-  + intros e1 e2 (Hes, Het).
-    unfold Eeq.
-    repeat split; now symmetry.
+    split; try reflexivity; [].
+    now repeat destruct_match.
+  + intros e1 e2 (Hs, Ht).
+    split; try (now symmetry); [].
+    revert Ht. repeat destruct_match; auto.
   + intros e1 e2 e3 (Hs12, Ht12) (Hs23, Ht23).
-    unfold Eeq.
-    repeat split. unfold Veq in *. now rewrite Hs12, Hs23.
-    now transitivity (snd e2).
+    split; try (now etransitivity; eauto); [].
+    revert Ht12 Ht23. repeat destruct_match; auto; congruence.
   Qed.
-
-  Instance tgt_compat : Proper (Eeq ==> Veq) tgt.
-  Proof.
-  intros e1 e2 He.
-  unfold Eeq, tgt, Veq in *.
-  destruct He as (Ht, Hd).
-  f_equal. rewrite Hd; destruct (snd e2); now rewrite Ht.
-  Qed.
-
+  
   Instance src_compat : Proper (Eeq ==> Veq) src.
   Proof. intros e1 e2 He. apply He. Qed.
-
-
+  
+  Instance tgt_compat : Proper (Eeq ==> Veq) tgt.
+  Proof.
+  intros e1 e2 He. apply eq_proj1.
+  unfold Eeq, tgt, Veq, to_Z, of_Z in *.
+  destruct He as (Ht, Hd). rewrite Ht. clear Ht. revert Hd.
+  repeat destruct_match; simpl; intro; try tauto || discriminate; [|];
+  destruct (fst e2) as [k ?]; simpl;
+  match goal with |H : n = 2 |- _ => rewrite H in *; clear H end;
+  destruct k as [| [| k]]; simpl; omega.
+  Qed.
+  
   Definition Veq_dec : forall l l' : V, {Veq l l'} + {~Veq l l'} := @subset_dec n.
-
+  
   Lemma dir_eq_dec : forall d d': direction, {d = d'} + {d <> d'}.
   Proof.
     intros.
     destruct d, d'; intuition; right; discriminate.
   Qed.
-
+  
   Lemma Eeq_dec : forall e e' : E, {Eeq e e'} + {~Eeq e e'}.
   Proof.
     intros.
     unfold Eeq.
+    destruct (Nat.eq_dec n 2).
+    destruct (snd e), (snd e'), (Veq_dec (fst e) (fst e')); intuition.
     destruct (Veq_dec (fst e) (fst e')),
     (dir_eq_dec (snd e) (snd e')); intuition.
   Qed.
-
+  
   Definition find_edge v1 v2 :=
     if Veq_dec v1 (of_Z (to_Z v2 + 1)) then Some (v1, Backward) else
-    if Veq_dec (of_Z (to_Z v1 + 1)) v2 then Some (v1, Forward) else
+    if Veq_dec (of_Z (to_Z v1 + 1)) v2 then Some (v1, Forward)  else
     if Veq_dec v1 v2 then Some (v1, AutoLoop) else None.
-
+  
   Instance find_edge_compat : Proper (Veq ==> Veq ==> opt_eq (Eeq)) find_edge.
   Proof.
   intros v1 v2 Hv12 v3 v4 Hv34.
   unfold Eeq, find_edge; simpl.
   repeat destruct_match; simpl; easy || congruence.
   Qed.
-
-(*   Set Printing Implicit. *)
-
+  
   Lemma find_edge_None : forall a b : V,
       find_edge a b = None <-> forall e : E, ~(Veq (src e) a /\ Veq (tgt e) b).
   Proof.
@@ -207,7 +217,7 @@ Module MakeRing (Import Def : DiscreteSpace.RingDef) <: FiniteGraphDef
         split; unfold Veq, src, tgt; simpl; try reflexivity; [].
         now rewrite V2V, Heq.
   Qed.
-
+  
   Lemma find_edge_Some : forall v1 v2 e, opt_eq Eeq (find_edge v1 v2) (Some e) <->
                                 Veq v1 (src e) /\ Veq v2 (tgt e).
   Proof.
@@ -230,11 +240,25 @@ Module MakeRing (Import Def : DiscreteSpace.RingDef) <: FiniteGraphDef
     + unfold find_edge in *.
       revert Hcase. repeat destruct_match; intro Hcase; inv Hcase.
       - split; simpl; try easy; []. revert_one Veq. intro Hadd. destruct Heq as [Heq1 Heq2].
-        unfold src, tgt in *. destruct (snd e); trivial; exfalso; [|].
+        unfold src, tgt in *. destruct (Nat.eq_dec n 2), (snd e); trivial; exfalso; [| |].
+        ++ revert Hadd. rewrite Heq2, <- Heq1. hnf. rewrite V2V. intro Hadd.
+           apply (f_equal to_Z) in Hadd. revert Hadd. rewrite Z2Z. unfold to_Z.
+           destruct v1 as [k Hk]. simpl. clear Heq1 Heq2.
+           match goal with H : n = 2 |- _ => rewrite H in * end. clear -Hk.
+           destruct k as [| [| k]]; simpl in *.
+           -- rewrite Z.mod_small; lia.
+           -- rewrite Z.mod_same; lia.
+           -- exfalso. omega.
         ++ rewrite Heq2, <- Heq1 in Hadd. hnf in Hadd. rewrite Z2Z in Hadd.
-           apply (f_equal (@proj1_sig nat (fun x => lt x n))) in Hadd. revert Hadd. clear -Hn.
-           unfold of_Z. simpl. rewrite Zdiv.Zplus_mod_idemp_l.
-           (* wrong if n=2 *) admit.
+           apply (f_equal (@proj1_sig nat (fun x => lt x n))) in Hadd. revert Hadd. clear Heq1 Heq2 e v2.
+           unfold of_Z, to_Z. simpl. rewrite Zdiv.Zplus_mod_idemp_l, <- Z.add_assoc.
+           destruct v1 as [k Hk]. simpl.
+           change 2%Z with (Z.of_nat 2). rewrite <- Nat2Z.inj_add, <- Zdiv.mod_Zmod; try lia; [].
+           destruct (Nat.eq_dec k (n - 1)); [| destruct (Nat.eq_dec k (n - 2))]; subst.
+           -- replace (n - 1 + 2) with (1 + 1 * n) by omega. rewrite Nat.mod_add; try lia; [].
+              rewrite Nat2Z.id, Nat.mod_1_l; lia.
+           -- replace (n - 2 + 2) with n by omega. rewrite Nat.mod_same, Nat2Z.id; lia.
+           -- rewrite Nat.mod_small, Nat2Z.id; lia.
         ++ rewrite Heq2, <- Heq1 in Hadd. hnf in Hadd. rewrite Z2Z in Hadd.
            apply (f_equal (@proj1_sig nat (fun x => lt x n))) in Hadd. revert Hadd. clear -Hn.
            unfold of_Z. simpl. rewrite Zdiv.Zplus_mod_idemp_l.
@@ -245,47 +269,58 @@ Module MakeRing (Import Def : DiscreteSpace.RingDef) <: FiniteGraphDef
            -- subst. rewrite Nat.sub_add, Nat.mod_same; lia.
            -- rewrite Nat.mod_small; lia.
       - split; simpl; try easy; []. revert_one Veq. intro Hadd.
-        destruct Heq as [Heq1 Heq2]. rewrite Heq2 in Hadd.
-        unfold src, tgt in *. destruct (snd e); trivial; exfalso; [|].
-        ++ hnf in Hadd. rewrite <- Heq1 in Hadd. revert Hadd.
-           (* wrong if n=2 *) admit.
-        ++ hnf in Hadd. rewrite <- Heq1 in Hadd. clear -Hadd Hn.
-           apply (f_equal (@proj1_sig nat (fun x => lt x n))) in Hadd. revert Hadd.
-           unfold of_Z, to_Z. simpl.
-           replace (Z.of_nat (proj1_sig v1) + 1)%Z with (Z.of_nat ((proj1_sig v1) + 1)) by lia.
-           rewrite <- 2 Zdiv.mod_Zmod, 2 Nat2Z.id; try omega; [].
-           destruct (Nat.eq_dec (proj1_sig v1) (n - 1)) as [Heq |].
-           -- rewrite Heq, Nat.sub_add, Nat.mod_same, Nat.mod_small; lia.
-           -- assert (proj1_sig v1 < n) by apply proj2_sig.
-              rewrite 2 Nat.mod_small; lia.
-      - split; simpl; try easy; []. revert_one Veq. intro Hadd.
-        destruct Heq as [Heq1 Heq2]. rewrite Heq2 in Hadd.
-        unfold src, tgt in *. destruct (snd e); trivial; exfalso; [|].
-        ++ hnf in Hadd. rewrite <- Heq1 in Hadd. clear -Hadd Hn.
-           apply (f_equal (@proj1_sig nat (fun x => lt x n))) in Hadd. revert Hadd.
-           unfold of_Z, to_Z. simpl.
-           replace (Z.of_nat (proj1_sig v1) + 1)%Z with (Z.of_nat ((proj1_sig v1) + 1)) by lia.
-           rewrite <- Zdiv.mod_Zmod, Nat2Z.id; try omega; [].
-           destruct (Nat.eq_dec (proj1_sig v1) (n - 1)) as [Heq |].
-           -- rewrite Heq, Nat.sub_add, Nat.mod_same; lia.
-           -- assert (proj1_sig v1 < n) by apply proj2_sig.
-              rewrite Nat.mod_small; lia.
-        ++ hnf in Hadd. rewrite <- Heq1 in Hadd. clear -Hadd Hn.
-           apply (f_equal (@proj1_sig nat (fun x => lt x n))) in Hadd. revert Hadd.
-           unfold of_Z, to_Z. simpl.
-           destruct (Nat.eq_dec (proj1_sig v1) 0) as [Heq |].
-           -- rewrite Heq. simpl Z.of_nat.
-              rewrite <- (Z.mod_same (Z.of_nat n)), Zdiv.Zminus_mod_idemp_l, Z.mod_small; try lia; [].
-              change 1%Z with (Z.of_nat 1). rewrite <- Nat2Z.inj_sub, Nat2Z.id; lia.
-           -- assert (proj1_sig v1 < n) by apply proj2_sig.
-              rewrite Z.mod_small; try lia; [].
-              change 1%Z with (Z.of_nat 1). rewrite <- Nat2Z.inj_sub, Nat2Z.id; lia.
+        destruct Heq as [Heq1 Heq2].
+        rewrite Heq2 in Hadd. hnf in Hadd. apply (f_equal to_Z) in Hadd.
+        unfold src, tgt in *. destruct (Nat.eq_dec n 2), (snd e); trivial; exfalso; [| |].
+        ++ revert Hadd. rewrite <- Heq1, V2V, Z2Z. destruct v1 as [k Hk]. unfold to_Z. simpl.
+           match goal with H : n = 2 |- _ => rename H into Heq end.
+           clear -Hk Heq. rewrite Heq in *. clear Heq.
+           destruct k as [| [| k]]; simpl in *.
+           -- rewrite Z.mod_small; lia.
+           -- rewrite Z.mod_same; lia.
+           -- exfalso. omega.
+        ++ rewrite <- Heq1, 2 Z2Z in Hadd. revert Hadd. clear dependent v2. clear Heq1.
+           unfold to_Z. destruct v1 as [k Hk]. simpl. change 1%Z with (Z.of_nat 1).
+           rewrite <- Nat2Z.inj_add, <- Zdiv.mod_Zmod; try lia; [].
+           destruct (Nat.eq_dec k (n - 1)); [| destruct (Nat.eq_dec k 0)]; subst.
+           -- replace (n - 1 + 1) with n by omega. rewrite Nat.mod_same; try lia; [].
+              rewrite <- Nat2Z.inj_sub, <- Zdiv.mod_Zmod, Nat.mod_small; lia.
+           -- simpl. change (-1)%Z with (- (1))%Z.
+              rewrite Z.mod_opp_l_nz; rewrite ?Nat.mod_1_l, ?Z.mod_1_l; lia.
+           -- rewrite <- Nat2Z.inj_sub, <- Zdiv.mod_Zmod, 2 Nat.mod_small; lia.
+        ++ hnf in Hadd. rewrite <- Heq1, V2V, Z2Z in Hadd. clear -Hadd Hn.
+           revert Hadd. unfold to_Z. destruct v1 as [k Hk]. simpl.
+           change 1%Z with (Z.of_nat 1). rewrite <- Nat2Z.inj_add, <- Zdiv.mod_Zmod; try lia; [].
+           intro Hadd. apply Nat2Z.inj in Hadd.
+           destruct (Nat.eq_dec k (n - 1)) as [Heq |].
+           -- subst. replace (n - 1 + 1) with n in Hadd by omega. rewrite Nat.mod_same in Hadd; lia.
+           -- rewrite Nat.mod_small in Hadd; lia.
+      - split; simpl; try easy; []. revert_one Veq. intro Hadd. apply (f_equal to_Z) in Hadd. revert Hadd.
+        destruct Heq as [Heq1 Heq2]. rewrite Heq1, Heq2. unfold src, tgt, Veq, of_Z, to_Z.
+        destruct (Nat.eq_dec n 2), e as [[k Hk] []]; simpl; trivial; clear dependent v1; clear Heq2.
+        ++ rewrite Z2Nat.id;
+           match goal with H : n = 2 |- _ => rewrite H in *; clear H end;
+           destruct k as [| [| k]]; simpl; omega || rewrite Z.mod_same || rewrite Z.mod_small; lia.
+        ++ rewrite Z2Nat.id; try (apply Z.mod_pos_bound; lia); [].
+           match goal with H : n = 2 |- _ => rewrite H in *; clear H end.
+           destruct k as [| [| k]]; simpl; omega || (now rewrite Z.mod_small; lia) || idtac; [].
+           change (-1)%Z with (- (1))%Z. rewrite Z.mod_opp_l_nz; rewrite ?Nat.mod_1_l, ?Z.mod_1_l; lia.
+        ++ rewrite Z2Nat.id; try (apply Z.mod_pos_bound; lia); [].
+           change 1%Z with (Z.of_nat 1). rewrite <- Nat2Z.inj_add, <- Zdiv.mod_Zmod; try lia; [].
+           destruct (Nat.eq_dec k (n - 1)); subst.
+           -- replace (n - 1 + 1) with n by omega. rewrite Nat.mod_same; lia.
+           -- rewrite Nat.mod_small; lia.
+        ++ rewrite Z2Nat.id; try (apply Z.mod_pos_bound; lia); [].
+           destruct (Nat.eq_dec k 0); subst.
+           -- simpl. change (-1)%Z with (- (1))%Z.
+              rewrite Z.mod_opp_l_nz; rewrite ?Nat.mod_1_l, ?Z.mod_1_l; lia.
+           -- rewrite Z.mod_small; lia.
   * rewrite find_edge_None in Hcase. simpl. intuition. now apply (Hcase e).
-  Admitted.
-
+  Qed.
+  
   Lemma find_some_edge : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e).
   Proof. intro. now rewrite find_edge_Some. Qed.
-
+  
 End MakeRing.
 
 
@@ -295,14 +330,3 @@ Module LocG (Def : DiscreteSpace.RingDef)(Ring : FiniteGraphDef) : LocationAFini
   Definition eq_equiv : Equivalence eq := Ring.Veq_equiv.
   Definition eq_dec : forall l l' : t, {eq l l'} + {~eq l l'} := Ring.Veq_dec.
 End LocG.
-
-(*  
-Module N : Size with Definition nG := kG with Definition nB := 0%nat.
-  Definition nG := kG.
-  Definition nB := 0%nat.
-End N.
-
-Module Names := Robots.Make (N).
-
-Module ConfigA := Configurations.Make (LocationA)(N)(Names).
- *)

@@ -1,10 +1,11 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain              
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
+                                                                          *)
 (**************************************************************************)
 
 Require Import Rbase.
@@ -16,10 +17,10 @@ Require Import Pactole.Configurations.
 
 
 Module Type GraphDef.
-  Parameter V : Set. (* Z/nZ *)
-  Parameter E : Set. (* de base, source et destination (en couple). on peut aussi jsute donner l'un des deux (tjr lle même) car on est dans un cercle (ici) *)
-  Parameter tgt src : E -> V. (* fst et snd du couple *)
-  Parameter threshold : E -> R. (* ça reste un parametre *)
+  Parameter V : Set.
+  Parameter E : Set.
+  Parameter src tgt : E -> V. (* source and target of an edge *)
+  Parameter threshold : E -> R.
   Parameter Veq : V -> V -> Prop. 
   Parameter Eeq : E -> E -> Prop.
   Declare Instance Veq_equiv : Equivalence Veq.
@@ -47,14 +48,37 @@ Module Type LocationADef (Graph : GraphDef) <: DecidableType.
   Parameter eq_dec : forall l l', {eq l l'} + {~eq l l'}.
 End LocationADef.
 
-(** Specialized version with SourceTarget as info. *)
-Module Type InfoSig (Graph : GraphDef)
-                    (Loc : LocationADef(Graph)).
+(** Specialized version of the Info type with SourceTarget. *)
+Module Type SourceTargetSig (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
+  Record t' := {source : Loc.t; target : Loc.t}.
+  Definition t := t'.
   
-  Module Info := SourceTarget(Loc).
-End InfoSig.
+  Definition eq state1 state2 := Loc.eq state1.(source) state2.(source) /\ Loc.eq state1.(target) state2.(target).
+  
+  Declare Instance eq_equiv : Equivalence eq.
+  Declare Instance source_compat : Proper (eq ==> Loc.eq) source.
+  Declare Instance target_compat : Proper (eq ==> Loc.eq) target.
+  Parameter eq_dec : forall x y : t, {eq x y} + {~eq x y}.
+  
+  Definition app f state := {| source := f state.(source); target := f state.(target) |}.
+  
+  Declare Instance app_compat : Proper ((Loc.eq ==> Loc.eq) ==> eq ==> eq) app.
+  Parameter app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
+  Parameter app_compose : forall f g, Proper (Loc.eq ==> Loc.eq) f -> Proper (Loc.eq ==> Loc.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+End SourceTargetSig.
 
-Module Make (Graph : GraphDef) (Loc : LocationADef(Graph)) : InfoSig (Graph) (Loc).
+(** Specialized version of the Info type with Unit. *)
+Module Type UnitSig (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
+  Definition t := unit.
+  Definition eq := @Logic.eq unit.
+  Declare Instance eq_equiv : Equivalence eq.
+  Parameter eq_dec : forall x y : t, {x = y} + {x <> y}.
   
-  Module Info := SourceTarget(Loc).
-End Make.
+  Definition app (f : Loc.t -> Loc.t) (x : t) := tt : t.
+  
+  Declare Instance app_compat : Proper ((Loc.eq ==> Loc.eq) ==> eq ==> eq) app.
+  Parameter app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
+  Parameter app_compose : forall f g, Proper (Loc.eq ==> Loc.eq) f -> Proper (Loc.eq ==> Loc.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+End UnitSig.

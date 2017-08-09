@@ -8,14 +8,16 @@
 (*                                        *)
 (******************************************)
 
-Require Import MMaps.MMapInterface.
+
 Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
 Require Import RelationPairs.
-Require Import MMultiset.Preliminary.
-Require Import MMultisetInterface.
 Require Import Equalities.
+Require Import MMaps.MMapInterface.
+Require Import MMultiset.Preliminary.
+Require Import MMultiset.MMultisetInterface.
+
 
 Module FMultisets (MMap : WSfun) (E : DecidableType) : FMultisetsOn E.
 

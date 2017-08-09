@@ -1,10 +1,11 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
+      C. Auger, T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain 
+
+      PACTOLE project                                                      
+                                                                        
+      This file is distributed under the terms of the CeCILL-C licence     
+                                                                          *)
 (**************************************************************************)
 
 
@@ -283,7 +284,7 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
           let local_conf := Config.map (Config.app frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
           {| Config.loc := frame_change⁻¹ (r (Spect.from_config local_conf));
-             Config.info := Config.info (conf id) |}
+             Config.state := Config.state (conf id) |}
         end
     end.
 

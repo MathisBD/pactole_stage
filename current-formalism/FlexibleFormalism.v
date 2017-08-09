@@ -302,7 +302,7 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : Config.
           (* back to demon ref *)
           {| Config.loc := frame_change⁻¹ (if Rle_bool δ (Location.dist (frame_change⁻¹ chosen_target) loc)
                                     then chosen_target else local_target);
-             Config.info := loc.(Config.info) |}
+             Config.state := loc.(Config.state) |}
         end
     end.
 

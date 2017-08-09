@@ -276,7 +276,7 @@ Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 (* FIXME: the Info type should also carry the way to apply similarities on Info.t *)
 Definition apply_sim (sim : Sim.t) (infoR : Config.RobotConf) :=
   {| Config.loc := sim (Config.loc infoR);
-     Config.info := Info.app sim (Config.info infoR) |}.
+     Config.state := Info.app sim (Config.state infoR) |}.
 
 Instance apply_sim_compat : Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
 Proof.
@@ -319,7 +319,7 @@ Definition round (r : robogram) (da : demonic_action) (conf : Config.t) : Config
           let local_conf := Config.map (Config.app frame_change) conf in
           (* apply r on spectrum + back to demon ref. *)
           {| Config.loc := frame_change⁻¹ (r (Spect.from_config local_conf));
-             Config.info := Config.info (conf id) |}
+             Config.state := Config.state (conf id) |}
         end
     end.
 

@@ -66,7 +66,7 @@ rewrite <- moving_spec, Hmove in Heq. inversion Heq.
 Qed.
 
 (** The full information for a robot only depends on its location. *)
-Definition mk_info l := {| Config.loc := l; Config.info := tt |}.
+Definition mk_info l := {| Config.loc := l; Config.state := tt |}.
 
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots

@@ -44,6 +44,7 @@ FiniteGraphFormalism.v
 DiscreteGraphFormalismSSync.v
 
 ## Spectra
+PointedMultisetSpectrum.v
 MultisetSpectrum.v
 SetSpectrum.v
 LimitedSetSpectrum.v
@@ -63,20 +64,21 @@ Gathering/FlexDefinitions.v
 Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
 ## Case Study: Ring Exploration
-Exploration/ZnZ/test_modulo.v
-Exploration/ZnZ/Definitions.v
-Exploration/ZnZ/ImpossibilityKDividesN.v
 Exploration/Graph/GraphFromZnZ.v
 Exploration/Graph/Definitions.v
-Exploration/Graph/ImpossibilityKDividesN.v
 Exploration/Graph/DefinitionsSSync.v
 Exploration/Graph/ImpossibilityKDividesNSSync.v
+Exploration/Graph/TowersSSync.v
 
 ## Files Commented out
+#Exploration/Graph/ImpossibilityKDividesN.v
+#Exploration/ZnZ/test_modulo.v
+#Exploration/ZnZ/Definitions.v
+#Exploration/ZnZ/ImpossibilityKDividesN.v
 #GraphEquivalence.v
 #Gathering/Impossibility.v
 #ASyncFormalism.v
 #GraphRigidFormalism.v
 #Exploration/Graph/ImpossibilityKNotPrimeN.v
-#Exploration/Graph/TowersSSync.v
 #Exploration/Graph/Towers.v
+

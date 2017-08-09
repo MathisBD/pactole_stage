@@ -1,10 +1,11 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
+     T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain               
+                                                                            
+     PACTOLE project                                                        
+                                                                            
+     This file is distributed under the terms of the CeCILL-C licence       
+                                                                          *)
 (**************************************************************************)
 
 
@@ -32,20 +33,20 @@ Module DGF (Graph : GraphDef)
            (N : Size)
            (Names : Robots(N))
            (LocationA : LocationADef(Graph))
-           (MkInfoA : InfoSig(Graph)(LocationA))
-           (ConfigA : Configuration(LocationA)(N)(Names)(MkInfoA.Info))
-           (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
+           (InfoA : SourceTargetSig(LocationA))
+           (ConfigA : Configuration(LocationA)(N)(Names)(InfoA))
+           (SpectA : Spectrum(LocationA)(N)(Names)(InfoA)(ConfigA))
            (Import Iso : Iso(Graph)(LocationA)).
-
-
+  
+  
   (* They come from the common part as they are shared by AGF and DGF. *)
-  Module InfoA := MkInfoA.Info.
   Module Location := LocationA.
   Module Info := InfoA.
   Module Config := ConfigA.
   Module Spect :=  SpectA.
-
-
+  
+  Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
+  
   Record robogram :=
     {
       pgm :> Spect.t -> Location.t -> Location.t;
@@ -54,12 +55,12 @@ Module DGF (Graph : GraphDef)
           exists lpost e, pgm spect lpre = lpost
                           /\ (opt_eq Graph.Eeq (Graph.find_edge lpre lpost) (Some e))
     }.
-
+  
   (* pgm s l a du dens si l est dans dans s (s[l] > 0)
      si l n'est pas occupée par un robot, on doit revoyer un voisin (à cause de pgm_range). *)
   
   Global Existing Instance pgm_compat.
-
+  
   Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq ==> Location.eq)%signature r1 r2.
   
   Instance req_equiv : Equivalence req.
@@ -79,9 +80,9 @@ Module DGF (Graph : GraphDef)
   
   (** Now we can [execute] some robogram from a given configuration with a [demon] *)
   Definition execution := Stream.t Config.t.
- 
+  
   Definition eeq : execution -> execution -> Prop := Stream.eq Config.eq.
-
+  
   Instance eeq_equiv : Equivalence eeq.
   Proof.
     split.
@@ -104,9 +105,9 @@ Module DGF (Graph : GraphDef)
   (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
   Inductive Active_or_Moving := 
-  | Moving (dist : bool)                   (* moving ratio, le cas "false" facilite l'équivalence entre les modèles. *)
-  | Active (sim : Iso.t).                  (* change of referential *)
-
+  | Moving (dist : bool)              (* moving ratio, the model equivalence uses the "false" case *)
+  | Active (sim : Iso.t).             (* change of referential *)
+  
   Definition Aom_eq (a1 a2: Active_or_Moving) :=
     match a1, a2 with
     | Moving d1, Moving d2 => d1 = d2
@@ -133,7 +134,7 @@ Module DGF (Graph : GraphDef)
       step : Names.ident -> Config.RobotConf -> Active_or_Moving;
       step_delta : forall g Rconfig sim,
           Aom_eq (step (Good g) Rconfig) (Active sim) ->
-          Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Info.target);
+          Location.eq Rconfig.(Config.loc) Rconfig.(Config.state).(Info.target);
       step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step
     }.
   Set Implicit Arguments.
@@ -207,8 +208,10 @@ Module DGF (Graph : GraphDef)
          We could use :
          1) bool in da, 2 states for robots (Loc / MoveTo)
          2) 3 states in da (Compute, Move, Wait), 2 states for robots *)
-  Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
-
+  
+(* No need of apply_sim: use instead Config.app
+   Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf). *)
+  
   Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
     (** for a given robot, we compute the new configuration *)
     fun id =>
@@ -219,8 +222,8 @@ Module DGF (Graph : GraphDef)
       | Moving true =>
         match id with
         | Good g =>
-          let tgt := rconf.(Config.info).(Info.target) in
-          {| Config.loc := tgt ; Config.info := rconf.(Config.info) |}
+          let tgt := rconf.(Config.state).(Info.target) in
+          {| Config.loc := tgt ; Config.state := rconf.(Config.state) |}
         | Byz b => rconf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
@@ -232,8 +235,8 @@ Module DGF (Graph : GraphDef)
           let target := (sim⁻¹).(Iso.sim_V) local_target in
 (* This if is unnecessary: with the invariant on da: inside rconf, loc = target *)
 (*           if (Location.eq_dec (target) pos) then rconf else *)
-          {| Config.loc := pos ; 
-             Config.info := {| Info.source := pos ; Info.target := target|} |}
+          {| Config.loc := pos ;
+             Config.state := {| Info.source := pos ; Info.target := target|} |}
         end
       end.
   
@@ -275,17 +278,6 @@ Module DGF (Graph : GraphDef)
       apply Config.app_compat.
       apply Hstep.
       apply Hconf.
-(*       destruct (Location.eq_dec
-         ((Iso.sim_V (sim ⁻¹))
-            (r1 (Spect.from_config (Config.map (Config.app sim) conf1))
-               (Config.loc (Config.map (Config.app sim) conf1 (Good g)))))
-         (Config.loc (conf1 (Good g)))),
-       (Location.eq_dec
-         ((Iso.sim_V (sim0 ⁻¹))
-            (r2 (Spect.from_config (Config.map (Config.app sim0) conf2))
-               (Config.loc (Config.map (Config.app sim0) conf2 (Good g)))))
-         (Config.loc (conf2 (Good g)))).
-      now apply Hconf. *)
       repeat split; simpl; f_equiv; try apply Hconf; [|].
       - now f_equiv.
       - apply Hr. repeat (f_equiv; trivial). now do 2 f_equiv.
@@ -310,9 +302,9 @@ Module DGF (Graph : GraphDef)
     cofix proof. constructor. simpl. assumption.
     apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
   Qed.
-
+  
   (** ** Fairness *)
-
+  
   (* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        changer execution en un (execute r d config) 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -370,13 +362,13 @@ Module DGF (Graph : GraphDef)
                                                             (Good h)))
                            (Moving dist)) ->
       Between g h (Stream.tl d) r (Stream.tl e) k -> Between g h d r e k.
-
+  
   (* k-fair: every robot g is activated within at most k activation of any other robot h *)
   CoInductive kFair k (d : demon) r e: Prop :=
     AlwayskFair : (forall g h, Between g h d r e k) ->
                   kFair k (Stream.tl d)r  (Stream.tl e) ->
                   kFair k d r e.
-
+  
   Lemma LocallyFairForOne_compat_aux : forall g d1 d2 e1 e2 r1 r2,
       deq d1 d2 -> eeq e1 e2 -> req r1 r2 -> 
       LocallyFairForOne g d1 r1 e1 -> LocallyFairForOne g d2 r2 e2.
@@ -402,11 +394,11 @@ Module DGF (Graph : GraphDef)
       apply IHHfair;
       now f_equiv.
   Qed.
-
+  
   Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> req ==> eeq ==> iff) LocallyFairForOne.
   Proof.
     repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
-
+  
   Lemma Fair_compat_aux : forall d1 d2 e1 e2 r1 r2,
       deq d1 d2 -> eeq e1 e2 -> req r1 r2 -> Fair d1 r1 e1 -> Fair d2 r2 e2.
   Proof.
@@ -415,10 +407,10 @@ Module DGF (Graph : GraphDef)
     + intros. now rewrite <- Hdeq, <- Heeq, <- Hreq.
     + eapply be_fair; try eassumption; now f_equiv.
   Qed.
-
+  
   Instance Fair_compat : Proper (deq ==> req ==> eeq ==> iff) Fair.
   Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
-
+  
   Lemma Between_compat_aux : forall g h k d1 d2 r1 r2 e1 e2,
       deq d1 d2 -> eeq e1 e2 -> req r1 r2 ->
       Between g h d1 r1 e1 k -> Between g h d2 r2 e2 k.
@@ -448,10 +440,10 @@ Module DGF (Graph : GraphDef)
         rewrite <- da_eq_step_Moving; try eassumption. now f_equiv.
     - apply IHbet; now f_equiv.
   Qed.
-
+  
   Instance Between_compat : Proper (eq ==> eq ==> deq ==> req ==> eeq ==> eq ==> iff) Between.
   Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
-
+  
   Lemma kFair_compat_aux : forall k d1 d2 r1 r2 e1 e2,
       deq d1 d2 -> req r1 r2 -> eeq e1 e2 -> kFair k d1 r1 e1 -> kFair k d2 r2 e2.
   Proof.
@@ -460,10 +452,10 @@ Module DGF (Graph : GraphDef)
     + intros. now rewrite <- Hdeq, <- Heeq, <- Hreq.
     + eapply be_fair; try eassumption; now f_equiv.
   Qed.
-
+  
   Instance kFair_compat : Proper (eq ==> deq ==> req ==> eeq ==> iff) kFair.
   Proof. repeat intro. subst. split; intro; now eapply kFair_compat_aux; eauto. Qed.
-
+  
   Lemma Between_LocallyFair : forall g (d : demon) h r e k,
       Between g h d r e k -> LocallyFairForOne g d r e.
   Proof.
@@ -472,7 +464,7 @@ Module DGF (Graph : GraphDef)
     now constructor 2.
     now constructor 2.
   Qed.
-
+  
   (** A robot is never activated before itself with a fair demon! The
     fairness hypothesis is necessary, otherwise the robot may never be
     activated. *)
@@ -483,7 +475,7 @@ Module DGF (Graph : GraphDef)
     now constructor 1.
     now constructor 3.
   Qed.
-
+  
   (** A k-fair demon is fair. *)
   Theorem kFair_Fair : forall k (d : demon) r e, kFair k d r e -> Fair d r e.
   Proof.
@@ -492,7 +484,7 @@ Module DGF (Graph : GraphDef)
     now apply Hbetween.
     apply (kfair_is_fair k). now destruct H.
   Qed.
-
+  
   (** [Between g h d k] is monotonic on [k]. *)
   Lemma Between_mon : forall g h (d : demon) r e k,
       Between g h d r e k -> forall k', (k <= k')%nat -> Between g h d r e k'.
@@ -504,7 +496,7 @@ Module DGF (Graph : GraphDef)
     constructor 2; assumption || now (apply IHHd; omega).
     constructor 3; assumption || now (apply IHHd; omega).
   Qed.
-
+  
   (** [kFair k d] is monotonic on [k] relation. *)
   Theorem kFair_mon : forall k (d: demon) r e,
       kFair k d r e -> forall k', (k <= k')%nat -> kFair k' d r e.
@@ -513,7 +505,7 @@ Module DGF (Graph : GraphDef)
     - intros. now apply Between_mon with k.
     - now apply (fair k).
   Qed.
-
+  
   Theorem Fair0 : forall d r e,
       (exists conf,
           eeq (execute r d conf) e) -> 
@@ -532,21 +524,21 @@ Module DGF (Graph : GraphDef)
     rewrite H in H1; now simpl in *.
     destruct H2; exists x. assumption.
   Qed.
-
+  
   (** ** Full synchronicity
-
+  
   A fully synchronous demon is a particular case of fair demon: all good robots
   are activated at each round. In our setting this means that the demon never
   return a null reference. *)
-
-
+  
+  
   (* (** A demon is fully synchronous for one particular good robot g at the first *)
-   (*     step. *) *)
+  (*     step. *) *)
   (*   Inductive FullySynchronousForOne g d:Prop := *)
   (*     ImmediatelyFair2: *)
   (*       (step (Stream.hd d) g) ≠ None →  *)
   (*       FullySynchronousForOne g d. *)
-
+  
   Definition StepSynchronism d e r : Prop := forall g,
       (exists conf,
           eeq (execute r d conf) e) -> 
