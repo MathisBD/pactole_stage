@@ -37,10 +37,10 @@ Context {Sloc : Setoid loc} {Eloc : EqDec Sloc}.
 Context {loc_RMS : @RealMetricSpace loc Sloc Eloc}.
 Context {RobotsDef : NamesDef} {Robots : Names}.
 
-Global Instance Info : Information loc _ _ Datatypes.unit _ _ := Unit _.
+Global Instance Info : Information loc Datatypes.unit := Unit _.
 
-Notation "!!" := (@spect_from_config loc _ _ Datatypes.unit _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation robogram := (@robogram loc Datatypes.unit _ _ _ _ _ Robots Info _).
+Notation "!!" := (@spect_from_config loc Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation robogram := (@robogram loc Datatypes.unit _ _ _ _ Info _ Robots _).
 Notation configuration := (@configuration loc Datatypes.unit _ _ _ _ _ _ _).
 Notation config_list := (@config_list loc Datatypes.unit _ _ _ _ _ _ _).
 Notation round := (@round loc Datatypes.unit _ _ _ _ _ _ _).
@@ -61,7 +61,6 @@ Qed.
 
 (** The full information for a robot only depends on its location. *)
 Definition mk_info l : loc * _ := (l, tt).
-
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)
@@ -126,7 +125,7 @@ Qed.
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall (config : configuration) l,
   (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
- := @spect_from_config_spec loc _ _ Datatypes.unit _ _ _ _ _ _.
+ := @spect_from_config_spec loc Datatypes.unit _ _ _ _ _ _ _ _.
 
 Lemma spect_non_nil : 2 <= nG -> forall config : configuration, ~!! config == MMultisetInterface.empty.
 Proof.

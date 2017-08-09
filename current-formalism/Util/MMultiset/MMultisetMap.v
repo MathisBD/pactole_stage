@@ -9,14 +9,15 @@
 (******************************************)
 
 
-Require Import MMapInterface.
 Require Import Arith_base.
 Require Import Omega.
 Require Import PArith.
 Require Import RelationPairs.
-Require Import Pactole.Util.MMultiset.Preliminary.
-Require Import Pactole.Util.MMultisetInterface.
 Require Import Equalities.
+Require Import MMaps.MMapInterface.
+Require Import Pactole.Util.MMultiset.Preliminary.
+Require Import Pactole.Util.MMultiset.MMultisetInterface.
+
 
 Module FMultisets (MMap : Sfun) (E : OrderedType) : Sord E.
 

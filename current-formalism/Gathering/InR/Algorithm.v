@@ -51,9 +51,9 @@ Existing Instance R_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R _ _ Datatypes.unit _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation spectrum := (@spectrum R _ _ Datatypes.unit _ _ Info _ MyRobots  _).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ _ MyRobots (Unit _) _).
+Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info _ MyRobots  _).
+Notation robogram := (@robogram R Datatypes.unit _ _ _ _ _ MyRobots Info _).
 Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
 Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
 Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).

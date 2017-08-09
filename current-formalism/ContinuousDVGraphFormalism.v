@@ -31,23 +31,15 @@ Module CGF (Graph : GraphDef)
            (N : Size)
            (Names : Robots(N))
            (LocationA : LocationADef(Graph))
-           (MkInfoA : InfoSig(Graph)(LocationA))
-           (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
-           (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
+           (InfoA : SourceTargetSig(LocationA))
+           (ConfigA : Configuration (LocationA)(N)(Names)(InfoA))
+           (SpectA : Spectrum(LocationA)(N)(Names)(InfoA)(ConfigA))
            (Import Iso : Iso(Graph)(LocationA)).
   
-  Module InfoA := MkInfoA.Info.
-  
-  (** For spectra *)
-  Module View : DecidableType with Definition t := ConfigA.t with Definition eq := ConfigA.eq.
-    Definition t := ConfigA.t.
-    Definition eq := ConfigA.eq.
-    Definition eq_equiv := ConfigA.eq_equiv.
-    Definition eq_dec := ConfigA.eq_dec.
-  End View.
+  Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
   
   
-  (** * Projection function*)
+  (** *  Projection function  **)
 
   Open Scope R_scope.
 
@@ -322,7 +314,7 @@ Module CGF (Graph : GraphDef)
       | Loc l => config id
       | Mvt e p => {| Config.loc := Loc (if Rle_dec (project_p p) (Graph.threshold e) 
                                          then Graph.src e else Graph.tgt e);
-                      Config.info := Config.info (config id) |}
+                      Config.state := Config.state (config id) |}
       end.
   
   Instance project_compat : Proper (Config.eq ==> Config.eq) project.
@@ -335,14 +327,14 @@ Module CGF (Graph : GraphDef)
           eqn : Hloc1,
                 (Config.loc (c2 id))
                   eqn : Hloc2,
-                        (Info.source (Config.info (c1 id)))
+                        (Info.source (Config.state (c1 id)))
                           eqn : Hsrc1,
-                                (Info.source (Config.info (c2 id)))
+                                (Info.source (Config.state (c2 id)))
                                   eqn : Hsrc2,
-                                        (Info.target (Config.info (c1 id)))
+                                        (Info.target (Config.state (c1 id)))
                                           eqn : Htgt1,
                                                 (Info.target
-                                                   (Config.info (c2 id)))
+                                                   (Config.state (c2 id)))
                                                   eqn : Htgt2; simpl;
           try rewrite Hloc1 in *; try rewrite Hloc2 in *; try rewrite Hsrc1 in *;
             try rewrite Hsrc2 in *; try rewrite Htgt1 in *; try rewrite Htgt2 in *;
@@ -388,12 +380,12 @@ Module CGF (Graph : GraphDef)
       + now apply Graph.tgt_compat.
   Qed.
 
-  Definition projectS (config : Config.t) : View.t :=
+  Definition projectS (config : Config.t) : ConfigA.t :=
     fun id =>
       {| ConfigA.loc := (projectS_loc (Config.loc (config id)));
-         ConfigA.info := 
-           {| InfoA.source := (projectS_loc (Info.source (Config.info (config id))));
-              InfoA.target := (projectS_loc (Info.target (Config.info (config id)))) |}
+         ConfigA.state := 
+           {| InfoA.source := (projectS_loc (Info.source (Config.state (config id))));
+              InfoA.target := (projectS_loc (Info.target (Config.state (config id)))) |}
       |}.
 
   Instance projectS_compat : Proper (Config.eq ==> ConfigA.eq) projectS.
@@ -516,7 +508,7 @@ Module CGF (Graph : GraphDef)
           Aom_eq (step (Good g) Rconfig) (Active sim) ->
           ((exists l, Location.eq Rconfig.(Config.loc) (Loc l)) /\
            Location.eq Rconfig.(Config.loc)
-                                 Rconfig.(Config.info).(Info.target));
+                                 Rconfig.(Config.state).(Info.target));
       step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
       step_flexibility : forall id config r,
           Aom_eq (step id config) (Moving r) -> (0 <= r <= 1)%R}.
@@ -611,7 +603,9 @@ Module CGF (Graph : GraphDef)
     | Loc l => Loc ((Iso.sim_V sim) l)
     end) in
     {| Config.loc := fpos (Config.loc infoR);
-       Config.info := Info.app fpos (Config.info infoR) |}.
+       Config.state :=
+         {| Info.source := fpos (Info.source (Config.state infoR));
+            Info.target := fpos (Info.target (Config.state infoR)) |} |}.
 
   Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==>
                                              Config.eq_RobotConf) apply_sim.
@@ -628,27 +622,25 @@ Module CGF (Graph : GraphDef)
       rewrite H0.
       simpl.
       now rewrite Hsim, H.
-    - destruct (Info.source (Config.info conf)),
-           (Info.source (Config.info conf')); try contradiction;
+    - destruct (Info.source (Config.state conf)),
+           (Info.source (Config.state conf')); try contradiction;
         simpl in *.
       * now rewrite Hsim, Hsrc.
       * destruct Hsrc.
         now rewrite Hsim, H, H0.
-    - destruct (Info.target (Config.info conf)),
-           (Info.target (Config.info conf')); try contradiction;
+    - destruct (Info.target (Config.state conf)),
+           (Info.target (Config.state conf')); try contradiction;
         simpl in *.
       * now rewrite Hsim, Htgt.
       * destruct Htgt.
         now rewrite Hsim, H, H0.
   Qed.
-  Global Notation "s ⁻¹" := (Iso.inverse s) (at level 99).
 
 
   (** [round r da conf] return the new configuration of robots (that is a function
       giving the configuration of each robot) from the previous one [conf] by applying
       the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
       is used for byzantine robots. *)
-
 
   Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
     (** for a given robot, we compute the new configuration *)
@@ -659,13 +651,13 @@ Module CGF (Graph : GraphDef)
       | Moving mv_ratio =>
         match pos, id with
         | Mvt e p, Good g => if Rle_dec 1%R ((project_p p) + mv_ratio)
-                             then {| Config.loc := Loc (Graph.tgt e); Config.info := Config.info conf |}
+                             then {| Config.loc := Loc (Graph.tgt e); Config.state := Config.state conf |}
                              else {| Config.loc := if Rdec mv_ratio 0 
                                                    then Mvt e p
                                                    else Mvt e (project_p_inv ((project_p p) + mv_ratio));
-                                     Config.info := Config.info conf |}
+                                     Config.state := Config.state conf |}
         | Loc l, Good g =>
-          let node_of_tgt := match Info.target (Config.info conf) with
+          let node_of_tgt := match Info.target (Config.state conf) with
                              | Loc lt => lt
                              | Mvt e _ => Graph.src e (* never used if we start from a
                                                                   "good conf" *)
@@ -678,8 +670,8 @@ Module CGF (Graph : GraphDef)
           then conf
           else
             if Rdec mv_ratio 1%R
-            then {| Config.loc := Info.target (Config.info conf);
-                                         Config.info := Config.info conf |}
+            then {| Config.loc := Info.target (Config.state conf);
+                                         Config.state := Config.state conf |}
             else
               let e := match Graph.find_edge l node_of_tgt with
                          | Some e => e
@@ -687,7 +679,7 @@ Module CGF (Graph : GraphDef)
                                                               "good conf" *)
                          end in
                 {| Config.loc := Mvt e (project_p_inv mv_ratio);
-                   Config.info := Config.info conf |}
+                   Config.state := Config.state conf |}
         | _, Byz b => conf
         end
       | Active sim => 
@@ -705,7 +697,7 @@ Module CGF (Graph : GraphDef)
           in
           if (Location.eq_dec (Loc target) pos) then conf else
           {| Config.loc := pos ; 
-             Config.info := {| Info.source := pos ; Info.target := Loc target|} |}
+             Config.state := {| Info.source := pos ; Info.target := Loc target|} |}
         end
       end.
   
@@ -725,16 +717,16 @@ Module CGF (Graph : GraphDef)
              (step da1 id (conf2 id)) eqn:He3,
              id as [ g| b];
       try (now elim Hstep); unfold Aom_eq in *; try now exfalso.
-    - assert (Location.eq (Info.target (Config.info (conf1 (Good g))))
-                          (Info.target (Config.info (conf2 (Good g)))))
+    - assert (Location.eq (Info.target (Config.state (conf1 (Good g))))
+                          (Info.target (Config.state (conf2 (Good g)))))
         by now apply Hconf.
       assert (Location.eq (Config.loc (conf1 (Good g)))
                           (Config.loc (conf2 (Good g))))
         by now apply Hconf.
       destruct (Config.loc (conf1 (Good g))) eqn:Hloc1,
                (Config.loc (conf2 (Good g))) eqn:Hloc2,
-               (Info.target (Config.info (conf1 (Good g)))) eqn:Htgt1,
-               (Info.target (Config.info (conf2 (Good g)))) eqn:Htgt2;
+               (Info.target (Config.state (conf1 (Good g)))) eqn:Htgt1,
+               (Info.target (Config.state (conf2 (Good g)))) eqn:Htgt2;
         try easy.
       + destruct (Graph.Veq_dec l1 l), (Graph.Veq_dec l2 l0); simpl in *; try easy.
         now destruct n; rewrite <- H, v, H0.
@@ -747,8 +739,8 @@ Module CGF (Graph : GraphDef)
           -- now f_equiv; simpl; try apply Hconf.
           -- now rewrite Hstep in e.
           -- now rewrite Hstep in n3.
-          -- destruct (Info.source (Config.info (conf1 (Good g)))) eqn:Hsrc1,
-                      (Info.source (Config.info (conf2 (Good g)))) eqn:Hsrc2,
+          -- destruct (Info.source (Config.state (conf1 (Good g)))) eqn:Hsrc1,
+                      (Info.source (Config.state (conf2 (Good g)))) eqn:Hsrc2,
                       Hrconf as (Hloc, (Hsrc, Htgt));
              rewrite Htgt1, Htgt2 in Htgt;
              rewrite Hloc1, Hloc2 in Hloc; rewrite Hsrc1, Hsrc2 in Hsrc;
@@ -775,10 +767,10 @@ Module CGF (Graph : GraphDef)
           -- now f_equiv; simpl; try apply Hconf.
           -- now rewrite Hstep in e1.
           -- now rewrite Hstep in n3.
-          -- destruct (Info.source (Config.info
+          -- destruct (Info.source (Config.state
                                         (conf1 (Good g))))
                       eqn : Hsrc1,
-                            (Info.source (Config.info
+                            (Info.source (Config.state
                                               (conf2 (Good g))))
                               eqn : Hsrc2;
                destruct Hrconf as (Hloc, (Hsrc, Htgt)); rewrite Htgt1, Htgt2 in Htgt;
@@ -1250,7 +1242,7 @@ Qed.
         Graph.find_edge l l' = Some e /\
         Config.eq_RobotConf (conf id)
                             {| Config.loc := Loc l;
-                               Config.info := {| Info.source := Loc l; Info.target := Loc l'|} |}.
+                               Config.state := {| Info.source := Loc l; Info.target := Loc l'|} |}.
 
 
   Lemma round_flow : forall rbg da g conf e p,
@@ -1293,8 +1285,8 @@ Qed.
   (** defintion of probleme *)
   Definition ri_loc_def (conf: Config.t) : Prop := forall g,
       exists v1 v2,
-        loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v1) /\
-        loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v2).
+        loc_eq (Info.source (Config.state (conf (Good g)))) (Loc v1) /\
+        loc_eq (Info.target (Config.state (conf (Good g)))) (Loc v2).
 
 
   (** it's true starting from the initial configuration *)
@@ -1311,7 +1303,7 @@ Qed.
              eqn: Hstep,
                   (Config.loc (conf (Good g)))
                     eqn : Hloc,
-                          (Info.target (Config.info (conf (Good g))))
+                          (Info.target (Config.state (conf (Good g))))
                             eqn : Htgt;
       try (destruct (Graph.Veq_dec l1 l0));
       try now simpl in *.
@@ -1377,7 +1369,7 @@ Qed.
              eqn : Hstep,
                    (Config.loc (conf (Good g)))
                      eqn : Hloc,
-                           (Info.target (Config.info (conf (Good g))))
+                           (Info.target (Config.state (conf (Good g))))
                              eqn : Htgt;
       try easy;
       try (destruct (Graph.Veq_dec l0 l)).
@@ -1444,16 +1436,16 @@ Qed.
   Definition group_good_def (conf: Config.t) : Prop := forall g,(
         ri_loc_def conf /\
         (forall v0, loc_eq (Config.loc (conf (Good g))) (Loc v0) -> 
-                    loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v0) \/
-                    loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v0)) /\
+                    loc_eq (Info.source (Config.state (conf (Good g)))) (Loc v0) \/
+                    loc_eq (Info.target (Config.state (conf (Good g)))) (Loc v0)) /\
         (forall v1 v2 e p,
-            loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v1) ->
-            loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v2) ->
+            loc_eq (Info.source (Config.state (conf (Good g)))) (Loc v1) ->
+            loc_eq (Info.target (Config.state (conf (Good g)))) (Loc v2) ->
             loc_eq (Config.loc (conf (Good g))) (Mvt e p) ->
             opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)) /\
         (forall v1 v2,
-            loc_eq (Info.source (Config.info (conf (Good g)))) (Loc v1) ->
-            loc_eq (Info.target (Config.info (conf (Good g)))) (Loc v2) ->
+            loc_eq (Info.source (Config.state (conf (Good g)))) (Loc v1) ->
+            loc_eq (Info.target (Config.state (conf (Good g)))) (Loc v2) ->
             exists e, (opt_eq Graph.Eeq (Graph.find_edge v1 v2) (Some e)))
 
        (* 
@@ -1478,20 +1470,20 @@ find_edge loc tgt = e
             ->
             (exists l, Location.eq (Config.loc (conf' (Good g))) (Loc l))
             ->
-            Location.eq (Info.source (Config.info (conf' (Good g))))
-                        (Info.target (Config.info (conf' (Good g))))
+            Location.eq (Info.source (Config.state (conf' (Good g))))
+                        (Info.target (Config.state (conf' (Good g))))
             ->
             (exists e ll lt,
                 Location.eq (Config.loc (conf' (Good g))) (Loc ll)
                 /\
-                Location.eq (Info.target (Config.info
+                Location.eq (Info.target (Config.state
                                               (conf' (Good g)))) (Loc lt)
                 /\
                 opt_eq Graph.Eeq
                        (Graph.find_edge ll lt)
                        (Some e))
             -> Location.eq (Config.loc (conf' (Good g)))
-                           (Info.source (Config.info (conf' (Good g))))*)).
+                           (Info.source (Config.state (conf' (Good g))))*)).
 
 
   Axiom AutoLoop : forall l, exists e, (Graph.find_edge l l) = Some e.
@@ -1511,7 +1503,7 @@ find_edge loc tgt = e
                  eqn: Hstep,
                       (Config.loc (conf (Good g)))
                         eqn : Hloc,
-                              (Info.target (Config.info (conf (Good g))))
+                              (Info.target (Config.state (conf (Good g))))
                                 eqn : Htgt;
         try now unfold round in *; simpl in *.
       intro v0.
@@ -1527,7 +1519,7 @@ find_edge loc tgt = e
         destruct (Rdec dist 1).
         simpl in *.
         now rewrite Htgt; right.
-        destruct (Info.target (Config.info (conf (Good g)))) eqn : Ht;
+        destruct (Info.target (Config.state (conf (Good g)))) eqn : Ht;
           try now simpl in *.
       + unfold round.
         rewrite Hstep in *.
@@ -1663,7 +1655,7 @@ find_edge loc tgt = e
                eqn: Hstep,
                     (Config.loc (conf (Good g)))
                       eqn : Hl,
-                            (Info.target (Config.info (conf (Good g))))
+                            (Info.target (Config.state (conf (Good g))))
                               eqn : Htgt;
       try easy.
     - destruct (Graph.Veq_dec l0 l).
@@ -1709,7 +1701,7 @@ find_edge loc tgt = e
                eqn: Hstep,
                     (Config.loc (conf (Good g)))
                       eqn : Hl,
-                            (Info.target (Config.info (conf (Good g))))
+                            (Info.target (Config.state (conf (Good g))))
                               eqn : Htgt;
       try easy.
     - destruct (Graph.Veq_dec l0 l). now rewrite Hl in Hl0.
@@ -1776,7 +1768,7 @@ find_edge loc tgt = e
                eqn : Hstep,
                      (Config.loc (conf (Good g)))
             as [l| e p] eqn : Hloc,
-               (Info.target (Config.info (conf (Good g))))
+               (Info.target (Config.state (conf (Good g))))
                  as [lt | ? ?] eqn : Htgt;
         try easy
         ; simpl in *.

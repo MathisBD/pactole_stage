@@ -1,16 +1,24 @@
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain              
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
+                                                                          *)
+(**************************************************************************)
+
+
 Require Import Utf8.
 Require Import Setoid.
 Require Import Equalities.
 Require Import Morphisms.
 Require Import Rbase Rbasic_fun.
+Require Import Psatz.
 Require Import Pactole.Preliminary.
 Require Import Pactole.Configurations.
 Require Import Pactole.Bijection.
 Require Import Pactole.CommonGraphFormalism.
-Require Import Reals.
-Require Import Psatz.
-
-
 Set Implicit Arguments.
 
 

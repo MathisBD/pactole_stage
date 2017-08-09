@@ -34,7 +34,7 @@ Context {RMS : @RealMetricSpace loc Sloc Eloc}.
 Context {Sinfo : Setoid info}.
 Context {Einfo : EqDec Sinfo}.
 Context {Ndef : NamesDef} {N : Names}.
-Context {Info : Information loc Sloc Eloc info Sinfo Einfo}.
+Context {Info : Information loc info}.
 Context {Spect : Spectrum loc info}.
 
 (* Notations to avoid typeclass resolution taking forever. *)

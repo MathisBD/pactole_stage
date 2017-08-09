@@ -7,6 +7,15 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
+     R. Pelle                                                               
+     PACTOLE project                                                        
+                                                                            
+     This file is distributed under the terms of the CeCILL-C licence.      
+                                                                          *)
+(**************************************************************************)
+
 
 Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
@@ -43,6 +52,9 @@ Axiom kdn : (n mod kG = 0)%nat.
 Axiom k_inf_n : (kG < n)%nat.
 Axiom k_sup_1 : (1 < kG)%nat.
 
+(** There is no meaningful information inside state. *)
+Lemma no_info : forall rc1 rc2, Loc.eq (Config.loc rc1) (Config.loc rc2) -> Config.eq_RobotConf rc1 rc2.
+Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
 
 (** There is no byzantine robot so we can simplify properties about identifiers and configurations. *)
 Lemma no_byz : forall (id : Names.ident) P, (forall g, P (Good g)) -> P id.
@@ -53,12 +65,11 @@ intros [g | b] P HP.
 Qed.
 
 Lemma no_byz_eq : forall config1 config2 : Config.t,
-  (forall g, Config.eq_RobotConf (config1 (Good g)) (config2 (Good g))) -> Config.eq config1 config2.
-Proof. intros config1 config2 Heq id. apply (no_byz id). intro g. apply Heq. Qed.
+  (forall g, Loc.eq (config1 (Good g)) (config2 (Good g))) -> Config.eq config1 config2.
+Proof. intros config1 config2 Heq id. apply (no_byz id). intro g. apply no_info, Heq. Qed.
 
 (** A dummy value used for (inexistant) byzantine robots. *)
-Definition dummy_val := {| Config.loc := Loc.origin;
-                           Config.info := {| Info.source := Loc.origin; Info.target := Loc.origin |} |}.
+Definition dummy_val := {| Config.loc := Loc.origin; Config.state := tt |}.
 
 
 Section Exploration.
@@ -80,8 +91,7 @@ Definition create_config1 (k : nat) (g : {n : nat | (n < k)%nat}) : Loc.t :=
 Definition config1 : Config.t :=
   fun id => match id with
               | Good g => let pos := create_config1 g in
-                          {| Config.loc :=  pos;
-                             Config.info := {| Info.source := pos; Info.target := pos |} |}
+                          {| Config.loc :=  pos; Config.state := tt |}
               | Byz b => dummy_val
             end.
 
@@ -106,10 +116,10 @@ inv Heq. revert_all. rewrite 2 Z.mod_small, 2 Nat2Z.id, Nat.mul_cancel_r; auto; 
 Qed.
 
 (**  Translating [config1] by multiples of [n / kG] does not change its spectrum. *)
-Lemma spect_trans_config1 : forall g : Names.G,
-  Spect.eq (!! (Config.map (Config.app (trans (create_config1 g))) config1)) (!! config1).
+Lemma spect_trans_config1 : forall (g : Names.G) l,
+  Spect.eq (!! (Config.map (apply_sim (trans (create_config1 g))) config1) l) (!! config1 l).
 Proof.
-intro g. unfold Spect.from_config. f_equiv. do 2 rewrite Config.list_spec, map_map.
+intros g l. unfold Spect.from_config. split; f_equiv. do 2 rewrite Config.list_spec, map_map.
 apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
 * apply map_injective_NoDupA with eq; autoclass; [|].
   + intros id1 id2 Heq. simpl in Heq. apply Loc.add_reg_r in Heq.
@@ -161,28 +171,17 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
     - rewrite InA_Leibniz. apply Names.In_names.
 Qed.
 
-
 Program Definition da : demonic_action := {|
   relocate_byz := fun _ => dummy_val;
-      step := fun id Rconfig =>
-                if Loc.eq_dec (Config.loc Rconfig) (Info.target (Config.info Rconfig))
-                then Active (trans (Config.loc Rconfig)) else Moving true |}.
+  step := fun id => Some (fun Rconfig => trans (Config.loc Rconfig)) |}.
 Next Obligation.
-revert_one Aom_eq. destruct_match; simpl; intuition.
-Qed.
-Next Obligation.
-intros [g1 | b1] [g2 | b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
-destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
-destruct (Loc.eq_dec (Config.loc rc1) (Info.target (Config.info rc1))),
-         (Loc.eq_dec (Config.loc rc2) (Info.target (Config.info rc2)));
-try (now auto); try now rewrite Hl_rc, Ht_rc in *.
-destruct b1. unfold K.nB in *. omega.
+repeat intro. now do 2 f_equiv.
 Qed.
 
 Definition bad_demon : demon := Stream.constant da.
 
 (** As all robots see the same spectrum, we take for instance the one at location [Loc.origin]. *)
-Definition move := pgm r (!! config1) Loc.origin.
+Definition move := pgm r (!! config1 Loc.origin).
 
 
 (** **  First case: robots do not move  **)
@@ -195,7 +194,6 @@ Hypothesis Hmove : Loc.eq move Loc.origin.
 Lemma round_id : Config.eq (round r da config1) config1.
 Proof.
 apply no_byz_eq. intro g. unfold round. simpl.
-destruct_match; try congruence; [].
 repeat split; []. cbn -[trans].
 rewrite spect_trans_config1. simpl. rewrite Loc.add_opp.
 change (Ring.Veq (Loc.add move (create_config1 g)) (create_config1 g)).
@@ -232,7 +230,7 @@ destruct (NeverVisited_config1 (reflexivity _)) as [pt Hpt].
 apply Hpt, Hw.
 Qed.
 
-Theorem no_exploration_idle : ~(forall d, FullSolExplorationStop r d).
+Theorem no_exploration_idle : ~(FullSolExplorationStop r).
 Proof.
 intros Habs.
 specialize (Habs bad_demon).
@@ -279,11 +277,10 @@ Qed.
 Lemma f_config_injective : forall k, injective Config.eq Config.eq (fun config => f_config config k).
 Proof.
 intros k config1 config2 Heq x.
-destruct (Heq x) as [Hloc [Hsrc Htgt]]. simpl in *.
+destruct (Heq x) as [Hloc _]. simpl in *.
 repeat split.
 + now apply Loc.add_reg_r in Hloc.
-+ now apply Loc.add_reg_r in Hsrc.
-+ now apply Loc.add_reg_r in Htgt.
++ now destruct (Config.state (config1 x)), (Config.state (config2 x)).
 Qed.
 
 Lemma f_config_is_id : forall k config, Config.eq (f_config config k) config <-> Loc.eq k Loc.origin.
@@ -335,14 +332,13 @@ Qed.
 
 (** Equivalent configurations produce the same spectrum hence the same answer from the robogram. *)
 
-Lemma config1_Spectre_Equiv : forall config1 config2,
+Lemma config1_spect_equiv : forall config1 config2,
   equiv_config config1 config2 ->
-  forall g, Spect.eq (!! (Config.map (Config.app (trans (Config.loc (config1 (Good g))))) config1))
-                     (!! (Config.map (Config.app (trans (Config.loc (config2 (Good g))))) config2)).
+  forall g l, Spect.eq (!! (Config.map (apply_sim (trans (Config.loc (config1 (Good g))))) config1) l)
+                       (!! (Config.map (apply_sim (trans (Config.loc (config2 (Good g))))) config2) l).
 Proof.
-intros config1 config2 [offset Hequiv] g.
+intros config1 config2 [offset Hequiv] g l.
 f_equiv. apply no_byz_eq. intro g'. simpl.
-repeat split; simpl;
 rewrite (Hequiv (Good g)), (Hequiv (Good g')); unfold f_config; simpl;
 rewrite Loc.opp_opp, Loc.opp_distr_add, <- Loc.add_assoc; f_equiv;
 setoid_rewrite Loc.add_comm at 2;
@@ -352,28 +348,12 @@ Qed.
 Theorem equiv_config_k_round : forall k config1 config2,
   equiv_config_k k config1 config2 -> equiv_config_k k (round r da config1) (round r da config2).
 Proof.
-unfold equiv_config_k. intros k config1 config2 Hequiv id.
-apply (no_byz id). clear id. intro g. unfold round. simpl.
-destruct (Loc.eq_dec (Config.loc (config2 (Good g))) (Info.target (Config.info (config2 (Good g)))))
-  as [Hcase | Hcase].
-+ (* da1 sets g as Active *)
-  assert (Loc.eq (Config.loc (config1 (Good g))) (Info.target (Config.info (config1 (Good g))))).
-  { rewrite (Hequiv (Good g)) in Hcase. simpl in Hcase. now apply Loc.add_reg_r in Hcase. }
-  unfold f_config. unfold Config.map at 2, Config.app at 2. simpl.
-  destruct_match; simpl; try contradiction; [].
-  repeat split; simpl; try apply Hequiv; [].
-  (* Only target is changed and we replace config1 with config2 *)
-  assert (Hspect := config1_Spectre_Equiv (ex_intro _ k Hequiv) g).
-  rewrite <- Hspect, (Hequiv (Good g)). clear Hspect. simpl.
-  rewrite Loc.opp_opp.
-  rewrite <- (Loc.add_assoc (pgm _ _ _)). f_equiv.
-  apply pgm_compat. f_equiv. now do 2 rewrite Loc.add_opp.
-+ (* da1 sets g as Moving *)
-  assert (~Loc.eq (Config.loc (config1 (Good g))) (Info.target (Config.info (config1 (Good g))))).
-  { rewrite (Hequiv (Good g)) in Hcase. simpl in Hcase. intro Heq. apply Hcase. now rewrite Heq. }
-  unfold f_config. unfold Config.map at 1, Config.app at 1. simpl.
-  destruct_match; simpl; try contradiction; [].
-  repeat split; simpl; apply Hequiv.
+unfold equiv_config_k. intros k config1 config2 Hequiv.
+apply no_byz_eq. intro g. simpl. unfold Config.map, apply_sim. simpl.
+assert (Hspect := config1_spect_equiv (ex_intro _ k Hequiv) g).
+rewrite <- Hspect, (Hequiv (Good g)). clear Hspect. simpl.
+rewrite Loc.opp_opp, <- (Loc.add_assoc (pgm _ _)). f_equiv.
+apply pgm_compat. f_equiv. now do 2 rewrite Loc.add_opp.
 Qed.
 
 Corollary equiv_config_round : forall config1 config2, equiv_config config1 config2 ->
@@ -427,8 +407,8 @@ intros k s1 s2 Hequiv. unfold stop_now. destruct Hequiv as [Hequiv [Hequiv' Hlat
 unfold Stream.instant2, equiv_config_k in *.
 rewrite Hequiv, Hequiv'. split; intro Heq.
 + now rewrite Heq.
-+ apply no_byz_eq. intro g. specialize (Heq (Good g)).
-  destruct Heq as [Heql [Heqs Heqt]]. simpl in *.
++ apply no_byz_eq. intro g. apply no_info. specialize (Heq (Good g)).
+  destruct Heq as [Heql Heq2]. simpl in *.
   repeat split; eapply Loc.add_reg_r; eassumption.
 Qed.
 
@@ -466,37 +446,19 @@ Section DoesMove.
 
 Hypothesis Hmove : ~Loc.eq move Loc.origin.
 
-(** After two rounds, the configuration obtained from config1 is equivalent to config1. *)
-Lemma round_round : Config.eq (round r da (round r da config1)) (f_config config1 move).
+(** After one round, the configuration obtained from config1 is equivalent to config1. *)
+Lemma round_equiv : Config.eq (round r da config1) (f_config config1 move).
 Proof.
-assert (Hstep1 : forall id, step da id (config1 id) = Active (trans (Config.loc (config1 id)))).
-{ intro id. apply (no_byz id). clear id. intro g. simpl. destruct_match; congruence. }
-assert (Hstep2 : forall id, step da id (round r da config1 id) = Moving true).
-{ intro id. apply (no_byz id). clear id. intro g. unfold round.
-  specialize (Hstep1 (Good g)). destruct_match; try discriminate; []. inv Hstep1. cbn -[trans].
-  destruct_match; trivial; []. exfalso. revert e.
-  rewrite spect_trans_config1. unfold trans. simpl. rewrite Loc.add_opp.
-  rewrite <- Loc.add_origin at 1. rewrite Loc.add_comm at 1.
-  intro Heq. apply Loc.add_reg_r in Heq. symmetry in Heq. now revert Heq. }
-apply no_byz_eq. intro g.
-specialize (Hstep1 (Good g)). specialize (Hstep2 (Good g)).
-(* unfold the second copy of round *)
-unfold f_config, round at 1, Config.map at 1.
-destruct_match; try discriminate; []. inv Hstep2.
-(* unfold the first copy of round *)
-unfold round. destruct_match; try discriminate; []. inv Hstep1. cbn -[trans].
-repeat split; cbn -[trans].
-- rewrite spect_trans_config1. simpl. now rewrite Loc.add_opp, Loc.opp_opp, Loc.add_comm.
-- (* Wrong for source *) admit.
-- rewrite spect_trans_config1. simpl. now rewrite Loc.add_opp, Loc.opp_opp, Loc.add_comm.
-Admitted. (* round_round is wrong if the info contains the source *)
+apply no_byz_eq. intro g. simpl.
+now rewrite spect_trans_config1, Loc.add_opp, Loc.opp_opp, Loc.add_comm.
+Qed.
 
-Corollary round_config1 : equiv_config_k move config1 (round r da (round r da config1)).
-Proof. apply round_round. Qed.
+Corollary round_config1 : equiv_config_k move config1 (round r da config1).
+Proof. apply round_equiv. Qed.
 
 Corollary AlwaysEquiv_config1 :
-  AlwaysEquiv move (execute r bad_demon config1) (Stream.tl (Stream.tl (execute r bad_demon config1))).
-Proof. apply execute_equiv_compat, round_round. Qed.
+  AlwaysEquiv move (execute r bad_demon config1) (Stream.tl (execute r bad_demon config1)).
+Proof. apply execute_equiv_compat, round_equiv. Qed.
 
 (** An execution that is always moving cannot stop. *)
 Lemma AlwaysMoving_not_WillStop : forall e, AlwaysMoving e -> ~Will_stop e.
@@ -512,29 +474,18 @@ Lemma config1_AlwaysMoving : AlwaysMoving (execute r bad_demon config1).
 Proof.
 generalize (AlwaysEquiv_refl (execute r bad_demon config1)).
 generalize Loc.origin, (execute r bad_demon config1) at 1 3.
-cofix Hrec. intros k e Hequiv. constructor; [| constructor].
+cofix Hrec. intros k e Hequiv. constructor.
 + rewrite Hequiv. intros [Hstop _].
-  unfold stop_now in Hstop. simpl in Hstop.
-  assert (Heq : Config.eq (round r da (round r da config1)) config1) by now rewrite <- 2 Hstop.
-  rewrite round_round, f_config_is_id in Heq. contradiction.
-+ apply AlwaysEquiv_tl in Hequiv. (* same proof as before, just translated by one round *)
-  rewrite Hequiv. intros [Hstop _].
-  unfold stop_now in Hstop. simpl in Hstop.
-  rewrite round_round in Hstop.
-  assert (Hround : equiv_config config1 (round r da config1)).
-  { exists move. apply Hstop. }
-  apply equiv_config_k_round in Hstop. unfold equiv_config_k in Hstop.
-  rewrite round_round in Hstop. apply f_config_injective in Hstop.
-  assert (Heq : Config.eq (round r da (round r da config1)) config1) by now rewrite <- 2 Hstop.
-  rewrite round_round, f_config_is_id in Heq. contradiction.
+  unfold Stall in Hstop. simpl in Hstop. symmetry in Hstop.
+  rewrite round_equiv, f_config_is_id in Hstop. contradiction.
 + apply (Hrec (Loc.add k (Loc.opp move))). clear Hrec.
-  apply AlwaysEquiv_trans with (Stream.tl (Stream.tl (execute r bad_demon config1))).
-  - now destruct Hequiv as [? [? ?]].
+  apply AlwaysEquiv_trans with (Stream.tl (execute r bad_demon config1)).
+  - now destruct Hequiv as [? ?].
   - apply AlwaysEquiv_sym, AlwaysEquiv_config1.
 Qed.
 
 (** Final theorem when robots move. *)
-Theorem no_exploration_moving : ~(forall d, FullSolExplorationStop r d).
+Theorem no_exploration_moving : ~(FullSolExplorationStop r).
 Proof.
 intros Habs.
 specialize (Habs bad_demon).
@@ -549,7 +500,7 @@ End DoesMove.
 (** Final theorem combining both cases:
     In the asynchronous model, if the number of robots [kG] divides the size [n] of the ring,
     then the exploration with stop of a n-node ring is not possible. *)
-Theorem no_exploration : ~(forall d, FullSolExplorationStop r d).
+Theorem no_exploration : ~(FullSolExplorationStop r).
 Proof.
 destruct (Loc.eq_dec move Loc.origin) as [Hmove | Hmove].
 + now apply no_exploration_idle.

@@ -36,7 +36,7 @@ Context {Sinfo : Setoid info}.
 Context {Einfo : EqDec Sinfo}.
 Context {RMS : @RealMetricSpace loc Sloc Eloc}.
 Context {Ndef : NamesDef} {N : Names}.
-Context {Info : Information loc Sloc Eloc info Sinfo Einfo}.
+Context {Info : Information loc info}.
 Context {Spect : Spectrum loc info}.
 
 
@@ -302,89 +302,41 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : configu
 
 Global Instance round_compat : Proper (Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
-intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id. subst. unfold round.
+intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id.
+subst. unfold round.
 assert (Hstep := step_da_compat Hda (reflexivity id)).
-destruct (step da1 id) as [[f1 mvr1] |] eqn:Hstep1,
-         (step da2 id) as [[f2 mvr2] |] eqn:Hstep2, id; try (now elim Hstep); [|].
-* destruct Hstep as [Hstep Hstep']. unfold RelCompFun in *. simpl in Hstep, Hstep'. subst.
-(* =======
-intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id. subst.
-unfold req in Hr. unfold round.
-assert (Hstep := step_da_compat Hda (reflexivity id)).
-destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try now elim Hstep.
-+ destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
-  split; try apply Hconfig; [].
->>>>>>> new-names:dev_coq/current-formalism/FlexibleFormalism.v *)
-(* we lack some instances to be able to perform directly the correct rewrites
-SearchAbout Proper Spect.from_config.
-SearchAbout Proper Config.map.
-SearchAbout Proper Location.eq.
- *)
-(* <<<<<<< HEAD:dev_coq/current-formalism/Models/Flexible.v
-  specialize (Hstep (fst (config1 (Good g))) _ (reflexivity _)). simpl in Hstep.
-  assert (Heq : mul mvr2 (r1 (spect_from_config (map_config (f1 (fst (config1 (Good g)))) config1)))
-             == mul mvr2 (r2 (spect_from_config (map_config (f2 (fst (config2 (Good g)))) config2)))).
-  { apply mul_compat; trivial; [].
-    transitivity (r1 (spect_from_config (map_config (f2 (fst (config1 (Good g)))) config2)));
-    [| transitivity (r1 (spect_from_config (map_config (f2 (fst (config2 (Good g)))) config2)))].
-    - apply pgm_compat, spect_from_config_compat, map_config_compat; trivial; [].
-      intros ? ? ?. rewrite Hstep. now f_equiv.
-    - apply pgm_compat. f_equiv. apply map_config_compat.
-    - f_equiv.
-
- ; try apply Hconfig. apply Hconfig.
-    - apply Hr. }
-
-
- with _ _ (fst (config2 (Good g))) in Heq.
-  rewrite Heq at 1.
-  destruct_match_eq Heq_bool;
-  destruct_match_eq Heq_bool';
-  rewrite Heq in Heq_bool; try rewrite Heq_bool in Heq_bool'; try discriminate.
-  rewrite (Hconfig (Good g)) at 2.
-  destruct (Rle_bool δ (dist
-              (mul mvr2 (r2 (spect_from_config (map_config (f2 (conf2 (Good g))) conf2))))
-              (conf2 (Good g)))) eqn:Heq.
-  + f_equiv.
-    - do 2 f_equiv. intro. apply Hstep, Hconf.
-    - apply mul_compat; trivial; [].
-      rewrite pgm_compat; try (now apply Hr); [].
-      apply spect_from_config_compat, map_config_compat; trivial; [].
-      intros ? ? ?. f_equiv; trivial; []. intro. apply Hstep, Hconf.
-  + f_equiv.
-    - do 2 f_equiv. intro. apply Hstep, Hconf.
-    - rewrite pgm_compat; try (now apply Hr); [].
-      apply spect_from_config_compat, map_config_compat; trivial; [].
-      intros ? ? ?. f_equiv; trivial; []. intro. apply Hstep, Hconf.
-* rewrite Hda. reflexivity.
-======= *)
-Restart.
-intros ? δ ? r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id. subst. unfold round.
-assert (Hstep := step_da_compat Hda (reflexivity id)).
-destruct (step da1 id) as [[f1 mvr1] |], (step da2 id) as [[f2 mvr2] |], id; try now elim Hstep.
-+ destruct Hstep as [Hstep Hstep']. hnf in Hstep, Hstep'. simpl in Hstep, Hstep'. subst.
+destruct (step da1 id) as [[sim1 ratio1] |], (step da2 id) as [[sim2 ratio2] |], id; try (now elim Hstep); [|].
+* destruct Hstep as [Hstep Hratio]. unfold RelCompFun in Hstep, Hratio. cbn [fst snd] in Hstep, Hratio.
+  assert (Htest :
+      Rle_bool δ
+       (dist ((sim1 (fst (config1 (Good g))) ⁻¹)
+                (mul ratio1 (r1 (spect_from_config (map_config (sim1 (fst (config1 (Good g)))) config1)))))
+             (fst (config1 (Good g))))
+    = Rle_bool δ
+        (dist ((sim2 (fst (config2 (Good g))) ⁻¹)
+                 (mul ratio2 (r2 (spect_from_config (map_config (sim2 (fst (config2 (Good g)))) config2)))))
+              (fst (config2 (Good g))))).
+  { assert (Heq : fst (config1 (Good g)) == fst (config2 (Good g))) by now f_equiv; apply Hconfig.
+    f_equal. apply dist_compat; trivial; [].
+    apply Hstep in Heq. rewrite Heq. f_equiv. apply mul_compat; trivial; [].
+    etransitivity; try apply Hr; []. apply pgm_compat. f_equiv.
+    apply map_config_compat; trivial; []. apply Bijection.section_compat. }
   split; cbn [fst snd].
-(* try apply Hconfig; [].
-  assert (Hsimeq : f1 (fst (config1 (Good g))) == f2 (fst (config2 (Good g)))).
-  { apply Hstep. now apply Hconfig. }
-  assert (Heq : Location.eq
-            ((f1 (config1 (Good g)) ⁻¹) (Location.mul mvr2 (r1 (Spect.from_config
-                   (Config.map (Config.app (f1 (config1 (Good g)))) config1)))))
-            ((f2 (config2 (Good g)) ⁻¹) (Location.mul mvr2 (r2 (Spect.from_config
-                   (Config.map (Config.app (f2 (config2 (Good g)))) config2)))))).
-  { rewrite Hsimeq at 1. do 2 f_equiv. apply Hr. now do 3 f_equiv. }
-  rewrite Heq. rewrite (Hconfig (Good g)) at 2.
-  destruct (Rle_bool δ (Location.dist
-                          (((f2 (config2 (Good g)) ⁻¹)
-              (Location.mul mvr2 (r2 (Spect.from_config (Config.map (Config.app (f2 (config2 (Good g)))) config2))))))
-              (config2 (Good g)))) eqn:Heq'.
-  - assumption.
-  - rewrite Hsimeq at 1. simpl.
-    f_equiv. apply Hr. now do 3 f_equiv.
-+ rewrite Hda. reflexivity.
->>>>>>> new-names:dev_coq/current-formalism/FlexibleFormalism.v
-Qed. *)
-Admitted.
+  + f_equiv.
+    - do 2 f_equiv. apply Hstep. f_equiv. apply Hconfig.
+    - rewrite Htest. destruct_match_eq Hcase.
+      ++ apply mul_compat; trivial; [].
+         etransitivity; try apply Hr; [].
+         apply pgm_compat. f_equiv. apply map_config_compat; trivial; [].
+         intros x y Hxy. f_equiv; trivial; []. intro z. apply Hstep, Hconfig.
+      ++ etransitivity; try apply Hr; [].
+         apply pgm_compat. f_equiv. apply map_config_compat; trivial; [].
+         intros x y Hxy. f_equiv; trivial; []. intro z. apply Hstep, Hconfig.
+  + apply app_compat.
+    - do 2 f_equiv. apply Hstep. f_equiv. apply Hconfig.
+    - f_equiv. apply Hconfig.
+* now rewrite Hda.
+Qed.
 
 (** A third subset of robots, moving ones *)
 Definition moving δ r da config := List.filter
@@ -468,6 +420,6 @@ End FlexibleFormalism.
 (* 
  *** Local Variables: ***
  *** coq-prog-name: "coqtop" ***
- *** fill-column: 80 ***
+ *** fill-column: 117 ***
  *** End: ***
  *)

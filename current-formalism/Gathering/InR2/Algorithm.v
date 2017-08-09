@@ -68,10 +68,10 @@ Existing Instance R2_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R2 _ _ Datatypes.unit _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation "!!" := (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
 Notation "x == y" := (equiv x y).
-Notation spectrum := (@spectrum R2 _ _ Datatypes.unit _ _ Info _ MyRobots  _).
-Notation robogram := (@robogram R2 Datatypes.unit _ _ _ _ _ MyRobots (Unit _) _).
+Notation spectrum := (@spectrum R2 Datatypes.unit _ _ _ _ Info _ MyRobots  _).
+Notation robogram := (@robogram R2 Datatypes.unit _ _ _ _ Info _ MyRobots _).
 Notation configuration := (@configuration R2 Datatypes.unit _ _ _ _ Info _ _).
 Notation config_list := (@config_list R2 Datatypes.unit _ _ _ _ Info _ _).
 Notation round := (@round R2 Datatypes.unit _ _ _ _ _ _ _ Info _).
@@ -991,7 +991,6 @@ assert (Hperm : Permutation (List.map sim (support (max (!! config))))
 { rewrite  <- PermutationA_Leibniz. change eq with equiv.
   now rewrite <- map_sim_support, <- max_morph, spect_from_config_map. }
 assert (Hlen := Permutation_length Hperm).
-progress change (Unit _) with Info in *.
 destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax,
          (support (max (!! (map_config sim config)))) as [| pt1' [| pt2' l']];
 simpl in Hlen; discriminate || clear Hlen; [| |].
@@ -1431,7 +1430,7 @@ destruct (le_lt_dec ((!! config)[x]) 0); trivial; [].
 exfalso.
 destruct (@increase_move gatherR2 config da x)
   as [r_moving [Hdest_rmoving Hrmoving]].
-* change (Unit _) with Info in *. omega.
+* omega.
 * destruct (le_lt_dec 2 (length (support (max (!! config))))) as [Hle | Hlt].
   + rewrite destination_is_target in Hdest_rmoving.
     - now elim Heq.
@@ -3433,13 +3432,13 @@ revert config Hvalid Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
 induction locallyfair; intros config Hvalid Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H.
-  change (Unit _) with Info in *. apply Hmove in H. rewrite Habs in H. inv H.
+  apply Hmove in H. rewrite Habs in H. inv H.
 + destruct (moving gatherR2 (Stream.hd d) config) eqn:Hnil.
   - apply MoveLater. exact Hnil.
     rewrite (no_moving_same_config _ _ _ Hnil).
     apply (IHlocallyfair); trivial.
     now destruct Hfair.
-  - change (Unit _) with Info in *. apply MoveNow. rewrite Hnil. discriminate.
+  - apply MoveNow. rewrite Hnil. discriminate.
 Qed.
 
 (** Define one robot to get the location whenever they are gathered. *)

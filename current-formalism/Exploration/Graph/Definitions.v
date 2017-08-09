@@ -135,19 +135,16 @@ Module Loc <: DecidableType.
   Qed.
 End Loc.
 
-
 Module Iso := CommonIsoGraphFormalism.Make(Ring)(Loc). (* Careful! It also contains a module called Iso *)
-Module MkInfo := CommonGraphFormalism.Make(Ring)(Loc).
-Module Info := MkInfo.Info.
+Module Info := SourceTarget(Loc).
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
 Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
-Module DGF := DiscreteGraphFormalism.DGF(Ring)(N)(Names)(Loc)(MkInfo)(Config)(Spect)(Iso).
+Module DGF := DiscreteGraphFormalism.DGF(Ring)(N)(Names)(Loc)(Info)(Config)(Spect)(Iso).
 Export Iso DGF.
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
-
 
 Definition bij_trans_V (c : Loc.t) : Bijection.t Loc.eq.
 refine {|
@@ -159,13 +156,14 @@ abstract (intros x y; split; intro Heq;
 Defined.
 
 Definition bij_trans_E (c : Loc.t) : Bijection.t Ring.Eeq.
-  refine {|
-      Bijection.section := fun x =>  (Loc.add (fst x) (Loc.opp c), snd x);
-      Bijection.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
+refine {|
+  Bijection.section := fun x => (Loc.add (fst x) (Loc.opp c), snd x);
+  Bijection.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
 Proof.
 + abstract (intros ? ? Heq; hnf in *; simpl; destruct Heq as [Heq ?]; now rewrite Heq).
-+ abstract (intros x y; split; intro Heq; hnf in *; simpl in *;
-            now rewrite <- (proj1 Heq), <- Loc.add_assoc, ?(Loc.add_comm _ c), Loc.add_opp, Loc.add_origin).
++ abstract (intros x y; split; intros [Heqs Heqt]; unfold Loc.t in *; hnf in *; simpl in *; split;
+            solve [ now rewrite <- Heqs, <- Loc.add_assoc, ?(Loc.add_comm _ c), Loc.add_opp, Loc.add_origin
+                  | revert Heqt; repeat destruct_match; auto ]).
 Defined.
 
 (* Definition bij_trans_T := Isomorphism.bij_id Iso.Req_equiv. *)
@@ -201,7 +199,6 @@ Proof.
 * apply bT_crois.
 * apply bT_bound.
 Defined. (* TODO: abstract the proofs *)
-
 
 Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
@@ -281,7 +278,7 @@ forall config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (
 Definition ValidStartingConf conf :=
   (exists l : Loc.t,
     let m := Spect.from_config(conf) in
-    m[l] > 1) -> False.
+    (m[l] > 1))%nat -> False.
 
 Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
 Proof.
@@ -296,13 +293,5 @@ Definition ValidStartingConfSolExplorationStop (r : robogram) (d : demon) :=
     ValidStartingConf config -> 
     (forall l, Will_be_visited l (execute r d config)) /\
     Will_stop (execute r d config).
-
-Definition HasBeenVisited loc e :=
-  forall (conf : Config.t) r d,
-    e = execute r d conf -> 
-  exists conf_start,
-    let e_start := execute r d conf_start in
-    Stream.eventually (fun e1 => Config.eq (Stream.hd e1) conf) e_start
-    -> ((Spect.from_config(conf_start))[loc])>0.
 
 End ExplorationDefs.

@@ -1,11 +1,13 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain , R. Pelle                 *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, R. Pelle , L. Rieg, X. Urbain                          
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
+                                                                          *)
 (**************************************************************************)
+
 
 Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
@@ -137,18 +139,17 @@ End Loc.
 
 
 Module Iso := CommonIsoGraphFormalism.Make(Ring)(Loc). (* Careful! It also contains a module called Iso *)
-Module MkInfo := CommonGraphFormalism.Make(Ring)(Loc).
-Module Info := MkInfo.Info.
+Module Info := Unit(Loc).
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
-Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
-Module DGF := DiscreteGraphFormalism.DGF(Ring)(N)(Names)(Loc)(MkInfo)(Config)(Spect)(Iso).
+Module Spect := PointedMultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
+Module DGF := DGF(Ring)(N)(Names)(Loc)(Info)(Config)(Spect)(Iso).
 Export Iso DGF.
 
-Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
+Notation "s [ pt ]" := (Spect.M.multiplicity pt s) (at level 5, format "s [ pt ]").
 Notation "!!" := Spect.from_config (at level 1).
 Add Search Blacklist "Spect.M" "Ring".
 
-
+(** Definition of the isomorphism of translation on the ring *)
 Definition bij_trans_V (c : Loc.t) : Bijection.t Loc.eq.
 refine {|
   Bijection.section := fun x => (Loc.add x (Loc.opp c));
@@ -164,8 +165,9 @@ Definition bij_trans_E (c : Loc.t) : Bijection.t Ring.Eeq.
       Bijection.retraction := fun x => (Loc.add (fst x) c, snd x) |}.
 Proof.
 + abstract (intros ? ? Heq; hnf in *; simpl; destruct Heq as [Heq ?]; now rewrite Heq).
-+ abstract (intros x y; split; intro Heq; hnf in *; simpl in *;
-            now rewrite <- (proj1 Heq), <- Loc.add_assoc, ?(Loc.add_comm _ c), Loc.add_opp, Loc.add_origin).
++ abstract (intros x y; split; intros [Heqs Heqt]; unfold Loc.t in *; hnf in *; simpl in *; split;
+            solve [ now rewrite <- Heqs, <- Loc.add_assoc, ?(Loc.add_comm _ c), Loc.add_opp, Loc.add_origin
+                  | revert Heqt; repeat destruct_match; auto ]).
 Defined.
 
 (* Definition bij_trans_T := Isomorphism.bij_id Iso.Req_equiv. *)
@@ -202,7 +204,6 @@ Proof.
 * apply bT_bound.
 Defined. (* TODO: abstract the proofs *)
 
-
 Instance trans_compat : Proper (Loc.eq ==> Iso.eq) trans.
 Proof.
 intros c1 c2 Hc. unfold Iso.eq, trans. simpl in *.
@@ -220,7 +221,7 @@ split; [| split].
 + intros x y Heq. rewrite Heq. hnf. cbn. (* bij_trans_T is a still parameter... *) admit.
 Admitted.
 
-(* Module Export Common := CommonFormalism.Make(Loc)(N)(Names)(Config)(Spect). *)
+
 Definition is_visited (loc : Loc.t) (config : Config.t) :=
   exists g, Loc.eq (config (Good g)) loc.
 
@@ -238,16 +239,19 @@ Definition Will_be_visited (loc : Loc.t) (e : execution) : Prop :=
 Definition stop_now (e : execution) :=
   Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
 
-Instance stop_now_compat : Proper (eeq ==> iff) stop_now.
+Definition Stall (e : execution) :=
+    Config.eq (Stream.hd e) (Stream.hd (Stream.tl e)).
+
+Instance Stall_compat : Proper (eeq ==> iff) Stall.
 Proof.
 intros e1 e2 He. split; intros Hs;
-unfold stop_now in *.
+unfold Stall in *.
 now rewrite <- He.
 now rewrite He.
 Qed.
 
 Definition Stopped (e : execution) : Prop :=
-  Stream.forever (stop_now) e.
+  Stream.forever (Stall) e.
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.
@@ -258,10 +262,9 @@ intros e1 e2 He. split; revert e1 e2 He ; coinduction rec.
 - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
 Qed.
 
-
 Definition Will_stop (e : execution) : Prop :=
   Stream.eventually Stopped e.
- 
+
 Instance Will_be_visited_compat : Proper (Loc.eq ==> eeq ==> iff) Will_be_visited.
 Proof.
 intros l1 l2 Hl. now apply Stream.eventually_compat, Stream.instant_compat, is_visited_compat.
@@ -270,36 +273,25 @@ Qed.
 Instance Will_stop_compat : Proper (eeq ==> iff) Will_stop.
 Proof. apply Stream.eventually_compat, Stopped_compat. Qed.
 
-(* [Exploration_with_stop e] mean that after a finite time, every node of the space has been
+(** [Exploration_with_stop e] means that after a finite time, every node of the space has been
   visited, and after that time, all robots will stay at the same place forever*)
-Definition FullSolExplorationStop  (r : robogram) (d : demon) := 
-forall config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
+Definition FullSolExplorationStop  (r : robogram) := 
+forall d config, (forall l, Will_be_visited l (execute r d config)) /\ Will_stop (execute r d config).
 
-Definition ValidStartingConf conf :=
-  (exists l : Loc.t,
-    let m := Spect.from_config(conf) in
-    m[l] > 1) -> False.
+Definition Valid_starting_config config :=
+  forall l', ~(exists l, (snd (Spect.from_config config l'))[l] > 1)%nat.
 
-Instance ValidStartingConf_compat : Proper (Config.eq ==> iff) ValidStartingConf.
+Instance Valid_starting_config_compat : Proper (Config.eq ==> iff) Valid_starting_config.
 Proof.
 intros c1 c2 Hc.
-split; intros Hv Hf; unfold ValidStartingConf in *;
-destruct Hv, Hf as (l ,Hf); exists l; try now rewrite <- Hc.
-now rewrite Hc.
+assert (Heq := Spect.from_config_compat _ _ Hc).
+split; intros Hvalid l'[l Hf]; apply (Hvalid l'); exists l;
+destruct (Heq _ _ (reflexivity l')) as [_ Hrew]; now rewrite Hrew in *.
 Qed.
 
-Definition ValidStartingConfSolExplorationStop (r : robogram) (d : demon) :=
-  forall config,
-    ValidStartingConf config -> 
+Definition Explore_and_Stop (r : robogram) :=
+  forall d config, Fair d -> Valid_starting_config config ->
     (forall l, Will_be_visited l (execute r d config)) /\
     Will_stop (execute r d config).
-
-Definition HasBeenVisited loc e :=
-  forall (conf : Config.t) r d,
-    e = execute r d conf -> 
-  exists conf_start,
-    let e_start := execute r d conf_start in
-    Stream.eventually (fun e1 => Config.eq (Stream.hd e1) conf) e_start
-    -> ((Spect.from_config(conf_start))[loc])>0.
 
 End ExplorationDefs.

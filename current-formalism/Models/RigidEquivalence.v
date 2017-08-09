@@ -31,11 +31,11 @@ Context {loc info : Type}.
 Context {Sloc : Setoid loc} {Eloc : EqDec Sloc}.
 Context {Sinfo : Setoid info} {Einfo : EqDec Sinfo}.
 Context {Ndef : NamesDef} {N : Names}.
-Context {Info : Information loc _ _ info _ _}.
+Context {Info : Information loc info}.
 Context {Spect : Spectrum loc info}.
 Context {RMS : RealMetricSpace loc}.
 
-Notation robogram := (@robogram loc info Sloc Eloc Sinfo Einfo Ndef N Info Spect).
+Notation robogram := (@robogram loc info Sloc Eloc Sinfo Einfo Info Ndef N Spect).
 Notation configuration := (@configuration loc info Sloc Eloc Sinfo Einfo Info Ndef N).
 Notation Rda := (@Rigid.demonic_action loc info Sloc Eloc RMS Ndef).
 Notation Fda := (@Rigid.demonic_action loc info Sloc Eloc RMS Ndef).
