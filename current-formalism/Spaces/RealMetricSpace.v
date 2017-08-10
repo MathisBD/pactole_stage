@@ -33,7 +33,7 @@ Class RealMetricSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   
   dist_defined : forall x y, dist x y = 0%R <-> equiv x y;
   dist_sym : forall x y, dist y x = dist x y;
-  triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R ;
+  triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%R;
   
   add_assoc : forall u v w, add u (add v w) == add (add u v) w;
   add_comm : forall u v, add u v == add v u;

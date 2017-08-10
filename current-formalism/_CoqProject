@@ -1,10 +1,7 @@
 -install none
 -R . Pactole
-Util/Preliminary.v
-Util/Bijection.v
-Robots.v
-Util/Stream.v
-Configurations.v
+
+## External libraries
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
 Util/FMaps/FMapList.v
@@ -14,19 +11,27 @@ Util/MMultiset/MMultisetWMap.v
 Util/MMultiset/MMultisetFacts.v
 Util/MMultiset/MMultisetExtraOps.v
 Util/MMultiset/Preliminary.v
-Spaces/Similarity.v
-Spaces/R.v
-Spaces/R2.v
+
+## Core
+Util/Preliminary.v
+Util/Bijection.v
+Util/Stream.v
+Util/Lexprod.v
+Robots.v
+Configurations.v
 CommonFormalism.v
+Setting.v
+
+## Continuous setting
 Models/Flexible.v
 Models/Rigid.v
 Models/RigidEquivalence.v
-Setting.v
-Util/Lexprod.v
 
-## Continuous setting
+## Continuous spaces
 Spaces/RealMetricSpace.v
-CommonRealFormalism.v
+Spaces/Similarity.v
+Spaces/R.v
+Spaces/R2.v
 
 ## Discrete setting
 DiscreteSpace.v
@@ -35,11 +40,10 @@ DiscreteSimilarity.v
 CommonDiscreteFormalism.v
 DiscreteRigidFormalism.v
 DiscreteASyncFormalism.v
-CommonGraphFormalism.v
-DiscreteGraphFormalism.v
+Spaces/Graph.v
+# DiscreteGraphFormalism.v # obsolete?
 ContinuousDVGraphFormalism.v
 CommonIsoGraphFormalism.v
-FiniteGraphFormalism.v
 DiscreteGraphFormalismSSync.v
 
 ## Spectra

@@ -1,159 +1,205 @@
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
-      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain             
-
-      PACTOLE project                                                      
-                                                                        
-      This file is distributed under the terms of the CeCILL-C licence     
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain              
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
                                                                           *)
 (**************************************************************************)
 
+
 Require Import ZArith.
-Require Import Morphisms.
+(* Require Import Morphisms. *)
 Require Import Equalities.
+Require Import SetoidDec.
+Require Import Pactole.Util.Preliminary.
 
 
-Module Type DiscreteSpaceDef <: DecidableType.
-  Parameter t : Type.
-  Parameter origin : t.
-  Parameter eq : t -> t -> Prop.
-  Parameter dist : t -> t -> Z.
-  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
+Class DiscreteSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
+  origin : T;
+  dist : T -> T -> Z;
   
-  Parameter add : t -> t -> t.
-  Parameter mul : Z -> t -> t.
-  Parameter opp : t -> t.
+  add : T -> T -> T;
+  mul : Z -> T -> T; (* really? Does it always make sense? *)
+  opp : T -> T;
   
-  Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
-  Declare Instance mul_compat : Proper (Logic.eq ==> eq  ==> eq) mul.
-  Declare Instance opp_compat : Proper (eq  ==> eq) opp.
+  add_compat : Proper (equiv ==> equiv ==> equiv) add;
+  mul_compat : Proper (Logic.eq ==> equiv ==> equiv) mul;
+  opp_compat : Proper (equiv ==> equiv) opp;
   
-  Parameter eq_equiv : Equivalence eq.
-  Parameter dist_defined : forall x y, dist x y = 0%Z <-> eq x y.
-  Parameter dist_sym : forall x y, dist x y = dist y x.
-  Parameter triang_ineq : forall x y z, (dist x z <= (dist x y) + (dist y z))%Z.
-
-  Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
-  Parameter add_comm : forall u v, eq (add u v) (add v u).
-  Parameter add_origin : forall u, eq (add u origin) u.
-  Parameter add_opp: forall u, eq (add u (opp u)) origin.
-  Parameter mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
-  Parameter add_morph : forall a b u, eq (add (mul a u ) (mul b u ) ) (mul (a + b) u ).
+  dist_defined : forall x y, dist x y = 0%Z <-> equiv x y;
+  dist_sym : forall x y, dist y x = dist x y;
+  triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%Z;
   
-  Parameter mul_1 : forall u, eq (mul 1 u ) u.
-  Parameter unit : t. (* TODO: is it really a good name? *)
-  Parameter non_trivial : ~eq unit origin.
-End DiscreteSpaceDef.
-
-Module Type DiscreteSpace.
-  Include DiscreteSpaceDef.
+  add_assoc : forall u v w, add u (add v w) == add (add u v) w;
+  add_comm : forall u v, add u v == add v u;
+  add_origin : forall u, add u origin == u;
+  add_opp : forall u, add u (opp u) == origin;
+  mul_distr_add : forall a u v, mul a (add u v) == add (mul a u) (mul a v);
+  mul_morph : forall a b u, mul a (mul b u) == mul (a * b) u;
+  add_morph : forall a b u, add (mul a u) (mul b u) == mul (a + b) u;
   
-  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
-  Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
-  Parameter mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
-  Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
-  Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
-  Parameter opp_origin : eq (opp origin) origin.
-  Parameter opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
-  Parameter opp_opp : forall u, eq (opp (opp u)) u.
-  Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
-  Parameter mul_0 : forall u, eq (mul 0 u) origin.
-  Parameter mul_origin : forall a, eq (mul a origin) origin.
-  Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+  mul_1 : forall u, mul 1 u == u;
+  unit : T; (* TODO: is it really a good name? *)
+  non_trivial : unit =/= origin}.
 
-End DiscreteSpace.
+Global Existing Instance add_compat.
+Global Existing Instance mul_compat.
+Global Existing Instance opp_compat.
 
+(** ***  Proofs of derivable properties about MetricSpace  **)
 
-Module MakeDiscreteSpace (Def : DiscreteSpaceDef) : DiscreteSpace
-    with Definition t := Def.t
-    with Definition eq := Def.eq
-    with Definition eq_dec := Def.eq_dec
-    with Definition origin := Def.origin
-    with Definition dist := Def.dist
-    with Definition add := Def.add
-    with Definition mul := Def.mul
-    with Definition opp := Def.opp.
+Section DiscreteSPaceResults.
+  Context `{DiscreteSpace}.
   
-  Include Def.
-
-  (** Proofs of two derivable properties about DiscreteSpace *)
-  Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
+  Instance dist_compat `{DiscreteSpace} : Proper (equiv ==> equiv ==> Logic.eq) dist.
   Proof.
   intros x x' Hx y y' Hy. apply Zle_antisym.
   + replace (dist x' y') with (0 + dist x' y' + 0)%Z by ring. symmetry in Hy.
     rewrite <- dist_defined in Hx. rewrite <- dist_defined in Hy.
     rewrite <- Hx at 1. rewrite <- Hy. eapply Zle_trans. apply triang_ineq.
-    rewrite <- Zplus_assoc. apply Zplus_le_compat_l, triang_ineq.
+    apply Zplus_le_compat_r, triang_ineq.
   + replace (dist x y) with (0 + dist x y + 0)%Z by ring. symmetry in Hx.
     rewrite <- dist_defined in Hx. rewrite <- dist_defined in Hy.
     rewrite <- Hx at 1. rewrite <- Hy. eapply Zle_trans. apply triang_ineq.
-    rewrite <- Zplus_assoc. apply Zplus_le_compat_l, triang_ineq.
+    apply Zplus_le_compat_r, triang_ineq.
   Qed.
-
-
-  Lemma dist_pos : forall x y, (0 <= dist x y)%Z.
+  
+  Lemma dist_pos `{DiscreteSpace} : forall x y, (0 <= dist x y)%Z.
   Proof.
-  intros. unfold dist. apply Zmult_le_reg_r with 2%Z. 
-  + omega.
-  + do 2 rewrite <- Zplus_diag_eq_mult_2. simpl.
-    assert (Hx : eq x x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
-    setoid_rewrite dist_sym at 3. apply triang_ineq.
+  intros x y. Search Z.mul Z.le. apply Zmult_le_reg_r with 2%Z; try omega; [].
+  simpl. rewrite <- Zplus_diag_eq_mult_2.
+  assert (Hx : x == x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
+  setoid_rewrite dist_sym at 3. apply triang_ineq.
   Qed.
-
-  Lemma add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
+  
+  Lemma add_reg_r `{DiscreteSpace} : forall w u v, add u w == add v w -> u == v.
   Proof.
   intros w u v Heq. setoid_rewrite <- add_origin.
   now rewrite <- (add_opp w), add_assoc, Heq, <- add_assoc.
   Qed.
   
-  Lemma add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
+  Lemma add_reg_l `{DiscreteSpace} : forall w u v, add w u == add w v -> u == v.
   Proof. setoid_rewrite add_comm. apply add_reg_r. Qed.
   
-  Lemma opp_origin : eq (opp origin) origin.
+  Lemma opp_origin `{DiscreteSpace} : opp origin == origin.
   Proof. apply (add_reg_r origin). now rewrite add_comm, add_opp, add_origin. Qed.
   
-  Lemma opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
+  Lemma opp_reg `{DiscreteSpace} : forall u v, opp u == opp v -> u == v.
   Proof. intros u v Heq. apply (add_reg_r (opp u)). rewrite add_opp, Heq, add_opp. reflexivity. Qed.
   
-  Lemma opp_opp : forall u, eq (opp (opp u)) u.
+  Lemma opp_opp `{DiscreteSpace} : forall u, opp (opp u) == u.
   Proof. intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.
   
-  Lemma opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
+  Lemma opp_distr_add `{DiscreteSpace} : forall u v, opp (add u v) == add (opp u) (opp v).
   Proof.
   intros u v. apply (add_reg_l (add u v)). rewrite add_opp, add_assoc. setoid_rewrite add_comm at 3.
   setoid_rewrite <- add_assoc at 2. now rewrite add_opp, add_origin, add_opp.
   Qed.
   
-  Lemma mul_0 : forall u, eq (mul 0 u) origin.
+  Lemma mul_0 `{DiscreteSpace} : forall u, mul 0 u == origin.
   Proof.
   intro u. apply (add_reg_l u).
   rewrite add_origin. rewrite <- (mul_1 u) at 1. rewrite add_morph.
   ring_simplify (1 + 0)%Z. now rewrite mul_1.
   Qed.
   
-  Lemma minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
+  Lemma minus_morph `{DiscreteSpace} : forall k u, mul (-k) u == opp (mul k u).
   Proof.
   intros k u. apply (add_reg_l (mul k u)).
   rewrite add_opp. rewrite add_morph. ring_simplify (k + - k)%Z.
   apply mul_0.
   Qed.
   
-  Lemma mul_origin : forall k, eq (mul k origin) origin.
+  Lemma mul_origin `{DiscreteSpace} : forall k, mul k origin == origin.
   Proof.
   intro k. apply add_reg_l with (mul k origin).
   rewrite <- mul_distr_add. setoid_rewrite add_origin. reflexivity.
   Qed.
   
-  Lemma mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
+  Lemma mul_opp `{DiscreteSpace} : forall a u, mul a (opp u) == opp (mul a u).
   Proof.
   intros a u. apply (add_reg_l (mul a u)). rewrite <- mul_distr_add.
   setoid_rewrite add_opp. now rewrite mul_origin.
   Qed.
+End DiscreteSPaceResults.
+
+(* Wrong in Z/nZ for instance
+Lemma mul_reg_l `{DiscreteSpace} : forall k u v, k <> 0%Z -> mul k u == mul k v -> u == v.
+Proof.
+intros k u v Hk Heq. setoid_rewrite <- mul_1.
+replace 1%Z with (/k * k)%Z by now field.
+setoid_rewrite <- mul_morph. rewrite Heq.
+reflexivity.
+Qed.
+
+Lemma mul_reg_r `{DiscreteSpace} : forall k k' u, ~u == origin -> mul k u == mul k' u -> k = k'.
+Proof.
+intros k k' u Hu Heq. destruct (Rdec k k') as [| Hneq]; trivial.
+assert (Heq0 : equiv (mul (k -k') u)  origin).
+{ unfold Rminus. rewrite <- add_morph, minus_morph, Heq. apply add_opp. }
+elim Hu. rewrite <- (mul_1 u). rewrite <- (Rinv_l (k - k')).
+- rewrite <- mul_morph. rewrite Heq0. apply mul_origin.
+- intro Habs. apply Hneq. now apply Rminus_diag_uniq.
+Qed.
+
+Lemma mul_integral `{DiscreteSpace} : forall k u, mul k u == origin -> k = 0%R \/ u == origin.
+Proof.
+intros k u Heq. destruct (Rdec k 0%R).
+- now left.
+- right. apply mul_reg_l with k; trivial; []. now rewrite Heq, mul_origin.
+Qed.
+*)
+
+Open Scope Z_scope.
+
+Instance ZEqDec : EqDec (eq_setoid Z) := Z.eq_dec.
+
+Local Instance Ring (n : nat) (Hn : (n > 1)%nat) : DiscreteSpace Z.
+refine {|
+  origin := 0;
+  dist := fun x y => Z.min (add x (opp y)) (add y (opp x));
   
-End MakeDiscreteSpace.
-
-
+  add := fun x y => Zmod (x + y) (Z.of_nat n);
+  mul := fun x y => Zmod (Z.mul x y) (Z.of_nat n);
+  opp := fun x => (Z.of_nat n - x) mod (Z.of_nat n);
+  
+  unit := 1%Z |}.
+Proof.
+* 
+* 
+* 
+* 
+* 
+* 
+* 
+* 
+* 
+* 
+* 
+* 
+Defined.
+  add_compat : Proper (equiv ==> equiv ==> equiv) add;
+  mul_compat : Proper (Logic.eq ==> equiv ==> equiv) mul;
+  opp_compat : Proper (equiv ==> equiv) opp;
+  (* dist_compat : Proper (eq ==> eq ==> Logic.eq) dist *)
+  
+  dist_defined : forall x y, dist x y = 0%Z <-> equiv x y;
+  dist_sym : forall x y, dist y x = dist x y;
+  triang_ineq : forall x y z, (dist x z <= dist x y + dist y z)%Z;
+  
+  add_assoc : forall u v w, add u (add v w) == add (add u v) w;
+  add_comm : forall u v, add u v == add v u;
+  add_origin : forall u, add u origin == u;
+  add_opp : forall u, add u (opp u) == origin;
+  mul_distr_add : forall a u v, mul a (add u v) == add (mul a u) (mul a v);
+  mul_morph : forall a b u, mul a (mul b u) == mul (a * b) u;
+  add_morph : forall a b u, add (mul a u) (mul b u) == mul (a + b) u;
+  
+  mul_1 : forall u, mul 1 u == u;
+  unit : T; (* TODO: is it really a good name? *)
+  non_trivial : unit =/= origin}.
 Module Type RingDef.
   Parameter n : nat.
   Parameter n_sup_1 : n > 1.
@@ -165,43 +211,13 @@ Open Scope Z_scope.
    Do not forget [dist] and the compatibility lemmas.  *)
 Module Type RingSig <: DiscreteSpace.
 
-  Parameter n : Z.
-  Parameter n_pos : 0 < n.
-  Parameter n_sup_1 : 1 < n. 
-
-  Definition t := Z.
- 
-  Parameter eq : Z -> Z -> Prop.
-  Parameter dist : Z -> Z -> Z.
-  Parameter eq_dec : forall x y, {eq x y} + {~ eq x y}.
-  Parameter origin : Z.
-  Parameter unit : Z.
-  Parameter add : Z -> Z -> Z.
-  Parameter mul : Z -> Z -> Z.
-  Parameter opp : Z -> Z.
   
-  Declare Instance add_compat : Proper (eq ==> eq ==> eq) add.
-  Declare Instance mul_compat : Proper (Logic.eq ==> eq  ==> eq) mul.
-  Declare Instance opp_compat : Proper (eq  ==> eq) opp.
-  Declare Instance dist_compat : Proper (eq ==> eq ==> Logic.eq) dist.
-  
-  Declare Instance eq_equiv : Equivalence eq.
-  Parameter dist_defined : forall x y, dist x y = 0%Z <-> eq x y.
-  Parameter dist_sym : forall x y, dist x y = dist y x.
   Parameter dist_pos : forall x y, (0 <= dist x y)%Z.
-  Parameter triang_ineq : forall x y z, (dist x z <= (dist x y) + (dist y z))%Z.
   Parameter opp_opp : forall u, eq (opp (opp u)) u.
   Parameter opp_reg : forall u v, eq (opp u) (opp v) -> eq u v.
   Parameter opp_distr_add : forall u v, eq (opp (add u v)) (add (opp u) (opp v)).
 
-  Parameter add_assoc : forall u v w, eq (add u (add v w)) (add (add u v) w).
-  Parameter add_comm : forall u v, eq (add u v) (add v u).
-  Parameter add_origin : forall u, eq (add u origin) u.
-  Parameter add_opp: forall u, eq (add u (opp u)) origin.
   Parameter mul_opp : forall a u, eq (mul a (opp u)) (opp (mul a u)).
-  Parameter mul_distr_add : forall a u v, eq (mul a (add u v)) (add (mul a u) (mul a v)).
-  Parameter mul_morph : forall a b u, eq (mul a (mul b u)) (mul (a * b) u).
-  Parameter add_morph : forall a b u, eq (add (mul a u ) (mul b u ) ) (mul (a + b) u ).
   Parameter mul_0 : forall u, eq (mul 0 u) origin.
   Parameter mul_origin : forall a, eq (mul a origin) origin.
   Parameter minus_morph : forall k u, eq (mul (-k) u) (opp (mul k u)).
@@ -210,8 +226,6 @@ Module Type RingSig <: DiscreteSpace.
   Parameter add_reg_l : forall w u v, eq (add w u) (add w v) -> eq u v.
   Parameter add_reg_r : forall w u v, eq (add u w) (add v w) -> eq u v.
   
-  Parameter mul_1 : forall u, eq (mul 1 u ) u.
-  Parameter non_trivial : ~eq unit origin.
 End RingSig.
 
 Module Ring (Odef : RingDef) : RingSig with Definition n := Z.of_nat Odef.n
