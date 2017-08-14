@@ -12,21 +12,16 @@ Require Import Reals.
 Require Import Omega.
 Require Import Arith.Div2.
 Require Import Psatz.
-Require Import Equalities.
-Require Import Morphisms.
-Require Import Decidable.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Stream.
+Require Import SertoidDec.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Stream.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.DiscreteSimilarity.
-Require Import Pactole.CommonDiscreteFormalism.
+Require Import Pactole.Spaces.Graph.
+Require Import Pactole.Spaces.Isomorphism.
 Require Import Pactole.DiscreteRigidFormalism.
 Require Import Pactole.MultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
-Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 
 
 Close Scope Z_scope.

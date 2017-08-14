@@ -68,7 +68,7 @@ Section DiscreteSPaceResults.
   
   Lemma dist_pos `{DiscreteSpace} : forall x y, (0 <= dist x y)%Z.
   Proof.
-  intros x y. Search Z.mul Z.le. apply Zmult_le_reg_r with 2%Z; try omega; [].
+  intros x y. apply Zmult_le_reg_r with 2%Z; try omega; [].
   simpl. rewrite <- Zplus_diag_eq_mult_2.
   assert (Hx : x == x) by reflexivity. rewrite <- dist_defined in Hx. rewrite <- Hx.
   setoid_rewrite dist_sym at 3. apply triang_ineq.

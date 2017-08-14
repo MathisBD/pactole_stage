@@ -34,13 +34,13 @@ Spaces/R.v
 Spaces/R2.v
 
 ## Discrete setting
-DiscreteSpace.v
-Isomorphism.v
-DiscreteSimilarity.v
-CommonDiscreteFormalism.v
-DiscreteRigidFormalism.v
-DiscreteASyncFormalism.v
+#DiscreteSpace.v
+#DiscreteSimilarity.v
+#CommonDiscreteFormalism.v
+#DiscreteRigidFormalism.v
+#DiscreteASyncFormalism.v
 Spaces/Graph.v
+Spaces/Isomorphism.v
 # DiscreteGraphFormalism.v # obsolete?
 ContinuousDVGraphFormalism.v
 CommonIsoGraphFormalism.v

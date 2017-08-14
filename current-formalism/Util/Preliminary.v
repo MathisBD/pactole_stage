@@ -39,6 +39,7 @@ Set Implicit Arguments.
 
 Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
+Notation "x == y" := (equiv x y).
 
 
 (** A tactic simplifying coinduction proofs. *)

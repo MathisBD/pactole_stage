@@ -47,6 +47,12 @@ Proof.
 now intros _ [] _.
 Defined.
 
+Definition Ignore (loc T : Type) `{EqDec loc} `{EqDec T} : Information loc T := {|
+  app := fun _ x => x;
+  app_compat := fun _ _ _ _ _ x => x;
+  app_id := fun _ _ x => x;
+  app_compose := fun _ _ _ _ _ _ x => x |}.
+
 (** A pair of information can be combined. *)
 Require Pactole.Util.FMaps.FMapInterface.
 (* Already inside FMapInterface.
@@ -65,13 +71,26 @@ Proof.
 Defined.
 
 (** We can also keep only the target location. *)
-Local Instance Target (loc : Type) `(Setoid loc) `(@EqDec loc _) : Information loc loc := {
+Local Instance Location (loc : Type) `{Setoid loc} `{@EqDec loc _} : Information loc loc := {
   app := fun f x => f x }.
 Proof.
 + repeat intro. auto.
 + repeat intro. auto.
 + repeat intro. auto.
 Defined.
+
+(*
+(** Under some condition on the app function, if we can project the location type,
+    then we can project any info type. *)
+Instance project_location {A B info} `{EqDec B} `(Info : Information A info)
+                          (section : A -> B) (retract : B -> A) (Hsection : forall x, section (retract x) == x)
+ : Information B info := {
+  app := fun f x => app (fun y => retract (f (section y))) x }.
+Proof.
++ intros f g Hfg x y Hxy. apply app_compat; trivial; [].
+  clear x y Hxy. intros x y Hxy. apply section_compat in Hxy. f_equiv.
+Defined.
+*)
 
 (** * Configurations *)
 

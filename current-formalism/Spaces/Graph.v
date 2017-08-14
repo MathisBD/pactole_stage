@@ -300,3 +300,5 @@ refine ({|
       rewrite <- Zdiv.mod_Zmod, Nat.mod_small, Nat2Z.id; omega.
   + rewrite V2V in *. congruence.
 Defined.
+
+End Ring.
