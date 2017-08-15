@@ -22,29 +22,27 @@ Configurations.v
 CommonFormalism.v
 Setting.v
 
-## Continuous setting
+## Models
 Models/Flexible.v
 Models/Rigid.v
 Models/RigidEquivalence.v
+Models/DiscreteGraph.v
+Models/ContinuousDVGraph.v
+#Models/GraphEquivalence.v
+#Models/DiscreteRigid.v
+#Models/DiscreteASync.v
+#Models/DiscreteGraphSSync.v
+#Models/GraphRigid.v
 
-## Continuous spaces
+## Spaces
 Spaces/RealMetricSpace.v
 Spaces/Similarity.v
 Spaces/R.v
 Spaces/R2.v
-
-## Discrete setting
-#DiscreteSpace.v
-#DiscreteSimilarity.v
-#CommonDiscreteFormalism.v
-#DiscreteRigidFormalism.v
-#DiscreteASyncFormalism.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
-# DiscreteGraphFormalism.v # obsolete?
-ContinuousDVGraphFormalism.v
-CommonIsoGraphFormalism.v
-DiscreteGraphFormalismSSync.v
+#Spaces/DiscreteSpace.v
+#Spaces/DiscreteSimilarity.v
 
 ## Spectra
 Spectra/Definition.v
@@ -52,7 +50,7 @@ Spectra/MultisetSpectrum.v
 #Spectra/SetSpectrum.v
 #Spectra/LimitedSetSpectrum.v
 #Spectra/LimitedMultisetSpectrum.v
-#PointedMultisetSpectrum.v
+Spectra/PointedMultisetSpectrum.v
 
 ## Case Study: Convergence
 Convergence/Impossibility_2G_1B.v
@@ -67,21 +65,17 @@ Gathering/InR2/Algorithm.v
 #Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
 ## Case Study: Ring Exploration
-#Exploration/Graph/GraphFromZnZ.v
 #Exploration/Graph/Definitions.v
+#Exploration/Graph/ImpossibilityKDividesN.v
 #Exploration/Graph/DefinitionsSSync.v
 #Exploration/Graph/ImpossibilityKDividesNSSync.v
 #Exploration/Graph/TowersSSync.v
-
-## Files Commented out
-#Exploration/Graph/ImpossibilityKDividesN.v
 #Exploration/ZnZ/test_modulo.v
 #Exploration/ZnZ/Definitions.v
 #Exploration/ZnZ/ImpossibilityKDividesN.v
-#GraphEquivalence.v
-#Gathering/Impossibility.v
-#ASyncFormalism.v
-#GraphRigidFormalism.v
 #Exploration/Graph/ImpossibilityKNotPrimeN.v
 #Exploration/Graph/Towers.v
 
+## Files Commented out
+#Exploration/Graph/GraphFromZnZ.v ## Obsolete
+#CommonIsoGraph.v  ## Obsolete?
