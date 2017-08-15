@@ -41,7 +41,7 @@ Axiom e_default : E.
 
 Instance Info2 : Information V (V * info) := @pair_Information V V info _ _ _ _ (Location V) _ _ Info.
 
-Context `{@Spectrum V (V * info) _ _ _ _ _ _ _}.
+Context {SpectA : @Spectrum V (V * info) _ _ _ _ _ _ _}.
 
 Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 
@@ -263,8 +263,8 @@ Qed.
 (** a robot can be on a node (Loc) or on an edge (Mvt) *)
 
 Inductive location :=
-| Loc (l : V)
-| Mvt (e : E) (p : R).
+  | Loc (l : V)
+  | Mvt (e : E) (p : R).
 
 Instance location_Setoid : Setoid location := {
   equiv := fun l l'=>
@@ -310,28 +310,33 @@ Proof.
   + now apply Graph.tgt_compat.
 Qed.
 
-Instance Info3 : Information location V := {
-  app := fun f x => projectS_loc (f (Loc x)) }.
+Instance Info3 : Information location info.
 Proof.
-+ intros f g Hfg x y Hxy. f_equiv. now apply Hfg.
-+ intros x y Hxy. apply Hxy.
-+ intros f g Hf Hg x y Hxy. simpl. admit.
+apply (lift_location (embed := Loc) Info projectS_loc_compat).
++ now repeat intro.
++ now repeat intro.
++ intros f g Hf Hg x y Hxy. admit.
 Admitted.
 
-Instance Info4 : Information location info :=
-  @pair_Information location V info _ _ _ _ Info3 _ _ Info.
+
 Notation configurationA := (@configuration V (V * info) _ _ _ _ Info2 _ _).
-Notation configuration := (@configuration location info _ _ _ _ Info4 _ _).
+Notation configuration := (@configuration location info _ _ _ _ Info3 _ _).
 
-Definition projectS (config : configuration) :=
-  fun id => (projectS_loc (fst (config id)),
-              (projectS_loc (fst (snd (config id))),
-               projectS_loc (snd (snd (config id))))).
+Definition projectS (config : configuration) : configurationA :=
+  fun id => match fst (config id) with
+              | Loc pt => (pt, (pt, snd (config id)))
+              | Mvt e p as x => (projectS_loc x, (tgt e, snd (config id)))
+            end.
 
-Instance projectS_compat : Proper (Config.eq ==> ConfigA.eq) projectS.
+Instance projectS_compat : Proper (equiv ==> equiv) projectS.
 Proof.
-  intros c1 c2 Hc id. destruct (Hc id) as (Hl, (Hs, Ht)). unfold projectS.
-  split; simpl. now apply projectS_loc_compat. split; simpl; now apply projectS_loc_compat.
+intros c1 c2 Hc id. destruct (Hc id) as [Hloc Hinfo]. unfold projectS.
+repeat destruct_match; simpl in Hloc; try tauto; [|].
++ now repeat split.
++ destruct Hloc as [He Hp]. repeat split; simpl; trivial; [|].
+  - repeat destruct_match; simpl; apply src_compat || apply tgt_compat || exfalso; trivial;
+    subst; apply threshold_compat in He; congruence.
+  - now apply tgt_compat.
 Qed.
 
 Close Scope R_scope.
@@ -339,6 +344,12 @@ Close Scope R_scope.
 (** The spectrum for continuous setting is the same as for the discrete one:
     we simply project robots on edges either to the source or target of the edge
     depending on where they are located compared to the threshold of the edge. *)
+Print PointedSpectrum.
+Instance Spect : PointedSpectrum location info := {
+  pspectrum := @spectrum V (V * info) _ _ _ _ _ _ _ SpectA;
+  pspect_from_config := fun config _ => spect_from_config (projectS config)}.
+  pspect_is_ok := spect_is_ok }.
+
 Module Spect <: Spectrum(Location)(N)(Names)(Info)(Config).
   
   Definition t := SpectA.t.

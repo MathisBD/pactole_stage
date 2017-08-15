@@ -447,7 +447,7 @@ Proof. apply kFair_Fair with 1%nat. apply kFair_bad_demon. Qed.
 Corollary kFair_bad_demon' : forall k, (k>=1)%nat -> kFair k bad_demon.
 Proof.
 intros.
-eapply kFair_mon with 1%nat.
+eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
 - auto.
 Qed.

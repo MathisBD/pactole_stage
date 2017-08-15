@@ -80,7 +80,7 @@ Qed.
 
 (** The identity similarity *)
 Definition id {T} `{RealMetricSpace T} : similarity T.
-refine {| sim_f := @bij_id T _;
+refine {| sim_f := @Bijection.id T _;
           zoom := 1;
           center := origin;
           center_prop := reflexivity _ |}.
@@ -176,7 +176,7 @@ End Normed_Results.
 
 Definition compose {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
 refine {|
-  sim_f := bij_compose f g;
+  sim_f := compose f g;
   zoom := f.(zoom) * g.(zoom);
   center := retraction g (retraction f origin) |}.
 Proof.
@@ -193,7 +193,7 @@ Proof. repeat intro. reflexivity. Qed.
 
 (** Inverse of a similarity *)
 Definition inverse {T} `{RealMetricSpace T} (sim : similarity T) : similarity T.
-refine {| sim_f := bij_inverse sim.(sim_f);
+refine {| sim_f := inverse sim.(sim_f);
           zoom := /sim.(zoom);
           center := sim origin |}.
 Proof.
@@ -216,7 +216,7 @@ Proof. intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
 Lemma inverse_compose {T} `{RealMetricSpace T} : forall f g : similarity T, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. intros f g x. simpl. reflexivity. Qed.
 
-Corollary injective {T} `{RealMetricSpace T} : forall sim : similarity T, injective equiv equiv sim.
+Corollary injective {T} `{RealMetricSpace T} : forall sim : similarity T, Preliminary.injective equiv equiv sim.
 Proof.
 intros sim z t Heqf.
 rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.

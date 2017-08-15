@@ -12,7 +12,7 @@ Require Import Reals.
 Require Import Omega.
 Require Import Arith.Div2.
 Require Import Psatz.
-Require Import SertoidDec.
+Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Stream.
 Require Import Pactole.Robots.

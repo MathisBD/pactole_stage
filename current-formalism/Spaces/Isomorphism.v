@@ -63,9 +63,9 @@ Proof. intros ? ? Heq ?. now apply Heq. Qed.
 
 
 Definition id : isomorphism.
-refine {| iso_V := @bij_id V _;
-          iso_E := @bij_id E _;
-          iso_T := @bij_id R _ |}.
+refine {| iso_V := @id V _;
+          iso_E := @id E _;
+          iso_T := @id R _ |}.
 Proof.
 + now intros.
 + now intros.
@@ -76,9 +76,9 @@ Defined.
 
 Definition compose (f g : isomorphism) : isomorphism.
 refine {|
-    iso_V := bij_compose f.(iso_V) g.(iso_V);
-    iso_E := bij_compose f.(iso_E) g.(iso_E);
-    iso_T := bij_compose f.(iso_T) g.(iso_T) |}.
+    iso_V := compose f.(iso_V) g.(iso_V);
+    iso_E := compose f.(iso_E) g.(iso_E);
+    iso_T := compose f.(iso_T) g.(iso_T) |}.
 Proof.
 + intro. simpl. split; now rewrite <- 2 (proj1 (iso_morphism _ _)) || rewrite <- 2 (proj2 (iso_morphism _ _)).
 + intro. simpl. now rewrite 2 iso_threshold.
@@ -97,9 +97,9 @@ Proof. intros f g h; repeat split; simpl; reflexivity. Qed.
 Set Printing Implicit.
 
 Definition inverse (iso : isomorphism) : isomorphism.
-  refine {| iso_V := bij_inverse iso.(iso_V);
-            iso_E := bij_inverse iso.(iso_E);
-            iso_T := bij_inverse iso.(iso_T)
+  refine {| iso_V := inverse iso.(iso_V);
+            iso_E := inverse iso.(iso_E);
+            iso_T := inverse iso.(iso_T)
          |}.
 Proof.
 + intro. simpl. rewrite <- 2 Inversion, (proj1 (iso_morphism _ _)), (proj2 (iso_morphism _ _)).
@@ -136,7 +136,7 @@ Proof. intro. repeat split; intro; simpl; try now rewrite section_retraction; au
 Lemma inverse_compose : forall f g : isomorphism, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. intros f g; repeat split; intro; simpl; reflexivity. Qed.
 
-Lemma injective : forall iso : isomorphism, injective equiv equiv iso.
+Lemma injective : forall iso : isomorphism, Preliminary.injective equiv equiv iso.
 Proof.
 intros f x y Heq. transitivity (id x); try reflexivity; [].
 rewrite <- (compose_inverse_l f). simpl. rewrite Heq.
@@ -145,3 +145,4 @@ Qed.
 
 End Isomorphism.
 
+Arguments isomorphism {V} {E} G.

@@ -46,13 +46,14 @@ Existing Instance E_Setoid.
 Existing Instance E_EqDec.
 
 (** A finite graph ia a graph where the set [V] of vertices is a prefix of N. *)
-(* FIXME: nothing prevents E from being inifnite! *)
+(* FIXME: nothing prevents E from being infinite! *)
 (* TODO: Maybe we should reuse the type used for robot names *)
 Definition finite_node n := {m : nat | m < n}.
 
 Instance finite_node_EqDec n : EqDec (eq_setoid (finite_node n)) := @subset_dec n.
 
-Class FiniteGraph (n : nat) E := { MakeFiniteGraph :> Graph (finite_node n) E }.
+Definition FiniteGraph (n : nat) E := Graph (finite_node n) E.
+Existing Class FiniteGraph.
 
 
 (** A ring. *)
@@ -128,11 +129,10 @@ rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; omega.
 Qed.
 
 
-Local Instance Ring (Hn : (1 < n)%nat) (thd : ring_edge -> R)
+Definition Ring (Hn : (1 < n)%nat) (thd : ring_edge -> R)
                     (thd_pos : forall e, (0 < thd e < 1)%R) (thd_compat : Proper (equiv ==> Logic.eq) thd)
   : FiniteGraph n (ring_edge).
 Proof.
-constructor.
 refine ({|
   src := fst;
   tgt := fun e => of_Z (match snd e with

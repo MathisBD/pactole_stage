@@ -19,6 +19,7 @@ Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Decidable.
 Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Bijection.
 Require Import Pactole.Robots.
 Set Implicit Arguments.
 
@@ -38,7 +39,6 @@ Arguments app_compose {_} {_} {_} {_} {_} {_} {_} f g _ _.
 
 
 (** [unit] is a valid information type that does not contain any information. *)
-
 Local Instance Unit (loc : Type) `(Setoid loc) `(@EqDec loc _) : Information loc unit := {
   app := fun _ _ => tt;
   app_compat := fun _ _ _ _ _ _ => eq_refl;
@@ -47,6 +47,7 @@ Proof.
 now intros _ [] _.
 Defined.
 
+(** Any type can be seen as invariant under frame change. *)
 Definition Ignore (loc T : Type) `{EqDec loc} `{EqDec T} : Information loc T := {|
   app := fun _ x => x;
   app_compat := fun _ _ _ _ _ x => x;
@@ -79,18 +80,28 @@ Proof.
 + repeat intro. auto.
 Defined.
 
-(*
-(** Under some condition on the app function, if we can project the location type,
-    then we can project any info type. *)
-Instance project_location {A B info} `{EqDec B} `(Info : Information A info)
-                          (section : A -> B) (retract : B -> A) (Hsection : forall x, section (retract x) == x)
- : Information B info := {
-  app := fun f x => app (fun y => retract (f (section y))) x }.
+(** Under some condition on the app function, if we can lift the location type,
+    then we can lift any info type. *)
+Definition lift_location {A B info} `{EqDec A} `(Info : Information B info)
+                         (proj : A -> B) (embed : B -> A)
+                         (Hp : Proper (equiv ==> equiv) proj) (He : Proper (equiv ==> equiv) embed)
+                         (Hep : forall x, proj (embed x) == x)
+                         (Hequiv : forall f g, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
+                                               (equiv ==> equiv)%signature (fun x => proj (f (g (embed x))))
+                                                                           (fun x => proj (f (embed (proj (g (embed x)))))))
+  : Information A info.
+refine ({| app := fun f x => app (fun y => proj (f (embed y))) x |}).
 Proof.
 + intros f g Hfg x y Hxy. apply app_compat; trivial; [].
-  clear x y Hxy. intros x y Hxy. apply section_compat in Hxy. f_equiv.
+  repeat intro. now apply Hp, Hfg, He.
++ intros x y Hxy. transitivity (app (fun x : B => x) y); try (now apply (app_id y)); [].
+  apply app_compat; trivial; []. repeat intro. unfold Datatypes.id. now rewrite Hep.
++ intros f g Hf Hg x y Hxy. transitivity (app (fun y => proj (f (embed (proj (g (embed y)))))) x).
+  - apply app_compat; try reflexivity; []. now apply Hequiv.
+  - apply (app_compose (fun x => proj (f (embed x))) (fun x => proj (g (embed x))));
+    trivial; now repeat intro; do 3 f_equiv.
 Defined.
-*)
+
 
 (** * Configurations *)
 

@@ -605,7 +605,7 @@ assert (Hd' := Rinv_neq_0_compat _ Hd).
 rewrite <- map_config_id at 1.
 change (@Datatypes.id R) with (Bijection.section (sim_f Similarity.id)).
 rewrite <- (compose_inverse_l (homothecy (fst (config (Good gfirst))) Hd')).
-unfold compose, Bijection.bij_compose; cbn [sim_f Bijection.section].
+unfold compose, Bijection.compose; cbn [sim_f Bijection.section].
 rewrite <- map_config_merge, <- spect_from_config_map; autoclass; [].
 transitivity (map (homothecy (fst (config (Good gfirst))) Hd' ⁻¹) spectrum0).
 + apply map_compat; autoclass; []. rewrite <- spect_config1.
@@ -738,14 +738,14 @@ Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
 intros. unfold bad_demon.
 destruct (Rdec move 1).
-- apply kFair_mon with 0%nat. exact kFair_bad_demon1. omega.
+- apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega.
 - now apply kFair_bad_demon2.
 Qed.
 
 Theorem kFair_bad_demon' : forall k, (k>=1)%nat -> kFair k bad_demon.
 Proof.
 intros.
-eapply kFair_mon with 1%nat.
+eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
 - auto.
 Qed.

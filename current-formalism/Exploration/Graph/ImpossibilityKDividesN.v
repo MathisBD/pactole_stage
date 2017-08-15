@@ -17,7 +17,7 @@ Require Import Omega.
 Require Import Decidable.
 Require Import Equalities.
 Require Import List Setoid SetoidList Compare_dec Morphisms.
-Require Import Pactole.Preliminary.
+Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.DiscreteSpace.
