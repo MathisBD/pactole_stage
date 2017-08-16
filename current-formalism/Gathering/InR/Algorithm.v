@@ -1313,7 +1313,7 @@ destruct (Spect.support (Spect.max (!! conf))) as [| pt [| ? ?]] eqn:Hmaj.
       unfold gt. rewrite increase_move_iff.
       exists gmove. split; trivial.
       rewrite (round_simplify_Three da Hmaj Hlen gmove).
-      destruct (step da gmove) as [Habs | _]; try now elim Hstep.
+      destruct (step da gmove); try now elim Hstep.
       destruct gmove eqn:Hid; trivial.
   + (* Generic case *)
     red. rewrite (conf_to_NxN_Generic_spec Hmaj Hlen).

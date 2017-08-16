@@ -806,8 +806,8 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   intros m x. destruct (empty_or_In_dec m) as [Hm | Hm].
   + left. rewrite <- max_empty in Hm. rewrite (Hm x). apply empty_spec.
   + unfold max. rewrite nfilter_spec.
-    destruct (max_mult m =? m[x]) as [Heq | Heq]; auto.
-    repeat intro. now subst.
+    - destruct (max_mult m =? m[x]); auto.
+    - repeat intro. now subst.
   Qed.
   
   Lemma max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
