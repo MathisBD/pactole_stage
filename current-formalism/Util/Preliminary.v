@@ -7,16 +7,15 @@
 (*                                                                        *)
 (**************************************************************************)
 
-
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
-
-   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
-
-   PACTOLE project                                                      
-                                                                        
-   This file is distributed under the terms of the CeCILL-C licence     
-                                                                        *)
+(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
+                                                                            
+     P. Courtieu, L. Rieg, X. Urbain                                        
+                                                                            
+     PACTOLE project                                                        
+                                                                            
+     This file is distributed under the terms of the CeCILL-C licence       
+                                                                          *)
 (**************************************************************************)
 
 
@@ -161,7 +160,7 @@ Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split; auto with typeclass_instances. Qed.
 
-Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
+Global Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
 
 
 (******************************)
@@ -1894,6 +1893,8 @@ Qed.
 
 Open Scope Z.
 
+Instance Z_EqDec : @EqDec Z _ := Z.eq_dec.
+
 Lemma Zincr_mod : forall k n, 0 < n -> (k + 1) mod n = k mod n + 1 \/ (k + 1) mod n = 0 /\ k mod n = n - 1.
 Proof.
 intros k n Hn.
@@ -1910,5 +1911,17 @@ intros k n Hn. destruct (Z.eq_dec k 0).
 - subst. rewrite 2 Z.mod_0_l, Z.sub_0_r, Z.mod_same; omega.
 - rewrite Z.mod_opp_l_nz, Z.mod_small; try rewrite Z.mod_small; omega.
 Qed.
+
+Lemma Zsub_mod_is_0 : forall k k' n, 0 <= k < n -> 0 <= k' < n -> ((k - k') mod n = 0 <-> k = k').
+Proof.
+intros k k' n Hk Hk'. split; intro Heq.
++ assert (Hbound : - n < k - k' < n) by lia.
+  rewrite Zdiv.Zmod_divides in Heq; try lia; [].
+  destruct Heq as [c Heq]. destruct (c =?= 0) as [? | Hneq]; hnf in *; simpl in *; nia.
++ subst. now rewrite Z.sub_diag.
+Qed.
+
+Lemma Zmin_bounds : forall n m, n < m -> Z.min n (m - n) <= m / 2.
+Proof. intros. apply Z.min_case_strong; intro; apply Zdiv.Zdiv_le_lower_bound; lia. Qed.
 
 Close Scope Z.

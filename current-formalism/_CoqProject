@@ -41,8 +41,8 @@ Spaces/R.v
 Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
-#Spaces/DiscreteSpace.v
-#Spaces/DiscreteSimilarity.v
+Spaces/DiscreteSpace.v
+Spaces/DiscreteSimilarity.v
 
 ## Spectra
 Spectra/Definition.v
@@ -75,7 +75,3 @@ Gathering/InR2/Algorithm.v
 #Exploration/ZnZ/ImpossibilityKDividesN.v
 #Exploration/Graph/ImpossibilityKNotPrimeN.v
 #Exploration/Graph/Towers.v
-
-## Files Commented out
-#Exploration/Graph/GraphFromZnZ.v ## Obsolete
-#CommonIsoGraph.v  ## Obsolete?

@@ -124,9 +124,10 @@ Qed.
 Lemma idle_spec : forall da id, List.In id (idle da) <-> step da id = None.
 Proof.
 intros da id. unfold idle. rewrite List.filter_In.
-destruct (step da id); intuition; try discriminate.
-apply In_names.
-Qed.
+destruct (step da id).
++ split; intros [? ?] || intro; discriminate.
++ repeat split. apply In_names.
+Qed. (* BUG?: intuition uses Eqdep.eq_rect_eq *)
 
 Lemma active_spec : forall da id, List.In id (active da) <-> step da id <> None.
 Proof.

@@ -19,9 +19,8 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.Spaces.Graph.
 Require Import Pactole.Spaces.Isomorphism.
-Require Import Pactole.DiscreteRigidFormalism.
+Require Import Pactole.Models.DiscreteRigid.
 Require Import Pactole.MultisetSpectrum.
-Require Import Pactole.CommonIsoGraphFormalism.
 
 
 Close Scope Z_scope.

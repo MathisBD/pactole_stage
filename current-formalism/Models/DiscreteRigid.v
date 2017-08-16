@@ -18,10 +18,10 @@ Require Import Morphisms.
 Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
-Require Import Pactole.Preliminary.
+Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.DiscreteSpace.
+Require Import Pactole.Spaces.DiscreteSpace.
 Require Pactole.CommonDiscreteFormalism.
 Require Pactole.Stream.
 

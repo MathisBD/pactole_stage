@@ -51,7 +51,9 @@ Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 Open Scope R_scope.
 
 (** We define a function from R to (0; 1) to represent the percentage of the edge already done. *)
-(* Excluding 0 and 1 avoids having multiple reprensentation while being on a node. *)
+(* Excluding 0 and 1 avoids having multiple representation while being on a node. *)
+(* FIXME: Why do we need that? Why not put a constraint on the possible value of p?
+          (like in the Flexible real metric space setting) *)
 Definition project_p (p : R) : R :=
   if Rle_dec p 0 then Rpower 2 (p-1) else (2 - (Rpower 2 (-p)))/2.
 
@@ -341,195 +343,107 @@ Qed.
 
 Close Scope R_scope.
 
-(** The spectrum for continuous setting is the same as for the discrete one:
+(** The spectrum for continuous setting is almost the same as for the discrete one:
     we simply project robots on edges either to the source or target of the edge
-    depending on where they are located compared to the threshold of the edge. *)
-Print PointedSpectrum.
-Instance Spect : PointedSpectrum location info := {
-  pspectrum := @spectrum V (V * info) _ _ _ _ _ _ _ SpectA;
-  pspect_from_config := fun config _ => spect_from_config (projectS config)}.
-  pspect_is_ok := spect_is_ok }.
+    depending on where they are located compared to the threshold of the edge;
+    and add the current location. *)
+Instance Spect : Spectrum location info := {
+  spectrum := @spectrum V (V * info) _ _ _ _ _ _ _ SpectA;
+  spect_from_config := fun config => spect_from_config (projectS config);
+  spect_is_ok s config := spect_is_ok s (projectS config) }.
+Proof.
++ repeat intro. now do 2 f_equiv.
++ intros. apply spect_from_config_spec.
+Defined.
 
-Module Spect <: Spectrum(Location)(N)(Names)(Info)(Config).
-  
-  Definition t := SpectA.t.
-  Definition eq := SpectA.eq.
-  Definition eq_equiv := SpectA.eq_equiv.
-  Definition eq_dec := SpectA.eq_dec.
-  
-  Definition from_config conf : t := SpectA.from_config (projectS conf).
-  
-  Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
-  Proof. repeat intro. unfold from_config. now repeat f_equiv. Qed.
-  
-  Definition is_ok s conf := SpectA.is_ok s (projectS conf).
-  
-  Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
-  Proof. intro. unfold from_config, is_ok. apply SpectA.from_config_spec. Qed.
-  
-End Spect.
-
-Record robogram :=
-  {
-    pgm :> Spect.t -> Location.t -> Location.t;
-    pgm_compat : Proper (Spect.eq ==> Location.eq ==> Location.eq) pgm;
-    pgm_range :  forall (spect: Spect.t) lpre l',
-        loc_eq lpre (Loc l') -> 
-        exists l e, pgm spect lpre = Loc l
-                    /\ (opt_eq Graph.Eeq (Graph.find_edge l' l) (Some e))
-  }.
+Record robogram := {
+  pgm :> spectrum -> V -> V;
+  pgm_compat : Proper (equiv ==> equiv ==> equiv) pgm;
+  pgm_range : forall spect pt, ~opt_eq (@equiv E _) (Graph.find_edge pt (pgm spect pt)) None }.
 
 (* pgm s l a du dens si l est dans dans s (s[l] > 0) *)
 
 Global Existing Instance pgm_compat.
 
-Definition req (r1 r2 : robogram) := (Spect.eq ==> Location.eq ==> Location.eq)%signature r1 r2.
-
-Instance req_equiv : Equivalence req.
+Global Instance robogram_Setoid : Setoid robogram := {
+  equiv := fun r1 r2 => forall s pt, r1 s pt == r2 s pt }.
 Proof. split.
-       + intros [robogram Hrobogram] x y Heq g1 g2 Hg; simpl. rewrite Hg, Heq. reflexivity.
-       + intros r1 r2 H x y Heq g1 g2 Hg. rewrite Hg, Heq.
-         unfold req in H.
-         now specialize (H y y (reflexivity y) g2 g2 (reflexivity g2)).
-       + intros r1 r2 r3 H1 H2 x y Heq g1 g2 Hg.
-         specialize (H1 x y Heq g1 g2 Hg). 
-         specialize (H2 y y (reflexivity y) g2 g2 (reflexivity g2)).
-         now rewrite H1.
++ repeat intro. reflexivity.
++ repeat intro. now symmetry.
++ repeat intro. etransitivity; eauto.
 Qed.
 
-(** * Executions *)
+
+(** **  Executions  **)
 
 (** Now we can [execute] some robogram from a given configuration with a [demon] *)
-Definition execution := Stream.t Config.t.
+Definition execution := Stream.t configuration.
 
-Definition eeq (e1 e2 : execution) : Prop :=
-  Stream.eq Config.eq e1 e2.
 
-Instance eeq_equiv : Equivalence eeq.
-Proof. split.
-       + coinduction eeq_refl. reflexivity.
-       + coinduction eeq_sym. symmetry. now inversion H. now inversion H.
-       + coinduction eeq_trans. 
-       - inversion H. inversion H0. now transitivity (Stream.hd y).
-       - apply (eeq_trans (Stream.tl x) (Stream.tl y) (Stream.tl z)).
-         now inversion H. now inversion H0.
-Qed.
-
-Instance eeq_hd_compat : Proper (eeq ==> Config.eq) (@Stream.hd _).
-Proof. apply Stream.hd_compat. Qed.
-
-Instance eeq_tl_compat : Proper (eeq ==> eeq) (@Stream.tl _).
-Proof. apply Stream.tl_compat. Qed.
-
-(** ** Demonic schedulers *)
+(** **  Demonic schedulers  **)
 
 (** A [demonic_action] moves all byz robots as it whishes,
   and sets the referential of all good robots it selects. *)
+Inductive Active_or_Moving :=
+  | Moving (dist : R)              (* moving ratio *)
+  | Active (sim : isomorphism G).  (* change of referential *)
 
-
-Inductive Active_or_Moving := 
-| Moving (dist : R)         (* moving ratio *)
-| Active (sim : Iso.t).     (* change of referential *)
-
-Definition Aom_eq (a1 a2: Active_or_Moving) :=
-  match a1, a2 with
-  | Moving d1, Moving d2 => d1 = d2
-  | Active sim1, Active sim2 => Iso.eq sim1 sim2
-  | _, _ => False
-  end.
-
-
-Instance Active_compat : Proper (Iso.eq ==> Aom_eq) Active.
-Proof. intros ? ? ?. auto. Qed.
-
-Instance Aom_eq_equiv : Equivalence Aom_eq.
+Instance AoM_Setoid : Setoid Active_or_Moving := {
+  equiv := fun a1 a2 => match a1, a2 with
+                          | Moving d1, Moving d2 => d1 == d2
+                          | Active sim1, Active sim2 => sim1 == sim2
+                          | _, _ => False
+                        end }.
 Proof. split.
 + now intros [].
-+ intros x y H. unfold Aom_eq in *. destruct x, y; auto.
-  now symmetry.
-+ intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
-  now rewrite H12, H23.
-Qed.
++ intros [] [] Heq; auto; now symmetry.
++ intros [] [] [] ? ?; congruence || easy || etransitivity; eauto.
+Defined.
 
-Record demonic_action :=
-  {
-    relocate_byz : Names.B -> Config.RobotConf;
-    step : Names.ident -> Config.RobotConf -> Active_or_Moving;
-    step_delta : forall g Rconfig sim,
-        Aom_eq (step (Good g) Rconfig) (Active sim) ->
-        ((exists l, Location.eq Rconfig.(Config.loc) (Loc l)) /\
-         Location.eq Rconfig.(Config.loc)
-                               Rconfig.(Config.state).(Info.target));
-    step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
-    step_flexibility : forall id config r,
-        Aom_eq (step id config) (Moving r) -> (0 <= r <= 1)%R}.
+Instance Active_compat : Proper (equiv ==> equiv) Active.
+Proof. intros ? ? ?. auto. Qed.
+
+
+Record demonic_action := {
+  relocate_byz : B -> location * info;
+  step : ident -> location * info -> Active_or_Moving;
+  step_delta : forall g rc sim, step (Good g) rc == Active sim ->
+    exists l, fst rc == Loc l (* /\ fst rc == fst (snd rc) *);
+  step_compat : Proper (Logic.eq ==> equiv ==> equiv) step;
+  step_flexibility : forall id config r, step id config == Moving r -> (0 <= r <= 1)%R }.
 Set Implicit Arguments.
 
-
-Definition da_eq (da1 da2 : demonic_action) :=
-  (forall id config,
-      (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
-  (forall b : Names.B, Config.eq_RobotConf (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
-
-Instance da_eq_equiv : Equivalence da_eq.
+Instance da_Setoid : Setoid demonic_action := {
+  equiv := fun da1 da2 => (forall id config, da1.(step) id config == da2.(step) id config)
+                       /\ (forall b, da1.(relocate_byz) b == da2.(relocate_byz) b) }.
 Proof. split.
 + split; intuition.
 + intros da1 da2 [Hda1 Hda2]. split; repeat intro; try symmetry; auto.
 + intros da1 da2 da3 [Hda1 Hda2] [Hda3 Hda4].
   split; intros; try etransitivity; eauto.
-Qed.
+Defined.
 
-Instance step_da_compat : Proper (da_eq ==> eq ==> Config.eq_RobotConf ==> Aom_eq) step.
+Instance step_da_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) step.
 Proof.
-  intros da1 da2 [Hd1 Hd2] p1 p2 Hp x y Hxy. subst.
-  etransitivity.
-  - apply Hd1.
-  - apply (step_compat da2); auto.
+intros da1 da2 [Hd1 Hd2] p1 p2 Hp x y Hxy. subst.
+etransitivity.
+- apply Hd1.
+- apply (step_compat da2); auto.
 Qed.
 
-Instance relocate_byz_compat : Proper (da_eq ==> Logic.eq ==> Config.eq_RobotConf) relocate_byz.
-Proof. intros [] [] Hd p1 p2 Hp. subst. destruct Hd as [H1 H2]. simpl in *. apply (H2 p2). Qed.
+Instance relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz.
+Proof. intros [] [] [_ Hd] p1 p2 Hp. subst. apply (Hd p2). Qed.
 
-Lemma da_eq_step_Moving : forall da1 da2,
-    da_eq da1 da2 -> 
-    forall id config r, Aom_eq (step da1 id config) (Moving r) <-> 
-                        Aom_eq (step da2 id config) (Moving r).
-Proof.
-  intros da1 da2 Hda id config r.
-  assert (Hopt_eq := step_da_compat Hda (reflexivity id) (reflexivity config)).
-  split; intro Hidle;rewrite Hidle in Hopt_eq ; destruct step; reflexivity || elim Hopt_eq; now auto.
-Qed.
+Lemma da_eq_step_Moving : forall da1 da2, da1 == da2 ->
+  forall id config r, step da1 id config == Moving r <-> step da2 id config == Moving r.
+Proof. intros da1 da2 Hda id config r. now rewrite Hda. Qed.
 
-Lemma da_eq_step_Active : forall da1 da2,
-    da_eq da1 da2 -> 
-    forall id config sim, Aom_eq (step da1 id config) (Active sim) <-> 
-                          Aom_eq (step da2 id config) (Active sim).
-Proof.
-  intros da1 da2 Hda id config sim.
-  assert (Hopt_eq := step_da_compat Hda (reflexivity id) (reflexivity config)).
-  split; intro Hidle;rewrite Hidle in Hopt_eq ; destruct step; reflexivity || elim Hopt_eq; now auto.
-Qed.
+Lemma da_eq_step_Active : forall da1 da2, da1 == da2 ->
+  forall id config iso, step da1 id config == Active iso <-> step da2 id config == Active iso.
+Proof. intros da1 da2 Hda id config r. now rewrite Hda. Qed.
 
 (** A [demon] is just a stream of [demonic_action]s. *)
-Definition demon :=
-  Stream.t demonic_action.
-
-(** Destructors for demons, getting the head demonic action or the
-    tail of the demon. *)
-
-Definition deq (d1 d2 : demon) : Prop :=
-  Stream.eq da_eq d1 d2.
-  
-Instance deq_equiv : Equivalence deq.
-Proof. split.
-+ coinduction deq_refl. reflexivity.
-+ coinduction deq_sym. symmetry. now inversion H. now inversion H.
-+ coinduction deq_trans.
-  - inversion H. inversion H0. now transitivity (Stream.hd y).
-  - apply (deq_trans (Stream.tl x) (Stream.tl y) (Stream.tl z)).
-    * now inversion H.
-    * now inversion H0.
-Qed.
+Definition demon := Stream.t demonic_action.
 
 Definition is_Active aom :=
   match aom with
@@ -537,54 +451,28 @@ Definition is_Active aom :=
   | _ => false
   end.
 
-Instance is_Active_compat : Proper (Aom_eq ==> eq) is_Active.
-Proof.
-  intros a1 a2 Haom.
-  unfold is_Active, Aom_eq in *.
-  destruct a1,a2; auto.
-  exfalso; auto.
-Qed.
+Instance is_Active_compat : Proper (equiv ==> Logic.eq) is_Active.
+Proof. intros [] [] ?; intuition. Qed.
 
 (* FIXME: Try to factor it with Config.app *)
-Definition apply_sim (sim : Iso.t) (infoR : Config.RobotConf) :=
+Definition apply_sim (iso : isomorphism G) (infoR : location * info) :=
   let fpos := (fun loc => 
   match loc with
   | Mvt e p => 
-    Mvt ((Iso.sim_E sim) e) (project_p_inv ((Iso.sim_T sim) (project_p p)))
-  | Loc l => Loc ((Iso.sim_V sim) l)
-  end) in
-  {| Config.loc := fpos (Config.loc infoR);
-     Config.state :=
-       {| Info.source := fpos (Info.source (Config.state infoR));
-          Info.target := fpos (Info.target (Config.state infoR)) |} |}.
+    Mvt ((iso_E iso) e) (project_p_inv ((iso_T iso) (project_p p)))
+  | Loc l => Loc ((iso_V iso) l)
+  end) in (fpos (fst infoR), app iso (snd infoR)).
 
-Instance apply_sim_compat : Proper (Iso.eq ==> Config.eq_RobotConf ==>
-                                           Config.eq_RobotConf) apply_sim.
+Instance apply_sim_compat : Proper (equiv ==> equiv ==> equiv) apply_sim.
 Proof.
-  intros sim sim' Hsim conf conf' Hconf.
-  unfold apply_sim. hnf.
-  repeat split; simpl;
-    destruct Hconf as (Hconf, (Hsrc, Htgt)).
-  - destruct (Config.loc conf) eqn : Hc, (Config.loc conf') eqn : Hc';
-    try contradiction;
-    try apply Hsim, Hconf; 
-    unfold loc_eq in Hconf; simpl.
-    destruct Hconf.
-    rewrite H0.
-    simpl.
-    now rewrite Hsim, H.
-  - destruct (Info.source (Config.state conf)),
-         (Info.source (Config.state conf')); try contradiction;
-      simpl in *.
-    * now rewrite Hsim, Hsrc.
-    * destruct Hsrc.
-      now rewrite Hsim, H, H0.
-  - destruct (Info.target (Config.state conf)),
-         (Info.target (Config.state conf')); try contradiction;
-      simpl in *.
-    * now rewrite Hsim, Htgt.
-    * destruct Htgt.
-      now rewrite Hsim, H, H0.
+intros sim sim' Hsim [] [] [].
+unfold apply_sim. hnf. repeat split; cbn [fst snd] in *.
++ repeat destruct_match; simpl in *; try tauto.
+  - repeat (revert_one equiv; intro Heq; rewrite Heq || clear Heq). apply Hsim.
+  - revert_one and. intros [He Hp]. rewrite He, Hp. split; try apply Hsim; [].
+    f_equal. change eq with (@equiv R _). apply Hsim.
++ apply app_compat; trivial; [].
+  intros ? ? Heq. rewrite Heq. apply Hsim.
 Qed.
 
 
@@ -593,20 +481,18 @@ Qed.
     the robogram [r] on each spectrum seen by each robot. [da.(demonic_action)]
     is used for byzantine robots. *)
 
-Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Config.t :=
+Definition round (r : robogram) (da : demonic_action) (config : configuration) : configuration :=
   (** for a given robot, we compute the new configuration *)
   fun id =>
-    let conf := config id in
-    let pos := conf.(Config.loc) in
-    match da.(step) id conf with (** first see whether the robot is activated *)
+    let rc := config id in
+    let pos := fst rc in
+    match da.(step) id rc with (** first see whether the robot is activated *)
     | Moving mv_ratio =>
       match pos, id with
       | Mvt e p, Good g => if Rle_dec 1%R ((project_p p) + mv_ratio)
-                           then {| Config.loc := Loc (Graph.tgt e); Config.state := Config.state conf |}
-                           else {| Config.loc := if Rdec mv_ratio 0 
-                                                 then Mvt e p
-                                                 else Mvt e (project_p_inv ((project_p p) + mv_ratio));
-                                   Config.state := Config.state conf |}
+                           then (Loc (tgt e), snd rc)
+                           else (if Rdec mv_ratio 0 then Mvt e p
+                                                    else Mvt e (project_p_inv ((project_p p) + mv_ratio)), snd rc)
       | Loc l, Good g =>
         let node_of_tgt := match Info.target (Config.state conf) with
                            | Loc lt => lt

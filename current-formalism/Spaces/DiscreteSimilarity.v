@@ -9,14 +9,11 @@
 (**************************************************************************)
 
 Require Import Utf8.
-Require Import Setoid.
-Require Import Equalities.
-Require Import Morphisms.
-Require Import Rbase Rbasic_fun.
-Require Import Pactole.Preliminary.
+Require Import SetoidClass.
+Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Configurations.
-Require Import Pactole.DiscreteSpace.
-Require Import Pactole.Bijection.
+Require Import Pactole.Spaces.DiscreteSpace.
+Require Import Pactole.Util.Bijection.
 
 
 Set Implicit Arguments.
@@ -32,96 +29,92 @@ Open Scope Z_scope.
     Unlike bijections that only need a setoid, we need here a space.
     For convenience, we also add their center, that is the location 
     from which robots locally observe. *)
-Module Make (Loc : DiscreteSpace).
+Section DiscreteSimilarity.
+Variable loc : Type.
+Context `{Space : DiscreteSpace loc}.
 
-Record t := {
-  sim_f :> Bijection.t Loc.eq;
-  center : Loc.t;
-  center_prop : Loc.eq (sim_f center) Loc.origin;
-  dist_prop : forall x y, Loc.dist (sim_f x) (sim_f y) = Loc.dist x y}.
+Record similarity := {
+  sim_f :> bijection loc;
+  center : loc;
+  center_prop : sim_f center == origin;
+  dist_prop : forall x y, dist (sim_f x) (sim_f y) = dist x y}.
 
-Definition eq sim1 sim2 := Bijection.eq sim1.(sim_f) sim2.(sim_f).
-
-Global Instance eq_equiv : Equivalence eq.
-Proof.
-unfold eq. split.
+Instance similarity_Setoid : Setoid similarity := {
+  equiv := fun sim1 sim2 => sim1.(sim_f) == sim2.(sim_f) }.
+Proof. split.
 + intros [f c Hc Hk]. simpl. reflexivity.
 + intros [f cf Hcf Hkf] [g cg Hcg Hkg] Hfg. simpl in *. now symmetry.
-+ intros [f cf Hcf Hkf] [g cg Hcg Hkg] [h ch Hch Hkh] ? ?. simpl in *. etransitivity; eassumption.
-Qed.
++ intros [f cf Hcf Hkf] [g cg Hcg Hkg] [h ch Hch Hkh] ? ?. cbn [sim_f] in *. etransitivity; eassumption.
+Defined.
 
-Instance f_compat : Proper (eq ==> @Bijection.eq _ Loc.eq) sim_f.
-Proof. intros sim1 sim2 Hsim ? ? Heq. now apply Hsim. Qed.
+Instance sim_f_compat : Proper (equiv ==> equiv) sim_f.
+Proof. intros ? ? Heq. now apply Heq. Qed.
 
 (** The identity similarity *)
-Definition id : t.
-refine {| sim_f := Bijection.id Loc.eq_equiv;
-          center := Loc.origin;
-          center_prop := reflexivity _ |}.
-Proof. abstract (intros; auto). Defined.
+Definition id : similarity := {|
+  sim_f := @Bijection.id loc _;
+  center := origin;
+  center_prop := reflexivity _;
+  dist_prop := ltac:(abstract (intros; auto)) |}.
+
 
 Section Normed_Results.
 (** The existence of homothecy and translation similarities (implied by these two hypotheses)
     is actually equivalent to defining a normed vector space. *)
-Hypothesis translation_hypothesis : forall v x y, Loc.dist (Loc.add x v) (Loc.add y v) = Loc.dist x y.
-Hypothesis rotation_hypothesis : forall x y, Loc.dist (Loc.opp x) (Loc.opp y) = Loc.dist x y.
+Hypothesis translation_hypothesis : forall v x y, dist (add x v) (add y v) = dist x y.
+Hypothesis rotation_hypothesis : forall x y, dist (opp x) (opp y) = dist x y.
 
 (** The translation similarity *)
-Lemma bij_translation_Inversion : forall v x y : Loc.t, Loc.eq (Loc.add x v) y ↔ Loc.eq (Loc.add y (Loc.opp v)) x.
+Lemma bij_translation_Inversion : forall v x y, add x v == y ↔ add y (opp v) == x.
 Proof.
-intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- Loc.add_assoc.
-- now rewrite Loc.add_opp, Loc.add_origin.
-- setoid_rewrite Loc.add_comm at 2. now rewrite Loc.add_opp, Loc.add_origin.
+intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- add_assoc.
+- now rewrite add_opp, add_origin.
+- setoid_rewrite add_comm at 2. now rewrite add_opp, add_origin.
 Qed.
 
-Definition bij_translation (v : Loc.t) : Bijection.t Loc.eq.
-refine {|
-  section := fun x => Loc.add x v;
-  retraction := fun x => Loc.add x (Loc.opp v) |}.
+Definition bij_translation (v : loc) : bijection loc.
+refine {| section := fun x => @add loc _ _ Space x v;
+          retraction := fun x => add x (opp v) |}.
 Proof.
 + abstract (intros x y Hxy; now rewrite Hxy).
 + apply bij_translation_Inversion.
 Defined.
 
 
-Definition translation (v : Loc.t) : t.
+Definition translation (v : loc) : similarity.
 refine {| sim_f := bij_translation v;
-          center := Loc.opp v |}.
+          center := opp v |}.
 Proof.
-+ simpl. abstract (now rewrite Loc.add_comm, Loc.add_opp).
++ simpl. abstract (now rewrite add_comm, add_opp).
 + simpl. auto.
 Defined.
 
-Global Instance translation_compat : Proper (Loc.eq ==> eq) translation.
-Proof. intros u v Huv x y Hxy. simpl. now rewrite Huv, Hxy. Qed.
+Global Instance translation_compat : Proper (equiv ==> equiv) translation.
+Proof. intros u v Huv x. simpl. now rewrite Huv. Qed.
 
-Lemma translation_origin : eq (translation Loc.origin) id.
-Proof. intros x y Hxy. simpl. now rewrite Loc.add_origin. Qed.
+Lemma translation_origin : translation origin == id.
+Proof. intro. simpl. apply add_origin. Qed.
 
-(** the rotation similarity **)
+(** The rotation similarity *)
+Lemma bij_rotation_Inversion : forall x y : loc, opp x == y ↔ opp y == x.
+Proof. split; intro Heq; rewrite <- Heq, opp_opp; reflexivity. Qed.
 
-Lemma bij_rotation_Inversion : forall x y : Loc.t, Loc.eq (Loc.opp x) y ↔ Loc.eq (Loc.opp y) x.
+Definition bij_rotation : bijection loc.
+refine {| section := fun x => opp x;
+          retraction := fun x => opp x |}.
 Proof.
-intros.
-split;intros Heq; rewrite <- Heq, Loc.opp_opp; reflexivity.
-Qed.
-
-Definition bij_rotation : Bijection.t Loc.eq.
-refine {|
-  section := fun x => Loc.opp x;
-  retraction := fun x => Loc.opp x |}.
-Proof. intros; split; intros Heq; rewrite <- Heq, Loc.opp_opp; reflexivity. Defined.
-
-
-Definition rotation : t.
-refine {| sim_f := bij_rotation|}.
-Proof.
-+ simpl. rewrite Loc.opp_origin. reflexivity.
-+ simpl. auto.
++ repeat intro. now apply opp_compat.
++ apply bij_rotation_Inversion.
 Defined.
 
-Global Instance rotation_compat : Proper (eq) rotation.
-Proof. intros u v Huv. simpl. now rewrite Huv. Qed.
+
+Definition rotation : similarity.
+refine {| sim_f := bij_rotation;
+          center := origin |}.
+Proof.
++ apply opp_origin.
++ apply rotation_hypothesis.
+Defined.
 
 
 (* (** The homothetic similarity *)
@@ -171,50 +164,48 @@ End Normed_Results.
  
 (** Composition of similarity *)
 
-Definition compose (f g : t) : t.
-refine {|
-  sim_f := Bijection.compose _ f g;
-  center := retraction g (retraction f Loc.origin) |}.
+Definition compose (f g : similarity) : similarity.
+refine {| sim_f := Bijection.compose f g;
+          center := retraction g (retraction f origin) |}.
 Proof.
 + simpl. abstract (now repeat rewrite section_retraction; autoclass).
-+ simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring).
++ simpl. abstract (now intros; rewrite f.(dist_prop), g.(dist_prop)).
 Defined.
-Global Infix "∘" := compose (left associativity, at level 59).
+Infix "∘" := compose (left associativity, at level 59).
 
-Global Instance compose_compat : Proper (eq ==> eq ==> eq) compose.
-Proof. intros f1 f2 Hf g1 g2 Hg x y Hxy. cbn. now rewrite Hxy, Hf, Hg. Qed.
+Global Instance compose_compat : Proper (equiv ==> equiv ==> equiv) compose.
+Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed.
 
-Lemma compose_assoc : forall f g h, eq (f ∘ (g ∘ h)) ((f ∘ g) ∘ h).
-Proof. intros f g h x y Hxy. simpl. now rewrite Hxy. Qed.
+Lemma compose_assoc : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
+Proof. repeat intro. reflexivity. Qed.
 
 (** Inverse of a similarity *)
-Definition inverse (sim : t) : t.
-refine {| sim_f := Bijection.inverse _ sim.(sim_f);
-          center := sim Loc.origin |}.
+Definition inverse (sim : similarity) : similarity.
+refine {| sim_f := Bijection.inverse sim.(sim_f);
+          center := sim origin |}.
 Proof.
 + abstract (apply (retraction_section _)).
-+ intros x y.
-  rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass.
++ intros x y. rewrite <- sim.(dist_prop). apply dist_compat; apply section_retraction.
 Defined.
-Global Notation "s ⁻¹" := (inverse s) (at level 99).
+Notation "s ⁻¹" := (inverse s) (at level 99).
 
-Global Instance inverse_compat : Proper (eq ==> eq) inverse.
-Proof. intros f g Hfg x y Hxy. simpl. rewrite Hxy. f_equiv. apply Hfg. Qed.
+Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
+Proof. repeat intro. simpl. now f_equiv. Qed.
 
-Lemma compose_inverse_l : forall sim : t, eq (sim ⁻¹ ∘ sim) id.
-Proof. intros sim x y Hxy. simpl. now rewrite retraction_section; autoclass. Qed.
+Lemma compose_inverse_l : forall sim : similarity, sim ⁻¹ ∘ sim == id.
+Proof. intros sim x. simpl. now rewrite retraction_section. Qed.
 
-Lemma compose_inverse_r : forall sim : t, eq (sim ∘ (sim ⁻¹)) id.
-Proof. intros sim x y Hxy. simpl. now rewrite section_retraction; autoclass. Qed.
+Lemma compose_inverse_r : forall sim : similarity, sim ∘ (sim ⁻¹) == id.
+Proof. intros sim x. simpl. now rewrite section_retraction. Qed.
 
-Lemma inverse_compose : forall f g : t, eq ((f ∘ g) ⁻¹) ((g ⁻¹) ∘ (f ⁻¹)).
-Proof. intros f g x y Hxy. simpl. rewrite Hxy. reflexivity. Qed.
+Lemma inverse_compose : forall f g : similarity, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
+Proof. repeat intro. reflexivity. Qed.
 
-Corollary injective : forall sim : t, Preliminary.injective Loc.eq Loc.eq sim.
+Corollary injective : forall sim : similarity, Preliminary.injective equiv equiv sim.
 Proof.
 intros sim z t Heqf.
-rewrite <- Loc.dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
+rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
 assumption.
 Qed.
 
-End Make.
+End DiscreteSimilarity.

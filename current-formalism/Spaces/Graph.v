@@ -99,7 +99,7 @@ Proof. intros. apply Zdiv.Z_mod_lt. lia. Qed.
 Lemma to_Z_inf_n (x : Z): Z.to_nat (x mod Z.of_nat n)%Z < n.
 Proof. intros. rewrite <- Nat2Z.id, <- Z2Nat.inj_lt; try apply Zdiv.Z_mod_lt; omega. Qed.
 
-Definition to_Z (v : finite_node n): Z := Z.of_nat (proj1_sig v).
+Definition to_Z (v : finite_node n) : Z := Z.of_nat (proj1_sig v).
 Definition of_Z (x : Z) : finite_node n := exist _ (Z.to_nat (x mod Z.of_nat n)) (to_Z_inf_n x).
 
 Instance to_Z_compat : Proper (equiv ==> Z.eq) to_Z.
@@ -302,3 +302,6 @@ refine ({|
 Defined.
 
 End Ring.
+
+(* To avoid passing the proof of [n > 1] around. *)
+Arguments of_Z {n} [_] _.

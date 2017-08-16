@@ -3,7 +3,7 @@
 (*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*   This file is distributed under the terms of the CeCILL-C licence.    *)
 (*                                                                        *)
 (**************************************************************************)
 
@@ -14,7 +14,8 @@
                                                                             
      PACTOLE project                                                        
                                                                             
-     This file is distributed under the terms of the CeCILL-C licence.    *)
+     This file is distributed under the terms of the CeCILL-C licence.      
+                                                                          *)
 (**************************************************************************)
 
 
@@ -23,9 +24,9 @@ Require Import Omega.
 Require Export SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Export Pactole.Setting.
-Require Export Pactole.Models.Rigid.
 Require Export Pactole.Spectra.Definition.
 Require Export Pactole.Spectra.MultisetSpectrum.
+Require Export Pactole.Models.Rigid.
 Close Scope R_scope.
 Set Implicit Arguments.
 

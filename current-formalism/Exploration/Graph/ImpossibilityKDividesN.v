@@ -20,9 +20,9 @@ Require Import List Setoid SetoidList Compare_dec Morphisms.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
+Require Import Pactole.Spaces.Graph.
 Require Import Pactole.DiscreteSpace.
 Require Import Pactole.Exploration.Graph.Definitions.
-Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 Open Scope Z_scope.
 
 
