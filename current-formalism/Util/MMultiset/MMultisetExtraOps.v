@@ -606,7 +606,7 @@ Section MMultisetExtra.
   intros m x. destruct (empty_or_In_dec m) as [Hm | Hm].
   + left. rewrite <- max_empty in Hm. rewrite (Hm x). apply empty_spec.
   + unfold max. rewrite nfilter_spec.
-    destruct (max_mult m =? m[x]) as [Heq | Heq]; auto.
+    destruct (max_mult m =? m[x]); auto.
     repeat intro. now subst.
   Qed.
   
