@@ -183,37 +183,44 @@ Proof. intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qe
 
 (** We have finetely many robots. Some are good, other are byzantine.
     Both are represented by an abtract type that can be enumerated. *)
-
-Class NamesDef := {
+Class Names := {
+  (** Number of good and byzantine robots *)
   nG : nat;
   nB : nat;
+  (** Types representing good and byzantine robots *)
   G : Type;
   B : Type;
+  (** Enumerations of robots *)
   Gnames : list G;
-  Bnames : list B}.
-
-Inductive identifier {G} {B} : Type :=
-  | Good (g : G)
-  | Byz (b : B).
-
-Definition ident `{H : NamesDef} := @identifier (@G H) (@B H).
-
-Definition names `{H : NamesDef} : list ident := List.map Good Gnames ++ List.map Byz Bnames.
-
-
-Class Names `{NamesDef} := {
-  In_Gnames : forall g : G, In g Gnames;
+  Bnames : list B;
+  (** The enumerations are complete and without duplicates *)
+  In_Gnames : forall g : G, In g Gnames;  
   In_Bnames : forall b : B, In b Bnames;
   Gnames_NoDup : NoDup Gnames;
   Bnames_NoDup : NoDup Bnames;
+  (** There is the right amount of robots *)
   Gnames_length : length Gnames = nG;
   Bnames_length : length Bnames = nB;
+  (** We can tell robots apart *)
   Geq_dec : forall g g' : G, {g = g'} + {g <> g'};
   Beq_dec : forall b b' : B, {b = b'} + {b <> b'};
+  (** Being a finite type, extensional function equality is decidable *)
   fun_Gnames_eq : forall {A : Type} eqA f g,
     @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x);
   fun_Bnames_eq : forall {A : Type} eqA f g,
     @eqlistA A eqA (List.map f Bnames) (List.map g Bnames) -> forall x, eqA (f x) (g x)}.
+
+Global Opaque In_Gnames In_Bnames Gnames_NoDup Bnames_NoDup
+              Gnames_length Bnames_length Geq_dec Beq_dec fun_Gnames_eq fun_Bnames_eq.
+
+(** Identifiers makes good and byzantine robots undistinguishable *)
+Inductive identifier {G} {B} : Type :=
+  | Good (g : G)
+  | Byz (b : B).
+
+Definition ident `{H : Names} := @identifier (@G H) (@B H).
+
+Definition names `{H : Names} : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
 Lemma In_names `{Names} : forall r : ident, In r names.
 Proof.
@@ -265,16 +272,16 @@ unfold names in Heq. repeat rewrite ?map_app, map_map in Heq. apply eqlistA_app_
 + now do 2 rewrite map_length.
 Qed.
 
-Local Instance RobotsDef (n m : nat) : NamesDef := {|
+(** Given a number of good and byzntine robots, we can build canonical names.
+    It is not declared as a global instance to avoid creating spurious settings. *)
+Local Instance Robots (n m : nat) : Names := {|
   nG := n;
   nB := m;
   G := {k : nat | k < n};
   B := {k : nat | k < m};
   Gnames := enum n;
   Bnames := enum m |}.
-
-Definition Robots (n m : nat) : @Names (RobotsDef n m).
-Proof. split.
+Proof.
 + intro g. apply In_enum, proj2_sig.
 + intro b. apply In_enum, proj2_sig.
 + apply enum_NoDup.
@@ -285,4 +292,4 @@ Proof. split.
 + intros b b'. destruct (subset_dec b b'); auto.
 + intros. now apply enum_eq.
 + intros. now apply enum_eq.
-Qed.
+Defined.

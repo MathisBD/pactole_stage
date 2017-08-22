@@ -12,9 +12,9 @@ Class Spectrum loc info `{Info : Information loc info} `{Names} := {
   spectrum_EqDec : EqDec spectrum_Setoid;
 
   (** A predicate characterizing correct spectra for a given local configuration *)
-  spect_from_config : @configuration loc _ _ _ _ _ _ _ _ _ -> spectrum;
+  spect_from_config : @configuration loc _ _ _ _ _ _ _ _ -> spectrum;
   spect_from_config_compat : Proper (equiv ==> equiv) spect_from_config;
-  spect_is_ok : spectrum -> @configuration loc _ _ _ _ _ _ _ _ _ -> Prop;
+  spect_is_ok : spectrum -> @configuration loc _ _ _ _ _ _ _ _ -> Prop;
   spect_from_config_spec : forall config, spect_is_ok (spect_from_config config) config}.
 
 Existing Instance spectrum_Setoid.
@@ -29,9 +29,9 @@ Class PointedSpectrum loc info `{Info : Information loc info} `{Names} := {
   pspectrum_EqDec : EqDec pspectrum_Setoid;
   
   (** A predicate characterizing correct spectra for a given local configuration *)
-  pspect_from_config : @configuration loc _ _ _ _ _ _ _ _ _ -> loc -> pspectrum;
+  pspect_from_config : @configuration loc _ _ _ _ _ _ _ _ -> loc -> pspectrum;
   pspect_from_config_compat : Proper (equiv ==> equiv ==> equiv) pspect_from_config;
-  pspect_is_ok : pspectrum -> @configuration loc _ _ _ _ _ _ _ _ _ -> Prop;
+  pspect_is_ok : pspectrum -> @configuration loc _ _ _ _ _ _ _ _ -> Prop;
   pspect_from_config_spec : forall config pt, pspect_is_ok (pspect_from_config config pt) config;
   
   get_current : pspectrum -> loc;

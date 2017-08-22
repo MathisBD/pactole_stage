@@ -41,8 +41,7 @@ Parameter n : nat.
 Axiom even_nG : Nat.Even n.
 Axiom nG_non_0 : n <> 0.
 
-Global Instance MyRobotsDef : NamesDef := RobotsDef n 0.
-Global Instance MyRobots : Names := Robots n 0.
+Instance MyRobots : Names := Robots n 0.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
 Existing Instance R_Setoid.
@@ -51,9 +50,9 @@ Existing Instance R_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info _ MyRobots _).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ Info _ MyRobots _).
+Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info MyRobots _).
+Notation robogram := (@robogram R Datatypes.unit _ _ _ _ Info MyRobots _).
 Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
 Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
 Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).
@@ -79,7 +78,7 @@ Qed.
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall config l,
   (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
- := spect_from_config_spec.
+  := spect_from_config_spec.
 
 Lemma no_byz : forall (id : ident) P, (forall g, P (@Good G B g)) -> P id.
 Proof.

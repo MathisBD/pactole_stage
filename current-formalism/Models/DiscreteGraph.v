@@ -38,11 +38,11 @@ Axiom e_default : E.
 
 Instance Info2 : Information V (V * info) := @pair_Information V V info _ _ _ _ (Location V) _ _ Info.
 
-Context `{@Spectrum V (V * info) _ _ _ _ _ _ _}.
+Context `{@Spectrum V (V * info) _ _ _ _ _ _}.
 
 Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 Notation spectrum := (@spectrum V (V * info) _ _ _ _ Info2 _ _).
-Notation configuration := (@configuration V (V * info) _ _ _ _ Info2 _ _ _).
+Notation configuration := (@configuration V (V * info) _ _ _ _ Info2 _ _).
 
 
 Record robogram := {

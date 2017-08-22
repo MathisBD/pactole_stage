@@ -31,8 +31,8 @@ Context `{Information loc info}.
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
 
-Local Notation configuration := (@configuration loc info _ _ _ _ _ _ _ _).
-Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _ Spect).
+Local Notation configuration := (@configuration loc info _ _ _ _ _ _ _).
+Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ Spect).
 
 
 (** Good robots have a common program, which we call a [robogram]. *)

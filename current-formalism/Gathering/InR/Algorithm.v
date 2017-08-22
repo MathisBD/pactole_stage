@@ -29,9 +29,10 @@ Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Spaces.R.
 Require Import Pactole.Gathering.Definitions.
+Require Import Pactole.Spaces.R.
 Import Permutation.
+Close Scope R_scope.
 
 
 Typeclasses eauto := 10.
@@ -41,7 +42,6 @@ Set Implicit Arguments.
 Parameter n : nat.
 Axiom size_G : n >= 2.
 
-Instance MyRobotsDef : NamesDef := RobotsDef n 0.
 Instance MyRobots : Names := Robots n 0.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
@@ -51,9 +51,9 @@ Existing Instance R_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info _ MyRobots  _).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ _ MyRobots Info _).
+Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info MyRobots  _).
+Notation robogram := (@robogram R Datatypes.unit _ _ _ _ MyRobots Info _).
 Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
 Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
 Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).

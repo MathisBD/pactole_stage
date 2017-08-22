@@ -184,12 +184,11 @@ Qed.
 Context {info: Type}.
 Context {Sinfo : Setoid info} {Einfo : EqDec Sinfo}.
 Context {Info : Information loc info}.
-Context {RobotsDef : NamesDef}.
 Context {Robots : Names}.
 
 Notation configuration := (@configuration loc info _ _ _ _ _ _).
-Notation map_config := (@map_config loc info _ _ _ _ _ _).
-Notation config_list := (@config_list loc info _ _ _ _ Info _ Robots _).
+Notation map_config := (@map_config loc info _ _ _ _ _ _ _).
+Notation config_list := (@config_list loc info _ _ _ _ Info Robots _).
 
 Global Instance multiset_pspectrum : PointedSpectrum loc info := {
   pspectrum := loc * @multiset loc _ _ _;
@@ -199,17 +198,17 @@ Global Instance multiset_pspectrum : PointedSpectrum loc info := {
   
   pspect_from_config config pt := (pt, make_multiset (List.map fst (config_list config)));
   pspect_is_ok s config := forall pt, (snd s)[pt] = countA_occ _ equiv_dec pt (List.map fst (config_list config)) }.
-Proof.
-+ intros config1 config2 Hconfig x y Hxy. split; trivial; []. cbn [snd]. f_equiv.
+Proof. (* BUG?: bullet forbidden here *)
+{ intros config1 config2 Hconfig x y Hxy. split; trivial; []. cbn [snd]. f_equiv.
   apply eqlistA_PermutationA_subrelation, (@map_eqlistA_compat _ _ equiv equiv _ fst).
   - now repeat intros [].
-  - now apply config_list_compat.
+  - now apply config_list_compat. }
 + intros. apply make_multiset_spec.
 + reflexivity.
 Defined.
 
-Notation pspectrum := (@pspectrum loc info _ _ _ _ _ _ _ _).
-Notation pspect_from_config := (@pspect_from_config loc info _ _ _ _ _ _ _ multiset_pspectrum).
+Notation pspectrum := (@pspectrum loc info _ _ _ _ _ _ _).
+Notation pspect_from_config := (@pspect_from_config loc info _ _ _ _ _ _ multiset_pspectrum).
 
 Lemma pspect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->
   forall (config : configuration) pt,

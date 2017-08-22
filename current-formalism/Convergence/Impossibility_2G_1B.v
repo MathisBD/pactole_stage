@@ -41,7 +41,6 @@ Import SetoidClass.
 Parameter n : nat.
 Axiom n_non_0 : n <> 0%nat.
 
-Instance MyRobotsDef : NamesDef := RobotsDef (2 * n) n.
 Instance MyRobots : Names := Robots (2 * n) n.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
@@ -52,7 +51,7 @@ Existing Instance R_RMS.
 Instance Unit : Information R Datatypes.unit := Configurations.Unit _.
 (** The spectrum is a multiset of positions *)
 Notation "!!" := spect_from_config (at level 1).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ Unit _ MyRobots _).
+Notation robogram := (@robogram R Datatypes.unit _ _ _ _ Unit MyRobots _).
 Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
 Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
 Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).
@@ -62,7 +61,7 @@ Notation execution := (@execution R Datatypes.unit _ _ _ _ _).
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall (config : configuration) (l : R),
   (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
- := @spect_from_config_spec R Datatypes.unit _ _ _ _ _ _ _ _.
+ := @spect_from_config_spec R Datatypes.unit _ _ _ _ _ _ _.
 
 Add Search Blacklist "Spect.M" "Ring".
 Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.

@@ -30,19 +30,11 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Pactole.CommonFormalism.
-Require Pactole.Models.Rigid.
-Require Import Pactole.Spectra.MultisetSpectrum.
-Require Import Pactole.Util.Lexprod.
-Require Import Pactole.Spaces.R2.
 Require Import Pactole.Gathering.Definitions.
-
-
+Require Import Pactole.Spaces.R2.
 Import Permutation.
 Set Implicit Arguments.
+Close Scope R_scope.
 
 
 (** *  The Gathering Problem  **)
@@ -59,7 +51,6 @@ Parameter n : nat.
 Local Axiom size_G : (3 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
-Instance MyRobotsDef : NamesDef := RobotsDef n 0.
 Instance MyRobots : Names := Robots n 0.
 
 Existing Instance R2_Setoid.
@@ -68,13 +59,13 @@ Existing Instance R2_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation "!!" := (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
 Notation "x == y" := (equiv x y).
-Notation spectrum := (@spectrum R2 Datatypes.unit _ _ _ _ Info _ MyRobots  _).
-Notation robogram := (@robogram R2 Datatypes.unit _ _ _ _ Info _ MyRobots _).
+Notation spectrum := (@spectrum R2 Datatypes.unit _ _ _ _ Info MyRobots  _).
+Notation robogram := (@robogram R2 Datatypes.unit _ _ _ _ Info MyRobots _).
 Notation configuration := (@configuration R2 Datatypes.unit _ _ _ _ Info _ _).
 Notation config_list := (@config_list R2 Datatypes.unit _ _ _ _ Info _ _).
-Notation round := (@round R2 Datatypes.unit _ _ _ _ _ _ _ Info _).
+Notation round := (@round R2 Datatypes.unit _ _ _ _ _ _ Info _).
 Notation execution := (@execution R2 Datatypes.unit _ _ _ _ _).
 Notation Madd := (MMultisetInterface.add).
 
@@ -720,13 +711,13 @@ simpl in Hsize; omega || clear Hsize.
 Qed.
 
 
-Definition lt_config x y := lexprod lt lt (measure (!! x)) (measure (!! y)).
+Definition lt_config x y := Lexprod.lexprod lt lt (measure (!! x)) (measure (!! y)).
 
 Lemma wf_lt_config: well_founded lt_config.
 Proof.
 unfold lt_config.
 apply wf_inverse_image.
-apply wf_lexprod; apply lt_wf.
+apply Lexprod.wf_lexprod; apply lt_wf.
 Qed.
 
 Instance lt_config_compat : Proper (equiv ==> equiv ==> iff) lt_config.
@@ -2904,11 +2895,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
        ++ apply no_moving_same_config in Hmoving. now rewrite Hmoving.
        ++ assert (Hperm' : PermutationA equiv (support (!! (round gatherR2 da config)))
                                         (ptx :: pty :: ptz :: nil)).
-<<<<<<< HEAD
           { assert (forall x, In x (gmove :: l) -> fst (round gatherR2 da config x) == vertex).
-=======
-          { assert (forall x, In x (gmove :: l) -> Config.loc (round gatherR2 da conf x) = vertex).
->>>>>>> new-names
             { rewrite <- Htarget.
               intros x H3.
               apply destination_is_target; auto.
@@ -2965,11 +2952,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
          remember (opposite_of_max_side ptx pty ptz) as vertex.
          assert (Hperm' : PermutationA equiv (support (!! (round gatherR2 da config)))
                                         (ptx :: pty :: ptz :: nil)).
-<<<<<<< HEAD
-          { assert (forall x, In x (gmove :: l) -> (round gatherR2 da config) x = vertex).
-=======
-          { assert (forall x, In x (gmove :: l) -> Config.loc (round gatherR2 da conf x) = vertex).
->>>>>>> new-names
+          { assert (forall x, In x (gmove :: l) -> fst (round gatherR2 da config x) == vertex).
             { rewrite <- Htarget.
               intros x H3.
               apply destination_is_target;auto.

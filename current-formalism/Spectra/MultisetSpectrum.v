@@ -181,12 +181,11 @@ Qed.
 Context {info: Type}.
 Context {Sinfo : Setoid info} {Einfo : EqDec Sinfo}.
 Context {Info : Information loc info}.
-Context {RobotsDef : NamesDef}.
 Context {Robots : Names}.
 
-Notation configuration := (@configuration loc info _ _ _ _ _ _).
-Notation map_config := (@map_config loc info _ _ _ _ _ _).
-Notation config_list := (@config_list loc info _ _ _ _ Info _ Robots _).
+Notation configuration := (@configuration loc info _ _ _ _ _ _ _).
+Notation map_config := (@map_config loc info _ _ _ _ _ _ _).
+Notation config_list := (@config_list loc info _ _ _ _ Info Robots _).
 
 
 Global Instance multiset_spectrum : Spectrum loc info := {
@@ -205,8 +204,8 @@ Proof.
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
 Defined.
 
-Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _ _).
-Notation spect_from_config := (@spect_from_config loc info _ _ _ _ _ _ _ multiset_spectrum).
+Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
+Notation spect_from_config := (@spect_from_config loc info _ _ _ _ _ _ multiset_spectrum).
 
 
 Lemma spect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->

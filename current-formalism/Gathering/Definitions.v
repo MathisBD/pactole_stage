@@ -22,7 +22,7 @@
 Require Import Arith.Div2.
 Require Import Omega.
 Require Export SetoidDec.
-Require Import Pactole.Util.Preliminary.
+Require Export Pactole.Util.Preliminary.
 Require Export Pactole.Setting.
 Require Export Pactole.Spectra.Definition.
 Require Export Pactole.Spectra.MultisetSpectrum.
@@ -36,12 +36,12 @@ Section GatheringDefinitions.
 Context {loc : Type}.
 Context {Sloc : Setoid loc} {Eloc : EqDec Sloc}.
 Context {loc_RMS : @RealMetricSpace loc Sloc Eloc}.
-Context {RobotsDef : NamesDef} {Robots : Names}.
+Context {Robots : Names}.
 
 Global Instance Info : Information loc Datatypes.unit := Unit _.
 
-Notation "!!" := (@spect_from_config loc Datatypes.unit _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation robogram := (@robogram loc Datatypes.unit _ _ _ _ Info _ Robots _).
+Notation "!!" := (@spect_from_config loc Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation robogram := (@robogram loc Datatypes.unit _ _ _ _ Info Robots _).
 Notation configuration := (@configuration loc Datatypes.unit _ _ _ _ _ _ _).
 Notation config_list := (@config_list loc Datatypes.unit _ _ _ _ _ _ _).
 Notation round := (@round loc Datatypes.unit _ _ _ _ _ _ _).
@@ -126,7 +126,7 @@ Qed.
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall (config : configuration) l,
   (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
- := @spect_from_config_spec loc Datatypes.unit _ _ _ _ _ _ _ _.
+ := @spect_from_config_spec loc Datatypes.unit _ _ _ _ _ _ _.
 
 Lemma spect_non_nil : 2 <= nG -> forall config : configuration, ~!! config == MMultisetInterface.empty.
 Proof.

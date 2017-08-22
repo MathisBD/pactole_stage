@@ -34,14 +34,14 @@ Context {Eloc : EqDec Sloc}.
 Context {Sinfo : Setoid info}.
 Context {Einfo : EqDec Sinfo}.
 Context {RMS : @RealMetricSpace loc Sloc Eloc}.
-Context {Ndef : NamesDef} {N : Names}.
+Context {N : Names}.
 Context {Info : Information loc info}.
 Context {Spect : Spectrum loc info}.
 
 (* Notations to avoid typeclass resolution taking forever. *)
 Notation configuration := (@configuration loc info _ _ _ _ _ _ _).
-Notation robogram := (@robogram loc info _ _ _ _ _ _ _ _).
-Notation execution := (@execution loc info _ _ _ _ _ _ _).
+Notation robogram := (@robogram loc info _ _ _ _ _ _ _).
+Notation execution := (@execution loc info _ _ _ _ _ _).
 Notation map_config := (@map_config loc info _ _ _ _ _ _ _).
 Notation app := (@app _ _ _ _ _ _ Info).
 
