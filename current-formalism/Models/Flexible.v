@@ -56,7 +56,6 @@ Record demonic_action := {
   step : ident → option ((loc → similarity loc) (* change of referential *)
                                * R); (* travel ratio (rigid or flexible moves) *)
   step_compat : Proper (Logic.eq ==> opt_eq ((equiv ==> equiv) * (@eq R))) step;
-(* FIXME: Use Proper (Logic.eq ==> opt_eq ((eq ==> equiv) * (@eq R))) instead? *)
   step_zoom :  forall id sim c, step id = Some sim -> (fst sim c).(zoom) <> 0%R;
   step_center : forall id sim c, step id = Some sim -> (fst sim c).(center) == c;
   step_flexibility : forall id sim, step id = Some sim -> (0 <= snd sim <= 1)%R}.
@@ -284,9 +283,9 @@ Definition round (δ : R) (r : robogram) (da : demonic_action) (config : configu
   (** for a given robot, we compute the new configuration *)
   fun id =>
     let loc_info := config id in  (** loc is the current location of id seen by the demon *)
-    match da.(step) id with          (** first see whether the robot is activated *)
+    match da.(step) id with       (** first see whether the robot is activated *)
       | None => loc_info          (** If id is not activated, do nothing *)
-      | Some (sim, mv_ratio) =>      (** id is activated with similarity [sim (config id)] and move ratio [mv_ratio] *)
+      | Some (sim, mv_ratio) =>   (** id is activated with similarity [sim (config id)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => da.(relocate_byz) b (* byzantine robots are relocated by the demon *)
         | Good g => (* configuration expressed in the frame of g *)

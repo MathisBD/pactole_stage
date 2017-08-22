@@ -5,7 +5,7 @@ Require Import Pactole.Configurations.
 
 (** **  Spectra  **)
 
-Class Spectrum loc info `{Info : Information loc info} `{Names} := {
+Class Spectrum loc info `{Information loc info} `{Names} := {
   (** Spectrum is a decidable type *)
   spectrum : Type;
   spectrum_Setoid : Setoid spectrum;
@@ -22,7 +22,7 @@ Existing Instance spectrum_EqDec.
 Existing Instance spect_from_config_compat.
 
 
-Class PointedSpectrum loc info `{Info : Information loc info} `{Names} := {
+Class PointedSpectrum loc info `{Information loc info} `{Names} := {
   (** Spectrum is a decidable type *)
   pspectrum : Type;
   pspectrum_Setoid : Setoid pspectrum;

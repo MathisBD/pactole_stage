@@ -30,7 +30,7 @@ Section Formalism.
 Context (V E info  : Type).
 Context {G : Graph V E}.
 Context `{Names}.
-Context `{Setoid info} `{@EqDec info _}.
+Context `{EqDec info}.
 Context `{Info : @Information V info _ _ _ _}.
 
 (* Never used if we start from a good config. *)

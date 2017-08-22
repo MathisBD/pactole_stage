@@ -18,13 +18,12 @@ Require Import RelationPairs.
 Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
-Require Import Pactole.Preliminary.
+Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.ContinuousDVGraphFormalism.
-Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.CommonIsoGraphFormalism.
+Require Import Pactole.ContinuousGraph.
+Require Import Pactole.DiscreteGraph.
 
 
 (* FIXME: The info for robots is currently hard-coded to be (source, target) *)
@@ -507,7 +506,7 @@ destruct (DGF.step daA id (cA id)); simpl.
 + intuition.
 Qed.
 
-(* TODO : trouver une définition vrai, ou rajouter des axioms car la sinon c'est pas vrai.*)
+(* TODO : trouver une définition vraie, ou rajouter des axioms car la sinon c'est pas vrai.*)
 Definition daD2C (daA : DGF.demonic_action) (cA : DGF.Config.t) : CGF.demonic_action.
 refine {| CGF.relocate_byz := fun b => RobotConfD2C (DGF.relocate_byz daA b);
           CGF.step := fun id _ => daD2C_step daA cA id |}.

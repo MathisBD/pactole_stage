@@ -245,7 +245,7 @@ Definition Stopped (e : execution) : Prop :=
 (* TODO: Was this version correct instead?
          I guess this depends if we only consider configurations every other round.
 
-  Stream.forever ((stop_now)) e. *)
+  Stream.forever stop_now e. *)
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.

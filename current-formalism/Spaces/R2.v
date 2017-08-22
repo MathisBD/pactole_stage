@@ -256,7 +256,7 @@ Qed.
 
 (** **  Poor man's formalization of euclidean spaces  **)
 
-(* FIXME: we should instead have a proper formalisation of euclidean spaces! *)
+(* FIXME: we should have instead a proper formalisation of euclidean spaces! *)
 Definition product (u v : R2) := fst u * fst v + snd u * snd v.
 Definition R2norm u := sqrt (product u u).
 Definition orthogonal (u : R2) : R2 := /(R2norm u) * (snd u, - fst u).

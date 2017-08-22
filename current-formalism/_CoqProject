@@ -27,7 +27,7 @@ Models/Flexible.v
 Models/Rigid.v
 Models/RigidEquivalence.v
 Models/DiscreteGraph.v
-Models/ContinuousDVGraph.v
+#Models/ContinuousGraph.v
 #Models/GraphEquivalence.v
 #Models/DiscreteRigid.v
 #Models/DiscreteASync.v
