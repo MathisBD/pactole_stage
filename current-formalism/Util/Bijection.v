@@ -73,6 +73,9 @@ Proof. abstract (intros; rewrite bij.(Inversion); reflexivity). Defined.
 
 Notation "bij ⁻¹" := (inverse bij) (at level 39).
 
+Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
+Proof. repeat intro. simpl. now f_equiv. Qed.
+
 Lemma retraction_section : forall (bij : bijection) x, bij.(retraction) (bij.(section) x) == x.
 Proof. intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
 
@@ -93,4 +96,8 @@ Proof. intros bij x y Heq. now rewrite <- (retraction_section bij x), Heq, retra
 
 End Bijections.
 
-Arguments bijection T {_}.
+Module Notations.
+Global Arguments bijection T {_}.
+Global Infix "∘" := compose (left associativity, at level 40).
+Global Notation "bij ⁻¹" := (inverse bij) (at level 39).
+End Notations.
