@@ -94,6 +94,27 @@ Module SourceTarget (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
   Proof. intros ? ? ? ? [] [] []. split; simpl in *; now do 2 f_equiv. Qed.
 End SourceTarget.
 
+
+(** Specialized version of the Info type with SourceTarget. *)
+Module Type SourceTargetSig (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
+  Record t' := {source : Loc.t; target : Loc.t}.
+  Definition t := t'.
+  
+  Definition eq state1 state2 := Loc.eq state1.(source) state2.(source) /\ Loc.eq state1.(target) state2.(target).
+  
+  Declare Instance eq_equiv : Equivalence eq.
+  Declare Instance source_compat : Proper (eq ==> Loc.eq) source.
+  Declare Instance target_compat : Proper (eq ==> Loc.eq) target.
+  Parameter eq_dec : forall x y : t, {eq x y} + {~eq x y}.
+  
+  Definition app f state := {| source := f state.(source); target := f state.(target) |}.
+  
+  Declare Instance app_compat : Proper ((Loc.eq ==> Loc.eq) ==> eq ==> eq) app.
+  Parameter app_id : (eq ==> eq)%signature (app Datatypes.id) Datatypes.id.
+  Parameter app_compose : forall f g, Proper (Loc.eq ==> Loc.eq) f -> Proper (Loc.eq ==> Loc.eq) g ->
+    (eq ==> eq)%signature (app (fun x => f (g x))) (fun x => app f (app g x)).
+End SourceTargetSig.
+
 (** We can also keep only the target location. *)
 Module Target (Loc : DecidableType) <: DecidableTypeWithApplication(Loc).
   Definition t := Loc.t.
