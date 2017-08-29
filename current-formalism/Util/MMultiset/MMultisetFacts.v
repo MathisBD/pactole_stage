@@ -81,9 +81,9 @@ Section MMultisetFacts.
       | H : ?x = ?y |- _ => subst x || rewrite H in *
       | Hneq : ?x =/= ?x |- _ => now elim Hneq
       | Heq : @equiv elt _ ?x ?y |- _ => clear x Heq || rewrite Heq in *
-      | Heq : @equiv multiset _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
-      | Heq : @equiv multiset _ ?x ?y |- context[?x] => rewrite Heq
-      | Heq : @equiv multiset _ ?x ?y |- _ => clear x Heq
+      | Heq : @equiv (multiset _) _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
+      | Heq : @equiv (multiset _) _ ?x ?y |- context[?x] => rewrite Heq
+      | Heq : @equiv (multiset _) _ ?x ?y |- _ => clear x Heq
       (* Simplifying [singleton], [add] and [remove] *)
       | Hneq : ?y =/= ?x |- context[multiplicity ?y (singleton ?x ?n)] => rewrite singleton_other; trivial
       | Hneq : ?y =/= ?x |- context[multiplicity ?y (add ?x ?n ?m)] => rewrite add_other; trivial
@@ -406,7 +406,7 @@ Section MMultisetFacts.
   (** *  Complementary results  **)
   
 (*   Lemma eq_dec : forall m1 m2, {m1 == m2} + {~m1 == m2}. *)
-  Global Instance MMultisetEqDec : @EqDec multiset _.
+  Global Instance MMultisetEqDec : @EqDec (multiset elt) _.
   Proof.
   intros m1 m2. destruct (equal m1 m2) eqn:Heq.
   - left. now rewrite <- equal_spec.
@@ -1727,9 +1727,10 @@ Section MMultisetFacts.
   
   (** **  Results about [fold]  **)
   
-  Definition fold_rect : forall {A} (f : elt -> nat -> A -> A) (P : multiset -> A -> Type) (i : A) (m : multiset),
-  (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
-  (forall x n m' acc, In x m -> n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
+  Definition fold_rect : forall {A} (f : elt -> nat -> A -> A)
+    (P : multiset elt -> A -> Type) (i : A) (m : multiset elt),
+    (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
+    (forall x n m' acc, In x m -> n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
   Proof.
   intros A f P i m HP Hi Hrec. rewrite fold_spec. rewrite <- fold_left_rev_right.
   assert (Hrec' : forall x n acc m', InA eq_pair (x, n) (rev (elements m)) -> ~In x m' ->
@@ -1753,12 +1754,13 @@ Section MMultisetFacts.
         assumption.
   Qed.
   
-  Lemma fold_rect_weak : forall {A} (f : elt -> nat -> A -> A) (P : multiset -> A -> Type) (i : A) (m : multiset),
-  (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
-  (forall x n m' acc, n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
+  Lemma fold_rect_weak : forall {A} (f : elt -> nat -> A -> A)
+    (P : multiset elt -> A -> Type) (i : A) (m : multiset elt),
+    (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
+    (forall x n m' acc, n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
   Proof. intros * ? ? Hrec. apply fold_rect; trivial. intros. now apply Hrec. Qed.
   
-  Lemma fold_rect_nodep : forall {A} (f : elt -> nat -> A -> A) (P : A -> Type) (i : A) (m : multiset),
+  Lemma fold_rect_nodep : forall {A} (f : elt -> nat -> A -> A) (P : A -> Type) (i : A) (m : multiset elt),
     P i -> (forall x n acc, In x m -> P acc -> P (f x n acc)) -> P (fold f m i).
   Proof.
   intros A f P i m Hi Hrec. rewrite fold_spec.
@@ -3636,9 +3638,9 @@ Ltac msetdec_step :=
     | H : ?x = ?y |- _ => subst x || rewrite H in *
     | Hneq : ?x =/= ?x |- _ => now elim Hneq
     | Heq : equiv ?x ?y |- _ => clear x Heq || rewrite Heq in *
-    | Heq : @equiv multiset _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
-    | Heq : @equiv multiset _ ?x ?y |- context[?x] => rewrite Heq
-    | Heq : @equiv multiset _ ?x ?y |- _ => clear x Heq
+    | Heq : @equiv (multiset _) _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
+    | Heq : @equiv (multiset _) _ ?x ?y |- context[?x] => rewrite Heq
+    | Heq : @equiv (multiset _) _ ?x ?y |- _ => clear x Heq
     (* Simplifying [singleton], [add] and [remove] *)
     | Hneq : ?y =/= ?x |- context[multiplicity ?y (singleton ?x ?n)] => rewrite singleton_other; trivial
     | Hneq : ?y =/= ?x |- context[multiplicity ?y (add ?x ?n ?m)] => rewrite add_other; trivial
