@@ -36,13 +36,6 @@ Require Import Pactole.Configurations.
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 Require Pactole.CommonFormalism.
-(* =======
-Require Pactole.CommonRealFormalism.
-Require Pactole.RigidFormalism.
-Require Import Pactole.Gathering.Definitions.
-Require Import Pactole.MultisetSpectrum.
-Require Import Morphisms.
->>>>>>> new-names:dev_coq/current-formalism/Gathering/InR/Rcomplements.v *)
 Require Import Psatz.
 Import Permutation.
 Set Implicit Arguments.

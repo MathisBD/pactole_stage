@@ -24,9 +24,12 @@ Require Import Omega.
 Require Export SetoidDec.
 Require Export Pactole.Util.Preliminary.
 Require Export Pactole.Setting.
+Require Export Spaces.RealMetricSpace.
+Require Pactole.Spaces.Similarity.
 Require Export Pactole.Spectra.Definition.
 Require Export Pactole.Spectra.MultisetSpectrum.
 Require Export Pactole.Models.Rigid.
+Export Pactole.Spaces.Similarity.Notations.
 Close Scope R_scope.
 Set Implicit Arguments.
 
@@ -34,22 +37,36 @@ Set Implicit Arguments.
 Section GatheringDefinitions.
 
 Context {loc : Type}.
-Context {Sloc : Setoid loc} {Eloc : EqDec Sloc}.
-Context {loc_RMS : @RealMetricSpace loc Sloc Eloc}.
-Context {Robots : Names}.
+Context `{RealMetricSpace loc}.
+Context `{Names}.
 
-Global Instance Info : Information loc Datatypes.unit := Unit _.
+(** The only information available is the current location. *)
+Global Instance Info_is_Loc : IsLocation loc loc := {
+  get_location := id;
+  app := id }.
+Proof.
++ reflexivity.
++ reflexivity.
++ reflexivity.
+Defined.
 
-Notation "!!" := (@spect_from_config loc Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation robogram := (@robogram loc Datatypes.unit _ _ _ _ Info Robots _).
-Notation configuration := (@configuration loc Datatypes.unit _ _ _ _ _ _ _).
-Notation config_list := (@config_list loc Datatypes.unit _ _ _ _ _ _ _).
-Notation round := (@round loc Datatypes.unit _ _ _ _ _ _ _).
-Notation execution := (@execution loc Datatypes.unit _ _ _ _ _).
+Definition mk_spect config := fst (@spect_from_config loc loc _ _ _ _ _ _ multiset_spectrum config origin).
 
-(** There is no meaningful information inside Info.t. *)
-Lemma no_info : forall rc1 rc2 : loc * Datatypes.unit, fst rc1 == fst rc2 -> rc1 == rc2.
-Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
+Global Instance mk_spect_compat : Proper (equiv ==> equiv) mk_spect.
+Proof.
+intros config1 config2 Heq. unfold mk_spect. eapply (RelationPairs.fst_compat equiv equiv).
+change (spect_from_config config1 origin == spect_from_config config2 origin). now f_equiv.
+Qed.
+
+Notation robogram := (@robogram loc loc _ _ _ _ _ _ _).
+Notation configuration := (@configuration loc _ _ _ _).
+Notation config_list := (@config_list loc _ _ _ _).
+Notation round := (@round loc loc _ _ _ _ _ _ _).
+Notation execution := (@execution loc _ _ _).
+Notation "!!" := mk_spect.
+
+(* FIXME: Having a working coercions from spectrum to multiset would avoid changing all the code already using multisets. *)
+
 
 (** Not true in general as the info may change even if the robot does not move. *)
 Lemma no_moving_same_config : forall r da config,
@@ -60,12 +77,9 @@ destruct (round r da config id =?= config id) as [Heq | Heq]; trivial; [].
 rewrite <- moving_spec, Hmove in Heq. inversion Heq.
 Qed.
 
-(** The full information for a robot only depends on its location. *)
-Definition mk_info l : loc * _ := (l, tt).
-
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)
-Definition gathered_at (pt : loc) (config : configuration) := forall g : G, fst (config (Good g)) == pt.
+Definition gathered_at (pt : loc) (config : configuration) := forall g, config (Good g) == pt.
 
 (** [Gather pt e] means that at all rounds of (infinite) execution [e],
     robots are gathered at the same position [pt]. *)
@@ -101,9 +115,7 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 Global Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
 Proof.
 intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at.
-split; intros H g; specialize (H g); specialize (Hconfig (Good g));
-destruct (config2 (Good g)) eqn:c2, (config1 (Good g)) eqn:c1 in *;
-rewrite <- Hpt, <- H || rewrite Hpt, <- H; hnf in Hconfig; intuition.
+setoid_rewrite Hconfig. setoid_rewrite Hpt. reflexivity.
 Qed.
 
 Global Instance Gather_compat : Proper (equiv ==> equiv ==> iff) Gather.
@@ -125,15 +137,15 @@ Qed.
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall (config : configuration) l,
-  (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
- := @spect_from_config_spec loc Datatypes.unit _ _ _ _ _ _ _.
+  (!! config)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
+ := fun config => @spect_from_config_spec loc loc _ _ _ _ _ _ _ config origin.
 
-Lemma spect_non_nil : 2 <= nG -> forall config : configuration, ~!! config == MMultisetInterface.empty.
+Lemma spect_non_nil : 2 <= nG -> forall config : configuration, !! config =/= MMultisetInterface.empty.
 Proof.
 simpl spect_from_config. intros HnG conf Heq.
 assert (Hlgth:= config_list_length conf).
 assert (Hl : config_list conf = nil).
-{ apply List.map_eq_nil with _ fst. now rewrite <- make_multiset_empty, Heq. }
+{ apply List.map_eq_nil with _ get_location. now rewrite <- make_multiset_empty, Heq. }
 rewrite Hl in Hlgth.
 simpl in *.
 omega.
@@ -165,7 +177,8 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
   - rewrite add_other, singleton_spec; auto; [].
     destruct_match; try contradiction; [].
     auto with arith.
-+ rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
++ unfold mk_spect.
+  rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
   rewrite HnB, plus_0_r. now apply even_div2.
 Qed.
 

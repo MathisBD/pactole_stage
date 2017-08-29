@@ -23,22 +23,24 @@ Require Import Arith.Div2.
 Require Import Omega.
 Require Import Reals.
 Require Import List SetoidList.
+Require Export SetoidPermutation.
 Require Import RelationClasses.
+Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Equalities.
 Require Import SetoidDec.
 Require Import Sorting.Permutation.
 Require Import Psatz.
-Require Import SetoidList.
-Require Export SetoidPermutation.
 Require Import Bool.
 Require Import SetoidClass.
+Require Pactole.Util.FMaps.FMapFacts. (* for prod_Setoid and prod_EqDec *)
 Set Implicit Arguments.
 
 
 Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
 Notation "x == y" := (equiv x y).
+Arguments complement A R x y /.
 
 
 (** A tactic simplifying coinduction proofs. *)
@@ -161,6 +163,15 @@ Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split; auto with typeclass_instances. Qed.
 
 Global Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
+
+Global Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
+  Pactole.Util.FMaps.FMapInterface.prod_Setoid.
+Global Instance prod_EqDec A B `(EqDec A) `(EqDec B) : EqDec (@prod_Setoid A B _ _) :=
+  Pactole.Util.FMaps.FMapInterface.prod_EqDec _ _.
+Arguments prod_EqDec [A] [B] {_} _ {_} _.
+
+Global Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
+Global Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
 
 
 (******************************)

@@ -202,7 +202,7 @@ Proof.
   intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
   rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
 Defined.
-Global Notation "s ⁻¹" := (inverse s) (at level 99).
+Global Notation "s ⁻¹" := (inverse s) (at level 39).
 
 Global Instance inverse_compat `{RealMetricSpace} : Proper (equiv ==> equiv) inverse.
 Proof. intros f g Hfg x. simpl. now f_equiv. Qed.
@@ -223,3 +223,10 @@ rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
 apply Rmult_integral in Heqf. destruct Heqf; trivial.
 assert (Hsim := zoom_non_null sim). contradiction.
 Qed.
+
+Module Notations.
+Global Arguments similarity T {_} {_} {_}.
+Notation similarity := similarity.
+Global Infix "∘" := compose (left associativity, at level 40).
+Global Notation "sim ⁻¹" := (inverse sim) (at level 39).
+End Notations.
