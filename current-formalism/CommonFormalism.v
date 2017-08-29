@@ -199,7 +199,11 @@ intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
 Qed.
 
 Global Instance LocallyFairForOne_compat : Proper (Logic.eq ==> equiv ==> iff) LocallyFairForOne.
-Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
+Proof.
+intros ? ? ? ? ? Heq. subst. split; intro.
+- eapply LocallyFairForOne_compat_aux; eauto.
+- symmetry in Heq. eapply LocallyFairForOne_compat_aux; eauto.
+Qed.
 
 Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
 Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
@@ -219,7 +223,11 @@ intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
 Qed.
 
 Global Instance Between_compat : Proper (Logic.eq ==> Logic.eq ==> equiv ==> Logic.eq ==> iff) Between.
-Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
+Proof.
+intros ? ? ? ? ? ? ? ? Heq ? ? ?. subst. split; intro.
+- now eapply Between_compat_aux; eauto.
+- symmetry in Heq. now eapply Between_compat_aux; eauto.
+Qed.
 
 Global Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
 Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.

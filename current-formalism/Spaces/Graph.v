@@ -21,10 +21,10 @@ Arguments complement A R x y /. (* Put it in Pactole.Util.Preliminary? *)
 
 
 Class Graph (V E : Type) := {
-  V_Setoid : Setoid V;
-  E_Setoid : Setoid E;
-  V_EqDec : EqDec V_Setoid;
-  E_EqDec : EqDec E_Setoid;
+  V_Setoid :> Setoid V;
+  E_Setoid :> Setoid E;
+  V_EqDec :> EqDec V_Setoid;
+  E_EqDec :> EqDec E_Setoid;
 
   src : E -> V; (* source and target of an edge *)
   tgt : E -> V;
@@ -38,12 +38,8 @@ Class Graph (V E : Type) := {
   find_edge_compat : Proper (equiv ==> equiv ==> opt_eq equiv) find_edge;
   find_edge_None : forall a b : V, find_edge a b = None <-> forall e : E, ~(src e == a /\ tgt e == b);
   find_edge_Some : forall v1 v2 e, find_edge v1 v2 == Some e <-> v1 == src e /\ v2 == tgt e }.
-(*   Axiom find_some_edge : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e). *)
 
-Existing Instance V_Setoid.
-Existing Instance V_EqDec.
-Existing Instance E_Setoid.
-Existing Instance E_EqDec.
+Global Opaque threshold_pos src_compat tgt_compat threshold_compat find_edge_compat find_edge_None find_edge_Some.
 
 (** A finite graph ia a graph where the set [V] of vertices is a prefix of N. *)
 (* FIXME: nothing prevents E from being infinite! *)

@@ -6,7 +6,3 @@ Require Export Pactole.RobotInfo.
 Require Export Pactole.Configurations.
 Require Export Pactole.Spectra.Definition.
 Require Export Pactole.CommonFormalism.
-(*
-Require Export Pactole.Spaces.RealMetricSpace.
-Require Export Pactole.Spaces.Similarity.
-*)

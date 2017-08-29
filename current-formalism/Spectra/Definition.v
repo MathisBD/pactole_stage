@@ -37,7 +37,7 @@ Class Spectrum loc info `{IsLocation loc info} `{Names} := {
   
   (** The location from which the observation is made *)
   get_current : spectrum -> loc;
-  get_current_ok : forall config pt, get_current (spect_from_config config pt) == pt}.
+  get_current_ok : forall config pt, get_current (spect_from_config config pt) == pt }.
 
 Existing Instance spectrum_Setoid.
 Existing Instance spectrum_EqDec.

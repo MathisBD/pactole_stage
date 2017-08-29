@@ -525,7 +525,6 @@ cofix differs. intros config Heq. constructor.
 + rewrite Heq. apply config1_invalid.
 + cbn. constructor.
   -
-Search Proper @round.
 
  rewrite Heq. , round_simplify_1_1. apply config2_invalid.
   - cbn. apply differs. now rewrite Heq, round_simplify_1_1, round_simplify_1_2. 

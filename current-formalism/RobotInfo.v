@@ -36,15 +36,29 @@ Set Implicit Arguments.
 (** The minimum we ask for is the current location of the robot. *)
 Class IsLocation loc info `{EqDec info} `{EqDec loc} := {
   get_location : info -> loc;
-  update_location : loc -> info -> info;
-  (** Performing a change of frame on the whole state *)
+(*   update_location : loc -> info -> info; (* The [loc] argument is relative to the current location *) *)
+  (** Lifting a change of frame to the location field *)
   app : (loc -> loc) -> info -> info;
   app_id : app id == id;
   app_compose : forall f g state, app f (app g state) == app (fun x => f (g x)) state;
+  get_location_app : forall f state, get_location (app f state) == f (get_location state);
   (** Compatibility properties *)
   get_location_compat :> Proper (equiv ==> equiv) get_location;
-  update_location_compat :> Proper (equiv ==> equiv ==> equiv) update_location;
+(*   update_location_compat :> Proper (equiv ==> equiv ==> equiv) update_location; *)
   app_compat :> Proper ((equiv ==> equiv) ==> equiv ==> equiv) app }.
-(* The [loc] argument is relative to the current location *)
+
+Arguments IsLocation loc info {_} {_} {_} {_}.
+
+
+(** Same class but different names. *)
+Class IsTarget loc info `{IsLocation loc info} := {
+  get_target : info -> loc;
+(*   update_target : loc -> info -> info; *)
+  get_target_app : forall f state, get_target (app f state) == f (get_target state);
+  (** Compatibility properties *)
+  get_target_compat :> Proper (equiv ==> equiv) get_target }.
+(*   update_target_compat :> Proper (equiv ==> equiv ==> equiv) update_target }. *)
+
+Arguments IsTarget loc info {_} {_} {_} {_} {_}.
 
 (* TODO: Define the disjoint union of such projections to ensure their independence. *)

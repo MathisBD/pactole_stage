@@ -28,6 +28,7 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
+Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.R.
 Require Import Pactole.Spectra.MultisetSpectrum.
 Require Import Pactole.Models.Rigid.
@@ -48,20 +49,34 @@ Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS.
 
-Instance Unit : Information R Datatypes.unit := Configurations.Unit _.
-(** The spectrum is a multiset of positions *)
-Notation "!!" := spect_from_config (at level 1).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ Unit MyRobots _).
-Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
-Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
-Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).
-Notation execution := (@execution R Datatypes.unit _ _ _ _ _).
 
+Section ImpossibilityProof.
+Context (info : Type).
+Context `{EqDec info}.
+Context {Info : IsLocation R info}.
+
+(** We only assume that we know how to build a state from a position and that this is compatible with [get_location]. *)
+Variable mk_info : R -> info.
+Hypothesis mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
+Instance mk_info_compat : Proper (equiv ==> equiv) mk_info.
+Proof. simpl. repeat intro. now subst. Qed.
+
+(** The spectrum is a multiset of positions *)
+Notation "!!" := (fun config => fst (spect_from_config config 0%R)) (at level 1).
+Notation robogram := (@robogram R info _ _ _ _ _ MyRobots _).
+Notation configuration := (@configuration info _ _ _ _).
+Notation config_list := (@config_list info _ _ _ _).
+Notation round := (@round R info _ _ _ _ _ _ _).
+Notation execution := (@execution info _ _ _).
+Notation demonic_action := (@demonic_action R info _ _ _).
+
+Implicit Type config : configuration.
+Implicit Type da : demonic_action.
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall (config : configuration) (l : R),
-  (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
- := @spect_from_config_spec R Datatypes.unit _ _ _ _ _ _ _.
+  (!! config)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
+ := fun config => @spect_from_config_spec R info _ _ _ _ _ _ _ config 0%R.
 
 Add Search Blacklist "Spect.M" "Ring".
 Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.
@@ -78,24 +93,14 @@ Hint Extern 0 (~equiv R _ _ _) =>
 Lemma nB_value : nB = n.
 Proof. reflexivity. Qed.
 
-(* Definition translation := translation translation_hypothesis.
-Definition homothecy := Sim.homothecy translation_hypothesis homothecy_hypothesis. *)
-
-(** There is no meaningful information inside Info.t. *)
-Lemma no_info : forall rc1 rc2 : R * Datatypes.unit, fst rc1 == fst rc2 -> rc1 == rc2.
-Proof. intros [? []] [? []] Heq; split; simpl in *; auto. Qed.
-
 (** Not true in general as the info may change even if the robot does not move. *)
 Lemma no_moving_same_conf : forall r da config,
   moving r da config = List.nil -> round r da config == config.
 Proof.
-intros r da config Hmove id. (* apply no_info. *)
+intros r da config Hmove id.
 destruct (equiv_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
 rewrite <- moving_spec, Hmove in Heq. inversion Heq.
 Qed.
-
-(** The full information for a robot only depends on its location. *)
-Definition mk_info l : R * Datatypes.unit := (l, tt).
 
 Lemma nG_nB : nG = 2 * nB.
 Proof. reflexivity. Qed.
@@ -121,7 +126,7 @@ Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
 Definition imprisoned (center : R) (radius : R) (e : execution) : Prop :=
-  Stream.forever (Stream.instant (fun config => forall g, dist center (fst (config (Good g))) <= radius)) e.
+  Stream.forever (Stream.instant (fun config => forall g, dist center (get_location (config (Good g))) <= radius)) e.
 
 (** The execution will end in a small disk. *)
 Definition attracted (c : R) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
@@ -131,14 +136,16 @@ Proof.
 intros c1 c2 Hc ? r Hr e1 e2 He. subst. split.
 + revert c1 c2 e1 e2 Hc He. coinduction Hrec.
   - intro g.
-    assert (Heq : fst (Stream.hd e1 (Good g)) == fst (Stream.hd e2 (Good g))).
-    { f_equiv. apply Stream.hd_compat in He. apply He. }
+    assert (Heq : get_location (Stream.hd e1 (Good g)) == get_location (Stream.hd e2 (Good g))).
+    { apply Stream.hd_compat in He. apply get_location_compat, He. }
     rewrite <- Heq, <- Hc. match goal with H : imprisoned _ _ _ |- _ => apply H end.
-  - inversion_clear H. eapply Hrec; try eassumption; []. now f_equiv.
+  - match goal with H : imprisoned _ _ _ |- _ => inversion_clear H end.
+    eapply Hrec; try eassumption; []. now f_equiv.
 + revert c1 c2 e1 e2 Hc He. coinduction Hrec.
   - intro g. apply Stream.hd_compat in He. specialize (He (Good g)). rewrite He, Hc.
     match goal with H : imprisoned _ _ _ |- _ => apply H end.
-  - inversion_clear H. eapply Hrec; try eassumption; []. now f_equiv.
+  - match goal with H : imprisoned _ _ _ |- _ => inversion_clear H end.
+    eapply Hrec; try eassumption; []. now f_equiv.
 Qed.
 
 Instance attracted_compat : Proper (equiv ==> eq ==> equiv ==> iff) attracted.
@@ -248,14 +255,14 @@ Definition spectrum1 := add 0 nG (singleton 1 nB).
 Definition spectrum2 := add 0 nB (singleton 1 nG).
 
 (* An auxiliary lemma to avoid trouble with dependent types. *)
-Lemma spect_config_aux : forall pt1 pt2, pt1 <> pt2 ->
+Lemma spect_config_aux : forall pt1 pt2 : R, pt1 =/= pt2 ->
   forall pt n l, NoDup l -> length l = (2 * n)%nat ->
   countA_occ equiv equiv_dec pt
     (map (fun x  => if in_dec Geq_dec x (half1 l) then pt1 else pt2) l)
   = (add pt1 n (singleton pt2 n))[pt].
 Proof.
 intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
-* apply length_0 in Hlen. subst. simpl map. now rewrite add_0, singleton_0, empty_spec.
+* apply length_0 in Hlen. subst. simpl map. now rewrite add_0, singleton_0 (* , empty_spec *) .
 * replace (2 * S n)%nat with (S (S (2 * n)))%nat in Hlen by ring.
   destruct l as [| a [| b l']]; try discriminate.
   destruct (@not_nil_last _ (b :: l') ltac:(discriminate)) as [z [l Hl]].
@@ -277,10 +284,10 @@ intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
     exfalso. now apply Hzl, half1_incl.
   + rewrite (map_ext_in _ (fun x => if in_dec Geq_dec x (half1 l) then pt1 else pt2)).
     - cbn [countA_occ]. rewrite countA_occ_app. rewrite IHn; trivial.
-      assert (pt2 <> pt1) by auto.
-      cbn [countA_occ]. unfold equiv_dec, R_EqDec.
-      Rdec_full; subst; Rdec; try Rdec_full; subst; Rdec; change Rdec with R_EqDec;
-      rewrite ?add_same, ?add_other, ?singleton_same, ?singleton_other;
+      assert (Hneq : pt2 =/= pt1) by intuition.
+      cbn [countA_occ].
+      destruct (pt1 =?= pt) as [Heq1 | ?], (pt2 =?= pt) as [Heq2 | ?];
+      rewrite ?Heq1, ?Heq2, ?add_same, ?add_other, ?singleton_same, ?singleton_other;
       trivial; ring || (try (intro; auto)).
     - intros x Hin.
       destruct (in_dec Geq_dec x (half1 l)) as [Hx | Hx],
@@ -290,35 +297,40 @@ intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
   + elim Habs. intuition.
 Qed.
 
-Theorem spect_config1 : (!! config1) == spectrum1.
+Theorem spect_config1 : @equiv (multiset R) _ (!! config1) spectrum1.
 Proof.
 intro pt. unfold config1, spectrum1.
 rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, map_cst, map_app, map_map, map_alls, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
-simpl fst. unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
+rewrite (mk_info_get_location 0).
+rewrite (map_ext_in _ (fun x => if left_dec x then 0%R else 1%R));
+try (now setoid_rewrite mk_info_get_location); [].
+unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
 + destruct (pt =?= 0) as [Heq | Hneq]; [| destruct (pt =?= 1) as [Heq | ?]].
   - hnf in Heq. subst. rewrite countA_occ_alls_in; autoclass; [].
     repeat rewrite add_same, singleton_other; trivial; simpl; [].
     rewrite enum_length. omega.
   - hnf in Heq. subst. rewrite countA_occ_alls_out; autoclass; [].
     repeat rewrite add_other, singleton_same; trivial; []. omega.
-  - rewrite countA_occ_alls_out.
-    * now repeat rewrite add_other, singleton_other.
-    * auto.
+  - rewrite countA_occ_alls_out; auto; [].
+    now repeat rewrite add_other, singleton_other.
 + apply Gnames_NoDup.
 + rewrite Gnames_length. reflexivity.
 Qed.
 
-Theorem spect_conf2 : (!! config2) == spectrum2.
+Theorem spect_conf2 : @equiv (multiset R) _ (!! config2) spectrum2.
 Proof.
 intro pt. unfold config2, spectrum2.
 rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_map, map_app, map_map, map_map, map_cst, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
-simpl fst. unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
+rewrite (mk_info_get_location 1).
+rewrite (map_ext_in _ (fun x => if left_dec x then 0%R else 1%R));
+try (now setoid_rewrite mk_info_get_location); [].
+unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
 + destruct (pt =?= 0) as [Heq | Hneq]; [| destruct (pt =?= 1) as [Heq | Hneq']].
   - hnf in Heq. subst. rewrite countA_occ_alls_out; auto.
     repeat rewrite add_same, singleton_other; trivial; []. omega.
@@ -345,61 +357,59 @@ Definition exec : execution := Stream.alternate config1 config2.
 
 (** The demon defeating any robogram *)
 
-Definition step1 (id : ident) :=
+Definition activate1 (id : ident) :=
   match id with
-    | Good g => if left_dec g then Some (fun c : R => translation (opp c)) else None
-    | Byz b => Some (fun c : R => translation (opp c))
+    | Good g => if left_dec g then true else false
+    | Byz b => true
   end.
 
-Lemma step1_zoom : forall id sim c, step1 id = Some sim -> zoom (sim c) ≠ 0.
+Definition change_frame1 config g := translation (opp (get_location (config (Good g)))).
+
+Definition update_state1 config (g : G) pt (state : info) := mk_info pt.
+
+Instance update_state1_compat : Proper (equiv ==> equiv ==> equiv ==> equiv ==> equiv) update_state1.
+Proof. unfold update_state1. repeat intro. now f_equiv. Qed.
+
+Lemma step1_center : forall config g, activate1 (Good g) = true →
+  Similarity.center (change_frame1 config g) == get_location (config (Good g)).
 Proof.
-intros [g | b] sim c Hsim; simpl in *.
-- destruct (left_dec g); try discriminate. inversion_clear Hsim. simpl. apply R1_neq_R0.
-- inversion_clear Hsim. simpl. apply R1_neq_R0.
+intros config g Hg. simpl in Hg.
+destruct (left_dec g); discriminate || apply Ropp_involutive.
 Qed.
 
-Lemma step1_center : forall id sim c, step1 id = Some sim → center (sim c) == c.
-Proof.
-intros [g | b] sim c Hsim. simpl in Hsim.
-- destruct (left_dec g); try discriminate. inversion_clear Hsim.
-  simpl center. change (- - c) with (opp (opp c)). apply opp_opp.
-- inversion_clear Hsim. simpl center. change (- - c) with (opp (opp c)). apply opp_opp.
-Qed.
-
-Definition bad_da1 : demonic_action := {|
-  step := step1;
+Definition bad_da1 config : demonic_action := {|
+  activate := activate1;
   relocate_byz := fun _ => mk_info 1;
-  step_zoom := step1_zoom;
-  step_center := step1_center |}.
+  change_frame := change_frame1 config;
+  update_state := update_state1 config |}.
 
-Definition step2 (id : ident) :=
+Definition activate2 (id : ident) :=
   match id with
-    | Good g => if left_dec g then None else Some (fun c : R => homothecy c minus_1)
-    | Byz b => Some (fun c : R => translation (opp c))
+    | Good g => if left_dec g then false else true
+    | Byz b => true (* Some (fun c : R => translation (opp c)) *)
   end.
 
-Lemma step2_zoom : forall id sim c, step2 id = Some sim -> zoom (sim c) ≠ 0.
+Definition change_frame2 config g := homothecy (get_location (config (Good g))) minus_1.
+
+Definition update_state2 config (g : G) pt (state : info) := mk_info pt.
+
+Lemma step2_center : forall config g, activate2 (Good g) = true →
+  Similarity.center (change_frame2 config g) == get_location (config (Good g)).
 Proof.
-intros [g | b] sim c Hsim; simpl in *.
-- destruct (left_dec g); try discriminate. inversion_clear Hsim. simpl.
-  rewrite Rabs_Ropp, Rabs_R1. auto.
-- inversion_clear Hsim. simpl. auto.
+intros config g Hg; simpl in Hg.
+destruct (left_dec g); discriminate || reflexivity.
 Qed.
 
-Lemma step2_center : forall id sim c, step2 id = Some sim → center (sim c) == c.
-Proof.
-intros [g | b] sim c Hsim; simpl in Hsim.
-- destruct (left_dec g); try discriminate. now inversion_clear Hsim.
-- inversion_clear Hsim. simpl center. change (- - c) with (opp (opp c)). apply opp_opp.
-Qed.
-
-Definition bad_da2 : demonic_action := {|
-  step := step2;
+Definition bad_da2 config : demonic_action := {|
+  activate := activate2;
   relocate_byz := fun _ => mk_info 0;
-  step_zoom := step2_zoom;
-  step_center := step2_center |}.
+  change_frame := change_frame2 config;
+  update_state := update_state2 config |}.
 
-Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
+CoFixpoint bad_demon r : configuration -> @demon R info _ _ _ := fun config =>
+   Stream.cons (bad_da1 config)
+  (Stream.cons (bad_da2 (round r (bad_da1 config) config))
+  (bad_demon r (round r (bad_da2 (round r (bad_da1 config) config)) (round r (bad_da1 config) config)))).
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.

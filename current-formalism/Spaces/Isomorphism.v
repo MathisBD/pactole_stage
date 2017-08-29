@@ -146,3 +146,9 @@ Qed.
 End Isomorphism.
 
 Arguments isomorphism {V} {E} G.
+
+Module Notations.
+Global Arguments isomorphism {V} {E} G.
+Global Infix "∘" := compose (left associativity, at level 40).
+Global Notation "iso ⁻¹" := (inverse iso) (at level 39).
+End Notations.

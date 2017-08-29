@@ -59,18 +59,22 @@ Existing Instance R2_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation "!!" := mk_spect.
+(* (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
 Notation "x == y" := (equiv x y).
-Notation spectrum := (@spectrum R2 Datatypes.unit _ _ _ _ Info MyRobots  _).
-Notation robogram := (@robogram R2 Datatypes.unit _ _ _ _ Info MyRobots _).
-Notation configuration := (@configuration R2 Datatypes.unit _ _ _ _ Info _ _).
-Notation config_list := (@config_list R2 Datatypes.unit _ _ _ _ Info _ _).
-Notation round := (@round R2 Datatypes.unit _ _ _ _ _ _ Info _).
-Notation execution := (@execution R2 Datatypes.unit _ _ _ _ _).
+Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
+Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
+Notation configuration := (@configuration R2 _ _ _ _).
+Notation config_list := (@config_list R2 _ _ _ _).
+Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
+Notation execution := (@execution R2 R2 _ _ _ _ _).
 Notation Madd := (MMultisetInterface.add).
 
+Definition fst_spectrum : spectrum -> @multiset R2 _ _ _ := fst.
+Coercion fst_spectrum : spectrum >-> multiset.
 
-Lemma Config_list_alls : forall pt, config_list (fun _ => mk_info pt) = alls (mk_info pt) nG.
+
+Lemma Config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
 Proof.
 intro. rewrite config_list_spec, map_cst.
 setoid_rewrite names_length. simpl. now rewrite plus_0_r.
@@ -83,21 +87,12 @@ intros P Hg [g | b].
 + destruct b. omega.
 Qed.
 
-Lemma no_byz_eq : forall config1 config2 : configuration,
-  (forall g, fst (config1 (Good g)) == fst (config2 (Good g))) ->
-  config1 == config2.
-Proof.
-intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
-+ apply Heq.
-+ destruct b. omega.
-Qed.
-
-Lemma map_sim_support : forall (sim : similarity R2) s,
+Lemma map_sim_support : forall (sim : similarity R2) (s : spectrum),
   PermutationA equiv (support (map sim s)) (List.map sim (support s)).
 Proof.
 intros sim s. apply map_injective_support.
 - intros ? ? Heq. now rewrite Heq.
-- apply injective.
+- apply Similarity.injective.
 Qed.
 
 
@@ -114,22 +109,22 @@ Proof. intros config Habs. rewrite support_nil, max_empty in Habs. apply (spect_
 
 Lemma max_morph : forall (sim : similarity R2) s, max (map sim s) == map sim (max s).
 Proof.
-intros f s. apply max_map_injective.
+intros sim s. apply max_map_injective.
 - intros ? ? Heq. now rewrite Heq.
-- apply injective.
+- apply Similarity.injective.
 Qed.
 
 Lemma multiplicity_le_nG : forall pt config, (!! config)[pt] <= nG.
 Proof.
 intros pt config. etransitivity.
 - apply cardinal_lower.
-- rewrite cardinal_spect_from_config. simpl. omega.
+- unfold mk_spect. rewrite cardinal_spect_from_config. simpl. omega.
 Qed.
 
 Lemma gathered_at_dec : forall config pt, {gathered_at pt config} + {~gathered_at pt config}.
 Proof.
 intros config pt.
-destruct (forallb (fun id => R2dec_bool (fst (config id)) pt) names) eqn:Hall.
+destruct (forallb (fun id => R2dec_bool (config id) pt) names) eqn:Hall.
 + left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply In_names.
 + right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
   revert Hin Heq. pattern id. apply no_byz. clear id. intros g Hin Heq Habs.

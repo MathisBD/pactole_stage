@@ -50,13 +50,13 @@ Existing Instance R_RMS.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info MyRobots _).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ Info MyRobots _).
-Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
-Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
-Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).
-Notation execution := (@execution R Datatypes.unit _ _ _ _ _).
+Notation "!!" := mk_spect.
+Notation spectrum := (@spectrum R R _ _ _ _ _ _ _).
+Notation robogram := (@robogram R R _ _ _ _ _ _ _).
+Notation configuration := (@configuration R _ _ _ _).
+Notation config_list := (@config_list R _ _ _ _).
+Notation round := (@round R R _ _ _ _ _ _ _).
+Notation execution := (@execution R _ _ _).
 
 
 Lemma nG_ge_2 : 2 <= nG.
@@ -76,8 +76,8 @@ simpl. destruct n as [| [| n]].
 Qed.
 
 (* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall config l,
-  (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
+Definition spect_from_config_spec : forall config pt,
+  (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
   := spect_from_config_spec.
 
 Lemma no_byz : forall (id : ident) P, (forall g, P (@Good G B g)) -> P id.
@@ -88,9 +88,19 @@ intros [g | b] P HP.
 Qed.
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
-  (forall g, fst (config1 (Good g)) == fst (config2 (Good g))) -> config1 == config2.
-Proof. intros config1 config2 Heq id. apply no_info, (no_byz id). intro g. apply Heq. Qed.
+  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) -> config1 == config2.
+Proof. intros config1 config2 Heq id. apply (no_byz id), Heq. Qed.
 
+Definition mk_info := id.
+Lemma mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
+Proof. reflexivity. Qed.
+(* 
+(** We only assume that we know how to build a state from a position and that this is compatible with [get_location]. *)
+Variable mk_info : R -> info.
+Hypothesis mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
+Instance mk_info_compat : Proper (equiv ==> equiv) mk_info.
+Proof. simpl. repeat intro. now subst. Qed.
+*)
 
 (** [Always_invalid e] means that (infinite) execution [e] is [invalid]
     forever. We will prove that with [bad_demon], robots are always apart. *)
@@ -111,11 +121,13 @@ intros e He pt Habs. induction Habs as [e Habs | e].
   apply Hdiff. transitivity pt.
   - assert (Hin : In pt1 (!! (Stream.hd e))).
     { unfold In. rewrite Hin1. now apply half_size_config. }
-    rewrite spect_from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+    unfold mk_spect in Hin. rewrite spect_from_config_In in Hin.
+    destruct Hin as [id Hin]. rewrite <- Hin.
     apply (no_byz id). intro g. now unfold gathered_at in Hnow; specialize (Hnow g).
   - assert (Hin : In pt2 (!! (Stream.hd e))).
     { unfold In. rewrite Hin2. now apply half_size_config. }
-    rewrite spect_from_config_In in Hin. destruct Hin as [id Hin]. rewrite <- Hin.
+    unfold mk_spect in Hin. rewrite spect_from_config_In in Hin.
+    destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. apply (no_byz id). intro g. apply Hnow.
 + inversion He. now apply IHHabs.
 Qed.
@@ -223,6 +235,9 @@ Theorem config1_config2_spect_equiv : !! config1 == !! config2.
 Proof.
 intro pt. unfold config1, config2.
 do 2 rewrite spect_from_config_spec, config_list_spec. rewrite names_Gnames. do 4 rewrite map_map.
+rewrite (map_ext_in _ (fun x => if left_dec x then 0 else 1));
+[ setoid_rewrite (map_ext_in _ (fun x => if left_dec x then 1 else 0)) at 2 |];
+try (now setoid_rewrite mk_info_get_location); [].
 unfold left_dec, left. generalize (Gnames_NoDup).
 pattern Gnames. apply first_last_even_ind.
 * reflexivity.
@@ -262,6 +277,7 @@ Theorem spect_config1 : !! config1 == spectrum0.
 Proof.
 intro pt. unfold config1, spectrum0.
 rewrite spect_from_config_spec, config_list_spec, names_Gnames, map_map, map_map.
+rewrite (map_ext_in _ (fun x => if left_dec x then 0 else 1)); try (now setoid_rewrite mk_info_get_location); [].
 cbn [fst mk_info]. unfold left_dec, left. rewrite <- Gnames_length at 1 2. generalize (Gnames_NoDup).
 pattern Gnames. apply first_last_even_ind.
 * intros _. now rewrite add_0, singleton_0, empty_spec.
@@ -331,19 +347,25 @@ Qed.
 (* We need to define it with a general center although only 1 will be used. *)
 Definition swap (c : R) : similarity R.
 refine {|
-  sim_f := bij_swap c;
-  zoom := 1;
-  center := c |}.
+  Similarity.sim_f := bij_swap c;
+  Similarity.zoom := 1;
+  Similarity.center := c |}.
 Proof.
 - abstract (compute; field).
 - exact (bij_swap_ratio c).
 Defined.
 
 Lemma swap_config1 : map_config (swap 1) config1 == config2.
-Proof. apply no_byz_eq. intro g. unfold swap. simpl. destruct (left_dec g); simpl; hnf; ring. Qed.
+Proof.
+apply no_byz_eq. intro g. unfold map_config. simpl.
+unfold Datatypes.id, mk_info, id. destruct (left_dec g); simpl; hnf; ring.
+Qed.
 
 Lemma swap_config2 : map_config (swap 1) config2 == config1.
-Proof. apply no_byz_eq. intro g. unfold swap. simpl. destruct (left_dec g); simpl; hnf; ring. Qed.
+Proof.
+apply no_byz_eq. intro g. unfold map_config. simpl.
+unfold Datatypes.id, mk_info, id. destruct (left_dec g); simpl; hnf; ring.
+Qed.
 
 (** The movement of robots in the reference configuration. *)
 Definition move := r (!! config1).
