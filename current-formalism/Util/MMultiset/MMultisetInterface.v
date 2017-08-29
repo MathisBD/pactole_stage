@@ -111,9 +111,9 @@ Class FMOps elt `(EqDec elt) := {
   (** Return one element of the given multiset, or [None] if the multiset is empty.
       Which element is chosen is unspecified: equal multisets could return different elements. *)
 }.
+Arguments multiset elt {_} {_} {_}.
 
-
-Global Instance MMultiset_Setoid `{FMOps} : Setoid multiset := {
+Global Instance MMultiset_Setoid elt `{FMOps elt} : Setoid (multiset elt) := {
   equiv := fun s s' => forall x, multiplicity x s = multiplicity x s' }.
 Proof. split.
 + repeat intro. reflexivity.
@@ -149,7 +149,7 @@ Class EmptySpec elt `(FMOps elt) := {
 (** Specification of [singleton]. **)
 Class SingletonSpec elt `(FMOps elt) := {
   singleton_same : forall x n, (singleton x n)[x] = n;
-  singleton_other : forall x y n, ~y == x -> (singleton x n)[y] = 0}.
+  singleton_other : forall x y n, y =/= x -> (singleton x n)[y] = 0}.
 
 (** Specification of [add]. **)
 Class AddSpec elt `(FMOps elt) := {
@@ -159,7 +159,7 @@ Class AddSpec elt `(FMOps elt) := {
 (** Specification of [remove]. **)
 Class RemoveSpec elt `(FMOps elt) := {
   remove_same : forall x n s, (remove x n s)[x] = s[x] - n;
-  remove_other : forall x y n s, ~y == x -> (remove x n s)[y] = s[y]}.
+  remove_other : forall x y n s, y =/= x -> (remove x n s)[y] = s[y]}.
 
 (** Specification of binary operations: [union], [inter], [diff] ans [lub]. **)
 Class BinarySpec elt `(FMOps elt) := {
