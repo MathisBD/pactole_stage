@@ -50,14 +50,15 @@ Class FlexibleMoves := delta : R.
 Notation δ := delta.
 
 Definition flexible_da `{FlexibleMoves} da :=
-  forall g state pt,
-  let pt' := get_location (update_state da g pt state) in
+  forall config g tgt,
+  let pt := get_location (config (Good g)) in
+  let pt' := get_location (update_state da config g tgt) in
   (* either we reach the target *)
-  pt' == pt
-  (* or [pt'] is between [get_location state] and [pt] (by triangle inquality) *)
-  \/ dist pt' (get_location state) + dist pt' pt = dist pt (get_location state)
+  pt' == tgt
+  (* or [pt'] is between [pt] and [tgt] (equality case of the triangle inequality) *)
+  \/ dist pt pt' + dist pt' tgt = dist pt tgt
   (* and the robot have moved a distance at least delta. *)
-  /\ delta <= dist pt' (get_location state).
+  /\ delta <= dist pt pt'.
 
 Definition flexible_demon `{FlexibleMoves} := Stream.forever (Stream.instant flexible_da).
 

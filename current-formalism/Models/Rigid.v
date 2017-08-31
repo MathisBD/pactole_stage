@@ -36,7 +36,7 @@ Context {Spect : Spectrum loc info}.
 (** Rigid demons are a special case of demons with the additional property that
     the updated location of the robot is the one chosen by the robogram. *)
 Definition rigid_da da :=
-  forall g pt state, get_location (update_state da g pt state) == pt.
+  forall config g tgt, get_location (update_state da config g tgt) == tgt.
 
 Definition rigid_demon := Stream.forever (Stream.instant rigid_da).
 

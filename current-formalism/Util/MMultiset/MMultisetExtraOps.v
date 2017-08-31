@@ -369,6 +369,12 @@ Section MMultisetExtra.
   + now repeat rewrite map_empty.
   Qed.
   
+  Lemma map_id : forall m, map id m == m.
+  Proof.
+  intro m. intro x. change x with (id x) at 1.
+  rewrite map_injective_spec; autoclass; []. now repeat intro.
+  Qed.
+  
   Theorem map_injective_fold : forall A eqA, Equivalence eqA ->
     forall f g, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
     Proper (equiv ==> equiv) g -> injective equiv equiv g ->

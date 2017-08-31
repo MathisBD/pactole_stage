@@ -42,6 +42,10 @@ Import SetoidClass.
 Parameter n : nat.
 Axiom n_non_0 : n <> 0%nat.
 
+
+Instance fst_compat A B : Proper (equiv ==> equiv) (@fst A B).
+Proof. now intros ? ? [Heq ?]. Qed.
+
 Instance MyRobots : Names := Robots (2 * n) n.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
@@ -365,9 +369,9 @@ Definition activate1 (id : ident) :=
 
 Definition change_frame1 config g := translation (opp (get_location (config (Good g)))).
 
-Definition update_state1 config (g : G) pt (state : info) := mk_info pt.
+Definition update_state1 config (g : G) pt := mk_info pt.
 
-Instance update_state1_compat : Proper (equiv ==> equiv ==> equiv ==> equiv ==> equiv) update_state1.
+Instance update_state1_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) update_state1.
 Proof. unfold update_state1. repeat intro. now f_equiv. Qed.
 
 Lemma step1_center : forall config g, activate1 (Good g) = true →
@@ -377,21 +381,28 @@ intros config g Hg. simpl in Hg.
 destruct (left_dec g); discriminate || apply Ropp_involutive.
 Qed.
 
-Definition bad_da1 config : demonic_action := {|
-  activate := activate1;
-  relocate_byz := fun _ => mk_info 1;
-  change_frame := change_frame1 config;
-  update_state := update_state1 config |}.
+Definition bad_da1 : demonic_action.
+refine {|
+  activate := fun _ => activate1;
+  relocate_byz := fun _ _ => mk_info 1;
+  change_frame := change_frame1;
+  update_state := update_state1 |}.
+Proof.
++ abstract (now repeat intro; subst).
++ abstract (now repeat intro).
++ abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst;
+            do 2 f_equiv; apply opp_compat, get_location_compat, Heq).
+Defined.
 
 Definition activate2 (id : ident) :=
   match id with
     | Good g => if left_dec g then false else true
-    | Byz b => true (* Some (fun c : R => translation (opp c)) *)
+    | Byz b => true
   end.
 
 Definition change_frame2 config g := homothecy (get_location (config (Good g))) minus_1.
 
-Definition update_state2 config (g : G) pt (state : info) := mk_info pt.
+Definition update_state2 config (g : G) pt := mk_info pt.
 
 Lemma step2_center : forall config g, activate2 (Good g) = true →
   Similarity.center (change_frame2 config g) == get_location (config (Good g)).
@@ -400,17 +411,23 @@ intros config g Hg; simpl in Hg.
 destruct (left_dec g); discriminate || reflexivity.
 Qed.
 
-Definition bad_da2 config : demonic_action := {|
-  activate := activate2;
-  relocate_byz := fun _ => mk_info 0;
-  change_frame := change_frame2 config;
-  update_state := update_state2 config |}.
+Definition bad_da2 : demonic_action.
+refine {|
+  activate := fun _ => activate2;
+  relocate_byz := fun _ _ => mk_info 0;
+  change_frame := change_frame2;
+  update_state := update_state2 |}.
+Proof.
++ abstract (now repeat intro; subst).
++ abstract (now repeat intro).
++ abstract (unfold change_frame2; intros config1 config2 Heq ? x ? pt; subst; simpl; do 3 f_equal;
+            change (get_location (config1 (Good x)) == get_location (config2 (Good x)));
+            apply get_location_compat, Heq).
+Defined.
 
-CoFixpoint bad_demon r : configuration -> @demon R info _ _ _ := fun config =>
-   Stream.cons (bad_da1 config)
-  (Stream.cons (bad_da2 (round r (bad_da1 config) config))
-  (bad_demon r (round r (bad_da2 (round r (bad_da1 config) config)) (round r (bad_da1 config) config)))).
+Definition bad_demon : @demon R info _ _ _ _ := Stream.alternate bad_da1 bad_da2.
 
+(* FIXME: TODO
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
 cofix.
@@ -460,6 +477,7 @@ eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
 - auto.
 Qed.
+*)
 
 (** From now on and until the final theorem we give us a robogram [r].
     We now prove that [r] does not move in spectrum *)
@@ -468,16 +486,21 @@ Section PropRobogram.
 Variable r : robogram.
 Hypothesis sol : solution r.
 
-(** In any spectrum containing a tower of size at least [N.nG], the robogram does not make robots move.
+(** In any spectrum containing a tower of size at least [nG], the robogram does not make robots move.
     Indeed, otherwise they all go to the same location and we can build a demon that shift byzantine robots
     by the same amount in order to get the same translated configuration. *)
 
-Definition shifting_da (pt : R) : @demonic_action R Datatypes.unit _ _ _ _.
-refine {| step := fun _ => Some (fun c => translation (opp c));
-          relocate_byz := fun _ => mk_info pt |}.
+Definition shifting_da (pt : R) : demonic_action.
+refine {| activate := fun _ _ => true;
+          relocate_byz := fun _ _ => mk_info pt;
+          change_frame := fun config g => (* FIXME: try avoiding passing all the implicit args *)
+            translation (@opp R _ _ R_RMS (@get_location R info _ _ _ _ Info (config (Good g))));
+          update_state := fun config g pt => mk_info pt |}.
 Proof.
-+ abstract (intros _ sim c Heq; inversion_clear Heq; simpl; apply R1_neq_R0).
-+ abstract (intros _ sim c Heq; inversion_clear Heq; simpl; now rewrite Ropp_involutive).
++ abstract (now repeat intro).
++ abstract (now repeat intro).
++ abstract (intros config1 config2 Hconfig ? g ?; subst; do 2 f_equiv;
+            apply opp_compat, get_location_compat, Hconfig).
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
@@ -487,7 +510,7 @@ Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
 intros d pt. apply fully_synchronous_implies_fair. revert pt.
 cofix shift_fair. intro pt. constructor.
-+ intro. simpl. discriminate.
++ repeat intro. simpl. reflexivity.
 + cbn. apply shift_fair.
 Qed.
 
@@ -501,8 +524,10 @@ Definition config0 pt : configuration := fun id =>
 (* An execution that shifts by [d] at each round, starting from [pt]. *)
 CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
-Lemma spectrum_config0 : forall pt : R,
-  !! (map_config (fun x : R => RealMetricSpace.add x (opp pt)) (config0 pt)) == spectrum1.
+Lemma spectrum_config0 : forall pt,
+  @equiv (multiset R) _
+    (!! (map_config (RobotInfo.app (fun x => RealMetricSpace.add x (opp pt))) (config0 pt)))
+    spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
 rewrite spect_from_config_spec, config_list_spec.
@@ -518,20 +543,30 @@ rewrite (map_ext_in _ (fun _ : G => 0)), (map_ext_in _ (fun _ : B => 1)).
     rewrite add_other, singleton_same; auto.
   - repeat rewrite countA_occ_alls_out; auto.
     rewrite add_other, singleton_other; auto.
-+ intros b Hin. unfold map_config. simpl. ring.
-+ intros g Hin. unfold map_config. simpl. ring.
++ intros b Hin. unfold map_config. simpl. rewrite get_location_app, mk_info_get_location. ring.
++ intros g Hin. unfold map_config. simpl. rewrite get_location_app, mk_info_get_location. ring.
 Qed.
 
-Corollary spect_config0_0 : !! (config0 0) == spectrum1.
-Proof. rewrite <- (spectrum_config0 0). f_equiv. intro. apply no_info. compute. ring. Qed.
+Corollary spect_config0_0 : @equiv (multiset R) _ (!! (config0 0)) spectrum1.
+Proof.
+rewrite <- (spectrum_config0 0).
+assert (Heq : (fun x => RealMetricSpace.add x (opp 0)) 0 == 0) by (simpl; ring).
+rewrite <- Heq at 4.
+rewrite <- (@spect_from_config_map R info _ _ _ _ _ _ (fun x => RealMetricSpace.add x (opp 0)));
+try (now repeat intro; hnf in *; now subst); [].
+generalize (fst (spect_from_config (config0 0) 0)) as m. intro m.
+rewrite (map_extensionality_compat (f := Datatypes.id)), MMultisetExtraOps.map_id; autoclass; [].
+intro. compute. ring.
+Qed.
+
 
 Section AbsurdMove.
-Definition move := r spectrum1.
+Definition move := r (spectrum1, 0).
 Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt, round r (shifting_da (pt + move + 1)) (config0 pt) == config0 (pt + move).
 Proof.
-intros pt id. apply no_info. unfold round. simpl.
+intros pt id. unfold round. simpl.
 destruct id as [g | b].
 - assert (Htranslate := spectrum_config0 pt).
   simpl. rewrite Ropp_involutive. rewrite Htranslate. fold move. ring.

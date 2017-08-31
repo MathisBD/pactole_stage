@@ -29,7 +29,7 @@ Set Implicit Arguments.
 Set Default Proof Using "All".
 
 
-Section MultisetSpectrum.
+Section MultisetConstruction.
 
 Context {loc : Type}.
 Context `{EqDec loc}.
@@ -172,9 +172,14 @@ intros x l. rewrite support_spec. unfold In.
 rewrite make_multiset_spec. apply countA_occ_pos. autoclass.
 Qed.
 
+End MultisetConstruction.
+
 (** Building a spectrum from a configuration *)
 
-Context {info : Type}.
+Section MultisetSpectrum.
+
+Context {loc info : Type}.
+Context `{EqDec loc}.
 Context `{EqDec info}.
 Context {Loc : IsLocation loc info}.
 Context `{Names}.
@@ -190,13 +195,15 @@ Global Instance multiset_spectrum : Spectrum loc info := {
   spectrum_EqDec := prod_EqDec (@MMultisetEqDec loc _ _ _ _) _;
   
   spect_from_config config pt := (make_multiset (List.map get_location (config_list config)), pt);
-  spect_is_ok s config := forall l, (fst s)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config));
+  spect_is_ok s config :=
+    forall l, (fst s)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config));
   
   get_current := snd }.
 Proof.
 (* BUG?: bullet forbidden here? *)
-{ intros conf1 conf2 Hconf pt1 pt2 Hpt. split; cbn [fst snd]; trivial; []. f_equiv.
-  apply eqlistA_PermutationA_subrelation, (@map_eqlistA_compat _ _ equiv equiv _ get_location).
+{ intros conf1 conf2 Hconf pt1 pt2 Hpt. split; cbn [fst snd]; trivial; [].
+  apply make_multiset_compat, eqlistA_PermutationA_subrelation,
+        (@map_eqlistA_compat _ _ equiv equiv _ get_location).
   - autoclass.
   - apply config_list_compat. assumption. }
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
@@ -212,7 +219,7 @@ Lemma spect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum. cbn [fst].
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.
-+ do 2 f_equiv. apply Preliminary.eqlistA_PermutationA_subrelation.
++ apply make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
   assert (Hequiv : (equiv ==> equiv)%signature (fun x => f (get_location x)) (fun x => get_location (app f x))).
   { intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).

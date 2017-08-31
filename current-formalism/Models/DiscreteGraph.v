@@ -40,12 +40,13 @@ Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 Notation spectrum := (@spectrum V info _ _ _ _ _ _ _).
 Notation configuration := (@configuration info _ _ _ _).
 
+
 (** The robogram should return only adjacent node values.
     We enforce this by making a check in the [update_state] component of the demon. *)
 Definition discrete_rigid_da da :=
-  forall g state pt,
-    find_edge (get_location state) pt <> None -> (* if the robogramme tries to move on an adjacent node *)
-    get_location (update_state da g pt state) == pt. (* then the robogram let it go there *)
+  forall config g tgt,
+    find_edge (get_location (config (Good g))) tgt <> None -> (* if the robogramme tries to move on an adjacent node *)
+    get_location (update_state da config g tgt) == tgt. (* then the robogram let it go there *)
 
 Definition discrete_rigid_demon := Stream.forever (Stream.instant discrete_rigid_da).
 
@@ -57,7 +58,7 @@ are activated at each round. In our setting this means that the demon never
 return a null reference. *)
 
 (** A demonic action is synchronous if all robots are in the same state: either all [Active], or all [Moving]. *)
-Definition da_Synchronous da : Prop := forall id id', activate da id = activate da id'.
+Definition da_Synchronous da : Prop := forall config id id', activate da config id = activate da config id'.
 
 Instance da_Synchronous_compat : Proper (equiv ==> iff) da_Synchronous.
 Proof. unfold da_Synchronous. intros d1 d2 Hd. now setoid_rewrite Hd. Qed.
