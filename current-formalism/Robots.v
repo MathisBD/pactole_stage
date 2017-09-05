@@ -293,3 +293,5 @@ Proof.
 + intros. now apply enum_eq.
 + intros. now apply enum_eq.
 Defined.
+
+Global Opaque G B.

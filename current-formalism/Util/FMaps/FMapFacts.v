@@ -401,8 +401,12 @@ Section WeakFacts.
     Lemma remove_eq_o : forall m x y,
       x == y -> find y (remove x m) = None.
     Proof.
-      intros. rewrite eq_option_alt. intro e.
-      rewrite <- find_mapsto_iff, remove_mapsto_iff; now intuition.
+    intros. rewrite eq_option_alt. intro e.
+    rewrite <- find_mapsto_iff, remove_mapsto_iff.
+    (* BUG?: [now intuition] introduces a dependency on EqDep.eq_rect_eq. *)
+    split; intro.
+    - exfalso. unfold complement in *. tauto.
+    - discriminate.
     Qed.
     Hint Resolve remove_eq_o : map.
 

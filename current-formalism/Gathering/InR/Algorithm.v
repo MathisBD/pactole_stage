@@ -28,9 +28,8 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Gathering.Definitions.
 Require Import Pactole.Spaces.R.
+Require Import Pactole.Gathering.Definitions.
 Import Permutation.
 Close Scope R_scope.
 
@@ -38,10 +37,9 @@ Close Scope R_scope.
 Typeclasses eauto := 10.
 Set Implicit Arguments.
 
-(* We assume that we have at least two robots. *)
+(** We assume that we have at least two good robots and no byzantine one. *)
 Parameter n : nat.
 Axiom size_G : n >= 2.
-
 Instance MyRobots : Names := Robots n 0.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
@@ -49,15 +47,21 @@ Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS.
 
+(* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
+Instance Choice : demonic_choice Datatypes.unit := NoChoice.
+Instance UpdFun : update_function Datatypes.unit := {
+  update := fun _ pt _ => pt;
+  update_compat := ltac:(now repeat intro) }.
+
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config R Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation spectrum := (@spectrum R Datatypes.unit _ _ _ _ Info MyRobots  _).
-Notation robogram := (@robogram R Datatypes.unit _ _ _ _ MyRobots Info _).
-Notation configuration := (@configuration R Datatypes.unit _ _ _ _ _ _ _).
-Notation config_list := (@config_list R Datatypes.unit _ _ _ _ _ _ _).
-Notation round := (@round R Datatypes.unit _ _ _ _ _ _ _).
-Notation execution := (@execution R Datatypes.unit _ _ _ _ _).
+Notation "!!" := mk_spect.
+Notation spectrum := (@spectrum R R _ _ _ _ Info MyRobots  _).
+Notation robogram := (@robogram R R _ _ _ _ _ _ _).
+Notation configuration := (@configuration R _ _ _ _).
+Notation config_list := (@config_list R _ _ _ _).
+Notation round := (@round R R _ _ _ _ _ _ _).
+Notation execution := (@execution R _ _ _).
 
 
 Lemma similarity_middle : forall (sim : similarity R) x y, (sim ((x + y) / 2) = (sim x + sim y) / 2)%R.
@@ -74,7 +78,7 @@ intros P config Hconfig [g | b].
 Qed.
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
-  (forall g, fst (config1 (Good g)) == fst (config2 (Good g))) ->
+  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
 Proof.
 intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
@@ -84,12 +88,13 @@ Qed.
 
 
 (** Spectra can never be empty as the number of robots is non null. *)
-Lemma spect_non_nil : forall config, ~!! config == empty.
+Lemma spect_non_nil : forall config, ~fst (!! config) == empty.
 Proof. apply spect_non_nil. apply size_G. Qed.
 
-Corollary sort_non_nil : forall config, sort (support (!! config)) <> nil.
+Corollary sort_non_nil : forall config, sort (support (fst (!! config))) <> nil.
 Proof.
-intros config Habs. apply (spect_non_nil config).
+intros config Habs. eapply (@spect_non_nil config).
+split; try reflexivity; [].
 setoid_rewrite <- support_nil.
 apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
@@ -99,16 +104,16 @@ Proof. assert (Heven := size_G). simpl. destruct n as [| [| n]]; simpl; omega. Q
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall config l,
-  (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
+  (fst (!! config))[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
   := spect_from_config_spec.
 
 (** **  Property expressing the existence of a majority tower  **)
 
-Definition MajTower_at x conf :=
-  forall y, y <> x -> ((!! conf)[y] < (!! conf)[x]).
+Definition MajTower_at x config :=
+  forall y, y <> x -> (fst (!! config))[y] < (fst (!! config))[x].
 
 Instance MajTower_at_compat : Proper (Logic.eq ==> equiv ==> iff) MajTower_at.
-Proof. intros ? ? ? ? ? Hconf. subst. unfold MajTower_at. now setoid_rewrite Hconf. Qed.
+Proof. intros ? ? ? ? ? Hconfig. subst. unfold MajTower_at. now setoid_rewrite Hconfig. Qed.
 
 (** Computationally, it is equivalent to having only one tower with maximum multiplicity. *)
 
@@ -118,7 +123,7 @@ Lemma max_mult_similarity_invariant : forall (sim : similarity R) s, max_mult (m
 Proof.
 intros. apply max_mult_map_injective_invariant.
 - intros ? ? Heq. now rewrite Heq.
-- apply injective.
+- apply Similarity.injective.
 Qed.
 
 Corollary max_similarity : forall (sim : similarity R),
@@ -126,16 +131,16 @@ Corollary max_similarity : forall (sim : similarity R),
 Proof.
 intros. apply max_map_injective.
 - intros ? ? Heq. now rewrite Heq.
-- apply injective.
+- apply Similarity.injective.
 Qed.
 
-Lemma support_max_non_nil : forall config, support (max (!! config)) <> nil.
+Lemma support_max_non_nil : forall config, support (max (fst (!! config))) <> nil.
 Proof. intros config Habs. rewrite support_nil, max_empty in Habs. apply (spect_non_nil _ Habs). Qed.
 
 (** ***  Computational equivalent of having a majority tower  **)
 
 Lemma Majority_MajTower_at : forall config pt,
-  support (max (!! config)) = pt :: nil -> MajTower_at pt config.
+  support (max (fst (!! config))) = pt :: nil -> MajTower_at pt config.
 Proof.
 intros config pt Hmaj x Hx. apply max_spec2.
 - rewrite <- support_In, Hmaj. now left.
@@ -143,7 +148,7 @@ intros config pt Hmaj x Hx. apply max_spec2.
 Qed.
 
 Theorem MajTower_at_equiv : forall config pt, MajTower_at pt config <->
-  support (max (!! config)) = pt :: nil.
+  support (max (fst (!! config))) = pt :: nil.
 Proof.
 intros config pt. split; intro Hmaj.
 * apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz. change eq with equiv.
@@ -151,7 +156,7 @@ intros config pt. split; intro Hmaj.
   + apply NoDupA_singleton.
   + apply support_NoDupA.
   + intro y. rewrite InA_singleton.
-    rewrite support_In, max_spec1_iff; try apply spect_non_nil; [].
+    rewrite support_In, max_spec1_iff; try (now apply spect_non_nil); [].
     split; intro Hpt.
     - rewrite Hpt. intro x. destruct (Rdec x pt).
       -- subst x. reflexivity.
@@ -169,7 +174,7 @@ Lemma invalid_even : forall conf, invalid conf -> Nat.Even nG.
 Proof. now intros conf [? _]. Qed.
 
 Lemma invalid_support_length : forall config, invalid config ->
-  size (!! config) = 2.
+  size (fst (!! config)) = 2.
 Proof.
 intros config [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).
@@ -196,15 +201,15 @@ Lemma support_max_1_not_invalid : forall config pt,
   MajTower_at pt config -> ~invalid config.
 Proof.
 intros config pt Hmaj. rewrite MajTower_at_equiv in Hmaj.
-assert (Hmax : forall x, In x (max (!! config)) <-> x = pt).
+assert (Hmax : forall x, In x (max (fst (!! config))) <-> x = pt).
 { intro x. rewrite <- support_spec, Hmaj. split.
   - intro Hin. inversion_clear Hin. assumption. inversion H.
   - intro. subst x. now left. }
 intro Hinvalid.
 assert (Hsuplen := invalid_support_length Hinvalid).
 destruct Hinvalid as [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
-assert (Hsup : Permutation (support (!! config)) (pt1 :: pt2 :: nil)).
-{ assert (Hin1 : InA equiv pt1 (support (!! config))).
+assert (Hsup : Permutation (support (fst (!! config))) (pt1 :: pt2 :: nil)).
+{ assert (Hin1 : InA equiv pt1 (support (fst (!! config)))).
   { rewrite support_spec. unfold In. rewrite Hpt1. apply half_size_config. }
   assert (Hin2 : InA equiv pt2 (support (!! config))).
   { rewrite support_spec. unfold In. rewrite Hpt2. apply half_size_config. }

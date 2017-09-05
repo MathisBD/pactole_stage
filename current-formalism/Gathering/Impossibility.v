@@ -41,7 +41,6 @@ Parameter n : nat.
 Axiom even_nG : Nat.Even n.
 Axiom nG_non_0 : n <> 0.
 
-Global Instance MyRobotsDef : NamesDef := RobotsDef n 0.
 Global Instance MyRobots : Names := Robots n 0.
 
 (** The setting is an arbitrary metric space over R. *)
@@ -67,13 +66,13 @@ Admitted.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := (@spect_from_config loc _ _ Datatypes.unit _ _ _ _ _ multiset_spectrum) (at level 1).
-Notation spectrum := (@spectrum loc _ _ Datatypes.unit _ _ Info _ MyRobots  _).
-Notation robogram := (@robogram loc Datatypes.unit _ _ _ _ _ MyRobots Info _).
-Notation configuration := (@configuration loc Datatypes.unit _ _ _ _ _ _ _).
-Notation config_list := (@config_list loc Datatypes.unit _ _ _ _ _ _ _).
-Notation round := (@round loc Datatypes.unit _ _ _ _ _ _ _).
-Notation execution := (@execution loc Datatypes.unit _ _ _ _ _).
+Notation "!!" := (@spect_from_config loc loc _ _ _ _ _ _ _ multiset_spectrum) (at level 1).
+Notation spectrum := (@spectrum loc loc _ _ _ _ Info _ MyRobots  _).
+Notation robogram := (@robogram loc loc _ _ _ _ _ MyRobots Info _).
+Notation configuration := (@configuration loc loc _ _ _ _ _ _ _).
+Notation config_list := (@config_list loc loc _ _ _ _ _ _ _).
+Notation round := (@round loc loc _ _ _ _ _ _ _).
+Notation execution := (@execution loc loc _ _ _ _ _).
 
 Ltac Ldec :=
   repeat match goal with
@@ -133,8 +132,8 @@ simpl. destruct n as [| [| n]].
 - simpl. omega.
 Qed.
 
-Definition translation := translation translation_hypothesis.
-Definition homothecy := homothecy translation_hypothesis homothecy_hypothesis.
+Definition translation := Similarity.translation translation_hypothesis.
+Definition homothecy := Similarity.homothecy translation_hypothesis homothecy_hypothesis.
 
 Instance translation_compat : Proper (equiv ==> equiv) translation.
 Proof. intros c1 c2 Hc x. simpl. now rewrite Hc. Qed.
@@ -144,7 +143,7 @@ Proof. intros ρ Hρ c1 c2 Hc x. simpl. now rewrite Hc. Qed.
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall config l,
-  (!! config)[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
+  (fst (!! config))[l] = countA_occ _ equiv_dec l (List.map fst (config_list config))
  := spect_from_config_spec.
 
 Lemma no_byz : forall (id : ident) P, (forall g, P (@Good G B g)) -> P id.

@@ -22,45 +22,51 @@ Set Implicit Arguments.
 Require Import Utf8.
 Require Import SetoidDec.
 Require Import Reals.
-Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 
 
-Typeclasses eauto := (bfs).
-
-
-Section FlexibleFormalism.
-
-Context {loc info : Type}.
-Context `{IsLocation loc info}.
-Context {RMS : RealMetricSpace loc}.
-Context `{Names}.
-Context {Spect : Spectrum loc info}.
+Typeclasses eauto := (bfs) 5.
 
 
 (** Flexible demons are a special case of demons with the additional property that
     the updated location of the robot is not necessarily the one chosen by the robogram,
     but lies on the segment delimited by the current and target locations.
     To avoid Zenon-based paradoxes, we require the robot to move at least a given distance δ. *)
+Section FlexibleFormalism.
 
-(** Flexible moves are parametrized by the minimum distance that robots must move when they are activated. *)
-Class FlexibleMoves := delta : R.
-Notation δ := delta.
+Context {loc info : Type}.
+Context `{IsLocation loc info}.
+Context {RMS : RealMetricSpace loc}. (* only used for the equality case of the triangle inequality *)
+Context `{Names}.
+Context {Spect : Spectrum loc info}.
+Context (T : Type).
 
-Definition flexible_da `{FlexibleMoves} da :=
-  forall config g tgt,
-  let pt := get_location (config (Good g)) in
-  let pt' := get_location (update_state da config g tgt) in
-  (* either we reach the target *)
-  pt' == tgt
-  (* or [pt'] is between [pt] and [tgt] (equality case of the triangle inequality) *)
-  \/ dist pt pt' + dist pt' tgt = dist pt tgt
-  (* and the robot have moved a distance at least delta. *)
-  /\ delta <= dist pt pt'.
+Class FlexibleChoice `{demonic_choice T} := {
+  move_ratio : T -> R;
+  move_ratio_bound : forall choice, 0 < move_ratio choice <= 1;
+  move_ratio_compat :> Proper (@equiv T choice_Setoid ==> equiv) move_ratio }.
 
-Definition flexible_demon `{FlexibleMoves} := Stream.forever (Stream.instant flexible_da).
+(** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
+Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T} := {
+  (** The minimum distance that robots should be allowed to move *)
+  delta : R;
+  (** [move_ratio] is ratio between the achieved and the planned move distances. *)
+  ratio_spec : forall da config g target,
+    let pt := get_location (config (Good g)) in
+    let pt' := get_location (update config target (da.(choose_update) config g target)) in
+    dist pt pt' = move_ratio (da.(choose_update) config g target) * (dist pt target);
+  (** Moves are flexible: they do not necessarily reach their target but stay on a line *)
+  flexible_update : forall da config g target,
+    let pt := get_location (config (Good g)) in
+    let pt' := get_location (update config target (da.(choose_update) config g target)) in
+    (* either we reach the target *)
+    pt' == target
+    (* or [pt'] is between [pt] and [tgt] (equality case of the triangle inequality) *)
+    \/ dist pt pt' + dist pt' target = dist pt target
+    (* and the robot has moved a distance at least delta. *)
+    /\ delta <= dist pt pt' }.
 
 End FlexibleFormalism.
 

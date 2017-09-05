@@ -26,7 +26,7 @@ Setting.v
 ## Models
 Models/Flexible.v
 Models/Rigid.v
-#Models/RigidEquivalence.v
+Models/RigidFlexibleEquivalence.v
 Models/DiscreteGraph.v
 #Models/ContinuousGraph.v
 #Models/GraphEquivalence.v

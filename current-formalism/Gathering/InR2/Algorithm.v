@@ -30,8 +30,8 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Gathering.Definitions.
 Require Import Pactole.Spaces.R2.
+Require Import Pactole.Gathering.Definitions.
 Import Permutation.
 Set Implicit Arguments.
 Close Scope R_scope.
@@ -56,6 +56,12 @@ Instance MyRobots : Names := Robots n 0.
 Existing Instance R2_Setoid.
 Existing Instance R2_EqDec.
 Existing Instance R2_RMS.
+
+(* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
+Instance Choice : demonic_choice Datatypes.unit := NoChoice.
+Instance UpdFun : update_function Datatypes.unit := {
+  update := fun _ pt _ => pt;
+  update_compat := ltac:(now repeat intro) }.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").

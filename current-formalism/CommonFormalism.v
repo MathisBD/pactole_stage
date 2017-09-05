@@ -35,7 +35,8 @@ Import Pactole.Util.Bijection.Notations.
 Section Formalism.
 
 Context {loc info : Type}.
-Context `{IsLocation loc info}.
+Context `{EqDec loc} `{EqDec info}.
+Context {Loc : IsLocation loc info}.
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
 
@@ -46,7 +47,7 @@ Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ Spect).
 
 (** Good robots have a common program, which we call a [robogram]. *)
 Record robogram := {
-  pgm :> spectrum -> loc;
+  pgm :> spectrum -> loc; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
   pgm_compat : Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid : Setoid robogram := {|
@@ -69,7 +70,33 @@ Definition execution := Stream.t configuration.
     - it selects which robots are activated,
     - it moves all activated byzantine robots as it wishes,
     - in the compute phase, it sets the referential of all activated good robots,
-    - in the move phase, it decides what changes in their states. *)
+    - in the move phase, it makes some choices about how the robots' states should be updated. *)
+
+(** A [demonic_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
+Class demonic_choice (T : Type) := {
+  choice_Setoid :> Setoid T;
+  choice_EqDec :> EqDec choice_Setoid }.
+
+(** An exemple of choice: no choice at all. *)
+Definition NoChoice : demonic_choice unit := {|
+  choice_Setoid := _;
+  choice_EqDec := _ |}.
+
+(** Combining two choices into one. *)
+Definition MergeChoices A B `{demonic_choice A} `{demonic_choice B} : demonic_choice (A * B) := {|
+  choice_Setoid := _;
+  choice_EqDec := _ |}.
+
+(** These choices are then used by an update function that depends on the model. *)
+Class update_function `{IsLocation loc info} T `{demonic_choice T} := {
+  update :> configuration -> loc -> T -> info;
+  update_compat :> Proper (equiv ==> equiv ==> equiv ==> equiv) update }.
+Global Arguments update_function {_} {_} {_} {_} {_} T {_}.
+
+Context {T : Type}.
+Context `{demonic_choice T}.
+Context {Update : update_function T}.
+
 (* The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
   (** Select which robots are activated *)
@@ -79,12 +106,12 @@ Record demonic_action := {
   (** Local referential for (activated) good robots in the compute phase *)
   change_frame : configuration -> G -> Bijection.bijection loc;
   (** Update the state of (activated) good robots in the move phase  *)
-  update_state : configuration -> G -> loc -> info;
+  choose_update : configuration -> G -> loc -> T;
   (** Compatibility properties *)
   activate_compat : Proper (equiv ==> Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
   change_frame_compat : Proper (equiv ==> Logic.eq ==> equiv) change_frame;
-  update_state_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) update_state }.
+  choose_update_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) choose_update }.
 
 (* These constraint will only appear while specializing the models.
   option ((loc -> similarity loc) (* change of referential *)
@@ -99,7 +126,7 @@ Global Instance da_Setoid : Setoid demonic_action := {|
            (forall config id, da1.(activate) config id == da2.(activate) config id)
         /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
         /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
-        /\ (forall config g pt, da1.(update_state) config g pt == da2.(update_state) config g pt) |}.
+        /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt) |}.
 Proof. split.
 + intuition.
 + intros da1 da2 [? [? [? ?]]]. repeat split; intros; symmetry; auto.
@@ -115,8 +142,8 @@ Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply reloc
 Global Instance change_frame_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) change_frame.
 Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply change_frame_compat. Qed.
 
-Global Instance update_state_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) update_state.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply update_state_compat. Qed.
+Global Instance choose_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) choose_update.
+Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition active da config := List.filter (activate da config) names.
@@ -192,8 +219,10 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           let local_target := r (spect_from_config local_config (get_location (local_config (Good g)))) in
           (* return to the global frame of reference *)
           let global_target := new_frame ⁻¹ local_target in
-          (* the demon performs the actual update of the robot state *)
-          da.(update_state) config g global_target
+          (* the demon chooses how to perform the state update *)
+          let choice := da.(choose_update) config g global_target in
+          (* the actual update of the robot state is performed by the update function *)
+          update config global_target choice
         end
     else state.
 
@@ -205,9 +234,10 @@ unfold round. rewrite Hda, Hconfig. destruct_match.
 * (* active robot *)
   destruct id as [g | b].
   + (* good robot *)
-    do 4 f_equiv; trivial; [|].
-    - apply map_config_compat; trivial; []. apply app_compat. now do 2 f_equiv.
-    - apply get_location_compat, map_config_compat; trivial; []. apply app_compat. now do 2 f_equiv.
+    apply update_compat; try apply choose_update_da_compat; trivial; [|];
+    do 3 f_equiv; trivial;
+    solve [ apply map_config_compat; trivial; []; apply app_compat; now do 2 f_equiv
+          | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; now do 2 f_equiv ].
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
@@ -288,7 +318,7 @@ Qed.
 
 (** **  Fairness  **)
 
-(* FIXME: these definitions are very likely wrong because of the qunitification on config. *)
+(* FIXME: these definitions are very likely wrong because of the quantification on config. *)
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 (* RMK: This is a stronger version of eventually because P is negated in the Later clause *)
 Inductive LocallyFairForOne id (d : demon) : Prop :=

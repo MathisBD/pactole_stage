@@ -23,18 +23,20 @@ Require Import Pactole.Spaces.Isomorphism.
 
 
 Section Formalism.
+
 Context (V E info  : Type).
 Context {G : Graph V E}.
 Context `{Names}.
 Context `{EqDec info}.
 Context {Loc : IsLocation V info}.
 Context {Tar : IsTarget V info}.
-
+Context `{demonic_choice}.
+Context  `{@update_function V info _ _ _ _ _ _ _ _}.
+Context `{@Spectrum V info _ _ _ _ _ _}.
 
 (* Never used if we start from a good config. *)
 Axiom e_default : E.
 
-Context `{@Spectrum V info _ _ _ _ _ _}.
 
 Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 Notation spectrum := (@spectrum V info _ _ _ _ _ _ _).
@@ -42,20 +44,17 @@ Notation configuration := (@configuration info _ _ _ _).
 
 
 (** The robogram should return only adjacent node values.
-    We enforce this by making a check in the [update_state] component of the demon. *)
-Definition discrete_rigid_da da :=
-  forall config g tgt,
-    find_edge (get_location (config (Good g))) tgt <> None -> (* if the robogramme tries to move on an adjacent node *)
-    get_location (update_state da config g tgt) == tgt. (* then the robogram let it go there *)
+    We enforce this by making a check in the [update] function. *)
+Class DiscreteGraphUpdate  := {
+  discrete_graph_update : forall da config g target,
+    find_edge (get_location (config (Good g))) target <> None -> (* if the robogram tries to move on an adjacent node *)
+    get_location (update config target (da.(choose_update) config g target)) == target }. (* then the update let it go there *)
 
-Definition discrete_rigid_demon := Stream.forever (Stream.instant discrete_rigid_da).
+(** **  Full synchronicity  **)
 
-
-(** ** Full synchronicity
-
-A fully synchronous demon is a particular case of fair demon: all good robots
-are activated at each round. In our setting this means that the demon never
-return a null reference. *)
+(** A fully synchronous demon is a particular case of fair demon: all good robots
+    are activated at each round.  In our setting, this means that the demon never
+    returns a null reference. *)
 
 (** A demonic action is synchronous if all robots are in the same state: either all [Active], or all [Moving]. *)
 Definition da_Synchronous da : Prop := forall config id id', activate da config id = activate da config id'.

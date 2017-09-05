@@ -62,3 +62,10 @@ Class IsTarget loc info `{IsLocation loc info} := {
 Arguments IsTarget loc info {_} {_} {_} {_} {_}.
 
 (* TODO: Define the disjoint union of such projections to ensure their independence. *)
+
+Definition OnlyLocation loc `{EqDec loc} : IsLocation loc loc := {|
+  get_location := id;
+  app := id;
+  app_id := reflexivity _;
+  app_compose := ltac:(reflexivity);
+  get_location_app := ltac:(reflexivity) |}.
