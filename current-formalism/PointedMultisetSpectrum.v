@@ -16,9 +16,9 @@ Require Import Arith_base.
 Require Import Omega.
 Require Import SetoidList.
 Require Import Equalities.
-Require MMultisetInterface.
-Require MMultisetExtraOps.
-Require MMultisetWMap.
+Require Pactole.MMultiset.MMultisetInterface.
+Require Pactole.MMultiset.MMultisetExtraOps.
+Require Pactole.MMultiset.MMultisetWMap.
 Require Import Pactole.Preliminary.
 Require Pactole.Robots.
 Require Import Pactole.Configurations.

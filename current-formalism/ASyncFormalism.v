@@ -45,7 +45,6 @@ Module Make (Location : RealMetricSpace)
             (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Info)(Config)(Spect)).
 
   Import Common.
-  Definition Info := Configurations.SourceTarget(Location).
 Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
 
 (** ** Demonic schedulers *)
@@ -83,8 +82,8 @@ Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Config.RobotConf -> Active_or_Moving;
   step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
-       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Info.target)) \/
-       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.source) >= delta)%R;
+       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.state).(Info.target)) \/
+       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.state).(Info.source) >= delta)%R;
   step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
   step_zoom :  forall id config sim c, step id config = Active sim -> (sim c).(Sim.zoom) <> 0%R;
   step_center : forall id config sim c , step id config = Active sim -> 
@@ -194,84 +193,59 @@ Qed.
 
 
 (** A [demon] is just a stream of [demonic_action]s. *)
-CoInductive demon :=
-  NextDemon : demonic_action → demon → demon.
+Definition demon := Stream.t demonic_action.
 
-(** Destructors for demons, getting the head demonic action or the
-    tail of the demon. *)
-
-Definition demon_head (d : demon) : demonic_action :=
-  match d with NextDemon da _ => da end.
-
-Definition demon_tail (d : demon) : demon :=
-  match d with NextDemon _ d => d end.
-
-CoInductive deq (d1 d2 : demon) : Prop :=
-  | Cdeq : da_eq (demon_head d1) (demon_head d2) ->
-           deq (demon_tail d1) (demon_tail d2) -> deq d1 d2.
+Definition deq (d1 d2 : demon) : Prop := Stream.eq da_eq d1 d2.
 
 Instance deq_equiv : Equivalence deq.
-Proof. split.
-+ coinduction deq_refl. reflexivity.
-+ coinduction deq_sym. symmetry. now inversion H. now inversion H.
-+ coinduction deq_trans.
-  - inversion H. inversion H0. now transitivity (demon_head y).
-  - apply (deq_trans (demon_tail x) (demon_tail y) (demon_tail z)).
-      now inversion H.
-      now inversion H0.
-Qed.
-
+Proof. apply Stream.eq_equiv. apply da_eq_equiv. Qed.
+(*
 Instance deq_bisim : Bisimulation demon.
 Proof. exists deq. apply deq_equiv. Qed.
+ *)
 
-Instance demon_head_compat : Proper (deq ==> da_eq) demon_head.
-Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
 
-Instance demon_tail_compat : Proper (deq ==> deq) demon_tail.
-Proof. intros [da1 d1] [da2 d2] Heq. destruct Heq. simpl in *. assumption. Qed.
+Instance demon_hd_compat : Proper (deq ==> da_eq) (@Stream.hd _) := Stream.hd_compat _.
+Instance demon_tl_compat : Proper (deq ==> deq) (@Stream.tl _) := Stream.tl_compat _.
 
-(** **  Fairness  **)
+(** ** Fairness *)
 
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 Inductive LocallyFairForOne g (d : demon) : Prop :=
-  | ImmediatelyFair : forall config, is_Active (step (demon_head d) g config) = true → 
-                                      LocallyFairForOne g d
-  | LaterFair : forall config, is_Active (step (demon_head d) g config) = false →
-                                 LocallyFairForOne g (demon_tail d) → LocallyFairForOne g d.
+  | NowFair : forall rconf, is_Active (step (Stream.hd d) g rconf) = true → LocallyFairForOne g d
+  | LaterFair : forall rconf, is_Active (step (Stream.hd d) g rconf) = false → LocallyFairForOne g (Stream.tl d) → LocallyFairForOne g d.
 
-CoInductive Fair (d : demon) : Prop :=
-  AlwaysFair : (∀ g, LocallyFairForOne g d) → Fair (demon_tail d) →
-               Fair d.
+Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ g, LocallyFairForOne g d).
 
 (** [Between g h d] means that [g] will be activated before at most [k]
     steps of [h] in demon [d]. *)
 Inductive Between g h (d : demon) : nat -> Prop :=
-| kReset : forall k rconf, is_Active (step (demon_head d) g rconf) = true -> Between g h d k
-| kReduce : forall k rconf, is_Active (step (demon_head d) g rconf) = false ->
-                            is_Active (step (demon_head d) h rconf) = true ->
-                      Between g h (demon_tail d) k -> Between g h d (S k)
-| kStall : forall k rconf, is_Active (step (demon_head d) g rconf) = false ->
-                           is_Active (step (demon_head d) h rconf) = false ->
-                     Between g h (demon_tail d) k -> Between g h d k.
+| kReset : forall k rconf, is_Active (step (Stream.hd d) g rconf) = true -> Between g h d k(* faire une replace demon_head with Stream.hd *)
+| kReduce : forall k rconf, is_Active (step (Stream.hd d) g rconf) = false ->
+                            is_Active (step (Stream.hd d) h rconf) = true ->
+                      Between g h (Stream.tl d) k -> Between g h d (S k)
+| kStall : forall k rconf, is_Active (step (Stream.hd d) g rconf) = false ->
+                           is_Active (step (Stream.hd d) h rconf) = false ->
+                     Between g h (Stream.tl d) k -> Between g h d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
-CoInductive kFair k (d : demon) : Prop :=
-  AlwayskFair : (forall g h, Between g h d k) -> kFair k (demon_tail d) ->
-                kFair k d.
+(* CoInductive kFair k (d : demon) : Prop := *)
+(*   AlwayskFair : (forall g h, Between g h d k) -> kFair k (Stream.tl d) -> *)
+(*                 kFair k d. *)
+Definition kFair k : demon -> Prop := Stream.forever (fun d => forall g h, Between g h d k).
 
-Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> 
-                                     LocallyFairForOne g d1 -> LocallyFairForOne g d2.
+Lemma LocallyFairForOne_compat_aux : forall g d1 d2, deq d1 d2 -> LocallyFairForOne g d1 -> LocallyFairForOne g d2.
 Proof.
-intros g d1 d2 Hd Hfair. revert d2 Hd. induction Hfair; intros d2 Hd.
- + assert (Heq : is_Active (step (demon_head d2) g config) = true) by now rewrite <- Hd, H.
-   destruct (step (demon_head d2) g) eqn:?; simpl in Heq.
+  intros g da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
+  + assert (Heq : is_Active (step (Stream.hd da2) g rconf) = true) by now rewrite <- Hda, H.
+   destruct (step (Stream.hd da2) g) eqn:?; simpl in Heq.
    - easy.
-   - constructor 1 with config.
+   - constructor 1 with rconf.
      unfold is_Active.
      rewrite Heqa; auto.
- + assert (Heq : is_Active (step (demon_head d2) g config) = false) by now rewrite <- Hd, H.
-   destruct (step (demon_head d2) g) eqn:?; simpl in Heq.
-   - constructor 2 with config.
+ + assert (Heq : is_Active (step (Stream.hd da2) g rconf) = false) by now rewrite <- Hda, H.
+   destruct (step (Stream.hd da2) g) eqn:?; simpl in Heq.
+   - constructor 2 with rconf.
      unfold is_Active.
      rewrite Heqa.
      assumption.
@@ -280,74 +254,50 @@ intros g d1 d2 Hd Hfair. revert d2 Hd. induction Hfair; intros d2 Hd.
    - apply IHHfair.
      assert (Hneq:= Bool.diff_true_false).
      exfalso; auto.
- Qed.
- 
+Qed.
 
 Instance LocallyFairForOne_compat : Proper (eq ==> deq ==> iff) LocallyFairForOne.
 Proof. repeat intro. subst. split; intro; now eapply LocallyFairForOne_compat_aux; eauto. Qed.
 
-Lemma Fair_compat_aux : forall d1 d2, deq d1 d2 -> Fair d1 -> Fair d2.
-Proof.
-cofix be_fair. intros d1 d2 Heq Hfair. destruct Hfair as [Hnow Hlater]. constructor.
-+ intro. now rewrite <- Heq.
-+ eapply be_fair; try eassumption. now f_equiv.
-Qed.
-
 Instance Fair_compat : Proper (deq ==> iff) Fair.
-Proof. repeat intro. split; intro; now eapply Fair_compat_aux; eauto. Qed.
+Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall g h k d1 d2, deq d1 d2 -> Between g h d1 k -> Between g h d2 k.
 Proof.
 intros g h k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
-+ assert (Heqa : is_Active (step (demon_head d2) g rconf) = true) by now rewrite <- Heq, H.
-  destruct (step (demon_head d2) g rconf) eqn:?; simpl in Heqa.
-   - easy.
-   - constructor 1 with rconf. unfold is_Active. rewrite Heqa0; auto.
-+ assert (Heqa : is_Active (step (demon_head d2) h rconf) = true) by now rewrite <- Heq, H0.
-  destruct (step (demon_head d2) h rconf) eqn:?; simpl in Heq.
++ destruct (step (Stream.hd d) g rconf) eqn : Hstep.
   - easy.
+  - constructor 1 with rconf.
+    now rewrite <- Heq, Hstep.    
++ destruct (step (Stream.hd d) g rconf) eqn : Hstep.
   - constructor 2 with rconf.
-    * unfold is_Active in *. destruct (step (demon_head d2) g rconf) eqn:?,
-      (step (demon_head d) g rconf) eqn:?; intuition.
-      rewrite <- da_eq_step_Moving with (da1 := (demon_head d2)) in *. 
-      rewrite Heqa1 in Heqa2. discriminate.
-      symmetry.
-      apply Heq.
-    * rewrite Heqa0; assumption.
+    * now rewrite <- Heq, Hstep.
+    * now rewrite <- Heq.
     * apply IHbet; now f_equiv.
-+ constructor 3 with rconf.
-  - unfold is_Active in *.
-    destruct (step (demon_head d2) g rconf) eqn:?, (step (demon_head d) g rconf) eqn:?; intuition.
-    rewrite <- da_eq_step_Moving with (da1 := (demon_head d2)) in *.
-    rewrite Heqa in Heqa0; discriminate.
-    symmetry; apply Heq.
-  - unfold is_Active in *.
-    destruct (step (demon_head d2) h rconf) eqn:?, (step (demon_head d) h rconf) eqn:?; intuition.
-    rewrite <- da_eq_step_Moving with (da1 := (demon_head d2)) in *.
-    rewrite Heqa in Heqa0; discriminate. symmetry; apply Heq.
-  - apply IHbet. now f_equiv.
+  - easy.
++ destruct (step (Stream.hd d) g rconf) eqn : Hstep.
+  - constructor 3 with rconf.
+    * now rewrite <- Heq, Hstep.
+    * now rewrite <- Heq.
+    * apply IHbet; now f_equiv.
+  - easy.
 Qed.
 
 Instance Between_compat : Proper (eq ==> eq ==> deq ==> eq ==> iff) Between.
 Proof. repeat intro. subst. split; intro; now eapply Between_compat_aux; eauto. Qed.
 
-Lemma kFair_compat_aux : forall k d1 d2, deq d1 d2 -> kFair k d1 -> kFair k d2.
-Proof.
-cofix be_fair. intros k d1 d2 Heq Hkfair. destruct Hkfair as [Hnow Hlater]. constructor.
-+ intros. now rewrite <- Heq.
-+ eapply be_fair; try eassumption. now f_equiv.
-Qed.
-
 Instance kFair_compat : Proper (eq ==> deq ==> iff) kFair.
-Proof. repeat intro. subst. split; intro; now eapply kFair_compat_aux; eauto. Qed.
+Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_LocallyFair : forall g (d : demon) h k,
   Between g h d k -> LocallyFairForOne g d.
 Proof.
-  intros g h d k Hg. induction Hg.
-  now constructor 1 with rconf.
-  constructor 2 with rconf. apply H. apply IHHg.
-  constructor 2 with rconf. apply H. apply IHHg.
+  intros g d h k Hg.
+  induction Hg;
+    destruct (step (Stream.hd d) g rconf) eqn : Hstep; try easy.
+  - constructor 1 with rconf. now rewrite Hstep.
+  - constructor 2 with rconf; try (now rewrite Hstep); try assumption.
+  - constructor 2 with rconf; try (now rewrite Hstep); try assumption.
 Qed.
 
 (** A robot is never activated before itself with a fair demon! The
@@ -355,19 +305,13 @@ Qed.
     activated. *)
 Lemma Between_same :
   forall g (d : demon) k, LocallyFairForOne g d -> Between g g d k.
-Proof.
-  intros g d k Hd. induction Hd.
-  now constructor 1 with config.
-  now constructor 3 with config.
-Qed.
-
+Proof. intros g d k Hd. induction Hd; try now constructor.
+       now constructor 1 with rconf.
+       now constructor 3 with rconf.
+Qed.       
 (** A k-fair demon is fair. *)
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
-Proof.
-  coinduction kfair_is_fair.
-  destruct H as [Hbetween H]. intro. apply Between_LocallyFair with g k. now apply Hbetween.
-  apply (kfair_is_fair k). now destruct H.
-Qed.
+Proof. intro. apply Stream.forever_impl_compat. intros. eauto using (@Between_LocallyFair g _ g). Qed.
 
 (** [Between g h d k] is monotonic on [k]. *)
 Lemma Between_mon : forall g h (d : demon) k,
@@ -376,8 +320,8 @@ Proof.
   intros g h d k Hd. induction Hd; intros k' Hk.
   now constructor 1 with rconf.
   destruct k'.
-    now inversion Hk.
-    constructor 2 with rconf; assumption || now (apply IHHd; omega).
+  now inversion Hk.
+  constructor 2 with rconf; assumption || now (apply IHHd; omega).
   constructor 3 with rconf; assumption || now (apply IHHd; omega).
 Qed.
 
@@ -385,31 +329,23 @@ Qed.
 Theorem kFair_mon : forall k (d: demon),
   kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
 Proof.
-  coinduction fair; destruct H.
-  - intros. now apply Between_mon with k.
-  - now apply (fair k).
+coinduction fair; destruct H.
+- intros. now apply Between_mon with k.
+- now apply (fair k).
 Qed.
-
-(* difficult to prove now tha step take a Rconf *)
-(* Theorem Fair0 : forall d, kFair 0 d ->
-  forall g h, (forall rconf, is_Active ((demon_head d).(step) g rconf) = false)
-             <-> (forall rconf, is_Active ((demon_head d).(step) h rconf) = false).
-Proof.
-
-Qed.  *)
 
 (** ** Full synchronicity
 
   A fully synchronous demon is a particular case of fair demon: all good robots
-  are activated at each round. In our setting this means that the demon never
-  return a null reference. *)
+  are activated at each round. In our setting this means that the step function
+  of the demon never returns None. *)
 
 
-(** A demon is fully synchronous for one particular good robot g at the first
-    step. *)
+(** A demon is fully synchronous at the first step. *)
+
 Inductive FullySynchronousForOne g d:Prop :=
   ImmediatelyFair2: forall rconf,
-    is_Active (step (demon_head d) g rconf) = true → 
+    is_Active (step (Stream.hd d) g rconf) = true → 
                       FullySynchronousForOne g d.
 
 (** A demon is fully synchronous if it is fully synchronous for all good robots
@@ -417,7 +353,7 @@ Inductive FullySynchronousForOne g d:Prop :=
 CoInductive FullySynchronous d :=
   NextfullySynch:
     (∀ g, FullySynchronousForOne g d)
-    → FullySynchronous (demon_tail d)
+    → FullySynchronous (Stream.tl d)
     → FullySynchronous d.
 
 
@@ -439,7 +375,7 @@ Qed.
 
 (* TODO: apply sim to info? *)
 Definition apply_sim (sim : Sim.t) (rconf : Config.RobotConf) :=
-  {| Config.loc := sim rconf; Config.robot_info := Config.robot_info rconf |}.
+  {| Config.loc := sim rconf; Config.state := Config.state rconf |}.
 
 Instance apply_sim_compat : 
         Proper (Sim.eq ==> Config.eq_RobotConf ==> Config.eq_RobotConf) apply_sim.
@@ -462,24 +398,24 @@ Definition round (r : robogram) (da : demonic_action) (config : Config.t) : Conf
       | Moving mv_ratio =>
         match id with
         | Good g =>
-           let tgt := conf.(Config.robot_info).(Config.target) in
+           let tgt := conf.(Config.state).(Info.target) in
            let new_loc :=  (** If g is not activated, it moves toward its destination *)
               Location.add pos
               (Location.mul mv_ratio (Location.add tgt (Location.opp pos))) in
-           {| Config.loc := new_loc ; Config.robot_info := conf.(Config.robot_info) |}
+           {| Config.loc := new_loc ; Config.state := conf.(Config.state) |}
         | Byz b => conf
         end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
         match id with
         | Byz b => (* byzantine robot are relocated by the demon *)
                    {| Config.loc := da.(relocate_byz) b;
-                      Config.robot_info := Config.robot_info (config id) |}
+                      Config.state := Config.state (config id) |}
         | Good g => 
           let frame_change := sim (Config.loc (config (Good g))) in
           let local_conf := Config.map (apply_sim frame_change) config in
           let target := frame_change⁻¹ (r (Spect.from_config local_conf)) in
            {| Config.loc := pos ; 
-              Config.robot_info := {| Config.source := pos ; Config.target := target|} |}
+              Config.state := {| Info.source := pos ; Info.target := target|} |}
         end
     end.
 
@@ -505,7 +441,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   do 2 f_equiv.
   apply Hrconf.
   f_equiv; apply Hrconf.
-  unfold Config.Info_eq.
+  unfold Info.eq.
   split; apply Hrconf.
 + unfold Aom_eq in *. exfalso; auto.
 + unfold Aom_eq in *. exfalso; auto.
@@ -514,7 +450,7 @@ destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2,
   simpl in Hstep. f_equiv.
   - f_equiv. apply Hstep, Hrconf.
   - apply Hr. do 3 f_equiv; trivial; []. apply Hstep, Hconf.
-+ rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. now rewrite Heq.
++ rewrite Hda. destruct (Hconf (Byz b)) as [? Heq]. split; simpl in *; try easy. 
 Qed.
 
 
@@ -615,20 +551,24 @@ Qed. *)
 
 (** [execute r d conf] returns an (infinite) execution from an initial global
     configuration [conf], a demon [d] and a robogram [r] running on each good robot. *)
+
 Definition execute (r : robogram): demon → Config.t → execution :=
   cofix execute d conf :=
-  NextExecution conf (execute (demon_tail d) (round r (demon_head d) conf)).
+  Stream.cons conf (execute (Stream.tl d) (round r (Stream.hd d) conf)).
 
 (** Decomposition lemma for [execute]. *)
 Lemma execute_tail : forall (r : robogram) (d : demon) (conf : Config.t),
-  execution_tail (execute r d conf) = execute r (demon_tail d) (round r (demon_head d) conf).
-Proof. intros. destruct d. unfold execute, execution_tail. reflexivity. Qed.
+  Stream.tl (execute r d conf) = execute r (Stream.tl d) (round r (Stream.hd d) conf).
+Proof. intros. destruct d. reflexivity. Qed.
 
 Instance execute_compat : Proper (req ==> deq ==> Config.eq ==> eeq) execute.
 Proof.
-intros r1 r2 Hr.
-cofix proof. constructor. simpl. assumption.
-apply proof; clear proof. now inversion H. apply round_compat; trivial. inversion H; assumption.
+intros r1 r2 Hr. subst.
+cofix proof. constructor.
++ simpl. assumption.
++ apply proof; clear proof.
+  - now inversion H.
+  - apply round_compat; try easy. now destruct H.
 Qed.
 
 End Make.

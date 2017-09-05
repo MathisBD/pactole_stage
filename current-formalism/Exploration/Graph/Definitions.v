@@ -24,7 +24,7 @@ Require Import Pactole.DiscreteGraphFormalism.
 Require Import Pactole.DiscreteSimilarity.
 Require Import Pactole.CommonDiscreteFormalism.
 Require Import Pactole.DiscreteRigidFormalism.
-Require Import Pactole.MultisetSpectrum.
+Require Import Pactole.PointedMultisetSpectrum.
 Require Import Pactole.CommonIsoGraphFormalism.
 Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 
@@ -138,8 +138,8 @@ End Loc.
 Module Iso := CommonIsoGraphFormalism.Make(Ring)(Loc). (* Careful! It also contains a module called Iso *)
 Module Info := SourceTarget(Loc).
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
-Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
-Module DGF := DiscreteGraphFormalism.DGF(Ring)(N)(Names)(Loc)(Info)(Config)(Spect)(Iso).
+Module Spect := PointedMultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
+Module DGF := DGF(Ring)(N)(Names)(Loc)(Info)(Config)(Spect)(Iso).
 Export Iso DGF.
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").

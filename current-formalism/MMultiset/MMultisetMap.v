@@ -15,11 +15,11 @@ Require Import PArith.
 Require Import RelationPairs.
 Require Import Equalities.
 Require Import MMaps.MMapInterface.
-Require Import MMultiset.Preliminary.
-Require Import MMultiset.MMultisetInterface.
+Require Import Pactole.MMultiset.Preliminary.
+Require Import Pactole.MMultiset.MMultisetInterface.
 
 
-Module FMultisets (MMap : Sfun) (E : OrderedType) : Sord E.
+Module FMultisets (MMap : Sfun) (E : OrderedType) :  Sord E.
 
 Module M := MMap(E).
 

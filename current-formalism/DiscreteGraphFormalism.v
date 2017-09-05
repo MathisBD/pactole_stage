@@ -35,7 +35,7 @@ Module DGF (Graph : GraphDef)
            (LocationA : LocationADef(Graph))
            (InfoA : SourceTargetSig(LocationA))
            (ConfigA : Configuration(LocationA)(N)(Names)(InfoA))
-           (SpectA : Spectrum(LocationA)(N)(Names)(InfoA)(ConfigA))
+           (SpectA : PointedSpectrum(LocationA)(N)(Names)(InfoA)(ConfigA))
            (Import Iso : Iso(Graph)(LocationA)).
   
   
@@ -104,23 +104,26 @@ Module DGF (Graph : GraphDef)
   
   (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
-  Inductive Active_or_Moving := 
+  Inductive Active_or_Moving rconf := 
   | Moving (dist : bool)              (* moving ratio, the model equivalence uses the "false" case *)
-  | Active (sim : Iso.t).             (* change of referential *)
+  | Active (sim : (Iso.t rconf)).      (* change of referential *)
   
   Definition Aom_eq (a1 a2: Active_or_Moving) :=
     match a1, a2 with
     | Moving d1, Moving d2 => d1 = d2
-    | Active sim1, Active sim2 =>Iso.eq sim1 sim2
+    | Active sim1, Active sim2 => (Config.eq_RobotConf ==> Iso.eq)%signature sim1 sim2
     | _, _ => False
     end.
     
-  Instance Active_compat : Proper (Iso.eq ==> Aom_eq) Active.
+  Instance Active_compat : Proper ((Config.eq_RobotConf ==> Iso.eq) ==> Aom_eq) Active.
   Proof. intros ? ? ?. auto. Qed.
+
   
   Instance Aom_eq_equiv : Equivalence Aom_eq.
-  Proof. split.
-  + now intros [].
+  Proof.
+    split.
+    + intros []; try easy. apply Active_compat. unfold Aom_eq. intros x y Hxy. unfold Iso.eq.
+      split; try rewrite Hxy. unfold Bijection.eq.
   + intros x y H. unfold Aom_eq in *. destruct x, y; auto. now symmetry.
   + intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto.
     now rewrite H12, H23.
@@ -131,16 +134,16 @@ Module DGF (Graph : GraphDef)
   Record demonic_action :=
     {
       relocate_byz : Names.B -> Config.RobotConf;
-      step : Names.ident -> Config.RobotConf -> Active_or_Moving;
+      step : Names.G -> (Config.RobotConf -> Active_or_Moving);
       step_delta : forall g Rconfig sim,
-          Aom_eq (step (Good g) Rconfig) (Active sim) ->
+          Aom_eq (step (g) Rconfig) (Active sim) ->
           Location.eq Rconfig.(Config.loc) Rconfig.(Config.state).(Info.target);
       step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step
     }.
   Set Implicit Arguments.
   
   Definition da_eq (da1 da2 : demonic_action) :=
-    (forall id config, (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
+    (forall g rconf, (Aom_eq)%signature (da1.(step) g rconf) (da2.(step) g rconf)) /\
     (forall b : Names.B, Config.eq_RobotConf (da1.(relocate_byz) b) (da2.(relocate_byz) b)).
   
   Instance da_eq_equiv : Equivalence da_eq.
@@ -217,51 +220,45 @@ Module DGF (Graph : GraphDef)
     fun id =>
       let rconf := config id in
       let pos := rconf.(Config.loc) in
-      match da.(step) id rconf with (** first see whether the robot is activated *)
+      match id with
+      | Byz b => da.(relocate_byz) b
+      | Good g =>
+        match da.(step) g rconf with (** first see whether the robot is activated *)
       | Moving false => rconf
       | Moving true =>
-        match id with
-        | Good g =>
           let tgt := rconf.(Config.state).(Info.target) in
           {| Config.loc := tgt ; Config.state := rconf.(Config.state) |}
-        | Byz b => rconf
-        end
       | Active sim => (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
-        match id with
-        | Byz b => da.(relocate_byz) b (* byzantine robot are relocated by the demon *)
-        | Good g =>
-          let local_config := Config.map (Config.app sim) config in
-          let local_target := (r (Spect.from_config local_config) (Config.loc (local_config (Good g)))) in
-          let target := (sim⁻¹).(Iso.sim_V) local_target in
-(* This if is unnecessary: with the invariant on da: inside rconf, loc = target *)
-(*           if (Location.eq_dec (target) pos) then rconf else *)
-          {| Config.loc := pos ;
-             Config.state := {| Info.source := pos ; Info.target := target|} |}
+        let local_config := Config.map (Config.app (sim rconf)) config in
+        let local_target := (r (Spect.from_config local_config (Config.loc (local_config (Good g))))) in
+        let target := ((sim)⁻¹).(Iso.sim_V) local_target in
+        (* This if is unnecessary: with the invariant on da: inside rconf, loc = target *)
+        (*           if (Location.eq_dec (target) pos) then rconf else *)
+        {| Config.loc := pos ;
+           Config.state := {| Info.source := pos ; Info.target := target|} |}
         end
       end.
   
   Instance round_compat : Proper (req ==> da_eq ==> Config.eq ==> Config.eq) round.
   Proof.
-    intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf id.
+    intros r1 r2 Hr da1 da2 Hda conf1 conf2 Hconf [g|b].
     unfold req in Hr.
     unfold round.
-    assert (Hrconf : Config.eq_RobotConf (conf1 id) (conf2 id)). 
+    assert (Hrconf : Config.eq_RobotConf (conf1 (Good g)) (conf2 (Good g))). 
     apply Hconf.
-    assert (Hstep := step_da_compat Hda (reflexivity id) Hrconf).
-    assert (Hsim: Aom_eq (step da1 id (conf1 id)) (step da1 id (conf2 id))).
+    assert (Hstep := step_da_compat Hda (reflexivity g) Hrconf).
+    assert (Hsim: Aom_eq (step da1 g (conf1 (Good g))) (step da1 g (conf2 (Good g)))).
     apply step_da_compat; try reflexivity.
     apply Hrconf.
-    destruct (step da1 id (conf1 id)) eqn : He1, (step da2 id (conf2 id)) eqn:He2;
-      destruct (step da1 id (conf2 id)) eqn:He3, id as [ g| b]; try now elim Hstep.
+    destruct (step da1 g (conf1 (Good g))) eqn : He1,
+             (step da2 g (conf2 (Good g))) eqn:He2;
+      destruct (step da1 g (conf2 (Good g))) eqn:He3; try now elim Hstep.
     + unfold Aom_eq in *.
       rewrite Hstep.
       destruct dist0.
       f_equiv;
         apply Hrconf.
       apply Hrconf.
-    + unfold Aom_eq in *.
-      rewrite Hstep.
-      destruct dist0; apply Hrconf.
     + assert (Location.eq (((Iso.sim_V (sim ⁻¹))
             (r1 (Spect.from_config (Config.map (Config.app sim) conf1))
                 (Config.loc (Config.map (Config.app sim) conf1 (Good g))))))
@@ -281,7 +278,7 @@ Module DGF (Graph : GraphDef)
       repeat split; simpl; f_equiv; try apply Hconf; [|].
       - now f_equiv.
       - apply Hr. repeat (f_equiv; trivial). now do 2 f_equiv.
-    + rewrite Hda. now destruct (Hconf (Byz b)).
+    + unfold round. rewrite Hda. now destruct (Hconf (Byz b)).
   Qed.
   
   
@@ -316,14 +313,14 @@ Module DGF (Graph : GraphDef)
       (exists conf,
         eeq (execute r d conf) e) -> 
       (exists sim,
-          Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e)
+          Aom_eq (step (Stream.hd d) (g) ((Stream.hd e)
                                                   (Good g))) (Active sim))
       → LocallyFairForOne g d r e
   | LaterFair :
       (exists conf,
         eeq (execute r d conf) e) -> 
       (exists dist,
-          Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e) (Good g)))
+          Aom_eq (step (Stream.hd d) (g) ((Stream.hd e) (Good g)))
                  (Moving dist))
       → LocallyFairForOne g (Stream.tl d) r (Stream.tl e)
       → LocallyFairForOne g d r e.
@@ -339,26 +336,26 @@ Module DGF (Graph : GraphDef)
   | kReset : forall k,
       (exists conf,
         eeq (execute r d conf) e) -> 
-      (exists sim, Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e) (Good g)))
+      (exists sim, Aom_eq (step (Stream.hd d) (g) ((Stream.hd e) (Good g)))
                           (Active sim))
       -> Between g h d r e k 
   | kReduce : forall k,
       (exists conf,
         eeq (execute r d conf) e) -> 
-      (exists dist, Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e)
+      (exists dist, Aom_eq (step (Stream.hd d) (g) ((Stream.hd e)
                                                             (Good g)))
                            (Moving dist))
-      -> (exists sim, Aom_eq (step (Stream.hd d) (Good h) ((Stream.hd e)
+      -> (exists sim, Aom_eq (step (Stream.hd d) (h) ((Stream.hd e)
                                                               (Good h)))
                              (Active sim))
       -> Between g h (Stream.tl d) r (Stream.tl e) k -> Between g h d r e (S k)
   | kStall : forall k,
       (exists conf,
         eeq (execute r d conf) e) -> 
-      (exists dist, Aom_eq (step (Stream.hd d) (Good g) ((Stream.hd e)
+      (exists dist, Aom_eq (step (Stream.hd d) (g) ((Stream.hd e)
                                                             (Good g)))
                            (Moving dist)) -> 
-      (exists dist, Aom_eq (step (Stream.hd d) (Good h) ((Stream.hd e)
+      (exists dist, Aom_eq (step (Stream.hd d) (h) ((Stream.hd e)
                                                             (Good h)))
                            (Moving dist)) ->
       Between g h (Stream.tl d) r (Stream.tl e) k -> Between g h d r e k.
@@ -512,9 +509,9 @@ Module DGF (Graph : GraphDef)
       kFair 0 d r e->
       forall g h,
         (exists dist,
-            Aom_eq ((Stream.hd d).(step) (Good g) ((Stream.hd e) (Good g))) (Moving dist))
+            Aom_eq ((Stream.hd d).(step) (g) ((Stream.hd e) (Good g))) (Moving dist))
         <-> exists dist,
-          Aom_eq ((Stream.hd d).(step) (Good h) ((Stream.hd e) (Good h))) (Moving dist).
+          Aom_eq ((Stream.hd d).(step) (h) ((Stream.hd e) (Good h))) (Moving dist).
   Proof.
     intros d r e Hconf Hd g h. destruct Hd as [Hd _]. split; intro H.
     assert (Hg := Hd g h). inversion Hg. destruct H1, H.
@@ -544,7 +541,7 @@ Module DGF (Graph : GraphDef)
           eeq (execute r d conf) e) -> 
       exists aom,
         ((exists sim, Aom_eq aom (Active sim)) \/ Aom_eq aom (Moving true)) /\
-        step (Stream.hd d) (Good g) ((Stream.hd e) (Good g)) = aom .
+        step (Stream.hd d) (g) ((Stream.hd e) (Good g)) = aom .
   
   (** A demon is fully synchronous if it is fully synchronous for all good robots
     at all step. *)
