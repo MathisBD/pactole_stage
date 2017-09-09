@@ -71,7 +71,7 @@ Global Instance FMOps_WMap : FMOps elt elt_EqDec := {|
   cardinal := fun m => FMapInterface.fold (fun _ n acc => Pos.to_nat n + acc) m 0;
   size := fun m => FMapInterface.fold (fun _ _ n => S n) m 0;
   choose := fun m =>  FMapInterface.fold (fun x _ _ => Some x) m None |}.
-
+Local Arguments multiplicity : simpl nomatch.
 
 Instance pre_multiplicity_compat : Proper (equiv ==> Equal ==> Logic.eq) multiplicity.
 Proof.

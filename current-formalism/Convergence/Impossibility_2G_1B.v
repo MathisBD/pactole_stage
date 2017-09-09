@@ -90,13 +90,9 @@ Implicit Type config : configuration.
 Implicit Type da : demonic_action.
 
 (* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall (config : configuration) (l : R),
-  (fst (!! config))[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
+Definition spect_from_config_spec : forall config (pt : R),
+  (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
  := fun config => @spect_from_config_spec R R _ _ _ _ _ _ _ config 0%R.
-
-Lemma spect_from_config_ignore_snd : forall config pt,
-  @equiv (multiset R) _ (fst (spect_from_config config pt)) (fst (spect_from_config config 0%R)).
-Proof. reflexivity. Qed.
 
 Lemma nB_value : nB = n.
 Proof. reflexivity. Qed.
@@ -258,11 +254,14 @@ Definition config2 : configuration := fun id =>
     | Byz b =>  1
   end.
 
+Arguments config1 id : simpl never.
+Arguments config2 id : simpl never.
+
 Lemma minus_1 : -1 <> 0.
 Proof. apply Ropp_neq_0_compat, R1_neq_R0. Qed.
 
-Definition spectrum1 := (add 0 nG (singleton 1 nB), 0).
-Definition spectrum2 := (add 0 nB (singleton 1 nG), 0).
+Definition spectrum1 := add 0 nG (singleton 1 nB).
+Definition spectrum2 := add 0 nB (singleton 1 nG).
 
 (* An auxiliary lemma to avoid trouble with dependent types. *)
 Lemma spect_config_aux : forall pt1 pt2 : R, pt1 =/= pt2 ->
@@ -309,7 +308,6 @@ Qed.
 
 Theorem spect_config1 : !! config1 == spectrum1.
 Proof.
-split; try reflexivity; [].
 intro pt. unfold config1, spectrum1.
 rewrite spect_from_config_spec, config_list_spec. cbn [fst].
 change names with (map Good Gnames ++ map Byz Bnames).
@@ -334,7 +332,6 @@ Qed.
 
 Theorem spect_config2 : !! config2 == spectrum2.
 Proof.
-split; try reflexivity; [].
 intro pt. unfold config2, spectrum2.
 rewrite spect_from_config_spec, config_list_spec. cbn [fst].
 change names with (map Good Gnames ++ map Byz Bnames).
@@ -355,7 +352,7 @@ unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
 + rewrite Gnames_length. reflexivity.
 Qed.
 
-Lemma swap_spect2_spect1 : MMultisetExtraOps.map (homothecy 1 minus_1) (fst spectrum2) == fst spectrum1.
+Lemma swap_spect2_spect1 : MMultisetExtraOps.map (homothecy 1 minus_1) spectrum2 == spectrum1.
 Proof.
 intro pt. unfold spectrum1, spectrum2. cbn [fst]. rewrite map_add, map_singleton; autoclass.
 simpl ((homothecy 1 minus_1) 0). ring_simplify (-1 * (0 + -1)).
@@ -518,9 +515,8 @@ CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_executi
 Lemma spectrum_config0 : forall pt,
   !! (map_config (RobotInfo.app (fun x => RealMetricSpace.add x (opp pt))) (config0 pt)) == spectrum1.
 Proof.
-intro pt. split; try reflexivity; [].
-intro x. unfold config0, spectrum1.
-rewrite spect_from_config_spec, config_list_spec. cbn [fst].
+intros pt x. unfold config0, spectrum1.
+rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_map, map_app, map_map, map_map, countA_occ_app.
 rewrite (map_ext_in _ (fun _ : G => 0)), (map_ext_in _ (fun _ : B => 1)).
@@ -604,7 +600,7 @@ Qed.
 Corollary no_move2 : r (!! (map_config (homothecy 1 minus_1) config2)) = 0.
 Proof.
 setoid_rewrite <- no_move1 at 2.
-change eq with equiv. f_equiv. split; try reflexivity; [].
+change eq with equiv. f_equiv.
 change (Bijection.section (homothecy 1 minus_1)) with (RobotInfo.app (homothecy 1 minus_1)).
 replace 0%R with (homothecy 1 minus_1 1) by (simpl; ring).
 rewrite <- swap_spect2_spect1, <- spect_from_config_map; autoclass; [].
@@ -619,13 +615,14 @@ simpl (activate bad_da1 config1). unfold activate1.
 destruct id as [g | b]; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
 cbn -[spect_from_config config1 config2 translation]. unfold change_frame1, id.
-assert (Hg1 : config1 (Good g) = 0) by (simpl; destruct_match; auto; contradiction).
-assert (Hg2 : config2 (Good g) = 0) by (simpl; destruct_match; auto; contradiction).
+assert (Hg1 : config1 (Good g) = 0) by (unfold config1; destruct_match; auto; contradiction).
+assert (Hg2 : config2 (Good g) = 0) by (unfold config2; destruct_match; auto; contradiction).
 rewrite Hg1, Hg2. change (opp (get_location 0)) with (- 0).
 rewrite Ropp_0. change 0 with origin.
 unfold translation. rewrite Similarity.translation_origin.
-rewrite map_config_id. cbn -[spect_from_config config1].
-rewrite spect_config1. apply no_move1.
+cbn. assert (Hext : @equiv configuration _ (λ id : ident, config1 id + 0) config1).
+{ intro. now rewrite Rplus_0_r. }
+rewrite Hext, spect_config1. apply no_move1.
 Qed.
 
 Lemma round_config2 : round r bad_da2 config2 == config1.
@@ -634,15 +631,16 @@ intros id. unfold round.
 simpl (activate bad_da2 config2). unfold activate2.
 destruct id as [g | b]; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-cbn -[spect_from_config config1 config2 homothecy]. unfold change_frame2, id.
-assert (Hg1 : config1 (Good g) = 1) by (simpl; destruct_match; auto; contradiction).
-assert (Hg2 : config2 (Good g) = 1) by (simpl; destruct_match; auto; contradiction).
-rewrite Hg1, Hg2. simpl get_location. unfold id. simpl ((homothecy 1 minus_1) 1).
+cbn -[homothecy map_config]. unfold change_frame2. simpl get_location. unfold id.
+assert (Hg1 : config1 (Good g) = 1) by (unfold config1; destruct_match; auto; contradiction).
+assert (Hg2 : config2 (Good g) = 1) by (unfold config2; destruct_match; auto; contradiction).
+unfold map_config at 2. rewrite Hg1, Hg2. simpl ((homothecy 1 minus_1) 1).
 ring_simplify (-1 * (1 + -1)). rewrite no_move2. simpl. field.
 Qed.
 
-Lemma execute_bad_demon_aux : forall e, execute r bad_demon config1 == e -> e == exec.
+Theorem execute_bad_demon : execute r bad_demon config1 == exec.
 Proof.
+cut (forall e, execute r bad_demon config1 == e -> e == exec); auto.
 cofix exec. intros e He; constructor; [| constructor].
 + rewrite <- He. unfold Stream.instant2. simpl. now split.
 + rewrite <- He. simpl. apply round_config1.
@@ -652,9 +650,6 @@ cofix exec. intros e He; constructor; [| constructor].
   apply execute_compat; auto; []. rewrite <- round_config2 at 1.
   apply round_compat; try reflexivity; []. now rewrite round_config1.
 Qed.
-
-Theorem execute_bad_demon : execute r bad_demon config1 == exec.
-Proof. now apply execute_bad_demon_aux. Qed.
 
 End PropRobogram.
 
@@ -686,7 +681,8 @@ revert Hpt. cut (exec == exec); try reflexivity. generalize exec at -2. intros e
 induction Hpt using attracted_ind2.
 + (* First step *)
   rewrite He in H. inversion H as [Habs _].
-  assert (Hfirst := Habs gfirst). assert (Hlast := Habs glast). simpl in *.
+  assert (Hfirst := Habs gfirst). assert (Hlast := Habs glast).
+  simpl get_location in *. unfold id, config1 in *.
   pose (gfirst_left). pose (glast_right).
   destruct (left_dec gfirst); try contradiction.
   destruct (left_dec glast).
@@ -698,7 +694,8 @@ induction Hpt using attracted_ind2.
     apply Rplus_le_compat; assumption || now rewrite Rabs_minus_sym.
 + (* Second step, same proof *)
   rewrite He in H. inversion H as [Habs _].
-  assert (Hfirst := Habs gfirst). assert (Hlast := Habs glast). simpl in *.
+  assert (Hfirst := Habs gfirst). assert (Hlast := Habs glast).
+  simpl get_location in *. unfold id, config2 in *.
   pose (gfirst_left). pose (glast_right).
   destruct (left_dec gfirst); try contradiction.
   destruct (left_dec glast).
@@ -712,4 +709,4 @@ induction Hpt using attracted_ind2.
   apply IHHpt. rewrite He. reflexivity.
 Qed.
 
-(* Print Assumptions noConvergence. *)
+Print Assumptions noConvergence.

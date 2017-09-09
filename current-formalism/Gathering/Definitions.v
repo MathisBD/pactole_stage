@@ -49,22 +49,12 @@ Context {UpdFun : update_function T}.
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
 Proof. now intros. Qed.
 
-Definition mk_spect config := @spect_from_config loc loc _ _ _ _ _ _ _ config origin.
-
-Global Instance mk_spect_compat : Proper (equiv ==> equiv) mk_spect.
-Proof. intros ? ? ?. unfold mk_spect. now f_equiv. Qed.
-
-
+Notation "!!" := (fun config => @spect_from_config loc loc _ _ _ _ _ _ _ config origin).
 Notation robogram := (@robogram loc loc _ _ _ _ _ _ _).
 Notation configuration := (@configuration loc _ _ _ _).
 Notation config_list := (@config_list loc _ _ _ _).
 Notation round := (@round loc loc _ _ _ _ _ _ _).
 Notation execution := (@execution loc _ _ _).
-Notation "!!" := mk_spect.
-
-(* FIXME: Having a working coercion from spectrum to multiset would avoid changing the code already using multisets.
-Definition fst_spectrum : spectrum -> multiset loc := fst.
-Coercion fst_spectrum : spectrum >-> multiset. *)
 
 (** Not true in general as the info may change even if the robot does not move. *)
 Lemma no_moving_same_config : forall r da config,
@@ -129,24 +119,17 @@ Notation configuration := (@configuration loc _ _ _ _).
 Notation config_list := (@config_list loc _ _ _ _).
 Notation round := (@round loc loc _ _ _ _ _ _ multiset_spectrum).
 Notation execution := (@execution loc _ _ _).
-Notation "!!" := mk_spect.
-
-Global Instance fst_mk_spect_compat : Proper (equiv ==> @equiv (multiset _) _) (fun config => fst (mk_spect config)).
-Proof.
-intros config1 config2 Heq. unfold mk_spect. eapply (RelationPairs.fst_compat equiv equiv).
-change (spect_from_config config1 origin == spect_from_config config2 origin). now f_equiv.
-Qed.
+Notation "!!" := (fun config => @spect_from_config loc loc _ _ _ _ _ _ _ config origin).
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)
 Definition invalid (config : configuration) :=
      Nat.Even nG /\ nG >=2 /\ exists pt1 pt2, pt1 =/= pt2
-  /\ (fst (!! config))[pt1] = Nat.div2 nG /\ (fst (!! config))[pt2] = Nat.div2 nG.
+  /\ (!! config)[pt1] = Nat.div2 nG /\ (!! config)[pt2] = Nat.div2 nG.
 
 Global Instance invalid_compat : Proper (equiv ==> iff) invalid.
 Proof.
-intros ? ? Heq. apply fst_mk_spect_compat in Heq.
-split; intros [HnG [Hle [pt1 [pt2 [Hneq Hpt]]]]];
+intros ? ? Heq. split; intros [HnG [Hle [pt1 [pt2 [Hneq Hpt]]]]];
 repeat split; trivial; exists pt1, pt2; split; trivial; now rewrite Heq in *.
 Qed.
 
@@ -161,12 +144,12 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall (config : configuration) l,
-  (fst (!! config))[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
+  (!! config)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
  := fun config => @spect_from_config_spec loc loc _ _ _ _ _ _ _ config origin.
 
 (* Only property also used for the flexible FSYNC gathering. *)
 Lemma spect_non_nil : 2 <= nG -> forall config,
-complement (@equiv (multiset loc) _) (fst (!! config)) MMultisetInterface.empty.
+complement (@equiv (multiset loc) _) (!! config) MMultisetInterface.empty.
 Proof.
 simpl spect_from_config. intros HnG config Heq.
 assert (Hlgth:= config_list_length config).
@@ -180,7 +163,7 @@ omega.
 Qed.
 
 Lemma invalid_support_length : nB = 0 -> forall config, invalid config ->
-  size (fst (!! config)) = 2.
+  size (!! config) = 2.
 Proof.
 intros HnB config [Heven [HsizeG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).
@@ -205,8 +188,7 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
   - rewrite add_other, singleton_spec; auto; [].
     destruct_match; try contradiction; [].
     auto with arith.
-+ unfold mk_spect.
-  rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
++ rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
   rewrite HnB, plus_0_r. now apply even_div2.
 Qed.
 

@@ -94,29 +94,25 @@ Class FMap `{EqDec key} := {
   FMap_Setoid : forall `{Setoid elt}, Setoid (dict elt);
   FMap_EqDec :> forall `{EqDec elt}, @EqDec (dict elt) FMap_Setoid *)
 }.
-Arguments dict key {S0} {H} {FMap} elt.
+Arguments dict key%type_scope {S0} {H} {FMap} elt%type_scope.
 
 (** Map notations (see below) are interpreted in scope [map_scope],
    delimited with key [scope]. We bind it to the type [map] and to
    other operations defined in the interface. *)
 Delimit Scope map_scope with map.
 Bind Scope map_scope with dict.
-Arguments Scope MapsTo [type_scope _ _ type_scope _ _ map_scope].
-Arguments Scope is_empty [type_scope _ _ type_scope map_scope].
-Arguments Scope mem [type_scope _ _ type_scope _ map_scope].
-Arguments Scope add [type_scope _ _ type_scope _ _ map_scope].
-Arguments Scope find [type_scope _ _ type_scope _ map_scope].
-Arguments Scope remove [type_scope _ _ type_scope _ map_scope].
-Arguments Scope equal [type_scope _ _ type_scope _ map_scope map_scope].
-Arguments Scope map [type_scope _ _ type_scope type_scope _ map_scope].
-Arguments Scope mapi [type_scope _ _ type_scope type_scope _ map_scope].
-(* Arguments Scope map2 [type_scope _ _ type_scope type_scope
-  type_scope _ map_scope map_scope]. *)
-Arguments Scope fold [type_scope _ _ type_scope type_scope _ map_scope _].
-Arguments Scope cardinal [type_scope _ _ type_scope map_scope].
-Arguments Scope elements [type_scope _ _ type_scope map_scope].
-(* Arguments Scope insert [type_scope _ _ type_scope _ _ _ map_scope].
-Arguments Scope adjust [type_scope _ _ type_scope _ _ map_scope]. *)
+Arguments MapsTo {key%type_scope} {_} {_} {_} {elt%type_scope} _ _ _%map_scope.
+Arguments is_empty {key%type_scope} {_} {_} {_} {elt%type_scope} _%map_scope.
+Arguments mem {key%type_scope} {_} {_} {_} {elt%type_scope} _ _%map_scope.
+Arguments add {key%type_scope} {_} {_} {_} {elt%type_scope} _ _ _%map_scope.
+Arguments find {key%type_scope} {_} {_} {_} {elt%type_scope} _ _%map_scope.
+Arguments remove {key%type_scope} {_} {_} {_} {elt%type_scope} _ _%map_scope.
+Arguments equal {key%type_scope} {_} {_} {_} {elt%type_scope} _ _%map_scope _%map_scope.
+Arguments map {key%type_scope} {_} {_} {_} {elt%type_scope} {elt'%type_scope} _ _%map_scope.
+Arguments mapi {key%type_scope} {_} {_} {_} {elt%type_scope} {elt'%type_scope} _ _%map_scope.
+Arguments fold {key%type_scope} {_} {_} {_} {elt%type_scope} {_%type_scope} _ _%map_scope _.
+Arguments cardinal {key%type_scope} {_} {_} {_} {elt%type_scope} _%map_scope.
+Arguments elements {key%type_scope} {_} {_} {_} {elt%type_scope} _%map_scope.
 
 (** All projections should be made opaque for tactics using [delta]-conversion,
    otherwise the underlying instances may appear during proofs, which then
@@ -129,7 +125,7 @@ Global Opaque dict MapsTo empty is_empty mem add find remove
 
 (** There follow definitions of predicates about maps expressable
    in terms of [MapsTo], and which are not provided by the [FMap] class. *)
-Definition In  `{FMap key} {elt : Type}
+Definition In `{FMap key} {elt : Type}
   (k:key)(m: dict key elt) : Prop := exists e:elt, MapsTo k e m.
 
 Definition Empty `{FMap key} {elt : Type} m :=

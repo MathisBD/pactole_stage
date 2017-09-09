@@ -112,6 +112,8 @@ Class FMOps elt `(EqDec elt) := {
       Which element is chosen is unspecified: equal multisets could return different elements. *)
 }.
 Arguments multiset elt {_} {_} {_}.
+Arguments multiplicity {elt} {_} {_} {_} x m : simpl never.
+Arguments fold {elt} {_} {_} {_} {A} f m i : simpl never.
 
 Global Instance MMultiset_Setoid elt `{FMOps elt} : Setoid (multiset elt) := {
   equiv := fun s s' => forall x, multiplicity x s = multiplicity x s' }.

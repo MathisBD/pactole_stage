@@ -50,7 +50,7 @@ Spectra/Definition.v
 Spectra/MultisetSpectrum.v
 #Spectra/SetSpectrum.v
 #Spectra/LimitedSetSpectrum.v
-#Spectra/LimitedMultisetSpectrum.v
+Spectra/LimitedMultisetSpectrum.v
 #Spectra/PointedMultisetSpectrum.v
 
 ## Case Study: Convergence

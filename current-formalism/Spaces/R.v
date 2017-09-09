@@ -353,6 +353,9 @@ Instance translation_compat : Proper (equiv ==> equiv) translation := translatio
 Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (equiv ==> equiv) (homothecy c Hρ).
 Proof. intros ? ? Heq. simpl. now rewrite Heq. Qed.
 
+Arguments translation v /.
+Arguments homothecy c [ρ] Hρ /.
+
 (** **  Some results about R with respect to distance and similarities  **)
 
 Open Scope R_scope.

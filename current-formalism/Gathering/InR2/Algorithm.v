@@ -32,7 +32,10 @@ Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Gathering.Definitions.
+Require Import Pactole.Spectra.MultisetSpectrum.
 Import Permutation.
+Import Pactole.Spaces.Similarity.
+Import Datatypes. (* to recover [id] *)
 Set Implicit Arguments.
 Close Scope R_scope.
 
@@ -65,7 +68,7 @@ Instance UpdFun : update_function Datatypes.unit := {
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!!" := mk_spect.
+Notation "!! config" := (@spect_from_config R2 R2 _ _ _ _ _ _ multiset_spectrum config origin) (at level 1).
 (* (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
 Notation "x == y" := (equiv x y).
 Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
@@ -75,9 +78,6 @@ Notation config_list := (@config_list R2 _ _ _ _).
 Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
 Notation execution := (@execution R2 R2 _ _ _ _ _).
 Notation Madd := (MMultisetInterface.add).
-
-Definition fst_spectrum : spectrum -> @multiset R2 _ _ _ := fst.
-Coercion fst_spectrum : spectrum >-> multiset.
 
 
 Lemma Config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
@@ -93,14 +93,22 @@ intros P Hg [g | b].
 + destruct b. omega.
 Qed.
 
-Lemma map_sim_support : forall (sim : similarity R2) (s : spectrum),
-  PermutationA equiv (support (map sim s)) (List.map sim (support s)).
+Lemma no_byz_eq : forall config1 config2 : configuration,
+  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
+  config1 == config2.
 Proof.
-intros sim s. apply map_injective_support.
-- intros ? ? Heq. now rewrite Heq.
-- apply Similarity.injective.
+intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
++ apply Heq.
++ destruct b. omega.
 Qed.
 
+Lemma map_sim_support : forall (f : Bijection.bijection R2) (s : spectrum),
+  PermutationA equiv (support (map f s)) (List.map f (support s)).
+Proof.
+intros f s. apply map_injective_support.
+- intros ? ? Heq. now rewrite Heq.
+- apply Bijection.injective.
+Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall config, !! config =/= empty.
@@ -113,18 +121,18 @@ Lemma support_max_non_nil : forall config, support (max (!! config)) <> nil.
 Proof. intros config Habs. rewrite support_nil, max_empty in Habs. apply (spect_non_nil _ Habs). Qed.
 
 
-Lemma max_morph : forall (sim : similarity R2) s, max (map sim s) == map sim (max s).
+Lemma max_morph : forall (f : Bijection.bijection R2) s, max (map f s) == map f (max s).
 Proof.
-intros sim s. apply max_map_injective.
+intros f s. apply max_map_injective.
 - intros ? ? Heq. now rewrite Heq.
-- apply Similarity.injective.
+- apply Bijection.injective.
 Qed.
 
 Lemma multiplicity_le_nG : forall pt config, (!! config)[pt] <= nG.
 Proof.
 intros pt config. etransitivity.
 - apply cardinal_lower.
-- unfold mk_spect. rewrite cardinal_spect_from_config. simpl. omega.
+- rewrite cardinal_spect_from_config. simpl. omega.
 Qed.
 
 Lemma gathered_at_dec : forall config pt, {gathered_at pt config} + {~gathered_at pt config}.
@@ -491,7 +499,7 @@ intro config. unfold no_Majority. split.
                     (support_NoDupA _)
                     (support_NoDupA _)
                     h Hlen'').
-      assert (toto := cardinal_spect_from_config config).
+      assert (toto := cardinal_spect_from_config config origin).
       rewrite <- plus_n_O in toto.
       assert (~ equiv pt1 pt2). {
         intro abs.
@@ -655,7 +663,7 @@ Lemma SECT_cardinal_le_nG : forall config, SECT_cardinal (!! config) <= nG.
 Proof.
 intro config. unfold SECT_cardinal.
 replace nG with (nG + nB) by (simpl; apply plus_0_r).
-rewrite <- (cardinal_spect_from_config config).
+rewrite <- (cardinal_spect_from_config config origin).
 apply cardinal_sub_compat, filter_subset.
 intros ? ? H. now rewrite H.
 Qed.
@@ -814,7 +822,7 @@ Lemma barycenter_3_morph: forall (sim : similarity R2) pt1 pt2 pt3,
 Proof.
 intros sim pt1 pt2 pt3. eapply bary3_unique.
 + apply bary3_spec.
-+ intro p. change p with (id p). rewrite <- (compose_inverse_r sim).
++ intro p. change p with (Similarity.id p). rewrite <- (compose_inverse_r sim).
   change ((compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
   repeat rewrite sim.(dist_prop), R_sqr.Rsqr_mult. repeat rewrite <- Rmult_plus_distr_l.
   apply Rmult_le_compat_l.
@@ -932,9 +940,7 @@ Proof.
 intros sim s s_nonempty. unfold SECT.
 rewrite (target_morph _ _ s_nonempty). constructor; try reflexivity; [].
 transitivity (List.filter (on_circle (SEC (support (map sim s)))) (List.map sim (support s))).
-+ apply (filter_PermutationA_compat _).
-  - intros ? ? Heq. now rewrite Heq.
-  - apply map_sim_support.
++ apply filter_PermutationA_compat, map_sim_support; autoclass.
 + rewrite filter_map.
   cut (List.map sim (List.filter (fun x => on_circle (SEC (support (map sim s))) (sim x)) (support s))
        = (List.map sim (on_SEC (support s)))).
@@ -952,7 +958,7 @@ destruct (inclA_bool _ equiv_dec (support (map sim s)) (SECT (map sim s))) eqn:H
 trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff, ?inclA_Leibniz in *; [|].
 - elim Hy. intros x Hin. apply (in_map sim) in Hin. rewrite <- map_sim_support in Hin.
   apply Hx in Hin. rewrite SECT_morph, in_map_iff in Hin;auto.
-  destruct Hin as [x' [Heq ?]]. apply (injective sim) in Heq. now rewrite <- Heq.
+  destruct Hin as [x' [Heq ?]]. apply (Similarity.injective sim) in Heq. now rewrite <- Heq.
 - elim Hx. intros x Hin. rewrite SECT_morph; auto. rewrite map_sim_support in Hin.
   rewrite in_map_iff in *. destruct Hin as [x' [? Hin]]. subst. exists x'. repeat split. now apply Hy.
 Qed.
@@ -960,22 +966,21 @@ Qed.
 (** We express the behavior of the algorithm in the global (demon) frame of reference. *)
 Theorem round_simplify : forall da (config : configuration),
   round gatherR2 da config
-  == fun id => match da.(step) id with
-                 | None => config id
-                 | Some f =>
-                   let s : spectrum := !! config in
-                   match support (max s) with
-                     | nil => config id (* only happen with no robots *)
-                     | pt :: nil => mk_info pt (* majority tower *)
-                     | _ => if is_clean s then mk_info (target s) else
-                            if mem equiv_dec (fst (config id)) (SECT s) then config id else mk_info (target s)
-                   end
-               end.
+  == fun id => if da.(activate) config id
+               then let s : spectrum := !! config in
+                    match support (max s) with
+                      | nil => config id (* only happen with no robots *)
+                      | pt :: nil => pt (* majority tower *)
+                      | _ => if is_clean s then target s else
+                             if mem equiv_dec (get_location (config id)) (SECT s) then config id else target s
+                    end
+               else config id.
 Proof.
 intros da config. apply no_byz_eq. intro g. unfold round.
+rewrite spect_from_config_ignore_snd. simpl RobotInfo.app. unfold id.
 assert (supp_nonempty := support_non_nil config).
-destruct (step da (Good g)) as [f |] eqn:Hstep; try reflexivity; [].
-remember (fst (config (Good g))) as pt. remember (f pt) as sim.
+destruct (da.(activate) config (Good g)) eqn:Hactive; try reflexivity; [].
+remember (change_frame da config g) as sim.
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 unfold gatherR2, gatherR2_pgm. cbn [pgm].
 assert (Hperm : Permutation (List.map sim (support (max (!! config))))
@@ -988,21 +993,23 @@ destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax,
 simpl in Hlen; discriminate || clear Hlen; [| |].
 - rewrite support_nil, max_empty in Hmax. elim (spect_non_nil _ Hmax).
 - simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
-  subst pt1'. apply no_info, (compose_inverse_l sim).
-- rewrite <- spect_from_config_map, is_clean_morph; trivial; [].
+  subst pt1'. cbn. apply (Bijection.compose_inverse_l sim).
+- change (map_config sim config) with (map_config (RobotInfo.app sim) config).
+  rewrite <- (spect_from_config_ignore_snd (map_config (RobotInfo.app sim) config) (sim origin)),
+          <- spect_from_config_map. rewrite is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
     * rewrite <- spect_from_config_map, target_morph; trivial; auto.
       apply (compose_inverse_l sim).
-    * rewrite <- (center_prop sim). rewrite Heqsim at 3. rewrite (step_center da _ _ Hstep).
+    * rewrite <- (center_prop sim). rewrite Heqsim at 3. rewrite (step_center da _ _ Hactive).
       assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
       { rewrite <- SECT_morph; auto. f_equiv. now rewrite spect_from_config_map. }
     rewrite (mem_compat _ equiv_dec _ _ (reflexivity _) (PermutationA_equivlistA _ Hperm')).
     rewrite (mem_injective_map _); trivial; try (now apply injective); [].
     destruct (mem equiv_dec pt (SECT (!! config))).
-      -- rewrite <- (center_prop sim), Heqsim, (step_center _ _ _ Hstep), <- Heqpt.
+      -- rewrite <- (center_prop sim), Heqsim, (step_center _ _ _ Hactive), <- Heqpt.
          now apply (compose_inverse_l (f pt)).
       -- change (Bijection.section (sim ⁻¹)) with (Bijection.retraction sim).
-         cbn [fst mk_info]. rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
+         cbn. rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
          f_equiv. now apply spect_from_config_map.
 Qed.
 
@@ -1011,29 +1018,22 @@ Qed.
 (** If we have a majority tower, every robot goes there. **)
 Lemma round_simplify_Majority : forall da config pt,
     MajTower_at pt config ->
-    round gatherR2 da config == fun id => match step da id with
-                                            | None => config id
-                                            | Some _ => mk_info pt
-                                          end.
+    round gatherR2 da config == fun id => if da.(activate) config id then pt else config id.
 Proof.
 intros da config pt Hmaj. rewrite round_simplify.
 intro id. apply no_info.
-destruct (step da id); try reflexivity; [].
-rewrite MajTower_at_equiv in Hmaj. cbn [fst mk_info].
-now rewrite Hmaj.
+destruct (da.(activate) config id); try reflexivity; [].
+rewrite MajTower_at_equiv in Hmaj. cbn zeta. now rewrite Hmaj.
 Qed.
 
 (** If the configuration is clean, every robot goes to the target. *)
 Lemma round_simplify_clean : forall da config,
   no_Majority config ->
   is_clean (!! config) = true ->
-  round gatherR2 da config == fun id => match step da id with
-                                          | None => config id
-                                          | Some _ => mk_info (target (!! config))
-                                        end.
+  round gatherR2 da config == fun id => if da.(activate) config id then target (!! config) else config id.
 Proof.
 intros da config Hmaj Hclean. rewrite round_simplify. apply no_byz_eq. intro g.
-destruct (step da (Good g)); try reflexivity; [].
+destruct (da.(activate) config (Good g)); try reflexivity; [].
 cbn zeta. rewrite Hclean.
 rewrite no_Majority_equiv in Hmaj. destruct Hmaj as [? [? [? Hmaj]]].
 now rewrite Hmaj.
@@ -1043,15 +1043,14 @@ Qed.
 Lemma round_simplify_dirty : forall da config,
   no_Majority config ->
   is_clean (!! config) = false ->
-  round gatherR2 da config == fun id => match step da id with
-                                          | None => config id
-                                          | Some _ => if mem equiv_dec (fst (config id)) (SECT (!! config))
-                                                      then config id else mk_info (target (!! config))
-                                        end.
+  round gatherR2 da config == fun id => if da.(activate) config id
+                                        then if mem equiv_dec (get_location (config id)) (SECT (!! config))
+                                             then config id else target (!! config)
+                                        else config id.
 Proof.
 intros da config Hmaj Hclean. rewrite round_simplify.
 apply no_byz_eq. intro g.
-destruct (step da (Good g)); try reflexivity; [].
+destruct (da.(activate) config (Good g)); try reflexivity; [].
 cbv zeta. rewrite Hclean.
 rewrite no_Majority_equiv in Hmaj. destruct Hmaj as [? [? [? Hmaj]]].
 now rewrite Hmaj.
@@ -1061,19 +1060,19 @@ Qed.
 (* In the case where one majority tower exists, target is not used and does not compute the real target.
    Hence the no_Majority hypothesis  *)
 Theorem destination_is_target : forall da config, no_Majority config ->
-  forall id, List.In id (moving gatherR2 da config) -> fst (round gatherR2 da config id) = target (!! config).
+  forall id, List.In id (moving gatherR2 da config) -> get_location (round gatherR2 da config id) = target (!! config).
 Proof.
 intros da config Hmaj id Hmove. rewrite (round_simplify da config id).
-destruct (step da id) as [f |] eqn:Hstep.
-* rewrite moving_spec, (round_simplify da config id), Hstep in Hmove. cbn zeta in *.
+destruct (da.(activate) config id) eqn:Hactive.
+* rewrite moving_spec, (round_simplify da config id), Hactive in Hmove. cbn zeta in *.
   unfold no_Majority in Hmaj. rewrite size_spec in Hmaj.
   destruct (support (max (!! config))) as [| ? [| ? ?]]; simpl in Hmaj; try omega; [].
   destruct (is_clean (!! config)) eqn:Hclean.
   + reflexivity.
-  + destruct (mem equiv_dec (fst (config id)) (SECT (!! config))) eqn:Hmem.
+  + destruct (mem equiv_dec (get_location (config id)) (SECT (!! config))) eqn:Hmem.
     - now elim Hmove.
     - reflexivity.
-* apply moving_active in Hmove. rewrite active_spec in Hmove. contradiction.
+* apply moving_active in Hmove. rewrite active_spec in Hmove. congruence.
 Qed.
 
 Corollary same_destination : forall da (config : configuration) id1 id2,
@@ -1086,7 +1085,7 @@ destruct (le_lt_dec 2 (length (support (max (!! config))))) as [Hle |Hlt].
   now repeat rewrite destination_is_target.
 + rewrite moving_spec in Hmove1, Hmove2.
   rewrite (round_simplify _ _ id1) in Hmove1 |- *. rewrite (round_simplify _ _ id2) in Hmove2 |- *.
-  destruct (step da id1), (step da id2); try (now elim Hmove1 + elim Hmove2); [].
+  destruct (da.(activate) config id1), (da.(activate) config id2); try (now elim Hmove1 + elim Hmove2); [].
   cbn zeta in *.
   destruct (support (max (!! config))) as [| ? [| ? ?]] eqn:Hsupp.
   - now elim Hmove1.
@@ -1098,12 +1097,13 @@ Qed.
 Lemma increase_move :
   forall r config da pt,
     ((!! config)[pt] < (!! (round r da config))[pt])%nat ->
-    exists id, fst (round r da config id) == pt /\ fst (round r da config id) =/= fst (config id).
+    exists id, get_location (round r da config id) == pt
+            /\ get_location (round r da config id) =/= get_location (config id).
 Proof.
 intros r config da pt Hlt.
 destruct (existsb (fun x =>
-                     (andb (R2dec_bool ((fst (round r da config x))) pt)
-                           (negb (R2dec_bool (fst (config x)) pt)))) names) eqn:Hex.
+                     (andb (R2dec_bool ((get_location (round r da config x))) pt)
+                           (negb (R2dec_bool (get_location (config x)) pt)))) names) eqn:Hex.
 - apply (existsb_exists) in Hex.
   destruct Hex as [id [Hin Heq_bool]].
   exists id.
@@ -1111,7 +1111,7 @@ destruct (existsb (fun x =>
   destruct Heq_bool. split; congruence.
 - exfalso. rewrite <- negb_true_iff, forallb_existsb, forallb_forall in Hex.
   (* Let us remove the In x (Gnames nG) and perform some rewriting. *)
-  assert (Hg : forall id, fst (round r da config id) <> pt \/ fst (config id) = pt).
+  assert (Hg : forall id, get_location (round r da config id) <> pt \/ get_location (config id) = pt).
   { intro id. specialize (Hex id). rewrite negb_andb, orb_true_iff, negb_true_iff, negb_involutive in Hex.
     destruct (Hex (In_names _)) as [H | H];
     rewrite R2dec_bool_false_iff in H || rewrite R2dec_bool_true_iff in H; simpl in H; tauto. }
@@ -1119,7 +1119,7 @@ destruct (existsb (fun x =>
   clear Hex. revert Hlt. apply le_not_lt.
   do 2 rewrite spect_from_config_spec, config_list_spec.
   induction names as [| id l]; trivial; [].
-  destruct (fst (round r da config id) =?= pt) as [Heq | Heq];
+  destruct (get_location (round r da config id) =?= pt) as [Heq | Heq];
   simpl; (do 2 R2dec_full; simpl in *; subst; try omega; []); specialize (Hg id); intuition.
 Qed.
 
@@ -1128,20 +1128,21 @@ Qed.
 Theorem increase_move_iff :
   forall config da pt,
     ((!! config)[pt] < (!! (round gatherR2 da config))[pt])%nat <->
-    exists id, fst (round gatherR2 da config id) == pt /\ fst (round gatherR2 da config id) =/= fst (config id).
+    exists id, get_location (round gatherR2 da config id) == pt
+            /\ get_location (round gatherR2 da config id) =/= get_location (config id).
 Proof.
 intros config da pt. split.
 * apply increase_move.
 * intros [id [Hid Hroundid]].
-  assert (Hdest : forall id', List.In id' (moving gatherR2 da config) -> fst (round gatherR2 da config id') == pt).
+  assert (Hdest : forall id', List.In id' (moving gatherR2 da config) ->
+                              get_location (round gatherR2 da config id') == pt).
   { intros. rewrite <- Hid. apply same_destination; trivial; [].
     rewrite moving_spec. intro Heq. apply Hroundid. now rewrite Heq. }
-  assert (Hstay : forall id, fst (config id) == pt -> fst (round gatherR2 da config id) == pt).
-  { intros id' Hid'. destruct (fst (round gatherR2 da config id') =?= pt) as [Heq | Heq]; trivial; [].
-    assert (Habs : round gatherR2 da config id' =/= mk_info pt).
+  assert (Hstay : forall id, get_location (config id) == pt -> get_location (round gatherR2 da config id) == pt).
+  { intros id' Hid'. destruct (get_location (round gatherR2 da config id') =?= pt) as [Heq | Heq]; trivial; [].
+    assert (Habs : round gatherR2 da config id' =/= pt).
     { intro Habs. apply Heq. now rewrite Habs. }
-    rewrite <- Hid' in Habs.
-    replace (mk_info (fst (config id'))) with (config id') in Habs by now destruct (config id') as [? []].
+    rewrite <- Hid' in Habs. change (get_location (config id')) with (config id') in Habs.
     rewrite <- moving_spec in Habs. apply Hdest in Habs. contradiction. }
   do 2 rewrite spect_from_config_spec, config_list_spec.
   assert (Hin : List.In id names) by apply In_names.
@@ -1433,9 +1434,9 @@ destruct (@increase_move gatherR2 config da x)
       + now destruct (support_max_non_nil config).
       + get_case config.
         rewrite (@round_simplify_Majority _ _ pt Hcase r_moving) in Hdest_rmoving.
-        destruct (step da r_moving).
+        destruct (da.(activate) config r_moving).
         - now rewrite <- Hdest_rmoving.
-        - assert (H := pos_in_config config r_moving).
+        - assert (H := pos_in_config config origin r_moving).
           rewrite Hdest_rmoving in H. unfold In in H. omega. }
     assert (Hperm : PermutationA equiv (support (max (!! config))) (x :: nil)) by now rewrite H.
     rewrite support_1 in Hperm.
@@ -1465,15 +1466,16 @@ intros da config Hmaj pt Hin.
 rewrite <- InA_Leibniz in Hin. change eq with equiv in Hin. rewrite support_In in Hin. unfold In in Hin.
 rewrite spect_from_config_spec, config_list_spec in Hin.
 induction names as [| id l]; try (simpl in *; omega); [].
-simpl in Hin. R2dec_full in Hin; try (now apply IHl); [].
+cbn -[get_location] in Hin. R2dec_full in Hin; try (now apply IHl); [].
 rewrite <- Heq, (round_simplify _ _ id); trivial; [].
-destruct (step da id).
+destruct (da.(activate) config id).
 * assert (Hmax := Hmaj). rewrite no_Majority_equiv in Hmax. destruct Hmax as [pt1 [pt2 [lmax Hmax]]].
   cbn zeta. rewrite Hmax.
   destruct (is_clean (!! config)).
   + now apply target_inside_SEC.
-  + destruct (mem equiv_dec (fst (config id)) (SECT (!! config))) eqn:Hmem.
-    - apply SEC_spec1. rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config.
+  + destruct (mem equiv_dec (get_location (config id)) (SECT (!! config))) eqn:Hmem.
+    - apply SEC_spec1. rewrite <- InA_Leibniz.
+      change eq with equiv. rewrite support_In. apply pos_in_config.
     - now apply target_inside_SEC.
 * apply SEC_spec1. rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config.
 Qed.
@@ -1484,13 +1486,13 @@ Qed.
 Lemma dirty_next_still_on_SEC : forall da config id,
   no_Majority config ->
   is_clean (!! config) = false ->
-  on_circle (SEC (support (!! config))) (fst (config id)) = true ->
+  on_circle (SEC (support (!! config))) (get_location (config id)) = true ->
   round gatherR2 da config id == config id.
 Proof.
 intros da config id Hmaj Hclean Hcircle.
 rewrite (round_simplify_dirty da Hmaj Hclean id).
-destruct (step da id); try reflexivity; [].
-destruct (mem equiv_dec (fst (config id)) (SECT (!! config))) eqn:Hmem; try reflexivity; [].
+destruct (da.(activate) config id); try reflexivity; [].
+destruct (mem equiv_dec (get_location (config id)) (SECT (!! config))) eqn:Hmem; try reflexivity; [].
 rewrite mem_false_iff in Hmem. elim Hmem.
 unfold SECT. right. unfold on_SEC. rewrite filter_InA; autoclass; [].
 split; trivial; [].
@@ -1503,17 +1505,17 @@ Lemma dirty_next_SEC_same : forall da config,
   SEC (support (!! (round gatherR2 da config))) = SEC (support (!! config)).
 Proof.
 intros da config Hmaj Hclean.
-assert (HonSEC : forall id, List.In (fst (config id)) (on_SEC (support (!! config))) ->
+assert (HonSEC : forall id, List.In (get_location (config id)) (on_SEC (support (!! config))) ->
                    round gatherR2 da config id == config id).
 { intros id Hid. rewrite (round_simplify_dirty da Hmaj Hclean id).
-  destruct (step da id); try reflexivity; [].
-  assert (Heq : mem equiv_dec (fst (config id)) (SECT (!! config)) = true).
+  destruct (da.(activate) config id); try reflexivity; [].
+  assert (Heq : mem equiv_dec (get_location (config id)) (SECT (!! config)) = true).
   { rewrite mem_true_iff. right. now apply InA_Leibniz. }
   now rewrite Heq. }
 apply enclosing_same_on_SEC_is_same_SEC.
 + now apply next_SEC_enclosed.
 + intros pt Hin.
-  assert (Hid : exists id, fst (config id) == pt).
+  assert (Hid : exists id, get_location (config id) == pt).
   { unfold on_SEC in Hin. setoid_rewrite List.filter_In in Hin. destruct Hin as [Hin Hsec].
     rewrite <- InA_Leibniz in Hin. change eq with equiv in Hin.
     now rewrite support_In, spect_from_config_In in Hin. }
@@ -1536,8 +1538,8 @@ intros da config Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
   split; intros [Hin Hcircle]; split; trivial; [|].
   + rewrite support_In, spect_from_config_In in Hin. destruct Hin as [id Hid].
     rewrite (round_simplify_dirty da Hmaj Hclean id) in Hid.
-    destruct (step da id).
-    - destruct (mem equiv_dec (fst (config id)) (SECT (!! config))) eqn:Hmem.
+    destruct (da.(activate) config id).
+    - destruct (mem equiv_dec (get_location (config id)) (SECT (!! config))) eqn:Hmem.
       -- rewrite <- Hid, support_In. apply pos_in_config.
       -- rewrite <- Hid in *. clear Hid pt.
          now apply target_on_SEC_already_occupied.
@@ -1558,10 +1560,11 @@ Proof.
 intros pt config da Hmaj.
 rewrite (round_simplify_Majority _ Hmaj).
 do 2 rewrite spect_from_config_spec, config_list_spec.
-induction names as [| id l]; simpl.
+induction names as [| id l]; cbn -[get_location].
 + reflexivity.
-+ destruct (step da id); simpl.
-  - R2dec. R2dec_full; apply le_n_S + apply le_S; apply IHl.
++ destruct (da.(activate) config id); cbn -[get_location].
+  - change (get_location pt =?= pt) with (pt =?= pt). R2dec.
+    R2dec_full; apply le_n_S + apply le_S; apply IHl.
   - R2dec_full; try apply le_n_S; apply IHl.
 Qed.
 
@@ -1574,7 +1577,7 @@ rewrite (round_simplify_Majority _ Hmaj).
 do 2 rewrite spect_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 + reflexivity.
-+ destruct (step da id); simpl.
++ destruct (da.(activate) config id); simpl.
   - R2dec_full; try contradiction; []. R2dec_full; try apply le_S; apply IHl.
   - R2dec_full; try apply le_n_S; apply IHl.
 Qed.
@@ -1602,8 +1605,6 @@ cut ((!! config)[target (!! config)] < (!! (round gatherR2 da config))[target (!
 + omega.
 + rewrite increase_move_iff.
   apply not_nil_In in Hmoving. destruct Hmoving as [gmove Hmove].
-  assert (Hstep : step da gmove <> None).
-  { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
   exists gmove. split.
   - now apply destination_is_target.
   - intro Habs. apply no_info in Habs. revert Habs.
@@ -1632,8 +1633,6 @@ cut (SECT_cardinal (!! config) < SECT_cardinal (!! (round gatherR2 da config)));
 assert (Hlt : (!! config)[target (!! config)] < (!! (round gatherR2 da config))[target (!! config)]).
 { rewrite increase_move_iff.
   apply not_nil_In in Hmoving. destruct Hmoving as [gmove Hmove].
-  assert (Hstep : step da gmove <> None).
-  { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
   exists gmove. split.
   - now apply destination_is_target.
   - intro Habs. apply no_info in Habs. revert Habs.
@@ -1676,13 +1675,13 @@ assert (Heq : @equiv spectrum spectrum_Setoid (filter f_out_target (!! (round ga
   induction names as [| id l].
   * reflexivity.
   * simpl. R2dec_full.
-    + rewrite Heq. destruct (step da id) eqn:Hactive.
+    + rewrite Heq. destruct (da.(activate) config id) eqn:Hactive.
       - assert (Hmem : mem equiv_dec pt (SECT (!! config)) = true).
         { rewrite mem_true_iff. unfold f_out_target in Htest.
           destruct (InA_dec equiv_dec pt (SECT (!! config))) as [Hin | Hin]; trivial; discriminate. }
-        change (@eq R2) with equiv. rewrite Hmem. destruct_match; try contradiction; []. f_equal. apply IHl.
+        simpl in Hmem. rewrite Hmem. destruct_match; try contradiction; []. f_equal. apply IHl.
       - R2dec. f_equal. apply IHl.
-    + destruct (step da id) eqn:Hactive.
+    + destruct (da.(activate) config id) eqn:Hactive.
       - change (@eq R2) with equiv.
         destruct_match_eq Hmem.
         ++ R2dec_full; contradiction || apply IHl.
@@ -1728,7 +1727,7 @@ Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1
 Proof.
 intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
 replace nG with (nG + nB) by (simpl; omega).
-rewrite <- (cardinal_spect_from_config config).
+rewrite <- (cardinal_spect_from_config config origin).
 rewrite <- (add_remove_id pt1 (!! config) (reflexivity _)) at 4.
 rewrite cardinal_add.
 rewrite <- (add_remove_id pt2 (!! config) (reflexivity _)) at 6.
@@ -1751,7 +1750,7 @@ intros da config Hok.
 destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
 - assert (round gatherR2 da config == config).
   { rewrite round_simplify; cbv zeta; try rewrite Hmaj.
-    intro id. now destruct (step da id). }
+    intro id. now destruct (da.(activate) config id). }
   now rewrite H.
   (* There is a majority tower *)
 - apply Majority_not_invalid with pt.
@@ -1771,7 +1770,7 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
     (* the robot moves to one of the two locations in round robogram config *)
     assert (Hinvalid := Habs). destruct Habs as [HnG [HsizeG[pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
     assert (Hpt : exists pt pt', (pt = pt1 /\ pt' = pt2 \/ pt = pt2  /\ pt' = pt1)
-                                  /\ fst (round gatherR2 da config rmove) == pt).
+                                  /\ get_location (round gatherR2 da config rmove) == pt).
     { assert (Hperm : Permutation (support (!! (round gatherR2 da config))) (pt1 :: pt2 :: nil)).
       { symmetry. apply NoDup_Permutation_bis.
         + repeat constructor.
@@ -1784,14 +1783,14 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
             unfold In. rewrite Hpt1. apply Exp_prop.div2_not_R0. apply HsizeG.
           - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz. change eq with equiv.
             rewrite support_spec. unfold In. rewrite Hpt2. apply Exp_prop.div2_not_R0. apply HsizeG. }
-      assert (Hpt : List.In (fst (round gatherR2 da config rmove)) (pt1 :: pt2 :: nil)).
+      assert (Hpt : List.In (get_location (round gatherR2 da config rmove)) (pt1 :: pt2 :: nil)).
       { rewrite <- Hperm, <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config. }
       inversion_clear Hpt; try (now exists pt1, pt2; eauto); [].
       inversion_clear H; now exists pt2, pt1; eauto. }
     destruct Hpt as [pt [pt' [Hpt Hrmove_pt]]].
     assert (Hdiff2 : pt <> pt').
     { decompose [and or] Hpt; congruence. }
-    assert (Hdest : forall g, List.In g (moving gatherR2 da config) -> fst (round gatherR2 da config g) == pt).
+    assert (Hdest : forall g, List.In g (moving gatherR2 da config) -> get_location (round gatherR2 da config g) == pt).
     { intros id Hid. rewrite <- Hrmove_pt. apply same_destination; auto. rewrite moving_spec. congruence. }
     assert ((div2 nG) <= (!! config)[pt']).
     { transitivity ((!! (round gatherR2 da config))[pt']).
@@ -2896,7 +2895,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
        ++ apply no_moving_same_config in Hmoving. now rewrite Hmoving.
        ++ assert (Hperm' : PermutationA equiv (support (!! (round gatherR2 da config)))
                                         (ptx :: pty :: ptz :: nil)).
-          { assert (forall x, In x (gmove :: l) -> fst (round gatherR2 da config x) == vertex).
+          { assert (forall x, In x (gmove :: l) -> get_location (round gatherR2 da config x) == vertex).
             { rewrite <- Htarget.
               intros x H3.
               apply destination_is_target; auto.
@@ -2953,7 +2952,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
          remember (opposite_of_max_side ptx pty ptz) as vertex.
          assert (Hperm' : PermutationA equiv (support (!! (round gatherR2 da config)))
                                         (ptx :: pty :: ptz :: nil)).
-          { assert (forall x, In x (gmove :: l) -> fst (round gatherR2 da config x) == vertex).
+          { assert (forall x, In x (gmove :: l) -> get_location (round gatherR2 da config x) == vertex).
             { rewrite <- Htarget.
               intros x H3.
               apply destination_is_target;auto.
@@ -3028,16 +3027,16 @@ assert (Hneq24 : pt2' <> pt4') by intuition.
 assert (Hneq34 : pt3' <> pt4') by intuition.
 clear H H0 H1 H3.
 (* There are robots occupying these positions *)
-assert (Hid1 : exists id1, fst (round gatherR2 da config id1) == pt1').
+assert (Hid1 : exists id1, get_location (round gatherR2 da config id1) == pt1').
 { change eq with equiv. rewrite <- spect_from_config_In,  <- support_In.
   unfold on_SEC in Hperm'. eapply proj1. rewrite <- filter_InA, Hperm'; intuition. }
-assert (Hid2 : exists id2, fst (round gatherR2 da config id2) == pt2').
+assert (Hid2 : exists id2, get_location (round gatherR2 da config id2) == pt2').
 { change eq with equiv. rewrite <- spect_from_config_In,  <- support_In.
   unfold on_SEC in Hperm'. eapply proj1. rewrite <- filter_InA, Hperm'; intuition. }
-assert (Hid3 : exists id3, fst (round gatherR2 da config id3) == pt3').
+assert (Hid3 : exists id3, get_location (round gatherR2 da config id3) == pt3').
 { change eq with equiv. rewrite <- spect_from_config_In,  <- support_In.
   unfold on_SEC in Hperm'. eapply proj1. rewrite <- filter_InA, Hperm'; intuition. }
-assert (Hid4 : exists id4, fst (round gatherR2 da config id4) == pt4').
+assert (Hid4 : exists id4, get_location (round gatherR2 da config id4) == pt4').
 { change eq with equiv. rewrite <- spect_from_config_In,  <- support_In.
   unfold on_SEC in Hperm'. eapply proj1. rewrite <- filter_InA, Hperm'; intuition. }
 destruct Hid1 as [id1 Hid1], Hid2 as [id2 Hid2], Hid3 as [id3 Hid3], Hid4 as [id4 Hid4].
@@ -3055,75 +3054,75 @@ assert (Hneqid23 : id2 <> id3). { intro. subst id2. rewrite Hid2 in Hid3. contra
 assert (Hneqid24 : id2 <> id4). { intro. subst id2. rewrite Hid2 in Hid4. contradiction. }
 assert (Hneqid34 : id3 <> id4). { intro. subst id3. rewrite Hid3 in Hid4. contradiction. }
 (* At most one of these robots was activated during the round *)
-assert (Hex : forall id id' f,
+assert (Hex : forall id id',
                 List.In id (id1 :: id2 :: id3 :: id4 :: nil) -> List.In id' (id1 :: id2 :: id3 :: id4 :: nil) ->
-                id <> id' -> step da id = Some f -> step da id' = None).
-{ intros id id' f Hid Hid' Hneq Hstep. simpl in *.
-  destruct (step da id') eqn:Hstep'; trivial; exfalso.
+                id <> id' -> da.(activate) config id = true -> da.(activate) config id' = false).
+{ intros id id' Hid Hid' Hneq Hactive. simpl in *.
+  destruct (da.(activate) config id') eqn:Hactive'; trivial; exfalso.
   decompose [or] Hid; decompose [or] Hid'; try subst id; try subst id';
-  (now elim Hneq) || rewrite Hstep in *; rewrite Hstep' in *;
+  (now elim Hneq) || rewrite Hactive in *; rewrite Hactive' in *;
   rewrite ?Hid1, ?Hid2, ?Hid3, ?Hid4 in *; R2dec. }
 (* Therefore, at least three were not activated and not on the target *)
 assert (Hperm_id : exists id1' id2' id3' id4',
       Permutation (id1 :: id2 :: id3 :: id4 :: nil) (id1' :: id2' :: id3' :: id4' :: nil)
-      /\ step da id2' = None /\ step da id3' = None /\ step da id4' = None
-      /\ NoDup (fst (config id2') :: fst (config id3') :: fst (config id4') :: nil)
-      /\ fst (config id2') <> target (!!config)
-      /\ fst (config id3') <> target (!!config)
-      /\ fst (config id4') <> target (!!config)).
-{ destruct (step da id1) as [f |] eqn:Hstep1.
+      /\ da.(activate) config id2' = false /\ da.(activate) config id3' = false /\ da.(activate) config id4' = false
+      /\ NoDup (get_location (config id2') :: get_location (config id3') :: get_location (config id4') :: nil)
+      /\ get_location (config id2') <> target (!!config)
+      /\ get_location (config id3') <> target (!!config)
+      /\ get_location (config id4') <> target (!!config)).
+{ destruct (da.(activate) config id1) eqn:Hactive1.
   * exists id1, id2, id3, id4. split; trivial; [].
-    repeat split; try (now generalize Hstep1; apply Hex; intuition).
-    -- assert (Heq2 : step da id2 = None) by (generalize Hstep1; apply Hex; intuition).
-       assert (Heq3 : step da id3 = None) by (generalize Hstep1; apply Hex; intuition).
-       assert (Heq4 : step da id4 = None) by (generalize Hstep1; apply Hex; intuition).
+    repeat split; try (now generalize Hactive1; apply Hex; intuition).
+    -- assert (Heq2 : da.(activate) config id2 = false) by (generalize Hactive1; apply Hex; intuition).
+       assert (Heq3 : da.(activate) config id3 = false) by (generalize Hactive1; apply Hex; intuition).
+       assert (Heq4 : da.(activate) config id4 = false) by (generalize Hactive1; apply Hex; intuition).
        rewrite Heq2, Heq3, Heq4 in *. clear Heq2 Heq3 Heq4. subst.
-       assert (Hnodup : NoDup (target (!! config) :: fst (config id2)
-                               :: fst (config id3) :: fst (config id4) :: l')).
+       assert (Hnodup : NoDup (target (!! config) :: get_location (config id2)
+                               :: get_location (config id3) :: get_location (config id4) :: l')).
        { rewrite <- NoDupA_Leibniz. rewrite <- Hperm'. apply on_SEC_NoDupA, support_NoDupA. }
        inversion_clear Hnodup. inversion_clear H0. inversion_clear H2. repeat constructor; cbn in *; intuition.
-    -- intro. apply Hneq12. rewrite (Hex id1 id2 f) in Hid2; trivial; subst; intuition.
-    -- intro. apply Hneq13. rewrite (Hex id1 id3 f) in Hid3; trivial; subst; intuition.
-    -- intro. apply Hneq14. rewrite (Hex id1 id4 f) in Hid4; trivial; subst; intuition.
-  * destruct (step da id2) as [f |] eqn:Hstep2.
+    -- intro. apply Hneq12. rewrite (Hex id1 id2) in Hid2; trivial; subst; intuition.
+    -- intro. apply Hneq13. rewrite (Hex id1 id3) in Hid3; trivial; subst; intuition.
+    -- intro. apply Hneq14. rewrite (Hex id1 id4) in Hid4; trivial; subst; intuition.
+  * destruct (da.(activate) config id2) eqn:Hactive2.
     + exists id2, id1, id3, id4. split; [now do 3 econstructor|].
-      repeat split; try now generalize Hstep2; apply Hex; intuition.
-      -- assert (Heq1 : step da id1 = None) by (generalize Hstep2; apply Hex; intuition).
-         assert (Heq3 : step da id3 = None) by (generalize Hstep2; apply Hex; intuition).
-         assert (Heq4 : step da id4 = None) by (generalize Hstep2; apply Hex; intuition).
+      repeat split; try now generalize Hactive2; apply Hex; intuition.
+      -- assert (Heq1 : da.(activate) config id1 = false) by (generalize Hactive2; apply Hex; intuition).
+         assert (Heq3 : da.(activate) config id3 = false) by (generalize Hactive2; apply Hex; intuition).
+         assert (Heq4 : da.(activate) config id4 = false) by (generalize Hactive2; apply Hex; intuition).
          rewrite Heq1, Heq3, Heq4 in *. clear Heq1 Heq3 Heq4. subst.
-         assert (Hnodup : NoDup (fst (config id1) :: target (!! config)
-                                 :: fst (config id3) :: fst (config id4) :: l')).
+         assert (Hnodup : NoDup (get_location (config id1) :: target (!! config)
+                                 :: get_location (config id3) :: get_location (config id4) :: l')).
          { rewrite <- NoDupA_Leibniz. rewrite <- Hperm'. apply on_SEC_NoDupA, support_NoDupA. }
          inversion_clear Hnodup. inversion_clear H0. inversion_clear H2. repeat constructor; cbn in *; intuition.
       -- intro. apply Hneq12. now subst.
-      -- intro. apply Hneq23. rewrite (Hex id2 id3 f) in Hid3; trivial; subst; intuition.
-      -- intro. apply Hneq24. rewrite (Hex id2 id4 f) in Hid4; trivial; subst; intuition.
-    + destruct (step da id3) as [f |] eqn:Hstep3.
+      -- intro. apply Hneq23. rewrite (Hex id2 id3) in Hid3; trivial; subst; intuition.
+      -- intro. apply Hneq24. rewrite (Hex id2 id4) in Hid4; trivial; subst; intuition.
+    + destruct (da.(activate) config id3) eqn:Hactive3.
       - exists id3, id1, id2, id4. split; [now do 3 econstructor|].
-        repeat split; try now generalize Hstep3; apply Hex; intuition.
-        -- assert (Heq1 : step da id1 = None) by (generalize Hstep3; apply Hex; intuition).
-           assert (Heq2 : step da id2 = None) by (generalize Hstep3; apply Hex; intuition).
-           assert (Heq4 : step da id4 = None) by (generalize Hstep3; apply Hex; intuition).
+        repeat split; try now generalize Hactive3; apply Hex; intuition.
+        -- assert (Heq1 : da.(activate) config id1 = false) by (generalize Hactive3; apply Hex; intuition).
+           assert (Heq2 : da.(activate) config id2 = false) by (generalize Hactive3; apply Hex; intuition).
+           assert (Heq4 : da.(activate) config id4 = false) by (generalize Hactive3; apply Hex; intuition).
            rewrite Heq1, Heq2, Heq4 in *. clear Heq1 Heq2 Heq4. subst.
-           assert (Hnodup : NoDup (fst (config id1) :: fst (config id2)
-                                   :: target (!! config) :: fst (config id4) :: l')).
+           assert (Hnodup : NoDup (get_location (config id1) :: get_location (config id2)
+                                   :: target (!! config) :: get_location (config id4) :: l')).
            { rewrite <- NoDupA_Leibniz. rewrite <- Hperm'. apply on_SEC_NoDupA, support_NoDupA. }
            inversion_clear Hnodup. inversion_clear H0. inversion_clear H2. repeat constructor; cbn in *; intuition.
         -- intro. apply Hneq13. now subst.
         -- intro. apply Hneq23. now subst.
-        -- intro. apply Hneq34. rewrite (Hex id3 id4 f) in Hid4; trivial; subst; intuition.
-      - destruct (step da id4) as [f |] eqn:Hstep4.
+        -- intro. apply Hneq34. rewrite (Hex id3 id4) in Hid4; trivial; subst; intuition.
+      - destruct (da.(activate) config id4) eqn:Hactive4.
         ** exists id4, id1, id2, id3. repeat split; trivial; [now do 4 econstructor| ..]; try (now subst); [].
            subst. repeat constructor; cbn in *; intuition.
-        ** destruct (fst (config id1) =?= target (!! config)) as [Heq1 | Heq1].
+        ** destruct (get_location (config id1) =?= target (!! config)) as [Heq1 | Heq1].
            ++ exists id1, id2, id3, id4. rewrite <- Heq1. subst. repeat split; trivial; intuition; [].
               repeat constructor; cbn in *; intuition.
-           ++ destruct (fst (config id2) =?= target (!! config)) as [Heq2 | Heq2].
+           ++ destruct (get_location (config id2) =?= target (!! config)) as [Heq2 | Heq2].
               -- exists id2, id1, id3, id4. rewrite <- Heq2. subst.
                  repeat split; trivial;
                  solve [repeat constructor; cbn in *; intuition | now do 3 econstructor].
-              -- destruct (fst (config id3) =?= target (!! config)) as [Heq3 | Heq3].
+              -- destruct (get_location (config id3) =?= target (!! config)) as [Heq3 | Heq3].
                  *** exists id3, id1, id2, id4. rewrite <- Heq3. subst.
                      Time repeat split; trivial; (* 9 s.*)
                      solve [repeat constructor; cbn in *; intuition | now do 3 econstructor].
@@ -3131,30 +3130,30 @@ assert (Hperm_id : exists id1' id2' id3' id4',
                      Time repeat split; trivial; (* 11 s. *)
                      solve [repeat constructor; cbn in *; intuition | now do 4 econstructor]. }
 (* Finally, the old and new SEC are defined by the unchanging locations of these three robots *)
-destruct Hperm_id as [id1' [id2' [id3' [id4' [Hperm_id [Hstep2' [Hstep3' [Hstep4' [Hnodup [? [? ?]]]]]]]]]]].
-apply three_points_same_circle with (fst (config id2')) (fst (config id3')) (fst (config id4')).
+destruct Hperm_id as [id1' [id2' [id3' [id4' [Hperm_id [Hactive2' [Hactive3' [Hactive4' [Hnodup [? [? ?]]]]]]]]]]].
+apply three_points_same_circle with (get_location (config id2')) (get_location (config id3')) (get_location (config id4')).
 + assumption.
 + eapply proj2. rewrite <- (filter_InA _).
   assert (Hin : List.In id2' (id1 :: id2 :: id3 :: id4 :: nil)) by (rewrite Hperm_id; intuition).
   simpl in Hin. unfold on_SEC in Hperm'. rewrite Hperm'.
-  decompose [or] Hin; subst id2' || easy; clear Hin; rewrite Hstep2' in *; subst; intuition.
+  decompose [or] Hin; subst id2' || easy; clear Hin; rewrite Hactive2' in *; subst; intuition.
 + eapply proj2. rewrite <- (filter_InA _).
   assert (Hin : List.In id3' (id1 :: id2 :: id3 :: id4 :: nil)) by (rewrite Hperm_id; intuition).
   simpl in Hin. unfold on_SEC in Hperm'. rewrite Hperm'.
-  decompose [or] Hin; subst id3' || easy; clear Hin; rewrite Hstep3' in *;subst; intuition.
+  decompose [or] Hin; subst id3' || easy; clear Hin; rewrite Hactive3' in *;subst; intuition.
 + eapply proj2. rewrite <- (filter_InA _).
   assert (Hin : List.In id4' (id1 :: id2 :: id3 :: id4 :: nil)) by (rewrite Hperm_id; intuition).
   simpl in Hin. unfold on_SEC in Hperm'. rewrite Hperm'.
-  decompose [or] Hin; subst id4' || easy; clear Hin; rewrite Hstep4' in *; subst; intuition.
-+ assert (Hin : InA equiv (fst (config id2')) (support (!! config))).
+  decompose [or] Hin; subst id4' || easy; clear Hin; rewrite Hactive4' in *; subst; intuition.
++ assert (Hin : InA equiv (get_location (config id2')) (support (!! config))).
   { rewrite support_In. apply pos_in_config. }
   rewrite is_clean_spec in Hclean. apply Hclean in Hin. inversion_clear Hin; try contradiction; [].
   unfold on_SEC in H2. now rewrite (filter_InA _) in H2.
-+ assert (Hin : InA equiv (fst (config id3')) (support (!! config))).
++ assert (Hin : InA equiv (get_location (config id3')) (support (!! config))).
   { rewrite support_In. apply pos_in_config. }
   rewrite is_clean_spec in Hclean. apply Hclean in Hin. inversion_clear Hin; try contradiction; [].
   unfold on_SEC in H2. now rewrite (filter_InA _) in H2.
-+ assert (Hin : InA equiv (fst (config id4')) (support (!! config))).
++ assert (Hin : InA equiv (get_location (config id4')) (support (!! config))).
   { rewrite support_In. apply pos_in_config. }
   rewrite is_clean_spec in Hclean. apply Hclean in Hin. inversion_clear Hin; try contradiction; [].
   unfold on_SEC in H2. now rewrite (filter_InA _) in H2.
@@ -3177,7 +3176,7 @@ split; trivial.
 intros pt Hin. unfold SECT. rewrite Htarget. unfold on_SEC. rewrite HSEC.
 assert (Hpt := Hincl' _ Hin). unfold on_SEC in Hpt. inversion_clear Hpt.
 - now left.
-- right. rewrite (filter_InA _). split; trivial. now rewrite  (filter_InA _) in H. 
+- right. rewrite (filter_InA _). split; trivial. now rewrite  (filter_InA _) in H.
 Qed.
 
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
@@ -3200,14 +3199,14 @@ Proof.
     assert (Hle := multiplicity_le_nG pt (round gatherR2 da config)).
     cut ((!! config)[pt] < (!! (round gatherR2 da config))[pt]); try omega; [].
     apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
-    assert (Hstep : step da gmove <> None).
+    assert (Hactive : da.(activate) config gmove = true).
     { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
     rewrite moving_spec in Hmove.
     rewrite increase_move_iff. exists gmove.
     split; try (now intro; apply Hmove, no_info); [].
     get_case config.
     rewrite (round_simplify_Majority _ Hcase0 gmove).
-    destruct (step da gmove); try reflexivity; []. now elim Hstep.
+    destruct (da.(activate) config gmove); try reflexivity; []. now elim Hactive.
   - (* Computing the SEC *)
     get_case config. clear Hmax pt pt' smax.
     destruct (is_clean (!! config)) eqn:Hclean.
@@ -3317,7 +3316,7 @@ Qed.
 (** ***  With the termination, the rest of the proof is easy  **)
 
 Lemma gathered_precise : forall config pt,
-  gathered_at pt config -> forall id, gathered_at (fst (config id)) config.
+  gathered_at pt config -> forall id, gathered_at (get_location (config id)) config.
 Proof.
 intros config pt Hgather id g'. transitivity pt.
 - apply Hgather.
@@ -3325,14 +3324,14 @@ intros config pt Hgather id g'. transitivity pt.
 Qed.
 
 Corollary not_gathered_generalize : forall config id,
-  ~gathered_at (fst (config id)) config -> forall pt, ~gathered_at pt config.
+  ~gathered_at (get_location (config id)) config -> forall pt, ~gathered_at pt config.
 Proof. intros config id Hnot pt Hgather. apply Hnot. apply (gathered_precise Hgather). Qed.
 
 Lemma not_gathered_exists : forall config pt,
-  ~ gathered_at pt config -> exists id, fst (config id) <> pt.
+  ~ gathered_at pt config -> exists id, get_location (config id) =/= pt.
 Proof.
 intros config pt Hgather.
-destruct (forallb (fun x => R2dec_bool (fst (config x)) pt) names) eqn:Hall.
+destruct (forallb (fun x => R2dec_bool (get_location (config x)) pt) names) eqn:Hall.
 - elim Hgather. rewrite forallb_forall in Hall.
   intro id'. setoid_rewrite R2dec_bool_true_iff in Hall. repeat rewrite Hall; reflexivity || apply In_names.
 - rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall.
@@ -3361,8 +3360,8 @@ intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
 Qed.
 
 (** Correctness proof: given a non-gathered, non invalid configuration, then some robot will move some day. *)
-Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (fst (config id)) config ->
-  exists gmove, forall da, List.In gmove (active da) -> List.In gmove (moving gatherR2 da config).
+Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (get_location (config id)) config ->
+  exists gmove, forall da, List.In gmove (active da config) -> List.In gmove (moving gatherR2 da config).
 Proof.
 intros config id Hvalid Hgather.
 destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
@@ -3382,9 +3381,7 @@ destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
     apply not_gathered_generalize with _ _ (target (!! config)) in Hgather.
     apply not_gathered_exists in Hgather. destruct Hgather as [gmove Hmove].
     exists gmove. intros da Hactive. rewrite active_spec in Hactive.
-    rewrite moving_spec, (round_simplify_clean da Hmaj Hclean gmove).
-    destruct (step da gmove); try (now elim Hactive); [].
-    intro Habs. apply Hmove. now rewrite <- Habs.
+    now rewrite moving_spec, (round_simplify_clean da Hmaj Hclean gmove), Hactive.
   + (* dirty case *)
     assert (Hclean' := Hclean). unfold is_clean in Hclean'. clear Hmax pt pt' lmax.
     destruct (inclA_bool _ equiv_dec (support (!! config)) (SECT (!! config))) eqn:Hincl;
@@ -3395,8 +3392,8 @@ destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
     destruct Hin as [gmove Hmove].
     exists gmove. intros da Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
     rewrite (round_simplify_dirty da Hmaj Hclean gmove).
-    destruct (step da gmove); try (now elim Hactive); [].
-    destruct (mem equiv_dec (fst (config gmove)) (SECT (!! config))) eqn:Htest.
+    destruct (da.(activate) config gmove); try (now elim Hactive); [].
+    destruct (mem equiv_dec (get_location (config gmove)) (SECT (!! config))) eqn:Htest.
     - rewrite mem_true_iff, Hmove in Htest.
       contradiction.
     - rewrite mem_false_iff, Hmove in Htest.
@@ -3406,8 +3403,8 @@ destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
 Qed.
 
 (** Given a k-fair demon, in any non gathered, non invalid configuration, a robot will be the first to move. *)
-Theorem Fair_FirstMove : forall d, Fair d ->
-  forall config id, ~invalid config -> ~gathered_at (fst (config id)) config -> FirstMove gatherR2 d config.
+Theorem Fair_FirstMove : forall d, Fair d -> forall config id,
+  ~invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR2 d config.
 Proof.
 intros d Hfair config id Hvalid Hgathered.
 destruct (OneMustMove id Hvalid Hgathered) as [gmove Hmove].
@@ -3432,7 +3429,7 @@ Proof. exists 0. generalize size_G; abstract omega. Defined.
 Lemma gathered_at_forever : forall da config pt, gathered_at pt config -> gathered_at pt (round gatherR2 da config).
 Proof.
 intros da config pt Hgather. rewrite (round_simplify_Majority).
-+ intro g. destruct (step da (Good g)); reflexivity || apply Hgather.
++ intro g. destruct (da.(activate) config (Good g)); reflexivity || apply Hgather.
 + intros pt' Hdiff.
   assert (H0 : (!! config)[pt'] = 0).
   { rewrite spect_from_config_spec, config_list_spec.
@@ -3459,9 +3456,9 @@ intros d Hfair config. revert d Hfair. pattern config.
 apply (well_founded_ind wf_lt_config). clear config.
 intros config Hind d Hfair Hok.
 (* Are we already gathered? *)
-destruct (gathered_at_dec config (fst (config (Good g1)))) as [Hmove | Hmove].
+destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (fst (config (Good g1))). now apply Stream.Now, gathered_at_OK.
+  exists (get_location (config (Good g1))). now apply Stream.Now, gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d config Hmove | d config Heq Hmove Hrec].
@@ -3495,12 +3492,12 @@ intros d Hunfair config. revert d Hunfair. pattern config.
 apply (well_founded_ind wf_lt_config). clear config.
 intros config Hind d Hunfair Hok.
 (* Are we already gathered? *)
-destruct (gathered_at_dec config (fst (config (Good g1)))) as [Hmove | Hmove].
+destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | Hmove].
 + (* If so, not much to do *)
-  exists (fst (config (Good g1))). now apply Stream.Now, gathered_at_OK.
+  exists (get_location (config (Good g1))). now apply Stream.Now, gathered_at_OK.
 + (* Otherwise, by assumption on the demon, a robot should move
      so we can use our well-founded induction hypothesis. *)
- destruct Hunfair as [Hstep Hunfair]. hnf in Hstep.
+ destruct Hunfair as [Hactive Hunfair]. hnf in Hactive.
   destruct (Hind (round gatherR2 (Stream.hd d) config)) with (Stream.tl d) as [pt Hpt].
   - apply round_lt_config; auto.
   - assumption.

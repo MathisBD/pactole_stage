@@ -17,7 +17,6 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Set Implicit Arguments.
-Arguments complement A R x y /. (* Put it in Pactole.Util.Preliminary? *)
 
 
 Class Graph (V E : Type) := {

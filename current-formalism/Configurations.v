@@ -75,6 +75,7 @@ Existing Instance map_config_compat.
 Existing Instance Gpos_compat.
 Existing Instance Bpos_compat.
 Existing Instance config_list_compat.
+Arguments map_config info _ _ _ _ f config / : rename.
 
 Instance configuration_compat info `(Configuration info) :
   forall config : configuration, Proper (Logic.eq ==> equiv) config.

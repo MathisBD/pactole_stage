@@ -23,7 +23,6 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Import Pactole.RobotInfo.
 Require Import Pactole.Spectra.Definition.
-(* Require Import Pactole.Setting. *)
 Close Scope R_scope.
 Set Implicit Arguments.
 Set Default Proof Using "All".
@@ -188,36 +187,38 @@ Notation configuration := (@configuration info _ _ _ _).
 Notation map_config := (@map_config info _ _ _ _).
 Notation config_list := (@config_list info _ _ _ _).
 
+Implicit Type config : configuration.
 
 Global Instance multiset_spectrum : Spectrum loc info := {
-  spectrum := @multiset loc _ _ _ * loc;
-  spectrum_Setoid := prod_Setoid (@MMultiset_Setoid loc _ _ _) _;
-  spectrum_EqDec := prod_EqDec (@MMultisetEqDec loc _ _ _ _) _;
+  spectrum := multiset loc;
   
-  spect_from_config config pt := (make_multiset (List.map get_location (config_list config)), pt);
-  spect_is_ok s config :=
-    forall l, (fst s)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config));
-  
-  get_current := snd }.
+  spect_from_config config pt := make_multiset (List.map get_location (config_list config));
+  spect_is_ok s config pt :=
+    forall l, s[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config)) }.
 Proof.
 (* BUG?: bullet forbidden here? *)
-{ intros conf1 conf2 Hconf pt1 pt2 Hpt. split; cbn [fst snd]; trivial; [].
+{ repeat intro.
   apply make_multiset_compat, eqlistA_PermutationA_subrelation,
         (@map_eqlistA_compat _ _ equiv equiv _ get_location).
   - autoclass.
   - apply config_list_compat. assumption. }
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
-+ intros. reflexivity.
 Defined.
 
 Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
 Notation spect_from_config := (@spect_from_config loc info _ _ _ _ _ _ multiset_spectrum).
 
-Lemma spect_from_config_map  : forall f, Proper (equiv ==> equiv) f ->
+
+Require Pactole.Spaces.RealMetricSpace.
+Lemma spect_from_config_ignore_snd {RMS : RealMetricSpace.RealMetricSpace loc} : forall config pt,
+  spect_from_config config pt == spect_from_config config RealMetricSpace.origin.
+Proof. reflexivity. Qed.
+
+Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
   forall config pt,
-  map f (fst (spect_from_config config pt)) == fst (spect_from_config (map_config (app f) config) (f pt)).
+  map f (spect_from_config config pt) == spect_from_config (map_config (app f) config) (f pt).
 Proof.
-repeat intro. unfold spect_from_config, multiset_spectrum. cbn [fst].
+repeat intro. unfold spect_from_config, multiset_spectrum.
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 + apply make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
   assert (Hequiv : (equiv ==> equiv)%signature (fun x => f (get_location x)) (fun x => get_location (app f x))).
@@ -227,25 +228,25 @@ rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 + now apply app_compat.
 Qed.
 
-Theorem cardinal_spect_from_config : forall config pt, cardinal (fst (spect_from_config config pt)) = nG + nB.
+Theorem cardinal_spect_from_config : forall config pt, cardinal (spect_from_config config pt) = nG + nB.
 Proof.
-intro. unfold spect_from_config, multiset_spectrum. cbn [fst].
+intro. unfold spect_from_config, multiset_spectrum.
 now rewrite cardinal_make_multiset, map_length, config_list_length.
 Qed.
 
-Property pos_in_config : forall config pt id, In (get_location (config id)) (fst (spect_from_config config pt)).
+Property pos_in_config : forall config pt id, In (get_location (config id)) (spect_from_config config pt).
 Proof.
-intros config pt id. cbn. unfold In.
+intros config pt id. unfold spect_from_config. simpl. unfold In.
 rewrite make_multiset_spec. rewrite (countA_occ_pos _).
 rewrite InA_map_iff; autoclass; [].
 eexists. split; auto; []. apply config_list_InA. now exists id.
 Qed.
 
 Property spect_from_config_In : forall config pt l,
-  In l (fst (spect_from_config config pt)) <-> exists id, get_location (config id) == l.
+  In l (spect_from_config config pt) <-> exists id, get_location (config id) == l.
 Proof.
 intros config pt l. split; intro Hin.
-+ assert (Heq := spect_from_config_spec config).
++ assert (Heq := spect_from_config_spec config pt).
   unfold spect_is_ok, spect_from_config, multiset_spectrum in *.
   unfold In in Hin. rewrite Heq, (countA_occ_pos _), config_list_spec in Hin.
   rewrite map_map, (InA_map_iff _ _) in Hin.
