@@ -112,7 +112,7 @@ End FMOps.
 
 Module Type FMultisetsOn (E : DecidableType).
   (** First, we ask for all the functions *)
-  Include FMOps E.
+  Include (FMOps E).
 
   (** ** Logical predicates *)
 
@@ -176,7 +176,7 @@ Module Type FMultisetsOn (E : DecidableType).
   intros ? ? ? [? ?] [? ?]. split. hnf in *. now transitivity (fst y). now transitivity (snd y).
   Qed.
 
-  Parameter elements_spec : forall x n s, InA eq_pair (x, n) (elements s) <-> s[x] = n /\ n > 0.
+  Parameter elements_spec : forall xn s, InA eq_pair xn (elements s) <-> s[fst xn] = snd xn /\ snd xn > 0.
   Parameter elements_NoDupA : forall s, NoDupA eq_elt (elements s).
   Parameter support_spec : forall x s, InA E.eq x (support s) <-> In x s.
   Parameter support_NoDupA : forall s, NoDupA E.eq (support s).

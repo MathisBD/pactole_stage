@@ -29,16 +29,16 @@ Definition eq_elt := RelCompFun E.eq (@fst E.t nat).
 
 Instance Meq_equiv A : Equivalence (@M.eq_key_elt A).
 Proof. split.
-  intro. now split.
-  intros ? ? []. split; auto; now symmetry.
-  intros ? y ? [] []. split; congruence || now transitivity (fst y).
++ intro. now split.
++ intros ? ? []. split; auto; now symmetry.
++ intros ? y ? [] []. split; congruence || now transitivity (fst y).
 Qed.
 
 Instance Meq_key_equiv A : Equivalence (@M.eq_key A).
 Proof. unfold M.eq_key. split.
-  intro. reflexivity.
-  intros ? ?. now symmetry.
-  intros ? y ? ? ?. now transitivity (fst y).
++ intro. reflexivity.
++ intros ? ?. now symmetry.
++ intros ? y ? ? ?. now transitivity (fst y).
 Qed.
 
 Instance eq_pair_equiv : Equivalence eq_pair.
@@ -117,7 +117,7 @@ Definition npartition f (s : t) :=
 Definition partition f (s : t) := npartition (fun x _ => f x) s.
 Definition cardinal (s : t) := M.fold (fun _ n acc => Pos.to_nat n + acc) s 0.
 Definition size (s : t) := M.fold (fun _ _ n => S n) s 0.
-Definition elements (s : t) := List.map (fun xy => (fst xy, Pos.to_nat (snd xy))) (M.bindings s).
+Definition elements (s : t) := List.map (fun xn => (fst xn, Pos.to_nat (snd xn))) (M.bindings s).
 Definition support (s : t) := M.fold (fun x _ l => cons x l) s nil.
 Definition choose (s : t) := M.fold (fun x _ _ => Some x) s None.
 
@@ -417,10 +417,10 @@ intros s x n. split; intro H.
   - rewrite  <- H1 in H2. inversion H2.
 Qed.
 
-Corollary elements_spec : forall x n s,
-  InA eq_pair (x, n) (elements s) <-> multiplicity x s = n /\ n > 0.
+Corollary elements_spec : forall xn s,
+  InA eq_pair xn (elements s) <-> multiplicity (fst xn) s = snd xn /\ snd xn > 0.
 Proof.
-intros x n s. unfold elements. rewrite InA_map_iff.
+intros [x n] s. simpl. unfold elements. rewrite InA_map_iff.
 split; intro H.
 + destruct H as [[y m] [[Heq1 Heq2] Hin]]. rewrite Melements_multiplicity in Hin.
   hnf in Heq1, Heq2. simpl in *. subst n. now rewrite <- Heq1.
