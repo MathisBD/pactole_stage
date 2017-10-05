@@ -25,6 +25,17 @@ Require Import Bool.
 
 
 Ltac autoclass := eauto with typeclass_instances.
+Ltac inv H := inversion H; subst; clear H.
+
+(* A tactic to destruct matches *)
+Ltac destr_match A :=
+  match A with | context[match ?x with | _ => _ end] =>
+    destr_match x (* recursive call *)
+    || destruct x eqn:? (* if innermost match, destruct it *)
+  end.
+
+Ltac destruct_match := match goal with | |- ?A => destr_match A end.
+
 
 (* Seems useless…
 Global Instance NotRel_symmetric A (R : relation A) `(Symmetric A R) : Symmetric (fun x y => ~R x y).
@@ -145,7 +156,7 @@ intros x l Hin. induction l; simpl.
   - f_equal. apply IHl. intro Habs. apply Hin. now right.
 Qed.
 
-Lemma removeA_InA_out eq_dec : forall x y l, ~eqA y x ->
+Lemma removeA_InA_out eq_dec : forall x y l, ~eqA x y ->
   (InA eqA x (@removeA A eqA eq_dec y l) <-> InA eqA x l).
 Proof.
 intros x y l Hxy. induction l. reflexivity.
@@ -184,6 +195,9 @@ intros x y l Hin. induction l; simpl in *.
   - auto.
   - inversion_clear Hin; auto.
 Qed.
+
+Corollary removeA_inclA eq_dec : subrelation eqA' eqA -> forall x l, inclA eqA' (@removeA A eqA eq_dec x l) l.
+Proof. intros. intro. rewrite removeA_InA_iff_strong; tauto. Qed.
 
 Global Instance removeA_eq_compat eq_dec : Proper (eqA ==> eq ==> eq) (@removeA A eqA eq_dec).
 Proof.
@@ -266,7 +280,7 @@ intros x l Hl. induction Hl; simpl.
 + constructor.
 + destruct (eq_dec x x0).
   - assumption.
-  - constructor; trivial. intro Habs. apply H. eapply removeA_InA; eassumption.      
+  - constructor; trivial. intro Habs. apply H. eapply removeA_InA_iff; eassumption.
 Qed.
 
 Global Instance InA_impl_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@InA A).

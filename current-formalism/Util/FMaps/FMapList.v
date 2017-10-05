@@ -307,7 +307,7 @@ induction m as [| [k e] m].
 * simpl; auto.
 * simpl; intros m' cmp [H1 H2].
   inversion_clear Hm.
-  assert (Hin : In k m') by (apply H1; exists e; simpl; auto).
+  assert (Hin : In k m') by now apply H1; exists e; simpl; left.
   destruct Hin as (e', Hin).
   unfold list_check at 2. apply find_1 in Hin. simpl in Hin. rewrite Hin.
   rewrite (H2 k); simpl; auto.
@@ -315,6 +315,7 @@ induction m as [| [k e] m].
     split; intuition.
     - apply H1. destruct H4 as [e'' H4]; exists e''; simpl in *; auto.
     - apply H2 with k0; auto.
+  + now left.
   + change (MapsTo k e' m'). now apply find_2.
 Qed.
 
@@ -345,9 +346,9 @@ intros [m Hm]. induction m as [| [k e] m].
     rewrite H4 in Hcheck; try discriminate.
   split; intros.
   + destruct H5 as [e0 H6]; inversion_clear H6.
-    - compute in H5; destruct H5; subst.
+    - destruct H5 as [H5 H6]; simpl in H5, H6.
       exists e'.
-      apply MapsTo_1 with k; auto.
+      apply MapsTo_1 with k; try easy.
       apply find_2; auto.
     - apply H2. exists e0; auto.
   + inversion_clear H5.

@@ -419,7 +419,7 @@ Qed.
 
 Global Instance elements_full_spec : ElementsSpec elt _.
 Proof. split.
-* intros x n s. unfold elements. simpl. rewrite InA_map_iff; [split; intro H |..].
+* intros [x n] s. unfold elements. simpl. rewrite InA_map_iff; [split; intro H |..].
   + destruct H as [[y m] [[Heq1 Heq2] Hin]]. hnf in Heq1, Heq2. cbn in Heq1, Heq2. subst.
     rewrite <- elements_mapsto_iff, find_mapsto_iff in Hin.
     unfold m_multiplicity. rewrite <- Heq1, Hin. split; trivial. apply Pos2Nat.is_pos.
@@ -431,7 +431,7 @@ Proof. split.
   + autoclass.
   + clear. intros [] [] []. intros. split; simpl in *. assumption. now subst.
 * intro s. unfold elements. simpl. rewrite NoDupA_inj_map;
-apply elements_3 || autoclass || (intros [] [] ?; assumption).
+  apply elements_3 || autoclass || (intros [] [] ?; assumption).
 Qed.
 
 Lemma support_elements_aux : forall x l1 l2, NoDupA eq_key (l1 ++ l2) -> 

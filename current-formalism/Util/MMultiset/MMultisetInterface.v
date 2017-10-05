@@ -185,7 +185,7 @@ Class TestSpec elt `(FMOps elt) := {
 
 (** Specification of [elements]. **)
 Class ElementsSpec elt `(FMOps elt) := {
-  elements_spec : forall x n s, InA eq_pair (x, n) (elements s) <-> s[x] = n /\ n > 0;
+  elements_spec : forall xn s, InA eq_pair xn (elements s) <-> s[fst xn] = snd xn /\ snd xn > 0;
   elements_NoDupA : forall s, NoDupA eq_elt (elements s)}.
 
 (** Specification of [support]. **)

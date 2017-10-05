@@ -1,5 +1,4 @@
-* add extensionality_compat + dependent version (cf. map)
-* add filtern vs. filter + npartition vs. partition
+* add mapi?
 * add max/min: elt with max/min multiplicity
 * add remove_all
 * prove global lemmas with elements, like elements_remove1/2

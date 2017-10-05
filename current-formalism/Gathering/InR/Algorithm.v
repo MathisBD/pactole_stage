@@ -130,14 +130,14 @@ intros. apply max_map_injective.
 Qed.
 
 Lemma support_max_non_nil : forall config, support (max (!! config)) <> nil.
-Proof. intros config Habs. rewrite support_nil, max_empty in Habs. apply (spect_non_nil _ Habs). Qed.
+Proof. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (spect_non_nil _ Habs). Qed.
 
 (** ***  Computational equivalent of having a majority tower  **)
 
 Lemma Majority_MajTower_at : forall config pt,
   support (max (!! config)) = pt :: nil -> MajTower_at pt config.
 Proof.
-intros config pt Hmaj x Hx. apply max_spec2.
+intros config pt Hmaj x Hx. apply max_spec_lub.
 - rewrite <- support_In, Hmaj. now left.
 - rewrite <- support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
 Qed.
@@ -158,7 +158,7 @@ intros config pt. split; intro Hmaj.
       -- apply lt_le_weak. now apply (Hmaj x).
     - destruct (Rdec y pt) as [? | Hy]; trivial.
       exfalso. apply (Hmaj y) in Hy. specialize (Hpt pt). omega.
-* intros x Hx. apply max_spec2.
+* intros x Hx. apply max_spec_lub.
   - rewrite <- support_In, Hmaj. now left.
   - rewrite <- support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
 Qed.
@@ -218,9 +218,9 @@ assert (Hpt : pt = pt1 \/ pt = pt2).
     rewrite support_spec, <- max_subset, <- support_spec, Hmaj. now left. }
   inversion_clear Hin; auto. inversion_clear H; auto. inversion H0. }
 apply (lt_irrefl (Nat.div2 nG)). destruct Hpt; subst pt.
-- rewrite <- Hpt1 at 2. rewrite <- Hpt2. apply max_spec2; try (now rewrite Hmax); [].
+- rewrite <- Hpt1 at 2. rewrite <- Hpt2. apply max_spec_lub; try (now rewrite Hmax); [].
   rewrite Hmax. auto.
-- rewrite <- Hpt1 at 1. rewrite <- Hpt2. apply max_spec2; now rewrite Hmax.
+- rewrite <- Hpt1 at 1. rewrite <- Hpt2. apply max_spec_lub; now rewrite Hmax.
 Qed.
 
 Definition no_Majority config := (size (max (!! config)) > 1)%nat.
@@ -241,7 +241,7 @@ Proof.
     red.
     assert (Hlen':(size (max (!! config)) = 2)%nat).
     { assert (size (max (!! config)) <= 2)%nat.
-      { unfold max.
+      { rewrite max_simplified. unfold simple_max.
         rewrite <- H2, <- Hsupp, <- size_spec.
         apply size_nfilter.
         now repeat intro; subst. }
@@ -264,8 +264,8 @@ Proof.
       elim H1.
       constructor.
       reflexivity.
-    * assert (h:=@support_nfilter _ _ _ _ _ _ (eqb_max_mult_compat (!!config)) (!! config)).
-      change (nfilter (fun _ => Nat.eqb (max_mult (!! config))) (!! config)) with (max (!!config)) in h.
+    * assert (h : inclA equiv (support (max (!! config))) (support (!! config))).
+      { f_equiv. apply max_subset. }
       assert (Hlen'': length (support (!! config)) <= length (support (max (!! config)))).
       { rewrite size_spec in Hlen'. rewrite Hsupp, Hlen'. reflexivity. }
       assert (h2:=@NoDupA_inclA_length_PermutationA
@@ -348,58 +348,48 @@ Proof.
       { assert (hfilter:= nfilter_In (eqb_max_mult_compat (!! config))).
         transitivity (max_mult (!! config)).
         + specialize (hfilter pt2 (!!config)).
-          replace (nfilter (fun _ => Nat.eqb (max_mult (!! config))) (!!config))
-          with (max (!!config)) in hfilter.
-          * destruct hfilter as [hfilter1 hfilter2].
-            destruct hfilter1.
-            -- apply support_In.
-               rewrite h2.
-               rewrite Hsupp.
-               constructor 2; constructor 1.
-               reflexivity.
-            -- symmetry.
-               rewrite <- Nat.eqb_eq.
-               assumption.
-          * trivial.
+          change (nfilter (fun _ => Nat.eqb (max_mult (!! config))) (!!config))
+          with (simple_max (!!config)) in hfilter.
+          rewrite <- max_simplified in hfilter.
+          destruct hfilter as [hfilter1 hfilter2].
+          destruct hfilter1.
+          * apply support_In.
+            rewrite h2, Hsupp.
+            constructor 2; constructor 1.
+            reflexivity.
+          * symmetry.
+            rewrite <- Nat.eqb_eq.
+            assumption.
         + specialize (hfilter pt1 (!!config)).
-          replace (nfilter (fun _ => Nat.eqb (max_mult (!! config))) (!!config))
-          with (max (!!config)) in hfilter.
-          * destruct hfilter as [hfilter1 hfilter2].
-            destruct hfilter1.
-            -- apply support_In.
-               rewrite h2.
-               rewrite Hsupp.
-               constructor 1.
-               reflexivity.
-            -- rewrite <- Nat.eqb_eq.
-               assumption.
-          * trivial. }
-      rewrite H1 in *|-*.
-      assert ( 0 + 2 *(!! config)[pt1] = nG).
-      { omega. }
+          change (nfilter (fun _ => Nat.eqb (max_mult (!! config))) (!!config))
+          with (simple_max (!!config)) in hfilter.
+          rewrite <- max_simplified in hfilter.
+          destruct hfilter as [hfilter1 hfilter2].
+          destruct hfilter1.
+          * apply support_In.
+            rewrite h2, Hsupp.
+            now constructor 1.
+          * now rewrite <- Nat.eqb_eq. }
+      rewrite H1 in *.
+      assert ( 0 + 2 *(!! config)[pt1] = nG) by omega.
       assert (Nat.even nG).
       { rewrite <- H3.
         rewrite (Nat.even_add_mul_2 0 ((!! config)[pt1])).
         apply Nat.even_0. }
-      split;[| split].
+      split; [| split].
       -- rewrite Nat.div2_odd in H3.
          rewrite <- Nat.negb_even in H3.
          rewrite H4 in H3.
          simpl negb in H3.
-         simpl  Nat.b2n in H3.
-         repeat rewrite <- plus_n_O,plus_O_n in H3.
+         simpl Nat.b2n in H3.
          omega.
       -- rewrite Nat.div2_odd in H3.
          rewrite <- Nat.negb_even in H3.
          rewrite H4 in H3.
          simpl negb in H3.
          simpl  Nat.b2n in H3.
-         repeat rewrite <- plus_n_O,plus_O_n in H3.
          omega.
-      -- apply Even.even_equiv.
-         apply Even.even_equiv.
-         apply Nat.even_spec.
-         assumption.
+      -- now apply Nat.even_spec.
 Qed.
 
 Lemma not_invalid_not_majority_length : forall config,
@@ -408,9 +398,7 @@ Proof.
 intros config H1 H2.
 assert (size (!! config) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption.
-  do 2 rewrite size_spec. apply (NoDupA_inclA_length _).
-  - apply support_NoDupA.
-  - unfold max. apply support_nfilter. repeat intro. now subst. }
+  f_equiv. apply max_subset. }
 destruct (size (!! config)) as [| [| [| ?]]] eqn:Hlen; try omega.
 exfalso. apply H2. now rewrite invalid_equiv.
 Qed.
@@ -774,9 +762,7 @@ Lemma Generic_min_max_lt : forall config,
 Proof.
 intros config Hmaj. apply Generic_min_max_lt_aux.
 + apply lt_le_trans with (size (max (!! config))); trivial.
-  rewrite size_spec. apply (NoDupA_inclA_length _).
-  - apply support_NoDupA.
-  - apply support_nfilter. repeat intro. now subst.
+  rewrite <- size_spec. f_equiv. apply max_subset.
 + apply support_NoDupA.
 Qed.
 
@@ -944,7 +930,7 @@ destruct (step da id1) eqn:Hmove1; [destruct (step da id2) eqn:Hmove2 |].
   cbv zeta.
   destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
   + (* no robots *)
-    rewrite support_nil, max_empty in Hmaj. elim (spect_non_nil _ Hmaj).
+    rewrite support_nil, max_is_empty in Hmaj. elim (spect_non_nil _ Hmaj).
   + (* a majority tower *)
     reflexivity.
   + destruct (size (!! config) =? 3) eqn:Hlen.

@@ -110,7 +110,7 @@ Section MMultisetFacts.
   Ltac msetdec :=
     repeat (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
             msetdec_step; easy || (try omega)).
-
+  
   Tactic Notation "msetdec_n" integer(n) :=
     do n (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
             msetdec_step; easy || (try omega)).
@@ -154,15 +154,8 @@ Section MMultisetFacts.
   Global Existing Instance multiplicity_compat.
   Global Existing Instance fold_compat.
   
-  (** **  [Subset] and [eq] are an order relation and the corresponding equivalence relation  **)
+  (** **  [Subset] and [equiv] are an order relation and the corresponding equivalence relation  **)
   
-(*   Global Instance eq_equiv : Equivalence eq.
-  Proof. split.
-  intros m x. reflexivity.
-  intros m1 m2 H x. now symmetry.
-  intros m1 m2 m3 H1 H2 x. now transitivity (m2[x]).
-  Qed.
- *)  
   Global Instance Subset_PreOrder : PreOrder Subset.
   Proof. split; repeat intro. msetdec. etransitivity; eauto. Qed.
   
@@ -305,9 +298,12 @@ Section MMultisetFacts.
   
   (** **  Compatibility with respect to [Subset]  **)
   
+  Global Instance multiplicity_sub_compat : Proper (equiv ==> Subset ==> le) multiplicity.
+  Proof. intros ? ? Heq ? ? Hle. rewrite Heq. apply Hle. Qed.
+  
   Global Instance In_sub_compat : Proper (equiv ==> Subset ==> impl) In.
-  Proof. intros ? y ? ? ? Hs ?. msetdec. specialize (Hs y). omega. Qed.
-
+  Proof. intros ? y ? ? ? Hs H. msetdec. specialize (Hs y). omega. Qed.
+  
   Global Instance add_sub_compat : Proper (equiv ==> le ==> Subset ==> Subset) add.
   Proof. repeat intro. msetdec. now apply plus_le_compat. Qed.
   
@@ -732,7 +728,7 @@ Section MMultisetFacts.
   Lemma add_multiplicity_inf_bound : forall x n m, n <= multiplicity x (add x n m).
   Proof. intros. msetdec. Qed.
   
-  Lemma add_disjoint : forall x n m, add x n m == add x (n + m[x]) (remove x (m[x]) m).
+  Lemma add_disjoint : forall x n m, add x n m == add x (m[x] + n) (remove x m[x] m).
   Proof. repeat intro. msetdec. Qed.
   
   Lemma add_merge : forall x n p m, add x n (add x p m) == add x (n + p) m.
@@ -847,8 +843,8 @@ Section MMultisetFacts.
   Lemma remove_subset : forall x n m, remove x n m [<=] m.
   Proof. repeat intro. msetdec. Qed.
   
-  Lemma remove_subset_add : forall x n m1 m2, remove x n m1 [<=] m2 -> m1 [<=] add x n m2.
-  Proof. intros x n m1 m2 Hsub y. specialize (Hsub y). msetdec. Qed.
+  Lemma remove_subset_add : forall x n m1 m2, remove x n m1 [<=] m2 <-> m1 [<=] add x n m2.
+  Proof. intros x n m1 m2. split; intros Hsub y; specialize (Hsub y); msetdec. Qed.
   
   Lemma remove_In : forall x y n m,
     In x (remove y n m) <-> equiv x y /\ n < m[x] \/ ~equiv x y /\ In x m.
@@ -861,7 +857,7 @@ Section MMultisetFacts.
   Lemma remove_injective : forall x n m1 m2, n <= m1[x] -> n <= m2[x] ->
     remove x n m1 == remove x n m2 -> m1 == m2.
   Proof. intros x n m1 m2 Hm1 Hm2 Heq y. specialize (Heq y). msetdec. Qed.
-
+  
   (** ** Results about [union]. **)
   
   Lemma union_empty_l : forall m, union empty m == m.
@@ -1138,6 +1134,9 @@ Section MMultisetFacts.
   
   Lemma inter_as_diff : forall m1 m2, inter m1 m2 == diff m1 (diff m1 m2).
   Proof. intros ? ? ?. msetdec. apply Nat.min_case_strong; omega. Qed.
+  
+  Lemma subset_split : forall m1 m2, m1 [<=] m2 <-> union (diff m2 m1) m1 == m2.
+  Proof. intros. split; intros Hle x; specialize (Hle x); msetdec. Qed.
   
   (** **  Results about [lub]  **)
   
@@ -1727,36 +1726,35 @@ Section MMultisetFacts.
   
   (** **  Results about [fold]  **)
   
-  Definition fold_rect : forall {A} (f : elt -> nat -> A -> A) (P : multiset -> A -> Type) (i : A) (m : multiset),
-  (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
-  (forall x n m' acc, In x m -> n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
+  Definition fold_rect : forall {A} (f : elt -> nat -> A -> A)
+                                (P : multiset -> A -> Type) (i : A) (m : multiset),
+    (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) ->
+    P empty i ->
+    (forall x m' acc, In x m -> ~In x m' -> P m' acc -> P (add x m[x] m') (f x m[x] acc)) ->
+    P m (fold f m i).
   Proof.
-  intros A f P i m HP Hi Hrec. rewrite fold_spec. rewrite <- fold_left_rev_right.
-  assert (Hrec' : forall x n acc m', InA eq_pair (x, n) (rev (elements m)) -> ~In x m' ->
-                                       P m' acc -> P (add x n m') (f x n acc)).
-  { intros ? ? ? ? Hrev Hin. rewrite (InA_rev _), elements_spec in Hrev.
-    destruct Hrev. apply Hrec; trivial. unfold In. omega. }
+  intros A f P i m HP H0 Hrec. rewrite fold_spec. rewrite <- fold_left_rev_right.
+  assert (Hrec' : forall x acc m', InA eq_pair (x, m[x]) (rev (elements m)) -> ~In x m' ->
+                                       P m' acc -> P (add x m[x] m') (f x m[x] acc)).
+  { intros ? ? ? Hin ? Hacc. apply Hrec; trivial; []. now rewrite (InA_rev _), elements_spec in Hin. }
   assert (Helt : is_elements (rev (elements m))).
   { rewrite <- (PermutationA_rev _). apply (elements_is_elements _). }
-  clear Hrec. pose (l := rev (elements m)). fold l in Hrec', Helt. change (rev (elements m)) with l.
+  assert (Hval : forall xn, List.In xn (rev (elements m)) -> snd xn = m[fst xn]).
+  { setoid_rewrite <- in_rev. intros [x n] Hin.
+    eapply In_InA in Hin; try rewrite elements_spec in Hin; intuition. }
+  clear Hrec. pose (l := rev (elements m)). fold l in Hrec', Helt, Hval |- *.
   eapply HP. rewrite <- from_elements_elements. rewrite (PermutationA_rev _). reflexivity.
   fold l. clearbody l. induction l as [| [x n] l]; simpl.
   + (* elements m = nil *)
     assumption.
   + (* elements m = (x, n) :: l *)
     assert (Hdup := Helt). destruct Hdup as [Hdup _]. apply is_elements_cons_inv in Helt.
+    assert (n = m[x]). { apply (Hval (x, n)). now left. } subst n.
     apply Hrec'.
     - now left.
-    - intro. inversion_clear Hdup. apply H0. rewrite <- elements_from_elements; trivial. now rewrite elements_In.
-    - apply IHl.
-        intros. apply Hrec'; trivial. now right.
-        assumption.
+    - intro. inversion_clear Hdup. apply H1. rewrite <- elements_from_elements; trivial. now rewrite elements_In.
+    - apply IHl; intuition.
   Qed.
-  
-  Lemma fold_rect_weak : forall {A} (f : elt -> nat -> A -> A) (P : multiset -> A -> Type) (i : A) (m : multiset),
-  (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) -> P empty i ->
-  (forall x n m' acc, n > 0 -> ~In x m' -> P m' acc -> P (add x n m') (f x n acc)) -> P m (fold f m i).
-  Proof. intros * ? ? Hrec. apply fold_rect; trivial. intros. now apply Hrec. Qed.
   
   Lemma fold_rect_nodep : forall {A} (f : elt -> nat -> A -> A) (P : A -> Type) (i : A) (m : multiset),
     P i -> (forall x n acc, In x m -> P acc -> P (f x n acc)) -> P (fold f m i).
@@ -1793,8 +1791,8 @@ Section MMultisetFacts.
       forall x n m (i : A), n > 0 -> eqA (fold f (add x n m) i) (f x n (fold f m i)).
     Proof.
     intros Hfadd x n m i Hn. 
-    destruct (m[x]) eqn:Hm.
-    + (* If [In x m], then we can simply use [fold_add] *)
+    destruct m[x] eqn:Hm.
+    + (* If [~In x m], then we can simply use [fold_add] *)
       apply fold_add. assumption. unfold In. omega.
     + (* Otherwise, the real proof starts *)
       assert (Hperm : PermutationA eq_pair (elements (add x n m))
@@ -1819,8 +1817,8 @@ Section MMultisetFacts.
     intros m1 m2 i Hm. apply fold_rect with (m := m1); trivial.
     + intros * Heq. now rewrite Heq.
     + now rewrite union_empty_l.
-    + intros * ? ? ? Hrec. rewrite union_add_comm_l, <- Hrec. apply fold_add; trivial; [].
-      unfold In in *. rewrite union_spec. intro Habs. apply (Hm x). assumption. omega.
+    + intros * ? ? Hrec. rewrite union_add_comm_l, <- Hrec. apply fold_add; trivial; [].
+      unfold In in *. rewrite union_spec. intro Habs. apply (Hm x); omega.
     Qed.
     
     Lemma fold_union_additive : additive2 eqA f ->
@@ -1829,7 +1827,7 @@ Section MMultisetFacts.
     intros Hfadd m1 m2 i. apply fold_rect with (m := m1).
     + intros * Heq. now rewrite Heq.
     + now rewrite union_empty_l.
-    + intros * ? ? ? Hrec. rewrite union_add_comm_l, <- Hrec. now apply fold_add_additive.
+    + intros * ? ? Hrec. rewrite union_add_comm_l, <- Hrec. now apply fold_add_additive.
     Qed.
     
   End Fold_results.
@@ -1846,7 +1844,40 @@ Section MMultisetFacts.
   apply fold_rect.
   + intros m1 m2 acc Hm Heq. rewrite Heq. apply (fold_compat _ _ g Hg Hg2); assumption || reflexivity.
   + rewrite fold_empty. reflexivity.
-  + intros x n m' acc Hin Hn Hout Heq. rewrite Hext, Heq. rewrite fold_add; reflexivity || assumption.
+  + intros x m' acc Hin Hout Heq. rewrite Hext, Heq. rewrite fold_add; reflexivity || assumption.
+  Qed.
+  
+  (** This is a relaxation on the equality between f and g which must hold only for [m]. *)
+  Lemma fold_extensionality_compat_strong (A : Type) (eqA : relation A) `(Equivalence A eqA) :
+    forall f : elt -> nat -> A -> A, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    forall g : elt -> nat -> A -> A, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) g -> transpose2 eqA g ->
+    forall m, (forall x acc, In x m -> eqA (f x m[x] acc) (g x m[x] acc)) ->
+    forall i, eqA (fold f m i) (fold g m i).
+  Proof.
+  intros f Hf Hf2 g Hg Hg2 m Hext i.
+  assert (Hext' : forall m', (forall y, m'[y] = m[y] \/ m'[y] = 0) ->
+                  forall x acc, In x m -> ~In x m' -> eqA (f x m[x] acc) (g x m[x] acc)).
+  { intros m' Hm' x acc Hin Hout. unfold In in *. now apply Hext. }
+  clear Hext. revert Hext'.
+  pose (P := fun m acc => (forall m', (forall y, m'[y] = m[y] \/ m'[y] = 0) ->
+                           forall x acc, In x m -> ~In x m' -> eqA (f x m[x] acc) (g x m[x] acc)) ->
+                          eqA acc (fold g m i)).
+  change (P m (fold f m i)). apply fold_rect.
+  + intros m1 m2 acc Hm Heq Hfg. rewrite Heq.
+    - apply (fold_compat _ _ g Hg Hg2); assumption || reflexivity.
+    - now setoid_rewrite Hm.
+  + intro. rewrite fold_empty. reflexivity.
+  + intros x m' acc Hin Hout Heq Hfg. rewrite fold_add; trivial; [].
+    assert (Hx : m'[x] = 0) by now rewrite <- not_In.
+    rewrite Heq.
+    - specialize (Hfg m' ltac:(intro; msetdec) x).
+      rewrite add_same, Hx in Hfg. simpl in Hfg. apply Hfg; trivial; [].
+      rewrite add_In. right. split; try reflexivity. unfold In in *. omega.
+    - intros m'' Hm'' x' acc' Hin' Hout'.
+      assert (Hneq : x' =/= x). { intro Habs. apply Hout. now rewrite <- Habs. }
+      rewrite <- (add_other x x' m[x] m' Hneq).
+      assert (Hx' := Hm'' x).
+      apply Hfg with m''; intros; msetdec.
   Qed.
   
   Lemma union_fold_add : forall m1 m2, fold (fun x n acc => add x n acc) m1 m2 == union m1 m2.
@@ -1854,7 +1885,7 @@ Section MMultisetFacts.
   intros m1 m2 x. apply fold_rect with (m := m1).
   + intros * Heq1 Heq2. now rewrite <- Heq1, Heq2.
   + now rewrite union_empty_l.
-  + intros * ? ? ? Hrec. rewrite union_add_comm_l. destruct (equiv_dec x x0) as [Heq | Hneq].
+  + intros x' * ? ? Hrec. rewrite union_add_comm_l. destruct (equiv_dec x x') as [Heq | Hneq].
     - rewrite <- Heq. do 2 rewrite add_same. now rewrite Hrec.
     - now repeat rewrite add_other.
   Qed.
@@ -2066,7 +2097,7 @@ Section MMultisetFacts.
     destruct (elements m) as [| [x n] l] eqn:Helt. reflexivity.
     simpl in Hm. elim (lt_irrefl 0). apply lt_le_trans with n.
     - apply elements_pos with x m. rewrite Helt. now left.
-    - assert (Hn : m[x] = n). { eapply proj1. rewrite <- (elements_spec x n), Helt. now left. }
+    - assert (Hn : m[x] = n). { eapply proj1. rewrite <- (elements_spec (x, n)), Helt. now left. }
       rewrite <- Hn, <- Hm. apply cardinal_lower.
   + rewrite Hm. apply cardinal_empty.
   Qed.
@@ -2246,6 +2277,7 @@ Section MMultisetFacts.
   Lemma size_union_lower : forall m1 m2, max (size m1) (size m2) <= size (union m1 m2).
   Proof. intros. apply Max.max_case; apply size_sub_compat; apply union_subset_l || apply union_subset_r. Qed.
   
+  (* TODO?: the most straigthforward way to express this would be by using set_union, hence requiring ListSetA. *)
   Lemma size_union_upper : forall m1 m2, size (union m1 m2) <= size m1 + size m2.
   Proof.
   intros m1 m2. pattern m1. apply ind; clear m1.
@@ -2253,7 +2285,7 @@ Section MMultisetFacts.
   + intros m1 x n Hin Hn Hrec. rewrite union_add_comm_l. repeat rewrite size_add; trivial.
     destruct (In_dec x m1); try contradiction. destruct (In_dec x (union m1 m2)); omega.
   + rewrite size_empty, union_empty_l. reflexivity.
-  Qed. (* the most straigthforward way to express this would be by using set_union, hence requiring ListSetA. *)
+  Qed.
   
   Lemma size_inter_upper : forall m1 m2, size (inter m1 m2) <= min (size m1) (size m2).
   Proof. intros. apply Min.min_case; apply size_sub_compat; apply inter_subset_l || apply inter_subset_r. Qed.
@@ -2280,7 +2312,7 @@ Section MMultisetFacts.
   + rewrite from_elements_nil, size_empty. reflexivity.
   + simpl. destruct n.
     - rewrite add_0. now apply le_S.
-    - rewrite size_add; try omega. destruct (In_dec x (from_elements l)); (now apply le_S) || now apply le_n_S.
+    - rewrite size_add; try omega. destruct (In_dec x (from_elements l)); auto with arith.
   Qed.
   
   Lemma size_from_elements_valid : forall l, is_elements l -> size (from_elements l) = length l.
@@ -2364,7 +2396,7 @@ Section MMultisetFacts.
     Qed.
     
     Lemma nfilter_extensionality_compat_strong : forall g, Proper (equiv ==> Logic.eq ==> Logic.eq) g ->
-      forall m, (forall x n, In x m -> f x n = g x n) -> nfilter f m == nfilter g m.
+      forall m, (forall x, In x m -> f x m[x] = g x m[x]) -> nfilter f m == nfilter g m.
     Proof.
     intros g Hg m Hext x. repeat rewrite nfilter_spec; trivial.
     destruct (eq_nat_dec m[x] 0) as [Heq | Hneq].
@@ -2505,31 +2537,35 @@ Section MMultisetFacts.
   + repeat rewrite nfilter_empty; trivial. reflexivity.
   Qed.
   
-  (* TODO: The disjointness property should be strengthen into [forall x, In x m -> f x m[x] && g x m[x] = false] *)
   Lemma nfilter_disjoint_or_union : forall f g,
     Proper (equiv ==> Logic.eq ==> Logic.eq) f -> Proper (equiv ==> Logic.eq ==> Logic.eq) g ->
-    forall m, (forall x n, n > 0 -> In x m -> f x n && g x n = false) ->
+    forall m, (forall x, In x m -> f x m[x] && g x m[x] = false) ->
     nfilter (fun x n => f x n || g x n) m == union (nfilter f m) (nfilter g m).
   Proof.
-  intros f g Hf Hg m Hdisjoint.
+  intros f g Hf Hg m.
   assert (Hforg : Proper (equiv ==> Logic.eq ==> Logic.eq) (fun x n => f x n || g x n))
+(*   intros f g Hf Hg m Hdisjoint. *)
     by (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
   assert (Hfandg : Proper (equiv ==> Logic.eq ==> Logic.eq) (fun x n => f x n && g x n))
     by (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
   cut (m [<=] m); try reflexivity; []. pattern m at -2. apply ind.
-  + intros m1 m2 Heq. split; intros Hrec Hand; try now rewrite Heq in *; now apply Hrec.
-  + intros m' x n Hin Hn Hrec Hincl.
+  + intros m1 m2 Heq. split; intros Hrec Hand Hdisjoint;
+    setoid_rewrite Heq in Hrec || setoid_rewrite <- Heq in Hrec; now apply Hrec.
+  + intros m' x n Hin Hn Hrec Hincl Hdisjoint.
     assert (Hincl' : m' [<=] m).
     { intro y. destruct (equiv_dec y x) as [Hxy | Hxy].
       - rewrite Hxy. transitivity (m'[x] + n); try omega; [].
         rewrite <- add_same. apply Hincl.
       - now rewrite <- (add_other x y n). }
+    assert (Hdisjoint' : forall x, In x m' -> f x m'[x] && g x m'[x] = false).
+    { intros y Hy. assert (y =/= x) by (intro; msetdec).
+      specialize (Hdisjoint y). rewrite add_other in Hdisjoint; trivial; [].
+      apply Hdisjoint. rewrite add_In. now left. }
     repeat rewrite nfilter_add; trivial.
-    destruct (f x n) eqn:Hfxn, (g x n) eqn:Hgxn; simpl orb; cbn iota.
-    - specialize (Hdisjoint x n Hn). rewrite Hfxn, Hgxn in Hdisjoint.
-      cut (true = false); try discriminate; [].
-      apply Hdisjoint. rewrite <- Hincl, add_In.
-      right. split; reflexivity || omega.
+    destruct (f x n) eqn:Hfxn, (g x n) eqn:Hgxn; cbn -[equiv].
+    - assert (Hx : (add x n m')[x] = n) by msetdec.
+      specialize (Hdisjoint x ltac:(msetdec)).
+      rewrite Hx, Hfxn, Hgxn in Hdisjoint. discriminate.
     - rewrite union_add_comm_l. f_equiv. now apply Hrec.
     - rewrite union_add_comm_r. f_equiv. now apply Hrec.
     - now apply Hrec.
@@ -2640,9 +2676,9 @@ Section MMultisetFacts.
     - apply support_NoDupA.
     - now apply NoDupA_filter_compat, support_NoDupA.
     - intro x. rewrite support_elements, elements_filter.
-      setoid_rewrite filter_InA; refine _.
+      setoid_rewrite filter_InA; autoclass.
       simpl. rewrite elements_spec, support_spec, filter_spec; trivial. unfold In.
-      split; intros [Hin Hfx]; rewrite Hfx; intuition.
+      split; intros [Hin Hfx]; rewrite Hfx in *; intuition.
     Qed.
 
     Lemma cardinal_filter : forall m, cardinal (filter f m) <= cardinal m.
@@ -2916,6 +2952,26 @@ Section MMultisetFacts.
     Variable f g : elt -> nat -> bool.
     Hypothesis (Hf : compatb f) (Hg : compatb g).
     
+    Lemma npartition_extensionality_compat_strong_fst : forall m,
+      (forall x, In x m -> f x m[x] = g x m[x]) ->
+      fst (npartition f m) == fst (npartition g m).
+    Proof.
+    intros ? Hext ?. setoid_rewrite npartition_spec_fst at 1; trivial.
+    rewrite (nfilter_extensionality_compat_strong Hf Hg); trivial; [].
+    symmetry. now apply npartition_spec_fst.
+    Qed.
+    
+    Lemma npartition_extensionality_compat_strong_snd : forall m,
+      (forall x, In x m -> f x m[x] = g x m[x]) ->
+      snd (npartition f m) == snd (npartition g m).
+    Proof.
+    intros ? Hext ?. repeat rewrite npartition_spec_snd; trivial; [].
+    rewrite nfilter_extensionality_compat_strong; trivial.
+    - repeat intro. f_equal. now apply Hf.
+    - repeat intro. f_equal. now apply Hg.
+    - repeat intro. simpl. f_equal. now apply Hext.
+    Qed.
+    
     Lemma npartition_nfilter_merge_fst :
       forall m, fst (npartition f (nfilter g m)) == nfilter (fun x n => f x n && g x n) m.
     Proof.
@@ -3152,6 +3208,25 @@ Section MMultisetFacts.
   Section Partition2_results.
     Variable f g : elt -> bool.
     Hypothesis (Hf : Proper (equiv ==> Logic.eq) f) (Hg : Proper (equiv ==> Logic.eq) g).
+    
+    Lemma partition_extensionality_compat_strong_fst : forall m,
+      (forall x, In x m -> f x = g x) ->
+      fst (partition f m) == fst (partition g m).
+    Proof.
+    intros ? Hext. repeat rewrite partition_spec_fst; trivial; [].
+    now apply filter_extensionality_compat_strong.
+    Qed.
+    
+    Lemma partition_extensionality_compat_strong_snd : forall m,
+      (forall x, In x m -> f x = g x) ->
+      snd (partition f m) == snd (partition g m).
+    Proof.
+    intros ? Hext. repeat rewrite partition_spec_snd; trivial; [].
+    apply filter_extensionality_compat_strong.
+    - repeat intro. f_equal. now apply Hf.
+    - repeat intro. f_equal. now apply Hg.
+    - repeat intro. f_equal. now apply Hext.
+    Qed.
     
     Lemma partition_filter_merge_fst :
       forall m, fst (partition f (filter g m)) == filter (fun x => f x && g x) m.
@@ -3392,6 +3467,17 @@ Section MMultisetFacts.
     + rewrite for_all_false in *; trivial. intros Habs. apply Hfgm. intros x Hin. rewrite nfilter_In in Hin; auto.
       destruct Hin as [Hin Hgm]. apply Habs in Hin. rewrite nfilter_spec; trivial. now rewrite Hgm in *.
     Qed.
+    
+    Lemma for_all_extensionality_compat : forall m,
+      (forall x, In x m -> f x m[x] = g x m[x]) -> for_all f m = for_all g m.
+    Proof.
+    intros m Hfg. destruct (for_all f m) eqn:Hfm, (for_all g m) eqn:Hgm;
+    rewrite for_all_spec in Hfm || rewrite for_all_false in Hfm;
+    rewrite for_all_spec in Hgm || rewrite for_all_false in Hgm;
+    try reflexivity; trivial; exfalso.
+    - apply Hgm. intros x Hin. rewrite <- Hfg; trivial; []. now apply Hfm.
+    - apply Hfm. intros x Hin. rewrite Hfg; trivial; []. now apply Hgm.
+    Qed.
   End for_all2_results.
   
 (*
@@ -3593,6 +3679,17 @@ Section MMultisetFacts.
       exists x. rewrite Hgm, Hfm in *. now split.
     + rewrite exists_false in *; trivial. intros [x [Hin Hm]]. rewrite andb_true_iff in Hm.
       destruct Hm as [? Hm]. apply Hfgm. exists x. rewrite nfilter_In, nfilter_spec, Hm; auto.
+    Qed.
+    
+    Lemma exists_extensionality_compat : forall m,
+      (forall x, In x m -> f x m[x] = g x m[x]) -> exists_ f m = exists_ g m.
+    Proof.
+    intros m Hfg. destruct (exists_ f m) eqn:Hfm, (exists_ g m) eqn:Hgm;
+    rewrite exists_spec in Hfm || rewrite exists_false in Hfm;
+    rewrite exists_spec in Hgm || rewrite exists_false in Hgm;
+    try reflexivity; trivial; exfalso.
+    - apply Hgm. destruct Hfm as [x [Hin Hfm]]. exists x. now rewrite <- Hfg.
+    - apply Hfm. destruct Hgm as [x [Hin Hgm]]. exists x. now rewrite Hfg.
     Qed.
   End exists2_results.
   
