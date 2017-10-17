@@ -41,7 +41,7 @@ Axiom e_default : E.
 
 Instance Info2 : Information V (V * info) := @pair_Information V V info _ _ _ _ (Location V) _ _ Info.
 
-Context {SpectA : @Spectrum V (V * info) _ _ _ _ _ _ _}.
+Context {SpectA : @Spectrum V (V * info) _ _ _ _ _ _ }.
 
 Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 
@@ -320,9 +320,9 @@ apply (lift_location (embed := Loc) Info projectS_loc_compat).
 + intros f g Hf Hg x y Hxy. admit.
 Admitted.
 
-
+(* TODO: le A veux dire Atomique ici, a changer? *)
 Notation configurationA := (@configuration V (V * info) _ _ _ _ Info2 _ _).
-Notation configuration := (@configuration location info _ _ _ _ Info3 _ _).
+Notation configuration := (@configuration location (V * (V * info)) _ _ _ _ Info3 _ _).
 
 Definition projectS (config : configuration) : configurationA :=
   fun id => match fst (config id) with
@@ -348,7 +348,7 @@ Close Scope R_scope.
     depending on where they are located compared to the threshold of the edge;
     and add the current location. *)
 Instance Spect : Spectrum location info := {
-  spectrum := @spectrum V (V * info) _ _ _ _ _ _ _ SpectA;
+  spectrum := @spectrum V (V * info) _ _ _ _ _ _ SpectA;
   spect_from_config := fun config => spect_from_config (projectS config);
   spect_is_ok s config := spect_is_ok s (projectS config) }.
 Proof.
@@ -494,47 +494,44 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
                            else (if Rdec mv_ratio 0 then Mvt e p
                                                     else Mvt e (project_p_inv ((project_p p) + mv_ratio)), snd rc)
       | Loc l, Good g =>
-        let node_of_tgt := match Info.target (Config.state conf) with
+        let node_of_tgt := match snd (snd rc) with
                            | Loc lt => lt
                            | Mvt e _ => Graph.src e (* never used if we start from a
                                                                 "good conf" *)
                        end
         in
-        if (Graph.Veq_dec node_of_tgt l) then
-          conf
+        if (V_EqDec node_of_tgt l) then
+          rc
         else
         if Rdec mv_ratio 0%R
-        then conf
+        then rc
         else
           if Rdec mv_ratio 1%R
-          then {| Config.loc := Info.target (Config.state conf);
-                                       Config.state := Config.state conf |}
+          then (snd (snd rc), snd rc)
           else
             let e := match Graph.find_edge l node_of_tgt with
                        | Some e => e
                        | None => e_default (* never used if we start from a 
                                                             "good conf" *)
                        end in
-              {| Config.loc := Mvt e (project_p_inv mv_ratio);
-                 Config.state := Config.state conf |}
-      | _, Byz b => conf
+              (Mvt e (project_p_inv mv_ratio), snd rc)
+      | _, Byz b => rc
       end
     | Active sim => 
       (* g is activated with similarity [sim (conf g)] and move ratio [mv_ratio] *)
       match id with 
       | Byz b => da.(relocate_byz) b
       | Good g =>
-        let local_conf := Config.map (apply_sim sim) config in
+        let local_conf := map_config (apply_sim sim) config in
         let target :=
-            match (r (Spect.from_config local_conf)
-                     (Config.loc (local_conf (Good g)))) with
-            | Loc l => (sim⁻¹).(Iso.sim_V) l
+            match (r (spect_from_config local_conf)
+                     (fst (local_conf (Good g)))) with
+            | Loc l => (sim⁻¹).(iso_V) l
             | Mvt e _ => (Graph.src e) (* never used : see pgm_range *)
             end
         in
-        if (Location.eq_dec (Loc target) pos) then conf else
-        {| Config.loc := pos ; 
-           Config.state := {| Info.source := pos ; Info.target := Loc target|} |}
+        if (V_EqDec (Loc target) pos) then rc else
+        (pos, (pos, target))
       end
     end.
 
