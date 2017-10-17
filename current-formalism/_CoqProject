@@ -60,8 +60,8 @@ Convergence/Impossibility_2G_1B.v
 Gathering/Definitions.v
 #Gathering/Impossibility.v
 Gathering/InR/Impossibility.v
-Gathering/InR/Algorithm.v
-Gathering/InR2/Algorithm.v
+#Gathering/InR/Algorithm.v
+#Gathering/InR2/Algorithm.v
 #Gathering/FlexDefinitions.v
 #Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 

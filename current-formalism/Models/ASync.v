@@ -19,22 +19,23 @@ Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
 Require Import RelationClasses.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.RealMetricSpace.
-Require Pactole.CommonRealFormalism.
+Require Import Pactole.Setting.
+Require Import Pactole.Spaces.Similarity.
+Require Import Pactole.Spaces.RealMetricSpace.
+(*Require Pactole.CommonRealFormalism.*)
 (* Require Pactole.Similarity. *)
 
 
 Ltac coinduction proof :=
   cofix proof; intros; constructor;
    [ clear proof | try (apply proof; clear proof) ].
-
+(*
 Module Type Delta.
   Parameter delta: R.
 End Delta.
+ *)
 
+(*
 Module Make (Location : RealMetricSpace)
             (N : Size)
             (Import D: Delta)
@@ -43,19 +44,51 @@ Module Make (Location : RealMetricSpace)
             (Config : Configuration(Location)(N)(Names)(Info))
             (Spect : Spectrum(Location)(N)(Names)(Info)(Config))
             (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Info)(Config)(Spect)).
+ *)
+Section ASynchFormalism.
 
-Import Common.
-Notation "s ⁻¹" := (Sim.inverse s) (at level 99).
+  Context {loc info : Type}.
+  Context `{IsTarget loc info}.
+  Context {RMS : RealMetricSpace loc}. (* only used for the equality case of the triangle inequality *)
+  Context `{Names}.
+  Context {Spect : Spectrum loc info}.
+  Context {T : Type}.
+  Context {delta : R}.
+  Context {sim : Bijection.bijection loc}.
 
-(** ** Demonic schedulers *)
+  (*Import Common.*)
+ (* Notation "s ⁻¹" := (Sim.inverse s) (at level 99).*)
 
-(** A [demonic_action] moves all byz robots as it whishes,
+  (** ** Demonic schedulers *)
+
+  (** A [demonic_action] moves all byz robots as it whishes,
     and sets the referential of all good robots it selects. *)
-Inductive Active_or_Moving := 
+  Inductive Active_or_Moving := 
   | Moving (dist :R)                   (* moving ratio *)
-  | Active (sim : Location.t → Sim.t). (* change of referential *)
+  | Active (sim : loc → sim). (* change of referential *)
 
-Definition Aom_eq (a1 a2: Active_or_Moving) :=
+  Class AsyncChoice '{demonic_choice T} :=
+    {
+      move_or_not : T -> info -> R;
+      move_delta : forall choice sim,
+          move_or_not choice = Active sim ->
+          eq (fst (info)) (snd (snd (info))) \/
+          dist (fst info) (fst (snd info)) >= delta);
+  }
+          
+
+      
+      (*   step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
+       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Config.target)) \/
+       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.source) >= delta)%R;
+  step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
+  step_zoom :  forall id config sim c, step id config = Active sim -> (sim c).(Sim.zoom) <> 0%R;
+  step_center : forall id config sim c , step id config = Active sim -> 
+                                         Location.eq (sim c).(Sim.center) c;
+  step_flexibility : forall id config r, step id config = Moving r -> (0 <= r <= 1)%R *)
+
+                                            
+(*Definition Aom_eq (a1 a2: Active_or_Moving) :=
   match a1, a2 with
     | Moving d1, Moving d2 => d1 = d2
     | Active sim1, Active sim2 => (Location.eq ==> Sim.eq)%signature sim1 sim2
@@ -77,7 +110,7 @@ Proof.
 intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto; [].
 intros ? ? Heq. rewrite (H12 _ _ Heq). now apply H23.
 Qed.
-
+*)
 Record demonic_action := {
   relocate_byz : Names.B → Location.t;
   step : Names.ident → Config.RobotConf -> Active_or_Moving;
@@ -88,7 +121,7 @@ Record demonic_action := {
   step_zoom :  forall id config sim c, step id config = Active sim -> (sim c).(Sim.zoom) <> 0%R;
   step_center : forall id config sim c , step id config = Active sim -> 
                                          Location.eq (sim c).(Sim.center) c;
-  step_flexibility : forall id config r, step id config = Moving r -> (0 <= r <= 1)%R}.
+  step_flexibility : forall id config r, step id config = Moving r -> (0 <= r <= 1)%R}.*)
 Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
