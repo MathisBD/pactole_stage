@@ -2,6 +2,8 @@
 -R . Pactole
 
 ## External libraries
+Util/FSets/OrderedType.v
+Util/FSets/FsetInterface.v
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
 Util/FMaps/FMapList.v

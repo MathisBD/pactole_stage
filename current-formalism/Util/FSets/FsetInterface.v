@@ -1,7 +1,7 @@
 (* Adpated from Stephan Lescuyer's Containers library to avoid ordering of keys. *)
 
 Require Import OrderedType SetoidList.
-Require Import SetoidDec OrderedType.
+Require Import SetoidDec Pactole.Util.FSets.OrderedType.
 (* Require Import Morphisms. *)
 
 Generalizable All Variables.
@@ -100,26 +100,26 @@ Arguments set {A}%type_scope {H} {FSet}.
    other operations defined in the interface. *)
 Delimit Scope set_scope with set.
 Bind Scope set_scope with set.
-Arguments In  {_%type_scope} {_} {_} _ _%set_scope.
-Arguments is_empty {_%type_scope} {_} {_} _%set_scope.
-Arguments mem {_%type_scope} {_} {_} _ _%set_scope.
-Arguments add {_%type_scope} {_} {_} _ _%set_scope.
-Arguments remove {_%type_scope} {_} {_} _ _%set_scope.
-Arguments union {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Arguments inter {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Arguments diff {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Arguments equal {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Arguments subset {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Arguments fold {_%type_scope} {_} {_} {_} _ _%set_scope _.
-Arguments for_all {_%type_scope} {_} {_} _ _%set_scope.
-Arguments exists_ {_%type_scope} {_} {_} _ _%set_scope.
-Arguments filter {_%type_scope} {_} {_} _ _%set_scope.
-Arguments partition {_%type_scope} {_} {_} _ _%set_scope.
-Arguments cardinal {_%type_scope} {_} {_} _%set_scope.
-Arguments elements {_%type_scope} {_} {_} _%set_scope.
-Arguments choose {_%type_scope} {_} {_} _%set_scope.
-Arguments min_elt {_%type_scope} {_} {_} _%set_scope.
-Arguments max_elt {_%type_scope} {_} {_} _%set_scope.
+Global Arguments In  {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments is_empty {_%type_scope} {_} {_} _%set_scope.
+Global Arguments mem {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments add {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments remove {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments union {_%type_scope} {_} {_} _%set_scope _%set_scope.
+Global Arguments inter {_%type_scope} {_} {_} _%set_scope _%set_scope.
+Global Arguments diff {_%type_scope} {_} {_} _%set_scope _%set_scope.
+Global Arguments equal {_%type_scope} {_} {_} _%set_scope _%set_scope.
+Global Arguments subset {_%type_scope} {_} {_} _%set_scope _%set_scope.
+Global Arguments fold {_%type_scope} {_} {_} {_} _ _%set_scope _.
+Global Arguments for_all {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments exists_ {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments filter {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments partition {_%type_scope} {_} {_} _ _%set_scope.
+Global Arguments cardinal {_%type_scope} {_} {_} _%set_scope.
+Global Arguments elements {_%type_scope} {_} {_} _%set_scope.
+Global Arguments choose {_%type_scope} {_} {_} _%set_scope.
+Global Arguments min_elt {_%type_scope} {_} {_} _%set_scope.
+Global Arguments max_elt {_%type_scope} {_} {_} _%set_scope.
 
 (** All projections should be made opaque for tactics using [delta]-conversion,
    otherwise the underlying instances may appear during proofs, which then
@@ -151,17 +151,17 @@ Definition Exists `{FSet elt} (P : elt -> Prop) s :=
    These notations can be used to avoid ambiguity when dealing
    simultaneously with operations on lists and sets that have
    similar names ([mem], [In], ...). *)
-Notation "s [=] t" := (Equal s t) (at level 70, no associativity) : set_scope.
-Notation "s [<=] t" := (Subset s t) (at level 70, no associativity) : set_scope.
-Notation "v '\In' S" := (In v S)(at level 70, no associativity) : set_scope.
+Global Notation "s [=] t" := (Equal s t) (at level 70, no associativity) : set_scope.
+Global Notation "s [<=] t" := (Subset s t) (at level 70, no associativity) : set_scope.
+Global Notation "v '\In' S" := (In v S)(at level 70, no associativity) : set_scope.
 
-Notation "'{}'" := (empty)(at level 0, no associativity) : set_scope.
-Notation "'{' v '}'" := (singleton v) : set_scope.
-Notation "'{' v ';' S '}'" := (add v S)(v at level 99) : set_scope.
-Notation "'{' S '~' v '}'" := (remove v S)(S at level 99) : set_scope.
-Notation "v '\in' S" := (mem v S)(at level 70, no associativity) : set_scope.
-Notation "S '++' T" := (union S T) : set_scope.
-Notation "S '\' T" := (diff S T) (at level 60, no associativity) : set_scope.
+Global Notation "'{}'" := (empty)(at level 0, no associativity) : set_scope.
+Global Notation "'{' v '}'" := (singleton v) : set_scope.
+Global Notation "'{' v ';' S '}'" := (add v S)(v at level 99) : set_scope.
+Global Notation "'{' S '~' v '}'" := (remove v S)(S at level 99) : set_scope.
+Global Notation "v '\in' S" := (mem v S)(at level 70, no associativity) : set_scope.
+Global Notation "S '++' T" := (union S T) : set_scope.
+Global Notation "S '\' T" := (diff S T) (at level 60, no associativity) : set_scope.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
