@@ -1,5 +1,6 @@
-Require Import  Program.Basics Coq.Classes.Equivalence.
-Require Import Pactole.Util.FSets.OrderedType Pactole.Util.FSets.FsetInterface.
+(* Order of import is important here, Equivalence.equiv must be hidden by SetoidClass.equiv. *)
+Require Import Coq.Classes.Equivalence Morphisms SetoidList SetoidDec Program.Basics.
+Require Import Pactole.Util.FSets.FsetInterface.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -11,20 +12,26 @@ Local Open Scope equiv_scope.
    There are additional specifications, for boolean functions in particular,
    in the [InductiveSpec] section at the end of the file.
    *)
+Hint Extern 1 (Equivalence _) => constructor; congruence.
+Hint Extern 1 (equiv ?x ?x) => reflexivity.
+Hint Extern 2 (equiv ?y ?x) => now symmetry.
+Hint Extern 2 (Equivalence.equiv ?y ?x) => now symmetry.
+
+Notation Leibniz := (@eq _) (only parsing).
 
 (** * Specifications written using equivalences *)
 Section IffSpec.
-  Context `{HF : @FSetSpecs elt Helt F}.
+  Context `{HF : @FSetSpecs elt St Helt F}.
 
   Let t := set.
+  Definition eq_b x y := x == y.
   Variable s s' s'' : t.
   Variable x y z : elt.
-  Unset Printing Notations.
-  Arguments equiv (A) (R) _: clear implicits.
-  (* Lemma In_eq_iff : x === y -> (In x s <-> In y s). *)
-  Lemma In_eq_iff : equiv elt SetoidClass.equiv SetoidClass.setoid_equiv x y ->  (In x s <-> In y s).
+
+
+  Lemma In_eq_iff : x === y -> (In x s <-> In y s).
   Proof.
-    split; apply In_1; auto.
+    split; apply In_1;intros; auto.
   Qed.
 
   Lemma mem_iff : In x s <-> mem x s = true.
@@ -65,13 +72,11 @@ Section IffSpec.
   Lemma add_iff : In y (add x s) <-> x === y \/ In y s.
   Proof.
     split; [ | destruct 1; [apply add_1|apply add_2]]; auto.
-    destruct (eq_dec x y) as [E|E].
+    destruct (Helt x y) as [E|E].
     - intro.
-      left.
-      simpl.
-      unfold eq_equivalence in E.
-      auto. 
-    - intro H; right; exact (add_3 E H).
+      auto.
+    - intro H; right.
+      exact (add_3 E H).
   Qed.
 
   Lemma add_neq_iff : x =/= y -> (In y (add x s)  <-> In y s).
@@ -111,27 +116,30 @@ Section IffSpec.
 
   Section ForFilter.
     Variable f : elt -> bool.
-    Context {Hf : Proper (_eq ==> @eq bool) f}.
+    Context {Hf : Proper (equiv ==> @eq bool) f}.
 
     Lemma filter_iff : (In x (filter f s) <-> In x s /\ f x = true).
     Proof.
-      split; [split; [apply filter_1 with f |
-        apply filter_2 with s] | destruct 1; apply filter_3]; auto.
+      split.
+      - split.
+        + eapply filter_1 with f _ ;eauto.
+        + eapply filter_2 with s _ ;eauto.
+      - destruct 1; eapply filter_3; eauto.
     Qed.
 
     Lemma for_all_iff :
       (For_all (fun x => f x = true) s <-> for_all f s = true).
     Proof.
-      split; [apply for_all_1 | apply for_all_2]; auto.
+      split; [eapply for_all_1;eauto | eapply for_all_2;eauto]; auto.
     Qed.
 
     Lemma exists_iff : (Exists (fun x => f x = true) s <-> exists_ f s = true).
     Proof.
-      split; [apply exists_1 | apply exists_2]; auto.
+      split; [eapply exists_1 | eapply exists_2]; eauto.
     Qed.
   End ForFilter.
-
-  Lemma elements_iff : In x s <-> InA _eq x (elements s).
+  Arguments InA {A%type_scope} _ _ _.
+  Lemma elements_iff : In x s <-> InA equiv x (elements s).
   Proof.
     split; [apply elements_1 | apply elements_2].
   Qed.
@@ -148,9 +156,9 @@ Ltac set_iff :=
 (**  * Specifications written using boolean predicates *)
 Require Import Bool.
 Section BoolSpec.
-  Context `{HF : @FSetSpecs elt Helt F}.
+  Context `{HF : @FSetSpecs elt St Helt F}.
 
-  Let t := set elt.
+  Let t := set.
   Variable s s' s'' : t.
   Variable x y z : elt.
 
@@ -167,11 +175,12 @@ Section BoolSpec.
     destruct (mem y empty); intuition.
   Qed.
 
-  Lemma add_b : mem y (add x s) = (x == y) || mem y s.
+  Lemma add_b : mem y (add x s) = (x ==b y) || mem y s.
   Proof.
     generalize (mem_iff (add x s) y)(mem_iff s y)(add_iff s x y); unfold eqb.
-    destruct (eq_dec x y); destruct (mem y s);
-      destruct (mem y (add x s)); intuition.
+    unfold equiv_decb.
+    destruct (equiv_dec x y) ; destruct (mem y s);
+      destruct (mem y (add x s)); simpl;intuition.
   Qed.
 
   Lemma add_neq_b : x =/= y -> mem y (add x s) = mem y s.
@@ -180,11 +189,11 @@ Section BoolSpec.
     destruct (mem y s); destruct (mem y (add x s)); intuition.
   Qed.
 
-  Lemma remove_b : mem y (remove x s) = mem y s && negb (x == y).
+  Lemma remove_b : mem y (remove x s) = mem y s && negb (x ==b y).
   Proof.
     generalize (mem_iff (remove x s) y)(mem_iff s y)(remove_iff s x y).
-    destruct (eq_dec x y); destruct (mem y s); destruct (mem y (remove x s));
-      simpl; intuition; contradiction.
+    unfold equiv_decb;destruct (equiv_dec x y); destruct (mem y s); destruct (mem y (remove x s));
+      simpl; intuition ; contradiction.
   Qed.
 
   Lemma remove_neq_b : x =/= y -> mem y (remove x s) = mem y s.
@@ -194,10 +203,10 @@ Section BoolSpec.
     destruct (mem y s); destruct (mem y (remove x s)); intuition.
   Qed.
 
-  Lemma singleton_b : mem y (singleton x) = (x == y).
+  Lemma singleton_b : mem y (singleton x) = (x ==b y).
   Proof.
     generalize (mem_iff (singleton x) y)(singleton_iff x y); unfold eqb.
-    destruct (eq_dec x y); destruct (mem y (singleton x)); intuition.
+    unfold equiv_decb;destruct (equiv_dec x y); destruct (mem y (singleton x)); intuition.
   Qed.
 
   Lemma union_b : mem x (union s s') = mem x s || mem x s'.
@@ -224,30 +233,30 @@ Section BoolSpec.
       destruct (mem x (diff s s')); simpl; intuition.
   Qed.
 
-  Lemma elements_b : mem x s = existsb (fun y => x == y) (elements s).
+  Lemma elements_b : mem x s = existsb (fun y => x ==b y) (elements s).
   Proof.
     generalize (mem_iff s x)(elements_iff s x)
-      (existsb_exists (fun y => x == y) (elements s)).
+      (existsb_exists (fun y => x ==b y) (elements s)).
     rewrite InA_alt.
-    destruct (mem x s); destruct (existsb (fun y => x == y)
+    destruct (mem x s); destruct (existsb (fun y => x ==b y)
       (elements s)); auto; intros.
     symmetry.
     rewrite H1.
     destruct H0 as (H0,_).
     destruct H0 as (a,(Ha1,Ha2)); [ intuition |].
     exists a; intuition.
-    unfold eqb; destruct (eq_dec x a); auto.
+    unfold equiv_decb; destruct (equiv_dec x a); auto.
     rewrite <- H.
     rewrite H0.
     destruct H1 as (H1,_).
     destruct H1 as (a,(Ha1,Ha2)); [intuition|].
     exists a; intuition.
-    unfold eqb in *; destruct (eq_dec x a); auto; discriminate.
+    unfold equiv_decb in *; destruct (equiv_dec x a); auto; discriminate.
   Qed.
 
   Variable f : elt->bool.
 
-  Lemma filter_b `{Proper _ (_eq ==> @eq bool) f} :
+  Lemma filter_b `{Proper _ (equiv ==> @eq bool) f} :
     mem x (filter f s) = mem x s && f x.
   Proof.
     intros.
@@ -256,7 +265,7 @@ Section BoolSpec.
       destruct (f x); simpl; intuition.
   Qed.
 
-  Lemma for_all_b `{Proper _ (_eq ==> @eq bool) f} :
+  Lemma for_all_b `{Proper _ (equiv ==> @eq bool) f} :
     for_all f s = forallb f (elements s).
   Proof.
     intros.
@@ -267,7 +276,7 @@ Section BoolSpec.
     rewrite <- H1; intros.
     destruct H0 as (H0,_).
     rewrite (H2 x0) in H3.
-    rewrite (InA_alt _eq x0 (elements s)) in H3.
+    rewrite (InA_alt equiv x0 (elements s)) in H3.
     destruct H3 as (a,(Ha1,Ha2)).
     rewrite (H _ _ Ha1).
     apply H0; auto.
@@ -279,7 +288,7 @@ Section BoolSpec.
     rewrite InA_alt; eauto.
   Qed.
 
-  Lemma exists_b `{Proper _ (_eq ==> @eq bool) f} :
+  Lemma exists_b `{Proper _ (equiv ==> @eq bool) f} :
     exists_ f s = existsb f (elements s).
   Proof.
     intros.
@@ -297,7 +306,7 @@ Section BoolSpec.
     destruct H1 as (_,H1).
     destruct H1 as (a,(Ha1,Ha2)); auto.
     rewrite (H2 a) in Ha1.
-    rewrite (InA_alt _eq a (elements s)) in Ha1.
+    rewrite (InA_alt equiv a (elements s)) in Ha1.
     destruct Ha1 as (b,(Hb1,Hb2)).
     exists b; auto.
     rewrite <- (H _ _ Hb1); auto.
@@ -313,14 +322,14 @@ Proof.
   intro e; transitivity (e \In y); [apply H1 | apply H2].
 Qed.
 
-Instance In_m `{HF : @FSetSpecs A HA F} :
-  Proper (_eq ==> Equal ==> iff) In.
+Instance In_m `{HF : @FSetSpecs A St HA F} :
+  Proper (equiv ==> Equal ==> iff) In.
 Proof.
   unfold Equal; intros x y H s s' H0.
   rewrite (In_eq_iff s H); auto.
 Qed.
 
-Instance is_empty_m `{HF : @FSetSpecs A HA F} :
+Instance is_empty_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> @eq bool)  is_empty.
 Proof.
   unfold Equal; intros s s' H.
@@ -338,14 +347,14 @@ Proof.
   exact (H1 (refl_equal true) _ Ha).
 Qed.
 
-Instance Empty_m `{HF : @FSetSpecs A HA F} :
+Instance Empty_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> iff) Empty.
 Proof.
   intros s s' H; do 2 rewrite is_empty_iff; rewrite H; intuition.
 Qed.
 
-Instance mem_m `{HF : @FSetSpecs A HA F} :
-  Proper (_eq ==> Equal ==> @eq bool) mem.
+Instance mem_m `{HF : @FSetSpecs A St HA F} :
+  Proper (equiv ==> Equal ==> @eq bool) mem.
 Proof.
   unfold Equal; intros x y H s s' H0.
   generalize (H0 x); clear H0; rewrite (In_eq_iff s' H).
@@ -353,51 +362,53 @@ Proof.
   destruct (mem x s); destruct (mem y s'); intuition.
 Qed.
 
-Instance singleton_m `{HF : @FSetSpecs A HA F} :
-  Proper (_eq ==> Equal) singleton.
+Instance singleton_m `{HF : @FSetSpecs A St HA F} :
+  Proper (equiv ==> Equal) singleton.
 Proof.
   unfold Equal; intros x y H a.
-  do 2 rewrite singleton_iff; split; intros.
-  transitivity x; auto.
-  transitivity y; auto.
+  do 2 rewrite singleton_iff.
+  split; intros.
+  - transitivity x; auto.
+  - transitivity y; auto.
+  
 Qed.
 
-Instance add_m `{HF : @FSetSpecs A HA F} :
-  Proper (_eq ==> Equal ==> Equal) add.
+Instance add_m `{HF : @FSetSpecs A St HA F} :
+  Proper (equiv ==> Equal ==> Equal) add.
 Proof.
   unfold Equal; intros x y H s s' H0 a.
   do 2 rewrite add_iff; rewrite H; rewrite H0; intuition.
 Qed.
 
-Instance remove_m `{HF : @FSetSpecs A HA F} :
-  Proper (_eq ==> Equal ==> Equal) remove.
+Instance remove_m `{HF : @FSetSpecs A St HA F} :
+  Proper (equiv ==> Equal ==> Equal) remove.
 Proof.
   unfold Equal; intros x y H s s' H0 a.
   do 2 rewrite remove_iff; rewrite H; rewrite H0; intuition.
 Qed.
 
-Instance union_m `{HF : @FSetSpecs A HA F} :
+Instance union_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> Equal ==> Equal) union.
 Proof.
   unfold Equal; intros s s' H s'' s''' H0 a.
   do 2 rewrite union_iff; rewrite H; rewrite H0; intuition.
 Qed.
 
-Instance inter_m `{HF : @FSetSpecs A HA F} :
+Instance inter_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> Equal ==> Equal) inter.
 Proof.
   unfold Equal; intros s s' H s'' s''' H0 a.
   do 2 rewrite inter_iff; rewrite H; rewrite H0; intuition.
 Qed.
 
-Instance diff_m `{HF : @FSetSpecs A HA F} :
+Instance diff_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> Equal ==> Equal) diff.
 Proof.
   unfold Equal; intros s s' H s'' s''' H0 a.
   do 2 rewrite diff_iff; rewrite H; rewrite H0; intuition.
 Qed.
 
-Instance Subset_m `{HF : @FSetSpecs A HA F} :
+Instance Subset_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> Equal ==> iff) Subset.
 Proof.
   unfold Equal, Subset; intros s s' H u u' H'; split; intros.
@@ -405,7 +416,7 @@ Proof.
   rewrite H'; apply H0; rewrite <- H; assumption.
 Qed.
 
-Instance subset_m `{HF : @FSetSpecs A HA F} :
+Instance subset_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> Equal ==> @eq bool) subset.
 Proof.
   intros s s' H s'' s''' H0.
@@ -415,7 +426,7 @@ Proof.
   rewrite H in H1; rewrite H0 in H1; intuition.
 Qed.
 
-Instance equal_m `{HF : @FSetSpecs A HA F} :
+Instance equal_m `{HF : @FSetSpecs A St HA F} :
   Proper (Equal ==> Equal ==> @eq bool) equal.
 Proof.
   intros s s' H s'' s''' H0.
@@ -426,63 +437,63 @@ Proof.
 Qed.
 
 (** * [Subset] is a setoid order *)
-Lemma Subset_refl `{HF : @FSetSpecs A HA F} :
+Lemma Subset_refl `{HF : @FSetSpecs A St HA F} :
   forall s, s[<=]s.
 Proof. red; auto. Qed.
 
-Lemma Subset_trans `{HF : @FSetSpecs A HA F} :
+Lemma Subset_trans `{HF : @FSetSpecs A St HA F} :
   forall s s' s'', s[<=]s'->s'[<=]s''->s[<=]s''.
 Proof. unfold Subset; eauto. Qed.
 
-Instance SubsetSetoid `{@FSetSpecs A HA F} :
+Instance SubsetSetoid `{@FSetSpecs A St HA F} :
   PreOrder Subset := {
     PreOrder_Reflexive := Subset_refl;
     PreOrder_Transitive := Subset_trans
 }.
 
 (** * Set operations and morphisms *)
-Instance In_s_m `{F : FSet A, @FSetSpecs A H F} :
-  Proper (_eq ==> Subset ++> impl) In | 1.
+Instance In_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
+  Proper (equiv ==> Subset ++> impl) In | 1.
 Proof.
   simpl_relation; apply H2; rewrite <- H1; auto.
 Qed.
 
-Instance Empty_s_m `{F : FSet A, @FSetSpecs A H F} :
+Instance Empty_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (Subset --> impl) Empty.
 Proof.
   simpl_relation; unfold Subset, Empty, impl; intros.
   exact (H2 a (H1 a H3)).
 Qed.
 
-Instance add_s_m `{F : FSet A, @FSetSpecs A H F} :
-  Proper (_eq ==> Subset ++> Subset) add.
+Instance add_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
+  Proper (equiv ==> Subset ++> Subset) add.
 Proof.
   unfold Subset; intros x y H1 s s' H2 a.
   do 2 rewrite add_iff; rewrite H1; intuition.
 Qed.
 
-Instance remove_s_m `{F : FSet A, @FSetSpecs A H F} :
-  Proper (_eq ==> Subset ++> Subset) remove.
+Instance remove_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
+  Proper (equiv ==> Subset ++> Subset) remove.
 Proof.
   unfold Subset; intros x y H1 s s' H2 a.
   do 2 rewrite remove_iff; rewrite H1; intuition.
 Qed.
 
-Instance union_s_m `{@FSetSpecs A HA F} :
+Instance union_s_m `{@FSetSpecs _ _ _  F} :
   Proper (Subset ++> Subset ++> Subset) union.
 Proof.
   unfold Equal; intros s s' H1 s'' s''' H2 a.
   do 2 rewrite union_iff; intuition.
 Qed.
 
-Instance inter_s_m `{@FSetSpecs A HA F} :
+Instance inter_s_m `{@FSetSpecs A St HA F} :
   Proper (Subset ++> Subset ++> Subset) inter.
 Proof.
   unfold Equal; intros s s' H1 s'' s''' H2 a.
   do 2 rewrite inter_iff; intuition.
 Qed.
 
-Instance diff_s_m `{@FSetSpecs A HA F} :
+Instance diff_s_m `{@FSetSpecs A St HA F} :
   Proper (Subset ++> Subset --> Subset) diff.
 Proof.
   unfold Subset; intros s s' H1 s'' s''' H2 a.
@@ -491,16 +502,16 @@ Qed.
 
 (** [fold], [filter], [for_all], [exists_] and [partition] require
    the  additional hypothesis on [f]. *)
-Instance filter_m  `{F : FSet A, @FSetSpecs A H F} :
-  forall f `{Proper _ (_eq ==> @eq bool) f},
+Instance filter_m  `{F : FSet A, @FSetSpecs _ _ _ F} :
+  forall f `{Proper _ (equiv ==> @eq bool) f},
     Proper (Equal ==> Equal) (filter f).
 Proof.
   unfold Equal; intros f Hf s s' H' x.
   repeat rewrite filter_iff; auto. rewrite H'; reflexivity.
 Qed.
 
-Lemma filter_ext  `{F : FSet A, @FSetSpecs A H F} :
-  forall f f' `{Proper _ (_eq ==> @eq bool) f}, (forall x, f x = f' x) ->
+Lemma filter_ext  `{F : FSet A, @FSetSpecs _ _ _ F} :
+  forall f f' `{Proper _ (equiv ==> @eq bool) f}, (forall x, f x = f' x) ->
     forall s s', s[=]s' -> filter f s [=] filter f' s'.
 Proof.
   intros f f' Hf Hff' s s' Hss' x. do 2 (rewrite filter_iff; auto).
@@ -508,8 +519,8 @@ Proof.
   red; repeat intro; rewrite <- 2 Hff'; auto.
 Qed.
 
-Instance filter_s_m  `{F : FSet A, @FSetSpecs A H F} :
-  forall f `{Proper _ (_eq ==> @eq bool) f},
+Instance filter_s_m  `{F : FSet A, @FSetSpecs _ _ _ F} :
+  forall f `{Proper _ (equiv ==> @eq bool) f},
     Proper (Subset ==> Subset) (filter f).
 Proof.
   unfold Subset; intros f Hf s s' H' x.
@@ -522,8 +533,8 @@ CoInductive reflects (P : Prop) : bool -> Prop :=
 | reflects_false : forall (Hfalse : ~P), reflects P false.
 
 Section InductiveSpec.
-  Context `{HF : @FSetSpecs elt Helt F}.
-  Variables s s' s'' : set elt.
+  Context `{HF : @FSetSpecs elt St Helt F}.
+  Variables s s' s'' : set.
   Variables x y z : elt.
 
   Property In_dec : reflects (In x s) (mem x s).
@@ -563,21 +574,21 @@ Section InductiveSpec.
 
   Section Compat.
     Variable f : elt -> bool.
-    Context `{Comp : Proper _ (_eq ==> @eq bool) f}.
+    Context `{Comp : Proper _ (equiv ==> @eq bool) f}.
 
     Property for_all_dec :
       reflects (For_all (fun x => f x = true) s) (for_all f s).
     Proof.
       case_eq (for_all f s); intro H; constructor.
-      apply for_all_2; auto.
-      intro abs; rewrite (for_all_1 abs) in H; discriminate.
+      - eapply for_all_2; eauto.
+      - intro abs; rewrite (for_all_1 abs) in H; discriminate.
     Qed.
 
     Property exists_dec :
       reflects (Exists (fun x => f x = true) s) (exists_ f s).
     Proof.
       case_eq (exists_ f s); intro H; constructor.
-      apply exists_2; auto.
+      eapply exists_2; eauto.
       intro abs; rewrite (exists_1 abs) in H; discriminate.
     Qed.
   End Compat.
@@ -592,7 +603,7 @@ Section InductiveSpec.
     apply choose_2; auto.
   Qed.
 
-  CoInductive min_elt_spec : option elt -> Prop :=
+(*  CoInductive min_elt_spec : option elt -> Prop :=
   | min_elt_spec_Some :
     forall x (Hin : In x s) (Hmin : forall y, In y s -> ~y <<< x),
       min_elt_spec (Some x)
@@ -618,5 +629,5 @@ Section InductiveSpec.
     apply max_elt_1; auto.
     intro; apply max_elt_2; auto.
     apply max_elt_3; auto.
-  Qed.
+  Qed.*)
 End InductiveSpec.

@@ -1,7 +1,7 @@
 (* Adpated from Stephan Lescuyer's Containers library to avoid ordering of keys. *)
 
-Require Import OrderedType SetoidList.
-Require Import SetoidDec Pactole.Util.FSets.OrderedType.
+Require Import SetoidList.
+Require Import SetoidDec.
 (* Require Import Morphisms. *)
 
 Generalizable All Variables.
@@ -51,22 +51,22 @@ Hint Unfold Equal_pw.
    [set A] is itself an ordered type for pointwise equality. This makes
    building sets of sets possible.
    *)
-Class FSet `{OrderedType A} := {
+Class FSet `{EqDec key} := {
   (** The container type *)
   set : Type;
 
   (** The specification of all set operations is done
      with respect to the sole membership predicate. *)
-  In : A -> set -> Prop;
+  In : key -> set -> Prop;
 
   (** Set Operations  *)
   empty : set;
   is_empty : set -> bool;
-  mem : A -> set -> bool;
+  mem : key -> set -> bool;
 
-  add : A -> set -> set;
-  singleton : A -> set;
-  remove : A -> set -> set;
+  add : key -> set -> set;
+  singleton : key -> set;
+  remove : key -> set -> set;
   union : set -> set -> set;
   inter : set -> set -> set;
   diff : set -> set -> set;
@@ -74,52 +74,53 @@ Class FSet `{OrderedType A} := {
   equal : set -> set -> bool;
   subset : set -> set -> bool;
 
-  fold : forall {B : Type}, (A -> B -> B) -> set -> B -> B;
-  for_all : (A -> bool) -> set -> bool;
-  exists_ : (A -> bool) -> set -> bool;
-  filter : (A -> bool) -> set -> set;
-  partition : (A -> bool) -> set -> set * set;
+  fold : forall {B : Type}, (key -> B -> B) -> set -> B -> B;
+  for_all : (key -> bool) -> set -> bool;
+  exists_ : (key -> bool) -> set -> bool;
+  filter : (key -> bool) -> set -> set;
+  partition : (key -> bool) -> set -> set * set;
 
   cardinal : set -> nat;
-  elements : set -> list A;
-  choose :  set -> option A;
-  min_elt :  set -> option A;
-  max_elt :  set -> option A;
+  elements : set -> list key;
+  choose :  set -> option key;
+  min_elt :  set -> option key;
+  max_elt :  set -> option key;
 
   (** Sets should be ordered types as well, in order to be able
      to use sets in containers.
      See wget http://www.lix.polytechnique.fr/coq/pylons/contribs/files/Containers/v8.4/Containers.tar.gz file OrderedType.v
    *)
   (*  FSet_OrderedType :>
-    SpecificOrderedType _ (Equal_pw set A In) *)
+    SpecificOrderedType _ (Equal_pw set key In) *)
 }.
-Arguments set {A}%type_scope {H} {FSet}.
+
+Arguments set {key}%type_scope {_} {_} {FSet}.
 
 (** Set notations (see below) are interpreted in scope [set_scope],
    delimited with key [scope]. We bind it to the type [set] and to
    other operations defined in the interface. *)
 Delimit Scope set_scope with set.
 Bind Scope set_scope with set.
-Global Arguments In  {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments is_empty {_%type_scope} {_} {_} _%set_scope.
-Global Arguments mem {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments add {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments remove {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments union {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Global Arguments inter {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Global Arguments diff {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Global Arguments equal {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Global Arguments subset {_%type_scope} {_} {_} _%set_scope _%set_scope.
-Global Arguments fold {_%type_scope} {_} {_} {_} _ _%set_scope _.
-Global Arguments for_all {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments exists_ {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments filter {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments partition {_%type_scope} {_} {_} _ _%set_scope.
-Global Arguments cardinal {_%type_scope} {_} {_} _%set_scope.
-Global Arguments elements {_%type_scope} {_} {_} _%set_scope.
-Global Arguments choose {_%type_scope} {_} {_} _%set_scope.
-Global Arguments min_elt {_%type_scope} {_} {_} _%set_scope.
-Global Arguments max_elt {_%type_scope} {_} {_} _%set_scope.
+Global Arguments In  {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments is_empty {_%type_scope} {_} {_} {_} _%set_scope.
+Global Arguments mem {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments add {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments remove {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments union {_%type_scope} {_} {_} {_} _%set_scope _%set_scope.
+Global Arguments inter {_%type_scope} {_} {_} {_} _%set_scope _%set_scope.
+Global Arguments diff {_%type_scope} {_} {_} {_} _%set_scope _%set_scope.
+Global Arguments equal {_%type_scope} {_} {_} {_} _%set_scope _%set_scope.
+Global Arguments subset {_%type_scope} {_} {_} {_} _%set_scope _%set_scope.
+Global Arguments fold {_%type_scope} {_} {_} {_} {_} _ _%set_scope _.
+Global Arguments for_all {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments exists_ {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments filter {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments partition {_%type_scope} {_} {_} {_} _ _%set_scope.
+Global Arguments cardinal {_%type_scope} {_} {_} {_} _%set_scope.
+Global Arguments elements {_%type_scope} {_} {_} {_} _%set_scope.
+Global Arguments choose {_%type_scope} {_} {_} {_} _%set_scope.
+Global Arguments min_elt {_%type_scope} {_} {_} {_} _%set_scope.
+Global Arguments max_elt {_%type_scope} {_} {_} {_} _%set_scope.
 
 (** All projections should be made opaque for tactics using [delta]-conversion,
    otherwise the underlying instances may appear during proofs, which then
@@ -177,7 +178,7 @@ Unset Strict Implicit.
    which can be handled by the typeclass mechanism.
    *)
 Class FSetSpecs_In `(FSet A) := {
-  In_1 : forall s (x y : A), x === y -> In x s -> In y s
+  In_1 : forall s (x y : A), x == y -> In x s -> In y s
 }.
 Class FSetSpecs_mem `(FSet A) := {
   mem_1 : forall s x, In x s -> mem x s = true;
@@ -199,19 +200,19 @@ Class FSetSpecs_is_empty `(FSet A) := {
   is_empty_2 : forall s, is_empty s = true -> Empty s
 }.
 Class FSetSpecs_add `(FSet A) := {
-  add_1 : forall s (x y : A), x === y -> In y (add x s);
+  add_1 : forall s (x y : A), x == y -> In y (add x s);
   add_2 : forall s x y, In y s -> In y (add x s);
   add_3 : forall s (x y : A), x =/= y -> In y (add x s) -> In y s
 }.
 Class FSetSpecs_remove `(FSet A) := {
-  remove_1 : forall s (x y : A), x === y -> ~ In y (remove x s);
+  remove_1 : forall s (x y : A), x == y -> ~ In y (remove x s);
   remove_2 : forall s (x y : A),
     x =/= y -> In y s -> In y (remove x s);
   remove_3 : forall s x y, In y (remove x s) -> In y s
 }.
 Class FSetSpecs_singleton `(FSet A) := {
-  singleton_1 : forall (x y : A), In y (singleton x) -> x === y;
-  singleton_2 : forall (x y : A), x === y -> In y (singleton x)
+  singleton_1 : forall (x y : A), In y (singleton x) -> x == y;
+  singleton_2 : forall (x y : A), x == y -> In y (singleton x)
 }.
 Class FSetSpecs_union `(FSet A) := {
   union_1 : forall s s' x,
@@ -265,18 +266,18 @@ Class FSetSpecs_partition `(FSet A) := {
     Equal (snd (partition f s)) (filter (fun x => negb (f x)) s)
 }.
 Class FSetSpecs_elements `(FSet A) := {
-  elements_1 : forall s x, In x s -> InA _eq x (elements s);
-  elements_2 : forall s x, InA _eq x (elements s) -> In x s;
-  elements_3 : forall s, sort _lt (elements s);
-  elements_3w : forall s, NoDupA _eq (elements s)
+  elements_1 : forall s x, In x s -> InA equiv x (elements s);
+  elements_2 : forall s x, InA equiv x (elements s) -> In x s;
+  (* elements_3 : forall s, sort _lt (elements s); *)
+  elements_3w : forall s, NoDupA equiv (elements s)
 }.
 Class FSetSpecs_choose `(FSet A) := {
   choose_1 : forall s x, choose s = Some x -> In x s;
   choose_2 : forall s, choose s = None -> Empty s;
   choose_3 : forall s s' x y,
-    choose s = Some x -> choose s' = Some y -> Equal s s' -> x === y
+    choose s = Some x -> choose s' = Some y -> Equal s s' -> x == y
 }.
-Class FSetSpecs_min_elt `(FSet A) := {
+(*Class FSetSpecs_min_elt `(FSet A) := {
   min_elt_1 : forall s x, min_elt s = Some x -> In x s;
   min_elt_2 : forall s x y,
     min_elt s = Some x -> In y s -> ~ y <<< x;
@@ -287,7 +288,7 @@ Class FSetSpecs_max_elt `(FSet A) := {
   max_elt_2 : forall s x y,
     max_elt s = Some x -> In y s -> ~ x <<< y;
   max_elt_3 : forall s, max_elt s = None -> Empty s
-}.
+}.*)
 
 Class FSetSpecs `(F : FSet A) := {
   FFSetSpecs_In :> FSetSpecs_In F;
@@ -310,123 +311,124 @@ Class FSetSpecs `(F : FSet A) := {
   FFSetSpecs_partition :> FSetSpecs_partition F;
   FFSetSpecs_elements :> FSetSpecs_elements F;
   FFSetSpecs_choose :> FSetSpecs_choose F;
-  FFSetSpecs_min_elt :> FSetSpecs_min_elt F;
-  FFSetSpecs_max_elt :> FSetSpecs_max_elt F
+  (* FFSetSpecs_min_elt :> FSetSpecs_min_elt F; *)
+  (* FFSetSpecs_max_elt :> FSetSpecs_max_elt F *)
 }.
 (* About FSetSpecs. *)
 
 (* Because of a bug (or limitation, depending on your leniency)
    of interaction between hints and implicit typeclasses parameters
    we define aliases to add as hints. *)
-Definition zmem_1 `{H : @FSetSpecs A HA F} :=
-  @mem_1 _ _ _ (@FFSetSpecs_mem _ _ _ H).
-Definition zequal_1 `{H : @FSetSpecs A HA F} :=
-  @equal_1 _ _ _ (@FFSetSpecs_equal _ _ _ H).
-Definition zsubset_1 `{H : @FSetSpecs A HA F} :=
-  @subset_1 _ _ _ (@FFSetSpecs_subset _ _ _ H).
-Definition zempty_1 `{H : @FSetSpecs A HA F} :=
-  @empty_1 _ _ _ (@FFSetSpecs_empty _ _ _ H).
-Definition zis_empty_1 `{H : @FSetSpecs A HA F} :=
-  @is_empty_1 _ _ _ (@FFSetSpecs_is_empty _ _ _ H).
-Definition zchoose_1 `{H : @FSetSpecs A HA F} :=
-  @choose_1 _ _ _ (@FFSetSpecs_choose _ _ _ H).
-Definition zchoose_2 `{H : @FSetSpecs A HA F} :=
-  @choose_2 _ _ _ (@FFSetSpecs_choose _ _ _ H).
-Definition zadd_1 `{H : @FSetSpecs A HA F} :=
-  @add_1 _ _ _ (@FFSetSpecs_add _ _ _ H).
-Definition zadd_2 `{H : @FSetSpecs A HA F} :=
-  @add_2 _ _ _ (@FFSetSpecs_add _ _ _ H).
-Definition zremove_1 `{H : @FSetSpecs A HA F} :=
-  @remove_1 _ _ _ (@FFSetSpecs_remove _ _ _ H).
-Definition zremove_2 `{H : @FSetSpecs A HA F} :=
-  @remove_2 _ _ _ (@FFSetSpecs_remove _ _ _ H).
-Definition zsingleton_2 `{H : @FSetSpecs A HA F} :=
-  @singleton_2 _ _ _ (@FFSetSpecs_singleton _ _ _ H).
-Definition zunion_1 `{H : @FSetSpecs A HA F} :=
-  @union_1 _ _ _ (@FFSetSpecs_union _ _ _ H).
-Definition zunion_2 `{H : @FSetSpecs A HA F} :=
-  @union_2 _ _ _ (@FFSetSpecs_union _ _ _ H).
-Definition zunion_3 `{H : @FSetSpecs A HA F} :=
-  @union_3 _ _ _ (@FFSetSpecs_union _ _ _ H).
-Definition zinter_3 `{H : @FSetSpecs A HA F} :=
-  @inter_3 _ _ _ (@FFSetSpecs_inter _ _ _ H).
-Definition zdiff_3 `{H : @FSetSpecs A HA F} :=
-  @diff_3 _ _ _ (@FFSetSpecs_diff _ _ _ H).
-Definition zfold_1 `{H : @FSetSpecs A HA F} :=
-  @fold_1 _ _ _ (@FFSetSpecs_fold _ _ _ H).
-Definition zfilter_3 `{H : @FSetSpecs A HA F} :=
-  @filter_3 _ _ _ (@FFSetSpecs_filter _ _ _ H).
-Definition zfor_all_1 `{H : @FSetSpecs A HA F} :=
-  @for_all_1 _ _ _ (@FFSetSpecs_for_all _ _ _ H).
-Definition zexists_1 `{H : @FSetSpecs A HA F} :=
-  @exists_1 _ _ _ (@FFSetSpecs_exists _ _ _ H).
-Definition zpartition_1 `{H : @FSetSpecs A HA F} :=
-  @partition_1 _ _ _ (@FFSetSpecs_partition _ _ _ H).
-Definition zpartition_2 `{H : @FSetSpecs A HA F} :=
-  @partition_2 _ _ _ (@FFSetSpecs_partition _ _ _ H).
-Definition zelements_1 `{H : @FSetSpecs A HA F} :=
-  @elements_1 _ _ _ (@FFSetSpecs_elements _ _ _ H).
-Definition zelements_3w `{H : @FSetSpecs A HA F} :=
-  @elements_3w _ _ _ (@FFSetSpecs_elements _ _ _ H).
-Definition zelements_3 `{H : @FSetSpecs A HA F} :=
-  @elements_3 _ _ _ (@FFSetSpecs_elements _ _ _ H).
+Definition zmem_1 `{H : @FSetSpecs A St HA F} :=
+  @mem_1 _ _ _ _ (@FFSetSpecs_mem _ _ _ _ H).
+Definition zequal_1 `{H : @FSetSpecs A St HA F} :=
+  @equal_1 _ _ _ _ (@FFSetSpecs_equal _ _ _ _ H).
+Definition zsubset_1 `{H : @FSetSpecs A St HA F} :=
+  @subset_1 _ _ _ _ (@FFSetSpecs_subset _ _ _ _ H).
+Definition zempty_1 `{H : @FSetSpecs A St HA F} :=
+  @empty_1 _ _ _ _ (@FFSetSpecs_empty _ _ _ _ H).
+Definition zis_empty_1 `{H : @FSetSpecs A St HA F} :=
+  @is_empty_1 _ _ _ _ (@FFSetSpecs_is_empty _ _ _ _ H).
+Definition zchoose_1 `{H : @FSetSpecs A St HA F} :=
+  @choose_1 _ _ _ _ (@FFSetSpecs_choose _ _ _ _ H).
+Definition zchoose_2 `{H : @FSetSpecs A St HA F} :=
+  @choose_2 _ _ _ _ (@FFSetSpecs_choose _ _ _ _ H).
+Definition zadd_1 `{H : @FSetSpecs A St HA F} :=
+  @add_1 _ _ _ _ (@FFSetSpecs_add _ _ _ _ H).
+Definition zadd_2 `{H : @FSetSpecs A St HA F} :=
+  @add_2 _ _ _ _ (@FFSetSpecs_add _ _ _ _ H).
+Definition zremove_1 `{H : @FSetSpecs A St HA F} :=
+  @remove_1 _ _ _ _ (@FFSetSpecs_remove _ _ _ _ H).
+Definition zremove_2 `{H : @FSetSpecs A St HA F} :=
+  @remove_2 _ _ _ _ (@FFSetSpecs_remove _ _ _ _ H).
+Definition zsingleton_2 `{H : @FSetSpecs A St HA F} :=
+  @singleton_2 _ _ _ _ (@FFSetSpecs_singleton _ _ _ _ H).
+Definition zunion_1 `{H : @FSetSpecs A St HA F} :=
+  @union_1 _ _ _ _ (@FFSetSpecs_union _ _ _ _ H).
+Definition zunion_2 `{H : @FSetSpecs A St HA F} :=
+  @union_2 _ _ _ _ (@FFSetSpecs_union _ _ _ _ H).
+Definition zunion_3 `{H : @FSetSpecs A St HA F} :=
+  @union_3 _ _ _ _ (@FFSetSpecs_union _ _ _ _ H).
+Definition zinter_3 `{H : @FSetSpecs A St HA F} :=
+  @inter_3 _ _ _ _ (@FFSetSpecs_inter _ _ _ _ H).
+Definition zdiff_3 `{H : @FSetSpecs A St HA F} :=
+  @diff_3 _ _ _ _ (@FFSetSpecs_diff _ _ _ _ H).
+Definition zfold_1 `{H : @FSetSpecs A St HA F} :=
+  @fold_1 _ _ _ _ (@FFSetSpecs_fold _ _ _ _ H).
+Definition zfilter_3 `{H : @FSetSpecs A St HA F} :=
+  @filter_3 _ _ _ _ (@FFSetSpecs_filter _ _ _ _ H).
+Definition zfor_all_1 `{H : @FSetSpecs A St HA F} :=
+  @for_all_1 _ _ _ _ (@FFSetSpecs_for_all _ _ _ _ H).
+Definition zexists_1 `{H : @FSetSpecs A St HA F} :=
+  @exists_1 _ _ _ _ (@FFSetSpecs_exists _ _ _ _ H).
+Definition zpartition_1 `{H : @FSetSpecs A St HA F} :=
+  @partition_1 _ _ _ _ (@FFSetSpecs_partition _ _ _ _ H).
+Definition zpartition_2 `{H : @FSetSpecs A St HA F} :=
+  @partition_2 _ _ _ _ (@FFSetSpecs_partition _ _ _ _ H).
+Definition zelements_1 `{H : @FSetSpecs A St HA F} :=
+  @elements_1 _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H).
+Definition zelements_3w `{H : @FSetSpecs A St HA F} :=
+  @elements_3w _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H).
+(* Definition zelements_3 `{H : @FSetSpecs A St HA F} := *)
+  (* @elements_3 _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H). *)
 
-Definition zIn_1 `{H : @FSetSpecs A HA F} :=
-  @In_1 _ _ _ (@FFSetSpecs_In _ _ _ H).
-Definition zmem_2 `{H : @FSetSpecs A HA F} :=
-  @mem_2 _ _ _ (@FFSetSpecs_mem _ _ _ H).
-Definition zequal_2 `{H : @FSetSpecs A HA F} :=
-  @equal_2 _ _ _ (@FFSetSpecs_equal _ _ _ H).
-Definition zsubset_2 `{H : @FSetSpecs A HA F} :=
-  @subset_2 _ _ _ (@FFSetSpecs_subset _ _ _ H).
-Definition zis_empty_2 `{H : @FSetSpecs A HA F} :=
-  @is_empty_2 _ _ _ (@FFSetSpecs_is_empty _ _ _ H).
-Definition zadd_3 `{H : @FSetSpecs A HA F} :=
-  @add_3 _ _ _ (@FFSetSpecs_add _ _ _ H).
-Definition zremove_3 `{H : @FSetSpecs A HA F} :=
-  @remove_3 _ _ _ (@FFSetSpecs_remove _ _ _ H).
-Definition zsingleton_1 `{H : @FSetSpecs A HA F} :=
-  @singleton_1 _ _ _ (@FFSetSpecs_singleton _ _ _ H).
-Definition zinter_1 `{H : @FSetSpecs A HA F} :=
-  @inter_1 _ _ _ (@FFSetSpecs_inter _ _ _ H).
-Definition zinter_2 `{H : @FSetSpecs A HA F} :=
-  @inter_2 _ _ _ (@FFSetSpecs_inter _ _ _ H).
-Definition zdiff_1 `{H : @FSetSpecs A HA F} :=
-  @diff_1 _ _ _ (@FFSetSpecs_diff _ _ _ H).
-Definition zdiff_2 `{H : @FSetSpecs A HA F} :=
-  @diff_2 _ _ _ (@FFSetSpecs_diff _ _ _ H).
-Definition zfilter_1 `{H : @FSetSpecs A HA F} :=
-  @filter_1 _ _ _ (@FFSetSpecs_filter _ _ _ H).
-Definition zfilter_2 `{H : @FSetSpecs A HA F} :=
-  @filter_2 _ _ _ (@FFSetSpecs_filter _ _ _ H).
-Definition zfor_all_2 `{H : @FSetSpecs A HA F} :=
-  @for_all_2 _ _ _ (@FFSetSpecs_for_all _ _ _ H).
-Definition zexists_2 `{H : @FSetSpecs A HA F} :=
-  @exists_2 _ _ _ (@FFSetSpecs_exists _ _ _ H).
-Definition zelements_2 `{H : @FSetSpecs A HA F} :=
-  @elements_2 _ _ _ (@FFSetSpecs_elements _ _ _ H).
-Definition zmin_elt_1 `{H : @FSetSpecs A HA F} :=
-  @min_elt_1 _ _ _ (@FFSetSpecs_min_elt _ _ _ H).
-Definition zmin_elt_2 `{H : @FSetSpecs A HA F} :=
-  @min_elt_2 _ _ _ (@FFSetSpecs_min_elt _ _ _ H).
-Definition zmin_elt_3 `{H : @FSetSpecs A HA F} :=
-  @min_elt_3 _ _ _ (@FFSetSpecs_min_elt _ _ _ H).
-Definition zmax_elt_1 `{H : @FSetSpecs A HA F} :=
-  @max_elt_1 _ _ _ (@FFSetSpecs_max_elt _ _ _ H).
-Definition zmax_elt_2 `{H : @FSetSpecs A HA F} :=
-  @max_elt_2 _ _ _ (@FFSetSpecs_max_elt _ _ _ H).
-Definition zmax_elt_3 `{H : @FSetSpecs A HA F} :=
-  @max_elt_3 _ _ _ (@FFSetSpecs_max_elt _ _ _ H).
+Definition zIn_1 `{H : @FSetSpecs A St HA F} :=
+  @In_1 _ _ _ _ (@FFSetSpecs_In _ _ _ _ H).
+Definition zmem_2 `{H : @FSetSpecs A St HA F} :=
+  @mem_2 _ _ _ _ (@FFSetSpecs_mem _ _ _ _ H).
+Definition zequal_2 `{H : @FSetSpecs A St HA F} :=
+  @equal_2 _ _ _ _ (@FFSetSpecs_equal _ _ _ _ H).
+Definition zsubset_2 `{H : @FSetSpecs A St HA F} :=
+  @subset_2 _ _ _ _ (@FFSetSpecs_subset _ _ _ _ H).
+Definition zis_empty_2 `{H : @FSetSpecs A St HA F} :=
+  @is_empty_2 _ _ _ _ (@FFSetSpecs_is_empty _ _ _ _ H).
+Definition zadd_3 `{H : @FSetSpecs A St HA F} :=
+  @add_3 _ _ _ _ (@FFSetSpecs_add _ _ _ _ H).
+Definition zremove_3 `{H : @FSetSpecs A St HA F} :=
+  @remove_3 _ _ _ _ (@FFSetSpecs_remove _ _ _ _ H).
+Definition zsingleton_1 `{H : @FSetSpecs A St HA F} :=
+  @singleton_1 _ _ _ _ (@FFSetSpecs_singleton _ _ _ _ H).
+Definition zinter_1 `{H : @FSetSpecs A St HA F} :=
+  @inter_1 _ _ _ _ (@FFSetSpecs_inter _ _ _ _ H).
+Definition zinter_2 `{H : @FSetSpecs A St HA F} :=
+  @inter_2 _ _ _ _ (@FFSetSpecs_inter _ _ _ _ H).
+Definition zdiff_1 `{H : @FSetSpecs A St HA F} :=
+  @diff_1 _ _ _ _ (@FFSetSpecs_diff _ _ _ _ H).
+Definition zdiff_2 `{H : @FSetSpecs A St HA F} :=
+  @diff_2 _ _ _ _ (@FFSetSpecs_diff _ _ _ _ H).
+Definition zfilter_1 `{H : @FSetSpecs A St HA F} :=
+  @filter_1 _ _ _ _ (@FFSetSpecs_filter _ _ _ _ H).
+Definition zfilter_2 `{H : @FSetSpecs A St HA F} :=
+  @filter_2 _ _ _ _ (@FFSetSpecs_filter _ _ _ _ H).
+Definition zfor_all_2 `{H : @FSetSpecs A St HA F} :=
+  @for_all_2 _ _ _ _ (@FFSetSpecs_for_all _ _ _ _ H).
+Definition zexists_2 `{H : @FSetSpecs A St HA F} :=
+  @exists_2 _ _ _ _ (@FFSetSpecs_exists _ _ _ _ H).
+Definition zelements_2 `{H : @FSetSpecs A St HA F} :=
+  @elements_2 _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H).
+(* Definition zmin_elt_1 `{H : @FSetSpecs A St HA F} := *)
+  (* @min_elt_1 _ _ _ _ (@FFSetSpecs_min_elt _ _ _ _ H). *)
+(* Definition zmin_elt_2 `{H : @FSetSpecs A St HA F} := *)
+  (* @min_elt_2 _ _ _ _ (@FFSetSpecs_min_elt _ _ _ _ H). *)
+(* Definition zmin_elt_3 `{H : @FSetSpecs A St HA F} := *)
+  (* @min_elt_3 _ _ _ _ (@FFSetSpecs_min_elt _ _ _ _ H). *)
+(* Definition zmax_elt_1 `{H : @FSetSpecs A St HA F} := *)
+  (* @max_elt_1 _ _ _ _ (@FFSetSpecs_max_elt _ _ _ _ H). *)
+(* Definition zmax_elt_2 `{H : @FSetSpecs A St HA F} := *)
+  (* @max_elt_2 _ _ _ _ (@FFSetSpecs_max_elt _ _ _ _ H). *)
+(* Definition zmax_elt_3 `{H : @FSetSpecs A St HA F} := *)
+  (* @max_elt_3 _ _ _ _ (@FFSetSpecs_max_elt _ _ _ _ H). *)
 
 Hint Resolve @zmem_1 @zequal_1 @zsubset_1 @zempty_1
   @zis_empty_1 @zchoose_1 @zchoose_2 @zadd_1 @zadd_2 @zremove_1
   @zremove_2 @zsingleton_2 @zunion_1 @zunion_2 @zunion_3
   @zinter_3 @zdiff_3 @zfold_1 @zfilter_3 @zfor_all_1 @zexists_1
-    @zpartition_1 @zpartition_2 @zelements_1 @zelements_3w @zelements_3
+    @zpartition_1 @zpartition_2 @zelements_1 @zelements_3w
+ (* @zelements_3 *)
     : set.
 Hint Immediate @zIn_1 @zmem_2 @zequal_2 @zsubset_2 @zis_empty_2 @zadd_3
   @zremove_3 @zsingleton_1 @zinter_1 @zinter_2 @zdiff_1 @zdiff_2
   @zfilter_1 @zfilter_2 @zfor_all_2 @zexists_2 @zelements_2
-    @zmin_elt_1 @zmin_elt_2 @zmin_elt_3 @zmax_elt_1 @zmax_elt_2 @zmax_elt_3
+    (*@zmin_elt_1 @zmin_elt_2 @zmin_elt_3 @zmax_elt_1 @zmax_elt_2 @zmax_elt_3*)
     : set.
 (* Typeclasses Opaque set. *)
