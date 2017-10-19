@@ -28,6 +28,7 @@ Require Export Spaces.RealMetricSpace.
 Require Pactole.Spaces.Similarity.
 Require Export Pactole.Spectra.Definition.
 Require Export Pactole.Models.Rigid.
+Require Export Pactole.Models.Similarity.
 Export Pactole.Spaces.Similarity.Notations.
 Close Scope R_scope.
 Set Implicit Arguments.
@@ -41,9 +42,11 @@ Context `{Names}.
 
 (** The only information available is the current location. *)
 Global Instance Info : IsLocation loc loc := OnlyLocation.
+(** The change of frame of reference uses a similarity, cf Models.Similarity. *)
+
 
 Context {Spect : Spectrum loc loc}.
-Context {Choice : demonic_choice T}.
+Context {SDC : second_demonic_choice T}.
 Context {UpdFun : update_function T}.
 
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
@@ -111,7 +114,7 @@ Require Import Pactole.Spectra.MultisetSpectrum.
 Context {loc T : Type}.
 Context `{RealMetricSpace loc}.
 Context `{Names}.
-Context {Choice : demonic_choice T}.
+Context {Choice : second_demonic_choice T}.
 Context {UpdFun : update_function T}.
 
 Notation robogram := (@robogram loc loc _ _ _ _ _ _ multiset_spectrum).

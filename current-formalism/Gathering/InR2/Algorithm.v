@@ -61,10 +61,12 @@ Existing Instance R2_EqDec.
 Existing Instance R2_RMS.
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
-Instance Choice : demonic_choice Datatypes.unit := NoChoice.
+Instance Choice : second_demonic_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
   update := fun _ pt _ => pt;
   update_compat := ltac:(now repeat intro) }.
+Instance Rigid : RigidUpdate.
+Proof. split. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
@@ -78,6 +80,11 @@ Notation config_list := (@config_list R2 _ _ _ _).
 Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
 Notation execution := (@execution R2 R2 _ _ _ _ _).
 Notation Madd := (MMultisetInterface.add).
+
+Implicit Type config : configuration.
+Implicit Type da : similarity_da.
+Implicit Type d : similarity_demon.
+Arguments origin : simpl never.
 
 
 Lemma Config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
@@ -240,11 +247,11 @@ Qed.
 (** The robogram solving the gathering problem in R². *)
 Definition gatherR2_pgm (s : spectrum) : R2 :=
   match support (max s) with
-    | nil => (0, 0) (* no robot *)
+    | nil => origin (* no robot *)
     | pt :: nil => pt (* majority *)
     | _ :: _ :: _ =>
       if is_clean s then target s (* clean case *)
-      else if mem equiv_dec (0, 0) (SECT s) then (0, 0) else target s (* dirty case *)
+      else if mem equiv_dec origin (SECT s) then origin else target s (* dirty case *)
   end.
 
 Instance gatherR2_pgm_compat : Proper (equiv ==> eq) gatherR2_pgm.
@@ -259,8 +266,8 @@ simpl in Hsize; omega || clear Hsize.
   rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
 + rewrite Hs. destruct (is_clean s2).
   - now f_equiv.
-  - destruct (mem equiv_dec (0, 0) (SECT s1)) eqn:Hin,
-             (mem equiv_dec (0, 0) (SECT s2)) eqn:Hin';
+  - destruct (mem equiv_dec origin (SECT s1)) eqn:Hin,
+             (mem equiv_dec origin (SECT s2)) eqn:Hin';
     rewrite ?mem_true_iff, ?mem_false_iff, ?InA_Leibniz in *;
     try (reflexivity || (rewrite Hs in Hin; contradiction)). now f_equiv.
 Qed.
@@ -964,7 +971,7 @@ trivial; rewrite ?inclA_bool_true_iff, ?inclA_bool_false_iff, ?inclA_Leibniz in 
 Qed.
 
 (** We express the behavior of the algorithm in the global (demon) frame of reference. *)
-Theorem round_simplify : forall da (config : configuration),
+Theorem round_simplify : forall da config,
   round gatherR2 da config
   == fun id => if da.(activate) config id
                then let s : spectrum := !! config in
@@ -991,26 +998,29 @@ assert (Hlen := Permutation_length Hperm).
 destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax,
          (support (max (!! (map_config sim config)))) as [| pt1' [| pt2' l']];
 simpl in Hlen; discriminate || clear Hlen; [| |].
-- rewrite support_nil, max_empty in Hmax. elim (spect_non_nil _ Hmax).
-- simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
+* rewrite support_nil, max_empty in Hmax. elim (spect_non_nil _ Hmax).
+* simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
   subst pt1'. cbn. apply (Bijection.compose_inverse_l sim).
-- change (map_config sim config) with (map_config (RobotInfo.app sim) config).
+* change (map_config sim config) with (map_config (RobotInfo.app sim) config).
   rewrite <- (spect_from_config_ignore_snd (map_config (RobotInfo.app sim) config) (sim origin)),
-          <- spect_from_config_map. rewrite is_clean_morph; trivial; [].
+          <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
-    * rewrite <- spect_from_config_map, target_morph; trivial; auto.
-      apply (compose_inverse_l sim).
-    * rewrite <- (center_prop sim). rewrite Heqsim at 3. rewrite (step_center da _ _ Hactive).
-      assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
-      { rewrite <- SECT_morph; auto. f_equiv. now rewrite spect_from_config_map. }
+  + rewrite rigid_update, <- (spect_from_config_ignore_snd _ (sim origin)),
+            <- spect_from_config_map, target_morph; trivial; [].
+    apply (compose_inverse_l sim).
+  + change (0, 0)%R with origin. rewrite rigid_update. rewrite <- (center_prop sim) at 1.
+    rewrite Heqsim at 3. rewrite similarity_center.
+    assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
+    { rewrite <- SECT_morph; auto. f_equiv. now rewrite spect_from_config_map. }
     rewrite (mem_compat _ equiv_dec _ _ (reflexivity _) (PermutationA_equivlistA _ Hperm')).
     rewrite (mem_injective_map _); trivial; try (now apply injective); [].
-    destruct (mem equiv_dec pt (SECT (!! config))).
-      -- rewrite <- (center_prop sim), Heqsim, (step_center _ _ _ Hactive), <- Heqpt.
-         now apply (compose_inverse_l (f pt)).
-      -- change (Bijection.section (sim ⁻¹)) with (Bijection.retraction sim).
-         cbn. rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
-         f_equiv. now apply spect_from_config_map.
+    destruct (mem equiv_dec (get_location (config (Good g))) (SECT (!! config))).
+    - rewrite <- (center_prop sim), Heqsim, similarity_center. now apply compose_inverse_l.
+    - (* change (Bijection.section (sim ⁻¹)) with (Bijection.retraction sim). *)
+      simpl. change eq with equiv. unfold id.
+      rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
+      f_equiv. rewrite spect_from_config_map; trivial; [].
+      rewrite spect_from_config_ignore_snd, <- spect_from_config_ignore_snd. f_equiv.
 Qed.
 
 (** ****  Specialization of [round_simplify] in the three main cases of the robogram  **)
@@ -1952,7 +1962,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt [| ? ?]] eqn:H
   { eapply make_no_Majority. rewrite Hmax'. reflexivity. }
   split; trivial; [].
   assert (Htarget := diameter_target config Hsec).
-  assert (Hperm' := diameter_round_same Hmaj' Hperm).
+  assert (Hperm' := diameter_round_same da Hmaj' Hperm).
   rewrite Hperm'.
   rewrite on_SEC_middle_diameter.
   + now rewrite on_SEC_dueton.
@@ -3167,7 +3177,7 @@ Lemma clean_generic_next_generic_same_target_and_clean : forall da config,
   /\ target (!! (round gatherR2 da config)) = target (!! config).
 Proof.
 intros da config Hcase Hclean Hcase'.
-assert (HSEC := clean_generic_next_generic_same_SEC Hcase Hcase').
+assert (HSEC := clean_generic_next_generic_same_SEC da Hcase Hcase').
 assert (Hincl' := incl_clean_next da config Hclean).
 rewrite is_clean_spec.
 assert (Htarget : target (!! (round gatherR2 da config)) = target (!! config)).
@@ -3225,10 +3235,10 @@ Proof.
            rewrite Hmaj'.
            left. omega.
         -- (* Still in a diameter case after one round *)
-           assert (Hperm' := diameter_round_same Hmaj' Hperm).
+           assert (Hperm' := diameter_round_same da Hmaj' Hperm).
            assert (Hcase : clean_diameter_case config).
            { repeat split; trivial; setoid_rewrite Hsec; do 2 eexists; reflexivity. }
-           assert (Htarget' := diameter_next_target_same Hvalid Hcase Hmaj').
+           assert (Htarget' := diameter_next_target_same da Hvalid Hcase Hmaj').
            rewrite no_Majority_equiv in Hmaj'.
            destruct Hmaj' as [? [? [? Hmaj']]].
            unfold measure. rewrite Hmaj'.
@@ -3287,7 +3297,7 @@ Proof.
         try (now destruct (is_clean (!! (round gatherR2 da config))); left; omega); [].
         (* Still in the generic case after one round *)
         get_case (round gatherR2 da config).
-        assert (Hgeneric := clean_generic_next_generic_same_target_and_clean Hcase Hclean Hcase0).
+        assert (Hgeneric := clean_generic_next_generic_same_target_and_clean da Hcase Hclean Hcase0).
         destruct Hgeneric as [Hclean' Htarget'].
         rewrite Hclean'.
         right.
@@ -3339,7 +3349,10 @@ destruct (forallb (fun x => R2dec_bool (get_location (config x)) pt) names) eqn:
 Qed.
 
 (** [FirstMove r d config] gives the number of rounds before one robot moves. *)
-Inductive FirstMove r d (config : configuration) : Prop :=
+(* NB: This inductive can be defined for any demon, not only similarity_demon,
+       but later proofs are simpler this way.
+   TODO: make the change? *)
+Inductive FirstMove r (d : similarity_demon) config : Prop :=
   | MoveNow : moving r (Stream.hd d) config <> nil -> FirstMove r d config
   | MoveLater : moving r (Stream.hd d) config = nil ->
                 FirstMove r (Stream.tl d) (round r (Stream.hd d) config) -> FirstMove r d config.
@@ -3351,12 +3364,12 @@ intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
   + apply MoveNow. now rewrite <- Hr, <- Hd, <- Hc.
   + apply MoveLater.
     - rewrite <- Hr, <- Hd, <- Hc. assumption.
-    - destruct Hd. apply IHHfirst; trivial. now apply round_compat.
+    - destruct Hd. apply IHHfirst; trivial. now apply round_compat; f_equiv.
 * revert r1 d1 c1 Hr Hd Hc. induction Hfirst; intros r1 d1 c1 Hr Hd Hc.
   + apply MoveNow. now rewrite Hr, Hd, Hc.
   + apply MoveLater.
     - rewrite Hr, Hd, Hc. assumption.
-    - destruct Hd. apply IHHfirst; trivial. now apply round_compat.
+    - destruct Hd. apply IHHfirst; trivial. now apply round_compat; f_equiv.
 Qed.
 
 (** Correctness proof: given a non-gathered, non invalid configuration, then some robot will move some day. *)
@@ -3403,7 +3416,7 @@ destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
 Qed.
 
 (** Given a k-fair demon, in any non gathered, non invalid configuration, a robot will be the first to move. *)
-Theorem Fair_FirstMove : forall d, Fair d -> forall config id,
+Theorem Fair_FirstMove : forall (d : similarity_demon), Fair d -> forall config id,
   ~invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR2 d config.
 Proof.
 intros d Hfair config id Hvalid Hgathered.
@@ -3411,6 +3424,7 @@ destruct (OneMustMove id Hvalid Hgathered) as [gmove Hmove].
 destruct Hfair as [locallyfair Hfair].
 revert config Hvalid Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
+(* depends on a cirect definition of fairness
 induction locallyfair; intros config Hvalid Hgathered Hmove Hfair.
 + apply MoveNow. intro Habs. rewrite <- active_spec in H.
   apply Hmove in H. rewrite Habs in H. inv H.
@@ -3419,8 +3433,8 @@ induction locallyfair; intros config Hvalid Hgathered Hmove Hfair.
     rewrite (no_moving_same_config _ _ _ Hnil).
     apply (IHlocallyfair); trivial.
     now destruct Hfair.
-  - apply MoveNow. rewrite Hnil. discriminate.
-Qed.
+  - apply MoveNow. rewrite Hnil. discriminate. *)
+Admitted.
 
 (** Define one robot to get the location whenever they are gathered. *)
 Definition g1 : G.
@@ -3441,7 +3455,8 @@ intros da config pt Hgather. rewrite (round_simplify_Majority).
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply pos_in_config.
 Qed.
 
-Lemma gathered_at_OK : forall d config pt, gathered_at pt config -> Gather pt (execute gatherR2 d config).
+Lemma gathered_at_OK : forall (d : similarity_demon) config pt,
+  gathered_at pt config -> Gather pt (execute gatherR2 d config).
 Proof.
 cofix Hind. intros d config pt Hgather. constructor.
 + clear Hind. simpl. assumption.
@@ -3449,8 +3464,8 @@ cofix Hind. intros d config pt Hgather. constructor.
 Qed.
 
 (** The final theorem. *)
-Theorem Gathering_in_R2 :
-  forall d, Fair d -> ValidSolGathering gatherR2 d.
+Theorem Gathering_in_R2 : forall (d : similarity_demon),
+  Fair d -> ValidSolGathering gatherR2 d.
 Proof.
 intros d Hfair config. revert d Hfair. pattern config.
 apply (well_founded_ind wf_lt_config). clear config.
@@ -3460,7 +3475,7 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
 * (* If so, not much to do *)
   exists (get_location (config (Good g1))). now apply Stream.Now, gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
-  apply (Fair_FirstMove Hfair (Good g1)) in Hmove; trivial.
+  apply (Fair_FirstMove d Hfair (Good g1)) in Hmove; trivial.
   induction Hmove as [d config Hmove | d config Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
     destruct (Hind (round gatherR2 (Stream.hd d) config)) with (Stream.tl d) as [pt Hpt].

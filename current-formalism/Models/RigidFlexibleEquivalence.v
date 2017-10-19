@@ -31,28 +31,30 @@ Require Pactole.Models.Flexible.
 
 Section RigidFlexibleEquivalence.
 
-Context {loc info : Type}.
+Context {loc info T : Type}.
 Context `{IsLocation loc info}.
 Context {RMS : RealMetricSpace loc}.
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
+Context `{@first_demonic_choice loc info T _ _ _ _ _}.
 
 (** Flexible demons. *)
 Context (Tflex : Type).
-Context `{demonic_choice Tflex}.
-Context {FlexUpdateFun : @update_function loc info _ _ _ _ _ _ Tflex _}.
+Context `{second_demonic_choice Tflex}.
+Context {FlexUpdateFun : @update_function loc info Tflex _ _ _ _ _ _ _}.
 Context `{@Flexible.FlexibleChoice Tflex _}.
-Context (Flex : @Flexible.FlexibleUpdate loc info _ _ _ _ _ _ _ Tflex _ _ _).
-Notation flex_da := (@demonic_action loc info _ _ _ _ Tflex _).
-Notation flex_demon := (@demon loc info _ _ _ _ Tflex _).
+
+Context (Flex : @Flexible.FlexibleUpdate loc info _ Tflex _ _ _ _ _ _ _ _ _ _ _).
+Notation flex_da := (@demonic_action loc info _ Tflex _ _ _ _).
+Notation flex_demon := (@demon loc info _ Tflex _ _ _ _).
 
 (** Rigid demons. *)
 Context (Trigid : Type).
-Context `{demonic_choice Trigid}.
-Context {RigidUpdateFun : @update_function loc info _ _ _ _ _ _ Trigid _}.
-Context {Rigid : @Rigid.RigidUpdate loc info _ _ _ _ _ _ Trigid _ _}.
-Notation rigid_da := (@demonic_action loc info _ _ _ _ Trigid _).
-Notation rigid_demon := (@demon loc info _ _ _ _ Trigid _).
+Context `{second_demonic_choice Trigid}.
+Context {RigidUpdateFun : @update_function loc info Trigid _ _ _ _ _ _ _}.
+Context {Rigid : @Rigid.RigidUpdate loc info _ Trigid _ _ _ _ _ _ _ _ _}.
+Notation rigid_da := (@demonic_action loc info _ Trigid _ _ _ _).
+Notation rigid_demon := (@demon loc info _ Trigid _ _ _ _).
 
 (** **  Characterization of flexible demons that acts rigidly  **)
 
@@ -142,7 +144,7 @@ Qed.
 
 (** **  Equivalence between [round]s  **)
 
-(** If the location part od the update is the same, then the rest is aldo the same. *)
+(** If the location part of the update is the same, then the rest is also the same. *)
 Axiom update_only_location : forall config1 config2 target1 target2 (choice1 : Tflex) (choice2 : Trigid),
   get_location (update config1 target1 choice1) == get_location (update config2 target2 choice2) ->
   update config1 target1 choice1 == update config2 target2 choice2.
@@ -153,7 +155,7 @@ Proof.
 intros r rda config id. unfold round. cbn -[choose_update].
 repeat destruct_match; try reflexivity; [].
 apply update_only_location.
-rewrite Rigid.rigid_update.
+rewrite (@Rigid.rigid_update loc info _ Trigid); autoclass.
 rewrite is_rigid_da_update.
 - reflexivity.
 - apply R2F_da_is_rigid.
@@ -165,7 +167,7 @@ Proof.
 intros r fda Hrigid config id. unfold round. cbn -[choose_update].
 repeat destruct_match; try reflexivity; [].
 symmetry. apply update_only_location.
-rewrite Rigid.rigid_update.
+rewrite (@Rigid.rigid_update loc info _ Trigid); autoclass.
 rewrite is_rigid_da_update.
 - reflexivity.
 - assumption.

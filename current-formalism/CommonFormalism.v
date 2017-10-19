@@ -23,7 +23,7 @@ Set Implicit Arguments.
 Require Import Utf8.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Pactole.Util.Bijection.
+Require Import Pactole.Util.Bijection.
 Require Pactole.Util.Stream.
 Require Import Pactole.Robots.
 Require Import Pactole.RobotInfo.
@@ -32,9 +32,13 @@ Require Import Pactole.Spectra.Definition.
 Import Pactole.Util.Bijection.Notations.
 
 
+Typeclasses eauto := 5.
+
+
 Section Formalism.
 
 Context {loc info : Type}.
+Variables T1 T2 : Type.
 Context `{EqDec loc} `{EqDec info}.
 Context {Loc : IsLocation loc info}.
 Context `{Names}.
@@ -70,32 +74,32 @@ Definition execution := Stream.t configuration.
     - it selects which robots are activated,
     - it moves all activated byzantine robots as it wishes,
     - in the compute phase, it sets the referential of all activated good robots,
-    - in the move phase, it makes some choices about how the robots' states should be updated. *)
+    - in the move phase, it makes some choices about how the robots' states should be updated.
+    
+    Therefore, it can make choices at two places: while computing the local frame of reference for a robot
+    and while updating robot states.  These choice point will be represented explicitely as demon choices. *)
 
-(** A [demonic_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
-Class demonic_choice (T : Type) := {
-  choice_Setoid :> Setoid T;
-  choice_EqDec :> EqDec choice_Setoid }.
+(** A [demonic_first_choice] represents the choices made by the demon to compute the spectrum.
+    It must at least contain at bijection to compute the change of frame of reference.  *)
+Class first_demonic_choice `{IsLocation loc info} := {
+  first_choice_bijection : T1 -> bijection loc;
+  first_choice_Setoid :> Setoid T1;
+  first_choice_bijection_compat :> Proper (equiv ==> equiv) first_choice_bijection }.
+Global Existing Instance first_choice_bijection_compat.
 
-(** An exemple of choice: no choice at all. *)
-Definition NoChoice : demonic_choice unit := {|
-  choice_Setoid := _;
-  choice_EqDec := _ |}.
-
-(** Combining two choices into one. *)
-Definition MergeChoices A B `{demonic_choice A} `{demonic_choice B} : demonic_choice (A * B) := {|
-  choice_Setoid := _;
-  choice_EqDec := _ |}.
+(** A [demonic_second_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
+Class second_demonic_choice := {
+  second_choice_Setoid :> Setoid T2;
+  second_choice_EqDec :> EqDec second_choice_Setoid }.
 
 (** These choices are then used by an update function that depends on the model. *)
-Class update_function `{IsLocation loc info} T `{demonic_choice T} := {
-  update :> configuration -> loc -> T -> info;
+Class update_function `{IsLocation loc info} `{second_demonic_choice} := {
+  update :> configuration -> loc -> T2 -> info;
   update_compat :> Proper (equiv ==> equiv ==> equiv ==> equiv) update }.
-Global Arguments update_function {_} {_} {_} {_} {_} T {_}.
 
-Context {T : Type}.
-Context `{demonic_choice T}.
-Context {Update : update_function T}.
+Context `{@first_demonic_choice _ _ _ _ _}.
+Context `{second_demonic_choice}.
+Context {Update : update_function}.
 
 (* The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
@@ -104,9 +108,9 @@ Record demonic_action := {
   (** Update the state of (activated) byzantine robots *)
   relocate_byz : configuration -> B -> info;
   (** Local referential for (activated) good robots in the compute phase *)
-  change_frame : configuration -> G -> Bijection.bijection loc;
+  change_frame : configuration -> G -> T1;
   (** Update the state of (activated) good robots in the move phase  *)
-  choose_update : configuration -> G -> loc -> T;
+  choose_update : configuration -> G -> loc -> T2;
   (** Compatibility properties *)
   activate_compat : Proper (equiv ==> Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -194,15 +198,13 @@ Definition demon := Stream.t demonic_action.
 
 (** **  One step executions  **)
 
-Typeclasses eauto := 5.
-
 (** [round r da config] returns the new configuration of robots (that is a function
     giving the position of each robot) from the previous one [config] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(relocate_byz)]
     is used for byzantine robots.
     
-    As this is a general setting similarities preserve distance ratios, we can perform the multiplication by [mv_ratio]
-    either in the local frame or in the global one. *)
+    As this is a general setting similarities preserve distance ratios, we can perform the multiplication
+    by [mv_ratio] either in the local frame or in the global one. *)
 Definition round (r : robogram) (da : demonic_action) (config : configuration) : configuration :=
   (** for a given robot, we compute the new configuration *)
   fun id =>
@@ -213,7 +215,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         | Byz b => da.(relocate_byz) config b (* byzantine robots are relocated by the demon *)
         | Good g =>
           (* change the frame of reference *)
-          let new_frame := da.(change_frame) config g in
+          let new_frame := first_choice_bijection (da.(change_frame) config g) in
           let local_config := map_config (app new_frame) config in
           (* apply r on spectrum *)
           let local_target := r (spect_from_config local_config (get_location (local_config (Good g)))) in
@@ -235,9 +237,11 @@ unfold round. rewrite Hda, Hconfig. destruct_match.
   destruct id as [g | b].
   + (* good robot *)
     apply update_compat; try apply choose_update_da_compat; trivial; [|];
-    do 3 f_equiv; trivial;
-    solve [ apply map_config_compat; trivial; []; apply app_compat; now do 2 f_equiv
-          | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; now do 2 f_equiv ].
+    do 2 f_equiv; try apply first_choice_bijection_compat; f_equiv; trivial;
+    solve [ apply map_config_compat; trivial; []; apply app_compat; f_equiv;
+            apply first_choice_bijection_compat; now do 2 f_equiv
+          | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; f_equiv;
+            apply first_choice_bijection_compat; now do 2 f_equiv ].
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
@@ -340,7 +344,8 @@ Inductive Between id id' (d : demon) : nat -> Prop :=
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
 Definition kFair k : demon -> Prop := Stream.forever (fun d => forall id id', Between id id' d k).
 
-Lemma LocallyFairForOne_compat_aux : forall id d1 d2, d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
+Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
+  d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
 Proof.
 intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
 + constructor 1 with config. now rewrite <- Hda.
@@ -435,7 +440,8 @@ Abort. (* FIXME: fails because the definition of fair is likely incorrect *)
 
 
 (** A demon is fully synchronous at the first step. *)
-Definition FullySynchronousInstant : demon -> Prop := Stream.instant (fun da => forall config g, activate da config g = true).
+Definition FullySynchronousInstant : demon -> Prop :=
+  Stream.instant (fun da => forall config g, activate da config g = true).
 
 (** A demon is fully synchronous if it is fully synchronous at all step. *)
 Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
@@ -448,3 +454,47 @@ Corollary fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
 Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 
 End Formalism.
+
+Arguments second_choice_Setoid {_} {_}.
+Arguments second_choice_EqDec {_} {_}.
+Arguments update_function {loc} {info} T2 {_} {_} {_} {_} {_} {_} {_}.
+Arguments demonic_action {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
+Arguments demon {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
+
+
+Section ChoiceExample.
+
+Context {loc info : Type}.
+Context `{EqDec loc} `{EqDec info}.
+Context {Loc : IsLocation loc info}.
+
+
+(** An exemple of first choice: just a bijection *)
+Definition FirstChoiceBijection : first_demonic_choice (bijection loc) := {|
+  first_choice_bijection := Datatypes.id;
+  first_choice_Setoid := @bij_Setoid loc _;
+  first_choice_bijection_compat := fun _ _ Heq => Heq |}.
+
+Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Spaces.Similarity.
+
+(* Similarities as a first choice, only inside real metric spaces *)
+Definition FirstChoiceSimilarity {RMS : RealMetricSpace loc}
+  : @first_demonic_choice loc info (similarity loc) _ _ _ _ _ := {|
+  first_choice_bijection := @sim_f loc _ _ _;
+  first_choice_Setoid := similarity_Setoid loc;
+  first_choice_bijection_compat := f_compat |}.
+
+
+(** An exemple of second choice: no choice at all. *)
+Definition NoChoice : second_demonic_choice Datatypes.unit := {|
+  second_choice_Setoid := _;
+  second_choice_EqDec := _ |}.
+
+(** Combining two choices into one. *)
+Definition MergeSecondChoices A B `{second_demonic_choice A} `{second_demonic_choice B}
+  : second_demonic_choice (A * B) := {|
+  second_choice_Setoid := _;
+  second_choice_EqDec := _ |}.
+
+End ChoiceExample.

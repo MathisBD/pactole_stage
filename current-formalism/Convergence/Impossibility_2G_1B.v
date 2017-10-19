@@ -56,8 +56,8 @@ Existing Instance R_RMS.
 
 
 Instance Info : IsLocation R R := OnlyLocation.
-
-Instance NoChoice : demonic_choice Datatypes.unit := { choice_EqDec := unit_eqdec}.
+Instance FDC : first_demonic_choice (Similarity.similarity R) := FirstChoiceSimilarity.
+Instance NoChoice : second_demonic_choice Datatypes.unit := {second_choice_EqDec := unit_eqdec}.
 
 Instance UpdateFun : update_function Datatypes.unit := {update := fun _ pt _ => pt }.
 Proof. now repeat intro. Defined.
@@ -167,7 +167,7 @@ Definition solution_FSYNC (r : robogram) : Prop :=
 
 
 Lemma synchro : ∀ r, solution r → solution_FSYNC r.
-Proof. unfold solution. intros r Hfair config d Hd. now apply Hfair, fully_synchronous_implies_fair. Qed.
+Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, fully_synchronous_implies_fair; autoclass. Qed.
 
 Close Scope R_scope.
 
@@ -384,7 +384,7 @@ Proof.
 + abstract (now repeat intro; subst).
 + abstract (now repeat intro).
 + abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst;
-            do 2 f_equiv; apply opp_compat, get_location_compat, Heq).
+            f_equiv; apply opp_compat, get_location_compat, Heq).
 + abstract (now repeat intro).
 Defined.
 
@@ -486,7 +486,7 @@ refine {| activate := fun _ _ => true;
 Proof.
 + abstract (now repeat intro).
 + abstract (now repeat intro).
-+ abstract (intros config1 config2 Hconfig ? g ?; subst; do 2 f_equiv;
++ abstract (intros config1 config2 Hconfig ? g ?; subst; f_equiv;
             apply opp_compat, get_location_compat, Hconfig).
 + abstract (now repeat intro).
 Defined.
@@ -496,7 +496,7 @@ CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifti
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
-intros d pt. apply fully_synchronous_implies_fair. revert pt.
+intros d pt. apply fully_synchronous_implies_fair; autoclass; []. revert pt.
 cofix shift_fair. intro pt. constructor.
 + repeat intro. simpl. reflexivity.
 + cbn. apply shift_fair.
