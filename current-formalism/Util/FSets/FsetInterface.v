@@ -83,8 +83,8 @@ Class FSet `{EqDec key} := {
   cardinal : set -> nat;
   elements : set -> list key;
   choose :  set -> option key;
-  min_elt :  set -> option key;
-  max_elt :  set -> option key;
+  (* min_elt :  set -> option key; *)
+  (* max_elt :  set -> option key; *)
 
   (** Sets should be ordered types as well, in order to be able
      to use sets in containers.
@@ -119,8 +119,8 @@ Global Arguments partition {_%type_scope} {_} {_} {_} _ _%set_scope.
 Global Arguments cardinal {_%type_scope} {_} {_} {_} _%set_scope.
 Global Arguments elements {_%type_scope} {_} {_} {_} _%set_scope.
 Global Arguments choose {_%type_scope} {_} {_} {_} _%set_scope.
-Global Arguments min_elt {_%type_scope} {_} {_} {_} _%set_scope.
-Global Arguments max_elt {_%type_scope} {_} {_} {_} _%set_scope.
+(* Global Arguments min_elt {_%type_scope} {_} {_} {_} _%set_scope. *)
+(* Global Arguments max_elt {_%type_scope} {_} {_} {_} _%set_scope. *)
 
 (** All projections should be made opaque for tactics using [delta]-conversion,
    otherwise the underlying instances may appear during proofs, which then
