@@ -50,7 +50,7 @@ Class IsLocation loc info `{EqDec info} `{EqDec loc} := {
 Arguments IsLocation loc info {_} {_} {_} {_}.
 
 
-(** Same class but different names. *)
+(** Same class but different name. *)
 Class IsTarget loc info `{IsLocation loc info} := {
   get_target : info -> loc;
 (*   update_target : loc -> info -> info; *)

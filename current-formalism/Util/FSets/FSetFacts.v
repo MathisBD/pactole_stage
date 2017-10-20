@@ -28,8 +28,7 @@ Section IffSpec.
   Variable s s' s'' : t.
   Variable x y z : elt.
 
-
-  Lemma In_eq_iff : x === y -> (In x s <-> In y s).
+  Lemma In_eq_iff : x == y -> (In x s <-> In y s).
   Proof.
     split; apply In_1;intros; auto.
   Qed.
@@ -64,12 +63,12 @@ Section IffSpec.
     split; [apply is_empty_1|apply is_empty_2].
   Qed.
 
-  Lemma singleton_iff : In y (singleton x) <-> x === y.
+  Lemma singleton_iff : In y (singleton x) <-> x == y.
   Proof.
     split; [apply singleton_1|apply singleton_2].
   Qed.
 
-  Lemma add_iff : In y (add x s) <-> x === y \/ In y s.
+  Lemma add_iff : In y (add x s) <-> x == y \/ In y s.
   Proof.
     split; [ | destruct 1; [apply add_1|apply add_2]]; auto.
     destruct (Helt x y) as [E|E].
@@ -162,7 +161,7 @@ Section BoolSpec.
   Variable s s' s'' : t.
   Variable x y z : elt.
 
-  Lemma mem_b : x === y -> mem x s = mem y s.
+  Lemma mem_b : x == y -> mem x s = mem y s.
   Proof.
     intros.
     generalize (mem_iff s x) (mem_iff s y) (In_eq_iff s H).

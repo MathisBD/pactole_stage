@@ -36,20 +36,21 @@ Typeclasses eauto := (bfs) 5.
     To avoid Zenon-based paradoxes, we require the robot to move at least a given distance δ. *)
 Section FlexibleFormalism.
 
-Context {loc info : Type}.
+Context {loc info T1 T2 : Type}.
 Context `{IsLocation loc info}.
 Context {RMS : RealMetricSpace loc}. (* only used for the equality case of the triangle inequality *)
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
-Context (T : Type).
+Context `{@first_demonic_choice loc info T1 _ _ _ _ _}.
 
-Class FlexibleChoice `{demonic_choice T} := {
-  move_ratio : T -> R;
+
+Class FlexibleChoice `{second_demonic_choice T2} := {
+  move_ratio : T2 -> R;
   move_ratio_bound : forall choice, 0 < move_ratio choice <= 1;
-  move_ratio_compat :> Proper (@equiv T choice_Setoid ==> equiv) move_ratio }.
+  move_ratio_compat :> Proper (@equiv T2 second_choice_Setoid ==> equiv) move_ratio }.
 
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
-Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T} := {
+Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} := {
   (** The minimum distance that robots should be allowed to move *)
   delta : R;
   (** [move_ratio] is ratio between the achieved and the planned move distances. *)

@@ -30,8 +30,9 @@ Context `{Names}.
 Context `{EqDec info}.
 Context {Loc : IsLocation V info}.
 Context {Tar : IsTarget V info}.
-Context `{demonic_choice}.
-Context  `{@update_function V info _ _ _ _ _ _ _ _}.
+Context `{@first_demonic_choice V info (isomorphism G) _ _ _ _ _}.
+Context `{second_demonic_choice}.
+Context `{@update_function V info _ _ _ _ _ _ _ _}.
 Context `{@Spectrum V info _ _ _ _ _ _}.
 
 (* Never used if we start from a good config. *)
@@ -41,7 +42,7 @@ Axiom e_default : E.
 Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
 Notation spectrum := (@spectrum V info _ _ _ _ _ _ _).
 Notation configuration := (@configuration info _ _ _ _).
-
+Notation demonic_action := (@demonic_action V info _ _ _ _ _ _ Loc _ _ _).
 
 (** The robogram should return only adjacent node values.
     We enforce this by making a check in the [update] function. *)
@@ -57,7 +58,7 @@ Class DiscreteGraphUpdate  := {
     returns a null reference. *)
 
 (** A demonic action is synchronous if all robots are in the same state: either all [Active], or all [Moving]. *)
-Definition da_Synchronous da : Prop := forall config id id', activate da config id = activate da config id'.
+Definition da_Synchronous (da : demonic_action) : Prop := forall config id id', activate da config id = activate da config id'.
 
 Instance da_Synchronous_compat : Proper (equiv ==> iff) da_Synchronous.
 Proof. unfold da_Synchronous. intros d1 d2 Hd. now setoid_rewrite Hd. Qed.
@@ -68,3 +69,5 @@ Instance StepSynchronous_compat : Proper (equiv ==> iff) StepSynchronous.
 Proof. unfold StepSynchronous. autoclass. Qed.
 
 End Formalism.
+
+(* TODO prove that graph update are rigid *)
