@@ -179,7 +179,7 @@ Qed.
 *)
 
 Lemma support_max_non_nil : forall config, Spect.support (Spect.max (!! config)) <> nil.
-Proof. intros config Habs. rewrite Spect.support_nil, Spect.max_empty in Habs. apply (spect_non_nil _ Habs). Qed.
+Proof. intros config Habs. rewrite Spect.support_nil, Spect.max_is_empty in Habs. apply (spect_non_nil _ Habs). Qed.
 
 Lemma max_morph : forall (sim : Sim.t) s, Spect.eq (Spect.max (Spect.map sim s)) (Spect.map sim (Spect.max s)).
 Proof.
@@ -382,7 +382,7 @@ intros config pt. split; intro Hmaj.
       exfalso. apply (Hmaj y) in Hy. elim (lt_irrefl (!! config)[pt]).
       eapply le_lt_trans; try eassumption; [].
       apply Hpt.
-* intros x Hx. apply Spect.max_spec2.
+* intros x Hx. apply Spect.max_spec_lub.
   - rewrite <- Spect.support_In, Hmaj. now left.
   - rewrite <- Spect.support_In, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
 Qed.
@@ -413,7 +413,7 @@ destruct (on_SEC (Spect.support (!! config))) as [| pt1 [| pt2 ?]] eqn:Hsec; sim
 + rewrite on_SEC_nil in Hsec. apply (support_non_nil _ Hsec).
 + apply on_SEC_singleton_is_singleton in Hsec.
   - rewrite no_Majority_equiv in Hmaj. destruct Hmaj as [? [? [? Hmaj]]].
-    assert (Hle := Spect.size_max_le (!! config)).
+    assert (Hle := Spect.size_max (!! config)).
     do 2 rewrite Spect.size_spec in Hle.
     rewrite Hmaj, Hsec in Hle. cbn in Hle. omega.
   - rewrite <- NoDupA_Leibniz. apply Spect.support_NoDupA.
@@ -486,9 +486,9 @@ assert (Hpt : pt = pt1 \/ pt = pt2).
     now left. }
 inversion_clear Hin; auto. inversion_clear H0; auto. inversion H1. }
 apply (lt_irrefl (Nat.div2 N.nG)). destruct Hpt; subst pt.
-- rewrite <- Hpt1 at 2. rewrite <- Hpt2. apply Spect.max_spec2; try now rewrite Hmax.
-  rewrite Hmax. auto.
-- rewrite <- Hpt1 at 1. rewrite <- Hpt2. apply Spect.max_spec2; now rewrite Hmax.
+- rewrite <- Hpt1 at 2. rewrite <- Hpt2.
+  apply Spect.max_spec_lub; try (now rewrite Hmax); []. rewrite Hmax. auto.
+- rewrite <- Hpt1 at 1. rewrite <- Hpt2. apply Spect.max_spec_lub; now rewrite Hmax.
 Qed.
 
 (* invalid_support_length already proves the -> direction *)
@@ -507,7 +507,7 @@ Proof.
     red.
     assert (Hlen':(Spect.size (Spect.max (!! conf)) = 2)%nat).
     { assert (Spect.size (Spect.max (!! conf)) <= 2)%nat.
-      { unfold Spect.max.
+      { rewrite Spect.max_simplified. unfold Spect.simple_max.
         rewrite <- H2, <- Hsupp, <- Spect.size_spec.
         apply Spect.size_nfilter.
         now repeat intro; subst. }
@@ -534,7 +534,8 @@ Proof.
       reflexivity.
     * assert (h:=@Spect.support_nfilter _ (Spect.eqb_max_mult_compat (!!conf)) (!! conf)).
       { change (Spect.nfilter (fun _ : R2.t => Nat.eqb (Spect.max_mult (!! conf))) (!! conf))
-        with (Spect.max (!!conf)) in h.
+        with (Spect.simple_max (!!conf)) in h.
+        rewrite <- Spect.max_simplified in h.
         assert (Hlen'': length (Spect.support (!! conf)) <= length (Spect.support (Spect.max (!! conf)))).
         { rewrite Spect.size_spec in Hlen'. now rewrite Hsupp, Hlen'. }
         assert (h2:=@NoDupA_inclA_length_PermutationA
@@ -625,7 +626,7 @@ Proof.
       { assert (hfilter:= @Spect.nfilter_In _ (Spect.eqb_max_mult_compat (!! conf))).
         transitivity (Spect.max_mult (!! conf)).
         + specialize (hfilter pt2 (!!conf)).
-          replace (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Spect.max_mult (!! conf))) (!!conf))
+          setoid_replace (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Spect.max_mult (!! conf))) (!!conf))
           with (Spect.max (!!conf)) in hfilter.
           * destruct hfilter as [hfilter1 hfilter2].
             destruct hfilter1.
@@ -637,9 +638,9 @@ Proof.
             -- symmetry.
                rewrite <- Nat.eqb_eq.
                assumption.
-          * trivial.
+          * now rewrite Spect.max_simplified.
         + specialize (hfilter pt1 (!!conf)).
-          replace (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Spect.max_mult (!! conf))) (!!conf))
+          setoid_replace (Spect.nfilter (fun _ : Spect.elt => Nat.eqb (Spect.max_mult (!! conf))) (!!conf))
           with (Spect.max (!!conf)) in hfilter.
           * destruct hfilter as [hfilter1 hfilter2].
             destruct hfilter1.
@@ -650,7 +651,7 @@ Proof.
                reflexivity.
             -- rewrite <- Nat.eqb_eq.
                assumption.
-          * trivial. }
+          * now rewrite Spect.max_simplified. }
       rewrite H1 in *|-*.
       assert ( 0 + 2 *(!! conf)[pt1] = N.nG).
       { omega. }
@@ -687,7 +688,8 @@ assert (Spect.size (!! conf) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption.
   do 2 rewrite Spect.size_spec. apply (NoDupA_inclA_length R2.eq_equiv).
   - apply Spect.support_NoDupA.
-  - unfold Spect.max. apply Spect.support_nfilter. repeat intro. now subst. }
+  - rewrite Spect.max_simplified. unfold Spect.simple_max.
+    apply Spect.support_nfilter. repeat intro. now subst. }
  destruct (Spect.size (!! conf)) as [| [| [| ?]]] eqn:Hlen; try omega.
 exfalso. apply H2. now rewrite invalid_equiv.
 Qed.
@@ -1068,7 +1070,7 @@ assert (Hlen := Permutation_length Hperm).
 destruct (Spect.support (Spect.max (!! conf))) as [| pt1 [| pt2 l]] eqn:Hmax,
          (Spect.support (Spect.max (!! (Config.map (Config.app sim) conf)))) as [| pt1' [| pt2' l']];
 simpl in Hlen; discriminate || clear Hlen.
-- rewrite Spect.support_nil, Spect.max_empty in Hmax. elim (spect_non_nil _ Hmax).
+- rewrite Spect.support_nil, Spect.max_is_empty in Hmax. elim (spect_non_nil _ Hmax).
 - simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
   subst pt1'. simpl. now apply Sim.compose_inverse_l.
 - rewrite <- Spect.from_config_map, is_clean_morph; trivial.
@@ -1545,7 +1547,7 @@ Proof.
     + exfalso.
       destruct (@increase_move gatherR2 conf da x)
         as [r_moving [hdest_rmoving  hrmoving ]].
-      * omega.
+      * simpl in *. omega.
       * { destruct (le_lt_dec 2 (length (Spect.support (Spect.max (!! conf))))).
           - rewrite destination_is_target in hdest_rmoving.
             + elim n.
@@ -1571,7 +1573,7 @@ Proof.
             { rewrite H;reflexivity. }
             rewrite Spect.support_1 in hperm.
             destruct hperm as [_ hperm].
-            destruct (Spect.max_2_mult (!! conf) x);omega. }
+            destruct (Spect.max_case (!! conf) x); omega. }
     + assumption.
 Qed.
 
@@ -2077,7 +2079,7 @@ Proof.
 intros da config ptx pty Hvalid Hmaj Hclean Hsec.
 assert (Hperm := diameter_clean_support Hvalid Hmaj Hclean Hsec).
 destruct (Spect.support (Spect.max (!! (round gatherR2 da config)))) as [| pt [| ? ?]] eqn:Hmax'.
-- rewrite Spect.support_nil, Spect.max_empty, <- Spect.support_nil in Hmax'.
+- rewrite Spect.support_nil, Spect.max_is_empty, <- Spect.support_nil in Hmax'.
   now elim (support_non_nil _ Hmax').
 - left. exists pt.
   rewrite MajTower_at_equiv. now rewrite Hmax'.
@@ -2279,7 +2281,7 @@ Lemma triangle_next_maj_or_diameter_or_triangle : forall da conf,
 Proof.
 intros da conf Hvalid [Hmaj [ptx [pty [ptz Hsec]]]].
 destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? ?]] eqn:Hmax'.
-- rewrite Spect.support_nil, Spect.max_empty in Hmax'. elim (spect_non_nil _ Hmax').
+- rewrite Spect.support_nil, Spect.max_is_empty in Hmax'. elim (spect_non_nil _ Hmax').
 - now left.
 - right.
   get_case (round gatherR2 da conf). rename Hmaj0 into Hmaj'.
@@ -3321,7 +3323,7 @@ Proof.
   unfold measure at 2.
   destruct (Spect.support (Spect.max (!! conf))) as [| pt [| pt' smax]] eqn:Hmax.
   - (* No robots *)
-    rewrite Spect.support_nil, Spect.max_empty in Hmax. elim (spect_non_nil _ Hmax).
+    rewrite Spect.support_nil, Spect.max_is_empty in Hmax. elim (spect_non_nil _ Hmax).
   - (* A majority tower *)
     get_case conf.
     apply (MajTower_at_forever da) in Hcase.
@@ -3428,7 +3430,7 @@ Proof.
       unfold measure.
       destruct (Spect.support (Spect.max (!! (round gatherR2 da conf)))) as [| ? [| ? ?]] eqn:Hmax'.
       * (* Absurd: no robot after one round *)
-        rewrite Spect.support_nil, Spect.max_empty in Hmax'. elim (spect_non_nil _ Hmax').
+        rewrite Spect.support_nil, Spect.max_is_empty in Hmax'. elim (spect_non_nil _ Hmax').
       * (* A majority tower after one round *)
         destruct (on_SEC (Spect.support (!! conf))) as [| ? [| ? [| ? [| ? ?]]]];
         cbn in Hle; omega || left; omega.

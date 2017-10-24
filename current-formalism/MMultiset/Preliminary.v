@@ -24,6 +24,19 @@ Set Implicit Arguments.
 Require Import Bool.
 
 
+Ltac autoclass := eauto with typeclass_instances.
+Ltac inv H := inversion H; subst; clear H.
+
+(* A tactic to destruct matches *)
+Ltac destr_match A :=
+  match A with | context[match ?x with | _ => _ end] =>
+    destr_match x (* recursive call *)
+    || destruct x eqn:? (* if innermost match, destruct it *)
+  end.
+
+Ltac destruct_match := match goal with | |- ?A => destr_match A end.
+
+
 (* Seems useless…
 Global Instance NotRel_symmetric A (R : relation A) `(Symmetric A R) : Symmetric (fun x y => ~R x y).
 Proof. intros x y Hxy Habs. apply Hxy. now symmetry. Qed.
@@ -143,7 +156,7 @@ intros x l Hin. induction l; simpl.
   - f_equal. apply IHl. intro Habs. apply Hin. now right.
 Qed.
 
-Lemma removeA_InA_out eq_dec : forall x y l, ~eqA y x ->
+Lemma removeA_InA_out eq_dec : forall x y l, ~eqA x y ->
   (InA eqA x (@removeA A eqA eq_dec y l) <-> InA eqA x l).
 Proof.
 intros x y l Hxy. induction l. reflexivity.
@@ -183,7 +196,10 @@ intros x y l Hin. induction l; simpl in *.
   - inversion_clear Hin; auto.
 Qed.
 
-Global Instance removeA_el_compat eq_dec : Proper (eqA ==> eq ==> eq) (@removeA A eqA eq_dec).
+Corollary removeA_inclA eq_dec : subrelation eqA' eqA -> forall x l, inclA eqA' (@removeA A eqA eq_dec x l) l.
+Proof. intros. intro. rewrite removeA_InA_iff_strong; tauto. Qed.
+
+Global Instance removeA_elt_compat eq_dec : Proper (eqA ==> eq ==> eq) (@removeA A eqA eq_dec).
 Proof.
 intros x y Hxy l l' ?. subst l'. induction l; simpl.
 + reflexivity.
@@ -206,16 +222,16 @@ intros x y ? l1 l2 Hl. subst. induction Hl.
   - now apply PermutationA_cons.
 + simpl. destruct (eq_dec x x0), (eq_dec y y0), (eq_dec y x0), (eq_dec x y0);
   try (now elim n; rewrite H) || (now elim n; rewrite <- H).
-  - now erewrite removeA_el_compat.
-  - constructor. reflexivity. now erewrite removeA_el_compat.
+  - now erewrite removeA_elt_compat.
+  - constructor. reflexivity. now erewrite removeA_elt_compat.
   - elim n0. now rewrite <- H.
-  - constructor. reflexivity. now erewrite removeA_el_compat.
+  - constructor. reflexivity. now erewrite removeA_elt_compat.
   - elim n1. now rewrite H.
   - elim n0. now rewrite <- H.
-  - etransitivity. constructor 3. repeat constructor; reflexivity || now erewrite removeA_el_compat.
+  - etransitivity. constructor 3. repeat constructor; reflexivity || now erewrite removeA_elt_compat.
 + constructor 4 with (removeA eq_dec y l₂).
   - assumption.
-  - transitivity (removeA (eqA:=eqA) eq_dec x l₂). now erewrite removeA_el_compat. assumption.
+  - transitivity (removeA (eqA:=eqA) eq_dec x l₂). now erewrite removeA_elt_compat. assumption.
 Qed.
 
 Lemma removeA_app eq_dec : forall (x : A) l1 l2,
@@ -264,7 +280,7 @@ intros x l Hl. induction Hl; simpl.
 + constructor.
 + destruct (eq_dec x x0).
   - assumption.
-  - constructor; trivial. intro Habs. apply H. eapply removeA_InA; eassumption.      
+  - constructor; trivial. intro Habs. apply H. eapply removeA_InA_iff; eassumption.
 Qed.
 
 Global Instance InA_impl_compat : Proper (subrelation ==> eq ==> eq ==> impl) (@InA A).

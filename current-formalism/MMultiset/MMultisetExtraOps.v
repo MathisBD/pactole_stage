@@ -12,129 +12,211 @@
 Require Import Omega.
 Require Import Equalities.
 Require Import SetoidList.
+Require Import RelationPairs.
 Require Import Pactole.MMultiset.Preliminary.
 Require Import Pactole.MMultiset.MMultisetInterface.
 Require Pactole.MMultiset.MMultisetFacts.
 
 
 Set Implicit Arguments.
+(* To have relation pairs unfolded *)
+Arguments RelationPairs.RelProd {A} {B} RA RB _ _ /.
+Arguments RelationPairs.RelCompFun {A} {B} R f a a' /.
 
-Module Type MMultisetExtra (E : DecidableType)(M : FMultisetsOn E).
-  Module MProp := MMultisetFacts.Make(E)(M).
-  Include MProp.
+
+(* TODO: should we axiomatize these operations instead to allow alternative implementations? *)
+Module MMultisetExtraOps (E : DecidableType)(Import M : FMOps E).
   
-  (** *  Extra operations  **)
+  (** Remove all copies of [x] from [m] *)
+  Definition remove_all x m := remove x (multiplicity x m) m.
   
-  (** **  Function [map] and its properties  **)
-  
+  (** Apply the function [f] on all elements of [m].  Their multiplicities are unchanged.
+      Notice that [f] need not be injective, so that multiplicities may be combined in the result. *)
   Definition map f m := fold (fun x n acc => add (f x) n acc) m empty.
   
-  Section map_results.
-    Variable f : E.t -> E.t.
-    Hypothesis Hf : Proper (E.eq ==> E.eq) f.
-    
-    Declare Instance map_compat : Proper (E.eq ==> E.eq) f -> Proper (eq ==> eq) (map f).
-    
-    Parameter map_In : Proper (E.eq ==> E.eq) f ->  forall x m, In x (map f m) <-> exists y, E.eq x (f y) /\ In y m.
-        
-    Parameter map_empty : map f empty [=] empty.
-    
-    Parameter map_add : Proper (E.eq ==> E.eq) f -> forall x n m, map f (add x n m) [=] add (f x) n (map f m).
-        
-    Parameter map_spec : Proper (E.eq ==> E.eq) f -> forall x m, multiplicity x (map f m) =
-      cardinal (nfilter (fun y _ => if E.eq_dec (f y) x then true else false) m).
-       
-    Declare Instance map_sub_compat : Proper (E.eq ==> E.eq) f -> Proper (Subset ==> Subset) (map f).
-        
-    Parameter map_singleton : Proper (E.eq ==> E.eq) f -> forall x n, map f (singleton x n) [=] singleton (f x) n.
-    
-    Parameter map_remove1 : Proper (E.eq ==> E.eq) f -> forall x n m, n <= multiplicity x m -> map f (remove x n m) [=] remove (f x) n (map f m).
-        
-    Parameter map_remove2 : Proper (E.eq ==> E.eq) f -> forall x n m,
-      multiplicity x m <= n -> map f (remove x n m) [=] remove (f x) (multiplicity x m) (map f m).
-    
-    Parameter fold_map_union : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, fold (fun x n acc => add (f x) n acc) m₁ m₂ [=] union (map f m₁) m₂.
+  (** Return the maximal multiplicity *)
+  Definition max_mult m := fold (fun _ => Nat.max) m 0%nat.
+  
+  (** Return the elements with maximal multiplicity and their multiplicity *)
+  (* TODO: Should we use a list/set rather than a multiset? *)
+  Definition max_aux x n acc :=
+      match Nat.compare n (fst acc) with
+        | Lt => acc
+        | Eq => (fst acc, add x n (snd acc))
+        | gt => (n, singleton x n)
+      end.
+  Definition max m := snd (fold max_aux m (0, empty)).
+  
+  (*
+  (** Return the minimal non-zero multiplicity *)
+  Definition min_mult m :=
+    match choose m with
+      | None => 0
+      | Some x => fold (fun _ => Nat.min) m (multiplicity x m)
+    end.
+  
+  (** Return the elements with minimal non-zero multiplicity and their multiplicity *)
+  Definition min_aux x n acc :=
+    match Nat.compare n (fst acc) with
+      | Lt => acc
+      | Eq => (fst acc, add x n (snd acc))
+      | gt => (n, singleton x n)
+    end.
+  Definition min m :=
+    match choose m with
+      | None => empty
+      | Some x => snd (fold min_aux m (multiplicity x m, empty))
+    end.
+  *)
+  
+End MMultisetExtraOps.
 
-    Parameter map_union : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
-    
-    Parameter map_inter : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, map f (inter m₁ m₂) [<=] inter (map f m₁) (map f m₂).
-    
-    Parameter map_lub : Proper (E.eq ==> E.eq) f -> forall m₁ m₂, lub (map f m₁) (map f m₂) [<=] map f (lub m₁ m₂).
-        
-    (*
-    Lemma map_elements : forall m,
-      PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
-    Proof.
-    assert (Proper (eq_pair ==> eq_pair) (fun xn => (f (fst xn), snd xn))). { intros ? ? Heq. now rewrite Heq. }
-    apply ind.
-    + intros ? ? Hm. now rewrite Hm.
-    + intros m x n Hin Hn Hrec. rewrite (map_add _). repeat rewrite elements_add_out; trivial.
-      - simpl. now constructor.
-      - rewrite (map_In _). intros [y [Heq Hy]]. apply Hf2 in Heq. apply Hin. now rewrite Heq.
-    + now rewrite map_empty, elements_empty.
-    Qed.
-    *)
-    
-    Parameter map_from_elements : Proper (E.eq ==> E.eq) f -> 
-      forall l, map f (from_elements l) [=] from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
-        
-    Parameter map_support : Proper (E.eq ==> E.eq) f -> forall m, inclA E.eq (support (map f m)) (List.map f (support m)).
-    
-    Parameter map_cardinal : Proper (E.eq ==> E.eq) f -> forall m, cardinal (map f m) = cardinal m.
-    
-    Parameter map_size : Proper (E.eq ==> E.eq) f -> forall m, size (map f m) <= size m.
-    
-    Section map_injective_results.
-      Hypothesis Hf2 : injective E.eq E.eq f.
-      
-      Parameter map_injective_spec :
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall x m, multiplicity (f x) (map f m) = multiplicity x m.
-      
-      Parameter map_injective_In : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall x m, In (f x) (map f m) <-> In x m.
-      
-      Parameter map_injective_remove :
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall x n m, map f (remove x n m) [=] remove (f x) n (map f m).
-      
-      Parameter map_injective_inter : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall m₁ m₂, map f (inter m₁ m₂) [=] inter (map f m₁) (map f m₂).
-      
-      Parameter map_injective_diff : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall m₁ m₂, map f (diff m₁ m₂) [=] diff (map f m₁) (map f m₂).
-            
-      Parameter map_injective_lub_wlog : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall x m₁ m₂, multiplicity x (map f m₂) <= multiplicity x (map f m₁) ->
-        multiplicity x (map f (lub m₁ m₂)) = multiplicity x (map f m₁).
-      
-      Parameter map_injective_lub : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall m₁ m₂, map f (lub m₁ m₂) [=] lub (map f m₁) (map f m₂).
-      
-      Parameter map_injective : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        injective eq eq (map f).
-      
-      Parameter map_injective_elements : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall m,
-        PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
-      
-      Parameter map_injective_support : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall m, PermutationA E.eq (support (map f m)) (List.map f (support m)).
-      
-      Parameter map_injective_size : 
-        Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-        forall m, size (map f m) = size m.
-      
-    End map_injective_results.
-  End map_results.
+
+  (** **  Function [max] and its properties  **)
+
+Module Type MMultisetExtra (E : DecidableType)(Import M : FMultisetsOn E).
+  
+  (** Extra operations *)
+  Include (MMultisetExtraOps E M).
+  
+  (** **  Properties of [remove_all]  **)
+  
+  Parameter remove_all_same : forall x m, (remove_all x m)[x] = 0.
+  
+  Parameter remove_all_other : forall x y m, ~E.eq y x -> (remove_all x m)[y] = m[y].
+  
+  Declare Instance remove_all_compat : Proper (E.eq ==> eq ==> eq) remove_all.
+  
+  Declare Instance remove_all_sub_compat : Proper (E.eq ==> Subset ==> Subset) remove_all.
+  
+  Parameter remove_all_singleton_same : forall x n, remove_all x (singleton x n) [=] empty.
+  
+  Parameter remove_all_singleton_other : forall x y n, ~E.eq y x -> remove_all y (singleton x n) [=] singleton x n.
+  
+  Parameter remove_all_add_same : forall x n m, remove_all x (add x n m) [=] remove_all x m.
+  
+  Parameter remove_all_add_other : forall x y n m,
+    ~E.eq x y -> remove_all x (add y n m) [=] add y n (remove_all x m).
+  
+  Parameter remove_all_remove : forall x n m, remove_all x (remove x n m) [=] remove_all x m.
+  
+  Parameter remove_remove_all : forall x n m, remove x n (remove_all x m) [=] remove_all x m.
+  
+  Parameter remove_all_remove_other : forall x y n m,
+    ~E.eq x y -> remove_all y (remove x n m) [=] remove x n (remove_all y m).
+  
+  Parameter remove_all_union : forall x m₁ m₂,
+    remove_all x (union m₁ m₂) [=] union (remove_all x m₁) (remove_all x m₂).
+  
+  Parameter remove_all_inter : forall x m₁ m₂,
+    remove_all x (inter m₁ m₂) [=] inter (remove_all x m₁) (remove_all x m₂).
+  
+  Parameter remove_all_diff :
+    forall x m₁ m₂, remove_all x (diff m₁ m₂) [=] diff (remove_all x m₁) (remove_all x m₂).
+  
+  Parameter remove_all_diff2 : forall x m₁ m₂, remove_all x (diff m₁ m₂) [=] diff (remove_all x m₁) m₂.
+  
+  Parameter remove_all_lub : forall x m₁ m₂, remove_all x (lub m₁ m₂) [=] lub (remove_all x m₁) (remove_all x m₂).
+  
+  Parameter remove_all_for_all : forall f, compatb f ->
+    forall x m, for_all f (remove_all x m) = for_all (fun y n => if E.eq_dec y x then true else f y n) m.
+  
+  Parameter remove_all_exists : forall f, compatb f ->
+    forall x m, exists_ f (remove_all x m) = exists_ (fun y n => if E.eq_dec y x then false else f y n) m.
+  
+  Parameter remove_all_nfilter : forall f, compatb f ->
+    forall x m, nfilter f (remove_all x m) [=] remove_all x (nfilter f m).
+  
+  Parameter remove_all_filter : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, filter f (remove_all x m) [=] remove_all x (filter f m).
+  
+  Parameter remove_all_filter_false : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, f x = false -> filter f (remove_all x m) [=] filter f m.
+  
+  Parameter remove_all_npartition_fst : forall f, compatb f ->
+    forall x m, fst (npartition f (remove_all x m)) [=] remove_all x (fst (npartition f m)).
+  
+  Parameter remove_all_npartition_snd : forall f, compatb f ->
+    forall x m, snd (npartition f (remove_all x m)) [=] remove_all x (snd (npartition f m)).
+  
+  Parameter remove_all_partition_fst : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, fst (partition f (remove_all x m)) [=] remove_all x (fst (partition f m)).
+  
+  Parameter remove_all_partition_snd : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, snd (partition f (remove_all x m)) [=] remove_all x (snd (partition f m)).
+  
+  Parameter remove_all_elements : forall x m,
+    PermutationA eq_pair (elements (remove_all x m))
+                         (removeA (fun x y => E.eq_dec (fst x) (fst y)) (x, m[x]) (elements m)).
+  
+  Parameter remove_all_support : forall x m,
+    PermutationA E.eq (support (remove_all x m)) (removeA E.eq_dec x (support m)).
+  
+  Parameter remove_all_cardinal : forall x m, cardinal (remove_all x m) = cardinal m - m[x].
+  
+  Parameter remove_all_size_in : forall x m, In x m -> size (remove_all x m) = size m - 1.
+  
+  Parameter remove_all_size_out : forall x m, ~In x m -> size (remove_all x m) = size m.
+  
+  Parameter remove_all_as_filter : forall x m,
+    remove_all x m [=] filter (fun y => if E.eq_dec y x then false else true) m.
+  
+  (** **  Properties of [map]  **)
+  
+  Declare Instance map_compat : forall f, Proper (E.eq ==> E.eq) f -> Proper (eq ==> eq) (map f).
+  
+  Parameter map_In : forall f, Proper (E.eq ==> E.eq) f ->
+    forall x m, In x (map f m) <-> exists y, E.eq x (f y) /\ In y m.
+  
+  Parameter map_empty : forall f, map f empty [=] empty.
+  
+  Parameter map_add : forall f, Proper (E.eq ==> E.eq) f ->
+    forall x n m, map f (add x n m) [=] add (f x) n (map f m).
+  
+  Parameter map_spec : forall f, Proper (E.eq ==> E.eq) f -> forall x m, 
+    multiplicity x (map f m) = cardinal (nfilter (fun y _ => if E.eq_dec (f y) x then true else false) m).
+  
+  Declare Instance map_sub_compat : forall f, Proper (E.eq ==> E.eq) f -> Proper (Subset ==> Subset) (map f).
+  
+  Parameter map_singleton : forall f, Proper (E.eq ==> E.eq) f ->
+    forall x n, map f (singleton x n) [=] singleton (f x) n.
+  
+  Parameter map_remove1 : forall f, Proper (E.eq ==> E.eq) f ->
+    forall x n m, n <= multiplicity x m -> map f (remove x n m) [=] remove (f x) n (map f m).
+  
+  Parameter map_remove2 : forall f, Proper (E.eq ==> E.eq) f -> forall x n m,
+    multiplicity x m <= n -> map f (remove x n m) [=] remove (f x) (multiplicity x m) (map f m).
+  
+  Parameter fold_map_union : forall f, Proper (E.eq ==> E.eq) f ->
+    forall m₁ m₂, fold (fun x n acc => add (f x) n acc) m₁ m₂ [=] union (map f m₁) m₂.
+  
+  Parameter map_union : forall f, Proper (E.eq ==> E.eq) f ->
+    forall m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
+  
+  Parameter map_inter : forall f, Proper (E.eq ==> E.eq) f ->
+    forall m₁ m₂, map f (inter m₁ m₂) [<=] inter (map f m₁) (map f m₂).
+  
+  Parameter map_lub : forall f, Proper (E.eq ==> E.eq) f ->
+    forall m₁ m₂, lub (map f m₁) (map f m₂) [<=] map f (lub m₁ m₂).
+  
+  Parameter map_filter : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, filter f (map g m) [=] map g (filter (fun x => f (g x)) m).
+  
+  Parameter map_partition_fst : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, fst (partition f (map g m)) ≡ map g (fst (partition (fun x : elt => f (g x)) m)).
+  
+  Parameter map_partition_snd : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, snd (partition f (map g m)) ≡ map g (snd (partition (fun x : elt => f (g x)) m)).
+  
+(*   Parameter map_from_elements : forall f, Proper (E.eq ==> E.eq) f -> 
+    forall l, map f (from_elements l) [=] from_elements (List.map (fun xn => (f (fst xn), snd xn)) l). *)
+  
+  Parameter map_support : forall f, Proper (E.eq ==> E.eq) f ->
+    forall m, inclA E.eq (support (map f m)) (List.map f (support m)).
+  
+  Parameter map_cardinal : forall f, Proper (E.eq ==> E.eq) f -> forall m, cardinal (map f m) = cardinal m.
+  
+  Parameter map_size : forall f, Proper (E.eq ==> E.eq) f -> forall m, size (map f m) <= size m.
   
   Parameter map_extensionality_compat : forall f g, Proper (E.eq ==> E.eq) f ->
     (forall x, E.eq (g x) (f x)) -> forall m, map g m [=] map f m.
@@ -144,6 +226,41 @@ Module Type MMultisetExtra (E : DecidableType)(M : FMultisetsOn E).
   
   Parameter map_merge : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
     forall m, map f (map g m) [=] map (fun x => f (g x)) m.
+  
+  (** ***  Extra Properties when [f] is injective  **)
+  
+  Parameter map_injective_spec : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall x m, multiplicity (f x) (map f m) = multiplicity x m.
+  
+  Parameter map_injective_In : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall x m, In (f x) (map f m) <-> In x m.
+  
+  Parameter map_injective_remove : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall x n m, map f (remove x n m) [=] remove (f x) n (map f m).
+  
+  Parameter map_injective_inter : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m₁ m₂, map f (inter m₁ m₂) [=] inter (map f m₁) (map f m₂).
+  
+  Parameter map_injective_diff : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m₁ m₂, map f (diff m₁ m₂) [=] diff (map f m₁) (map f m₂).
+  
+  Parameter map_injective_lub : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m₁ m₂, map f (lub m₁ m₂) [=] lub (map f m₁) (map f m₂).
+  
+  Parameter map_injective_subset : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m₁ m₂, map f m₁ [<=] map f m₂ <-> m₁ [<=] m₂.
+  
+  Parameter map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    injective eq eq (map f).
+  
+  Parameter map_injective_elements : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
+  
+  Parameter map_injective_support : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, PermutationA E.eq (support (map f m)) (List.map f (support m)).
+  
+  Parameter map_injective_size : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, size (map f m) = size m.
   
   Parameter map_injective_fold : forall A eqA, Equivalence eqA ->
     forall f g, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
@@ -156,7 +273,7 @@ Module Type MMultisetExtra (E : DecidableType)(M : FMultisetsOn E).
   Parameter map_injective_npartition_fst : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
     forall m, fst (npartition f (map g m)) [=] map g (fst (npartition (fun x => f (g x)) m)).
   
-  Parameter map_npartition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+  Parameter map_injective_npartition_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
     forall m, snd (npartition f (map g m)) [=] map g (snd (npartition (fun x => f (g x)) m)).
   
   Parameter map_injective_for_all : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
@@ -169,27 +286,59 @@ Module Type MMultisetExtra (E : DecidableType)(M : FMultisetsOn E).
   
   (** ***  Function [max_mult] computing the maximal multiplicity  **)
   
-  Definition max_mult m := fold (fun _ => max) m 0%nat.
-  
   Declare Instance max_mult_compat : Proper (eq ==> Logic.eq) max_mult.
+  
+  Parameter max_mult_sub_compat : Proper (Subset ==> le) max_mult.
+  
+  Parameter max_mult_spec_weak : forall m x, (m[x] <= max_mult m)%nat.
+  
+  (* We need a dummy elements for [y] when [m] is empty. *)
+  Parameter max_mult_spec : elt -> forall m, (forall x, m[x] <= max_mult m) /\ (exists y, max_mult m = m[y]).
+  
+  Parameter max_mult_unique : forall m n, (forall x, m[x] <= n) -> (exists y, n = m[y]) -> n = max_mult m.
+  
+  Parameter max_spec_max : forall m x, ~m [=] empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
+  
+  Parameter max_max_mult_ex : forall m, ~m [=] empty -> exists x, max_mult m = m[x].
   
   Parameter max_mult_empty : max_mult empty = 0.
   
+  Parameter max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
+  
   Parameter max_mult_singleton : forall x n, max_mult (singleton x n) = n.
+  
+  Parameter max_mult_add : forall m x n, ~In x m -> max_mult (add x n m) = Nat.max n (max_mult m).
+  
+  Parameter max_mult_add_le : forall x n m, max_mult m <= max_mult (add x n m).
+  
+  Parameter max_mult_add_cases : forall x n m, (m[x] + n <= max_mult m <-> max_mult (add x n m) = max_mult m)
+                                            /\ (max_mult m <= m[x] + n <-> max_mult (add x n m) = m[x] + n).
+  
+  Parameter max_mult_add1 : forall x n m, m[x] + n <= max_mult m <-> max_mult (add x n m) = max_mult m.
+  
+  Parameter max_mult_add2 : forall x n m, max_mult m <= m[x] + n <-> max_mult (add x n m) = m[x] + n.
+  
+  Parameter max_mult_remove_le : forall x n m, max_mult (remove x n m) <= max_mult m.
+  
+  Parameter max_mult_remove : forall x n m, m[x] < max_mult m -> max_mult (remove x n m) = max_mult m.
+  
+  Parameter max_mult_union : forall m₁ m₂,
+    Nat.max (max_mult m₁) (max_mult m₂) <= max_mult (union m₁ m₂) <= max_mult m₁ + max_mult m₂.
+  
+  Parameter max_mult_inter : forall m₁ m₂, max_mult (inter m₁ m₂) <= Nat.min (max_mult m₁) (max_mult m₂).
+  
+  Parameter max_mult_diff : forall m₁ m₂, max_mult (diff m₁ m₂) <= max_mult m₁.
+  
+  Parameter max_mult_lub : forall m₁ m₂, max_mult (lub m₁ m₂) = Nat.max (max_mult m₁) (max_mult m₂).
+  
+  Parameter max_mult_remove_all_le : forall x m, max_mult (remove_all x m) <= max_mult m.
+  
+  Parameter max_mult_remove_all : forall x m, m[x] < max_mult m -> max_mult (remove_all x m) = max_mult m.
   
   Parameter max_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
     forall m, max_mult (map f m) = max_mult m.
   
-  Parameter max_mult_add : forall m x n, (n > 0)%nat -> ~In x m ->
-    max_mult (add x n m) = Nat.max n (max_mult m).
-  
-  Parameter max_mult_spec : forall m x, (m[x] <= max_mult m)%nat.
-  
-  Parameter max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
-  
   (** ***  Function [max s] returning the elements of a multiset with maximal multiplicity  **)
-  
-  Definition max m := nfilter (fun _ => beq_nat (max_mult m)) m.
   
   Declare Instance eqb_max_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult m)).
   
@@ -199,50 +348,454 @@ Module Type MMultisetExtra (E : DecidableType)(M : FMultisetsOn E).
   
   Declare Instance max_compat : Proper (eq ==> eq) max.
   
-  Parameter max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-    forall m, (max (map f m)) [=] (map f (max m)).
+  Definition simple_max m := nfilter (fun _ => beq_nat (max_mult m)) m.
   
-  Parameter  max_subset : forall m, max m [<=] m.
+  Parameter simple_max_compat : Proper (eq ==> eq) simple_max.
   
-  Parameter  max_spec1 : forall m x y, In y (max m) -> m[x] <= (max m)[y].
+  Parameter max_simplified : forall m, max m [=] simple_max m.
   
-  Parameter  max_spec_non_nil : forall m x, In x m -> exists y, In y (max m).
+  Parameter max_spec : forall x m, (max m)[x] = (if m[x] =? max_mult m then m[x] else 0).
   
-  Parameter  max_empty : forall m, max m [=] empty <-> m [=] empty.
+  Parameter max_case : forall m x, (max m)[x] = 0 \/ (max m)[x] = m[x] /\ m[x] = max_mult m.  
   
-  Parameter  max_singleton : forall x n, max (singleton x n) [=] singleton x n.
+  Parameter max_le : forall m x y, In y (max m) -> m[x] <= (max m)[y].
   
-  Parameter  max_2_mult : forall m x, (max m)[x] = 0 \/ (max m)[x] = m[x].
+  Parameter max_subset : forall m, max m [<=] m.
   
-  Parameter  max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
+  Parameter max_empty : max empty [=] empty.
   
-  Parameter  max_spec_mult : forall m x y, In x (max m) -> (In y (max m) <-> (max m)[y] = (max m)[x]).
+  Parameter max_is_empty : forall m, max m [=] empty <-> m [=] empty.
   
-  Parameter  max_spec2 : forall m x y,
-    In x (max m) -> ~In y (max m) -> (m[y] < m[x])%nat.
+  Parameter max_singleton : forall x n, max (singleton x n) [=] singleton x n.
   
-  Parameter  max_max_mult : forall m x, ~m [=] empty -> In x (max m) <-> m[x] = max_mult m.
+  Parameter max_is_singleton : forall x n m, 0 < n ->
+    max m [=] singleton x n <-> n = m[x] /\ forall y, ~E.eq y x -> m[y] < m[x].
   
-  Parameter  max_max_mult_ex : forall m, ~m [=] empty -> exists x, max_mult m = m[x].
+  Parameter max_is_id : forall m, max m [=] m <-> forall x, In x m -> m[x] = max_mult m.
   
-  Parameter  max_spec_max : forall m x, ~m [=] empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
+  Parameter max_In : forall m x, In x (max m) -> m[x] = max_mult m.
+  
+  Parameter max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
+  
+  Parameter max_In_mult2 : forall m x, In x m -> (In x (max m) <-> (max m)[x] = max_mult m).
+  
+  Parameter max_In_mult3 : forall m x, In x m -> (In x (max m) <-> m[x] = max_mult m).
+  
+  Parameter max_max_mult : forall m x, ~m [=] empty -> (In x (max m) <-> m[x] = max_mult m).
   
   Parameter max_spec1_iff : forall m, ~m [=] empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
   
-  Parameter size_max_le : forall m, size (max m) <= size m.
-
+  Parameter max_spec_non_nil : forall m x, In x m -> exists y, In y (max m).
+  
+  Parameter max_spec_mult : forall m x y, In x (max m) -> (In y (max m) <-> (max m)[y] = (max m)[x]).
+  
+  Parameter max_spec_lub : forall m x y, In x (max m) -> ~In y (max m) <-> (m[y] < m[x])%nat.
+  
+  Parameter max_add_lt : forall x n m, m[x] + n < max_mult m -> max (add x n m) [=] max m.
+  
+  Parameter max_add_eq : forall x n m, 0 < n -> m[x] + n = max_mult m -> max (add x n m) [=] add x (m[x] + n) (max m).
+  
+  Parameter max_add_gt : forall x n m, m[x] + n > max_mult m -> max (add x n m) [=] singleton x (m[x] + n).
+  
+  Parameter max_remove : forall x n m, m[x] < max_mult m -> max (remove x n m) [=] max m.
+  
+  Parameter max_lub_le : forall m₁ m₂, max m₁ [<=] max (lub m₁ m₂) \/ max m₂ [<=] max (lub m₁ m₂).
+  
+  Parameter max_lub : forall m₁ m₂, max (lub m₁ m₂) [<=] lub (max m₁) (max m₂).
+  
+  Parameter fold_max : forall A (eqA : relation A), Equivalence eqA ->
+    forall f, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    forall m i, eqA (fold f (max m) i) (fold (fun x n acc => if n =? max_mult m then f x n acc else acc) m i).
+  
+  Parameter for_all_max : forall f, compatb f ->
+    forall m, for_all f (max m) = for_all (fun x n => f x n || (n <? max_mult m))%bool m.
+  
+  Parameter exists_max : forall f, compatb f ->
+    forall m, exists_ f (max m) = exists_ (fun x n => f x n && (n =? max_mult m))%bool m.
+  
+  Parameter nfilter_max : forall f, compatb f ->
+    forall m, nfilter f (max m) [=] nfilter (fun x n => f x n && (n =? max_mult m))%bool m.
+  
+  Parameter filter_max : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, filter f (max m) [=] nfilter (fun x n => f x && (n =? max_mult m))%bool m.
+  
+  Parameter npartition_max_fst : forall f, compatb f ->
+    forall m, fst (npartition f (max m)) [=] nfilter (fun x n => f x n && (n =? max_mult m))%bool m.
+  
+  Parameter npartition_max_snd : forall f, compatb f ->
+    forall m, snd (npartition f (max m)) [=] nfilter (fun x n => negb (f x n) && (n =? max_mult m))%bool m.
+  
+  Parameter partition_max_fst : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, fst (partition f (max m)) [=] nfilter (fun x n => f x && (n =? max_mult m))%bool m.
+  
+  Parameter partition_max_snd : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, snd (partition f (max m)) [=] nfilter (fun x n => negb (f x) && (n =? max_mult m))%bool m.
+  
+  Parameter elements_max : forall m,
+    PermutationA eq_pair (elements (max m)) (List.filter (fun xn => snd xn =? max_mult m) (elements m)).
+  
+  Parameter support_max : forall m, inclA E.eq (support (max m)) (support m).
+  
+  Parameter cardinal_max : forall m, cardinal (max m) <= cardinal m.
+  
+  Parameter size_max : forall m, size (max m) <= size m.
+  
+  Parameter max_remove_all : forall x m, m[x] < max_mult m -> max (remove_all x m) [=] max m.
+  
+  Parameter max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, (max (map f m)) [=] (map f (max m)).
+  
+  Parameter max_mult_max : forall m, max_mult (max m) = max_mult m.
+  
+  Parameter max_idempotent : forall m, max (max m) [=] max m.
+  
+  (** **  Function [min] and its properties  **)
+  
+  (** ***  Function [min_mult] computing the minimal multiplicity  **)
+  
+  (*
+  Declare Instance min_mult_compat : Proper (eq ==> Logic.eq) min_mult.
+  
+(*   Parameter min_mult_sub_compat : Proper (Subset ==> le) min_mult. *)
+  
+  Parameter min_mult_spec_weak : forall m x, (min_mult m <= m[x])%nat.
+  
+  (* We need a dummy elements for [y] when [m] is empty. *)
+  Parameter min_mult_spec : elt -> forall m, (forall x, min_mult m <= m[x]) /\ (exists y, min_mult m = m[y]).
+  
+  Parameter min_mult_unique : forall m n, (forall x, n <= m[x]) -> (exists y, n = m[y]) -> n = min_mult m.
+  
+  Parameter min_spec_min : forall m x, ~m [=] empty -> (forall y, (m[x] <= m[y])) -> min_mult m = m[x].
+  
+  Parameter min_min_mult_ex : forall m, ~m [=] empty -> exists x, min_mult m = m[x].
+  
+  Parameter min_mult_empty : min_mult empty = 0.
+  
+  Parameter min_mult_0 : forall m, min_mult m = 0%nat <-> m [=] empty.
+  
+  Parameter min_mult_singleton : forall x n, min_mult (singleton x n) = n.
+  
+  Parameter min_mult_add : forall m x n, ~In x m -> min_mult (add x n m) = Nat.min n (min_mult m).
+  
+(*   Parameter min_mult_add_le : forall x n m, min_mult m <= min_mult (add x n m). *)
+  
+(*   Parameter min_mult_add_cases : forall x n m, (min_mult m <= m[x] + n <-> min_mult (add x n m) = min_mult m)
+                                            /\ (m[x] + n <= min_mult m <-> min_mult (add x n m) = m[x] + n).
+  
+  Parameter min_mult_add1 : forall x n m, m[x] + n <= min_mult m <-> min_mult (add x n m) = min_mult m.
+  
+  Parameter min_mult_add2 : forall x n m, min_mult m <= m[x] + n <-> min_mult (add x n m) = m[x] + n.
+  
+  Parameter min_mult_remove_le : forall x n m, min_mult (remove x n m) <= min_mult m. *)
+  
+  Parameter min_mult_remove : forall x n m, min_mult m < m[x] -> min_mult (remove x n m) = min_mult m.
+  
+  Parameter min_mult_union : forall m₁ m₂,
+    Nat.min (min_mult m₁) (min_mult m₂) <= min_mult (union m₁ m₂) <= min_mult m₁ + min_mult m₂.
+  
+  Parameter min_mult_lub : forall m₁ m₂, Nat.max (min_mult m₁) (min_mult m₂) <= min_mult (lub m₁ m₂).
+  
+(*   Parameter min_mult_remove_all_le : forall x m, min_mult (remove_all x m) <= min_mult m. *)
+  
+  Parameter min_mult_remove_all : forall x m, min_mult m < m[x] -> min_mult (remove_all x m) = min_mult m.
+  
+  Parameter min_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, min_mult (map f m) = min_mult m.
+  
+  (** ***  Function [min s] returning the elements of a multiset with minimal multiplicity  **)
+  
+  Declare Instance eqb_min_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (min_mult m)).
+  
+  Declare Instance eqb_min_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.min).
+  
+  Local Hint Immediate eqb_min_mult_compat eqb_min_compat.
+  
+  Declare Instance min_compat : Proper (eq ==> eq) min.
+  
+  Definition simple_min m := nfilter (fun _ => beq_nat (min_mult m)) m.
+  
+  Parameter simple_min_compat : Proper (eq ==> eq) simple_min.
+  
+  Parameter min_simplified : forall m, min m [=] simple_min m.
+  
+  Parameter min_spec : forall x m, (min m)[x] = (if m[x] =? min_mult m then m[x] else 0).
+  
+  Parameter min_case : forall m x, (min m)[x] = 0 \/ (min m)[x] = m[x] /\ m[x] = min_mult m.  
+  
+  Parameter min_le : forall m x y, In y (min m) -> In x m -> (min m)[y] <= m[x].
+  
+  Parameter min_subset : forall m, min m [<=] m.
+  
+  Parameter min_empty : min empty [=] empty.
+  
+  Parameter min_is_empty : forall m, min m [=] empty <-> m [=] empty.
+  
+  Parameter min_singleton : forall x n, min (singleton x n) [=] singleton x n.
+  
+  Parameter min_is_singleton : forall x n m, 0 < n ->
+    min m [=] singleton x n <-> n = m[x] /\ forall y, ~E.eq y x -> m[x] < m[y].
+  
+  Parameter min_is_id : forall m, min m [=] m <-> forall x, In x m -> m[x] = min_mult m.
+  
+  Parameter min_In : forall m x, In x (min m) -> m[x] = min_mult m.
+  
+  Parameter min_In_mult : forall m x, In x m -> (In x (min m) <-> (min m)[x] = m[x]).
+  
+  Parameter min_In_mult2 : forall m x, In x m -> (In x (min m) <-> (min m)[x] = min_mult m).
+  
+  Parameter min_In_mult3 : forall m x, In x m -> (In x (min m) <-> m[x] = min_mult m).
+  
+  Parameter min_min_mult : forall m x, ~m [=] empty -> (In x (min m) <-> m[x] = min_mult m).
+  
+  Parameter min_spec1_iff : forall m, ~m [=] empty -> forall x, In x (min m) <-> forall y, (m[x] <= m[y]).
+  
+  Parameter min_spec_non_nil : forall m x, In x m -> exists y, In y (min m).
+  
+  Parameter min_spec_mult : forall m x y, In x (min m) -> (In y (min m) <-> (min m)[y] = (min m)[x]).
+  
+  Parameter min_spec_lub : forall m x y, In x (min m) -> In y m -> ~In y (min m) <-> (m[x] < m[y])%nat.
+  
+  Parameter min_add_lt : forall x n m, m[x] + n < min_mult m -> min (add x n m) [=] singleton x (m[x] + n).
+  
+  Parameter min_add_eq : forall x n m, 0 < n -> m[x] + n = min_mult m -> min (add x n m) [=] add x (m[x] + n) (min m).
+  
+  Parameter min_add_gt : forall x y n m, ~E.eq y x -> In y m -> m[x] + n > min_mult m -> min (add x n m) [=] min m.
+  
+  Parameter min_remove : forall x n m, min_mult m < m[x] -> min (remove x n m) [=] min m.
+  
+(*   Parameter min_lub_le : forall m₁ m₂, min m₁ [<=] min (lub m₁ m₂) \/ min m₂ [<=] min (lub m₁ m₂). *)
+  
+(*   Parameter min_lub : forall m₁ m₂, min (lub m₁ m₂) [<=] lub (min m₁) (min m₂). *)
+  
+  Parameter fold_min : forall A (eqA : relation A), Equivalence eqA ->
+    forall f, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    forall m i, eqA (fold f (min m) i) (fold (fun x n acc => if n =? min_mult m then f x n acc else acc) m i).
+  
+  Parameter for_all_min : forall f, compatb f ->
+    forall m, for_all f (min m) = for_all (fun x n => f x n || (min_mult m <? n))%bool m.
+  
+  Parameter exists_min : forall f, compatb f ->
+    forall m, exists_ f (min m) = exists_ (fun x n => f x n && (n =? min_mult m))%bool m.
+  
+  Parameter nfilter_min : forall f, compatb f ->
+    forall m, nfilter f (min m) [=] nfilter (fun x n => f x n && (n =? min_mult m))%bool m.
+  
+  Parameter filter_min : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, filter f (min m) [=] nfilter (fun x n => f x && (n =? min_mult m))%bool m.
+  
+  Parameter npartition_min_fst : forall f, compatb f ->
+    forall m, fst (npartition f (min m)) [=] nfilter (fun x n => f x n && (n =? min_mult m))%bool m.
+  
+  Parameter npartition_min_snd : forall f, compatb f ->
+    forall m, snd (npartition f (min m)) [=] nfilter (fun x n => negb (f x n) && (n =? min_mult m))%bool m.
+  
+  Parameter partition_min_fst : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, fst (partition f (min m)) [=] nfilter (fun x n => f x && (n =? min_mult m))%bool m.
+  
+  Parameter partition_min_snd : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, snd (partition f (min m)) [=] nfilter (fun x n => negb (f x) && (n =? min_mult m))%bool m.
+  
+  Parameter elements_min : forall m,
+    PermutationA eq_pair (elements (min m)) (List.filter (fun xn => snd xn =? min_mult m) (elements m)).
+  
+  Parameter support_min : forall m, inclA E.eq (support (min m)) (support m).
+  
+  Parameter cardinal_min : forall m, cardinal (min m) <= cardinal m.
+  
+  Parameter size_min : forall m, size (min m) <= size m.
+  
+  Parameter min_remove_all : forall x m, min_mult m < m[x] -> min (remove_all x m) [=] min m.
+  
+  Parameter min_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, (min (map f m)) [=] (map f (min m)).
+  
+  Parameter min_mult_min : forall m, min_mult (min m) = min_mult m.
+  
+  Parameter min_idempotent : forall m, min (min m) [=] min m.
+  *)
+  
 End MMultisetExtra.
 
 
-Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
-  Module MProp := MMultisetFacts.Make(E)(M).
-  Include MProp.
+Module MakeExtra(E : DecidableType)(Import M : FMultisetsOn E) : MMultisetExtra(E)(M).
+  Module Import MProp := MMultisetFacts.Make(E)(M).
   
-  (** *  Extra operations  **)
+  Include (MMultisetExtraOps E M).
   
-  (** **  Function [map] and its properties  **)
+  (** **  Properties of [remove_all]  **)
   
-  Definition map f m := fold (fun x n acc => add (f x) n acc) m empty.
+  Lemma remove_all_same : forall x m, (remove_all x m)[x] = 0.
+  Proof. intros. unfold remove_all. rewrite remove_same. omega. Qed.
+  
+  Lemma remove_all_other : forall x y m, ~E.eq y x -> (remove_all x m)[y] = m[y].
+  Proof. intros. unfold remove_all. now rewrite remove_other. Qed.
+  
+  Lemma remove_all_spec : forall x y m, (remove_all x m)[y] = if E.eq_dec y x then 0 else m[y].
+  Proof. intros. unfold remove_all. msetdec. Qed.
+  
+  Instance remove_all_compat : Proper (E.eq ==> eq ==> eq) remove_all.
+  Proof. repeat intro. apply remove_compat; msetdec. Qed.
+  
+  Instance remove_all_sub_compat : Proper (E.eq ==> Subset ==> Subset) remove_all.
+  Proof. repeat intro. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_In : forall x y m, In x (remove_all y m) <-> In x m /\ ~E.eq x y.
+  Proof. intros. unfold remove_all. rewrite remove_In. intuition. msetdec. Qed.
+  
+  Lemma remove_all_subset : forall x m, remove_all x m [<=] m.
+  Proof. intros x m y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_singleton_same : forall x n, remove_all x (singleton x n) [=] empty.
+  Proof. intros x n y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_singleton_other : forall x y n, ~E.eq y x -> remove_all y (singleton x n) [=] singleton x n.
+  Proof. intros x y n Hxy z. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_add_same : forall x n m, remove_all x (add x n m) [=] remove_all x m.
+  Proof. intros x n m y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_add_other : forall x y n m, ~E.eq x y -> remove_all x (add y n m) [=] add y n (remove_all x m).
+  Proof. intros x y n m Hxy z. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_remove : forall x n m, remove_all x (remove x n m) [=] remove_all x m.
+  Proof. intros x n m y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_remove_all : forall x n m, remove x n (remove_all x m) [=] remove_all x m.
+  Proof. intros x n m y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_remove_other : forall x y n m,
+    ~E.eq x y -> remove_all y (remove x n m) [=] remove x n (remove_all y m).
+  Proof. intros x y n m Hxy z. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_union : forall x m₁ m₂,
+    remove_all x (union m₁ m₂) [=] union (remove_all x m₁) (remove_all x m₂).
+  Proof. intros x n m y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_inter : forall x m₁ m₂,
+    remove_all x (inter m₁ m₂) [=] inter (remove_all x m₁) (remove_all x m₂).
+  Proof. intros x m₁ m₂ y. unfold remove_all. msetdec. now rewrite 3 Nat.sub_diag. Qed.
+  
+  Lemma remove_all_diff : forall x m₁ m₂, remove_all x (diff m₁ m₂) [=] diff (remove_all x m₁) (remove_all x m₂).
+  Proof. intros x m₁ m₂ y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_diff2 : forall x m₁ m₂, remove_all x (diff m₁ m₂) [=] diff (remove_all x m₁) m₂.
+  Proof. intros x m₁ m₂ y. unfold remove_all. msetdec. Qed.
+  
+  Lemma remove_all_lub : forall x m₁ m₂, remove_all x (lub m₁ m₂) [=] lub (remove_all x m₁) (remove_all x m₂).
+  Proof. intros x m₁ m₂ y. unfold remove_all. msetdec. now rewrite 3 Nat.sub_diag. Qed.
+  
+  Lemma remove_all_for_all : forall f, compatb f ->
+    forall x m, for_all f (remove_all x m) = for_all (fun y n => if E.eq_dec y x then true else f y n) m.
+  Proof.
+  intros f Hf x m. unfold remove_all. destruct (for_all f (M.remove x m[x] m)) eqn:Hcase.
+  + symmetry. rewrite for_all_spec in *; trivial; [|].
+    - intros y Hin. specialize (Hcase y). msetdec. auto.
+    - intros y y' Hy ? ? ?. subst. clear -Hf Hy. destruct (E.eq_dec y x), (E.eq_dec y' x); msetdec.
+  + symmetry. rewrite for_all_false in *; trivial; [|].
+    - intro Hall. apply Hcase. intros y Hin. specialize (Hall y). msetdec. auto.
+    - intros y y' Hy ? ? ?. subst. clear -Hf Hy. destruct (E.eq_dec y x), (E.eq_dec y' x); msetdec.
+  Qed.
+  
+  Lemma remove_all_exists : forall f, compatb f ->
+    forall x m, exists_ f (remove_all x m) = exists_ (fun y n => if E.eq_dec y x then false else f y n) m.
+  Proof.
+  intros f Hf x m. unfold remove_all. destruct (exists_ f (M.remove x m[x] m)) eqn:Hcase.
+  + symmetry. rewrite exists_spec in *; trivial; [|].
+    - destruct Hcase as [y [Hin Hy]]. exists y. msetdec.
+    - intros y y' Hy ? ? ?. subst. clear -Hf Hy. destruct (E.eq_dec y x), (E.eq_dec y' x); msetdec.
+  + symmetry. rewrite exists_false in *; trivial; [|].
+    - intros [y [Hin Hy]]. apply Hcase. exists y. msetdec.
+    - intros y y' Hy ? ? ?. subst. clear -Hf Hy. destruct (E.eq_dec y x), (E.eq_dec y' x); msetdec.
+  Qed.
+  
+  Lemma remove_all_nfilter : forall f, compatb f ->
+    forall x m, nfilter f (remove_all x m) [=] remove_all x (nfilter f m).
+  Proof. repeat intro. unfold remove_all. msetdec. rewrite 2 Nat.sub_diag. now destruct_match. Qed.
+  
+  Lemma remove_all_filter : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, filter f (remove_all x m) [=] remove_all x (filter f m).
+  Proof.
+  repeat intro. unfold remove_all. rewrite 2 filter_nfilter; trivial.
+  apply remove_all_nfilter. repeat intro. auto.
+  Qed.
+  
+  Lemma remove_all_filter_false : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, f x = false -> filter f (remove_all x m) [=] filter f m.
+  Proof.
+  intros. rewrite remove_all_filter; trivial; []. apply remove_out.
+  rewrite filter_In; intuition; congruence.
+  Qed.
+  
+  Lemma remove_all_npartition_fst : forall f, compatb f ->
+    forall x m, fst (npartition f (remove_all x m)) [=] remove_all x (fst (npartition f m)).
+  Proof. intros. rewrite 2 npartition_spec_fst; trivial; []. now apply remove_all_nfilter. Qed.
+  
+  Lemma remove_all_npartition_snd : forall f, compatb f ->
+    forall x m, snd (npartition f (remove_all x m)) [=] remove_all x (snd (npartition f m)).
+  Proof.
+  intros f Hf x m. rewrite 2 npartition_spec_snd; trivial; [].
+  apply remove_all_nfilter. repeat intro. f_equal. now apply Hf.
+  Qed.
+  
+  Lemma remove_all_partition_fst : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, fst (partition f (remove_all x m)) [=] remove_all x (fst (partition f m)).
+  Proof. intros. rewrite 2 partition_spec_fst; trivial; []. now apply remove_all_filter. Qed.
+  
+  Lemma remove_all_partition_snd : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall x m, snd (partition f (remove_all x m)) [=] remove_all x (snd (partition f m)).
+  Proof.
+  intros f Hf x m. rewrite 2 partition_spec_snd; trivial; [].
+  apply remove_all_filter. repeat intro. f_equal. now apply Hf.
+  Qed.
+  
+  Lemma remove_all_elements : forall x m,
+    PermutationA eq_pair (elements (remove_all x m))
+                         (removeA (fun x y => E.eq_dec (fst x) (fst y)) (x, m[x]) (elements m)).
+  Proof.
+  assert (Hequiv : Equivalence eq_elt) by autoclass.
+  intros x m.
+  apply NoDupA_equivlistA_PermutationA; autoclass.
+  * apply (NoDupA_strengthen subrelation_pair_elt), elements_NoDupA.
+  * now apply (NoDupA_strengthen subrelation_pair_elt), removeA_NoDupA, elements_NoDupA.
+  * intros [y p]. unfold remove_all. rewrite elements_remove.
+    assert (Hiff : E.eq y x /\ p = m[x] - m[x] /\ p > 0 \/ ~ E.eq y x /\ InA eq_pair (y, p) (elements m)
+                   <-> ~ E.eq y x /\ InA eq_pair (y, p) (elements m)) by (intuition; omega).
+    rewrite Hiff. clear Hiff.
+    induction (elements m) as [| e l]; simpl.
+    + split; intro Hin; (intuition; omega) || inv Hin.
+    + destruct_match.
+      - rewrite <- IHl. clear IHl.
+        split; [intros [Hxy Hin] | intro Hin]; intuition.
+        inv Hin; try tauto; []. elim Hxy. hnf in *. simpl in *. now transitivity (fst e).
+      - split; [intros [Hxy Hin] | intro Hin].
+        -- inv Hin; try (now left); []. right. intuition.
+        -- inv Hin; intuition.
+           lazymatch goal with H : E.eq _ _ -> False, H1 : eq_pair _ e |- False =>
+             apply H; rewrite <- H1; intuition end.
+  Qed.
+  
+  Lemma remove_all_support : forall x m,
+    PermutationA E.eq (support (remove_all x m)) (removeA E.eq_dec x (support m)).
+  Proof. intros. unfold remove_all. rewrite support_remove. destruct_match; reflexivity || omega. Qed.
+  
+  Lemma remove_all_cardinal : forall x m, cardinal (remove_all x m) = cardinal m - m[x].
+  Proof. intros. unfold remove_all. now rewrite cardinal_remove, Nat.min_id. Qed.
+  
+  Lemma remove_all_size_in : forall x m, In x m -> size (remove_all x m) = size m - 1.
+  Proof. intros. unfold remove_all. rewrite size_remove; trivial; []. destruct_match; omega. Qed.
+  
+  Lemma remove_all_size_out : forall x m, ~In x m -> size (remove_all x m) = size m.
+  Proof. intros. unfold remove_all. now rewrite remove_out. Qed.
+  
+  Lemma remove_all_as_filter : forall x m,
+    remove_all x m [=] filter (fun y => if E.eq_dec y x then false else true) m.
+  Proof.
+  intros x m y. unfold remove_all. msetdec.
+  repeat intro. do 2 destruct_match; trivial; exfalso;
+  match goal with H : ~E.eq _ _ |- _ => apply H end; now etransitivity; eauto.
+  Qed.
+  
+  (** **  Properties of [map]  **)
   
   Section map_results.
     Variable f : E.t -> E.t.
@@ -262,7 +815,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
     intros x m. unfold In, map. apply fold_rect.
     + intros m₁ m₂ acc Heq Hequiv. rewrite Hequiv. now setoid_rewrite Heq.
     + setoid_rewrite empty_spec. split; try intros [? [_ ?]]; omega.
-    + intros y p m' acc Hm Hpos Hin Hrec. destruct (E.eq_dec x (f y)) as [Heq | Hneq]; msetdec.
+    + intros y m' acc Hm Hin Hrec. destruct (E.eq_dec x (f y)) as [Heq | Hneq]; msetdec.
       - split.
           intros. exists y. split; trivial. now msetdec.
           intros [? [? ?]]. msetdec.
@@ -329,7 +882,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
     intros m₁ m₂. apply fold_rect with (m := m₁).
     + repeat intro. msetdec.
     + now rewrite map_empty, union_empty_l.
-    + intros. now rewrite H2, map_add, union_add_comm_l.
+    + intros * ? ? Heq. now rewrite Heq, map_add, union_add_comm_l.
     Qed.
     
     Theorem map_union : forall m₁ m₂, map f (union m₁ m₂) [=] union (map f m₁) (map f m₂).
@@ -364,21 +917,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
       apply Max.max_lub; apply map_sub_compat; apply lub_subset_l + apply lub_subset_r.
     Qed.
     
-    (*
-    Lemma map_elements : forall m,
-      PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
-    Proof.
-    assert (Proper (eq_pair ==> eq_pair) (fun xn => (f (fst xn), snd xn))). { intros ? ? Heq. now rewrite Heq. }
-    apply ind.
-    + intros ? ? Hm. now rewrite Hm.
-    + intros m x n Hin Hn Hrec. rewrite (map_add _). repeat rewrite elements_add_out; trivial.
-      - simpl. now constructor.
-      - rewrite (map_In _). intros [y [Heq Hy]]. apply Hf2 in Heq. apply Hin. now rewrite Heq.
-    + now rewrite map_empty, elements_empty.
-    Qed.
-    *)
-    
-    Lemma map_from_elements : 
+    Lemma map_from_elements :
       forall l, map f (from_elements l) [=] from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
     Proof.
     induction l as [| [x n] l]; simpl.
@@ -428,7 +967,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
       intros x m. unfold map. apply fold_rect.
       + repeat intro. msetdec.
       + now do 2 rewrite empty_spec.
-      + intros y n m' acc Hin Hpos Hm Heq. destruct (E.eq_dec x y) as [Hxy | Hxy].
+      + intros y m' acc Hin Hm Heq. destruct (E.eq_dec x y) as [Hxy | Hxy].
         - msetdec.
         - repeat rewrite add_other; trivial. intro Habs. apply Hxy. now apply Hf2.
       Qed.
@@ -479,13 +1018,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
         multiplicity x (map f (lub m₁ m₂)) = multiplicity x (map f m₁).
       Proof.
       intros x m₁ m₂ Hle. destruct (multiplicity x (map f m₁)) eqn:Heq1.
-        - apply le_n_0_eq in Hle. symmetry in Hle. destruct (multiplicity x (map f (lub m₁ m₂))) eqn:Heq2; trivial.
-          assert (Hin : In x (map f (lub m₁ m₂))). { unfold In. omega. }
-          rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq in *. rewrite lub_In in Hin.
-          rewrite map_injective_spec in *. unfold In in *. destruct Hin; omega.
-        - assert (Hin : In x (map f m₁)). { unfold In. omega. }
-          rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq, map_injective_spec in *.
-          rewrite lub_spec. rewrite Nat.max_l; omega.
+      - apply le_n_0_eq in Hle. symmetry in Hle. destruct (multiplicity x (map f (lub m₁ m₂))) eqn:Heq2; trivial.
+        assert (Hin : In x (map f (lub m₁ m₂))). { unfold In. omega. }
+        rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq in *. rewrite lub_In in Hin.
+        rewrite map_injective_spec in *. unfold In in *. destruct Hin; omega.
+      - assert (Hin : In x (map f m₁)). { unfold In. omega. }
+        rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq, map_injective_spec in *.
+        rewrite lub_spec. rewrite Nat.max_l; omega.
       Qed.
       
       Theorem map_injective_lub : forall m₁ m₂, map f (lub m₁ m₂) [=] lub (map f m₁) (map f m₂).
@@ -497,6 +1036,13 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
       
       Lemma map_injective : injective eq eq (map f).
       Proof. intros ? ? Hm x. specialize (Hm (f x)). repeat (rewrite map_injective_spec in Hm; trivial). Qed.
+      
+      Lemma map_injective_subset : forall m₁ m₂, map f m₁ [<=] map f m₂ <-> m₁ [<=] m₂.
+      Proof.
+      intros m₁ m₂. split; intro Hincl.
+      - intro x. setoid_rewrite <- map_injective_spec. apply Hincl.
+      - now apply map_sub_compat.
+      Qed.
       
       Lemma map_injective_elements : forall m,
         PermutationA eq_pair (elements (map f m)) (List.map (fun xn => (f (fst xn), snd xn)) (elements m)).
@@ -556,7 +1102,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   repeat rewrite map_spec; trivial. f_equiv. apply nfilter_extensionality_compat_strong.
   - intros y z Heq _ _ _. destruct (E.eq_dec (g y) x), (E.eq_dec (g z) x); trivial; rewrite Heq in *; contradiction.
   - intros y z Heq _ _ _. destruct (E.eq_dec (f y) x), (E.eq_dec (f z) x); trivial; rewrite Heq in *; contradiction.
-  - intros y _ Hin. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); rewrite Hext in *; trivial; contradiction.
+  - intros y Hin. destruct (E.eq_dec (f y) x), (E.eq_dec (g y) x); rewrite Hext in *; trivial; contradiction.
   Qed.
   
   Lemma map_merge : forall f g, Proper (E.eq ==> E.eq) f -> Proper (E.eq ==> E.eq) g ->
@@ -604,7 +1150,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
     forall m, fst (npartition f (map g m)) [=] map g (fst (npartition (fun x => f (g x)) m)).
   Proof. intros. repeat rewrite npartition_spec_fst; refine _. now apply map_injective_nfilter. Qed.
   
-  Lemma map_npartition_injective_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
+  Lemma map_injective_npartition_snd : forall f g, compatb f -> Proper (E.eq ==> E.eq) g -> injective E.eq E.eq g ->
     forall m, snd (npartition f (map g m)) [=] map g (snd (npartition (fun x => f (g x)) m)).
   Proof.
   intros. repeat rewrite npartition_spec_snd; refine _. apply map_injective_nfilter; trivial. repeat intro. msetdec.
@@ -634,11 +1180,29 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   + rewrite map_empty. now repeat rewrite exists_empty; refine _.
   Qed.
   
+  Theorem map_filter : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, filter f (map g m) [=] map g (filter (fun x => f (g x)) m).
+  Proof.
+  intros f g Hf Hg. apply ind.
+  + intros m1 m2 Hm. now rewrite Hm.
+  + intros m x n Hin Hn Hrec. rewrite map_add, 2 filter_add; autoclass; [].
+    destruct (f (g x)).
+    - rewrite map_add; trivial; []. f_equiv. apply Hrec.
+    - apply Hrec.
+  + rewrite map_empty, 2 filter_empty, map_empty; autoclass; reflexivity.
+  Qed.
+  
+  Lemma map_partition_fst : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, fst (partition f (map g m)) [=] map g (fst (partition (fun x => f (g x)) m)).
+  Proof. intros. rewrite 2 partition_spec_fst; try apply map_filter; autoclass. Qed.
+  
+  Lemma map_partition_snd : forall f g, Proper (E.eq ==> Logic.eq) f -> Proper (E.eq ==> E.eq) g ->
+    forall m, snd (partition f (map g m)) [=] map g (snd (partition (fun x => f (g x)) m)).
+  Proof. intros. rewrite 2 partition_spec_snd; try apply map_filter; autoclass. Qed.
+  
   (** **  Function [max] and its properties  **)
   
   (** ***  Function [max_mult] computing the maximal multiplicity  **)
-  
-  Definition max_mult m := fold (fun _ => max) m 0%nat.
   
   Instance max_mult_compat : Proper (eq ==> Logic.eq) max_mult.
   Proof.
@@ -658,6 +1222,234 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
     repeat intro. now subst.
   Qed.
   
+  Lemma max_mult_add : forall m x n, ~In x m ->
+    max_mult (add x n m) = Nat.max n (max_mult m).
+  Proof.
+  intros m x n. destruct (Nat.eq_dec n 0).
+  + subst n. now rewrite add_0, Nat.max_0_l.
+  + unfold max_mult. apply fold_add; autoclass.
+    - repeat intro. now subst.
+    - repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
+    - omega.
+  Qed.
+  
+  Theorem max_mult_spec_weak : forall m x, (m[x] <= max_mult m)%nat.
+   Proof.
+   intro m. pattern m. apply ind; clear m.
+   * intros m1 m2 Hm. now setoid_rewrite Hm.
+  * intros m x n Hout Hn Hrec y. rewrite max_mult_add; trivial.
+    assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
+    destruct (E.eq_dec y x) as [Hxy | Hxy].
+    + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
+    + rewrite add_other; auto. transitivity (max_mult m).
+      - apply Hrec.
+      - apply Max.le_max_r.
+  * intro x. rewrite empty_spec. omega.
+  Qed.
+  
+  (* When [m] is empty, we need an arbitrary element as withness for [y]. *)
+  Theorem max_mult_spec : forall (dummy : elt) m, (forall x, m[x] <= max_mult m) /\ (exists y, max_mult m = m[y]).
+  Proof.
+  intros dummy m. pattern m. apply ind; clear m.
+  * intros m1 m2 Hm. now setoid_rewrite Hm.
+  * intros m x n Hout Hn [Hall [y Hy]]. rewrite max_mult_add; trivial.
+    assert (Hx : m[x] = 0%nat) by now rewrite not_In in Hout.
+    split; try intro z.
+    + destruct (E.eq_dec z x) as [Hzx | Hzx].
+      - rewrite Hzx. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
+      - rewrite add_other; trivial; [].
+        transitivity (max_mult m); apply Hall || apply Max.le_max_r.
+    + rewrite Hy. destruct (le_dec n m[y]).
+      - exists y. rewrite max_r; trivial; [].
+        destruct (E.eq_dec y x) as [Hyx | Hyx].
+        -- rewrite Hyx in *. rewrite add_same. omega.
+        -- now rewrite add_other.
+      - exists x. rewrite max_l, add_same; omega.
+  * split.
+    + intro x. rewrite empty_spec. omega.
+    + exists dummy. now rewrite empty_spec, max_mult_empty.
+  Qed.
+  
+  Theorem max_mult_unique : forall m n, (forall x, m[x] <= n) -> (exists y, n = m[y]) -> n = max_mult m.
+  Proof.
+  intro m. unfold max_mult.
+  pattern (M.fold (fun _ : M.elt => Init.Nat.max) m 0). apply fold_rect.
+  * intros ? ? ? Heq. now setoid_rewrite Heq.
+  * intros ? _ []. subst. apply empty_spec.
+  * intros x m' acc Hin Hout Hrec n Hall [y Hy].
+    subst. rewrite not_In in Hout.
+    destruct (E.eq_dec y x) as [Hyx | Hyx].
+    + rewrite Hyx, add_same, Hout, max_l; trivial; [].
+      destruct (max_mult_spec x m') as [Hall' Hex'].
+      rewrite <- (Hrec _ Hall' Hex').
+      destruct Hex' as [y' Hy']. rewrite Hy'.
+      destruct (Nat.eq_dec (m'[y']) 0); try omega; [].
+      specialize (Hall y').
+      rewrite Hyx, add_same, add_other, Hout in Hall; trivial; [].
+      msetdec.
+    + rewrite (add_other x) in *; trivial; [].
+      rewrite <- (Hrec m'[y]), max_r; trivial.
+      - specialize (Hall x). now rewrite add_same, Hout in Hall.
+      - intro z. specialize (Hall z). msetdec.
+      - eauto.
+  Qed.
+  
+  Lemma max_mult_upper_bound : forall m n, (forall x, m[x] <= n) -> max_mult m <= n.
+  Proof.
+  intro m. unfold max_mult.
+  pattern (M.fold (fun _ : M.elt => Init.Nat.max) m 0). apply fold_rect.
+  + intros ? ? ? Heq. now setoid_rewrite Heq.
+  + intros. omega.
+  + intros x m' acc Hin Hout Hrec n Hall.
+    rewrite not_In in Hout. rewrite Nat.max_lub_iff. split.
+    - specialize (Hall x). now rewrite add_same, Hout in Hall.
+    - apply Hrec. intro y. erewrite add_subset. apply Hall.
+  Qed.
+  
+  Lemma max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
+  Proof.
+  intro m. split; intro Heq.
+  + destruct (empty_or_In_dec m) as [? | [x Hin]]; trivial.
+    elim (lt_irrefl 0). apply lt_le_trans with m[x].
+    - exact Hin.
+    - rewrite <- Heq. apply max_mult_spec_weak.
+  + rewrite Heq. apply max_mult_empty.
+  Qed.
+  
+  Instance max_mult_sub_compat : Proper (Subset ==> le) max_mult.
+  Proof.
+  intros m1 m2. revert m1. pattern m2. apply ind; clear m2.
+  * intros ? ? Heq. now setoid_rewrite Heq.
+  * intros m2 x n Hin Hn Hrec m1 Hsub.
+    assert (Hle := Hsub x). rewrite add_same in Hle. unfold In in *.
+    rewrite <- (@add_remove_id x n m1).
+    + rewrite 2 max_mult_add; trivial.
+      - rewrite <- remove_subset_add in Hsub. apply Nat.max_le_compat; auto; omega.
+      - rewrite remove_In. intuition.
+    + replace n with (m2[x] + n) by omega. rewrite <- (add_same x n m2). apply Hsub.
+  * intros m Hm. rewrite subset_empty_r in Hm. now rewrite Hm.
+  Qed.
+  
+  Corollary max_mult_add_le : forall x n m, max_mult m <= max_mult (add x n m).
+  Proof. intros. apply max_mult_sub_compat. apply add_subset. Qed.
+  
+  Corollary max_mult_remove_le : forall x n m, max_mult (remove x n m) <= max_mult m.
+  Proof. intros. apply max_mult_sub_compat. apply remove_subset. Qed.
+  
+  Lemma max_mult_add_cases : forall x n m, (m[x] + n <= max_mult m <-> max_mult (add x n m) = max_mult m)
+                                        /\ (max_mult m <= m[x] + n <-> max_mult (add x n m) = m[x] + n).
+  Proof.
+  intros x n m. revert x n. pattern m. apply ind; clear m.
+  * intros ? ? Heq. now setoid_rewrite Heq.
+  * intros m x n Hx Hn Hrec y p. rewrite (max_mult_add _ Hx) in *.
+    destruct (E.eq_dec y x) as [Hyx | Hyx].
+    + rewrite Hyx. rewrite add_same, add_merge.
+      rewrite (max_mult_add _ Hx) in *.
+      assert (Hmx : m[x] = 0). { unfold In in *. omega. }
+      rewrite Hmx in *. simpl. repeat split; intro Hle.
+      - apply Nat.max_le in Hle. destruct Hle.
+        -- assert (p = 0) by omega. subst. reflexivity.
+        -- repeat rewrite max_r; trivial; omega.
+      - rewrite <- Hle, Nat.add_comm. apply Nat.le_max_l.
+      - apply Max.max_lub_r in Hle. rewrite max_l; omega.
+      - rewrite <- Hle. apply Nat.max_le_compat; omega.
+    + rewrite add_other in *; trivial; [].
+      rewrite add_comm, max_mult_add; try (now rewrite add_In; intuition); [].
+      destruct (Hrec y p) as [Hrec1 Hrec2], (le_dec (m[y] + p) (max_mult m)) as [Hle | Hlt].
+      - repeat split; intro; auto.
+        -- rewrite Hrec1 in Hle. now rewrite Hle.
+        -- etransitivity; eauto using Nat.le_max_r.
+        -- rewrite Hrec1 in Hle. rewrite Hle.
+           apply le_antisym; trivial; []. rewrite Nat.max_le_iff. tauto.
+        -- rewrite Hrec1 in Hle. rewrite Hle in *. omega.
+      - rewrite (proj1 Hrec2); try omega; [].
+        destruct (le_dec (m[y] + p) n) as [Hle' | Hlt'].
+        -- repeat rewrite max_l; omega.
+        -- rewrite Nat.max_le_iff, Nat.max_lub_iff. split; [| intuition].
+           rewrite max_r; try omega; []. split; intro Hle; [intuition |].
+           destruct (Max.max_spec n (max_mult m)); omega.
+  * intros x n. rewrite empty_spec, max_mult_empty, add_empty, max_mult_singleton in *. omega.
+  Qed.
+  
+  Corollary max_mult_add1 : forall x n m, m[x] + n <= max_mult m <-> max_mult (add x n m) = max_mult m.
+  Proof. intros. now apply max_mult_add_cases. Qed.
+  
+  Corollary max_mult_add2 : forall x n m, max_mult m <= m[x] + n <-> max_mult (add x n m) = m[x] + n.
+  Proof. intros. now apply max_mult_add_cases. Qed.
+  
+  Corollary max_mult_remove_all_le : forall x m, max_mult (remove_all x m) <= max_mult m.
+  Proof. intros. apply max_mult_remove_le. Qed.
+  
+  Lemma max_mult_remove : forall x n m, m[x] < max_mult m -> max_mult (remove x n m) = max_mult m.
+  Proof.
+  intros x n m. revert x n. pattern m. apply ind; clear m.
+  * intros ? ? Heq. now setoid_rewrite Heq.
+  * intros m y p Hy Hn Hrec x n.
+    destruct (E.eq_dec x y) as[Hxy | Hxy].
+    + assert (Hmx : m[x] = 0). { unfold In in *. rewrite Hxy. omega. }
+      rewrite <- Hxy in *. rewrite add_same, Hmx.
+      repeat rewrite max_mult_add, Nat.max_lt_iff; trivial; []. simpl.
+      destruct (le_dec n p) as [Hle | Hlt].
+      - rewrite remove_add1, max_mult_add; trivial; [].
+        intro. rewrite 2 max_r; omega.
+      - rewrite remove_add2; try omega. intro.
+        rewrite Hrec, max_r; omega.
+    + rewrite add_other, remove_add_comm, 2 max_mult_add, Nat.max_lt_iff; trivial.
+      - intro. destruct (le_dec p (max_mult m)).
+        -- rewrite Hrec; omega.
+        -- assert (Hle := max_mult_remove_le x n m). rewrite 2 max_l; omega.
+      - rewrite remove_In. intuition.
+  * intros. rewrite empty_spec, max_mult_empty in *. omega.
+  Qed.
+  
+  Corollary max_mult_remove_all : forall x m, m[x] < max_mult m -> max_mult (remove_all x m) = max_mult m.
+  Proof. intros. unfold remove_all. now apply max_mult_remove. Qed.
+  
+  Lemma max_mult_union : forall m₁ m₂,
+    Nat.max (max_mult m₁) (max_mult m₂) <= max_mult (union m₁ m₂) <= max_mult m₁ + max_mult m₂.
+  Proof.
+  intros m₁ m₂. split.
+  + apply Max.max_lub; f_equiv; intro; msetdec.
+  + apply max_mult_upper_bound.
+    intro. msetdec. apply Nat.add_le_mono; apply max_mult_spec_weak.
+  Qed.
+  
+  Lemma max_mult_inter : forall m₁ m₂, max_mult (inter m₁ m₂) <= Nat.min (max_mult m₁) (max_mult m₂).
+  Proof. intros. rewrite Nat.min_glb_iff. split; f_equiv; intro; msetdec; auto with arith. Qed.
+  
+  Lemma max_mult_diff : forall m₁ m₂, max_mult (diff m₁ m₂) <= max_mult m₁.
+  Proof. intros. f_equiv. intro. msetdec. Qed.
+  
+  Lemma max_mult_lub : forall m₁ m₂, max_mult (lub m₁ m₂) = Nat.max (max_mult m₁) (max_mult m₂).
+  Proof.
+  intros m₁ m₂. symmetry.
+  destruct (empty_or_In_dec m₁) as [| [x ?]].
+  * msetdec. now rewrite lub_empty_l, max_mult_empty.
+  * apply max_mult_unique.
+    + intro. msetdec. apply Nat.max_le_compat; apply max_mult_spec_weak.
+    + destruct (max_mult_spec x m₁) as [Hall₁ [y₁ Hy₁]], (max_mult_spec x m₂) as [Hall₂ [y₂ Hy₂]].
+      destruct (le_dec (max_mult m₁) (max_mult m₂)).
+      - exists y₂. specialize (Hall₁ y₂). rewrite lub_spec, 2 max_r; omega.
+      - exists y₁. specialize (Hall₂ y₁). rewrite lub_spec, 2 max_l; omega.
+  Qed.
+  
+  (* 
+  Lemma max_mult_nfilter : forall f, compatb f ->
+    forall m, max_mult (nfilter f m) = fold (fun x n acc => if f x n then Nat.max n acc else acc) m 0.
+  Proof.
+  intros f Hf m. unfold max_mult. rewrite fold_nfilter; autoclass.
+  - repeat intro. now subst.
+  - repeat intro. rewrite Nat.max_comm, <- Nat.max_assoc. f_equiv. apply Nat.max_comm.
+  Qed.
+  
+  Lemma max_mult_filter : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, max_mult (filter f m) = fold (fun x n acc => if f x then Nat.max n acc else acc) m 0.
+  Proof.
+  intros. rewrite filter_nfilter; trivial; []. apply max_mult_nfilter.
+  intros ? ? Heq ? ? ?. now rewrite Heq.
+  Qed.
+   *)
+  
   Lemma max_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
     forall m, max_mult (map f m) = max_mult m.
   Proof.
@@ -674,42 +1466,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   + now rewrite map_empty.
   Qed.
   
-  Lemma max_mult_add : forall m x n, (n > 0)%nat -> ~In x m ->
-    max_mult (add x n m) = Nat.max n (max_mult m).
-  Proof.
-  intros m x n Hn. unfold max_mult. apply fold_add; trivial.
-  - refine _.
-  - repeat intro. now subst.
-  - repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
-  Qed.
-  
-  Theorem max_mult_spec : forall m x, (m[x] <= max_mult m)%nat.
-  Proof.
-  intro m. pattern m. apply ind; clear m.
-  * intros m1 m2 Hm. now setoid_rewrite Hm.
-  * intros m x n Hout Hn Hrec y. rewrite max_mult_add; trivial.
-    assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
-    destruct (E.eq_dec y x) as [Hxy | Hxy].
-    + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
-    + rewrite add_other; auto. transitivity (max_mult m).
-      - apply Hrec.
-      - apply Max.le_max_r.
-  * intro x. rewrite empty_spec. omega.
-  Qed.
-  
-  Lemma max_mult_0 : forall m, max_mult m = 0%nat <-> m [=] empty.
-  Proof.
-  intro m. split; intro Heq.
-  + destruct (empty_or_In_dec m) as [? | [x Hin]]; trivial.
-    elim (lt_irrefl 0). apply lt_le_trans with m[x].
-    - exact Hin.
-    - rewrite <- Heq. apply max_mult_spec.
-  + rewrite Heq. apply max_mult_empty.
-  Qed.
-  
   (** ***  Function [max s] returning the elements of a multiset with maximal multiplicity  **)
-  
-  Definition max m := nfilter (fun _ => beq_nat (max_mult m)) m.
   
   Instance eqb_max_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (max_mult m)).
   Proof. repeat intro. now subst. Qed.
@@ -719,46 +1476,113 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   
   Local Hint Immediate eqb_max_mult_compat eqb_max_compat.
   
-  Global Instance max_compat : Proper (eq ==> eq) max.
+  (** A simple definition used for specification, proved to be equivalent to the efficient one. *)
+  Definition simple_max m := nfilter (fun _ => beq_nat (max_mult m)) m.
+  
+  Instance simple_max_compat : Proper (eq ==> eq) simple_max.
   Proof.
-  intros m1 m2 Heq. unfold max.
+  intros m1 m2 Heq. unfold simple_max.
   rewrite Heq. apply nfilter_extensionality_compat.
   - repeat intro. now subst.
   - intros _ n. now rewrite Heq.
   Qed.
   
-  Lemma max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
-    forall m, (max (map f m)) [=] (map f (max m)).
+  Instance max_aux_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq * eq ==> Logic.eq * eq) max_aux.
   Proof.
-  intros f Hf Hinj m. unfold max. rewrite map_injective_nfilter; auto.
-  apply map_compat.
-  - intros ? ? Heq. now rewrite Heq.
-  - apply nfilter_extensionality_compat; repeat intro; subst; trivial.
-    now rewrite max_mult_map_injective_invariant.
+  intros m1 m2 Hm x y Hxy [] [] []. simpl in *. subst. unfold max_aux. simpl.
+  destruct_match; split; try reflexivity; simpl; trivial; now f_equiv.
+  Qed.
+  
+  Lemma max_aux_transpose : transpose2 (Logic.eq * eq)%signature max_aux.
+  Proof.
+  intros x y n p [k m]. unfold max_aux. simpl.
+  repeat (destruct_match; simpl); try rewrite ?Nat.compare_eq_iff, ?Nat.compare_lt_iff, ?Nat.compare_gt_iff in *;
+  subst; split; simpl; omega || (now f_equiv) || trivial.
+  - apply add_comm.
+  - apply add_singleton_other_comm. omega.
+  Qed.
+  
+  Local Hint Resolve max_aux_transpose.
+  
+  Global Instance max_compat : Proper (eq ==> eq) max.
+  Proof. intros m1 m2 Heq. unfold max. f_equiv. apply fold_compat; autoclass; reflexivity. Qed.
+  
+  Lemma max_mult_fst_max : forall m, max_mult m = fst (M.fold max_aux m (0, M.empty)).
+  Proof.
+  intro m. pattern m. apply ind; clear m.
+  + intros m1 m2 Hm. rewrite Hm at 1.
+    cut (fst (M.fold max_aux m1 (0, M.empty)) = fst (M.fold max_aux m2 (0, M.empty)));
+      try (now intro H; rewrite H); [].
+    f_equiv. apply fold_compat; autoclass; reflexivity.
+  + intros m x n Hin Hn Hrec.
+    rewrite max_mult_add, Hrec; trivial; [].
+    (* Anomaly with [rewrite fold_add] *)
+    transitivity (fst (max_aux x n (M.fold max_aux m (0, M.empty)))).
+    * unfold max_aux at 2. destruct_match; simpl.
+      - rewrite Nat.compare_eq_iff in *. subst n. now rewrite Nat.max_id.
+      - rewrite Nat.compare_lt_iff in *. rewrite max_r; omega.
+      - rewrite Nat.compare_gt_iff in *. rewrite max_l; omega.
+    * f_equiv. rewrite fold_add; autoclass; reflexivity.
+  + unfold max_mult. now rewrite 2 fold_empty.
+  Qed.
+  
+  Theorem max_simplified : forall m, max m ≡ simple_max m.
+  Proof.
+  apply ind.
+  + intros m1 m2 Hm. now rewrite Hm.
+  + intros m x n Hin Hn Hrec. unfold max, simple_max.
+    rewrite nfilter_add; auto; []. (* Anomaly with [rewrite fold_add] *)
+    transitivity (snd (max_aux x n (M.fold max_aux m (0, M.empty)))).
+    * f_equiv. rewrite fold_add; autoclass; reflexivity.
+    * rewrite max_mult_add; trivial; []. unfold max_aux at 1. rewrite <- max_mult_fst_max.
+      do 2 destruct_match; simpl;
+      rewrite ?Nat.compare_eq_iff, ?Nat.compare_lt_iff, ?Nat.compare_gt_iff,
+              ?Nat.eqb_neq, ?Nat.eqb_eq in *; subst.
+      - f_equiv. rewrite Hrec. apply nfilter_extensionality_compat;
+        now autoclass; intros; rewrite Nat.max_id.
+      - exfalso. rewrite Nat.max_id in *. tauto.
+      - exfalso. rewrite max_r in *; omega.
+      - rewrite Hrec. apply nfilter_extensionality_compat; autoclass; [].
+        intros; rewrite max_r; reflexivity || omega.
+      - cut (nfilter (fun _ : elt => Nat.eqb (Nat.max n (max_mult m))) m [=] empty);
+          try (now intro Heq; rewrite Heq, add_empty); [].
+        rewrite nfilter_none, for_all_spec; try (now repeat intro; subst); [].
+        intros y p. rewrite Bool.negb_true_iff, Nat.eqb_neq.
+        assert (Hmax := max_mult_spec_weak m y). omega.
+      - exfalso. rewrite max_l in *; omega.
+  + unfold max, simple_max. now rewrite fold_empty, nfilter_empty.
+  Qed.
+  
+  Theorem max_spec : forall x m, (max m)[x] = if m[x] =? max_mult m then m[x] else 0.
+  Proof.
+  intros x m. rewrite max_simplified. unfold simple_max.
+  rewrite nfilter_spec, Nat.eqb_sym; trivial; [].
+  repeat intro. now subst.
+  Qed.
+  
+  Theorem max_le : forall m x y, In y (max m) -> m[x] <= (max m)[y].
+  Proof.
+  intros m x y Hy. rewrite max_simplified in *. unfold simple_max in *.
+  unfold In in Hy. rewrite nfilter_spec in *; auto.
+  destruct (max_mult m =? m[y]) eqn:Heq; try omega.
+  rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply max_mult_spec_weak.
   Qed.
   
   Lemma max_subset : forall m, max m [<=] m.
   Proof.
-  intros m x. unfold max.
+  intros m x. rewrite max_simplified. unfold simple_max.
   setoid_rewrite nfilter_spec; try now repeat intro; subst.
   destruct (max_mult m =? m[x]); auto. omega.
   Qed.
   
-  Theorem max_spec1 : forall m x y, In y (max m) -> m[x] <= (max m)[y].
-  Proof.
-  intros m x y Hy. unfold max in *.
-  unfold In in Hy. rewrite nfilter_spec in *; auto.
-  destruct (max_mult m =? m[y]) eqn:Heq; try omega.
-  rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply max_mult_spec.
-  Qed.
-  
   Theorem max_spec_non_nil : forall m x, In x m -> exists y, In y (max m).
   Proof.
+  setoid_rewrite max_simplified.
   intro m. pattern m. apply ind; clear m.
   * intros m1 m2 Hm. now setoid_rewrite Hm.
   * intros m x n Hxnotinm Hpos HI x' Hx'.
     destruct (empty_or_In_dec m) as [Hm | [x'' Hx'']].
-    + exists x. unfold max. rewrite nfilter_In; auto. split.
+    + exists x. unfold simple_max. rewrite nfilter_In; auto. split.
       - rewrite add_In. right. split; reflexivity || omega.
       - rewrite Nat.eqb_eq, max_mult_add; trivial.
         rewrite Hm at 2.
@@ -768,7 +1592,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
       destruct HI as [y Hy]. unfold max.
       setoid_rewrite nfilter_In; auto; [].
       rewrite max_mult_add; trivial.
-      unfold max in Hy. rewrite nfilter_In in Hy; auto.
+      unfold simple_max in Hy. rewrite nfilter_In in Hy; auto.
       destruct Hy as [Hy Heq]. rewrite Nat.eqb_eq in Heq.
       destruct (le_lt_dec n (m[y])).
       - exists y. split.
@@ -780,7 +1604,7 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   * intros x H. elim (In_empty H).
   Qed.
   
-  Lemma max_empty : forall m, max m [=] empty <-> m [=] empty.
+  Lemma max_is_empty : forall m, max m [=] empty <-> m [=] empty.
   Proof.
   intro m. split; intro H.
   + destruct (empty_or_In_dec m) as [Hm | Hm].
@@ -788,58 +1612,78 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
     - destruct Hm as [x Hx].
       destruct (max_spec_non_nil Hx) as [y Hy].
       unfold In in Hy. rewrite H, empty_spec in Hy. omega.
-  + rewrite H. unfold max.
+  + rewrite H. rewrite max_simplified. unfold simple_max.
     apply nfilter_empty; auto.
   Qed.
+  
+  Corollary max_empty : max empty [=] empty.
+  Proof. now rewrite max_is_empty. Qed.
   
   Lemma max_singleton : forall x n, max (singleton x n) [=] singleton x n.
   Proof.
   intros x n. destruct n.
   + rewrite singleton_0. now rewrite max_empty.
-  + unfold max. rewrite nfilter_singleton_true; try omega.
+  + rewrite max_simplified. unfold simple_max.
+    rewrite nfilter_singleton_true; try omega.
     - rewrite max_mult_singleton. apply Nat.eqb_refl.
     - repeat intro. now subst.
   Qed.
   
-  Lemma max_2_mult : forall m x, (max m)[x] = 0 \/ (max m)[x] = m[x].
+  Theorem max_case : forall m x, (max m)[x] = 0 \/ (max m)[x] = m[x] /\ m[x] = max_mult m.
   Proof.
   intros m x. destruct (empty_or_In_dec m) as [Hm | Hm].
-  + left. rewrite <- max_empty in Hm. rewrite (Hm x). apply empty_spec.
-  + unfold max. rewrite nfilter_spec.
-    - destruct (max_mult m =? m[x]); auto.
+  + left. rewrite <- max_is_empty in Hm. rewrite (Hm x). apply empty_spec.
+  + rewrite max_simplified. unfold simple_max. rewrite nfilter_spec.
+    - destruct (max_mult m =? m[x]) eqn:Hcase; auto; [].
+      right. split; trivial; []. now rewrite Nat.eqb_eq in *.
     - repeat intro. now subst.
   Qed.
   
   Lemma max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
-  Proof. intros m x Hin. unfold In in *. destruct (max_2_mult m x); omega. Qed.
+  Proof. intros m x Hin. unfold In in *. destruct (max_case m x); omega. Qed.
+  
+  Lemma max_In_mult2 : forall m x, In x m -> (In x (max m) <-> (max m)[x] = max_mult m).
+  Proof.
+  intros m x Hin. rewrite max_In_mult; trivial; []. unfold In in *.
+  destruct (max_case m x); try omega. split; intro; try omega; [].
+  assert (Habs : max_mult m = 0) by congruence. rewrite max_mult_0 in Habs.
+  rewrite Habs, empty_spec in Hin. omega.
+  Qed.
   
   Lemma max_spec_mult : forall m x y, In x (max m) -> (In y (max m) <-> (max m)[y] = (max m)[x]).
   Proof.
   intros m x y Hx. split.
-  + intro Hy. destruct (max_2_mult m x) as [Hx' | Hx'], (max_2_mult m y) as [Hy' | Hy'];
-    (unfold In in *; omega) || (try congruence); [].
-    apply le_antisym; rewrite Hy' + rewrite Hx'; now apply max_spec1.
+  + intro Hy. destruct (max_case m x) as [Hx' | Hx'], (max_case m y) as [Hy' | Hy'];
+    (unfold In in *; omega) || (try congruence).
   + intro Heq. unfold In in *. now rewrite Heq.
   Qed.
   
-  Theorem max_spec2 : forall m x y,
-    In x (max m) -> ~In y (max m) -> (m[y] < m[x])%nat.
+  Lemma max_In : forall m x, In x (max m) -> m[x] = max_mult m.
+  Proof. intros m x Hin. unfold In in *. destruct (max_case m x); omega. Qed.
+  
+  Theorem max_spec_lub : forall m x y,
+    In x (max m) -> ~In y (max m) <-> (m[y] < m[x])%nat.
   Proof.
-  intros m x y Hx Hy. apply le_neq_lt.
-  + assert (Hx' := Hx). rewrite max_In_mult in Hx.
-    - rewrite <- Hx. now apply max_spec1.
-    - now rewrite <- max_subset.
-  + intro Habs. apply Hy. unfold max. rewrite nfilter_In; try now repeat intro; subst. split.
-    - unfold In in *. rewrite Habs. apply lt_le_trans with (max m)[x]; trivial. apply max_subset.
-    - rewrite Habs. unfold max in Hx. rewrite nfilter_In in Hx; try now repeat intro; subst.
+  intros m x y Hx. split; intro Hy.
+  * apply le_neq_lt.
+    + assert (Hx' := Hx). rewrite max_In_mult in Hx.
+      - rewrite <- Hx. now apply max_le.
+      - now rewrite <- max_subset.
+    + intro Habs. apply Hy. rewrite max_simplified. unfold simple_max.
+      rewrite nfilter_In; try now repeat intro; subst. split.
+      - unfold In in *. rewrite Habs. apply lt_le_trans with (max m)[x]; trivial. apply max_subset.
+      - rewrite Habs. rewrite max_simplified in*. unfold simple_max in Hx.
+        rewrite nfilter_In in Hx; try now repeat intro; subst.
+  * unfold In. destruct (max_case m y) as [? | [? ?]]; try omega.
+    apply max_In in Hx. omega.
   Qed.
   
   Lemma max_max_mult : forall m x, ~m [=] empty -> In x (max m) <-> m[x] = max_mult m.
   Proof.
-  intros m x Hm. split; intro H.
+  intros m x Hm. rewrite max_simplified. split; intro H.
   + apply nfilter_In in H; auto.
     symmetry. apply beq_nat_true. now destruct H.
-  + unfold max. rewrite nfilter_In; auto.
+  + unfold simple_max. rewrite nfilter_In; auto.
     split.
     - red. cut (m[x]<>0). omega.
       intro Habs. now rewrite H, max_mult_0 in Habs.
@@ -861,30 +1705,559 @@ Module Make(E : DecidableType)(M : FMultisetsOn E) : MMultisetExtra(E)(M).
   * intro. msetdec.
   Qed.
   
+  Lemma max_In_mult3 : forall m x, In x m -> (In x (max m) <-> m[x] = max_mult m).
+  Proof. intros. apply max_max_mult. intro. msetdec. Qed.
+  
+  Lemma max_is_singleton : forall x n m, 0 < n ->
+    max m [=] singleton x n <-> n = m[x] /\ forall y, ~E.eq y x -> m[y] < m[x].
+  Proof.
+  intros x n m Hn. split.
+  + intro Hmax. split.
+    - assert (Hx := Hmax x). rewrite singleton_same in Hx. rewrite <- Hx.
+      rewrite <- max_In_mult; [| rewrite <- max_subset]; rewrite Hmax; apply In_singleton; intuition.
+    - intros y Hy. rewrite <- max_spec_lub; msetdec.
+  + intros [? Hlt]. subst.
+    assert (Hmax : max_mult m = m[x]).
+    { symmetry. apply max_mult_unique; eauto.
+      intro y. specialize (Hlt y). destruct (E.eq_dec y x); msetdec; intuition. }
+    intro y. specialize (Hlt y). msetdec.
+    - now rewrite <- max_In_mult, max_In_mult3.
+    - destruct (max_case m y); intuition.
+  Qed.
+  
+  Lemma max_is_id : forall m, max m [=] m <-> forall x, In x m -> m[x] = max_mult m.
+  Proof.
+  intro m. split.
+  + intros Heq x Hin. rewrite <- Heq in Hin. now apply max_In.
+  + intros Helt x. destruct (eq_nat_dec m[x] 0) as [Hx | Hx].
+    - rewrite Hx. cut ((max m)[x] <= 0); try omega. rewrite <- Hx. apply max_subset.
+    - assert (In x m) by (unfold In; omega).
+      rewrite <- max_In_mult, max_In_mult3; trivial; []. auto.
+  Qed.
+  
   Lemma max_spec_max : forall m x, ~m [=] empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
   Proof.
   intros m x Hm H. apply le_antisym.
   - destruct (@max_max_mult_ex m) as [y Hy]; auto.
     rewrite Hy. apply H.
-  - apply max_mult_spec.
+  - apply max_mult_spec_weak.
   Qed.
   
   Corollary max_spec1_iff : forall m, ~m [=] empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
   Proof.
   intros m Hm x. assert (Hempty := Hm).
-  rewrite <- max_empty, not_empty_In in Hm. destruct Hm as [z Hz].
+  rewrite <- max_is_empty, not_empty_In in Hm. destruct Hm as [z Hz].
   split; intro Hx.
   + intro y. assert (Hx' := Hx). rewrite max_In_mult in Hx.
-    - rewrite <- Hx. now apply max_spec1.
+    - rewrite <- Hx. now apply max_le.
     - now rewrite <- max_subset.
   + assert (H := max_spec_max Hempty Hx). rewrite max_max_mult; auto.
   Qed.
   
-  Lemma size_max_le : forall m, size (max m) <= size m.
+  Lemma max_add_lt : forall x n m, m[x] + n < max_mult m -> max (add x n m) [=] max m.
   Proof.
-  intro m. do 2 rewrite size_spec. apply (NoDupA_inclA_length E.eq_equiv).
-  - apply support_NoDupA.
-  - apply support_sub_compat, max_subset.
+  intros x n m Hn y.
+  assert (Heq : max_mult (add x n m) = max_mult m).
+  { rewrite <- max_mult_add1. omega. }
+  rewrite 2 max_spec, Heq.
+  destruct (E.eq_dec y x) as [Hyx | Hyx].
+  - rewrite Hyx in *. rewrite Hyx, add_same.
+    do 2 destruct_match; rewrite ?Nat.eqb_eq, ?Nat.eqb_neq in *; omega.
+  - now rewrite add_other.
   Qed.
+  
+  Lemma max_add_eq : forall x n m, 0 < n -> m[x] + n = max_mult m -> max (add x n m) [=] add x (m[x] + n) (max m).
+  Proof.
+  intros x n m ? Hn y.
+  assert (Heq : max_mult (add x n m) = max_mult m).
+  { rewrite <- max_mult_add1. omega. }
+  rewrite max_spec, 2 add_spec, max_spec, Heq.
+  destruct (E.eq_dec y x) as [Hyx | Hyx].
+  - rewrite Hyx, Hn, Nat.eqb_refl, Hyx. destruct_match; trivial; [].
+    rewrite Nat.eqb_eq in *. omega.
+  - reflexivity.
+  Qed.
+  
+  Lemma max_add_gt : forall x n m, m[x] + n > max_mult m -> max (add x n m) [=] singleton x (m[x] + n).
+  Proof.
+  intros x n m Hn y.
+  assert (Heq : max_mult (add x n m) = m[x] + n).
+  { rewrite <- max_mult_add2. omega. }
+  rewrite max_spec, add_spec, Heq.
+  destruct (E.eq_dec y x) as [Hyx | Hyx].
+  - now rewrite Hyx, Nat.eqb_refl, singleton_same, Hyx.
+  - rewrite singleton_other; trivial; [].
+    destruct_match; trivial; []. rewrite Nat.eqb_eq in *.
+    cut (m[y] < m[x] + n); try omega; [].
+    apply le_lt_trans with (max_mult m); eauto. apply max_mult_spec_weak.
+  Qed.
+  
+  Lemma max_remove : forall x n m, m[x] < max_mult m -> max (remove x n m) [=] max m.
+  Proof.
+  intros x n m. revert x n. pattern m. apply ind; clear m.
+  * intros ? ? Heq. now setoid_rewrite Heq.
+  * intros m y p Hy Hn Hrec x n.
+    destruct (E.eq_dec x y) as[Hxy | Hxy].
+    + assert (Hmx : m[x] = 0). { unfold In in *. rewrite Hxy. omega. }
+      rewrite <- Hxy in *. rewrite add_same, Hmx.
+      repeat rewrite max_mult_add, Nat.max_lt_iff; trivial; []. simpl.
+      destruct (le_dec n p) as [Hle | Hlt].
+      - intro. rewrite remove_add1, 2 max_add_lt; reflexivity || omega.
+      - rewrite remove_add2; try omega; []. intro.
+        rewrite Hrec, max_add_lt; reflexivity || omega.
+    + rewrite add_other, remove_add_comm, max_mult_add, Nat.max_lt_iff; trivial; [].
+      intro. rewrite not_In in Hy.
+      destruct (lt_eq_lt_dec p (max_mult m)) as [[Hlt | Heq] | Hlt].
+      - rewrite 2 max_add_lt, Hrec; try reflexivity || omega; [].
+        rewrite remove_other, max_mult_remove; omega || intuition.
+      - subst p. rewrite 2 max_add_eq; try omega;
+        rewrite remove_other, ?max_mult_remove, ?Hrec, ?Hy; omega || intuition.
+      - rewrite 2 max_add_gt, remove_other; reflexivity || omega || (try now intuition); [].
+        rewrite remove_other; generalize (max_mult_remove_le x n m); omega || intuition.
+  * intros. rewrite empty_spec, max_mult_empty in *. omega.
+  Qed.
+  
+  Lemma max_lub_le : forall m₁ m₂, max m₁ [<=] max (lub m₁ m₂) \/ max m₂ [<=] max (lub m₁ m₂).
+  Proof.
+  intros m₁ m₂. destruct (le_dec (max_mult m₁) (max_mult m₂)) as [Hle | Hlt].
+  + right. intro x. rewrite 2 max_spec, lub_spec, max_mult_lub. setoid_rewrite Nat.max_r at 2; trivial; [].
+    destruct (m₂[x] =? max_mult m₂) eqn:Heq; auto with arith; [].
+    rewrite max_r, Heq; trivial; [].
+    rewrite Nat.eqb_eq in Heq. rewrite Heq. etransitivity; eauto using max_mult_spec_weak.
+  + assert (Hle : max_mult m₂ <= max_mult m₁) by omega.
+    left. intro x. rewrite 2 max_spec, lub_spec, max_mult_lub. setoid_rewrite Nat.max_l at 2; trivial; [].
+    destruct (m₁[x] =? max_mult m₁) eqn:Heq; auto with arith; [].
+    rewrite max_l, Heq; trivial; [].
+    rewrite Nat.eqb_eq in Heq. rewrite Heq. etransitivity; eauto using max_mult_spec_weak.
+  Qed.
+  
+  Lemma max_lub : forall m₁ m₂, max (lub m₁ m₂) [<=] lub (max m₁) (max m₂).
+  Proof.
+  intros m₁ m₂ x. rewrite lub_spec, 3 max_spec, lub_spec, max_mult_lub.
+  destruct (Init.Nat.max m₁[x] m₂[x] =? Nat.max (max_mult m₁) (max_mult m₂)) eqn:Heq_max,
+           (m₁[x] =? max_mult m₁) eqn:Heq1, (m₂[x] =? max_mult m₂) eqn:Heq2;
+  auto with arith; rewrite ?Nat.eqb_eq, ?Nat.eqb_neq in *; rewrite ?Heq_max, ?Heq1, ?Heq2.
+  + rewrite Nat.max_0_r.
+    destruct (le_dec (max_mult m₂) (max_mult m₁)) as [Hle | Hlt].
+    - rewrite max_l; omega.
+    - rewrite Heq1 in *. setoid_rewrite max_r at 2 in Heq_max; try omega; [].
+      assert (max_mult m₁ = max_mult m₂).
+      { revert Heq_max. apply Nat.max_case_strong; intros; omega. }
+      rewrite max_l; omega.
+  + rewrite Nat.max_0_l.
+    destruct (le_dec (max_mult m₂) (max_mult m₁)) as [Hle | Hlt].
+    - rewrite Heq2 in *. setoid_rewrite max_l at 2 in Heq_max; try omega; [].
+      assert (max_mult m₁ = max_mult m₂).
+      { revert Heq_max. apply Nat.max_case_strong; intros; omega. }
+      rewrite max_r; omega.
+    - rewrite max_r; omega.
+  + assert (Hle1 := max_mult_spec_weak m₁ x). assert (Hle2 := max_mult_spec_weak m₂ x).
+    revert Heq_max. do 2 apply Nat.max_case_strong; intros; omega.
+  Qed.
+  
+  Lemma fold_max : forall {A} eqA, Equivalence eqA ->
+    forall f, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    forall m (i : A), eqA (fold f (max m) i) (fold (fun x n acc => if n =? max_mult m then f x n acc else acc) m i).
+  Proof.
+  intros A eqA HeqA f Hf Hf2 m i.
+  rewrite fold_compat; autoclass; try apply max_simplified; try reflexivity; [].
+  unfold simple_max. rewrite fold_nfilter; autoclass; [].
+  apply fold_extensionality_compat; autoclass.
+  - repeat intro. subst. now destruct_match; try apply Hf.
+  - intros x y n p i'. now repeat destruct_match.
+  - intros. now rewrite Nat.eqb_sym.
+  Qed.
+  
+  Lemma for_all_max : forall f, compatb f ->
+    forall m, for_all f (max m) = for_all (fun x n => f x n || (n <? max_mult m))%bool m.
+  Proof.
+  intros f Hf m.
+  assert (compatb (fun x n => (f x n || (n <? max_mult m))%bool)).
+  { intros ? ? Heq ? ? ?. subst. now rewrite Heq. }
+  destruct (for_all f (max m)) eqn:Hmax; symmetry.
+  + rewrite for_all_spec in *; trivial; [].
+    intros x Hin. destruct (m[x] <? max_mult m) eqn:Hlt; auto with bool; [].
+    assert (Hx : m[x] = max_mult m).
+    { rewrite Nat.ltb_nlt in *. apply le_antisym; omega || apply max_mult_spec_weak. }
+    rewrite Hx, Bool.orb_false_r.
+    rewrite <- max_In_mult3 in Hx; trivial; []. specialize (Hmax x Hx).
+    rewrite max_In_mult2 in Hx; trivial; []. now rewrite Hx in Hmax.
+  + rewrite for_all_false in *; trivial; [].
+    intro Hall. apply Hmax. intros x Hin. assert (Hmult := max_In _ Hin).
+    rewrite max_spec, Hmult, Nat.eqb_refl, <- Hmult. rewrite (max_subset m) in Hin.
+    apply Hall in Hin. now rewrite Hmult, Nat.ltb_irrefl, Bool.orb_false_r, <- Hmult in Hin.
+  Qed.
+  
+  Lemma exists_max : forall f, compatb f ->
+    forall m, exists_ f (max m) = exists_ (fun x n => f x n && (n =? max_mult m))%bool m.
+  Proof.
+  intros f Hf m.
+  assert (compatb (fun x n => (f x n && (n =? max_mult m))%bool)).
+  { intros ? ? Heq ? ? ?. subst. now rewrite Heq. }
+  destruct (exists_ f (max m)) eqn:Hmax; symmetry.
+  + rewrite exists_spec in *; trivial; [].
+    destruct Hmax as [x [Hin Hfx]].
+    assert (In x m) by now rewrite (max_subset m) in Hin.
+    exists x. split; trivial; [].
+    rewrite max_In_mult2 in Hin; trivial; []. rewrite Hin in Hfx.
+    rewrite <- max_In_mult2 in Hin; trivial; []. apply max_In in Hin.
+    now rewrite Hin, Hfx, Nat.eqb_refl.
+  + rewrite exists_false in *; trivial; []. intros [x [Hin Hx]]. apply Hmax.
+    rewrite Bool.andb_true_iff, Nat.eqb_eq in Hx. destruct Hx as [Hfx Heq].
+    exists x. split; try rewrite max_In_mult3; auto; [].
+    rewrite <- max_In_mult3, max_In_mult in Heq; trivial; []. now rewrite Heq.
+  Qed.
+  
+  Lemma nfilter_max : forall f, compatb f ->
+    forall m, nfilter f (max m) [=] nfilter (fun x n => f x n && (n =? max_mult m))%bool m.
+  Proof.
+  intros f Hf m x. rewrite 2 nfilter_spec, max_spec; trivial; [|].
+  + destruct_match.
+    - now destruct_match.
+    - rewrite Bool.andb_false_r. now destruct_match.
+  + intros ? ? Heq ? ? ?. subst. now rewrite Heq.
+  Qed.
+  
+  Corollary filter_max : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, filter f (max m) [=] nfilter (fun x n => f x && (n =? max_mult m))%bool m.
+  Proof.
+  intros f Hf m x. rewrite filter_spec, nfilter_spec, max_spec; trivial; [|].
+  + now destruct_match.
+  + intros ? ? Heq ? ? ?. subst. now rewrite Heq.
+  Qed.
+  
+  Lemma npartition_max_fst : forall f, compatb f ->
+    forall m, fst (npartition f (max m)) [=] nfilter (fun x n => f x n && (n =? max_mult m))%bool m.
+  Proof. intros. rewrite npartition_spec_fst; trivial; []. now apply nfilter_max. Qed.
+  
+  Lemma npartition_max_snd : forall f, compatb f ->
+    forall m, snd (npartition f (max m)) [=] nfilter (fun x n => negb (f x n) && (n =? max_mult m))%bool m.
+  Proof.
+  intros. rewrite npartition_spec_snd; trivial; []. apply nfilter_max.
+  intros ? ? Heq ? n ?. subst. now rewrite Heq.
+  Qed.
+  
+  Corollary partition_max_fst : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, fst (partition f (max m)) [=] nfilter (fun x n => f x && (n =? max_mult m))%bool m.
+  Proof. intros. rewrite partition_spec_fst; trivial; []. now apply filter_max. Qed.
+  
+  Lemma partition_max_snd : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, snd (partition f (max m)) [=] nfilter (fun x n => negb (f x) && (n =? max_mult m))%bool m.
+  Proof. intros. rewrite partition_spec_snd; trivial; []. apply filter_max. intros ? ? Heq. now rewrite Heq. Qed.
+  
+  Theorem elements_max : forall m,
+    PermutationA eq_pair (elements (max m)) (List.filter (fun xn => Nat.eqb (snd xn) (max_mult m)) (elements m)).
+  Proof.
+  intro m. apply NoDupA_equivlistA_PermutationA; autoclass.
+  + apply (NoDupA_strengthen subrelation_pair_elt), elements_NoDupA.
+  + apply NoDupA_filter_compat.
+    - intros ? ? Heq. now rewrite Heq.
+    - apply (NoDupA_strengthen subrelation_pair_elt), elements_NoDupA.
+  + intros x. rewrite filter_InA; try (intros ? ? Heq; now rewrite Heq); [].
+    rewrite 2 elements_spec, max_spec. destruct_match.
+    - rewrite Nat.eqb_eq in *; intuition. now transitivity m[fst x].
+    - rewrite ?Nat.eqb_eq, ?Nat.eqb_neq in *. intuition. exfalso.
+      cut (m[fst x] = max_mult m); trivial; now transitivity (snd x).
+  Qed.
+  
+  Lemma support_max : forall m, inclA E.eq (support (max m)) (support m).
+  Proof. intro. f_equiv. apply max_subset. Qed.
+  
+  Lemma cardinal_max : forall m, cardinal (max m) <= cardinal m.
+  Proof. intro. f_equiv. apply max_subset. Qed.
+  
+  Lemma size_max : forall m, size (max m) <= size m.
+  Proof. intro. f_equiv. apply max_subset. Qed.
+  
+  Lemma max_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, (max (map f m)) [=] (map f (max m)).
+  Proof.
+  intros f Hf Hinj m. rewrite 2 max_simplified. unfold simple_max.
+  rewrite map_injective_nfilter; auto; [].
+  apply map_compat.
+  - intros ? ? Heq. now rewrite Heq.
+  - apply nfilter_extensionality_compat; repeat intro; subst; trivial.
+    now rewrite max_mult_map_injective_invariant.
+  Qed.
+  
+  Lemma max_remove_all : forall x m, m[x] < max_mult m -> max (remove_all x m) [=] max m.
+  Proof. intros. now apply max_remove. Qed.
+  
+  Lemma max_mult_max : forall m, max_mult (max m) = max_mult m.
+  Proof.
+  intro m. destruct (empty_or_In_dec (max m)) as [Heq | [x Hx]].
+  + rewrite max_is_empty in Heq. now rewrite Heq, max_empty.
+  + symmetry. apply max_mult_unique.
+    - intro y. rewrite max_subset. apply max_mult_spec_weak.
+    - exists x. symmetry. rewrite <- max_In_mult2; trivial; []. now rewrite <- max_subset.
+  Qed.
+  
+  Lemma max_idempotent : forall m, max (max m) [=] max m.
+  Proof.
+  intro m. rewrite max_simplified. unfold simple_max. rewrite max_mult_max.
+  rewrite nfilter_max.
+  + rewrite max_simplified. unfold simple_max.
+    apply nfilter_extensionality_compat.
+    - repeat intro. now subst.
+    - intros _ n. now rewrite Nat.eqb_sym, Bool.andb_diag.
+  + repeat intro. now subst.
+  Qed.
+  
+  (** **  Function [min] and its properties  **)
+  
+  (** ***  Function [min_mult] computing the minimal multiplicity  **)
+  
+  (*
+  Local Instance min_f_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Nat.min).
+  Proof. repeat intro. now subst. Qed.
+  
+  Local Lemma min_f_transpose2 : transpose2 Logic.eq (fun _ : elt => Nat.min).
+  Proof. repeat intro. repeat apply Nat.min_case_strong; omega. Qed.
+  Local Hint Resolve min_f_transpose2.
 
+  Local Lemma fold_min_le_init : forall m i, fold (fun _ => Nat.min) m i <= i.
+  Proof.
+  intro m. pattern m. apply ind.
+  + intros ? ? Hm. now setoid_rewrite (fold_compat _ _ _ _ _ _ _ Hm _ _ (reflexivity _)); auto.
+  + intros m' x n Hx Hn Hrec i. rewrite (@fold_add _ Logic.eq); autoclass; [].
+    rewrite Nat.min_le_iff. auto.
+  + intro. now rewrite fold_empty.
+  Qed.
+  
+  Lemma fold_min_init_indep : forall m x n p, 0 < m[x] -> m[x] <= n -> m[x] <= p ->
+    fold (fun _ => Nat.min) m n = fold (fun _ => Nat.min) m p.
+  Proof.
+  intros m x n p.
+  apply fold_rect.
+  + intros m1 m2 acc Hm Hrec **. rewrite Hm in Hrec at 1 2 3.
+    rewrite Hrec; trivial; []. apply fold_compat; autoclass.
+  + msetdec.
+  + intros z m' **.
+    assert (Hm' : m'[z] = 0) by (unfold In in *; omega).
+    msetdec.
+    - rewrite Hm' in *. simpl in *. rewrite fold_add; autoclass; [| msetdec].
+  Restart.
+  intro m. pattern m at -2 3. apply ind.
+  + intros m1 m2 Hm. split; intros Heq x n p Hx Hn Hp.
+    - setoid_rewrite Hm in Heq at 1. specialize (Heq x n p Hx Hn Hp).
+      erewrite (fold_compat _ Logic.eq _ _ _ _ _ Hm _ _ (reflexivity _)) in Heq.
+      rewrite Heq. apply fold_compat; autoclass.
+    - setoid_rewrite <- Hm in Heq at 1. specialize (Heq x n p Hx Hn Hp).
+      erewrite (fold_compat _ Logic.eq _ _ _ _ _ Hm _ _ (reflexivity _)).
+      rewrite Heq. apply fold_compat; autoclass. now symmetry.
+  + intros m' z k Hz Hk Hrec x n p Hx Hn Hp.
+    assert (Hm' : m'[z] = 0) by (unfold In in *; omega).
+    rewrite 2 fold_add; autoclass; []. msetdec.
+    -
+  Admitted.
+  
+  Instance min_mult_compat : Proper (eq ==> Logic.eq) min_mult.
+  Proof.
+  unfold min_mult. intros m1 m2 Heq.
+  destruct (choose m1) as [x1 |] eqn:Hm1.
+  + assert (Hm2' : choose m2 <> None).
+    { intro Habs. rewrite choose_None, <- Heq, <- choose_None in Habs. congruence. }
+    destruct (choose m2) as [x2 |] eqn:Hm2; try (now elim Hm2'); [].
+    destruct (le_dec m1[x1] m2[x2]).
+    - rewrite (@fold_min_init_indep m1 x1 m1[x1] m2[x2]);
+      omega || (apply fold_compat; trivial; autoclass) || now apply choose_Some.
+    - rewrite <- (@fold_min_init_indep m2 x2 m1[x1] m2[x2]);
+      omega || (apply fold_compat; trivial; autoclass) || now apply choose_Some.
+  + rewrite choose_None in Hm1. rewrite Hm1 in Heq. symmetry in Heq.
+    rewrite <- choose_None in Heq. now rewrite Heq.
+  Qed.
+  
+(*   Parameter min_mult_sub_compat : Proper (Subset ==> le) min_mult. *)
+  
+  Lemma min_mult_add : forall m x n, n > 0 -> ~In x m -> min_mult (add x n m) = Nat.min n (min_mult m).
+  Proof.
+  intros m x n Hn Hx. unfold min_mult.
+  assert (Hnone : choose (add x n m) <> None).
+  { intros Habs. rewrite choose_None in Habs. specialize (Habs x). msetdec. }
+  destruct (choose (add x n m)) eqn:Hadd; try (now elim Hnone); [].
+  destruct (choose m) as [y |] eqn:Hm.
+  * rewrite fold_add; autoclass; []. msetdec.
+    + rewrite min_r; [apply Nat.min_case_strong |].
+      - 
+      - 
+      - 
+    - repeat intro. now subst.
+    - repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
+    - omega.
+  Qed.
+  Proof.
+  
+  Theorem min_mult_spec_weak : forall m x, (min_mult m <= m[x])%nat.
+  Proof.
+  intro m. pattern m. apply ind; clear m.
+  * intros m1 m2 Hm. now setoid_rewrite Hm.
+  * intros m x n Hout Hn Hrec y. rewrite min_mult_add; trivial.
+    assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
+    destruct (E.eq_dec y x) as [Hxy | Hxy].
+    + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
+    + rewrite add_other; auto. transitivity (max_mult m).
+      - apply Hrec.
+      - apply Max.le_max_r.
+  * intro x. rewrite empty_spec. omega.
+  Qed.
+  
+  (* We need a dummy elements for [y] when [m] is empty. *)
+  Parameter min_mult_spec : elt -> forall m, (forall x, min_mult m <= m[x]) /\ (exists y, min_mult m = m[y]).
+  
+  Parameter min_mult_unique : forall m n, (forall x, n <= m[x]) -> (exists y, n = m[y]) -> n = min_mult m.
+  
+  Parameter min_spec_min : forall m x, ~m [=] empty -> (forall y, (m[x] <= m[y])) -> min_mult m = m[x].
+  
+  Parameter min_min_mult_ex : forall m, ~m [=] empty -> exists x, min_mult m = m[x].
+  
+  Parameter min_mult_empty : min_mult empty = 0.
+  
+  Parameter min_mult_0 : forall m, min_mult m = 0%nat <-> m [=] empty.
+  
+  Parameter min_mult_singleton : forall x n, min_mult (singleton x n) = n.
+  
+(*   Parameter min_mult_add_le : forall x n m, min_mult m <= min_mult (add x n m). *)
+  
+(*   Parameter min_mult_add_cases : forall x n m, (min_mult m <= m[x] + n <-> min_mult (add x n m) = min_mult m)
+                                            /\ (m[x] + n <= min_mult m <-> min_mult (add x n m) = m[x] + n).
+  
+  Parameter min_mult_add1 : forall x n m, m[x] + n <= min_mult m <-> min_mult (add x n m) = min_mult m.
+  
+  Parameter min_mult_add2 : forall x n m, min_mult m <= m[x] + n <-> min_mult (add x n m) = m[x] + n.
+  
+  Parameter min_mult_remove_le : forall x n m, min_mult (remove x n m) <= min_mult m. *)
+  
+  Parameter min_mult_remove : forall x n m, min_mult m < m[x] -> min_mult (remove x n m) = min_mult m.
+  
+  Parameter min_mult_union : forall m₁ m₂,
+    Nat.min (min_mult m₁) (min_mult m₂) <= min_mult (union m₁ m₂) <= min_mult m₁ + min_mult m₂.
+  
+  Parameter min_mult_lub : forall m₁ m₂, Nat.max (min_mult m₁) (min_mult m₂) <= min_mult (lub m₁ m₂).
+  
+(*   Parameter min_mult_remove_all_le : forall x m, min_mult (remove_all x m) <= min_mult m. *)
+  
+  Parameter min_mult_remove_all : forall x m, min_mult m < m[x] -> min_mult (remove_all x m) = min_mult m.
+  
+  Parameter min_mult_map_injective_invariant : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, min_mult (map f m) = min_mult m.
+  
+  (** ***  Function [min s] returning the elements of a multiset with minimal multiplicity  **)
+  
+  Declare Instance eqb_min_mult_compat m : Proper (E.eq ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (min_mult m)).
+  
+  Declare Instance eqb_min_compat : Proper (E.eq ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.min).
+  
+  Local Hint Immediate eqb_min_mult_compat eqb_min_compat.
+  
+  Declare Instance min_compat : Proper (eq ==> eq) min.
+  
+  Definition simple_min m := nfilter (fun _ => beq_nat (min_mult m)) m.
+  
+  Parameter simple_min_compat : Proper (eq ==> eq) simple_min.
+  
+  Parameter min_simplified : forall m, min m [=] simple_min m.
+  
+  Parameter min_spec : forall x m, (min m)[x] = (if m[x] =? min_mult m then m[x] else 0).
+  
+  Parameter min_case : forall m x, (min m)[x] = 0 \/ (min m)[x] = m[x] /\ m[x] = min_mult m.  
+  
+  Parameter min_le : forall m x y, In y (min m) -> In x m -> (min m)[y] <= m[x].
+  
+  Parameter min_subset : forall m, min m [<=] m.
+  
+  Parameter min_empty : min empty [=] empty.
+  
+  Parameter min_is_empty : forall m, min m [=] empty <-> m [=] empty.
+  
+  Parameter min_singleton : forall x n, min (singleton x n) [=] singleton x n.
+  
+  Parameter min_is_singleton : forall x n m, 0 < n ->
+    min m [=] singleton x n <-> n = m[x] /\ forall y, ~E.eq y x -> m[x] < m[y].
+  
+  Parameter min_is_id : forall m, min m [=] m <-> forall x, In x m -> m[x] = min_mult m.
+  
+  Parameter min_In : forall m x, In x (min m) -> m[x] = min_mult m.
+  
+  Parameter min_In_mult : forall m x, In x m -> (In x (min m) <-> (min m)[x] = m[x]).
+  
+  Parameter min_In_mult2 : forall m x, In x m -> (In x (min m) <-> (min m)[x] = min_mult m).
+  
+  Parameter min_In_mult3 : forall m x, In x m -> (In x (min m) <-> m[x] = min_mult m).
+  
+  Parameter min_min_mult : forall m x, ~m [=] empty -> (In x (min m) <-> m[x] = min_mult m).
+  
+  Parameter min_spec1_iff : forall m, ~m [=] empty -> forall x, In x (min m) <-> forall y, (m[x] <= m[y]).
+  
+  Parameter min_spec_non_nil : forall m x, In x m -> exists y, In y (min m).
+  
+  Parameter min_spec_mult : forall m x y, In x (min m) -> (In y (min m) <-> (min m)[y] = (min m)[x]).
+  
+  Parameter min_spec_lub : forall m x y, In x (min m) -> In y m -> ~In y (min m) <-> (m[x] < m[y])%nat.
+  
+  Parameter min_add_lt : forall x n m, m[x] + n < min_mult m -> min (add x n m) [=] singleton x (m[x] + n).
+  
+  Parameter min_add_eq : forall x n m, 0 < n -> m[x] + n = min_mult m -> min (add x n m) [=] add x (m[x] + n) (min m).
+  
+  Parameter min_add_gt : forall x y n m, ~E.eq y x -> In y m -> m[x] + n > min_mult m -> min (add x n m) [=] min m.
+  
+  Parameter min_remove : forall x n m, min_mult m < m[x] -> min (remove x n m) [=] min m.
+  
+(*   Parameter min_lub_le : forall m₁ m₂, min m₁ [<=] min (lub m₁ m₂) \/ min m₂ [<=] min (lub m₁ m₂). *)
+  
+(*   Parameter min_lub : forall m₁ m₂, min (lub m₁ m₂) [<=] lub (min m₁) (min m₂). *)
+  
+  Parameter fold_min : forall A (eqA : relation A), Equivalence eqA ->
+    forall f, Proper (E.eq ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
+    forall m i, eqA (fold f (min m) i) (fold (fun x n acc => if n =? min_mult m then f x n acc else acc) m i).
+  
+  Parameter for_all_min : forall f, compatb f ->
+    forall m, for_all f (min m) = for_all (fun x n => f x n || (min_mult m <? n))%bool m.
+  
+  Parameter exists_min : forall f, compatb f ->
+    forall m, exists_ f (min m) = exists_ (fun x n => f x n && (n =? min_mult m))%bool m.
+  
+  Parameter nfilter_min : forall f, compatb f ->
+    forall m, nfilter f (min m) [=] nfilter (fun x n => f x n && (n =? min_mult m))%bool m.
+  
+  Parameter filter_min : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, filter f (min m) [=] nfilter (fun x n => f x && (n =? min_mult m))%bool m.
+  
+  Parameter npartition_min_fst : forall f, compatb f ->
+    forall m, fst (npartition f (min m)) [=] nfilter (fun x n => f x n && (n =? min_mult m))%bool m.
+  
+  Parameter npartition_min_snd : forall f, compatb f ->
+    forall m, snd (npartition f (min m)) [=] nfilter (fun x n => negb (f x n) && (n =? min_mult m))%bool m.
+  
+  Parameter partition_min_fst : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, fst (partition f (min m)) [=] nfilter (fun x n => f x && (n =? min_mult m))%bool m.
+  
+  Parameter partition_min_snd : forall f, Proper (E.eq ==> Logic.eq) f ->
+    forall m, snd (partition f (min m)) [=] nfilter (fun x n => negb (f x) && (n =? min_mult m))%bool m.
+  
+  Parameter elements_min : forall m,
+    PermutationA eq_pair (elements (min m)) (List.filter (fun xn => snd xn =? min_mult m) (elements m)).
+  
+  Parameter support_min : forall m, inclA E.eq (support (min m)) (support m).
+  
+  Parameter cardinal_min : forall m, cardinal (min m) <= cardinal m.
+  
+  Parameter size_min : forall m, size (min m) <= size m.
+  
+  Parameter min_remove_all : forall x m, min_mult m < m[x] -> min (remove_all x m) [=] min m.
+  
+  Parameter min_map_injective : forall f, Proper (E.eq ==> E.eq) f -> injective E.eq E.eq f ->
+    forall m, (min (map f m)) [=] (map f (min m)).
+  
+  Parameter min_mult_min : forall m, min_mult (min m) = min_mult m.
+  
+  Parameter min_idempotent : forall m, min (min m) [=] min m.
+  *)
+  
+End MakeExtra.
+
+(** Everything at once. *)
+Module Make(E : DecidableType)(Import M : FMultisetsOn E) <: MMultisetExtra(E)(M).
+  Include MMultisetFacts.Make(E)(M).
+  Module ME := MakeExtra(E)(M).
+  Include ME.
 End Make.

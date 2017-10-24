@@ -126,9 +126,17 @@ intros x l. split; intro Hl.
     rewrite M.add_other; trivial. apply IHl. inversion_clear Hl; auto. now elim Hneq.
 Qed.
 
+Lemma map_from_elements : forall f, Proper (Location.eq ==> Location.eq) f ->
+  forall l, M.map f (M.from_elements l) [=] M.from_elements (List.map (fun xn => (f (fst xn), snd xn)) l).
+Proof.
+induction l as [| [x n] l]; simpl.
+- apply M.map_empty.
+- rewrite M.map_add; trivial; []. f_equiv. apply IHl.
+Qed.
+
 Theorem multiset_map : forall f, Proper (Location.eq ==> Location.eq) f ->
   forall l, multiset (map f l) [=] M.map f (multiset l).
-Proof. intros f Hf l x. unfold multiset. now rewrite map_map, M.map_from_elements, map_map. Qed.
+Proof. intros f Hf l x. unfold multiset. now rewrite map_map, map_from_elements, map_map. Qed.
 
 Theorem multiset_filter : forall f, Proper (Location.eq ==> Logic.eq) f ->
   forall l, multiset (filter f l) [=] M.filter f (multiset l).
