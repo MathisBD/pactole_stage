@@ -103,6 +103,19 @@ Qed.
 
 Definition nG_non_0 : nG <> 0 := n_non_0.
 
+Lemma spect_non_empty : forall config pt, spect_from_config config pt =/= empty.
+Proof.
+intros config pt.
+rewrite spect_from_config_ignore_snd. intro Habs.
+assert (Hn : 0 < n). { generalize n_non_0. omega. }
+pose (g := exist _ 0 Hn : G).
+specialize (Habs (config (Good g))).
+rewrite empty_spec in Habs.
+assert (Hin := pos_in_config config origin (Good g)).
+simpl in Hin. unfold id, MMultisetInterface.In in Hin. omega.
+Qed.
+
+Hint Resolve spect_non_empty.
 
 (** ** Properties of executions  *)
 
@@ -137,7 +150,7 @@ Instance attracted_compat : Proper (equiv ==> eq ==> equiv ==> iff) attracted.
 Proof. intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
 (** A solution is just convergence property for any demon. *)
-Definition solution (r : robogram) : Prop :=
+Definition solution_SSYNC (r : robogram) : Prop :=
   forall (config : configuration) (d : similarity_demon), Fair d →
   forall (ε : R), 0 < ε → exists (pt : R2), attracted pt ε (execute r d config).
 
@@ -145,8 +158,11 @@ Definition solution_FSYNC (r : robogram) : Prop :=
   forall (config : configuration) (d : similarity_demon), FullySynchronous d →
   forall (ε : R), 0 < ε → exists (pt : R2), attracted pt ε (execute r d config).
 
-Lemma synchro : ∀ r, solution r → solution_FSYNC r.
-Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, fully_synchronous_implies_fair; autoclass. Qed.
+Lemma synchro : ∀ r, solution_SSYNC r → solution_FSYNC r.
+Proof.
+unfold solution_SSYNC. intros r Hfair config d Hd.
+apply Hfair, fully_synchronous_implies_fair; autoclass.
+Qed.
 
 Close Scope R_scope.
 
@@ -170,10 +186,47 @@ rewrite map_injective_support; autoclass; try apply Similarity.injective; [].
 apply barycenter_sim_morph. now rewrite support_nil.
 Qed.
 
-Lemma converge_forever : forall d c r config,
-  contained c r config -> imprisoned c r (execute convergeR2 d config).
+Theorem round_simplify : forall da config,
+  round convergeR2 da config
+  == fun id => if da.(activate) config id
+               then (barycenter (support (spect_from_config config (config id))))
+               else config id.
+Proof.
+intros da config id. unfold round.
+destruct_match; try reflexivity; [].
+destruct_match.
++ remember (change_frame da config g) as sim.
+  change (Bijection.section (Bijection.inverse (first_choice_bijection sim)))
+    with (Bijection.section (sim ⁻¹)).
+  cbn -[equiv spect_from_config map_config barycenter support RobotInfo.app Similarity.inverse].
+  unfold id, convergeR2_pgm.
+  rewrite <- barycenter_sim, spect_from_config_map; autoclass.
+  assert (Hconfig : map_config (RobotInfo.app (sim ⁻¹)) (map_config (RobotInfo.app sim) config) == config).
+  { rewrite map_config_merge; autoclass; []. rewrite <- (map_config_id config) at 2.
+    apply map_config_compat; try reflexivity; [].
+    simpl. intros ? ? ?. unfold id. now rewrite Bijection.retraction_section. }
+  rewrite Hconfig. f_equiv.
++ destruct b; omega.
+Qed.
+
+Lemma contained_barycenter : forall c r config,
+  contained c r config -> (dist c (barycenter (support (spect_from_config config origin))) <= r)%R.
 Proof.
 Admitted.
+
+Lemma contained_next : forall da c r config,
+  contained c r config -> contained c r (round convergeR2 da config).
+Proof.
+intros da c r config Hconfig g.
+rewrite round_simplify.
+destruct_match.
+- now apply contained_barycenter.
+- auto.
+Qed.
+
+Lemma converge_forever : forall d c r config,
+  contained c r config -> imprisoned c r (execute convergeR2 d config).
+Proof. coinduction Hcorec; auto using contained_next. Qed.
 
 
 (***********************)
@@ -194,23 +247,18 @@ remember (change_frame (Stream.hd (d : demon)) config g) as sim.
 simpl first_choice_bijection; simpl RobotInfo.app; unfold id.
 change (pgm convergeR2) with convergeR2_pgm. unfold convergeR2_pgm.
 change (Bijection.inverse sim) with (Similarity.sim_f (sim ⁻¹)).
-rewrite <- barycenter_sim.
-+ rewrite spect_from_config_map; autoclass; [].
-  rewrite map_config_merge; autoclass.
-  change (λ x : R2, RobotInfo.app (sim ⁻¹) (sim x)) with (RobotInfo.app (sim ⁻¹ ∘ sim)).
-  rewrite Similarity.compose_inverse_l, map_config_id.
-  rewrite spect_from_config_ignore_snd.
-  transitivity 0%R; try lra; []. apply Req_le.
-  apply R2_dist_defined_2.
-+ rewrite spect_from_config_ignore_snd. intro Habs.
-  specialize (Habs (sim (config (Good g)))).
-  change (sim : R2 -> R2) with (RobotInfo.app sim) in Habs at 2.
-  rewrite empty_spec,
-          <- (spect_from_config_ignore_snd _ (sim origin)),
-          <- spect_from_config_map,
-          map_injective_spec in Habs; autoclass; try apply Similarity.injective; [].
-  assert (Hin := pos_in_config config origin (Good g)).
-  simpl in Hin. unfold id, MMultisetInterface.In in Hin. omega.
+rewrite <- barycenter_sim; auto; [].
+rewrite spect_from_config_map; autoclass; [].
+rewrite map_config_merge; autoclass.
+change (λ x : R2, RobotInfo.app (sim ⁻¹) (sim x)) with (RobotInfo.app (sim ⁻¹ ∘ sim)).
+rewrite Similarity.compose_inverse_l, map_config_id.
+rewrite spect_from_config_ignore_snd.
+transitivity 0%R; try lra; []. apply Req_le.
+apply R2_dist_defined_2.
 Qed.
 
 Print Assumptions convergence_FSYNC.
+
+Theorem convergence_SSYNC : solution_SSYNC convergeR2.
+Proof.
+Admitted.
