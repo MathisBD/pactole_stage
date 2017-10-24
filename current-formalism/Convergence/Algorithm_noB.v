@@ -162,51 +162,13 @@ Proof. intros ? ? Heq. unfold convergeR2_pgm. apply barycenter_compat. now rewri
 Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
 
-Lemma barycenter_sim : forall (sim : Similarity.similarity R2) s,
+Lemma barycenter_sim : forall (sim : Similarity.similarity R2) s, s =/= empty ->
   barycenter (support (MMultisetExtraOps.map sim s)) == sim (barycenter (support s)).
 Proof.
-(*
-  intros sim m Hm. eapply barycenter_n_unique.
-  + apply barycenter_n_spec.
-  + intro p.
-    unfold sqr_dist_sum, sqr_dist_sum_aux.
-    change p with (Sim.id p).
-    rewrite <- (Sim.compose_inverse_r sim) with (x := p) by apply R2.eq_equiv.
-    change ((Sim.compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
-
-    assert (Hfold_dist_prop: forall pt init,
-              fold_left
-                (fun (acc : R) (pt' : R2.t) => acc + (R2.dist (sim pt) pt')²)
-                (map sim m) (* ((sim.(Sim.zoom))² * init) *) init
-              =
-              fold_left
-                (fun (acc : R) (pt' : R2.t) => acc + (sim.(Sim.zoom))² * (R2.dist pt pt')²)
-                m init).
-    { intro pt. induction m; intro init.
-      + now elim Hm.
-      + clear Hm. destruct m.
-        * simpl.
-          now rewrite sim.(Sim.dist_prop), R_sqr.Rsqr_mult.
-        * remember (t::m) as mm.
-          simpl.
-          rewrite sim.(Sim.dist_prop), R_sqr.Rsqr_mult.
-          rewrite IHm.
-          reflexivity.
-          subst. discriminate.
-    }
-    do 2 rewrite Hfold_dist_prop.
-    rewrite <- Rmult_0_r with (r := (Sim.zoom sim)²).
-    rewrite <- Rmult_0_r with (r := (Sim.zoom sim)²) at 2.
-    do 2 rewrite fold_mult_plus_distr.
-    apply Rmult_le_compat_l.
-    - apply Rle_0_sqr.
-    - rewrite Rmult_0_r.
-      generalize (barycenter_n_spec m).
-      intro Hbary_spec.
-      unfold is_barycenter_n, sqr_dist_sum, sqr_dist_sum_aux in Hbary_spec.
-      now apply Hbary_spec.
-*)
-Admitted.
+intros sim s Hs.
+rewrite map_injective_support; autoclass; try apply Similarity.injective; [].
+apply barycenter_sim_morph. now rewrite support_nil.
+Qed.
 
 Lemma converge_forever : forall d c r config,
   contained c r config -> imprisoned c r (execute convergeR2 d config).
@@ -233,13 +195,22 @@ simpl first_choice_bijection; simpl RobotInfo.app; unfold id.
 change (pgm convergeR2) with convergeR2_pgm. unfold convergeR2_pgm.
 change (Bijection.inverse sim) with (Similarity.sim_f (sim ⁻¹)).
 rewrite <- barycenter_sim.
-rewrite spect_from_config_map; autoclass; [].
-rewrite map_config_merge; autoclass.
-change (λ x : R2, RobotInfo.app (sim ⁻¹) (sim x)) with (RobotInfo.app (sim ⁻¹ ∘ sim)).
-rewrite Similarity.compose_inverse_l, map_config_id.
-rewrite spect_from_config_ignore_snd.
-transitivity 0%R; try lra; []. apply Req_le.
-apply R2_dist_defined_2.
++ rewrite spect_from_config_map; autoclass; [].
+  rewrite map_config_merge; autoclass.
+  change (λ x : R2, RobotInfo.app (sim ⁻¹) (sim x)) with (RobotInfo.app (sim ⁻¹ ∘ sim)).
+  rewrite Similarity.compose_inverse_l, map_config_id.
+  rewrite spect_from_config_ignore_snd.
+  transitivity 0%R; try lra; []. apply Req_le.
+  apply R2_dist_defined_2.
++ rewrite spect_from_config_ignore_snd. intro Habs.
+  specialize (Habs (sim (config (Good g)))).
+  change (sim : R2 -> R2) with (RobotInfo.app sim) in Habs at 2.
+  rewrite empty_spec,
+          <- (spect_from_config_ignore_snd _ (sim origin)),
+          <- spect_from_config_map,
+          map_injective_spec in Habs; autoclass; try apply Similarity.injective; [].
+  assert (Hin := pos_in_config config origin (Good g)).
+  simpl in Hin. unfold id, MMultisetInterface.In in Hin. omega.
 Qed.
 
 Print Assumptions convergence_FSYNC.

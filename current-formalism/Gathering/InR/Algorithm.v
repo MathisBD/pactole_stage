@@ -1517,16 +1517,6 @@ intros da config pt Hgather. rewrite (round_simplify_Majority).
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply pos_in_config.
 Qed.
 
-Lemma gathered_at_dec : forall config pt, {gathered_at pt config} + {~gathered_at pt config}.
-Proof.
-intros config pt.
-destruct (forallb (fun id => Rdec_bool (get_location (config id)) pt) names) eqn:Hall.
-+ left. rewrite forallb_forall in Hall. intro g. simpl. rewrite <- Rdec_bool_true_iff. apply Hall. apply In_names.
-+ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  revert Heq. apply no_byz. intro g. intros Heq Habs. specialize (Habs g).
-  rewrite negb_true_iff, Rdec_bool_false_iff in Heq. contradiction.
-Qed.
-
 Lemma gathered_at_OK : forall (d : similarity_demon) config pt,
   gathered_at pt config -> Gather pt (execute gatherR d config).
 Proof.

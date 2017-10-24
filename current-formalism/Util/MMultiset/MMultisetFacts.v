@@ -1912,7 +1912,7 @@ Section MMultisetFacts.
     - apply IHl. eapply is_elements_cons_inv. eassumption.
   Qed.
   
-  Corollary not_empty_In : forall m, ~m == empty <-> exists x, In x m.
+  Corollary not_empty_In : forall m, m =/= empty <-> exists x, In x m.
   Proof.
   intro m. split.
   + pattern m. apply ind; clear m.
@@ -1926,7 +1926,7 @@ Section MMultisetFacts.
   Proof.
   intro m. destruct (equal m empty) eqn:Heq.
   + rewrite equal_spec in Heq. now left.
-  + right. rewrite <- not_empty_In. rewrite <- equal_spec, Heq. discriminate.
+  + right. rewrite <- not_empty_In. unfold complement. rewrite <- equal_spec, Heq. discriminate.
   Qed.
   
   (** **  Results about [support]  **)
@@ -3411,7 +3411,7 @@ Section MMultisetFacts.
     Variable f : elt -> nat -> bool.
     Hypothesis Hf : compatb f.
     
-    Lemma exists_not_empty : forall m, exists_ f m = true -> ~m == empty.
+    Lemma exists_not_empty : forall m, exists_ f m = true -> m =/= empty.
     Proof.
     intros m Hm. rewrite exists_spec in Hm; trivial. rewrite not_empty_In. destruct Hm as [x [? ?]]. now exists x.
     Qed.

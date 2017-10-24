@@ -142,21 +142,12 @@ intros pt config. etransitivity.
 - rewrite cardinal_spect_from_config. simpl. omega.
 Qed.
 
-Lemma gathered_at_dec : forall config pt, {gathered_at pt config} + {~gathered_at pt config}.
-Proof.
-intros config pt.
-destruct (forallb (fun id => R2dec_bool (config id) pt) names) eqn:Hall.
-+ left. rewrite forallb_forall in Hall. intro g. rewrite <- R2dec_bool_true_iff. apply Hall. apply In_names.
-+ right. rewrite <- negb_true_iff, existsb_forallb, existsb_exists in Hall. destruct Hall as [id [Hin Heq]].
-  revert Hin Heq. pattern id. apply no_byz. clear id. intros g Hin Heq Habs.
-  specialize (Habs g). rewrite negb_true_iff, R2dec_bool_false_iff in Heq. contradiction.
-Qed.
-
 (** **  Definition of the robogram  **)
 
 Open Scope R_scope.
 
 (** The target in the triangle case. *)
+(* TODO: replace [barycenter_3_pts] with the general [barycenter]. *)
 Function target_triangle (pt1 pt2 pt3 : R2) : R2 :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
@@ -730,11 +721,7 @@ Qed.
 Definition lt_config x y := Lexprod.lexprod lt lt (measure (!! x)) (measure (!! y)).
 
 Lemma wf_lt_config: well_founded lt_config.
-Proof.
-unfold lt_config.
-apply wf_inverse_image.
-apply Lexprod.wf_lexprod; apply lt_wf.
-Qed.
+Proof. unfold lt_config. apply wf_inverse_image, Lexprod.wf_lexprod; apply lt_wf. Qed.
 
 Instance lt_config_compat : Proper (equiv ==> equiv ==> iff) lt_config.
 Proof.
@@ -746,109 +733,6 @@ Qed.
 (** ***  The robogram is invariant by a change of the frame of reference  **)
 
 (** We first prove how the functions used by the robogram are affected by a change of the frame of reference. *)
-Definition map_triangle_type f t :=
-  match t with
-    | Isosceles p => Isosceles (f p)
-    | _ => t
-  end.
-
-Definition sim_circle (sim : similarity R2) c :=
-  {| R2.center := sim c.(R2.center) ; radius := sim.(zoom) * (c.(radius)) |}.
-
-Lemma classify_triangle_morph : forall (sim : similarity R2) pt1 pt2 pt3,
-  classify_triangle (sim pt1) (sim pt2) (sim pt3) = map_triangle_type sim (classify_triangle pt1 pt2 pt3).
-Proof.
-intros sim pt1 pt2 pt3.
-unfold classify_triangle at 1.
-setoid_rewrite (sim.(dist_prop)).
-rewrite Rdec_bool_mult_l in *; try apply zoom_non_null.
-functional induction (classify_triangle pt1 pt2 pt3);
-repeat rewrite ?e, ?e0, ?e1, ?(sim.(dist_prop)), ?Rdec_bool_mult_l; try reflexivity;
-try apply zoom_non_null.
-Qed.
-
-Lemma on_circle_morph :
-  forall (sim : similarity R2) pt c, on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
-Proof.
-intros sim pt c.
-unfold on_circle at 1.
-unfold sim_circle.
-simpl.
-setoid_rewrite (sim.(dist_prop)).
-rewrite Rdec_bool_mult_l in *; try apply zoom_non_null.
-reflexivity.
-Qed.
-
-Lemma enclosing_circle_morph :
-  forall (sim : similarity R2) c l, enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
-Proof.
-intros sim c l.
-unfold enclosing_circle.
-unfold sim_circle.
-simpl R2.center.
-setoid_rewrite in_map_iff.
-split; intro h.
-- intros x h'.
-  specialize (h (sim x)).
-  setoid_rewrite (sim.(dist_prop)) in h.
-  apply Rmult_le_reg_l in h; auto.
-  + apply zoom_pos.
-  + eauto.
-- intros x H.
-  destruct H as [x' [hsim hIn]].
-  subst.
-  rewrite (sim.(dist_prop)).
-  eapply Rmult_le_compat_l in h;eauto.
-  apply Rlt_le, zoom_pos.
-Qed.
-
-Lemma SEC_morph : forall (sim : similarity R2) l, SEC (List.map sim l) = sim_circle sim (SEC l).
-Proof.
-intros sim l. symmetry. apply SEC_unicity.
-+ intros pt' Hin. rewrite in_map_iff in Hin. destruct Hin as [pt [Hpt Hin]]. subst pt'.
-  unfold sim_circle. simpl R2.center. simpl radius. rewrite sim.(dist_prop).
-  apply Rmult_le_compat_l.
-  - apply Rlt_le. apply zoom_pos.
-  - now apply SEC_spec1.
-+ assert ( 0 < / (zoom sim))%R by apply Rinv_0_lt_compat, zoom_pos.
-  unfold sim_circle. simpl radius. apply Rmult_le_reg_l with (/ (zoom sim))%R; trivial; [].
-  rewrite <- Rmult_assoc. rewrite Rinv_l; try (now assert (Hpos := zoom_pos sim); lra); [].
-  change (/ zoom sim * radius (SEC (List.map sim l)))%R with (radius (sim_circle (sim ⁻¹) (SEC (List.map sim l)))).
-  ring_simplify. apply SEC_spec2.
-  intros pt Hin. replace pt with ((sim ⁻¹) (sim pt)).
-  - change (R2.center (sim_circle (sim ⁻¹) (SEC (List.map sim l))))
-      with ((sim ⁻¹) (R2.center (SEC (List.map sim l)))).
-    rewrite (dist_prop (sim ⁻¹)). simpl. apply Rmult_le_reg_l with (/ (zoom sim))%R; trivial.
-    do 2 (apply Rmult_le_compat_l; try lra; []).
-    apply SEC_spec1. now apply in_map.
-  - change eq with equiv. apply compose_inverse_l.
-Qed.
-
-Lemma barycenter_3_morph: forall (sim : similarity R2) pt1 pt2 pt3,
-  barycenter_3_pts (sim pt1) (sim pt2) (sim pt3) = sim (barycenter_3_pts pt1 pt2 pt3).
-Proof.
-intros sim pt1 pt2 pt3. eapply bary3_unique.
-+ apply bary3_spec.
-+ intro p. change p with (Similarity.id p). rewrite <- (compose_inverse_r sim).
-  change ((compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
-  repeat rewrite sim.(dist_prop), R_sqr.Rsqr_mult. repeat rewrite <- Rmult_plus_distr_l.
-  apply Rmult_le_compat_l.
-  - apply Rle_0_sqr.
-  - apply bary3_spec.
-Qed.
-
-Lemma opposite_of_max_side_morph : forall (sim : similarity R2) pt1 pt2 pt3,
-  opposite_of_max_side (sim pt1) (sim pt2) (sim pt3) = sim (opposite_of_max_side pt1 pt2 pt3).
-Proof.
-intros sim pt1 pt2 pt3. unfold opposite_of_max_side.
-repeat rewrite (sim.(dist_prop)).
-assert (Hconfig : (0 < zoom sim)%R) by apply zoom_pos.
-repeat rewrite Rle_bool_mult_l; trivial.
-repeat match goal with
-  | |- context[Rle_bool ?x ?y] => destruct (Rle_bool x y)
-end; reflexivity.
-Qed.
-
 Lemma target_triangle_morph:
   forall (sim : similarity R2) pt1 pt2 pt3, target_triangle (sim pt1) (sim pt2) (sim pt3)
                                   = sim (target_triangle pt1 pt2 pt3).
@@ -860,57 +744,8 @@ destruct (classify_triangle pt1 pt2 pt3); simpl; auto.
 - apply opposite_of_max_side_morph.
 Qed.
 
-Lemma R2_is_middle_morph : forall x y C (sim : similarity R2),
-  is_middle x y C -> (is_middle (sim x) (sim y) (sim C)).
-Proof.
-intros x y C sim Hmid.
-red.
-intros p.
-unfold is_middle in Hmid.
-rewrite <- (@Bijection.section_retraction _ _ (sim.(sim_f)) p).
-setoid_rewrite sim.(dist_prop).
-setoid_rewrite R_sqr.Rsqr_mult.
-setoid_rewrite <- Rmult_plus_distr_l.
-apply Rmult_le_compat_l.
-- apply Rle_0_sqr.
-- apply Hmid.
-Qed.
-
-
-Lemma R2_middle_morph : forall x y (sim : similarity R2), (middle (sim x) (sim y))%R2 = sim ((middle x y))%R2.
-Proof. intros x y sim. symmetry. apply middle_is_R2middle, R2_is_middle_morph, middle_spec. Qed.
-
-Lemma R2_is_bary3_morph : forall x y z C (sim : similarity R2),
-  is_barycenter_3_pts x y z C -> (is_barycenter_3_pts (sim x) (sim y) (sim z) (sim C)).
-Proof.
-intros x y z C sim Hmid.
-red.
-intros p.
-unfold is_barycenter_3_pts in Hmid.
-rewrite <- (@Bijection.section_retraction _ _ (sim.(sim_f)) p).
-setoid_rewrite sim.(dist_prop).
-setoid_rewrite R_sqr.Rsqr_mult.
-repeat setoid_rewrite <- Rmult_plus_distr_l.
-apply Rmult_le_compat_l.
-- apply Rle_0_sqr.
-- apply Hmid.
-Qed.
-
-Lemma R2_bary3_morph : forall x y z (sim : similarity R2),
-  (barycenter_3_pts (sim x) (sim y) (sim z))%R2 = sim ((barycenter_3_pts x y z))%R2.
-Proof.
-intros x y z sim.
-generalize (@bary3_spec x y z).
-intro.
-generalize (@bary3_spec (sim x) (sim y) (sim z)).
-intro.
-assert (is_barycenter_3_pts (sim x) (sim y) (sim z) (sim (barycenter_3_pts x y z))).
-{ apply R2_is_bary3_morph. auto. }
-now apply bary3_unique with (sim x) (sim y) (sim z).
-Qed.
-
 Lemma target_morph : forall (sim : similarity R2) (s : spectrum),
-    support s <> nil -> target (map sim s) = sim (target s).
+  support s <> nil -> target (map sim s) = sim (target s).
 Proof.
 intros sim s hnonempty. unfold target.
 assert (Hperm : Permutation (List.map sim (on_SEC (support s))) (on_SEC (support (map sim s)))).
@@ -942,7 +777,7 @@ simpl in Hlen, Hperm; try (omega || reflexivity); clear Hlen.
 Qed.
 
 Corollary SECT_morph : forall (sim : similarity R2) s,
-    support s <> nil -> PermutationA equiv (SECT (map sim s)) (List.map sim (SECT s)).
+  support s <> nil -> PermutationA equiv (SECT (map sim s)) (List.map sim (SECT s)).
 Proof.
 intros sim s s_nonempty. unfold SECT.
 rewrite (target_morph _ _ s_nonempty). constructor; try reflexivity; [].
@@ -3492,7 +3327,7 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
     - exists pt. apply Stream.Later. rewrite execute_tail. apply Hpt.
 Qed.
 
-(* Print Assumptions Gathering_in_R2. *)
+Print Assumptions Gathering_in_R2.
 
 
 (* Let us change the assumption over the demon, it is no longer fair

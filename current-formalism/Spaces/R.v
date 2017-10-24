@@ -375,23 +375,23 @@ destruct (equiv_dec k 0) as [Hk0 | Hk0].
 * assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
   { specialize (Hk (c + 1) c). rewrite Hc in Hk.
     assert (H1 : dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
-    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) origin) as [Heq | Heq];
+    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) origin) as [Heq | Heq]; unfold origin in *;
     rewrite Heq in Hk; ring_simplify in Hk; cbn in *; lra. }
   destruct Hc1 as [Hc1 | Hc1].
   + left. intro x. apply (GPS (f c) (f (c + 1))).
-    - rewrite Hc, Hc1. cbn. lra.
-    - rewrite Hk, Hc. cbn.
+    - rewrite Hc, Hc1. unfold origin. cbn. lra.
+    - rewrite Hk, Hc. unfold origin. cbn.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-    - rewrite Hk, Hc1. cbn.
+    - rewrite Hk, Hc1. unfold origin. cbn.
       replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
   + right. intro x. apply (GPS (f c) (f (c + 1))).
-    - rewrite Hc, Hc1. cbn. lra.
-    - rewrite Hk, Hc. cbn.
+    - rewrite Hc, Hc1. unfold origin. cbn. lra.
+    - rewrite Hk, Hc. unfold origin. cbn.
       replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
-    - rewrite Hk, Hc1. cbn.
+    - rewrite Hk, Hc1. unfold origin. cbn.
       replace (- k * (x - c) - - k) with (- k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
 Qed.
