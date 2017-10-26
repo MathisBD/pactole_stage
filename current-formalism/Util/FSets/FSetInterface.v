@@ -1,4 +1,4 @@
-(* Adpated from Stephan Lescuyer's Containers library to avoid ordering of keys. *)
+(* Adpated from Stephan Lescuyer's Containers library to avoid ordering of elts. *)
 
 Require Import SetoidList.
 Require Import SetoidDec.
@@ -51,22 +51,22 @@ Hint Unfold Equal_pw.
    [set A] is itself an ordered type for pointwise equality. This makes
    building sets of sets possible.
    *)
-Class FSet `{EqDec key} := {
+Class FSet elt `{EqDec elt} := {
   (** The container type *)
   set : Type;
 
   (** The specification of all set operations is done
      with respect to the sole membership predicate. *)
-  In : key -> set -> Prop;
+  In : elt -> set -> Prop;
 
   (** Set Operations  *)
   empty : set;
   is_empty : set -> bool;
-  mem : key -> set -> bool;
+  mem : elt -> set -> bool;
 
-  add : key -> set -> set;
-  singleton : key -> set;
-  remove : key -> set -> set;
+  add : elt -> set -> set;
+  singleton : elt -> set;
+  remove : elt -> set -> set;
   union : set -> set -> set;
   inter : set -> set -> set;
   diff : set -> set -> set;
@@ -74,30 +74,30 @@ Class FSet `{EqDec key} := {
   equal : set -> set -> bool;
   subset : set -> set -> bool;
 
-  fold : forall {B : Type}, (key -> B -> B) -> set -> B -> B;
-  for_all : (key -> bool) -> set -> bool;
-  exists_ : (key -> bool) -> set -> bool;
-  filter : (key -> bool) -> set -> set;
-  partition : (key -> bool) -> set -> set * set;
+  fold : forall {B : Type}, (elt -> B -> B) -> set -> B -> B;
+  for_all : (elt -> bool) -> set -> bool;
+  exists_ : (elt -> bool) -> set -> bool;
+  filter : (elt -> bool) -> set -> set;
+  partition : (elt -> bool) -> set -> set * set;
 
   cardinal : set -> nat;
-  elements : set -> list key;
-  choose :  set -> option key;
-  (* min_elt :  set -> option key; *)
-  (* max_elt :  set -> option key; *)
+  elements : set -> list elt;
+  choose :  set -> option elt;
+  (* min_elt :  set -> option elt; *)
+  (* max_elt :  set -> option elt; *)
 
   (** Sets should be ordered types as well, in order to be able
      to use sets in containers.
      See wget http://www.lix.polytechnique.fr/coq/pylons/contribs/files/Containers/v8.4/Containers.tar.gz file OrderedType.v
    *)
   (*  FSet_OrderedType :>
-    SpecificOrderedType _ (Equal_pw set key In) *)
+    SpecificOrderedType _ (Equal_pw set elt In) *)
 }.
 
-Arguments set {key}%type_scope {_} {_} {FSet}.
+Arguments set elt%type_scope {_} {_} {FSet}.
 
 (** Set notations (see below) are interpreted in scope [set_scope],
-   delimited with key [scope]. We bind it to the type [set] and to
+   delimited with elt [scope]. We bind it to the type [set] and to
    other operations defined in the interface. *)
 Delimit Scope set_scope with set.
 Bind Scope set_scope with set.
@@ -137,8 +137,14 @@ Global Opaque
 
 (** There follow definitions of predicates about sets expressable
    in terms of [In], and which are not provided by the [FSet] class. *)
-Definition Equal `{FSet elt} s s' :=
-  forall a : elt, In a s <-> In a s'.
+Global Instance Set_Setoid elt `{FSet elt} : Setoid (set elt) := {
+  equiv := fun s s' => forall x, In x s <-> In x s' }.
+Proof. split.
++ repeat intro. reflexivity.
++ repeat intro. now symmetry.
++ repeat intro. etransitivity; eauto.
+Defined.
+
 Definition Subset `{FSet elt} s s' :=
   forall a : elt, In a s -> In a s'.
 Definition Empty `{FSet elt} s :=
@@ -152,7 +158,7 @@ Definition Exists `{FSet elt} (P : elt -> Prop) s :=
    These notations can be used to avoid ambiguity when dealing
    simultaneously with operations on lists and sets that have
    similar names ([mem], [In], ...). *)
-Global Notation "s [=] t" := (Equal s t) (at level 70, no associativity) : set_scope.
+Global Notation "s [=] t" := (s == t) (at level 70, no associativity) : set_scope.
 Global Notation "s [<=] t" := (Subset s t) (at level 70, no associativity) : set_scope.
 Global Notation "v '\In' S" := (In v S)(at level 70, no associativity) : set_scope.
 
@@ -185,8 +191,8 @@ Class FSetSpecs_mem `(FSet A) := {
   mem_2 : forall s x, mem x s = true -> In x s
 }.
 Class FSetSpecs_equal `(FSet A) := {
-  equal_1 : forall s s', Equal s s' -> equal s s' = true;
-  equal_2 : forall s s',  equal s s' = true -> Equal s s'
+  equal_1 : forall s s', s == s' -> equal s s' = true;
+  equal_2 : forall s s', equal s s' = true -> s == s'
 }.
 Class FSetSpecs_subset `(FSet A) := {
   subset_1 : forall s s', Subset s s' -> subset s s' = true;
@@ -233,11 +239,11 @@ Class FSetSpecs_diff `(FSet A) := {
     In x s -> ~ In x s' -> In x (diff s s')
 }.
 Class FSetSpecs_fold `(FSet A) := {
-  fold_1 : forall s (B : Type) (i : B) (f : A -> B -> B),
+  fold_spec : forall s (B : Type) (i : B) (f : A -> B -> B),
       fold f s i = fold_left (fun a e => f e a) (elements s) i
 }.
 Class FSetSpecs_cardinal `(FSet A) := {
-  cardinal_1 : forall s, cardinal s = length (elements s)
+  cardinal_spec : forall s, cardinal s = length (elements s)
 }.
 Class FSetSpecs_filter `(FSet A) := {
   filter_1 : forall s x f `{Proper _ (_eq ==> @eq bool) f},
@@ -261,21 +267,21 @@ Class FSetSpecs_exists `(FSet A) := {
 }.
 Class FSetSpecs_partition `(FSet A) := {
   partition_1 : forall s f `{Proper _ (_eq ==> @eq bool) f},
-    Equal (fst (partition f s)) (filter f s);
+    fst (partition f s) == filter f s;
   partition_2 : forall s f `{Proper _ (_eq ==> @eq bool) f},
-    Equal (snd (partition f s)) (filter (fun x => negb (f x)) s)
+    snd (partition f s) == filter (fun x => negb (f x)) s
 }.
 Class FSetSpecs_elements `(FSet A) := {
   elements_1 : forall s x, In x s -> InA equiv x (elements s);
   elements_2 : forall s x, InA equiv x (elements s) -> In x s;
   (* elements_3 : forall s, sort _lt (elements s); *)
-  elements_3w : forall s, NoDupA equiv (elements s)
+  elements_NoDupA : forall s, NoDupA equiv (elements s)
 }.
 Class FSetSpecs_choose `(FSet A) := {
   choose_1 : forall s x, choose s = Some x -> In x s;
   choose_2 : forall s, choose s = None -> Empty s;
   choose_3 : forall s s' x y,
-    choose s = Some x -> choose s' = Some y -> Equal s s' -> x == y
+    choose s = Some x -> choose s' = Some y -> s == s' -> x == y
 }.
 (*Class FSetSpecs_min_elt `(FSet A) := {
   min_elt_1 : forall s x, min_elt s = Some x -> In x s;
@@ -354,7 +360,7 @@ Definition zinter_3 `{H : @FSetSpecs A St HA F} :=
 Definition zdiff_3 `{H : @FSetSpecs A St HA F} :=
   @diff_3 _ _ _ _ (@FFSetSpecs_diff _ _ _ _ H).
 Definition zfold_1 `{H : @FSetSpecs A St HA F} :=
-  @fold_1 _ _ _ _ (@FFSetSpecs_fold _ _ _ _ H).
+  @fold_spec _ _ _ _ (@FFSetSpecs_fold _ _ _ _ H).
 Definition zfilter_3 `{H : @FSetSpecs A St HA F} :=
   @filter_3 _ _ _ _ (@FFSetSpecs_filter _ _ _ _ H).
 Definition zfor_all_1 `{H : @FSetSpecs A St HA F} :=
@@ -368,7 +374,7 @@ Definition zpartition_2 `{H : @FSetSpecs A St HA F} :=
 Definition zelements_1 `{H : @FSetSpecs A St HA F} :=
   @elements_1 _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H).
 Definition zelements_3w `{H : @FSetSpecs A St HA F} :=
-  @elements_3w _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H).
+  @elements_NoDupA _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H).
 (* Definition zelements_3 `{H : @FSetSpecs A St HA F} := *)
   (* @elements_3 _ _ _ _ (@FFSetSpecs_elements _ _ _ _ H). *)
 

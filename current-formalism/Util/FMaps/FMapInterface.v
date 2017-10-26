@@ -82,7 +82,7 @@ Class FMap `{EqDec key} := {
 
   cardinal : forall {elt : Type}, dict elt -> nat;
   elements : forall {elt : Type},
-    dict elt -> list (key*elt);
+    dict elt -> list (key * elt);
 
 (*   (** Extra map update operations using combining functions *)
   insert : forall {elt : Type},

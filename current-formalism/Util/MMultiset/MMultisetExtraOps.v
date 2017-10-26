@@ -659,7 +659,7 @@ Section MMultisetExtra.
   * intros m x n Hout Hn Hrec _.
     destruct (empty_or_In_dec m) as [Hm | Hm].
     + exists x. rewrite Hm, add_empty. rewrite max_mult_singleton. msetdec.
-    + assert (Hempty : ~m == empty) by now rewrite not_empty_In.
+    + assert (Hempty : m =/= empty) by now rewrite not_empty_In.
       destruct (Hrec Hempty) as [max_m Hmax_m]. rewrite max_mult_add; trivial.
       destruct (Max.max_spec n (max_mult m)) as [[Hmax1 Hmax2] | [Hmax1 Hmax2]].
       - exists max_m. msetdec.
@@ -675,10 +675,11 @@ Section MMultisetExtra.
   - apply max_mult_spec.
   Qed.
   
-  Corollary max_spec1_iff : forall m, ~m == empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
+  Corollary max_spec1_iff : forall m, m =/= empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
   Proof.
   intros m Hm x. assert (Hempty := Hm).
-  rewrite <- max_empty, not_empty_In in Hm. destruct Hm as [z Hz].
+  unfold complement in Hm. rewrite <- max_empty in Hm.
+  change (max m =/= empty) in Hm. rewrite not_empty_In in Hm. destruct Hm as [z Hz].
   split; intro Hx.
   + intro y. assert (Hx' := Hx). rewrite max_In_mult in Hx.
     - rewrite <- Hx. now apply max_spec1.
@@ -692,5 +693,5 @@ Section MMultisetExtra.
   - apply support_NoDupA.
   - apply support_sub_compat, max_subset.
   Qed.
-
+  
 End MMultisetExtra.

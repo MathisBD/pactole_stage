@@ -4,7 +4,7 @@ Require Import List SetoidPermutation SetoidList.
 Require Import Bool.
 Require Import SetoidDec.
 Require Pactole.Util.Preliminary.
-Require Import Pactole.Util.FSets.FsetInterface.
+Require Import Pactole.Util.FSets.FSetInterface.
 
 Generalizable All Variables.
 

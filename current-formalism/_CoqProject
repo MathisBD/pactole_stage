@@ -3,7 +3,8 @@
 
 ## External libraries
 Util/FSets/OrderedType.v
-Util/FSets/FsetInterface.v
+Util/FSets/FSetInterface.v
+Util/FSets/FSetFacts.v
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
 Util/FMaps/FMapList.v
@@ -51,7 +52,7 @@ Spaces/DiscreteSimilarity.v
 ## Spectra
 Spectra/Definition.v
 Spectra/MultisetSpectrum.v
-#Spectra/SetSpectrum.v
+Spectra/SetSpectrum.v
 #Spectra/LimitedSetSpectrum.v
 Spectra/LimitedMultisetSpectrum.v
 #Spectra/PointedMultisetSpectrum.v
