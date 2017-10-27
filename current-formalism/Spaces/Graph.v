@@ -45,7 +45,9 @@ Global Opaque threshold_pos src_compat tgt_compat threshold_compat find_edge_com
 (* TODO: Maybe we should reuse the type used for robot names *)
 Definition finite_node n := {m : nat | m < n}.
 
-Instance finite_node_EqDec n : EqDec (eq_setoid (finite_node n)) := @subset_dec n.
+(* We explictely define the setoid here to avoid using proj1_Setoid instead. *)
+Instance finite_node_Setoid n : Setoid (finite_node n) := eq_setoid _.
+Instance finite_node_EqDec n : EqDec (finite_node_Setoid n) := @subset_dec n.
 
 Definition FiniteGraph (n : nat) E := Graph (finite_node n) E.
 Existing Class FiniteGraph.
@@ -60,8 +62,8 @@ Inductive direction := Forward | Backward | AutoLoop.
 Definition ring_edge := (finite_node n * direction)%type.
 
 Instance ring_edge_Setoid : Setoid ring_edge := {
-  equiv := fun e1 e2 => fst e1 == fst e2 /\ if (Nat.eq_dec n 2)
-                                            then match snd e1, snd e2 with
+  equiv := fun e1 e2 => fst e1 == fst e2
+                     /\ if (Nat.eq_dec n 2) then match snd e1, snd e2 with
                                                    | AutoLoop, AutoLoop => True
                                                    | AutoLoop, _ | _, AutoLoop  => False
                                                    | _, _ => True
@@ -75,11 +77,11 @@ Proof. split.
 Defined.
 
 Lemma direction_eq_dec : forall d d': direction, {d = d'} + {d <> d'}.
-Proof. intros. destruct d, d'; intuition; right; discriminate. Qed.
+Proof. decide equality. Defined.
 
 Instance ring_edge_EqDec : EqDec ring_edge_Setoid.
 Proof.
-intros e e'. unfold complement. simpl.
+intros e e'. unfold equiv. cbn -[equiv].
 destruct (Nat.eq_dec n 2).
 - destruct (snd e), (snd e'), (fst e =?= fst e'); intuition.
 - destruct (fst e =?= fst e'), (direction_eq_dec (snd e) (snd e')); intuition.
@@ -98,7 +100,7 @@ Definition to_Z (v : finite_node n) : Z := Z.of_nat (proj1_sig v).
 Definition of_Z (x : Z) : finite_node n := exist _ (Z.to_nat (x mod Z.of_nat n)) (to_Z_inf_n x).
 
 Instance to_Z_compat : Proper (equiv ==> Z.eq) to_Z.
-Proof. repeat intro. hnf in *. now subst. Qed.
+Proof. repeat intro. hnf in *. now f_equal. Qed.
 
 Instance of_Z_compat : Proper (Z.eq ==> equiv) of_Z.
 Proof. intros ? ? Heq. now rewrite Heq. Qed.

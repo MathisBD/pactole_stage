@@ -39,12 +39,12 @@ Context {Spect : Spectrum loc info}.
 Context `{@first_demonic_choice loc info T _ _ _ _ _}.
 
 (** Flexible demons. *)
-Context (Tflex : Type).
+Context (Tflex : Type) (delta : R).
 Context `{second_demonic_choice Tflex}.
 Context {FlexUpdateFun : @update_function loc info Tflex _ _ _ _ _ _ _}.
 Context `{@Flexible.FlexibleChoice Tflex _}.
 
-Context (Flex : @Flexible.FlexibleUpdate loc info _ Tflex _ _ _ _ _ _ _ _ _ _ _).
+Context (Flex : @Flexible.FlexibleUpdate loc info _ Tflex _ _ _ _ _ _ _ _ _ _ _ delta).
 Notation flex_da := (@demonic_action loc info _ Tflex _ _ _ _).
 Notation flex_demon := (@demon loc info _ Tflex _ _ _ _).
 
@@ -59,7 +59,7 @@ Notation rigid_demon := (@demon loc info _ Trigid _ _ _ _).
 (** **  Characterization of flexible demons that acts rigidly  **)
 
 (** A flexible choice is rigid if its [move_ratio] is 1. *)
-Definition is_rigid choice := Flexible.move_ratio choice = 1.
+Definition is_rigid choice := (Flexible.move_ratio choice : R) = 1.
 Definition is_rigid_da (fda : flex_da) :=
   forall config g target, is_rigid (choose_update fda config g target).
 Definition is_rigid_demon : flex_demon -> Prop := Stream.forever (Stream.instant is_rigid_da).
@@ -74,7 +74,7 @@ Global Instance is_rigid_demon_compat : Proper (equiv ==> iff) is_rigid_demon.
 Proof. intros ? ? Heq. unfold is_rigid_demon. now rewrite Heq. Qed.
 
 Lemma is_rigid_da_update : forall da, is_rigid_da da ->
-  forall config g target, get_location (update config target (choose_update da config g target)) == target.
+  forall config g target, get_location (update config g target (choose_update da config g target)) == target.
 Proof.
 intros da Hda config g target.
 destruct (Flexible.flexible_update da config g target) as [| [Hdist _]]; trivial; [].
@@ -145,9 +145,9 @@ Qed.
 (** **  Equivalence between [round]s  **)
 
 (** If the location part of the update is the same, then the rest is also the same. *)
-Axiom update_only_location : forall config1 config2 target1 target2 (choice1 : Tflex) (choice2 : Trigid),
-  get_location (update config1 target1 choice1) == get_location (update config2 target2 choice2) ->
-  update config1 target1 choice1 == update config2 target2 choice2.
+Axiom update_only_location : forall g config1 config2 target1 target2 (choice1 : Tflex) (choice2 : Trigid),
+  get_location (update config1 g target1 choice1) == get_location (update config2 g target2 choice2) ->
+  update config1 g target1 choice1 == update config2 g target2 choice2.
 
 Lemma R2F_round : forall (r : robogram) (rda : rigid_da),
   forall config, round r (R2F_da rda) config == round r rda config.
@@ -203,3 +203,5 @@ Corollary Flex_Rigid : forall r config (d : flex_demon), is_rigid_demon d ->
 Proof. intros. now apply F2R_preserves_eq. Qed.
 
 End RigidFlexibleEquivalence.
+
+Print Assumptions Flex_Rigid.

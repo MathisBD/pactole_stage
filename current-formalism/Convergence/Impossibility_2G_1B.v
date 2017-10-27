@@ -59,7 +59,7 @@ Instance Info : IsLocation R R := OnlyLocation.
 Instance FDC : first_demonic_choice (Similarity.similarity R) := FirstChoiceSimilarity.
 Instance NoChoice : second_demonic_choice Datatypes.unit := {second_choice_EqDec := unit_eqdec}.
 
-Instance UpdateFun : update_function Datatypes.unit := {update := fun _ pt _ => pt }.
+Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
 Proof. now repeat intro. Defined.
 
 Instance Update : RigidUpdate.

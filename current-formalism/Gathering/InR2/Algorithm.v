@@ -33,6 +33,7 @@ Require Import Inverse_Image.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Gathering.Definitions.
 Require Import Pactole.Spectra.MultisetSpectrum.
+Require Export Pactole.Models.Rigid.
 Import Permutation.
 Import Pactole.Spaces.Similarity.
 Import Datatypes. (* to recover [id] *)
@@ -51,7 +52,7 @@ Close Scope R_scope.
 (** **  Framework of the correctness proof: a finite set with at least three elements  **)
 
 Parameter n : nat.
-Local Axiom size_G : (3 <= n)%nat.
+Axiom size_G : (3 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
@@ -63,7 +64,7 @@ Existing Instance R2_RMS.
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Choice : second_demonic_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
-  update := fun _ pt _ => pt;
+  update := fun _ _ pt _ => pt;
   update_compat := ltac:(now repeat intro) }.
 Instance Rigid : RigidUpdate.
 Proof. split. reflexivity. Qed.
@@ -87,7 +88,7 @@ Implicit Type d : similarity_demon.
 Arguments origin : simpl never.
 
 
-Lemma Config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
+Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
 Proof.
 intro. rewrite config_list_spec, map_cst.
 setoid_rewrite names_length. simpl. now rewrite plus_0_r.
@@ -619,7 +620,7 @@ Proof.
 intros config H1 H2.
 assert (size (!! config) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption; [].
-  do 2 rewrite size_spec. apply (NoDupA_inclA_length _).
+  do 2 rewrite size_spec. apply (@NoDupA_inclA_length _ equiv _).
   - apply support_NoDupA.
   - unfold max. apply support_nfilter. repeat intro. now subst. }
  destruct (size (!! config)) as [| [| [| ?]]] eqn:Hlen; try omega.
@@ -1043,7 +1044,7 @@ assert (Hlen : length (on_SEC (support (!! config))) = length (ptx :: pty :: ptz
   by (f_equiv; eassumption).
 destruct (on_SEC (support (!! config))) as [| t [| t0 [| t1 [| t2 l]]]] eqn:Heq;
 simpl in Hlen; try omega; [].
-assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+assert (h := @PermutationA_3 _ equiv _ t t0 t1 ptx pty ptz).
 destruct h. specialize (H Hsec).
 decompose [or and] H;
 match goal with
@@ -1066,7 +1067,7 @@ assert (Hlen : length (on_SEC (support (!! config))) = length (ptx :: pty :: ptz
   by (f_equiv; eassumption).
 destruct (on_SEC (support (!! config))) as [| t [| t0 [| t1 [| t2 l]]]] eqn:Heq;
 simpl in Hlen; try omega; [].
-assert (h:=PermutationA_3 _ t t0 t1 ptx pty ptz).
+assert (h := @PermutationA_3 _ equiv _ t t0 t1 ptx pty ptz).
 destruct h.
 specialize (H Hsec).
 decompose [or and] H;

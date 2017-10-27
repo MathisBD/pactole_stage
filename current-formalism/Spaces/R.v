@@ -42,12 +42,10 @@ Set Implicit Arguments.
 Open Scope R_scope.
 
 
+Typeclasses eauto := (bfs).
+
+
 (** R as a vector space over itself. *)
-
-Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
-Instance R_EqDec : @EqDec R _ := Rdec.
-
-Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
 Instance R_RMS : RealMetricSpace R := {|
   origin := 0;
@@ -135,7 +133,18 @@ Proof. intros z x y. cbn. now ring_simplify (x + z - (y + z))%R. Qed.
 Lemma homothecy_hypothesis : forall k x y, dist (mul k x) (mul k y) = (Rabs k * dist x y)%R.
 Proof. intros. cbn. rewrite <- Rmult_minus_distr_l. apply Rabs_mult. Qed.
 
-Global Instance Leibniz_fun_compat : forall f, Proper (equiv ==> equiv) f.
+Definition translation := translation translation_hypothesis.
+Definition homothecy := homothecy translation_hypothesis homothecy_hypothesis.
+
+Instance translation_compat : Proper (equiv ==> equiv) translation := translation_compat translation_hypothesis.
+Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (equiv ==> equiv) (homothecy c Hρ).
+Proof. intros ? ? Heq. simpl. now rewrite Heq. Qed.
+
+Arguments translation v /.
+Arguments homothecy c [ρ] Hρ /.
+
+
+Global Instance Leibniz_fun_compat : forall f : R -> R, Proper (equiv ==> equiv) f.
 Proof. intros f ? ? Heq. now rewrite Heq. Qed.
 
 (** A location is determined by distances to 2 points. *)
@@ -345,16 +354,6 @@ replace (- (k * (x - t))) with ((- k) * (x - t)) by ring.
 apply Rmult_le_compat_l; lra.
 Qed.
 
-
-Definition translation := translation translation_hypothesis.
-Definition homothecy := homothecy translation_hypothesis homothecy_hypothesis.
-
-Instance translation_compat : Proper (equiv ==> equiv) translation := translation_compat translation_hypothesis.
-Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (equiv ==> equiv) (homothecy c Hρ).
-Proof. intros ? ? Heq. simpl. now rewrite Heq. Qed.
-
-Arguments translation v /.
-Arguments homothecy c [ρ] Hρ /.
 
 (** **  Some results about R with respect to distance and similarities  **)
 

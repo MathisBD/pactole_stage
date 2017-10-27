@@ -10,11 +10,11 @@
 (**************************************************************************)
 (**  Mechanised Framework for Local Interactions & Distributed Algorithms   
                                                                             
-    P. Courtieu, L. Rieg, X. Urbain                                         
+     P. Courtieu, L. Rieg, X. Urbain                                        
                                                                             
-   PACTOLE project                                                          
+     PACTOLE project                                                        
                                                                             
-   This file is distributed under the terms of the CeCILL-C licence       *)
+     This file is distributed under the terms of the CeCILL-C licence     *)
 (**************************************************************************)
 
 
@@ -32,12 +32,14 @@ Require Import Pactole.Spaces.R.
 Require Import Pactole.Gathering.Definitions.
 Require Import Pactole.Spectra.MultisetSpectrum.
 Require Import Pactole.Models.Similarity.
+Require Export Pactole.Models.Rigid.
 Import Permutation.
 Close Scope R_scope.
 
 
 Typeclasses eauto := 10.
 Set Implicit Arguments.
+
 
 (** We assume that we have at least two good robots and no byzantine one. *)
 Parameter n : nat.
@@ -52,7 +54,7 @@ Existing Instance R_RMS.
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Choice : second_demonic_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
-  update := fun _ pt _ => pt;
+  update := fun _ _ pt _ => pt;
   update_compat := ltac:(now repeat intro) }.
 Instance Rigid : RigidUpdate.
 Proof. split. reflexivity. Qed.
@@ -1411,12 +1413,12 @@ intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
 * revert r2 d2 c2 Hr Hd Hc. induction Hfirst; intros r2 d2 c2 Hr Hd Hc.
   + apply MoveNow. now rewrite <- Hr, <- Hd, <- Hc.
   + apply MoveLater.
-    - rewrite <- Hr, <- Hd, <- Hc. assumption.
-    - destruct Hd. apply IHHfirst, round_compat; trivial. now f_equiv.
+    - now rewrite <- Hr, <- Hd, <- Hc.
+    - destruct Hd. now apply IHHfirst, round_compat.
 * revert r1 d1 c1 Hr Hd Hc. induction Hfirst; intros r1 d1 c1 Hr Hd Hc.
   + apply MoveNow. now rewrite Hr, Hd, Hc.
   + apply MoveLater.
-    - rewrite Hr, Hd, Hc. assumption.
+    - now rewrite Hr, Hd, Hc.
     - destruct Hd. apply IHHfirst; trivial. now apply round_compat; f_equiv.
 Qed.
 

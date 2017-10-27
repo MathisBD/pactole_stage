@@ -55,7 +55,7 @@ Existing Instance R_RMS.
 
 Instance Choice : second_demonic_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
-  update := fun _ pt _ => pt;
+  update := fun _ _ pt _ => pt;
   update_compat := ltac:(now repeat intro) }.
 
 (* Trying to avoid notation problem with implicit arguments *)

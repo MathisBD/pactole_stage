@@ -51,22 +51,30 @@ Global Instance FirstChoiceSimilarity : first_demonic_choice (similarity loc) :=
 Definition similarity_da := { sim_da : @demonic_action loc info (similarity loc) T _ _ _ _ _ _ _ _ |
   forall config g, center (change_frame sim_da config g) == get_location (config (Good g)) }.
 
+Instance similarity_da_Setoid : Setoid similarity_da := sig_Setoid.
+
 Definition proj_sim_da : similarity_da -> demonic_action := @proj1_sig _ _.
 
 Global Instance proj_sim_da_compat : Proper (equiv ==> equiv) proj_sim_da.
-Proof. intros ? ? Heq. now rewrite Heq. Qed.
+Proof. intros ? ? Heq. apply Heq. Qed.
 
 Definition similarity_center : forall da config g,
   center (change_frame (proj_sim_da da) config g) == get_location (config (Good g))
   := @proj2_sig _ _.
 
+(** Demons are now stream of [similarity_da]s.*)
 Definition similarity_demon := Stream.t similarity_da.
 
 CoFixpoint similarity_demon2demon (d : similarity_demon) : demon :=
   Stream.cons (proj_sim_da (Stream.hd d)) (similarity_demon2demon (Stream.tl d)).
 
-Global Instance similarity_demon2demon_compat : Proper (equiv ==> equiv) similarity_demon2demon.
-Proof. intros ? ? Heq. now rewrite Heq. Qed.
+Global Instance similarity_demon2demon_compat :
+  Proper (@equiv _ Stream.stream_Setoid ==> @equiv _ Stream.stream_Setoid) similarity_demon2demon.
+Proof.
+cofix Hrec. intros [] [] [Hda Heq]. constructor.
++ apply Hda.
++ simpl Stream.tl. apply Hrec, Heq.
+Qed.
 
 Lemma similarity_demon_hd : forall d, Stream.hd (similarity_demon2demon d) = proj_sim_da (Stream.hd d).
 Proof. now intros []. Qed.

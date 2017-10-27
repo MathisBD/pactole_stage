@@ -122,7 +122,7 @@ Definition full_relation {A : Type} := fun _ _ : A => True.
 
 Global Hint Extern 0 (full_relation _ _) => exact I.
 
-Global Instance relation_equivalence_subrelation {A} :
+Instance relation_equivalence_subrelation {A} :
   forall R R' : relation A, relation_equivalence R R' -> subrelation R R'.
 Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
@@ -162,16 +162,27 @@ Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split; auto with typeclass_instances. Qed.
 
-Global Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
+Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
 
-Global Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
+Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
   Pactole.Util.FMaps.FMapInterface.prod_Setoid.
-Global Instance prod_EqDec A B `(EqDec A) `(EqDec B) : EqDec (@prod_Setoid A B _ _) :=
+Instance prod_EqDec A B `(EqDec A) `(EqDec B) : EqDec (@prod_Setoid A B _ _) :=
   Pactole.Util.FMaps.FMapInterface.prod_EqDec _ _.
 Arguments prod_EqDec [A] [B] {_} _ {_} _.
 
-Global Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
-Global Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
+Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
+Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
+
+Instance sig_Setoid {T} {S : Setoid T} {P : T -> Prop} : Setoid (sig P) := {|
+  equiv := fun x y => proj1_sig x == proj1_sig y |}.
+Proof. split.
++ intro. reflexivity.
++ intros ? ?. now symmetry.
++ intros ? ? ? ? ?. etransitivity; eauto.
+Defined.
+
+Instance sig_EqDec {T} {S : Setoid T} (E : EqDec S) (P : T -> Prop) : EqDec (@sig_Setoid T S P).
+Proof. intros ? ?. simpl. apply equiv_dec. Defined.
 
 
 (******************************)
@@ -1886,6 +1897,9 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. contradiction.
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
+
+Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
+Instance R_EqDec : @EqDec R _ := Rdec.
 
 Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.
 Proof. intros a b ? ?. now apply Fourier_util.Rle_mult_inv_pos. Qed.

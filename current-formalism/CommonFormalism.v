@@ -94,8 +94,8 @@ Class second_demonic_choice := {
 
 (** These choices are then used by an update function that depends on the model. *)
 Class update_function `{IsLocation loc info} `{second_demonic_choice} := {
-  update :> configuration -> loc -> T2 -> info;
-  update_compat :> Proper (equiv ==> equiv ==> equiv ==> equiv) update }.
+  update :> configuration -> G -> loc -> T2 -> info;
+  update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update }.
 
 Context `{@first_demonic_choice _ _ _ _ _}.
 Context `{second_demonic_choice}.
@@ -224,7 +224,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           (* the demon chooses how to perform the state update *)
           let choice := da.(choose_update) config g global_target in
           (* the actual update of the robot state is performed by the update function *)
-          update config global_target choice
+          update config g global_target choice
         end
     else state.
 

@@ -49,7 +49,7 @@ Notation demonic_action := (@demonic_action V info _ _ _ _ _ _ Loc _ _ _).
 Class DiscreteGraphUpdate  := {
   discrete_graph_update : forall da config g target,
     find_edge (get_location (config (Good g))) target <> None -> (* if the robogram tries to move on an adjacent node *)
-    get_location (update config target (da.(choose_update) config g target)) == target }. (* then the update let it go there *)
+    get_location (update config g target (da.(choose_update) config g target)) == target }. (* then the update let it go there *)
 
 (** **  Full synchronicity  **)
 

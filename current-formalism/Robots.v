@@ -214,12 +214,11 @@ Global Opaque In_Gnames In_Bnames Gnames_NoDup Bnames_NoDup
               Gnames_length Bnames_length Geq_dec Beq_dec fun_Gnames_eq fun_Bnames_eq.
 
 (** Identifiers makes good and byzantine robots undistinguishable *)
-Inductive ident `{H : Names} : Type :=
+Inductive ident `{Names} : Type :=
   | Good (g : G)
   | Byz (b : B).
 
-
-Definition names `{H : Names} : list ident := List.map Good Gnames ++ List.map Byz Bnames.
+Definition names `{Names} : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
 Lemma In_names `{Names} : forall r : ident, In r names.
 Proof.

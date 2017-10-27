@@ -22,18 +22,17 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Preliminary.
+Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Pactole.CommonFormalism.
-Require Pactole.FlexibleFormalism.
-Require Import Pactole.SetSpectrum.
-Require Import Pactole.Lexprod.
-Require Import Pactole.Gathering.InR2.R2geometry.
-Require Import Pactole.Gathering.FlexDefinitions.
+Require Pactole.Models.Flexible.
+Require Import Pactole.Spectra.SetSpectrum.
+Require Pactole.Spaces.R. (* for R_Setoid, R_EqDec *)
+Require Import Pactole.Spaces.R2.
+Require Import Pactole.Gathering.Definitions.
 
 
-Import Permutation.
 Set Implicit Arguments.
 
 
@@ -44,49 +43,83 @@ Set Implicit Arguments.
     An [execution] is an infinite (coinductive) stream of [configuration]s.
     A [demon] is an infinite stream of [demonic_action]s. *)
 
-Module GatheringinR2.
-
 (** **  Framework of the correctness proof: a finite set with at least two elements  **)
 
-Parameter nG: nat.
-Axiom Hyp_nG : (2 <= nG)%nat.
+Parameter n : nat.
+Axiom size_G : (2 <= n)%nat.
 
-(** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := nG with Definition nB := 0%nat.
-  Definition nG := nG.
-  Definition nB := 0%nat.
-End N.
+(* FIXME: remove when FSetList is done *)
+Context {FS : FSet R2}.
+Context {FSpec : FSetSpecs FS}.
 
-(** We instantiate in our setting the generic definitions of the gathering problem. *)
-Module Defs := FlexDefinitions.FlexGatheringDefs(R2)(N).
-Import Defs.
+(** There are n good robots and no byzantine ones. *)
+Instance MyRobots : Names := Robots n 0.
 
-Lemma no_byz : forall (id : Names.ident) P, (forall g, P (Good g)) -> P id.
-Proof.
-intros [g | b] P HP.
-+ apply HP.
-+ destruct b. unfold N.nB in *. omega.
+Existing Instance R2_Setoid.
+Existing Instance R2_EqDec.
+Existing Instance R2_RMS.
+
+(* We are in a flexible formalism with no other info than the location, so the demon only chooses the move ratio. *)
+Instance FlexChoice : second_demonic_choice Flexible.ratio := Flexible.OnlyFlexible.
+
+Parameter delta : R.
+
+Instance UpdFun : update_function Flexible.ratio := {|
+  update := fun config g pt ρ => let pt' := mul (Flexible.proj_ratio ρ) pt in
+                                 if Rle_dec delta (dist (config (Good g)) pt') then pt' else pt |}.
+Proof. intros ? ? Hconfig ? g ? ? ? Hpt [] [] Heq. simpl in Heq. subst. now rewrite Hpt, Hconfig. Defined.
+
+Instance Flex : Flexible.FlexibleUpdate delta.
+Proof. split.
++ intros da config g target. cbn -[dist update]. unfold id. cbn [choose_update].
++ 
 Qed.
 
-Lemma no_byz_eq : forall config1 config2 : Config.t,
-  (forall g, R2.eq (Config.loc (config1 (Good g))) (Config.loc (config2 (Good g)))) -> Config.eq config1 config2.
-Proof. intros config1 config2 Heq id. apply no_info, (no_byz id). intro g. apply Heq. Qed.
+(* Trying to avoid notation problem with implicit arguments *)
+Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
+Notation "!! config" := (@spect_from_config R2 R2 _ _ _ _ _ _ multiset_spectrum config origin) (at level 1).
+(* (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
+Notation "x == y" := (equiv x y).
+Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
+Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
+Notation configuration := (@configuration R2 _ _ _ _).
+Notation config_list := (@config_list R2 _ _ _ _).
+Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
+Notation execution := (@execution R2 R2 _ _ _ _ _).
+Notation Madd := (MMultisetInterface.add).
 
-Lemma Config_list_alls : forall pt, Config.list (fun _ => pt) = alls pt N.nG.
+Implicit Type config : configuration.
+Implicit Type da : similarity_da.
+Implicit Type d : similarity_demon.
+Arguments origin : simpl never.
+
+Lemma no_byz : forall P (config : configuration), (forall g, P (config (Good g))) -> forall id, P (config id).
 Proof.
-intro. rewrite Config.list_spec, map_cst.
-setoid_rewrite Names.names_length. unfold N.nB. now rewrite plus_0_r.
+intros P config Hconfig [g | b].
++ apply Hconfig.
++ destruct b. omega.
 Qed.
 
-Definition Spect_map f s := Spect.M.fold (fun e acc => Spect.M.add (f e) acc) s Spect.M.empty.
-
-Lemma map_sim_support : forall (sim : Sim.t) s,
-  Permutation (Spect.M.elements (Spect_map sim s)) (map sim (Spect.M.elements s)).
+Lemma no_byz_eq : forall config1 config2 : configuration,
+  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
+  config1 == config2.
 Proof.
-intros sim s. rewrite <- PermutationA_Leibniz. apply Spect.map_injective_elements.
-- intros ? ? Heq. now rewrite Heq.
-- apply Sim.injective.
+intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
++ apply Heq.
++ destruct b. omega.
 Qed.
+
+Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
+Proof.
+intro. rewrite config_list_spec, map_cst.
+setoid_rewrite names_length. simpl. now rewrite plus_0_r.
+Qed.
+
+(* Definition Spect_map f s := Spect.M.fold (fun e acc => Spect.M.add (f e) acc) s Spect.M.empty. *)
+
+Lemma map_sim_support : forall (sim : similarity R2) s,
+  PermutationA equiv (elements (map sim s)) (List.map sim (elements s)).
+Proof. intros. apply map_injective_elements; autoclass; apply Similarity.injective. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.M.empty.
