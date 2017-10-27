@@ -93,7 +93,7 @@ intro. rewrite config_list_spec, map_cst.
 setoid_rewrite names_length. simpl. now rewrite plus_0_r.
 Qed.
 
-Lemma no_byz : forall P, (forall g, P (@Good G B g)) -> forall id, P id.
+Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
 Proof.
 intros P Hg [g | b].
 + apply Hg.

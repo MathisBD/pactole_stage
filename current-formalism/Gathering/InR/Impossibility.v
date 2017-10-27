@@ -93,7 +93,7 @@ Definition spect_from_config_spec : forall config pt,
   (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
   := spect_from_config_spec.
 
-Lemma no_byz : forall (id : ident) P, (forall g, P (@Good G B g)) -> P id.
+Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof.
 intros [g | b] P HP.
 + apply HP.
