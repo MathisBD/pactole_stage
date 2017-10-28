@@ -415,48 +415,40 @@ Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
-(* FIXME: TODO
 cofix.
 constructor; [| constructor].
 * intros [g1 | b1] id2; [destruct (left_dec g1) |].
-  + apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
+  + apply kReset. simpl. now destruct (left_dec g1).
   + destruct id2 as [g2 | b2]; [destruct (left_dec g2) |].
     - apply kReduce; simpl.
-        destruct (left_dec g1); trivial; contradiction.
-        destruct (left_dec g2); discriminate || contradiction.
-        apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kStall; simpl.
-        destruct (left_dec g1); trivial; contradiction.
-        destruct (left_dec g2); trivial; contradiction.
-        apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kReduce; simpl.
-        destruct (left_dec g1); trivial; contradiction.
-        discriminate.
-        apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
-  + apply kReset. discriminate.
+      -- now destruct (left_dec g1).
+      -- apply kReset. simpl. now destruct (left_dec g1).
+  + apply kReset. reflexivity.
 * intros [g1 | b1] id2; [destruct (left_dec g1) |].
   + destruct id2 as [g2 | b2]; [destruct (left_dec g2) |].
     - apply kStall; simpl.
-        destruct (left_dec g1); trivial; contradiction.
-        destruct (left_dec g2); trivial; contradiction.
-        apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kReduce; simpl.
-        destruct (left_dec g1); trivial; contradiction.
-        destruct (left_dec g2); discriminate || contradiction.
-        apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kReduce; simpl.
-        destruct (left_dec g1); trivial; contradiction.
-        discriminate.
-        apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
-  + apply kReset. simpl. destruct (left_dec g1); discriminate || contradiction.
-  + apply kReset. discriminate.
+      -- now destruct (left_dec g1).
+      -- apply kReset. simpl. now destruct (left_dec g1).
+  + apply kReset. simpl. now destruct (left_dec g1).
+  + apply kReset. reflexivity.
 * simpl. assumption.
-Qed. *)
-Admitted.
+Qed.
 
 Corollary Fair_bad_demon : Fair bad_demon.
-Proof. apply kFair_Fair with 1%nat. apply kFair_bad_demon. Qed.
-(* FIXME: TODO
+Proof. apply kFair_Fair with 1%nat; autoclass. apply kFair_bad_demon. Qed.
+
 Corollary kFair_bad_demon' : forall k, (k>=1)%nat -> kFair k bad_demon.
 Proof.
 intros.
@@ -464,7 +456,6 @@ eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
 - auto.
 Qed.
-*)
 
 (** From now on and until the final theorem we give us a robogram [r].
     We now prove that [r] does not move in spectrum *)
@@ -666,9 +657,9 @@ Definition attracted_ind2 (c : R) (r : R) (P : execution → Prop)
                          P (Stream.tl (Stream.tl e)) → P e)
   := fix F (e : execution) (a : attracted c r e) {struct a} : P e :=
     match a with
-      | Stream.Now _ _ i => P0 e i
-      | Stream.Later _ (Stream.Now _ _ i) => P1 e i
-      | Stream.Later _ (Stream.Later _ a0) => Ps e a0 (F (Stream.tl (Stream.tl e)) a0)
+      | Stream.Now i => P0 e i
+      | Stream.Later (Stream.Now i) => P1 e i
+      | Stream.Later (Stream.Later a') => Ps e a' (F (Stream.tl (Stream.tl e)) a')
     end.
 
 Theorem noConvergence : forall r, ~solution r.

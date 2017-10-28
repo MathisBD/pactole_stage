@@ -99,7 +99,7 @@ Class update_function `{IsLocation loc info} `{second_demonic_choice} := {
 
 Context `{@first_demonic_choice _ _ _ _ _}.
 Context `{second_demonic_choice}.
-Context {Update : update_function}.
+Context `{@update_function _ _ _ _ _ _}.
 
 (* The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
@@ -326,8 +326,8 @@ Qed.
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 (* RMK: This is a stronger version of eventually because P is negated in the Later clause *)
 Inductive LocallyFairForOne id (d : demon) : Prop :=
-  | NowFair : forall config, activate (Stream.hd d) config id == true -> LocallyFairForOne id d
-  | LaterFair : forall config, activate (Stream.hd d) config id = false ->
+  | NowFair : (forall config, activate (Stream.hd d) config id == true) -> LocallyFairForOne id d
+  | LaterFair : (forall config, activate (Stream.hd d) config id = false) ->
                 LocallyFairForOne id (Stream.tl d) -> LocallyFairForOne id d.
 
 Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ id, LocallyFairForOne id d).
@@ -335,11 +335,13 @@ Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ id, LocallyFairF
 (** [Between id id' d] means that [id] will be activated before at most [k]
     steps of [id'] in demon [d]. *)
 Inductive Between id id' (d : demon) : nat -> Prop :=
-| kReset : forall k, forall config, activate (Stream.hd d) config id = true -> Between id id' d k
-| kReduce : forall k, forall config, activate (Stream.hd d) config id = false ->
-            activate (Stream.hd d) config id' = true -> Between id id' (Stream.tl d) k -> Between id id' d (S k)
-| kStall : forall k, forall config, activate (Stream.hd d) config id = false ->
-           activate (Stream.hd d) config id' = false -> Between id id' (Stream.tl d) k -> Between id id' d k.
+| kReset : forall k, (forall config, activate (Stream.hd d) config id = true) -> Between id id' d k
+| kReduce : forall k, (forall config, activate (Stream.hd d) config id = false
+                                   /\ activate (Stream.hd d) config id' = true) ->
+                      Between id id' (Stream.tl d) k -> Between id id' d (S k)
+| kStall : forall k, (forall config, activate (Stream.hd d) config id = false
+                                  /\ activate (Stream.hd d) config id' = false) ->
+                     Between id id' (Stream.tl d) k -> Between id id' d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
 Definition kFair k : demon -> Prop := Stream.forever (fun d => forall id id', Between id id' d k).
@@ -348,9 +350,9 @@ Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
   d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
 Proof.
 intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
-+ constructor 1 with config. now rewrite <- Hda.
-+ constructor 2 with config.
-  - now rewrite <- Hda.
++ constructor 1. intro. now rewrite <- Hda.
++ constructor 2.
+  - intro. now rewrite <- Hda.
   - apply IHHfair. now f_equiv.
 Qed.
 
@@ -367,14 +369,12 @@ Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 Lemma Between_compat_aux : forall id id' k d1 d2, d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
 Proof.
 intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
-+ constructor 1 with config. now rewrite <- Heq.
-+ constructor 2 with config.
-  - now rewrite <- Heq.
-  - now rewrite <- Heq.
++ constructor 1. intro. now rewrite <- Heq.
++ constructor 2.
+  - intro. now rewrite <- Heq.
   - apply IHbet. now f_equiv.
-+ constructor 3 with config.
-  - now rewrite <- Heq.
-  - now rewrite <- Heq.
++ constructor 3.
+  - intro. now rewrite <- Heq.
   - apply IHbet. now f_equiv.
 Qed.
 
@@ -390,7 +390,7 @@ Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now set
 
 Lemma Between_LocallyFair : forall id (d : demon) id' k,
   Between id id' d k -> LocallyFairForOne id d.
-Proof. intros id id' d k Hg. now induction Hg; econstructor; eauto. Qed.
+Proof. intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
 
 (** A robot is never activated before itself with a fair demon! The
     fairness hypothesis is necessary, otherwise the robot may never be
@@ -404,23 +404,23 @@ Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
 Proof. intro. apply Stream.forever_impl_compat. intros ? ? id. eauto using (@Between_LocallyFair id _ id). Qed.
 
 (** [Between g h d k] is monotonic on [k]. *)
-Lemma Between_mon : forall id id' (d : demon) k,
+Lemma Between_mono : forall id id' (d : demon) k,
   Between id id' d k -> forall k', (k <= k')%nat -> Between id id' d k'.
 Proof.
 intros id id' d k Hd. induction Hd; intros k' Hk.
-+ now constructor 1 with config.
++ now constructor 1.
 + destruct k'.
   - now inversion Hk.
-  - constructor 2 with config; assumption || now (apply IHHd; auto with arith).
-+ constructor 3 with config; assumption || now (apply IHHd; auto with arith).
+  - constructor 2; assumption || now (apply IHHd; auto with arith).
++ constructor 3; assumption || now (apply IHHd; auto with arith).
 Qed.
 
 (** [kFair k d] is monotonic on [k] relation. *)
-Theorem kFair_mon : forall k (d: demon),
+Theorem kFair_mono : forall k (d: demon),
   kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
 Proof.
 coinduction fair; match goal with H : kFair _ _ |- _ => destruct H end.
-- intros. now apply Between_mon with k.
+- intros. now apply Between_mono with k.
 - now apply (fair k).
 Qed.
 
@@ -429,8 +429,34 @@ Theorem Fair0 : forall d, kFair 0 d ->
 Proof.
 intros d Hd config id id'. destruct Hd as [Hd _].
 assert (Hg := Hd id id'). assert (Hh := Hd id' id).
-inv Hg; inv Hh.
-Abort. (* FIXME: fails because the definition of fair is likely incorrect *)
+inv Hg; inv Hh;
+repeat match goal with
+  | H : forall c : configuration, _ |- _ => specialize (H config)
+  | H : _ /\ _ |- _ => destruct H
+  | |- _ => congruence
+end.
+Qed.
+
+(** [FirstMove r d config] gives the number of rounds before one robot moves. *)
+Inductive FirstMove r (d : demon) (config : configuration) : Prop :=
+  | MoveNow : moving r (Stream.hd d) config <> nil -> FirstMove r d config
+  | MoveLater : moving r (Stream.hd d) config = nil ->
+                FirstMove r (Stream.tl d) (round r (Stream.hd d) config) -> FirstMove r d config.
+
+Global Instance FirstMove_compat : Proper (equiv ==> equiv ==> equiv ==> iff) FirstMove.
+Proof.
+intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
+* revert r2 d2 c2 Hr Hd Hc. induction Hfirst; intros r2 d2 c2 Hr Hd Hc.
+  + apply MoveNow. now rewrite <- Hr, <- Hd, <- Hc.
+  + apply MoveLater.
+    - now rewrite <- Hr, <- Hd, <- Hc.
+    - destruct Hd. now apply IHHfirst, round_compat.
+* revert r1 d1 c1 Hr Hd Hc. induction Hfirst; intros r1 d1 c1 Hr Hd Hc.
+  + apply MoveNow. now rewrite Hr, Hd, Hc.
+  + apply MoveLater.
+    - now rewrite Hr, Hd, Hc.
+    - destruct Hd. apply IHHfirst; trivial. now apply round_compat; f_equiv.
+Qed.
 
 (** ** Full synchronicity
 
@@ -448,7 +474,7 @@ Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousIn
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_0Fair: ∀ d, FullySynchronous d → kFair 0 d.
-Proof. apply Stream.forever_impl_compat. intros s Hs id id'. econstructor. apply Hs. Admitted. (* FIXME *)
+Proof. apply Stream.forever_impl_compat. intros s Hs id id'. constructor 1. intro. apply Hs. Qed.
 
 Corollary fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
 Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.

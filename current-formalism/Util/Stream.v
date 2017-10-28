@@ -50,32 +50,32 @@ CoFixpoint alternate (c1 c2 : A) := cons c1 (cons c2 (alternate c1 c2)).
 (** Logical operators on properties over streams. *)
 
 Definition instant (P : A -> Prop) := fun s => P (hd s).
-Arguments instant P s /.
+Global Arguments instant P s /.
 
 CoInductive forever (P : t A -> Prop) (s : t A) : Prop :=
   Always : P s -> forever P (tl s) -> forever P s.
-Arguments Always [P] [s] _ _.
+Global Arguments Always [P] [s] _ _.
 
 Inductive eventually (P : t A -> Prop) (s : t A) : Prop :=
   | Now : P s -> eventually P s
   | Later : eventually P (tl s) -> eventually P s.
-Arguments Now [P] [s] _.
-Arguments Later [P] [s] _.
+Global Arguments Now [P] [s] _.
+Global Arguments Later [P] [s] _.
 
 (** Logical operators on relations over streams. *)
 
 Definition instant2 (P : A -> A -> Prop) := fun s1 s2 => P (hd s1) (hd s2).
-Arguments instant2 P s1 s2 /.
+Global Arguments instant2 P s1 s2 /.
 
 CoInductive forever2 (P : t A -> t A -> Prop) (s1 s2 : t A) : Prop :=
   Always2 : P s1 s2 -> forever2 P (tl s1) (tl s2) -> forever2 P s1 s2.
-Arguments Always2 [P] [s1] [s2] _ _.
+Global Arguments Always2 [P] [s1] [s2] _ _.
 
 Inductive eventually2 (P : t A -> t A -> Prop) (s1 s2 : t A) : Prop :=
   | Now2 : P s1 s2 -> eventually2 P s1 s2
   | Later2 : eventually2 P (tl s1) (tl s2) -> eventually2 P s1 s2.
-Arguments Now2 [P] [s1] [s2] _.
-Arguments Later2 [P] [s1] [s2] _.
+Global Arguments Now2 [P] [s1] [s2] _.
+Global Arguments Later2 [P] [s1] [s2] _.
 
 
 (** Extensional equality on streams, up to a setoid equality on the stream elements. *)
@@ -292,8 +292,8 @@ Qed.
 Inductive next_eventually (P : t A -> Prop) (s : t A) : Prop :=
   | n_Now : P s -> next_eventually P s
   | n_Later : next_eventually P (tl (tl s)) -> next_eventually P s.
-Arguments n_Now [P] [s] _.
-Arguments n_Later [P] [s] _.
+Global Arguments n_Now [P] [s] _.
+Global Arguments n_Later [P] [s] _.
 
 Global Instance next_eventually_compat : Proper ((equiv ==> iff) ==> equiv ==> iff) next_eventually.
 Proof.
@@ -317,7 +317,7 @@ Qed.
 
 CoInductive next_forever2 (P : t A -> t A -> Prop) (s1 s2 : t A) : Prop :=
   next_Always2 : P s1 s2 -> next_forever2 P (tl (tl s1)) (tl (tl s2)) -> next_forever2 P s1 s2.
-Arguments next_Always [P] [s] _ _.
+Global Arguments next_Always [P] [s] _ _.
 
 Global Instance next_forever2_compat : Proper ((equiv ==> equiv ==> iff) ==> equiv ==> equiv ==> iff) next_forever2.
 Proof.
@@ -347,8 +347,8 @@ Qed.
 Inductive next_eventually2 (P : t A -> t A -> Prop) (s1 s2 : t A) : Prop :=
   | n_Now2 : P s1 s2 -> next_eventually2 P s1 s2
   | n_Later2 : next_eventually2 P (tl (tl s1)) (tl (tl s2)) -> next_eventually2 P s1 s2.
-Arguments n_Now2 [P] [s1] [s2] _.
-Arguments n_Later2 [P] [s1] [s2] _.
+Global Arguments n_Now2 [P] [s1] [s2] _.
+Global Arguments n_Later2 [P] [s1] [s2] _.
 
 Global Instance next_eventually2_compat :
   Proper ((equiv ==> equiv ==> iff) ==> equiv ==> equiv ==> iff) next_eventually2.

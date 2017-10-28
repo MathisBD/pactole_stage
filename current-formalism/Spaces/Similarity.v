@@ -35,7 +35,7 @@ Open Scope R_scope.
 (** Similarities are functions that multiply distances by a constant zoom.
     Unlike bijections that only need a setoid, we need here a metric space.
     For convenience, we also add their center, that is the location from which robots locally observe. *)
-
+(* TODO: the center can be defined as the preimage of the origin! Maybe we should remove it... *)
 Record similarity T `{RealMetricSpace T} := {
   sim_f :> bijection T;
   zoom : R;
@@ -52,7 +52,7 @@ Proof. split.
 + repeat intro. etransitivity; eauto.
 Defined.
 
-Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f T _ _ _).
+Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f _ _ _ _).
 Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 
 (** As similarities are defined as bijections, we can prove that k <> 0
@@ -85,6 +85,9 @@ rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
 apply Rmult_integral in Heqf. destruct Heqf; trivial.
 assert (Hsim := zoom_non_null sim). contradiction.
 Qed.
+
+Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _).
+Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
 (** The identity similarity *)
 Definition id {T} `{RealMetricSpace T} : similarity T.

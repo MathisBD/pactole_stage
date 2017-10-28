@@ -1399,29 +1399,6 @@ destruct (forallb (fun x => Rdec_bool (get_location (config x)) pt) names) eqn:H
   destruct Hall as [id' [_ Hid']]. rewrite negb_true_iff, Rdec_bool_false_iff in Hid'. now exists id'.
 Qed.
 
-(* NB: This inductive can be defined for any demon, not only similarity_demon,
-       but later proofs are simpler this way.
-   TODO: make the change? *)
-Inductive FirstMove r (d : similarity_demon) (config : configuration) : Prop :=
-  | MoveNow : moving r (Stream.hd d) config <> nil -> FirstMove r d config
-  | MoveLater : moving r (Stream.hd d) config = nil ->
-                FirstMove r (Stream.tl d) (round r (Stream.hd d) config) -> FirstMove r d config.
-
-Instance FirstMove_compat : Proper (equiv ==> equiv ==> equiv ==> iff) FirstMove.
-Proof.
-intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
-* revert r2 d2 c2 Hr Hd Hc. induction Hfirst; intros r2 d2 c2 Hr Hd Hc.
-  + apply MoveNow. now rewrite <- Hr, <- Hd, <- Hc.
-  + apply MoveLater.
-    - now rewrite <- Hr, <- Hd, <- Hc.
-    - destruct Hd. now apply IHHfirst, round_compat.
-* revert r1 d1 c1 Hr Hd Hc. induction Hfirst; intros r1 d1 c1 Hr Hd Hc.
-  + apply MoveNow. now rewrite Hr, Hd, Hc.
-  + apply MoveLater.
-    - now rewrite Hr, Hd, Hc.
-    - destruct Hd. apply IHHfirst; trivial. now apply round_compat; f_equiv.
-Qed.
-
 Lemma not_invalid_gathered_Majority_size : forall config id,
   ~invalid config -> ~gathered_at (get_location (config id)) config -> no_Majority config ->
   size (!! config) >= 3.
@@ -1492,19 +1469,23 @@ destruct (OneMustMove id Hinvalid Hgathered) as [gmove Hmove].
 destruct Hfair as [locallyfair Hfair].
 revert config Hinvalid Hgathered Hmove Hfair.
 specialize (locallyfair gmove).
-induction locallyfair as [? ? Hactive | d']; intros config' Hinvalid Hgathered Hmove Hfair.
-+ apply MoveNow. intro Habs. simpl in Hactive. rewrite <- active_spec in Hactive.
-  (* apply Hmove in Hactive. rewrite Habs in Hactive. inversion Hactive.
+generalize (similarity_demon2prop d). revert locallyfair.
+generalize (similarity_demon2demon d). clear d. intros d locallyfair Hprop.
+induction locallyfair as [d Hactive | d]; intros config Hinvalid Hgathered Hmove Hfair.
++ apply MoveNow. intro Habs. specialize (Hactive config). setoid_rewrite <- active_spec in Hactive.
+  rewrite <- (demon2demon Hprop) in Hactive.
+  apply Hmove in Hactive. simpl in Hactive. rewrite Habs in Hactive. inversion Hactive.
 + destruct (moving gatherR (Stream.hd d) config) eqn:Hnil.
-  - apply MoveLater. exact Hnil.
+  - apply MoveLater; try exact Hnil.
     rewrite (no_moving_same_config _ _ _ Hnil).
-    apply (IHlocallyfair); trivial.
-    now destruct Hfair.
-  - apply MoveNow. rewrite Hnil. discriminate. *)
-Admitted.
+    destruct Hprop, Hfair.
+    now apply IHlocallyfair.
+  - apply MoveNow. rewrite Hnil. discriminate.
+Qed.
 
 
-Lemma gathered_at_forever : forall da config pt, gathered_at pt config -> gathered_at pt (round gatherR da config).
+Lemma gathered_at_forever : forall da config pt,
+  gathered_at pt config -> gathered_at pt (round gatherR da config).
 Proof.
 intros da config pt Hgather. rewrite (round_simplify_Majority).
 + intro g. destruct (da.(activate) config (Good g)); reflexivity || apply Hgather.
@@ -1527,29 +1508,36 @@ cofix Hind. intros d config pt Hgather. constructor.
 + cbn. apply Hind. now apply gathered_at_forever.
 Qed.
 
-Theorem Gathering_in_R :
-  forall d : similarity_demon, Fair d -> ValidSolGathering gatherR d.
+Theorem Gathering_in_R : forall d : similarity_demon, Fair d -> ValidSolGathering gatherR d.
 Proof.
-intros d Hfair config. revert d Hfair. pattern config.
+intro d. generalize (similarity_demon2prop d).
+generalize (similarity_demon2demon d). clear d.
+intros d Hprop Hfair config.
+revert d Hprop Hfair. pattern config.
 apply (well_founded_ind wf_lt_config). clear config.
-intros config Hind d Hfair Hok.
+intros config Hind d' Hprop Hfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (get_location (config (Good g1))). constructor. apply gathered_at_OK. assumption.
+  exists (get_location (config (Good g1))).
+  rewrite <- (demon2demon Hprop). now apply Stream.Now, gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
-  apply (Fair_FirstMove d Hfair (Good g1)) in Hmove; trivial.
+  rewrite <- (demon2demon Hprop) in Hfair.
+  apply (Fair_FirstMove _ Hfair (Good g1)) in Hmove; trivial.
+  rewrite (demon2demon Hprop) in Hfair, Hmove.
   induction Hmove as [d config Hmove | d config Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
     destruct (Hind (round gatherR (Stream.hd d) config)) with (Stream.tl d) as [pt Hpt].
-    - apply round_lt_config; assumption.
+    - rewrite <- (demon2demon Hprop). apply round_lt_config; assumption.
+    - now destruct Hprop.
     - now destruct Hfair.
-    - now apply never_invalid.
+    - rewrite <- (demon2demon Hprop). now apply never_invalid.
     - exists pt. constructor; cbn; apply Hpt.
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_config in Heq.
     destruct Hrec as [pt Hpt].
     - setoid_rewrite Heq. apply Hind.
+    - now destruct Hprop.
     - now destruct Hfair.
     - rewrite Heq. assumption.
     - exists pt. constructor; cbn; apply Hpt.

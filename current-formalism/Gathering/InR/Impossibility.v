@@ -420,8 +420,7 @@ Definition da1 : demonic_action := {|
 Definition bad_demon1 : demon := Stream.constant da1.
 
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
-(* Proof. coinduction bad_fair1. intros id1 id2. constructor. apply (no_byz id1). discriminate. Qed. *)
-Proof. Admitted. (* TODO *)
+Proof. coinduction bad_fair1. intros id1 id2. now constructor. Qed.
 
 Lemma round_simplify_1_1 : round r da1 config1 == config2.
 Proof.
@@ -524,37 +523,32 @@ CoFixpoint bad_demon2 ρ (Hρ : ρ <> 0) : demon :=
 
 Theorem kFair_bad_demon2_by_eq : forall ρ (Hρ : ρ <> 0) d, d == bad_demon2 Hρ -> kFair 1 d.
 Proof.
-(* cofix fair_demon. intros ρ Hρ d Heq.
+cofix fair_demon. intros ρ Hρ d Heq.
 constructor; [| constructor].
 * setoid_rewrite Heq.
   intros id1 id2. apply (no_byz id2), (no_byz id1). intros g1 g2.
   destruct (left_dec g1).
-  + constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+  + constructor 1. simpl. destruct (left_dec g1); eauto.
   + destruct (left_dec g2).
     - constructor 2; simpl.
-      -- destruct (left_dec g1); eauto. exfalso. eauto.
-      -- destruct (left_dec g2); eauto. discriminate.
-      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- constructor 1. simpl. now destruct (left_dec g1).
     - constructor 3; simpl.
-      -- destruct (left_dec g1); eauto. exfalso. eauto.
-      -- destruct (left_dec g2); eauto. exfalso. eauto.
-      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- constructor 1. simpl. now destruct (left_dec g1).
 * setoid_rewrite Heq.
   intros id1 id2. apply (no_byz id2), (no_byz id1). intros g1 g2.
   destruct (left_dec g1).
   + destruct (left_dec g2).
     - constructor 3; simpl.
-      -- destruct (left_dec g1); eauto. exfalso. eauto.
-      -- destruct (left_dec g2); eauto. exfalso. eauto.
-      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- constructor 1. simpl. now destruct (left_dec g1).
     - constructor 2; simpl.
-      -- destruct (left_dec g1); eauto. exfalso. eauto.
-      -- destruct (left_dec g2); eauto. discriminate.
-      -- constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
-  + constructor 1. simpl. destruct (left_dec g1); eauto. discriminate.
+      -- now destruct (left_dec g1), (left_dec g2).
+      -- constructor 1. simpl. now destruct (left_dec g1).
+  + constructor 1. simpl. now destruct (left_dec g1).
 * eapply fair_demon. rewrite Heq. unfold bad_demon2. simpl Stream.tl. fold bad_demon2. reflexivity.
-Qed. *)
-Admitted. (* TODO *)
+Qed.
 
 Theorem kFair_bad_demon2 : forall ρ (Hρ : ρ <> 0), kFair 1 (bad_demon2 Hρ).
 Proof. intros. eapply kFair_bad_demon2_by_eq. reflexivity. Qed.
@@ -763,18 +757,17 @@ Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
 intros. unfold bad_demon.
 destruct (Rdec move 1).
-- (* apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega. *) admit.
+- apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega.
 - now apply kFair_bad_demon2.
-Admitted.
+Qed.
 
 Theorem kFair_bad_demon' : forall k, (k>=1)%nat -> kFair k bad_demon.
 Proof.
-(* intros.
+intros.
 eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
 - auto.
-Qed. *)
-Admitted.
+Qed.
 
 (** * Final theorem
 
