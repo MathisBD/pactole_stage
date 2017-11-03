@@ -649,3 +649,168 @@ intros s1 s2. destruct (equal s1 s2) eqn:Heq.
 - left. now rewrite <- equal_spec.
 - right. intro Habs. rewrite <- equal_spec, Heq in Habs. discriminate.
 Defined.
+
+
+(** *  Map  **)
+
+Require Import Pactole.Util.Preliminary.
+
+Instance fold_compat {A B} `{FSetSpecs A} `{Setoid B} :
+  forall f : A -> B -> B, Proper (equiv ==> equiv ==> equiv) f -> transpose equiv f ->
+  forall a, Proper (equiv ==> equiv) (fun x => fold f x a).
+Proof.
+intros f Hf Ht a m1 m2 Heq. do 2 rewrite fold_spec.
+rewrite fold_left_symmetry_PermutationA; autoclass; [|].
+- repeat intro. now apply Hf.
+- now rewrite Heq.
+Qed.
+
+Lemma fold_left_add_acc {A B} `{FSet A} `{FSetSpecs B} : forall (f : A -> B), Proper (equiv ==> equiv) f ->
+  forall x l acc, In x (fold_left (fun acc y => add (f y) acc) l acc)
+                  <-> In x acc \/ exists y, InA equiv y l /\ x == f y.
+Proof.
+intros f Hf x l. induction l as [| e l]; intro acc; simpl.
++ intuition.
+  match goal with H : exists _, InA _ _ nil /\ _ |- _ =>
+    destruct H as [? [H _]]; now rewrite InA_nil in H end.
++ rewrite IHl. set_iff. split; intro Hin.
+  - destruct Hin as [[? | ?] | [? [? ?]]]; try tauto; eauto.
+  - destruct Hin as [Heq | [? [Hin Heq]]]; tauto || inv Hin; eauto.
+    do 2 left. match goal with H : _ == e |- _ => now rewrite <- H end.
+Qed.
+
+(* Instance elements_compat : Proper (equiv ==> PermutationA equiv) elements := elements_compat. *)
+Definition map {A B} `{FSet A} `{FSet B} (f : A -> B) m :=
+  fold (fun x acc => add (f x) acc) m empty.
+
+Instance map_compat {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
+  Proper (equiv ==> equiv) (map f).
+Proof.
+intros f Hf m₁ m₂ Hm. unfold map. apply fold_compat; autoclass; [|].
+- repeat intro. now repeat f_equiv.
+- repeat intro. set_iff. tauto.
+Qed.
+
+Lemma map_empty {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, map f empty == empty.
+Proof. intro. unfold map. rewrite fold_spec, elements_empty. simpl. reflexivity. Qed.
+
+(*
+Lemma fold_add_out {A B} `{FSetSpecs A} `{Setoid B} :
+  forall (f : A -> B -> B), Proper (equiv ==> equiv ==> equiv) f -> transpose2 equiv f ->
+  forall x m acc, ~In x m -> fold f (add x m) acc == fold f m (f x acc).
+Proof.
+intros f Hf Hf2 x m acc Hx.
+assert (Hf' : Proper (equiv ==> equiv ==> equiv) (fun x y => f y x)).
+{ repeat intro. now apply Hf. }
+assert (Hf2' : forall x y z, f y (f x z) == (f x (f y z))) by auto.
+assert (Hperm : PermutationA equiv (elements {x; m}) (x :: elements m)).
+{ apply NoDupA_equivlistA_PermutationA; autoclass.
+  + apply elements_NoDupA.
+  + constructor.
+    - now rewrite elements_spec.
+    - apply elements_NoDupA.
+  + intro y. rewrite elements_spec. set_iff.
+    split; intro Hin.
+    - intuition.
+    - inv Hin. now left. rewrite <- elements_spec; auto. }
+rewrite 2 fold_spec.
+rewrite (fold_left_symmetry_PermutationA _ _ Hf' Hf2');
+try apply Hperm; simpl; reflexivity.
+Qed.
+
+Lemma fold_add_in {A B} `{FSetSpecs A} `{Setoid B} :
+  forall (f : A -> B -> B), Proper (equiv ==> equiv ==> equiv) f -> transpose2 equiv f ->
+  forall x m acc, In x m -> fold f (add x m) acc == fold f m acc.
+Proof.
+intros f Hf Hf2 x m acc Hx.
+assert (Hf' : Proper (equiv ==> equiv ==> equiv) (fun x y => f y x)).
+{ repeat intro. now apply Hf. }
+assert (Hf2' : forall x y z, f y (f x z) == (f x (f y z))) by auto.
+assert (Hperm : PermutationA equiv (elements {x; m}) (elements m)).
+{ apply NoDupA_equivlistA_PermutationA; autoclass.
+  + apply elements_NoDupA.
+  + apply elements_NoDupA.
+  + intro y. rewrite 2 elements_spec. set_iff. intuition. rewrite <- In_eq_iff; eauto. }
+rewrite 2 fold_spec.
+rewrite (fold_left_symmetry_PermutationA _ _ Hf' Hf2');
+try apply Hperm; simpl; reflexivity.
+Qed.
+
+Lemma map_In {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
+  forall x m, In x m -> In (f x) (map f m).
+Proof.
+intros f Hf x m Hin.
+unfold map. generalize empty.
+setoid_rewrite fold_spec. rewrite <- elements_spec in Hin.
+induction (elements m); intro acc.
++ now rewrite InA_nil in Hin.
++ inv Hin; simpl.
+  - match goal with H : _ == _ |- _ => rewrite H end.
+    rewrite fold_left_add_acc, add_spec; trivial; []. now do 2 left.
+  - now apply IHl.
+Qed.
+
+Lemma map_add {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
+  forall x m, map f (add x m) == add (f x) (map f m).
+Proof.
+intros f Hf x m y.
+assert (Proper (equiv ==> equiv ==> equiv) (fun x acc => add (f x) acc)).
+{ intros ? ? Heq ? ? Heq' ?. rewrite Heq, Heq'. fsetdec. }
+assert (transpose2 equiv (fun x acc => add (f x) acc)).
+{ intros ? ? ? ? Heq ?. rewrite Heq. fsetdec. }
+destruct (mem x m) eqn:Hin.
++ rewrite mem_spec in Hin. unfold map at 1.
+  rewrite fold_add_in; autoclass; [].
+  change (fold (fun x acc => add (f x) acc) m empty) with (map f m).
+  set_iff. intuition.
+  match goal with H : _ == _ |- _ => rewrite <- H end.
+  now apply map_In.
++ rewrite mem_false in Hin. unfold map at 1.
+  rewrite fold_add_out, fold_spec, fold_left_add_acc; autoclass; [].
+  set_iff.
+  split; intro Hy.
+  - destruct Hy as [[|] | [? [Hy Heq]]]; try tauto; [].
+    right. rewrite Heq. rewrite elements_spec in Hy. now apply map_In.
+  - unfold map in Hy. rewrite fold_spec, fold_left_add_acc, empty_spec in Hy; trivial; [].
+    destruct Hy as [? | [? | [? [Hy Heq]]]]; eauto.
+Qed.
+*)
+
+Lemma map_spec {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
+  forall y s, In y (map f s) <-> exists x, In x s /\ y == (f x).
+Proof.
+intros f Hf y s. unfold map.
+rewrite fold_spec, fold_left_add_acc, empty_spec; trivial; [].
+setoid_rewrite elements_spec. intuition.
+Qed.
+
+Corollary map_In {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
+  forall x m, In x m -> In (f x) (map f m).
+Proof. repeat intro. rewrite map_spec; eauto. Qed.
+
+Corollary map_add {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
+  forall x m, map f (add x m) == add (f x) (map f m).
+Proof.
+intros f Hf x m y. set_iff. rewrite 2 map_spec; trivial; [].
+split; intro Hin.
++ destruct Hin as [? [Hin Hy]]. revert Hin. set_iff. intros [Hx | Hin].
+  - rewrite Hy, Hx. now left.
+  - right. eauto.
++ destruct Hin as [Hy | [? [Hin Hx]]]; eexists; set_iff; eauto.
+Qed.
+
+Lemma map_injective_elements {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f,
+  Proper (equiv ==> equiv) f ->
+  injective equiv equiv f ->
+  forall s, PermutationA equiv (elements (map f s)) (List.map f (elements s)).
+Proof.
+intros f Hf Hf2 s.
+apply NoDupA_equivlistA_PermutationA; autoclass.
++ apply elements_NoDupA.
++ eapply map_injective_NoDupA, elements_NoDupA; autoclass.
++ intro y.
+  rewrite elements_spec, map_spec, InA_map_iff; autoclass; [].
+  split; intros [x [Hx1 Hx2]].
+  - exists x. rewrite elements_spec. auto.
+  - exists x. rewrite <- elements_spec. now symmetry in Hx1.
+Qed.

@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence.    *)
@@ -8,12 +8,12 @@
 (**************************************************************************)
 
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
-   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                           
+(** Mechanised Framework for Local Interactions & Distributed Algorithms    
+    T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                          
                                                                             
-   PACTOLE project                                                          
+    PACTOLE project                                                         
                                                                             
-   This file is distributed under the terms of the CeCILL-C licence       *)
+    This file is distributed under the terms of the CeCILL-C licence      *)
 (**************************************************************************)
 
 
@@ -58,7 +58,7 @@ Notation config_list := (@config_list info _ _ _ _).
 
 Implicit Type config : configuration.
 
-Global Instance multiset_spectrum (radius : R) : Spectrum loc info := {
+Global Instance limited_multiset_spectrum (radius : R) : Spectrum loc info := {
   spectrum := multiset loc;
   spect_from_config config pt :=
     MultisetSpectrum.make_multiset (List.filter (fun x => Rle_bool (dist x pt) radius)
@@ -79,7 +79,8 @@ Proof.
 Defined.
 
 Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
-Local Notation "'from_config' radius" := (@spect_from_config loc info _ _ _ _ _ _ (multiset_spectrum radius)) (at level 1).
+Local Notation "'from_config' radius" :=
+  (@spect_from_config loc info _ _ _ _ _ _ (limited_multiset_spectrum radius)) (at level 1).
 
 Lemma spect_from_config_ignore_snd : forall config pt,
   spect_from_config config pt == spect_from_config config origin.
@@ -90,7 +91,7 @@ Lemma spect_from_config_map : forall sim : similarity loc,
   map sim (from_config radius config pt)
   == from_config (sim.(Similarity.zoom) * radius) (map_config (app sim) config) (sim pt).
 Proof.
-repeat intro. unfold spect_from_config, multiset_spectrum.
+repeat intro. unfold spect_from_config, limited_multiset_spectrum.
 rewrite config_list_map, map_map, 2 filter_map, <- MultisetSpectrum.make_multiset_map, map_map; autoclass; [].
 apply MultisetSpectrum.make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
 assert (Hequiv : (equiv ==> equiv)%signature (fun x => sim (get_location x)) (fun x => get_location (app sim x))).
@@ -117,7 +118,7 @@ Property spect_from_config_In : forall radius config pt l,
   In l (from_config radius config pt) <-> exists id, get_location (config id) == l /\ (dist l pt <= radius)%R.
 Proof.
 intros radius config pt l. split; intro Hin.
-* unfold spect_is_ok, spect_from_config, multiset_spectrum in *. simpl in *.
+* unfold spect_is_ok, spect_from_config, limited_multiset_spectrum in *. simpl in *.
   rewrite MultisetSpectrum.make_multiset_In, filter_InA in Hin.
   + rewrite config_list_spec, map_map, InA_map_iff, Rle_bool_true_iff in Hin; autoclass; [|].
     - firstorder.
