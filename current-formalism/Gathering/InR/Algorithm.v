@@ -34,6 +34,7 @@ Require Import Pactole.Spectra.MultisetSpectrum.
 Require Import Pactole.Models.Similarity.
 Require Export Pactole.Models.Rigid.
 Import Permutation.
+Import Datatypes.
 Close Scope R_scope.
 
 
@@ -606,7 +607,7 @@ intros da config. apply no_byz_eq. intro g. unfold round.
 destruct (activate da config (Good g)) eqn:Hactive; try reflexivity; [].
 rewrite rigid_update.
 remember (change_frame da config g) as sim.
-simpl app. unfold id.
+simpl RobotInfo.app. unfold Datatypes.id.
 (* Simplify the similarity *)
 (* assert (Hratio : (simc pt).(zoom) <> 0). { eapply da.(step_zoom). eassumption. } *)
 destruct (similarity_in_R sim) as [k [Hk Hsim]].
@@ -637,7 +638,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
   assert (Hmap : !! (map_config (Bijection.section (Similarity.sim_f sim)) config)
                  == map (Bijection.section (Similarity.sim_f sim)) (!! config)).
-  { change (Bijection.section (Similarity.sim_f sim)) with (app sim).
+  { change (Bijection.section (Similarity.sim_f sim)) with (RobotInfo.app sim).
     rewrite <- spect_from_config_ignore_snd, <- (spect_from_config_map _ config origin); reflexivity. }
   repeat rewrite Hmap.
   rewrite map_injective_size; trivial; [].

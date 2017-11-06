@@ -28,7 +28,6 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
-Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.R.
 Require Import Pactole.Spectra.MultisetSpectrum.
 Require Import Pactole.Models.Rigid.

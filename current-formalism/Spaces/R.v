@@ -33,8 +33,8 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.Spaces.RealMetricSpace.
-Require Import Pactole.Spaces.Similarity.
+Require Export Pactole.Spaces.RealMetricSpace.
+Require Export Pactole.Spaces.Similarity.
 Require Pactole.CommonFormalism.
 Require Import Psatz.
 Import Permutation.

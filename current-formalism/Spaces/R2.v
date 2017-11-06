@@ -26,7 +26,7 @@ Require Import Omega.
 Import List Permutation SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Spaces.RealMetricSpace.
+Require Export Pactole.Spaces.RealMetricSpace.
 Require Pactole.Spaces.Similarity.
 Set Implicit Arguments.
 Open Scope R_scope.
