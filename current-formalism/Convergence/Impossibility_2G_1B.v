@@ -38,33 +38,29 @@ Import List.
 Import SetoidClass.
 
 
-(** There are [2 * n] good robots and [n] byzantine ones. *)
-Parameter n : nat.
-Axiom n_non_0 : n <> 0%nat.
-
-
-Instance fst_compat A B `{Setoid A} `{Setoid B} : Proper (equiv ==> equiv) (@fst A B).
-Proof. now intros ? ? [Heq ?]. Qed.
-
-Instance MyRobots : Names := Robots (2 * n) n.
-
 (* BUG?: To help finding correct instances, loops otherwise! *)
 Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS.
 
+(** There are [2 * n] good robots and [n] byzantine ones. *)
+Parameter n : nat.
+Axiom n_non_0 : n <> 0%nat.
+Instance MyRobots : Names := Robots (2 * n) n.
 
+(** The only information in the state of a robot is its location. *)
 Instance Info : IsLocation R R := OnlyLocation.
+(** Demons use similarities to perform the change of frame of reference. *)
 Instance FDC : first_demonic_choice (Similarity.similarity R) := FirstChoiceSimilarity.
+(** Demons do not make any choice in how a robot state is updated. *)
 Instance NoChoice : second_demonic_choice Datatypes.unit := {second_choice_EqDec := unit_eqdec}.
-
+(** Updates are rigid. *)
 Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
 Proof. now repeat intro. Defined.
-
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.
 
-(** The spectrum is a multiset of positions *)
+(* Some notations to avoid typeclass ambiguities. *)
 Notation "!!" := (fun config => spect_from_config config 0%R).
 Notation robogram := (@robogram R R _ _ _ _ _ MyRobots _).
 Notation configuration := (@configuration R _ _ _ _).
@@ -73,14 +69,14 @@ Notation round := (@round R R _ _ _ _ _ _ _ _ _ _).
 Notation execution := (@execution R _ _ _).
 Notation demonic_action := (@demonic_action R R _ _ _ _ _ _).
 
-Add Search Blacklist "Spect.M" "Ring".
+(* Helping [auto] handle basic real arithmetic contradictions *)
 Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.
 Hint Extern 0 (0 =/= 1)%R => symmetry; trivial.
 Hint Extern 0 (1 <> 0)%R => apply R1_neq_R0.
 Hint Extern 0 (0 <> 1)%R => intro; apply R1_neq_R0; now symmetry.
-Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
 Hint Extern 0 (~@equiv R _ 1 0)%R => apply R1_neq_R0.
 Hint Extern 0 (~@equiv R _ 0 1)%R => intro; apply R1_neq_R0; now symmetry.
+Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
 Hint Extern 0 (~equiv R _ _ _) =>
   match goal with | H : ~@equiv R _ ?x ?y |- ~@equiv R _ ?y ?x => intro; apply H; now symmetry end.
 
@@ -159,12 +155,11 @@ Definition solution (r : robogram) : Prop :=
   forall (config : configuration) (d : demon), Fair d →
   forall (ε : R), 0 < ε → exists (pt : R), attracted pt ε (execute r d config).
 
-(** A solution is just convergence property for any demon. *)
 Definition solution_FSYNC (r : robogram) : Prop :=
   forall (config : configuration) (d : demon), FullySynchronous d →
   forall (ε : R), 0 < ε → exists (pt : R), attracted pt ε (execute r d config).
 
-
+(** A SSYNC solution is also a FSYNC solution. *)
 Lemma synchro : ∀ r, solution r → solution_FSYNC r.
 Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, fully_synchronous_implies_fair; autoclass. Qed.
 
@@ -232,11 +227,11 @@ Hint Resolve gfirst_left glast_right left_right_exclusive.
 
 (** * Proof of the impossiblity of convergence with one third of robots byzantine. *)
 
-(* A demon that makes the robogram fail:
-   - good robots are split into two distinct towers
-   - byzantine robots move alternatively between both towers
-   - the stack with byzantine is activated, good robots cannot move
-     and you can scale it back on the next round. *)
+(** A demon that makes the robogram fail:
+    - good robots are split into two distinct towers
+    - byzantine robots move alternatively between both towers
+    - the stack with byzantine is activated, good robots cannot move
+      and you can scale it back on the next round. *)
 
 Open Scope R_scope.
 (** The reference starting configuration **)
@@ -360,7 +355,7 @@ destruct (Rdec pt 0); [| destruct (Rdec pt 1)]; subst;
 repeat rewrite ?add_same, ?singleton_same, ?singleton_other, ?add_other; auto.
 Qed.
 
-(* An execution alternating config1 and config2 *)
+(** An execution alternating config1 and config2 *)
 Definition exec : execution := Stream.alternate config1 config2.
 
 (** The demon defeating any robogram *)
@@ -499,7 +494,7 @@ Definition config0 pt : configuration := fun id =>
     | Byz b => pt + 1
   end.
 
-(* An execution that shifts by [d] at each round, starting from [pt]. *)
+(** An execution that shifts by [d] at each round, starting from [pt]. *)
 CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt,
