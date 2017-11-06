@@ -23,18 +23,15 @@ cp Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v ./pac
 
 cp Util/MMultiset/Preliminary.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetMap.v Util/MMultiset/MMultisetExtraOps.v ./package/Util/MMultiset/
 
-cp Preliminary.v Lexprod.v Stream.v Bijection.v ./package/Util/
+cp Util/Preliminary.v Util/Lexprod.v Util/Stream.v Util/Bijection.v ./package/Util/
 
 cp  Robots.v RobotInfo.v Configurations.v CommonFormalism.v Setting.v Makefile _CoqProject ./package/
 
-cp Spaces/RealMetricSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v
-Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces
+cp Spaces/RealMetricSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces
 
-cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v
-Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra
+cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra
 
-cp Models/Ridig.v Models/Flexible.v Models/RigidFlexibleEquivalence.v
-Models/DiscreteGraph.v Models/Similarity.v ./package/Models/
+cp Models/Rigid.v Models/Flexible.v Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v Models/Similarity.v ./package/Models/
 
 cp Convergence/Impossibility_2G_1B.v Convergence/Algorithm_noB.v ./package/Convergence/
 
@@ -45,9 +42,8 @@ cp Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/I
 cp Gathering/InR2/Algorithm.v ./package/Gathering/InR2/
 # Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
-make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo
-Gathering/InR2/Algorithm.vo Convergence/Impossibility_2G_1B.vo
+make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Convergence/Impossibility_2G_1B.vo
 # Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
 make -C package cleanall
-#rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
+rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
 tar cvfz package.tgz package
