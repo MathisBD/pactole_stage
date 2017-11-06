@@ -21,7 +21,7 @@ cp Util/FSets/OrderedType.v Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Ut
 
 cp Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v ./package/Util/FMaps/
 
-cp Util/MMultiset/Preliminary.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetMap.v Util/MMultiset/MMultisetExtraOps.v ./package/Util/MMultiset/
+cp Util/MMultiset/Preliminary.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetExtraOps.v ./package/Util/MMultiset/
 
 cp Util/Preliminary.v Util/Lexprod.v Util/Stream.v Util/Bijection.v ./package/Util/
 

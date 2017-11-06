@@ -46,8 +46,8 @@ Spaces/R.v
 Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
-Spaces/DiscreteSpace.v
-Spaces/DiscreteSimilarity.v
+#Spaces/DiscreteSpace.v
+#Spaces/DiscreteSimilarity.v
 
 ## Spectra
 Spectra/Definition.v
