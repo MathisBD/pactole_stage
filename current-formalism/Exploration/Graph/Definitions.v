@@ -12,21 +12,15 @@ Require Import Reals.
 Require Import Omega.
 Require Import Arith.Div2.
 Require Import Psatz.
-Require Import Equalities.
-Require Import Morphisms.
-Require Import Decidable.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Stream.
+Require Import SetoidDec.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Stream.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.CommonGraphFormalism.
-Require Import Pactole.DiscreteGraphFormalism.
-Require Import Pactole.DiscreteSimilarity.
-Require Import Pactole.CommonDiscreteFormalism.
-Require Import Pactole.DiscreteRigidFormalism.
-Require Import Pactole.PointedMultisetSpectrum.
-Require Import Pactole.CommonIsoGraphFormalism.
-Require Import Pactole.Exploration.Graph.GraphFromZnZ.
+Require Import Pactole.Spaces.Graph.
+Require Import Pactole.Spaces.Isomorphism.
+Require Import Pactole.Models.DiscreteRigid.
+Require Import Pactole.MultisetSpectrum.
 
 
 Close Scope Z_scope.
@@ -138,8 +132,8 @@ End Loc.
 Module Iso := CommonIsoGraphFormalism.Make(Ring)(Loc). (* Careful! It also contains a module called Iso *)
 Module Info := SourceTarget(Loc).
 Module Config := Configurations.Make(Loc)(N)(Names)(Info).
-Module Spect := PointedMultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
-Module DGF := DGF(Ring)(N)(Names)(Loc)(Info)(Config)(Spect)(Iso).
+Module Spect := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
+Module DGF := DiscreteGraphFormalism.DGF(Ring)(N)(Names)(Loc)(Info)(Config)(Spect)(Iso).
 Export Iso DGF.
 
 Notation "s [ pt ]" := (Spect.multiplicity pt s) (at level 5, format "s [ pt ]").
@@ -251,7 +245,7 @@ Definition Stopped (e : execution) : Prop :=
 (* TODO: Was this version correct instead?
          I guess this depends if we only consider configurations every other round.
 
-  Stream.forever ((stop_now)) e. *)
+  Stream.forever stop_now e. *)
 
 Instance Stopped_compat : Proper (eeq ==> iff) Stopped.
 Proof.

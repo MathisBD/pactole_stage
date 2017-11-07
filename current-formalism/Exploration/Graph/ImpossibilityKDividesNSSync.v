@@ -128,7 +128,7 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
 * apply map_injective_NoDupA with eq; autoclass; [|].
   + intros ? ? ?. now apply config1_injective.
   + rewrite NoDupA_Leibniz. apply Names.names_NoDup.
-* intro pt. repeat rewrite InA_map_iff; autoclass; [| |].
+* intro pt. repeat rewrite InA_map_iff; autoclass; [].
   assert (HkG : kG <> 0%nat). { generalize k_sup_1. omega. }
   assert (Z.of_nat n <> 0). { generalize n_sup_1. omega. }
   assert (n / kG <> 0)%nat by (rewrite Nat.div_small_iff; generalize k_sup_1, k_inf_n; omega).
@@ -169,8 +169,6 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
       rewrite <- (Z.mul_1_l (Z.of_nat n)) at 1.
       rewrite Z.mod_add; trivial; []. f_equal. lia.
     - rewrite InA_Leibniz. apply Names.In_names.
-      + intros x y H; now rewrite H.
-      + intros x y Hxy; rewrite Hxy; easy.
 Qed.
 
 Program Definition da : demonic_action := {|
