@@ -53,12 +53,12 @@ Context `{IsLocation loc info}.
 Context {RMS : RealMetricSpace loc}. (* only used for the equality case of the triangle inequality *)
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
-Context `{@first_demonic_choice loc info T1 _ _ _ _ _}.
+Context `{@frame_choice loc info T1 _ _ _ _ _}.
 
 
-Class FlexibleChoice `{second_demonic_choice T2} := {
+Class FlexibleChoice `{update_choice T2} := {
   move_ratio : T2 -> ratio;
-  move_ratio_compat :> Proper (@equiv T2 second_choice_Setoid ==> @equiv _ sig_Setoid) move_ratio }.
+  move_ratio_compat :> Proper (@equiv T2 update_choice_Setoid ==> @equiv _ sig_Setoid) move_ratio }.
 
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
 Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R) := {
@@ -80,9 +80,9 @@ Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R)
 
 End FlexibleFormalism.
 
-Definition OnlyFlexible : second_demonic_choice ratio := {|
-  second_choice_Setoid := _;
-  second_choice_EqDec := _ |}.
+Definition OnlyFlexible : update_choice ratio := {|
+  update_choice_Setoid := _;
+  update_choice_EqDec := _ |}.
 
 Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
 

@@ -36,11 +36,11 @@ Context `{IsLocation loc info}.
 Context {RMS : RealMetricSpace loc}.
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
-Context `{@first_demonic_choice loc info T _ _ _ _ _}.
+Context `{@frame_choice loc info T _ _ _ _ _}.
 
 (** Flexible demons. *)
 Context (Tflex : Type) (delta : R).
-Context `{second_demonic_choice Tflex}.
+Context `{update_choice Tflex}.
 Context {FlexUpdateFun : @update_function loc info Tflex _ _ _ _ _ _ _}.
 Context `{@Flexible.FlexibleChoice Tflex _}.
 
@@ -50,7 +50,7 @@ Notation flex_demon := (@demon loc info _ Tflex _ _ _ _).
 
 (** Rigid demons. *)
 Context (Trigid : Type).
-Context `{second_demonic_choice Trigid}.
+Context `{update_choice Trigid}.
 Context {RigidUpdateFun : @update_function loc info Trigid _ _ _ _ _ _ _}.
 Context {Rigid : @Rigid.RigidUpdate loc info _ Trigid _ _ _ _ _ _ _ _ _}.
 Notation rigid_da := (@demonic_action loc info _ Trigid _ _ _ _).

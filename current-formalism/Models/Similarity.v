@@ -38,13 +38,13 @@ Context `{IsLocation loc info}.
 Context {RMS : RealMetricSpace loc}.
 Context {N : Names}.
 Context {Spect : Spectrum loc info}.
-Context `{second_demonic_choice T}.
+Context `{update_choice T}.
 
-(* Similarities as a first choice, inside real metric spaces *)
-Global Instance FirstChoiceSimilarity : first_demonic_choice (similarity loc) := {|
-  first_choice_bijection := @sim_f loc _ _ _;
-  first_choice_Setoid := similarity_Setoid loc;
-  first_choice_bijection_compat := f_compat |}.
+(** Similarities as a frame choice, inside real metric spaces *)
+Global Instance FrameChoiceSimilarity : frame_choice (similarity loc) := {|
+  frame_choice_bijection := @sim_f loc _ _ _;
+  frame_choice_Setoid := similarity_Setoid loc;
+  frame_choice_bijection_compat := f_compat |}.
 
 Definition similarity_da_prop da :=
   forall config g, center (change_frame da config g) == get_location (config (Good g)).
@@ -64,11 +64,12 @@ Definition similarity_center : forall da config g,
   center (change_frame (proj_sim_da da) config g) == get_location (config (Good g))
   := @proj2_sig _ _.
 
+
 (** Demons are now stream of [similarity_da]s.*)
 Definition similarity_demon := Stream.t similarity_da.
 
 
-(* from a [similarity_demon], we can recover the demon] and its property [similarity_da_prop]. *)
+(** From a [similarity_demon], we can recover the demon] and its property [similarity_da_prop]. *)
 Definition similarity_demon2demon : similarity_demon -> demon := Stream.map proj_sim_da.
 
 Definition similarity_demon2prop : forall d,

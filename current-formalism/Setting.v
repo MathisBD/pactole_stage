@@ -5,4 +5,4 @@ Require Export Pactole.Robots.
 Require Export Pactole.RobotInfo.
 Require Export Pactole.Configurations.
 Require Export Pactole.Spectra.Definition.
-Require Export Pactole.CommonFormalism.
+Require Export Pactole.Formalism.

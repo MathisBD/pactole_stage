@@ -53,7 +53,7 @@ Existing Instance R_EqDec.
 Existing Instance R_RMS.
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
-Instance Choice : second_demonic_choice Datatypes.unit := NoChoice.
+Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
   update := fun _ _ pt _ => pt;
   update_compat := ltac:(now repeat intro) }.

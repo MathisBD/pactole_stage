@@ -32,8 +32,8 @@ Context {loc info T1 T2 : Type}.
 Context `{IsLocation loc info}.
 Context {N : Names}.
 Context {Spect : Spectrum loc info}.
-Context `{@first_demonic_choice loc info T1 _ _ _ _ _}.
-Context `{second_demonic_choice T2}.
+Context `{@frame_choice loc info T1 _ _ _ _ _}.
+Context `{update_choice T2}.
 Context {Update : @update_function loc info T2 _ _ _ _ _ _ _}.
 
 Local Notation update := (@update loc info T2 _ _ _ _ _ _ _ Update).
@@ -42,7 +42,7 @@ Local Notation update := (@update loc info T2 _ _ _ _ _ _ _ Update).
     is the one chosen by the robogram. *)
 Class RigidUpdate := {
   rigid_update : forall da config g target,
-    get_location (update config g target (da.(choose_update) config g target)) = target }.
+    get_location (update config g target (da.(choose_update) config g target)) == target }.
 
 End RigidFormalism.
 

@@ -35,7 +35,6 @@ Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
 Require Export Pactole.Spaces.RealMetricSpace.
 Require Export Pactole.Spaces.Similarity.
-Require Pactole.CommonFormalism.
 Require Import Psatz.
 Import Permutation.
 Set Implicit Arguments.

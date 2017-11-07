@@ -36,6 +36,7 @@ Set Implicit Arguments.
 
 Section GatheringDefinitions.
 
+(** We only required the spaces to be a real metric space.  The Number of robots is abitrary. *)
 Context {loc T : Type}.
 Context `{RealMetricSpace loc}.
 Context `{Names}.
@@ -45,8 +46,8 @@ Global Instance Info : IsLocation loc loc := OnlyLocation.
 (** The change of frame of reference uses a similarity, cf Models.Similarity. *)
 
 
+Context {UC : update_choice T}.
 Context {Spect : Spectrum loc loc}.
-Context {SDC : second_demonic_choice T}.
 Context {UpdFun : update_function T}.
 
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
@@ -132,7 +133,7 @@ Require Import Pactole.Spectra.MultisetSpectrum.
 Context {loc T : Type}.
 Context `{RealMetricSpace loc}.
 Context `{Names}.
-Context {Choice : second_demonic_choice T}.
+Context {Choice : update_choice T}.
 Context {UpdFun : update_function T}.
 
 Notation robogram := (@robogram loc loc _ _ _ _ _ _ multiset_spectrum).

@@ -30,8 +30,8 @@ Context `{Names}.
 Context `{EqDec info}.
 Context {Loc : IsLocation V info}.
 Context {Tar : IsTarget V info}.
-Context `{@first_demonic_choice V info (isomorphism G) _ _ _ _ _}.
-Context `{second_demonic_choice}.
+Context `{@frame_choice V info (isomorphism G) _ _ _ _ _}.
+Context `{update_choice}.
 Context `{@update_function V info _ _ _ _ _ _ _ _}.
 Context `{@Spectrum V info _ _ _ _ _ _}.
 
@@ -46,7 +46,7 @@ Notation demonic_action := (@demonic_action V info _ _ _ _ _ _ Loc _ _ _).
 
 (** The robogram should return only adjacent node values.
     We enforce this by making a check in the [update] function. *)
-Class DiscreteGraphUpdate  := {
+Class DiscreteGraphUpdate := {
   discrete_graph_update : forall da config g target,
     find_edge (get_location (config (Good g))) target <> None -> (* if the robogram tries to move on an adjacent node *)
     get_location (update config g target (da.(choose_update) config g target)) == target }. (* then the update let it go there *)
@@ -68,6 +68,15 @@ Definition StepSynchronous := Stream.forever (Stream.instant da_Synchronous).
 Instance StepSynchronous_compat : Proper (equiv ==> iff) StepSynchronous.
 Proof. unfold StepSynchronous. autoclass. Qed.
 
-End Formalism.
 
-(* TODO prove that graph update are rigid *)
+(* Graph updates are rigid, provided the move is legal (the edge exists).
+
+Require Import Pactole.Models.Rigid.
+
+Instance graph_update_rigid `{DiscreteGraphUpdate} : @RigidUpdate V info _ _ _ _ _ _ _ _ _ _ _.
+Proof. split.
+intros. rewrite discrete_graph_update; try reflexivity; [].
+Qed.
+*)
+
+End Formalism.

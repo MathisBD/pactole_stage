@@ -23,7 +23,7 @@ Util/Lexprod.v
 Robots.v
 RobotInfo.v
 Configurations.v
-CommonFormalism.v
+Formalism.v
 Setting.v
 
 ## Models

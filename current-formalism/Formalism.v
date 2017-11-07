@@ -81,24 +81,24 @@ Definition execution := Stream.t configuration.
 
 (** A [demonic_first_choice] represents the choices made by the demon to compute the spectrum.
     It must at least contain at bijection to compute the change of frame of reference.  *)
-Class first_demonic_choice `{IsLocation loc info} := {
-  first_choice_bijection : T1 -> bijection loc;
-  first_choice_Setoid :> Setoid T1;
-  first_choice_bijection_compat :> Proper (equiv ==> equiv) first_choice_bijection }.
-Global Existing Instance first_choice_bijection_compat.
+Class frame_choice `{IsLocation loc info} := {
+  frame_choice_bijection : T1 -> bijection loc;
+  frame_choice_Setoid :> Setoid T1;
+  frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
+Global Existing Instance frame_choice_bijection_compat.
 
 (** A [demonic_second_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
-Class second_demonic_choice := {
-  second_choice_Setoid :> Setoid T2;
-  second_choice_EqDec :> EqDec second_choice_Setoid }.
+Class update_choice := {
+  update_choice_Setoid :> Setoid T2;
+  update_choice_EqDec :> EqDec update_choice_Setoid }.
 
 (** These choices are then used by an update function that depends on the model. *)
-Class update_function `{IsLocation loc info} `{second_demonic_choice} := {
+Class update_function `{IsLocation loc info} `{update_choice} := {
   update :> configuration -> G -> loc -> T2 -> info;
   update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update }.
 
-Context `{@first_demonic_choice _ _ _ _ _}.
-Context `{second_demonic_choice}.
+Context `{@frame_choice _ _ _ _ _}.
+Context `{update_choice}.
 Context `{@update_function _ _ _ _ _ _}.
 
 (* The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
@@ -215,10 +215,13 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         | Byz b => da.(relocate_byz) config b (* byzantine robots are relocated by the demon *)
         | Good g =>
           (* change the frame of reference *)
-          let new_frame := first_choice_bijection (da.(change_frame) config g) in
+          let new_frame := frame_choice_bijection (da.(change_frame) config g) in
           let local_config := map_config (app new_frame) config in
+          let local_pos := get_location (local_config (Good g)) in
+          (* compute the spectrum *)
+          let spect := spect_from_config local_config local_pos in
           (* apply r on spectrum *)
-          let local_target := r (spect_from_config local_config (get_location (local_config (Good g)))) in
+          let local_target := r spect in
           (* return to the global frame of reference *)
           let global_target := new_frame ⁻¹ local_target in
           (* the demon chooses how to perform the state update *)
@@ -237,11 +240,11 @@ unfold round. rewrite Hda, Hconfig. destruct_match.
   destruct id as [g | b].
   + (* good robot *)
     apply update_compat; try apply choose_update_da_compat; trivial; [|];
-    do 2 f_equiv; try apply first_choice_bijection_compat; f_equiv; trivial;
+    do 2 f_equiv; try apply frame_choice_bijection_compat; f_equiv; trivial;
     solve [ apply map_config_compat; trivial; []; apply app_compat; f_equiv;
-            apply first_choice_bijection_compat; now do 2 f_equiv
+            apply frame_choice_bijection_compat; now do 2 f_equiv
           | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; f_equiv;
-            apply first_choice_bijection_compat; now do 2 f_equiv ].
+            apply frame_choice_bijection_compat; now do 2 f_equiv ].
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
@@ -481,8 +484,8 @@ Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 
 End Formalism.
 
-Arguments second_choice_Setoid {_} {_}.
-Arguments second_choice_EqDec {_} {_}.
+Arguments update_choice_Setoid {_} {_}.
+Arguments update_choice_EqDec {_} {_}.
 Arguments update_function {loc} {info} T2 {_} {_} {_} {_} {_} {_} {_}.
 Arguments demonic_action {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
 Arguments demon {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
@@ -496,31 +499,30 @@ Context {Loc : IsLocation loc info}.
 
 
 (** An exemple of first choice: just a bijection *)
-Definition FirstChoiceBijection : first_demonic_choice (bijection loc) := {|
-  first_choice_bijection := Datatypes.id;
-  first_choice_Setoid := @bij_Setoid loc _;
-  first_choice_bijection_compat := fun _ _ Heq => Heq |}.
+Definition FrameChoiceBijection : frame_choice (bijection loc) := {|
+  frame_choice_bijection := Datatypes.id;
+  frame_choice_Setoid := @bij_Setoid loc _;
+  frame_choice_bijection_compat := fun _ _ Heq => Heq |}.
 
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 
 (* Similarities as a first choice, only inside real metric spaces *)
 Definition FirstChoiceSimilarity {RMS : RealMetricSpace loc}
-  : @first_demonic_choice loc info (similarity loc) _ _ _ _ _ := {|
-  first_choice_bijection := @sim_f loc _ _ _;
-  first_choice_Setoid := similarity_Setoid loc;
-  first_choice_bijection_compat := f_compat |}.
+  : @frame_choice loc info (similarity loc) _ _ _ _ _ := {|
+  frame_choice_bijection := @sim_f loc _ _ _;
+  frame_choice_Setoid := similarity_Setoid loc;
+  frame_choice_bijection_compat := f_compat |}.
 
 
 (** An exemple of second choice: no choice at all. *)
-Definition NoChoice : second_demonic_choice Datatypes.unit := {|
-  second_choice_Setoid := _;
-  second_choice_EqDec := _ |}.
+Definition NoChoice : update_choice Datatypes.unit := {|
+  update_choice_Setoid := _;
+  update_choice_EqDec := _ |}.
 
 (** Combining two choices into one. *)
-Definition MergeSecondChoices A B `{second_demonic_choice A} `{second_demonic_choice B}
-  : second_demonic_choice (A * B) := {|
-  second_choice_Setoid := _;
-  second_choice_EqDec := _ |}.
+Definition MergeUpdateChoices A B `{update_choice A} `{update_choice B} : update_choice (A * B) := {|
+  update_choice_Setoid := _;
+  update_choice_EqDec := _ |}.
 
 End ChoiceExample.

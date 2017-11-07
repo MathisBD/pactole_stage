@@ -30,6 +30,7 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R.
 Require Import Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Models.Similarity.
 Require Import Pactole.Models.Rigid.
 Set Implicit Arguments.
 Close Scope R_scope.
@@ -51,9 +52,9 @@ Instance MyRobots : Names := Robots (2 * n) n.
 (** The only information in the state of a robot is its location. *)
 Instance Info : IsLocation R R := OnlyLocation.
 (** Demons use similarities to perform the change of frame of reference. *)
-Instance FDC : first_demonic_choice (Similarity.similarity R) := FirstChoiceSimilarity.
+Instance FC : frame_choice (Similarity.similarity R) := FrameChoiceSimilarity.
 (** Demons do not make any choice in how a robot state is updated. *)
-Instance NoChoice : second_demonic_choice Datatypes.unit := {second_choice_EqDec := unit_eqdec}.
+Instance NoChoice : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec}.
 (** Updates are rigid. *)
 Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
 Proof. now repeat intro. Defined.
