@@ -24,10 +24,8 @@ Require Import Omega.
 Require Export SetoidDec.
 Require Export Pactole.Util.Preliminary.
 Require Export Pactole.Setting.
-Require Export Spaces.RealMetricSpace.
+Require Export Pactole.Spaces.RealMetricSpace.
 Require Pactole.Spaces.Similarity.
-Require Export Pactole.Spectra.Definition.
-Require Export Pactole.Models.Rigid.
 Require Export Pactole.Models.Similarity.
 Export Pactole.Spaces.Similarity.Notations.
 Close Scope R_scope.
@@ -36,18 +34,18 @@ Set Implicit Arguments.
 
 Section GatheringDefinitions.
 
-(** We only required the spaces to be a real metric space.  The Number of robots is abitrary. *)
+(** We only required the space to be a real metric space.  The actual number of robots is arbitrary. *)
 Context {loc T : Type}.
 Context `{RealMetricSpace loc}.
 Context `{Names}.
 
-(** The only information available is the current location. *)
+(** The only information available is the current location.
+    The change of frame of reference uses a similarity, so we exported Pactole.Models.Similarity. *)
 Global Instance Info : IsLocation loc loc := OnlyLocation.
-(** The change of frame of reference uses a similarity, cf Models.Similarity. *)
 
-
-Context {UC : update_choice T}.
+(** The spectrum and the way updates are made to the robot state are still arbitrary. *)
 Context {Spect : Spectrum loc loc}.
+Context {UC : update_choice T}.
 Context {UpdFun : update_function T}.
 
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
