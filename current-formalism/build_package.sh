@@ -42,6 +42,9 @@ cp Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/I
 cp Gathering/InR2/Algorithm.v ./package/Gathering/InR2/
 # Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
+## Specific to the MoRoVer workshop
+cp Template.v script.bak ./package/
+
 make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Convergence/Impossibility_2G_1B.vo
 # Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
 make -C package cleanall
