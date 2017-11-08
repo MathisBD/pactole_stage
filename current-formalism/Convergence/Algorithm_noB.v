@@ -14,21 +14,18 @@
                                                                             
      PACTOLE project                                                        
                                                                             
-     This file is distributed under the terms of the CeCILL-C licence     *)
+     This file is distributed under the terms of the CeCILL-C licence.    *)
 (**************************************************************************)
 
 
 Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8.
 Require Import Reals.
-Require Import Psatz.
 Require Import SetoidDec.
-Require Import Arith.Div2.
 Require Import Omega.
 Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
-Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Spectra.MultisetSpectrum.
 Require Import Pactole.Models.Rigid.
@@ -54,10 +51,10 @@ Existing Instance R2_RMS.
 
 
 Instance Info : IsLocation R2 R2 := OnlyLocation.
-Instance FDC : first_demonic_choice (Similarity.similarity R2) := FirstChoiceSimilarity.
-Instance NoChoice : second_demonic_choice Datatypes.unit := {second_choice_EqDec := unit_eqdec}.
+Instance FDC : frame_choice (Similarity.similarity R2) := FrameChoiceSimilarity.
+Instance NoChoice : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec}.
 
-Instance UpdateFun : update_function Datatypes.unit := {update := fun _ pt _ => pt }.
+Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
 Proof. now repeat intro. Defined.
 
 Instance Update : RigidUpdate.
@@ -72,37 +69,11 @@ Notation round := (@round R2 R2 _ _ _ _ _ _ _ _ _ _).
 Notation execution := (@execution R2 _ _ _).
 Notation demonic_action := (@demonic_action R2 R2 _ _ _ _ _ _).
 
-Add Search Blacklist "Spect.M" "Ring".
-Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.
-Hint Extern 0 (0 =/= 1)%R => symmetry; trivial.
-Hint Extern 0 (1 <> 0)%R => apply R1_neq_R0.
-Hint Extern 0 (0 <> 1)%R => intro; apply R1_neq_R0; now symmetry.
-Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
-Hint Extern 0 (~@equiv R _ 1 0)%R => apply R1_neq_R0.
-Hint Extern 0 (~@equiv R _ 0 1)%R => intro; apply R1_neq_R0; now symmetry.
-Hint Extern 0 (~equiv R _ _ _) =>
-  match goal with | H : ~@equiv R _ ?x ?y |- ~@equiv R _ ?y ?x => intro; apply H; now symmetry end.
-
 
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
 
-(* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall config (pt : R2),
-  (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
- := fun config => @spect_from_config_spec R2 R2 _ _ _ _ _ _ _ config origin.
-
-(** Not true in general as the info may change even if the robot does not move. *)
-Lemma no_moving_same_config : forall r da config,
-  moving r da config = List.nil -> round r da config == config.
-Proof.
-intros r da config Hmove id.
-destruct (equiv_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
-rewrite <- moving_spec, Hmove in Heq. inversion Heq.
-Qed.
-
-Definition nG_non_0 : nG <> 0 := n_non_0.
-
+(** As there are robots, the spectrum can never be empty. *)
 Lemma spect_non_empty : forall config pt, spect_from_config config pt =/= empty.
 Proof.
 intros config pt.
@@ -116,6 +87,15 @@ simpl in Hin. unfold id, MMultisetInterface.In in Hin. omega.
 Qed.
 
 Hint Resolve spect_non_empty.
+
+(** There is no byzantine robot so to prove anything about an ident
+    we just need to consider good robots.*)
+Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
+Proof.
+intros P Hg [g | b].
++ apply Hg.
++ destruct b. omega.
+Qed.
 
 (** ** Properties of executions  *)
 
@@ -149,7 +129,8 @@ Qed.
 Instance attracted_compat : Proper (equiv ==> eq ==> equiv ==> iff) attracted.
 Proof. intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
-(** A solution is just convergence property for any demon. *)
+(** A robogram solves convergence if all robots are attracted to a point,
+    no matter what the demon and the starting configuration are. *)
 Definition solution_SSYNC (r : robogram) : Prop :=
   forall (config : configuration) (d : similarity_demon), Fair d →
   forall (ε : R), 0 < ε → exists (pt : R2), attracted pt ε (execute r d config).
@@ -167,17 +148,16 @@ Qed.
 Close Scope R_scope.
 
 
-(** * Proof of correctness of a convergence algorithm with one third of robots byzantine. *)
+(** * Proof of correctness of a convergence algorithm with no byzantine robot. *)
 
 Definition convergeR2_pgm (s : spectrum) : R2 := barycenter (support s).
-(* TODO: support should be changed for elements, once we have SetSpectrum. *)
 
 Instance convergeR2_pgm_compat : Proper (equiv ==> equiv) convergeR2_pgm.
 Proof. intros ? ? Heq. unfold convergeR2_pgm. apply barycenter_compat. now rewrite Heq. Qed.
 
 Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
-
+(** Rewriting round using only the global frame fo reference. *)
 Lemma barycenter_sim : forall (sim : Similarity.similarity R2) s, s =/= empty ->
   barycenter (support (MMultisetExtraOps.map sim s)) == sim (barycenter (support s)).
 Proof.
@@ -192,27 +172,41 @@ Theorem round_simplify : forall da config,
                then (barycenter (support (spect_from_config config (config id))))
                else config id.
 Proof.
-intros da config id. unfold round.
+intros da config id.
+pattern id. apply no_byz. clear id. intro g.
+unfold round.
 destruct_match; try reflexivity; [].
-destruct_match.
-+ remember (change_frame da config g) as sim.
-  change (Bijection.section (Bijection.inverse (first_choice_bijection sim)))
-    with (Bijection.section (sim ⁻¹)).
-  cbn -[equiv spect_from_config map_config barycenter support RobotInfo.app Similarity.inverse].
-  unfold id, convergeR2_pgm.
-  rewrite <- barycenter_sim, spect_from_config_map; autoclass.
-  assert (Hconfig : map_config (RobotInfo.app (sim ⁻¹)) (map_config (RobotInfo.app sim) config) == config).
-  { rewrite map_config_merge; autoclass; []. rewrite <- (map_config_id config) at 2.
-    apply map_config_compat; try reflexivity; [].
-    simpl. intros ? ? ?. unfold id. now rewrite Bijection.retraction_section. }
-  rewrite Hconfig. f_equiv.
-+ destruct b; omega.
+remember (change_frame da config g) as sim.
+change (Bijection.section (Bijection.inverse (frame_choice_bijection sim)))
+  with (Bijection.section (sim ⁻¹)).
+cbn -[equiv spect_from_config map_config barycenter support RobotInfo.app Similarity.inverse].
+unfold id, convergeR2_pgm.
+rewrite <- barycenter_sim, spect_from_config_map; autoclass.
+assert (Hconfig : map_config (RobotInfo.app (sim ⁻¹)) (map_config (RobotInfo.app sim) config) == config).
+{ rewrite map_config_merge; autoclass; []. rewrite <- (map_config_id config) at 2.
+  apply map_config_compat; try reflexivity; [].
+  simpl. intros ? ? ?. unfold id. now rewrite Bijection.retraction_section. }
+rewrite Hconfig. f_equiv.
 Qed.
+
+(** Once robots are contained within a circle, they will never escape it. *)
+
+(* First, we assume a geometric property of the barycenter:
+   if all points are included in a circle, then so is their barycenter. *)
+Axiom barycenter_circle : forall center radius (l : list R2),
+  List.Forall (fun pt => dist center pt <= radius)%R l ->
+  (dist center (barycenter l) <= radius)%R.
 
 Lemma contained_barycenter : forall c r config,
   contained c r config -> (dist c (barycenter (support (spect_from_config config origin))) <= r)%R.
 Proof.
-Admitted.
+intros c r config Hc. apply barycenter_circle.
+rewrite Forall_forall. intro.
+rewrite <- InA_Leibniz. change eq with equiv.
+rewrite support_In, spect_from_config_In.
+intros [id Hpt]. rewrite <- Hpt.
+pattern id. apply no_byz. apply Hc.
+Qed.
 
 Lemma contained_next : forall da c r config,
   contained c r config -> contained c r (round convergeR2 da config).
@@ -239,26 +233,15 @@ intros config d Hfair ε Hε.
 eexists (barycenter (support _)).
 apply Stream.Later, Stream.Now. rewrite execute_tail.
 apply converge_forever.
-intro g. unfold round.
+intro g. rewrite round_simplify.
 destruct Hfair as [Hfair _]; hnf in Hfair.
 rewrite Hfair.
-rewrite rigid_update.
-remember (change_frame (Stream.hd (d : demon)) config g) as sim.
-simpl first_choice_bijection; simpl RobotInfo.app; unfold id.
-change (pgm convergeR2) with convergeR2_pgm. unfold convergeR2_pgm.
-change (Bijection.inverse sim) with (Similarity.sim_f (sim ⁻¹)).
-rewrite <- barycenter_sim; auto; [].
-rewrite spect_from_config_map; autoclass; [].
-rewrite map_config_merge; autoclass.
-change (λ x : R2, RobotInfo.app (sim ⁻¹) (sim x)) with (RobotInfo.app (sim ⁻¹ ∘ sim)).
-rewrite Similarity.compose_inverse_l, map_config_id.
 rewrite spect_from_config_ignore_snd.
-transitivity 0%R; try lra; []. apply Req_le.
+transitivity 0%R; try (now apply Rlt_le); [].
+apply Req_le.
 apply R2_dist_defined_2.
 Qed.
 
-Print Assumptions convergence_FSYNC.
-
 Theorem convergence_SSYNC : solution_SSYNC convergeR2.
 Proof.
-Admitted.
+Abort.
