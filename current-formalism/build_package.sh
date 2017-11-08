@@ -31,7 +31,8 @@ cp Spaces/RealMetricSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Gr
 
 cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra
 
-cp Models/Rigid.v Models/Flexible.v Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v Models/Similarity.v ./package/Models/
+cp Models/Rigid.v Models/DiscreteGraph.v Models/Similarity.v ./package/Models/
+# Models/Flexible.v Models/RigidFlexibleEquivalence.v
 
 cp Convergence/Impossibility_2G_1B.v Convergence/Algorithm_noB.v ./package/Convergence/
 
