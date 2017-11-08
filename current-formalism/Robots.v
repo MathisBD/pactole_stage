@@ -1,15 +1,6 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            *)
-(*   PACTOLE project                                                      *)
-(*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
-(*                                                                        *)
-(**************************************************************************)
-
-(**************************************************************************)
 (**   Mechanised Framework for Local Interactions & Distributed Algorithms  
-   C. Auger, P. Courtieu, L. Rieg, X. Urbain                                
+   P. Courtieu, L. Rieg, X. Urbain                                          
                                                                             
    PACTOLE project                                                          
                                                                             
@@ -17,16 +8,14 @@
                                                                           *)
 (**************************************************************************)
 
-Require Import Utf8.
-Require Import Morphisms.
+
+Require Import SetoidList.
 Require Import Arith_base.
 Require Import Omega.
-Require Import SetoidList.
-Require Import Pactole.Preliminary.
-(* TODO: should we add a fold operator? *)
-
-Open Scope list_scope.
+Require Import Pactole.Util.Preliminary.
 Set Implicit Arguments.
+(* TODO: should we add a fold operator? *)
+(* FIXME: change the equalities to use equiv and the Setoid class *)
 
 
 Lemma subset_dec : forall N (x y : {n : nat | n < N}), {x = y} + {x <> y}.
@@ -50,7 +39,7 @@ Definition enum N : list {n : nat | n < N} := build_enum (Nat.le_refl N) nil.
 Lemma In_build_enum : forall N k (Hle : k <= N) l x, In x (build_enum Hle l) <-> In x l \/ proj1_sig x < k.
 Proof.
 intros N k. induction k; intros Hle l x; simpl.
-+ intuition. destruct x; omega.
++ intuition.
 + rewrite IHk. simpl. split; intro Hin.
   - destruct Hin as [[Hin | Hin] | Hin]; intuition; [].
     subst. simpl. right. omega.
@@ -110,7 +99,7 @@ intros A eqA N f g k. induction k; intros Hle l Heq x Hx; simpl.
     destruct (eqlistA_app_split _ _ _ _ Heq) as [_ Heq'].
     - now do 2 rewrite map_length, build_enum_length.
     - simpl in Heq'. inv Heq'.
-      assert (Heqx : x = exist (λ x : nat, x < N) (proj1_sig x) Hle).
+      assert (Heqx : x = exist (fun x => x < N) (proj1_sig x) Hle).
       { clear. destruct x; simpl. f_equal. apply le_unique. }
       now rewrite Heqx.
 Qed.
@@ -190,147 +179,117 @@ Lemma eq_proj1 : forall N (x y : {n : nat | n < N}), proj1_sig x = proj1_sig y -
 Proof. intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qed.
 
 
-(** *  Identification of robots  **)
+(** ** Byzantine Robots *)
 
-(** The number of good and byzantine robots *)
-Module Type Size.
-  Parameter nG : nat.
-  Parameter nB : nat.
-End Size.
+(** We have finetely many robots. Some are good, other are byzantine.
+    Both are represented by an abtract type that can be enumerated. *)
+Class Names := {
+  (** Number of good and byzantine robots *)
+  nG : nat;
+  nB : nat;
+  (** Types representing good and byzantine robots *)
+  G : Type;
+  B : Type;
+  (** Enumerations of robots *)
+  Gnames : list G;
+  Bnames : list B;
+  (** The enumerations are complete and without duplicates *)
+  In_Gnames : forall g : G, In g Gnames;  
+  In_Bnames : forall b : B, In b Bnames;
+  Gnames_NoDup : NoDup Gnames;
+  Bnames_NoDup : NoDup Bnames;
+  (** There is the right amount of robots *)
+  Gnames_length : length Gnames = nG;
+  Bnames_length : length Bnames = nB;
+  (** We can tell robots apart *)
+  Geq_dec : forall g g' : G, {g = g'} + {g <> g'};
+  Beq_dec : forall b b' : B, {b = b'} + {b <> b'};
+  (** Being a finite type, extensional function equality is decidable *)
+  fun_Gnames_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x);
+  fun_Bnames_eq : forall {A : Type} eqA f g,
+    @eqlistA A eqA (List.map f Bnames) (List.map g Bnames) -> forall x, eqA (f x) (g x)}.
 
-Inductive identifier {G} {B} : Type :=  Good : G → identifier | Byz : B → identifier.
+Global Opaque In_Gnames In_Bnames Gnames_NoDup Bnames_NoDup
+              Gnames_length Bnames_length Geq_dec Beq_dec fun_Gnames_eq fun_Bnames_eq.
 
-Module Type Robots(N : Size).
-  
-  (** We have finetely many robots. Some are good, others are byzantine. *)
-  Definition G := {n : nat | n < N.nG}.
-  Definition B := {n : nat | n < N.nB}.
-  
-  (** Disjoint union of both kinds of robots is obtained by a sum type. *)
-  (* TODO: replace this by (G ⊎ B). *)
-  Definition ident := @identifier G B.
-  
-  (** Names of robots **)
-  Definition Gnames : list G := enum N.nG.
-  Definition Bnames : list B := enum N.nB.
-  Definition names : list identifier := map Good Gnames ++ map Byz Bnames.
-  
-  Parameter In_Gnames : forall g : G, In g Gnames.
-  Parameter In_Bnames : forall b : B, In b Bnames.
-  Parameter In_names : forall id : ident, In id names.
-  
-  Parameter Gnames_NoDup : NoDup Gnames.
-  Parameter Bnames_NoDup : NoDup Bnames.
-  Parameter names_NoDup : NoDup names.
-  
-  Parameter Gnames_length : length Gnames = N.nG.
-  Parameter Bnames_length : length Bnames = N.nB.
-  Parameter names_length : length names = N.nG + N.nB.
-  
-  Parameter Geq_dec : forall g g' : G, {g = g'} + {g <> g'}.
-  Parameter Beq_dec : forall b b' : B, {b = b'} + {b <> b'}.
-  Parameter eq_dec : forall id id' : ident, {id = id'} + { id <> id'}.
-  
-  Parameter fun_Gnames_eq : forall {A : Type} eqA f g,
-    @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x).
-  Parameter fun_Bnames_eq : forall {A : Type} eqA f g,
-    @eqlistA A eqA (List.map f Bnames) (List.map g Bnames) -> forall x, eqA (f x) (g x).
-  Parameter fun_names_eq : forall {A : Type} eqA f g,
-    @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).
-End Robots.
+(** Identifiers makes good and byzantine robots undistinguishable *)
+Inductive identifier {G} {B} : Type :=
+  | Good (g : G)
+  | Byz (b : B).
 
+Definition ident `{H : Names} := @identifier (@G H) (@B H).
 
-Module Make(N : Size) : Robots(N).
-  Definition G := {n : nat | n < N.nG}.
-  Definition B := {n : nat | n < N.nB}.
-  Definition ident := @identifier G B.
+Definition names `{H : Names} : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
-  Definition Gnames : list G := enum N.nG.
-  Definition Bnames : list B := enum N.nB.
-  Definition names : list identifier := map Good Gnames ++ map Byz Bnames.
-  
-  Lemma In_Gnames : forall g : G, In g Gnames.
-  Proof. intro g. unfold Gnames, G. rewrite In_enum. apply proj2_sig. Qed.
-  
-  Lemma In_Bnames : forall b : B, In b Bnames.
-  Proof. intro b. unfold Bnames, B. rewrite In_enum. apply proj2_sig. Qed.
-  
-  Lemma In_names : forall id, In id names.
-  Proof.
-  intro id. unfold names. rewrite in_app_iff. destruct id as [g | b].
-  - left. apply in_map, In_Gnames.
-  - right. apply in_map, In_Bnames.
-  Qed.
-  
-  Lemma Gnames_NoDup : NoDup Gnames.
-  Proof. unfold Gnames. apply enum_NoDup. Qed.
-  
-  Lemma Bnames_NoDup : NoDup Bnames.
-  Proof. unfold Bnames. apply enum_NoDup. Qed.
-  
-  Lemma names_NoDup : NoDup names.
-  Proof.
-  unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
-  + apply (map_injective_NoDupA _ _).
-    - now repeat intro; subst.
-    - intros ? ? H. now inversion H.
-    - rewrite NoDupA_Leibniz. apply Gnames_NoDup.
-  + apply (map_injective_NoDupA _ _).
-    - now repeat intro; subst.
-    - intros ? ? H. now inversion H.
-    - rewrite NoDupA_Leibniz. apply Bnames_NoDup.
-  + intros id HinA HinB. rewrite (InA_map_iff _ _) in HinA. rewrite (InA_map_iff _ _) in HinB.
-    - destruct HinA as [? [? ?]], HinB as [? [? ?]]. subst. discriminate.
-    - now repeat intro; subst.
-    - now repeat intro; subst.
-  Qed.
-  
-  Lemma Gnames_length : length Gnames = N.nG.
-  Proof. unfold Gnames. apply enum_length. Qed.
-  
-  Lemma Bnames_length : length Bnames = N.nB.
-  Proof. unfold Bnames. apply enum_length. Qed.
-  
-  Lemma names_length : length names = N.nG + N.nB.
-  Proof.
-  unfold names. rewrite app_length, map_length, map_length.
-  now rewrite Gnames_length, Bnames_length.
-  Qed.
-  
-  Lemma Geq_dec: forall g g' : G, {g = g'} + {g <> g'}.
-  Proof. intros g g'. destruct (subset_dec g g'); auto. Qed.
-  
-  Lemma Beq_dec: forall b b' : B, {b = b'} + {b <> b'}.
-  Proof. intros b b'. destruct (subset_dec b b'); auto. Qed.
-  
-  Lemma eq_dec: forall id id' : ident, {id = id'} + {id <> id'}.
-  Proof.
-  intros id id'.
-  destruct id as [g | b], id' as [g' | b']; try (now right; discriminate); [|].
-  + destruct (Geq_dec g g').
-    - left; subst; auto.
-    - right; intro Habs. now injection Habs.
-  + destruct (Beq_dec b b').
-    - left; subst; auto.
-    - right; intro Habs. now injection Habs.
-  Qed.
-  
-  Lemma fun_Gnames_eq : forall {A : Type} eqA f g,
-    @eqlistA A eqA (List.map f Gnames) (List.map g Gnames) -> forall x, eqA (f x) (g x).
-  Proof. intros. now apply enum_eq. Qed.
-  
-  Lemma fun_Bnames_eq : forall {A : Type} eqA f g,
-    @eqlistA A eqA (List.map f Bnames) (List.map g Bnames) -> forall x, eqA (f x) (g x).
-  Proof. intros. now apply enum_eq. Qed.
-  
-  Lemma fun_names_eq : forall {A : Type} eqA f g,
-    @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).
-  Proof.
-  intros A eqA f h Heq id.
-  unfold names in Heq. repeat rewrite ?map_app, map_map in Heq. apply eqlistA_app_split in Heq.
-  + destruct id as [g | b].
-    - change (eqA ((fun x => f (Good x)) g) ((fun x => h (Good x)) g)). apply fun_Gnames_eq, Heq.
-    - change (eqA ((fun x => f (Byz x)) b) ((fun x => h (Byz x)) b)). apply fun_Bnames_eq, Heq.
-  + now do 2 rewrite map_length.
-  Qed.
-End Make.
+Lemma In_names `{Names} : forall r : ident, In r names.
+Proof.
+intro r. cbn. unfold names. rewrite in_app_iff. destruct r as [g | b].
+- left. apply in_map, In_Gnames.
+- right. apply in_map, In_Bnames.
+Qed.
+
+Lemma names_NoDup `{Names} : NoDup names.
+Proof.
+unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
++ apply (map_injective_NoDupA _ _).
+  - now repeat intro; hnf in *; subst.
+  - intros ? ? Heq. now inversion Heq.
+  - rewrite NoDupA_Leibniz. apply Gnames_NoDup.
++ apply (map_injective_NoDupA _ _).
+  - now repeat intro; hnf in *; subst.
+  - intros ? ? Heq. now inversion Heq.
+  - rewrite NoDupA_Leibniz. apply Bnames_NoDup.
++ intros id HinA HinB. rewrite (InA_map_iff _ _) in HinA. rewrite (InA_map_iff _ _) in HinB.
+  - destruct HinA as [? [? ?]], HinB as [? [? ?]]. subst. discriminate.
+  - now repeat intro; hnf in *; subst.
+  - now repeat intro; hnf in *; subst.
+Qed.
+
+Lemma names_length `{Names} : length names = nG + nB.
+Proof. unfold names. now rewrite app_length, map_length, map_length, Gnames_length, Bnames_length. Qed.
+
+Lemma names_eq_dec `{Names} : forall id id' : ident, {id = id'} + { id <> id'}.
+Proof.
+intros id id'.
+destruct id as [g | b], id' as [g' | b']; try (now right; discriminate); [|].
++ destruct (Geq_dec g g').
+  - left; subst; auto.
+  - right; intro Habs. now injection Habs.
++ destruct (Beq_dec b b').
+  - left; subst; auto.
+  - right; intro Habs. now injection Habs.
+Qed.
+
+Lemma fun_names_eq `{Names} : forall {A : Type} eqA f g,
+  @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).
+Proof.
+intros A eqA f h Heq id.
+unfold names in Heq. repeat rewrite ?map_app, map_map in Heq. apply eqlistA_app_split in Heq.
++ destruct id as [g | b].
+  - change (eqA ((fun x => f (Good x)) g) ((fun x => h (Good x)) g)). apply fun_Gnames_eq, Heq.
+  - change (eqA ((fun x => f (Byz x)) b) ((fun x => h (Byz x)) b)). apply fun_Bnames_eq, Heq.
++ now do 2 rewrite map_length.
+Qed.
+
+(** Given a number of good and byzntine robots, we can build canonical names.
+    It is not declared as a global instance to avoid creating spurious settings. *)
+Local Instance Robots (n m : nat) : Names := {|
+  nG := n;
+  nB := m;
+  G := {k : nat | k < n};
+  B := {k : nat | k < m};
+  Gnames := enum n;
+  Bnames := enum m |}.
+Proof.
++ intro g. apply In_enum, proj2_sig.
++ intro b. apply In_enum, proj2_sig.
++ apply enum_NoDup.
++ apply enum_NoDup.
++ apply enum_length.
++ apply enum_length.
++ intros g g'. destruct (subset_dec g g'); auto.
++ intros b b'. destruct (subset_dec b b'); auto.
++ intros. now apply enum_eq.
++ intros. now apply enum_eq.
+Defined.
