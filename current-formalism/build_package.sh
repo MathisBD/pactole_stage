@@ -25,7 +25,7 @@ cp Util/MMultiset/Preliminary.v Util/MMultiset/MMultisetInterface.v Util/MMultis
 
 cp Util/Preliminary.v Util/Lexprod.v Util/Stream.v Util/Bijection.v ./package/Util/
 
-cp  Robots.v RobotInfo.v Configurations.v CommonFormalism.v Setting.v Makefile _CoqProject ./package/
+cp  Robots.v RobotInfo.v Configurations.v Formalism.v Setting.v Makefile _CoqProject ./package/
 
 cp Spaces/RealMetricSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces
 
