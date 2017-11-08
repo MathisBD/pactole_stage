@@ -27,10 +27,10 @@ Formalism.v
 Setting.v
 
 ## Models
-Models/Flexible.v
+#Models/Flexible.v
 Models/Rigid.v
-Models/RigidFlexibleEquivalence.v
-Models/DiscreteGraph.v
+#Models/RigidFlexibleEquivalence.v
+#Models/DiscreteGraph.v
 Models/Similarity.v
 #Models/ContinuousGraph.v
 #Models/GraphEquivalence.v
