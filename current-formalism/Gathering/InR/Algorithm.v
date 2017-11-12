@@ -42,9 +42,9 @@ Typeclasses eauto := 10.
 Set Implicit Arguments.
 
 
-(** We assume that we have at least two good robots and no byzantine one. *)
 Parameter n : nat.
 Axiom size_G : n >= 2.
+(** We assume that we have at least two good robots and no byzantine one. *)
 Instance MyRobots : Names := Robots n 0.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)

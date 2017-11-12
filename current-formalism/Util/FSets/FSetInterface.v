@@ -1,5 +1,5 @@
-(* Adpated from Stephan Lescuyer's Containers library to avoid ordering of elts. *)
 
+(* Adpated from Stephan Lescuyer's Containers library to avoid ordering of elts. *)
 Require Import SetoidList.
 Require Import SetoidDec.
 (* Require Import Morphisms. *)

@@ -77,9 +77,9 @@ Definition execution := Stream.t configuration.
     - in the move phase, it makes some choices about how the robots' states should be updated.
     
     Therefore, it can make choices at two places: while computing the local frame of reference for a robot
-    and while updating robot states.  These choice point will be represented explicitely as demon choices. *)
+    and while updating robot states.  These choice points will be represented explicitely as demon choices. *)
 
-(** A [demonic_first_choice] represents the choices made by the demon to compute the spectrum.
+(** A [frame_choice] represents the choices made by the demon to compute the spectrum.
     It must at least contain at bijection to compute the change of frame of reference.  *)
 Class frame_choice `{IsLocation loc info} := {
   frame_choice_bijection : T1 -> bijection loc;
@@ -87,7 +87,7 @@ Class frame_choice `{IsLocation loc info} := {
   frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
 Global Existing Instance frame_choice_bijection_compat.
 
-(** A [demonic_second_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
+(** An [update_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
 Class update_choice := {
   update_choice_Setoid :> Setoid T2;
   update_choice_EqDec :> EqDec update_choice_Setoid }.
@@ -101,7 +101,7 @@ Context `{@frame_choice _ _ _ _ _}.
 Context `{update_choice}.
 Context `{@update_function _ _ _ _ _ _}.
 
-(* The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
+(* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
   (** Select which robots are activated *)
   activate : configuration -> ident -> bool;
@@ -395,9 +395,8 @@ Lemma Between_LocallyFair : forall id (d : demon) id' k,
   Between id id' d k -> LocallyFairForOne id d.
 Proof. intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
 
-(** A robot is never activated before itself with a fair demon! The
-    fairness hypothesis is necessary, otherwise the robot may never be
-    activated. *)
+(** A robot is never activated before itself with a fair demon!
+    The fairness hypothesis is necessary, otherwise the robot may never be activated. *)
 Lemma Between_same :
   forall id (d : demon) k, LocallyFairForOne id d -> Between id id d k.
 Proof. intros id d k Hd. induction Hd; now econstructor; eauto. Qed.
