@@ -1,7 +1,7 @@
 (** Template file for Pactole *)
 
-(* Complements to Coq stdlib. *)
-Require Import Pactole.Util.Preliminary.
+(* Helping typeclass resolution avoiding infinite loops. *)
+Typeclasses eauto := (bfs).
 
 (* The general Pactoel framework. *)
 Require Import Pactole.Setting.
@@ -31,10 +31,9 @@ Instance MyRobots : Names := Robots (2 * n) 0.
    The first [R2] is the space, whereas the second one is the state (which must contain the space). *)
 Instance Info : IsLocation R2 R2 := OnlyLocation.
 
-
 (* What can demons choose to change of frame of reference?
    Here we use similarities. *)
-Instance FC : frame_choice (Similarity.similarity R) := FrameChoiceSimilarity.
+Instance FC : frame_choice (Similarity.similarity R2) := FrameChoiceSimilarity.
 
 (* What choices can demons make for the state update?
    Here they do not make any choice, hence we use [Datatypes.unit]. *)
@@ -45,7 +44,7 @@ Instance UC : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec
 Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
 Proof. now repeat intro. Defined.
 
-(* If you have some assumption on your model, now is the time to prove them.
+(* If you have constraints on your model, now is the time to prove them.
    Here, we prove that our update function is indeed rigid. *)
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.
@@ -58,11 +57,21 @@ Definition stall (e : execution) := Stream.hd e == Stream.hd (Stream.tl e).
 
 Definition my_problem : execution -> Prop := fun e => Stream.forever stall e.
 
+(* This is the robogram itself. *)
 Definition my_robogram (s : spectrum) : R2 := origin.
 
+(* We must prove that equal spectra gives equal destinations.
+   This is non trivial as both equalities are arbitrary equivalence relations. *)
+Lemma my_robogram_compat : Proper (equiv ==> equiv) my_robogram.
+Proof. repeat intro. reflexivity. Qed.
 
-Theorem my_solution : forall d configuration,
+(* This combines the robogram and its compatibility proof. *)
+Definition full_robogram : robogram := {|
+  pgm := my_robogram;
+  pgm_compat := my_robogram_compat |}.
+
+Theorem my_solution : forall d config,
   Fair d -> (* this is actually useless *)
-  my_problem (execute my_robogram d config).
+  my_problem (execute full_robogram d config).
 Proof.
 Admitted.

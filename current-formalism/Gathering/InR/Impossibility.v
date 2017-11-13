@@ -108,7 +108,7 @@ Definition mk_info : R -> R := id.
 Lemma mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
 Proof. reflexivity. Qed.
 (* 
-(** We only assume that we know how to build a state from a position and that this is compatible with [get_location]. *)
+(** We only assume that we know how to build a state from a position and this is compatible with [get_location]. *)
 Variable mk_info : R -> info.
 Hypothesis mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
 Instance mk_info_compat : Proper (equiv ==> equiv) mk_info.
@@ -627,7 +627,8 @@ transitivity (map (homothecy (get_location (config (Good gfirst))) Hd' ⁻¹) sp
 Qed.
 
 Lemma dist_invalid : forall d (Hd : d <> 0) (config : configuration),
-  (forall g1 g2, List.In g1 right -> List.In g2 left -> get_location (config (Good g1)) - get_location (config (Good g2)) = d) ->
+  (forall g1 g2, List.In g1 right -> List.In g2 left ->
+                 get_location (config (Good g1)) - get_location (config (Good g2)) = d) ->
   invalid config.
 Proof.
 intros d Hd config Hconfig. unfold invalid. repeat split; try apply even_nG || apply nG_ge_2; [].
@@ -691,8 +692,8 @@ Qed.
 Lemma dist_homothecy_spectrum_centered_right : forall ρ (Hρ : ρ <> 0) (config : configuration),
   (forall g1 g2, List.In g1 right -> List.In g2 left ->
                  get_location (config (Good g1)) - get_location (config (Good g2)) = /ρ) ->
-  forall g, List.In g right -> !! (map_config (homothecy (get_location (config (Good g))) (Ropp_neq_0_compat _ Hρ)) config)
-                               == !! config2.
+  forall g, List.In g right -> !! (map_config (homothecy (get_location (config (Good g))) (Ropp_neq_0_compat _ Hρ))
+                                              config) == !! config2.
 Proof.
 intros ρ Hρ config Hconfig g Hg. apply @spect_from_config_compat; try reflexivity; [].
 apply no_byz_eq. intro g'. simpl in *. unfold mk_info, id, map_config in *.
@@ -775,18 +776,28 @@ Given a non empty finite even set [G] and a robogram [r] on ([G]) × ∅,
 there is no (k>0)-fair demon for which the gathering problem is solved for any starting configuration. *)
 
 Theorem noGathering :
-  forall k, (1<=k)%nat -> ~(forall d, kFair k d -> FullSolGathering r d).
+  forall k, (1<=k)%nat -> exists d, kFair k d /\ ~FullSolGathering r d.
 Proof.
-intros k h Habs.
-specialize (Habs bad_demon (kFair_bad_demon' h) config1).
-destruct Habs as [pt Habs]. revert Habs. apply different_no_gathering.
-unfold bad_demon.
-destruct (Rdec move 1) as [Hmove | Hmove].
-+ now apply Always_invalid1.
-+ apply (Always_invalid2 Hmove R1_neq_R0 config1); try reflexivity; [].
-  intros. simpl. unfold mk_info, id.
-  destruct (left_dec g1), (left_dec g2); simpl; field || exfalso; eauto.
+intros k Hk. exists bad_demon. split.
++ now apply kFair_bad_demon'.
++ intro Habs. specialize (Habs config1).
+  destruct Habs as [pt Habs]. revert Habs.
+  apply different_no_gathering.
+  unfold bad_demon.
+  destruct (Rdec move 1) as [Hmove | Hmove].
+  - now apply Always_invalid1.
+  - apply (Always_invalid2 Hmove R1_neq_R0 config1); try reflexivity; [].
+    intros. simpl. unfold mk_info, id.
+    destruct (left_dec g1), (left_dec g2); simpl; field || exfalso; eauto.
 Qed.
+
+Theorem noGatheringUniversal :
+  forall k, (1<=k)%nat ->
+  exists d, kFair k d
+         /\ forall config, invalid config -> exists pt, WillGather pt (execute r d config).
+Proof.
+(* TODO *)
+Abort.
 
 End ImpossibilityProof.
 

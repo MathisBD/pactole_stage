@@ -23,7 +23,7 @@ Set Automatic Coercions Import. (* coercions are available as soon as functor ap
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
-Require Import Rbase Rbasic_fun.
+Require Export Rbase Rbasic_fun.
 Require Import Sorting.
 Require Import List.
 Require Import Relations.
