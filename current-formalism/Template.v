@@ -1,6 +1,6 @@
 (** Template file for Pactole *)
 
-(* Helping typeclass resolution avoiding infinite loops. *)
+(* Helping typeclass resolution avoid infinite loops. *)
 Typeclasses eauto := (bfs).
 
 (* The general Pactoel framework. *)
@@ -17,6 +17,7 @@ Require Import Pactole.Spectra.MultisetSpectrum.
 (* Optionally, you can add constraint on the model such as rigid move, or using simlarities. *)
 Require Import Pactole.Models.Similarity.
 Require Import Pactole.Models.Rigid.
+Close Scope R_scope.
 
 
 (* Define the number of robots: first the number of good ones, then the number of byzantine ones. *)

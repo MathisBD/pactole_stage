@@ -22,6 +22,7 @@ Require Import Utf8_core.
 Require Import Omega.
 Require Import SetoidList.
 Require Import SetoidDec.
+Require Import SetoidClass.
 Require Import Pactole.Util.Preliminary.
 Require Export Pactole.Util.FSets.FSetInterface.
 Require Export Pactole.Util.FSets.FSetFacts.
@@ -184,8 +185,10 @@ Context {Loc : IsLocation loc info}.
 Context `{Names}.
 
 (* FIXME: remove once we have the implem in FSetList. *)
-Context {FS : @FSet loc _ _}.
-Context {FSSpec : @FSetSpecs loc _ _ FS}.
+Parameter (FS : @FSet loc _ _).
+Parameter (FSSpec : @FSetSpecs loc _ _ FS).
+Existing Instances FS FSSpec.
+
 
 Notation configuration := (@configuration info _ _ _ _).
 Notation map_config := (@map_config info _ _ _ _).

@@ -27,7 +27,7 @@ Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Spectra.SetSpectrum.
 Require Import Pactole.Models.Rigid.
 Require Import Pactole.Models.Similarity.
 Set Implicit Arguments.
@@ -83,7 +83,7 @@ pose (g := exist _ 0 Hn : G).
 specialize (Habs (config (Good g))).
 rewrite empty_spec in Habs.
 assert (Hin := pos_in_config config origin (Good g)).
-simpl in Hin. unfold id, MMultisetInterface.In in Hin. omega.
+simpl in Hin. unfold id in Hin. tauto.
 Qed.
 
 Hint Resolve spect_non_empty.
@@ -150,7 +150,7 @@ Close Scope R_scope.
 
 (** * Proof of correctness of a convergence algorithm with no byzantine robot. *)
 
-Definition convergeR2_pgm (s : spectrum) : R2 := barycenter (support s).
+Definition convergeR2_pgm (s : spectrum) : R2 := barycenter (elements s).
 
 Instance convergeR2_pgm_compat : Proper (equiv ==> equiv) convergeR2_pgm.
 Proof. intros ? ? Heq. unfold convergeR2_pgm. apply barycenter_compat. now rewrite Heq. Qed.
@@ -159,17 +159,17 @@ Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
 (** Rewriting round using only the global frame fo reference. *)
 Lemma barycenter_sim : forall (sim : Similarity.similarity R2) s, s =/= empty ->
-  barycenter (support (MMultisetExtraOps.map sim s)) == sim (barycenter (support s)).
+  barycenter (elements (FSetFacts.map sim s)) == sim (barycenter (elements s)).
 Proof.
 intros sim s Hs.
-rewrite map_injective_support; autoclass; try apply Similarity.injective; [].
-apply barycenter_sim_morph. now rewrite support_nil.
+rewrite map_injective_elements; autoclass; try apply Similarity.injective; [].
+apply barycenter_sim_morph. now rewrite elements_nil.
 Qed.
 
 Theorem round_simplify : forall da config,
   round convergeR2 da config
   == fun id => if da.(activate) config id
-               then (barycenter (support (spect_from_config config (config id))))
+               then (barycenter (elements (spect_from_config config (config id))))
                else config id.
 Proof.
 intros da config id.
@@ -179,7 +179,7 @@ destruct_match; try reflexivity; [].
 remember (change_frame da config g) as sim.
 change (Bijection.section (Bijection.inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
-cbn -[equiv spect_from_config map_config barycenter support RobotInfo.app Similarity.inverse].
+cbn -[equiv spect_from_config map_config barycenter RobotInfo.app Similarity.inverse].
 unfold id, convergeR2_pgm.
 rewrite <- barycenter_sim, spect_from_config_map; autoclass.
 assert (Hconfig : map_config (RobotInfo.app (sim ⁻¹)) (map_config (RobotInfo.app sim) config) == config).
@@ -198,12 +198,12 @@ Axiom barycenter_circle : forall center radius (l : list R2),
   (dist center (barycenter l) <= radius)%R.
 
 Lemma contained_barycenter : forall c r config,
-  contained c r config -> (dist c (barycenter (support (spect_from_config config origin))) <= r)%R.
+  contained c r config -> (dist c (barycenter (elements (spect_from_config config origin))) <= r)%R.
 Proof.
 intros c r config Hc. apply barycenter_circle.
 rewrite Forall_forall. intro.
 rewrite <- InA_Leibniz. change eq with equiv.
-rewrite support_In, spect_from_config_In.
+rewrite elements_spec, spect_from_config_In.
 intros [id Hpt]. rewrite <- Hpt.
 pattern id. apply no_byz. apply Hc.
 Qed.
@@ -230,7 +230,7 @@ Proof. coinduction Hcorec; auto using contained_next. Qed.
 Theorem convergence_FSYNC : solution_FSYNC convergeR2.
 Proof.
 intros config d Hfair ε Hε.
-eexists (barycenter (support _)).
+eexists (barycenter (elements _)).
 apply Stream.Later, Stream.Now. rewrite execute_tail.
 apply converge_forever.
 intro g. rewrite round_simplify.

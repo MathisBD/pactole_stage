@@ -613,6 +613,24 @@ destruct (elements empty) as [| e l]; trivial; [].
 exfalso. rewrite <- (Hspec e). now left.
 Qed.
 
+Lemma PermutationA_nil : forall A (eqA : relation A), Equivalence eqA ->
+  forall l, PermutationA eqA nil l -> l = nil.
+Proof.
+intros A eqA HeqA l Hl. destruct l.
++ reflexivity.
++ exfalso. rewrite <- InA_nil. rewrite (Coq.Lists.SetoidPermutation.PermutationA_equivlistA HeqA).
+  - now left.
+  - eassumption.
+Qed.
+
+Lemma elements_nil `{F : FSet A, @FSetSpecs _ _ _ F} : forall s, elements s = nil <-> s == empty.
+Proof.
+intro s. split; intro Heq.
++ intro x. rewrite <- elements_spec, Heq, empty_spec, InA_nil. tauto.
++ apply (@PermutationA_nil _ equiv); auto with typeclass_instances.
+  rewrite <- elements_empty, Heq. reflexivity.
+Qed.
+
 Lemma cardinal_empty `{F : FSet A, @FSetSpecs _ _ _ F} : cardinal empty = 0.
 Proof. now rewrite cardinal_spec, length_zero_iff_nil, elements_empty. Qed.
 
