@@ -39,7 +39,7 @@ Class IsLocation loc info `{EqDec info} `{EqDec loc} := {
 (*   update_location : loc -> info -> info; (* The [loc] argument is relative to the current location *) *)
   (** Lifting a change of frame to the location field *)
   app : (loc -> loc) -> info -> info;
-  app_id : app id == id;
+  app_id : @equiv _ (fun_equiv _ _) (app id) id;
   app_compose : forall f g state, app f (app g state) == app (fun x => f (g x)) state;
   get_location_app : forall f state, get_location (app f state) == f (get_location state);
   (** Compatibility properties *)
