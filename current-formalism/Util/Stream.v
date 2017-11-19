@@ -429,6 +429,12 @@ intros P Q HPQ s1 s1' Hs1 s2 s2' Hs2. split.
   - inv Hs1. inv Hs2. match goal with H : next_forever2 Q _ _ |- _ => inv H end.
     eapply Hrec; eauto.
 Qed.
+
+Inductive until (P Q : t A -> Prop) (s : t A) : Prop :=
+  | NotYet : P s -> until P Q (tl s) -> until P Q s
+  | YesNow : Q s -> until P Q s.
+
+Definition weak_until P Q s := forever P s \/ until P Q s.
 End Streams.
 
 Section Map.

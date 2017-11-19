@@ -226,7 +226,8 @@ Proof.
 repeat intro. unfold spect_from_config, set_spectrum.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
 + apply make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
-  assert (Hequiv : (equiv ==> equiv)%signature (fun x => f (get_location x)) (fun x => get_location (app f x))).
+  assert (Hequiv : (@equiv info _ ==> @equiv loc _)%signature
+                     (fun x => f (get_location x)) (fun x => get_location (app f x))).
   { intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).
 + assumption.

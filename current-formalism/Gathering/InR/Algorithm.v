@@ -52,10 +52,11 @@ Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS.
 
+
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
-  update := fun _ _ pt _ => pt;
+  update := fun _ _ trajectory _ => trajectory ratio_1;
   update_compat := ltac:(now repeat intro) }.
 Instance Rigid : RigidUpdate.
 Proof. split. reflexivity. Qed.
@@ -73,6 +74,11 @@ Notation execution := (@execution R _ _ _).
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.
 Arguments origin : simpl never.
+
+(* The robot trajectories are straight paths. *)
+Definition path_R := path R.
+Definition paths_in_R : R -> path_R := local_straight_path.
+Coercion paths_in_R : R >-> path_R.
 
 
 Lemma similarity_middle : forall (sim : similarity R) x y, (sim ((x + y) / 2) = (sim x + sim y) / 2)%R.
@@ -547,7 +553,7 @@ Proof. intros. apply extreme_center_similarity. apply spect_non_nil. Qed.
 **)
 
 
-Definition gatherR_pgm (s : spectrum) : R :=
+Definition gatherR_pgm (s : spectrum) : path_R :=
   match support (max s) with
     | nil => 0 (* only happen with no robots *)
     | pt :: nil => pt (* case 1: one majority stack *)
@@ -558,16 +564,16 @@ Definition gatherR_pgm (s : spectrum) : R :=
   end.
 
 (** The robogram is invariant by permutation of spectra. *)
-Instance gatherR_pgm_compat : Proper (equiv ==> eq) gatherR_pgm.
+Instance gatherR_pgm_compat : Proper (equiv ==> equiv) gatherR_pgm.
 Proof.
 unfold gatherR_pgm. intros s s' Hs. assert (Hperm := support_compat (max_compat Hs)).
 destruct (support (max s)) as [| pt [| pt2 l]].
 + now rewrite (PermutationA_nil _ Hperm).
-+ symmetry in Hperm. destruct (PermutationA_length1 _ Hperm) as [pt' [Heq Hin]]. now rewrite Hin.
++ symmetry in Hperm. destruct (PermutationA_length1 _ Hperm) as [pt' [Heq Hin]]. now rewrite Hin, Heq.
 + assert (Hlength := PermutationA_length Hperm).
   destruct (support (max s')) as [| pt' [| pt2' l']]; try discriminate. rewrite Hs.
   destruct (size s' =? 3); rewrite Hs; try reflexivity; [].
-  simpl. destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
+  destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
 Qed.
 
 Definition gatherR := Build_robogram gatherR_pgm_compat.
@@ -595,9 +601,8 @@ intros da config. apply no_byz_eq. intro g. unfold round.
 destruct (activate da (Good g)) eqn:Hactive; try reflexivity; [].
 rewrite rigid_update.
 remember (change_frame da config g) as sim.
-simpl RobotInfo.app. unfold Datatypes.id.
+simpl RobotInfo.app. unfold Datatypes.id, lift_path. cbn [path_f].
 (* Simplify the similarity *)
-(* assert (Hratio : (simc pt).(zoom) <> 0). { eapply da.(step_zoom). eassumption. } *)
 destruct (similarity_in_R sim) as [k [Hk Hsim]].
 assert (Hinvsim : forall x, (sim ⁻¹) x = x / k + Similarity.center sim).
 { apply inverse_similarity_in_R; trivial; [].
@@ -605,7 +610,9 @@ assert (Hinvsim : forall x, (sim ⁻¹) x = x / k + Similarity.center sim).
 rewrite Hinvsim.
 assert(Hsim_compat : Proper (equiv ==> equiv) sim). { subst. autoclass. }
 assert (Hsim_inj2 := Similarity.injective sim).
-rewrite spect_from_config_ignore_snd.
+assert (Hspect := spect_from_config_ignore_snd (map_config sim config)
+                                               (get_location (map_config sim config (Good g)))).
+rewrite (pgm_compat _ _ _ Hspect).
 (* Unfold the robogram *)
 unfold gatherR, gatherR_pgm. cbn [pgm].
 assert (Hperm : PermutationA equiv (support (max (!! (map_config sim config))))
@@ -618,7 +625,8 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   now apply (PermutationA_nil _), support_max_non_nil in Hperm.
 * (* A majority stack *)
   simpl List.map in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
-  rewrite Hperm. hnf in Hy |- *. subst y. rewrite Hsim. simpl. unfold id. field.
+  rewrite Hperm. hnf in Hy |- *. subst y. rewrite Hsim. simpl.
+  unfold id, paths_in_R, local_straight_path. simpl. field.
   destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null.
 * (* No majority stack *)
   apply PermutationA_length in Hperm.
@@ -628,13 +636,14 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
                  == map (Bijection.section (Similarity.sim_f sim)) (!! config)).
   { change (Bijection.section (Similarity.sim_f sim)) with (RobotInfo.app sim).
     rewrite <- spect_from_config_ignore_snd, <- (spect_from_config_map _ config origin); reflexivity. }
-  repeat rewrite Hmap.
+  rewrite Hmap.
   rewrite map_injective_size; trivial; [].
   destruct (size (!! config) =? 3) eqn:Hlen.
   + (* There are three towers *)
+    cbn [path_f paths_in_R local_straight_path]. rewrite mul_1.
     unfold middle.
     rewrite size_spec in Hlen.
-    rewrite map_injective_support; trivial; [].
+    rewrite Hmap, map_injective_support; trivial; [].
     destruct (support (!! config)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
     destruct (similarity_monotonic sim) as [Hinc | Hdec].
     - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (sim 0)), map_nth, <- Hinvsim.
@@ -650,7 +659,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
       -- rewrite map_length, <- Permuted_sort. simpl. exists 1%nat. omega.
   + (* Generic case *)
     change 0 with origin. rewrite <- sim.(Similarity.center_prop) at 1.
-    rewrite is_extremal_similarity_invariant.
+    rewrite Hmap, is_extremal_similarity_invariant.
     (* These are the only two places where we use the fact that similarities are centered
        on the location of the observing robot (i.e. [similarity_center]. *)
     rewrite Heqsim at 1 2. rewrite similarity_center. simpl get_location. unfold id.
@@ -659,10 +668,10 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
       simpl. unfold origin. simpl. field.
       destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null.
     - (* The current robot is not exremal *)
-      rewrite extreme_center_similarity; apply spect_non_nil || trivial; [].
+      rewrite Hmap, extreme_center_similarity; apply spect_non_nil || trivial; [].
       change (config (Good g)) with (get_location (config (Good g))).
       rewrite <- similarity_center, <- Heqsim, <- Hinvsim.
-      simpl. change eq with equiv. now rewrite <- sim.(Bijection.Inversion).
+      simpl. change eq with equiv. now rewrite Rmult_1_l, <- sim.(Bijection.Inversion).
 Qed.
 
 (** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)

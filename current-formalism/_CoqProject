@@ -20,6 +20,7 @@ Util/Preliminary.v
 Util/Bijection.v
 Util/Stream.v
 Util/Lexprod.v
+Util/Ratio.v
 Core/Robots.v
 Core/RobotInfo.v
 Core/Configurations.v
@@ -27,7 +28,7 @@ Core/Formalism.v
 Setting.v
 
 ## Models
-#Models/Flexible.v
+Models/Flexible.v
 Models/Rigid.v
 #Models/RigidFlexibleEquivalence.v
 #Models/DiscreteGraph.v
@@ -62,6 +63,7 @@ Convergence/Impossibility_2G_1B.v
 
 ## Case Study: Gathering
 Gathering/Definitions.v
+Gathering/WithMultiplicity.v
 #Gathering/Impossibility.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v

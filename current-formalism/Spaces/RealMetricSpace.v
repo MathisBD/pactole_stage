@@ -153,3 +153,19 @@ intros k u Heq. destruct (Rdec k 0%R).
 - now left.
 - right. apply mul_reg_l with k; trivial; []. now rewrite Heq, mul_origin.
 Qed.
+
+(** In a real metric space, we can define straight paths as trajectories. *)
+Require Import Pactole.Util.Ratio.
+Program Definition straight_path {T} `{RealMetricSpace T} (pt pt' : T) : path T :=
+  Build_path _ _ (fun x => add pt (mul x (add pt' (opp pt)))) _.
+Next Obligation.
+abstract (intros x y Hxy; apply add_compat; auto; []; apply mul_compat; try apply Hxy; [];
+          apply add_compat, opp_compat; reflexivity).
+Defined.
+
+(** We can simplify this definition in the local frame. *)
+Definition local_straight_path {T} `{RMS : RealMetricSpace T} (pt : T) : path T.
+Proof.
+refine (Build_path _ _ (fun x => @mul _ _ _ RMS x pt) _).
+abstract (intros x y Hxy; apply mul_compat; reflexivity || apply Hxy).
+Defined.

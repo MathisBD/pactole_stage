@@ -31,7 +31,7 @@ Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.Gathering.Definitions.
+Require Import Pactole.Gathering.WithMultiplicity.
 Require Import Pactole.Spectra.MultisetSpectrum.
 Require Export Pactole.Models.Rigid.
 Import Permutation.
@@ -64,7 +64,7 @@ Existing Instance R2_RMS.
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
-  update := fun _ _ pt _ => pt;
+  update := fun _ _ trajectory _ => trajectory ratio_1;
   update_compat := ltac:(now repeat intro) }.
 Instance Rigid : RigidUpdate.
 Proof. split. reflexivity. Qed.
@@ -87,6 +87,12 @@ Implicit Type da : similarity_da.
 Implicit Type d : similarity_demon.
 Arguments origin : simpl never.
 
+(* The robot trajectories are straight paths. *)
+Definition path_R2 := path R2.
+Definition paths_in_R2 : R2 -> path_R2 := local_straight_path.
+Coercion paths_in_R2 : R2 >-> path_R2.
+Instance paths_in_R2_compat : Proper (equiv ==> equiv) paths_in_R2.
+Proof. intros [] [] [] x. f_equiv. Qed.
 
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
 Proof.
@@ -237,16 +243,16 @@ split; intro Hclean.
 Qed.
 
 (** The robogram solving the gathering problem in R². *)
-Definition gatherR2_pgm (s : spectrum) : R2 :=
+Definition gatherR2_pgm (s : spectrum) : path_R2 :=
   match support (max s) with
-    | nil => origin (* no robot *)
+    | nil => paths_in_R2 origin (* no robot *)
     | pt :: nil => pt (* majority *)
     | _ :: _ :: _ =>
       if is_clean s then target s (* clean case *)
-      else if mem equiv_dec origin (SECT s) then origin else target s (* dirty case *)
+      else if mem equiv_dec origin (SECT s) then paths_in_R2 origin else target s (* dirty case *)
   end.
 
-Instance gatherR2_pgm_compat : Proper (equiv ==> eq) gatherR2_pgm.
+Instance gatherR2_pgm_compat : Proper (equiv ==> equiv) gatherR2_pgm.
 Proof.
 intros s1 s2 Hs. unfold gatherR2_pgm.
 assert (Hsize : length (support (max s1)) = length (support (max s2))) by now rewrite Hs.
@@ -257,11 +263,11 @@ simpl in Hsize; omega || clear Hsize.
 + apply max_compat, support_compat in Hs. rewrite Hs1, Hs2 in Hs.
   rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
 + rewrite Hs. destruct (is_clean s2).
-  - now f_equiv.
+  - now do 2 f_equiv.
   - destruct (mem equiv_dec origin (SECT s1)) eqn:Hin,
              (mem equiv_dec origin (SECT s2)) eqn:Hin';
     rewrite ?mem_true_iff, ?mem_false_iff, ?InA_Leibniz in *;
-    try (reflexivity || (rewrite Hs in Hin; contradiction)). now f_equiv.
+    try (reflexivity || (rewrite Hs in Hin; contradiction)). now do 2 f_equiv.
 Qed.
 
 Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
@@ -831,26 +837,35 @@ destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax,
 simpl in Hlen; discriminate || clear Hlen; [| |].
 * rewrite support_nil, max_is_empty in Hmax. elim (spect_non_nil _ Hmax).
 * simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
-  subst pt1'. apply no_info, (compose_inverse_l sim).
+  subst pt1'. cbn -[Bijection.inverse]. unfold id.
+  rewrite <- (Bijection.compose_inverse_l sim pt1) at 2.
+  simpl. f_equiv. destruct (Bijection.section (sim_f sim) pt1); f_equal; ring.
 * change (map_config sim config) with (map_config (RobotInfo.app sim) config).
   rewrite <- (spect_from_config_ignore_snd (map_config (RobotInfo.app sim) config) (sim origin)),
           <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
   + rewrite rigid_update, <- (spect_from_config_ignore_snd _ (sim origin)),
             <- spect_from_config_map, target_morph; trivial; [].
-    apply (compose_inverse_l sim).
+    cbn -[Bijection.inverse]. unfold id.
+    rewrite <- (Bijection.compose_inverse_l sim (target (!! config))) at 2.
+    simpl. f_equiv. destruct (Bijection.section (sim_f sim) (target (!! config))); f_equal; ring.
   + change (0, 0)%R with origin. rewrite rigid_update. rewrite <- (center_prop sim) at 1.
-    rewrite Heqsim at 3. rewrite similarity_center.
     assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
     { rewrite <- SECT_morph; auto. f_equiv. now rewrite spect_from_config_map. }
     rewrite (mem_compat _ equiv_dec _ _ (reflexivity _) (PermutationA_equivlistA _ Hperm')).
     rewrite (mem_injective_map _); trivial; try (now apply injective); [].
+    rewrite Heqsim at 3. rewrite similarity_center.
     destruct (mem equiv_dec (get_location (config (Good g))) (SECT (!! config))).
-    - rewrite <- (center_prop sim), Heqsim, similarity_center. now apply compose_inverse_l.
-    - simpl. change eq with equiv. unfold id.
+    - rewrite <- (center_prop sim), Heqsim, similarity_center.
+      cbn -[Bijection.inverse]. unfold id.
+      rewrite <- (Bijection.compose_inverse_l sim (config (Good g))) at 2.
+      simpl. rewrite <- Heqsim. f_equiv.
+      destruct (Bijection.section (sim_f sim) (config (Good g))); f_equal; ring.
+    - cbn. change eq with equiv. unfold id.
       rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
-      f_equiv. rewrite spect_from_config_map; trivial; [].
-      rewrite spect_from_config_ignore_snd, <- spect_from_config_ignore_snd. f_equiv.
+      rewrite spect_from_config_map; trivial; [].
+      rewrite spect_from_config_ignore_snd. simpl. unfold id.
+      destruct (target (!! (fun id : ident => Bijection.section (sim_f sim) (config id)))); f_equal; ring.
 Qed.
 
 (** ****  Specialization of [round_simplify] in the three main cases of the robogram  **)

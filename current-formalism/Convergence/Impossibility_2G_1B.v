@@ -56,7 +56,8 @@ Instance FC : frame_choice (Similarity.similarity R) := FrameChoiceSimilarity.
 (** Demons do not make any choice in how a robot state is updated. *)
 Instance NoChoice : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec}.
 (** Updates are rigid. *)
-Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
+Instance UpdateFun : update_function Datatypes.unit := {
+  update := fun _ _ trajectory _ => trajectory ratio_1 }.
 Proof. now repeat intro. Defined.
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.
@@ -84,6 +85,12 @@ Hint Extern 0 (~equiv R _ _ _) =>
 
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
+
+(* The robot trajectories are straight paths. *)
+Definition path_R := path R.
+Definition paths_in_R : R -> path_R := local_straight_path.
+Coercion paths_in_R : R >-> path_R.
+
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall config (pt : R),
@@ -531,7 +538,7 @@ Qed.
 
 
 Section AbsurdMove.
-Definition move := r spectrum1.
+Definition move := r spectrum1 ratio_1.
 Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt, round r (shifting_da (pt + move + 1)) (config0 pt) == config0 (pt + move).
@@ -580,16 +587,16 @@ Qed.
 
 End AbsurdMove.
 
-Theorem no_move1 : r spectrum1 = 0.
+Theorem no_move1 : r spectrum1 ratio_1 = 0.
 Proof.
-destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
+destruct (Rdec (r spectrum1 ratio_1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (map_config (homothecy 1 minus_1) config2)) = 0.
+Corollary no_move2 : r (!! (map_config (homothecy 1 minus_1) config2)) ratio_1 = 0.
 Proof.
 setoid_rewrite <- no_move1 at 2.
-change eq with equiv. f_equiv.
+change eq with equiv. do 2 f_equiv.
 change (Bijection.section (homothecy 1 minus_1)) with (RobotInfo.app (homothecy 1 minus_1)).
 replace 0%R with (homothecy 1 minus_1 1) by (simpl; ring).
 rewrite <- swap_spect2_spect1, <- spect_from_config_map; autoclass; [].

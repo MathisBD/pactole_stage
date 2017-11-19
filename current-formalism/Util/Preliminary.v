@@ -128,7 +128,7 @@ Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
 Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
 
-Definition fun_equiv A B `(Setoid B) : Setoid (A -> B).
+Instance fun_equiv A B `(Setoid B) : Setoid (A -> B) | 4.
 Proof. exists (fun f g : A -> B => forall x, f x == g x).
 split.
 + repeat intro. reflexivity.

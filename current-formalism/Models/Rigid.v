@@ -41,8 +41,8 @@ Local Notation update := (@update loc info T2 _ _ _ _ _ _ _ Update).
 (** Rigid moves are a special case of state updates where the updated location of the robot
     is the one chosen by the robogram. *)
 Class RigidUpdate := {
-  rigid_update : forall da config g target,
-    get_location (update config g target (da.(choose_update) config g target)) == target }.
+  rigid_update : forall da config g trajectory,
+    get_location (update config g trajectory (da.(choose_update) config g trajectory)) == trajectory ratio_1 }.
 
 End RigidFormalism.
 

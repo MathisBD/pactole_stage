@@ -24,6 +24,7 @@ Require Import Utf8.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
+Require Import Pactole.Util.Ratio.
 Require Pactole.Util.Stream.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.RobotInfo.
@@ -51,15 +52,15 @@ Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ Spect).
 
 (** Good robots have a common program, which we call a [robogram]. *)
 Record robogram := {
-  pgm :> spectrum -> loc; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
+  pgm :> spectrum -> path loc; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
   pgm_compat : Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid : Setoid robogram := {|
   equiv := fun r1 r2 => forall s, pgm r1 s == pgm r2 s |}.
 Proof. split.
-+ repeat intro. reflexivity.
-+ repeat intro. now symmetry.
-+ repeat intro. etransitivity; eauto.
++ intros ? ?. reflexivity.
++ intros ? ? ? ?. now symmetry.
++ intros ? ? ? ? ? ?. etransitivity; eauto.
 Defined.
 
 Global Instance pgm_full_compat : Proper (equiv ==> equiv ==> equiv) pgm.
@@ -94,7 +95,7 @@ Class update_choice := {
 
 (** These choices are then used by an update function that depends on the model. *)
 Class update_function `{IsLocation loc info} `{update_choice} := {
-  update :> configuration -> G -> loc -> T2 -> info;
+  update :> configuration -> G -> path loc -> T2 -> info;
   update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update }.
 
 Context `{@frame_choice _ _ _ _ _}.
@@ -110,7 +111,7 @@ Record demonic_action := {
   (** Local referential for (activated) good robots in the compute phase *)
   change_frame : configuration -> G -> T1;
   (** Update the state of (activated) good robots in the move phase  *)
-  choose_update : configuration -> G -> loc -> T2;
+  choose_update : configuration -> G -> path loc -> T2;
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -132,7 +133,6 @@ Global Instance da_Setoid : Setoid demonic_action := {|
         /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
         /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
         /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt) |}.
-
 Proof. split.
 + intuition.
 + intros da1 da2 [? [? [? ?]]]. repeat split; intros; symmetry; auto.
@@ -223,13 +223,13 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           (* compute the spectrum *)
           let spect := spect_from_config local_config local_pos in
           (* apply r on spectrum *)
-          let local_target := r spect in
+          let local_trajectory := r spect in
           (* return to the global frame of reference *)
-          let global_target := new_frame ⁻¹ local_target in
+          let global_trajectory := lift_path (new_frame ⁻¹) local_trajectory in
           (* the demon chooses how to perform the state update *)
-          let choice := da.(choose_update) config g global_target in
+          let choice := da.(choose_update) config g global_trajectory in
           (* the actual update of the robot state is performed by the update function *)
-          update config g global_target choice
+          update config g global_trajectory choice
         end
     else state.
 
@@ -242,7 +242,8 @@ unfold round. rewrite Hda. destruct_match.
   destruct id as [g | b].
   + (* good robot *)
     apply update_compat; try apply choose_update_da_compat; trivial; [|];
-    do 2 f_equiv; try apply frame_choice_bijection_compat; f_equiv; trivial;
+    apply lift_path_extensionality_compat;
+    do 2 (f_equiv; trivial); try (now apply frame_choice_bijection_compat; f_equiv);
     solve [ apply map_config_compat; trivial; []; apply app_compat; f_equiv;
             apply frame_choice_bijection_compat; now do 2 f_equiv
           | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; f_equiv;

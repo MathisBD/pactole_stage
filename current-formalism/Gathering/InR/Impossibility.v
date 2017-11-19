@@ -55,7 +55,7 @@ Existing Instance R_RMS.
 
 Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
-  update := fun _ _ pt _ => pt;
+  update := fun _ _ trajectory _ => trajectory ratio_1;
   update_compat := ltac:(now repeat intro) }.
 
 (* Trying to avoid notation problem with implicit arguments *)
@@ -70,6 +70,11 @@ Notation execution := (@execution R _ _ _).
 
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
+
+(* The robot trajectories are straight paths. *)
+Definition path_R := path R.
+Definition paths_in_R : R -> path_R := local_straight_path.
+Coercion paths_in_R : R >-> path_R.
 
 
 Lemma nG_ge_2 : 2 <= nG.
@@ -383,7 +388,7 @@ unfold Datatypes.id, mk_info, id. destruct (left_dec g); simpl; hnf; ring.
 Qed.
 
 (** The movement of robots in the reference configuration. *)
-Definition move := r (!! config1).
+Definition move := r (!! config1) ratio_1.
 
 (** The key idea is to prove that we can always make robots think that there are in the same configuration.
     If they do not gather in one step, then they will never do so.
@@ -424,11 +429,12 @@ Proof. coinduction bad_fair1. intros id1 id2. now constructor. Qed.
 
 Lemma round_simplify_1_1 : round r da1 config1 == config2.
 Proof.
-apply no_byz_eq. intro g; unfold round; cbn -[spect_from_config config1 config2].
-unfold id, change_frame1, config1, config2. rewrite mk_info_get_location.
+apply no_byz_eq. intro g; unfold round; cbn -[equiv spect_from_config map_config config1 config2].
+unfold id, change_frame1, config2.
+change (get_location (config1 (Good g))) with (if left_dec g then 0 else 1).
 destruct (left_dec g) as [Hleft | Hright].
 - Rdec. apply Hmove.
-- Rdec. setoid_rewrite swap_config1. unfold mk_info, id. simpl.
+- Rdec. setoid_rewrite swap_config1. simpl. unfold mk_info, id.
   rewrite <- config1_config2_spect_equiv. fold move. rewrite Hmove. ring.
 Qed.
 

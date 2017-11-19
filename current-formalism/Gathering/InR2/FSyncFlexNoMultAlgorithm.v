@@ -22,10 +22,7 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
-Require Pactole.Core.Formalism.
+Require Import Pactole.Setting.
 Require Pactole.Models.Flexible.
 Require Import Pactole.Spectra.SetSpectrum.
 Require Pactole.Spaces.R. (* for R_Setoid, R_EqDec *)
@@ -60,14 +57,17 @@ Existing Instance R2_EqDec.
 Existing Instance R2_RMS.
 
 (* We are in a flexible formalism with no other info than the location, so the demon only chooses the move ratio. *)
-Instance FlexChoice : second_demonic_choice Flexible.ratio := Flexible.OnlyFlexible.
+Instance FlexChoice : update_choice ratio := Flexible.OnlyFlexible.
 
 Parameter delta : R.
 
-Instance UpdFun : update_function Flexible.ratio := {|
-  update := fun config g pt ρ => let pt' := mul (Flexible.proj_ratio ρ) pt in
-                                 if Rle_dec delta (dist (config (Good g)) pt') then pt' else pt |}.
-Proof. intros ? ? Hconfig ? g ? ? ? Hpt [] [] Heq. simpl in Heq. subst. now rewrite Hpt, Hconfig. Defined.
+Instance UpdFun : update_function ratio := {|
+  update := fun config g trajectory ρ => let pt' := trajectory ρ in
+              if Rle_dec delta (dist (config (Good g)) pt') then pt' else trajectory ratio_1 |}.
+Proof.
+intros ? ? Hconfig ? g ? ? ? Hpt [? Hρ1] [ρ Hρ2] Heq.
+simpl in Heq. subst. rewrite Hpt, Hconfig. simpl.
+Defined.
 
 Instance Flex : Flexible.FlexibleUpdate delta.
 Proof. split.
@@ -76,22 +76,26 @@ Proof. split.
 Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
-Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation "!! config" := (@spect_from_config R2 R2 _ _ _ _ _ _ multiset_spectrum config origin) (at level 1).
+Notation "!! config" := (@spect_from_config R2 R2 _ _ _ _ _ _ set_spectrum config origin) (at level 1).
 (* (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
 Notation "x == y" := (equiv x y).
-Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
+Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots set_spectrum).
 Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
 Notation configuration := (@configuration R2 _ _ _ _).
 Notation config_list := (@config_list R2 _ _ _ _).
 Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
 Notation execution := (@execution R2 R2 _ _ _ _ _).
-Notation Madd := (MMultisetInterface.add).
+Notation Madd := (FsetInterface.add).
 
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.
 Implicit Type d : similarity_demon.
 Arguments origin : simpl never.
+
+(* The robot trajectories are straight paths. *)
+Definition path_R := path R.
+Definition paths_in_R : R -> path_R := local_path.
+Coercion paths_in_R : R >-> path_R.
 
 Lemma no_byz : forall P (config : configuration), (forall g, P (config (Good g))) -> forall id, P (config id).
 Proof.

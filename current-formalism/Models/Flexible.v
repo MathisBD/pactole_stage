@@ -31,17 +31,6 @@ Require Import Pactole.Spaces.Similarity.
 Typeclasses eauto := (bfs) 5.
 
 
-(** A ratio (of some quantity). *)
-Definition ratio := {x : R | 0 <= x <= 1}%R.
-
-Definition proj_ratio : ratio -> R := @proj1_sig _ _.
-
-Instance proj_ratio_compat : Proper (@equiv _ sig_Setoid ==> equiv) proj_ratio.
-Proof. intros ? ? Heq. apply Heq. Qed.
-
-Coercion proj_ratio : ratio >-> R.
-
-
 (** Flexible demons are a special case of demons with the additional property that
     the updated location of the robot is not necessarily the one chosen by the robogram,
     but lies on the segment delimited by the current and target locations.
@@ -63,20 +52,14 @@ Class FlexibleChoice `{update_choice T2} := {
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
 Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R) := {
   (** [move_ratio] is ratio between the achieved and the planned move distances. *)
-  ratio_spec : forall da config g target,
+  ratio_spec : forall da config g trajectory,
     let pt := get_location (config (Good g)) in
-    let pt' := get_location (update config g target (da.(choose_update) config g target)) in
-    dist pt pt' = move_ratio (da.(choose_update) config g target) * (dist pt target);
-  (** Moves are flexible: they do not necessarily reach their target but stay on a line *)
-  flexible_update : forall da config g target,
-    let pt := get_location (config (Good g)) in
-    let pt' := get_location (update config g target (da.(choose_update) config g target)) in
+    let pt' := get_location (update config g trajectory (da.(choose_update) config g trajectory)) in
     (* either we reach the target *)
-    pt' == target
-    (* or [pt'] is between [pt] and [tgt] (equality case of the triangle inequality) *)
-    \/ dist pt pt' + dist pt' target = dist pt target
-    (* and the robot has moved a distance at least [delta]. *)
-    /\ delta <= dist pt pt' }.
+    pt' == trajectory ratio_1
+    (* or we only move part of the way but the robot has moved a distance at least [delta]. *)
+    \/ pt' == trajectory (move_ratio (da.(choose_update) config g trajectory))
+       /\ delta <= dist pt pt' }.
 
 End FlexibleFormalism.
 

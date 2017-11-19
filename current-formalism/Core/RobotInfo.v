@@ -69,3 +69,36 @@ Definition OnlyLocation loc `{EqDec loc} : IsLocation loc loc := {|
   app_id := reflexivity _;
   app_compose := ltac:(reflexivity);
   get_location_app := ltac:(reflexivity) |}.
+
+
+Section AddInfo.
+
+Variable T : Type.
+Context `{EqDec T}.
+
+Instance AddInfo loc info `(IsLocation loc info) : IsLocation loc (info * T) := {|
+  get_location := fun x => get_location (fst x);
+  app := fun f x => (app f (fst x), snd x) |}.
+Proof.
++ intros []. simpl. split; try reflexivity; []. apply app_id.
++ intros f g []. simpl. split; try reflexivity; []. apply app_compose.
++ intros f []. simpl. apply get_location_app.
++ intros [] [] []. simpl. now apply get_location_compat.
++ intros f g Hfg [] [] []. simpl. repeat split; trivial; []. now apply app_compat.
+Defined.
+
+End AddInfo.
+
+
+Instance AddLocation loc info `(IsLocation loc info) : IsLocation loc (info * loc) := {|
+  get_location := fun x => get_location (fst x);
+  app := fun f x => (app f (fst x), f (snd x)) |}.
+Proof.
++ intros []. simpl. split; try reflexivity; []. apply app_id.
++ intros f g []. simpl. split; try reflexivity; []. apply app_compose.
++ intros f []. simpl. apply get_location_app.
++ intros [] [] []. simpl. now apply get_location_compat.
++ intros f g Hfg [] [] []. simpl. split.
+  - now apply app_compat.
+  - now apply Hfg.
+Defined.
