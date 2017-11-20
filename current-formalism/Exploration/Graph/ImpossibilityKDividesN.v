@@ -17,12 +17,12 @@ Require Import Omega.
 Require Import Decidable.
 Require Import Equalities.
 Require Import List Setoid SetoidList Compare_dec Morphisms.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Preliminary.
 Require Import Pactole.Robots.
 Require Import Pactole.Configurations.
-Require Import Pactole.Spaces.Graph.
 Require Import Pactole.DiscreteSpace.
 Require Import Pactole.Exploration.Graph.Definitions.
+Require Import Pactole.Exploration.Graph.GraphFromZnZ.
 Open Scope Z_scope.
 
 
@@ -58,7 +58,7 @@ Proof. intros config1 config2 Heq id. apply (no_byz id). intro g. apply Heq. Qed
 
 (** A dummy value used for (inexistant) byzantine robots. *)
 Definition dummy_val := {| Config.loc := Loc.origin;
-                           Config.info := {| Info.source := Loc.origin; Info.target := Loc.origin |} |}.
+                           Config.state := {| Info.source := Loc.origin; Info.target := Loc.origin |} |}.
 
 
 Section Exploration.
@@ -82,7 +82,7 @@ Definition config1 : Config.t :=
   fun id => match id with
               | Good g => let pos := create_config1 g in
                           {| Config.loc :=  pos;
-                             Config.info := {| Info.source := pos; Info.target := pos |} |}
+                             Config.state := {| Info.source := pos; Info.target := pos |} |}
               | Byz b => dummy_val
             end.
 
@@ -166,7 +166,7 @@ Qed.
 Program Definition da : demonic_action := {|
   relocate_byz := fun _ => dummy_val;
       step := fun id Rconfig =>
-                if Loc.eq_dec (Config.loc Rconfig) (Info.target (Config.info Rconfig))
+                if Loc.eq_dec (Config.loc Rconfig) (Info.target (Config.state Rconfig))
                 then Active (trans (Config.loc Rconfig)) else Moving true |}.
 Next Obligation.
 revert_one Aom_eq. destruct_match; simpl; intuition.
@@ -174,8 +174,8 @@ Qed.
 Next Obligation.
 intros [g1 | b1] [g2 | b2] Hg rc1 rc2 Hrc; try discriminate; simpl in *.
 destruct Hrc as (Hl_rc, (Hs_rc, Ht_rc)).
-destruct (Loc.eq_dec (Config.loc rc1) (Info.target (Config.info rc1))),
-         (Loc.eq_dec (Config.loc rc2) (Info.target (Config.info rc2)));
+destruct (Loc.eq_dec (Config.loc rc1) (Info.target (Config.state rc1))),
+         (Loc.eq_dec (Config.loc rc2) (Info.target (Config.state rc2)));
 try (now auto); try now rewrite Hl_rc, Ht_rc in *.
 destruct b1. unfold K.nB in *. omega.
 Qed.
@@ -345,10 +345,10 @@ Theorem equiv_config_k_round : forall k config1 config2,
 Proof.
 unfold equiv_config_k. intros k config1 config2 Hequiv id.
 apply (no_byz id). clear id. intro g. unfold round. simpl.
-destruct (Loc.eq_dec (Config.loc (config2 (Good g))) (Info.target (Config.info (config2 (Good g)))))
+destruct (Loc.eq_dec (Config.loc (config2 (Good g))) (Info.target (Config.state (config2 (Good g)))))
   as [Hcase | Hcase].
 + (* da1 sets g as Active *)
-  assert (Loc.eq (Config.loc (config1 (Good g))) (Info.target (Config.info (config1 (Good g))))).
+  assert (Loc.eq (Config.loc (config1 (Good g))) (Info.target (Config.state (config1 (Good g))))).
   { rewrite (Hequiv (Good g)) in Hcase. simpl in Hcase. now apply Loc.add_reg_r in Hcase. }
   unfold f_config. unfold Config.map at 2, Config.app at 2. simpl.
   destruct_match; simpl; try contradiction; [].
@@ -360,7 +360,7 @@ destruct (Loc.eq_dec (Config.loc (config2 (Good g))) (Info.target (Config.info (
   rewrite <- (Loc.add_assoc (pgm _ _ _)). f_equiv.
   apply pgm_compat. f_equiv. now do 2 rewrite Loc.add_opp.
 + (* da1 sets g as Moving *)
-  assert (~Loc.eq (Config.loc (config1 (Good g))) (Info.target (Config.info (config1 (Good g))))).
+  assert (~Loc.eq (Config.loc (config1 (Good g))) (Info.target (Config.state (config1 (Good g))))).
   { rewrite (Hequiv (Good g)) in Hcase. simpl in Hcase. intro Heq. apply Hcase. now rewrite Heq. }
   unfold f_config. unfold Config.map at 1, Config.app at 1. simpl.
   destruct_match; simpl; try contradiction; [].
