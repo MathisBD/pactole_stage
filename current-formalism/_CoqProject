@@ -63,7 +63,9 @@ Gathering/InR/Algorithm.v
 Gathering/InR2/R2geometry.v
 Gathering/InR2/Algorithm.v
 Gathering/FlexDefinitions.v
+Gathering/FlexDefinitionsMultiset.v
 Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+Gathering/InR2/Peleg.v
 
 ## Case Study: Ring Exploration
 Exploration/Graph/GraphFromZnZ.v

@@ -1358,7 +1358,7 @@ Proof.
   + now rewrite IHHpermut1.
 Qed.
 
-(** Barycenter of a list of locations *)
+(** Isobarycenter of a list of locations *)
 
 Definition barycenter (E: list R2.t) : R2.t :=
   /(INR (List.length E)) * (List.fold_left R2.add E R2.origin).
@@ -1399,7 +1399,7 @@ Proof.
   assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).
   rewrite Hl; clear Hl; apply R2mul_reg_eq_l.
   induction Hpermut.
-  + now simpl.  
+  + now simpl.
   + pattern x₁; rewrite H.
     simpl. now apply fold_add_permutation.
   + apply fold_add_permutation.
@@ -1556,6 +1556,98 @@ Proof.
   intros q Hq.
   apply Hdm; assumption.
 Qed.
+
+(** Weighted barycenter of a list of locations *)
+
+Definition wbarycenter_aux (E : list (R2.t * R)) : R2.t * R :=
+  List.fold_left (fun acc xn => (((snd xn * fst xn) + fst acc)%R2, snd xn + snd acc)) E (R2.origin, 0).
+
+Definition wbarycenter E := let '(sum, weight) := wbarycenter_aux E in ((1 / weight) * sum)%R2.
+
+Definition weighted_sqr_dist_sum (pt: R2.t) (E: list (R2.t * R)) : R :=
+  List.fold_left (fun acc pt' => acc + snd pt' * (R2.dist pt (fst pt'))²) E 0.
+
+Axiom Wbarycenter_n_spec :
+  forall (E: list (R2.t * R)),
+    forall p,
+      weighted_sqr_dist_sum (wbarycenter E) E <= weighted_sqr_dist_sum p E.
+
+Definition is_wbarycenter_n (E: list (R2.t * R)) (B: R2.t) : Prop :=
+  forall p, weighted_sqr_dist_sum B E <= weighted_sqr_dist_sum p E.
+
+Axiom wbarycenter_n_spec : forall (E: list (R2.t * R)),
+    is_wbarycenter_n E (wbarycenter E).
+Axiom wbarycenter_n_unique: forall E a b,
+    is_wbarycenter_n E a -> is_wbarycenter_n E b -> R2.eq a b.
+
+Instance wbarycenter_aux_compat : Proper (PermutationA (R2.eq * eq) ==> R2.eq * eq) wbarycenter_aux.
+Proof.
+intros l1 l2 Hperm.
+unfold wbarycenter_aux. Search Proper fold_left.
+generalize (@reflexivity _ (R2.eq * eq)%signature _ (R2.origin, 0)).
+generalize (R2.origin, 0) at 2 4 as p2. generalize (R2.origin, 0) as p1.
+revert l1 l2 Hperm.
+change (Proper (PermutationA (R2.eq * eq) ==> R2.eq * eq ==> R2.eq * eq)
+               (fold_left (fun acc xn => ((snd xn * fst xn + fst acc)%R2, snd xn + snd acc)))).
+apply fold_left_symmetry_PermutationA; autoclass.
++ intros [] [] [] [] [] []. split; hnf in *; simpl in *; subst; reflexivity.
++ intros [[] ?] [[] ?] [[] ?]. split; hnf; simpl in *; ring || f_equal; ring.
+Qed.
+
+Instance wbarycenter_compat : Proper (PermutationA (R2.eq * eq) ==> R2.eq) wbarycenter.
+Proof.
+intros l1 l2 Hperm.
+unfold wbarycenter.
+apply wbarycenter_aux_compat in Hperm.
+destruct (wbarycenter_aux l1), (wbarycenter_aux l2).
+destruct Hperm. hnf in *; simpl in *. subst. reflexivity.
+Qed.
+
+
+Lemma weighted_sqr_dist_sum_compat : Proper (R2.eq ==> PermutationA (R2.eq * eq) ==> eq) weighted_sqr_dist_sum.
+Proof.
+intros [] [x y] Hpt E1 E2 Hperm.
+unfold weighted_sqr_dist_sum.
+generalize (eq_refl 0).
+generalize 0 at 2 4. generalize 0.
+hnf in Hpt. injection Hpt. intros ? ?. subst. clear Hpt.
+revert E1 E2 Hperm.
+change (Proper (PermutationA (R2.eq * eq) ==> eq ==> eq)
+               (fold_left (fun acc pt'  => acc + snd pt' * (R2.dist (x, y) (fst pt'))²))).
+apply fold_left_symmetry_PermutationA; autoclass.
++ intros ? ? ? [] [] []. hnf in *; simpl in *; subst; reflexivity.
++ intros [[] ?] [[] ?] ?. hnf; simpl in *; ring || f_equal; ring.
+Qed.
+
+Lemma wbarycenter_dist_decrease : forall (E : list (R2.t * R)) (dm : R),
+  E <> nil ->
+  (forall p, InA (R2.eq * eq)%signature p E -> 0 < snd p) ->
+  (forall p1 p2, InA (R2.eq * eq)%signature p1 E -> InA (R2.eq * eq)%signature p2 E ->
+                 R2.dist (fst p1) (fst p2) <= dm) ->
+  forall p, InA (R2.eq@@1)%signature p E -> R2.dist (fst p) (wbarycenter E) <= dm.
+Proof.
+intros E dm HE Hweight Hdist.
+assert (Hdm : 0 <= dm).
+{ destruct E as [| x ?]; try (now elim HE); [].
+  rewrite <- (R2_dist_defined_2 (fst x)). apply Hdist; now left. }
+induction E as [| x [| y l'] IHl]; intros p Hin.
++ now elim HE.
++ assert (Heq : R2.eq (fst p) (fst x)).
+  { clear -Hin. now repeat match goal with H : InA _ _ _ |- _ => inv H end. }
+  unfold wbarycenter. simpl. rewrite Heq, R2.add_origin, Rplus_0_r, R2.mul_morph.
+  replace (1 / snd x * snd x) with 1.
+  - now rewrite R2.mul_1, R2_dist_defined_2.
+  - field. cut (0 < snd x); try lra; [].
+    apply Hweight. now left.
++ assert (Hl : y :: l' <> nil) by discriminate.
+  remember (y :: l') as l. clear Heql y l'.
+  assert (Hrec : forall p, InA (R2.eq@@1)%signature p l -> R2.dist (fst p) (wbarycenter l) <= dm).
+  { apply IHl.
+    - assumption.
+    - intros. apply Hweight. now right.
+    - intros. apply Hdist; now right. }
+  clear IHl Hl HE.
+Admitted.
 
 (** **  Triangles  **)
 
