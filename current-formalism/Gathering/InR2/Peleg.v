@@ -387,10 +387,10 @@ Lemma max_dist_spect_ex :
   forall (spect: Spect.t),
     Spect.M.support spect <> nil ->
     exists pt0 pt1, 
-      In pt0 (Spect.M.support spect)
-      /\ In pt1 (Spect.M.support spect)
+      InA R2.eq pt0 (Spect.M.support spect)
+      /\ InA R2.eq pt1 (Spect.M.support spect)
       /\ R2.dist pt0 pt1 = max_dist_spect spect.
-Proof. intros. now apply max_dist_R2_list_list_ex. Qed.
+Proof. intros. setoid_rewrite InA_Leibniz. now apply max_dist_R2_list_list_ex. Qed.
 
 
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
@@ -455,8 +455,9 @@ intros config. split; intro H.
     - rewrite Rmax_left; apply R2.dist_pos.
 * destruct H as [pt Hgather]. unfold measure.
   destruct (max_dist_spect_ex (support_non_nil config)) as [pt1 [pt2 [Hpt1 [Hpt2 Heq]]]].
-  rewrite <- Heq, R2.dist_defined. rewrite gathered_support in Hgather. rewrite <- InA_Leibniz, Hgather in *.
-  now inv Hpt1; inv Hpt2.
+  rewrite <- Heq, R2.dist_defined. rewrite gathered_support in Hgather. rewrite Hgather in *.
+  repeat match goal with H : InA R2.eq _ _ |- _ => inv H end.
+  now transitivity pt.
 Qed.
 
 Lemma fold_mult_plus_distr : forall (f : R2.t -> R) coeff E init,
@@ -601,7 +602,8 @@ setoid_rewrite <- R2.add_origin at 25. repeat rewrite <- R2.add_assoc. f_equiv.
 Qed.
 
 
-(* FIXME: cleanup! *)
+(* FIXME: cleanup!
+          Too much copy/paste: all [wbarycenter_dist_decrease] calls! *)
 Theorem round_lt_config : forall d conf delta,
     delta > 0 ->
     FullySynchronous d ->
@@ -796,12 +798,11 @@ Proof.
         destruct (Rle_dec kp kq).
         - apply Rle_trans with (r2 := (1 - kp) * (max_dist_spect (!! conf))).
           * rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
-            apply distance_after_move; try assumption.
+            apply distance_after_move; try assumption || tauto.
             ** subst C. change (conf Pid) with (fst (conf Pid, INR kP)).
                eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
                  with (p := (Config.loc (conf Pid), INR kP)).
-               ++ subst relems elems. intro Habs. apply map_eq_nil in Habs.
-                  rewrite Habs, InA_nil in *. tauto.
+               ++ subst relems. rewrite Hmax. discriminate.
                ++ subst relems elems. intro.
                   rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
                   intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -820,103 +821,112 @@ Proof.
                ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
                   -- now exists (Config.loc (conf Pid), kP).
                   -- clear. intros [] [] ?. now hnf in *; simpl in *.
-            ** 
-++
-            now subst elems.
-            now subst elems.
-            destruct (Rlt_dec 0 kp); try assumption.
-            exfalso.
-            apply n.
-            destruct Hkple1 as [[Hkplt0 | Hkpeq0] _].
-            assumption.
-            subst kp.
-            apply Rlt_le_trans with (r2 := delta).
-            assumption.
-            rewrite R2.mul_0 in Hkplow.
-            rewrite R2norm_origin in Hkplow.
-            assumption.
-            now destruct Hkqle1.
-          * rewrite Rmult_comm.
-            rewrite Rmult_minus_distr_l.
-            rewrite Rmult_1_r.
-            apply Rplus_le_compat_l.
-            apply Ropp_ge_le_contravar.
-            apply Rle_ge.
-            apply (Rle_trans _ _ _ Hkplow).
-            rewrite R2norm_mul.
-            rewrite Rabs_pos_eq.
-            rewrite Rmult_comm.
-            apply Rmult_le_compat_r.
-            now destruct Hkple1.
-            rewrite <- R2norm_dist.
-            rewrite R2.dist_sym.
-            apply barycenter_dist_decrease with (E := elems).
-            subst elems.
-            rewrite Hmax; intro; discriminate.
-            intros. apply max_dist_spect_le.
-            now subst elems.
-            now subst elems.
-            now subst C.
-            assumption.
-            now destruct Hkple1.
+            ** subst elems. apply max_dist_spect_le.
+               ++ rewrite Spect.support_map_elements, (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+                  -- eexists; split; try apply HinPP; reflexivity.
+                  -- now intros [] [] ?.
+               ++ rewrite Spect.support_map_elements, (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+                  -- eexists; split; try apply HinQQ; reflexivity.
+                  -- now intros [] [] ?.
+            ** destruct (Rlt_dec 0 kp); try assumption.
+               assert (kp = 0) by lra. subst kp.
+               apply Rlt_le_trans with delta; trivial; [].
+               now rewrite R2.mul_0, R2norm_origin in Hkplow.
+          * rewrite Rmult_comm, Rmult_minus_distr_l, Rmult_1_r.
+            apply Rplus_le_compat_l, Ropp_ge_le_contravar, Rle_ge, (Rle_trans _ _ _ Hkplow).
+            rewrite R2norm_mul, Rabs_pos_eq, Rmult_comm; try lra; [].
+            apply Rmult_le_compat_r; try lra; [].
+            rewrite <- R2norm_dist, R2.dist_sym.
+            eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
+                 with (p := (Config.loc (conf Pid), INR kP)).
+            ++ subst relems. rewrite Hmax. discriminate.
+            ++ subst relems elems. intro.
+               rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
+               intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
+               destruct p, Heq. simpl in *. subst. now apply lt_0_INR.
+            ++ intros p1 p2 Hin1 Hin2. subst relems elems.
+               rewrite InA_map_iff in Hin1, Hin2; autoclass; [].
+               apply max_dist_spect_le.
+               -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                  destruct Hin1 as [p1' [Heq1 Hin1]].
+                  exists p1'. split; trivial; []. destruct p1', Heq1 as [Heq1 _].
+                  now hnf in *; simpl in *.
+               -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                  destruct Hin2 as [p2' [Heq2 Hin2]].
+                  exists p2'. split; trivial; []. destruct p2', Heq2 as [Heq2 _].
+                  now hnf in *; simpl in *.
+            ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+               -- now exists (Config.loc (conf Pid), kP).
+               -- clear. intros [] [] ?. now hnf in *; simpl in *.
         - apply Rle_trans with (r2 := (1 - kq) * (max_dist_spect (!! conf))).
           * rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
             rewrite R2.dist_sym.
-            apply distance_after_move; try assumption.
-            apply barycenter_dist_decrease with (E := elems).
-            subst elems.
-            rewrite Hmax; intro; discriminate.
-            clear n.
-            intros. apply max_dist_spect_le.
-            now subst elems.
-            now subst elems.
-            now subst C.
-            assumption.
-            apply max_dist_spect_le.
-            now subst elems.
-            now subst elems.
-            destruct (Rlt_dec 0 kq); try assumption.
-            exfalso.
-            apply n0.
-            destruct Hkqle1 as [[Hkqlt0 | Hkqeq0] _].
-            assumption.
-            subst kq.
-            apply Rlt_le_trans with (r2 := delta).
-            assumption.
-            rewrite R2.mul_0 in Hkqlow.
-            rewrite R2norm_origin in Hkqlow.
-            assumption.
-            left. now apply Rnot_le_lt.
-            now destruct Hkple1.
-          * rewrite Rmult_comm.
-            rewrite Rmult_minus_distr_l.
-            rewrite Rmult_1_r.
-            apply Rplus_le_compat_l.
-            apply Ropp_ge_le_contravar.
-            apply Rle_ge.
-            apply (Rle_trans _ _ _ Hkqlow).
-            rewrite R2norm_mul.
-            rewrite Rabs_pos_eq.
-            rewrite Rmult_comm.
-            apply Rmult_le_compat_r.
-            now destruct Hkqle1.
-            rewrite <- R2norm_dist.
-            rewrite R2.dist_sym.
-            apply barycenter_dist_decrease with (E := elems).
-            subst elems.
-            rewrite Hmax; intro; discriminate.
-            intros. apply max_dist_spect_le.
-            now subst elems.
-            now subst elems.
-            now subst C.
-            assumption.
-            now destruct Hkqle1.
+            apply distance_after_move; try assumption || lra.
+            ** subst C. change (conf Pid) with (fst (conf Qid, INR kP)).
+               eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
+                 with (p := (Config.loc (conf Qid), INR kQ)).
+               ++ subst relems. rewrite Hmax. discriminate.
+               ++ subst relems elems. intro.
+                  rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
+                  intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
+                  destruct p, Heq. simpl in *. subst. now apply lt_0_INR.
+               ++ intros p1 p2 Hin1 Hin2. subst relems elems.
+                  rewrite InA_map_iff in Hin1, Hin2; autoclass; [].
+                  apply max_dist_spect_le.
+                  -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                     destruct Hin1 as [p1' [Heq1 Hin1]].
+                     exists p1'. split; trivial; []. destruct p1', Heq1 as [Heq1 _].
+                     now hnf in *; simpl in *.
+                  -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                     destruct Hin2 as [p2' [Heq2 Hin2]].
+                     exists p2'. split; trivial; []. destruct p2', Heq2 as [Heq2 _].
+                     now hnf in *; simpl in *.
+               ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+                  -- now exists (Config.loc (conf Qid), kQ).
+                  -- clear. intros [] [] ?. now hnf in *; simpl in *.
+            ** subst elems. apply max_dist_spect_le.
+               ++ rewrite Spect.support_map_elements, (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+                  -- eexists; split; try apply HinQQ; reflexivity.
+                  -- now intros [] [] ?.
+               ++ rewrite Spect.support_map_elements, (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+                  -- eexists; split; try apply HinPP; reflexivity.
+                  -- now intros [] [] ?.
+            ** destruct (Rlt_dec 0 kq); try assumption.
+               assert (kq = 0) by lra. subst kq.
+               apply Rlt_le_trans with delta; trivial; [].
+               now rewrite R2.mul_0, R2norm_origin in Hkqlow.
+          * rewrite Rmult_comm,  Rmult_minus_distr_l, Rmult_1_r.
+            apply Rplus_le_compat_l, Ropp_ge_le_contravar, Rle_ge, (Rle_trans _ _ _ Hkqlow).
+            rewrite R2norm_mul, Rabs_pos_eq, Rmult_comm; try lra; [].
+            apply Rmult_le_compat_r; try lra; [].
+            rewrite <- R2norm_dist, R2.dist_sym.
+            eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
+                 with (p := (Config.loc (conf Qid), INR kQ)).
+            ++ subst relems. rewrite Hmax. discriminate.
+            ++ subst relems elems. intro.
+               rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
+               intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
+               destruct p, Heq. simpl in *. subst. now apply lt_0_INR.
+            ++ intros p1 p2 Hin1 Hin2. subst relems elems.
+               rewrite InA_map_iff in Hin1, Hin2; autoclass; [].
+               apply max_dist_spect_le.
+               -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                  destruct Hin1 as [p1' [Heq1 Hin1]].
+                  exists p1'. split; trivial; []. destruct p1', Heq1 as [Heq1 _].
+                  now hnf in *; simpl in *.
+               -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                  destruct Hin2 as [p2' [Heq2 Hin2]].
+                  exists p2'. split; trivial; []. destruct p2', Heq2 as [Heq2 _].
+                  now hnf in *; simpl in *.
+            ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+               -- now exists (Config.loc (conf Qid), kQ).
+               -- clear. intros [] [] ?. now hnf in *; simpl in *.
 
       + generalize HinP.
         apply Hrobot_move in HinP; [|assumption].
         intro HinPP.
         generalize HinQ.
-        apply Hrobot_move_less_than_delta in HinQ.
+        apply Hrobot_move_less_than_delta in HinQ; try lra; [].
         intro HinQQ.
         destruct HinP as [kp [kp_def [Hkple1 Hkplow]]].
         rewrite kp_def in HroundP.
@@ -924,59 +934,49 @@ Proof.
 
         rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
         apply Rle_trans with (r2 := R2.dist (conf Pid) C - delta).
-        rewrite R2norm_dist.
-        assert (conf Pid + kp * (C - conf Pid) - C = (1 + - kp) * (conf Pid - C))%R2.
-        { symmetry. rewrite <- R2.add_morph.
-          rewrite R2.mul_1.
-          replace (conf Pid - C)%R2 with (- (C - conf Pid))%R2 at 2.
-          rewrite R2.mul_opp.
-          rewrite R2.minus_morph.
-          rewrite R2.opp_opp.
-          rewrite <- R2.add_assoc.
-          rewrite R2.add_comm with (u := (-C)%R2).
-          now rewrite R2.add_assoc.
-          rewrite R2.opp_distr_add.
-          rewrite R2.opp_opp.
-          now rewrite R2.add_comm.
-        }
-        rewrite H.
-        rewrite R2norm_mul.
-        rewrite R2norm_dist.
-        rewrite Rabs_pos_eq.
-        rewrite Rmult_plus_distr_r.
-        rewrite Rmult_1_l.
-        apply Rplus_le_compat_l.
-        rewrite <- Ropp_mult_distr_l.
-        apply Ropp_ge_le_contravar.
-        apply Rle_ge.
-        rewrite <- R2norm_dist.
-        rewrite R2.dist_sym.
-        rewrite R2norm_dist.
-        rewrite <- Rabs_pos_eq with (x := kp).
-        now rewrite <- R2norm_mul.
-        now destruct Hkple1.
-        apply Rplus_le_reg_r with (r := kp).
-        rewrite Rplus_0_l.
-        rewrite Rplus_assoc.
-        rewrite Rplus_opp_l.
-        rewrite Rplus_0_r.
-        now destruct Hkple1.
-        apply Rplus_le_compat_r.
-        apply barycenter_dist_decrease with (E := elems).
-        subst elems.
-        rewrite Hmax; intro; discriminate.
-        intros. apply max_dist_spect_le.
-        now subst elems.
-        now subst elems.
-        now subst C.
-        assumption.
-        now apply Rnot_le_gt.
+        - rewrite R2norm_dist.
+          assert (Heq : (conf Pid + kp * (C - conf Pid) - C = (1 + - kp) * (conf Pid - C))%R2).
+          { symmetry. rewrite <- R2.add_morph.
+            rewrite R2.mul_1.
+            replace (conf Pid - C)%R2 with (- (C - conf Pid))%R2 at 2.
+            - now rewrite R2.mul_opp, R2.minus_morph, R2.opp_opp, <- R2.add_assoc,
+                          R2.add_comm with (u := (-C)%R2), R2.add_assoc.
+            - now rewrite R2.opp_distr_add, R2.opp_opp, R2.add_comm.
+          }
+          rewrite Heq, R2norm_mul, R2norm_dist, Rabs_pos_eq, Rmult_plus_distr_r, Rmult_1_l; try lra; [].
+          apply Rplus_le_compat_l.
+          rewrite <- Ropp_mult_distr_l.
+          apply Ropp_ge_le_contravar, Rle_ge.
+          now rewrite <- R2norm_dist, R2.dist_sym, R2norm_dist, <- Rabs_pos_eq with (x := kp), <- R2norm_mul.
+        - apply Rplus_le_compat_r.
+          eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
+            with (p := (Config.loc (conf Pid), INR kP)).
+          ++ subst relems. rewrite Hmax. discriminate.
+          ++ subst relems elems. intro.
+             rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
+             intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
+             destruct p, Heq. simpl in *. subst. now apply lt_0_INR.
+          ++ intros p1 p2 Hin1 Hin2. subst relems elems.
+             rewrite InA_map_iff in Hin1, Hin2; autoclass; [].
+             apply max_dist_spect_le.
+             -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                destruct Hin1 as [p1' [Heq1 Hin1]].
+                exists p1'. split; trivial; []. destruct p1', Heq1 as [Heq1 _].
+                now hnf in *; simpl in *.
+             -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                destruct Hin2 as [p2' [Heq2 Hin2]].
+                exists p2'. split; trivial; []. destruct p2', Heq2 as [Heq2 _].
+                now hnf in *; simpl in *.
+          ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+             -- now exists (Config.loc (conf Pid), kP).
+             -- clear. intros [] [] ?. now hnf in *; simpl in *.
 
+      (* Copy/paste from the previous + *)
       + generalize HinQ.
         apply Hrobot_move in HinQ; [|assumption].
         intro HinQQ.
         generalize HinP.
-        apply Hrobot_move_less_than_delta in HinP.
+        apply Hrobot_move_less_than_delta in HinP; try lra; [].
         intro HinPP.
         destruct HinQ as [kq [kq_def [Hkqle1 Hkqlow]]].
         rewrite kq_def in HroundQ.
@@ -984,81 +984,64 @@ Proof.
 
         rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
         apply Rle_trans with (r2 := R2.dist (conf Qid) C - delta).
-        rewrite R2.dist_sym.
-        rewrite R2norm_dist.
-        assert (conf Qid + kq * (C - conf Qid) - C = (1 + - kq) * (conf Qid - C))%R2.
-        { symmetry. rewrite <- R2.add_morph.
-          rewrite R2.mul_1.
-          replace (conf Qid - C)%R2 with (- (C - conf Qid))%R2 at 2.
-          rewrite R2.mul_opp.
-          rewrite R2.minus_morph.
-          rewrite R2.opp_opp.
-          rewrite <- R2.add_assoc.
-          rewrite R2.add_comm with (u := (-C)%R2).
-          now rewrite R2.add_assoc.
-          rewrite R2.opp_distr_add.
-          rewrite R2.opp_opp.
-          now rewrite R2.add_comm.
-        }
-        rewrite H.
-        rewrite R2norm_mul.
-        rewrite R2norm_dist.
-        rewrite Rabs_pos_eq.
-        rewrite Rmult_plus_distr_r.
-        rewrite Rmult_1_l.
-        apply Rplus_le_compat_l.
-        rewrite <- Ropp_mult_distr_l.
-        apply Ropp_ge_le_contravar.
-        apply Rle_ge.
-        rewrite <- R2norm_dist.
-        rewrite R2.dist_sym.
-        rewrite R2norm_dist.
-        rewrite <- Rabs_pos_eq with (x := kq).
-        now rewrite <- R2norm_mul.
-        now destruct Hkqle1.
-        apply Rplus_le_reg_r with (r := kq).
-        rewrite Rplus_0_l.
-        rewrite Rplus_assoc.
-        rewrite Rplus_opp_l.
-        rewrite Rplus_0_r.
-        now destruct Hkqle1.
-        apply Rplus_le_compat_r.
-        apply barycenter_dist_decrease with (E := elems).
-        subst elems.
-        rewrite Hmax; intro; discriminate.
-        intros. apply max_dist_spect_le.
-        now subst elems.
-        now subst elems.
-        now subst C.
-        assumption.
-        now apply Rnot_le_gt.
+        - rewrite R2.dist_sym, R2norm_dist.
+          assert (Heq : (conf Qid + kq * (C - conf Qid) - C = (1 + - kq) * (conf Qid - C))%R2).
+          { symmetry. rewrite <- R2.add_morph, R2.mul_1.
+            replace (conf Qid - C)%R2 with (- (C - conf Qid))%R2 at 2.
+            - now rewrite R2.mul_opp, R2.minus_morph, R2.opp_opp, <- R2.add_assoc,
+                          R2.add_comm with (u := (-C)%R2), R2.add_assoc.
+            - now rewrite R2.opp_distr_add, R2.opp_opp, R2.add_comm.
+          }
+          rewrite Heq, R2norm_mul, R2norm_dist, Rabs_pos_eq, Rmult_plus_distr_r, Rmult_1_l; try lra; [].
+          apply Rplus_le_compat_l.
+          rewrite <- Ropp_mult_distr_l.
+          apply Ropp_ge_le_contravar, Rle_ge.
+          rewrite <- R2norm_dist, R2.dist_sym, R2norm_dist,
+                  <- Rabs_pos_eq with (x := kq), <- R2norm_mul; lra.
+        - apply Rplus_le_compat_r.
+          eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
+            with (p := (Config.loc (conf Qid), INR kQ)).
+          ++ subst relems. rewrite Hmax. discriminate.
+          ++ subst relems elems. intro.
+             rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
+             intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
+             destruct p, Heq. simpl in *. subst. now apply lt_0_INR.
+          ++ intros p1 p2 Hin1 Hin2. subst relems elems.
+             rewrite InA_map_iff in Hin1, Hin2; autoclass; [].
+             apply max_dist_spect_le.
+             -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                destruct Hin1 as [p1' [Heq1 Hin1]].
+                exists p1'. split; trivial; []. destruct p1', Heq1 as [Heq1 _].
+                now hnf in *; simpl in *.
+             -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                destruct Hin2 as [p2' [Heq2 Hin2]].
+                exists p2'. split; trivial; []. destruct p2', Heq2 as [Heq2 _].
+                now hnf in *; simpl in *.
+          ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+             -- now exists (Config.loc (conf Qid), kQ).
+             -- clear. intros [] [] ?. now hnf in *; simpl in *.
 
-      + apply Hrobot_move_less_than_delta in HinP.
-        apply Hrobot_move_less_than_delta in HinQ.
+      + apply Hrobot_move_less_than_delta in HinP; try lra; [].
+        apply Hrobot_move_less_than_delta in HinQ; try lra; [].
         rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
-        rewrite HinP, HinQ.
-        assert (R2.dist C C = 0).
-        { rewrite R2.dist_defined. apply R2.eq_equiv. }
-        rewrite H.
+        rewrite HinP, HinQ, R2_dist_defined_2.
         apply Rplus_le_reg_r with (r := delta).
         rewrite Rplus_0_l.
-        assert (max_dist_spect (!! conf) - delta + delta = max_dist_spect (!! conf)) by ring.
-        rewrite H0.
+        assert (Heq : max_dist_spect (!! conf) - delta + delta = max_dist_spect (!! conf)) by ring.
+        rewrite Heq.
         apply Hnotdone.
-        now apply Rnot_le_gt.
-        now apply Rnot_le_gt.
     }
 
     unfold measure.
-    generalize (max_dist_spect_ex (!!(round delta ffgatherR2 da conf))).
+    generalize (@max_dist_spect_ex (!!(round delta ffgatherR2 da conf))).
     intros Hmax_dist_ex.
-    assert (Hspect_non_nil: nxt_elems <> nil).
-    { rewrite Heqnxt_elems.
-      apply support_non_nil. }
-    rewrite <- Heqnxt_elems in Hmax_dist_ex.
-    destruct (Hmax_dist_ex Hspect_non_nil) as [pt0 [pt1 [Hin0 [Hin1 Hdist]]]].
-    rewrite <- Hdist.
-    now auto.
+    destruct Hmax_dist_ex as [pt0 [pt1 [Hin0 [Hin1 Hdist]]]].
+    * apply support_non_nil.
+    * rewrite <- Hdist.
+      rewrite Spect.support_map_elements, InA_map_iff, <- Heqnxt_elems in *; autoclass; [].
+      destruct Hin1 as [[] [Heq1 Hin1]], Hin0 as [[] [Heq0 Hin0]].
+      rewrite <- Heq0, <- Heq1.
+      apply MainArgument; eauto using Spect.M.InA_pair_elt.
 Qed.
 
 (* FIXME: cleanup! *)
@@ -1068,43 +1051,33 @@ Theorem round_last_step : forall d conf delta,
     measure conf <= delta ->
     measure (round delta ffgatherR2 (Stream.hd d) conf) = 0.
 Proof.
+assert (Proper (Spect.eq_pair ==> R2.eq * eq) (fun xn : Spect.elt * nat => (fst xn, INR (snd xn)))).
+{ clear. intros [] [] []. hnf in *; simpl in *. now subst. }
 intros [da d] conf delta Hdelta HFS Hlt.
 unfold measure.
-remember (Spect.M.elements (!! conf)) as elems.
+remember (Spect.elements (!! conf)) as elems.
+remember (map (fun xn => (fst xn, INR (snd xn))) elems) as relems.
 set (C := wbarycenter (map (fun xn => (fst xn, INR (snd xn))) elems)).
-remember (Spect.M.elements (!! (round delta ffgatherR2 da conf))) as nxt_elems.
-assert (Hantec: forall KP, In KP nxt_elems ->
-                  exists Pid, In (Config.loc (conf Pid)) elems /\ R2.eq (round delta ffgatherR2 da conf Pid) KP).
-{ intros KP HinKP.
-  rewrite Heqnxt_elems in HinKP.
-  apply (In_InA R2.eq_equiv) in HinKP.
-  rewrite Spect.M.elements_spec1 in HinKP.
-  generalize (Spect.from_config_spec (round delta ffgatherR2 da conf)).
-  intro Hok. unfold Spect.is_ok in Hok.
-  rewrite Hok in HinKP. clear Hok.
-  destruct HinKP as (Pid, HPid).
-  exists Pid.
-  split; [|now rewrite HPid].
-  generalize (Spect.from_config_spec conf).
-  intro Hok. unfold Spect.is_ok in Hok.
-  destruct (Hok (Config.loc (conf Pid))) as [_ Hex].
-  apply InA_Leibniz.
-  rewrite Heqelems.
-  apply Spect.M.elements_spec1.
-  apply Hex.
-  now exists Pid.
-}
+remember (Spect.elements (!! (round delta ffgatherR2 da conf))) as nxt_elems.
+assert (Hantec: forall KP, InA Spect.eq_elt KP nxt_elems ->
+                           exists Pid k, InA Spect.eq_elt (Config.loc (conf Pid), k) elems
+                               /\ R2.eq (round delta ffgatherR2 da conf Pid) (fst KP)).
+{ intros [k p] HinKP.
+  rewrite Heqnxt_elems, Spect.elements_In in HinKP.
+  rewrite Spect.from_config_In in HinKP. destruct HinKP as [id  Hid].
+  exists id, p. split; trivial; []. subst elems.
+  rewrite Spect.elements_In. apply Spect.from_config_In. now exists id. }
 
-assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
+assert (HonlyC: forall KP, InA Spect.eq_elt KP nxt_elems -> R2.eq (fst KP) C).
 { intros KP HinKP.
-  destruct (Hantec KP HinKP) as [Pid [HinP HroundP]].
-  rewrite <- HroundP in *. clear HroundP KP.
+  destruct (Hantec KP HinKP) as [Pid [k [HinP HroundP]]].
+  rewrite <- HroundP in *. clear HroundP.
   rewrite (round_simplify _ _ _ Pid).
   destruct (step da Pid) eqn:HeqPact.
   * destruct p. simpl.
-    rewrite <- Heqelems.
+    rewrite <- Heqelems, <- Heqrelems.
     unfold Rle_bool.
-    destruct (Rle_dec delta (R2norm (r * (barycenter elems - conf Pid)))).
+    destruct (Rle_dec delta (R2norm (r * (wbarycenter relems - conf Pid)))).
     + assert (Hr: 0 <= snd (t, r) <= 1).
       { apply step_flexibility with da Pid. now symmetry. }
       simpl in Hr.
@@ -1113,16 +1086,33 @@ assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
       - exfalso.
         apply Rlt_irrefl with delta.
         apply (Rle_lt_trans _ _ _ r0).
-        rewrite R2norm_mul.
-        rewrite (Rabs_pos_eq _ Hr0).
-        rewrite <- R2norm_dist.
-        assert (Hle : R2.dist (barycenter elems) (conf Pid) <= delta).
+        rewrite R2norm_mul, (Rabs_pos_eq _ Hr0), <- R2norm_dist.
+        assert (Hle : R2.dist (wbarycenter relems) (conf Pid) <= delta).
         { rewrite R2.dist_sym.
           apply Rle_trans with (measure conf); trivial; [].
-          apply barycenter_dist_decrease with elems; auto; [|].
-          - rewrite Heqelems, <- Spect.MProp.MP.elements_Empty.
-            intro Hempty. now apply Spect.MProp.MP.empty_is_empty_1, spect_non_nil in Hempty.
-          - intros. unfold measure. apply max_dist_spect_le; now rewrite <- Heqelems. }
+          unfold measure.
+               eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
+                 with (p := ((Config.loc (conf Pid)), INR (snd KP))).
+          ++ subst relems elems. intro Habs. apply map_eq_nil in Habs.
+             revert Habs. rewrite Spect.elements_nil. apply spect_non_nil.
+          ++ subst relems elems. intro.
+             rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
+             intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
+             destruct p, Heq. simpl in *. subst. now apply lt_0_INR.
+          ++ intros p1 p2 Hin1 Hin2. subst relems elems.
+             rewrite InA_map_iff in Hin1, Hin2; autoclass; [].
+             apply max_dist_spect_le.
+             -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                destruct Hin1 as [p1' [Heq1 Hin1]].
+                exists p1'. split; trivial; []. destruct p1', Heq1 as [Heq1 _].
+                now hnf in *; simpl in *.
+             -- rewrite Spect.support_map_elements, InA_map_iff; autoclass; [].
+                destruct Hin2 as [p2' [Heq2 Hin2]].
+                exists p2'. split; trivial; []. destruct p2', Heq2 as [Heq2 _].
+                now hnf in *; simpl in *.
+          ++ subst relems. rewrite (@InA_map_iff _ _ Spect.eq_elt); autoclass.
+             -- now exists (Config.loc (conf Pid), k).
+             -- clear. intros [] [] ?. now hnf in *; simpl in *. }
         (* There should be a lemma for this in standard library. *)
         rewrite <- Rmult_1_l.
         destruct Hle.
@@ -1136,21 +1126,22 @@ assert (HonlyC: forall KP, In KP nxt_elems -> R2.eq KP C).
         rewrite R2.mul_1, R2.add_comm, <- R2.add_assoc.
         pattern (- conf Pid + conf Pid)%R2.
         rewrite R2.add_comm, R2.add_opp, R2.add_origin.
-        now unfold C.
-    + now unfold C.
+        now unfold C; subst relems.
+    + now unfold C; subst relems.
   * unfold FullySynchronous in HFS.
     inversion HFS.
     unfold FullySynchronousInstant in H.
-    destruct (H Pid). now symmetry. }
-destruct (max_dist_spect_ex (!! (round delta ffgatherR2 da conf)))
+    destruct (H0 Pid). now symmetry. }
+destruct (@max_dist_spect_ex (!! (round delta ffgatherR2 da conf)))
 as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].
 apply support_non_nil.
 simpl. rewrite <- Hdist.
-rewrite HonlyC.
-rewrite (HonlyC pt1).
-now apply R2.dist_defined.
-now subst nxt_elems.
-now subst nxt_elems.
+rewrite Spect.support_In in Hinpt0, Hinpt1.
+rewrite <- (Spect.elements_In pt0 0) in Hinpt0.
+rewrite <- (Spect.elements_In pt1 0) in Hinpt1.
+rewrite <- Heqnxt_elems in Hinpt0, Hinpt1.
+apply HonlyC in Hinpt0. apply HonlyC in Hinpt1.
+simpl in *. rewrite Hinpt0, Hinpt1. apply R2_dist_defined_2.
 Qed.
 
 Definition lt_config delta x y :=
