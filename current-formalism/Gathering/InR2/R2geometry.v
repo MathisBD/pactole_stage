@@ -1559,10 +1559,11 @@ Qed.
 
 (** Weighted barycenter of a list of locations *)
 
-Definition wbarycenter_aux (E : list (R2.t * R)) : R2.t * R :=
-  List.fold_left (fun acc xn => (((snd xn * fst xn) + fst acc)%R2, snd xn + snd acc)) E (R2.origin, 0).
+Definition wbarycenter_aux :=
+  List.fold_left (fun acc xn => (((snd xn * fst xn) + fst acc)%R2, snd xn + snd acc)).
 
-Definition wbarycenter E := let '(sum, weight) := wbarycenter_aux E in ((1 / weight) * sum)%R2.
+Definition wbarycenter E :=
+  let '(sum, weight) := wbarycenter_aux E (R2.origin, 0) in ((1 / weight) * sum)%R2.
 
 Definition weighted_sqr_dist_sum (pt: R2.t) (E: list (R2.t * R)) : R :=
   List.fold_left (fun acc pt' => acc + snd pt' * (R2.dist pt (fst pt'))²) E 0.
@@ -1580,15 +1581,9 @@ Axiom wbarycenter_n_spec : forall (E: list (R2.t * R)),
 Axiom wbarycenter_n_unique: forall E a b,
     is_wbarycenter_n E a -> is_wbarycenter_n E b -> R2.eq a b.
 
-Instance wbarycenter_aux_compat : Proper (PermutationA (R2.eq * eq) ==> R2.eq * eq) wbarycenter_aux.
+Instance wbarycenter_aux_compat :
+  Proper (PermutationA (R2.eq * eq) ==> R2.eq * eq ==> R2.eq * eq) wbarycenter_aux.
 Proof.
-intros l1 l2 Hperm.
-unfold wbarycenter_aux. Search Proper fold_left.
-generalize (@reflexivity _ (R2.eq * eq)%signature _ (R2.origin, 0)).
-generalize (R2.origin, 0) at 2 4 as p2. generalize (R2.origin, 0) as p1.
-revert l1 l2 Hperm.
-change (Proper (PermutationA (R2.eq * eq) ==> R2.eq * eq ==> R2.eq * eq)
-               (fold_left (fun acc xn => ((snd xn * fst xn + fst acc)%R2, snd xn + snd acc)))).
 apply fold_left_symmetry_PermutationA; autoclass.
 + intros [] [] [] [] [] []. split; hnf in *; simpl in *; subst; reflexivity.
 + intros [[] ?] [[] ?] [[] ?]. split; hnf; simpl in *; ring || f_equal; ring.
@@ -1599,7 +1594,8 @@ Proof.
 intros l1 l2 Hperm.
 unfold wbarycenter.
 apply wbarycenter_aux_compat in Hperm.
-destruct (wbarycenter_aux l1), (wbarycenter_aux l2).
+specialize (Hperm _ _ (reflexivity (R2.origin, 0))).
+destruct (wbarycenter_aux l1 (R2.origin, 0)), (wbarycenter_aux l2 (R2.origin, 0)).
 destruct Hperm. hnf in *; simpl in *. subst. reflexivity.
 Qed.
 
@@ -1619,35 +1615,83 @@ apply fold_left_symmetry_PermutationA; autoclass.
 + intros [[] ?] [[] ?] ?. hnf; simpl in *; ring || f_equal; ring.
 Qed.
 
-Lemma wbarycenter_dist_decrease : forall (E : list (R2.t * R)) (dm : R),
+Lemma wbarycenter_aux_snd_nonneg : forall E init,
+  (List.Forall (fun x => 0 <= snd x) E) ->
+  snd init <= snd (wbarycenter_aux E init).
+Proof.
+induction E as [| e E]; intros init HE; simpl.
++ reflexivity.
++ transitivity (snd e + snd init).
+  - inv HE. lra.
+  - change (snd e + snd init) with (snd ((snd e * fst e + fst init)%R2, snd e + snd init)).
+    apply IHE. now inv HE.
+Qed.
+
+Corollary wbarycenter_auz_snd_pos : forall E init,
+  0 <= snd init ->
   E <> nil ->
+  (List.Forall (fun x => 0 < snd x) E) ->
+  0 < snd (wbarycenter_aux E init).
+Proof.
+intros E init Hinit Hnil HE.
+destruct E as [| e E]; try (now elim Hnil); [].
+simpl. apply Rlt_le_trans with (snd e + snd init).
++ inv HE. lra.
++ change (snd e + snd init) with (snd ((snd e * fst e + fst init)%R2, snd e + snd init)).
+  apply wbarycenter_aux_snd_nonneg.
+  rewrite Forall_forall in *. intros x Hin. apply Rlt_le, HE. now right.
+Qed.
+
+(* R2norm (- INR (length E) * p + fold_left R2.add E R2.origin) <= INR (length E) * dm *)
+Lemma wbarycenter_dist_decrease_aux : forall dm E pt sumR,
+  0 <= sumR ->
+(*   (sumR <> 0 -> forall p, InA (R2.eq@@1)%signature p E -> R2.dist pt (fst p) <= dm) -> *)
+  (forall p, InA (R2.eq * eq)%signature p E -> 0 < snd p) ->
+  (forall p1 p2, InA (R2.eq * eq)%signature p1 E -> InA (R2.eq * eq)%signature p2 E ->
+                 R2.dist (fst p1) (fst p2) <= dm) ->
+  let '(sum_pt, sum_coeff) := wbarycenter_aux E (pt, sumR) in
+  forall p, InA (R2.eq@@1)%signature p E -> R2.dist (sum_coeff * (fst p)) sum_pt <= sum_coeff * dm.
+Proof.
+intros dm E.
+induction E as [| e E]; intros pt sumR HsumR Hpos Hdist.
+* simpl. intros ? Hin. rewrite InA_nil in Hin. tauto.
+* simpl.
+  destruct (wbarycenter_aux E ((snd e * fst e + pt)%R2, snd e + sumR)) as [pt' k'] eqn:Heq'.
+  intros p Hin.
+  assert (HsumR' : 0 < snd e + sumR). { specialize (Hpos e ltac:(now left)). lra. }
+  assert (Hpos' : forall p : R2.t * R, InA (R2.eq * eq)%signature p E -> 0 < snd p).
+  { clear -Hpos. intros p Hin. apply Hpos. now right. }
+  assert (Hdist': forall p1 p2, InA (R2.eq * eq)%signature p1 E ->
+                    InA (R2.eq * eq)%signature p2 E -> R2.dist (fst p1) (fst p2) <= dm).
+  { intros p1 p2 Hin1 Hin2. apply Hdist; now right. }
+  specialize (IHE (snd e * fst e + pt)%R2 _ (Rlt_le _ _ HsumR') Hpos' Hdist').
+  rewrite Heq' in IHE.
+  inv Hin; try auto; [].
+  
+Admitted.
+
+Lemma wbarycenter_dist_decrease : forall (E : list (R2.t * R)) (dm : R),
   (forall p, InA (R2.eq * eq)%signature p E -> 0 < snd p) ->
   (forall p1 p2, InA (R2.eq * eq)%signature p1 E -> InA (R2.eq * eq)%signature p2 E ->
                  R2.dist (fst p1) (fst p2) <= dm) ->
   forall p, InA (R2.eq@@1)%signature p E -> R2.dist (fst p) (wbarycenter E) <= dm.
 Proof.
-intros E dm HE Hweight Hdist.
-assert (Hdm : 0 <= dm).
-{ destruct E as [| x ?]; try (now elim HE); [].
-  rewrite <- (R2_dist_defined_2 (fst x)). apply Hdist; now left. }
-induction E as [| x [| y l'] IHl]; intros p Hin.
-+ now elim HE.
-+ assert (Heq : R2.eq (fst p) (fst x)).
-  { clear -Hin. now repeat match goal with H : InA _ _ _ |- _ => inv H end. }
-  unfold wbarycenter. simpl. rewrite Heq, R2.add_origin, Rplus_0_r, R2.mul_morph.
-  replace (1 / snd x * snd x) with 1.
-  - now rewrite R2.mul_1, R2_dist_defined_2.
-  - field. cut (0 < snd x); try lra; [].
-    apply Hweight. now left.
-+ assert (Hl : y :: l' <> nil) by discriminate.
-  remember (y :: l') as l. clear Heql y l'.
-  assert (Hrec : forall p, InA (R2.eq@@1)%signature p l -> R2.dist (fst p) (wbarycenter l) <= dm).
-  { apply IHl.
-    - assumption.
-    - intros. apply Hweight. now right.
-    - intros. apply Hdist; now right. }
-  clear IHl Hl HE.
-Admitted.
+intros E dm Hweight Hdist p Hin.
+assert (Hrec := @wbarycenter_dist_decrease_aux dm E R2.origin 0 (Rle_refl 0) Hweight Hdist).
+unfold wbarycenter.
+destruct (wbarycenter_aux E (R2.origin, 0)) as [sum weight] eqn:Heq.
+specialize (Hrec p Hin).
+assert (Hpos : 0 < weight).
+{ replace weight with (snd (wbarycenter_aux E (R2.origin, 0))) by now rewrite Heq.
+  apply wbarycenter_auz_snd_pos.
+  - reflexivity.
+  - destruct E; discriminate || rewrite InA_nil in Hin; tauto.
+  - rewrite Forall_forall. intros. apply Hweight. apply In_InA; autoclass. }
+rewrite <- (R2.mul_1 sum) in Hrec.
+replace 1 with (weight * (1 / weight)) in Hrec by (field; lra).
+rewrite <- R2.mul_morph, R2mul_dist, Rabs_pos_eq in Hrec; try lra; [].
+now apply Rmult_le_reg_l in Hrec.
+Qed.
 
 (** **  Triangles  **)
 
