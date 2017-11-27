@@ -371,12 +371,11 @@ Definition change_frame1 config g := translation (opp (get_location (config (Goo
 
 Definition bad_da1 : demonic_action.
 refine {|
-  activate := fun _ => activate1;
+  activate := activate1;
   relocate_byz := fun _ _ => 1;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt |}.
 Proof.
-+ abstract (now repeat intro; subst).
 + abstract (now repeat intro).
 + abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst;
             f_equiv; apply opp_compat, get_location_compat, Heq).
@@ -393,12 +392,11 @@ Definition change_frame2 config g := homothecy (get_location (config (Good g))) 
 
 Definition bad_da2 : demonic_action.
 refine {|
-  activate := fun _ => activate2;
+  activate := activate2;
   relocate_byz := fun _ _ => 0;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt |}.
 Proof.
-+ abstract (now repeat intro; subst).
 + abstract (now repeat intro).
 + abstract (unfold change_frame2; intros config1 config2 Heq ? x ? pt; subst; simpl; do 3 f_equal;
             change (get_location (config1 (Good x)) == get_location (config2 (Good x)));
@@ -416,25 +414,31 @@ constructor; [| constructor].
   + apply kReset. simpl. now destruct (left_dec g1).
   + destruct id2 as [g2 | b2]; [destruct (left_dec g2) |].
     - apply kReduce; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kStall; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kReduce; simpl.
       -- now destruct (left_dec g1).
+      -- reflexivity.
       -- apply kReset. simpl. now destruct (left_dec g1).
   + apply kReset. reflexivity.
 * intros [g1 | b1] id2; [destruct (left_dec g1) |].
   + destruct id2 as [g2 | b2]; [destruct (left_dec g2) |].
     - apply kStall; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
-      -- apply kReset. simpl. now destruct (left_dec g1).
-    - apply kReduce; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- apply kReset. simpl. now destruct (left_dec g1).
     - apply kReduce; simpl.
       -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
+      -- apply kReset. simpl. now destruct (left_dec g1).
+    - apply kReduce; simpl.
+      -- now destruct (left_dec g1).
+      -- reflexivity.
       -- apply kReset. simpl. now destruct (left_dec g1).
   + apply kReset. simpl. now destruct (left_dec g1).
   + apply kReset. reflexivity.
@@ -464,13 +468,12 @@ Hypothesis sol : solution r.
     by the same amount in order to get the same translated configuration. *)
 
 Definition shifting_da (pt : R) : demonic_action.
-refine {| activate := fun _ _ => true;
+refine {| activate := fun _ => true;
           relocate_byz := fun _ _ => pt;
           change_frame := fun config g => (* FIXME: try avoiding passing all the implicit args *)
             translation (@opp R _ _ R_RMS (@get_location R R _ _ _ _ Info (config (Good g))));
           choose_update := fun _ _ _ => tt |}.
 Proof.
-+ abstract (now repeat intro).
 + abstract (now repeat intro).
 + abstract (intros config1 config2 Hconfig ? g ?; subst; f_equiv;
             apply opp_compat, get_location_compat, Hconfig).
@@ -597,7 +600,7 @@ Qed.
 Lemma round_config1 : round r bad_da1 config1 == config2.
 Proof.
 intros id. unfold round.
-simpl (activate bad_da1 config1). unfold activate1.
+simpl (activate bad_da1). unfold activate1.
 destruct id as [g | b]; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
 cbn -[spect_from_config config1 config2 translation]. unfold change_frame1, id.
@@ -614,7 +617,7 @@ Qed.
 Lemma round_config2 : round r bad_da2 config2 == config1.
 Proof.
 intros id. unfold round.
-simpl (activate bad_da2 config2). unfold activate2.
+simpl (activate bad_da2). unfold activate2.
 destruct id as [g | b]; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
 cbn -[homothecy map_config]. unfold change_frame2. simpl get_location. unfold id.

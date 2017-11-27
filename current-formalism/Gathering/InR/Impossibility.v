@@ -407,7 +407,7 @@ Instance change_frame1_compat : Proper (equiv ==> Logic.eq ==> equiv) change_fra
 Proof. unfold change_frame1. intros ? ? Heq ? ? ?. subst. now rewrite Heq. Qed.
 
 Definition da1 : demonic_action := {|
-  activate := fun _ _ => true;
+  activate := fun _ => true;
   relocate_byz := fun _ b => mk_info 0;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt;
@@ -483,14 +483,11 @@ rewrite Rinv_r in Habs.
 - auto.
 Qed.
 
-Definition activate2 b_left b_right config (id : ident) :=
+Definition activate2 b_left b_right (id : ident) :=
   match id with
     | Good g => if left_dec g then b_left else b_right
     | Byz _ => true
   end.
-
-Instance activate2_compat : forall b1 b2, Proper (equiv ==> Logic.eq ==> equiv) (activate2 b1 b2).
-Proof. repeat intro. subst. unfold activate2. now repeat destruct_match. Qed.
 
 (* TODO: Use the fact that the demons are adaptative to skip the parameter ρ
          and recover it as the distance between the two stacks. *)
@@ -500,7 +497,7 @@ Definition da2_left (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
   change_frame := fun config g => homothecy (get_location (config (Good g))) Hρ;
   choose_update := fun _ _ _ => tt;
   
-  activate_compat := activate2_compat _ _;
+  activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := ltac:(abstract (intros ? ? Heq ? ? ?; subst; rewrite Heq; reflexivity));
   choose_update_compat := ltac:(now repeat intro) |}.
@@ -511,7 +508,7 @@ Definition da2_right (ρ : R) (Hρ : ρ <> 0) : demonic_action := {|
   change_frame := fun config g => homothecy (get_location (config (Good g)))  (Ropp_neq_0_compat _ Hρ);
   choose_update := fun _ _ _ => tt;
   
-  activate_compat := activate2_compat _ _;
+  activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := ltac:(abstract (intros ? ? Heq ? ? ?; subst; rewrite Heq; reflexivity));
   choose_update_compat := ltac:(now repeat intro) |}.
@@ -531,20 +528,24 @@ constructor; [| constructor].
   + constructor 1. simpl. destruct (left_dec g1); eauto.
   + destruct (left_dec g2).
     - constructor 2; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- constructor 1. simpl. now destruct (left_dec g1).
     - constructor 3; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- constructor 1. simpl. now destruct (left_dec g1).
 * setoid_rewrite Heq.
   intros id1 id2. apply (no_byz id2), (no_byz id1). intros g1 g2.
   destruct (left_dec g1).
   + destruct (left_dec g2).
     - constructor 3; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- constructor 1. simpl. now destruct (left_dec g1).
     - constructor 2; simpl.
-      -- now destruct (left_dec g1), (left_dec g2).
+      -- now destruct (left_dec g1).
+      -- now destruct (left_dec g2).
       -- constructor 1. simpl. now destruct (left_dec g1).
   + constructor 1. simpl. now destruct (left_dec g1).
 * eapply fair_demon. rewrite Heq. unfold bad_demon2. simpl Stream.tl. fold bad_demon2. reflexivity.

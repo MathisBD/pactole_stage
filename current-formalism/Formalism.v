@@ -104,7 +104,7 @@ Context `{@update_function _ _ _ _ _ _}.
 (* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
   (** Select which robots are activated *)
-  activate : configuration -> ident -> bool;
+  activate : ident -> bool;
   (** Update the state of (activated) byzantine robots *)
   relocate_byz : configuration -> B -> info;
   (** Local referential for (activated) good robots in the compute phase *)
@@ -112,10 +112,11 @@ Record demonic_action := {
   (** Update the state of (activated) good robots in the move phase  *)
   choose_update : configuration -> G -> loc -> T2;
   (** Compatibility properties *)
-  activate_compat : Proper (equiv ==> Logic.eq ==> equiv) activate;
+  activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
   change_frame_compat : Proper (equiv ==> Logic.eq ==> equiv) change_frame;
   choose_update_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) choose_update }.
+
 
 (* These constraint will only appear while specializing the models.
   option ((loc -> similarity loc) (* change of referential *)
@@ -127,17 +128,18 @@ Record demonic_action := {
 *)
 Global Instance da_Setoid : Setoid demonic_action := {|
   equiv := fun (da1 da2 : demonic_action) =>
-           (forall config id, da1.(activate) config id == da2.(activate) config id)
+           (forall id, da1.(activate) id == da2.(activate) id)
         /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
         /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
         /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt) |}.
+
 Proof. split.
 + intuition.
 + intros da1 da2 [? [? [? ?]]]. repeat split; intros; symmetry; auto.
 + intros da1 da2 da3 [? [? [? ?]]] [? [? [? ?]]]. repeat split; intros; etransitivity; eauto.
 Defined.
 
-Global Instance activate_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) activate.
+Global Instance activate_da_compat : Proper (equiv ==> Logic.eq ==> equiv) activate.
 Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply activate_compat. Qed.
 
 Global Instance relocate_byz_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) relocate_byz.
@@ -150,45 +152,45 @@ Global Instance choose_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq =
 Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
-Definition active da config := List.filter (activate da config) names.
+Definition active da := List.filter (activate da) names.
 
-Definition idle da config := List.filter (fun id => negb (activate da config id)) names.
+Definition idle da := List.filter (fun id => negb (activate da id)) names.
 
-Global Instance active_compat : Proper (equiv ==> equiv ==> Logic.eq) active.
+Global Instance active_compat : Proper (equiv ==> Logic.eq) active.
 Proof.
-intros da1 da2 Hda config1 config2 Hconfig.
+intros da1 da2 Hda.
 unfold active. induction names as [| id l]; simpl.
 + reflexivity.
-+ destruct (activate da1 config1 id) eqn:Hactivate1, (activate da2 config2 id) eqn:Hactivate2.
++ destruct (activate da1 id) eqn:Hactivate1, (activate da2 id) eqn:Hactivate2.
   - f_equal. apply IHl.
-  - rewrite Hda, Hconfig, Hactivate2 in Hactivate1. discriminate.
-  - rewrite Hda, Hconfig, Hactivate2 in Hactivate1. discriminate.
+  - rewrite Hda, Hactivate2 in Hactivate1. discriminate.
+  - rewrite Hda, Hactivate2 in Hactivate1. discriminate.
   - apply IHl.
 Qed.
 
-Global Instance idle_compat : Proper (equiv ==> equiv ==> Logic.eq) idle.
+Global Instance idle_compat : Proper (equiv ==> Logic.eq) idle.
 Proof.
-intros da1 da2 Hda config1 config2 Hconfig.
+intros da1 da2 Hda.
 unfold idle. induction names as [| id l]; simpl.
 + reflexivity.
-+ destruct (activate da1 config1 id) eqn:Hactivate1, (activate da2 config2 id) eqn:Hactivate2.
++ destruct (activate da1 id) eqn:Hactivate1, (activate da2 id) eqn:Hactivate2.
   - apply IHl.
-  - rewrite Hda, Hconfig, Hactivate2 in Hactivate1. discriminate.
-  - rewrite Hda, Hconfig, Hactivate2 in Hactivate1. discriminate.
+  - rewrite Hda, Hactivate2 in Hactivate1. discriminate.
+  - rewrite Hda, Hactivate2 in Hactivate1. discriminate.
   - simpl. f_equal. apply IHl.
 Qed.
 
-Lemma idle_spec : forall da config id, List.In id (idle da config) <-> activate da config id = false.
+Lemma idle_spec : forall da id, List.In id (idle da) <-> activate da id = false.
 Proof.
-intros da config id. unfold idle. rewrite List.filter_In.
-destruct (activate da config id); intuition; try discriminate; [].
+intros da id. unfold idle. rewrite List.filter_In.
+destruct (activate da id); intuition; try discriminate; [].
 apply In_names.
 Qed.
 
-Lemma active_spec : forall da config id, List.In id (active da config) <-> activate da config id = true.
+Lemma active_spec : forall da id, List.In id (active da) <-> activate da id = true.
 Proof.
-intros da config id. unfold active. rewrite List.filter_In.
-destruct (activate da config id); intuition; try discriminate; [].
+intros da id. unfold active. rewrite List.filter_In.
+destruct (activate da id); intuition; try discriminate; [].
 apply In_names.
 Qed.
 
@@ -209,7 +211,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
   (** for a given robot, we compute the new configuration *)
   fun id =>
     let state := config id in
-    if da.(activate) config id                (* first see whether the robot is activated *)
+    if da.(activate) id                       (* first see whether the robot is activated *)
     then
       match id with
         | Byz b => da.(relocate_byz) config b (* byzantine robots are relocated by the demon *)
@@ -235,7 +237,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
 Global Instance round_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
 intros r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id.
-unfold round. rewrite Hda, Hconfig. destruct_match.
+unfold round. rewrite Hda. destruct_match.
 * (* active robot *)
   destruct id as [g | b].
   + (* good robot *)
@@ -252,9 +254,10 @@ unfold round. rewrite Hda, Hconfig. destruct_match.
 Qed.
 
 (** A third subset of robots, moving ones *)
-Definition moving r da config := List.filter
-  (fun id => if round r da config id =?= config id then false else true)
-  names.
+Definition moving r da config :=
+  List.filter
+    (fun id => if round r da config id =?= config id then false else true)
+    names.
 
 Global Instance moving_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) moving.
 Proof.
@@ -285,7 +288,7 @@ split; intro Hin.
   - destruct (round r da config id =?= config id) as [Heq | _]; intuition.
 Qed.
 
-Lemma moving_active : forall r da config, List.incl (moving r da config) (active da config).
+Lemma moving_active : forall r da config, List.incl (moving r da config) (active da).
 Proof.
 intros r config da id. rewrite moving_spec, active_spec.
 unfold round. destruct_match; intuition.
@@ -294,11 +297,11 @@ Qed.
 (** Some results *)
 
 Lemma no_active_same_config : forall r da config,
-  active da config = List.nil -> round r da config == config.
+  active da = List.nil -> round r da config == config.
 Proof.
 intros r da config Hactive.
-assert (Hfalse : forall id, activate da config id = false).
-{ intro id. destruct (activate da config id) eqn:Heq; trivial; []. exfalso.
+assert (Hfalse : forall id, activate da id = false).
+{ intro id. destruct (activate da id) eqn:Heq; trivial; []. exfalso.
   rewrite <- active_spec, Hactive in Heq. intuition. }
 intro id. unfold round. now rewrite (Hfalse id).
 Qed.
@@ -329,8 +332,8 @@ Qed.
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 (* RMK: This is a stronger version of eventually because P is negated in the Later clause *)
 Inductive LocallyFairForOne id (d : demon) : Prop :=
-  | NowFair : (forall config, activate (Stream.hd d) config id == true) -> LocallyFairForOne id d
-  | LaterFair : (forall config, activate (Stream.hd d) config id = false) ->
+  | NowFair : activate (Stream.hd d) id == true -> LocallyFairForOne id d
+  | LaterFair : activate (Stream.hd d) id = false ->
                 LocallyFairForOne id (Stream.tl d) -> LocallyFairForOne id d.
 
 Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ id, LocallyFairForOne id d).
@@ -338,12 +341,12 @@ Definition Fair : demon -> Prop := Stream.forever (fun d => ∀ id, LocallyFairF
 (** [Between id id' d] means that [id] will be activated before at most [k]
     steps of [id'] in demon [d]. *)
 Inductive Between id id' (d : demon) : nat -> Prop :=
-| kReset : forall k, (forall config, activate (Stream.hd d) config id = true) -> Between id id' d k
-| kReduce : forall k, (forall config, activate (Stream.hd d) config id = false
-                                   /\ activate (Stream.hd d) config id' = true) ->
+| kReset : forall k, activate (Stream.hd d) id = true -> Between id id' d k
+| kReduce : forall k, activate (Stream.hd d) id = false ->
+                      activate (Stream.hd d) id' = true ->
                       Between id id' (Stream.tl d) k -> Between id id' d (S k)
-| kStall : forall k, (forall config, activate (Stream.hd d) config id = false
-                                  /\ activate (Stream.hd d) config id' = false) ->
+| kStall : forall k, activate (Stream.hd d) id = false ->
+                     activate (Stream.hd d) id' = false ->
                      Between id id' (Stream.tl d) k -> Between id id' d k.
 
 (* k-fair: every robot g is activated within at most k activation of any other robot h *)
@@ -352,11 +355,8 @@ Definition kFair k : demon -> Prop := Stream.forever (fun d => forall id id', Be
 Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
   d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
 Proof.
-intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda.
-+ constructor 1. intro. now rewrite <- Hda.
-+ constructor 2.
-  - intro. now rewrite <- Hda.
-  - apply IHHfair. now f_equiv.
+intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda;
+constructor; solve [now rewrite <- Hda | apply IHHfair; now f_equiv].
 Qed.
 
 Global Instance LocallyFairForOne_compat : Proper (Logic.eq ==> equiv ==> iff) LocallyFairForOne.
@@ -371,14 +371,8 @@ Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Lemma Between_compat_aux : forall id id' k d1 d2, d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
 Proof.
-intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq.
-+ constructor 1. intro. now rewrite <- Heq.
-+ constructor 2.
-  - intro. now rewrite <- Heq.
-  - apply IHbet. now f_equiv.
-+ constructor 3.
-  - intro. now rewrite <- Heq.
-  - apply IHbet. now f_equiv.
+intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq;
+constructor; solve [now rewrite <- Heq | apply IHbet; now f_equiv].
 Qed.
 
 Global Instance Between_compat : Proper (Logic.eq ==> Logic.eq ==> equiv ==> Logic.eq ==> iff) Between.
@@ -409,12 +403,10 @@ Proof. intro. apply Stream.forever_impl_compat. intros ? ? id. eauto using (@Bet
 Lemma Between_mono : forall id id' (d : demon) k,
   Between id id' d k -> forall k', (k <= k')%nat -> Between id id' d k'.
 Proof.
-intros id id' d k Hd. induction Hd; intros k' Hk.
-+ now constructor 1.
-+ destruct k'.
-  - now inversion Hk.
-  - constructor 2; assumption || now (apply IHHd; auto with arith).
-+ constructor 3; assumption || now (apply IHHd; auto with arith).
+intros id id' d k Hd. induction Hd; intros k' Hk; auto using Between; [].
+destruct k'.
+- now inversion Hk.
+- constructor; assumption || now (apply IHHd; auto with arith).
 Qed.
 
 (** [kFair k d] is monotonic on [k] relation. *)
@@ -427,9 +419,9 @@ coinduction fair; match goal with H : kFair _ _ |- _ => destruct H end.
 Qed.
 
 Theorem Fair0 : forall d, kFair 0 d ->
-  forall config id id', (Stream.hd d).(activate) config id = (Stream.hd d).(activate) config id'.
+  forall id id', (Stream.hd d).(activate) id = (Stream.hd d).(activate) id'.
 Proof.
-intros d Hd config id id'. destruct Hd as [Hd _].
+intros d Hd id id'. destruct Hd as [Hd _].
 assert (Hg := Hd id id'). assert (Hh := Hd id' id).
 inv Hg; inv Hh;
 repeat match goal with
@@ -469,14 +461,14 @@ Qed.
 
 (** A demon is fully synchronous at the first step. *)
 Definition FullySynchronousInstant : demon -> Prop :=
-  Stream.instant (fun da => forall config g, activate da config g = true).
+  Stream.instant (fun da => forall g, activate da g = true).
 
 (** A demon is fully synchronous if it is fully synchronous at all step. *)
 Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_0Fair: ∀ d, FullySynchronous d → kFair 0 d.
-Proof. apply Stream.forever_impl_compat. intros s Hs id id'. constructor 1. intro. apply Hs. Qed.
+Proof. apply Stream.forever_impl_compat. intros s Hs id id'. constructor. apply Hs. Qed.
 
 Corollary fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
 Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.

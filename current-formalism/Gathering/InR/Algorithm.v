@@ -589,7 +589,7 @@ Definition gatherR := Build_robogram gatherR_pgm_compat.
 
 Lemma round_simplify : forall da config,
   round gatherR da config
-  == fun id => match da.(activate) config id with
+  == fun id => match da.(activate) id with
                  | false => config id
                  | true =>
                      let s := !! config in
@@ -604,7 +604,7 @@ Lemma round_simplify : forall da config,
                end.
 Proof.
 intros da config. apply no_byz_eq. intro g. unfold round.
-destruct (activate da config (Good g)) eqn:Hactive; try reflexivity; [].
+destruct (activate da (Good g)) eqn:Hactive; try reflexivity; [].
 rewrite rigid_update.
 remember (change_frame da config g) as sim.
 simpl RobotInfo.app. unfold Datatypes.id.
@@ -683,7 +683,7 @@ Qed.
 Lemma round_simplify_Majority : forall da config pt,
   MajTower_at pt config ->
   round gatherR da config
-  == fun id => if activate da config id then pt else config id.
+  == fun id => if activate da id then pt else config id.
 Proof.
 intros da config pt Hmaj. rewrite round_simplify. intro id.
 rewrite MajTower_at_equiv in Hmaj.
@@ -697,11 +697,11 @@ Lemma round_simplify_Three : forall da config,
   no_Majority config ->
   (size (!! config) = 3)%nat ->
   round gatherR da config
-  == fun id => if activate da config id then nth 1 (sort (support (!! config))) 0 else config id.
+  == fun id => if activate da id then nth 1 (sort (support (!! config))) 0 else config id.
 Proof.
 intros da config Hmaj H3. rewrite round_simplify.
 intro id. apply no_info.
-destruct (da.(activate) config id); try reflexivity; []. cbv zeta.
+destruct (da.(activate) id); try reflexivity; []. cbv zeta.
 unfold no_Majority in Hmaj. rewrite size_spec in Hmaj.
 destruct (support (max (!! config))) as [| ? [| ? ?]]; simpl in Hmaj; try omega; [].
 rewrite <- Nat.eqb_eq in H3. rewrite H3. reflexivity.
@@ -711,7 +711,7 @@ Qed.
 Lemma round_simplify_Generic : forall da config,
   no_Majority config ->
   (size (!! config) <> 3)%nat ->
-  round gatherR da config == fun id => if activate da config id
+  round gatherR da config == fun id => if activate da id
                                        then if is_extremal (config id) (!! config)
                                             then config id else extreme_center (!! config)
                                        else config id.
@@ -737,7 +737,7 @@ do 2 rewrite spect_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 + reflexivity.
 + unfold Datatypes.id.
-  destruct (da.(activate) config id); unfold equiv_dec, R_EqDec.
+  destruct (da.(activate) id); unfold equiv_dec, R_EqDec.
   - Rdec. Rdec_full; apply le_n_S + apply le_S; apply IHl.
   - Rdec_full; try apply le_n_S; apply IHl.
 Qed.
@@ -751,7 +751,7 @@ rewrite (round_simplify_Majority _ Hmaj).
 do 2 rewrite spect_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 + reflexivity.
-+ destruct (da.(activate) config id); unfold equiv_dec, R_EqDec.
++ destruct (da.(activate) id); unfold equiv_dec, R_EqDec.
   - Rdec_full; try contradiction; []. Rdec_full; try apply le_S; apply IHl.
   - Rdec_full; try apply le_n_S; apply IHl.
 Qed.
@@ -821,7 +821,7 @@ destruct Hhdin as [id Hid].
 (* Its position 	before and after are the same *)
 assert (config id == round gatherR da config id).
 { rewrite (round_simplify_Generic da Hmaj Hlen id); trivial; [].
-  destruct (da.(activate) config id); try reflexivity; [].
+  destruct (da.(activate) id); try reflexivity; [].
   unfold is_extremal. Rdec_full; try reflexivity; [].
   elim Hneq. rewrite Hid. apply hd_indep. apply sort_non_nil. }
 (** Main proof *)
@@ -836,7 +836,7 @@ apply Rle_antisym.
     rewrite support_In, spect_from_config_In in Hy.
     destruct Hy as [id' Hid']. rewrite <- Hid', Hid.
     rewrite (round_simplify_Generic da Hmaj Hlen id'); trivial; [].
-    destruct (da.(activate) config id').
+    destruct (da.(activate) id').
     - unfold is_extremal. repeat Rdec_full.
       -- apply sort_min. rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config.
       -- apply sort_min. rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config.
@@ -858,7 +858,7 @@ destruct Hlastin as [id Hid].
 (* Its position before and after are the same *)
 assert (config id == round gatherR da config id).
 { rewrite (round_simplify_Generic da Hmaj Hlen id).
-  destruct (da.(activate) config id); try reflexivity; [].
+  destruct (da.(activate) id); try reflexivity; [].
   unfold is_extremal. repeat Rdec_full; try reflexivity; [].
   elim Hneq0. rewrite Hid. apply last_indep. apply sort_non_nil. }
 (** Main proof *)
@@ -871,7 +871,7 @@ apply Rle_antisym.
     rewrite support_In, spect_from_config_In in Hy.
     destruct Hy as [id' Hid']. rewrite <- Hid', Hid.
     rewrite (round_simplify_Generic da Hmaj Hlen id'); try reflexivity; [].
-    destruct (da.(activate) config id').
+    destruct (da.(activate) id').
     - unfold is_extremal. repeat Rdec_full.
       -- apply sort_max. rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config.
       -- apply sort_max. rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In. apply pos_in_config.
@@ -901,7 +901,7 @@ rewrite round_simplify_Generic; trivial.
 do 2 rewrite spect_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl; unfold Datatypes.id.
 * reflexivity.
-* destruct (da.(activate) config id).
+* destruct (da.(activate) id).
   + repeat Rdec_full.
     - f_equal. apply IHl.
     - destruct (is_extremal (config id) (!! config)); try contradiction; [].
@@ -923,7 +923,7 @@ rewrite round_simplify_Generic; trivial.
 do 2 rewrite spect_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 * reflexivity.
-* destruct (da.(activate) config id).
+* destruct (da.(activate) id).
   + repeat Rdec_full.
     - f_equal. apply IHl.
     - destruct (is_extremal (config id) (!! config)); try contradiction; [].
@@ -958,7 +958,7 @@ Theorem same_destination : forall da config id1 id2,
 Proof.
 intros da config id1 id2 Hid1 Hid2.
 rewrite (round_simplify da config id1), (round_simplify da config id2).
-destruct (da.(activate) config id1) eqn:Hmove1; [destruct (da.(activate) config id2) eqn:Hmove2 |].
+destruct (da.(activate) id1) eqn:Hmove1; [destruct (da.(activate) id2) eqn:Hmove2 |].
 * (* the real case *)
   cbv zeta.
   destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
@@ -977,12 +977,12 @@ destruct (da.(activate) config id1) eqn:Hmove1; [destruct (da.(activate) config 
         + exfalso. unfold moving in Hid1. rewrite List.filter_In in Hid1. destruct Hid1 as [_ Hid1].
           destruct (equiv_dec (round gatherR da config id1) (config id1)) as [_ | Hneq]; try discriminate.
           apply Hneq. rewrite (round_simplify_Generic da Hmaj Hlen id1); trivial; [].
-          destruct (da.(activate) config id1); try reflexivity; []. now rewrite Hextreme1.
+          destruct (da.(activate) id1); try reflexivity; []. now rewrite Hextreme1.
         + destruct (is_extremal (config id2) (!! config)) eqn:Hextreme2.
           - exfalso. unfold moving in Hid2. rewrite List.filter_In in Hid2. destruct Hid2 as [_ Hid2].
             destruct (equiv_dec (round gatherR da config id2) (config id2)) as [_ | Hneq]; try discriminate; [].
             apply Hneq. rewrite (round_simplify_Generic da Hmaj Hlen id2).
-            destruct (da.(activate) config id2); try reflexivity. now rewrite Hextreme2.
+            destruct (da.(activate) id2); try reflexivity. now rewrite Hextreme2.
           - reflexivity. }
 * apply moving_active in Hid2. unfold active in Hid2.
   rewrite List.filter_In, Hmove2 in Hid2. destruct Hid2; discriminate.
@@ -1249,7 +1249,7 @@ Proof.
 intros config da Hmaj Hlen pt Hin.
 rewrite <- InA_Leibniz in Hin. change eq with equiv in Hin. rewrite support_In, spect_from_config_In in Hin.
 destruct Hin as [id Hid]. rewrite (round_simplify_Three da Hmaj Hlen id) in Hid.
-destruct (da.(activate) config id).
+destruct (da.(activate) id).
 + rewrite <- Hid. setoid_rewrite Permuted_sort at 3. apply nth_In.
   rewrite <- Permuted_sort, <- size_spec, Hlen. omega.
 + rewrite <- InA_Leibniz. change eq with equiv. rewrite support_In, <- Hid. apply pos_in_config.
@@ -1272,7 +1272,7 @@ Theorem round_lt_config : forall da config,
 Proof.
 intros da config Hvalid Hmove.
 apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
-assert (Hstep : da.(activate) config gmove = true).
+assert (Hstep : da.(activate) gmove = true).
 { apply moving_active in Hmove. now rewrite active_spec in Hmove. }
 rewrite moving_spec in Hmove.
 destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
@@ -1288,7 +1288,7 @@ destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
   cut ((!! config)[pt] < (!! (round gatherR da config))[pt]). omega.
   assert (Hdestg : get_location (round gatherR da config gmove) = pt).
   { rewrite (round_simplify_Majority da Hmaj gmove).
-    destruct (da.(activate) config gmove); trivial; now elim Hstep. }
+    destruct (da.(activate) gmove); trivial; now elim Hstep. }
   rewrite increase_move_iff. eauto.
 * rename Hmaj into Hmaj'.
   assert (Hmaj : no_Majority config).
@@ -1329,7 +1329,7 @@ destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
       unfold gt. rewrite increase_move_iff.
       exists gmove. split; trivial; [].
       rewrite (round_simplify_Three da Hmaj Hlen gmove).
-      destruct (da.(activate) config gmove); reflexivity || now elim Hstep.
+      destruct (da.(activate) gmove); reflexivity || now elim Hstep.
   + (* Generic case *)
     red. rewrite (config_to_NxN_Generic_spec Hmaj Hlen).
     destruct (support (max (!! (round gatherR da config)))) as [| pt' [| ? ?]] eqn:Hmaj'.
@@ -1358,7 +1358,7 @@ destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
          omega.
          rewrite increase_move_iff. exists gmove. split; trivial.
          rewrite (round_simplify_Generic da Hmaj Hlen gmove) in Hmove |- *; trivial; [].
-         destruct (da.(activate) config gmove); try (now elim Hstep); [].
+         destruct (da.(activate) gmove); try (now elim Hstep); [].
          destruct (is_extremal (config gmove) (!! config)).
          -- now elim Hmove.
          -- reflexivity.
@@ -1413,7 +1413,7 @@ Qed.
 
 (** Given a non-gathered, non invalid configuration, then some robot will move some day *)
 Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (get_location (config id)) config ->
-  exists gmove, forall da, List.In gmove (active da config) -> List.In gmove (moving gatherR da config).
+  exists gmove, forall da, List.In gmove (active da) -> List.In gmove (moving gatherR da config).
 Proof.
 intros config id Hinvalid Hgather.
 destruct (support (max (!! config))) as [| pt [| pt' l]] eqn:Hmaj.
@@ -1423,7 +1423,7 @@ destruct (support (max (!! config))) as [| pt [| pt' l]] eqn:Hmaj.
   apply not_gathered_exists in Hgather. destruct Hgather as [gmove Hmove].
   exists gmove. intros da Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
   rewrite (round_simplify_Majority da Hmaj gmove).
-  destruct (da.(activate) config gmove); hnf; auto; discriminate.
+  destruct (da.(activate) gmove); hnf; auto; discriminate.
 * rename Hmaj into Hmaj'.
   assert (Hmaj : no_Majority config). { unfold no_Majority. rewrite size_spec, Hmaj'. simpl. omega. }
   clear Hmaj' pt pt' l.
@@ -1432,7 +1432,7 @@ destruct (support (max (!! config))) as [| pt [| pt' l]] eqn:Hmaj.
     apply not_gathered_exists in Hgather. destruct Hgather as [gmove Hmove].
     exists gmove. intros da Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
     rewrite (round_simplify_Three da Hmaj Hlen gmove).
-    destruct (da.(activate) config gmove); hnf; auto; discriminate.
+    destruct (da.(activate) gmove); hnf; auto; discriminate.
   + assert (Hle : size (!! config) >= 4).
     { hnf. apply le_neq_lt.
       - now apply not_invalid_gathered_Majority_size with id.
@@ -1473,7 +1473,7 @@ specialize (locallyfair gmove).
 generalize (similarity_demon2prop d). revert locallyfair.
 generalize (similarity_demon2demon d). clear d. intros d locallyfair Hprop.
 induction locallyfair as [d Hactive | d]; intros config Hinvalid Hgathered Hmove Hfair.
-+ apply MoveNow. intro Habs. specialize (Hactive config). setoid_rewrite <- active_spec in Hactive.
++ apply MoveNow. intro Habs. setoid_rewrite <- active_spec in Hactive.
   rewrite <- (demon2demon Hprop) in Hactive.
   apply Hmove in Hactive. simpl in Hactive. rewrite Habs in Hactive. inversion Hactive.
 + destruct (moving gatherR (Stream.hd d) config) eqn:Hnil.
@@ -1489,7 +1489,7 @@ Lemma gathered_at_forever : forall da config pt,
   gathered_at pt config -> gathered_at pt (round gatherR da config).
 Proof.
 intros da config pt Hgather. rewrite (round_simplify_Majority).
-+ intro g. destruct (da.(activate) config (Good g)); reflexivity || apply Hgather.
++ intro g. destruct (da.(activate) (Good g)); reflexivity || apply Hgather.
 + intros pt' Hdiff.
   assert (H0 : (!! config)[pt'] = 0).
   { rewrite spect_from_config_spec, config_list_spec.
