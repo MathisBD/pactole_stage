@@ -23,9 +23,9 @@ Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Pactole.CommonFormalism.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
+Require Pactole.Core.Formalism.
 Require Pactole.Models.Flexible.
 Require Import Pactole.Spectra.SetSpectrum.
 Require Pactole.Spaces.R. (* for R_Setoid, R_EqDec *)

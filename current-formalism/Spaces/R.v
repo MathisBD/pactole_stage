@@ -31,8 +31,8 @@ Require Import RelationPairs.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
 Require Export Pactole.Spaces.RealMetricSpace.
 Require Export Pactole.Spaces.Similarity.
 Require Import Psatz.

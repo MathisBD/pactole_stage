@@ -20,10 +20,10 @@ Util/Preliminary.v
 Util/Bijection.v
 Util/Stream.v
 Util/Lexprod.v
-Robots.v
-RobotInfo.v
-Configurations.v
-Formalism.v
+Core/Robots.v
+Core/RobotInfo.v
+Core/Configurations.v
+Core/Formalism.v
 Setting.v
 
 ## Models

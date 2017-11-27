@@ -14,8 +14,8 @@ Require Import Omega.
 Require Import Psatz.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
 Set Implicit Arguments.
 
 

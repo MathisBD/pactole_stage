@@ -19,9 +19,9 @@ Require Export Pactole.Util.MMultiset.MMultisetInterface.
 Require Export Pactole.Util.MMultiset.MMultisetFacts.
 Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.RobotInfo.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
+Require Import Pactole.Core.RobotInfo.
 Require Import Pactole.Spectra.Definition.
 Close Scope R_scope.
 Set Implicit Arguments.

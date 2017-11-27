@@ -1,7 +1,7 @@
 Require Import SetoidDec.
-Require Import Pactole.Robots.
-Require Import Pactole.RobotInfo.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Configurations.
 
 
 (** **  Spectra  **)

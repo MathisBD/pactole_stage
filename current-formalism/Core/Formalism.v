@@ -25,9 +25,9 @@ Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
 Require Pactole.Util.Stream.
-Require Import Pactole.Robots.
-Require Import Pactole.RobotInfo.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Configurations.
 Require Import Pactole.Spectra.Definition.
 Import Pactole.Util.Bijection.Notations.
 

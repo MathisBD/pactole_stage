@@ -11,7 +11,7 @@
 Require Import Utf8.
 Require Import SetoidClass.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Configurations.
 Require Import Pactole.Spaces.DiscreteSpace.
 Require Import Pactole.Util.Bijection.
 

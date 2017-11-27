@@ -17,7 +17,7 @@ Require Import Rbase Rbasic_fun.
 Require Import Psatz.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Configurations.
 Require Import Pactole.Spaces.Graph.
 Set Implicit Arguments.
 

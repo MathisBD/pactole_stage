@@ -26,9 +26,9 @@ Require Import SetoidClass.
 Require Import Pactole.Util.Preliminary.
 Require Export Pactole.Util.FSets.FSetInterface.
 Require Export Pactole.Util.FSets.FSetFacts.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.RobotInfo.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
+Require Import Pactole.Core.RobotInfo.
 Require Import Pactole.Spectra.Definition.
 
 

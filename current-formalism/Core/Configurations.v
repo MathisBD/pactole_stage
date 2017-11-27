@@ -20,7 +20,7 @@ Require Import SetoidDec.
 Require Import Decidable.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Robots.
+Require Import Pactole.Core.Robots.
 Set Implicit Arguments.
 
 
