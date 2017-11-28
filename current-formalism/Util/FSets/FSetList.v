@@ -97,7 +97,7 @@ Section ListOperations.
     end.
 
 
-  Definition map  {B : Type} `{EqDec B} (f : elt -> B) (s : set): list B :=
+  Definition map {B : Type} `{EqDec B} (f : elt -> B) (s : set) : list B :=
     @List.map elt B f s.
 
   Notation In := (@InA elt equiv).
@@ -146,205 +146,101 @@ Section SetSpecs.
   Hint Immediate setoid_equiv.
 
   Lemma In_eq : forall l x y, x == y -> In x l -> In y l.
-  Proof. apply InA_eqA; simpl;auto.  Qed.
-  Global Instance In_eq_m : Proper (equiv ==> (@eq (list elt)) ==> iff) In.
+  Proof. apply InA_eqA; simpl;auto. Qed.
+
+  Global Instance In_eq_m : Proper (equiv ==> (equivlistA equiv : t -> t -> Prop) ==> iff) In.
+  Proof. intros x y Hxy l1 l2 Hl. unfold set in *. now rewrite Hl, Hxy. Qed.
+
+  (** Specs for [mem]. *)
+  Theorem mem_true : forall (s : t) x, mem x s = true <-> In x s.
   Proof.
-    repeat intro; subst; split; apply In_eq; auto.
+  simple induction s.
+  + intro. rewrite InA_nil. simpl. intuition.
+  + simpl. intros e l IHs x. rewrite InA_cons, <- IHs.
+    destruct (equiv_dec x e) as [Heq | Heq]; split; try tauto; [].
+    intros [|]; trivial; []. contradiction.
   Qed.
 
-  Lemma mem_1 :
+  Theorem mem_false : forall (s : t) x, mem x s = false <-> ~In x s.
+  Proof. intros. now rewrite <- not_true_iff_false, mem_true. Qed.
+
+  Corollary mem_1 :
     forall (s : t) (x : elt), In x s -> mem x s = true.
-  Proof.
-    simple induction s.
-    - intros x Hs.
-      inversion Hs.
-    - intros a l Hforall x Hs.
-      inversion_clear Hs.
-      + simpl.
-        destruct (equiv_dec x a);auto.
-      + simpl.
-        destruct (equiv_dec x a);auto.
-  Qed.
+  Proof. setoid_rewrite mem_true. auto. Qed.
 
-  Lemma mem_2 : forall (s : t) (x : elt), mem x s = true -> In x s.
-  Proof.
-    simple induction s.
-    - intros; inversion H.
-    - intros a l Hrec x.
-      simpl.
-      destruct (equiv_dec x a); intros; try discriminate; auto.
-  Qed.
+  Corollary mem_2 : forall (s : t) (x : elt), mem x s = true -> In x s.
+  Proof. setoid_rewrite mem_true. auto. Qed.
 
-  Lemma mem_3 : forall (s : t) (x : elt), mem x s = false -> ~In x s.
-  Proof.
-    simple induction s.
-    - intros.
-      intro abs.
-      inversion abs.
-    -  intros a l Hrec x Hmem.
-       intro abs.
-       inversion abs;subst.
-       + simpl in Hmem.
-         destruct (equiv_dec x a);try discriminate;try contradiction. 
-       + eapply Hrec with x;auto.
-         simpl in Hmem.
-         destruct (equiv_dec x a); intros; try discriminate; auto.
-  Qed.
+  Corollary mem_3 : forall (s : t) (x : elt), mem x s = false -> ~In x s.
+  Proof. setoid_rewrite mem_false. auto. Qed.
 
-
-  Lemma mem_4 :
+  Corollary mem_4 :
     forall (s : t) (x : elt), ~In x s -> mem x s = false.
+  Proof. setoid_rewrite mem_false. auto. Qed.
+
+  (** Specs for [add]. *)
+  Theorem add_spec : forall (s : t) x y, In y (add x s) <-> y == x \/ In y s.
   Proof.
-    simple induction s.
-    - intros x Hs.
-      simpl.
-      reflexivity.
-    - intros a l Hforall x Hs.
-      simpl.
-       destruct (equiv_dec x a);auto.
-       rewrite e in Hs.
-       destruct Hs.
-       constructor;auto.
+  intros s x y. unfold add. destruct (mem x s) eqn:Hmem.
+  + split; try tauto; [].
+    intros [Heq |]; try tauto; [].
+    apply mem_true in Hmem. revert Hmem. apply In_eq. now symmetry.
+  + apply InA_cons.
   Qed.
 
-  Lemma add_1 :
-    forall (s : t) (x y : elt), x == y -> In y (add x s).
-  Proof.
-    simple induction s.
-    - intros x y H.
-      constructor 1;auto.
-    - intros a l H x y H0.
-      specialize (H _ _ H0).
-      unfold add.
-      destruct ( mem x (a :: l)) eqn:heq.
-      + eapply In_eq;eauto.
-        apply mem_2.
-        assumption.
-      + rewrite H0.
-        constructor 1;auto.      
-  Qed.
+  Corollary add_1 : forall (s : t) (x y : elt), x == y -> In y (add x s).
+  Proof. intros. rewrite add_spec. now left; symmetry. Qed.
 
-  Lemma add_2 :
+  Corollary add_2 :
     forall (s : t) (x y : elt), In y s -> In y (add x s).
-  Proof.
-    simple induction s.
-    - intros x y H.
-      constructor 1;auto.
-    - intros a l H x y H0.
-      destruct (equiv_dec x y).
-      apply add_1;auto.
-      unfold add.
-      destruct ( mem x (a :: l)) eqn:heq.
-      + assumption.
-      + constructor 2.
-        assumption.
-  Qed.
+  Proof. intros. rewrite add_spec. tauto. Qed.
   Global Arguments mem {_%type_scope} {_} {_} _ !s%set_scope /.
   Global Arguments add {_%type_scope} {_} {_} _ !s%set_scope / .
   Global Arguments singleton {_%type_scope} {_} {_} _ / .
 
-  Lemma add_3 :
+  Corollary add_3 :
     forall (s : t) (x y : elt),
       x =/= y -> In y (add x s) -> In y s.
+  Proof. setoid_rewrite add_spec. intuition. Qed.
+
+  (** Specs for [remove]. *)
+  Theorem remove_spec : forall (s : t), NoDupA equiv s ->
+    forall x y, In y (remove x s) <-> In y s /\ y =/= x.
   Proof.
-    simple induction s.
-    - intros x y H H0.
-      simpl add in H0.
-      inversion H0;subst.
-      + symmetry in H2.
-        contradiction.
-      + inversion H2.
-    - intros a l H x y H0 H1. 
-      specialize (H _ _ H0).
-      destruct (equiv_dec x a) eqn:heq.
-      + simpl in H1.
-        rewrite heq in H1.
-        assumption.
-      + simpl in H1.
-        rewrite heq in *.
-        destruct (mem x l) eqn:heq_mem.
-        * assumption.
-        * inversion H1.
-          -- symmetry in H3;contradiction.
-          -- assumption.
+  intros s Hs x y. induction Hs as [| e s He Hs IHs]; simpl in *.
+  * rewrite InA_nil. tauto.
+  * destruct (equiv_dec x e) as [Heq | Heq]; repeat rewrite InA_cons, ?IHs.
+    + split; intro Hin.
+      - split; try tauto; []. intro Habs. rewrite Habs, Heq in Hin. contradiction.
+      - rewrite Heq in Hin. tauto.
+    + split; try tauto; [].
+      intros [Hy | ?]; try tauto; [].
+      split; try tauto; []. intro Habs. rewrite Habs in Hy. contradiction.
   Qed.
 
-  Lemma remove_1 :
-    forall (s : t) (Hnd:NoDupA equiv s) (x y : elt), x == y -> ~ In y (remove x s).
-  Proof.
-    simple induction s.
-    - simpl; red; intros; inversion H0.
-    - simpl; intros.
-      destruct (equiv_dec x a).
-      + inversion Hnd;subst.
-        rewrite <- H0.
-        rewrite e.
-        assumption.
-      + rewrite H0 in c.
-        intro abs.
-        inversion abs.
-        * contradiction.
-        * subst.
-          revert H2.
-          apply H;auto.
-          inversion Hnd;auto.
-  Qed.
+  Corollary remove_1 : forall (s : t), NoDupA equiv s ->
+    forall x y, x == y -> ~ In y (remove x s).
+  Proof. intros. rewrite remove_spec; trivial; []. intuition. Qed.
 
-  Lemma remove_2 :
-    forall (s : t) (Hs : NoDupA equiv s) (x y : elt),
-      x =/= y -> In y s -> In y (remove x s).
-  Proof.
-    simple induction s.
-    - simpl; intuition.
-    - simpl; intros.
-      destruct (equiv_dec x a).
-      + rewrite e in H0.
-        inversion H1.
-        * symmetry in H3. contradiction.
-        * subst.
-          assumption.
-      + inversion H1.
-        * constructor 1. assumption.
-        * subst.
-          constructor 2.
-          eapply H;eauto.
-          inversion Hs;auto.
-  Qed.
+  Corollary remove_2 : forall (s : t), NoDupA equiv s ->
+    forall x y, x =/= y -> In y s -> In y (remove x s).
+  Proof. intros. now rewrite remove_spec. Qed.
 
-  Lemma remove_3 :
-    forall (s : t) (Hs : NoDupA equiv s) (x y : elt), In y (remove x s) -> In y s.
-  Proof.
-    simple induction s.
-    - simpl; intuition.
-    - simpl; intros a l Hrec Hs x y; destruct (equiv_dec x a); intuition.
-      inversion_clear Hs; inversion_clear H; auto.
-      constructor 2; apply Hrec with x; auto.
-  Qed.
+  Corollary remove_3 : forall (s : t), NoDupA equiv s ->
+    forall x y, In y (remove x s) -> In y s.
+  Proof. intros ? ? ? ?. now rewrite remove_spec. Qed.
 
-  Lemma singleton_sort : forall x : elt, NoDupA equiv (singleton x).
-  Proof.
-    simpl; constructor; auto.
-    rewrite InA_nil;auto.
-  Qed.
+  Lemma singleton_NoDupA : forall x : elt, NoDupA equiv (singleton x).
+  Proof. simpl; constructor; auto; []. now rewrite InA_nil. Qed.
 
-  Lemma singleton_1 : forall x y : elt, In y (singleton x) -> x == y.
-  Proof.
-    simpl; intuition.
-    inversion_clear H; auto; inversion H0.
-  Qed.
+  Lemma singleton_spec : forall x y : elt, In y (singleton x) <-> y == x.
+  Proof. intros. simpl. rewrite InA_cons, InA_nil. tauto. Qed.
+
+  Corollary singleton_1 : forall x y : elt, In y (singleton x) -> y == x.
+  Proof. now setoid_rewrite singleton_spec. Qed.
 
   Lemma singleton_2 : forall x y : elt, x == y -> In y (singleton x).
-  Proof.
-    simpl; auto.
-  Qed.
-
-  Ltac DoubleInd :=
-    simple induction s;
-    [ simpl; auto; try solve [ intros; inversion H ]
-    | intros x l Hrec; simple induction s';
-      [ simpl; auto; try solve [ intros; inversion H ]
-      | intros x' l' Hrec' Hs Hs'; inversion Hs; inversion Hs'; subst;
-        simpl ] ].
+  Proof. now setoid_rewrite singleton_spec. Qed.
 
   Arguments flip {_%type_scope} {_%type_scope} {_%type_scope} _ / _.
   Arguments union {_%type_scope} {_} {_} _%set_scope _%set_scope /.
@@ -381,80 +277,42 @@ Section SetSpecs.
       transitivity (mem y l₂);auto.
   Qed.
 
-  Lemma add_compat:
-    forall x0 : list elt,
-      NoDupA equiv x0 ->
-      forall y0 : list elt,
-        NoDupA equiv y0 ->
-        forall x y : elt,
-          x == y ->
-          PermutationA equiv x0 y0 -> PermutationA equiv (add x x0) (add y y0).
+  Global Instance add_compat : Proper (equiv ==> PermutationA equiv ==> PermutationA equiv) add.
   Proof.
-  intros x0 hnodupx0.
-  induction hnodupx0.
-  - simpl.
-    intros.
-    rewrite (Preliminary.PermutationA_nil _ H1).
-    simpl.
-    constructor 2;auto.
-    constructor 1.
-  - intros.
-    assert (In x (x :: l)) by (constructor;auto).
-    specialize (@Preliminary.PermutationA_InA_inside _ _ setoid_equiv x _ _ H2 H3) as hex.
-    decompose [and ex] hex;clear hex;subst.
-    
-    assert (heq_memx0:mem x0 (x :: l) = mem y (x1 ++ x2 :: x3)%list).
-    { apply mem_proper;assumption. } (* Why does [rewrite H1,H2] fail? *)
-    cbv beta iota delta -[mem app].
-    destruct (mem x0 (x :: l)) eqn:heq.
-    * rewrite <- heq_memx0.
-      change  (PermutationA equiv (x :: l) (x1 ++ x2 :: x3)).
-      assumption.
-    * rewrite <- heq_memx0.
-      change  (PermutationA equiv (x0 :: x :: l) (y :: x1 ++ x2 :: x3)).
-      constructor 2.
-      -- auto.
-      -- Info 2 auto.
+  intros x y Hxy l1 l2 Hperm. unfold add.
+  rewrite (mem_proper Hxy Hperm).
+  destruct (mem y l2); try constructor; auto.
   Qed.
 
+(*
+  Lemma flip_add_compat: forall (l1 l2 : list elt) (x y : elt),
+    x == y -> PermutationA equiv l1 l2 -> PermutationA equiv (flip add l1 x) (flip add l2 y).
+  Proof. unfold flip. apply add_compat. Qed.
+*)
 
-  Lemma flip_add_compat: forall x0 : list elt,
-      NoDupA equiv x0 ->
-      forall y0 : list elt,
-        NoDupA equiv y0 ->
-        forall x y : elt,
-          x == y ->
-          PermutationA equiv x0 y0 -> PermutationA equiv (flip add x0 x) (flip add y0 y).
+  Lemma add_NoDupA : forall e s, NoDupA equiv s -> NoDupA equiv (add e s).
   Proof.
-    unfold flip.
-    apply add_compat.
+  intros e s Hs. unfold add.
+  destruct (mem e s) eqn:?; trivial; [].
+  constructor; auto using mem_3.
   Qed.
 
-
-
-  Lemma add_NoDup :
-    forall e (s : t) (Hs : NoDupA equiv s), NoDupA equiv (add e s).
+  Lemma union_NoDupA : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' -> NoDupA equiv (union s s').
   Proof.
-    intros e s Hs.
-    unfold add.
-    destruct (mem e s) eqn:heq.
+  simple induction s.
+  - simpl. auto.
+  - intros x l IHl s' Hl Hs'. simpl. inversion_clear Hl.
+    apply IHl; trivial; now apply add_NoDupA.
+  Qed.
+
+  Lemma remove_NoDupA : forall e s, NoDupA equiv s -> NoDupA equiv (remove e s).
+  Proof.
+  intros e s Hs. induction Hs; simpl.
+  + constructor.
+  + destruct (equiv_dec e x); trivial; [].
+    constructor.
+    - intro Habs. now apply remove_3 in Habs.
     - assumption.
-    - constructor.
-      + apply mem_3.
-        assumption.
-      + assumption.
-  Qed.
-
-  Lemma union_NoDup :
-    forall (s s' : t) (Hs : NoDupA equiv s) (Hs' : NoDupA equiv s'), NoDupA equiv (union s s').
-  Proof.
-    simple induction s;intros.
-    -  simpl; auto; try solve [ intros; inversion H ].
-    - simpl.
-      eapply H.
-      + inversion Hs;auto.
-      + apply add_NoDup.
-        assumption.
   Qed.
 
   Ltac fold_union :=
@@ -467,10 +325,9 @@ Section SetSpecs.
                       change x in H
                     end.
 
-  Lemma cle1: forall x y l, PermutationA equiv (add x (add y l)) (add y (add x l)).
+  Lemma add_comm : forall x y l, PermutationA equiv (add x (add y l)) (add y (add x l)).
   Proof.
-    intros x y l. 
-  unfold add.
+  intros x y l. unfold add.
   destruct (mem y l) eqn:heqy; destruct (mem x l) eqn:heqx;
     repeat progress (simpl;try rewrite heqy; try rewrite heqx).
   - reflexivity.
@@ -484,283 +341,82 @@ Section SetSpecs.
     + constructor 3;auto;reflexivity.
   Qed.
 
-  Lemma cle: forall l l' l'',
-      PermutationA equiv l' l'' ->
-      PermutationA equiv (union l l') (union l l'').
+  Global Instance union_compat :
+    Proper ((PermutationA equiv : t -> t -> Prop) ==> (PermutationA equiv : t -> t -> Prop) ==>
+            (PermutationA equiv : t -> t -> Prop)) (union : t -> t -> t).
   Proof.
-    intros l.
-    induction l;simpl;intros.
-    - assumption.
-    - fold_union.
-      assert (PermutationA equiv (add a l') (add a l'')).
-      { unfold add.
-        destruct (mem a l') eqn:heql'.
-        - assert (mem a l'' = true).
-          { rewrite <- heql'.
-            apply mem_proper;auto.
-            symmetry;auto. }
-          rewrite H0.
-          assumption.
-        - assert (mem a l'' = false).
-          { rewrite <- heql'.
-            apply mem_proper;auto.
-            symmetry;auto. }
-          rewrite H0.
-          constructor 2;auto. }
-      apply IHl.
-      assumption.
+  unfold union.
+  apply Preliminary.fold_left_symmetry_PermutationA.
+  + auto.
+  + (* FIXME: this result exist somewhere... *)
+    split; auto.
+    - intro. reflexivity.
+    - repeat intro. now symmetry.
+    - repeat intro. etransitivity; eauto.
+  + repeat intro. simpl. now apply add_compat.
+  + intros. unfold flip. apply add_comm.
   Qed.
 
-  Lemma cle2: forall x l l', PermutationA equiv (union (x::l) l') (add x (union l l')).
+  Lemma cle : forall x l l', PermutationA equiv (union (x::l) l') (add x (union l l')).
   Proof.
-    induction l.
-    - intros l'. 
-      simpl.
-      reflexivity.
-    - intros l'. 
-      simpl.
-      fold_union.
-      transitivity (union l (add x (add a l'))).
-      + apply cle.
-        apply cle1.
-      + apply IHl.
+  induction l; simpl.
+  + reflexivity.
+  + intros l'. fold_union.
+    transitivity (union l (add x (add a l'))).
+    - apply union_compat; reflexivity || apply add_comm.
+    - apply IHl.
   Qed.
 
-  Lemma cle3: forall l l' u u',     
-      PermutationA equiv l l' ->
-      PermutationA equiv u u' ->
-      PermutationA equiv (union l u) (union l' u').
+  Lemma union_comm : forall l1 l2, NoDupA equiv l1 -> NoDupA equiv l2 ->
+    PermutationA equiv (union l1 l2) (union l2 l1).
   Proof.
-    intros l l' u u' H H0.
-    transitivity (union l u').
-    { apply cle. assumption. }
-    clear H0.
-    revert u'.
-    pattern l, l'.
-    
-    apply PermutationA_ind with (eqA:=equiv);[ | | | | assumption];simpl;fold_union.
-    - reflexivity.
-    - intros x₁ x₂ l₁ l₂ H0 H1 H2 u'. 
-      fold_union.
-      change (forall u' : list elt, PermutationA equiv (union l₁ u') (union l₂ u')) in H2.
-      transitivity (add x₁ (union l₁ u')).
-      { apply cle2. }
-      transitivity(add x₂ (union l₂ u')).
-      2: symmetry;eapply cle2.
-      
-      constructor 2.
-      
-
-      induction H.
-    - intros l'. 
-      simpl.
-      reflexivity.
-    - intros l'. 
-      simpl.
-      fold_union.
-      transitivity (union l (add x (add a l'))).
-      + apply cle.
-        apply cle1.
-      + apply IHl.
+  intros l1 l2 Hl1 Hl2. unfold union. revert l2 Hl2.
+  induction Hl1 as [| e1 l1 He1 Hl1 IHl1]; intros l2 Hl2.
+  * simpl. pattern l2 at 1. rewrite <- (app_nil_r l2).
+    assert (Hnil : forall x : elt, InA equiv x nil -> InA equiv x l2 -> False).
+    { setoid_rewrite InA_nil. tauto. }
+    revert Hnil. generalize (@nil elt).
+    induction Hl2 as [| e2 l2 He2 Hl2 IHl2]; intros l Hl; simpl.
+    + reflexivity.
+    + unfold add at 2. destruct (mem e2 l) eqn:Hin.
+      - apply mem_2 in Hin. elim (Hl e2); trivial; now left.
+      - rewrite <- IHl2.
+        ++ rewrite (PermutationA_app_comm _ l2 (e2 :: l)).
+           simpl. constructor; reflexivity || apply (PermutationA_app_comm _).
+        ++ intros x Hin1 Hin2. inversion_clear Hin1.
+           -- apply He2. now match goal with H : _ == _ |- _ => rewrite H in * end.
+           -- apply (Hl x); trivial; now right.
+  * fold_union. etransitivity; try (apply cle); [].
+    replace (e1 :: l1) with (add e1 l1).
+    + etransitivity; [| symmetry; apply cle].
+      unfold union. apply add_compat; auto.
+    + unfold add. destruct (mem e1 l1) eqn:Hin; trivial; [].
+      apply mem_2 in Hin. contradiction.
   Qed.
 
-
-
-  Lemma union_1 :
-    forall (s s' : t)  (x : elt), 
-      In x (union s s') -> In x s \/ In x s'.
+  (** Specs for [union]. *)
+  Theorem union_spec : forall s s' : t,
+    NoDupA equiv s -> NoDupA equiv s' ->
+    forall x, In x (union s s') <-> In x s \/ In x s'.
   Proof.
-    induction s.
-    - simpl.
-      intros s' x H. 
-      right.
-      assumption.
-    - revert  s a IHs.
-      simple induction s'.
-      + intros x Hrec.
-        left.
-        simpl in *.
-        apply InA_cons.
-        specialize (IHs (a :: nil) x Hrec).
-        destruct IHs.
-        * right.
-          assumption.
-        * left.
-          inversion H;auto.
-      + intros a0 l H x H0. 
-        destruct (equiv_dec x a0) eqn:heq.
-        * right;constructor 1;auto.
-        * enough  (In x (a :: s) \/ In x l).
-          { decompose [or] H1.
-            - left;auto.
-            - right.
-              constructor 2;auto. }
-          eapply H.
-
-          Lemma foo : forall x s a0 l, 
-              In x (union s (a0 :: l)) -> x == a0 \/ In x (union s l).
-          Proof.
-            induction s.
-            simpl.
-            - intros a0 l H. 
-              inversion H;auto.
-            - intros a0 l H.
-              destruct (mem a ((a0 :: l))) eqn:heq.
-              + cbv beta iota delta [union fold add fold_left flip] in H.
-                rewrite heq in H.
-                change (In x (union s (a0 :: l))) in H.
-                specialize (IHs _ _ H).
-                destruct IHs;auto.
-                right.
-
-                
-              + assert (In x (union s (a0 :: a :: l)) ).
-              { cbv beta iota delta [union fold fold_left flip] in H.
-                change (In x (fold_left (flip add)
-                                        s (if mem a (a0 :: l) then a0 :: l else a :: a0 :: l)))
-                  in H.
-                change (In x (union
-                                        s (if mem a (a0 :: l) then a0 :: l else a :: a0 :: l)))
-                  in H.
-                rewrite heq in H.
-                Lemma bar : forall s x l l',
-                    PermutationA equiv l l' ->
-                    In x (union s l) -> In x (union s l').
-                Proof.
-                  induction s.
-                  - simpl.
-                    intros x l l' H H0. 
-                    rewrite <- H.
-                    assumption.
-                  - intros x l l' H H0. 
-                    simpl.
-                    unfold add at 2.
-                    destruct (mem a l') eqn: heq.
-                    + change (In x (union s l')).
-                      eapply IHs;eauto.
-                      simpl in H0.
-                      unfold add in H0 at 2.
-                      assert (mem a l = true).
-                      { rewrite <- heq.
-                        eapply mem_proper;eauto. }
-                      rewrite H1 in H0.
-                       change (In x (union s l)) in H0.
-                       assumption.
-                    + change (In x (union s (a::l'))).
-                      simpl in H0.
-                      unfold add in H0 at 2.
-                      assert (mem a l = false).
-                      { rewrite <- heq.
-                        eapply mem_proper;eauto. }
-                      rewrite H1 in H0.
-                      change (In x (union s (a::l))) in H0.
-                      eapply IHs with (l:= a::l);auto.
-                      constructor 2;auto.
-                Qed.
-                eapply bar;eauto.
-                constructor 3. }
-              eapply IHs;eauto.
-              simpl.
-              unfold  add at 2.
-              assert (mem a l = false).
-              { simpl in heq.
-                destruct (equiv_dec a a0);auto; try discriminate. }
-              rewrite H1.
-              apply H0.
-          Qed.
-        
-        elim (Hrec (x' :: l') H1 Hs' x0); intuition.
-        elim (Hrec l' H1 H5 x0); intuition.
-        elim (H3 x0); intuition.
-
-
-
-intros x H.
-        destruct (equiv_dec x a) eqn:heq.
-        -- left;constructor 1;auto.
-        -- simpl in H. 
-          simpl in H|- *.
-        
-
-
-        destruct (equiv_dec a a0) eqn:heq.
-        * enough (In x (s) \/ In x (a0 :: s')).
-          { destruct H0.
-            - left.
-              constructor 2.
-              assumption.
-            - inversion H0;auto. }
-          eapply IHs.
-          inversion H.
-          -- rewrite heq in H0.
-             simpl.
-             rewrite <- H0.
-             constructor 1;auto.
-          -- rewrite heq in H0.
-             simpl.
-             rewrite <- H0.
-             constructor 2;auto.
-        *
-          
-          enough (In x s \/ In x (a::a0::s')).
-          { decompose [or] H0;auto.
-            inversion H1;subst.
-            - left.
-              constructor 1;auto.
-            - inversion H3;subst.
-              + right. constructor 1;auto.
-              + right.
-                constructor 2;auto. }
-          eapply IHs.
-          simpl in H|- *.
-          rewrite heq in H.
-          change (In x (union s (a :: a0 :: s'))).
-          change  in H.
-
-
-
-
-          enough ( In x (a0 :: nil) \/ In x (a :: s) \/ In x s').
-          { decompose [or] H0;auto.
-            right.
-            constructor 1.
-            inversion H1;auto. }
-          destruct (equiv_dec x a0) eqn:heq2.
-          -- left.
-             constructor 1;auto.
-          -- right.
-             eapply IHs'.
-             
-             apply mem_1 in H.
-             rewrite 
-        
-        eapply IHs.
-
-    DoubleInd; destruct (compare_dec x x'); intuition;
-      inversion_clear H0; intuition.
-    elim (Hrec (x' :: l') H1 Hs' x0); intuition.
-    elim (Hrec l' H1 H5 x0); intuition.
-    elim (H3 x0); intuition.
+  induction s; intros s' Hs Hs' x.
+  - simpl. rewrite InA_nil. tauto.
+  - inversion_clear Hs. rewrite InA_cons, cle, add_spec, IHs; tauto.
   Qed.
 
-  Lemma union_2 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x s -> In x (union s s').
-  Proof.
-    DoubleInd.
-    intros i Hi; destruct (compare_dec x x'); intuition;
-      inversion_clear Hi; auto.
-  Qed.
+(* We can get this result by removing duplicates inside s and s'. *)
+  Lemma union_1 : forall (s s' : t) (x : elt), In x (union s s') -> In x s \/ In x s'.
+  Proof. Abort.
 
-  Lemma union_3 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x s' -> In x (union s s').
-  Proof.
-    DoubleInd.
-    intros i Hi; destruct (compare_dec x x'); inversion_clear Hi; intuition.
-    constructor; transitivity x'; auto.
-  Qed.
+  Lemma union_3 : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' ->
+    forall x : elt, In x s' -> In x (union s s').
+  Proof. intros. rewrite union_spec; tauto. Qed.
 
+  Lemma union_2 : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' ->
+    forall x : elt, In x s -> In x (union s s').
+  Proof. intros. rewrite union_spec; tauto. Qed.
+
+(*
   Lemma inter_Inf :
     forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (a : elt),
       Inf a s -> Inf a s' -> Inf a (inter s s').
@@ -782,46 +438,51 @@ intros x H.
     apply Inf_eq with x'; trivial;
       apply inter_Inf; trivial; apply Inf_eq with x; auto.
   Qed.
+*)
 
-  Lemma inter_1 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x (inter s s') -> In x s.
+  (** Specs for [inter]. *)
+  Local Lemma inter_spec_aux : forall s s' l x,
+    In x (fold (set (elt:=elt)) (fun y s'' => if mem y s' then add y s'' else s'') s l) <->
+    In x s /\ In x s' \/ In x l.
   Proof.
-    DoubleInd; destruct (compare_dec x x'); intuition.
-    constructor 2; apply Hrec with (x'::l'); auto.
-    inversion_clear H0; auto.
-    constructor 2; apply Hrec with l'; auto.
+  induction s as [| e s IHs]; simpl; intros s' l x.
+  * rewrite InA_nil. tauto.
+  * rewrite IHs.
+    destruct (mem e s') eqn:Hmem.
+    + unfold add. apply mem_2 in Hmem. rewrite InA_cons.
+      destruct (mem e l) eqn:Hmem'.
+      - apply mem_2 in Hmem'. split; try tauto; [].
+        intros [[[? | ?] ?] | ?]; try tauto; [].
+        right. revert Hmem'. apply In_eq. now symmetry.
+      - assert (He : ~In e l).
+        { rewrite <- not_true_iff_false in Hmem'. intro. now apply Hmem', mem_1. }
+        rewrite InA_cons. split; try tauto; [].
+        intros [| [|]]; try tauto; [].
+        left. split; try tauto; []. revert Hmem. apply In_eq. now symmetry.
+    + assert (He : ~In e s').
+      { rewrite <- not_true_iff_false in Hmem. intro. now apply Hmem, mem_1. }
+      rewrite InA_cons. split; try tauto; [].
+      intros [[[? | ?] Hin] | ?]; try tauto; [].
+      elim He. revert Hin. now apply In_eq.
   Qed.
 
-  Lemma inter_2 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x (inter s s') -> In x s'.
-  Proof.
-    DoubleInd; destruct (compare_dec x x'); intuition; inversion_clear H0.
-    constructor 1; transitivity x; auto.
-    constructor 2; auto.
-  Qed.
+  Theorem inter_spec : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' ->
+    forall x, In x (inter s s') <-> In x s /\ In x s'.
+  Proof. intros. unfold inter. rewrite inter_spec_aux, InA_nil. tauto. Qed.
 
-  Lemma inter_3 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x s -> In x s' -> In x (inter s s').
-  Proof.
-    DoubleInd.
-    intros i His His'; destruct (compare_dec x x'); intuition.
+  Corollary inter_1 : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' ->
+    forall x, In x (inter s s') -> In x s.
+  Proof. intros ? ? ? ? ?. setoid_rewrite inter_spec; tauto. Qed.
 
-    inversion_clear His; auto.
-    generalize (Sort_Inf_In Hs' (cons_leA _ _ _ _ H) His').
-    intro abs; rewrite H0 in abs; contradiction (lt_antirefl abs).
+  Corollary inter_2 : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' ->
+    forall x, In x (inter s s') -> In x s'.
+  Proof. intros ? ? ? ? ?. setoid_rewrite inter_spec; tauto. Qed.
 
-    inversion_clear His; auto; inversion_clear His'; auto.
-    constructor; transitivity x'; auto.
+  Corollary inter_3 : forall s s' : t, NoDupA equiv s -> NoDupA equiv s' ->
+    forall x, In x s -> In x s' -> In x (inter s s').
+  Proof. intros ? ? ? ? ?. setoid_rewrite inter_spec; tauto. Qed.
 
-    change (In i (inter (x :: l) l')).
-    inversion_clear His'; auto.
-    generalize (Sort_Inf_In Hs (cons_leA _ _ _ _ H) His).
-    intro abs; rewrite H0 in abs; contradiction (lt_antirefl abs).
-  Qed.
-
+(*
   Lemma diff_Inf :
     forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (a : elt),
       Inf a s -> Inf a s' -> Inf a (diff s s').
@@ -842,50 +503,32 @@ intros x H.
   Proof.
     DoubleInd; destruct (compare_dec x x'); auto.
   Qed.
+*)
 
-  Lemma diff_1 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x (diff s s') -> In x s.
+  (** Specs for [diff]. *)
+  Theorem diff_spec : forall s s', NoDupA equiv s ->
+    forall x, In x (diff s s') <-> In x s /\ ~In x s'.
   Proof.
-    DoubleInd; destruct (compare_dec x x'); intuition.
-    inversion_clear H0; auto.
-    constructor 2; apply Hrec with (x'::l'); auto.
-    constructor 2; apply Hrec with l'; auto.
+  intros s s'. revert s.
+  induction s' as [| e s' IHs']; simpl; intros s Hs x.
+  + rewrite InA_nil. tauto.
+  + assert (NoDupA equiv (remove e s)) by now apply remove_NoDupA.
+    rewrite IHs', InA_cons, remove_spec; trivial; [].
+    simpl. tauto.
   Qed.
 
-  Lemma diff_2 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x (diff s s') -> ~ In x s'.
-  Proof.
-    DoubleInd.
-    intros; intro Abs; inversion Abs.
-    destruct (compare_dec x x'); intuition.
+  Corollary diff_1 : forall s s', NoDupA equiv s ->
+    forall x, In x (diff s s') -> In x s.
+  Proof. intros ? ? ? ?. rewrite diff_spec; tauto. Qed.
 
-    inversion_clear H0.
-    generalize (Sort_Inf_In Hs' (cons_leA _ _ _ _ H) H4).
-    intro abs; exact (gt_not_eq abs H7).
-    apply Hrec with (x'::l') x0; auto.
+  Corollary diff_2 : forall s s', NoDupA equiv s ->
+    forall x, In x (diff s s') -> ~In x s'.
+  Proof. intros ? ? ? ?. rewrite diff_spec; tauto. Qed.
 
-    inversion_clear H4.
-    generalize (Sort_Inf_In H1 H2 (diff_1 H1 H5 H0)).
-    apply eq_not_lt; transitivity x'; auto.
-    apply Hrec with l' x0; auto.
+  Corollary diff_3 : forall s s', NoDupA equiv s ->
+    forall x, In x s /\ ~In x s' -> In x (diff s s').
+  Proof. intros ? ? ? ?. rewrite diff_spec; tauto. Qed.
 
-    inversion_clear H4.
-    generalize (Sort_Inf_In Hs (cons_leA _ _ _ _ H) (diff_1 Hs H5 H0)).
-    apply eq_not_lt; auto.
-    apply H3 with x0; auto.
-  Qed.
-
-  Lemma diff_3 :
-    forall (s s' : t) (Hs : Sort s) (Hs' : Sort s') (x : elt),
-      In x s -> ~ In x s' -> In x (diff s s').
-  Proof.
-    DoubleInd.
-    intros i His His'; destruct (compare_dec x x'); intuition;
-      inversion_clear His; auto.
-    elim His'; constructor; transitivity x; auto.
-  Qed.
 
   Lemma equal_1 :
     forall (s s' : t) (Hs : Sort s) (Hs' : Sort s'),
