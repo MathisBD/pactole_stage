@@ -28,8 +28,7 @@ Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Spaces.R.
-Require Import Pactole.Gathering.Definitions.
-Require Import Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Gathering.WithMultiplicity.
 Set Implicit Arguments.
 Close Scope R_scope.
 Import Datatypes. (* To recover Datatypes.id *)

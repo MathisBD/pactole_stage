@@ -29,8 +29,7 @@ Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Spaces.R.
-Require Import Pactole.Gathering.Definitions.
-Require Import Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Gathering.WithMultiplicity.
 Require Import Pactole.Models.Similarity.
 Require Export Pactole.Models.Rigid.
 Import Permutation.

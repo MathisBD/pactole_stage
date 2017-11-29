@@ -163,9 +163,20 @@ abstract (intros x y Hxy; apply add_compat; auto; []; apply mul_compat; try appl
           apply add_compat, opp_compat; reflexivity).
 Defined.
 
+Instance straight_path_compat {T} `{RealMetricSpace T} :
+  Proper (equiv ==> equiv ==> equiv) straight_path.
+Proof.
+intros pt1 pt2 Heq pt1' pt2' Heq' x. simpl.
+now apply add_compat, mul_compat, add_compat, opp_compat.
+Qed.
+
 (** We can simplify this definition in the local frame. *)
 Definition local_straight_path {T} `{RMS : RealMetricSpace T} (pt : T) : path T.
 Proof.
 refine (Build_path _ _ (fun x => @mul _ _ _ RMS x pt) _).
 abstract (intros x y Hxy; apply mul_compat; reflexivity || apply Hxy).
 Defined.
+
+Instance local_straight_path_compat {T} `{RealMetricSpace T} :
+  Proper (equiv ==> equiv) local_straight_path.
+Proof. intros pt1 pt2 Heq x. simpl. now apply mul_compat. Qed.

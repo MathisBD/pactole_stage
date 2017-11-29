@@ -352,6 +352,9 @@ Qed.
 
 (** ***  Results about [map]  **)
 
+Lemma map_id : forall (l : list A), map Datatypes.id l = l.
+Proof. induction l; simpl; now try rewrite IHl. Qed.
+
 Global Instance map_extensionalityA_compat : Proper ((eqA ==> eqB) ==> eqlistA eqA ==> eqlistA eqB) (@map A B).
 Proof.
 intros f g Hfg l. induction l as [| e l]; intros l' Hl.

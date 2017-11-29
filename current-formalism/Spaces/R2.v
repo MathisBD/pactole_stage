@@ -1365,6 +1365,9 @@ apply (barycenter_dist_decrease_aux Hnotempty Hdm).
 intros q Hq. now apply Hdm.
 Qed.
 
+Lemma barycenter_singleton : forall pt, barycenter (pt :: nil) = pt.
+Proof. intros []. unfold barycenter. simpl. f_equal; field. Qed.
+
 (** Translation and homothecy are similarities in R². *)
 Lemma translation_hyp : forall v x y : R2, dist (x + v)%R2 (y + v)%R2 = dist x y.
 Proof. intros [] [] []. simpl. f_equal. unfold Rsqr. ring. Qed.
@@ -1461,6 +1464,13 @@ repeat split.
   rewrite product_mul_r, similarity_origin_product; trivial; [].
 Admitted. (* similarity_in_R2 *)
 
+(** **  Description of similarities  **)
+
+(** Similarities can be described by [sim x = r A x + t] with:
+    - [0 < r] the ratio
+    - [t] the translation vector
+    - [A] an orthogonal matrix *)
+(* NB: To have less parameters, [r] is integrated into [A]. *)
 (** Description of similarities in R² as the composition of a orthogonal transformation and a translation. *)
 Theorem similarity_in_R2 : forall sim : similarity R2,
   exists u v t, R2norm u = sim.(Similarity.zoom) /\ R2norm v = sim.(Similarity.zoom) /\ perpendicular u v /\

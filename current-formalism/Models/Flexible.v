@@ -52,13 +52,13 @@ Class FlexibleChoice `{update_choice T2} := {
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
 Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R) := {
   (** [move_ratio] is ratio between the achieved and the planned move distances. *)
-  ratio_spec : forall da config g trajectory,
+  ratio_spec : forall config g trajectory choice,
     let pt := get_location (config (Good g)) in
-    let pt' := get_location (update config g trajectory (da.(choose_update) config g trajectory)) in
+    let pt' := get_location (update config g trajectory choice) in
     (* either we reach the target *)
     pt' == trajectory ratio_1
     (* or we only move part of the way but the robot has moved a distance at least [delta]. *)
-    \/ pt' == trajectory (move_ratio (da.(choose_update) config g trajectory))
+    \/ pt' == trajectory (move_ratio choice)
        /\ delta <= dist pt pt' }.
 
 End FlexibleFormalism.
@@ -68,6 +68,15 @@ Definition OnlyFlexible : update_choice ratio := {|
   update_choice_EqDec := _ |}.
 
 Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
+
+(** If the robot is not trying to move, then it does not, no metter what the demon chooses. *)
+Lemma update_no_move `{FlexibleUpdate} : forall config g pt choice,
+  get_location (update config g (straight_path pt pt) choice) == pt.
+Proof.
+intros config g pt choice.
+destruct (ratio_spec config g (straight_path pt pt) choice) as [Heq | [Heq Hle]];
+rewrite Heq; simpl; now rewrite add_opp, mul_origin, add_origin.
+Qed.
 
 (*
  *** Local Variables: ***
