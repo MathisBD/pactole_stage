@@ -17,7 +17,7 @@ Require Import Rbase Rbasic_fun.
 Require Import Psatz.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Configurations.
 Require Import Pactole.Spaces.Graph.
 Set Implicit Arguments.
 
@@ -146,3 +146,9 @@ Qed.
 End Isomorphism.
 
 Arguments isomorphism {V} {E} G.
+
+Module Notations.
+Global Arguments isomorphism {V} {E} G.
+Global Infix "∘" := compose (left associativity, at level 40).
+Global Notation "iso ⁻¹" := (inverse iso) (at level 39).
+End Notations.

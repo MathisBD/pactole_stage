@@ -2,6 +2,9 @@
 -R . Pactole
 
 ## External libraries
+Util/FSets/OrderedType.v
+Util/FSets/FSetInterface.v
+Util/FSets/FSetFacts.v
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
 Util/FMaps/FMapList.v
@@ -17,21 +20,23 @@ Util/Preliminary.v
 Util/Bijection.v
 Util/Stream.v
 Util/Lexprod.v
-Robots.v
-Configurations.v
-CommonFormalism.v
+Core/Robots.v
+Core/RobotInfo.v
+Core/Configurations.v
+Core/Formalism.v
 Setting.v
 
 ## Models
-Models/Flexible.v
+#Models/Flexible.v
 Models/Rigid.v
-Models/RigidEquivalence.v
-Models/DiscreteGraph.v
-Models/ContinuousGraph.v
-Models/GraphEquivalence.v
+#Models/RigidFlexibleEquivalence.v
+#Models/DiscreteGraph.v
+Models/Similarity.v
+#Models/ContinuousGraph.v
+#Models/GraphEquivalence.v
 #Models/DiscreteRigid.v
-Models/DiscreteASync.v
-Models/DiscreteGraphSSync.v
+#Models/DiscreteASync.v
+#Models/DiscreteGraphSSync.v
 #Models/GraphRigid.v
 
 ## Spaces
@@ -41,16 +46,16 @@ Spaces/R.v
 Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
-Spaces/DiscreteSpace.v
-Spaces/DiscreteSimilarity.v
+#Spaces/DiscreteSpace.v
+#Spaces/DiscreteSimilarity.v
 
 ## Spectra
 Spectra/Definition.v
 Spectra/MultisetSpectrum.v
-#Spectra/SetSpectrum.v
-#Spectra/LimitedSetSpectrum.v
-#Spectra/LimitedMultisetSpectrum.v
-Spectra/PointedMultisetSpectrum.v
+Spectra/SetSpectrum.v
+Spectra/LimitedSetSpectrum.v
+Spectra/LimitedMultisetSpectrum.v
+#Spectra/PointedMultisetSpectrum.v
 
 ## Case Study: Convergence
 Convergence/Impossibility_2G_1B.v
@@ -65,13 +70,13 @@ Gathering/InR2/Algorithm.v
 #Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
 ## Case Study: Ring Exploration
-Exploration/Graph/Definitions.v
-Exploration/Graph/ImpossibilityKDividesN.v
-Exploration/Graph/DefinitionsSSync.v
-Exploration/Graph/ImpossibilityKDividesNSSync.v
-Exploration/Graph/TowersSSync.v
+#Exploration/Graph/Definitions.v
+#Exploration/Graph/ImpossibilityKDividesN.v
+#Exploration/Graph/DefinitionsSSync.v
+#Exploration/Graph/ImpossibilityKDividesNSSync.v
+#Exploration/Graph/TowersSSync.v
 #Exploration/ZnZ/test_modulo.v
 #Exploration/ZnZ/Definitions.v
 #Exploration/ZnZ/ImpossibilityKDividesN.v
-Exploration/Graph/ImpossibilityKNotPrimeN.v
-Exploration/Graph/Towers.v
+#Exploration/Graph/ImpossibilityKNotPrimeN.v
+#Exploration/Graph/Towers.v

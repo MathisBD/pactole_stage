@@ -1,86 +1,132 @@
 (**************************************************************************)
 (*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   P. Courtieu, L. Rieg, X. Urbain                                      *)
+(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
 (*   PACTOLE project                                                      *)
 (*                                                                        *)
 (*   This file is distributed under the terms of the CeCILL-C licence.    *)
 (*                                                                        *)
 (**************************************************************************)
+
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
-
-   C. Auger, P. Courtieu, L. Rieg, X. Urbain                            
-
-   PACTOLE project                                                      
-                                                                        
-   This file is distributed under the terms of the CeCILL-C licence     
-                                                                        *)
+(** Mechanised Framework for Local Interactions & Distributed Algorithms    
+    T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                          
+                                                                            
+    PACTOLE project                                                         
+                                                                            
+    This file is distributed under the terms of the CeCILL-C licence      *)
 (**************************************************************************)
 
+
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8_core.
+Require Import Bool.
+Require Import Arith_base.
+Require Import Omega.
 Require Import SetoidList.
-Require Import MSets.
+Require Import SetoidDec.
 Require Import Rbase.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.RealMetricSpace.
-Require Pactole.MultisetSpectrum.
+Require Import Pactole.Util.FMaps.FMapList.
+Require Import Pactole.Util.MMultiset.MMultisetWMap.
+Require Export Pactole.Util.MMultiset.MMultisetInterface.
+Require Export Pactole.Util.MMultiset.MMultisetFacts.
+Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
+Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Spectra.Definition.
+Require Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Spaces.RealMetricSpace.
+Require Pactole.Spaces.Similarity.
+Import Pactole.Spaces.Similarity.Notations.
+Close Scope R_scope.
+Set Implicit Arguments.
+Set Default Proof Using "All".
 
 
-Module Type Radius.
-  Parameter radius : R.
-End Radius.
+Section MultisetSpectrum.
 
+Context {loc info : Type}.
+Context `{RealMetricSpace loc}.
+Context `{EqDec info}.
+Context {Loc : IsLocation loc info}.
+Context `{Names}.
 
-Module Make (Loc : RealMetricSpace) (* for the distance *)
-            (N : Robots.Size)
-            (R : Radius)
-            (Names : Robots.Robots(N))
-            (Info : DecidableTypeWithApplication(Loc))
-            (Config : Configuration(Loc)(N)(Names)(Info)) <: Spectrum (Loc)(N)(Names)(Info)(Config).
+Notation configuration := (@configuration info _ _ _ _).
+Notation map_config := (@map_config info _ _ _ _).
+Notation config_list := (@config_list info _ _ _ _).
 
-Module M := MultisetSpectrum.Make(Loc)(N)(Names)(Info)(Config).
+Implicit Type config : configuration.
 
-Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
-Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
-Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
-Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
-
-
-(** Building a spectrum from a configuration *)
-
-(** Inclusion is not possible because M has the same signature and we want to restrict the functions. *)
-Definition t := M.t.
-Definition eq := M.eq.
-Definition eq_equiv := M.eq_equiv.
-Definition eq_dec := M.eq_dec.
-Definition In := M.In.
-
-
-Definition from_config conf : t :=
-  M.M.filter (fun x => Rle_bool (Loc.dist x Loc.origin) R.radius) (M.multiset (map Config.loc (Config.list conf))).
-
-Instance from_config_compat : Proper (Config.eq ==> eq) from_config.
+Global Instance limited_multiset_spectrum (radius : R) : Spectrum loc info := {
+  spectrum := multiset loc;
+  spect_from_config config pt :=
+    MultisetSpectrum.make_multiset (List.filter (fun x => Rle_bool (dist x pt) radius)
+                                                (List.map get_location (config_list config)));
+  spect_is_ok s config pt :=
+    forall l, s[l] = if Rle_bool (dist l pt) radius
+                     then countA_occ _ equiv_dec l (List.map get_location (config_list config)) else 0 }.
 Proof.
-intros conf1 conf2 Hconf x. unfold from_config. f_equiv.
-apply M.M.filter_compat, M.multiset_compat, (@PermutationA_map _ Loc.t Config.eq_RobotConf Loc.eq _ Config.loc),
-      eqlistA_PermutationA_subrelation, Config.list_compat; trivial; [|].
-- intros ? ? Heq. rewrite Heq. reflexivity.
-- apply Config.loc_compat.
+(* BUG?: bullet forbidden here *)
+{ intros config1 config2 Hconfig pt1 pt2 Hpt.
+  apply MultisetSpectrum.make_multiset_compat, eqlistA_PermutationA_subrelation.
+  f_equiv.
+  + intros ? ? Heq. now rewrite Heq, Hpt.
+  + apply (@map_eqlistA_compat _ _ equiv equiv _ get_location); autoclass; [].
+    now apply config_list_compat. }
+* intros config pt x. rewrite MultisetSpectrum.make_multiset_spec.
+  apply countA_occ_filter. intros ? ? Heq. f_equal. now rewrite Heq.
+Defined.
+
+Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
+Local Notation "'from_config' radius" :=
+  (@spect_from_config loc info _ _ _ _ _ _ (limited_multiset_spectrum radius)) (at level 1).
+
+Lemma spect_from_config_ignore_snd : forall config pt,
+  spect_from_config config pt == spect_from_config config origin.
+Proof. reflexivity. Qed.
+
+Lemma spect_from_config_map : forall sim : similarity loc,
+  forall radius config pt,
+  map sim (from_config radius config pt)
+  == from_config (sim.(Similarity.zoom) * radius) (map_config (app sim) config) (sim pt).
+Proof.
+repeat intro. unfold spect_from_config, limited_multiset_spectrum.
+rewrite config_list_map, map_map, 2 filter_map, <- MultisetSpectrum.make_multiset_map, map_map; autoclass; [].
+apply MultisetSpectrum.make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
+assert (Hequiv : (equiv ==> equiv)%signature (fun x => sim (get_location x)) (fun x => get_location (app sim x))).
+{ intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
+apply (map_extensionalityA_compat _ Hequiv). f_equiv.
+intros ? ? Heq. rewrite get_location_app, sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].
+apply Similarity.zoom_pos.
 Qed.
 
-Definition is_ok s conf := forall l,
-  M.multiplicity l s = if Rle_dec (Loc.dist l Loc.origin) R.radius
-                       then countA_occ _ Loc.eq_dec l (map Config.loc (Config.list conf)) else 0.
-
-Theorem from_config_spec : forall conf, is_ok (from_config conf) conf.
+Property pos_in_config : forall radius config pt id,
+  ((dist (get_location (config id)) pt) <= radius)%R ->
+  In (get_location (config id)) (from_config radius config pt).
 Proof.
-unfold from_config, is_ok, Rle_bool. intros conf l. rewrite M.filter_spec.
-- destruct (Rle_dec (Loc.dist l Loc.origin)); trivial. apply M.from_config_spec.
-- intros x y Heq. destruct (Rle_dec (Loc.dist x Loc.origin) R.radius),
-                                    (Rle_dec (Loc.dist y Loc.origin) R.radius);
-   reflexivity || rewrite Heq in *; contradiction.
+intros radius config pt id. unfold spect_from_config. simpl. unfold In.
+rewrite MultisetSpectrum.make_multiset_spec. rewrite (countA_occ_pos _).
+rewrite filter_InA, InA_map_iff; autoclass; [|].
++ intro Hle. repeat esplit; auto; [|].
+  - apply config_list_InA. now exists id.
+  - now rewrite Rle_bool_true_iff.
++ intros ? ? Heq. now rewrite Heq.
 Qed.
 
-End Make.
+Property spect_from_config_In : forall radius config pt l,
+  In l (from_config radius config pt) <-> exists id, get_location (config id) == l /\ (dist l pt <= radius)%R.
+Proof.
+intros radius config pt l. split; intro Hin.
+* unfold spect_is_ok, spect_from_config, limited_multiset_spectrum in *. simpl in *.
+  rewrite MultisetSpectrum.make_multiset_In, filter_InA in Hin.
+  + rewrite config_list_spec, map_map, InA_map_iff, Rle_bool_true_iff in Hin; autoclass; [|].
+    - firstorder.
+    - intros ? ? Heq. now rewrite Heq.
+  + intros ? ? Heq. now rewrite Heq.
+* destruct Hin as [id [Hid Hle]]. rewrite <- Hid. apply pos_in_config. now rewrite Hid.
+Qed.
+
+End MultisetSpectrum.
+
+Global Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").

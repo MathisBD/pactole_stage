@@ -2,30 +2,52 @@
 
 rm -rf ./package
 mkdir ./package
-mkdir ./package/MMaps
-mkdir ./package/MMultiset
+mkdir ./package/Util
+mkdir ./package/Util/FSets
+mkdir ./package/Util/FMaps
+mkdir ./package/Util/MMultiset
+mkdir ./package/Spaces
+mkdir ./package/Spectra
+mkdir ./package/Models
 mkdir ./package/Convergence
 mkdir ./package/Gathering
 mkdir ./package/Gathering/InR
 mkdir ./package/Gathering/InR2
+#mkdir ./package/Exploration
 
-coq_makefile -f _CoqProject -o makefile
+coq_makefile -f _CoqProject -o Makefile
 
-cp MMaps/MMapInterface.v MMaps/MMapFacts.v MMaps/MMapWeakList.v ./package/MMaps/
+cp Util/FSets/OrderedType.v Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v ./package/Util/FSets/
 
-cp MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
+cp Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v ./package/Util/FMaps/
 
-cp Preliminary.v Lexprod.v Robots.v Configurations.v Stream.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v FlexibleFormalism.v RigidEquivalence.v MultisetSpectrum.v SetSpectrum.v LimitedMultisetSpectrum.v LimitedSetSpectrum.v Similarity.v makefile _CoqProject ./package/
+cp Util/MMultiset/Preliminary.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetExtraOps.v ./package/Util/MMultiset/
 
-cp Convergence/Impossibility_2G_1B.v ./package/Convergence/
+cp Util/Preliminary.v Util/Lexprod.v Util/Stream.v Util/Bijection.v ./package/Util/
 
-cp Gathering/Definitions.v Gathering/FlexDefinitions.v Gathering/Impossibility.v ./package/Gathering/
+cp  Robots.v RobotInfo.v Configurations.v Formalism.v Setting.v Makefile _CoqProject ./package/
 
-cp Gathering/InR/Rcomplements.v Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
+cp Spaces/RealMetricSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces
 
-cp Gathering/InR2/R2geometry.v Gathering/InR2/Algorithm.v Gathering/InR2/FSyncFlexNoMultAlgorithm.v ./package/Gathering/InR2/
+cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra
 
-make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Gathering/InR2/FSyncFlexNoMultAlgorithm.vo Convergence/Impossibility_2G_1B.vo
+cp Models/Rigid.v Models/Similarity.v ./package/Models/
+# Models/Flexible.v Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v
+
+cp Convergence/Impossibility_2G_1B.v Convergence/Algorithm_noB.v ./package/Convergence/
+
+cp Gathering/Definitions.v ./package/Gathering/
+
+cp Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
+
+cp Gathering/InR2/Algorithm.v ./package/Gathering/InR2/
+# Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+
+## Specific to the MoRoVer workshop
+cp Template.v script.bak ./package/
+
+make -C package -j 3 Gathering/InR/Algorithm.vo Gathering/InR/Impossibility.vo Gathering/InR2/Algorithm.vo Convergence/Impossibility_2G_1B.vo
+# Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
 make -C package cleanall
-rm -f package/.*.vo.aux package/*/.*.vo.aux package/*/*/.*.vo.aux
+rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
 tar cvfz package.tgz package

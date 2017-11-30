@@ -47,6 +47,7 @@ Class RealMetricSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   unit : T; (* TODO: is it really a good name? *)
   non_trivial : unit =/= origin}.
 
+Global Arguments origin : simpl never.
 
 Global Existing Instance add_compat.
 Global Existing Instance mul_compat.

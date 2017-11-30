@@ -81,9 +81,9 @@ Section MMultisetFacts.
       | H : ?x = ?y |- _ => subst x || rewrite H in *
       | Hneq : ?x =/= ?x |- _ => now elim Hneq
       | Heq : @equiv elt _ ?x ?y |- _ => clear x Heq || rewrite Heq in *
-      | Heq : @equiv multiset _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
-      | Heq : @equiv multiset _ ?x ?y |- context[?x] => rewrite Heq
-      | Heq : @equiv multiset _ ?x ?y |- _ => clear x Heq
+      | Heq : @equiv (multiset _) _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
+      | Heq : @equiv (multiset _) _ ?x ?y |- context[?x] => rewrite Heq
+      | Heq : @equiv (multiset _) _ ?x ?y |- _ => clear x Heq
       (* Simplifying [singleton], [add] and [remove] *)
       | Hneq : ?y =/= ?x |- context[multiplicity ?y (singleton ?x ?n)] => rewrite singleton_other; trivial
       | Hneq : ?y =/= ?x |- context[multiplicity ?y (add ?x ?n ?m)] => rewrite add_other; trivial
@@ -402,7 +402,7 @@ Section MMultisetFacts.
   (** *  Complementary results  **)
   
 (*   Lemma eq_dec : forall m1 m2, {m1 == m2} + {~m1 == m2}. *)
-  Global Instance MMultisetEqDec : @EqDec multiset _.
+  Global Instance MMultisetEqDec : @EqDec (multiset elt) _.
   Proof.
   intros m1 m2. destruct (equal m1 m2) eqn:Heq.
   - left. now rewrite <- equal_spec.
@@ -1727,7 +1727,7 @@ Section MMultisetFacts.
   (** **  Results about [fold]  **)
   
   Definition fold_rect : forall {A} (f : elt -> nat -> A -> A)
-                                (P : multiset -> A -> Type) (i : A) (m : multiset),
+                                (P : multiset elt -> A -> Type) (i : A) (m : multiset elt),
     (forall m1 m2 acc, m1 == m2 -> P m1 acc -> P m2 acc) ->
     P empty i ->
     (forall x m' acc, In x m -> ~In x m' -> P m' acc -> P (add x m[x] m') (f x m[x] acc)) ->
@@ -1754,18 +1754,6 @@ Section MMultisetFacts.
     - now left.
     - intro. inversion_clear Hdup. apply H1. rewrite <- elements_from_elements; trivial. now rewrite elements_In.
     - apply IHl; intuition.
-  Qed.
-  
-  Lemma fold_rect_nodep : forall {A} (f : elt -> nat -> A -> A) (P : A -> Type) (i : A) (m : multiset),
-    P i -> (forall x n acc, In x m -> P acc -> P (f x n acc)) -> P (fold f m i).
-  Proof.
-  intros A f P i m Hi Hrec. rewrite fold_spec.
-  assert (Hrec' : forall x n k acc, InA eq_elt (x, k) (rev (elements m)) -> P acc -> P (f x n acc)).
-  { intros ? ? ? ? Hin. apply Hrec. change x with (fst (x, k)).
-    rewrite <- elements_In, <- (InA_rev _). eassumption. }
-  rewrite <- fold_left_rev_right. induction (rev (elements m)) as [| [x n] l]; simpl.
-  + assumption.
-  + eapply Hrec'. now left. apply IHl. intros. apply Hrec' with k; trivial. now right.
   Qed.
   
   Section Fold_results.
@@ -1941,7 +1929,7 @@ Section MMultisetFacts.
     - apply IHl. eapply is_elements_cons_inv. eassumption.
   Qed.
   
-  Corollary not_empty_In : forall m, ~m == empty <-> exists x, In x m.
+  Corollary not_empty_In : forall m, m =/= empty <-> exists x, In x m.
   Proof.
   intro m. split.
   + pattern m. apply ind; clear m.
@@ -1955,7 +1943,7 @@ Section MMultisetFacts.
   Proof.
   intro m. destruct (equal m empty) eqn:Heq.
   + rewrite equal_spec in Heq. now left.
-  + right. rewrite <- not_empty_In. rewrite <- equal_spec, Heq. discriminate.
+  + right. rewrite <- not_empty_In. unfold complement. rewrite <- equal_spec, Heq. discriminate.
   Qed.
   
   (** **  Results about [support]  **)
@@ -3495,7 +3483,7 @@ Section MMultisetFacts.
     Variable f : elt -> nat -> bool.
     Hypothesis Hf : compatb f.
     
-    Lemma exists_not_empty : forall m, exists_ f m = true -> ~m == empty.
+    Lemma exists_not_empty : forall m, exists_ f m = true -> m =/= empty.
     Proof.
     intros m Hm. rewrite exists_spec in Hm; trivial. rewrite not_empty_In. destruct Hm as [x [? ?]]. now exists x.
     Qed.
@@ -3733,9 +3721,9 @@ Ltac msetdec_step :=
     | H : ?x = ?y |- _ => subst x || rewrite H in *
     | Hneq : ?x =/= ?x |- _ => now elim Hneq
     | Heq : equiv ?x ?y |- _ => clear x Heq || rewrite Heq in *
-    | Heq : @equiv multiset _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
-    | Heq : @equiv multiset _ ?x ?y |- context[?x] => rewrite Heq
-    | Heq : @equiv multiset _ ?x ?y |- _ => clear x Heq
+    | Heq : @equiv (multiset _) _ ?x ?y, Hin : context[?x] |- _ => rewrite Heq in Hin
+    | Heq : @equiv (multiset _) _ ?x ?y |- context[?x] => rewrite Heq
+    | Heq : @equiv (multiset _) _ ?x ?y |- _ => clear x Heq
     (* Simplifying [singleton], [add] and [remove] *)
     | Hneq : ?y =/= ?x |- context[multiplicity ?y (singleton ?x ?n)] => rewrite singleton_other; trivial
     | Hneq : ?y =/= ?x |- context[multiplicity ?y (add ?x ?n ?m)] => rewrite add_other; trivial

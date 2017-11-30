@@ -20,87 +20,8 @@ Require Import SetoidDec.
 Require Import Decidable.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Robots.
+Require Import Pactole.Core.Robots.
 Set Implicit Arguments.
-
-
-Class Information (loc info : Type) `(Setoid loc)  `(@EqDec loc _)
-                                    `(Setoid info) `(@EqDec info _) := {
-  app : (loc -> loc) -> info -> info;
-  app_compat :> Proper ((equiv ==> equiv) ==> equiv ==> equiv) app;
-  app_id : (equiv ==> equiv)%signature (app Datatypes.id) Datatypes.id;
-  app_compose : forall f g,
-    Proper (equiv ==> equiv) f ->
-    Proper (equiv ==> equiv) g ->
-    (equiv ==> equiv)%signature (app (fun x => f (g x))) (fun x => app f (app g x))
-}.
-Arguments Information loc info {_} {_} {_} {_}.
-Arguments app_compose {_} {_} {_} {_} {_} {_} {_} f g _ _.
-
-
-(** [unit] is a valid information type that does not contain any information. *)
-Local Instance Unit (loc : Type) `(Setoid loc) `(@EqDec loc _) : Information loc unit := {
-  app := fun _ _ => tt;
-  app_compat := fun _ _ _ _ _ _ => eq_refl;
-  app_compose := fun _ _ _ _ _ _ _ => eq_refl }.
-Proof.
-now intros _ [] _.
-Defined.
-
-(** Any type can be seen as invariant under frame change. *)
-Definition Ignore (loc T : Type) `{EqDec loc} `{EqDec T} : Information loc T := {|
-  app := fun _ x => x;
-  app_compat := fun _ _ _ _ _ x => x;
-  app_id := fun _ _ x => x;
-  app_compose := fun _ _ _ _ _ _ x => x |}.
-
-(** A pair of information can be combined. *)
-Require Pactole.Util.FMaps.FMapInterface.
-(* Already inside FMapInterface.
-Instance pair_setoid A B `(Setoid A) `(Setoid B) : Setoid (A * B). *)
-
-Local Instance pair_Information loc A B
-                                `(Setoid loc) `(@EqDec loc _)
-                                `(Setoid A)   `(@EqDec A _)   `(@Information loc A _ _ _ _)
-                                `(Setoid B)   `(@EqDec B _)   `(@Information loc B _ _ _ _)
- : Information loc (A * B) := {
-  app := fun f x => (app f (fst x), app f (snd x)) }.
-Proof.
-+ intros f g Hfg x y Hxy. unfold app. split; simpl; now apply app_compat, Hxy.
-+ intros x y Hxy. split; apply app_id, Hxy.
-+ intros ? ? ? ? [] [] []. split; now apply app_compose.
-Defined.
-
-(** We can also keep only the target location. *)
-Local Instance Location (loc : Type) `{Setoid loc} `{@EqDec loc _} : Information loc loc := {
-  app := fun f x => f x }.
-Proof.
-+ repeat intro. auto.
-+ repeat intro. auto.
-+ repeat intro. auto.
-Defined.
-
-(** Under some condition on the app function, if we can lift the location type,
-    then we can lift any info type. *)
-Definition lift_location {A B info} `{EqDec A} `(Info : Information B info)
-                         (proj : A -> B) (embed : B -> A)
-                         (Hp : Proper (equiv ==> equiv) proj) (He : Proper (equiv ==> equiv) embed)
-                         (Hep : forall x, proj (embed x) == x)
-                         (Hequiv : forall f g, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
-                                               (equiv ==> equiv)%signature (fun x => proj (f (g (embed x))))
-                                                                           (fun x => proj (f (embed (proj (g (embed x)))))))
-  : Information A info.
-refine ({| app := fun f x => app (fun y => proj (f (embed y))) x |}).
-Proof.
-+ intros f g Hfg x y Hxy. apply app_compat; trivial; [].
-  repeat intro. now apply Hp, Hfg, He.
-+ intros x y Hxy. transitivity (app (fun x : B => x) y); try (now apply (app_id y)); [].
-  apply app_compat; trivial; []. repeat intro. unfold Datatypes.id. now rewrite Hep.
-+ intros f g Hf Hg x y Hxy. transitivity (app (fun y => proj (f (embed (proj (g (embed y)))))) x).
-  - apply app_compat; try reflexivity; []. now apply Hequiv.
-  - apply (app_compose (fun x => proj (f (embed x))) (fun x => proj (g (embed x))));
-    trivial; now repeat intro; do 3 f_equiv.
-Defined.
 
 
 (** * Configurations *)
@@ -112,19 +33,19 @@ Defined.
     The framework for robots should be more general as for instance a ring is not a metric space.
     It seems that we only need a decidable type for locations and a notion of distance.  *)
 
-Class Configuration loc info `(Information loc info) `(Names) := {
-  configuration := ident -> loc * info;
+Class Configuration info `(EqDec info) `(Names) := {
+  configuration := ident -> info;
   configuration_Setoid : Setoid configuration := fun_equiv ident _;
   
   config_neq_equiv : forall config₁ config₂ : configuration,
     ~@equiv _ configuration_Setoid config₁ config₂ <-> exists id, ~equiv (config₁ id) (config₂ id);
   
-  map_config := fun (f : loc -> loc) (config : configuration) => ((fun id => app f (config id)) : configuration);
+  map_config := fun (f : info -> info) (config : configuration) => ((fun id => f (config id)) : configuration);
   map_config_compat :
     Proper ((equiv ==> equiv) ==> @equiv _ configuration_Setoid ==> @equiv _ configuration_Setoid) map_config;
   
-  Gpos : configuration -> list (loc * info);
-  Bpos : configuration -> list (loc * info);
+  Gpos : configuration -> list info;
+  Bpos : configuration -> list info;
   config_list := fun config => Gpos config ++ Bpos config;
   Gpos_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) Gpos;
   Bpos_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) Bpos;
@@ -143,7 +64,7 @@ Class Configuration loc info `(Information loc info) `(Names) := {
   config_list_length : forall config, length (config_list config) = nG + nB;
   
   config_list_map : forall f, Proper (equiv ==> equiv) f ->
-    forall config, config_list (map_config f config) == List.map (app f) (config_list config);
+    forall config, config_list (map_config f config) == List.map f (config_list config);
   map_config_merge : forall f g, Proper (equiv ==> equiv) f ->
     Proper (equiv ==> equiv) g -> forall config : configuration,
     map_config g (map_config f config) == map_config (fun x => g (f x)) config;
@@ -154,12 +75,13 @@ Existing Instance map_config_compat.
 Existing Instance Gpos_compat.
 Existing Instance Bpos_compat.
 Existing Instance config_list_compat.
+Arguments map_config info _ _ _ _ f config / : rename.
 
-Instance configuration_compat loc info `(Configuration loc info) :
-  forall config : configuration, Proper (Logic.eq ==> @equiv (loc * info) _) config.
+Instance configuration_compat info `(Configuration info) :
+  forall config : configuration, Proper (Logic.eq ==> equiv) config.
 Proof. repeat intro. now subst. Qed.
 
-Instance Make_Configuration loc info `(Info : Information loc info) `(N : Names) : Configuration Info N := {
+Instance Make_Configuration info `(Info : EqDec info) `(N : Names) : Configuration Info N := {
   Gpos := fun config => List.map (fun g => config (Good g)) Gnames;
   Bpos := fun config => List.map (fun b => config (Byz b)) Bnames }.
 Proof.
@@ -176,7 +98,7 @@ Proof.
       -- apply IHl. intro Heq. apply Hlist. now constructor.
       -- eauto.
   + destruct Hneq as [id Hneq]. intro Habs. apply Hneq, Habs.
-* intros f g Hfg ? ? Hconfig id. unfold map. now apply app_compat, Hconfig.
+* intros f g Hfg ? ? Hconfig id. unfold map. apply Hfg, Hconfig.
 * intros f g Hfg. eapply map_extensionalityA_compat; reflexivity || autoclass; [].
   intros x y Hxy. cbn in Hxy. subst. apply Hfg.
 * intros f g Hfg. eapply map_extensionalityA_compat; reflexivity || autoclass; [].
@@ -207,6 +129,15 @@ Proof.
 * intro. rewrite map_length. apply Bnames_length.
 * intro. now rewrite app_length, map_length, map_length, Gnames_length, Bnames_length.
 * intros f Hf conf. now rewrite map_app, map_map, map_map.
-* intros f g Hf Hg config id. symmetry. split; simpl; try reflexivity; []. now apply app_compose.
-* intros config id. split; simpl; try reflexivity; []. now apply app_id.
+* now repeat intro.
+* now repeat intro.
+Qed.
+
+Instance configuration_EqDec `{Configuration} : @EqDec configuration _.
+Proof.
+intros config₁ config₂.
+destruct (eqlistA_dec _ equiv_dec (config_list config₁) (config_list config₂)) as [Heq | Heq];
+rewrite 2 config_list_spec in Heq.
++ left. intro x. apply (fun_names_eq _ _ Heq).
++ right. intro Habs. apply Heq. f_equiv. intros ? ? Hpt. hnf in Hpt. subst. apply Habs.
 Qed.

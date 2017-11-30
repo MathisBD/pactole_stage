@@ -71,7 +71,7 @@ Global Instance FMOps_WMap : FMOps elt elt_EqDec := {|
   cardinal := fun m => FMapInterface.fold (fun _ n acc => Pos.to_nat n + acc) m 0;
   size := fun m => FMapInterface.fold (fun _ _ n => S n) m 0;
   choose := fun m =>  FMapInterface.fold (fun x _ _ => Some x) m None |}.
-
+Local Arguments multiplicity : simpl nomatch.
 
 Instance pre_multiplicity_compat : Proper (equiv ==> Equal ==> Logic.eq) multiplicity.
 Proof.
@@ -208,7 +208,7 @@ Qed.
 
 Notation "s  [c=]  t" := (Subset s t) (at level 70, no associativity).
 
-Global Instance multiset_Setoid : Setoid multiset := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
+Global Instance multiset_Setoid : Setoid (multiset elt) := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
 Proof. split; repeat intro; solve [ eauto | etransitivity; eauto ]. Defined.
 
 Global Instance multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) MMultisetInterface.multiplicity.
@@ -522,7 +522,7 @@ Qed.
 
 Global Instance choose_spec : ChooseSpec elt _.
 Proof.
-assert (Hchoose_Some : forall (x : elt) (s : multiset), choose s = Some x -> In x s).
+assert (Hchoose_Some : forall (x : elt) (s : multiset elt), choose s = Some x -> In x s).
 { intros x s Hin. destruct (In_dec s x).
   + unfold In. now rewrite <- In_MIn.
   + unfold choose in Hin. simpl in Hin. rewrite fold_1 in Hin.
@@ -600,7 +600,7 @@ Qed.
 
 Global Instance filter_spec : FilterSpec elt _.
 Proof.
-assert (Hnfilter : forall (f : elt -> nat -> bool) (x : elt) (s : multiset),
+assert (Hnfilter : forall (f : elt -> nat -> bool) (x : elt) (s : multiset elt),
         Proper (equiv ==> eq ==> eq) f ->
         (nfilter f s)[x] = (if f x s[x] then s[x] else 0)).
 * intros f x s Hf. unfold nfilter. simpl.

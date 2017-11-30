@@ -547,6 +547,12 @@ Section MMultisetExtra.
   + now repeat rewrite map_empty.
   Qed.
   
+  Lemma map_id : forall m, map id m == m.
+  Proof.
+  intro m. intro x. change x with (id x) at 1.
+  rewrite map_injective_spec; autoclass; []. now repeat intro.
+  Qed.
+  
   Theorem map_injective_fold : forall A eqA, Equivalence eqA ->
     forall f g, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
     Proper (equiv ==> equiv) g -> injective equiv equiv g ->
@@ -1141,7 +1147,7 @@ Section MMultisetExtra.
   * intros m x n Hout Hn Hrec _.
     destruct (empty_or_In_dec m) as [Hm | Hm].
     + exists x. rewrite Hm, add_empty. rewrite max_mult_singleton. msetdec.
-    + assert (Hempty : ~m == empty) by now rewrite not_empty_In.
+    + assert (Hempty : m =/= empty) by now rewrite not_empty_In.
       destruct (Hrec Hempty) as [max_m Hmax_m]. rewrite max_mult_add; trivial.
       destruct (Max.max_spec n (max_mult m)) as [[Hmax1 Hmax2] | [Hmax1 Hmax2]].
       - exists max_m. msetdec.
@@ -1187,10 +1193,12 @@ Section MMultisetExtra.
   - apply max_mult_spec_weak.
   Qed.
   
-  Corollary max_spec1_iff : forall m, ~m == empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
+  Corollary max_spec1_iff : forall m, m =/= empty -> forall x, In x (max m) <-> forall y, (m[y] <= m[x]).
   Proof.
   intros m Hm x. assert (Hempty := Hm).
-  rewrite <- max_is_empty, not_empty_In in Hm. destruct Hm as [z Hz].
+  unfold complement in Hm. rewrite <- max_is_empty in Hm.
+  change (max m =/= empty) in Hm. rewrite not_empty_In in Hm.
+  destruct Hm as [z Hz].
   split; intro Hx.
   + intro y. assert (Hx' := Hx). rewrite max_In_mult in Hx.
     - rewrite <- Hx. now apply max_le.
@@ -1445,255 +1453,5 @@ Section MMultisetExtra.
     - intros _ n. now rewrite Nat.eqb_sym, Bool.andb_diag.
   + repeat intro. now subst.
   Qed.
-  
-  (** **  Function [min] and its properties  **)
-  
-  (** ***  Function [min_mult] computing the minimal multiplicity  **)
-  
-  (*
-  Local Instance min_f_compat : Proper (equiv ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Nat.min).
-  Proof. repeat intro. now subst. Qed.
-  
-  Local Lemma min_f_transpose2 : transpose2 Logic.eq (fun _ : elt => Nat.min).
-  Proof. repeat intro. repeat apply Nat.min_case_strong; omega. Qed.
-  Local Hint Resolve min_f_transpose2.
-
-  Local Lemma fold_min_le_init : forall m i, fold (fun _ => Nat.min) m i <= i.
-  Proof.
-  intro m. pattern m. apply ind.
-  + intros ? ? Hm. now setoid_rewrite (fold_compat _ _ _ _ _ _ _ Hm _ _ (reflexivity _)); auto.
-  + intros m' x n Hx Hn Hrec i. rewrite (@fold_add _ Logic.eq); autoclass; [].
-    rewrite Nat.min_le_iff. auto.
-  + intro. now rewrite fold_empty.
-  Qed.
-  
-  Lemma fold_min_init_indep : forall m x n p, 0 < m[x] -> m[x] <= n -> m[x] <= p ->
-    fold (fun _ => Nat.min) m n = fold (fun _ => Nat.min) m p.
-  Proof.
-  intros m x n p.
-  apply fold_rect.
-  + intros m1 m2 acc Hm Hrec **. rewrite Hm in Hrec at 1 2 3.
-    rewrite Hrec; trivial; []. apply fold_compat; autoclass.
-  + msetdec.
-  + intros z m' **.
-    assert (Hm' : m'[z] = 0) by (unfold In in *; omega).
-    msetdec.
-    - rewrite Hm' in *. simpl in *. rewrite fold_add; autoclass; [| msetdec].
-  Restart.
-  intro m. pattern m at -2 3. apply ind.
-  + intros m1 m2 Hm. split; intros Heq x n p Hx Hn Hp.
-    - setoid_rewrite Hm in Heq at 1. specialize (Heq x n p Hx Hn Hp).
-      erewrite (fold_compat _ Logic.eq _ _ _ _ _ Hm _ _ (reflexivity _)) in Heq.
-      rewrite Heq. apply fold_compat; autoclass.
-    - setoid_rewrite <- Hm in Heq at 1. specialize (Heq x n p Hx Hn Hp).
-      erewrite (fold_compat _ Logic.eq _ _ _ _ _ Hm _ _ (reflexivity _)).
-      rewrite Heq. apply fold_compat; autoclass. now symmetry.
-  + intros m' z k Hz Hk Hrec x n p Hx Hn Hp.
-    assert (Hm' : m'[z] = 0) by (unfold In in *; omega).
-    rewrite 2 fold_add; autoclass; []. msetdec.
-    -
-  Admitted.
-  
-  Instance min_mult_compat : Proper (eq ==> Logic.eq) min_mult.
-  Proof.
-  unfold min_mult. intros m1 m2 Heq.
-  destruct (choose m1) as [x1 |] eqn:Hm1.
-  + assert (Hm2' : choose m2 <> None).
-    { intro Habs. rewrite choose_None, <- Heq, <- choose_None in Habs. congruence. }
-    destruct (choose m2) as [x2 |] eqn:Hm2; try (now elim Hm2'); [].
-    destruct (le_dec m1[x1] m2[x2]).
-    - rewrite (@fold_min_init_indep m1 x1 m1[x1] m2[x2]);
-      omega || (apply fold_compat; trivial; autoclass) || now apply choose_Some.
-    - rewrite <- (@fold_min_init_indep m2 x2 m1[x1] m2[x2]);
-      omega || (apply fold_compat; trivial; autoclass) || now apply choose_Some.
-  + rewrite choose_None in Hm1. rewrite Hm1 in Heq. symmetry in Heq.
-    rewrite <- choose_None in Heq. now rewrite Heq.
-  Qed.
-  
-(*   Parameter min_mult_sub_compat : Proper (Subset ==> le) min_mult. *)
-  
-  Lemma min_mult_add : forall m x n, n > 0 -> ~In x m -> min_mult (add x n m) = Nat.min n (min_mult m).
-  Proof.
-  intros m x n Hn Hx. unfold min_mult.
-  assert (Hnone : choose (add x n m) <> None).
-  { intros Habs. rewrite choose_None in Habs. specialize (Habs x). msetdec. }
-  destruct (choose (add x n m)) eqn:Hadd; try (now elim Hnone); [].
-  destruct (choose m) as [y |] eqn:Hm.
-  * rewrite fold_add; autoclass; []. msetdec.
-    + rewrite min_r; [apply Nat.min_case_strong |].
-      - 
-      - 
-      - 
-    - repeat intro. now subst.
-    - repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
-    - omega.
-  Qed.
-  Proof.
-  
-  Theorem min_mult_spec_weak : forall m x, (min_mult m <= m[x])%nat.
-  Proof.
-  intro m. pattern m. apply ind; clear m.
-  * intros m1 m2 Hm. now setoid_rewrite Hm.
-  * intros m x n Hout Hn Hrec y. rewrite min_mult_add; trivial.
-    assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
-    destruct (equiv_dec y x) as [Hxy | Hxy].
-    + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
-    + rewrite add_other; auto. transitivity (max_mult m).
-      - apply Hrec.
-      - apply Max.le_max_r.
-  * intro x. rewrite empty_spec. omega.
-  Qed.
-  
-  (* We need a dummy elements for [y] when [m] is empty. *)
-  Parameter min_mult_spec : elt -> forall m, (forall x, min_mult m <= m[x]) /\ (exists y, min_mult m = m[y]).
-  
-  Parameter min_mult_unique : forall m n, (forall x, n <= m[x]) -> (exists y, n = m[y]) -> n = min_mult m.
-  
-  Parameter min_spec_min : forall m x, ~m == empty -> (forall y, (m[x] <= m[y])) -> min_mult m = m[x].
-  
-  Parameter min_min_mult_ex : forall m, ~m == empty -> exists x, min_mult m = m[x].
-  
-  Parameter min_mult_empty : min_mult empty = 0.
-  
-  Parameter min_mult_0 : forall m, min_mult m = 0%nat <-> m == empty.
-  
-  Parameter min_mult_singleton : forall x n, min_mult (singleton x n) = n.
-  
-(*   Parameter min_mult_add_le : forall x n m, min_mult m <= min_mult (add x n m). *)
-  
-(*   Parameter min_mult_add_cases : forall x n m, (min_mult m <= m[x] + n <-> min_mult (add x n m) = min_mult m)
-                                            /\ (m[x] + n <= min_mult m <-> min_mult (add x n m) = m[x] + n).
-  
-  Parameter min_mult_add1 : forall x n m, m[x] + n <= min_mult m <-> min_mult (add x n m) = min_mult m.
-  
-  Parameter min_mult_add2 : forall x n m, min_mult m <= m[x] + n <-> min_mult (add x n m) = m[x] + n.
-  
-  Parameter min_mult_remove_le : forall x n m, min_mult (remove x n m) <= min_mult m. *)
-  
-  Parameter min_mult_remove : forall x n m, min_mult m < m[x] -> min_mult (remove x n m) = min_mult m.
-  
-  Parameter min_mult_union : forall m₁ m₂,
-    Nat.min (min_mult m₁) (min_mult m₂) <= min_mult (union m₁ m₂) <= min_mult m₁ + min_mult m₂.
-  
-  Parameter min_mult_lub : forall m₁ m₂, Nat.max (min_mult m₁) (min_mult m₂) <= min_mult (lub m₁ m₂).
-  
-(*   Parameter min_mult_remove_all_le : forall x m, min_mult (remove_all x m) <= min_mult m. *)
-  
-  Parameter min_mult_remove_all : forall x m, min_mult m < m[x] -> min_mult (remove_all x m) = min_mult m.
-  
-  Parameter min_mult_map_injective_invariant : forall f, Proper (equiv ==> equiv) f -> injective equiv equiv f ->
-    forall m, min_mult (map f m) = min_mult m.
-  
-  (** ***  Function [min s] returning the elements of a multiset with minimal multiplicity  **)
-  
-  Declare Instance eqb_min_mult_compat m : Proper (equiv ==> Logic.eq ==> Logic.eq) (fun _ => Nat.eqb (min_mult m)).
-  
-  Declare Instance eqb_min_compat : Proper (equiv ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.min).
-  
-  Local Hint Immediate eqb_min_mult_compat eqb_min_compat.
-  
-  Declare Instance min_compat : Proper (eq ==> eq) min.
-  
-  Definition simple_min m := nfilter (fun _ => beq_nat (min_mult m)) m.
-  
-  Parameter simple_min_compat : Proper (eq ==> eq) simple_min.
-  
-  Parameter min_simplified : forall m, min m == simple_min m.
-  
-  Parameter min_spec : forall x m, (min m)[x] = (if m[x] =? min_mult m then m[x] else 0).
-  
-  Parameter min_case : forall m x, (min m)[x] = 0 \/ (min m)[x] = m[x] /\ m[x] = min_mult m.  
-  
-  Parameter min_le : forall m x y, In y (min m) -> In x m -> (min m)[y] <= m[x].
-  
-  Parameter min_subset : forall m, min m [<=] m.
-  
-  Parameter min_empty : min empty == empty.
-  
-  Parameter min_is_empty : forall m, min m == empty <-> m == empty.
-  
-  Parameter min_singleton : forall x n, min (singleton x n) == singleton x n.
-  
-  Parameter min_is_singleton : forall x n m, 0 < n ->
-    min m == singleton x n <-> n = m[x] /\ forall y, ~equiv y x -> m[x] < m[y].
-  
-  Parameter min_is_id : forall m, min m == m <-> forall x, In x m -> m[x] = min_mult m.
-  
-  Parameter min_In : forall m x, In x (min m) -> m[x] = min_mult m.
-  
-  Parameter min_In_mult : forall m x, In x m -> (In x (min m) <-> (min m)[x] = m[x]).
-  
-  Parameter min_In_mult2 : forall m x, In x m -> (In x (min m) <-> (min m)[x] = min_mult m).
-  
-  Parameter min_In_mult3 : forall m x, In x m -> (In x (min m) <-> m[x] = min_mult m).
-  
-  Parameter min_min_mult : forall m x, ~m == empty -> (In x (min m) <-> m[x] = min_mult m).
-  
-  Parameter min_spec1_iff : forall m, ~m == empty -> forall x, In x (min m) <-> forall y, (m[x] <= m[y]).
-  
-  Parameter min_spec_non_nil : forall m x, In x m -> exists y, In y (min m).
-  
-  Parameter min_spec_mult : forall m x y, In x (min m) -> (In y (min m) <-> (min m)[y] = (min m)[x]).
-  
-  Parameter min_spec_lub : forall m x y, In x (min m) -> In y m -> ~In y (min m) <-> (m[x] < m[y])%nat.
-  
-  Parameter min_add_lt : forall x n m, m[x] + n < min_mult m -> min (add x n m) == singleton x (m[x] + n).
-  
-  Parameter min_add_eq : forall x n m, 0 < n -> m[x] + n = min_mult m -> min (add x n m) == add x (m[x] + n) (min m).
-  
-  Parameter min_add_gt : forall x y n m, ~equiv y x -> In y m -> m[x] + n > min_mult m -> min (add x n m) == min m.
-  
-  Parameter min_remove : forall x n m, min_mult m < m[x] -> min (remove x n m) == min m.
-  
-(*   Parameter min_lub_le : forall m₁ m₂, min m₁ [<=] min (lub m₁ m₂) \/ min m₂ [<=] min (lub m₁ m₂). *)
-  
-(*   Parameter min_lub : forall m₁ m₂, min (lub m₁ m₂) [<=] lub (min m₁) (min m₂). *)
-  
-  Parameter fold_min : forall A (eqA : relation A), Equivalence eqA ->
-    forall f, Proper (equiv ==> Logic.eq ==> eqA ==> eqA) f -> transpose2 eqA f ->
-    forall m i, eqA (fold f (min m) i) (fold (fun x n acc => if n =? min_mult m then f x n acc else acc) m i).
-  
-  Parameter for_all_min : forall f, compatb f ->
-    forall m, for_all f (min m) = for_all (fun x n => f x n || (min_mult m <? n))%bool m.
-  
-  Parameter exists_min : forall f, compatb f ->
-    forall m, exists_ f (min m) = exists_ (fun x n => f x n && (n =? min_mult m))%bool m.
-  
-  Parameter nfilter_min : forall f, compatb f ->
-    forall m, nfilter f (min m) == nfilter (fun x n => f x n && (n =? min_mult m))%bool m.
-  
-  Parameter filter_min : forall f, Proper (equiv ==> Logic.eq) f ->
-    forall m, filter f (min m) == nfilter (fun x n => f x && (n =? min_mult m))%bool m.
-  
-  Parameter npartition_min_fst : forall f, compatb f ->
-    forall m, fst (npartition f (min m)) == nfilter (fun x n => f x n && (n =? min_mult m))%bool m.
-  
-  Parameter npartition_min_snd : forall f, compatb f ->
-    forall m, snd (npartition f (min m)) == nfilter (fun x n => negb (f x n) && (n =? min_mult m))%bool m.
-  
-  Parameter partition_min_fst : forall f, Proper (equiv ==> Logic.eq) f ->
-    forall m, fst (partition f (min m)) == nfilter (fun x n => f x && (n =? min_mult m))%bool m.
-  
-  Parameter partition_min_snd : forall f, Proper (equiv ==> Logic.eq) f ->
-    forall m, snd (partition f (min m)) == nfilter (fun x n => negb (f x) && (n =? min_mult m))%bool m.
-  
-  Parameter elements_min : forall m,
-    PermutationA eq_pair (elements (min m)) (List.filter (fun xn => snd xn =? min_mult m) (elements m)).
-  
-  Parameter support_min : forall m, inclA equiv (support (min m)) (support m).
-  
-  Parameter cardinal_min : forall m, cardinal (min m) <= cardinal m.
-  
-  Parameter size_min : forall m, size (min m) <= size m.
-  
-  Parameter min_remove_all : forall x m, min_mult m < m[x] -> min (remove_all x m) == min m.
-  
-  Parameter min_map_injective : forall f, Proper (equiv ==> equiv) f -> injective equiv equiv f ->
-    forall m, (min (map f m)) == (map f (min m)).
-  
-  Parameter min_mult_min : forall m, min_mult (min m) = min_mult m.
-  
-  Parameter min_idempotent : forall m, min (min m) == min m.
-  *)
   
 End MMultisetExtra.

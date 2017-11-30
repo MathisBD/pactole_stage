@@ -17,6 +17,7 @@
 (**************************************************************************)
 
 
+Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Rbase R_sqrt Rbasic_fun.
 Require Import Psatz.
 Require Import RelationPairs.
@@ -25,9 +26,11 @@ Require Import Omega.
 Import List Permutation SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Spaces.RealMetricSpace.
+Require Export Pactole.Spaces.RealMetricSpace.
+Require Pactole.Spaces.Similarity.
 Set Implicit Arguments.
 Open Scope R_scope.
+Import Pactole.Spaces.Similarity.Notations.
 
 
 (** Some results about [R]. *)
@@ -238,7 +241,7 @@ Ltac normalize_R2dist pt1 pt2 pt3 :=
 
 Ltac null x :=
   let Hnull := fresh "Hnull" in
-  destruct (equiv_dec x origin) as [Hnull | Hnull]; [rewrite Hnull in * | change (~x == origin) in Hnull].
+  destruct (x =?= origin) as [Hnull | Hnull]; [try rewrite Hnull in * | change (~x == origin) in Hnull].
 
 
 Definition R2dec_bool (x y : R2) := if equiv_dec x y then true else false.
@@ -383,12 +386,18 @@ Proof. intro. unfold R2norm. rewrite Rsqr_sqrt; trivial. apply product_self_pos.
 Lemma R2norm_origin : R2norm origin = 0.
 Proof. rewrite square_R2norm_equiv, squared_R2norm_product; try reflexivity; []. compute. field. Qed.
 
+Lemma product_expression1 : forall u v, product u v = ((R2norm (u+v))² - (R2norm u)² - (R2norm v)²) / 2.
+Proof. intros [] []. rewrite 3 squared_R2norm_product. unfold product. simpl. field. Qed.
+
+Lemma product_expression2 : forall u v, product u v = ((R2norm u)² + (R2norm v)² - (R2norm (u-v))²) / 2.
+Proof. intros [] []. rewrite 3 squared_R2norm_product. unfold product. simpl. field. Qed.
+
 (** ***  Results about [orthogonal]  **)
 
 Lemma orthogonal_perpendicular : forall u, perpendicular u (orthogonal u).
 Proof.
-intro u. destruct (equiv_dec u origin) as [Hnull | Hnull].
-- unfold perpendicular. now rewrite Hnull, product_origin_l.
+intro u. null u.
+- unfold perpendicular. now rewrite product_origin_l.
 - destruct u as [x y]. unfold perpendicular, orthogonal, product. simpl. field. now rewrite R2norm_0.
 Qed.
 
@@ -403,7 +412,7 @@ intro u. null u.
   - destruct u as [x y]. unfold orthogonal in Heq.
     rewrite <- R2norm_0 in Hnull. injection Heq; intros Heqx Heqy.
     apply Rinv_neq_0_compat in Hnull. apply Rmult_integral in Heqx. apply Rmult_integral in Heqy.
-    destruct Heqx, Heqy; try contradiction; []. cbn. f_equal; lra.
+    destruct Heqx, Heqy; try contradiction; []. unfold origin. cbn. f_equal; lra.
   - rewrite Heq. apply orthogonal_origin.
 Qed.
 
@@ -460,8 +469,7 @@ Proof. intro u. unfold unitary. now rewrite R2norm_opp, mul_opp. Qed.
 
 Lemma unitary_mul : forall k u, 0 < k -> unitary (k * u) == unitary u.
 Proof.
-intros k u Hk.
-null u.
+intros k u Hk. null u.
 - now rewrite mul_origin.
 - unfold unitary. rewrite R2norm_mul. rewrite Rabs_pos_eq; try lra; [].
   rewrite mul_morph. replace (/ (k * R2norm u) * k) with (/R2norm u); try reflexivity; [].
@@ -470,16 +478,15 @@ Qed.
 
 Lemma unitary_id : forall u, u == ((R2norm u) * unitary u)%R2.
 Proof.
-intro u. unfold unitary. rewrite mul_morph.
-destruct (equiv_dec u origin) as [Hnull | Hnull].
-- rewrite Hnull. now rewrite mul_origin.
+intro u. unfold unitary. rewrite mul_morph. null u.
+- now rewrite mul_origin.
 - rewrite Rinv_r, mul_1; try easy; []. now rewrite R2norm_0.
 Qed.
 
 Lemma unitary_idempotent : forall u, unitary (unitary u) == unitary u.
 Proof.
-intro u. destruct (equiv_dec u origin) as [Hnull | Hnull].
-- rewrite Hnull. now rewrite unitary_origin at 1.
+intro u. null u.
+- now rewrite unitary_origin at 1.
 - unfold unitary at 1. rewrite R2norm_unitary; trivial; []. replace (/1) with 1 by field. apply mul_1.
 Qed.
 
@@ -488,8 +495,8 @@ Proof. intros. setoid_rewrite unitary_id at 1 2. rewrite product_mul_l, product_
 
 Lemma unitary_orthogonal : forall u, unitary (orthogonal u) == orthogonal u.
 Proof.
-intro u. destruct (equiv_dec u origin) as [Hnull | Hnull].
-- rewrite Hnull. rewrite orthogonal_origin. apply unitary_origin.
+intro u. null u.
+- rewrite orthogonal_origin. apply unitary_origin.
 - unfold unitary. rewrite R2norm_orthogonal; trivial; []. replace (/1) with 1 by field. now rewrite mul_1.
 Qed.
 
@@ -500,6 +507,9 @@ intro u. null u.
 - unfold orthogonal. rewrite R2norm_unitary; trivial; []. unfold unitary. simpl.
   rewrite <- R2norm_0 in Hnull. now destruct u; f_equal; simpl; field.
 Qed.
+
+Lemma unitary_is_id : forall u, R2norm u = 1 -> unitary u == u.
+Proof. intros u Hu. unfold unitary. now rewrite Hu, Rinv_1, mul_1. Qed.
 
 (** ***  Results about [perpendicular]  **)
 
@@ -1231,7 +1241,7 @@ replace (R2norm v) with (R2norm (origin - - v)%R2).
 - now rewrite opp_opp.
 Qed.
 
-Lemma fold_add_ac : forall E a b, fold_left add E (a + b)%R2 = ((fold_left add E a) + b)%R2.
+Lemma fold_add_acc : forall E a b, fold_left add E (a + b)%R2 = ((fold_left add E a) + b)%R2.
 Proof.
 induction E as [| x E].
 + reflexivity.
@@ -1335,7 +1345,7 @@ induction E as [| a [| b E]].
   replace (length (a :: F)) with (1 + lF)%nat; [ | simpl; reflexivity ].
   rewrite add_comm, S_INR, Ropp_plus_distr, <- add_morph, Rmult_plus_distr_r, Rmult_1_l.
   cbn [fold_left].
-  rewrite fold_add_ac, <- add_assoc, (add_comm a), <- add_assoc, add_assoc.
+  rewrite fold_add_acc, <- add_assoc, (add_comm a), <- add_assoc, add_assoc.
   replace (-1 * p + a)%R2 with (a - p)%R2 by (destruct a, p; simpl; f_equal; ring).
   rewrite R2norm_ineq.
   apply Rplus_le_compat.
@@ -1353,6 +1363,212 @@ Proof.
 intros E dm Hnotempty Hdm p Hp.
 apply (barycenter_dist_decrease_aux Hnotempty Hdm).
 intros q Hq. now apply Hdm.
+Qed.
+
+(** Translation and homothecy are similarities in R². *)
+Lemma translation_hyp : forall v x y : R2, dist (x + v)%R2 (y + v)%R2 = dist x y.
+Proof. intros [] [] []. simpl. f_equal. unfold Rsqr. ring. Qed.
+
+Lemma homothecy_hyp : forall (ρ : R) x y, dist (ρ * x)%R2 (ρ * y)%R2 = Rabs ρ * dist x y.
+Proof.
+intros ? [] []. simpl. rewrite <- sqrt_Rsqr_abs, <- sqrt_mult.
+- f_equal. unfold Rsqr. ring.
+- apply Rle_0_sqr.
+- replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
+Qed.
+
+Definition translation := Similarity.translation translation_hyp.
+Definition homothecy := Similarity.homothecy translation_hyp homothecy_hyp.
+
+(** A similarity preserves scalar product ratios. *)
+
+Lemma similarity_origin_R2norm : forall sim : similarity R2, sim origin == origin ->
+  forall u, R2norm (sim u) = Similarity.zoom sim * R2norm u.
+Proof.
+intros sim Hsim u.
+setoid_rewrite <- add_origin. rewrite <- opp_origin, <- 2 R2norm_dist.
+rewrite <- Hsim at 1. apply sim.(Similarity.dist_prop).
+Qed.
+
+Lemma similarity_origin_product : forall sim : similarity R2, sim origin == origin ->
+  forall u v, product (sim u) (sim v) = (Similarity.zoom sim)² * product u v.
+Proof.
+intros sim Hsim u v.
+rewrite 2 product_expression2, 2 (similarity_origin_R2norm sim Hsim).
+repeat rewrite R_sqr.Rsqr_mult.
+cut ((R2norm (sim u - sim v))² = (Similarity.zoom sim)² * ((R2norm (u - v))²)); try lra; [].
+rewrite <- 2 R2norm_dist, Similarity.dist_prop. apply R_sqr.Rsqr_mult.
+Qed.
+
+Lemma translation_product : forall t u1 u2 v1 v2,
+  (product (translation t v1 - translation t u1) (translation t v2 - translation t u2)
+  = product (v1 - u1) (v2 - u2))%R2.
+Proof. intros [] [] [] [] []. compute. ring. Qed.
+
+Lemma similarity_product : forall (sim : similarity R2) u1 u2 v1 v2,
+  product (sim v1 - sim u1) (sim v2 - sim u2) = (Similarity.zoom sim)² * product (v1 - u1) (v2 - u2).
+Proof.
+intros sim u1 u2 v1 v2.
+pose (sim' := translation (opp (sim origin)) ∘ sim).
+assert (Hzoom' :  Similarity.zoom sim' = Similarity.zoom sim).
+{ unfold sim'. compute. apply Rmult_1_l. }
+assert (Hsim' : forall u v, product (sim' u) (sim' v) = (Similarity.zoom sim)² * product u v).
+{ setoid_rewrite <- Hzoom'. apply similarity_origin_product.
+  unfold sim'. unfold origin. simpl. destruct (sim (0, 0)). f_equal; ring. }
+assert (Hsim : sim == translation (sim origin) ∘ sim').
+{ unfold sim'. rewrite Similarity.compose_assoc.
+  rewrite <- Similarity.compose_id_l at 1.
+  rewrite <- Similarity.compose_inverse_r.
+  do 2 f_equiv. apply Similarity.translation_inverse. }
+rewrite Hsim at -5. cbn -[add opp mul translation sim'].
+rewrite translation_product.
+repeat rewrite ?product_add_l, ?product_add_r, ?product_opp, ?product_opp_l, ?product_opp_r, Hsim'.
+ring.
+Qed.
+
+Theorem unitary_in_R2 : forall sim : similarity R2, sim origin == origin ->
+  exists u v, R2norm u = sim.(Similarity.zoom) /\ R2norm v = sim.(Similarity.zoom) /\ perpendicular u v /\
+    forall pt, (sim pt = product u pt * u + product v pt * v)%R2.
+Proof.
+intros sim Hsim.
+assert (Hnorm10 : R2norm (1, 0) = 1).
+{ unfold R2norm. rewrite <- sqrt_1 at 3. f_equal. compute. ring. }
+assert (Hnorm01 : R2norm (0, 1) = 1).
+{ unfold R2norm. rewrite <- sqrt_1 at 3. f_equal. compute. ring. }
+exists (sim (1, 0)), (sim (0, 1))%R2.
+repeat split.
+* rewrite similarity_origin_R2norm, Hnorm10; trivial; ring.
+* rewrite similarity_origin_R2norm, Hnorm01; trivial; ring.
+* unfold perpendicular. rewrite similarity_origin_product; trivial; [].
+  unfold product. simpl. ring.
+* intro pt.
+  assert (Hnull0 : sim (1, 0) =/= origin).
+  { intro Habs. rewrite <- Hsim in Habs. apply Similarity.injective in Habs.
+    unfold origin in Habs. simpl in Habs. injection Habs. apply R1_neq_R0. }
+  assert (Hnull : sim (/R2norm (sim (1, 0)) * (1, 0))%R2 =/= origin).
+  { intro Habs. rewrite <- Hsim in Habs. apply Similarity.injective in Habs.
+    apply mul_integral in Habs. destruct Habs as [Habs | Habs].
+    - revert Habs. apply Rinv_neq_0_compat. now rewrite R2norm_0.
+    - injection Habs. apply R1_neq_R0. }
+(*   assert (Hunitary : R2norm (sim (/R2norm (sim (1, 0)) * (1, 0)))%R2 = 1).
+  { rewrite 2 similarity_origin_R2norm; trivial; [].
+    rewrite Hnorm10, R2norm_mul, Rabs_pos_eq, Hnorm10.
+    - field. apply Similarity.zoom_non_null.
+    - rewrite <- Rmult_1_l. apply Fourier_util.Rle_mult_inv_pos; try lra; [].
+      rewrite Rmult_1_r. apply (Similarity.zoom_pos sim). } *)
+  rewrite (decompose_on Hnull0 (sim pt)).
+  unfold unitary at 1.
+  rewrite product_mul_r, similarity_origin_product; trivial; [].
+Admitted. (* similarity_in_R2 *)
+
+(** Description of similarities in R² as the composition of a orthogonal transformation and a translation. *)
+Theorem similarity_in_R2 : forall sim : similarity R2,
+  exists u v t, R2norm u = sim.(Similarity.zoom) /\ R2norm v = sim.(Similarity.zoom) /\ perpendicular u v /\
+    forall pt, (sim pt = product u pt * u + product v pt * v + t)%R2.
+Proof.
+intro sim.
+exists (sim (1, 0) - sim origin)%R2, (sim (0, 1) - sim origin)%R2, (sim origin).
+repeat split.
+* rewrite <- R2norm_dist, sim.(Similarity.dist_prop), <- Rmult_1_r. f_equal.
+  unfold dist, origin. cbn. unfold Rsqr. rewrite <- sqrt_1 at 3. f_equal. ring.
+* rewrite <- R2norm_dist, sim.(Similarity.dist_prop), <- Rmult_1_r. f_equal.
+  unfold dist, origin. cbn. unfold Rsqr. rewrite <- sqrt_1 at 3. f_equal. ring.
+* unfold perpendicular. rewrite product_expression2.
+  repeat rewrite <- ?R2norm_dist, ?R2add_dist, ?sim.(Similarity.dist_prop),
+                 ?R_sqr.Rsqr_mult, ?square_dist_simpl.
+  unfold Rsqr, origin. cbn. field.
+* intros pt.
+  assert (Hnull : (sim (0, 1) - sim origin)%R2 =/= origin).
+  { intro Habs. rewrite R2sub_origin in Habs. apply Similarity.injective in Habs.
+    unfold origin in Habs. simpl in Habs. injection Habs. apply R1_neq_R0. }
+  rewrite (decompose_on Hnull (sim pt)).
+Admitted. (* similarity_in_R2 *)
+
+Corollary sim_add : forall (sim : similarity R2) x y, (sim (x + y) = sim x + sim y - sim origin)%R2.
+Proof.
+intros sim x y. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
+repeat rewrite Heq, ?product_origin_r, ?product_add_r, <- ?add_morph, ?mul_0.
+rewrite add_origin, (add_comm origin t), add_origin.
+repeat rewrite <- add_assoc. rewrite add_opp, add_origin. f_equal.
+rewrite (add_comm t). repeat rewrite add_assoc. do 2 f_equal.
+change eq with equiv. apply add_comm.
+Qed.
+
+Corollary sim_opp : forall (sim : similarity R2) x, (sim (- x) = 2 * sim origin - sim x)%R2.
+Proof.
+intros sim x. change eq with equiv.
+apply (add_reg_l (sim x)). apply (add_reg_r (- sim origin))%R2.
+rewrite <- sim_add, add_opp.
+setoid_rewrite add_comm at 3. rewrite add_assoc, add_opp.
+setoid_rewrite add_comm at 2. rewrite add_origin.
+setoid_rewrite <- mul_1 at 8. rewrite <- minus_morph, add_morph.
+ring_simplify (2 + -1). now rewrite mul_1.
+Qed.
+
+Corollary sim_mul : forall (sim : similarity R2) k x, (sim (k * x) = k * sim x + (1 - k) * sim origin)%R2.
+Proof.
+intros sim k x. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
+repeat rewrite Heq, ?product_origin_r, ?product_mul_r, <- ?add_morph, ?mul_0.
+rewrite add_origin, (add_comm origin t), add_origin.
+repeat rewrite mul_distr_add, ?mul_morph. repeat rewrite <- add_assoc. do 2 f_equal.
+rewrite add_morph. ring_simplify (k + (1 - k)). now rewrite mul_1.
+Qed.
+
+(** To prove that barycenter are invariant by similarities, we handle translations first and then *)
+Lemma barycenter_translation_morph : forall t l, l <> nil ->
+  barycenter (map (translation t) l) == translation t (barycenter l).
+Proof.
+intros t l Hl. unfold barycenter. rewrite map_length.
+remember (INR (length l)) as k.
+assert (Hk : k <> 0).
+{ subst. destruct l; auto; []. apply not_0_INR. simpl; discriminate. }
+change ((translation t) (/ k * fold_left add l origin)%R2)
+  with (/ k * fold_left add l origin + t)%R2.
+rewrite <- (mul_1 t) at 2. rewrite <- (Rinv_l k); trivial; [].
+rewrite <- mul_morph, <- mul_distr_add. f_equiv. change eq with equiv.
+subst k. clear Hk. induction l as [|  e l].
+* now elim Hl.
+* destruct l as [| e' l'].
+  + destruct e, t. simpl. f_equal; ring.
+  + specialize (IHl ltac:(discriminate)).
+    remember (e' :: l') as l. clear e' l' Heql Hl.
+    simpl length. rewrite S_INR. cbn -[add mul].
+    rewrite 2 fold_add_acc, IHl.
+    destruct (fold_left add l origin), e, t; simpl; f_equal; ring.
+Qed.
+
+Lemma barycenter_sim_morph_origin : forall (sim : similarity R2), sim origin == origin ->
+  forall l, barycenter (map sim l) == sim (barycenter l).
+Proof.
+intros sim Hsim l. unfold barycenter.
+rewrite sim_mul, Hsim, mul_origin, add_origin, map_length. f_equiv.
+induction l as [| e l].
++ simpl. now rewrite Hsim.
++ cbn -[add origin]. do 2 rewrite fold_add_acc.
+  now rewrite IHl, sim_add, Hsim, opp_origin, add_origin.
+Qed.
+
+Theorem barycenter_sim_morph : forall (sim : similarity R2) l,
+  l <> nil -> barycenter (map sim l) == sim (barycenter l).
+Proof.
+intros sim l Hl.
+pose (sim' := translation (opp (sim origin)) ∘ sim).
+assert (Hsim' : barycenter (map sim' l) == sim' (barycenter l)).
+{ apply barycenter_sim_morph_origin. unfold sim'. simpl.
+  destruct (sim origin). unfold origin. simpl. f_equal; ring. }
+assert (Hsim : sim == translation (sim origin) ∘ sim').
+{ unfold sim'. rewrite Similarity.compose_assoc.
+  rewrite <- Similarity.compose_id_l at 1.
+  rewrite <- Similarity.compose_inverse_r.
+  do 2 f_equiv. apply Similarity.translation_inverse. }
+rewrite Hsim at 2.
+change ((translation (sim origin) ∘ sim') (barycenter l))
+  with (translation (sim origin) (sim' (barycenter l))).
+rewrite <- Hsim', <- barycenter_translation_morph; eauto using map_eq_nil.
+rewrite map_map. f_equiv.
+cut (eqlistA equiv (map sim l) (map (fun x => (translation (sim origin)) (sim' x)) l));
+try now intro Heq; rewrite Heq.
+f_equiv. intros ? ? Heq. rewrite Heq. apply Hsim.
 Qed.
 
 (** **  Triangles  **)
@@ -1379,6 +1595,7 @@ Function opposite_of_max_side (pt1 pt2 pt3 : R2) :=
   then if Rle_bool len23 len13 then pt2 else pt1
   else if Rle_bool len12 len13 then pt2 else pt3.
 
+(** Compatibility lemmas *)
 Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
@@ -1444,7 +1661,8 @@ Proof.
          end.
 Qed.
 
-Lemma classify_triangle_Equilateral_spec : forall pt1 pt2 pt3,
+(** Specification of [classify_triangle] *)
+Theorem classify_triangle_Equilateral_spec : forall pt1 pt2 pt3,
   classify_triangle pt1 pt2 pt3 = Equilateral
   <-> dist pt1 pt2 = dist pt2 pt3 /\ dist pt1 pt3 = dist pt2 pt3.
 Proof.
@@ -1452,7 +1670,7 @@ intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
 Qed.
 
-Lemma classify_triangle_Isosceles_spec : forall pt1 pt2 pt3 pt,
+Theorem classify_triangle_Isosceles_spec : forall pt1 pt2 pt3 pt,
   classify_triangle pt1 pt2 pt3 = Isosceles pt
   <-> (pt = pt1 /\ dist pt1 pt2 = dist pt1 pt3 /\ dist pt1 pt2 <> dist pt2 pt3)
    \/ (pt = pt2 /\ dist pt2 pt1 = dist pt2 pt3 /\ dist pt2 pt1 <> dist pt1 pt3)
@@ -1480,7 +1698,7 @@ subst; trivial; try contradiction.
 + left. now repeat split.
 Qed.
 
-Lemma classify_triangle_Scalene_spec : forall pt1 pt2 pt3,
+Theorem classify_triangle_Scalene_spec : forall pt1 pt2 pt3,
   classify_triangle pt1 pt2 pt3 = Scalene
   <-> dist pt1 pt2 <> dist pt2 pt3
    /\ dist pt1 pt2 <> dist pt1 pt3
@@ -1488,6 +1706,37 @@ Lemma classify_triangle_Scalene_spec : forall pt1 pt2 pt3,
 Proof.
 intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
+Qed.
+
+(** [classify_triangle] is invariant by similarities *)
+Definition map_triangle_type f t :=
+  match t with
+    | Isosceles p => Isosceles (f p)
+    | _ => t
+  end.
+
+Lemma classify_triangle_morph : forall (sim : similarity R2) pt1 pt2 pt3,
+  classify_triangle (sim pt1) (sim pt2) (sim pt3) = map_triangle_type sim (classify_triangle pt1 pt2 pt3).
+Proof.
+intros sim pt1 pt2 pt3.
+unfold classify_triangle at 1.
+setoid_rewrite (sim.(Similarity.dist_prop)).
+rewrite Rdec_bool_mult_l in *; try apply Similarity.zoom_non_null.
+functional induction (classify_triangle pt1 pt2 pt3);
+repeat rewrite ?e, ?e0, ?e1, ?(sim.(Similarity.dist_prop)), ?Rdec_bool_mult_l;
+reflexivity || apply Similarity.zoom_non_null.
+Qed.
+
+Lemma opposite_of_max_side_morph : forall (sim : similarity R2) pt1 pt2 pt3,
+  opposite_of_max_side (sim pt1) (sim pt2) (sim pt3) = sim (opposite_of_max_side pt1 pt2 pt3).
+Proof.
+intros sim pt1 pt2 pt3. unfold opposite_of_max_side.
+repeat rewrite (sim.(Similarity.dist_prop)).
+assert (Hconfig : (0 < Similarity.zoom sim)%R) by apply Similarity.zoom_pos.
+repeat rewrite Rle_bool_mult_l; trivial.
+repeat match goal with
+  | |- context[Rle_bool ?x ?y] => destruct (Rle_bool x y)
+end; reflexivity.
 Qed.
 
 Lemma isoscele_vertex_is_vertex: forall ptx pty ptz vertex,
@@ -1551,6 +1800,66 @@ Axiom bary3_spec: forall pt1 pt2 pt3,
 Axiom bary3_unique: forall x y z a b,
     is_barycenter_3_pts x y z a -> is_barycenter_3_pts x y z b -> equiv a b.
 
+(* the [barycenter] is invariant by similarities. *)
+Lemma barycenter_3_morph: forall (sim : similarity R2) pt1 pt2 pt3,
+  barycenter_3_pts (sim pt1) (sim pt2) (sim pt3) = sim (barycenter_3_pts pt1 pt2 pt3).
+Proof.
+intros sim pt1 pt2 pt3. eapply bary3_unique.
++ apply bary3_spec.
++ intro p. change p with (Similarity.id p). rewrite <- (Similarity.compose_inverse_r sim).
+  change ((Similarity.compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
+  repeat rewrite sim.(Similarity.dist_prop), R_sqr.Rsqr_mult. repeat rewrite <- Rmult_plus_distr_l.
+  apply Rmult_le_compat_l.
+  - apply Rle_0_sqr.
+  - apply bary3_spec.
+Qed.
+
+Lemma R2_is_middle_morph : forall x y C (sim : similarity R2),
+  is_middle x y C -> (is_middle (sim x) (sim y) (sim C)).
+Proof.
+intros x y C sim Hmid.
+red.
+intros p.
+unfold is_middle in Hmid.
+rewrite <- (@Bijection.section_retraction _ _ sim p).
+setoid_rewrite sim.(Similarity.dist_prop).
+setoid_rewrite R_sqr.Rsqr_mult.
+setoid_rewrite <- Rmult_plus_distr_l.
+apply Rmult_le_compat_l.
+- apply Rle_0_sqr.
+- apply Hmid.
+Qed.
+
+(*
+Lemma R2_is_bary3_morph : forall x y z C (sim : similarity R2),
+  is_barycenter_3_pts x y z C -> (is_barycenter_3_pts (sim x) (sim y) (sim z) (sim C)).
+Proof.
+intros x y z C sim Hmid.
+red.
+intros p.
+unfold is_barycenter_3_pts in Hmid.
+rewrite <- (@Bijection.section_retraction _ _ (sim.(sim_f)) p).
+setoid_rewrite sim.(dist_prop).
+setoid_rewrite R_sqr.Rsqr_mult.
+repeat setoid_rewrite <- Rmult_plus_distr_l.
+apply Rmult_le_compat_l.
+- apply Rle_0_sqr.
+- apply Hmid.
+Qed.
+
+Lemma R2_bary3_morph : forall x y z (sim : similarity R2),
+  (barycenter_3_pts (sim x) (sim y) (sim z))%R2 = sim ((barycenter_3_pts x y z))%R2.
+Proof.
+intros x y z sim.
+generalize (@bary3_spec x y z).
+intro.
+generalize (@bary3_spec (sim x) (sim y) (sim z)).
+intro.
+assert (is_barycenter_3_pts (sim x) (sim y) (sim z) (sim (barycenter_3_pts x y z))).
+{ apply R2_is_bary3_morph. auto. }
+now apply bary3_unique with (sim x) (sim y) (sim z).
+Qed.
+*)
 
 Lemma R2dist_middle : forall pt1 pt2,
   dist pt1 (middle pt1 pt2) = /2 * dist pt1 pt2.
@@ -1563,20 +1872,18 @@ replace pt1 with (/2 * pt1 + /2 * pt1)%R2 at 1.
 + rewrite add_morph. replace (/ 2 + / 2) with 1 by field. now rewrite mul_1.
 Qed.
 
-Lemma middle_comm : forall ptx pty,
-    equiv (middle ptx pty) (middle pty ptx).
+Lemma middle_comm : forall ptx pty, middle ptx pty == middle pty ptx.
 Proof.
-  intros ptx pty.
-  unfold middle.
-  rewrite add_comm.
-  reflexivity.
+intros ptx pty.
+unfold middle.
+rewrite add_comm.
+reflexivity.
 Qed.
 
 Lemma middle_shift : forall ptx pty, (middle ptx pty - ptx)%R2 == (pty - middle ptx pty)%R2.
 Proof. unfold middle. destruct ptx, pty; simpl; hnf; f_equal; field. Qed.
 
-Lemma middle_eq : forall ptx pty,
-    equiv (middle ptx pty) ptx <-> equiv ptx pty.
+Lemma middle_eq : forall ptx pty, middle ptx pty == ptx <-> ptx == pty.
 Proof.
   cbn. intros [? ?] [? ?].
   split; intro h.
@@ -1615,7 +1922,7 @@ transitivity ((dist pt1 pt + dist pt2 pt)² / 2).
 Qed.
 
 (* This is true because we use the euclidean distance. *)
-Lemma middle_is_R2middle : forall pt1 pt2 pt, is_middle pt1 pt2 pt -> equiv pt (middle pt1 pt2).
+Lemma middle_is_R2middle : forall pt1 pt2 pt, is_middle pt1 pt2 pt -> pt == middle pt1 pt2.
 Proof.
 intros pt1 pt2 pt Hpt. specialize (Hpt (middle pt1 pt2)).
 (* First, we simplify out middle pt1 pt2. *)
@@ -1677,6 +1984,9 @@ Qed.
 Corollary is_middle_uniq : forall pt1 pt2 mid1 mid2,
   is_middle pt1 pt2 mid1 -> is_middle pt1 pt2 mid2 -> mid1 = mid2.
 Proof. intros ? ? ? ? H1 H2. apply middle_is_R2middle in H1. apply middle_is_R2middle in H2. congruence. Qed.
+
+Corollary R2_middle_morph : forall x y (sim : similarity R2), (middle (sim x) (sim y))%R2 = sim ((middle x y))%R2.
+Proof. intros x y sim. symmetry. apply middle_is_R2middle, R2_is_middle_morph, middle_spec. Qed.
 
 Lemma colinear_middle : forall pt1 pt2, colinear (pt2 - pt1) (pt2 - middle pt1 pt2).
 Proof.
@@ -1912,9 +2222,7 @@ Qed.
 
 (** ***  General results about circles  **)
 
-Record circle := {
-  center : R2;
-  radius : R}.
+Record circle := {center : R2; radius : R}.
 
 Definition enclosing_circle (c : circle) l := forall x, In x l -> dist x (center c) <= (radius c).
 Definition on_circle (c : circle) x := Rdec_bool (dist x (center c)) (radius c).
@@ -1951,8 +2259,46 @@ split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_def
 - apply Rdec_bool_true_iff. auto.
 Qed.
 
-(* Given a circle of center [c] and a point pt outside this circle, 
-   any point pt' inside the disk is closer to any point on [c pt] than to [pt]. *)
+Definition sim_circle (sim : similarity R2) c :=
+  {| center := sim c.(center) ; radius := sim.(Similarity.zoom) * c.(radius) |}.
+
+Lemma on_circle_morph :
+  forall (sim : similarity R2) pt c, on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
+Proof.
+intros sim pt c.
+unfold on_circle at 1.
+unfold sim_circle.
+simpl.
+setoid_rewrite (sim.(Similarity.dist_prop)).
+rewrite Rdec_bool_mult_l in *;
+reflexivity || apply Similarity.zoom_non_null.
+Qed.
+
+Lemma enclosing_circle_morph :
+  forall (sim : similarity R2) c l, enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
+Proof.
+intros sim c l.
+unfold enclosing_circle.
+unfold sim_circle.
+simpl center.
+setoid_rewrite in_map_iff.
+split; intro h.
+- intros x h'.
+  specialize (h (sim x)).
+  setoid_rewrite (sim.(Similarity.dist_prop)) in h.
+  apply Rmult_le_reg_l in h; auto.
+  + apply Similarity.zoom_pos.
+  + eauto.
+- intros x H.
+  destruct H as [x' [hsim hIn]].
+  subst.
+  rewrite (sim.(Similarity.dist_prop)).
+  eapply Rmult_le_compat_l in h;eauto.
+  apply Rlt_le, Similarity.zoom_pos.
+Qed.
+
+(** Given a circle of center [c] and a point [pt] outside this circle,
+    any point [pt'] inside the disk is closer to any point on the segment \[c pt\] than to [pt]. *)
 Lemma disk_dist : forall circ pt, radius circ < dist pt (center circ) ->
   forall pt' k, 0 < k < dist pt (center circ) - radius circ -> dist pt' (center circ) <= radius circ ->
   dist pt' (pt + k * unitary (center circ - pt))%R2 < dist pt' pt.
@@ -2424,6 +2770,31 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   apply (Rle_not_lt r' r); trivial.
   unfold r. change r' with (radius {| center := c'; radius := r' |}).
   now apply SEC_spec2.
+Qed.
+
+(** The [SEC] is invariant by similarities. *)
+Lemma SEC_morph : forall (sim : similarity R2) l, SEC (List.map sim l) = sim_circle sim (SEC l).
+Proof.
+intros sim l. symmetry. apply SEC_unicity.
++ intros pt' Hin. rewrite in_map_iff in Hin. destruct Hin as [pt [Hpt Hin]]. subst pt'.
+  unfold sim_circle. simpl center. simpl radius. rewrite sim.(Similarity.dist_prop).
+  apply Rmult_le_compat_l.
+  - apply Rlt_le. apply Similarity.zoom_pos.
+  - now apply SEC_spec1.
++ assert ( 0 < / (Similarity.zoom sim))%R by apply Rinv_0_lt_compat, Similarity.zoom_pos.
+  unfold sim_circle. simpl radius. apply Rmult_le_reg_l with (/ (Similarity.zoom sim))%R; trivial; [].
+  rewrite <- Rmult_assoc. rewrite Rinv_l; try (now assert (Hpos := Similarity.zoom_pos sim); lra); [].
+  change (/ Similarity.zoom sim * radius (SEC (List.map sim l)))%R
+    with (radius (sim_circle (sim ⁻¹) (SEC (List.map sim l)))).
+  ring_simplify. apply SEC_spec2.
+  intros pt Hin. replace pt with ((sim ⁻¹) (sim pt)).
+  - change (center (sim_circle (sim ⁻¹) (SEC (List.map sim l))))
+      with ((sim ⁻¹) (center (SEC (List.map sim l)))).
+    rewrite (Similarity.dist_prop (sim ⁻¹)). simpl.
+    apply Rmult_le_reg_l with (/ (Similarity.zoom sim))%R; trivial.
+    do 2 (apply Rmult_le_compat_l; try lra; []).
+    apply SEC_spec1. now apply in_map.
+  - change eq with equiv. apply Similarity.compose_inverse_l.
 Qed.
 
 (** ***  Results about [on_SEC]  **)
@@ -2936,7 +3307,7 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
     rewrite R2norm_dist. unfold barycenter_3_pts, middle.
     destruct (equiv_dec pt3' (1/2 * (pt1' + pt2')))%R2 as [Heq | Heq].
     - assert (Hzero : (/3 * (pt1' + (pt2' + pt3')) - 1/2 * (pt1' + pt2') = origin)%R2).
-      { rewrite Heq. destruct pt1', pt2'. simpl. f_equal; field. }
+      { rewrite Heq. destruct pt1', pt2'. unfold origin. simpl. f_equal; field. }
       rewrite Hzero. rewrite R2norm_origin. apply not_eq_sym. erewrite <- Rmult_0_r.
       intro Habs. rewrite <- dist_defined in Hdiff'. apply Rmult_eq_reg_l in Habs; lra.
     - replace ((/ 3 * (pt1' + (pt2' + pt3')) - 1 / 2 * (pt1' + pt2')))%R2

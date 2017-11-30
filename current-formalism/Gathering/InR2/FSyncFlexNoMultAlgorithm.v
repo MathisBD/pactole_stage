@@ -22,18 +22,17 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
-Require Import Pactole.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Pactole.CommonFormalism.
-Require Pactole.FlexibleFormalism.
-Require Import Pactole.SetSpectrum.
-Require Import Pactole.Lexprod.
-Require Import Pactole.Gathering.InR2.R2geometry.
-Require Import Pactole.Gathering.FlexDefinitions.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
+Require Pactole.Core.Formalism.
+Require Pactole.Models.Flexible.
+Require Import Pactole.Spectra.SetSpectrum.
+Require Pactole.Spaces.R. (* for R_Setoid, R_EqDec *)
+Require Import Pactole.Spaces.R2.
+Require Import Pactole.Gathering.Definitions.
 
 
-Import Permutation.
 Set Implicit Arguments.
 
 
@@ -44,49 +43,83 @@ Set Implicit Arguments.
     An [execution] is an infinite (coinductive) stream of [configuration]s.
     A [demon] is an infinite stream of [demonic_action]s. *)
 
-Module GatheringinR2.
-
 (** **  Framework of the correctness proof: a finite set with at least two elements  **)
 
-Parameter nG: nat.
-Axiom Hyp_nG : (2 <= nG)%nat.
+Parameter n : nat.
+Axiom size_G : (2 <= n)%nat.
 
-(** There are nG good robots and no byzantine ones. *)
-Module N : Size with Definition nG := nG with Definition nB := 0%nat.
-  Definition nG := nG.
-  Definition nB := 0%nat.
-End N.
+(* FIXME: remove when FSetList is done *)
+Context {FS : FSet R2}.
+Context {FSpec : FSetSpecs FS}.
 
-(** We instantiate in our setting the generic definitions of the gathering problem. *)
-Module Defs := FlexDefinitions.FlexGatheringDefs(R2)(N).
-Import Defs.
+(** There are n good robots and no byzantine ones. *)
+Instance MyRobots : Names := Robots n 0.
 
-Lemma no_byz : forall (id : Names.ident) P, (forall g, P (Good g)) -> P id.
-Proof.
-intros [g | b] P HP.
-+ apply HP.
-+ destruct b. unfold N.nB in *. omega.
+Existing Instance R2_Setoid.
+Existing Instance R2_EqDec.
+Existing Instance R2_RMS.
+
+(* We are in a flexible formalism with no other info than the location, so the demon only chooses the move ratio. *)
+Instance FlexChoice : second_demonic_choice Flexible.ratio := Flexible.OnlyFlexible.
+
+Parameter delta : R.
+
+Instance UpdFun : update_function Flexible.ratio := {|
+  update := fun config g pt ρ => let pt' := mul (Flexible.proj_ratio ρ) pt in
+                                 if Rle_dec delta (dist (config (Good g)) pt') then pt' else pt |}.
+Proof. intros ? ? Hconfig ? g ? ? ? Hpt [] [] Heq. simpl in Heq. subst. now rewrite Hpt, Hconfig. Defined.
+
+Instance Flex : Flexible.FlexibleUpdate delta.
+Proof. split.
++ intros da config g target. cbn -[dist update]. unfold id. cbn [choose_update].
++ 
 Qed.
 
-Lemma no_byz_eq : forall config1 config2 : Config.t,
-  (forall g, R2.eq (Config.loc (config1 (Good g))) (Config.loc (config2 (Good g)))) -> Config.eq config1 config2.
-Proof. intros config1 config2 Heq id. apply no_info, (no_byz id). intro g. apply Heq. Qed.
+(* Trying to avoid notation problem with implicit arguments *)
+Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
+Notation "!! config" := (@spect_from_config R2 R2 _ _ _ _ _ _ multiset_spectrum config origin) (at level 1).
+(* (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
+Notation "x == y" := (equiv x y).
+Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
+Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
+Notation configuration := (@configuration R2 _ _ _ _).
+Notation config_list := (@config_list R2 _ _ _ _).
+Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
+Notation execution := (@execution R2 R2 _ _ _ _ _).
+Notation Madd := (MMultisetInterface.add).
 
-Lemma Config_list_alls : forall pt, Config.list (fun _ => pt) = alls pt N.nG.
+Implicit Type config : configuration.
+Implicit Type da : similarity_da.
+Implicit Type d : similarity_demon.
+Arguments origin : simpl never.
+
+Lemma no_byz : forall P (config : configuration), (forall g, P (config (Good g))) -> forall id, P (config id).
 Proof.
-intro. rewrite Config.list_spec, map_cst.
-setoid_rewrite Names.names_length. unfold N.nB. now rewrite plus_0_r.
+intros P config Hconfig [g | b].
++ apply Hconfig.
++ destruct b. omega.
 Qed.
 
-Definition Spect_map f s := Spect.M.fold (fun e acc => Spect.M.add (f e) acc) s Spect.M.empty.
-
-Lemma map_sim_support : forall (sim : Sim.t) s,
-  Permutation (Spect.M.elements (Spect_map sim s)) (map sim (Spect.M.elements s)).
+Lemma no_byz_eq : forall config1 config2 : configuration,
+  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
+  config1 == config2.
 Proof.
-intros sim s. rewrite <- PermutationA_Leibniz. apply Spect.map_injective_elements.
-- intros ? ? Heq. now rewrite Heq.
-- apply Sim.injective.
+intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
++ apply Heq.
++ destruct b. omega.
 Qed.
+
+Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
+Proof.
+intro. rewrite config_list_spec, map_cst.
+setoid_rewrite names_length. simpl. now rewrite plus_0_r.
+Qed.
+
+(* Definition Spect_map f s := Spect.M.fold (fun e acc => Spect.M.add (f e) acc) s Spect.M.empty. *)
+
+Lemma map_sim_support : forall (sim : similarity R2) s,
+  PermutationA equiv (elements (map sim s)) (List.map sim (elements s)).
+Proof. intros. apply map_injective_elements; autoclass; apply Similarity.injective. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall conf, ~Spect.eq (!! conf) Spect.M.empty.
@@ -123,60 +156,6 @@ Defined.
     - [t] the translation vector
     - [A] an orthogonal matrix *)
 (* NB: To have less parameters, [r] is integrated into [A]. *)
-Open Scope R_scope.
-
-Theorem similarity_in_R2 : forall sim : Sim.t,
-  exists u v t, R2norm u = sim.(Sim.zoom) /\ R2norm v = sim.(Sim.zoom) /\ perpendicular u v /\
-    forall pt, sim pt = R2.add (R2.add (R2.mul (product u pt) u) (R2.mul (product v pt) v)) t.
-Proof.
-intros sim. exists (sim (1, 0) - sim (0, 0))%R2, (sim (0, 1) - sim (0, 0))%R2, (sim (0, 0)).
-repeat split.
-* rewrite <- R2norm_dist, sim.(Sim.dist_prop), <- Rmult_1_r. f_equal.
-  unfold R2.dist, R2def.dist, Rsqr. cbn.
-  ring_simplify ((1 - 0) * (1 - 0) + (0 - 0) * (0 - 0)). apply sqrt_1.
-* rewrite <- R2norm_dist, sim.(Sim.dist_prop), <- Rmult_1_r. f_equal.
-  unfold R2.dist, R2def.dist, Rsqr. cbn.
-  ring_simplify ((0 - 0) * (0 - 0) + (1 - 0) * (1 - 0)). apply sqrt_1.
-* assert (Hproduct : forall x y, 2 * product x y = (R2norm x)² + (R2norm y)² - (R2norm (x - y))²).
-  { intros x y. rewrite R2norm_sub. ring. }
-  unfold perpendicular. apply Rmult_eq_reg_l with 2; try lra.
-  rewrite Hproduct, Rmult_0_r.
-  repeat rewrite <- R2norm_dist. rewrite R2add_dist. repeat rewrite sim.(Sim.dist_prop).
-  repeat rewrite R_sqr.Rsqr_mult, square_dist_simpl. unfold Rsqr. cbn. ring.
-* intros [x y].
-  assert (H01 : ~R2.eq (0, 1) R2.origin).
-  { compute. intro Habs. inv Habs. now apply R1_neq_R0. }
-  rewrite (decompose_on H01 (x, y)) at 1.
-Admitted. (* similarity_in_R2 *)
-
-Corollary sim_add : forall (sim : Sim.t) x y, (sim (x + y) = sim x + sim y - sim R2.origin)%R2.
-Proof.
-intros sim x y. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
-repeat rewrite Heq, ?product_origin_r, ?product_add_r, <- ?R2.add_morph, ?R2.mul_0.
-rewrite R2.add_origin, (R2.add_comm R2.origin t), R2.add_origin.
-repeat rewrite <- R2.add_assoc. rewrite R2.add_opp, R2.add_origin. f_equal.
-rewrite (R2.add_comm t). repeat rewrite R2.add_assoc. do 2 f_equal. apply R2.add_comm.
-Qed.
-
-Corollary sim_opp : forall (sim : Sim.t) x, (sim (- x) = 2 * sim R2.origin - sim x)%R2.
-Proof.
-intros sim x. apply (R2.add_reg_l (sim x)). apply (R2.add_reg_r (- sim R2.origin)).
-rewrite <- sim_add, R2.add_opp.
-setoid_rewrite R2.add_comm at 3. rewrite R2.add_assoc, R2.add_opp.
-setoid_rewrite R2.add_comm at 2. rewrite R2.add_origin.
-setoid_rewrite <- R2.mul_1 at 8. rewrite <- R2.minus_morph, R2.add_morph.
-ring_simplify (2 + -1). now rewrite R2.mul_1.
-Qed.
-
-Corollary sim_mul : forall (sim : Sim.t) k x, (sim (k * x) = k * sim x + (1 - k) * sim R2.origin)%R2.
-Proof.
-intros sim k x. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
-repeat rewrite Heq, ?product_origin_r, ?product_mul_r, <- ?R2.add_morph, ?R2.mul_0.
-rewrite R2.add_origin, (R2.add_comm R2.origin t), R2.add_origin.
-repeat rewrite R2.mul_distr_add, ?R2.mul_morph. repeat rewrite <- R2.add_assoc. do 2 f_equal.
-rewrite R2.add_morph. ring_simplify (k + (1 - k)). now rewrite R2.mul_1.
-Qed.
-
 
 (** **  Definition of the robogram  **)
 

@@ -315,7 +315,6 @@ induction m as [| [k e] m].
     split; intuition.
     - apply H1. destruct H4 as [e'' H4]; exists e''; simpl in *; auto.
     - apply H2 with k0; auto.
-  + now left.
   + change (MapsTo k e' m'). now apply find_2.
 Qed.
 

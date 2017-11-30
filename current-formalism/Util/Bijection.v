@@ -73,19 +73,22 @@ Proof. abstract (intros; rewrite bij.(Inversion); reflexivity). Defined.
 
 Notation "bij ⁻¹" := (inverse bij) (at level 39).
 
+Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
+Proof. repeat intro. simpl. now f_equiv. Qed.
+
 Lemma retraction_section : forall (bij : bijection) x, bij.(retraction) (bij.(section) x) == x.
 Proof. intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
 
-Corollary bij_inv_bij_id : forall (bij : bijection), bij ⁻¹ ∘ bij == id.
+Corollary compose_inverse_l : forall (bij : bijection), bij ⁻¹ ∘ bij == id.
 Proof. repeat intro. simpl. now rewrite retraction_section. Qed.
 
 Lemma section_retraction : forall (bij : bijection) x, bij.(section) (bij.(retraction) x) == x.
 Proof. intros bij x. rewrite bij.(Inversion). now apply retraction_compat. Qed.
 
-Corollary inv_bij_bij_id : forall (bij : bijection), bij ∘ bij ⁻¹ == id.
+Corollary compose_inverse_r : forall (bij : bijection), bij ∘ bij ⁻¹ == id.
 Proof. repeat intro. simpl. now rewrite section_retraction. Qed.
 
-Lemma compose_inverse : forall f g : bijection, (f ∘ g)⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
+Lemma inverse_compose : forall f g : bijection, (f ∘ g)⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. repeat intro. reflexivity. Qed.
 
 Lemma injective : forall bij : bijection, injective equiv equiv bij.
@@ -93,4 +96,8 @@ Proof. intros bij x y Heq. now rewrite <- (retraction_section bij x), Heq, retra
 
 End Bijections.
 
-Arguments bijection T {_}.
+Module Notations.
+Global Arguments bijection T {_}.
+Global Infix "∘" := compose (left associativity, at level 40).
+Global Notation "bij ⁻¹" := (inverse bij) (at level 39).
+End Notations.

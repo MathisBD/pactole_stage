@@ -14,17 +14,16 @@ Require Import Omega.
 Require Import Psatz.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
 Set Implicit Arguments.
-Arguments complement A R x y /. (* Put it in Pactole.Util.Preliminary? *)
 
 
 Class Graph (V E : Type) := {
-  V_Setoid : Setoid V;
-  E_Setoid : Setoid E;
-  V_EqDec : EqDec V_Setoid;
-  E_EqDec : EqDec E_Setoid;
+  V_Setoid :> Setoid V;
+  E_Setoid :> Setoid E;
+  V_EqDec :> EqDec V_Setoid;
+  E_EqDec :> EqDec E_Setoid;
 
   src : E -> V; (* source and target of an edge *)
   tgt : E -> V;
@@ -38,19 +37,17 @@ Class Graph (V E : Type) := {
   find_edge_compat : Proper (equiv ==> equiv ==> opt_eq equiv) find_edge;
   find_edge_None : forall a b : V, find_edge a b = None <-> forall e : E, ~(src e == a /\ tgt e == b);
   find_edge_Some : forall v1 v2 e, find_edge v1 v2 == Some e <-> v1 == src e /\ v2 == tgt e }.
-(*   Axiom find_some_edge : forall e : E, opt_eq Eeq (find_edge (src e) (tgt e)) (Some e). *)
 
-Existing Instance V_Setoid.
-Existing Instance V_EqDec.
-Existing Instance E_Setoid.
-Existing Instance E_EqDec.
+Global Opaque threshold_pos src_compat tgt_compat threshold_compat find_edge_compat find_edge_None find_edge_Some.
 
 (** A finite graph ia a graph where the set [V] of vertices is a prefix of N. *)
 (* FIXME: nothing prevents E from being infinite! *)
 (* TODO: Maybe we should reuse the type used for robot names *)
 Definition finite_node n := {m : nat | m < n}.
 
-Instance finite_node_EqDec n : EqDec (eq_setoid (finite_node n)) := @subset_dec n.
+(* We explictely define the setoid here to avoid using proj1_Setoid instead. *)
+Instance finite_node_Setoid n : Setoid (finite_node n) := eq_setoid _.
+Instance finite_node_EqDec n : EqDec (finite_node_Setoid n) := @subset_dec n.
 
 Definition FiniteGraph (n : nat) E := Graph (finite_node n) E.
 Existing Class FiniteGraph.
@@ -65,8 +62,8 @@ Inductive direction := Forward | Backward | AutoLoop.
 Definition ring_edge := (finite_node n * direction)%type.
 
 Instance ring_edge_Setoid : Setoid ring_edge := {
-  equiv := fun e1 e2 => fst e1 == fst e2 /\ if (Nat.eq_dec n 2)
-                                            then match snd e1, snd e2 with
+  equiv := fun e1 e2 => fst e1 == fst e2
+                     /\ if (Nat.eq_dec n 2) then match snd e1, snd e2 with
                                                    | AutoLoop, AutoLoop => True
                                                    | AutoLoop, _ | _, AutoLoop  => False
                                                    | _, _ => True
@@ -80,11 +77,11 @@ Proof. split.
 Defined.
 
 Lemma direction_eq_dec : forall d d': direction, {d = d'} + {d <> d'}.
-Proof. intros. destruct d, d'; intuition; right; discriminate. Qed.
+Proof. decide equality. Defined.
 
 Instance ring_edge_EqDec : EqDec ring_edge_Setoid.
 Proof.
-intros e e'. unfold complement. simpl.
+intros e e'. unfold equiv. cbn -[equiv].
 destruct (Nat.eq_dec n 2).
 - destruct (snd e), (snd e'), (fst e =?= fst e'); intuition.
 - destruct (fst e =?= fst e'), (direction_eq_dec (snd e) (snd e')); intuition.
@@ -103,7 +100,7 @@ Definition to_Z (v : finite_node n) : Z := Z.of_nat (proj1_sig v).
 Definition of_Z (x : Z) : finite_node n := exist _ (Z.to_nat (x mod Z.of_nat n)) (to_Z_inf_n x).
 
 Instance to_Z_compat : Proper (equiv ==> Z.eq) to_Z.
-Proof. repeat intro. hnf in *. now subst. Qed.
+Proof. repeat intro. hnf in *. now f_equal. Qed.
 
 Instance of_Z_compat : Proper (Z.eq ==> equiv) of_Z.
 Proof. intros ? ? Heq. now rewrite Heq. Qed.

@@ -1,8 +1,9 @@
+Require Export SetoidDec.
+Require Export Pactole.Util.Preliminary.
 Require Pactole.Util.Stream.
 Require Pactole.Util.Lexprod.
-Require Export Pactole.Robots.
-Require Export Pactole.Configurations.
+Require Export Pactole.Core.Robots.
+Require Export Pactole.Core.RobotInfo.
+Require Export Pactole.Core.Configurations.
 Require Export Pactole.Spectra.Definition.
-Require Export Pactole.Spaces.RealMetricSpace.
-Require Export Pactole.Spaces.Similarity.
-Require Export Pactole.CommonFormalism.
+Require Export Pactole.Core.Formalism.

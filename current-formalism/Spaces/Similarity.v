@@ -35,7 +35,7 @@ Open Scope R_scope.
 (** Similarities are functions that multiply distances by a constant zoom.
     Unlike bijections that only need a setoid, we need here a metric space.
     For convenience, we also add their center, that is the location from which robots locally observe. *)
-
+(* TODO: the center can be defined as the preimage of the origin! Maybe we should remove it... *)
 Record similarity T `{RealMetricSpace T} := {
   sim_f :> bijection T;
   zoom : R;
@@ -52,7 +52,7 @@ Proof. split.
 + repeat intro. etransitivity; eauto.
 Defined.
 
-Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f T _ _ _).
+Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f _ _ _ _).
 Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 
 (** As similarities are defined as bijections, we can prove that k <> 0
@@ -77,6 +77,17 @@ intros sim. apply Preliminary.Rle_neq_lt.
   rewrite Hk. apply Rmult_le_reg_r. apply Rle_neq_lt; auto.
 - intro. now apply (zoom_non_null sim).
 Qed.
+
+Theorem injective {T} `{RealMetricSpace T} : forall sim : similarity T, Preliminary.injective equiv equiv sim.
+Proof.
+intros sim z t Heqf.
+rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
+apply Rmult_integral in Heqf. destruct Heqf; trivial.
+assert (Hsim := zoom_non_null sim). contradiction.
+Qed.
+
+Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _).
+Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
 (** The identity similarity *)
 Definition id {T} `{RealMetricSpace T} : similarity T.
@@ -129,6 +140,9 @@ Proof. intros u v Huv x. simpl. now rewrite Huv. Qed.
 Lemma translation_origin : translation origin == id.
 Proof. intro. simpl. now rewrite add_origin. Qed.
 
+Lemma translation_inverse : forall t, inverse (translation t) == translation (opp t).
+Proof. intros t x. simpl. reflexivity. Qed.
+
 (** The homothetic similarity *)
 Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 -> mul ρ (add x (opp c)) == y ↔ add (mul (/ ρ) y) c == x.
 Proof.
@@ -167,7 +181,11 @@ Global Instance homothecy_compat :
   Proper (equiv ==> @forall_relation _ _ (fun _ => full_relation ==> equiv)) homothecy.
 Proof. intros c1 c2 Hc ρ ? ? ? ?. simpl. now rewrite Hc. Qed.
 
-Lemma homothecy_translation : forall c (H10 : 1 <> 0), homothecy c H10 == translation (opp c).
+Lemma homothecy_inverse : forall c ρ (Hρ : ρ <> 0),
+  inverse (homothecy c Hρ) == homothecy (opp (mul ρ c)) (Rinv_neq_0_compat ρ Hρ).
+Proof. intros c ρ Hρ x. simpl. rewrite mul_distr_add, opp_opp, mul_morph, Rinv_l, mul_1; auto. Qed.
+
+Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == translation (opp c).
 Proof. intros c H10 ?. simpl. now rewrite mul_1. Qed.
 
 End Normed_Results.
@@ -191,6 +209,12 @@ Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed.
 Lemma compose_assoc `{RealMetricSpace} : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
 Proof. repeat intro. reflexivity. Qed.
 
+Lemma compose_id_l `{RealMetricSpace} : forall sim, id ∘ sim == sim.
+Proof. intros sim x. simpl. reflexivity. Qed.
+
+Lemma compose_id_r `{RealMetricSpace} : forall sim, sim ∘ id == sim.
+Proof. intros sim x. simpl. reflexivity. Qed.
+
 (** Inverse of a similarity *)
 Definition inverse {T} `{RealMetricSpace T} (sim : similarity T) : similarity T.
 refine {| sim_f := inverse sim.(sim_f);
@@ -202,7 +226,7 @@ Proof.
   intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
   rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
 Defined.
-Global Notation "s ⁻¹" := (inverse s) (at level 99).
+Global Notation "s ⁻¹" := (inverse s) (at level 39).
 
 Global Instance inverse_compat `{RealMetricSpace} : Proper (equiv ==> equiv) inverse.
 Proof. intros f g Hfg x. simpl. now f_equiv. Qed.
@@ -216,10 +240,10 @@ Proof. intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
 Lemma inverse_compose {T} `{RealMetricSpace T} : forall f g : similarity T, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. intros f g x. simpl. reflexivity. Qed.
 
-Corollary injective {T} `{RealMetricSpace T} : forall sim : similarity T, Preliminary.injective equiv equiv sim.
-Proof.
-intros sim z t Heqf.
-rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
-apply Rmult_integral in Heqf. destruct Heqf; trivial.
-assert (Hsim := zoom_non_null sim). contradiction.
-Qed.
+
+Module Notations.
+Global Arguments similarity T {_} {_} {_}.
+Notation similarity := similarity.
+Global Infix "∘" := compose (left associativity, at level 40).
+Global Notation "sim ⁻¹" := (inverse sim) (at level 39).
+End Notations.
