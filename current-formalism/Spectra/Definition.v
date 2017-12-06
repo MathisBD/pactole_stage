@@ -30,9 +30,9 @@ Class Spectrum loc info `{IsLocation loc info} `{Names} := {
   spectrum_EqDec : EqDec spectrum_Setoid;
   
   (** A predicate characterizing correct spectra for a given local configuration *)
-  spect_from_config : @configuration info _ _ _ _ -> loc -> spectrum;
+  spect_from_config : @configuration info _ -> loc -> spectrum;
   spect_from_config_compat : Proper (equiv ==> equiv ==> equiv) spect_from_config;
-  spect_is_ok : spectrum ->  @configuration info _ _ _ _ -> loc -> Prop;
+  spect_is_ok : spectrum ->  @configuration info _ -> loc -> Prop;
   spect_from_config_spec : forall config pt, spect_is_ok (spect_from_config config pt) config pt }.
 
 Existing Instance spectrum_Setoid.

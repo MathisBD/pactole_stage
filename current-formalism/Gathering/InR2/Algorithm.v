@@ -75,10 +75,10 @@ Notation "!! config" := (@spect_from_config R2 R2 _ _ _ _ _ _ multiset_spectrum 
 Notation "x == y" := (equiv x y).
 Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
 Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
-Notation configuration := (@configuration R2 _ _ _ _).
-Notation config_list := (@config_list R2 _ _ _ _).
+Notation configuration := (@configuration R2 _).
+Notation config_list := (@config_list R2 _).
 Notation round := (@round R2 R2 _ _ _ _ _ _ _ _).
-Notation execution := (@execution R2 R2 _ _ _ _ _).
+Notation execution := (@execution R2 _).
 Notation Madd := (MMultisetInterface.add).
 
 Implicit Type config : configuration.
@@ -820,10 +820,10 @@ Theorem round_simplify : forall da config,
                else config id.
 Proof.
 intros da config. apply no_byz_eq. intro g. unfold round.
-rewrite spect_from_config_ignore_snd. simpl RobotInfo.app. unfold id.
-assert (supp_nonempty := support_non_nil config).
 destruct (da.(activate) (Good g)) eqn:Hactive; try reflexivity; [].
 remember (change_frame da config g) as sim.
+rewrite spect_from_config_ignore_snd. simpl RobotInfo.app. unfold id.
+assert (supp_nonempty := support_non_nil config).
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 unfold gatherR2, gatherR2_pgm. cbn [pgm].
 assert (Hperm : Permutation (List.map sim (support (max (!! config))))

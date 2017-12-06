@@ -62,10 +62,10 @@ Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "
 Notation "!!" := (fun config => @spect_from_config R R _ _ _ _ _ _ _ config origin).
 Notation spectrum := (@spectrum R R _ _ _ _ _ _ _).
 Notation robogram := (@robogram R R _ _ _ _ _ _ _).
-Notation configuration := (@configuration R _ _ _ _).
-Notation config_list := (@config_list R _ _ _ _).
+Notation configuration := (@configuration R _).
+Notation config_list := (@config_list R _).
 Notation round := (@round R R _ _ _ _ _ _ _).
-Notation execution := (@execution R _ _ _).
+Notation execution := (@execution R _).
 
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.

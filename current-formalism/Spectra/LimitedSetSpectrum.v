@@ -45,9 +45,9 @@ Context `{Names}.
 Context {FS : @FSet loc _ _}.
 Context {FSSpec : @FSetSpecs loc _ _ FS}.
 
-Notation configuration := (@configuration info _ _ _ _).
-Notation map_config := (@map_config info _ _ _ _).
-Notation config_list := (@config_list info _ _ _ _).
+Notation configuration := (@configuration info _).
+Notation map_config := (@map_config info _).
+Notation config_list := (@config_list info _).
 
 Implicit Type config : configuration.
 

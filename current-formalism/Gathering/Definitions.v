@@ -53,10 +53,10 @@ Proof. now intros. Qed.
 
 Notation "!!" := (fun config => @spect_from_config loc loc _ _ _ _ _ _ _ config origin).
 Notation robogram := (@robogram loc loc _ _ _ _ _ _ _).
-Notation configuration := (@configuration loc _ _ _ _).
-Notation config_list := (@config_list loc _ _ _ _).
-Notation round := (@round loc loc _ _ _ _ _ _ _).
-Notation execution := (@execution loc _ _ _).
+Notation configuration := (@configuration loc _).
+Notation config_list := (@config_list loc _).
+Notation round := (@round loc loc _ _ _ _ _ _ _ _ _ _ _ _).
+Notation execution := (@execution loc _).
 
 (** Not true in general as the info may change even if the robot does not move. *)
 Lemma no_moving_same_config : forall r da config,

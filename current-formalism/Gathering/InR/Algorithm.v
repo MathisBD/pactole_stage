@@ -65,10 +65,10 @@ Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "
 Notation "!! config" := (@spect_from_config R R _ _ _ _ _ _ multiset_spectrum config origin) (at level 1).
 Notation spectrum := (@spectrum R R _ _ _ _ Info MyRobots _).
 Notation robogram := (@robogram R R _ _ _ _ _ _ _).
-Notation configuration := (@configuration R _ _ _ _).
-Notation config_list := (@config_list R _ _ _ _).
+Notation configuration := (@configuration R _).
+Notation config_list := (@config_list R _).
 Notation round := (@round R R _ _ _ _ _ _ _).
-Notation execution := (@execution R _ _ _).
+Notation execution := (@execution R _).
 
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.

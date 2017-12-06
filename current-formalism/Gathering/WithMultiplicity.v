@@ -16,10 +16,10 @@ Context {Choice : update_choice T}.
 Context {UpdFun : update_function T}.
 
 Notation robogram := (@robogram loc loc _ _ _ _ _ _ multiset_spectrum).
-Notation configuration := (@configuration loc _ _ _ _).
-Notation config_list := (@config_list loc _ _ _ _).
+Notation configuration := (@configuration loc _).
+Notation config_list := (@config_list loc _).
 Notation round := (@round loc loc _ _ _ _ _ _ multiset_spectrum).
-Notation execution := (@execution loc _ _ _).
+Notation execution := (@execution loc _).
 Notation "!!" := (fun config => @spect_from_config loc loc _ _ _ _ _ _ _ config origin).
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.

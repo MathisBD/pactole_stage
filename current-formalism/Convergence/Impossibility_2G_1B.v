@@ -65,11 +65,11 @@ Proof. split. now intros. Qed.
 (* Some notations to avoid typeclass ambiguities. *)
 Notation "!!" := (fun config => spect_from_config config 0%R).
 Notation robogram := (@robogram R R _ _ _ _ _ MyRobots _).
-Notation configuration := (@configuration R _ _ _ _).
-Notation config_list := (@config_list R _ _ _ _).
-Notation round := (@round R R _ _ _ _ _ _ _ _ _ _).
-Notation execution := (@execution R _ _ _).
-Notation demonic_action := (@demonic_action R R _ _ _ _ _ _).
+Notation configuration := (@configuration R _).
+Notation config_list := (@config_list R _).
+Notation round := (@round R R _ _ _ _ _ _ _ _ _ _ _ _).
+Notation execution := (@execution R _).
+Notation demonic_action := (@demonic_action R R _ _ _ _ _ _ _ _ _ _).
 
 (* Helping [auto] handle basic real arithmetic contradictions *)
 Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.

@@ -52,9 +52,9 @@ Context `{EqDec info}.
 Context {Loc : IsLocation loc info}.
 Context `{Names}.
 
-Notation configuration := (@configuration info _ _ _ _).
-Notation map_config := (@map_config info _ _ _ _).
-Notation config_list := (@config_list info _ _ _ _).
+Notation configuration := (@configuration info _).
+Notation map_config := (@map_config info _).
+Notation config_list := (@config_list info _).
 
 Implicit Type config : configuration.
 

@@ -45,7 +45,7 @@ Context {Loc : IsLocation loc info}.
 Context `{Names}.
 Context {Spect : Spectrum loc info}.
 
-Local Notation configuration := (@configuration info _ _ _ _).
+Local Notation configuration := (@configuration info _).
 Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ Spect).
 
 (** **  Robograms and Executions  **)
