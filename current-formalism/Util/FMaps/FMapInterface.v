@@ -290,11 +290,7 @@ Class FMapSpecs `(F : FMap key) := {
 (* About Build_FMapSpecs. *)
 (* About FMapSpecs. *)
 
-(** Extra Ordering : A SpecificOrderedType for maps where the
-   equality is the point-wise equality on bindings. Data
-   structures who implement this ordered type should provide
-   the adequate instance of this class.
-   *)
+(*
 Section Equal.
   Variable container : Type.
   Variable key : Type.
@@ -312,6 +308,7 @@ Section Equal.
   Qed.
 End Equal.
 Hint Unfold Equal_kw.
+*)
 
 (* Aliases for hints. See SetInterface for the reason why we do that. *)
 Definition zMapsTo_1 `{H : @FMapSpecs key key_Ssetoid key_EqDec F} :=

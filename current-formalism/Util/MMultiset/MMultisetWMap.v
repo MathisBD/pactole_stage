@@ -73,6 +73,8 @@ Global Instance FMOps_WMap : FMOps elt elt_EqDec := {|
   choose := fun m =>  FMapInterface.fold (fun x _ _ => Some x) m None |}.
 Local Arguments multiplicity : simpl nomatch.
 
+(** **  Compatibility properties  **)
+
 Instance pre_multiplicity_compat : Proper (equiv ==> Equal ==> Logic.eq) multiplicity.
 Proof.
 intros x y Hxy m m' Hm. simpl. unfold m_multiplicity. rewrite Hm.
@@ -87,6 +89,73 @@ destruct (Nat.eq_dec n 0).
 - apply Hm.
 - cbn. apply add_m; trivial. do 2 f_equal. rewrite Hxy. unfold m_multiplicity. now rewrite Hm.
 Qed.
+
+Global Instance eq_pair_equiv : Equivalence eq_pair.
+Proof. split. easy. easy. intros ? y ? ? ?. now transitivity y. Qed.
+
+Global Instance eq_pair_Setoid : Setoid (elt * positive)%type := _.
+
+Global Instance eq_pair_EqDec : @EqDec (elt * positive)%type _.
+Proof.
+intros [x n] [y p]. destruct (equiv_dec x y).
++ destruct (Pos.eq_dec n p).
+  - left. now split; cbn.
+  - right. intro Heq. now destruct Heq.
++ right. intro Heq. now destruct Heq.
+Defined.
+
+Global Instance eq_elt_equiv : Equivalence eq_elt.
+Proof. split. easy. easy. intros ? y ? ? ?. now transitivity y. Qed.
+
+Global Instance eq_elt_Setoid : Setoid (elt * nat)%type := {| equiv := eq_elt; setoid_equiv := _ |}.
+
+Global Instance eq_elt_EqDec : @EqDec (elt * nat)%type _.
+Proof.
+intros [x n] [y p]. destruct (equiv_dec x y); now left + right; cbn.
+Defined.
+
+Global Instance eq_pair_elt_subrelation : subrelation eq_pair eq_elt.
+Proof. intros x y [H _]. apply H. Qed.
+
+Global Instance eq_key_eq_key_elt_subrelation : subrelation (@eq_key_elt elt _ _ _ positive) eq_key.
+Proof. intros x y [H _]. apply H. Qed.
+
+Global Instance multiset_Setoid : Setoid (multiset elt) := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
+Proof. split; repeat intro; solve [ eauto | etransitivity; eauto ]. Defined.
+
+Global Instance multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) MMultisetInterface.multiplicity.
+Proof.
+intros x y Hxy m m' Hm. rewrite Hm. simpl. unfold m_multiplicity.
+assert (Heq : find x m' = find y m') by now apply find_m.
+now rewrite Heq.
+Qed.
+
+(** ***  Preliminary results  **)
+
+Lemma eq_pair_elt_weak_In : forall x y n m l,
+  x == y -> InA eq_pair (x, n) l -> InA eq_elt (y, m) l.
+Proof.
+intros x y n m l Heq Hin. induction l.
++ now inversion Hin.
++ inversion_clear Hin.
+  - left. destruct a. compute in *. destruct H. now transitivity x; auto.
+  - right. now apply IHl.
+Qed.
+
+Lemma NoDup_pair_In : forall x y n m l, NoDupA eq_elt l ->
+  InA eq_pair (x, n) l -> InA eq_pair (y, m) l -> x == y -> n = m.
+Proof.
+intros x y n m l Hl Hinx Hiny Heq. induction Hl as [| [z p] l]. inversion_clear Hiny.
+inversion_clear Hinx; inversion_clear Hiny.
+- compute in H0, H1. destruct H0 as [H0 ?], H1 as [H1 ?]. now subst p m.
+- compute in H0. destruct H0 as [H0 ?]. subst p. elim H.
+  apply eq_pair_elt_weak_In with y m. now transitivity x. assumption.
+- compute in H1. destruct H1 as [H1 ?]. subst p. elim H.
+  apply eq_pair_elt_weak_In with x n. now transitivity y; auto. assumption.
+- now apply IHHl.
+Qed.
+
+Notation "s  [c=]  t" := (Subset s t) (at level 70, no associativity).
 
 Lemma m_add_same : forall x n s, (m_add x n s)[x] = n + s[x].
 Proof.
@@ -153,71 +222,6 @@ destruct (equiv_dec x y) as [Hxy | Hxy].
   - now inversion_clear Hdup.
 Qed.
 
-Global Instance eq_pair_equiv : Equivalence eq_pair.
-Proof. split. easy. easy. intros ? y ? ? ?. now transitivity y. Qed.
-
-Global Instance eq_pair_Setoid : Setoid (elt * positive)%type := _.
-
-Global Instance eq_pair_EqDec : @EqDec (elt * positive)%type _.
-Proof.
-intros [x n] [y p]. destruct (equiv_dec x y).
-+ destruct (Pos.eq_dec n p).
-  - left. now split; cbn.
-  - right. intro Heq. now destruct Heq.
-+ right. intro Heq. now destruct Heq.
-Defined.
-
-Global Instance eq_elt_equiv : Equivalence eq_elt.
-Proof. split. easy. easy. intros ? y ? ? ?. now transitivity y. Qed.
-
-Global Instance eq_elt_Setoid : Setoid (elt * nat)%type := {| equiv := eq_elt; setoid_equiv := _ |}.
-
-Global Instance eq_elt_EqDec : @EqDec (elt * nat)%type _.
-Proof.
-intros [x n] [y p]. destruct (equiv_dec x y); now left + right; cbn.
-Defined.
-
-Global Instance eq_pair_elt_subrelation : subrelation eq_pair eq_elt.
-Proof. intros x y [H _]. apply H. Qed.
-
-Global Instance eq_key_eq_key_elt_subrelation : subrelation (@eq_key_elt elt _ _ _ positive) eq_key.
-Proof. intros x y [H _]. apply H. Qed.
-
-Lemma eq_pair_elt_weak_In : forall x y n m l,
-  x == y -> InA eq_pair (x, n) l -> InA eq_elt (y, m) l.
-Proof.
-intros x y n m l Heq Hin. induction l.
-+ now inversion Hin.
-+ inversion_clear Hin.
-  - left. destruct a. compute in *. destruct H. now transitivity x; auto.
-  - right. now apply IHl.
-Qed.
-
-Lemma NoDup_pair_In : forall x y n m l, NoDupA eq_elt l ->
-  InA eq_pair (x, n) l -> InA eq_pair (y, m) l -> x == y -> n = m.
-Proof.
-intros x y n m l Hl Hinx Hiny Heq. induction Hl as [| [z p] l]. inversion_clear Hiny.
-inversion_clear Hinx; inversion_clear Hiny.
-- compute in H0, H1. destruct H0 as [H0 ?], H1 as [H1 ?]. now subst p m.
-- compute in H0. destruct H0 as [H0 ?]. subst p. elim H.
-  apply eq_pair_elt_weak_In with y m. now transitivity x. assumption.
-- compute in H1. destruct H1 as [H1 ?]. subst p. elim H.
-  apply eq_pair_elt_weak_In with x n. now transitivity y; auto. assumption.
-- now apply IHHl.
-Qed.
-
-Notation "s  [c=]  t" := (Subset s t) (at level 70, no associativity).
-
-Global Instance multiset_Setoid : Setoid (multiset elt) := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
-Proof. split; repeat intro; solve [ eauto | etransitivity; eauto ]. Defined.
-
-Global Instance multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) MMultisetInterface.multiplicity.
-Proof.
-intros x y Hxy m m' Hm. rewrite Hm. simpl. unfold m_multiplicity.
-assert (Heq : find x m' = find y m') by now apply find_m.
-now rewrite Heq.
-Qed.
-
 Lemma In_MIn : forall x s, FMapInterface.In x s <-> s[x] > 0.
 Proof.
 intros x s. split; intro H.
@@ -257,6 +261,7 @@ Qed.
 
 (** **  Specifications of operations  **)
 
+(** Specification of [multiplicity] *)
 Global Instance multiplicity_spec : MultiplicitySpec elt _.
 Proof.
 split.
@@ -265,6 +270,7 @@ assert (Heq : find x m' = find y m') by now apply find_m.
 now rewrite Heq.
 Qed.
 
+(** Specification of [empty] *)
 Global Instance empty_full_spec : EmptySpec elt _.
 Proof.
 split. intro x. simpl. unfold m_multiplicity, empty.
@@ -273,6 +279,7 @@ destruct (find x (FMapInterface.empty positive)) eqn:Hin.
 - reflexivity.
 Qed.
 
+(** Specification of [singleton] *)
 Global Instance singleton_spec : SingletonSpec elt _.
 Proof. split.
 + intros x n. unfold singleton, add. simpl. destruct (Nat.eq_dec n 0).
@@ -283,6 +290,7 @@ Proof. split.
   - unfold m_multiplicity. rewrite add_neq_o, empty_o; reflexivity || now symmetry.
 Qed.
 
+(** Specification of [add] *)
 Global Instance add_spec : AddSpec elt _.
 Proof. split.
 + intros x n s. unfold add. simpl. unfold m_add. destruct (Nat.eq_dec n 0). omega.
@@ -291,6 +299,7 @@ Proof. split.
   unfold m_multiplicity at 1 3. rewrite add_neq_o; reflexivity || now symmetry.
 Qed.
 
+(** Specification of [remove] *)
 Global Instance remove_spec : RemoveSpec elt _.
 Proof. split.
 + intros x n s. unfold remove. simpl. destruct (Nat.eq_dec n 0). omega.
@@ -303,6 +312,7 @@ Proof. split.
   - rewrite add_neq_o; reflexivity || now symmetry.
 Qed.
 
+(** Specifications of [union], [inter], [diff], and [lub] *)
 Global Instance binary_spec :  BinarySpec elt _.
 Proof. split.
 * intros x s s'. unfold union. simpl. destruct (find x s) eqn:Hin.
@@ -335,6 +345,7 @@ Proof. split.
     - intros [n Habs]. now rewrite find_mapsto_iff, Hin in Habs.
 Qed.
 
+(** Specification of [fold] *)
 Global Instance fold_full_spec : FoldSpec elt _.
 Proof. split.
 * intros A i f s. unfold fold, elements. simpl. unfold m_fold.
@@ -361,6 +372,7 @@ Proof. split.
   + assumption.
 Qed.
 
+(** Specifications of [equal], [subset], and [is_empty] *)
 Global Instance test_spec : TestSpec elt _.
 Proof.
 assert (His_empty_spec : forall s, is_empty s = true <-> s == empty).
@@ -417,6 +429,7 @@ intros s s'. destruct (equal s s') eqn:Heq.
 - right. intro H. revert H. rewrite <- equal_spec. rewrite Heq. discriminate.
 Qed.
 
+(** Specification of [elements] *)
 Global Instance elements_full_spec : ElementsSpec elt _.
 Proof. split.
 * intros [x n] s. unfold elements. simpl. rewrite InA_map_iff; [split; intro H |..].
@@ -434,7 +447,8 @@ Proof. split.
   apply elements_3 || autoclass || (intros [] [] ?; assumption).
 Qed.
 
-Lemma support_elements_aux : forall x l1 l2, NoDupA eq_key (l1 ++ l2) -> 
+(** Specification of [support] *)
+Local Lemma support_elements_aux : forall x l1 l2, NoDupA eq_key (l1 ++ l2) -> 
   ((InA equiv x (fold_left (fun acc xn => fst xn :: acc) l1 (List.map (@fst _ positive) l2)) <->
   exists n, InA eq_key_elt (x, n) (List.map (fun xn => (fst xn, snd xn)) (l1 ++ l2)))).
 Proof.
@@ -490,7 +504,7 @@ rewrite (support_elements_aux x (FMapInterface.elements s) nil); rewrite app_nil
 + apply elements_3.
 Qed.
 
-Lemma support_NoDupA_aux : forall A B (l1 : list (A*B)) l2,
+Local Lemma support_NoDupA_aux : forall A B (l1 : list (A*B)) l2,
   fold_left (fun acc p => fst p :: acc) l1 l2 = rev (List.map (@fst _ _) l1) ++ l2.
 Proof.
 intros A B l1. induction l1; intro l2; simpl.
@@ -506,7 +520,8 @@ Proof. split.
   rewrite NoDupA_inj_map; (now apply elements_3) || autoclass || (now intros ? ? ?).
 Qed.
 
-Lemma choose_spec_aux : forall x s o, ~FMapInterface.In x s ->
+(** Specification of [choose] *)
+Local Lemma choose_spec_aux : forall x s o, ~FMapInterface.In x s ->
   fold_left (fun (_ : option elt) (p : elt * positive) => Some (fst p)) (FMapInterface.elements s) o = Some x ->
   o = Some x.
 Proof.
@@ -538,8 +553,8 @@ split; trivial.
     apply Hchoose_Some in H. rewrite Hs in H. unfold In in H. rewrite empty_spec in H. omega.
 Qed.
 
-
-Lemma fold_nfilter_out_list : forall f x n l s, ~InA eq_key (x, n) l -> NoDupA eq_key l ->
+(** Specification of [filter] *)
+Local Lemma fold_nfilter_out_list : forall f x n l s, ~InA eq_key (x, n) l -> NoDupA eq_key l ->
   multiplicity x (fold_left (fun acc xn => if f (fst xn) (snd xn) : bool
                                            then add (fst xn) (Pos.to_nat (snd xn)) acc else acc) l s)
   = multiplicity x s.
@@ -552,7 +567,7 @@ intros f x n l s Hin Hdup. revert s. induction l as [| [y m] l]; intro s; simpl.
   - now inversion_clear Hdup.
 Qed.
 
-Lemma nfilter_spec_In : forall f s s' x, compatb f -> In x s ->
+Local Lemma nfilter_spec_In : forall f s s' x, compatb f -> In x s ->
   multiplicity x
     (m_fold (fun y n acc => if f y n : bool then add y n acc else acc) s s')
   = if f x (multiplicity x s) then multiplicity x s + multiplicity x s' else multiplicity x s'.
@@ -583,7 +598,7 @@ induction (FMapInterface.elements s); simpl; intro s'; simpl in Hs.
       reflexivity || rewrite m_add_other; reflexivity || now auto.
 Qed.
 
-Lemma nfilter_spec_out : forall f s s' x, ~In x s ->
+Local Lemma nfilter_spec_out : forall f s s' x, ~In x s ->
   multiplicity x (m_fold (fun y n acc => if f y n : bool then m_add y n acc else acc) s s')
   = multiplicity x s'.
 Proof.
@@ -621,12 +636,14 @@ Qed.
 (* Theorem filter_nfilter : forall f s, filter f s [=] nfilter (fun x _ => f x) s.
 Proof. now unfold filter. Qed. *)
 
+(** Specifications of [cardinal] and [size] *)
 Global Instance size_spec : SizeSpec elt _.
 Proof. split.
 * intro. unfold cardinal. simpl. unfold m_fold. reflexivity.
 * intro. unfold size, support. simpl. now rewrite fold_1, fold_left_length, fold_1, fold_left_cons_length.
 Qed.
 
+(** Specifications of [for_all] and [exists_] *)
 Lemma fold_and_true_base_step : forall A f (l : list A) b, 
   fold_left (fun a x => a && f x) l b = true -> b = true.
 Proof.
@@ -711,7 +728,7 @@ Proof. split.
 * intros. unfold exists_. simpl. rewrite exists_spec_aux; intuition discriminate.
 Qed.
 
-
+(** Specification of [npartition] *)
 Definition npartition_fun f := fun x n acc =>
          if f x (Pos.to_nat n) : bool
          then (add x (Pos.to_nat n) (fst acc), snd acc)
@@ -887,6 +904,7 @@ Proof. split.
   + intros ? ? Heq ? ? ?. subst. now rewrite Heq.
 Qed.
 
+(** Specification of [partition] *)
 Theorem partition_npartition_fst : forall f s, fst (partition f s) == fst (npartition (fun x _ => f x) s).
 Proof. now unfold partition. Qed.
 
@@ -903,6 +921,7 @@ Proof. split.
   - repeat intro. now apply Hf.
 Qed.
 
+(** The full set of specifications. *)
 Global Instance MakeFMultisetsFacts : FMultisetsOn elt _.
 Proof. split; autoclass. Qed.
 

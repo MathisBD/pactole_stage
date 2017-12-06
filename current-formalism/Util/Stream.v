@@ -8,14 +8,14 @@
 (**************************************************************************)
 
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
-
-   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
-
-   PACTOLE project                                                      
-                                                                        
-   This file is distributed under the terms of the CeCILL-C licence     
-                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+                                                                            
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                           
+                                                                            
+   PACTOLE project                                                          
+                                                                            
+   This file is distributed under the terms of the CeCILL-C licence         
+                                                                          *)
 (**************************************************************************)
 
 
@@ -46,6 +46,8 @@ Proof. now destruct s. Qed.
 CoFixpoint constant (c : A) := cons c (constant c).
 
 CoFixpoint alternate (c1 c2 : A) := cons c1 (cons c2 (alternate c1 c2)).
+
+(** **  Operators over streams  **)
 
 (** Logical operators on properties over streams. *)
 
@@ -452,7 +454,9 @@ Qed.
 Lemma map_cons : forall f x s, map f (cons x s) = cons (f x) (map f s).
 Proof. intros. apply stream_eq. Qed.
 
+Lemma map_hd : forall f s, hd (map f s) = f (hd s).
+Proof. intros. now rewrite (stream_eq s). Qed.
+
 Lemma map_tl : forall f s, map f (tl s) = tl (map f s).
 Proof. intros. now rewrite (stream_eq s). Qed.
 End Map.
-

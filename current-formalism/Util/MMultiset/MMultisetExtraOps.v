@@ -42,7 +42,7 @@ Section MMultisetExtra.
   (** **  Function [remove_all] and its properties  **)
   
   (** Remove all copies of [x] from [m] *)
-  Definition remove_all x m := remove x (multiplicity x m) m.
+  Definition remove_all x m := remove x m[x] m.
   
   Lemma remove_all_same : forall x m, (remove_all x m)[x] = 0.
   Proof. intros. unfold remove_all. rewrite remove_same. omega. Qed.
@@ -107,7 +107,8 @@ Section MMultisetExtra.
   Lemma remove_all_for_all : forall f, compatb f ->
     forall x m, for_all f (remove_all x m) = for_all (fun y n => if equiv_dec y x then true else f y n) m.
   Proof.
-  intros f Hf x m. unfold remove_all. destruct (for_all f (remove x m[x] m)) eqn:Hcase.
+  intros f Hf x m. unfold remove_all.
+  destruct (for_all f (remove x m[x] m)) eqn:Hcase.
   + symmetry. rewrite for_all_spec in Hcase |- *; trivial; [|].
     - intros y Hin. specialize (Hcase y). msetdec. auto.
     - intros y y' Hy ? ? ?. subst. clear -Hf Hy.
@@ -121,7 +122,8 @@ Section MMultisetExtra.
   Lemma remove_all_exists : forall f, compatb f ->
     forall x m, exists_ f (remove_all x m) = exists_ (fun y n => if equiv_dec y x then false else f y n) m.
   Proof.
-  intros f Hf x m. unfold remove_all. destruct (exists_ f (remove x m[x] m)) eqn:Hcase.
+  intros f Hf x m. unfold remove_all.
+  destruct (exists_ f (remove x m[x] m)) eqn:Hcase.
   + symmetry. rewrite exists_spec in Hcase |- *; trivial; [|].
     - destruct Hcase as [y [Hin Hy]]. exists y. msetdec.
     - intros y y' Hy ? ? ?. subst. clear -Hf Hy.
@@ -182,8 +184,8 @@ Section MMultisetExtra.
   * apply (NoDupA_strengthen subrelation_pair_elt), elements_NoDupA.
   * now apply (NoDupA_strengthen subrelation_pair_elt), removeA_NoDupA, elements_NoDupA.
   * intros [y p]. unfold remove_all. rewrite elements_remove.
-    assert (Hiff : equiv y x /\ p = m[x] - m[x] /\ p > 0 \/ ~ equiv y x /\ InA eq_pair (y, p) (elements m)
-                   <-> ~ equiv y x /\ InA eq_pair (y, p) (elements m)) by (intuition; omega).
+    assert (Hiff : y == x /\ p = m[x] - m[x] /\ p > 0 \/ ~ y == x /\ InA eq_pair (y, p) (elements m)
+                   <-> ~ y == x /\ InA eq_pair (y, p) (elements m)) by (intuition; omega).
     rewrite Hiff. clear Hiff.
     induction (elements m) as [| e l]; simpl.
     + split; intro Hin; (intuition; omega) || inv Hin.
@@ -295,13 +297,13 @@ Section MMultisetExtra.
     + unfold map. rewrite fold_singleton; repeat intro; msetdec.
     Qed.
     
-    Lemma map_remove1 : forall x n m, n <= multiplicity x m -> map f (remove x n m) == remove (f x) n (map f m).
+    Lemma map_remove1 : forall x n m, n <= m[x] -> map f (remove x n m) == remove (f x) n (map f m).
     Proof.
     intros x n m Hle. rewrite <- (add_remove_cancel _ _ Hle) at 2. now rewrite (map_add _), remove_add_cancel.
     Qed.
     
     Lemma map_remove2 : forall x n m,
-      multiplicity x m <= n -> map f (remove x n m) == remove (f x) m[x] (map f m).
+      m[x] <= n -> map f (remove x n m) == remove (f x) m[x] (map f m).
     Proof.
     intros x n m Hle. rewrite <- (add_remove_id _ _ Hle) at 3.
     now rewrite (map_add _), remove_add_cancel.
@@ -326,7 +328,7 @@ Section MMultisetExtra.
     
     Theorem map_inter : forall m₁ m₂, map f (inter m₁ m₂) [<=] inter (map f m₁) (map f m₂).
     Proof.
-    intros m1 m2 x. destruct (multiplicity x (map f (inter m1 m2))) eqn:Hfx.
+    intros m1 m2 x. destruct (map f (inter m1 m2))[x] eqn:Hfx.
     + omega.
     + assert (Hin : In x (map f (inter m1 m2))) by msetdec.
       rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite inter_In in Hin.
@@ -336,11 +338,11 @@ Section MMultisetExtra.
     
     Theorem map_lub : forall m₁ m₂, lub (map f m₁) (map f m₂) [<=] map f (lub m₁ m₂).
     Proof.
-    intros m1 m2 x. destruct (multiplicity x (lub (map f m1) (map f m2))) eqn:Hfx.
+    intros m1 m2 x. destruct (lub (map f m1) (map f m2))[x] eqn:Hfx.
     + omega.
     + assert (Hin : In x (lub (map f m1) (map f m2))).
       { rewrite lub_spec in Hfx. rewrite lub_In. unfold In.
-        destruct (Max.max_dec (multiplicity x (map f m1)) (multiplicity x (map f m2))) as [Heq | Heq];
+        destruct (Max.max_dec (map f m1)[x] (map f m2)[x]) as [Heq | Heq];
         rewrite Heq in Hfx; left + right; omega. }
       rewrite lub_In in Hin. rewrite <- Hfx.
       destruct Hin as [Hin | Hin]; rewrite map_In in Hin; destruct Hin as [y [Heq Hin]]; rewrite Heq, lub_spec;
@@ -392,7 +394,7 @@ Section MMultisetExtra.
     Section map_injective_results.
       Hypothesis Hf2 : injective equiv equiv f.
       
-      Lemma map_injective_spec : forall x m, multiplicity (f x) (map f m) = multiplicity x m.
+      Lemma map_injective_spec : forall x m, (map f m)[f x] = m[x].
       Proof.
       intros x m. unfold map. apply fold_rect.
       + repeat intro. msetdec.
@@ -411,7 +413,7 @@ Section MMultisetExtra.
       
       Lemma map_injective_remove : forall x n m, map f (remove x n m) == remove (f x) n (map f m).
       Proof.
-      intros x n m. destruct (le_dec n (multiplicity x m)) as [Hle | Hlt].
+      intros x n m. destruct (le_dec n m[x]) as [Hle | Hlt].
       * now apply map_remove1.
       * intro y. msetdec.
         + repeat rewrite map_injective_spec; trivial. msetdec.
@@ -437,7 +439,7 @@ Section MMultisetExtra.
       
       Theorem map_injective_diff : forall m₁ m₂, map f (diff m₁ m₂) == diff (map f m₁) (map f m₂).
       Proof.
-      intros m₁ m₂ x. destruct (multiplicity x (diff (map f m₁) (map f m₂))) eqn:Hn.
+      intros m₁ m₂ x. destruct ((diff (map f m₁) (map f m₂))[x]) eqn:Hn.
       + rewrite <- not_In in Hn |- *. intro Habs. apply Hn.
         rewrite (map_In _) in Habs. destruct Habs as [y [Heq Hy]]. msetdec.
         now repeat rewrite map_injective_spec.
@@ -446,11 +448,11 @@ Section MMultisetExtra.
         do 2 (rewrite map_injective_spec in *; trivial). msetdec.
       Qed.
       
-      Lemma map_injective_lub_wlog : forall x m₁ m₂, multiplicity x (map f m₂) <= multiplicity x (map f m₁) ->
-        multiplicity x (map f (lub m₁ m₂)) = multiplicity x (map f m₁).
+      Lemma map_injective_lub_wlog : forall x m₁ m₂, (map f m₂)[x] <= (map f m₁)[x] ->
+        (map f (lub m₁ m₂))[x] = (map f m₁)[x].
       Proof.
-      intros x m₁ m₂ Hle. destruct (multiplicity x (map f m₁)) eqn:Heq1.
-      - apply le_n_0_eq in Hle. symmetry in Hle. destruct (multiplicity x (map f (lub m₁ m₂))) eqn:Heq2; trivial.
+      intros x m₁ m₂ Hle. destruct (map f m₁)[x] eqn:Heq1.
+      - apply le_n_0_eq in Hle. symmetry in Hle. destruct (map f (lub m₁ m₂))[x] eqn:Heq2; trivial.
         assert (Hin : In x (map f (lub m₁ m₂))). { unfold In. omega. }
         rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq in *. rewrite lub_In in Hin.
         rewrite map_injective_spec in *. unfold In in *. destruct Hin; omega.

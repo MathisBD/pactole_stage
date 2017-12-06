@@ -5,7 +5,9 @@ Require Import SetoidDec.
 Require Import SetoidClass.
 Require Import Pactole.Util.Preliminary.
 
-(** A ratio (of some quantity). *)
+(** **  Ratio  **)
+
+(** A ratio (of some quantity), as a real number between [0] and [1]. *)
 Definition ratio := {x : R | 0 <= x <= 1}%R.
 
 Definition proj_ratio : ratio -> R := @proj1_sig _ _.
@@ -15,16 +17,21 @@ Proof. intros ? ? Heq. apply Heq. Qed.
 
 Coercion proj_ratio : ratio >-> R.
 
+(** [0] is a ratio. *)
 Definition ratio_0 : ratio.
 Proof. refine (exist _ 0%R _). abstract lra. Defined.
 
+(** [1/2] is a ratio. *)
 Definition ratio_1_2 : ratio.
 Proof. refine (exist _ (1/2)%R _). abstract lra. Defined.
 
+(** [1] is a ratio. *)
 Definition ratio_1 : ratio.
 Proof. refine (exist _ 1%R _). abstract lra. Defined.
 
-(** A trajectory seen as a path inside the space. *)
+(** **  Trajectory  **)
+
+(** Trajectories are paths inside the space. *)
 (* FIXME: I should use typeclasses to avoid the explicit parameter T.
           Otherwise, path cannot be used as a target class for coercions. *)
 Record path T `{Setoid T}:= {
@@ -46,18 +53,24 @@ intros p p' Hp x y Hxy. transitivity (path_f p y).
 - apply Hp.
 Qed.
 
+(** Given a function [f : T -> U] compatible with the space equivalences,
+    we can lift paths on [T] into paths on [U]. *)
 Definition lift_path {T U} `{Setoid T, Setoid U} (f : T -> U)
                      {Hf : Proper (equiv ==> equiv) f} (p : path T) : path U.
 refine (Build_path _ _ (fun x => f (p x)) _).
 Proof. intros x y Hxy. now apply Hf, path_compat. Defined.
 Arguments lift_path T U _ _ f _ p /.
 
-Instance lift_path_compat {T U} {HT : Setoid T} {HU : Setoid U}
-  : forall f (Hf : Proper (equiv ==> equiv) f), Proper (equiv ==> equiv) (@lift_path T U HT HU f Hf).
+Instance lift_path_compat {T U} {HT : Setoid T} {HU : Setoid U} :
+  forall f (Hf : Proper (equiv ==> equiv) f), Proper (equiv ==> equiv) (@lift_path T U HT HU f Hf).
 Proof. repeat intro. simpl. auto. Qed.
+
+Lemma lift_path_proof_irrelevant {T U} {HT : Setoid T} {HU : Setoid U} :
+  forall f (Hf Hf' : Proper (equiv ==> equiv) f), @lift_path T U HT HU f Hf == @lift_path T U HT HU f Hf'.
+Proof. now repeat intro. Qed.
 
 Lemma lift_path_extensionality_compat {T U} {HT : Setoid T} {HU : Setoid U} :
   forall (f g : T -> U) (Hf : Proper (equiv ==> equiv) f) (Hg : Proper (equiv ==> equiv) g),
   (equiv ==> equiv)%signature f g ->
   (equiv ==> equiv)%signature (lift_path f) (lift_path g).
-Proof. intros f g Hf Hg Hfg p p' Hp x. simpl. apply Hfg, Hp. Qed.
+Proof. repeat intro. simpl. auto. Qed.

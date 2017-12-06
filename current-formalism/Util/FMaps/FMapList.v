@@ -11,13 +11,14 @@ Require Import Pactole.Util.FMaps.FMapInterface.
 Set Implicit Arguments.
 Open Scope signature_scope.
 
-
+(** *  Operations  **)
 Section ListOperations.
 Variable key : Type.
 Context `{EqDec key}.
 Variable elt : Type.
 
-(* Operations on raw lists. *)
+(** **  Operations on raw lists  **)
+
 Notation t := (fun T => list (key * T)).
 Notation eq_pair := (fun xn yp => fst xn == fst yp /\ snd xn = snd yp).
 
@@ -77,7 +78,7 @@ Fixpoint list_mapi {elt'} (f: key -> elt -> elt') (m:t elt) : t elt' :=
    | (k,e)::m' => (k,f k e) :: list_mapi f m'
   end.
 
-(* Operations on NoDup lists. *)
+(** **  Operations on [NoDup] lists  **)
 
 Notation tt elt := (sig (@NoDupA (key * elt) (equiv@@1))).
 
@@ -165,7 +166,7 @@ Definition t_mapi {elt'} (f : key -> elt -> elt') (s : tt elt) : tt elt' :=
 
 End ListOperations.
 
-
+(** The full set of operations. *)
 Instance MapList key `{EqDec key} : FMap := {|
   dict := fun elt => sig (@NoDupA (key * elt) (equiv@@1));
   MapsTo := fun elt k e m => InA equiv (k, e) (proj1_sig m);
@@ -188,6 +189,8 @@ Defined.
 Local Transparent dict MapsTo empty is_empty mem add find remove equal map mapi fold cardinal elements.
 Local Notation t := (sig (@NoDupA (_ * _) (equiv@@1))).
 Local Notation eq_pair := (fun xn yp => fst xn == fst yp /\ snd xn = snd yp).
+
+(** **  Proofs of the specifications  **)
 
 Instance MapListFacts_MapsTo key `{EqDec key} : FMapSpecs_MapsTo (MapList _).
 Proof.
@@ -292,8 +295,6 @@ intros elt [m Hm] A i f. simpl. revert i. induction m as [| [y p] l]; simpl.
 - intro i. inversion_clear Hm. now rewrite IHl.
 Qed.
 
-
-(* TODO *)
 Definition Submap key `{EqDec key} {elt : Type} cmp (m m' : Map [key, elt]) :=
   (forall k, In k m -> In k m') /\
   (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
@@ -415,6 +416,6 @@ Proof. split.
       exists e'. now right.
 Qed.
 
-(* The full set of specifications. *)
+(** The full set of specifications. *)
 Instance MapListFacts key `{EqDec key} : FMapSpecs (MapList _).
 Proof. split; auto with typeclass_instances. Qed.

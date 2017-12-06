@@ -55,7 +55,7 @@ Class FMOps elt `(EqDec elt) := {
   (** Multiset difference. *)
 
   lub : multiset -> multiset -> multiset;
-  (** Multiset lowest upper bound: the multiplicity of any [x] in [sup s1 s2] is the maximum of the multiplicities
+  (** Multiset lowest upper bound: the multiplicity of any [x] in [lub s1 s2] is the maximum of the multiplicities
   of [x] in [s1] and [s2]. *)
 
   equal : multiset -> multiset -> bool;
@@ -217,12 +217,12 @@ Class NpartitionSpec elt `(FMOps elt) := {
   npartition_spec_snd : forall f s, compatb f ->
     snd (npartition f s) == nfilter (fun x n => negb (f x n)) s}.
 
-(** Specification of quantifiers. **)
+(** Specification of [for_all] and [exists_]. **)
 Class QuantifierSpec elt `(FMOps elt) := {
   for_all_spec : forall f s, compatb f -> (for_all f s = true <-> For_all (fun x n => f x n = true) s);
   exists_spec : forall f s, compatb f -> (exists_ f s = true <-> Exists (fun x n => f x n = true) s)}.
 
-(** Specification of size measures. **)
+(** Specification of [cardinal] and [size]. **)
 Class SizeSpec elt `(FMOps elt) := {
   cardinal_spec : forall s, cardinal s = fold (fun x n acc => n + acc) s 0;
   size_spec : forall s, size s = length (support s)}.
