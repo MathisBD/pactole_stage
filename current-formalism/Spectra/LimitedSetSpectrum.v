@@ -35,24 +35,18 @@ Require Pactole.Spectra.SetSpectrum.
 
 Section LimitedSetSpectrum.
 
-Context {loc info : Type}.
-Context `{RealMetricSpace loc}.
-Context `{EqDec info}.
-Context {Loc : IsLocation loc info}.
+Context `{State}.
+Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 
 (* FIXME: remove once we have the implem in FSetList. *)
-Context {FS : @FSet loc _ _}.
-Context {FSSpec : @FSetSpecs loc _ _ FS}.
-
-Notation configuration := (@configuration info _).
-Notation map_config := (@map_config info _).
-Notation config_list := (@config_list info _).
+Context {FS : @FSet location _ _}.
+Context {FSSpec : @FSetSpecs location _ _ FS}.
 
 Implicit Type config : configuration.
 
-Global Instance limited_set_spectrum (radius : R) : Spectrum loc info := {
-  spectrum := set loc;
+Global Instance limited_set_spectrum (radius : R) : Spectrum := {
+  spectrum := set location;
   spect_from_config config pt :=
     SetSpectrum.make_set (List.filter (fun x => Rle_bool (dist x pt) radius)
                                       (List.map get_location (config_list config)));
@@ -71,25 +65,26 @@ Proof.
   + intros ? ? Heq. f_equal. now rewrite Heq.
 Defined.
 
-Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
-Local Notation "'from_config' radius" := (@spect_from_config loc info _ _ _ _ _ _ (limited_set_spectrum radius)) (at level 1).
+(* Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _). *)
+Local Notation "'from_config' radius" := (@spect_from_config _ _ _ _ (limited_set_spectrum radius)) (at level 1).
 
 Lemma spect_from_config_ignore_snd : forall config pt,
   spect_from_config config pt == spect_from_config config origin.
 Proof. reflexivity. Qed.
 
-Lemma spect_from_config_map : forall sim : similarity loc,
+Lemma spect_from_config_map : forall sim : similarity location,
   forall radius config pt,
   map sim (from_config radius config pt)
-  == from_config (sim.(Similarity.zoom) * radius) (map_config (app sim) config) (sim pt).
+  == from_config (sim.(Similarity.zoom) * radius) (map_config (lift sim) config) (sim pt).
 Proof.
 repeat intro. unfold spect_from_config, limited_set_spectrum.
 rewrite config_list_map, map_map, 2 filter_map, <- SetSpectrum.make_set_map, map_map; autoclass; [].
 apply SetSpectrum.make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
-assert (Hequiv : (equiv ==> equiv)%signature (fun x => sim (get_location x)) (fun x => get_location (app sim x))).
-{ intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
+assert (Hequiv : (@equiv _ state_Setoid ==> @equiv _ location_Setoid)%signature
+          (fun x => sim (get_location x)) (fun x => get_location (lift sim x))).
+{ intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
 apply (map_extensionalityA_compat _ Hequiv). f_equiv.
-intros ? ? Heq. rewrite get_location_app, sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].
+intros ? ? Heq. rewrite get_location_lift, sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].
 apply Similarity.zoom_pos.
 Qed.
 

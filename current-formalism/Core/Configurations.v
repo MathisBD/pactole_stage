@@ -22,21 +22,19 @@ Require Import Decidable.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.RobotInfo.
 Set Implicit Arguments.
 
 
 (** * Configurations *)
 
-(* FIXME: It could simply be separate definitions.  No need to bundle them into a class. *)
+(** A configuration is simply a map fron robot indentifiers to robot states (including their locations). *)
+Definition configuration `{State} `{Names} := ident -> info.
+
 Section Configuration.
 
-Variable info : Type.
-Context `{EqDec info}.
+Context `{State}.
 Context `{Names}.
-
-(** A configuration is simply a map fron robot indentifiers to robot states (including their locations).
-    We make it a class to avoid automatic creation of spurious configuration types. *)
-Definition configuration := ident -> info.
 
 (** Equality of configurations is extensional. *)
 Global Instance configuration_Setoid : Setoid configuration := fun_equiv ident _.
@@ -163,5 +161,4 @@ Proof. now repeat intro. Qed.
 
 End Configuration.
 
-Arguments configuration {_} {_}.
-Arguments map_config info _ f config /.
+Arguments map_config {info} {_} {_} {_} f config /.

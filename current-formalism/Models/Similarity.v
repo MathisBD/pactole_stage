@@ -33,17 +33,15 @@ Typeclasses eauto := (bfs).
 
 Section SimilarityCenter.
 
-Context {loc info T : Type}.
-Context `{IsLocation loc info}.
-Context {RMS : RealMetricSpace loc}.
-Context {N : Names}.
-Context {Spect : Spectrum loc info}.
+Context `{Spectrum}.
+Context {T : Type}.
+Context {RMS : RealMetricSpace location}.
 Context `{update_choice T}.
 
 (** Similarities as a frame choice, inside real metric spaces *)
-Global Instance FrameChoiceSimilarity : frame_choice (similarity loc) := {|
-  frame_choice_bijection := @sim_f loc _ _ _;
-  frame_choice_Setoid := similarity_Setoid loc;
+Global Instance FrameChoiceSimilarity : frame_choice (similarity location) := {|
+  frame_choice_bijection := @sim_f location _ _ _;
+  frame_choice_Setoid := similarity_Setoid location;
   frame_choice_bijection_compat := f_compat |}.
 
 Definition similarity_da_prop da :=

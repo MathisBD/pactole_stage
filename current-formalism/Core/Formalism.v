@@ -38,21 +38,14 @@ Typeclasses eauto := 5.
 
 Section Formalism.
 
-Context {loc info : Type}.
+Context `{Spectrum}.
 Variables T1 T2 : Type.
-Context `{EqDec loc} `{EqDec info}.
-Context {Loc : IsLocation loc info}.
-Context `{Names}.
-Context {Spect : Spectrum loc info}.
-
-Local Notation configuration := (@configuration info _).
-Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ Spect).
 
 (** **  Robograms and Executions  **)
 
 (** Good robots have a common program, which we call a [robogram]. *)
 Record robogram := {
-  pgm :> spectrum -> path loc; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
+  pgm :> spectrum -> path location; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
   pgm_compat : Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid : Setoid robogram := {|
@@ -82,8 +75,8 @@ Definition execution := Stream.t configuration.
 
 (** A [frame_choice] represents the choices made by the demon to compute the spectrum.
     It must at least contain at bijection to compute the change of frame of reference.  *)
-Class frame_choice `{IsLocation loc info} := {
-  frame_choice_bijection : T1 -> bijection loc;
+Class frame_choice := {
+  frame_choice_bijection : T1 -> bijection location;
   frame_choice_Setoid :> Setoid T1;
   frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
 Global Existing Instance frame_choice_bijection_compat.
@@ -94,13 +87,13 @@ Class update_choice := {
   update_choice_EqDec :> EqDec update_choice_Setoid }.
 
 (** These choices are then used by an update function that depends on the model. *)
-Class update_function `{IsLocation loc info} `{update_choice} := {
-  update :> configuration -> G -> path loc -> T2 -> info;
+Class update_function `{update_choice} := {
+  update :> configuration -> G -> path location -> T2 -> info;
   update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update }.
 
-Context `{@frame_choice _ _ _ _ _}.
+Context `{@frame_choice}.
 Context `{update_choice}.
-Context `{@update_function _ _ _ _ _ _}.
+Context `{@update_function _}.
 
 (* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
@@ -111,7 +104,7 @@ Record demonic_action := {
   (** Local referential for (activated) good robots in the compute phase *)
   change_frame : configuration -> G -> T1;
   (** Update the state of (activated) good robots in the move phase  *)
-  choose_update : configuration -> G -> path loc -> T2;
+  choose_update : configuration -> G -> path location -> T2;
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -210,7 +203,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         | Good g =>
           (* change the frame of reference *)
           let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-          let local_config := map_config (app new_frame) config in
+          let local_config := map_config (lift new_frame) config in
           let local_pos := get_location (local_config (Good g)) in
           (* compute the spectrum *)
           let spect := spect_from_config local_config local_pos in
@@ -235,9 +228,9 @@ unfold round. rewrite Hda. destruct_match.
     apply update_compat; try apply choose_update_da_compat; trivial; [|];
     apply lift_path_extensionality_compat;
     do 2 (f_equiv; trivial); try (now apply frame_choice_bijection_compat; f_equiv);
-    solve [ apply map_config_compat; trivial; []; apply app_compat; f_equiv;
+    solve [ apply map_config_compat; trivial; []; apply lift_compat; f_equiv;
             apply frame_choice_bijection_compat; now do 2 f_equiv
-          | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; f_equiv;
+          | apply get_location_compat, map_config_compat; trivial; []; apply lift_compat; f_equiv;
             apply frame_choice_bijection_compat; now do 2 f_equiv ].
   + (* byzantine robot *)
     now f_equiv.
@@ -469,32 +462,30 @@ End Formalism.
 
 Arguments update_choice_Setoid {_} {_}.
 Arguments update_choice_EqDec {_} {_}.
-Arguments update_function {loc} {info} T2 {_} {_} {_} {_} {_} {_} {_}.
-Arguments demonic_action {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
-Arguments demon {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
+Arguments update_function {info} {_} {_} {_} T2 {_}.
+Arguments demonic_action {info} {_} {_} {_} {T1} {T2} {_} {_}.
+Arguments demon {info} {_} {_} {_} {T1} {T2} {_} {_}.
 
 
 Section ChoiceExample.
 (** **  Most Common Examples of Demon Choices  **)
 
-Context {loc info : Type}.
-Context `{EqDec loc} `{EqDec info}.
-Context {Loc : IsLocation loc info}.
+Context `{State}.
 
 (** An exemple of frame choice: just a bijection. *)
-Definition FrameChoiceBijection : frame_choice (bijection loc) := {|
+Definition FrameChoiceBijection : frame_choice (bijection location) := {|
   frame_choice_bijection := Datatypes.id;
-  frame_choice_Setoid := @bij_Setoid loc _;
+  frame_choice_Setoid := @bij_Setoid location _;
   frame_choice_bijection_compat := fun _ _ Heq => Heq |}.
 
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 
 (* Similarities as a frame choice, only make sense inside real metric spaces. *)
-Definition FirstChoiceSimilarity {RMS : RealMetricSpace loc}
-  : @frame_choice loc info (similarity loc) _ _ _ _ _ := {|
-  frame_choice_bijection := @sim_f loc _ _ _;
-  frame_choice_Setoid := similarity_Setoid loc;
+Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}
+  : frame_choice (similarity location) := {|
+  frame_choice_bijection := @sim_f location _ _ _;
+  frame_choice_Setoid := similarity_Setoid location;
   frame_choice_bijection_compat := f_compat |}.
 
 

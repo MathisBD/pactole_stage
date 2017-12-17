@@ -111,7 +111,7 @@ Class FMOps elt `(EqDec elt) := {
   (** Return one element of the given multiset, or [None] if the multiset is empty.
       Which element is chosen is unspecified: equal multisets could return different elements. *)
 }.
-Arguments multiset elt {_} {_} {_}.
+Arguments multiset elt {_} {_} {_} : simpl never.
 Arguments multiplicity {elt} {_} {_} {_} x m : simpl never.
 Arguments fold {elt} {_} {_} {_} {A} f m i : simpl never.
 

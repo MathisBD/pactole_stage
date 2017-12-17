@@ -365,31 +365,33 @@ Theorem similarity_in_R_case : forall sim : similarity R,
   (forall x, sim x == - sim.(zoom) * (x - sim.(center))).
 Proof.
 intro sim. assert (Hkpos : 0 < sim.(zoom)) by apply zoom_pos.
-destruct sim as [f k c Hc Hk]. simpl in Hkpos |- *.
+pose (c := sim ⁻¹ 0).
+assert (Hc : sim c == 0). { unfold c. apply compose_inverse_r. }
+destruct sim as [f k Hk]. simpl in Hkpos, c, Hc |- *.
 destruct (equiv_dec k 0) as [Hk0 | Hk0].
 * (* if the ratio is 0, the similarity is a constant function. *)
   left. intro x. cbn in Hk0. subst k. rewrite Rmult_0_l.
-  change (f x == 0). rewrite <- dist_defined. rewrite <- Hc, Hk at 1. ring.
+  change (f x == 0). rewrite <- dist_defined, <- Hc, Hk, Hc. ring.
 * assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
   { specialize (Hk (c + 1) c). rewrite Hc in Hk.
     assert (H1 : dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
-    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) origin) as [Heq | Heq]; unfold origin in *;
+    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) 0) as [Heq | Heq]; unfold origin in *;
     rewrite Heq in Hk; ring_simplify in Hk; cbn in *; lra. }
   destruct Hc1 as [Hc1 | Hc1].
   + left. intro x. apply (GPS (f c) (f (c + 1))).
     - rewrite Hc, Hc1. unfold origin. cbn. lra.
-    - rewrite Hk, Hc. unfold origin. cbn.
+    - rewrite (Hk x c), Hc. cbn. change (retraction f origin) with c.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-    - rewrite Hk, Hc1. unfold origin. cbn.
+    - rewrite (Hk x (c+1)), Hc1. cbn. change (retraction f origin) with c.
       replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
   + right. intro x. apply (GPS (f c) (f (c + 1))).
     - rewrite Hc, Hc1. unfold origin. cbn. lra.
-    - rewrite Hk, Hc. unfold origin. cbn.
+    - rewrite (Hk x c), Hc. cbn. change (retraction f origin) with c.
       replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
-    - rewrite Hk, Hc1. unfold origin. cbn.
+    - rewrite (Hk x (c+1)), Hc1. cbn. change (retraction f origin) with c.
       replace (- k * (x - c) - - k) with (- k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_left (- k)); lra.
 Qed.
@@ -418,3 +420,57 @@ intro sim. destruct (similarity_in_R_case sim) as [Hinc | Hdec].
 + right. intros x y Hxy. do 2 rewrite Hdec. apply similarity_decreasing; trivial.
   assert (Hratio := zoom_pos sim). lra.
 Qed.
+
+(** To conclude that two similarities are equal, it is enough to show that they are equal on two points. *)
+Theorem similarity_eq : forall (sim1 sim2 : similarity R) pt1 pt2,
+  pt1 =/= pt2 -> sim1 pt1 == sim2 pt1 -> sim1 pt2 == sim2 pt2 -> sim1 == sim2.
+Proof.
+intros sim1 sim2 pt1 pt2 Hdiff H1 H2 x.
+destruct (similarity_in_R sim1) as [k1 [Hk1 Hsim1]].
+destruct (similarity_in_R sim2) as [k2 [Hk2 Hsim2]].
+assert (Hzoom : zoom sim1 = zoom sim2).
+{ assert (dist pt1 pt2 <> 0). { rewrite dist_defined. apply Hdiff. }
+  apply Rmult_eq_reg_r with (dist pt1 pt2); trivial; [].
+  now rewrite <- 2 dist_prop, H1, H2. }
+assert (Hk : k1 = k2 \/ k1 = - k2).
+{ destruct Hk1, Hk2; subst; rewrite Hzoom, ?Ropp_involutive; tauto. }
+assert (k2 <> 0). { generalize (zoom_pos sim2). lra. }
+rewrite Hsim1, Hsim2 in *.
+destruct Hk; subst k1.
++ (* Having same factor, they also have same center *)
+  apply Rmult_eq_reg_l in H1; trivial; [].
+  simpl. do 2 f_equal. lra.
++ (* The equalities for [pt1] and [pt2] lead to a contradiction *)
+  exfalso.
+  assert (Hx : forall x, - k2 * (x - center sim1) = k2 * (center sim1 - x)) by (intro; ring).
+  rewrite Hx in *. clear Hx.
+  apply Rmult_eq_reg_l in H1; trivial; [].
+  apply Rmult_eq_reg_l in H2; trivial; [].
+  simpl in Hdiff. lra.
+Qed.
+
+(* The images of two points defines a (unique) similarity. *)
+Theorem build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R.
+Proof.
+refine (translation (pt3 - pt1) ∘ (@homothecy pt1 ((pt4 - pt3) / (pt2 - pt1)) _)).
+abstract (simpl in *; intro Habs; apply Rmult_integral in Habs;
+          destruct Habs as[? | Habs]; try lra; []; revert Habs; apply Rinv_neq_0_compat; lra).
+Defined.
+
+Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
+  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1 =/= pt2) (H34' : pt3 =/= pt4),
+  pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
+  build_similarity H12 H34 == build_similarity H12' H34'.
+Proof. intros. simpl in *. intro. field. lra. Qed.
+
+Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt1 == pt3.
+Proof. simpl. intros. field. lra. Qed.
+
+Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt2 == pt4.
+Proof. simpl. intros. field. lra. Qed.
+
+Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
+Proof. simpl. intros. field. lra. Qed.

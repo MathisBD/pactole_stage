@@ -109,6 +109,10 @@ Proof. reflexivity. Qed.
 Lemma alternate_tl_hd : forall c1 c2 : A, hd (tl (alternate c1 c2)) = c2.
 Proof. reflexivity. Qed.
 
+(** Alternative caracterisation of [alternate]. *)
+Lemma alternate_tl : forall c1 c2 : A, tl (alternate c1 c2) == alternate c2 c1.
+Proof. cofix alt. constructor; [| constructor]; simpl; auto; []. apply alt. Qed.
+
 (** Compatibility lemmas. *)
 
 Global Instance hd_compat : Proper (equiv ==> equiv) hd.
@@ -122,7 +126,6 @@ Proof. unfold constant. now coinduction Heq. Qed.
 
 Global Instance aternate_compat : Proper (@equiv A _ ==> equiv ==> equiv) alternate.
 Proof. cofix Heq. do 2 (constructor; trivial). cbn. now apply Heq. Qed.
-
 
 Global Instance instant_compat : Proper ((equiv ==> iff) ==> equiv ==> iff) instant.
 Proof. intros P Q HPQ s s' Hs. unfold instant. apply HPQ, Hs. Qed.
@@ -259,7 +262,6 @@ Qed.
 (* It does not apprear t be transitive for lack of synchronisation of the streams. *)
 Global Instance eventually2_trans R `{Transitive _ R} : Transitive (eventually2 R).
 Proof. Abort.
-
 
 (** **  Operators [forever] and [eventually] skipping half the streams   **)
 

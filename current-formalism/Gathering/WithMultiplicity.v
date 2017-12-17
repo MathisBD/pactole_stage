@@ -3,29 +3,26 @@ Require Export Pactole.Gathering.Definitions.
 Require Export Pactole.Spectra.MultisetSpectrum.
 Close Scope R_scope.
 Set Implicit Arguments.
+Typeclasses eauto := (bfs) 5.
+
 
 (** Gathering Definitions specific to a setting with multiplicities, i.e. a multiset spectrum. *)
 
-
 Section MultisetGathering.
 
-Context {loc T : Type}.
-Context `{RealMetricSpace loc}.
+Context `{Location}.
+Context {T : Type}.
+Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 Context {Choice : update_choice T}.
 Context {UpdFun : update_function T}.
 
-Notation robogram := (@robogram loc loc _ _ _ _ _ _ multiset_spectrum).
-Notation configuration := (@configuration loc _).
-Notation config_list := (@config_list loc _).
-Notation round := (@round loc loc _ _ _ _ _ _ multiset_spectrum).
-Notation execution := (@execution loc _).
-Notation "!!" := (fun config => @spect_from_config loc loc _ _ _ _ _ _ _ config origin).
+Notation "!!" := (fun config => spect_from_config config origin : spectrum).
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)
 Definition invalid (config : configuration) :=
-     Nat.Even nG /\ nG >=2 /\ exists pt1 pt2, pt1 =/= pt2
+     Nat.Even nG /\ nG >=2 /\ exists pt1 pt2 : location, pt1 =/= pt2
   /\ (!! config)[pt1] = Nat.div2 nG /\ (!! config)[pt2] = Nat.div2 nG.
 
 Global Instance invalid_compat : Proper (equiv ==> iff) invalid.
@@ -39,18 +36,19 @@ Qed.
     configuration not [invalid], will *eventually* be [Gather]ed.
     This is the statement used for the correctness proof of the algorithms. *)
 Definition ValidSolGathering (r : robogram) (d : demon) :=
-  forall config : configuration, ~invalid config -> exists pt : loc, WillGather pt (execute r d config).
+  forall config : configuration, ~invalid config -> exists pt : location, WillGather pt (execute r d config).
 
 (** **  Generic properties  **)
 
 (* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall (config : configuration) l,
-  (!! config)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
- := fun config => @spect_from_config_spec loc loc _ _ _ _ _ _ _ config origin.
+Definition spect_from_config_spec : forall (config : configuration) (pt : location),
+  (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
+  := fun config => spect_from_config_spec config origin.
 
 (* Only property also used for the flexible FSYNC gathering. *)
+(* FIXME: fix the notation failure with "=/=" *)
 Lemma spect_non_nil : 2 <= nG -> forall config,
-complement (@equiv (multiset loc) _) (!! config) MMultisetInterface.empty.
+  complement (@equiv (multiset location) _) (!! config) MMultisetInterface.empty.
 Proof.
 simpl spect_from_config. intros HnG config Heq.
 assert (Hlgth:= config_list_length config).
@@ -63,8 +61,9 @@ simpl in *.
 omega.
 Qed.
 
-Lemma invalid_support_length : nB = 0 -> forall config, invalid config ->
-  size (!! config) = 2.
+(* FIXME: size gets typed as multiset spectrum instead of multiset location. *)
+Lemma invalid_support_length : nB = 0 -> forall config : configuration, invalid config ->
+  @size location _ _ _ (!! config) = 2.
 Proof.
 intros HnB config [Heven [HsizeG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).

@@ -40,27 +40,8 @@ Context `{EqDec loc}.
 (* FIXME: remove once we have the implem in FSetList. *)
 Context {FS : @FSet loc _ _}.
 Context {FSSpec : @FSetSpecs loc _ _ FS}.
-(* Existing Instance multiplicity_compat.
-Existing Instance FMOps_WMap.
-Existing Instance MakeFMultisetsFacts. *)
 
 Ltac fsetdec := set_iff; tauto.
-
-(* 
-Lemma eq_refl_left : forall (e : loc) A (a b:A), (if equiv_dec e e then a else b) = a.
-Proof.
-intros e A a b.
-destruct (equiv_dec e e) as [| Hneq].
-- reflexivity.
-- now elim Hneq.
-Qed.
- *)
-(* 
-Notation "m1  ≡  m2" := (M.eq m1 m2) (at level 70).
-Notation "m1  ⊆  m2" := (M.Subset m1 m2) (at level 70).
-Notation "m1  [=]  m2" := (M.eq m1 m2) (at level 70, only parsing).
-Notation "m1  [c=]  m2" := (M.Subset m1 m2) (at level 70, only parsing).
- *)
 
 (** **  Building sets from lists  **)
 
@@ -178,26 +159,18 @@ End SetConstruction.
 
 Section SetSpectrum.
 
-Context {loc info : Type}.
-Context `{EqDec loc}.
-Context `{EqDec info}.
-Context {Loc : IsLocation loc info}.
+Context `{State}.
 Context `{Names}.
 
 (* FIXME: remove once we have the implem in FSetList. *)
-Parameter (FS : @FSet loc _ _).
-Parameter (FSSpec : @FSetSpecs loc _ _ FS).
+Parameter (FS : @FSet location _ _).
+Parameter (FSSpec : @FSetSpecs location _ _ FS).
 Existing Instances FS FSSpec.
-
-
-Notation configuration := (@configuration info _).
-Notation map_config := (@map_config info _).
-Notation config_list := (@config_list info _).
 
 Implicit Type config : configuration.
 
-Global Instance set_spectrum : Spectrum loc info := {
-  spectrum := set loc;
+Global Instance set_spectrum : Spectrum := {
+  spectrum := set location;
   
   spect_from_config config pt := make_set (List.map get_location (config_list config));
   spect_is_ok s config pt :=
@@ -211,27 +184,26 @@ Proof.
 + unfold spect_from_config, spect_is_ok. intros. apply make_set_spec.
 Defined.
 
-Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
-Notation spect_from_config := (@spect_from_config loc info _ _ _ _ _ _ set_spectrum).
+Notation spect_from_config := (@spect_from_config _ _ _ _ set_spectrum).
 
 Require Pactole.Spaces.RealMetricSpace.
-Lemma spect_from_config_ignore_snd {RMS : RealMetricSpace.RealMetricSpace loc} : forall config pt,
+Lemma spect_from_config_ignore_snd {RMS : RealMetricSpace.RealMetricSpace location} : forall config pt,
   spect_from_config config pt == spect_from_config config RealMetricSpace.origin.
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
   forall config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (app f) config) (f pt).
+  map f (spect_from_config config pt) == spect_from_config (map_config (lift f) config) (f pt).
 Proof.
 repeat intro. unfold spect_from_config, set_spectrum.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
 + apply make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
-  assert (Hequiv : (@equiv info _ ==> @equiv loc _)%signature
-                     (fun x => f (get_location x)) (fun x => get_location (app f x))).
-  { intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
+  assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
+                     (fun x => f (get_location x)) (fun x => get_location (lift f x))).
+  { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).
 + assumption.
-+ now apply app_compat.
++ now apply lift_compat.
 Qed.
 
 Theorem cardinal_spect_from_config : forall config pt, cardinal (spect_from_config config pt) <= nG + nB.

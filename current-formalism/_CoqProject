@@ -70,7 +70,7 @@ Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
 Gathering/InR2/Algorithm.v
 #Gathering/FlexDefinitions.v
-Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+#Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
 ## Case Study: Ring Exploration
 #Exploration/Graph/Definitions.v

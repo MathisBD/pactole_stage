@@ -23,16 +23,16 @@ Existing Instance spectrum_EqDec.
 Existing Instance spect_from_config_compat.
 *)
 
-Class Spectrum loc info `{IsLocation loc info} `{Names} := {
+Class Spectrum {info} `{State info} `{Names} := {
   (** Spectrum is a decidable type *)
   spectrum : Type;
   spectrum_Setoid : Setoid spectrum;
   spectrum_EqDec : EqDec spectrum_Setoid;
   
   (** A predicate characterizing correct spectra for a given local configuration *)
-  spect_from_config : @configuration info _ -> loc -> spectrum;
+  spect_from_config : configuration -> location -> spectrum;
   spect_from_config_compat : Proper (equiv ==> equiv ==> equiv) spect_from_config;
-  spect_is_ok : spectrum ->  @configuration info _ -> loc -> Prop;
+  spect_is_ok : spectrum ->  configuration -> location -> Prop;
   spect_from_config_spec : forall config pt, spect_is_ok (spect_from_config config pt) config pt }.
 
 Existing Instance spectrum_Setoid.

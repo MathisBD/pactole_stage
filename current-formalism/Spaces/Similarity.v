@@ -33,14 +33,10 @@ Set Implicit Arguments.
 Open Scope R_scope.
 
 (** Similarities are functions that multiply distances by a constant zoom.
-    Unlike bijections that only need a setoid, we need here a metric space.
-    For convenience, we also add their center, that is the location from which robots locally observe. *)
-(* TODO: the center can be defined as the preimage of the origin! Maybe we should remove it... *)
+    Unlike bijections that only need a setoid, we need here a metric space. *)
 Record similarity T `{RealMetricSpace T} := {
   sim_f :> bijection T;
   zoom : R;
-  center : T;
-  center_prop : sim_f center == origin;
   dist_prop : forall x y, dist (sim_f x) (sim_f y) = zoom * dist x y}.
 Arguments similarity T {_} {_} {_}.
 
@@ -68,7 +64,7 @@ Qed.
 Lemma zoom_pos `{RealMetricSpace} : forall sim, 0 < sim.(zoom).
 Proof.
 intros sim. apply Preliminary.Rle_neq_lt.
-- destruct sim as [f k c Hc Hk]. simpl. clear c Hc.
+- destruct sim as [f k Hk]. simpl.
   assert (Hnon_triv := non_trivial). specialize (Hk unit origin).
   unfold complement in Hnon_triv. rewrite <- dist_defined in Hnon_triv.
   assert (Hdist := dist_pos unit origin).
@@ -86,16 +82,11 @@ apply Rmult_integral in Heqf. destruct Heqf; trivial.
 assert (Hsim := zoom_non_null sim). contradiction.
 Qed.
 
-Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _).
-Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
-
 (** The identity similarity *)
-Definition id {T} `{RealMetricSpace T} : similarity T.
-refine {| sim_f := @Bijection.id T _;
-          zoom := 1;
-          center := origin;
-          center_prop := reflexivity _ |}.
-Proof. abstract (intros; simpl; now rewrite Rmult_1_l). Defined.
+Definition id {T} `{RealMetricSpace T} : similarity T := {|
+  sim_f := @Bijection.id T _;
+  zoom := 1;
+  dist_prop := ltac:(intros; simpl; now rewrite Rmult_1_l) |}. (* TODO: make abstract work *)
 
 Section Normed_Results.
 (** The existence of homothecy and translation similarities (implied by these two hypotheses)
@@ -127,12 +118,8 @@ Proof. intros. ring_simplify. apply translation_hypothesis. Qed.
 
 Definition translation (v : T) : similarity T.
 refine {| sim_f := bij_translation v;
-          zoom := 1;
-          center := opp v |}.
-Proof.
-+ simpl. abstract (now rewrite add_comm, add_opp).
-+ simpl. apply translation_zoom.
-Defined.
+          zoom := 1 |}.
+Proof. simpl. abstract (intros; now rewrite translation_hypothesis, Rmult_1_l). Defined.
 
 Global Instance translation_compat : Proper (equiv ==> equiv) translation.
 Proof. intros u v Huv x. simpl. now rewrite Huv. Qed.
@@ -144,37 +131,39 @@ Lemma translation_inverse : forall t, inverse (translation t) == translation (op
 Proof. intros t x. simpl. reflexivity. Qed.
 
 (** The homothetic similarity *)
-Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 -> mul ρ (add x (opp c)) == y ↔ add (mul (/ ρ) y) c == x.
+Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 -> add c (mul ρ (add x (opp c))) == y ↔ add (mul (/ ρ) (add y (opp c))) c == x.
 Proof.
 intros. split; intro Heq; rewrite <- Heq; clear Heq.
-- rewrite mul_morph, Rinv_l, mul_1; trivial.
-  rewrite <- add_assoc. setoid_rewrite add_comm at 2.
-  now rewrite add_opp, add_origin.
-- repeat rewrite mul_distr_add. rewrite mul_morph. rewrite Rinv_r; trivial.
-  rewrite mul_1, <- add_assoc. now rewrite mul_opp, add_opp, add_origin.
+- now rewrite (add_comm c), <- add_assoc, add_opp, add_origin, mul_morph,
+              Rinv_l, mul_1, <- add_assoc, (add_comm _ c), add_opp, add_origin.
+- repeat rewrite mul_distr_add, ?mul_morph. rewrite Rinv_r; trivial.
+  now rewrite 2 mul_1, <- add_assoc, <- mul_distr_add, add_opp, mul_origin, add_origin,
+              add_assoc, (add_comm c), <- add_assoc, add_opp, add_origin.
 Qed.
 
 Definition bij_homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : @bijection T _.
 refine {|
-  section := fun x => @mul _ _ _ rmsT ρ (@add _ _ _ rmsT x (@opp _ _ _ rmsT c));
-  retraction := fun x => add (mul (/ρ) x) c |}.
+  section := fun x => @add _ _ _ rmsT c (@mul _ _ _ rmsT ρ (@add _ _ _ rmsT x (@opp _ _ _ rmsT c)));
+  retraction := fun x => add (mul (/ρ) (add x (opp c))) c |}.
 Proof.
-+ intros x y Hxy; now rewrite Hxy. (* TODO: make abstract work *)
++ abstract (intros x y Hxy; now rewrite Hxy).
 + intros. now apply homothecy_Inversion.
 Defined.
 
 Lemma bij_homothecy_zoom : forall c ρ (Hρ : ρ <> 0%R) (x y : T),
   dist ((bij_homothecy c Hρ) x) ((bij_homothecy c Hρ) y) = Rabs ρ * dist x y.
-Proof. intros. cbn. rewrite homothecy_hypothesis. f_equal. apply translation_hypothesis. Qed.
+Proof.
+intros. cbn. setoid_rewrite (add_comm c). rewrite translation_hypothesis.
+rewrite homothecy_hypothesis. f_equal. apply translation_hypothesis.
+Qed.
 
 Definition homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : similarity T.
 refine {|
   sim_f := bij_homothecy c Hρ;
-  zoom := Rabs ρ;
-  center := c |}.
+  zoom := Rabs ρ |}.
 Proof.
-- simpl. abstract (now rewrite add_opp, mul_origin).
-- exact (bij_homothecy_zoom c Hρ).
+abstract (simpl; intros; now rewrite 2 (add_comm c), translation_hypothesis,
+                                     homothecy_hypothesis, translation_hypothesis).
 Defined.
 
 Global Instance homothecy_compat :
@@ -182,11 +171,11 @@ Global Instance homothecy_compat :
 Proof. intros c1 c2 Hc ρ ? ? ? ?. simpl. now rewrite Hc. Qed.
 
 Lemma homothecy_inverse : forall c ρ (Hρ : ρ <> 0),
-  inverse (homothecy c Hρ) == homothecy (opp (mul ρ c)) (Rinv_neq_0_compat ρ Hρ).
-Proof. intros c ρ Hρ x. simpl. rewrite mul_distr_add, opp_opp, mul_morph, Rinv_l, mul_1; auto. Qed.
+  inverse (homothecy c Hρ) == homothecy c (Rinv_neq_0_compat ρ Hρ).
+Proof. simpl. intros. apply add_comm. Qed.
 
-Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == translation (opp c).
-Proof. intros c H10 ?. simpl. now rewrite mul_1. Qed.
+Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == id.
+Proof. repeat intro. simpl. now rewrite mul_1, add_comm, <- add_assoc, (add_comm _ c), add_opp, add_origin. Qed.
 
 End Normed_Results.
 
@@ -195,12 +184,8 @@ End Normed_Results.
 Definition compose {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
 refine {|
   sim_f := compose f g;
-  zoom := f.(zoom) * g.(zoom);
-  center := retraction g (retraction f origin) |}.
-Proof.
-+ simpl. abstract (now repeat rewrite section_retraction; autoclass).
-+ simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring).
-Defined.
+  zoom := f.(zoom) * g.(zoom); |}.
+Proof. simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring). Defined.
 Global Infix "∘" := compose (left associativity, at level 40).
 
 Global Instance compose_compat `{RealMetricSpace} : Proper (equiv ==> equiv ==> equiv) compose.
@@ -218,13 +203,11 @@ Proof. intros sim x. simpl. reflexivity. Qed.
 (** Inverse of a similarity *)
 Definition inverse {T} `{RealMetricSpace T} (sim : similarity T) : similarity T.
 refine {| sim_f := inverse sim.(sim_f);
-          zoom := /sim.(zoom);
-          center := sim origin |}.
+          zoom := /sim.(zoom) |}.
 Proof.
-+ abstract (apply (retraction_section _)).
-+ assert (sim.(zoom) <> 0) by apply zoom_non_null.
-  intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
-  rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
+assert (sim.(zoom) <> 0) by apply zoom_non_null.
+intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
+rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
 Defined.
 Global Notation "s ⁻¹" := (inverse s) (at level 39).
 
@@ -239,6 +222,15 @@ Proof. intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
 
 Lemma inverse_compose {T} `{RealMetricSpace T} : forall f g : similarity T, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. intros f g x. simpl. reflexivity. Qed.
+
+(* Center of a similarity, that is, the point that gets mapped to the origin. *)
+Definition center {T} `{RealMetricSpace T} (sim : similarity T) : T := sim⁻¹ origin.
+
+Lemma center_prop {T} `{RealMetricSpace T} : forall sim : similarity T, sim (center sim) == origin.
+Proof. intro. unfold center. apply compose_inverse_r. Qed.
+
+Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _).
+Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
 
 Module Notations.
