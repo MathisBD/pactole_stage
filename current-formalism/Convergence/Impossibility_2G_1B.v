@@ -229,8 +229,7 @@ Hint Resolve gfirst_left glast_right left_right_exclusive.
 (** A demon that makes the robogram fail:
     - good robots are split into two distinct towers
     - byzantine robots move alternatively between both towers
-    - the stack with byzantine is activated, good robots cannot move
-      and you can scale it back on the next round. *)
+    - the stack with byzantine is activated, good robots cannot move. *)
 
 Open Scope R_scope.
 (** The reference starting configuration **)
@@ -299,7 +298,6 @@ intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
   + elim Habs. intuition.
 Qed.
 
-(* FIXME: the notation == triggers a bad typeclass resolution *)
 Theorem spect_config1 : !! config1 == spectrum1.
 Proof.
 intro pt. unfold config1, spectrum1.

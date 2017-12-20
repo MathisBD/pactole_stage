@@ -756,7 +756,7 @@ Section MMultisetFacts.
   Lemma add_subset_remove : forall x n m1 m2, add x n m1 [<=] m2 -> m1 [<=] remove x n m2.
   Proof. intros x n m1 m2 Hsub y. specialize (Hsub y). msetdec. Qed.
 
-  Lemma add_In : forall x y n m, In x (add y n m) <-> In x m \/ equiv x y /\ n > 0.
+  Lemma add_In : forall x y n m, In x (add y n m) <-> equiv x y /\ n > 0 \/ In x m.
   Proof.
   intros x y n m. unfold In. destruct (equiv_dec x y) as [Heq | Heq].
   - repeat rewrite (multiplicity_compat _ _ Heq _ _ (reflexivity _)). rewrite add_same. destruct n; intuition.
