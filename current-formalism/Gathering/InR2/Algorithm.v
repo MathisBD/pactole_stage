@@ -434,7 +434,7 @@ assert (Hmax : forall x, In x (max (!! config)) <-> x = pt).
   - intro Hin. inversion_clear Hin. assumption. inversion H.
   - intro. subst x. now left. }
 intro Hvalid.
-assert (Hsuplen := invalid_support_length eq_refl Hvalid).
+assert (Hsuplen := invalid_size eq_refl Hvalid).
 destruct Hvalid as [Heven [? [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 assert (Hsup : Permutation (support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA equiv pt1 (support (!! config))).
@@ -463,7 +463,7 @@ apply (lt_irrefl (Nat.div2 nG)). destruct Hpt; subst pt.
 - rewrite <- Hpt1 at 1. rewrite <- Hpt2. apply max_spec_lub; now rewrite Hmax.
 Qed.
 
-(* invalid_support_length already proves the -> direction *)
+(* invalid_size already proves the -> direction *)
 Lemma invalid_equiv : forall config,
   invalid config <-> no_Majority config /\ size (!! config) = 2%nat.
 Proof.
@@ -473,7 +473,7 @@ intro config. unfold no_Majority. split.
     * exfalso. revert Hmax. apply support_max_non_nil.
     * exfalso. revert Hmax Hinvalid. rewrite <- MajTower_at_equiv. apply Majority_not_invalid.
     * simpl. omega.
-  + changeR2. now apply invalid_support_length.
+  + changeR2. now apply invalid_size.
 - intros [Hlen H2]. rewrite size_spec in Hlen, H2.
   destruct (support (!! config)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try (now simpl in H2; omega); [].
   red.
@@ -1640,7 +1640,7 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
           - intro Habs. inversion Habs. now elim Hdiff. now inversion H.
           - intro Habs. now inversion Habs.
         + rewrite <- NoDupA_Leibniz. change eq with (@equiv location _). apply support_NoDupA.
-        + now rewrite <- size_spec, invalid_support_length.
+        + now rewrite <- size_spec, invalid_size.
         + intros pt Hpt. inversion_clear Hpt.
           - subst. rewrite <- InA_Leibniz. change eq with (@equiv location _). rewrite support_spec.
             unfold In. rewrite Hpt1. apply Exp_prop.div2_not_R0. apply HsizeG.

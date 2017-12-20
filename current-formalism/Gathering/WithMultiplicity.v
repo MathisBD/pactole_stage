@@ -1,4 +1,5 @@
 Require Import Omega.
+Require Import SetoidList.
 Require Export Pactole.Gathering.Definitions.
 Require Export Pactole.Spectra.MultisetSpectrum.
 Close Scope R_scope.
@@ -17,7 +18,7 @@ Context `{Names}.
 Context {Choice : update_choice T}.
 Context {UpdFun : update_function T}.
 
-Notation "!!" := (fun config => spect_from_config config origin : spectrum).
+Notation "!! config" := (@spect_from_config location _ _ _ multiset_spectrum config origin : spectrum) (at level 10).
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)
@@ -45,10 +46,8 @@ Definition spect_from_config_spec : forall (config : configuration) (pt : locati
   (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
   := fun config => spect_from_config_spec config origin.
 
-(* Only property also used for the flexible FSYNC gathering. *)
-(* FIXME: fix the notation failure with "=/=" *)
 Lemma spect_non_nil : 2 <= nG -> forall config,
-  complement (@equiv (multiset location) _) (!! config) MMultisetInterface.empty.
+  !! config =/= MMultisetInterface.empty.
 Proof.
 simpl spect_from_config. intros HnG config Heq.
 assert (Hlgth:= config_list_length config).
@@ -61,9 +60,8 @@ simpl in *.
 omega.
 Qed.
 
-(* FIXME: size gets typed as multiset spectrum instead of multiset location. *)
-Lemma invalid_support_length : nB = 0 -> forall config : configuration, invalid config ->
-  @size location _ _ _ (!! config) = 2.
+Lemma invalid_size : nB = 0 ->
+  forall config : configuration, invalid config -> size (!! config) = 2.
 Proof.
 intros HnB config [Heven [HsizeG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).
@@ -90,6 +88,95 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
     auto with arith.
 + rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
   rewrite HnB, plus_0_r. now apply even_div2.
+Qed.
+
+Lemma invalid_strengthen : nB = 0 -> forall config, invalid config ->
+  { pt1 : location & { pt2 : location | pt1 =/= pt2 & !! config == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG)) } }.
+Proof.
+intros HnB config Hconfig.
+(* Because we want a computational goal and the hypothesis is not,
+   we first destruct the support to get the elements and only then
+   prove that they are the same as the one given in [invalid]. *)
+assert (Hlen := invalid_size HnB Hconfig). rewrite size_spec in Hlen.
+destruct (support (!! config)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try discriminate; [].
+(* Transforming sig2 into sig to have only one goal after instanciating pt1 and pt2 *)
+cut {pt1 : location & {pt2 : location
+     | pt1 =/= pt2 /\ spect_from_config config origin == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG))}}.
+{ intros [? [? [? ?]]]. eauto. }
+exists pt1, pt2.
+destruct Hconfig as [Heven [Hge2 [pt1' [pt2' [Hdiff [Hpt1' Hpt2']]]]]].
+(* Both couples of points are the same *)
+assert (Hcase : pt1' == pt1 /\ pt2' == pt2 \/ pt1' == pt2 /\ pt2' == pt1).
+{ assert (Hin1 : InA equiv pt1' (pt1 :: pt2 :: nil)).
+  { rewrite <- Hsupp, support_spec. unfold In. rewrite Hpt1'.
+    destruct nG as [| [| nG]]; simpl; omega. }
+  assert (Hin2 : InA equiv pt2' (pt1 :: pt2 :: nil)).
+  { rewrite <- Hsupp, support_spec. unfold In. rewrite Hpt2'.
+    destruct nG as [| [| nG]]; simpl; omega. }
+  rewrite 2 InA_cons, InA_nil in Hin1, Hin2. clear -Hin1 Hin2 Hdiff.
+  decompose [or] Hin1; decompose [or] Hin2; tauto || elim Hdiff; etransitivity; eauto. }
+split.
++ intro. apply Hdiff.
+  decompose [and or] Hcase; repeat (etransitivity; eauto; symmetry).
++ symmetry. apply cardinal_total_sub_eq.
+  - intro pt. rewrite add_spec, singleton_spec.
+    repeat destruct_match;
+    destruct Hcase as [[Heq1 Heq2] | [Heq1 Heq2]];
+    rewrite Heq1 in *; rewrite Heq2 in *;
+    try match goal with H : pt == _ |- _ => rewrite H in *; clear H end;
+    rewrite ?Hpt1', ?Hpt2'; omega || now elim Hdiff.
+  - rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config, even_div2; auto; omega.
+Qed.
+
+Lemma invalid_dec : nB = 0 -> forall config, {invalid config} + {~invalid config}.
+Proof.
+intros HnB config.
+destruct (size (!! config)) as [| [| [| n]]] eqn:Hsize;
+try (right; intro Habs; apply invalid_size in Habs; omega); [].
+rewrite size_elements in Hsize.
+destruct (elements (!! config)) as [| [pt1 n1] [| [pt2 n2] [| ? ?]]] eqn:Helem;
+try discriminate; [].
+destruct (n1 =?= n2) as [Hn | Hn].
+* left.
+  assert (2 * n1 = nG).
+  { assert (Hcardinal := cardinal_spect_from_config config origin).
+    rewrite cardinal_fold_elements, Helem in Hcardinal. simpl in Hcardinal.
+    rewrite <- Hn, HnB in Hcardinal. omega. }
+  assert (n1 = Nat.div2 nG). { rewrite <- (Exp_prop.div2_double n1). now f_equal. }
+  split; [| split].
+  + now exists n1.
+  + cut (0 < n1); try omega; [].
+    assert (Hin : InA eq_pair (pt1, n1) (elements (!! config))).
+    { rewrite Helem. now left. }
+    rewrite elements_spec in Hin. simpl in Hin. omega.
+  + exists pt1, pt2.
+    hnf in Hn. subst n1 n2.
+    repeat split.
+    - assert (Hnodup := elements_NoDupA (!! config)).
+      rewrite Helem in Hnodup. inv Hnodup. rewrite InA_cons, InA_nil in *.
+      unfold eq_elt in *. simpl in *. tauto.
+    - change pt1 with (fst (pt1, Nat.div2 nG)). change (Nat.div2 nG) with (snd (pt1, Nat.div2 nG)) at 2.
+      eapply proj1. rewrite <- elements_spec.
+      rewrite Helem. now left.
+    - change pt2 with (fst (pt2, Nat.div2 nG)). change (Nat.div2 nG) with (snd (pt2, Nat.div2 nG)) at 2.
+      eapply proj1. rewrite <- elements_spec.
+      rewrite Helem. now right; left.
+* right.
+  intro Hvalid. elim Hn.
+  assert (Hhalf : 0 < Nat.div2 nG).
+  { destruct Hvalid as [_ [Hle _]]. destruct nG as [| [| ?]]; simpl; omega. }
+  destruct (invalid_strengthen HnB Hvalid) as [pt1' [pt2' Hdiff Hspect]].
+  assert (Hperm : PermutationA eq_pair ((pt1, n1) :: (pt2, n2) :: nil)
+                                       ((pt1', Nat.div2 nG) :: (pt2', Nat.div2 nG) :: nil)).
+  { rewrite <- Helem, Hspect. rewrite elements_add, elements_singleton; auto; [].
+    cbn [removeA]. rewrite singleton_other; trivial; [].
+    constructor.
+    + split; simpl; reflexivity || omega.
+    + destruct_match.
+      - elim Hdiff. hnf in * |-; simpl in *. auto.
+      - reflexivity. }
+  rewrite PermutationA_2 in Hperm; autoclass; [].
+  clear -Hperm. destruct Hperm as [[[] []] | [[] []]]; compute in *; congruence.
 Qed.
 
 End MultisetGathering.
