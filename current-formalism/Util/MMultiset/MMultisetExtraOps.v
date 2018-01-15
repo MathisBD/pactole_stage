@@ -1034,7 +1034,7 @@ Section MMultisetExtra.
   * intros m x n Hxnotinm Hpos HI x' Hx'.
     destruct (empty_or_In_dec m) as [Hm | [x'' Hx'']].
     + exists x. unfold simple_max. rewrite nfilter_In; auto. split.
-      - rewrite add_In. right. split; reflexivity || omega.
+      - rewrite add_In. left. split; reflexivity || omega.
       - rewrite Nat.eqb_eq, max_mult_add; trivial.
         rewrite Hm at 2.
         rewrite add_empty, singleton_spec.

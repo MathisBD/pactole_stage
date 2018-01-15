@@ -1637,12 +1637,12 @@ Section MMultisetFacts.
     + elim (In_empty Hin).
     + destruct Hin as [? [Hin _]]. rewrite InA_nil in Hin. elim Hin.
   * simpl. rewrite add_In, IHl; trivial. split; intros Hin.
-    + destruct Hin as [[n [Hin Hn]] | [? Heq]].
-      - exists n. split; trivial. now right.
+    + destruct Hin as [[? Heq] | [n [Hin Hn]]].
       - exists p. split; try (left; split); auto; omega.
+      - exists n. split; trivial. now right.
     + destruct Hin as [n [Hin Hn]]. inversion_clear Hin.
-      - destruct H. right. compute in *. split; trivial. omega.
-      - left. exists n. now split.
+      - destruct H. left. compute in *. split; trivial. omega.
+      - right. exists n. now split.
   Qed.
   
   Corollary from_elements_In_valid : forall x l, is_elements l ->
@@ -1865,7 +1865,7 @@ Section MMultisetFacts.
     rewrite Heq.
     - specialize (Hfg m' ltac:(intro; msetdec) x).
       rewrite add_same, Hx in Hfg. simpl in Hfg. apply Hfg; trivial; [].
-      rewrite add_In. right. split; try reflexivity. unfold In in *. omega.
+      rewrite add_In. left. split; try reflexivity. unfold In in *. omega.
     - intros m'' Hm'' x' acc' Hin' Hout'.
       assert (Hneq : x' =/= x). { intro Habs. apply Hout. now rewrite <- Habs. }
       rewrite <- (add_other x x' m[x] m' Hneq).
@@ -1939,7 +1939,7 @@ Section MMultisetFacts.
   intro m. split.
   + pattern m. apply ind; clear m.
     - intros m1 m2 Hm. setoid_rewrite Hm. reflexivity.
-    - intros m x n Hm Hn Hrec _. exists x. apply add_In. right. split; omega || reflexivity.
+    - intros m x n Hm Hn Hrec _. exists x. apply add_In. left. split; omega || reflexivity.
     - intro Habs. now elim Habs.
   + intros [x Hin]. intro Habs. revert Hin. rewrite Habs. apply In_empty.
   Qed.
@@ -2550,7 +2550,7 @@ Section MMultisetFacts.
     assert (Hdisjoint' : forall x, In x m' -> f x m'[x] && g x m'[x] = false).
     { intros y Hy. assert (y =/= x) by (intro; msetdec).
       specialize (Hdisjoint y). rewrite add_other in Hdisjoint; trivial; [].
-      apply Hdisjoint. rewrite add_In. now left. }
+      apply Hdisjoint. rewrite add_In. tauto. }
     repeat rewrite nfilter_add; trivial.
     destruct (f x n) eqn:Hfxn, (g x n) eqn:Hgxn; cbn -[equiv].
     - assert (Hx : (add x n m')[x] = n) by msetdec.
@@ -2767,7 +2767,7 @@ Section MMultisetFacts.
     split; intros Hrec Hand; now rewrite Heq in *; apply Hrec; setoid_rewrite Heq || setoid_rewrite <- Heq.
   + intros m' x n Hin Hn Hrec Hdisjoint.
     assert (Hdisjoint' : forall y, In y m' -> f y && g y = false).
-    { intros y Hin'. apply Hdisjoint. rewrite add_In. now left. }
+    { intros y Hin'. apply Hdisjoint. rewrite add_In. tauto. }
     repeat rewrite filter_add; trivial.
     destruct (f x) eqn:Hfx, (g x) eqn:Hgx; simpl orb; cbn iota.
     - specialize (Hdisjoint x). rewrite Hfx, Hgx in Hdisjoint.
@@ -3579,12 +3579,12 @@ Section MMultisetFacts.
         - destruct Hrec as [y [Hin Hy]].
           ++ intro Habs. apply Hall. intros y Hin. rewrite add_In in Hin. destruct (equiv_dec y x) as [Heq | Heq].
              -- rewrite not_In in Hm. now rewrite Heq, add_same, Hm.
-             -- destruct Hin as [Hin | []]; try contradiction; []. apply Habs in Hin. now rewrite add_other.
+             -- destruct Hin as [[] | Hin]; try contradiction; []. apply Habs in Hin. now rewrite add_other.
           ++ exists y. split.
-             -- rewrite add_In. now left.
+             -- rewrite add_In. tauto.
              -- rewrite add_other; trivial. intro Heq. apply Hm. now rewrite <- Heq.
         - exists x. split.
-          ++ rewrite add_In. right. split; omega || reflexivity.
+          ++ rewrite add_In. left. split; omega || reflexivity.
           ++ rewrite not_In in Hm. rewrite add_same, Hm. simpl. now rewrite Hfxn.
       + intro Habs. elim Habs. intros x Hin. elim (In_empty Hin).
     * intro Habs. destruct Hm as [x [Hin Hx]]. apply Habs in Hin. rewrite Hin in Hx. discriminate.

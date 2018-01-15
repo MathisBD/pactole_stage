@@ -449,8 +449,9 @@ destruct Hk; subst k1.
   simpl in Hdiff. lra.
 Qed.
 
-(* The images of two points defines a (unique) similarity. *)
-Theorem build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R.
+(** The images of two points define a (unique) similarity. *)
+(* TODO: generalize it and move it to Similarity.v *)
+Definition build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R.
 Proof.
 refine (translation (pt3 - pt1) ∘ (@homothecy pt1 ((pt4 - pt3) / (pt2 - pt1)) _)).
 abstract (simpl in *; intro Habs; apply Rmult_integral in Habs;
@@ -458,10 +459,10 @@ abstract (simpl in *; intro Habs; apply Rmult_integral in Habs;
 Defined.
 
 Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
-  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1 =/= pt2) (H34' : pt3 =/= pt4),
+  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
   pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
   build_similarity H12 H34 == build_similarity H12' H34'.
-Proof. intros. simpl in *. intro. field. lra. Qed.
+Proof. intros. simpl in *. intro. subst. field. lra. Qed.
 
 Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity Hdiff12 Hdiff34 pt1 == pt3.
