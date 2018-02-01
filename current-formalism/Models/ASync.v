@@ -19,9 +19,12 @@ Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
 Require Import RelationClasses.
-Require Import Pactole.Setting.
 Require Import Pactole.Spaces.Similarity.
 Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
+        
 (*Require Pactole.CommonRealFormalism.*)
 (* Require Pactole.Similarity. *)
 
@@ -48,13 +51,36 @@ Module Make (Location : RealMetricSpace)
 Section ASynchFormalism.
 
   Context {loc info : Type}.
-  Context `{IsTarget loc info}.
-  Context {RMS : RealMetricSpace loc}. (* only used for the equality case of the triangle inequality *)
+  Context `{EqDec loc}.
+  Context `{EqDec info}.
+  Instance SourceTarget : IsLocation loc (loc*loc*loc*info) :=
+    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
+ (* Context {RMS : RealMetricSpace loc }. (* only used for the equality case of the triangle inequality *)*)
   Context `{Names}.
-  Context {Spect : Spectrum loc info}.
+  Context {Spect : Spectrum loc (loc*loc*loc*info)}.
   Context {T : Type}.
   Context {delta : R}.
   Context {sim : Bijection.bijection loc}.
+  Context `{@frame_choice loc (loc*loc*loc*info) loc _ _ _ _ _}.
+
+  Instance ChooseUpdateAsync : (update_choice R) :=
+    {|
+      update_choice_Setoid := R_Setoid;
+      update_choice_EqDec := R_EqDec
+    |}.
+
+  Instance ASyncUpdate : update_function R :=
+    {
+      update := fun config g traj ratio =>
+        let (loc,src,tgt,inf) := (config (Good g)) in
+        if loc = tgt then (tgt,tgt,traj,inf)
+        else
+          (* ration a mettre entre 0 et 1*)
+          let new_loc := loc + (ratio * (tgt - loc)) in
+          (new_loc, src, tgt, inf)}.
+
+      
+(*
 
   (*Import Common.*)
  (* Notation "s ⁻¹" := (Sim.inverse s) (at level 99).*)
@@ -111,18 +137,6 @@ intros [] [] [] H12 H23; unfold Aom_eq in *; congruence || easy || auto; [].
 intros ? ? Heq. rewrite (H12 _ _ Heq). now apply H23.
 Qed.
 *)
-Record demonic_action := {
-  relocate_byz : Names.B → Location.t;
-  step : Names.ident → Config.RobotConf -> Active_or_Moving;
-  step_delta : forall id Rconfig sim, step id Rconfig = Active sim -> 
-       (Location.eq Rconfig.(Config.loc) Rconfig.(Config.info).(Config.target)) \/
-       (Location.dist Rconfig.(Config.loc) Rconfig.(Config.robot_info).(Config.source) >= delta)%R;
-  step_compat : Proper (eq ==> Config.eq_RobotConf ==> Aom_eq) step;
-  step_zoom :  forall id config sim c, step id config = Active sim -> (sim c).(Sim.zoom) <> 0%R;
-  step_center : forall id config sim c , step id config = Active sim -> 
-                                         Location.eq (sim c).(Sim.center) c;
-  step_flexibility : forall id config r, step id config = Moving r -> (0 <= r <= 1)%R}.*)
-Set Implicit Arguments.
 
 Definition da_eq (da1 da2 : demonic_action) :=
   (forall id config, (Aom_eq)%signature (da1.(step) id config) (da2.(step) id config)) /\
@@ -671,3 +685,4 @@ End Make.
  *** fill-column: 80 ***
  *** End: ***
  *)
+*)
