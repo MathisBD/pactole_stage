@@ -1481,8 +1481,8 @@ Qed.
 Lemma HdRel_app : forall l1 l2 R (a : A), HdRel R a l1 -> HdRel R a l2 -> HdRel R a (l1++l2).
 Proof. induction l1; simpl; auto. intros. inversion_clear H. now constructor. Qed.
 
-Lemma sort_app : forall R,
-  forall l1 l2 : list A, sort R l1 -> sort R l2 -> (forall x y, In x l1 -> In y l2 -> R x y) -> sort R (l1 ++ l2).
+Lemma sort_app : forall R (l1 l2 : list A),
+  sort R l1 -> sort R l2 -> (forall x y, In x l1 -> In y l2 -> R x y) -> sort R (l1 ++ l2).
 Proof.
 induction l1; simpl in *; intuition. constructor.
 + apply IHl1.
@@ -1496,6 +1496,16 @@ Qed.
 
 Theorem PermutationA_rev : forall l, PermutationA eqA l (rev l).
 Proof. intro. apply (Permutation_PermutationA_weak _). apply Permutation_rev. Qed.
+
+Lemma fold_symmetric : forall (f : B -> A -> B),
+  Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
+  forall l i, eqB (fold_left f l i) (fold_right (flip f) i l).
+Proof.
+intros f Hf Hf2 l i.
+rewrite <- (rev_involutive l) at 2. rewrite fold_left_rev_right.
+eapply fold_left_symmetry_PermutationA; reflexivity || autoclass; [].
+apply PermutationA_rev; autoclass.
+Qed.
 
 (* A boolean version of membership *)
 Definition mem eq_dec (x : A) l := if @InA_dec A eqA eq_dec x l then true else false.

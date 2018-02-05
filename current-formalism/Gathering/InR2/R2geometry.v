@@ -1568,11 +1568,12 @@ Definition wbarycenter E :=
 Definition weighted_sqr_dist_sum (pt: R2.t) (E: list (R2.t * R)) : R :=
   List.fold_left (fun acc pt' => acc + snd pt' * (R2.dist pt (fst pt'))²) E 0.
 
-Axiom Wbarycenter_n_spec :
+(*
+Axiom wbarycenter_n_spec :
   forall (E: list (R2.t * R)),
     forall p,
       weighted_sqr_dist_sum (wbarycenter E) E <= weighted_sqr_dist_sum p E.
-
+*)
 Definition is_wbarycenter_n (E: list (R2.t * R)) (B: R2.t) : Prop :=
   forall p, weighted_sqr_dist_sum B E <= weighted_sqr_dist_sum p E.
 
@@ -1615,6 +1616,17 @@ apply fold_left_symmetry_PermutationA; autoclass.
 + intros [[] ?] [[] ?] ?. hnf; simpl in *; ring || f_equal; ring.
 Qed.
 
+(* The first component of wbarycenter_aux is the weighted sum of all points. *)
+Lemma wbarycenter_aux_fst : forall E pt sumR,
+  fst (wbarycenter_aux E (pt, sumR)) = List.fold_left (fun acc xn => ((snd xn * fst xn) + acc)%R2) E pt.
+Proof. induction E; intros; simpl; trivial; now rewrite IHE. Qed.
+
+(* The second component of wbarycenter_aux is the sum of all coefficients. *)
+Lemma wbarycenter_aux_snd : forall E pt sumR,
+  snd (wbarycenter_aux E (pt, sumR)) = List.fold_left (fun acc xn => snd xn + acc) E sumR.
+Proof. induction E; intros; simpl; trivial; now rewrite IHE. Qed.
+
+
 Lemma wbarycenter_aux_snd_nonneg : forall E init,
   (List.Forall (fun x => 0 <= snd x) E) ->
   snd init <= snd (wbarycenter_aux E init).
@@ -1642,33 +1654,25 @@ simpl. apply Rlt_le_trans with (snd e + snd init).
   rewrite Forall_forall in *. intros x Hin. apply Rlt_le, HE. now right.
 Qed.
 
-(* R2norm (- INR (length E) * p + fold_left R2.add E R2.origin) <= INR (length E) * dm *)
+(* Let W be the sum of all weights,
+       PT the weighted sum of all points,
+   and dm the diameter of the configuration (= max distance between two points).
+   Then, we have:
+      forall pt, dist(W pt, PT) = R2norm(W pt - PT)
+                                = R2norm(Sum[i=0..n](w_i pt) - Sum[i=0..n](w_i p_i))
+                                = R2norm(Sum[i=0..n](w_i (pt - p_i)))
+                               <= Sum[i=0..n](w_i R2norm(pt - p_i))           by triangular inequality
+                               <= Sum[i=0..n](w_i dm))                        by definition of diameter
+                                = dm Sum[i=0..n](w_i)
+                                = dm W *)
 Lemma wbarycenter_dist_decrease_aux : forall dm E pt sumR,
   0 <= sumR ->
-(*   (sumR <> 0 -> forall p, InA (R2.eq@@1)%signature p E -> R2.dist pt (fst p) <= dm) -> *)
   (forall p, InA (R2.eq * eq)%signature p E -> 0 < snd p) ->
   (forall p1 p2, InA (R2.eq * eq)%signature p1 E -> InA (R2.eq * eq)%signature p2 E ->
                  R2.dist (fst p1) (fst p2) <= dm) ->
   let '(sum_pt, sum_coeff) := wbarycenter_aux E (pt, sumR) in
   forall p, InA (R2.eq@@1)%signature p E -> R2.dist (sum_coeff * (fst p)) sum_pt <= sum_coeff * dm.
-Proof.
-intros dm E.
-induction E as [| e E]; intros pt sumR HsumR Hpos Hdist.
-* simpl. intros ? Hin. rewrite InA_nil in Hin. tauto.
-* simpl.
-  destruct (wbarycenter_aux E ((snd e * fst e + pt)%R2, snd e + sumR)) as [pt' k'] eqn:Heq'.
-  intros p Hin.
-  assert (HsumR' : 0 < snd e + sumR). { specialize (Hpos e ltac:(now left)). lra. }
-  assert (Hpos' : forall p : R2.t * R, InA (R2.eq * eq)%signature p E -> 0 < snd p).
-  { clear -Hpos. intros p Hin. apply Hpos. now right. }
-  assert (Hdist': forall p1 p2, InA (R2.eq * eq)%signature p1 E ->
-                    InA (R2.eq * eq)%signature p2 E -> R2.dist (fst p1) (fst p2) <= dm).
-  { intros p1 p2 Hin1 Hin2. apply Hdist; now right. }
-  specialize (IHE (snd e * fst e + pt)%R2 _ (Rlt_le _ _ HsumR') Hpos' Hdist').
-  rewrite Heq' in IHE.
-  inv Hin; try auto; [].
-  
-Admitted.
+Proof. Admitted.
 
 Lemma wbarycenter_dist_decrease : forall (E : list (R2.t * R)) (dm : R),
   (forall p, InA (R2.eq * eq)%signature p E -> 0 < snd p) ->

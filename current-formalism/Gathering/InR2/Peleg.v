@@ -189,7 +189,7 @@ Qed.
 (** **  Definition of the robogram  **)
 
 Open Scope R_scope.
-Check Spect.multiplicity.
+
 (** The robogram solving the gathering problem in R². *)
 Definition ffgatherR2_pgm (s : Spect.t) : R2.t :=
   wbarycenter (List.map (fun xn => (fst xn, INR (snd xn))) (Spect.M.elements s)).
@@ -802,7 +802,6 @@ Proof.
             ** subst C. change (conf Pid) with (fst (conf Pid, INR kP)).
                eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
                  with (p := (Config.loc (conf Pid), INR kP)).
-               ++ subst relems. rewrite Hmax. discriminate.
                ++ subst relems elems. intro.
                   rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
                   intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -839,7 +838,6 @@ Proof.
             rewrite <- R2norm_dist, R2.dist_sym.
             eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
                  with (p := (Config.loc (conf Pid), INR kP)).
-            ++ subst relems. rewrite Hmax. discriminate.
             ++ subst relems elems. intro.
                rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
                intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -865,7 +863,6 @@ Proof.
             ** subst C. change (conf Pid) with (fst (conf Qid, INR kP)).
                eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
                  with (p := (Config.loc (conf Qid), INR kQ)).
-               ++ subst relems. rewrite Hmax. discriminate.
                ++ subst relems elems. intro.
                   rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
                   intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -902,7 +899,6 @@ Proof.
             rewrite <- R2norm_dist, R2.dist_sym.
             eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
                  with (p := (Config.loc (conf Qid), INR kQ)).
-            ++ subst relems. rewrite Hmax. discriminate.
             ++ subst relems elems. intro.
                rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
                intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -951,7 +947,6 @@ Proof.
         - apply Rplus_le_compat_r.
           eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
             with (p := (Config.loc (conf Pid), INR kP)).
-          ++ subst relems. rewrite Hmax. discriminate.
           ++ subst relems elems. intro.
              rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
              intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -1001,7 +996,6 @@ Proof.
         - apply Rplus_le_compat_r.
           eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
             with (p := (Config.loc (conf Qid), INR kQ)).
-          ++ subst relems. rewrite Hmax. discriminate.
           ++ subst relems elems. intro.
              rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
              intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
@@ -1093,8 +1087,6 @@ assert (HonlyC: forall KP, InA Spect.eq_elt KP nxt_elems -> R2.eq (fst KP) C).
           unfold measure.
                eapply (@wbarycenter_dist_decrease relems (max_dist_spect (!! conf)))
                  with (p := ((Config.loc (conf Pid)), INR (snd KP))).
-          ++ subst relems elems. intro Habs. apply map_eq_nil in Habs.
-             revert Habs. rewrite Spect.elements_nil. apply spect_non_nil.
           ++ subst relems elems. intro.
              rewrite (InA_map_iff (eqA := Spect.eq_pair)); autoclass; [].
              intros [[pta na] [Heq Hin]]. rewrite Spect.elements_spec in Hin.
