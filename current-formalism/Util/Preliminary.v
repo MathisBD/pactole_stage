@@ -1907,6 +1907,14 @@ Instance R_EqDec : @EqDec R _ := Rdec.
 Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.
 Proof. intros a b ? ?. now apply Fourier_util.Rle_mult_inv_pos. Qed.
 
+Lemma Rdiv_le_1 : forall a b, 0 < b -> a <= b -> a / b <= 1.
+Proof.
+intros a b Hb Ha. rewrite <- (Rinv_r b ltac:(lra)).
+apply Rmult_le_compat_r; trivial; [].
+now apply Rlt_le, Rinv_0_lt_compat.
+Qed.
+
+
 (* Lemma Rdiv_le_compat : forall a b c, (0 <= a -> a <= b -> 0 < c -> a / c <= b / c)%R.
 Proof.
 intros a b c ? ? ?. unfold Rdiv. apply Rmult_le_compat; try lra.

@@ -1,3 +1,4 @@
+Require Import Omega.
 Require Import Morphisms.
 Require Import Rbase.
 Require Import Psatz.
@@ -17,15 +18,23 @@ Proof. intros ? ? Heq. apply Heq. Qed.
 
 Coercion proj_ratio : ratio >-> R.
 
-(** [0] is a ratio. *)
+(** Building rational ratios. *)
+Lemma mk_ratio_proof : forall n m, 0 < m -> n <= m -> (0 <= INR n / INR m <= 1)%R.
+Proof.
+intros n m Hm Hn. apply le_INR in Hn. apply lt_0_INR in Hm. split.
++ apply Rdiv_le_0_compat; auto using pos_INR.
++ now apply Rdiv_le_1.
+Qed.
+
+(* Convenient notations.
+   The first one is used to autoamtically provide the proofs, whereas the second one is used for display. *)
+Definition mk_ratio n m Hm Hn : ratio := exist _ _ (mk_ratio_proof n m Hm Hn).
+Notation "n '//r' m" := (mk_ratio n m ltac:(abstract omega) ltac:(abstract omega)) (only parsing, at level 10).
+Notation "n '/r' m" := (mk_ratio n m _ _) (at level 10).
+
+(** 0 and 1 are ratios. *)
 Definition ratio_0 : ratio.
 Proof. refine (exist _ 0%R _). abstract lra. Defined.
-
-(** [1/2] is a ratio. *)
-Definition ratio_1_2 : ratio.
-Proof. refine (exist _ (1/2)%R _). abstract lra. Defined.
-
-(** [1] is a ratio. *)
 Definition ratio_1 : ratio.
 Proof. refine (exist _ 1%R _). abstract lra. Defined.
 
