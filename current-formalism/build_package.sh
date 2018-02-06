@@ -19,7 +19,7 @@ cp Bijection.v Preliminary.v Lexprod.v Robots.v Configurations.v Stream.v Common
 
 cp Convergence/Impossibility_2G_1B.v ./package/Convergence/
 
-cp Gathering/Definitions.v Gathering/FlexDefinitions.v Gathering/Impossibility.v ./package/Gathering/
+cp Gathering/Definitions.v Gathering/FlexDefinitions.v ./package/Gathering/
 
 cp Gathering/InR/Rcomplements.v Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
 
