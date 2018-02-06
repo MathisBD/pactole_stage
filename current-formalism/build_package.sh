@@ -15,7 +15,7 @@ cp MMaps/MMapInterface.v MMaps/MMapFacts.v MMaps/MMapWeakList.v ./package/MMaps/
 
 cp MMultiset/Preliminary.v MMultiset/MMultisetInterface.v MMultiset/MMultisetFacts.v MMultiset/MMultisetWMap.v MMultiset/MMultisetMap.v MMultiset/MMultisetExtraOps.v ./package/MMultiset/
 
-cp Preliminary.v Lexprod.v Robots.v Configurations.v Stream.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v FlexibleFormalism.v RigidEquivalence.v MultisetSpectrum.v SetSpectrum.v LimitedMultisetSpectrum.v LimitedSetSpectrum.v Similarity.v makefile _CoqProject ./package/
+cp Bijection.v Preliminary.v Lexprod.v Robots.v Configurations.v Stream.v CommonFormalism.v CommonRealFormalism.v RigidFormalism.v FlexibleFormalism.v RigidEquivalence.v MultisetSpectrum.v SetSpectrum.v LimitedMultisetSpectrum.v LimitedSetSpectrum.v RealMetricSpace.v Similarity.v makefile _CoqProject ./package/
 
 cp Convergence/Impossibility_2G_1B.v ./package/Convergence/
 
