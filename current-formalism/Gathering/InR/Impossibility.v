@@ -27,7 +27,7 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
-Require Import Spaces.R.
+Require Import Pactole.Spaces.R.
 Require Import Pactole.Gathering.WithMultiplicity.
 Set Implicit Arguments.
 Close Scope R_scope.
@@ -319,7 +319,7 @@ repeat split; trivial; [|].
 + rewrite <- Nat.even_spec in Heven.
   assert (HnG := nG_non_0). simpl nG in *.
   destruct n as [| [| ?]]; simpl; discriminate || omega || now elim HnG.
-+ exists (sim origin), (sim RealMetricSpace.unit).
++ exists (sim origin), (sim one).
   repeat split.
   - intro Heq. apply Similarity.injective in Heq. symmetry in Heq. revert Heq. apply non_trivial.
   - rewrite Hsim, map_injective_spec; autoclass; try apply Similarity.injective; [].
@@ -342,7 +342,7 @@ Definition move := r spectrum0 ratio_1.
 (** The key idea is to prove that we can always make robots see the same spectrum in any invalid configuration.
     If they do not gather in one step, then they will never do so.
 
-    So, in [config1], if the robot move to [unit], we activate all robots and they swap locations.
+    So, in [config1], if the robot move to [one], we activate all robots and they swap locations.
     If it does not, we activate only this tower which does not reach to other one.
     The new configuration is the same up to scaling, translation and rotation.  *)
 

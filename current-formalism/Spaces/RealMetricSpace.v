@@ -44,8 +44,8 @@ Class RealMetricSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   add_morph : forall a b u, add (mul a u) (mul b u) == mul (a + b) u;
   
   mul_1 : forall u, mul 1 u == u;
-  unit : T; (* TODO: is it really a good name? *)
-  non_trivial : unit =/= origin}.
+  one : T; (* TODO: is it really a good name? *)
+  non_trivial : one =/= origin}.
 
 Global Arguments origin : simpl never.
 

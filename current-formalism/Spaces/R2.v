@@ -73,7 +73,7 @@ Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
 Instance R2_RMS : RealMetricSpace R2 := {|
   origin := (0, 0);
-  unit := (1, 0);
+  one := (1, 0);
   dist := fun x y => sqrt ((fst x - fst y)² + (snd x - snd y)²);
   add := fun x y => let '(x1, x2) := x in let '(y1, y2) := y in (x1 + y1, x2 + y2)%R;
   mul := fun k x => let '(x1, x2) := x in (k * x1, k * x2)%R;

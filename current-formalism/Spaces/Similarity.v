@@ -56,7 +56,7 @@ Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 Lemma zoom_non_null `{RealMetricSpace} : forall sim, sim.(zoom) <> 0.
 Proof.
 intros sim Heq. apply non_trivial.
-assert (Heqsim : equiv (sim unit) (sim origin)).
+assert (Heqsim : equiv (sim one) (sim origin)).
 { now rewrite <- dist_defined, sim.(dist_prop), Heq, Rmult_0_l. }
 rewrite sim.(Inversion) in Heqsim. rewrite <- Heqsim, <- sim.(Inversion). reflexivity.
 Qed.
@@ -65,11 +65,11 @@ Lemma zoom_pos `{RealMetricSpace} : forall sim, 0 < sim.(zoom).
 Proof.
 intros sim. apply Preliminary.Rle_neq_lt.
 - destruct sim as [f k Hk]. simpl.
-  assert (Hnon_triv := non_trivial). specialize (Hk unit origin).
+  assert (Hnon_triv := non_trivial). specialize (Hk one origin).
   unfold complement in Hnon_triv. rewrite <- dist_defined in Hnon_triv.
-  assert (Hdist := dist_pos unit origin).
-  generalize (dist_pos (f unit) (f origin)).
-  rewrite <- (Rmult_0_l (dist unit origin)) at 1.
+  assert (Hdist := dist_pos one origin).
+  generalize (dist_pos (f one) (f origin)).
+  rewrite <- (Rmult_0_l (dist one origin)) at 1.
   rewrite Hk. apply Rmult_le_reg_r. apply Rle_neq_lt; auto.
 - intro. now apply (zoom_non_null sim).
 Qed.

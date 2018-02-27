@@ -48,7 +48,7 @@ Typeclasses eauto := (bfs).
 
 Instance R_RMS : RealMetricSpace R := {|
   origin := 0;
-  unit := 1;
+  one := 1;
   dist := fun x y => Rabs (x - y);
   add := Rplus;
   mul := Rmult;
@@ -450,7 +450,7 @@ destruct Hk; subst k1.
 Qed.
 
 (** The images of two points define a (unique) similarity. *)
-(* TODO: generalize it and move it to Similarity.v *)
+(* TODO on its way: generalize it and move it to Similarity.v *)
 Definition build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R.
 Proof.
 refine (translation (pt3 - pt1) ∘ (@homothecy pt1 ((pt4 - pt3) / (pt2 - pt1)) _)).
