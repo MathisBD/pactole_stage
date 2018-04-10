@@ -716,7 +716,7 @@ Section MMultisetExtra.
   intro m. unfold max_mult.
   pattern (fold (fun _ : elt => Init.Nat.max) m 0). apply fold_rect.
   * intros ? ? ? Heq. now setoid_rewrite Heq.
-  * intros ? _ []. subst. apply empty_spec.
+  * intros ? _ []. intros. subst. apply empty_spec.
   * intros x m' acc Hin Hout Hrec n Hall [y Hy].
     subst. rewrite not_In in Hout.
     destruct (equiv_dec y x) as [Hyx | Hyx].
@@ -939,7 +939,28 @@ Section MMultisetExtra.
   Instance max_aux_compat : Proper (equiv ==> Logic.eq ==> Logic.eq * equiv ==> Logic.eq * equiv) max_aux.
   Proof.
   intros m1 m2 Hm x y Hxy [] [] []. simpl in * |-. subst. unfold max_aux. cbn -[equiv].
-  destruct_match; split; try reflexivity; cbn -[equiv]; trivial; now f_equiv.
+  destruct_match;
+    split;
+    destruct_match;
+    try apply nat_compare_eq in Heqc;
+    try apply nat_compare_gt in Heqc;
+    try apply nat_compare_lt in Heqc;
+    try apply nat_compare_eq in Heqc0;
+    try apply nat_compare_gt in Heqc0;
+    try apply nat_compare_lt in Heqc0;
+    try reflexivity;
+    cbn -[equiv];
+    trivial;
+  try (f_equiv);
+  try easy;
+  try (apply nat_compare_lt in Heqc0;
+       intuition);
+  try (apply nat_compare_lt in Heqc;
+  intuition);
+  try (apply nat_compare_lt in Heqc0;
+       intuition);
+  try (apply nat_compare_lt in Heqc;
+  intuition).
   Qed.
   
   Lemma max_aux_transpose : transpose2 (Logic.eq * equiv)%signature max_aux.
@@ -947,7 +968,7 @@ Section MMultisetExtra.
   intros x y n p [k m]. unfold max_aux. cbn -[equiv].
   repeat (destruct_match; cbn -[equiv]);
   try rewrite ?Nat.compare_eq_iff, ?Nat.compare_lt_iff, ?Nat.compare_gt_iff in *;
-  subst; split; cbn -[equiv]; omega || (now f_equiv) || trivial.
+  try (subst); split; cbn -[equiv]; omega || (now f_equiv) || trivial.
   - apply add_comm.
   - apply add_singleton_other_comm. omega.
   Qed.
@@ -986,7 +1007,7 @@ Section MMultisetExtra.
     * rewrite max_mult_add; trivial; []. unfold max_aux at 1. rewrite <- max_mult_fst_max.
       do 2 destruct_match; cbn -[equiv];
       rewrite ?Nat.compare_eq_iff, ?Nat.compare_lt_iff, ?Nat.compare_gt_iff,
-              ?Nat.eqb_neq, ?Nat.eqb_eq in *; subst.
+              ?Nat.eqb_neq, ?Nat.eqb_eq in *; try (subst).
       - f_equiv. rewrite Hrec. apply nfilter_extensionality_compat;
         now autoclass; intros; rewrite Nat.max_id.
       - exfalso. rewrite Nat.max_id in *. tauto.
@@ -995,9 +1016,11 @@ Section MMultisetExtra.
         intros; rewrite max_r; reflexivity || omega.
       - cut (nfilter (fun _ : elt => Nat.eqb (Nat.max n (max_mult m))) m == empty);
           try (now intro Heq; rewrite Heq, add_empty); [].
-        rewrite nfilter_none, for_all_spec; try (now repeat intro; subst); [].
+        rewrite nfilter_none, for_all_spec; try (now repeat intro; try (subst)).
         intros y p. rewrite Bool.negb_true_iff, Nat.eqb_neq.
         assert (Hmax := max_mult_spec_weak m y). omega.
+        repeat intro. now rewrite H1.
+        repeat intro. now rewrite H1.
       - exfalso. rewrite max_l in *; omega.
   + unfold max, simple_max. now rewrite fold_empty, nfilter_empty.
   Qed.

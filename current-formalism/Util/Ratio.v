@@ -30,7 +30,7 @@ Proof. refine (exist _ 1%R _). abstract lra. Defined.
 Record path T `{Setoid T}:= {
   path_f :> ratio -> T;
   path_compat :> Proper (equiv ==> equiv) path_f }.
-Arguments path_f {T} {_} _.
+Arguments path_f {T} {_} _ _.
 
 Instance path_Setoid T {S : Setoid T} : Setoid (path T) := { equiv := fun x y => path_f x == y }.
 Proof. split.

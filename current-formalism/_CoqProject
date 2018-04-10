@@ -12,7 +12,7 @@ Util/MMultiset/MMultisetInterface.v
 Util/MMultiset/MMultisetWMap.v
 #Util/MMultiset/MMultisetMap.v
 Util/MMultiset/MMultisetFacts.v
-Util/MMultiset/MMultisetExtraOps.v
+#Util/MMultiset/MMultisetExtraOps.v
 Util/MMultiset/Preliminary.v
 
 ## Core

@@ -63,6 +63,21 @@ Section ASynchFormalism.
   Context {sim : Bijection.bijection loc}.
   Context `{@frame_choice loc (loc*loc*loc*info) loc _ _ _ _ _}.
 
+  
+  Inductive action := 
+  | Move (dist : R)         (* moving ratio *)
+  | LookCompute (ref_change : Iso.t).     (* change of referential *)
+
+  Definition action_eq (a1 a2: action) :=
+    match a1, a2 with
+    | Move d1, Move d2 => d1 = d2
+    | LookCompute ref_change1, LookCompute ref_change2 => Iso.eq ref_change1 ref_change2
+    | _, _ => False
+    end.
+
+  Lemma action_eq_equiv : equivalence action_eq.
+  
+  
   Instance ChooseUpdateAsync : (update_choice R) :=
     {|
       update_choice_Setoid := R_Setoid;
