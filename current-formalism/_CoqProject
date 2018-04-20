@@ -12,7 +12,7 @@ Util/MMultiset/MMultisetInterface.v
 Util/MMultiset/MMultisetWMap.v
 #Util/MMultiset/MMultisetMap.v
 Util/MMultiset/MMultisetFacts.v
-#Util/MMultiset/MMultisetExtraOps.v
+Util/MMultiset/MMultisetExtraOps.v
 Util/MMultiset/Preliminary.v
 
 ## Core
@@ -39,12 +39,13 @@ Models/Similarity.v
 #Models/DiscreteASync.v
 #Models/DiscreteGraphSSync.v
 #Models/GraphRigid.v
+Models/ASync.v
 
 ## Spaces
 Spaces/RealMetricSpace.v
 Spaces/Similarity.v
 Spaces/R.v
-Spaces/R2.v
+#Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
 #Spaces/DiscreteSpace.v
@@ -59,17 +60,17 @@ Spectra/LimitedMultisetSpectrum.v
 #Spectra/PointedMultisetSpectrum.v
 
 ## Case Study: Convergence
-Convergence/Impossibility_2G_1B.v
+#Convergence/Impossibility_2G_1B.v
 
 ## Case Study: Gathering
 Gathering/Definitions.v
 Gathering/WithMultiplicity.v
 #Gathering/Impossibility.v
-Gathering/InR/Impossibility.v
+#Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
-Gathering/InR2/Algorithm.v
+#Gathering/InR2/Algorithm.v
 #Gathering/FlexDefinitions.v
-Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+#Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 
 ## Case Study: Ring Exploration
 #Exploration/Graph/Definitions.v

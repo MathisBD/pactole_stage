@@ -941,26 +941,11 @@ Section MMultisetExtra.
   intros m1 m2 Hm x y Hxy [] [] []. simpl in * |-. subst. unfold max_aux. cbn -[equiv].
   destruct_match;
     split;
-    destruct_match;
-    try apply nat_compare_eq in Heqc;
-    try apply nat_compare_gt in Heqc;
-    try apply nat_compare_lt in Heqc;
-    try apply nat_compare_eq in Heqc0;
-    try apply nat_compare_gt in Heqc0;
-    try apply nat_compare_lt in Heqc0;
     try reflexivity;
     cbn -[equiv];
     trivial;
   try (f_equiv);
-  try easy;
-  try (apply nat_compare_lt in Heqc0;
-       intuition);
-  try (apply nat_compare_lt in Heqc;
-  intuition);
-  try (apply nat_compare_lt in Heqc0;
-       intuition);
-  try (apply nat_compare_lt in Heqc;
-  intuition).
+  try easy.
   Qed.
   
   Lemma max_aux_transpose : transpose2 (Logic.eq * equiv)%signature max_aux.
@@ -1019,8 +1004,6 @@ Section MMultisetExtra.
         rewrite nfilter_none, for_all_spec; try (now repeat intro; try (subst)).
         intros y p. rewrite Bool.negb_true_iff, Nat.eqb_neq.
         assert (Hmax := max_mult_spec_weak m y). omega.
-        repeat intro. now rewrite H1.
-        repeat intro. now rewrite H1.
       - exfalso. rewrite max_l in *; omega.
   + unfold max, simple_max. now rewrite fold_empty, nfilter_empty.
   Qed.
