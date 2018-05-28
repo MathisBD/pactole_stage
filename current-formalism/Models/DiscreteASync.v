@@ -27,6 +27,14 @@ Require Pactole.CommonDiscreteFormalism.
 Require Pactole.Stream.
 (* Require Pactole.Similarity. *)
 
+Context {loc info T1 T2 : Type}.
+Context `{IsLocation loc info}.
+Instance SourceTarget : IsLocation loc (loc*loc*loc*info) :=
+    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
+Context `{Names}.
+Context {Spect : Spectrum loc info}.
+Context `{@frame_choice loc info T1 _ _ _ _ _}.
+Context {delta : Z}.
 
 Module Type Delta.
   Parameter delta: Z.
