@@ -38,6 +38,7 @@ Import Pactole.Spaces.Similarity.
 Import Datatypes. (* to recover [id] *)
 Set Implicit Arguments.
 Close Scope R_scope.
+Close Scope VectorSpace_scope.
 
 
 (** *  The Gathering Problem  **)
@@ -62,8 +63,9 @@ Existing Instance R2_RMS. *)
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Loc : Location := make_Location R2.
-Instance RMS : RealMetricSpace location := R2_RMS.
-Remove Hints R2_RMS : typeclass_instances.
+Instance VS : RealVectorSpace location := R2_VS.
+Instance ES : EuclideanSpace location := R2_ES.
+Remove Hints R2_VS R2_ES : typeclass_instances.
 Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
@@ -102,7 +104,8 @@ Ltac changeR2 :=
   change R2 with location in *;
   change R2_Setoid with location_Setoid in *;
   change R2_EqDec with location_EqDec in *;
-  change R2_RMS with RMS in *.
+  change R2_VS with VS in *;
+  change R2_ES with ES in *.
 
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
 Proof.
@@ -1170,7 +1173,7 @@ simpl in Hlen; omega || clear Hlen; [| |].
 + rewrite R2_dist_defined_2.
   rewrite SEC_on_SEC, Hsec, radius_is_max_dist.
   transitivity (dist pt1 (R2.center (SEC (pt1 :: pt2 :: pt3 :: pt :: l)))).
-  - apply dist_pos.
+  - apply dist_nonneg.
   - apply max_dist_le. intuition.
 Transparent Rmax. Transparent middle.
 Qed.

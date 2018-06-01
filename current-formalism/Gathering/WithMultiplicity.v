@@ -3,6 +3,7 @@ Require Import SetoidList.
 Require Export Pactole.Gathering.Definitions.
 Require Export Pactole.Spectra.MultisetSpectrum.
 Close Scope R_scope.
+Close Scope VectorSpace_scope.
 Set Implicit Arguments.
 Typeclasses eauto := (bfs) 5.
 
@@ -13,6 +14,7 @@ Section MultisetGathering.
 
 Context `{Location}.
 Context {T : Type}.
+Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 Context {Choice : update_choice T}.

@@ -480,11 +480,12 @@ Definition FrameChoiceBijection : frame_choice (bijection location) := {|
 
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
+Context {VS : RealVectorSpace location}.
 
 (* Similarities as a frame choice, only make sense inside real metric spaces. *)
 Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}
   : frame_choice (similarity location) := {|
-  frame_choice_bijection := @sim_f location _ _ _;
+  frame_choice_bijection := @sim_f location _ _ _ _;
   frame_choice_Setoid := similarity_Setoid location;
   frame_choice_bijection_compat := f_compat |}.
 

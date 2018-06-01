@@ -35,12 +35,13 @@ Section SimilarityCenter.
 
 Context `{Spectrum}.
 Context {T : Type}.
+Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{update_choice T}.
 
 (** Similarities as a frame choice, inside real metric spaces *)
 Global Instance FrameChoiceSimilarity : frame_choice (similarity location) := {|
-  frame_choice_bijection := @sim_f location _ _ _;
+  frame_choice_bijection := @sim_f location _ _ _ _;
   frame_choice_Setoid := similarity_Setoid location;
   frame_choice_bijection_compat := f_compat |}.
 

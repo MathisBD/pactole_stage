@@ -20,9 +20,10 @@
 Require Import Utf8.
 Require Import SetoidDec.
 Require Import Rbase Rbasic_fun.
+Require Import Lra.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Spaces.RealNormedSpace.
 Set Implicit Arguments.
 
 
@@ -38,7 +39,7 @@ Record similarity T `{RealMetricSpace T} := {
   sim_f :> bijection T;
   zoom : R;
   dist_prop : forall x y, dist (sim_f x) (sim_f y) = zoom * dist x y}.
-Arguments similarity T {_} {_} {_}.
+Arguments similarity T {_} {_} {_} {_}.
 
 Global Instance similarity_Setoid T `{RealMetricSpace T} : Setoid (similarity T) := {|
   equiv := fun sim1 sim2 => equiv (sim_f sim1) (sim_f sim2) |}.
@@ -48,7 +49,7 @@ Proof. split.
 + repeat intro. etransitivity; eauto.
 Defined.
 
-Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f _ _ _ _).
+Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f _ _ _ _ _).
 Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 
 (** As similarities are defined as bijections, we can prove that k <> 0
@@ -67,8 +68,8 @@ intros sim. apply Preliminary.Rle_neq_lt.
 - destruct sim as [f k Hk]. simpl.
   assert (Hnon_triv := non_trivial). specialize (Hk one origin).
   unfold complement in Hnon_triv. rewrite <- dist_defined in Hnon_triv.
-  assert (Hdist := dist_pos one origin).
-  generalize (dist_pos (f one) (f origin)).
+  assert (Hdist := dist_nonneg one origin).
+  generalize (dist_nonneg (f one) (f origin)).
   rewrite <- (Rmult_0_l (dist one origin)) at 1.
   rewrite Hk. apply Rmult_le_reg_r. apply Rle_neq_lt; auto.
 - intro. now apply (zoom_non_null sim).
@@ -88,99 +89,7 @@ Definition id {T} `{RealMetricSpace T} : similarity T := {|
   zoom := 1;
   dist_prop := ltac:(intros; simpl; now rewrite Rmult_1_l) |}. (* TODO: make abstract work *)
 
-Section Normed_Results.
-(** The existence of homothecy and translation similarities (implied by these two hypotheses)
-    is actually equivalent to defining a normed vector space. *)
-Context (T : Type).
-Context `{rmsT : RealMetricSpace T}.
-Hypothesis translation_hypothesis : forall v x y : T, dist (add x v) (add y v) = dist x y.
-Hypothesis homothecy_hypothesis : forall ρ x y, dist (mul ρ x) (mul ρ y) = Rabs ρ * dist x y.
-
-(** The translation similarity *)
-Lemma bij_translation_Inversion : forall v x y : T, add x v == y ↔ add y (opp v) == x.
-Proof.
-intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- add_assoc.
-- now rewrite add_opp, add_origin.
-- setoid_rewrite add_comm at 2. now rewrite add_opp, add_origin.
-Qed.
-
-Definition bij_translation (v : T) : @bijection T _.
-refine {|
-  section := fun x => add x v;
-  retraction := fun x => add x (opp v) |}.
-Proof.
-+ now repeat intro; apply add_compat.
-+ apply bij_translation_Inversion.
-Defined.
-
-Lemma translation_zoom : forall v x y : T, dist (add x v) (add y v) = 1 * dist x y.
-Proof. intros. ring_simplify. apply translation_hypothesis. Qed.
-
-Definition translation (v : T) : similarity T.
-refine {| sim_f := bij_translation v;
-          zoom := 1 |}.
-Proof. simpl. abstract (intros; now rewrite translation_hypothesis, Rmult_1_l). Defined.
-
-Global Instance translation_compat : Proper (equiv ==> equiv) translation.
-Proof. intros u v Huv x. simpl. now rewrite Huv. Qed.
-
-Lemma translation_origin : translation origin == id.
-Proof. intro. simpl. now rewrite add_origin. Qed.
-
-Lemma translation_inverse : forall t, inverse (translation t) == translation (opp t).
-Proof. intros t x. simpl. reflexivity. Qed.
-
-(** The homothetic similarity *)
-Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 -> add c (mul ρ (add x (opp c))) == y ↔ add (mul (/ ρ) (add y (opp c))) c == x.
-Proof.
-intros. split; intro Heq; rewrite <- Heq; clear Heq.
-- now rewrite (add_comm c), <- add_assoc, add_opp, add_origin, mul_morph,
-              Rinv_l, mul_1, <- add_assoc, (add_comm _ c), add_opp, add_origin.
-- repeat rewrite mul_distr_add, ?mul_morph. rewrite Rinv_r; trivial.
-  now rewrite 2 mul_1, <- add_assoc, <- mul_distr_add, add_opp, mul_origin, add_origin,
-              add_assoc, (add_comm c), <- add_assoc, add_opp, add_origin.
-Qed.
-
-Definition bij_homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : @bijection T _.
-refine {|
-  section := fun x => @add _ _ _ rmsT c (@mul _ _ _ rmsT ρ (@add _ _ _ rmsT x (@opp _ _ _ rmsT c)));
-  retraction := fun x => add (mul (/ρ) (add x (opp c))) c |}.
-Proof.
-+ abstract (intros x y Hxy; now rewrite Hxy).
-+ intros. now apply homothecy_Inversion.
-Defined.
-
-Lemma bij_homothecy_zoom : forall c ρ (Hρ : ρ <> 0%R) (x y : T),
-  dist ((bij_homothecy c Hρ) x) ((bij_homothecy c Hρ) y) = Rabs ρ * dist x y.
-Proof.
-intros. cbn. setoid_rewrite (add_comm c). rewrite translation_hypothesis.
-rewrite homothecy_hypothesis. f_equal. apply translation_hypothesis.
-Qed.
-
-Definition homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : similarity T.
-refine {|
-  sim_f := bij_homothecy c Hρ;
-  zoom := Rabs ρ |}.
-Proof.
-abstract (simpl; intros; now rewrite 2 (add_comm c), translation_hypothesis,
-                                     homothecy_hypothesis, translation_hypothesis).
-Defined.
-
-Global Instance homothecy_compat :
-  Proper (equiv ==> @forall_relation _ _ (fun _ => full_relation ==> equiv)) homothecy.
-Proof. intros c1 c2 Hc ρ ? ? ? ?. simpl. now rewrite Hc. Qed.
-
-Lemma homothecy_inverse : forall c ρ (Hρ : ρ <> 0),
-  inverse (homothecy c Hρ) == homothecy c (Rinv_neq_0_compat ρ Hρ).
-Proof. simpl. intros. apply add_comm. Qed.
-
-Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == id.
-Proof. repeat intro. simpl. now rewrite mul_1, add_comm, <- add_assoc, (add_comm _ c), add_opp, add_origin. Qed.
-
-End Normed_Results.
-
 (** Composition of similarities *)
-
 Definition compose {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
 refine {|
   sim_f := compose f g;
@@ -229,12 +138,179 @@ Definition center {T} `{RealMetricSpace T} (sim : similarity T) : T := sim⁻¹ 
 Lemma center_prop {T} `{RealMetricSpace T} : forall sim : similarity T, sim (center sim) == origin.
 Proof. intro. unfold center. apply compose_inverse_r. Qed.
 
-Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _).
+Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _ _).
 Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
 
+Section Normed_Results.
+(** The existence of homothecy and translation similarities (implied by these two hypotheses)
+    is actually equivalent to defining a normed vector space. *)
+Context (T : Type).
+Context `{rnsT : RealNormedSpace T}.
+
+(** The translation similarity *)
+Lemma bij_translation_Inversion : forall v x y : T, add x v == y ↔ add y (opp v) == x.
+Proof.
+intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- add_assoc.
+- now rewrite add_opp, add_origin.
+- setoid_rewrite add_comm at 2. now rewrite add_opp, add_origin.
+Qed.
+
+Definition bij_translation (v : T) : @bijection T _.
+refine {|
+  section := fun x => add x v;
+  retraction := fun x => add x (opp v) |}.
+Proof.
++ now repeat intro; apply add_compat.
++ apply bij_translation_Inversion.
+Defined.
+
+Lemma translation_zoom : forall v x y : T, dist (add x v) (add y v) = 1 * dist x y.
+Proof. intros. ring_simplify. apply dist_translation. Qed.
+
+Definition translation (v : T) : similarity T.
+refine {| sim_f := bij_translation v;
+          zoom := 1 |}.
+Proof. cbn -[dist]. abstract (intros; now rewrite dist_translation, Rmult_1_l). Defined.
+
+Global Instance translation_compat : Proper (equiv ==> equiv) translation.
+Proof. intros u v Huv x. simpl. now rewrite Huv. Qed.
+
+Lemma translation_origin : translation origin == id.
+Proof. intro. simpl. now rewrite add_origin. Qed.
+
+Lemma translation_inverse : forall t, inverse (translation t) == translation (opp t).
+Proof. intros t x. simpl. reflexivity. Qed.
+
+(** The homothetic similarity *)
+Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 -> add c (mul ρ (add x (opp c))) == y ↔ add (mul (/ ρ) (add y (opp c))) c == x.
+Proof.
+intros. split; intro Heq; rewrite <- Heq; clear Heq.
+- now rewrite (add_comm c), <- add_assoc, add_opp, add_origin, mul_morph,
+              Rinv_l, mul_1, <- add_assoc, (add_comm _ c), add_opp, add_origin.
+- repeat rewrite mul_distr_add, ?mul_morph. rewrite Rinv_r; trivial.
+  now rewrite 2 mul_1, <- add_assoc, <- mul_distr_add, add_opp, mul_origin, add_origin,
+              add_assoc, (add_comm c), <- add_assoc, add_opp, add_origin.
+Qed.
+
+Definition bij_homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : @bijection T _.
+simple refine {|
+  section := fun x => (c + ρ * (x - c))%VS;
+  retraction := fun x => add (mul (/ρ) (add x (opp c))) c |}; autoclass.
+Proof.
++ abstract (intros x y Hxy; now rewrite Hxy).
++ intros. now apply homothecy_Inversion.
+Defined.
+
+Lemma bij_homothecy_zoom : forall c ρ (Hρ : ρ <> 0%R) (x y : T),
+  dist ((bij_homothecy c Hρ) x) ((bij_homothecy c Hρ) y) = Rabs ρ * dist x y.
+Proof.
+intros. cbn -[dist]. setoid_rewrite (add_comm c). rewrite dist_translation.
+rewrite dist_homothecy. f_equal. apply dist_translation.
+Qed.
+
+Definition homothecy (c : T) (ρ : R) (Hρ : ρ <> 0) : similarity T.
+refine {|
+  sim_f := bij_homothecy c Hρ;
+  zoom := Rabs ρ |}.
+Proof.
+abstract (cbn -[dist]; intros; now rewrite 2 (add_comm c), dist_translation,
+                                           dist_homothecy, dist_translation).
+Defined.
+
+Global Instance homothecy_compat :
+  Proper (equiv ==> @forall_relation _ _ (fun _ => full_relation ==> equiv)) homothecy.
+Proof. intros c1 c2 Hc ρ ? ? ? ?. simpl. now rewrite Hc. Qed.
+
+Lemma homothecy_inverse : forall c ρ (Hρ : ρ <> 0),
+  inverse (homothecy c Hρ) == homothecy c (Rinv_neq_0_compat ρ Hρ).
+Proof. simpl. intros. apply add_comm. Qed.
+
+Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == id.
+Proof. repeat intro. simpl. now rewrite mul_1, add_comm, <- add_assoc, (add_comm _ c), add_opp, add_origin. Qed.
+
+(** We can build a similarity that maps any pair of distinct points into any other one. *)
+Lemma build_sim_aux : forall pt1 pt2 pt3 pt4, pt1 =/= pt2 -> pt3 =/= pt4 -> dist pt4 pt3 / dist pt2 pt1 ≠ 0.
+Proof.
+intros ** Habs. apply Rmult_integral in Habs.
+destruct Habs as [Habs | Habs].
+- rewrite dist_defined in Habs. symmetry in Habs. contradiction.
+- revert Habs. apply Rinv_neq_0_compat. intro Habs.
+  rewrite dist_defined in Habs. symmetry in Habs. contradiction.
+Qed.
+
+(* FIXME: the orientation is not checked *)
+Definition build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity T.
+Proof.
+refine (translation (add pt3 (opp pt1)) ∘ (@homothecy pt1 ((dist pt4 pt3) / (dist pt2 pt1)) _)).
+now apply build_sim_aux.
+Defined.
+
+Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
+  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
+  pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
+  build_similarity H12 H34 == build_similarity H12' H34'.
+Proof. intros * Heq1 Heq2 Heq3 Heq4 x. simpl in *. now rewrite Heq1, Heq2, Heq3, Heq4. Qed.
+
+Lemma build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
+Proof.
+intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x.
+unfold build_similarity, translation, homothecy. cbn -[dist]. rewrite (dist_sym pt4), (dist_sym pt2).
+remember (dist pt4 pt3 / dist pt2 pt1) as D.
+transitivity (add pt4 (add (mul D x) (opp (mul D pt2))));
+[| symmetry; transitivity (add pt3 (add (mul D x) (opp (mul D pt1))))].
++ now rewrite add_comm, add_assoc, (add_comm pt4), (add_comm _ pt2),
+              add_assoc, add_opp, (add_comm origin), add_origin, mul_distr_add, mul_opp.
++ now rewrite add_comm, add_assoc, (add_comm pt3), (add_comm _ pt1),
+              add_assoc, add_opp, (add_comm origin), add_origin, mul_distr_add, mul_opp.
++ rewrite add_comm, <- add_assoc, (add_comm pt4), <- add_assoc.
+  apply add_compat; try reflexivity; [].
+  apply add_reg_r with (opp pt3). rewrite <- add_assoc, add_opp, add_origin.
+  apply add_reg_l with (mul D pt2). rewrite 2 add_assoc, add_opp, (add_comm origin), add_origin.
+  rewrite <- mul_opp, <- mul_distr_add, <- dist_defined.
+Admitted.
+
+Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt1 == pt3.
+Proof.
+simpl. intros pt1 pt2 pt3 pt4 ? ?.
+now rewrite add_opp, mul_origin, add_origin, (add_comm pt3),
+            add_assoc, add_opp, add_comm, add_origin.
+Qed.
+
+(* This is wrong without proper orientation *)
+Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt2 == pt4.
+Proof.
+simpl. intros pt1 t2 pt3 pt4 ? ?.
+rewrite add_assoc, add_comm, 2 add_assoc, (add_comm _ pt1), add_opp, (add_comm origin), add_origin, add_comm.
+apply add_reg_l with (opp pt3).
+rewrite add_assoc, (add_comm _ pt3), add_opp, add_comm, add_origin, (add_comm _ pt4).
+Admitted.
+
+Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
+Proof.
+intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x. simpl.
+assert (norm (pt2 - pt1) <> 0).
+{ rewrite norm_defined. intro Habs. apply Hdiff12. eapply add_reg_r. now rewrite Habs, add_opp. }
+assert (norm (pt4 - pt3) <> 0).
+{ rewrite norm_defined. intro Habs. apply Hdiff34. eapply add_reg_r. now rewrite Habs, add_opp. }
+rewrite Rpower.Rinv_Rdiv; trivial; []. remember (norm (pt2 - pt1) / norm (pt4 - pt3)) as k.
+rewrite (add_comm pt3 (mul _ _)).
+rewrite opp_distr_add, <- 2 add_assoc, opp_opp, add_opp, add_origin.
+rewrite <- add_assoc, (add_comm pt1), (add_assoc pt3), add_opp, (add_comm origin), add_origin.
+reflexivity.
+Qed.
+
+End Normed_Results.
+
+
 Module Notations.
-Global Arguments similarity T {_} {_} {_}.
+Global Arguments similarity T {_} {_} {_} {_}.
+Global Arguments translation {T} {_} {_} {_} {_} v.
+Global Arguments homothecy {T} {_} {_} {_} {_} c {ρ} Hρ.
 Notation similarity := similarity.
 Global Infix "∘" := compose (left associativity, at level 40).
 Global Notation "sim ⁻¹" := (inverse sim) (at level 39).

@@ -31,6 +31,7 @@ Require Import Pactole.Spaces.R.
 Require Import Pactole.Gathering.WithMultiplicity.
 Set Implicit Arguments.
 Close Scope R_scope.
+Close Scope VectorSpace_scope.
 Import Datatypes. (* To recover Datatypes.id *)
 
 
@@ -52,8 +53,9 @@ Existing Instance R_RMS. *)
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Loc : Location := make_Location R.
-Instance RMS : RealMetricSpace location := R_RMS.
-Remove Hints R_RMS : typeclass_instances.
+Instance VS : RealVectorSpace location := R_VS.
+Instance ES : EuclideanSpace location := R_ES.
+Remove Hints R_VS R_ES : typeclass_instances.
 Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;

@@ -33,7 +33,7 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.Configurations.
-Require Export Pactole.Spaces.RealMetricSpace.
+Require Export Pactole.Spaces.EuclideanSpace.
 Require Export Pactole.Spaces.Similarity.
 Require Import Psatz.
 Import Permutation.
@@ -44,25 +44,28 @@ Open Scope R_scope.
 Typeclasses eauto := (bfs).
 
 
-(** R as a vector space over itself. *)
-
-Instance R_RMS : RealMetricSpace R := {|
+(** R as a Euclidean space over itself. *)
+Instance R_VS : RealVectorSpace R := {|
   origin := 0;
   one := 1;
-  dist := fun x y => Rabs (x - y);
   add := Rplus;
   mul := Rmult;
   opp := Ropp |}.
 Proof.
 all:try now intros; cbn; field.
-* intros x y. cbn. split; intro Heq.
-  + apply Rminus_diag_uniq. destruct (Rcase_abs (x - y)) as [Hcase | Hcase].
-    - apply Rlt_not_eq in Hcase. apply Rabs_no_R0 in Hcase. contradiction.
-    - rewrite <- Heq. symmetry. now apply Rabs_pos_eq, Rge_le.
-  + rewrite (Rminus_diag_eq _ _ Heq). apply Rabs_R0.
-* intros. apply Rabs_minus_sym.
-* intros. replace (x - z)%R with (x - y + (y - z))%R by ring. apply Rabs_triang.
-* apply R1_neq_R0.
+apply R1_neq_R0.
+Defined.
+
+Instance R_ES : EuclideanSpace R := {|
+  inner_product := Rmult |}.
+Proof.
+* apply Rmult_comm.
+* apply Rmult_plus_distr_r.
+* apply Rmult_assoc.
+* intro. nra.
+* intro u. split; intro Heq.
+  + apply Rmult_integral in Heq. now destruct Heq.
+  + now rewrite Heq, Rmult_0_l.
 Defined.
 
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
@@ -124,34 +127,16 @@ Ltac Rle_dec :=
     | _ => fail
   end.
 
-
-(** Translation and homothecy similarities are well-defined on R. *)
-Lemma translation_hypothesis : forall z x y, dist (add x z) (add y z) = dist x y.
-Proof. intros z x y. cbn. now ring_simplify (x + z - (y + z))%R. Qed.
-
-Lemma homothecy_hypothesis : forall k x y, dist (mul k x) (mul k y) = (Rabs k * dist x y)%R.
-Proof. intros. cbn. rewrite <- Rmult_minus_distr_l. apply Rabs_mult. Qed.
-
-Definition translation := translation translation_hypothesis.
-Definition homothecy := homothecy translation_hypothesis homothecy_hypothesis.
-
-Instance translation_compat : Proper (equiv ==> equiv) translation := translation_compat translation_hypothesis.
-Instance homothecy_compat c ρ (Hρ : ρ <> 0) : Proper (equiv ==> equiv) (homothecy c Hρ).
-Proof. intros ? ? Heq. simpl. now rewrite Heq. Qed.
-
-Arguments translation v /.
-Arguments homothecy c [ρ] Hρ /.
-
-
 Global Instance Leibniz_fun_compat : forall f : R -> R, Proper (equiv ==> equiv) f.
 Proof. intros f ? ? Heq. now rewrite Heq. Qed.
 
 (** A location is determined by distances to 2 points. *)
 Lemma dist_case : forall x y, dist x y = x - y \/ dist x y = y - x.
 Proof.
-cbn. intros x y. destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
+cbn. intros x y. rewrite sqrt_square.
+destruct (Rle_lt_dec 0 (x - y)) as [Hle | Hlt].
 - apply Rabs_pos_eq in Hle. now left.
-- apply Rabs_left in Hlt. right. rewrite Hlt. field.
+- apply Rabs_left in Hlt. right. unfold Rminus in Hlt. rewrite Hlt. field.
 Qed.
 
 Lemma dist_locate : forall x y k, dist x y = k -> x = y + k \/ x = y - k.
@@ -373,27 +358,28 @@ destruct (equiv_dec k 0) as [Hk0 | Hk0].
   left. intro x. cbn in Hk0. subst k. rewrite Rmult_0_l.
   change (f x == 0). rewrite <- dist_defined, <- Hc, Hk, Hc. ring.
 * assert (Hc1 : f (c + 1) = k \/ f (c + 1) = - k).
-  { specialize (Hk (c + 1) c). rewrite Hc in Hk.
-    assert (H1 : dist (c + 1) c = 1). { replace 1 with (c+1 - c) at 2 by ring. apply Rabs_pos_eq. lra. }
-    rewrite H1 in Hk. destruct (dist_case (f (c + 1)) 0) as [Heq | Heq]; unfold origin in *;
+  { specialize (Hk (add c 1) c). rewrite Hc in Hk.
+    assert (H1 : dist (c + 1) c = 1).
+    { replace 1 with (c+1 - c) at 2 by ring. simpl dist. rewrite R_sqrt.sqrt_square; lra. }
+    rewrite H1 in Hk. destruct (dist_case (f (add c 1)) 0) as [Heq | Heq]; unfold origin in *;
     rewrite Heq in Hk; ring_simplify in Hk; cbn in *; lra. }
   destruct Hc1 as [Hc1 | Hc1].
   + left. intro x. apply (GPS (f c) (f (c + 1))).
     - rewrite Hc, Hc1. unfold origin. cbn. lra.
-    - rewrite (Hk x c), Hc. cbn. change (retraction f origin) with c.
+    - rewrite (Hk x c), Hc. cbn. rewrite 2 sqrt_square. change (retraction f origin) with c.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
-      rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
-    - rewrite (Hk x (c+1)), Hc1. cbn. change (retraction f origin) with c.
-      replace (k * (x - c) - k) with (k * (x - (c + 1))) by ring.
+      rewrite Ropp_0, Rplus_0_r, Rabs_mult, (Rabs_pos_eq k); trivial. lra.
+    - rewrite (Hk x (c+1)), Hc1. cbn. rewrite 2 sqrt_square. change (retraction f origin) with c.
+      replace (k * (x - c) + - k) with (k * (x - (c + 1))) by ring.
       rewrite Rabs_mult, (Rabs_pos_eq k); trivial. lra.
   + right. intro x. apply (GPS (f c) (f (c + 1))).
-    - rewrite Hc, Hc1. unfold origin. cbn. lra.
-    - rewrite (Hk x c), Hc. cbn. change (retraction f origin) with c.
+    - rewrite Hc, Hc1. lra.
+    - rewrite (Hk x c), Hc. cbn. rewrite 2 sqrt_square. change (retraction f origin) with c.
       replace (- k * (x - c) - 0) with (- k * (x - c)) by ring.
-      rewrite Rabs_mult, (Rabs_left (- k)); lra.
-    - rewrite (Hk x (c+1)), Hc1. cbn. change (retraction f origin) with c.
-      replace (- k * (x - c) - - k) with (- k * (x - (c + 1))) by ring.
-      rewrite Rabs_mult, (Rabs_left (- k)); lra.
+      rewrite Ropp_0, Rplus_0_r, Rabs_mult, (Rabs_left (- k)); unfold Rminus; lra.
+    - rewrite (Hk x (c+1)), Hc1. cbn. rewrite 2 sqrt_square. change (retraction f origin) with c.
+      replace (- k * (x - c) + - - k) with (- k * (x - (c + 1))) by ring.
+      rewrite Rabs_mult, (Rabs_left (- k)); unfold Rminus; lra.
 Qed.
 
 Corollary similarity_in_R : forall sim, exists k, (k = sim.(zoom) \/ k = - sim.(zoom))
@@ -448,30 +434,3 @@ destruct Hk; subst k1.
   apply Rmult_eq_reg_l in H2; trivial; [].
   simpl in Hdiff. lra.
 Qed.
-
-(** The images of two points define a (unique) similarity. *)
-(* TODO on its way: generalize it and move it to Similarity.v *)
-Definition build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R.
-Proof.
-refine (translation (pt3 - pt1) ∘ (@homothecy pt1 ((pt4 - pt3) / (pt2 - pt1)) _)).
-abstract (simpl in *; intro Habs; apply Rmult_integral in Habs;
-          destruct Habs as[? | Habs]; try lra; []; revert Habs; apply Rinv_neq_0_compat; lra).
-Defined.
-
-Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
-  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
-  pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
-  build_similarity H12 H34 == build_similarity H12' H34'.
-Proof. intros. simpl in *. intro. subst. field. lra. Qed.
-
-Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  build_similarity Hdiff12 Hdiff34 pt1 == pt3.
-Proof. simpl. intros. field. lra. Qed.
-
-Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  build_similarity Hdiff12 Hdiff34 pt2 == pt4.
-Proof. simpl. intros. field. lra. Qed.
-
-Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
-Proof. simpl. intros. field. lra. Qed.

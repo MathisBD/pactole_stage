@@ -47,6 +47,7 @@ Set Default Proof Using "All".
 Section MultisetSpectrum.
 
 Context `{State}.
+Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 
@@ -59,7 +60,7 @@ Global Instance limited_multiset_spectrum (radius : R) : Spectrum := {
                                                 (List.map get_location (config_list config)));
   spect_is_ok s config pt :=
     forall l, s[l] = if Rle_bool (dist l pt) radius
-                     then countA_occ _ equiv_dec l (List.map get_location (config_list config)) else 0 }.
+                     then countA_occ _ equiv_dec l (List.map get_location (config_list config)) else 0%nat }.
 Proof.
 (* BUG?: bullet forbidden here *)
 { intros config1 config2 Hconfig pt1 pt2 Hpt.

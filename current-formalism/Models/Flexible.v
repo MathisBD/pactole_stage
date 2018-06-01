@@ -37,6 +37,7 @@ Require Import Pactole.Spaces.Similarity.
 Section FlexibleFormalism.
 
 Context `{Spectrum}.
+Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}. (* for dist *)
 Variable T1 T2 : Type.
 Context {Frame : frame_choice T1}.

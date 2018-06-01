@@ -37,6 +37,7 @@ Section GatheringDefinitions.
 (** We only required the space to be a real metric space.  The actual number of robots is arbitrary. *)
 Context {T : Type}.
 Context `{Location}.
+Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 

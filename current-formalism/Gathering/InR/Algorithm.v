@@ -55,8 +55,9 @@ Existing Instance R_RMS. *)
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Loc : Location := make_Location R.
-Instance RMS : RealMetricSpace location := R_RMS.
-Remove Hints R_RMS : typeclass_instances.
+Instance VS : RealVectorSpace location := R_VS.
+Instance ES : EuclideanSpace location := R_ES.
+Remove Hints R_VS R_ES : typeclass_instances.
 Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
@@ -83,7 +84,8 @@ Ltac changeR :=
   change R with location in *;
   change R_Setoid with location_Setoid in *;
   change R_EqDec with location_EqDec in *;
-  change R_RMS with RMS in *.
+  change R_VS with VS in *;
+  change R_ES with ES in *.
 
 Lemma similarity_middle : forall (sim : similarity R) x y, (sim ((x + y) / 2) = (sim x + sim y) / 2)%R.
 Proof.
@@ -338,9 +340,9 @@ Proof.
             assumption. }
       rewrite heq_config in toto.
       rewrite cardinal_fold_elements in toto.
-      assert (fold_left (fun acc xn => snd xn + acc)
+      assert (fold_left (fun acc xn => (snd xn + acc)%nat)
                         ((pt1, (!! config)[pt1]) :: (pt2, (!! config)[pt2]) :: nil)
-                        0 = nG).
+                        0%nat = nG).
       { rewrite <- toto.
         eapply MMultiset.Preliminary.fold_left_symmetry_PermutationA with (eqA := eq_pair); autoclass.
         - intros ? ? ? ? ? Heq; subst; now rewrite Heq.
@@ -390,7 +392,7 @@ Proof.
             now constructor 1.
           * now rewrite <- Nat.eqb_eq. }
       rewrite H1 in *.
-      assert ( 0 + 2 *(!! config)[pt1] = nG) by omega.
+      assert (0 + 2 *(!! config)[pt1] = nG)%nat by omega.
       assert (Nat.even nG).
       { rewrite <- H3.
         rewrite (Nat.even_add_mul_2 0 ((!! config)[pt1])).
@@ -633,7 +635,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   simpl List.map in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
   rewrite Hperm. hnf in Hy |- *. subst y. rewrite Hsim.
 (*   assert (Heq : 1 * (k * (pt' - center sim)) / k = pt' - center sim) by now simpl; field. *)
-  simpl. unfold id, RMS. field.
+  simpl. unfold id, ES, VS. field.
   destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null.
 * (* No majority stack *)
   apply PermutationA_length in Hperm.
@@ -968,14 +970,14 @@ Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1
   (!! config)[pt1] + (!! config)[pt2] + (!! config)[pt3] <= nG.
 Proof.
 intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
-replace nG with (nG + nB) by (simpl; omega).
+replace nG with (nG + nB)%nat by (simpl; omega).
 rewrite <- (cardinal_spect_from_config config origin).
 rewrite <- (add_remove_id pt1 (!! config) (reflexivity _)) at 4.
 rewrite cardinal_add.
 rewrite <- (add_remove_id pt2 (!! config) (reflexivity _)) at 6.
 rewrite remove_add_comm, cardinal_add; trivial.
 rewrite <- (add_remove_id pt3 (!! config) (reflexivity _)) at 8.
-rewrite remove_add_comm, remove_add_comm, cardinal_add; trivial.
+rewrite remove_add_comm, remove_add_comm, cardinal_add; trivial; [].
 omega.
 Qed.
 
@@ -1176,11 +1178,12 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
 Qed.
 
 Close Scope R_scope.
+Close Scope VectorSpace_scope.
 
 Definition config_to_NxN config :=
   let s := !! config in
   match support (max s) with
-    | nil => (0,0)
+    | nil => (0, 0)
     | pt :: nil => (1, nG - s[pt])
     | _ :: _ :: _ =>
         if beq_nat (size s) 3
@@ -1223,7 +1226,7 @@ Proof. intros config Heq. unfold config_to_NxN. rewrite Heq. reflexivity. Qed.
 
 Lemma config_to_NxN_Majority_spec : forall config pt,
   MajTower_at pt config ->
-  config_to_NxN config = (1, nG - (!! config)[pt]).
+  config_to_NxN config = (1, nG - (!! config)[pt])%nat.
 Proof.
   intros config pt H.
   unfold config_to_NxN.

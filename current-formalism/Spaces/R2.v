@@ -26,36 +26,14 @@ Require Import Omega.
 Import List Permutation SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Export Pactole.Spaces.RealMetricSpace.
-Require Pactole.Spaces.Similarity.
+Require Export Pactole.Spaces.EuclideanSpace.
+Require Import Pactole.Spaces.Similarity.
 Set Implicit Arguments.
 Open Scope R_scope.
 Import Pactole.Spaces.Similarity.Notations.
 
 
-(** Some results about [R]. *)
-Lemma sqrt_subadditive : forall x y, 0 <= x -> 0 <= y -> sqrt (x + y) <= sqrt x + sqrt y.
-Proof.
-intros x y Hx Hy. apply R_sqr.Rsqr_incr_0.
-- repeat rewrite Rsqr_sqrt, ?R_sqr.Rsqr_plus; try lra.
-  assert (0 <= 2 * sqrt x * sqrt y).
-  { repeat apply Rmult_le_pos; try lra; now apply sqrt_positivity. }
-  lra.
-- apply sqrt_positivity. lra.
-- apply Rplus_le_le_0_compat; now apply sqrt_positivity.
-Qed.
-
-Lemma pos_Rsqr_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
-Proof. intros. setoid_rewrite <- sqrt_Rsqr; trivial. now f_equal. Qed.
-
-Lemma pos_Rsqr_le : forall x y, 0 <= x -> 0 <= y -> (x² <= y² <-> x <= y).
-Proof. intros. split; intro; try now apply R_sqr.Rsqr_incr_0 + apply R_sqr.Rsqr_incr_1. Qed.
-
-Lemma pos_Rsqr_lt : forall x y, 0 <= x -> 0 <= y -> (x² < y² <-> x < y).
-Proof. intros. split; intro; try now apply R_sqr.Rsqr_incrst_0 + apply R_sqr.Rsqr_incrst_1. Qed.
-
-
-(** **  R² as a vector space over R  **)
+(** **  R² as a Euclidean space over R  **)
 
 Definition R2 := (R * R)%type.
 Instance R2_Setoid : Setoid R2 := {| equiv := @Logic.eq R2 |}.
@@ -71,35 +49,30 @@ Defined.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
-Instance R2_RMS : RealMetricSpace R2 := {|
+Instance R2_VS : RealVectorSpace R2 := {|
   origin := (0, 0);
   one := (1, 0);
-  dist := fun x y => sqrt ((fst x - fst y)² + (snd x - snd y)²);
   add := fun x y => let '(x1, x2) := x in let '(y1, y2) := y in (x1 + y1, x2 + y2)%R;
   mul := fun k x => let '(x1, x2) := x in (k * x1, k * x2)%R;
   opp := fun x => let '(x1, x2) := x in (-x1, -x2)%R |}.
 Proof.
 all:try solve_R.
-* intros x y. cbn. split; intro Heq.
-  + apply sqrt_eq_0 in Heq.
-    - apply Rplus_eq_R0 in Heq; try apply Rle_0_sqr; [].
-      destruct Heq as [Hx Hy].
-      apply Rsqr_0_uniq, Rminus_diag_uniq in Hx.
-      apply Rsqr_0_uniq, Rminus_diag_uniq in Hy.
-      destruct x, y; simpl in *; subst; reflexivity.
-    - replace 0%R with (0 + 0)%R by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-  + subst. do 2 rewrite (Rminus_diag_eq _ _ (reflexivity _)). rewrite Rsqr_0, Rplus_0_l. apply sqrt_0.
-(* Version for squared distance 
-* intros x y. cbn. split; intro Heq.
-  + apply Rplus_eq_R0 in Heq; try apply Rle_0_sqr; [].
-    destruct Heq as [Heq1 Heq2].
-    apply Rsqr_0_uniq, Rminus_diag_uniq in Heq1.
-    apply Rsqr_0_uniq, Rminus_diag_uniq in Heq2.
-    destruct x, y; simpl in *; subst; reflexivity.
-  + subst. do 2 rewrite (Rminus_diag_eq _ _ (reflexivity _)). now rewrite Rsqr_0, Rplus_0_l. *)
-* intros. unfold dist. now setoid_rewrite R_sqr.Rsqr_neg_minus at 1 2.
-* intros [? ?] [? ?] [? ?]. simpl. apply (Rgeom.triangle r r0 r3 r4 r1 r2).
-* compute. injection. auto using R1_neq_R0.
+compute. injection. auto using R1_neq_R0.
+Defined.
+
+Instance R2_ES : EuclideanSpace R2 := {|
+  inner_product := fun u v => fst u  * fst v + snd u * snd v |}.
+Proof.
+* intros. ring.
+* intros [] [] []. simpl. ring.
+* intros ? [] []. simpl. ring.
+* intros []. simpl. nra.
+* intros [x y]. simpl. split; intro Heq.
+  + apply Rplus_eq_R0 in Heq; try nra; [].
+    destruct Heq as [Hx Hy].
+    apply Rmult_integral in Hx. apply Rmult_integral in Hy.
+    now destruct Hx, Hy; subst.
+  + injection Heq. intros. subst. ring.
 Defined.
 
 Delimit Scope R2_scope with R2.
@@ -121,7 +94,7 @@ Qed.
 
 Lemma square_dist_simpl : forall pt1 pt2, (dist pt1 pt2)² = (fst pt1 - fst pt2)² + (snd pt1 - snd pt2)².
 Proof.
-intros pt1 pt2. cbn. rewrite Rsqr_sqrt; trivial.
+intros [] []. cbn. rewrite Rsqr_sqrt; trivial.
 replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
 Qed.
 
@@ -133,48 +106,13 @@ Proof.
 Qed.
 Hint Resolve R2_dist_defined_2.
 
-Lemma R2opp_dist : forall u v : R2, (dist (- u) (- v) = dist u v)%R2.
-Proof.
-intros [? ?] [? ?]. cbn. f_equal. cbn.
-replace (- r - -r1) with (- (r - r1)) by ring.
-replace (- r0 - - r2) with (- (r0 - r2)) by ring.
-now do 2 rewrite <- R_sqr.Rsqr_neg.
-Qed.
-
-Lemma R2add_dist : forall w u v, (dist (u + w) (v + w) = dist u v)%R2.
-Proof.
-intros [? ?] [? ?] [? ?]. cbn. f_equal. cbn.
-replace (r1 + r - (r3 + r)) with (r1 - r3) by ring.
-replace (r2 + r0 - (r4 + r0)) with (r2 - r4) by ring.
-reflexivity.
-Qed.
-
-Lemma R2mul_dist : forall k u v, dist (k * u)%R2 (k * v)%R2 = Rabs k * dist u v.
-Proof.
-intros k [? ?] [? ?]. cbn.
-apply pos_Rsqr_eq.
-- apply sqrt_pos.
-- apply Rmult_le_pos; apply Rabs_pos || apply sqrt_pos.
-- rewrite Rsqr_sqrt.
-  + rewrite R_sqr.Rsqr_mult. rewrite Rsqr_sqrt.
-    * repeat rewrite ?R_sqr.Rsqr_mult, ?R_sqr.Rsqr_plus, ?R_sqr.Rsqr_minus, <- ?R_sqr.Rsqr_abs. unfold Rsqr. lra.
-    * replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-  + replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-Qed.
-
-Lemma R2dist_subadditive : forall u u' v v', dist (u + v)%R2 (u' + v')%R2 <= dist u u' + dist v v'.
-Proof.
-intros. etransitivity. apply (triang_ineq _ (u' + v)%R2).
-rewrite R2add_dist. setoid_rewrite add_comm. rewrite R2add_dist. reflexivity.
-Qed.
-
 Lemma R2dist_ref_0 : forall u v, dist u v = dist (u - v)%R2 origin.
-Proof. intros u v. now rewrite <- (R2add_dist (-v)), add_opp. Qed.
+Proof. intros u v. now rewrite <- (dist_translation (-v)%R2), add_opp. Qed.
 
 Lemma R2sub_origin : forall u v, (u - v)%R2 == origin <-> u == v.
 Proof.
 intros u v. split; intro Heq.
-- now rewrite <- dist_defined, <- (R2add_dist (- v)), add_opp, dist_defined.
+- now rewrite <- dist_defined, <- (dist_translation (- v)%R2), add_opp, dist_defined.
 - now rewrite Heq, add_opp.
 Qed.
 
@@ -239,10 +177,6 @@ Ltac normalize_R2dist pt1 pt2 pt3 :=
     | H : ~( _ <= _) |- _ => apply Rnot_le_lt in H
   end.
 
-Ltac null x :=
-  let Hnull := fresh "Hnull" in
-  destruct (x =?= origin) as [Hnull | Hnull]; [try rewrite Hnull in * | change (~x == origin) in Hnull].
-
 
 Definition R2dec_bool (x y : R2) := if equiv_dec x y then true else false.
 
@@ -260,145 +194,36 @@ Qed.
 (** **  Poor man's formalization of euclidean spaces  **)
 
 (* FIXME: we should have instead a proper formalisation of euclidean spaces! *)
-Definition product (u v : R2) := fst u * fst v + snd u * snd v.
-Definition R2norm u := sqrt (product u u).
-Definition orthogonal (u : R2) : R2 := /(R2norm u) * (snd u, - fst u).
-Definition unitary u := (/(R2norm u) * u)%R2.
-Definition perpendicular u v := product u v = 0.
+Definition orthogonal (u : R2) : R2 := /(norm u) * (snd u, - fst u).
 Definition colinear (u v : R2) := perpendicular u (orthogonal v).
 
 
 (* Compatibilities *)
-Instance product_compat : Proper (equiv ==> equiv ==> eq) product.
-Proof. intros u1 u2 Hu v1 v2 Hv. now rewrite Hu, Hv. Qed.
-
-Instance R2norm_compat : Proper (equiv ==> eq) R2norm.
-Proof. intros u v Heq. now rewrite Heq. Qed.
-
 Instance orthogonal_compat : Proper (equiv ==> equiv) orthogonal.
 Proof. intros u v Heq. now rewrite Heq. Qed.
-
-(* could be strengthen with [colinear] (up to sign) *)
-Instance unitary_compat : Proper (equiv ==> equiv) unitary.
-Proof. intros u v Heq. unfold unitary. now rewrite Heq. Qed.
-
-Instance perpendicular_compat : Proper (equiv ==> equiv ==> iff) perpendicular.
-Proof. intros u1 u2 Hu v1 v2 Hv. now rewrite Hu, Hv. Qed.
 
 Instance colinear_compat : Proper (equiv ==> equiv ==> iff) colinear.
 Proof. intros u1 u2 Hu v1 v2 Hv. now rewrite Hu, Hv. Qed.
 
-(** *** Results about [product]  **)
+(** ***  Results about [norm]  **)
 
-Lemma product_origin_l : forall u, product origin u = 0.
-Proof. intros [x y]. unfold product; simpl. field. Qed.
+Lemma norm_dist : forall u v, dist u v = norm (u - v)%R2.
+Proof. reflexivity. Qed.
 
-Lemma product_origin_r : forall u, product u origin = 0.
-Proof. intros [x y]. unfold product; simpl. field. Qed.
+Lemma square_norm_equiv : forall u k, 0 <= k -> (norm u = k <-> (norm u)² = k²).
+Proof. intros u k Hk. split; intro Heq; try congruence; []. apply pos_Rsqr_eq; trivial. apply norm_nonneg. Qed.
 
-Lemma product_comm : forall u v, product u v = product v u.
-Proof. intros [x1 y1] [x2 y2]. unfold product. field. Qed.
-
-Lemma product_opp_l : forall u v, product (- u) v = - product u v.
-Proof. intros [x1 y1] [x2 y2]. unfold product; simpl. field. Qed.
-
-Lemma product_opp_r : forall u v, product u (- v) = - product u v.
-Proof. intros [x1 y1] [x2 y2]. unfold product; simpl. field. Qed.
-
-Lemma product_opp : forall u v, product (- u) (- v) = product u v.
-Proof. intros [x1 y1] [x2 y2]. unfold product; simpl. field. Qed.
-
-Lemma product_mul_l : forall k u v, product (k * u) v = k * product u v.
-Proof. intros k [x1 y1] [x2 y2]. unfold product; simpl. field. Qed.
-
-Lemma product_mul_r : forall k u v, product u (k * v) = k * product u v.
-Proof. intros k [x1 y1] [x2 y2]. unfold product; simpl. field. Qed.
-
-Lemma product_add_l : forall w u v, product (u + w) v = product u v + product w v.
-Proof. intros [] [] [] *. unfold product. simpl. field. Qed.
-
-Lemma product_add_r : forall w u v, product u (v + w) = product u v + product u w.
-Proof. intros [] [] [] *. unfold product. simpl. field. Qed.
-
-Lemma product_self_pos : forall u, 0 <= product u u.
-Proof.
-intros [x y]. unfold product; simpl. replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-Qed.
-
-(** ***  Results about [R2norm]  **)
-
-Lemma R2norm_dist : forall u v, dist u v = R2norm (u - v)%R2.
-Proof. intros [x1 y1] [x2 y2]. cbn. unfold R2norm. reflexivity. Qed.
-
-Lemma R2norm_0 : forall u, R2norm u = 0 <-> u == origin.
-Proof.
-intros [x y]. unfold R2norm. simpl. split; intro Heq.
-+ apply sqrt_eq_0 in Heq.
-  - apply Rplus_eq_R0 in Heq; try apply Rle_0_sqr; []. simpl in *.
-    destruct Heq as [Heqx Heqy]. apply Rsqr_0_uniq in Heqx. apply Rsqr_0_uniq in Heqy. now subst.
-  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-+ unfold product. inversion Heq. simpl. ring_simplify (0 * 0 + 0 * 0). apply sqrt_0.
-Qed.
-
-Lemma R2norm_pos : forall u, 0 <= R2norm u.
-Proof. intro. unfold R2norm. apply sqrt_pos. Qed.
-
-Lemma R2norm_add : forall u v, (R2norm (u + v))² = (R2norm u)² + 2 * product u v + (R2norm v)².
-Proof.
-intros u v. unfold R2norm.
-repeat rewrite Rsqr_sqrt; try apply product_self_pos; [].
-rewrite product_add_l, product_add_r, product_add_r. rewrite (product_comm v u). ring.
-Qed.
-
-Lemma R2norm_sub : forall u v, (R2norm (u - v))² = (R2norm u)² - 2 * product u v + (R2norm v)².
-Proof.
-intros u v. unfold R2norm.
-repeat rewrite Rsqr_sqrt; try apply product_self_pos; [].
-rewrite product_add_l, product_add_r, product_add_r.
-repeat rewrite product_opp_l, product_opp_r. rewrite (product_comm v u). ring.
-Qed.
-
-Lemma R2norm_mul : forall k u, R2norm (k * u) = Rabs k * R2norm u.
-Proof.
-intros k u. unfold R2norm. rewrite product_mul_l, product_mul_r, <- Rmult_assoc.
-change (k * k) with k². rewrite sqrt_mult.
-- now rewrite sqrt_Rsqr_abs.
-- apply Rle_0_sqr.
-- apply product_self_pos.
-Qed.
-
-Lemma R2norm_opp : forall u, R2norm (- u) = R2norm u.
-Proof.
-intro u. replace (- u)%R2 with ((-1) * u)%R2.
-- rewrite R2norm_mul. rewrite Rabs_Ropp, Rabs_R1. ring.
-- now rewrite minus_morph, mul_1.
-Qed.
-
-Lemma square_R2norm_equiv : forall u k, 0 <= k -> (R2norm u = k <-> (R2norm u)² = k²).
-Proof. intros u k Hk. split; intro Heq; try congruence; []. apply pos_Rsqr_eq; trivial. apply R2norm_pos. Qed.
-
-Corollary squared_R2norm : forall u v, R2norm u = R2norm v <-> (R2norm u)² = (R2norm v)².
-Proof. intros u v. apply square_R2norm_equiv. apply R2norm_pos. Qed.
-
-Lemma squared_R2norm_product : forall u, (R2norm u)² = product u u.
-Proof. intro. unfold R2norm. rewrite Rsqr_sqrt; trivial. apply product_self_pos. Qed.
-
-Lemma R2norm_origin : R2norm origin = 0.
-Proof. rewrite square_R2norm_equiv, squared_R2norm_product; try reflexivity; []. compute. field. Qed.
-
-Lemma product_expression1 : forall u v, product u v = ((R2norm (u+v))² - (R2norm u)² - (R2norm v)²) / 2.
-Proof. intros [] []. rewrite 3 squared_R2norm_product. unfold product. simpl. field. Qed.
-
-Lemma product_expression2 : forall u v, product u v = ((R2norm u)² + (R2norm v)² - (R2norm (u-v))²) / 2.
-Proof. intros [] []. rewrite 3 squared_R2norm_product. unfold product. simpl. field. Qed.
+Corollary squared_norm : forall u v, norm u = norm v <-> (norm u)² = (norm v)².
+Proof. intros u v. apply square_norm_equiv. apply norm_nonneg. Qed.
 
 (** ***  Results about [orthogonal]  **)
 
 Lemma orthogonal_perpendicular : forall u, perpendicular u (orthogonal u).
 Proof.
 intro u. null u.
-- unfold perpendicular. now rewrite product_origin_l.
-- destruct u as [x y]. unfold perpendicular, orthogonal, product. simpl. field. now rewrite R2norm_0.
+- unfold perpendicular. now rewrite inner_product_origin_l.
+- destruct u as [x y]. unfold perpendicular. cbn. field.
+  change (norm (x, y) <> 0). now rewrite norm_defined.
 Qed.
 
 Lemma orthogonal_origin : orthogonal origin == origin.
@@ -410,25 +235,26 @@ intro u. null u.
 + split; now auto using orthogonal_origin.
 + split; intro Heq.
   - destruct u as [x y]. unfold orthogonal in Heq.
-    rewrite <- R2norm_0 in Hnull. injection Heq; intros Heqx Heqy.
+    rewrite <- norm_defined in Hnull. injection Heq; intros Heqx Heqy.
     apply Rinv_neq_0_compat in Hnull. apply Rmult_integral in Heqx. apply Rmult_integral in Heqy.
     destruct Heqx, Heqy; try contradiction; []. unfold origin. cbn. f_equal; lra.
   - rewrite Heq. apply orthogonal_origin.
 Qed.
 
-Lemma R2norm_orthogonal : forall u, ~u == origin -> R2norm (orthogonal u) = 1.
+Lemma norm_orthogonal : forall u, ~u == origin -> norm (orthogonal u) = 1.
 Proof.
-intros u Hnull. rewrite <- R2norm_0 in Hnull. unfold orthogonal. rewrite R2norm_mul. rewrite Rabs_pos_eq.
-- unfold R2norm in *. destruct u. unfold product in *. simpl in *.
-  replace (r0 * r0 + - r * - r) with (r * r + r0 * r0) by ring. now apply Rinv_l.
-- apply Rlt_le. apply Rinv_0_lt_compat. apply Rle_neq_lt; auto; []. apply R2norm_pos.
+intros u Hnull. rewrite <- norm_defined in Hnull. unfold orthogonal. rewrite norm_mul. rewrite Rabs_pos_eq.
+- destruct u as [u1 u2]. simpl.
+  replace (u2 * u2 + - u1 * - u1) with (u1 * u1 + u2 * u2) by ring. now apply Rinv_l.
+- apply Rlt_le. apply Rinv_0_lt_compat. apply Rle_neq_lt; auto; []. apply norm_nonneg.
 Qed.
 
 Lemma orthogonal_opp : forall u, orthogonal (- u)%R2 == (- orthogonal u)%R2.
 Proof.
 intro u. null u.
 - now rewrite opp_origin, orthogonal_origin, opp_origin.
-- destruct u as [? ?]. unfold orthogonal. rewrite R2norm_opp. cbn. hnf. now f_equal; field; rewrite R2norm_0.
+- destruct u as [? ?]. unfold orthogonal. rewrite norm_opp. cbn -[norm].
+  f_equal; field; now rewrite norm_defined.
 Qed.
 
 (* False in general because k may change the direction (but not the orientation) of u *)
@@ -436,126 +262,26 @@ Lemma orthogonal_mul : forall k u, 0 < k -> orthogonal (k * u) == orthogonal u.
 Proof.
 intros k u Hk. null u.
 - now rewrite mul_origin, orthogonal_origin.
-- rewrite <- R2norm_0 in Hnull. unfold orthogonal.
-  rewrite R2norm_mul, Rabs_pos_eq; try (now apply Rlt_le); [].
+- rewrite <- norm_defined in Hnull. unfold orthogonal.
+  rewrite norm_mul, Rabs_pos_eq; try (now apply Rlt_le); [].
   destruct u. simpl. hnf. f_equal; field; split; auto with real.
 Qed.
 
 (** ***  Results about [unitary]  **)
 
-Lemma R2norm_unitary : forall u, ~equiv u origin -> R2norm (unitary u) = 1.
-Proof.
-intros u Hnull.
-assert (R2norm u <> 0). { now rewrite R2norm_0. }
-unfold unitary. rewrite R2norm_mul, Rabs_pos_eq.
-- now apply Rinv_l.
-- apply Rlt_le. apply Rinv_0_lt_compat. apply Rle_neq_lt; auto; []. apply R2norm_pos.
-Qed.
-
-Lemma unitary_origin : unitary origin == origin.
-Proof. unfold unitary. apply mul_origin. Qed.
-
-Lemma unitary_is_origin : forall u, equiv (unitary u) origin <-> equiv u origin.
-Proof.
-intro u. split; intro Heq.
-- null u; try reflexivity; [].
-  apply R2norm_unitary in Hnull. rewrite Heq, R2norm_origin in Hnull.
-  exfalso. now apply R1_neq_R0.
-- now rewrite Heq, unitary_origin.
-Qed.
-
-Lemma unitary_opp : forall u, unitary (-u)%R2 == (-unitary u)%R2.
-Proof. intro u. unfold unitary. now rewrite R2norm_opp, mul_opp. Qed.
-
-Lemma unitary_mul : forall k u, 0 < k -> unitary (k * u) == unitary u.
-Proof.
-intros k u Hk. null u.
-- now rewrite mul_origin.
-- unfold unitary. rewrite R2norm_mul. rewrite Rabs_pos_eq; try lra; [].
-  rewrite mul_morph. replace (/ (k * R2norm u) * k) with (/R2norm u); try reflexivity; [].
-  field. rewrite R2norm_0. split; auto with real.
-Qed.
-
-Lemma unitary_id : forall u, u == ((R2norm u) * unitary u)%R2.
-Proof.
-intro u. unfold unitary. rewrite mul_morph. null u.
-- now rewrite mul_origin.
-- rewrite Rinv_r, mul_1; try easy; []. now rewrite R2norm_0.
-Qed.
-
-Lemma unitary_idempotent : forall u, unitary (unitary u) == unitary u.
-Proof.
-intro u. null u.
-- now rewrite unitary_origin at 1.
-- unfold unitary at 1. rewrite R2norm_unitary; trivial; []. replace (/1) with 1 by field. apply mul_1.
-Qed.
-
-Lemma unitary_product : forall u v, product u v = R2norm u * R2norm v * product (unitary u) (unitary v).
-Proof. intros. setoid_rewrite unitary_id at 1 2. rewrite product_mul_l, product_mul_r. field. Qed.
-
 Lemma unitary_orthogonal : forall u, unitary (orthogonal u) == orthogonal u.
 Proof.
 intro u. null u.
 - rewrite orthogonal_origin. apply unitary_origin.
-- unfold unitary. rewrite R2norm_orthogonal; trivial; []. replace (/1) with 1 by field. now rewrite mul_1.
+- unfold unitary. rewrite norm_orthogonal; trivial; []. replace (/1) with 1 by field. now rewrite mul_1.
 Qed.
 
 Lemma orthogonal_unitary : forall u, orthogonal (unitary u) == orthogonal u.
 Proof.
 intro u. null u.
 - now rewrite unitary_origin.
-- unfold orthogonal. rewrite R2norm_unitary; trivial; []. unfold unitary. simpl.
-  rewrite <- R2norm_0 in Hnull. now destruct u; f_equal; simpl; field.
-Qed.
-
-Lemma unitary_is_id : forall u, R2norm u = 1 -> unitary u == u.
-Proof. intros u Hu. unfold unitary. now rewrite Hu, Rinv_1, mul_1. Qed.
-
-(** ***  Results about [perpendicular]  **)
-
-Lemma perpendicular_sym : forall u v, perpendicular u v <-> perpendicular v u.
-Proof. intros. unfold perpendicular. now rewrite product_comm. Qed.
-
-Lemma perpendicular_origin_l : forall u, perpendicular origin u.
-Proof. intros [? ?]; compute. field. Qed.
-
-Lemma perpendicular_origin_r : forall u, perpendicular u origin.
-Proof. intros [? ?]; compute. field. Qed.
-
-Lemma perpendicular_opp_compat_l : forall u v, perpendicular (- u) v <-> perpendicular u v.
-Proof.
-intros u v. unfold perpendicular. split; intro Hperp.
-- rewrite <- mul_1, mul_opp, <- minus_morph, product_mul_l in Hperp. lra.
-- rewrite <- mul_1, mul_opp, <- minus_morph, product_mul_l, Hperp. field.
-Qed.
-
-Lemma perpendicular_opp_compat_r : forall u v, perpendicular u (- v) <-> perpendicular u v.
-Proof.
-intros u v. unfold perpendicular. split; intro Hperp.
-- setoid_rewrite <- mul_1 in Hperp at 2. rewrite mul_opp, <- minus_morph, product_mul_r in Hperp. lra.
-- setoid_rewrite <- mul_1 at 2. rewrite mul_opp, <- minus_morph, product_mul_r, Hperp. field.
-Qed.
-
-Lemma perpendicular_mul_compat_l : forall k u v, perpendicular u v -> perpendicular (k * u) v.
-Proof. intros k u v Hperp. unfold perpendicular. rewrite product_mul_l, Hperp. field. Qed.
-
-Lemma perpendicular_mul_compat_r : forall k u v, perpendicular u v -> perpendicular u (k * v).
-Proof. intros k u v Hperp. unfold perpendicular. rewrite product_mul_r, Hperp. field. Qed.
-
-Lemma perpendicular_mul_compat_l_iff : forall k u v, k <> 0 -> (perpendicular (k * u) v <-> perpendicular u v).
-Proof.
-intros k u v Hk. split; intro Hperp.
-- rewrite <- mul_1. rewrite <- (Rinv_l k); trivial; []. rewrite <- mul_morph.
-  now apply perpendicular_mul_compat_l.
-- now apply perpendicular_mul_compat_l.
-Qed.
-
-Lemma perpendicular_mul_compat_r_iff : forall k u v, k <> 0 -> (perpendicular u (k * v) <-> perpendicular u v).
-Proof.
-intros k u v Hk. split; intro Hperp.
-- rewrite <- (mul_1 v). rewrite <- (Rinv_l k); trivial; []. rewrite <- mul_morph.
-  now apply perpendicular_mul_compat_r.
-- now apply perpendicular_mul_compat_r.
+- unfold orthogonal. rewrite norm_unitary; trivial; []. unfold unitary. simpl.
+  rewrite <- norm_defined in Hnull. now destruct u; f_equal; simpl; field.
 Qed.
 
 Lemma perpendicular_orthogonal_compat : forall u v,
@@ -565,39 +291,18 @@ intros u v. split; intro Hperp.
 + null u; [| null v].
   - apply perpendicular_origin_l.
   - apply perpendicular_origin_r.
-  - destruct u, v. unfold perpendicular, orthogonal, product in *. simpl in Hperp |- *.
-    replace (/ R2norm (r, r0) * r0 * (/ R2norm (r1, r2) * r2) + / R2norm (r, r0) * - r * (/ R2norm (r1, r2) * - r1))
-      with (/ R2norm (r, r0) * (/ R2norm (r1, r2) * (r * r1 + r0 * r2))) in Hperp by ring.
-    rewrite <- R2norm_0 in Hnull, Hnull0.
+  - unfold perpendicular, orthogonal in *. cbn -[norm] in Hperp |- *.
+    replace (/ norm u * snd u * (/ norm v * snd v) + / norm u * - fst u * (/ norm v * - fst v))
+      with (/ norm u * (/ norm v * (fst u * fst v + snd u * snd v))) in Hperp by ring.
+    rewrite <- norm_defined in Hnull, Hnull0.
     apply Rinv_neq_0_compat in Hnull. apply Rinv_neq_0_compat in Hnull0.
-    apply Rmult_eq_reg_l with (/ R2norm (r1, r2)); trivial.
-    apply Rmult_eq_reg_l with (/ R2norm (r, r0)); trivial.
+    apply Rmult_eq_reg_l with (/ norm v); trivial; [].
+    apply Rmult_eq_reg_l with (/ norm u); trivial; [].
     rewrite Hperp. lra.
-+ destruct u, v. unfold perpendicular, orthogonal, product in *. simpl in *.
-  replace (/ R2norm (r, r0) * r0 * (/ R2norm (r1, r2) * r2) + / R2norm (r, r0) * - r * (/ R2norm (r1, r2) * - r1))
-    with (/ R2norm (r, r0) * (/ R2norm (r1, r2) * (r * r1 + r0 * r2))) by ring. rewrite Hperp. ring.
-Qed.
-
-Lemma perpendicular_unitary_compat_l : forall u v, perpendicular (unitary u) v <-> perpendicular u v.
-Proof.
-intros u v. null u.
-+ now rewrite unitary_origin.
-+ unfold perpendicular, unitary. rewrite product_mul_l.
-  rewrite <- R2norm_0 in Hnull. apply Rinv_neq_0_compat in Hnull.
-  split; intro Hperp.
-  - apply Rmult_integral in Hperp. destruct Hperp; lra.
-  - rewrite Hperp. lra.
-Qed.
-
-Lemma perpendicular_unitary_compat_r : forall u v, perpendicular u (unitary v) <-> perpendicular u v.
-Proof.
-intros u v. null v.
-+ now rewrite unitary_origin.
-+ unfold perpendicular, unitary. rewrite product_mul_r.
-  rewrite <- R2norm_0 in Hnull. apply Rinv_neq_0_compat in Hnull.
-  split; intro Hperp.
-  - apply Rmult_integral in Hperp. destruct Hperp; lra.
-  - rewrite Hperp. lra.
++ unfold perpendicular, orthogonal in *. cbn -[norm] in *.
+    replace (/ norm u * snd u * (/ norm v * snd v) + / norm u * - fst u * (/ norm v * - fst v))
+      with (/ norm u * (/ norm v * (fst u * fst v + snd u * snd v))) by ring.
+  rewrite Hperp. ring.
 Qed.
 
 Lemma unitary_orthogonal_perpendicular : forall u, perpendicular (unitary u) (orthogonal u).
@@ -609,12 +314,13 @@ Proof.
 intros u v. null u; [| null v].
 + rewrite orthogonal_origin. split; intros _; apply perpendicular_origin_l.
 + rewrite orthogonal_origin. split; intros _; apply perpendicular_origin_r.
-+ unfold perpendicular, orthogonal, product. cbn.
-  replace (/ R2norm u * snd u * fst v + / R2norm u * - fst u * snd v)
-    with (- / R2norm u * (fst u * snd v - snd u * fst v)) by ring.
-  replace (fst u * (/ R2norm v * snd v) + snd u * (/ R2norm v * - fst v))
-    with (/ R2norm v * ((fst u * snd v) - snd u * fst v)) by ring.
-  rewrite <- R2norm_0 in Hnull, Hnull0. apply Rinv_neq_0_compat in Hnull. apply Rinv_neq_0_compat in Hnull0.
++ unfold perpendicular, orthogonal. cbn -[norm].
+  replace (/ norm u * snd u * fst v + / norm u * - fst u * snd v)
+    with (- / norm u * (fst u * snd v - snd u * fst v)) by ring.
+  replace (fst u * (/ norm v * snd v) + snd u * (/ norm v * - fst v))
+    with (/ norm v * ((fst u * snd v) - snd u * fst v)) by ring.
+  rewrite <- norm_defined in Hnull, Hnull0.
+  apply Rinv_neq_0_compat in Hnull. apply Rinv_neq_0_compat in Hnull0.
   split; intro Heq;
   assert (Heq0 : fst u * snd v - snd u * fst v = 0) by (eapply Rmult_eq_reg_l; try rewrite Heq; lra);
   rewrite Heq0; lra.
@@ -627,19 +333,20 @@ intros u v w Hv Huv Hvw.
 null u; [| null w].
 + apply perpendicular_origin_l.
 + unfold colinear. rewrite orthogonal_origin. apply perpendicular_origin_r.
-+ unfold colinear, perpendicular, orthogonal, product in *. simpl.
-  replace (fst u * (/ R2norm w * snd w) + snd u * (/ R2norm w * - fst w))
-    with (/ R2norm w * (fst u * snd w + snd u * - fst w)) by ring.
++ unfold colinear, perpendicular, orthogonal in *. cbn -[norm].
+  replace (fst u * (/ norm w * snd w) + snd u * (/ norm w * - fst w))
+    with (/ norm w * (fst u * snd w + snd u * - fst w)) by ring.
   erewrite <- Rmult_0_r. apply Rmult_eq_compat_l.
   destruct (Req_dec (fst u) 0) as [Heq_u | Heq_u].
   - assert (snd u <> 0). { intro Heq. apply Hnull. destruct u. simpl in *. now subst. }
-    rewrite Heq_u in *. ring_simplify in Huv. ring_simplify.
+    cbn in Huv, Hvw. rewrite Heq_u in *. rewrite Rmult_0_l, Rplus_0_l in *.
     assert (Heq_v : snd v = 0). { apply Rmult_integral in Huv. now destruct Huv. }
     assert (Heq_v' : fst v <> 0). { intro Heq. apply Hv. destruct v. simpl in *. now subst. }
     rewrite Heq_v in *. ring_simplify in Hvw.
     erewrite <- Rmult_0_r. apply Rmult_eq_compat_l.
-    apply Rmult_integral in Hvw. now destruct Hvw.
-  - apply (f_equal (Rmult (fst u))) in Hvw. rewrite Rmult_plus_distr_l, <- Rmult_assoc in Hvw.
+    apply Rmult_integral in Hvw. destruct Hvw as [? | Hvw]; try rewrite Hvw; contradiction || ring.
+  - apply (f_equal (Rmult (fst u))) in Hvw.
+    cbn in Huv, Hvw. rewrite Rmult_plus_distr_l, <- Rmult_assoc in Hvw.
     assert (Huv' : fst u * fst v = - snd u * snd v) by lra.
     rewrite Huv' in Hvw.
     assert (snd v <> 0).
@@ -647,9 +354,6 @@ null u; [| null w].
       ring_simplify in Huv'. apply Rmult_integral in Huv'. lra. }
     apply Rmult_eq_reg_l with (snd v); trivial. lra.
 Qed.
-
-Lemma perpendicular_dec : forall u v, {perpendicular u v} + {~perpendicular u v}.
-Proof. intros u v. unfold perpendicular. apply Rdec. Defined.
 
 (** ***  Results about [colinear]  **)
 
@@ -716,31 +420,16 @@ Proof. intros. unfold colinear. now rewrite perpendicular_orthogonal_compat. Qed
 Lemma colinear_add : forall u v, colinear u (u + v) <-> colinear u v.
 Proof.
 intros u v. unfold colinear at 1. rewrite <- perpendicular_orthogonal_shift.
-unfold perpendicular. rewrite product_add_r. rewrite product_comm, orthogonal_perpendicular.
-rewrite Rplus_0_l. rewrite product_comm. rewrite colinear_sym. reflexivity.
-Qed.
-
-(** Important theorems *)
-Theorem Pythagoras : forall u v, perpendicular u v <-> (R2norm (u + v)%R2)² = (R2norm u)² + (R2norm v)².
-Proof.
-intros u v. split; intro Hperp.
-- unfold R2norm.
-  repeat rewrite Rsqr_sqrt; try apply product_self_pos; [].
-  rewrite product_add_l, product_add_r, product_add_r.
-  rewrite (product_comm v u), Hperp. ring.
-- rewrite squared_R2norm_product in Hperp at 1.
-  rewrite product_add_l, product_add_r, product_add_r in Hperp.
-  setoid_rewrite product_comm in Hperp at 3.
-  do 2 rewrite <- squared_R2norm_product in Hperp.
-  unfold perpendicular. lra.
+unfold perpendicular. rewrite inner_product_add_r. rewrite inner_product_sym, orthogonal_perpendicular.
+rewrite Rplus_0_l. rewrite inner_product_sym. rewrite colinear_sym. reflexivity.
 Qed.
 
 (* Beurk! *)
 Theorem decompose_on : forall u, ~equiv u origin -> forall v,
-  (v = product v (unitary u) * unitary u + product v (orthogonal u) * orthogonal u)%R2.
+  (v = inner_product v (unitary u) * unitary u + inner_product v (orthogonal u) * orthogonal u)%R2.
 Proof.
-intros [x1 y1] Hnull [x2 y2]. unfold unitary, orthogonal, R2norm, product. simpl. f_equal.
-+ ring_simplify. rewrite <- R2norm_0 in Hnull. unfold R2norm, product in Hnull. simpl in Hnull.
+intros [x1 y1] Hnull [x2 y2]. unfold unitary, orthogonal, norm, inner_product. simpl. f_equal.
++ ring_simplify. rewrite <- norm_defined in Hnull. unfold norm, inner_product in Hnull. simpl in Hnull.
   replace (Rpow_def.pow (/ sqrt (x1 * x1 + y1 * y1)) 2) with (/ sqrt (x1 * x1 + y1 * y1))²
     by now unfold Rsqr; field.
   replace (Rpow_def.pow x1 2) with x1² by (unfold Rsqr; ring).
@@ -751,7 +440,7 @@ intros [x1 y1] Hnull [x2 y2]. unfold unitary, orthogonal, R2norm, product. simpl
   rewrite Rsqr_sqrt.
   - unfold Rsqr. field. intro Habs. apply Hnull. rewrite Habs. apply sqrt_0.
   - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-+ ring_simplify. rewrite <- R2norm_0 in Hnull. unfold R2norm, product in Hnull. simpl in Hnull.
++ ring_simplify. rewrite <- norm_defined in Hnull. unfold norm, inner_product in Hnull. simpl in Hnull.
   replace (Rpow_def.pow (/ sqrt (x1 * x1 + y1 * y1)) 2) with (/ sqrt (x1 * x1 + y1 * y1))²
     by now unfold Rsqr; field.
   replace (Rpow_def.pow x1 2) with x1² by (unfold Rsqr; ring).
@@ -765,12 +454,12 @@ intros [x1 y1] Hnull [x2 y2]. unfold unitary, orthogonal, R2norm, product. simpl
 Qed.
 
 Corollary colinear_decompose : forall u, ~equiv u origin -> forall v,
-  colinear u v -> equiv v (R2norm v * unitary u)%R2 \/ equiv v (- R2norm v * unitary u)%R2.
+  colinear u v -> equiv v (norm v * unitary u)%R2 \/ equiv v (- norm v * unitary u)%R2.
 Proof.
 intros u Hnull v Huv. rewrite (decompose_on Hnull v).
 symmetry in Huv. rewrite Huv. rewrite mul_0, add_origin.
-rewrite R2norm_mul. rewrite R2norm_unitary, Rmult_1_r; trivial.
-destruct (Rle_dec 0 (product v (unitary u))) as [Hle | Hle].
+rewrite norm_mul. rewrite norm_unitary, Rmult_1_r; trivial.
+destruct (Rle_dec 0 (inner_product v (unitary u))) as [Hle | Hle].
 - left. f_equal. now rewrite Rabs_pos_eq.
 - right. f_equal. now rewrite Rabs_left, Ropp_involutive; auto with real.
 Qed.
@@ -786,29 +475,29 @@ destruct Hcol_u as [Hcol_u | Hcol_u], Hcol_v as [Hcol_v | Hcol_v];
 rewrite Hcol_u, Hcol_v; apply perpendicular_mul_compat_l, perpendicular_mul_compat_r; assumption.
 Qed.
 
-Lemma colinear_product_spec : forall u v, Rabs (product u v) = (R2norm u) * (R2norm v) <-> colinear u v.
+Lemma colinear_inner_product_spec : forall u v, Rabs (inner_product u v) = (norm u) * (norm v) <-> colinear u v.
 Proof.
 intros u v. split; intro Huv.
 * apply (f_equal Rsqr) in Huv. rewrite <- R_sqr.Rsqr_abs in Huv.
-  rewrite R_sqr.Rsqr_mult in Huv. do 2 rewrite squared_R2norm_product in Huv.
+  rewrite R_sqr.Rsqr_mult in Huv. do 2 rewrite squared_norm_product in Huv.
   null v; try apply colinear_origin_r; [].
-  unfold colinear, orthogonal, perpendicular. rewrite product_mul_r. apply Rmult_eq_0_compat_l.
-  unfold product in *. rewrite R_sqr.Rsqr_plus in Huv. do 2 rewrite R_sqr.Rsqr_mult in Huv.
+  unfold colinear, orthogonal, perpendicular. rewrite inner_product_mul_r. apply Rmult_eq_0_compat_l.
+  simpl in *. rewrite R_sqr.Rsqr_plus in Huv. do 2 rewrite R_sqr.Rsqr_mult in Huv.
   unfold Rsqr in Huv. simpl. ring_simplify. apply Rsqr_0_uniq.
   rewrite R_sqr.Rsqr_minus. unfold Rsqr. lra.
 * null u.
-  + rewrite product_origin_l. rewrite Rabs_R0, R2norm_origin. ring.
+  + rewrite inner_product_origin_l. rewrite Rabs_R0, norm_origin. ring.
   + apply (colinear_decompose Hnull) in Huv.
-    setoid_rewrite unitary_id at 1. rewrite product_mul_l.
+    setoid_rewrite unitary_id at 1. rewrite inner_product_mul_l.
     destruct Huv as [Huv | Huv]; rewrite Huv at 1.
-    - rewrite product_mul_r. rewrite <- squared_R2norm_product, R2norm_unitary; trivial.
+    - rewrite inner_product_mul_r. rewrite <- squared_norm_product, norm_unitary; trivial.
       rewrite R_sqr.Rsqr_1, Rmult_1_r. apply Rabs_pos_eq.
-      replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply R2norm_pos.
-    - rewrite product_mul_r. rewrite <- squared_R2norm_product, R2norm_unitary; trivial.
+      replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply norm_nonneg.
+    - rewrite inner_product_mul_r. rewrite <- squared_norm_product, norm_unitary; trivial.
       rewrite R_sqr.Rsqr_1, Rmult_1_r.
-      replace (R2norm u * - R2norm v) with (- (R2norm u * R2norm v)) by ring. rewrite Rabs_Ropp.
+      replace (norm u * - norm v) with (- (norm u * norm v)) by ring. rewrite Rabs_Ropp.
       apply Rabs_pos_eq.
-      replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply R2norm_pos.
+      replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply norm_nonneg.
 Qed.
 
 Theorem triang_ineq_eq : forall u v w,
@@ -816,22 +505,22 @@ Theorem triang_ineq_eq : forall u v w,
 Proof.
 intros u v w Heq. null (w - u)%R2.
 * split; apply colinear_origin_l.
-* rewrite dist_sym, R2norm_dist in Heq.
+* rewrite dist_sym, norm_dist in Heq.
   assert (Huw : (w - u =(w - v) + (v - u))%R2).
   { rewrite add_assoc. f_equal. rewrite <- add_assoc. setoid_rewrite add_comm at 2.
     rewrite add_opp. now rewrite add_origin. }
-  rewrite Huw in Heq. apply (f_equal Rsqr) in Heq. rewrite squared_R2norm_product in Heq.
-  rewrite product_add_l in Heq. setoid_rewrite product_add_r in Heq.
-  do 2 rewrite <- squared_R2norm_product, <- R2norm_dist in Heq.
-  rewrite R_sqr.Rsqr_plus in Heq. rewrite product_comm in Heq. setoid_rewrite dist_sym at 1 2 in Heq.
-  assert (Heq' : product (v - u) (w - v) = dist u v * dist v w) by lra.
+  rewrite Huw in Heq. apply (f_equal Rsqr) in Heq. rewrite squared_norm_product in Heq.
+  rewrite inner_product_add_l in Heq. setoid_rewrite inner_product_add_r in Heq.
+  do 2 rewrite <- squared_norm_product, <- norm_dist in Heq.
+  rewrite R_sqr.Rsqr_plus in Heq. rewrite inner_product_sym in Heq. setoid_rewrite dist_sym at 1 2 in Heq.
+  assert (Heq' : inner_product (v - u) (w - v) = dist u v * dist v w) by lra.
   apply (f_equal Rabs) in Heq'. setoid_rewrite Rabs_pos_eq at 2 in Heq'.
-  + setoid_rewrite dist_sym in Heq'. setoid_rewrite R2norm_dist in Heq'.
-    rewrite colinear_product_spec in Heq'.
+  + setoid_rewrite dist_sym in Heq'. setoid_rewrite norm_dist in Heq'.
+    rewrite colinear_inner_product_spec in Heq'.
     split.
     - rewrite Huw. rewrite add_comm. rewrite colinear_sym. now rewrite colinear_add.
     - rewrite Huw. rewrite colinear_sym. now rewrite colinear_add.
-  + replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply dist_pos.
+  + replace 0 with (0 * 0) by ring. apply Rmult_le_compat; reflexivity || apply dist_nonneg.
 Qed.
 
 Theorem triang_ineq_eq3 : forall t u v w,
@@ -847,8 +536,8 @@ intros t u v w Heq. null (u - t)%R2; [| null (v - t)%R2].
   rewrite Rplus_0_l. rewrite Heq at 2. setoid_rewrite dist_sym at 3. ring.
 + assert (Heq' : dist t v = dist t u + dist u v).
   { apply antisymmetry.
-    - apply triang_ineq.
-    - apply Rplus_le_reg_r with (dist v w). rewrite <- Heq. apply triang_ineq. }
+    - apply RealMetricSpace.triang_ineq.
+    - apply Rplus_le_reg_r with (dist v w). rewrite <- Heq. apply RealMetricSpace.triang_ineq. }
   assert (Hcol := triang_ineq_eq _ _ _ Heq'). split; try (now symmetry); [].
   rewrite <- Heq' in Heq. apply triang_ineq_eq in Heq.
   destruct Heq. destruct Hcol. now apply colinear_trans with (v - t)%R2.
@@ -860,34 +549,33 @@ Lemma segment_bisector_spec : forall pt1 pt2 pt, ~equiv pt1 pt2 ->
 Proof.
 intros pt1 pt2 pt Hnull. split; intro Hpt.
 + pose (ptx := (pt - pt1)%R2).
-  exists (product ptx (orthogonal (pt2 - pt1))).
+  exists (inner_product ptx (orthogonal (pt2 - pt1))).
   assert (Hneq : ~(pt2 - pt1)%R2 == origin).
   { intro Habs. apply Hnull. destruct pt1, pt2; simpl in *. injection Habs; intros; hnf; f_equal; lra. }
-  rewrite add_comm. rewrite <- dist_defined. rewrite <- (R2add_dist (- pt1)). fold ptx.
+  rewrite add_comm. rewrite <- dist_defined. rewrite <- (dist_translation (- pt1)%VS). fold ptx.
   rewrite <- add_assoc. replace (middle pt1 pt2 - pt1)%R2 with (1/2 * (pt2 - pt1))%R2
     by (destruct pt1, pt2; simpl; f_equal; field). pose (u := (pt2 - pt1)%R2). fold u in Hneq |- *.
   rewrite (decompose_on Hneq ptx) at 1.
-  rewrite R2norm_dist. unfold R2norm. rewrite <- sqrt_0. f_equal.
-  repeat rewrite ?product_add_l, ?product_add_r, ?product_opp_l, ?product_opp_r, ?product_mul_l, ?product_mul_r.
+  rewrite norm_dist. rewrite <- sqrt_0. apply (f_equal sqrt).
+  repeat rewrite ?inner_product_add_l, ?inner_product_add_r,
+                 ?inner_product_opp_l, ?inner_product_opp_r,
+                 ?inner_product_mul_l, ?inner_product_mul_r.
   ring_simplify.
-  rewrite (unitary_id u) at 6 8. rewrite ?product_mul_l, ?product_mul_r.
-  assert (Heq : product (unitary u) (unitary u) = 1).
-  { rewrite <- R_sqr.Rsqr_1. rewrite <- (R2norm_unitary Hneq). unfold R2norm.
-    rewrite Rsqr_sqrt; trivial. apply product_self_pos. }
+  rewrite (unitary_id u) at 6 8. rewrite ?inner_product_mul_l, ?inner_product_mul_r.
+  assert (Heq : inner_product (unitary u) (unitary u) = 1).
+  { rewrite <- R_sqr.Rsqr_1. rewrite <- squared_norm_product. now rewrite <- (norm_unitary _ Hneq). }
   rewrite Heq. clear Heq. repeat rewrite Rmult_1_r.
-  assert (Heq : product u u = (R2norm u)²).
-  { unfold R2norm. rewrite Rsqr_sqrt; trivial. apply product_self_pos. }
-    rewrite Heq. clear Heq.
+  rewrite <- squared_norm_product.
   (* Let us now use the assumption about pt. *)
-  setoid_rewrite <- (R2add_dist (- pt1)) at 2 in Hpt. rewrite dist_sym in Hpt.
-  do 2 rewrite R2norm_dist in Hpt. fold u ptx in Hpt.
-  assert (Hsquare : (R2norm ptx)² = (R2norm (ptx - u))²) by now rewrite Hpt.
-  rewrite R2norm_sub in Hsquare. rewrite <- R2norm_0 in Hneq.
-  assert (Heq : R2norm u = 2 * product ptx (unitary u)).
-  { unfold unitary. rewrite product_mul_r. apply Rmult_eq_reg_l with (R2norm u); trivial; [].
-    change (R2norm u * R2norm u) with (R2norm u)². field_simplify; trivial; []. lra. }
+  setoid_rewrite <- (dist_translation (- pt1)%R2) at 2 in Hpt. rewrite dist_sym in Hpt.
+  do 2 rewrite norm_dist in Hpt. fold u ptx in Hpt.
+  assert (Hsquare : (norm ptx)² = (norm (ptx - u))²) by now rewrite Hpt.
+  rewrite norm_sub in Hsquare. rewrite <- norm_defined in Hneq.
+  assert (Heq : norm u = 2 * inner_product ptx (unitary u)).
+  { unfold unitary. rewrite inner_product_mul_r. apply Rmult_eq_reg_l with (norm u); trivial; [].
+    change (norm u * norm u) with (norm u)². field_simplify; trivial; []. lra. }
   rewrite Heq. unfold Rsqr. field.
-+ destruct Hpt as [k Hpt]. rewrite Hpt. unfold middle. do 2 rewrite R2norm_dist.
++ destruct Hpt as [k Hpt]. rewrite Hpt. unfold middle. do 2 rewrite norm_dist.
   rewrite opp_distr_add. rewrite <- (add_comm (-pt2))%R2. repeat rewrite add_assoc.
   replace (pt1 - (1 / 2 * (pt1 + pt2)))%R2 with (- (/2 * (pt2 - pt1)))%R2
     by (destruct pt1, pt2; simpl; f_equal; field).
@@ -896,8 +584,8 @@ intros pt1 pt2 pt Hnull. split; intro Hpt.
   assert (Hperp : perpendicular (- (/2 * (pt2 - pt1)))%R2 (k * orthogonal (pt2 - pt1))%R2)
     by apply perpendicular_opp_compat_l, perpendicular_mul_compat_l,
              perpendicular_mul_compat_r, orthogonal_perpendicular.
-  rewrite squared_R2norm. rewrite Pythagoras in Hperp. rewrite Hperp.
-  setoid_rewrite <- R2norm_opp at 3. rewrite <- Pythagoras.
+  rewrite squared_norm. rewrite Pythagoras in Hperp. rewrite Hperp.
+  setoid_rewrite <- norm_opp at 3. rewrite <- Pythagoras.
   apply perpendicular_opp_compat_l, perpendicular_opp_compat_r,
         perpendicular_mul_compat_l, perpendicular_mul_compat_r, orthogonal_perpendicular.
 Qed.
@@ -905,14 +593,10 @@ Qed.
 (** ** Segments **)
 
 Lemma Rplus_reg_r : forall r1 r2 r3, r1 = r3 + - r2 -> r1 + r2 = r3.
-Proof.
-  intros. subst. rewrite Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_r. reflexivity.
-Qed.
+Proof. intros. lra. Qed.
 
 Lemma Rplus_reg_l : forall r1 r2 r3, r2 = r3 + -r1 -> r1 + r2 = r3.
-Proof.
-  intros. subst. rewrite Rplus_comm, Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_r. reflexivity.
-Qed.
+Proof. intros. lra. Qed.
 
 Lemma Rplus_opp_r_rwrt : forall r1 r2,  r1 + - r2 = 0 -> r1 = r2.
 Proof.
@@ -930,14 +614,14 @@ Lemma R2_opp_dist : forall u v, (- (u + v) = -u + -v)%R2.
 Proof. intros [? ?] [? ?]. compute. f_equal; ring. Qed.
 
 Lemma orthogonal_projection_aux :
-  forall ptA ptB ptS, ~ptA == ptB ->
-                      exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA))%R2.
+  forall ptA ptB ptS, ptA =/= ptB ->
+                      exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA)).
 Proof.
   intros A B S Hineq.
   destruct A as (xA, yA).
   destruct B as (xB, yB).
   destruct S as (xS, yS).
-  unfold perpendicular, product.
+  unfold perpendicular, inner_product.
   simpl.
   set (xAB := xB + - xA).
   set (yAB := yB + - yA).
@@ -980,8 +664,8 @@ Proof.
 Qed.
 
 Lemma orthogonal_projection :
-  forall ptA ptB ptS, ~ptA == ptB ->
-  exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS)%R2.
+  forall ptA ptB ptS, ptA =/= ptB ->
+  exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS).
 Proof.
 intros A B S Hineq.
 destruct (orthogonal_projection_aux S Hineq) as (k, Hp).
@@ -989,11 +673,11 @@ exists k.
 now rewrite R2plus_opp_assoc_comm.
 Qed.
 
-Lemma squared_R2norm_le : forall u v, (R2norm u)² <= (R2norm v)² <-> R2norm u <= R2norm v.
-Proof. intros. apply pos_Rsqr_le; auto using R2norm_pos. Qed.
+Lemma squared_norm_le : forall u v, (norm u)² <= (norm v)² <-> norm u <= norm v.
+Proof. intros. apply pos_Rsqr_le; auto using norm_nonneg. Qed.
 
 Definition on_segment (ptA ptB pt : R2) :=
-  exists k, (pt - ptA)%R2 = (k * (ptB - ptA))%R2 /\ (0 <= k <= 1)%R.
+  exists k, (pt - ptA = k * (ptB - ptA))%R2 /\ (0 <= k <= 1)%R.
 
 Lemma inner_segment : forall ptA ptB ptS ptK,
   ~ ptA == ptB ->
@@ -1032,8 +716,8 @@ clear Hcolinear.
 
 destruct (Rlt_le_dec k kh) as [Hlt | Hle].
 + left.
-  rewrite dist_sym, R2norm_dist, dist_sym, R2norm_dist.
-  apply squared_R2norm_le.
+  rewrite dist_sym, norm_dist, dist_sym, norm_dist.
+  apply squared_norm_le.
   replace (K - S)%R2 with ((K - H) + (H - S))%R2.
   apply Pythagoras in HperpK. rewrite HperpK.
   replace (A - S)%R2 with ((A - H) + (H - S))%R2.
@@ -1044,10 +728,10 @@ destruct (Rlt_le_dec k kh) as [Hlt | Hle].
   replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
   replace (A - (A + kh * (B - A)))%R2 with (-kh * (B - A))%R2.
 
-  apply squared_R2norm_le.
-  repeat rewrite R2norm_mul.
+  apply squared_norm_le.
+  repeat rewrite norm_mul.
   apply Rmult_le_compat_r.
-  apply R2norm_pos.
+  apply norm_nonneg.
   rewrite Rabs_Ropp, Rabs_minus_sym.
   repeat rewrite Rabs_pos_eq.
   apply Rplus_le_reg_pos_r with (r2 := k). tauto.
@@ -1062,8 +746,8 @@ destruct (Rlt_le_dec k kh) as [Hlt | Hle].
   destruct K, H, S; compute; f_equal; ring.
 
 + right.
-  rewrite dist_sym, R2norm_dist, dist_sym, R2norm_dist.
-  apply squared_R2norm_le.
+  rewrite dist_sym, norm_dist, dist_sym, norm_dist.
+  apply squared_norm_le.
   replace (K - S)%R2 with ((K - H) + (H - S))%R2.
   apply Pythagoras in HperpK. rewrite HperpK.
   replace (B - S)%R2 with ((B - H) + (H - S))%R2.
@@ -1074,10 +758,10 @@ destruct (Rlt_le_dec k kh) as [Hlt | Hle].
   replace (A + k * (B - A) - (A + kh * (B - A)))%R2 with ((k - kh) * (B - A))%R2.
   replace (B - (A + kh * (B - A)))%R2 with ((1 - kh) * (B - A))%R2.
 
-  apply squared_R2norm_le.
-  repeat rewrite R2norm_mul.
+  apply squared_norm_le.
+  repeat rewrite norm_mul.
   apply Rmult_le_compat_r.
-  apply R2norm_pos.
+  apply norm_nonneg.
   repeat rewrite Rabs_pos_eq.
   apply Rplus_le_compat_r. tauto.
   apply Rge_le.
@@ -1116,21 +800,21 @@ destruct (Req_dec kq 1).
   { rewrite add_comm, <- add_assoc, (add_comm _ Q), add_opp.
     change eq with equiv. apply add_origin.
   }
-  rewrite Heq, R2norm_dist.
+  rewrite Heq, norm_dist.
   assert (Heq' : (P + kp * (C - P) - C = (- 1 + kp) * (C - P))%R2).
   { rewrite <- add_morph, minus_morph, mul_1, opp_distr_add, opp_opp.
     symmetry. now rewrite <- add_assoc, add_comm. }
-  rewrite Heq', R2norm_mul, <- Rabs_Ropp.
+  rewrite Heq', norm_mul, <- Rabs_Ropp.
   apply Rmult_le_compat.
   - apply Rabs_pos.
-  - apply R2norm_pos.
+  - apply norm_nonneg.
   - right.
     rewrite Rabs_pos_eq.
     ring.
     rewrite Ropp_plus_distr, Ropp_involutive.
     apply Rplus_le_reg_r with (r := kp).
     now rewrite Rplus_0_l, Rplus_assoc, Rplus_opp_l, Rplus_0_r.
-  - now rewrite <- R2norm_dist, dist_sym.
+  - now rewrite <- norm_dist, dist_sym.
 + destruct Hkq as [Hkq | Hkq]; [| exfalso; now apply H].
   clear H.
 
@@ -1147,14 +831,14 @@ destruct (Req_dec kq 1).
   { left. assumption. }
 
   assert (Thales: dist KP KQ' <= (1 - kp) * dm).
-  { rewrite R2norm_dist.
+  { rewrite norm_dist.
     unfold KP, KQ'.
     replace (P + kp * (C - P) - (Q + kp * (C - Q)))%R2 with ((1 - kp) * (P - Q))%R2.
-    { rewrite R2norm_mul.
+    { rewrite norm_mul.
       rewrite (Rabs_pos_eq _ Hpoz).
-      rewrite (Rmult_le_compat_l (1 - kp) (R2norm (P - Q)) dm Hpoz).
+      rewrite (Rmult_le_compat_l (1 - kp) (norm (P - Q)) dm Hpoz).
       right. reflexivity.
-      rewrite <- R2norm_dist.
+      rewrite <- norm_dist.
       assumption.
     }
     destruct P, Q, C; compute; f_equal; ring.
@@ -1217,28 +901,16 @@ destruct (Req_dec kq 1).
   destruct (inner_segment KP HneqKQ'C Hseg).
   - apply Rle_trans with (r2 := dist KP KQ'); assumption.
   - apply Rle_trans with (r2 := dist KP C); [ assumption | ].
-    unfold KP. rewrite R2norm_dist.
+    unfold KP. rewrite norm_dist.
     replace (P + kp * (C - P) - C)%R2 with ((1 - kp) * (P - C))%R2.
-    rewrite R2norm_mul.
+    rewrite norm_mul.
     rewrite Rabs_pos_eq.
     apply Rmult_le_compat_l.
     left; assumption.
-    rewrite <- R2norm_dist.
+    rewrite <- norm_dist.
     assumption.
     left; assumption.
     destruct P, C; compute; f_equal; ring.
-Qed.
-
-Lemma R2norm_ineq : forall u v, R2norm (u + v) <= R2norm u + R2norm v.
-Proof.
-intros u v.
-replace (R2norm (u+v)) with (R2norm (u - -v)%R2).
-replace (R2norm u) with (R2norm (u - origin)).
-replace (R2norm v) with (R2norm (origin - - v)%R2).
-- repeat rewrite <- R2norm_dist. apply triang_ineq.
-- now rewrite add_comm, add_origin, opp_opp.
-- now rewrite opp_origin, add_origin.
-- now rewrite opp_opp.
 Qed.
 
 Lemma fold_add_acc : forall E a b, fold_left add E (a + b)%R2 = ((fold_left add E a) + b)%R2.
@@ -1327,18 +999,18 @@ Proof.
 intros E dm Hnotempty Hdm p Hp.
 assert (Hlength_pos: 0 < INR (List.length E)).
 { apply lt_0_INR. destruct E; try (now elim Hnotempty); []. simpl. omega. }
-rewrite R2norm_dist. subst. unfold barycenter.
+rewrite norm_dist. subst. unfold barycenter.
 replace p%R2 with (- / INR (length E) * (- INR (length E) * p))%R2
   by (rewrite mul_morph, Ropp_inv_permute, <- Rinv_l_sym, mul_1; lra || reflexivity).
-rewrite <- minus_morph, <- mul_distr_add, R2norm_mul, Rabs_Ropp, Rabs_right;
+rewrite <- minus_morph, <- mul_distr_add, norm_mul, Rabs_Ropp, Rabs_right;
 try (now apply Rle_ge, Rlt_le, Rinv_0_lt_compat); [].
 apply Rmult_le_reg_l with (r := INR (length E)); trivial; [].
 rewrite <- Rmult_assoc, Rinv_r, Rmult_1_l; try lra; [].
 induction E as [| a [| b E]].
 + now elim Hnotempty.
-+ specialize (Hp a ltac:(now left)). cbn -[mul add].
++ specialize (Hp a ltac:(now left)). cbn -[mul add norm].
   replace ((-1 * p) + ((0, 0) + a))%R2 with (a - p)%R2 by (destruct a, p; simpl; f_equal; ring).
-  now rewrite Rmult_1_l, <- R2norm_dist, dist_sym.
+  now rewrite Rmult_1_l, <- norm_dist, dist_sym.
 + clear Hlength_pos Hnotempty.
   set (F := b :: E). fold F in IHE, Hdm, Hp.
   set (lF := length F). fold lF in IHE.
@@ -1347,12 +1019,12 @@ induction E as [| a [| b E]].
   cbn [fold_left].
   rewrite fold_add_acc, <- add_assoc, (add_comm a), <- add_assoc, add_assoc.
   replace (-1 * p + a)%R2 with (a - p)%R2 by (destruct a, p; simpl; f_equal; ring).
-  rewrite R2norm_ineq.
+  rewrite triang_ineq.
   apply Rplus_le_compat.
   - rewrite add_comm. apply IHE; intuition; unfold lF, F; try discriminate; [].
     cbn [length]. rewrite S_INR.
     apply Rplus_le_lt_0_compat; apply pos_INR || apply Rlt_0_1.
-  - rewrite <- R2norm_dist, dist_sym. apply Hp. now left.
+  - rewrite <- norm_dist, dist_sym. apply Hp. now left.
 Qed.
 
 Lemma barycenter_dist_decrease : forall E dm,
@@ -1368,100 +1040,84 @@ Qed.
 Lemma barycenter_singleton : forall pt, barycenter (pt :: nil) = pt.
 Proof. intros []. unfold barycenter. simpl. f_equal; field. Qed.
 
-(** Translation and homothecy are similarities in R². *)
-Lemma translation_hyp : forall v x y : R2, dist (x + v)%R2 (y + v)%R2 = dist x y.
-Proof. intros [] [] []. simpl. f_equal. unfold Rsqr. ring. Qed.
+(** A similarity preserves scalar inner_product ratios. *)
 
-Lemma homothecy_hyp : forall (ρ : R) x y, dist (ρ * x)%R2 (ρ * y)%R2 = Rabs ρ * dist x y.
-Proof.
-intros ? [] []. simpl. rewrite <- sqrt_Rsqr_abs, <- sqrt_mult.
-- f_equal. unfold Rsqr. ring.
-- apply Rle_0_sqr.
-- replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
-Qed.
-
-Definition translation := Similarity.translation translation_hyp.
-Definition homothecy := Similarity.homothecy translation_hyp homothecy_hyp.
-
-(** A similarity preserves scalar product ratios. *)
-
-Lemma similarity_origin_R2norm : forall sim : similarity R2, sim origin == origin ->
-  forall u, R2norm (sim u) = Similarity.zoom sim * R2norm u.
+Lemma similarity_origin_norm : forall sim : similarity R2, sim origin == origin ->
+  forall u, norm (sim u) = Similarity.zoom sim * norm u.
 Proof.
 intros sim Hsim u.
-setoid_rewrite <- add_origin. rewrite <- opp_origin, <- 2 R2norm_dist.
+setoid_rewrite <- add_origin. rewrite <- opp_origin, <- 2 norm_dist.
 rewrite <- Hsim at 1. apply sim.(Similarity.dist_prop).
 Qed.
 
-Lemma similarity_origin_product : forall sim : similarity R2, sim origin == origin ->
-  forall u v, product (sim u) (sim v) = (Similarity.zoom sim)² * product u v.
+Lemma similarity_origin_inner_product : forall sim : similarity R2, sim origin == origin ->
+  forall u v, inner_product (sim u) (sim v) = (Similarity.zoom sim)² * inner_product u v.
 Proof.
 intros sim Hsim u v.
-rewrite 2 product_expression2, 2 (similarity_origin_R2norm sim Hsim).
+rewrite 2 polarization_identity2, 2 (similarity_origin_norm sim Hsim).
 repeat rewrite R_sqr.Rsqr_mult.
-cut ((R2norm (sim u - sim v))² = (Similarity.zoom sim)² * ((R2norm (u - v))²)); try lra; [].
-rewrite <- 2 R2norm_dist, Similarity.dist_prop. apply R_sqr.Rsqr_mult.
+cut ((norm (sim u - sim v))² = (Similarity.zoom sim)² * ((norm (u - v))²)); try lra; [].
+rewrite <- 2 norm_dist, Similarity.dist_prop. apply R_sqr.Rsqr_mult.
 Qed.
 
-Lemma translation_product : forall t u1 u2 v1 v2,
-  (product (translation t v1 - translation t u1) (translation t v2 - translation t u2)
-  = product (v1 - u1) (v2 - u2))%R2.
+Lemma translation_inner_product : forall t u1 u2 v1 v2,
+  (inner_product (translation t v1 - translation t u1) (translation t v2 - translation t u2)
+  = inner_product (v1 - u1) (v2 - u2))%R2.
 Proof. intros [] [] [] [] []. compute. ring. Qed.
 
-Lemma similarity_product : forall (sim : similarity R2) u1 u2 v1 v2,
-  product (sim v1 - sim u1) (sim v2 - sim u2) = (Similarity.zoom sim)² * product (v1 - u1) (v2 - u2).
+Lemma similarity_inner_product : forall (sim : similarity R2) u1 u2 v1 v2,
+  inner_product (sim v1 - sim u1) (sim v2 - sim u2) = (Similarity.zoom sim)² * inner_product (v1 - u1) (v2 - u2).
 Proof.
 intros sim u1 u2 v1 v2.
 pose (sim' := translation (opp (sim origin)) ∘ sim).
 assert (Hzoom' :  Similarity.zoom sim' = Similarity.zoom sim).
 { unfold sim'. compute. apply Rmult_1_l. }
-assert (Hsim' : forall u v, product (sim' u) (sim' v) = (Similarity.zoom sim)² * product u v).
-{ setoid_rewrite <- Hzoom'. apply similarity_origin_product.
+assert (Hsim' : forall u v, inner_product (sim' u) (sim' v) = (Similarity.zoom sim)² * inner_product u v).
+{ setoid_rewrite <- Hzoom'. apply similarity_origin_inner_product.
   unfold sim'. unfold origin. simpl. destruct (sim (0, 0)). f_equal; ring. }
 assert (Hsim : sim == translation (sim origin) ∘ sim').
 { unfold sim'. rewrite Similarity.compose_assoc.
   rewrite <- Similarity.compose_id_l at 1.
   rewrite <- Similarity.compose_inverse_r.
   do 2 f_equiv. apply Similarity.translation_inverse. }
-rewrite Hsim at -5. cbn -[add opp mul translation sim'].
-rewrite translation_product.
-repeat rewrite ?product_add_l, ?product_add_r, ?product_opp, ?product_opp_l, ?product_opp_r, Hsim'.
+rewrite Hsim at -5. cbn -[add opp mul sim' inner_product].
+repeat rewrite ?inner_product_add_l, ?inner_product_add_r, ?inner_product_opp, ?inner_product_opp_l, ?inner_product_opp_r, Hsim'.
 ring.
 Qed.
 
 Theorem unitary_in_R2 : forall sim : similarity R2, sim origin == origin ->
-  exists u v, R2norm u = sim.(Similarity.zoom) /\ R2norm v = sim.(Similarity.zoom) /\ perpendicular u v /\
-    forall pt, (sim pt = product u pt * u + product v pt * v)%R2.
+  exists u v, norm u = sim.(Similarity.zoom) /\ norm v = sim.(Similarity.zoom) /\ perpendicular u v /\
+    forall pt, (sim pt = inner_product u pt * u + inner_product v pt * v)%R2.
 Proof.
 intros sim Hsim.
-assert (Hnorm10 : R2norm (1, 0) = 1).
-{ unfold R2norm. rewrite <- sqrt_1 at 3. f_equal. compute. ring. }
-assert (Hnorm01 : R2norm (0, 1) = 1).
-{ unfold R2norm. rewrite <- sqrt_1 at 3. f_equal. compute. ring. }
+assert (Hnorm10 : norm ((1, 0) : R2) = 1).
+{ simpl. ring_simplify (1 * 1 + 0 * 0). apply sqrt_1. }
+assert (Hnorm01 : norm ((0, 1) : R2) = 1).
+{ simpl. ring_simplify (0 * 0 + 1 * 1). apply sqrt_1. }
 exists (sim (1, 0)), (sim (0, 1))%R2.
 repeat split.
-* rewrite similarity_origin_R2norm, Hnorm10; trivial; ring.
-* rewrite similarity_origin_R2norm, Hnorm01; trivial; ring.
-* unfold perpendicular. rewrite similarity_origin_product; trivial; [].
-  unfold product. simpl. ring.
+* rewrite similarity_origin_norm, Hnorm10; trivial; ring.
+* rewrite similarity_origin_norm, Hnorm01; trivial; ring.
+* unfold perpendicular. rewrite similarity_origin_inner_product; trivial; [].
+  simpl. ring.
 * intro pt.
   assert (Hnull0 : sim (1, 0) =/= origin).
   { intro Habs. rewrite <- Hsim in Habs. apply Similarity.injective in Habs.
     unfold origin in Habs. simpl in Habs. injection Habs. apply R1_neq_R0. }
-  assert (Hnull : sim (/R2norm (sim (1, 0)) * (1, 0))%R2 =/= origin).
+  assert (Hnull : sim (/norm (sim (1, 0)) * (1, 0))%R2 =/= origin).
   { intro Habs. rewrite <- Hsim in Habs. apply Similarity.injective in Habs.
     apply mul_integral in Habs. destruct Habs as [Habs | Habs].
-    - revert Habs. apply Rinv_neq_0_compat. now rewrite R2norm_0.
+    - revert Habs. apply Rinv_neq_0_compat. now rewrite norm_defined.
     - injection Habs. apply R1_neq_R0. }
-(*   assert (Hunitary : R2norm (sim (/R2norm (sim (1, 0)) * (1, 0)))%R2 = 1).
-  { rewrite 2 similarity_origin_R2norm; trivial; [].
-    rewrite Hnorm10, R2norm_mul, Rabs_pos_eq, Hnorm10.
+(*   assert (Hunitary : norm (sim (/norm (sim (1, 0)) * (1, 0)))%R2 = 1).
+  { rewrite 2 similarity_origin_norm; trivial; [].
+    rewrite Hnorm10, norm_mul, Rabs_pos_eq, Hnorm10.
     - field. apply Similarity.zoom_non_null.
     - rewrite <- Rmult_1_l. apply Fourier_util.Rle_mult_inv_pos; try lra; [].
       rewrite Rmult_1_r. apply (Similarity.zoom_pos sim). } *)
   rewrite (decompose_on Hnull0 (sim pt)).
   unfold unitary at 1.
-  rewrite product_mul_r, similarity_origin_product; trivial; [].
+  rewrite inner_product_mul_r, similarity_origin_inner_product; trivial; [].
 Admitted. (* similarity_in_R2 *)
 
 (** **  Description of similarities  **)
@@ -1473,20 +1129,22 @@ Admitted. (* similarity_in_R2 *)
 (* NB: To have less parameters, [r] is integrated into [A]. *)
 (** Description of similarities in R² as the composition of a orthogonal transformation and a translation. *)
 Theorem similarity_in_R2 : forall sim : similarity R2,
-  exists u v t, R2norm u = sim.(Similarity.zoom) /\ R2norm v = sim.(Similarity.zoom) /\ perpendicular u v /\
-    forall pt, (sim pt = product u pt * u + product v pt * v + t)%R2.
+  exists u v t, norm u = sim.(Similarity.zoom) /\ norm v = sim.(Similarity.zoom) /\ perpendicular u v /\
+    forall pt, (sim pt = inner_product u pt * u + inner_product v pt * v + t)%R2.
 Proof.
 intro sim.
 exists (sim (1, 0) - sim origin)%R2, (sim (0, 1) - sim origin)%R2, (sim origin).
 repeat split.
-* rewrite <- R2norm_dist, sim.(Similarity.dist_prop), <- Rmult_1_r. f_equal.
+* rewrite <- norm_dist, sim.(Similarity.dist_prop), <- Rmult_1_r. f_equal.
   unfold dist, origin. cbn. unfold Rsqr. rewrite <- sqrt_1 at 3. f_equal. ring.
-* rewrite <- R2norm_dist, sim.(Similarity.dist_prop), <- Rmult_1_r. f_equal.
+* rewrite <- norm_dist, sim.(Similarity.dist_prop), <- Rmult_1_r. f_equal.
   unfold dist, origin. cbn. unfold Rsqr. rewrite <- sqrt_1 at 3. f_equal. ring.
-* unfold perpendicular. rewrite product_expression2.
-  repeat rewrite <- ?R2norm_dist, ?R2add_dist, ?sim.(Similarity.dist_prop),
+* unfold perpendicular. rewrite polarization_identity2.
+  repeat rewrite <- ?norm_dist, ?dist_translation, ?sim.(dist_prop),
                  ?R_sqr.Rsqr_mult, ?square_dist_simpl.
-  unfold Rsqr, origin. cbn. field.
+  cbn [fst snd origin]. simpl (fst origin). simpl (snd origin).
+  rewrite 2 Rminus_0_r, Rsqr_0, R_sqr.Rsqr_1, Rplus_0_l, Rplus_0_r, Rmult_1_r.
+  unfold Rsqr. lra.
 * intros pt.
   assert (Hnull : (sim (0, 1) - sim origin)%R2 =/= origin).
   { intro Habs. rewrite R2sub_origin in Habs. apply Similarity.injective in Habs.
@@ -1497,7 +1155,7 @@ Admitted. (* similarity_in_R2 *)
 Corollary sim_add : forall (sim : similarity R2) x y, (sim (x + y) = sim x + sim y - sim origin)%R2.
 Proof.
 intros sim x y. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
-repeat rewrite Heq, ?product_origin_r, ?product_add_r, <- ?add_morph, ?mul_0.
+repeat rewrite Heq, ?inner_product_origin_r, ?inner_product_add_r, <- ?add_morph, ?mul_0.
 rewrite add_origin, (add_comm origin t), add_origin.
 repeat rewrite <- add_assoc. rewrite add_opp, add_origin. f_equal.
 rewrite (add_comm t). repeat rewrite add_assoc. do 2 f_equal.
@@ -1518,7 +1176,7 @@ Qed.
 Corollary sim_mul : forall (sim : similarity R2) k x, (sim (k * x) = k * sim x + (1 - k) * sim origin)%R2.
 Proof.
 intros sim k x. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
-repeat rewrite Heq, ?product_origin_r, ?product_mul_r, <- ?add_morph, ?mul_0.
+repeat rewrite Heq, ?inner_product_origin_r, ?inner_product_mul_r, <- ?add_morph, ?mul_0.
 rewrite add_origin, (add_comm origin t), add_origin.
 repeat rewrite mul_distr_add, ?mul_morph. repeat rewrite <- add_assoc. do 2 f_equal.
 rewrite add_morph. ring_simplify (k + (1 - k)). now rewrite mul_1.
@@ -1877,8 +1535,8 @@ Proof.
 intros pt1 pt2.
 replace pt1 with (/2 * pt1 + /2 * pt1)%R2 at 1.
 + unfold middle. rewrite mul_distr_add. setoid_rewrite add_comm.
-  replace (1/2) with (/2) by field. rewrite R2add_dist.
-  rewrite R2mul_dist. rewrite Rabs_pos_eq; lra.
+  replace (1/2) with (/2) by field. rewrite dist_translation.
+  rewrite dist_homothecy. rewrite Rabs_pos_eq; lra.
 + rewrite add_morph. replace (/ 2 + / 2) with 1 by field. now rewrite mul_1.
 Qed.
 
@@ -1924,9 +1582,9 @@ transitivity ((dist pt1 pt + dist pt2 pt)² / 2).
 + replace (2 * (dist pt2 pt1)² / 4) with ((dist pt2 pt1)² / 2) by field.
   cut ((dist pt2 pt1)² <= (dist pt1 pt + dist pt2 pt)²); try lra; [].
   rewrite pos_Rsqr_le.
-  - rewrite (dist_sym pt pt1), Rplus_comm. apply triang_ineq.
-  - apply dist_pos.
-  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply dist_pos.
+  - rewrite (dist_sym pt pt1), Rplus_comm. apply RealMetricSpace.triang_ineq.
+  - apply dist_nonneg.
+  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply dist_nonneg.
 + assert (Hle : 0 <= (dist pt1 pt - dist pt2 pt)²) by apply Rle_0_sqr.
   rewrite R_sqr.Rsqr_minus in Hle. rewrite R_sqr.Rsqr_plus. lra.
 Qed.
@@ -1943,9 +1601,9 @@ rewrite Hmid in Hpt.
 (* Then, we prove that pt is at the same distance of pt1 and pt2. *)
 assert (Hle : (dist pt1 pt2)² <= (dist pt1 pt + dist pt pt2)²).
 { rewrite pos_Rsqr_le.
-  - apply triang_ineq.
-  - apply dist_pos.
-  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply dist_pos. }
+  - apply RealMetricSpace.triang_ineq.
+  - apply dist_nonneg.
+  - replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply dist_nonneg. }
 assert (Hpt' : 2 * (dist pt pt1)² + 2 * (dist pt pt2)² <= (dist pt1 pt2)²) by lra.
 clear Hpt. rename Hpt' into Hpt.
 rewrite R_sqr.Rsqr_plus in Hle.
@@ -1960,9 +1618,9 @@ assert (Hhalf : dist pt1 pt = dist pt1 pt2 / 2).
   + rewrite <- pos_Rsqr_le.
     - rewrite <- Heq0 in *. rewrite (dist_sym pt1 pt) in Hpt. ring_simplify in Hpt.
       unfold Rdiv. rewrite R_sqr.Rsqr_mult. unfold Rsqr in *. lra.
-    - apply dist_pos.
-    - assert (Rpos := dist_pos pt1 pt2). lra.
-  + assert (Hgoal := triang_ineq pt1 pt pt2). lra. }
+    - apply dist_nonneg.
+    - assert (Rpos := dist_nonneg pt1 pt2). lra.
+  + assert (Hgoal := RealMetricSpace.triang_ineq pt1 pt pt2). lra. }
 (* now, we rule out the dummy case pt1 = pt2. *)
 destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12].
 + rewrite Heq12, R2_dist_defined_2 in Hhalf.
@@ -1972,23 +1630,23 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12].
   rewrite segment_bisector_spec in Heq0; trivial; [].
   destruct Heq0 as [k Heq]. rewrite Heq.
   cut (k = 0); try (now intro; subst; rewrite mul_0, add_origin); [].
-  rewrite dist_sym, R2norm_dist, Heq in Hhalf. apply (f_equal Rsqr) in Hhalf. revert Hhalf.
+  rewrite dist_sym, norm_dist, Heq in Hhalf. apply (f_equal Rsqr) in Hhalf. revert Hhalf.
   replace (middle pt1 pt2 + k * orthogonal (pt2 - pt1) - pt1)%R2
     with (1 / 2 * (pt2 - pt1) + k * orthogonal (pt2 - pt1))%R2.
-  - rewrite R2norm_add. repeat rewrite ?R2norm_mul, ?R_sqr.Rsqr_mult, <- ?R_sqr.Rsqr_abs.
-    rewrite product_mul_l, product_mul_r. rewrite orthogonal_perpendicular.
+  - rewrite norm_add. repeat rewrite ?norm_mul, ?R_sqr.Rsqr_mult, <- ?R_sqr.Rsqr_abs.
+    rewrite inner_product_mul_l, inner_product_mul_r. rewrite orthogonal_perpendicular.
     assert (~pt2 - pt1 == origin)%R2.
-    { rewrite <- dist_defined. rewrite <- (R2add_dist pt1).
+    { rewrite <- dist_defined. rewrite <- (dist_translation pt1).
       setoid_rewrite add_comm at 3. rewrite add_origin.
       rewrite <- add_assoc. setoid_rewrite add_comm at 2. rewrite add_opp, add_origin.
       rewrite dist_sym. rewrite dist_defined. auto. }
-    rewrite R2norm_orthogonal; trivial; [].
+    rewrite norm_orthogonal; trivial; [].
     rewrite R_sqr.Rsqr_1, Rmult_1_r. repeat rewrite Rmult_0_r. rewrite Rplus_0_r.
-    rewrite dist_sym, R2norm_dist. setoid_rewrite R_sqr.Rsqr_div; try lra.
+    rewrite dist_sym, norm_dist. setoid_rewrite R_sqr.Rsqr_div; try lra.
     unfold Rsqr. intro. assert (Hk : k*k = 0) by lra.
     now apply Rsqr_0_uniq.
-  - unfold middle. destruct pt1, pt2; simpl. f_equal; field;
-    rewrite R2norm_0; cbn; intros [= ? ?]; apply Heq12; hnf; f_equal; lra.
+  - unfold middle. destruct pt1, pt2; cbn -[norm]. f_equal; field;
+    rewrite norm_defined; cbn; intros [= ? ?]; apply Heq12; hnf; f_equal; lra.
 Qed.
 
 Corollary is_middle_uniq : forall pt1 pt2 mid1 mid2,
@@ -2006,9 +1664,9 @@ destruct (equiv_dec pt1 pt2) as [Heq | Hneq].
 + assert (Hmid : ~(pt2 - middle pt1 pt2)%R2 == origin).
   { intro Habs. apply Hneq. unfold middle. destruct pt1, pt2; compute in *.
     injection Habs. intros. f_equal; lra. }
-  unfold colinear, orthogonal, perpendicular, middle, product.
-  destruct pt1 as [x1 y1], pt2 as [x2 y2]. cbn. field.
-  now rewrite R2norm_0.
+  unfold colinear, orthogonal, perpendicular, middle, inner_product.
+  destruct pt1 as [x1 y1], pt2 as [x2 y2]. cbn -[norm]. field.
+  now rewrite norm_defined.
 Qed.
 
 Lemma middle_barycenter_3_neq: forall pt1 pt2 ptopp,
@@ -2086,23 +1744,23 @@ Section Equilateral_results.
     rewrite Pythagoras in Hbase.
     replace (- (pt3 - middle pt2 pt3) + (pt1 - middle pt2 pt3))%R2 with (pt1 - pt3)%R2 in Hbase
       by (unfold middle; destruct pt1, pt2, pt3; simpl; f_equal; lra).
-    repeat rewrite ?R2norm_opp, <- R2norm_dist in Hbase.
+    repeat rewrite ?norm_opp, <- norm_dist in Hbase.
     rewrite square_dist_equiv.
     - assert (Heq : (dist pt1 (middle pt2 pt3))² = (dist pt1 pt3)² - (dist pt3 (middle pt2 pt3))²) by lra.
       rewrite Heq.
       rewrite middle_comm, R2dist_middle. rewrite (dist_sym pt2). rewrite Heq12, Heq13.
       unfold Rdiv. do 3 rewrite R_sqr.Rsqr_mult. rewrite Rsqr_sqrt; try lra.
       replace (/2)² with (/4) by (unfold Rsqr; lra). lra.
-    - assert (Hpos := sqrt_pos 3). apply Rmult_le_pos; apply dist_pos || lra.
+    - assert (Hpos := sqrt_pos 3). apply Rmult_le_pos; apply dist_nonneg || lra.
   Qed.
   
   (* The radius of the circumscribed circle to an equilateral triangle of side length a is (sqrt 3 / 3) * a. *)
   Lemma equilateral_barycenter_dist : dist (barycenter_3_pts pt1 pt2 pt3) pt1 = sqrt 3 / 3 * dist pt1 pt2.
   Proof.
-  unfold barycenter_3_pts. rewrite R2norm_dist.
+  unfold barycenter_3_pts. rewrite norm_dist.
   replace ((/ 3 * (pt1 + (pt2 + pt3)) - pt1))%R2 with (2 / 3 * (middle pt2 pt3 - pt1))%R2
     by (unfold middle; destruct pt1, pt2, pt3; simpl; f_equal; lra).
-  rewrite R2norm_mul, <- R2norm_dist, dist_sym.
+  rewrite norm_mul, <- norm_dist, dist_sym.
   rewrite equilateral_altitude. rewrite Rabs_pos_eq; lra.
   Qed.
 End Equilateral_results.
@@ -2117,7 +1775,7 @@ destruct (Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))) as [Hl
 - assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
   { rewrite R2dist_middle.
     lra. }
-  assert (h_ineq:=triang_ineq pty (middle c ptx) c).
+  assert (h_ineq := RealMetricSpace.triang_ineq pty (middle c ptx) c).
   setoid_rewrite dist_sym in h_ineq at 2 3.
   rewrite h_dist_iso in h_ineq.
   rewrite dist_sym in h_ineq at 1.
@@ -2144,9 +1802,9 @@ destruct (Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))) as [Hl
   destruct (equiv_dec ptx c) as [Hxc | Hxc].
   + rewrite Hxc in *. rewrite <- dist_defined. rewrite dist_sym, h_dist_iso. apply R2_dist_defined_2.
   + apply colinear_decompose in Hcol4; try (now rewrite R2sub_origin); [].
-    rewrite dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol4.
+    rewrite dist_sym in Heq. rewrite <- norm_dist, Heq in Hcol4.
     unfold m in Hcol4. rewrite R2dist_middle in Hcol4. rewrite minus_morph in Hcol4.
-    rewrite dist_sym, R2norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
+    rewrite dist_sym, norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
     destruct Hcol4 as [Hcol4 | Hcol4].
     * assert (Hpty : pty == (m + /2 * (ptx - c))%R2 ).
       { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
@@ -2184,7 +1842,7 @@ destruct h as [Hlt | [Heq | Hlt]].
 - assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
   { rewrite R2dist_middle.
     lra. }
-  assert (h_ineq:=triang_ineq pty (middle c ptx) c).
+  assert (h_ineq := RealMetricSpace.triang_ineq pty (middle c ptx) c).
   setoid_rewrite dist_sym in h_ineq at 2 3.
   rewrite h_dist_iso in h_ineq.
   rewrite dist_sym in h_ineq at 1.
@@ -2211,9 +1869,9 @@ destruct h as [Hlt | [Heq | Hlt]].
   destruct (equiv_dec ptx c) as [Hxc | Hxc].
   + rewrite Hxc in *. rewrite <- dist_defined. rewrite dist_sym, h_dist_iso. apply R2_dist_defined_2.
   + apply colinear_decompose in Hcol4; try (now rewrite R2sub_origin); [].
-    rewrite dist_sym in Heq. rewrite <- R2norm_dist, Heq in Hcol4.
+    rewrite dist_sym in Heq. rewrite <- norm_dist, Heq in Hcol4.
     unfold m in Hcol4. rewrite R2dist_middle in Hcol4. rewrite minus_morph in Hcol4.
-    rewrite dist_sym, R2norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
+    rewrite dist_sym, norm_dist, <- mul_morph, <- unitary_id in Hcol4. fold m in Hcol4.
     destruct Hcol4 as [Hcol4 | Hcol4].
     * assert (Hpty : pty == (m + /2 * (ptx - c))%R2).
       { apply add_reg_r with (- m)%R2. rewrite Hcol4. setoid_rewrite add_comm at 3.
@@ -2314,15 +1972,15 @@ Lemma disk_dist : forall circ pt, radius circ < dist pt (center circ) ->
   dist pt' (pt + k * unitary (center circ - pt))%R2 < dist pt' pt.
 Proof.
 intros circ pt Hpt pt' k Hk Hpt'.
-assert (Hle := dist_pos  pt' (center circ)).
+assert (Hle := dist_nonneg  pt' (center circ)).
 assert (Hneq : ~equiv (center circ) pt).
 { rewrite <- dist_defined. intro Habs. rewrite dist_sym in Habs. rewrite Habs in *. apply (Rlt_irrefl 0).
   apply Rle_lt_trans with (radius circ); lra. }
 pose (pt'' := ((pt + k * unitary (center circ - pt)))%R2).
 assert (Hneq' : ~equiv (center circ) pt'').
 { unfold pt''. rewrite <- R2sub_origin. rewrite opp_distr_add, add_assoc.
-  rewrite (unitary_id (center circ - pt)) at 1.
-  rewrite <- minus_morph, add_morph, <- R2norm_dist, dist_sym.
+  rewrite (unitary_id (center circ - pt)%R2) at 1.
+  rewrite <- minus_morph, add_morph, <- norm_dist, dist_sym.
   intro Habs. apply mul_integral in Habs. destruct Habs as [Habs | Habs].
   - lra.
   - rewrite <- R2sub_origin, <- unitary_is_origin in Hneq. contradiction. }
@@ -2330,36 +1988,36 @@ assert (Heq' : (pt - pt'' = -k * unitary (center circ - pt))%R2).
 { unfold pt''. now rewrite opp_distr_add, add_assoc, add_opp, add_comm, add_origin, minus_morph. }
 assert (Heq : equiv (unitary (center circ - pt)) (unitary (center circ - pt''))).
 { unfold pt''. rewrite opp_distr_add, add_assoc.
-  rewrite (unitary_id (center circ - pt)) at 2.
+  rewrite (unitary_id (center circ - pt)%R2) at 2.
   rewrite <- minus_morph, add_morph.
   rewrite unitary_mul, unitary_idempotent; try reflexivity; [].
-  rewrite <- R2norm_dist, dist_sym.
+  rewrite <- norm_dist, dist_sym.
   lra. }
 rewrite <- R2sub_origin in Hneq'. fold pt''.
-rewrite <- (R2add_dist (-pt'')%R2 pt' pt).
+rewrite <- (dist_translation (-pt'')%R2 pt' pt).
 rewrite Heq', Heq.
-rewrite <- pos_Rsqr_lt; try apply dist_pos; [].
+rewrite <- pos_Rsqr_lt; try apply dist_nonneg; [].
 assert (Heq_pt' := decompose_on Hneq' (pt' - pt'')).
-do 2 rewrite R2norm_dist. rewrite Heq_pt'.
-assert (Hperp : perpendicular (product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt''))
-                      (product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
+do 2 rewrite norm_dist. rewrite Heq_pt'.
+assert (Hperp : perpendicular (inner_product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt''))
+                      (inner_product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
 { apply perpendicular_mul_compat_l, perpendicular_mul_compat_r, unitary_orthogonal_perpendicular. }
 rewrite Pythagoras in Hperp. rewrite Hperp. clear Hperp.
-replace (product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt'') +
-         product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt'') -
+replace (inner_product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt'') +
+         inner_product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt'') -
          - k * unitary (center circ - pt''))%R2
-  with ((product (pt' - pt'') (unitary (center circ - pt'')) + k) * unitary (center circ - pt'') +
-         product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))%R2
+  with ((inner_product (pt' - pt'') (unitary (center circ - pt'')) + k) * unitary (center circ - pt'') +
+         inner_product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))%R2
   by (destruct (unitary (center circ - pt'')), (orthogonal (center circ - pt'')); simpl; f_equal; lra).
 assert (Hperp : perpendicular
-                  ((product (pt' - pt'') (unitary (center circ - pt'')) + k) * unitary (center circ - pt''))
-                  (product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
+                  ((inner_product (pt' - pt'') (unitary (center circ - pt'')) + k) * unitary (center circ - pt''))
+                  (inner_product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
 { apply perpendicular_mul_compat_l, perpendicular_mul_compat_r, unitary_orthogonal_perpendicular. }
 rewrite Pythagoras in Hperp. rewrite Hperp. clear Hperp.
 apply Rplus_lt_compat_r.
-rewrite pos_Rsqr_lt; try apply R2norm_pos; [].
-do 2 rewrite R2norm_mul. rewrite R2norm_unitary; trivial; [].
-assert (Hpos : 0 <= product (pt' - pt'') (unitary (center circ - pt''))).
+rewrite pos_Rsqr_lt; try apply norm_nonneg; [].
+do 2 rewrite norm_mul. rewrite norm_unitary; trivial; [].
+assert (Hpos : 0 <= inner_product (pt' - pt'') (unitary (center circ - pt''))).
 { admit. }
 repeat rewrite Rabs_pos_eq; lra.
 Admitted.
@@ -2412,7 +2070,7 @@ Proof.
 intros [| pt ?].
 + now rewrite SEC_nil.
 + transitivity (dist pt (center (SEC (pt :: l)))).
-  - apply dist_pos.
+  - apply dist_nonneg.
   - apply SEC_spec1. now left.
 Qed.
 
@@ -2444,7 +2102,7 @@ intros pt l. induction l as [| e l]; intro acc; simpl.
   - apply IHl.
 Qed.
 
-Corollary max_dist_pos : forall pt l, 0 <= max_dist pt l.
+Corollary max_dist_nonneg : forall pt l, 0 <= max_dist pt l.
 Proof. intros. apply max_dist_le_acc. Qed.
 
 Lemma max_dist_cons : forall pt x l, max_dist pt (x :: l) = Rmax (dist x pt) (max_dist pt l).
@@ -2472,7 +2130,7 @@ intros pt l Hl. induction l as [| e1 l].
 * now elim Hl.
 * destruct l as [| e2 l].
   + exists e1. split; try now left. unfold max_dist. simpl. symmetry. apply Rmax_right.
-    change (0 <= dist e1 pt). apply dist_pos.
+    change (0 <= dist e1 pt). apply dist_nonneg.
   + destruct (Rle_dec (dist e1 pt) (max_dist pt (e2 :: l))).
     - destruct IHl as [x [Hin Heq]]; try discriminate; [].
       exists x. split; try now right. rewrite max_dist_cons, Heq. symmetry. now apply Rmax_right.
@@ -2497,7 +2155,7 @@ Qed.
 Lemma max_dist_incl_compat : forall pt l1 l2, incl l1 l2 -> max_dist pt l1 <= max_dist pt l2.
 Proof.
 intros pt l1. induction l1; intros l2 Hincl.
-+ cbn. apply max_dist_pos.
++ cbn. apply max_dist_nonneg.
 + rewrite max_dist_cons. apply Rmax_lub.
   - apply max_dist_le. apply Hincl. now left.
   - apply IHl1. intros pt' Hin. apply Hincl. now right.
@@ -2535,7 +2193,7 @@ Lemma max_dist_singleton: forall pt x, max_dist pt (x::nil) = dist x pt.
 Proof.
   intros pt x.
   rewrite max_dist_cons.
-  unfold max_dist. simpl fold_left. apply Rmax_left, dist_pos.
+  unfold max_dist. simpl fold_left. apply Rmax_left, dist_nonneg.
 Qed.
 
 Lemma enclosing_singleton : forall pt, enclosing_circle {| center := pt; radius := 0 |} (pt :: nil).
@@ -2565,7 +2223,7 @@ Lemma SEC_singleton : forall pt, SEC (pt :: nil) = {| center := pt; radius := 0 
 Proof.
 intro pt. symmetry. apply SEC_unicity.
 - apply enclosing_singleton.
-- simpl. rewrite radius_is_max_dist, max_dist_singleton. apply dist_pos.
+- simpl. rewrite radius_is_max_dist, max_dist_singleton. apply dist_nonneg.
 Qed.
 
 Opaque dist middle.
@@ -2579,7 +2237,7 @@ intros pt1 pt2. symmetry. apply SEC_unicity.
   + inversion H; easy || subst. now rewrite middle_comm, R2dist_middle, dist_sym.
 * simpl. rewrite <- R2dist_middle. rewrite radius_is_max_dist.
   pose (c := center (SEC (pt1 :: pt2 :: nil))). fold c. cbn.
-  rewrite (Rmax_right 0); try apply dist_pos; [].
+  rewrite (Rmax_right 0); try apply dist_nonneg; [].
   rewrite <- pos_Rsqr_le.
   + cut ((dist pt1 (middle pt1 pt2))² + (dist pt1 (middle pt1 pt2))² <=
       (Rmax (dist pt1 c) (dist pt2 c))² + (Rmax (dist pt1 c) (dist pt2 c))²); try lra; [].
@@ -2588,9 +2246,9 @@ intros pt1 pt2. symmetry. apply SEC_unicity.
       { now rewrite R2dist_middle, middle_comm, R2dist_middle, dist_sym. }
       rewrite Heq at 2. setoid_rewrite dist_sym. apply (middle_spec pt1 pt2 c).
     - apply Rplus_le_compat; rewrite pos_Rsqr_le;
-      solve [apply Rmax_l | apply Rmax_r | apply dist_pos | apply Rmax_case; apply dist_pos].
-  + apply dist_pos.
-  + apply Rmax_case; apply dist_pos.
+      solve [apply Rmax_l | apply Rmax_r | apply dist_nonneg | apply Rmax_case; apply dist_nonneg].
+  + apply dist_nonneg.
+  + apply Rmax_case; apply dist_nonneg.
 Qed.
 
 (** ****  The [SEC] contains at least two points  **)
@@ -2633,7 +2291,7 @@ intros exc c l Hl. induction l as [| e l].
     - assert (He : equiv e c).
       { rewrite <- dist_defined. transitivity (dist c c).
         + apply Rle_antisym; trivial.
-          rewrite R2_dist_defined_2. apply dist_pos.
+          rewrite R2_dist_defined_2. apply dist_nonneg.
         + apply R2_dist_defined_2. }
       rewrite He. destruct (farthest_from_in_exc_In exc c c l); intuition.
     - destruct (farthest_from_in_exc_In exc c e l); intuition.
@@ -2683,7 +2341,7 @@ destruct l as [| e l].
     intros x Hin. left. symmetry. change ( x == center (SEC (e :: l))).
     rewrite <- dist_defined. apply Rle_antisym.
     - rewrite <- H. now apply SEC_spec1.
-    - apply dist_pos.
+    - apply dist_nonneg.
   + destruct H as [pt Hl].
     assert (Hall : forall x, In x (e :: l) -> x = pt). { intros ? Hin. apply Hl in Hin. now inversion_clear Hin. }
     clear Hl. apply Rle_antisym.
@@ -2691,7 +2349,7 @@ destruct l as [| e l].
       change 0 with (radius c). apply SEC_spec2.
       intros x Hin. rewrite (Hall _ Hin). cbn. now rewrite R2_dist_defined_2.
     - transitivity (dist pt (center (SEC (e :: l)))).
-      -- apply dist_pos.
+      -- apply dist_nonneg.
       -- apply SEC_spec1. rewrite (Hall e ltac:(now left)). now left.
 Qed.
 
@@ -2738,7 +2396,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   assert (Hmax : forall x, In x l -> x <> pt1 -> dist c x <= d).
   { intros. unfold d, pt2. now apply farthest_from_in_except_le. }
   assert (Hr2 : 0 < r). { apply Rle_neq_lt; auto. unfold r. apply SEC_radius_pos. }
-  assert (Hr' : 0 <= r'). { assert (0 <= d). { unfold d. apply dist_pos. } unfold r'. lra. }
+  assert (Hr' : 0 <= r'). { assert (0 <= d). { unfold d. apply dist_nonneg. } unfold r'. lra. }
   (** The new circle has a smaller radius... *)
   assert (Hlt : r' < r).
   { unfold r'. cut (d < r); try lra; [].
@@ -2760,18 +2418,18 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
     * subst pt. unfold c'. rewrite R2dist_ref_0.
       replace (pt1 - (c + (1 - r'/r) * (pt1 - c)))%R2 with (r'/ r * pt1 - (r' / r * c))%R2
         by (destruct pt1, c; cbn; f_equal; ring).
-      rewrite <- R2dist_ref_0. rewrite R2mul_dist.
+      rewrite <- R2dist_ref_0. rewrite dist_homothecy.
       rewrite on_circle_true_iff in Hon1. unfold c. rewrite Hon1.
       fold r. rewrite Rabs_pos_eq; [field_simplify; lra |].
       unfold Rdiv. now apply Fourier_util.Rle_mult_inv_pos.
     * transitivity (dist pt c + dist c c'); [| transitivity (d + dist c c')].
-      + apply triang_ineq.
+      + apply RealMetricSpace.triang_ineq.
       + apply Rplus_le_compat_r. rewrite dist_sym. unfold d, pt2.
         apply farthest_from_in_except_le; trivial. intro. subst. inversion_clear Hnodup. contradiction.
       + unfold c'. rewrite R2dist_ref_0.
         replace (c - (c + (1 - r' / r) * (pt1 - c)))%R2 with ((1 - r' / r) * c - ((1 - r' / r) * pt1))%R2
           by (destruct pt1, c; cbn; f_equal; ring).
-        rewrite <- R2dist_ref_0. rewrite R2mul_dist. rewrite on_circle_true_iff in Hon1.
+        rewrite <- R2dist_ref_0. rewrite dist_homothecy. rewrite on_circle_true_iff in Hon1.
         unfold c. rewrite dist_sym. rewrite Hon1. fold r.
         rewrite Rabs_pos_eq.
         - unfold r'. now field_simplify.
@@ -2852,12 +2510,12 @@ destruct (Rdec_bool (dist pt1 (middle pt1 pt2)) (/ 2 * dist pt1 pt2)) eqn:Hpt1.
   rewrite Rdec_bool_false_iff in Hpt2. apply Hpt2.
   setoid_rewrite dist_sym at 2. rewrite middle_comm. setoid_rewrite R2dist_ref_0.
   Local Transparent middle.
-  unfold middle. rewrite <- (Rabs_pos_eq (/2)); try lra. rewrite <- R2mul_dist, mul_origin. f_equal.
+  unfold middle. rewrite <- (Rabs_pos_eq (/2)); try lra. rewrite <- dist_homothecy, mul_origin. f_equal.
   destruct pt1, pt2. compute. f_equal; field.
 - exfalso.
   rewrite Rdec_bool_false_iff in Hpt1. apply Hpt1.
   setoid_rewrite R2dist_ref_0.
-  unfold middle. rewrite <- (Rabs_pos_eq (/2)); try lra. rewrite <- R2mul_dist, mul_origin. f_equal.
+  unfold middle. rewrite <- (Rabs_pos_eq (/2)); try lra. rewrite <- dist_homothecy, mul_origin. f_equal.
   destruct pt1, pt2. compute. f_equal; field.
 Qed.
 
@@ -2878,7 +2536,7 @@ assert (Hperm : exists l', Permutation l (pt1 :: l')).
 destruct Hperm as [l' Hperm]. rewrite Hperm in *. clear Hpt1 Hperm l.
 destruct (equiv_dec pt1 pt2) as [Heq | Heq].
 + rewrite Heq. rewrite R2_dist_defined_2. replace (/2 * 0) with 0 by ring.
-  rewrite radius_is_max_dist. apply max_dist_pos.
+  rewrite radius_is_max_dist. apply max_dist_nonneg.
 + assert (Hperm : exists l, Permutation l' (pt2 :: l)).
   { rewrite <- InA_Leibniz in Hpt2. setoid_rewrite <- PermutationA_Leibniz.
     apply PermutationA_split; autoclass.
@@ -3018,7 +2676,7 @@ destruct Hl as [Hl | [[pt1 [Hl Hnil]] | [pt1 [pt2 [Hneq [Hpt1 Hpt2]]]]]].
         apply Hneq. transitivity pt'.
         - specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition.
         - specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition. }
-      assert (Hle_d : 0 <= d) by apply dist_pos.
+      assert (Hle_d : 0 <= d) by apply dist_nonneg.
       assert (Hlt_d : 0 < d).
       { apply Rle_neq_lt; trivial. unfold d. intro Habs. symmetry in Habs.
         rewrite dist_defined in Habs. contradiction. }
@@ -3043,15 +2701,15 @@ destruct Hl as [Hl | [[pt1 [Hl Hnil]] | [pt1 [pt2 [Hneq [Hpt1 Hpt2]]]]]].
           destruct Habs as [? | Habs]; lra || rewrite Rinv_mult_distr in Habs; lra. }
         assert (Hdist : dist c₂ c₃ = ε / 2).
         { unfold c₃, ratio. rewrite <- add_origin at 1. setoid_rewrite add_comm.
-          rewrite R2add_dist, dist_sym. rewrite R2norm_dist, opp_origin, add_origin.
-          rewrite R2norm_opp, R2norm_mul, Rabs_pos_eq.
-          - rewrite <- R2norm_dist. fold d. field. lra.
+          rewrite dist_translation, dist_sym. rewrite norm_dist, opp_origin, add_origin.
+          rewrite norm_opp, norm_mul, Rabs_pos_eq.
+          - rewrite <- norm_dist. fold d. field. lra.
           - apply Fourier_util.Rle_mult_inv_pos; lra. }
       (* Yet, it is still enclosing *)
       assert (Hnew : enclosing_circle {| center := c₃; radius := r₃ |} (pt :: l)).
       { intros pt' Hin. cbn. destruct Hin.
         * subst pt'. transitivity (dist pt c₂ + dist c₂ c₃).
-          + apply triang_ineq.
+          + apply RealMetricSpace.triang_ineq.
           + rewrite Hdist. fold d. rewrite Hr₃. reflexivity.
         * admit. }
       (* A contradiction *)
@@ -3132,7 +2790,7 @@ intros pt1 pt2.
 rewrite SEC_dueton. cbn.
 rewrite R2_dist_defined_2, <- (Rmult_0_l 0).
 apply Rmult_le_compat; try lra; [].
-apply dist_pos.
+apply dist_nonneg.
 Qed.
 
 Lemma middle_strictly_in_SEC_diameter : forall pt1 pt2, pt1 <> pt2 ->
@@ -3236,14 +2894,14 @@ intros pt1 pt2 pt3. unfold barycenter_3_pts. do 2 rewrite mul_distr_add.
 remember (center (SEC (pt1 :: pt2 :: pt3 :: nil))) as c.
 transitivity (dist (/3 * pt1)%R2 (/3 * c)%R2 + dist (/3 * pt2)%R2 (/3 * c)%R2 + dist (/3 * pt3)%R2 (/3 * c)%R2).
 + replace c with (/3 * c + (/3 * c + /3 * c))%R2 at 1.
-  - etransitivity. apply R2dist_subadditive. rewrite Rplus_assoc.
-    apply Rplus_le_compat; try reflexivity. apply R2dist_subadditive.
+  - etransitivity. apply dist_subadditive. rewrite Rplus_assoc.
+    apply Rplus_le_compat; try reflexivity. apply dist_subadditive.
   - clear Heqc. destruct c. compute. f_equal; field.
-+ repeat rewrite R2mul_dist; try lra; [].
++ repeat rewrite dist_homothecy; try lra; [].
   rewrite (Rabs_pos_eq (/3) ltac:(lra)).
   remember (radius (SEC (pt1 :: pt2 :: pt3 :: nil))) as r.
   replace r with (/3 * r + /3 * r + /3 * r) by field.
-  repeat apply Rplus_le_compat; (apply Rmult_le_compat; try lra || apply dist_pos; []);
+  repeat apply Rplus_le_compat; (apply Rmult_le_compat; try lra || apply dist_nonneg; []);
   subst; apply SEC_spec1; intuition.
 Qed.
 
@@ -3253,7 +2911,7 @@ Proof.
 intros pt1 pt2 Hneq.
 rewrite SEC_add_same.
 - rewrite SEC_dueton. apply Bool.not_true_iff_false. rewrite on_circle_true_iff. simpl.
-  rewrite square_dist_equiv; try (now assert (Hle := dist_pos pt1 pt2); lra); [].
+  rewrite square_dist_equiv; try (now assert (Hle := dist_nonneg pt1 pt2); lra); [].
   unfold barycenter_3_pts, middle. rewrite square_dist_simpl, R_sqr.Rsqr_mult, square_dist_simpl.
   intro Habs. apply Hneq. destruct pt1, pt2; simpl in Habs. unfold Rsqr in Habs. field_simplify in Habs.
   pose (x := (r² + r1² - 2 * r * r1) + (r0² + r2² - 2 * r0 * r2)).
@@ -3314,16 +2972,16 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
       - exists pt1. now do 4 econstructor. }
     destruct Hpt3' as [pt3' Hperm].
     rewrite <- (barycenter_3_pts_compat Hperm).
-    rewrite R2norm_dist. unfold barycenter_3_pts, middle.
+    rewrite norm_dist. unfold barycenter_3_pts, middle.
     destruct (equiv_dec pt3' (1/2 * (pt1' + pt2')))%R2 as [Heq | Heq].
     - assert (Hzero : (/3 * (pt1' + (pt2' + pt3')) - 1/2 * (pt1' + pt2') = origin)%R2).
       { rewrite Heq. destruct pt1', pt2'. unfold origin. simpl. f_equal; field. }
-      rewrite Hzero. rewrite R2norm_origin. apply not_eq_sym. erewrite <- Rmult_0_r.
+      rewrite Hzero. rewrite norm_origin. apply not_eq_sym. erewrite <- Rmult_0_r.
       intro Habs. rewrite <- dist_defined in Hdiff'. apply Rmult_eq_reg_l in Habs; lra.
     - replace ((/ 3 * (pt1' + (pt2' + pt3')) - 1 / 2 * (pt1' + pt2')))%R2
         with (/3 *(pt3' - 1 / 2 * (pt1' + pt2')))%R2.
-      -- rewrite R2norm_mul. rewrite Rabs_pos_eq; try lra; [].
-         rewrite <- R2norm_dist.
+      -- rewrite norm_mul. rewrite Rabs_pos_eq; try lra; [].
+         rewrite <- norm_dist.
          assert (Hpt3' : dist pt3' (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
                          <= radius (SEC (pt1 :: pt2 :: pt3 :: nil))).
          { apply SEC_spec1. rewrite <- Hperm. intuition. }
@@ -3331,7 +2989,7 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
          apply Rlt_not_eq. eapply Rlt_le_trans; try eassumption; [].
          change (~pt3' == (1 / 2 * (pt1' + pt2'))%R2) in Heq.
          rewrite <- dist_defined in Heq. setoid_rewrite <- Rmult_1_l at 9.
-         apply Rmult_lt_compat_r; lra || apply Rle_neq_lt; auto using dist_pos.
+         apply Rmult_lt_compat_r; lra || apply Rle_neq_lt; auto using dist_nonneg.
       -- destruct pt1', pt2', pt3'. simpl. f_equal; field.
   + (* let c be the center of the SEC and r its radius.
        If bary is on the circle, the triangular inequality 3 * d(bary, c) <= d(pt1, c) + d(pt2, c) + d(pt3, c)
@@ -3358,14 +3016,14 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
       unfold on_SEC in Hperm. rewrite Hperm. now right; right; left. }
     (* Modifyng goal to have the right shape for the equality case of the triangular inequality. *)
     replace c with (/3 * (c + c + c))%R2 by (destruct c; simpl; f_equal; field).
-    unfold barycenter_3_pts. rewrite R2mul_dist, Rabs_pos_eq; try lra; [].
+    unfold barycenter_3_pts. rewrite dist_homothecy, Rabs_pos_eq; try lra; [].
     replace r with (/3 * (r + r + r)) by field.
     intro Habs. apply Rmult_eq_reg_l in Habs; try lra; [].
     (* We use the triangular equality to get colinearity results. *)
     destruct (triang_ineq_eq3 (c + c + c) (pt1 + c + c) (pt1 + pt2 + c) (pt1 + pt2 + pt3))%R2 as [Hcol1 Hcol2].
     - rewrite add_assoc, dist_sym in Habs. rewrite Habs.
-      repeat rewrite R2add_dist. setoid_rewrite add_comm.
-      repeat rewrite R2add_dist. setoid_rewrite dist_sym.
+      repeat rewrite dist_translation. setoid_rewrite add_comm.
+      repeat rewrite dist_translation. setoid_rewrite dist_sym.
       now rewrite Hpt1, Hpt2, Hpt3.
     - replace (pt1 + c + c - (c + c + c))%R2 with (pt1 - c)%R2 in * by (destruct pt1, c; simpl; f_equal; field).
       replace (pt1 + pt2 + c - (c + c + c))%R2 with (pt1 - c + (pt2 - c))%R2 in Hcol1
@@ -3388,7 +3046,7 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
       apply colinear_decompose in Hcol1; trivial; [].
       apply colinear_decompose in Hcol3; trivial; [].
       assert (Heq_pt1 := unitary_id (pt1 - c)%R2).
-      repeat rewrite <- ?R2norm_dist, ?Hpt1, ?Hpt2, ?Hpt3 in *.
+      repeat rewrite <- ?norm_dist, ?Hpt1, ?Hpt2, ?Hpt3 in *.
       (* Use the expression of colinearity by two possible equality. *)
       destruct Hcol1 as [Hcol1 | Hcol1], Hcol3 as [Hcol3 | Hcol3];
       apply Heq12 + apply Heq13 + apply Heq23; apply add_reg_r with (- c)%R2; congruence.

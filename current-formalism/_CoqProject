@@ -42,7 +42,10 @@ Models/Similarity.v
 Models/ASync.v
 
 ## Spaces
+Spaces/RealVectorSpace.v
 Spaces/RealMetricSpace.v
+Spaces/RealNormedSpace.v
+Spaces/EuclideanSpace.v
 Spaces/Similarity.v
 Spaces/R.v
 Spaces/R2.v

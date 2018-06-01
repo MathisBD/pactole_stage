@@ -452,6 +452,9 @@ Fixpoint alls (x : A) n :=
     | S m => x :: alls x m
   end.
 
+Global Instance alls_compat : Proper (eqA ==> Logic.eq ==> eqlistA eqA) alls.
+Proof. intros x y Hxy ? n ?. subst. now induction n; simpl; constructor. Qed.
+
 Lemma alls_length : forall (x : A) n, length (alls x n) = n.
 Proof. intros x n. induction n; simpl; auto. Qed.
 
@@ -2034,6 +2037,42 @@ Lemma succ_neq : forall x, x <> x+1.
 Proof.
 intros x Habs. assert (Heq : x = x + 0) by ring. rewrite Heq in Habs at 1. clear Heq.
 apply Rplus_eq_reg_l in Habs. symmetry in Habs. revert Habs. exact R1_neq_R0.
+Qed.
+
+Lemma sqrt_square : forall x, sqrt (x * x) = Rabs x.
+Proof.
+intro x. unfold Rabs. destruct (Rcase_abs x).
++ replace (x * x) with ((-x) * (-x)) by lra. apply sqrt_square; lra.
++ apply sqrt_square; lra.
+Qed.
+
+(** Some results about [R]. *)
+Lemma sqrt_subadditive : forall x y, 0 <= x -> 0 <= y -> sqrt (x + y) <= sqrt x + sqrt y.
+Proof.
+intros x y Hx Hy. apply R_sqr.Rsqr_incr_0.
+- repeat rewrite Rsqr_sqrt, ?R_sqr.Rsqr_plus; try lra.
+  assert (0 <= 2 * sqrt x * sqrt y).
+  { repeat apply Rmult_le_pos; try lra; now apply sqrt_positivity. }
+  lra.
+- apply sqrt_positivity. lra.
+- apply Rplus_le_le_0_compat; now apply sqrt_positivity.
+Qed.
+
+Lemma pos_Rsqr_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
+Proof. intros. setoid_rewrite <- sqrt_Rsqr; trivial. now f_equal. Qed.
+
+Lemma pos_Rsqr_le : forall x y, 0 <= x -> 0 <= y -> (x² <= y² <-> x <= y).
+Proof. intros. split; intro; try now apply R_sqr.Rsqr_incr_0 + apply R_sqr.Rsqr_incr_1. Qed.
+
+Lemma pos_Rsqr_lt : forall x y, 0 <= x -> 0 <= y -> (x² < y² <-> x < y).
+Proof. intros. split; intro; try now apply R_sqr.Rsqr_incrst_0 + apply R_sqr.Rsqr_incrst_1. Qed.
+
+Lemma pos_Rsqr_le_impl : forall x y, 0 <= y -> x² <= y² -> x <= y.
+Proof.
+intros x y Hle Hsqr.
+destruct (Rle_dec 0 x).
+- now apply R_sqr.Rsqr_incr_0.
+- transitivity 0; lra.
 Qed.
 
 
