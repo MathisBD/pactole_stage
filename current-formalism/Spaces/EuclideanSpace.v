@@ -23,7 +23,7 @@ Class EuclideanSpace (T : Type) {S : Setoid T} {EQ : @EqDec T S} {VS : RealVecto
   
   inner_product_sym : forall u v, inner_product u v = inner_product v u;
   inner_product_add_l : forall u v w, inner_product (add u v) w = inner_product u w + inner_product v w;
-  inner_product_mul_l : forall a u v, inner_product (mul a u) v = a * inner_product u v;
+  inner_product_mul_l : forall k u v, inner_product (mul k u) v = k * inner_product u v;
   inner_product_nonneg : forall u, 0 <= inner_product u u;
   inner_product_defined : forall u, inner_product u u = 0%R <-> u == origin}.
 
@@ -42,7 +42,7 @@ Section InnerProductResults.
   intros u v w. now rewrite inner_product_sym, inner_product_add_l, inner_product_sym, (inner_product_sym w).
   Qed.
   
-  Lemma inner_product_mul_r : forall a u v, inner_product u (a * v) = (a * inner_product u v).
+  Lemma inner_product_mul_r : forall k u v, inner_product u (k * v) = (k * inner_product u v).
   Proof. intros a u v. now rewrite inner_product_sym, inner_product_mul_l, inner_product_sym. Qed.
   
   Lemma inner_product_origin_l `{EuclideanSpace} : forall u, inner_product 0 u = 0%R.
@@ -273,27 +273,97 @@ intros u v. apply pos_Rsqr_le.
 + rewrite Rsqr_mult, <- Rsqr_abs, 2 squared_norm_product. apply squared_Cauchy_Schwarz.
 Qed.
 
-(*
-(** If a norm satisfies the parallelogram law, then it arises from an inner product,
-    which can be defined from the polarization identities. *)
-Instance Normed2Euclidean {T} `{rnsT : RealNormedSpace T}
-                            (parallelogram_law : forall u v, (norm (u + v))² + (norm (u - v))²
-                                                             = 2 * (norm u)² + 2 * (norm v)²)
-  : EuclideanSpace T.
-simple refine {| vectorspace := RealNormedSpace.vectorspace;
-                 inner_product := fun u v => 1/4 * ((norm (u + v))² - (norm (u - v))²) |}; autoclass.
+(** Von Neumann-Fréchet theorem: If a norm satisfies the parallelogram law,
+    then it arises from an inner product, which can be defined from the polarization identities. *)
+
+(* NB: The difficulty is the proof of [〈k * u, v〉 = k * 〈u, v〉].
+       This is usually done by extending a proof for k rational by continuity.
+       The proof for k rational is derived from [〈u + v, w〉= 〈u, w〉 + 〈v, w〉] and induction.
+
+       Instead, we try a more algebraic proof (taken from stackexchange):
+       1) 〈-u, v〉 = 〈u, -v〉 = -〈u, v〉
+       2) 〈k u, k v〉= k² 〈u, v〉
+       3) 〈k u, v〉 = 〈u, k v〉
+       4) k² 〈u, v〉= k² 〈u, v〉
+       5) Distinguish 0 <= k and k < 0 to conclude. *)
+Section Normed2Euclidean.
+  Context (T : Type).
+  Context `{rnsT : RealNormedSpace T}.
+  Notation product u v := ((norm (u + v))² - (norm (u - v))²).
+  Hypothesis parallelogram_law : forall u v,
+    (norm (u + v))² + (norm (u - v))² = 2 * (norm u)² + 2 * (norm v)².
+  
+  Lemma product_add : forall u v w, product (u + v)%VS w = product u w + product v w.
+  Proof.
+  intros u v w.
+  cut ((norm (u + v + w))² + (norm (u - w))² + (norm (v - w))²
+     = (norm (u + v - w))² + (norm (u + w))²  + (norm (v + w))²); try lra; [].
+  apply Rmult_eq_reg_l with 4; try lra; []. ring_simplify.
+  rewrite double. setoid_rewrite Rmult_plus_distr_r.
+  assert (Heq : forall x y z, x + y = z <-> x = z - y) by (intros; lra).
+  assert (Heq1 := parallelogram_law u (v + w)%VS).
+  assert (Heq2 := parallelogram_law v (u + w)%VS).
+  assert (Heq3 := parallelogram_law (u - w)%VS v).
+  assert (Heq4 := parallelogram_law (v - w)%VS u).
+  assert (Heq5 : (u - v - w == u - w - v)%VS) by now rewrite <- 2 add_assoc, (add_comm (-v)%VS).
+  assert (Heq6 : (v - u - w == v - w - u)%VS) by now rewrite <- 2 add_assoc, (add_comm (-u)%VS).
+  rewrite Heq in Heq1, Heq2, Heq3, Heq4.
+  rewrite add_assoc in Heq1, Heq2. rewrite (add_comm v u) in Heq2.
+  rewrite add_comm, add_assoc in Heq3, Heq4. rewrite (add_comm v u) in Heq3.
+  rewrite Heq1 at 1. rewrite Heq2. rewrite Heq3 at 1. rewrite Heq4.
+  repeat rewrite ?opp_distr_add, ?add_assoc. rewrite Heq5, Heq6.
+  ring.
+  Qed.
+  
+  Lemma product_opp : forall u v, product (-u)%VS v = - product u v.
+  Proof.
+  intros u v.
+  cut (product u v + product (-u)%VS v = 0); try lra; [].
+  rewrite <- product_add; trivial; [].
+  rewrite add_opp.
+  do 2 rewrite add_comm, add_origin. rewrite norm_opp. ring.
+  Qed.
+  
+  Lemma product_mul : forall k u v, product (k * u)%VS (k * v)%VS = k² * product u v.
+  Proof.
+  intros k u v.
+  rewrite <- mul_opp, <- 2 mul_distr_add, 2 norm_mul.
+  repeat rewrite Rsqr_mult. rewrite <- Rsqr_abs. ring.
+  Qed.
+  
+  Lemma product_mul_switch : forall k u v, product (k * u)%VS v = product u (k * v)%VS.
+  Proof.
+  intros k u v. cut (product (k * u)%VS v - product u (k * v)%VS = 0); try lra; [].
+  unfold product.
+  Admitted. (* TODO *)
+  
+  Lemma product_sqr : forall k u v, product (k² * u)%VS v = k² * product u v.
+  Proof. intros k u v. unfold Rsqr at 2 4. now rewrite <- mul_morph, product_mul_switch, product_mul. Qed.
+  
+Instance Normed2Euclidean : EuclideanSpace T.
+simple refine {| inner_product := fun u v => 1/4 * product u v |}; autoclass; simpl.
 Proof.
 + abstract (intros u u' Hu v v' Hv; now rewrite Hu, Hv).
-+ intros u v. simpl. do 2 f_equal.
++ intros u v. do 2 f_equal.
   - now rewrite add_comm.
   - now rewrite <- norm_opp, opp_distr_add, opp_opp, add_comm.
-+ intros u v w. simpl. rewrite <- Rmult_plus_distr_l. f_equal.
-  rewrite (parallelogram_law (u + v) w)%VS.
-+ 
-+ 
-+ 
++ intros u v w. rewrite <- Rmult_plus_distr_l. f_equal.
+  apply product_add.
++ intros k u v.
+  rewrite <- Rmult_assoc, (Rmult_comm k), Rmult_assoc. f_equal.
+  destruct (Rle_dec 0 k) as [Hk | Hk].
+  - rewrite <- (Rsqr_sqrt _ Hk). apply product_sqr.
+  - rewrite <- (Ropp_involutive k) at 1 2. rewrite minus_morph, product_opp.
+    assert (Hk' : 0 <= - k) by lra.
+    rewrite <- (Rsqr_sqrt _ Hk'), product_sqr, (Rsqr_sqrt _ Hk').
+    ring.
++ intro u. rewrite add_opp, norm_origin. unfold Rsqr. nra.
++ intro u. rewrite add_opp, norm_origin, <- norm_defined.
+  assert (Heq : (u + u == 2 * u)%VS) by now rewrite <- add_morph, mul_1.
+  rewrite Heq, norm_mul, Rabs_pos_eq; try lra; []. unfold Rsqr. nra.
 Defined.
-*)
+  
+End Normed2Euclidean.
 
 (*
 Lemma unitary_orthogonal : forall u, unitary (orthogonal u) == orthogonal u.
