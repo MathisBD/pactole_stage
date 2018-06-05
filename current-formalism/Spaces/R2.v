@@ -53,9 +53,9 @@ Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 Instance R2_VS : RealVectorSpace R2 := {|
   origin := (0, 0);
   one := (1, 0);
-  add := fun x y => let '(x1, x2) := x in let '(y1, y2) := y in (x1 + y1, x2 + y2)%R;
-  mul := fun k x => let '(x1, x2) := x in (k * x1, k * x2)%R;
-  opp := fun x => let '(x1, x2) := x in (-x1, -x2)%R |}.
+  add := fun x y => (fst x + fst y, snd x + snd y)%R;
+  mul := fun k x => (k * fst x, k * snd x)%R;
+  opp := fun x => (-fst x, -snd x)%R |}.
 Proof.
 all:try solve_R.
 compute. injection. auto using R1_neq_R0.
@@ -2990,15 +2990,15 @@ constructor.
   repeat match goal with
     | H : InA _ _ _ |- _ => inversion_clear H
   end.
-  + now apply (equilateral_isobarycenter_not_eq _ Htriangle).
+  + now apply (equilateral_isobarycenter_not_eq Htriangle).
   + assert (Hperm : Permutation (ptx :: pty :: ptz :: nil) (pty :: ptx :: ptz :: nil)) by constructor.
     rewrite (isobarycenter_3_pts_compat Hperm) in H0. rewrite (classify_triangle_compat Hperm) in Htriangle.
-    apply (equilateral_isobarycenter_not_eq _ Htriangle); trivial.
+    apply (equilateral_isobarycenter_not_eq Htriangle); trivial; [].
     intuition.
   + assert (Hperm : Permutation (ptx :: pty :: ptz :: nil) (ptz :: ptx :: pty :: nil)).
     { now etransitivity; repeat constructor. }
     rewrite (isobarycenter_3_pts_compat Hperm) in H. rewrite (classify_triangle_compat Hperm) in Htriangle.
-    apply (equilateral_isobarycenter_not_eq _ Htriangle); trivial.
+    apply (equilateral_isobarycenter_not_eq Htriangle); trivial; [].
     functional induction (classify_triangle ptz ptx pty) as [Heq1 Heq2 | | | |]; try discriminate.
     rewrite Rdec_bool_true_iff in *.
     cbn. intro. subst.
@@ -3059,20 +3059,18 @@ Ltac permut_3_4 :=
 
 (* In a equilateral triangle x y z with isobarycenter b, if the middle of [b,y]
    is equal to x then the triangle is degenerated.  *)
-Lemma equilateral_isobarycenter_degenerated: forall ptx pty ptopp white mid,
+Lemma equilateral_isobarycenter_degenerated: forall ptx pty ptopp white,
     classify_triangle ptx pty ptopp = Equilateral ->
     white = isobarycenter_3_pts ptx pty ptopp ->
-    mid = middle ptopp white ->
-    ptx = mid ->
+    ptx = middle ptopp white ->
     ptx = ptopp.
 Proof.
-  intros ptx pty ptopp white mid hequil hwhite hmid h.
-  subst mid.
+  intros ptx pty ptopp white hequil hwhite hmid.
   assert (h_dist:=R2dist_middle white ptopp).
   assert (h_dist_bary:=@equilateral_SEC ptx pty ptopp hequil).
   assert (h_permut:Permutation (ptopp :: pty :: ptx :: nil) (ptx :: pty :: ptopp :: nil) ).
   { permut_3_4. }
-  assert (hequil':classify_triangle ptopp pty ptx = Equilateral).
+  assert (hequil': classify_triangle ptopp pty ptx = Equilateral).
   { rewrite <- hequil.
     eapply classify_triangle_compat.
     assumption. }
@@ -3080,15 +3078,14 @@ Proof.
   rewrite h_permut in h_dist_bary'.
   rewrite h_dist_bary' in h_dist_bary.
   injection h_dist_bary.
-  intro h_disteq.
-  intro h_baryeq'.
-  rewrite h_baryeq' in h_disteq.
+  intros h_disteq h_baryeq_snd h_baryeq_fst.
+  unfold isobarycenter_3_pts in h_disteq. simpl in h_disteq.
+  rewrite h_baryeq_fst, h_baryeq_snd in h_disteq.
   setoid_rewrite <- hwhite in h_disteq.
   rewrite h_disteq in h_dist.
-  rewrite h in h_dist.
   rewrite middle_comm in h_dist.
   assert (dist white (middle ptopp white) = 0%R).
-  { lra. }
+  { subst ptx. lra. }
   assert (h_white_ptopp:(equiv white ptopp)). 
   { apply dist_defined in H.
     symmetry in H.
@@ -3096,9 +3093,7 @@ Proof.
     now rewrite middle_eq in H.
   }
   assert (h_white_ptx:(equiv white ptx)).
-  { rewrite <- h in H.
-    now apply dist_defined in H.
-  }
+  { subst ptx. now apply dist_defined in H. }
   rewrite <- h_white_ptopp, h_white_ptx.
   reflexivity.
 Qed.
@@ -3119,35 +3114,35 @@ Proof.
     decompose [or] hptopp;clear hptopp;try contradiction.
     + assumption.
     + subst pty.
-      apply (@equilateral_isobarycenter_degenerated mid ptz ptopp white mid);auto.
-      * erewrite classify_triangle_compat;eauto; permut_3_4.
-      * erewrite isobarycenter_3_pts_compat;eauto; permut_3_4.
+      apply (@equilateral_isobarycenter_degenerated mid ptz ptopp white); auto.
+      * erewrite classify_triangle_compat; eauto; permut_3_4.
+      * erewrite isobarycenter_3_pts_compat; eauto; permut_3_4.
     + subst ptz.
-      apply (@equilateral_isobarycenter_degenerated mid pty ptopp white mid);auto.
+      apply (@equilateral_isobarycenter_degenerated mid pty ptopp white); auto.
   - subst pty.
     simpl in hptopp.
     decompose [or] hptopp;clear hptopp;try contradiction.
     + subst ptx.
-      apply (@equilateral_isobarycenter_degenerated mid ptz ptopp white mid);auto.
-      * erewrite classify_triangle_compat;eauto;permut_3_4.
-      * erewrite isobarycenter_3_pts_compat;eauto;permut_3_4.
+      apply (@equilateral_isobarycenter_degenerated mid ptz ptopp white); auto.
+      * erewrite classify_triangle_compat; eauto; permut_3_4.
+      * erewrite isobarycenter_3_pts_compat; eauto; permut_3_4.
     + assumption.
     + subst ptz.
-      eapply equilateral_isobarycenter_degenerated with (pty:=ptx) ; eauto.
-      * erewrite classify_triangle_compat;eauto;permut_3_4.
+      eapply equilateral_isobarycenter_degenerated with (pty:=ptx); eauto.
+      * erewrite classify_triangle_compat; eauto; permut_3_4.
       * subst white.
-        erewrite isobarycenter_3_pts_compat;eauto;permut_3_4.
+        erewrite isobarycenter_3_pts_compat; eauto; permut_3_4.
   - subst ptz.
     simpl in hptopp.
     decompose [or] hptopp;clear hptopp;try contradiction.
     + subst ptx.
-      apply (@equilateral_isobarycenter_degenerated mid pty ptopp white mid);auto.
-      * erewrite classify_triangle_compat;eauto;permut_3_4.
-      * erewrite isobarycenter_3_pts_compat;eauto;permut_3_4.
+      apply (@equilateral_isobarycenter_degenerated mid pty ptopp white); auto.
+      * erewrite classify_triangle_compat; eauto; permut_3_4.
+      * erewrite isobarycenter_3_pts_compat; eauto; permut_3_4.
     + subst pty.
-      eapply equilateral_isobarycenter_degenerated with (pty:=ptx) ; eauto.
-      * erewrite classify_triangle_compat;eauto;permut_3_4.
+      eapply equilateral_isobarycenter_degenerated with (pty:=ptx); eauto.
+      * erewrite classify_triangle_compat; eauto; permut_3_4.
       * subst white.
-        erewrite isobarycenter_3_pts_compat;eauto;permut_3_4.
+        erewrite isobarycenter_3_pts_compat; eauto; permut_3_4.
     + assumption.
 Qed.

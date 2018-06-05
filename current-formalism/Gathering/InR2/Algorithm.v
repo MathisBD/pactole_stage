@@ -854,18 +854,18 @@ destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax,
 simpl in Hlen; discriminate || clear Hlen; [| |].
 * rewrite support_nil, max_is_empty in Hmax. elim (spect_non_nil _ Hmax).
 * simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
-  subst pt1'. cbn -[Bijection.inverse]. unfold id.
+  subst pt1'. cbn -[Bijection.inverse mul]. unfold id.
   rewrite <- (Bijection.compose_inverse_l sim pt1) at 2.
-  simpl. f_equiv. changeR2. destruct (sim pt1); f_equal; ring.
+  simpl. f_equiv. changeR2. destruct (sim pt1); simpl; f_equal; ring.
 * change (map_config sim config) with (map_config (lift sim) config).
   rewrite <- (spect_from_config_ignore_snd (map_config (lift sim) config) (sim origin)),
           <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
   + rewrite rigid_update, <- (spect_from_config_ignore_snd _ (sim origin)),
             <- spect_from_config_map, target_morph; trivial; [].
-    cbn -[Bijection.inverse]. unfold id.
+    cbn -[Bijection.inverse mul]. unfold id.
     rewrite <- (Bijection.compose_inverse_l sim (target (!! config))) at 2.
-    simpl. f_equiv. changeR2. destruct (sim (target (!! config))); f_equal; ring.
+    simpl. f_equiv. changeR2. destruct (sim (target (!! config))); simpl; f_equal; ring.
   + change (0, 0)%R with origin. rewrite rigid_update. rewrite <- (center_prop sim) at 1.
     assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
     { rewrite <- SECT_morph; auto. f_equiv. now rewrite (spect_from_config_map Hsim). }
@@ -874,15 +874,15 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
     rewrite Heqsim at 3. rewrite similarity_center.
     destruct (mem equiv_dec (get_location (config (Good g))) (SECT (!! config))).
     - rewrite <- (center_prop sim), Heqsim, similarity_center.
-      cbn -[Bijection.inverse]. unfold id.
+      cbn -[Bijection.inverse mul]. unfold id.
       rewrite <- (Bijection.compose_inverse_l sim (config (Good g))) at 2.
       simpl. changeR2. rewrite <- Heqsim. f_equiv.
-      destruct (sim (config (Good g))); f_equal; ring.
+      destruct (sim (config (Good g))); simpl; f_equal; ring.
     - cbn. change eq with (@equiv location _). unfold id.
       rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
       rewrite spect_from_config_map; trivial; [].
       rewrite spect_from_config_ignore_snd. simpl. unfold id. changeR2.
-      destruct (target (!! (fun id => sim (config id)))); f_equal; ring.
+      destruct (target (!! (fun id => sim (config id)))); simpl; f_equal; ring.
 Qed.
 
 (** ****  Specialization of [round_simplify] in the three main cases of the robogram  **)
@@ -2055,32 +2055,32 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       decompose [or False] hpt1;
                       decompose [or False] hpt2;subst;clear hpt1; clear hpt2.
                       * inv hNoDup. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
-                      * assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
+                      * assert (heq:=middle_isobarycenter_3_neq Htriangle H).
                         inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                       * rewrite (@isobarycenter_3_pts_compat pt1 pty pt2 pt1 pt2 pty) in H; repeat econstructor.
                         rewrite(@classify_triangle_compat pt1 pty pt2 pt1 pt2 pty) in Htriangle; repeat econstructor.
-                        assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
+                        assert (heq:=middle_isobarycenter_3_neq Htriangle H).
                         inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                       * rewrite (@isobarycenter_3_pts_compat pt2 pt1 ptz pt1 pt2 ptz) in H; repeat econstructor.
                         rewrite(@classify_triangle_compat pt2 pt1 ptz pt1 pt2 ptz) in Htriangle; repeat econstructor.
-                        assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
+                        assert (heq:=middle_isobarycenter_3_neq Htriangle H).
                         inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                       * inv hNoDup. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                       * rewrite (@isobarycenter_3_pts_compat ptx pt1 pt2 pt1 pt2 ptx) in H.
                         -- rewrite (@classify_triangle_compat ptx pt1 pt2 pt1 pt2 ptx) in Htriangle.
-                           ++ assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
+                           ++ assert (heq:=middle_isobarycenter_3_neq Htriangle H).
                               inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                            ++ now do 3 econstructor.
                         -- now do 3 econstructor.
                       * rewrite (@isobarycenter_3_pts_compat pt2 pty pt1 pt1 pt2 pty) in H.
                         -- rewrite (@classify_triangle_compat pt2 pty pt1 pt1 pt2 pty) in Htriangle.
-                           ++ assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
+                           ++ assert (heq:=middle_isobarycenter_3_neq Htriangle H).
                               inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                            ++ now do 3 econstructor.
                         -- now do 3 econstructor.
                       * rewrite (@isobarycenter_3_pts_compat ptx pt2 pt1 pt1 pt2 ptx) in H.
                         -- rewrite (@classify_triangle_compat ptx pt2 pt1 pt1 pt2 ptx) in Htriangle.
-                           ++ assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
+                           ++ assert (heq:=middle_isobarycenter_3_neq Htriangle H).
                               inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                            ++ permut_3_4.
                         -- econstructor 4 with (pt2 :: ptx :: pt1 :: nil); now do 3 econstructor.
