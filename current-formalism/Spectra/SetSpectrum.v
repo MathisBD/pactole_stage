@@ -59,7 +59,7 @@ intro l. induction l as [| e l]; intros x s.
 + simpl fold_left.
   assert (Hf : Proper (equiv ==> equiv ==> equiv) (fun acc y => add y acc)).
   { clear x. intros s1 s2 Hs x y Hxy. now rewrite Hxy, Hs. }
-  rewrite (@fold_left_start _ _ equiv equiv _ _ _ Hf l _ (add x (add e s))).
+  rewrite (@fold_left_start _ _ equiv equiv _ _ Hf l _ (add x (add e s))).
   apply IHl. intro. fsetdec.
 Qed.
 

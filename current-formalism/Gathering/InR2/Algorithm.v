@@ -66,8 +66,8 @@ Instance Loc : Location := make_Location R2.
 Instance VS : RealVectorSpace location := R2_VS.
 Instance ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_VS R2_ES : typeclass_instances.
-Instance Choice : update_choice Datatypes.unit := NoChoice.
-Instance UpdFun : update_function Datatypes.unit := {
+Instance Choice : update_choice unit := NoChoice.
+Instance UpdFun : update_function unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
   update_compat := ltac:(now repeat intro) }.
 Instance Rigid : RigidUpdate.
@@ -77,7 +77,7 @@ Proof. split. reflexivity. Qed.
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
 Notation "!! config" := (@spect_from_config location _ _ _ multiset_spectrum config origin) (at level 10).
 Notation support := (@support location _ _ _).
-(* (@spect_from_config R2 Datatypes.unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
+(* (@spect_from_config R2 unit _ _ _ _ _ _ multiset_spectrum) (at level 1). *)
 (* Notation "x == y" := (equiv x y).
 Notation spectrum := (@spectrum R2 R2 _ R2_EqDec _ R2_EqDec _ MyRobots multiset_spectrum).
 Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
@@ -167,11 +167,11 @@ Qed.
 Open Scope R_scope.
 
 (** The target in the triangle case. *)
-(* TODO: replace [barycenter_3_pts] with the general [barycenter]. *)
+(* TODO: replace [isobarycenter_3_pts] with the general [isobarycenter]. *)
 Function target_triangle (pt1 pt2 pt3 : location) : location :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
-    | Equilateral => barycenter_3_pts pt1 pt2 pt3
+    | Equilateral => isobarycenter_3_pts pt1 pt2 pt3
     | Isosceles p => p
     | Scalene => opposite_of_max_side pt1 pt2 pt3
   end.
@@ -187,7 +187,7 @@ functional induction (target_triangle pt1 pt2 pt3);
 generalize h_classify; intro h_classify';
 symmetry in h_classify'; rewrite e in h_classify'; unfold target_triangle;
 rewrite h_classify'; auto.
-- apply barycenter_3_pts_compat; auto.
+- apply isobarycenter_3_pts_compat; auto.
 - apply opposite_of_max_side_compat; auto.
 Qed.
 
@@ -272,15 +272,18 @@ assert (Hsize : length (support (max s1)) = length (support (max s2))) by now re
 destruct (support (max s1)) as [| pt1 [| ? ?]] eqn:Hs1,
          (support (max s2)) as [| pt2 [| ? ?]] eqn:Hs2;
 simpl in Hsize; omega || clear Hsize.
-+ reflexivity.
-+ apply max_compat, support_compat in Hs. rewrite Hs1, Hs2 in Hs.
+* reflexivity.
+* apply max_compat, support_compat in Hs. rewrite Hs1, Hs2 in Hs.
   rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
-+ rewrite Hs. destruct (is_clean s2).
-  - now do 2 f_equiv.
-  - destruct (mem equiv_dec origin (SECT s1)) eqn:Hin,
-             (mem equiv_dec origin (SECT s2)) eqn:Hin';
-    rewrite ?mem_true_iff, ?mem_false_iff, ?InA_Leibniz in *;
-    try (reflexivity || (rewrite Hs in Hin; contradiction)). now do 2 f_equiv.
+* rewrite Hs. destruct (is_clean s2).
+  + now do 2 f_equiv.
+  + assert (Heq : mem equiv_dec origin (SECT s1) = mem equiv_dec origin (SECT s2)).
+    { apply mem_compat, PermutationA_equivlistA_subrelation; auto; []. now rewrite Hs. }
+    (* BUG?: [rewrite Hs] should take care of this assert (and bypass it entirely) *)
+    rewrite Heq.
+    destruct (mem equiv_dec origin (SECT s2)) eqn:Hin.
+    - reflexivity.
+    - now do 2 f_equiv.
 Qed.
 
 Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
@@ -753,7 +756,7 @@ Proof.
 intros sim pt1 pt2 pt3. unfold target_triangle.
 rewrite classify_triangle_morph.
 destruct (classify_triangle pt1 pt2 pt3); simpl; auto.
-- apply barycenter_3_morph.
+- apply isobarycenter_3_morph.
 - apply opposite_of_max_side_morph.
 Qed.
 
@@ -866,7 +869,7 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
   + change (0, 0)%R with origin. rewrite rigid_update. rewrite <- (center_prop sim) at 1.
     assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
     { rewrite <- SECT_morph; auto. f_equiv. now rewrite (spect_from_config_map Hsim). }
-    rewrite (mem_compat _ equiv_dec _ _ (reflexivity _) (PermutationA_equivlistA _ Hperm')).
+    rewrite (mem_compat equiv_dec _ _ (reflexivity _) (PermutationA_equivlistA _ Hperm')).
     rewrite (mem_injective_map _); trivial; try (now apply injective); [].
     rewrite Heqsim at 3. rewrite similarity_center.
     destruct (mem equiv_dec (get_location (config (Good g))) (SECT (!! config))).
@@ -1042,7 +1045,7 @@ Qed.
 Lemma equilateral_target : forall config ptx pty ptz,
   PermutationA equiv (on_SEC (support (!! config))) (ptx :: pty :: ptz :: nil) ->
   classify_triangle ptx pty ptz = Equilateral ->
-  target (!! config) = barycenter_3_pts ptx pty ptz.
+  target (!! config) = isobarycenter_3_pts ptx pty ptz.
 Proof.
 intros config ptx pty ptz Hperm Htriangle.
 unfold target.
@@ -1157,7 +1160,7 @@ simpl in Hlen; omega || clear Hlen; [| |].
   simpl. unfold max_dist. simpl. etransitivity; apply Rmax_l.
 + rewrite SEC_on_SEC, Hsec. unfold target_triangle.
   destruct (classify_triangle pt1 pt2 pt3) eqn:Htriangle.
-  - apply barycenter_3_pts_inside_SEC.
+  - apply isobarycenter_3_pts_inside_SEC.
   - rewrite classify_triangle_Isosceles_spec in Htriangle.
     assert (Hin : InA equiv vertex (on_SEC (support (!! config)))).
     { rewrite Hsec. decompose [and or] Htriangle; subst; intuition. }
@@ -1199,7 +1202,7 @@ intros config Hmaj. split.
     inversion_clear Hnodup. intuition.
   + unfold target_triangle in *. destruct (classify_triangle pt1 pt2 pt3) eqn:Htriangle.
     - exfalso.
-      rewrite triangle_barycenter_inside in Htarget; try discriminate; [].
+      rewrite triangle_isobarycenter_inside in Htarget; try discriminate; [].
       inversion_clear Hnodup. intuition.
     - get_case config. split; trivial. intro Habs.
       unfold triangle_case, equilateral_case in *.
@@ -1839,7 +1842,7 @@ Lemma SEC_3_to_2: forall da config ptx pty ptz bary pt ptdiam,
   PermutationA equiv (on_SEC (support (!! config))) (ptx :: pty :: ptz :: nil) ->
   PermutationA equiv (on_SEC (support (!! (round gatherR2 da config)))) (bary :: ptdiam :: nil) ->
   classify_triangle ptx pty ptz = Equilateral ->
-  bary == (barycenter_3_pts ptx pty ptz) ->
+  bary == (isobarycenter_3_pts ptx pty ptz) ->
   ~ InA equiv pt (support (!! (round gatherR2 da config))).
 Proof.
 intros da config ptx pty ptz bary pt ptdiam hIn_pt hIn_ptdiam hneq_pt_ptdiam Hsec Hsec' Htriangle heq_bary.
@@ -1861,7 +1864,7 @@ assert (h_radius_pt : radius (SEC (ptx :: pty :: ptz :: nil)) =  dist bary pt).
     generalize hperm; intro hperm'.
     apply PermutationA_Leibniz in hperm'.
     rewrite (classify_triangle_compat hperm') in Htriangle.
-    rewrite (barycenter_3_pts_compat hperm') in heq_bary.
+    rewrite (isobarycenter_3_pts_compat hperm') in heq_bary.
     generalize (@equilateral_SEC _ _ _ Htriangle).
     intro h_sec_xyz.
     rewrite <- heq_bary in h_sec_xyz.
@@ -1873,7 +1876,7 @@ assert (h_radius_pt : radius (SEC (ptx :: pty :: ptz :: nil)) =  dist bary pt).
     generalize hperm;intro hperm'.
     apply PermutationA_Leibniz in hperm'.
     rewrite (classify_triangle_compat hperm') in Htriangle.
-    rewrite (barycenter_3_pts_compat hperm') in heq_bary.
+    rewrite (isobarycenter_3_pts_compat hperm') in heq_bary.
     generalize (@equilateral_SEC _ _ _ Htriangle).
     intro h_sec_xyz.
     rewrite <- heq_bary in h_sec_xyz.
@@ -1895,7 +1898,7 @@ assert (h_radius_ptdiam : radius (SEC (ptx :: pty :: ptz :: nil)) =  dist bary p
     generalize hperm;intro hperm'.
     apply PermutationA_Leibniz in hperm'.
     rewrite (classify_triangle_compat hperm') in Htriangle.
-    rewrite (barycenter_3_pts_compat hperm') in heq_bary.
+    rewrite (isobarycenter_3_pts_compat hperm') in heq_bary.
     generalize (@equilateral_SEC _ _ _ Htriangle).
     intro h_sec_xyz.
     rewrite <- heq_bary in h_sec_xyz.
@@ -1907,7 +1910,7 @@ assert (h_radius_ptdiam : radius (SEC (ptx :: pty :: ptz :: nil)) =  dist bary p
     generalize hperm;intro hperm'.
     apply PermutationA_Leibniz in hperm'.
     rewrite (classify_triangle_compat hperm') in Htriangle.
-    rewrite (barycenter_3_pts_compat hperm') in heq_bary.
+    rewrite (isobarycenter_3_pts_compat hperm') in heq_bary.
     generalize (@equilateral_SEC _ _ _ Htriangle).
     intro h_sec_xyz.
     rewrite <- heq_bary in h_sec_xyz.
@@ -2017,7 +2020,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
   assert (Hlen' : size (!! (round gatherR2 da config)) >= 3) by now apply not_invalid_no_majority_size.
   destruct (classify_triangle ptx pty ptz) eqn:Htriangle.
   + (* Equilateral case *)
-    assert (Htarget : target (!! config) = barycenter_3_pts ptx pty ptz) by now apply equilateral_target.
+    assert (Htarget : target (!! config) = isobarycenter_3_pts ptx pty ptz) by now apply equilateral_target.
     assert (Hle := no_Majority_on_SEC_length Hmaj').
     destruct (on_SEC (support (!! (round gatherR2 da config)))) as [| pt1 [| pt2 [| pt3 l]]] eqn:Hsec';
     cbn in Hle; try omega.
@@ -2039,7 +2042,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
            --- rewrite Htarget in Hin.
                assert (hNoDup:NoDupA equiv (pt1 :: pt2 :: nil)).
                { rewrite <- Hsec'. apply on_SEC_NoDupA, support_NoDupA. }
-               Opaque middle. Opaque barycenter_3_pts. cbn in Hin.
+               Opaque middle. Opaque isobarycenter_3_pts. cbn in Hin.
                { rewrite InA_Leibniz in Hin. simpl in Hin. decompose [or False] Hin; clear Hin.
                   - rewrite H, Htarget in Hincl.
                     eapply inclA_cons_inv in Hincl; autoclass; auto.
@@ -2052,32 +2055,32 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       decompose [or False] hpt1;
                       decompose [or False] hpt2;subst;clear hpt1; clear hpt2.
                       * inv hNoDup. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
-                      * assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H).
+                      * assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
                         inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
-                      * rewrite (@barycenter_3_pts_compat pt1 pty pt2 pt1 pt2 pty) in H; repeat econstructor.
+                      * rewrite (@isobarycenter_3_pts_compat pt1 pty pt2 pt1 pt2 pty) in H; repeat econstructor.
                         rewrite(@classify_triangle_compat pt1 pty pt2 pt1 pt2 pty) in Htriangle; repeat econstructor.
-                        assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H).
+                        assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
                         inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
-                      * rewrite (@barycenter_3_pts_compat pt2 pt1 ptz pt1 pt2 ptz) in H; repeat econstructor.
+                      * rewrite (@isobarycenter_3_pts_compat pt2 pt1 ptz pt1 pt2 ptz) in H; repeat econstructor.
                         rewrite(@classify_triangle_compat pt2 pt1 ptz pt1 pt2 ptz) in Htriangle; repeat econstructor.
-                        assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H).
+                        assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
                         inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                       * inv hNoDup. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
-                      * rewrite (@barycenter_3_pts_compat ptx pt1 pt2 pt1 pt2 ptx) in H.
+                      * rewrite (@isobarycenter_3_pts_compat ptx pt1 pt2 pt1 pt2 ptx) in H.
                         -- rewrite (@classify_triangle_compat ptx pt1 pt2 pt1 pt2 ptx) in Htriangle.
-                           ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H).
+                           ++ assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
                               inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                            ++ now do 3 econstructor.
                         -- now do 3 econstructor.
-                      * rewrite (@barycenter_3_pts_compat pt2 pty pt1 pt1 pt2 pty) in H.
+                      * rewrite (@isobarycenter_3_pts_compat pt2 pty pt1 pt1 pt2 pty) in H.
                         -- rewrite (@classify_triangle_compat pt2 pty pt1 pt1 pt2 pty) in Htriangle.
-                           ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H).
+                           ++ assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
                               inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                            ++ now do 3 econstructor.
                         -- now do 3 econstructor.
-                      * rewrite (@barycenter_3_pts_compat ptx pt2 pt1 pt1 pt2 ptx) in H.
+                      * rewrite (@isobarycenter_3_pts_compat ptx pt2 pt1 pt1 pt2 ptx) in H.
                         -- rewrite (@classify_triangle_compat ptx pt2 pt1 pt1 pt2 ptx) in Htriangle.
-                           ++ assert (heq:=middle_barycenter_3_neq _ _ _ Htriangle H).
+                           ++ assert (heq:=middle_isobarycenter_3_neq _ _ _ Htriangle H).
                               inversion hNoDup; subst. match goal with | H: ~ InA _ _ _ |- _ => apply H end. now left.
                            ++ permut_3_4.
                         -- econstructor 4 with (pt2 :: ptx :: pt1 :: nil); now do 3 econstructor.
@@ -2122,7 +2125,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                         left;reflexivity.
                     + assert(ptx = pt2).
                       { rewrite middle_comm in H3.
-                        eapply equilateral_barycenter_degenerated_gen
+                        eapply equilateral_isobarycenter_degenerated_gen
                         with (ptopp:=pt2) (mid:=ptx) (white:=pt1);eauto.
                         left.
                         reflexivity. }
@@ -2136,7 +2139,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       reflexivity.
                     + assert(pty = pt2).
                       { rewrite middle_comm in H1.
-                        eapply equilateral_barycenter_degenerated_gen
+                        eapply equilateral_isobarycenter_degenerated_gen
                         with (ptopp:=pt2) (mid:=pty) (white:=pt1);eauto.
                         right;left.
                         reflexivity. }
@@ -2150,7 +2153,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       reflexivity.
                     + assert(ptz = pt2).
                       { rewrite middle_comm in H3.
-                        eapply equilateral_barycenter_degenerated_gen
+                        eapply equilateral_isobarycenter_degenerated_gen
                         with (ptopp:=pt2) (mid:=ptz) (white:=pt1);eauto.
                         right;right;left.
                         reflexivity. }
@@ -2202,7 +2205,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       * rewrite <- H2.
                         right;left;reflexivity.
                     + assert(ptx = pt1).
-                      { eapply equilateral_barycenter_degenerated_gen
+                      { eapply equilateral_isobarycenter_degenerated_gen
                         with (ptopp:=pt1) (mid:=ptx) (white:=pt2);eauto.
                         left.
                         reflexivity. }
@@ -2214,7 +2217,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       left.
                       reflexivity.
                     + assert(pty = pt1).
-                      { eapply equilateral_barycenter_degenerated_gen
+                      { eapply equilateral_isobarycenter_degenerated_gen
                         with (ptopp:=pt1) (mid:=pty) (white:=pt2);eauto.
                         right;left.
                         reflexivity. }
@@ -2226,7 +2229,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       left.
                       reflexivity.
                     + assert(ptz = pt1).
-                      { eapply equilateral_barycenter_degenerated_gen
+                      { eapply equilateral_isobarycenter_degenerated_gen
                         with (ptopp:=pt1) (mid:=ptz) (white:=pt2);eauto.
                         right;right;left.
                         reflexivity. }
@@ -2294,7 +2297,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
          rewrite Htarget in hincl_round.
          rewrite Hsec in hincl_round.
          assert (h_incl_pt1_pt2 : inclA equiv (pt1 :: pt2 :: nil)
-                                              (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)).
+                                              (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)).
          { transitivity (support (!! (round gatherR2 da config))).
            -  rewrite <- Hsec'.
              unfold on_SEC.
@@ -2317,7 +2320,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
            apply support_NoDupA. }
          inv_nodup hnodupxyz.
          inv_nodup hnodup.
-         destruct (equiv_dec pt1 (barycenter_3_pts ptx pty ptz)) as [heq_pt1_bary | hneq_pt1_bary].
+         destruct (equiv_dec pt1 (isobarycenter_3_pts ptx pty ptz)) as [heq_pt1_bary | hneq_pt1_bary].
          ++ { exfalso.
               assert(hpermut_config: PermutationA equiv (support (!! (round gatherR2 da config)))
                                                       (pt1 :: pt2 :: nil)).
@@ -2332,8 +2335,8 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                   (* pt2 = ptx *)
                   * unfold equiv, R2def.eq in heq_pt2_ptx.
                     subst.
-                    assert (hpermut:PermutationA equiv (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
-                                                 (pty :: ptz :: barycenter_3_pts ptx pty ptz :: ptx :: nil))
+                    assert (hpermut:PermutationA equiv (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                                 (pty :: ptz :: isobarycenter_3_pts ptx pty ptz :: ptx :: nil))
                       by permut_3_4.
                     rewrite hpermut in hincl_round;clear hpermut.
                     assert (h_ynotin:~ InA equiv pty (support (!! (round gatherR2 da config)))).
@@ -2365,8 +2368,8 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                       (* pt2 = pty *)
                       * unfold equiv, R2def.eq in heq_pt2_pty.
                         subst.
-                        assert (Hperm:PermutationA equiv (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
-                                                         (ptx :: ptz :: barycenter_3_pts ptx pty ptz :: pty :: nil))
+                        assert (Hperm:PermutationA equiv (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                                         (ptx :: ptz :: isobarycenter_3_pts ptx pty ptz :: pty :: nil))
                           by permut_3_4.
                         rewrite Hperm in hincl_round;clear Hperm.
                         assert (h_ynotin:~ InA equiv ptx (support (!! (round gatherR2 da config)))).
@@ -2400,8 +2403,8 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                           * unfold equiv, R2def.eq in heq_pt2_pty.
                             subst.
                             assert (Hperm : PermutationA equiv
-                                      (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
-                                      (ptx :: pty :: barycenter_3_pts ptx pty ptz :: ptz :: nil))
+                                      (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                      (ptx :: pty :: isobarycenter_3_pts ptx pty ptz :: ptz :: nil))
                               by permut_3_4.
                             rewrite Hperm in hincl_round;clear Hperm.
                             assert (h_ynotin:~ InA equiv ptx (support (!! (round gatherR2 da config)))).
@@ -2432,7 +2435,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                   rewrite hpermut_config in Hlen'.
                   simpl in Hlen'.
                   omega. }
-         ++ { destruct (equiv_dec pt2 (barycenter_3_pts ptx pty ptz)) as [heq_pt2_bary | hneq_pt2_bary].
+         ++ { destruct (equiv_dec pt2 (isobarycenter_3_pts ptx pty ptz)) as [heq_pt2_bary | hneq_pt2_bary].
               ++ { exfalso.
                    assert(hpermut_config: PermutationA equiv (support (!! (round gatherR2 da config)))
                                                            (pt2 :: pt1 :: nil)).
@@ -2451,8 +2454,8 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                        * unfold equiv, R2def.eq in heq_pt1_ptx.
                          subst ptx.
                          subst pt.
-                         assert (Hperm:PermutationA equiv (barycenter_3_pts pt1 pty ptz :: pt1 :: pty :: ptz :: nil)
-                                                      (pty :: ptz :: barycenter_3_pts pt1 pty ptz :: pt1 :: nil))
+                         assert (Hperm:PermutationA equiv (isobarycenter_3_pts pt1 pty ptz :: pt1 :: pty :: ptz :: nil)
+                                                      (pty :: ptz :: isobarycenter_3_pts pt1 pty ptz :: pt1 :: nil))
                            by permut_3_4.
                          rewrite Hperm in hincl_round;clear Hperm.
                          assert (h_ynotin:~ InA equiv pty (support (!! (round gatherR2 da config)))).
@@ -2492,8 +2495,8 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                            * unfold equiv, R2def.eq in heq_pt1_pty.
                              subst.
                              assert (Hperm : PermutationA equiv
-                                       (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
-                                       (ptx :: ptz :: barycenter_3_pts ptx pty ptz :: pty :: nil))
+                                       (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                       (ptx :: ptz :: isobarycenter_3_pts ptx pty ptz :: pty :: nil))
                                by permut_3_4.
                              rewrite Hperm in hincl_round;clear Hperm.
                              assert (h_xnotin:~ InA equiv ptx (support (!! (round gatherR2 da config)))).
@@ -2533,8 +2536,8 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                                * unfold equiv, R2def.eq in heq_pt1_ptz.
                                  subst.
                                  assert (hpermut : PermutationA equiv
-                                                     (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
-                                                     (ptx :: pty :: barycenter_3_pts ptx pty ptz :: ptz :: nil))
+                                                     (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)
+                                                     (ptx :: pty :: isobarycenter_3_pts ptx pty ptz :: ptz :: nil))
                                    by permut_3_4.
                                  rewrite hpermut in hincl_round;clear hpermut.
                                  assert (h_xnotin:~ InA equiv ptx (support (!! (round gatherR2 da config)))).
@@ -2601,7 +2604,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
       -- destruct (moving gatherR2 da config) as [| gmove ?] eqn:Hmoving.
          ++ apply no_moving_same_config in Hmoving. now rewrite Hmoving.
          ++ assert (Hperm' : PermutationA equiv (support (!! (round gatherR2 da config)))
-                                                (barycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)).
+                                                (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil)).
             { assert ((!! (round gatherR2 da config))[target (!! config)] > 0).
               { apply le_lt_trans with ((!! config)[target (!! config)]); try omega.
                 rewrite increase_move_iff.
@@ -2611,7 +2614,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                 - now rewrite <- moving_spec, Hmoving; left. }
               apply (NoDupA_inclA_length_PermutationA _).
               - apply support_NoDupA.
-              - apply equilateral_barycenter_NoDupA; trivial.
+              - apply equilateral_isobarycenter_NoDupA; trivial.
                 assert (Hnodup : NoDupA equiv (on_SEC (support (!! config)))).
                 { apply on_SEC_NoDupA, support_NoDupA. }
                 rewrite Hsec in Hnodup. inversion Hnodup. intuition.
@@ -2644,12 +2647,12 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                 { rewrite <- Hsec. apply on_SEC_NoDupA, support_NoDupA. }
                 assert (Hex : exists pta ptb ptc,
                               PermutationA equiv (pta :: ptb :: ptc :: nil) (ptx :: pty :: ptz :: nil)
-                              /\ PermutationA equiv (barycenter_3_pts ptx pty ptz :: pta :: ptb ::nil)
+                              /\ PermutationA equiv (isobarycenter_3_pts ptx pty ptz :: pta :: ptb ::nil)
                                                     (pt1 :: pt2 :: pt3 :: nil)).
                 { assert (hincl:=incl_clean_next da config Hclean).
                   rewrite Hsec in hincl.
                   rewrite Hperm', Hsec' in hincl.
-                  assert (hbary : InA equiv (barycenter_3_pts ptx pty ptz)
+                  assert (hbary : InA equiv (isobarycenter_3_pts ptx pty ptz)
                                             (support (!! (round gatherR2 da config)))).
                   { rewrite support_spec.
                     rewrite <- Htarget.
@@ -2661,7 +2664,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                   assert (Hlength := PermutationA_length hpermut_l).
                   destruct l as [| pta [| ptb [| ? ?]]]; simpl in Hlength; omega || clear Hlength.
                   inv_nodup Hnodup.
-                  assert (Hnodup' := equilateral_barycenter_NoDupA _ Htriangle ltac:(auto)).
+                  assert (Hnodup' := equilateral_isobarycenter_NoDupA _ Htriangle ltac:(auto)).
                   assert (Hnodup123 : NoDupA equiv (pt1 :: pt2 :: pt3 :: nil)).
                   { rewrite <- Hsec'. apply on_SEC_NoDupA, support_NoDupA. }
                   inv_nodup Hnodup'.
@@ -2689,10 +2692,10 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                     end; subst; permut_3_4. }
                 destruct Hex as [pta [ptb [ptc [Hpermxyz Hperm]]]].
                 pose (better_SEC := {| center := middle pta ptb; radius := /2 * R2.dist pta ptb |}).
-                assert (Hbary_strict : (R2.dist (barycenter_3_pts ptx pty ptz) (center better_SEC)
+                assert (Hbary_strict : (R2.dist (isobarycenter_3_pts ptx pty ptz) (center better_SEC)
                                         < radius better_SEC)%R).
-                { rewrite PermutationA_Leibniz in Hpermxyz. rewrite <- (barycenter_3_pts_compat Hpermxyz).
-                  unfold better_SEC. simpl. rewrite R2norm_dist. unfold barycenter_3_pts, middle.
+                { rewrite PermutationA_Leibniz in Hpermxyz. rewrite <- (isobarycenter_3_pts_compat Hpermxyz).
+                  unfold better_SEC. simpl. rewrite R2norm_dist. unfold isobarycenter_3_pts, middle.
                   replace (/ 3 * (pta + (ptb + ptc)) - 1 / 2 * (pta + ptb))%R2
                     with (/6 * (ptc + ptc - (pta + ptb)))%R2 by (destruct pta, ptb, ptc; simpl; f_equal; field).
                   rewrite R2norm_mul. rewrite Rabs_pos_eq; try lra; [].
@@ -2708,7 +2711,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                     assert (Hle' := R2.dist_pos ptb ptc).
                     rewrite <- PermutationA_Leibniz in Hpermxyz. rewrite <- Hpermxyz in Hnodup. inv_nodup Hnodup.
                     rewrite <- R2.dist_defined in heq1. lra. }
-                assert (enclosing_circle better_SEC (barycenter_3_pts ptx pty ptz :: pta :: ptb :: nil)).
+                assert (enclosing_circle better_SEC (isobarycenter_3_pts ptx pty ptz :: pta :: ptb :: nil)).
                 { intros pt hin.
                   simpl in hin.
                   decompose [or False] hin;subst pt;clear hin.
@@ -2730,7 +2733,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
                   - unfold better_SEC.
                     simpl.
                     apply SEC_min_radius; intuition. }
-                absurd (on_circle better_SEC (barycenter_3_pts  ptx pty ptz)=true).
+                absurd (on_circle better_SEC (isobarycenter_3_pts  ptx pty ptz)=true).
                 + rewrite on_circle_true_iff.
                   apply Rlt_not_eq.
                   assumption.
@@ -2747,7 +2750,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
             ** apply on_SEC_NoDupA, support_NoDupA.
             ** apply on_SEC_NoDupA, support_NoDupA.
             ** rewrite Hperm', Hsec.
-               rewrite on_SEC_barycenter_triangle, <- Hsec, on_SEC_idempotent; try reflexivity.
+               rewrite on_SEC_isobarycenter_triangle, <- Hsec, on_SEC_idempotent; try reflexivity.
                intros [? ?]. subst.
                assert (Hnodup : NoDupA equiv (on_SEC (support (!! config)))).
                { apply on_SEC_NoDupA, support_NoDupA. }
@@ -3335,7 +3338,7 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
 Qed.
 
 Print Assumptions Gathering_in_R2.
-
+(* FIXME: Find and remove the uses of [Eqdep.Eq_rect_eq.eq_rect_eq] and [Classical_Prop.classic]. *)
 
 (* Let us change the assumption over the demon, it is no longer fair
    but instead activates at least a robot that should move at each round *)

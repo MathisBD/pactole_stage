@@ -9,7 +9,9 @@
 
 
 Require Import Reals.
+Require Import Lra.
 Require Import SetoidDec.
+Require Import RelationPairs.
 Require Import Pactole.Util.Preliminary.
 
 
@@ -57,9 +59,13 @@ Ltac null x :=
   let Hnull := fresh "Hnull" in
   destruct (x =?= origin) as [Hnull | Hnull]; [try rewrite Hnull in * | change (~x == origin) in Hnull].
 
+Open Scope R_scope.
 Open Scope VectorSpace_scope.
 
 (** ***  Proofs of derivable properties about MetricSpace  **)
+
+Lemma add_origin_l `{RealVectorSpace} : forall u, 0 + u == u.
+Proof. intro. rewrite add_comm. apply add_origin. Qed.
 
 Lemma add_reg_r `{RealVectorSpace} : forall w u v, u + w == v + w -> u == v.
 Proof.
@@ -155,7 +161,7 @@ intros pt1 pt2 Heq pt1' pt2' Heq' x. simpl.
 now apply add_compat, mul_compat, add_compat, opp_compat.
 Qed.
 
-(** We can simplify this definition in the local frame. *)
+(** We can simplify this definition in the local frame as we start from the origin. *)
 Definition local_straight_path {T} `{RVS : RealVectorSpace T} (pt : T) : path T.
 Proof.
 refine (Build_path _ _ (fun x => @mul _ _ _ RVS x pt) _).
@@ -165,3 +171,112 @@ Defined.
 Instance local_straight_path_compat {T} `{RealVectorSpace T} :
   Proper (equiv ==> equiv) local_straight_path.
 Proof. intros pt1 pt2 Heq x. simpl. now apply mul_compat. Qed.
+
+(** ***  Weighted barycenter of a list of locations  **)
+
+Section Barycenter.
+  Context {T : Type}.
+  Context `{RealVectorSpace T}.
+  
+  Definition barycenter_aux :=
+    List.fold_left (fun acc xn => (((snd xn * fst xn) + fst acc), (snd xn + snd acc)%R)).
+  
+  Definition barycenter E :=
+    let '(sum, weight) := barycenter_aux E (origin, 0%R) in ((1 / weight) * sum).
+  
+  Instance barycenter_aux_compat :
+    Proper (PermutationA (equiv * eq) ==> equiv * eq ==> equiv * eq) barycenter_aux.
+  Proof.
+  apply fold_left_symmetry_PermutationA; autoclass.
+  + intros [] [] [Heq1 ?] [] [] [Heq2 ?]. split; hnf in *; simpl in *; subst; trivial; [].
+    apply add_compat; trivial; []. now apply mul_compat.
+  + intros [u1 k1] [u2 k2] [u3 k3]. simpl.
+    split; try (hnf; simpl in *; ring); [].
+    unfold RelCompFun; simpl.
+    now rewrite add_comm, <- add_assoc, (add_comm _ u3).
+  Qed.
+  
+  Instance barycenter_compat : Proper (PermutationA (equiv * eq) ==> equiv) barycenter.
+  Proof.
+  intros l1 l2 Hperm.
+  unfold barycenter.
+  apply barycenter_aux_compat in Hperm.
+  specialize (Hperm _ _ (reflexivity (origin, 0%R))).
+  destruct (barycenter_aux l1 (origin, 0%R)), (barycenter_aux l2 (origin, 0%R)).
+  destruct Hperm. hnf in *; simpl in *. subst. now apply mul_compat.
+  Qed.
+  
+  (* The first component of [barycenter_aux] is the weighted sum of all points. *)
+  Lemma barycenter_aux_fst : forall E pt sumR,
+    fst (barycenter_aux E (pt, sumR)) = List.fold_left (fun acc xn => ((snd xn * fst xn) + acc)) E pt.
+  Proof. induction E; intros; simpl; trivial; now rewrite IHE. Qed.
+  
+  (* The second component of [barycenter_aux] is the sum of all coefficients. *)
+  Lemma barycenter_aux_snd : forall E pt sumR,
+    snd (barycenter_aux E (pt, sumR)) = List.fold_left (fun acc xn => snd xn + acc)%R E sumR.
+  Proof. induction E; intros; simpl; trivial; now rewrite IHE. Qed.
+  
+  Lemma barycenter_aux_snd_nonneg : forall E init,
+    (List.Forall (fun x => 0 <= snd x) E) ->
+    snd init <= snd (barycenter_aux E init).
+  Proof.
+  induction E as [| e E]; intros init HE; simpl.
+  + reflexivity.
+  + transitivity (snd e + snd init)%R.
+    - inv HE. lra.
+    - change (snd e + snd init)%R with (snd ((snd e * fst e + fst init)%VS, snd e + snd init))%R.
+      apply IHE. now inv HE.
+  Qed.
+  
+  Corollary barycenter_aux_snd_pos : forall E init,
+    0 <= snd init ->
+    E <> Datatypes.nil ->
+    (List.Forall (fun x => 0 < snd x) E) ->
+    0 < snd (barycenter_aux E init).
+  Proof.
+  intros E init Hinit Hnil HE.
+  destruct E as [| e E]; try (now elim Hnil); [].
+  simpl. apply Rlt_le_trans with (snd e + snd init)%R.
+  + inv HE. lra.
+  + change (snd e + snd init)%R with (snd ((snd e * fst e + fst init)%VS, snd e + snd init))%R.
+    apply barycenter_aux_snd_nonneg.
+    rewrite List.Forall_forall in *. intros x Hin. apply Rlt_le, HE. now right.
+  Qed.
+  
+  (** Isobarycenter of a list of locations *)
+  Lemma fold_add_acc `{RealVectorSpace} : forall E a b,
+    List.fold_left add E (a + b) == (List.fold_left add E a) + b.
+  Proof.
+  induction E as [| x E].
+  + reflexivity.
+  + intros a b.
+    cbn [List.fold_left].
+    rewrite <- add_assoc, add_comm with (u := b), add_assoc.
+    apply IHE.
+  Qed.
+  
+  Lemma fold_add_permutation : forall l1 l2 a,
+    PermutationA equiv l1 l2 ->
+    List.fold_left add l1 a == List.fold_left add l2 a.
+  Proof.
+  intros.
+  apply (fold_left_symmetry_PermutationA add_compat); auto; [].
+  intros x y z. now rewrite <- 2 add_assoc, (add_comm x).
+  Qed.
+  
+  Definition isobarycenter (E: list T) : T :=
+    (/(INR (List.length E)) * (List.fold_left add E origin))%VS.
+  
+  Instance isobarycenter_compat : Proper (PermutationA equiv ==> equiv) isobarycenter.
+  Proof.
+  intros l1 l2 Hpermut. unfold isobarycenter.
+  assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).
+  rewrite Hl; clear Hl. (* BUG?: f_equiv should find mul_compat *) apply mul_compat; trivial; [].
+  apply (fold_left_symmetry_PermutationA add_compat); auto; [].
+  intros x y z. now rewrite <- 2 add_assoc, (add_comm x).
+  Qed.
+  
+  Lemma isobarycenter_singleton : forall pt, isobarycenter (pt :: Datatypes.nil) == pt.
+  Proof. intro. unfold isobarycenter. simpl. now rewrite add_origin_l, Rinv_1, mul_1. Qed.
+  
+End Barycenter.

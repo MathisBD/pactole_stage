@@ -1684,17 +1684,21 @@ End List_halves.
 (** ***  To sort out  **)
 
 Section ToSortOut_results.
-Context (A B : Type).
-Context (eqA eqA' : relation A) (eqB : relation B).
-Context (HeqA : Equivalence eqA) (HeqB : Equivalence eqB).
+Context {A B : Type}.
+Context {eqA eqA' : relation A} {eqB : relation B}.
+Context {HeqA : Equivalence eqA} {HeqB : Equivalence eqB}.
+
+Global Instance fold_left_compat : Proper ((eqB ==> eqA ==> eqB) ==> eqlistA eqA ==> eqB ==> eqB) (@fold_left B A).
+Proof.
+intros f1 f2 Hf l1 l2 Hl.
+induction Hl; intros i1 i2 Hi; simpl.
++ assumption.
++ now apply IHHl, Hf.
+Qed.
 
 Global Instance fold_left_start : forall f, Proper (eqB ==> eqA ==> eqB) f ->
   forall l, Proper (eqB ==> eqB) (fold_left f l).
-Proof.
-intros f Hf l. induction l; intros i1 i2 Hi; simpl.
-  assumption.
-  rewrite IHl. reflexivity. now rewrite Hi.
-Qed.
+Proof. intros. now apply fold_left_compat. Qed.
 
 Global Instance fold_left_symmetry_PermutationA : forall (f : B -> A -> B),
   Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->

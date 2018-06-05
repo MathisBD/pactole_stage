@@ -115,7 +115,7 @@ Proof. intro. now rewrite config_list_spec, map_length, names_length. Qed.
 Global Instance configuration_EqDec : @EqDec configuration _.
 Proof.
 intros config₁ config₂.
-destruct (eqlistA_dec _ equiv_dec (config_list config₁) (config_list config₂)) as [Heq | Heq];
+destruct (eqlistA_dec equiv_dec (config_list config₁) (config_list config₂)) as [Heq | Heq];
 rewrite 2 config_list_spec in Heq.
 + left. intro x. apply (fun_names_eq _ _ Heq).
 + right. intro Habs. apply Heq. f_equiv. intros ? ? Hpt. hnf in Hpt. subst. apply Habs.
