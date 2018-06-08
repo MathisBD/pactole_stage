@@ -6,7 +6,7 @@ Util/FSets/OrderedType.v
 Util/FSets/FSetInterface.v
 Util/FSets/FSetFacts.v
 Util/FMaps/FMapFacts.v
-Util/FMaps/FmapsIterface.v
+#Util/FMaps/FmapsIterface.v
 Util/FMaps/FMapList.v
 Util/MMultiset/MMultisetInterface.v
 Util/MMultiset/MMultisetWMap.v

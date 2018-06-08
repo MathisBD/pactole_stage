@@ -19,15 +19,24 @@ Require Import Reals.
 Require Import Psatz.
 Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
+Require Import Pactole.Core.Robots.
+
+Require Import RelationClasses.
+Require Import Pactole.Spaces.Similarity.
+Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
+Require Import Pactole.Spaces.Graph.
+
+(*Require Import Pactole.Configurations.
 Require Import Pactole.CommonGraphFormalism.
 Require Import Pactole.ContinuousGraph.
 Require Import Pactole.DiscreteGraph.
-
+*)
 
 (* FIXME: The info for robots is currently hard-coded to be (source, target) *)
-Module GraphEquivalence (Graph : GraphDef)
+(*Module GraphEquivalence (Graph : GraphDef)
                         (N : Size)
                         (Names : Robots(N))
                         (LocationA : LocationADef(Graph))
@@ -35,6 +44,24 @@ Module GraphEquivalence (Graph : GraphDef)
                         (ConfigA : Configuration (LocationA)(N)(Names)(MkInfoA.Info))
                         (SpectA : Spectrum(LocationA)(N)(Names)(MkInfoA.Info)(ConfigA))
                         (Import Iso : Iso(Graph)(LocationA)).
+ *)
+Section Equivalence.
+
+  Context {V E info : Type}.
+  Context `{Names}.
+  Context `{EqDec info}.
+  Context `{Setoid info}.
+  Context {Graph : Graph V E}.
+  Instance SourceTarget : IsLocation V (V*V*V*info) :=
+    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
+  Context {RMS : RealMetricSpace V }.
+
+  Definition ContinuousLocation :=
+  | Vertice V
+  | Edge
+  
+  Context {Spect : Spectrum loc (loc*loc*loc*info)}.
+  Context 
 
 Module DGF := DGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(SpectA)(Iso).
 Module CGF := CGF (Graph)(N)(Names)(LocationA)(MkInfoA)(ConfigA)(SpectA)(Iso).

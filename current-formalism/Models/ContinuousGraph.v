@@ -17,34 +17,72 @@ Require Import Psatz.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Robots.
-Require Import Pactole.Configurations.
-Require Import Pactole.CommonFormalism.
-Require Import Pactole.Spectra.Definition.
+Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Configurations.
+(*Require Import Pactole.CommonFormalism.
+Require Import Pactole.Spectra.Definition.*)
+Require Import Pactole.Spaces.Similarity.
+Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Setting.
 Require Import Pactole.Spaces.Graph.
 Require Import Pactole.Spaces.Isomorphism.
 Require Pactole.Util.Stream.
-
+Require Import Pactole.Models.ASync.
+Require Import Pactole.Spectra.MultisetSpectrum.
 
 Notation "x == y" := (equiv x y).
 
 
 Section Formalism.
 Context (V E info  : Type).
-Context {G : Graph V E}.
 Context `{Names}.
 Context `{Setoid info} `{@EqDec info _}.
-Context `{Info : @Information V info _ _ _ _}.
+Context {Graph : Graph V E}.
+Instance Info : IsLocation V (V*info) :=
+    AddInfo _ _ (OnlyLocation).
+Instance Info2 : IsLocation V (V*V*V*info) :=
+    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
+
+(*Context `{Info : @Information V info _ _ _ _}.*)
 
 (* Never used if we start from a good config. *)
+
+
+Inductive location :=
+  | OnVertice (l : V)
+  | OnEdge (e : E) (p : R).
+
+Instance location_Setoid : Setoid location := {
+  equiv := fun l l'=>
+             match l, l' with
+               | OnVertice l, OnVertice l' => l == l'
+               | OnEdge e p, OnEdge e' p' => e == e' /\ p == p'
+               | _, _ => False
+             end}.
+Proof. split.
++ now intros [].
++ intros [] [] Heq; simpl in *; try (destruct Heq; split); now symmetry.
++ intros [] [] [] Heq1 Heq2; simpl in *; try destruct Heq1; try destruct Heq2; try split; etransitivity; eauto.
+Defined.
+
+
+Instance location_EqDec: EqDec location_Setoid.
+Proof.
+  intros [l1 | e1 p1] [l2 | e2 p2]; simpl.
++ apply equiv_dec.
++ intuition.
++ intuition.
++ destruct (e1 =?= e2); [destruct (Rdec p1 p2) |]; intuition.
+Qed.
+
 Axiom e_default : E.
 
-Instance Info2 : Information V (V * info) := @pair_Information V V info _ _ _ _ (Location V) _ _ Info.
-
-Context {SpectA : @Spectrum V (V * info) _ _ _ _ _ _ }.
-
-Notation "s ⁻¹" := (Isomorphism.inverse s) (at level 99).
-
+(*Instance Info2 : Information V (V * info) := @pair_Information V V info _ _ _ _ (Location V) _ _ Info.
+*)
+(*Notation "s ⁻¹" := (inverse s) (at level 99).
+*)
 
 (** *  Projection function  **)
 
@@ -65,7 +103,7 @@ Proof.
   destruct (Rle_dec p 0).
   split;
     unfold Rpower. apply exp_pos.
-  rewrite <- exp_0 at 4.
+  rewrite <- exp_0 at 2.
   apply exp_increasing.
   assert (Hp : (p-1) < 0). lra.
   replace 0 with ((p-1) * 0) by lra.
@@ -78,7 +116,7 @@ Proof.
   apply Rlt_Rminus.
   replace (/2*2) with 1 by lra.
   replace (/2) with (Rpower 2 (-1)). unfold Rpower.
-  rewrite <- exp_0 at 6.
+  rewrite <- exp_0.
   rewrite <- exp_plus.
   apply exp_increasing.
   assert (Hln2 : -1*(ln 2)<0) by lra.
@@ -86,7 +124,8 @@ Proof.
   apply Rmult_lt_0_compat; assumption.
   assert (Hlt : -p*(ln 2)<0) by lra.
   lra.
-  rewrite Rpower_Ropp,Rpower_1. reflexivity.
+  replace (-1) with (-(1)) by lra.
+  rewrite (Rpower_Ropp 2 1),Rpower_1. reflexivity.
   lra.
   replace ((2 - exp (- p * ln 2)) / 2) with (/2*((2 - exp (- p * ln 2)))) by lra.
   rewrite Rmult_minus_distr_l.
@@ -98,6 +137,7 @@ Proof.
   rewrite <- exp_plus.
   apply Ropp_lt_gt_0_contravar.
   apply exp_pos.
+  replace (-1) with (-(1)) by lra.
   rewrite Rpower_Ropp,Rpower_1. reflexivity.
   lra.
 Qed.
@@ -205,7 +245,7 @@ Proof.
       assert (Haux : forall a b, a <= b -> a/2<=b/2).
       intros a b Hab. lra.
       apply Haux.
-      rewrite <- (exp_ln 1) at 3; try lra.
+      rewrite <- (exp_ln 1) at 1; try lra.
       apply Rlt_le.
       apply exp_increasing.
       rewrite ln_1.
@@ -228,14 +268,14 @@ Proof.
       replace (/ / exp (p * ln 2)) with (exp (p * ln 2)) in Hle.
       replace (/1) with 1 in Hle by lra.
       destruct (Rdec (exp (p * ln 2)) 1).
-      rewrite <- (exp_ln 1) in e at 3; try lra.
+      rewrite <- (exp_ln 1) in e; try lra.
       apply exp_inv in e.
       rewrite ln_1 in e.
       assert (Hl : ln 2 > 0) by lra.
       replace 0 with (0 * ln 2) in e by lra.
       apply Rmult_eq_reg_r in e; try lra.
       assert (Hlt : exp (p * ln 2) < 1) by lra.
-      rewrite <- (exp_ln 1) in Hlt at 3; try lra; [].
+      rewrite <- (exp_ln 1) in Hlt; try lra; [].
       apply exp_lt_inv in Hlt.
       rewrite ln_1 in Hlt.
       assert (Hl : ln 2 > 0) by lra.
@@ -264,36 +304,11 @@ Qed.
 (** * definition of space *)
 (** a robot can be on a node (Loc) or on an edge (Mvt) *)
 
-Inductive location :=
-  | Loc (l : V)
-  | Mvt (e : E) (p : R).
-
-Instance location_Setoid : Setoid location := {
-  equiv := fun l l'=>
-             match l, l' with
-               | Loc l, Loc l' => l == l'
-               | Mvt e p, Mvt e' p' => e == e' /\ p == p'
-               | _, _ => False
-             end}.
-Proof. split.
-+ now intros [].
-+ intros [] [] Heq; simpl in *; try (destruct Heq; split); now symmetry.
-+ intros [] [] [] Heq1 Heq2; simpl in *; try destruct Heq1; try destruct Heq2; try split; etransitivity; eauto.
-Defined.
-
-Instance location_EqDec : @EqDec location _.
-Proof.
-intros [l1 | e1 p1] [l2 | e2 p2]; simpl.
-+ apply equiv_dec.
-+ intuition.
-+ intuition.
-+ destruct (e1 =?= e2); [destruct (Rdec p1 p2) |]; intuition.
-Qed.
 
 Definition projectS_loc (loc : location) : V :=
   match loc with
-    | Loc l => l
-    | Mvt e p => if Rle_dec (project_p p) (threshold e) then Graph.src e else Graph.tgt e
+    | OnVertice l => l
+    | OnEdge e p => if Rle_dec (project_p p) (threshold e) then Graph.src e else Graph.tgt e
   end.
 
 Instance projectS_loc_compat : Proper (equiv ==> equiv) projectS_loc.
@@ -311,7 +326,7 @@ Proof.
     now rewrite <- Ht, <- Hpxy in Hr.
   + now apply Graph.tgt_compat.
 Qed.
-
+(*
 Instance Info3 : Information location info.
 Proof.
 apply (lift_location (embed := Loc) Info projectS_loc_compat).
@@ -319,26 +334,39 @@ apply (lift_location (embed := Loc) Info projectS_loc_compat).
 + now repeat intro.
 + intros f g Hf Hg x y Hxy. admit.
 Admitted.
-
+*)
 (* TODO: le A veux dire Atomique ici, a changer? *)
-Notation configurationA := (@configuration V (V * info) _ _ _ _ Info2 _ _).
-Notation configuration := (@configuration location (V * (V * info)) _ _ _ _ Info3 _ _).
+Close Scope R_scope.
 
-Definition projectS (config : configuration) : configurationA :=
-  fun id => match fst (config id) with
-              | Loc pt => (pt, (pt, snd (config id)))
-              | Mvt e p as x => (projectS_loc x, (tgt e, snd (config id)))
+Instance Info3 : IsLocation _ (location*location*location*info) :=
+    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
+
+Definition vvvi := (V * V * V * info)%type.
+Notation llli :=  (location * location * location * info)%type.
+
+Notation ConfigA := (@Configuration vvvi _ _ _).
+Notation Config := (@Configuration llli _ _ _).
+
+Definition projectS (config: @configuration llli _ _ _ _) : (@configuration vvvi _ _ _ _) :=
+  fun id => let (conf1, inf) := (config id) in
+            let (conf2, tgt) := conf1 in
+            let (loc, src) := conf2 in
+            match loc with
+              | OnVertice pt => (pt, pt, projectS_loc tgt, inf)
+              | OnEdge e p as x => (projectS_loc x, projectS_loc tgt, projectS_loc tgt, inf)
             end.
 
 Instance projectS_compat : Proper (equiv ==> equiv) projectS.
 Proof.
-intros c1 c2 Hc id. destruct (Hc id) as [Hloc Hinfo]. unfold projectS.
-repeat destruct_match; simpl in Hloc; try tauto; [|].
-+ now repeat split.
-+ destruct Hloc as [He Hp]. repeat split; simpl; trivial; [|].
+intros c1 c2 Hc id. destruct (Hc id) as [((Hloc, Hsrc), Htgt) Hinfo]. unfold projectS.
+repeat destruct_match; simpl in *; try tauto; [|]. 
++ repeat split; simpl; auto.
+  destruct l, l2; auto. destruct Htgt; apply projectS_loc_compat. auto. 
++ destruct Hloc as [He Hp]. repeat split; simpl; trivial; [| |].
   - repeat destruct_match; simpl; apply src_compat || apply tgt_compat || exfalso; trivial;
     subst; apply threshold_compat in He; congruence.
-  - now apply tgt_compat.
+  - destruct l, l0; auto. destruct Htgt; apply projectS_loc_compat. auto. 
+  - destruct l, l0; auto. destruct Htgt; apply projectS_loc_compat. auto. 
 Qed.
 
 Close Scope R_scope.
@@ -346,10 +374,24 @@ Close Scope R_scope.
 (** The spectrum for continuous setting is almost the same as for the discrete one:
     we simply project robots on edges either to the source or target of the edge
     depending on where they are located compared to the threshold of the edge;
-    and add the current location. *)
-Instance Spect : Spectrum location info := {
-  spectrum := @spectrum V (V * info) _ _ _ _ _ _ SpectA;
-  spect_from_config := fun config => spect_from_config (projectS config);
+    and add the current location. *)(*
+Instance vvi_S : Setoid (V * V * info) := (prod_Setoid V_Setoid (prod_Setoid V_Setoid H0)).
+Instance vvi_ED : EqDec vvi_S.
+Proof.
+  assert (Hvi := @prod_EqDec V info _ _ _ _).
+  assert (Hvvi := @prod_EqDec V (V * info) _ _ _ _).
+  intuition. 
+Qed.
+*)
+Context {SpectA : @Spectrum V (V * V * V * info) _ _ (@V_Setoid V E Graph) V_EqDec _ _ }.
+
+Set Debug Typeclasses.
+
+Definition lli :=  (location * location * info)%type.
+
+Instance Spect : @Spectrum location llli _ _ _ _ Info3 _ := {
+  spectrum := spectrum V vvvi _ _ _ _ _ _ SpectA;
+  spect_from_config := fun (config: @configuration llli _ _ _ _) => spect_from_config (projectS config);
   spect_is_ok s config := spect_is_ok s (projectS config) }.
 Proof.
 + repeat intro. now do 2 f_equiv.

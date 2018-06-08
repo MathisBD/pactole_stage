@@ -50,39 +50,98 @@ Module Make (Location : RealMetricSpace)
  *)
 Section ASynchFormalism.
 
-  Context {loc info : Type}.
+  Context {info loc : Type}.
   Context `{EqDec info}.
   Context {loc_Setoid: Setoid loc}.
   Context {loc_eq : EqDec loc_Setoid}.
   Context `{Setoid info}.
   Instance SourceTarget : IsLocation loc (loc*loc*loc*info) :=
     AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
- (* Context {RMS : RealMetricSpace loc }. (* only used for the equality case of the triangle inequality *)*)
+  Context {RMS : RealMetricSpace loc }. (* only used for the equality case of the triangle inequality *)
   Context `{Names}.
   Context {Spect : Spectrum loc (loc*loc*loc*info)}.
   Context {T : Type}.
   Context {delta : R}.
   Context `{@frame_choice loc (loc*loc*loc*info) loc _ _ _ _ _}.
-  Context {RMS : RealMetricSpace loc}.
+
+  Definition ratio_equiv: relation ratio := fun ra1 ra2=>
+      (proj_ratio ra1) = (proj_ratio ra2).
+
+  Definition ratio_setoid_equiv : Equivalence ratio_equiv. 
+  Proof.
+    split; unfold ratio_equiv; try intuition.
+  Qed.
+
   
- 
-  Instance ChooseUpdateAsync : (update_choice R) :=
+  Definition ratio_Setoid : Setoid ratio :=
+    {| equiv := ratio_equiv;
+       setoid_equiv := ratio_setoid_equiv
+    |}.
+       
+  
+  Instance ChooseUpdateAsync : (update_choice ratio) :=
     {|
-      update_choice_Setoid := R_Setoid;
-      update_choice_EqDec := R_EqDe
+      update_choice_Setoid := ratio_Setoid;
+      update_choice_EqDec := R_EqDec
     |}.
 
-  Instance ASyncUpdate : update_function R :=
+  Definition llli : Type := loc * loc * loc * info.
+  Context `{Configuration llli }.
+  
+(*  Context {Config : @Configuration llli _ _ _}.
+  Context {config : @configuration llli _ _ _ Config}.*)
+(*  Definition update_as :  configuration → G → path loc → ratio → (loc*loc*loc*info):=
+    fun config g traj ratio =>
+      let (conf1, inf) := (config (Good g)) in
+      let (conf2, tgt) := conf1 in
+      let (loc0, src) := conf2 in 
+      if loc_eq loc0 tgt then (tgt,tgt,traj ratio_0,inf)
+      else
+        (* ration a mettre entre 0 et 1*)
+        let new_loc := add loc0 (mul ratio (add tgt (opp loc0))) in
+        (new_loc, src, tgt, inf).
+*)
+  
+  Instance ASyncUpdate : @update_function _ _ ratio _ _ _ _ _  SourceTarget ChooseUpdateAsync(*`{IsLocation loc info} `{update_choice} *) :=
     {
-      update := fun config g traj ratio =>
-        let (loc,src,tgt,inf) := (config (Good g)) in
-        if loc = tgt then (tgt,tgt,traj,inf)
-        else
-          (* ration a mettre entre 0 et 1*)
-          let new_loc := loc + (ratio * (tgt - loc)) in
-          (new_loc, src, tgt, inf)}.
+    update := fun config g traj ratio =>
+      let (conf1, inf) := (config (Good g)) in
+      let (conf2, tgt) := conf1 in
+      let (loc0, src) := conf2 in 
+      if loc_eq loc0 tgt then (tgt,tgt,traj ratio,inf)
+      else
+        (* ration a mettre entre 0 et 1*)
+        let new_loc := add loc0 (mul ratio (add tgt (opp loc0))) in
+        (new_loc, src, tgt, inf)}.
+Proof.
+  intros config1 config2 Hconf g1 g2 Hg traj1 traj2 Htraj ratio1 ratio2 Hratio.
+  specialize (Hconf (Good g1)) .
+  rewrite Hg in *.
+  destruct (config1 (Good g2)) as (c11, inf1) eqn : Hconf1,
+           (config2 (Good g2)) as (c21, inf2) eqn : Hconf2.
+  destruct c11 as (c12, tgt1), c21 as (c22, tgt2).
+  destruct c12 as (loc1, src1), c22 as (loc2, src2). 
+  destruct Hconf as (((Hloc, Hsrc),Htgt), Hinf).
+  simpl in Hinf, Hloc, Htgt, Hsrc.
+  destruct (loc_eq loc1 tgt1), (loc_eq loc2 tgt2) .
+  repeat split; simpl; auto.
+  intuition.
+  rewrite Htraj.
+  apply path_compat.
+  auto.
+  now rewrite Hloc, Htgt in e.
+  now rewrite Hloc, Htgt in c.
+  intuition.
+  repeat split; simpl;auto.
+  apply add_compat.
+  auto.
+  apply mul_compat; try apply Hratio.
+  apply add_compat; try apply Htgt.
+  apply opp_compat; apply Hloc.
+Qed.
 
-      
+End  ASynchFormalism. 
+
 (*
 
   (*Import Common.*)
