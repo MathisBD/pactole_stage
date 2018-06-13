@@ -27,11 +27,13 @@ Require Import Omega.
 Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
-Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Spaces.EuclideanSpace.
 Require Import Pactole.Gathering.WithMultiplicity.
+Require Import Pactole.Models.Rigid.
 Set Implicit Arguments.
 Close Scope R_scope.
 Import Datatypes. (* To recover Datatypes.id *)
+Typeclasses eauto := (dfs).
 
 
 Section ImpossibilityProof.
@@ -47,17 +49,13 @@ Local Transparent G B.
 
 (** The setting is an arbitrary metric space over R. *)
 Context {Loc : Location}.
-Context {loc_RMS : RealMetricSpace location}.
-(** It should be a normed space on top of that. *)
-Hypothesis translation_hypothesis :
-  forall v x y : location, dist (RealMetricSpace.add x v) (RealMetricSpace.add y v) = dist x y.
-Hypothesis homothecy_hypothesis :
-  forall (ρ : R) (x y : location), dist (mul ρ x) (mul ρ y) = (Rabs ρ * dist x y)%R.
-Notation build_similarity := (Similarity.build_similarity translation_hypothesis homothecy_hypothesis).
+Instance Info : State location := OnlyLocation.
+Context {VS : RealVectorSpace location}.
+Context {ES : EuclideanSpace location}.
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
-Instance Choice : update_choice Datatypes.unit := NoChoice.
-Instance UpdFun : update_function Datatypes.unit := {
+Instance Choice : update_choice unit := NoChoice.
+Instance UpdFun : update_function unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
   update_compat := ltac:(now repeat intro) }.
 
@@ -108,6 +106,7 @@ Lemma no_byz_eq : forall config1 config2,
 Proof. intros config1 config2 Heq id. apply (no_byz id), Heq. Qed.
 
 Definition mk_info : location -> location := id.
+Arguments mk_info _%VectorSpace_scope.
 Lemma mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
 Proof. reflexivity. Qed.
 (* 
@@ -255,14 +254,14 @@ intros config Hconfig g.
 destruct (invalid_strengthen (reflexivity _) Hconfig) as [pt1 [pt2 Hdiff Hspect]].
 destruct (get_location (config (Good g)) =?= pt1) as [Heq1 | Heq1].
 + (* we map origin to pt1 and unit to pt2 *)
-  exists (build_similarity (symmetry non_trivial) Hdiff).
+  exists (Similarity.build_similarity (symmetry non_trivial) Hdiff).
   - unfold spectrum0.
     rewrite Hspect, map_add, map_singleton,
             Similarity.build_similarity_eq1, Similarity.build_similarity_eq2; autoclass.
   - now rewrite Similarity.build_similarity_eq1.
 + (* we map origin to pt2 and unit to pt1 *)
   symmetry in Hdiff.
-  exists (build_similarity (symmetry non_trivial) Hdiff).
+  exists (Similarity.build_similarity (symmetry non_trivial) Hdiff).
   - unfold spectrum0.
     rewrite Hspect, map_add, map_singleton, 
             Similarity.build_similarity_eq1, Similarity.build_similarity_eq2; autoclass; [].
@@ -451,7 +450,7 @@ destruct (invalid_dec config) as [Hvalid | Hvalid].
     simpl get_location. unfold id.
     rewrite <- Hpt1. f_equiv. now rewrite <- Hmove.
 * elim Hvalid.
-  apply (invalid_reverse (build_similarity non_trivial Hdiff)).
+  apply (invalid_reverse (Similarity.build_similarity non_trivial Hdiff)).
   rewrite Hspect. unfold spectrum0.
   rewrite map_add, map_singleton, Similarity.build_similarity_eq1, Similarity.build_similarity_eq2; autoclass.
   intro. rewrite 2 add_spec, 2 singleton_spec. do 2 destruct_match; omega.
@@ -467,7 +466,7 @@ assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (conf
   rewrite Hspect, add_In, In_singleton in Hin. subst. tauto. }
 (* We build the similarity that performs the swap. *)
 assert (Hdiff' : pt2 =/= pt1) by now symmetry.
-pose (sim := build_similarity Hdiff Hdiff' : similarity location).
+pose (sim := Similarity.build_similarity Hdiff Hdiff' : similarity location).
 assert (Hconfig : round r da1 config == map_config (lift sim) config).
 { rewrite (round_simplify1 config Hdiff Hspect).
   apply no_byz_eq. intro g.
@@ -620,7 +619,7 @@ destruct (invalid_dec config) as [Hvalid | Hvalid].
     transitivity pt1; auto; []. transitivity (config (Good g0)); auto.
   - simpl in *. destruct Hperm as [[] | []]; subst; auto; congruence.
 + elim Hvalid.
-  apply (invalid_reverse (build_similarity non_trivial Hdiff)).
+  apply (invalid_reverse (Similarity.build_similarity non_trivial Hdiff)).
   rewrite Hspect. unfold spectrum0.
   rewrite map_add, map_singleton; autoclass; [].
   rewrite Similarity.build_similarity_eq1, Similarity.build_similarity_eq2.
@@ -696,8 +695,8 @@ Proof. intros. unfold activate2. now apply select_tower_compat. Qed.
 
 Definition change_frame2 (config : configuration) (g : G) : similarity location :=
   @select_tower (similarity location)
-    (fun pt1 pt2 (Hdiff : pt1 =/= pt2) => build_similarity Hdiff non_trivial)
-    (fun pt1 pt2 (Hdiff : pt1 =/= pt2) => build_similarity Hdiff (symmetry non_trivial))
+    (fun pt1 pt2 (Hdiff : pt1 =/= pt2) => Similarity.build_similarity Hdiff non_trivial)
+    (fun pt1 pt2 (Hdiff : pt1 =/= pt2) => Similarity.build_similarity Hdiff (symmetry non_trivial))
     Similarity.id
     config
     (Good g).
@@ -753,8 +752,8 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
                                 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
                                 true (Good g) ltac:(reflexivity) Hvalid Hcase)
     as [pt [Hdiff [Hactivate Hpt]]].
-  destruct (select_tower_case_1 (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => build_similarity Hdiff0 non_trivial)
-                                (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => build_similarity Hdiff0 (symmetry non_trivial))
+  destruct (select_tower_case_1 (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => Similarity.build_similarity Hdiff0 non_trivial)
+                                (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => Similarity.build_similarity Hdiff0 (symmetry non_trivial))
                                 Similarity.id (Good g) ltac:(now intros; apply Similarity.build_similarity_compat)
                                 Hvalid Hcase)
     as [pt' [Hdiff' [Hframe Hpt']]].
@@ -769,13 +768,13 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
     rewrite map_add, map_singleton in Hpt'; autoclass; [].
     rewrite add_In, In_singleton in Hpt'. destruct Hpt' as [[Hpt'?] |]; try tauto; [].
     elim Hdiff'. now rewrite Hpt'. }
-  assert (Hspectrum0 : map (fun x : location => build_similarity Hdiff' non_trivial (sim x)) spectrum0 == spectrum0).
+  assert (Hspectrum0 : map (fun x : location => Similarity.build_similarity Hdiff' non_trivial (sim x)) spectrum0 == spectrum0).
   { unfold spectrum0. rewrite map_add, map_singleton; autoclass; [].
     rewrite <- Hsim0, Similarity.build_similarity_eq1.
     rewrite <- Hpt, Similarity.build_similarity_eq2.
     intro. rewrite 2 add_spec, 2 singleton_spec. do 2 destruct_match; omega. }
   rewrite Hspectrum0. change ((r spectrum0) ratio_1) with move.
-  change ((build_similarity Hdiff' non_trivial)⁻¹ move == sim move).
+  change ((Similarity.build_similarity Hdiff' non_trivial)⁻¹ move == sim move).
   rewrite Similarity.build_similarity_inverse.
   admit.
 * (* The robot is on the second tower so it does not move. *)
@@ -797,7 +796,7 @@ intros config Hvalid.
 destruct (invalid_spect Hvalid g0) as [sim Hspect Hsim0].
 assert (Hdiff_move : sim move =/= sim one).
 { intro Heq. now apply Similarity.injective in Heq. }
-pose (sim' := build_similarity non_trivial Hdiff_move).
+pose (sim' := Similarity.build_similarity (symmetry non_trivial) Hdiff_move).
 apply (invalid_reverse sim').
 assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘ sim ⁻¹)) config).
 { rewrite round_simplify2_left; auto; [].
@@ -805,14 +804,14 @@ assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.
   destruct (get_location (config (Good g)) =?= sim origin) as [Heq | Heq].
   + rewrite Heq. cbn -[equiv sim']. rewrite Bijection.retraction_section.
-    unfold sim'. rewrite Similarity.build_similarity_eq1.
-  + assert (Hsim1 : get_location (config (Good g)) == sim 1).
+    unfold sim'. now rewrite Similarity.build_similarity_eq1.
+  + assert (Hsim1 : get_location (config (Good g)) == sim one).
     { assert (Hin := pos_in_config config origin (Good g)).
       rewrite Hspect in Hin. unfold spectrum0 in Hin.
       rewrite  map_add, map_singleton, add_In, In_singleton in Hin; autoclass; [].
       destruct Hin as [[] | []]; trivial; contradiction. }
     rewrite Hsim1. cbn -[equiv sim']. rewrite Bijection.retraction_section.
-    unfold sim'. now rewrite build_similarity_eq2. }
+    unfold sim'. now rewrite Similarity.build_similarity_eq2. }
 rewrite Hconfig.
 rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect; [| now autoclass].
 rewrite map_merge; autoclass; [].
@@ -827,67 +826,76 @@ Proof.
 intros config Hvalid id1 id2.
 pattern id2. apply no_byz. pattern id1. apply no_byz. clear id1 id2. intros g1 g2.
 destruct (invalid_spect Hvalid g0) as [sim Hspect Hsim0].
-erewrite 2 round_simplify2_left; auto; [].
+rewrite (round_simplify2_left config sim Hspect (symmetry Hsim0) (Good g1)),
+        (round_simplify2_left config sim Hspect (symmetry Hsim0) (Good g2)).
 rewrite 2 mk_info_get_location.
-assert (sim move =/= sim 1). { intro Habs. apply Similarity.injective in Habs. contradiction. }
-do 2 destruct_match; try (simpl in *; split; intro; congruence); [].
-assert (Hcase : forall id, get_location (config id) == sim 0 \/ get_location (config id) == sim 1).
+assert (sim move =/= sim one). { intro Habs. apply Similarity.injective in Habs. contradiction. }
+do 2 destruct_match; try (split; intro; solve [ intuition
+                                              | etransitivity; eauto
+                                              | try match goal with H : _ =/= _ |- _ => elim H end;
+                                                etransitivity; try eassumption; eauto ]); [].
+assert (Hcase : forall id, get_location (config id) == sim origin \/ get_location (config id) == sim one).
 { intro id. assert (Hin := pos_in_config config origin id).
   rewrite Hspect in Hin. unfold spectrum0 in Hin.
   rewrite  map_add, map_singleton, add_In, In_singleton in Hin; autoclass; []. tauto. }
-destruct (Hcase (Good g1)), (Hcase (Good g2)); split; intro; simpl in *; tauto || congruence.
+destruct (Hcase (Good g1)), (Hcase (Good g2));
+split; intro; simpl in *; tauto || reflexivity || etransitivity; eauto.
 Qed.
 
 Lemma round_simplify2_right : forall config (sim : similarity location),
   !! config == map sim spectrum0 ->
-  get_location (config (Good g0)) == sim 1 ->
+  get_location (config (Good g0)) == sim one ->
   round r (da2_right config) config
   == fun id => match id with
-                 | Good g => mk_info (if get_location (config (Good g)) =?= sim 1 then sim 1 else sim move)
-                 | Byz b => mk_info 0
+                 | Good g => mk_info (if get_location (config (Good g)) =?= sim one then sim one else sim move)
+                 | Byz b => mk_info 0%VS
                end.
 Proof.
 intros config sim Hspect Hsim1.
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
 unfold round. cbn -[equiv equiv_dec get_location map_config lift].
-rewrite spect_from_config_ignore_snd.
+change (Bijection.retraction (change_frame2 config g)) with (Bijection.section ((change_frame2 config g)⁻¹)).
+(* rewrite spect_from_config_ignore_snd. *)
 unfold activate2, change_frame2.
 assert (Hvalid := invalid_reverse sim config Hspect).
 destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as [Hcase | Hcase].
-* destruct (select_tower_case_1 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
-    (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g) Hvalid Hcase) as [pt [Hdiff [Hactivate Hpt]]].
+* (* The robot is on the first tower so it does not move. *)
+  destruct (select_tower_case_1 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
+              (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g) ltac:(reflexivity) Hvalid Hcase)
+    as [pt [Hdiff [Hactivate Hpt]]].
   rewrite Hactivate.
-  destruct_match; simpl in *; congruence.
-* assert (Hsim0 : get_location (config (Good g)) == sim 0).
+  destruct (get_location (config (Good g)) =?= sim one) as [? | Heq]; assumption || now elim Heq; rewrite Hcase.
+* assert (Hsim0 : get_location (config (Good g)) == sim origin).
   { assert (Hin := pos_in_config config origin (Good g)).
     rewrite Hspect in Hin. unfold spectrum0 in Hin.
     rewrite map_add, map_singleton, add_In, In_singleton in Hin; autoclass; [].
     destruct Hin as [[] | []]; trivial; []. elim Hcase. etransitivity; eauto. }
   destruct (select_tower_case_2 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
-    (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g) Hvalid Hcase) as [Hdiff Hactivate].
-  destruct (select_tower_case_2 (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => build_similarity Hdiff0 neq_0_1)
-    (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => build_similarity Hdiff0 neq_1_0) Similarity.id (Good g) Hvalid Hcase)
-  as [Hdiff' Hframe].
-  rewrite Hactivate, Hframe.
-  assert (Hsim : sim == build_similarity neq_1_0 Hdiff').
-  { apply (similarity_eq _ _ neq_0_1).
-    - now rewrite build_similarity_eq2, Hsim0.
-    - now rewrite build_similarity_eq1. }
+    (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g) ltac:(reflexivity) Hvalid Hcase) as [Hdiff Hactivate].
+  assert (Hcompat : forall (pt1 pt2 pt1' pt2' : location) (Hdiff0 : pt1 =/= pt2) (Hdiff' : pt1' =/= pt2'),
+                      pt1 == pt1' -> pt2 == pt2' -> Similarity.build_similarity Hdiff0 (symmetry non_trivial)
+                                                    == Similarity.build_similarity Hdiff' (symmetry non_trivial)).
+  { intros. now apply Similarity.build_similarity_compat. }
+  destruct (select_tower_case_2 (fun pt1 pt2 (Hdiff0 : pt1 =/= pt2) => Similarity.build_similarity Hdiff0 non_trivial)
+                                _ Similarity.id (Good g) Hcompat Hvalid Hcase) as [Hdiff' Hframe].
+  rewrite Hactivate, spect_from_config_ignore_snd, Hframe.
   rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map; autoclass; [].
-  rewrite Hspect, map_merge; autoclass; [].
-  rewrite <- (map_extensionality_compat Similarity.id), map_id; autoclass; [|].
-  + destruct_match.
-    - elim neq_0_1. apply (Similarity.injective sim).
+  rewrite Hspect. unfold spectrum0. rewrite 2 map_add, 2 map_singleton; autoclass; [].
+  rewrite <- Hsim0, Similarity.build_similarity_eq2.
+  rewrite <- Hsim1 at 1; rewrite Similarity.build_similarity_eq1.
+  assert (Heq : add one (Nat.div2 nG) (singleton 0%VS (Nat.div2 nG)) == spectrum0).
+  { rewrite add_singleton_other_comm; trivial; reflexivity. }
+  rewrite Heq. clear Heq. change ((r spectrum0) ratio_1) with move.
+  destruct_match.
+  + exfalso. elim (@non_trivial location _ _ _). (* Sigh! typeclass resolution is so stupid at times... *)
+      apply (Similarity.injective sim).
       now transitivity (get_location (config (Good g))).
-    - transitivity ((build_similarity (symmetry Hcase) neq_1_0)⁻¹ move); try reflexivity; [].
-      rewrite Hsim, build_similarity_inverse.
-      now apply build_similarity_compat.
-  + change (Similarity.id == build_similarity (symmetry Hcase) neq_1_0 ∘ sim).
-    assert (Hsim' : sim⁻¹ == build_similarity (symmetry Hcase) neq_1_0).
-    { rewrite <- build_similarity_inverse, Hsim. f_equiv. now apply build_similarity_compat. }
-    rewrite <- Hsim'. symmetry. apply compose_inverse_l.
-Qed.
+  + transitivity (get_location ((Similarity.build_similarity (symmetry Hcase) (symmetry non_trivial))⁻¹ move));
+      try reflexivity; [].
+    rewrite Similarity.build_similarity_swap, Similarity.build_similarity_inverse.
+    admit.
+Admitted.
 
 Lemma invalid_da2_right_next : forall config,
   invalid config -> invalid (round r (da2_right config) config).
@@ -895,7 +903,7 @@ Proof.
 intros config Hvalid.
 destruct (invalid_strengthen (reflexivity _) Hvalid) as [pt1 [pt2 Hdiff Hspect]].
 (* As [config] is invalid, all robots are only on two locations. *)
-assert (Hcase : forall id, get_location (config id) = pt1 \/ get_location (config id) = pt2).
+assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (config id) == pt2).
 { intro id. assert (Hin := pos_in_config config origin id).
   rewrite Hspect, add_In, In_singleton in Hin. tauto. }
 (* Let [g1] and [g2] be robots mapped to these two locations. *)
@@ -908,35 +916,35 @@ rewrite spect_from_config_In in Hin2. destruct Hin2 as [[g2 | []] Hg2]; try omeg
 (* To ease the rest of the proof, we assume that pt1 is the location of [g0],
    swapping them if necessary. *)
 assert (Hg : exists g, get_location (config (Good g0)) =/= get_location (config (Good g))).
-{ destruct (get_location (config (Good g0)) =?= pt1).
-  - exists g2. simpl in *; congruence.
-  - exists g1. simpl in *; congruence. }
+{ destruct (get_location (config (Good g0)) =?= pt1) as [Heq | Hneq].
+  - exists g2. now rewrite Heq, Hg2.
+  - exists g1. intro Habs. apply Hneq. now rewrite Habs, Hg1. }
 destruct Hg as [g3 Hg3].
 destruct (invalid_spect Hvalid g3) as [sim Hspect' Hsim0].
-assert (Hcase' : forall id, get_location (config id) = sim 0 \/ get_location (config id) = sim 1).
+assert (Hcase' : forall id, get_location (config id) == sim 0%VS \/ get_location (config id) == sim one).
 { intro id. assert (Hin := pos_in_config config origin id). unfold spectrum0 in *.
   rewrite Hspect', map_add, map_singleton, add_In, In_singleton in Hin; autoclass; simpl in *; tauto. }
-assert (Hsim1 : get_location (config (Good g0)) == sim 1).
+assert (Hsim1 : get_location (config (Good g0)) == sim one).
 { destruct (Hcase' (Good g0)); trivial; []. elim Hg3. now rewrite <- Hsim0. }
 clear pt1 pt2 g1 g2 Hg1 Hg2 Hdiff Hspect Hcase.
-assert (Hdiff_move : sim move =/= sim 1).
-{ intro Heq. now apply Similarity.injective in Heq. }
-pose (sim' := build_similarity neq_0_1 Hdiff_move).
+assert (Hdiff_move : sim one =/= sim move).
+{ intro Heq. apply Similarity.injective in Heq. now symmetry in Heq. }
+pose (sim' := Similarity.build_similarity non_trivial Hdiff_move).
 apply (invalid_reverse sim').
 assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' ∘ sim ⁻¹)) config).
 { rewrite round_simplify2_right; auto; [].
   apply no_byz_eq. intro g.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.
-  destruct (get_location (config (Good g)) =?= sim 1) as [Heq | Heq].
+  destruct (get_location (config (Good g)) =?= sim one) as [Heq | Heq].
   + rewrite Heq. cbn -[equiv sim']. rewrite Bijection.retraction_section.
-    unfold sim'. now rewrite build_similarity_eq2.
+    unfold sim'. now rewrite Similarity.build_similarity_eq1.
   + assert (Hsim1' : get_location (config (Good g)) == sim origin).
     { assert (Hin := pos_in_config config origin (Good g)).
       rewrite Hspect' in Hin. unfold spectrum0 in Hin.
       rewrite  map_add, map_singleton, add_In, In_singleton in Hin; autoclass; [].
       destruct Hin as [[] | []]; trivial; contradiction. }
     rewrite Hsim1'. cbn -[equiv sim']. rewrite Bijection.retraction_section.
-    unfold sim'. now rewrite build_similarity_eq1. }
+    unfold sim'. now rewrite Similarity.build_similarity_eq2. }
 rewrite Hconfig.
 rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect'; [| now autoclass].
 rewrite map_merge; autoclass; [].
@@ -952,7 +960,7 @@ intros config Hvalid id1 id2.
 pattern id2. apply no_byz. pattern id1. apply no_byz. clear id1 id2. intros g1 g2.
 destruct (invalid_strengthen (reflexivity _) Hvalid) as [pt1 [pt2 Hdiff Hspect]].
 (* As [config] is invalid, all robots are only on two locations. *)
-assert (Hcase : forall id, get_location (config id) = pt1 \/ get_location (config id) = pt2).
+assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (config id) == pt2).
 { intro id. assert (Hin := pos_in_config config origin id).
   rewrite Hspect, add_In, In_singleton in Hin. tauto. }
 (* Let [g1] and [g2] be robots mapped to these two locations. *)
@@ -965,22 +973,27 @@ rewrite spect_from_config_In in Hin2. destruct Hin2 as [[g2' | []] Hg2]; try ome
 (* To ease the rest of the proof, we assume that pt1 is the location of [g0],
    swapping them if necessary. *)
 assert (Hg : exists g, get_location (config (Good g0)) =/= get_location (config (Good g))).
-{ destruct (get_location (config (Good g0)) =?= pt1).
-  - exists g2'. simpl in *; congruence.
-  - exists g1'. simpl in *; congruence. }
+{ destruct (get_location (config (Good g0)) =?= pt1) as [Heq | Hneq].
+  - exists g2'. now rewrite Heq, Hg2.
+  - exists g1'. intro Habs. apply Hneq. now rewrite Habs, Hg1. }
 destruct Hg as [g3 Hg3].
 destruct (invalid_spect Hvalid g3) as [sim Hspect' Hsim0].
-assert (Hcase' : forall id, get_location (config id) = sim 0 \/ get_location (config id) = sim 1).
+assert (Hcase' : forall id, get_location (config id) == sim origin \/ get_location (config id) == sim one).
 { intro id. assert (Hin := pos_in_config config origin id). unfold spectrum0 in *.
   rewrite Hspect', map_add, map_singleton, add_In, In_singleton in Hin; autoclass; simpl in *; tauto. }
-assert (Hsim1 : get_location (config (Good g0)) == sim 1).
+assert (Hsim1 : get_location (config (Good g0)) == sim one).
 { destruct (Hcase' (Good g0)); trivial; []. elim Hg3. now rewrite <- Hsim0. }
 clear pt1 pt2 g1' g2' Hg1 Hg2 Hdiff Hspect Hcase.
-erewrite 2 round_simplify2_right; auto; [].
+rewrite (round_simplify2_right config sim Hspect' Hsim1 (Good g1)),
+        (round_simplify2_right config sim Hspect' Hsim1 (Good g2)).
 rewrite 2 mk_info_get_location.
-assert (sim move =/= sim 1). { intro Habs. apply Similarity.injective in Habs. contradiction. }
-do 2 destruct_match; try (simpl in *; split; intro; congruence); [].
-destruct (Hcase' (Good g1)), (Hcase' (Good g2)); split; intro; simpl in *; tauto || congruence.
+assert (sim move =/= sim one). { intro Habs. apply Similarity.injective in Habs. contradiction. }
+do 2 destruct_match; try (split; intro; solve [ intuition
+                                              | etransitivity; eauto
+                                              | try match goal with H : _ =/= _ |- _ => elim H end;
+                                                etransitivity; try eassumption; eauto ]); [].
+destruct (Hcase' (Good g1)), (Hcase' (Good g2));
+split; intro; simpl in *; tauto || reflexivity || etransitivity; eauto.
 Qed.
 
 CoFixpoint bad_demon2 config : demon :=
@@ -1021,14 +1034,16 @@ constructor; [| constructor].
       ++ unfold activate2, select_tower. repeat destruct_match; trivial; contradiction.
       ++ constructor 1. simpl. unfold activate2.
          destruct (select_tower_case_2 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
-           (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g1) Hvalid') as [Hdiff Hactivate]; trivial; [].
+           (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g1) ltac:(reflexivity) Hvalid')
+           as [Hdiff Hactivate]; trivial; [].
          hnf. now rewrite da2_left_injective.
     - constructor 3; simpl.
       ++ unfold activate2, select_tower. repeat destruct_match; trivial; contradiction.
       ++ unfold activate2, select_tower. repeat destruct_match; trivial; contradiction.
       ++ constructor 1. simpl. unfold activate2.
          destruct (select_tower_case_2 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
-           (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g1) Hvalid') as [Hdiff Hactivate]; trivial; [].
+           (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g1) ltac:(reflexivity) Hvalid')
+           as [Hdiff Hactivate]; trivial; [].
          hnf. now rewrite da2_left_injective.
   + constructor 1. simpl.
     unfold activate2. now apply select_tower_default.
@@ -1048,7 +1063,7 @@ constructor; [| constructor].
       ++ unfold activate2, select_tower. repeat destruct_match; trivial; contradiction.
       ++ constructor 1. simpl. unfold activate2.
          destruct (select_tower_case_1 (fun pt1 pt2 (_ : pt1 =/= pt2) => true)
-           (fun pt1 pt2 (_ : pt1 =/= pt2) => false) true (Good g1) Hvalid')
+           (fun pt1 pt2 (_ : pt1 =/= pt2) => false) true (Good g1) ltac:(reflexivity) Hvalid')
            as [pt [Hdiff [Hactivate Hpt]]]; trivial; [].
          now rewrite da2_right_injective.
     - constructor 2; simpl.
@@ -1056,7 +1071,7 @@ constructor; [| constructor].
       ++ unfold activate2, select_tower. repeat destruct_match; trivial; contradiction.
       ++ constructor 1. simpl. unfold activate2.
          destruct (select_tower_case_1 (fun pt1 pt2 (_ : pt1 =/= pt2) => true)
-           (fun pt1 pt2 (_ : pt1 =/= pt2) => false) true (Good g1) Hvalid')
+           (fun pt1 pt2 (_ : pt1 =/= pt2) => false) true (Good g1) ltac:(reflexivity) Hvalid')
            as [pt [Hdiff [Hactivate Hpt]]]; trivial; [].
          now rewrite da2_right_injective.
     - constructor 1. simpl. unfold activate2, select_tower.
@@ -1073,17 +1088,17 @@ End MoveNot1.
 
 Definition bad_demon : configuration -> demon.
 Proof.
-destruct (Rdec move 1) as [Hmove | Hmove].
+destruct (move =?= one) as [Hmove | Hmove].
 - (** Robots exchange positions **)
   exact (fun _ => bad_demon1).
 - (** Robots do not exchange positions **)
-  exact bad_demon2.
+  exact (bad_demon2 Hmove).
 Defined.
 
 Theorem kFair_bad_demon : forall config, invalid config -> kFair 1 (bad_demon config).
 Proof.
 intros. unfold bad_demon.
-destruct (Rdec move 1).
+destruct (move =?= one).
 - apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega.
 - now apply kFair_bad_demon2.
 Qed.
@@ -1112,7 +1127,7 @@ split.
 + now apply kFair_bad_demon'.
 + apply different_no_gathering.
   unfold bad_demon.
-  destruct (Rdec move 1) as [Hmove | Hmove].
+  destruct (move =?= one) as [Hmove | Hmove].
   - now apply Always_invalid1.
   - now apply Always_invalid2.
 Qed.
