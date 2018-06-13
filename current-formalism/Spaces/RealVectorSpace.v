@@ -48,6 +48,14 @@ Delimit Scope VectorSpace_scope with VS.
 Arguments add T%type _ _ _ u%VS v%VS.
 Arguments mul T%type _ _ _ k%R u%VS.
 Arguments opp T%type _ _ _ u%VS.
+Arguments add_assoc {T} {_} {_} {_} u%VS v%VS w%VS.
+Arguments add_comm {T} {_} {_} {_} u%VS v%VS.
+Arguments add_origin {T} {_} {_} {_} u%VS.
+Arguments add_opp {T} {_} {_} {_} u%VS.
+Arguments mul_distr_add {T} {_} {_} {_} a%R u%VS v%VS.
+Arguments mul_morph {T} {_} {_} {_} a%R b%R u%VS.
+Arguments add_morph {T} {_} {_} {_} a%R b%R u%VS.
+Arguments mul_1 {T} {_} {_} {_} u%VS.
 
 Notation "0" := (origin) : VectorSpace_scope.
 Notation "u + v" := (add u v) : VectorSpace_scope.
@@ -147,6 +155,7 @@ Qed.
 
 (** In a real metric space, we can define straight paths as trajectories. *)
 Require Import Pactole.Util.Ratio.
+
 Program Definition straight_path {T} `{RealVectorSpace T} (pt pt' : T) : path T :=
   Build_path _ _ (fun x => pt + (x * (pt' - pt))) _.
 Next Obligation.
@@ -161,6 +170,9 @@ intros pt1 pt2 Heq pt1' pt2' Heq' x. simpl.
 now apply add_compat, mul_compat, add_compat, opp_compat.
 Qed.
 
+Lemma straight_path_1 `{RealVectorSpace} : forall pt pt', straight_path pt pt' ratio_1 == pt'.
+Proof. intros. simpl. now rewrite mul_1, add_assoc, (add_comm pt), <- add_assoc, add_opp, add_origin. Qed.
+
 (** We can simplify this definition in the local frame as we start from the origin. *)
 Definition local_straight_path {T} `{RVS : RealVectorSpace T} (pt : T) : path T.
 Proof.
@@ -171,6 +183,9 @@ Defined.
 Instance local_straight_path_compat {T} `{RealVectorSpace T} :
   Proper (equiv ==> equiv) local_straight_path.
 Proof. intros pt1 pt2 Heq x. simpl. now apply mul_compat. Qed.
+
+Lemma local_straight_path_1 `{RealVectorSpace} : forall pt, local_straight_path pt ratio_1 == pt.
+Proof. intro. simpl. now rewrite mul_1. Qed.
 
 (** ***  Weighted barycenter of a list of locations  **)
 
@@ -196,7 +211,7 @@ Section Barycenter.
     now rewrite add_comm, <- add_assoc, (add_comm _ u3).
   Qed.
   
-  Instance barycenter_compat : Proper (PermutationA (equiv * eq) ==> equiv) barycenter.
+  Global Instance barycenter_compat : Proper (PermutationA (equiv * eq) ==> equiv) barycenter.
   Proof.
   intros l1 l2 Hperm.
   unfold barycenter.
@@ -267,7 +282,7 @@ Section Barycenter.
   Definition isobarycenter (E: list T) : T :=
     (/(INR (List.length E)) * (List.fold_left add E origin))%VS.
   
-  Instance isobarycenter_compat : Proper (PermutationA equiv ==> equiv) isobarycenter.
+  Global Instance isobarycenter_compat : Proper (PermutationA equiv ==> equiv) isobarycenter.
   Proof.
   intros l1 l2 Hpermut. unfold isobarycenter.
   assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).

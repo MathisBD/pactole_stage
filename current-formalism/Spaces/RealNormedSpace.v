@@ -316,8 +316,8 @@ Section BarycenterResults.
   
   Lemma isobarycenter_dist_decrease_aux : forall E dm,
       E <> nil ->
-      (forall p1 p2, In p1 E -> In p2 E -> dist p1 p2 <= dm) ->
-      forall p, (forall q, In q E -> dist p q <= dm) ->
+      (forall p1 p2, InA equiv p1 E -> InA equiv p2 E -> dist p1 p2 <= dm) ->
+      forall p, (forall q, InA equiv q E -> dist p q <= dm) ->
                 dist p (isobarycenter E) <= dm.
   Proof.
   intros E dm Hnotempty Hdm p Hp.
@@ -354,8 +354,8 @@ Section BarycenterResults.
   
   Lemma isobarycenter_dist_decrease : forall E dm,
       E <> nil ->
-      (forall p1 p2, In p1 E -> In p2 E -> dist p1 p2 <= dm) ->
-      forall p, In p E -> dist p (isobarycenter E) <= dm.
+      (forall p1 p2, InA equiv p1 E -> InA equiv p2 E -> dist p1 p2 <= dm) ->
+      forall p, InA equiv p E -> dist p (isobarycenter E) <= dm.
   Proof.
   intros E dm Hnotempty Hdm p Hp.
   apply (isobarycenter_dist_decrease_aux _ _ Hnotempty Hdm).

@@ -389,7 +389,7 @@ Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 Corollary inverse_similarity_in_R : forall (sim : similarity R) k, k <> 0 ->
   (forall x, sim x == k * (x - sim.(center))) -> forall x, (sim ⁻¹) x == x / k + sim.(center).
 Proof.
-intros sim k Hk Hdirect x. unfold inverse. simpl. change eq with equiv.
+intros sim k Hk Hdirect x. unfold inverse. simpl. change eq with (@equiv R _).
 rewrite <- sim.(Inversion), Hdirect. hnf. now field.
 Qed.
 

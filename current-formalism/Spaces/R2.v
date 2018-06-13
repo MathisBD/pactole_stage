@@ -1108,6 +1108,16 @@ try (now intro Heq; rewrite Heq); [].
 f_equiv. intros ? ? Heq. rewrite Heq. apply Hsim.
 Qed.
 
+Local Lemma fold_mult_plus_distr : forall (f : R2 -> R) coeff E init,
+  fold_left (fun acc pt => acc + snd pt * coeff * (f (fst pt))) E (coeff * init) =
+  coeff * (fold_left (fun acc pt => acc + snd pt * (f (fst pt))) E init).
+Proof.
+  intros f coeff E.
+  induction E; intro init.
+  + now simpl.
+  + simpl. rewrite <- IHE. f_equal. ring.
+Qed.
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=

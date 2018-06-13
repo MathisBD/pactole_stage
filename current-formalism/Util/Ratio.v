@@ -11,12 +11,17 @@ Require Import Pactole.Util.Preliminary.
 (** A ratio (of some quantity), as a real number between [0] and [1]. *)
 Definition ratio := {x : R | 0 <= x <= 1}%R.
 
+Instance ratio_Setoid : Setoid ratio := sig_Setoid.
+
 Definition proj_ratio : ratio -> R := @proj1_sig _ _.
 
-Instance proj_ratio_compat : Proper (@equiv _ sig_Setoid ==> equiv) proj_ratio.
+Instance proj_ratio_compat : Proper (equiv ==> equiv) proj_ratio.
 Proof. intros ? ? Heq. apply Heq. Qed.
 
 Coercion proj_ratio : ratio >-> R.
+
+Lemma ratio_bounds : forall r : ratio, (0 <= r <= 1)%R.
+Proof. intros [r Hr]. apply Hr. Qed.
 
 (** Building rational ratios. *)
 Lemma mk_ratio_proof : forall n m, 0 < m -> n <= m -> (0 <= INR n / INR m <= 1)%R.

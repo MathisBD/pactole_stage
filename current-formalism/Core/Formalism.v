@@ -445,11 +445,11 @@ Qed.
 
 
 (** A demon is fully synchronous at the first step. *)
-Definition FullySynchronousInstant : demon -> Prop :=
-  Stream.instant (fun da => forall g, activate da g = true).
+Definition FullySynchronousInstant : demonic_action -> Prop :=
+  fun da => forall g, activate da g = true.
 
 (** A demon is fully synchronous if it is fully synchronous at all step. *)
-Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
+Definition FullySynchronous : demon -> Prop := Stream.forever (Stream.instant FullySynchronousInstant).
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_0Fair: ∀ d, FullySynchronous d → kFair 0 d.

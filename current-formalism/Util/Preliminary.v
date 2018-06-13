@@ -1704,11 +1704,31 @@ Global Instance fold_left_symmetry_PermutationA : forall (f : B -> A -> B),
   Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
   Proper (PermutationA eqA ==> eqB ==> eqB) (fold_left f).
 Proof.
-intros f Hfcomm Hf l1 l2 perm. induction perm; simpl.
-- now repeat intro.
-- intros ? ? Heq. rewrite H, Heq. now apply IHperm.
-- intros ? ? Heq. now rewrite Hf, Heq.
-- repeat intro. etransitivity. now apply IHperm1. now apply IHperm2.
+intros f Hf Hfcomm l1 l2 perm. induction perm; intros i1 i2 Hi; simpl.
+- assumption.
+- now apply IHperm, Hf.
+- now rewrite Hfcomm, Hi.
+- etransitivity. now apply IHperm1. now apply IHperm2.
+Qed.
+
+Global Instance fold_right_compat : Proper ((eqA ==> eqB ==> eqB) ==> eqB ==> eqlistA eqA ==> eqB) (@fold_right B A).
+Proof.
+intros f1 f2 Hf i1 i2 Hi l1 l2 Hl. revert i1 i2 Hi.
+induction Hl; intros i1 i2 Hi; simpl.
++ assumption.
++ now apply Hf, IHHl.
+Qed.
+
+Global Instance fold_right_symmetry_PermutationA : forall (f : A -> B -> B),
+  Proper (eqA ==> eqB ==> eqB) f -> (forall x y z, eqB (f y (f x z)) (f x (f y z))) ->
+  Proper (eqB ==> PermutationA eqA ==> eqB) (fold_right f).
+Proof.
+intros f Hf Hfcomm i1 i2 Hi l1 l2 perm. revert i1 i2 Hi.
+induction perm; intros i1 i2 Hi; simpl.
+- assumption.
+- now apply Hf, IHperm.
+- now rewrite Hfcomm, Hi.
+- etransitivity. now apply IHperm1. now apply IHperm2.
 Qed.
 
 Lemma HdRel_app : forall l1 l2 R (a : A), HdRel R a l1 -> HdRel R a l2 -> HdRel R a (l1++l2).
@@ -2025,14 +2045,6 @@ Existing Instance fold_left_start.
 Existing Instance fold_left_symmetry_PermutationA.
 Existing Instance PermutationA_map.
 
-
-Close Scope R_scope.
-
-Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
-Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
-
-Local Open Scope R_scope.
-
 Lemma Rle_neq_lt : forall x y : R, x <= y -> x <> y -> x < y.
 Proof. intros ? ? Hle ?. now destruct (Rle_lt_or_eq_dec _ _ Hle). Qed.
 
@@ -2079,8 +2091,156 @@ destruct (Rle_dec 0 x).
 - transitivity 0; lra.
 Qed.
 
+(** ***  Computing the max value of a real-valued function on a list  **)
+
+Set Implicit Arguments.
+Section FunMaxList.
+Context {A : Type}.
+Context `{EqDec A}.
+
+Definition max_list f (l : list A) : R :=
+  fold_right (fun pt max => Rmax (f pt) max) 0%R l.
+
+Lemma max_list_aux_min : forall (f : A -> R) l r,
+  (r <= fold_right (fun pt max => Rmax (f pt) max) r l)%R.
+Proof.
+intros f l. induction l; intro r; simpl.
++ reflexivity.
++ rewrite Rmax_Rle. now right.
+Qed.
+
+Corollary max_list_nonneg : forall f l, 0 <= max_list f l.
+Proof. intros. now apply max_list_aux_min. Qed.
+
+Corollary max_list_aux_eq : forall f l r, 0 <= r ->
+  fold_right (fun pt max => Rmax (f pt) max) r l = Rmax r (max_list f l).
+Proof.
+intros f l r Hr. induction l; simpl.
++ symmetry. now apply Rmax_left.
++ setoid_rewrite IHl. now rewrite Rmax_assoc, (Rmax_comm _ r), Rmax_assoc.
+Qed.
+
+Lemma max_list_app : forall f l1 l2, max_list f (l1 ++ l2) = Rmax (max_list f l1) (max_list f l2).
+Proof.
+intros f l1 l2.
+unfold max_list. rewrite fold_right_app, max_list_aux_eq.
++ apply Rmax_comm.
++ apply max_list_aux_min.
+Qed.
+
+Lemma max_list_alls : forall f pt n, n <> 0%nat -> max_list f (alls pt n) = Rmax (f pt) 0.
+Proof.
+intros f pt n Hn. induction n as [| n]; try tauto; [].
+destruct (Nat.eq_dec n 0) as [Heq | Heq].
++ subst. simpl. reflexivity.
++ specialize (IHn Heq). simpl. setoid_rewrite IHn.
+  rewrite Rmax_assoc, (Rmax_left (f pt)); auto; reflexivity.
+Qed.
+
+Instance max_list_compat_aux : Proper ((equiv ==> eq) ==> PermutationA equiv ==> eq) max_list.
+Proof.
+intros f g Hfg l1 l2 Hl. unfold max_list.
+assert (Heq : (equiv ==> eq ==> eq)%signature (fun pt max => Rmax (f pt) max)
+                                              (fun pt max => Rmax (g pt) max)).
+{ intros i1 i2 Hi m1 m2 Hm. subst. f_equal. now apply Hfg. }
+assert (Hg : Proper (equiv ==> eq) g).
+{ intros x y Hxy. transitivity (f x).
+  - symmetry. now apply Hfg.
+  - now apply Hfg. }
+rewrite (fold_right_compat Heq 0 0 (reflexivity 0) (reflexivity l1)).
+clear f Hfg Heq. revert l2 Hl.
+apply fold_right_symmetry_PermutationA.
++ intros ? ? Heq ? ? ?. subst. f_equal. now rewrite Heq.
++ intros. now rewrite 2 Rmax_assoc, (Rmax_comm _ (g _)).
++ reflexivity.
+Qed.
+
+Instance max_list_compat : Proper ((equiv ==> eq) ==> equivlistA equiv ==> eq) max_list.
+Proof.
+intros f g Hfg l1.
+assert (Hf : Proper (equiv ==> eq) f).
+{ intros x y Hxy. transitivity (g y).
+  - now apply Hfg.
+  - symmetry. now apply Hfg. }
+assert (Hg : Proper (equiv ==> eq) g).
+{ intros x y Hxy. transitivity (f x).
+  - symmetry. now apply Hfg.
+  - now apply Hfg. }
+revert g Hg Hfg. induction l1 as [| e1 l1]; intros g Hg Hfg l2 Hl.
+* assert (l2 = nil). { symmetry in Hl. apply (equivlistA_nil_eq _ _ Hl). }
+  subst. simpl. reflexivity.
+* assert (l2 <> nil). { intro. subst. apply equivlistA_cons_nil in Hl; autoclass. }
+  assert (Hin : InA equiv e1 l2). { rewrite <- Hl. now left. }
+  destruct (InA_dec equiv_dec e1 l1) as [Hagain | Hagain].
+  + assert (Hequiv : equivlistA equiv l1 l2).
+    { intro r. rewrite <- Hl. split; intro Hr.
+      - now right.
+      - inv Hr; trivial; []. revert_one equiv. intro Heq. now rewrite Heq. }
+    rewrite <- (IHl1 _ Hg Hfg _ Hequiv). symmetry. apply (IHl1 _ Hf Hf).
+    intro r. split; intro Hr.
+    - now right.
+    - inv Hr; trivial; []. revert_one equiv. intro Heq. now rewrite Heq.
+  + assert (Hl2 := PermutationA_count_split _ equiv_dec e1 l2).
+    assert (Hequiv := removeA_equivlistA _ equiv_dec Hagain Hl).
+    rewrite (max_list_compat_aux Hg Hl2).
+    rewrite max_list_app, max_list_alls.
+    - rewrite <- (IHl1 _ Hg Hfg _ Hequiv). simpl.
+      rewrite <- Rmax_assoc, (Rmax_right 0); try apply max_list_nonneg; [].
+      f_equal. apply Hfg. reflexivity.
+    - rewrite <- (countA_occ_pos _ equiv_dec) in Hin; autoclass. omega.
+Qed.
+
+Lemma max_list_le : forall f, Proper (equiv ==> eq) f ->
+  forall l pt, InA equiv pt l -> f pt <= max_list f l.
+Proof.
+intros f Hf l pt Hin.
+induction l as [| e l].
++ now rewrite InA_nil in *.
++ simpl. inv Hin.
+  - match goal with H : _ == _ |- _ => rewrite H end.
+    apply Rmax_l.
+  - unfold max_list in *. simpl.
+    eapply Rle_trans; [now apply IHl | apply Rmax_r].
+Qed.
+
+Lemma max_list_ex : forall f l, l <> nil ->
+  exists pt, InA equiv pt l /\ max_list f l = Rmax (f pt) 0.
+Proof.
+intros f l Hl. induction l as [| pt l].
+* now elim Hl.
+* destruct (nil_or_In_dec l) as [? | Hin].
+  + subst l. eauto.
+  + assert (Hnil : l <> nil). { intro. subst. destruct Hin as [? []]. }
+    destruct (IHl Hnil) as [pt' [Hin' Heq]].
+    simpl. rewrite Heq. clear Heq.
+    destruct (Rle_dec (f pt') (f pt)) as [Hle | Hle].
+    - exists pt. split; auto; [].
+      now rewrite Rmax_assoc, (Rmax_left _ (f pt')).
+    - exists pt'. split; auto; [].
+      rewrite Rmax_assoc, (Rmax_right _ (f pt')); lra.
+Qed.
+
+Lemma max_list_eq_0 : forall f, Proper (equiv ==> eq) f -> (forall x, 0 <= f x) ->
+  forall l, max_list f l = 0%R <-> forall x, InA equiv x l -> f x = 0.
+Proof.
+intros f Hf Hfle l. destruct l as [| pt l].
+* cbn. setoid_rewrite InA_nil. tauto.
+* split; intro Hprop.
+  + intros x Hin. assert (Hle := max_list_le Hf Hin).
+    rewrite Hprop in Hle. symmetry. now apply antisymmetry.
+  + destruct (@max_list_ex f (pt :: l) ltac:(discriminate)) as [? [Hin Heq]].
+    apply Hprop in Hin. rewrite Heq, Hin, Rmax_left; reflexivity.
+Qed.
+
+End FunMaxList.
+
+Close Scope R_scope.
+
 
 (** *  The same for integers. **)
+
+Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
+Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
 
 Open Scope Z.
 
