@@ -41,6 +41,8 @@ Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
 Notation "x == y" := (equiv x y).
 Arguments complement A R x y /.
+Arguments PermutationA {A}%type eqA%signature l1%list l2%list.
+Arguments Proper {A}%type R%signature m.
 
 
 (** A tactic simplifying coinduction proofs. *)

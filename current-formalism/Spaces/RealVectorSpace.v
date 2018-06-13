@@ -258,6 +258,13 @@ Section Barycenter.
     rewrite List.Forall_forall in *. intros x Hin. apply Rlt_le, HE. now right.
   Qed.
   
+  Lemma barycenter_singleton : forall pt w, w <> 0%R -> barycenter ((pt, w) :: Datatypes.nil) == pt.
+  Proof.
+  intros pt w Hw. unfold barycenter. simpl.
+  rewrite add_origin, Rplus_0_r, mul_morph, Rmult_comm.
+  unfold Rdiv. now rewrite Rmult_1_l, Rinv_r, mul_1.
+  Qed.
+  
   (** Isobarycenter of a list of locations *)
   Lemma fold_add_acc `{RealVectorSpace} : forall E a b,
     List.fold_left add E (a + b) == (List.fold_left add E a) + b.
@@ -293,5 +300,24 @@ Section Barycenter.
   
   Lemma isobarycenter_singleton : forall pt, isobarycenter (pt :: Datatypes.nil) == pt.
   Proof. intro. unfold isobarycenter. simpl. now rewrite add_origin_l, Rinv_1, mul_1. Qed.
+  
+  Lemma isobarycenter_barycenter_aux : forall E acc w,
+    barycenter_aux (List.map (fun x => (x, 1)) E) (acc, w) == (List.fold_left add E acc, w + INR (length E))%R.
+  Proof.
+  induction E; intros acc w.
+  + simpl. now rewrite Rplus_0_r.
+  + cbn -[INR equiv]. rewrite S_INR, IHE. split; cbn; try ring; []. now rewrite mul_1, add_comm.
+  Qed.
+  
+  Corollary isobarycenter_barycenter : forall E,
+    isobarycenter E == barycenter (List.map (fun x => (x, 1)) E).
+  Proof.
+  unfold isobarycenter, barycenter. intro E.
+  destruct (barycenter_aux (List.map (fun x : T => (x, 1)) E) (0, 0%R)) eqn:Heq.
+  apply (@eq_subrelation _ equiv _) in Heq.
+  rewrite isobarycenter_barycenter_aux in Heq.
+  destruct Heq as [Heq1 Heq2]. simpl in Heq1, Heq2. rewrite Rplus_0_l in Heq2.
+  rewrite Heq1, Heq2. unfold Rdiv. rewrite Rmult_1_l. reflexivity.
+  Qed.
   
 End Barycenter.

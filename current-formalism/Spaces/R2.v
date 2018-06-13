@@ -1118,6 +1118,43 @@ Proof.
   + simpl. rewrite <- IHE. f_equal. ring.
 Qed.
 
+Lemma barycenter_sim_morph : forall (sim : similarity R2) m, m <> nil ->
+  barycenter (List.map (fun xn => (sim (fst xn), snd xn)) m) == sim (barycenter m).
+Proof.
+  intros sim m Hm. eapply barycenter_n_unique.
+  + apply barycenter_n_spec.
+  + intro p.
+    unfold weighted_sqr_dist_sum.
+    change p with (Similarity.id p).
+    rewrite <- (Similarity.compose_inverse_r sim) with (x := p) by apply eq_equiv.
+    change ((Similarity.compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
+
+    assert (Hfold_dist_prop: forall pt init,
+              fold_left (fun acc pt' => acc + snd pt'* (dist (sim pt) (fst pt'))²)
+                        (List.map (fun xn => (Bijection.section (Similarity.sim_f sim) (fst xn), snd xn)) m) init
+            = fold_left (fun acc pt' => acc + snd pt' * (sim.(Similarity.zoom))² * (dist pt (fst pt'))²) m init).
+    { intro pt. induction m as [| p1 m]; intro init.
+      + now elim Hm.
+      + clear Hm. destruct m as [| p2 m].
+        * cbn -[dist]. now rewrite sim.(Similarity.dist_prop), R_sqr.Rsqr_mult, Rmult_assoc.
+        * remember (p2 :: m) as mm.
+          cbn -[dist].
+          rewrite sim.(Similarity.dist_prop), R_sqr.Rsqr_mult.
+          rewrite IHm.
+          - f_equal. now rewrite Rmult_assoc.
+          - subst. discriminate. }
+    do 2 rewrite Hfold_dist_prop.
+    rewrite <- Rmult_0_r with (r := (Similarity.zoom sim)²).
+    rewrite (fold_mult_plus_distr (fun x => (dist (barycenter m) x)²)),
+            (fold_mult_plus_distr (fun x => (dist (Bijection.section (Similarity.sim_f (sim ⁻¹)) p) x)²)).
+    apply Rmult_le_compat_l.
+    - apply Rle_0_sqr.
+    - generalize (barycenter_n_spec m).
+      intro Hbary_spec.
+      unfold is_barycenter_n, weighted_sqr_dist_sum in Hbary_spec.
+      now apply Hbary_spec.
+Qed.
+
 (** **  Triangles  **)
 
 Inductive triangle_type :=

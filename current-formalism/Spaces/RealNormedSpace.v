@@ -217,15 +217,15 @@ Section BarycenterResults.
   Definition weighted_sqr_dist_sum (pt: T) (E: list (T * R)) : R :=
     List.fold_left (fun acc pt' => acc + snd pt' * (dist pt (fst pt'))²)%R E 0%R.
   (*
-  Axiom wbarycenter_n_spec :
+  Axiom barycenter_n_spec :
     forall (E: list (R2.t * R)),
       forall p,
-        weighted_sqr_dist_sum (wbarycenter E) E <= weighted_sqr_dist_sum p E.
+        weighted_sqr_dist_sum (barycenter E) E <= weighted_sqr_dist_sum p E.
   *)
   Definition is_barycenter_n (E : list (T * R)) (B: T) : Prop :=
     forall p, weighted_sqr_dist_sum B E <= weighted_sqr_dist_sum p E.
   
-  Axiom wbarycenter_n_spec : forall (E: list (T * R)),
+  Axiom barycenter_n_spec : forall (E: list (T * R)),
       is_barycenter_n E (barycenter E).
   Axiom barycenter_n_unique: forall E a b,
       is_barycenter_n E a -> is_barycenter_n E b -> a == b.
@@ -263,15 +263,22 @@ Section BarycenterResults.
   (* NB: This lemma requires a normed space for [dist_homothecy], everything else can be done in metric space. *)
   Lemma barycenter_dist_decrease : forall (E : list (T * R)) (dm : R),
     (forall p, InA (equiv * eq)%signature p E -> 0 < snd p) ->
-    (forall p1 p2, InA (equiv * eq)%signature p1 E -> InA (equiv * eq)%signature p2 E ->
-                   dist (fst p1) (fst p2) <= dm) ->
-    forall p, InA (equiv@@1)%signature p E -> dist (fst p) (barycenter E) <= dm.
+    (forall p1 p2, InA equiv p1 (List.map fst E) -> InA equiv p2 (List.map fst E) ->
+                   dist p1 p2 <= dm) ->
+    forall p : T, InA equiv p (List.map fst E) -> dist p (barycenter E) <= dm.
   Proof.
   intros E dm Hweight Hdist p Hin.
-  assert (Hrec := @barycenter_dist_decrease_aux dm E origin 0 (Rle_refl 0) Hweight Hdist).
+  assert (Proper (equiv ==> equiv) (@fst T R)). { intros [] [] [Heq _]. apply Heq. }
+  assert (Hdist' : forall p1 p2, InA (equiv * eq)%signature p1 E ->
+                                 InA (equiv * eq)%signature p2 E -> dist (fst p1) (fst p2) <= dm).
+  { intros [] [] Hin1 Hin2. cbn -[dist].
+    apply Hdist; rewrite (@InA_map_iff _ _ (equiv * eq)%signature); autoclass;
+    (eexists; now split; [| apply Hin1 + apply Hin2]; eauto). }
+  assert (Hrec := @barycenter_dist_decrease_aux dm E origin 0 (Rle_refl 0) Hweight Hdist').
   unfold barycenter.
   destruct (barycenter_aux E (origin, 0%R)) as [sum weight] eqn:Heq.
-  specialize (Hrec p Hin).
+  rewrite (@InA_map_iff _ _ (equiv * eq)%signature) in Hin; autoclass; [].
+  destruct Hin as [xn [Heq' Hin]]. specialize (Hrec xn).
   assert (Hpos : 0 < weight).
   { replace weight with (snd (barycenter_aux E (origin, 0%R))) by now rewrite Heq.
     apply barycenter_aux_snd_pos.
@@ -281,7 +288,9 @@ Section BarycenterResults.
   rewrite <- (mul_1 sum) in Hrec.
   replace 1 with (weight * (1 / weight))%R in Hrec by now field; apply RMicromega.Rlt_neq.
   rewrite <- mul_morph, dist_homothecy, Rabs_pos_eq in Hrec; try lra; [].
-  now apply Rmult_le_reg_l in Hrec.
+  apply Rmult_le_reg_l in Hrec; trivial.
+  - now rewrite <- Heq'.
+  - revert Hin. apply InA_impl_compat; autoclass.
   Qed.
   
   (** Same results about the isobarycenter *)
