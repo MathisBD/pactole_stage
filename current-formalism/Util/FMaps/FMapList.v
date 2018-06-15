@@ -12,6 +12,7 @@ Set Implicit Arguments.
 Open Scope signature_scope.
 
 (** *  Operations  **)
+
 Section ListOperations.
 Variable key : Type.
 Context `{EqDec key}.
@@ -78,7 +79,7 @@ Fixpoint list_mapi {elt'} (f: key -> elt -> elt') (m:t elt) : t elt' :=
    | (k,e)::m' => (k,f k e) :: list_mapi f m'
   end.
 
-(** **  Operations on [NoDup] lists  **)
+(** **  Preservation of the [NoDupA] property  **)
 
 Notation tt elt := (sig (@NoDupA (key * elt) (equiv@@1))).
 
@@ -170,7 +171,7 @@ End ListOperations.
 Instance MapList key `{EqDec key} : FMap := {|
   dict := fun elt => sig (@NoDupA (key * elt) (equiv@@1));
   MapsTo := fun elt k e m => InA equiv (k, e) (proj1_sig m);
-  empty := fun elt => (exist _ nil _);
+  empty := fun elt => (exist _ nil (NoDupA_nil (equiv@@1)));
   is_empty := fun elt m => match proj1_sig m with nil => true | cons _ _ => false end;
   mem := fun elt k m => list_mem k (proj1_sig m);
   add := fun elt => @t_add _ _ _ elt;
@@ -182,9 +183,6 @@ Instance MapList key `{EqDec key} : FMap := {|
   fold := fun elt A f m => @list_fold _ elt A f (proj1_sig m);
   cardinal := fun elt m => @length _ (proj1_sig m);
   elements := fun elt m => (proj1_sig m) |}.
-Proof.
-constructor.
-Defined.
 
 Local Transparent dict MapsTo empty is_empty mem add find remove equal map mapi fold cardinal elements.
 Local Notation t := (sig (@NoDupA (_ * _) (equiv@@1))).

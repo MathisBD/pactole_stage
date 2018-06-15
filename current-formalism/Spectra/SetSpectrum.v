@@ -24,6 +24,7 @@ Require Import SetoidList.
 Require Import SetoidDec.
 Require Import SetoidClass.
 Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.FSets.FSetList.
 Require Export Pactole.Util.FSets.FSetInterface.
 Require Export Pactole.Util.FSets.FSetFacts.
 Require Import Pactole.Core.Robots.
@@ -36,10 +37,6 @@ Section SetConstruction.
 
 Context {loc : Type}.
 Context `{EqDec loc}.
-
-(* FIXME: remove once we have the implem in FSetList. *)
-Context {FS : @FSet loc _ _}.
-Context {FSSpec : @FSetSpecs loc _ _ FS}.
 
 Ltac fsetdec := set_iff; tauto.
 
@@ -161,11 +158,6 @@ Section SetSpectrum.
 
 Context `{State}.
 Context `{Names}.
-
-(* FIXME: remove once we have the implem in FSetList. *)
-Parameter (FS : @FSet location _ _).
-Parameter (FSSpec : @FSetSpecs location _ _ FS).
-Existing Instances FS FSSpec.
 
 Implicit Type config : configuration.
 

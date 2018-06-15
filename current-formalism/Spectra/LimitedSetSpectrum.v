@@ -40,10 +40,6 @@ Context (RVS : @RealVectorSpace _ _ (location_EqDec)).
 Context {RMS : @RealMetricSpace _ _ _ RVS}.
 Context `{Names}.
 
-(* FIXME: remove once we have the implem in FSetList. *)
-Context {FS : @FSet location _ _}.
-Context {FSSpec : @FSetSpecs location _ _ FS}.
-
 Implicit Type config : configuration.
 
 Global Instance limited_set_spectrum (radius : R) : Spectrum := {

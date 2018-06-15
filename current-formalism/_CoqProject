@@ -5,6 +5,7 @@
 Util/FSets/OrderedType.v
 Util/FSets/FSetInterface.v
 Util/FSets/FSetFacts.v
+Util/FSets/FSetList.v
 Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
 Util/FMaps/FMapList.v

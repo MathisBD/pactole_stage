@@ -45,10 +45,6 @@ Typeclasses eauto := (bfs) 10.
 Parameter n : nat.
 Axiom size_G : (2 <= n)%nat.
 
-(* FIXME: remove when FSetList is done *)
-Context {FS : FSet R2}.
-Context {FSpec : FSetSpecs FS}.
-
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
 

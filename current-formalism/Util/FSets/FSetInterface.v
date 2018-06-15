@@ -51,7 +51,7 @@ Hint Unfold Equal_pw.
    [set A] is itself an ordered type for pointwise equality. This makes
    building sets of sets possible.
    *)
-Class FSet elt `{EqDec elt} := {
+Class FSet `{EqDec elt} := {
   (** The container type *)
   set : Type;
 
@@ -160,14 +160,14 @@ Definition Exists `{FSet elt} (P : elt -> Prop) s :=
    similar names ([mem], [In], ...). *)
 Global Notation "s [=] t" := (s == t) (at level 70, no associativity) : set_scope.
 Global Notation "s [<=] t" := (Subset s t) (at level 70, no associativity) : set_scope.
-Global Notation "v '\In' S" := (In v S)(at level 70, no associativity) : set_scope.
-
-Global Notation "'{}'" := (empty)(at level 0, no associativity) : set_scope.
+Global Notation "v '\In' S" := (In v S) (at level 70, no associativity, only parsing) : set_scope.
+Global Notation "v '∈' S" := (In v S) (at level 70, no associativity) : set_scope.
+Global Notation "'{}'" := (empty) (at level 0, no associativity) : set_scope.
 Global Notation "'{' v '}'" := (singleton v) : set_scope.
-Global Notation "'{' v ';' S '}'" := (add v S)(v at level 99) : set_scope.
-Global Notation "'{' S '~' v '}'" := (remove v S)(S at level 99) : set_scope.
+Global Notation "'{' v ';' S '}'" := (add v S) (v at level 99) : set_scope.
+Global Notation "'{' S '~' v '}'" := (remove v S) (S at level 99) : set_scope.
 Global Notation "v '\in' S" := (mem v S)(at level 70, no associativity) : set_scope.
-Global Notation "S '++' T" := (union S T) : set_scope.
+Global Notation "S '∪' T" := (union S T) (at level 60, right associativity) : set_scope.
 Global Notation "S '\' T" := (diff S T) (at level 60, no associativity) : set_scope.
 
 Set Implicit Arguments.
@@ -246,29 +246,29 @@ Class FSetSpecs_cardinal `(FSet A) := {
   cardinal_spec : forall s, cardinal s = length (elements s)
 }.
 Class FSetSpecs_filter `(FSet A) := {
-  filter_1 : forall s x f `{Proper _ (_eq ==> @eq bool) f},
+  filter_1 : forall s x f, Proper (equiv ==> @eq bool) f ->
     In x (filter f s) -> In x s;
-  filter_2 : forall s x f `{Proper _ (_eq ==> @eq bool) f},
+  filter_2 : forall s x f, Proper (equiv ==> @eq bool) f ->
     In x (filter f s) -> f x = true;
-  filter_3 : forall s x f `{Proper _ (_eq ==> @eq bool) f},
+  filter_3 : forall s x f, Proper (equiv ==> @eq bool) f ->
     In x s -> f x = true -> In x (filter f s)
 }.
 Class FSetSpecs_for_all `(FSet A) := {
-  for_all_1 : forall s f `{Proper _ (_eq ==> @eq bool) f},
+  for_all_1 : forall s f, Proper (equiv ==> @eq bool) f ->
     For_all (fun x => f x = true) s -> for_all f s = true;
-  for_all_2 : forall s f `{Proper _ (_eq ==> @eq bool) f},
+  for_all_2 : forall s f, Proper (equiv ==> @eq bool) f ->
     for_all f s = true -> For_all (fun x => f x = true) s
 }.
 Class FSetSpecs_exists `(FSet A) := {
-  exists_1 : forall s f `{Proper _ (_eq ==> @eq bool) f},
+  exists_1 : forall s f, Proper (equiv ==> @eq bool) f ->
     Exists (fun x => f x = true) s -> exists_ f s = true;
-  exists_2 : forall s f `{Proper _ (_eq ==> @eq bool) f},
+  exists_2 : forall s f, Proper (equiv ==> @eq bool) f ->
     exists_ f s = true -> Exists (fun x => f x = true) s
 }.
 Class FSetSpecs_partition `(FSet A) := {
-  partition_1 : forall s f `{Proper _ (_eq ==> @eq bool) f},
+  partition_1 : forall s f, Proper (equiv ==> @eq bool) f ->
     fst (partition f s) == filter f s;
-  partition_2 : forall s f `{Proper _ (_eq ==> @eq bool) f},
+  partition_2 : forall s f, Proper (equiv ==> @eq bool) f ->
     snd (partition f s) == filter (fun x => negb (f x)) s
 }.
 Class FSetSpecs_elements `(FSet A) := {
@@ -280,8 +280,8 @@ Class FSetSpecs_elements `(FSet A) := {
 Class FSetSpecs_choose `(FSet A) := {
   choose_1 : forall s x, choose s = Some x -> In x s;
   choose_2 : forall s, choose s = None -> Empty s;
-  choose_3 : forall s s' x y,
-    choose s = Some x -> choose s' = Some y -> s == s' -> x == y
+(*  choose_3 : forall s s' x y, /!\ This one is wrong without ordering
+    choose s = Some x -> choose s' = Some y -> s == s' -> x == y *)
 }.
 (*Class FSetSpecs_min_elt `(FSet A) := {
   min_elt_1 : forall s x, min_elt s = Some x -> In x s;
