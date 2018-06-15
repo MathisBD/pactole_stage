@@ -168,7 +168,7 @@ Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
   Pactole.Util.FMaps.FMapInterface.prod_Setoid.
 Instance prod_EqDec A B `(EqDec A) `(EqDec B) : EqDec (@prod_Setoid A B _ _) :=
   Pactole.Util.FMaps.FMapInterface.prod_EqDec _ _.
-Arguments prod_EqDec [A] [B] {_} _ {_} _ _ _.
+Arguments prod_EqDec [A] [B] {_} _ {_} _.
 
 Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
 Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.

@@ -10,7 +10,6 @@
 
 
 Require Import SetoidList.
-Require Import Lists.List.
 Require Import Arith_base.
 Require Import Omega.
 Require Import Pactole.Util.Preliminary.
@@ -83,11 +82,9 @@ Lemma build_enum_app_nil : forall N k (Hle : k <= N) l,
 Proof.
 intros N k. induction k; intros Hle l; simpl.
 + reflexivity.
-+ setoid_rewrite IHk. (*now rewrite <- app_assoc.
++ setoid_rewrite IHk. now rewrite <- app_assoc.
 Qed.
-                       *)
-Admitted.
-  
+
 Theorem build_enum_eq : forall {A} eqA N (f g : {n : nat | n < N} -> A) k (Hle : k <= N) l,
   eqlistA eqA (List.map f (build_enum Hle l)) (List.map g (build_enum Hle l)) ->
   forall x, proj1_sig x < k -> eqA (f x) (g x).

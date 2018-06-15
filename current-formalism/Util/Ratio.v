@@ -24,8 +24,8 @@ Proof. refine (exist _ (1/2)%R _). abstract lra. Defined.
 Definition ratio_1 : ratio.
 Proof. refine (exist _ 1%R _). abstract lra. Defined.
 
-(* A trajectory seen as a path inside the space. *)
-(* FIXME: I should use typeclasses to avoid rthe explicit parameter T.
+(** A trajectory seen as a path inside the space. *)
+(* FIXME: I should use typeclasses to avoid the explicit parameter T.
           Otherwise, path cannot be used as a target class for coercions. *)
 Record path T `{Setoid T}:= {
   path_f :> ratio -> T;
