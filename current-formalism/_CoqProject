@@ -2,7 +2,7 @@
 -R . Pactole
 
 ## External libraries
-Util/FSets/OrderedType.v
+#Util/FSets/OrderedType.v
 Util/FSets/FSetInterface.v
 Util/FSets/FSetFacts.v
 Util/FSets/FSetList.v
