@@ -49,7 +49,7 @@ Class FlexibleChoice `{update_choice T2} := {
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
 Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R) := {
   (** [move_ratio] is the ratio between the achieved and the planned move distances. *)
-  ratio_spec : forall config g trajectory choice,
+  ratio_spec : forall (config : configuration) g trajectory choice,
     let pt := get_location (config (Good g)) in
     let pt' := get_location (update config g trajectory choice) in
     (* either we reach the target *)

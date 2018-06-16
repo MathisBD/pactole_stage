@@ -81,7 +81,7 @@ assert (Heq : y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ1)%R
 rewrite Heq. now destruct_match; f_equiv.
 Defined.
 
-Instance Flex : Flexible.FlexibleUpdate delta.
+Instance Flex : FlexibleUpdate delta.
 Proof.
 split. intros da config g target. cbn -[dist].
 destruct_match; unfold id; tauto.

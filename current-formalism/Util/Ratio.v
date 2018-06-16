@@ -34,7 +34,7 @@ Qed.
 (* Convenient notations.
    The first one is used to autoamtically provide the proofs, whereas the second one is used for display. *)
 Definition mk_ratio n m Hm Hn : ratio := exist _ _ (mk_ratio_proof n m Hm Hn).
-Notation "n '//r' m" := (mk_ratio n m ltac:(abstract omega) ltac:(abstract omega)) (only parsing, at level 10).
+Notation "n '//r' m" := (mk_ratio n m ltac:(clear; abstract omega) ltac:(clear; abstract omega)) (only parsing, at level 10).
 Notation "n '/r' m" := (mk_ratio n m _ _) (at level 10).
 
 (** 0 and 1 are ratios. *)
