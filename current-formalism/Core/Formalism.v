@@ -38,21 +38,14 @@ Typeclasses eauto := 5.
 
 Section Formalism.
 
-Context {loc info : Type}.
+Context `{Spectrum}.
 Variables T1 T2 : Type.
-Context `{EqDec loc} `{EqDec info}.
-Context {Loc : IsLocation loc info}.
-Context `{Names}.
-Context {Spect : Spectrum loc info}.
-
-Local Notation configuration := (@configuration info _ _ _ _).
-Local Notation spectrum := (@spectrum loc info _ _ _ _ _ _ Spect).
 
 (** **  Robograms and Executions  **)
 
 (** Good robots have a common program, which we call a [robogram]. *)
 Record robogram := {
-  pgm :> spectrum -> path loc; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
+  pgm :> spectrum -> path location; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
   pgm_compat : Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid : Setoid robogram := {|
@@ -82,8 +75,8 @@ Definition execution := Stream.t configuration.
 
 (** A [frame_choice] represents the choices made by the demon to compute the spectrum.
     It must at least contain at bijection to compute the change of frame of reference.  *)
-Class frame_choice `{IsLocation loc info} := {
-  frame_choice_bijection : T1 -> bijection loc;
+Class frame_choice := {
+  frame_choice_bijection : T1 -> bijection location;
   frame_choice_Setoid :> Setoid T1;
   frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
 Global Existing Instance frame_choice_bijection_compat.
@@ -94,13 +87,13 @@ Class update_choice := {
   update_choice_EqDec :> EqDec update_choice_Setoid }.
 
 (** These choices are then used by an update function that depends on the model. *)
-Class update_function `{IsLocation loc info} `{update_choice} := {
-  update :> configuration -> G -> path loc -> T2 -> info;
+Class update_function `{update_choice} := {
+  update :> configuration -> G -> path location -> T2 -> info;
   update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update }.
 
-Context `{@frame_choice _ _ _ _ _}.
+Context `{@frame_choice}.
 Context `{update_choice}.
-Context `{@update_function _ _ _ _ _ _}.
+Context `{@update_function _}.
 
 (* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
@@ -111,7 +104,7 @@ Record demonic_action := {
   (** Local referential for (activated) good robots in the compute phase *)
   change_frame : configuration -> G -> T1;
   (** Update the state of (activated) good robots in the move phase  *)
-  choose_update : configuration -> G -> path loc -> T2;
+  choose_update : configuration -> G -> path location -> T2;
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -119,14 +112,7 @@ Record demonic_action := {
   choose_update_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) choose_update }.
 
 
-(* These constraint will only appear while specializing the models.
-  option ((loc -> similarity loc) (* change of referential *)
-                               * R); (* travel ratio (rigid or flexible moves) *)
-  step_compat : Proper (Logic.eq ==> opt_eq ((equiv ==> equiv) * (@eq R))) step;
-  step_zoom :  forall id sim c, step id = Some sim -> (fst sim c).(zoom) <> 0%R;
-  step_center : forall id sim c, step id = Some sim -> (fst sim c).(center) == c;
-  step_flexibility : forall id sim, step id = Some sim -> (0 <= snd sim <= 1)%R}.
-*)
+(** Equivalence relation over [demonic_action]. *)
 Global Instance da_Setoid : Setoid demonic_action := {|
   equiv := fun (da1 da2 : demonic_action) =>
            (forall id, da1.(activate) id == da2.(activate) id)
@@ -194,7 +180,6 @@ destruct (activate da id); intuition; try discriminate; [].
 apply In_names.
 Qed.
 
-
 (** A [demon] is just a stream of [demonic_action]s. *)
 Definition demon := Stream.t demonic_action.
 
@@ -208,7 +193,7 @@ Definition demon := Stream.t demonic_action.
     As this is a general setting similarities preserve distance ratios, we can perform the multiplication
     by [mv_ratio] either in the local frame or in the global one. *)
 Definition round (r : robogram) (da : demonic_action) (config : configuration) : configuration :=
-  (** for a given robot, we compute the new configuration *)
+  (* for a given robot, we compute the new configuration *)
   fun id =>
     let state := config id in
     if da.(activate) id                       (* first see whether the robot is activated *)
@@ -218,7 +203,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         | Good g =>
           (* change the frame of reference *)
           let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-          let local_config := map_config (app new_frame) config in
+          let local_config := map_config (lift new_frame) config in
           let local_pos := get_location (local_config (Good g)) in
           (* compute the spectrum *)
           let spect := spect_from_config local_config local_pos in
@@ -233,7 +218,6 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         end
     else state.
 
-
 Global Instance round_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
 intros r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id.
@@ -244,9 +228,9 @@ unfold round. rewrite Hda. destruct_match.
     apply update_compat; try apply choose_update_da_compat; trivial; [|];
     apply lift_path_extensionality_compat;
     do 2 (f_equiv; trivial); try (now apply frame_choice_bijection_compat; f_equiv);
-    solve [ apply map_config_compat; trivial; []; apply app_compat; f_equiv;
+    solve [ apply map_config_compat; trivial; []; apply lift_compat; f_equiv;
             apply frame_choice_bijection_compat; now do 2 f_equiv
-          | apply get_location_compat, map_config_compat; trivial; []; apply app_compat; f_equiv;
+          | apply get_location_compat, map_config_compat; trivial; []; apply lift_compat; f_equiv;
             apply frame_choice_bijection_compat; now do 2 f_equiv ].
   + (* byzantine robot *)
     now f_equiv.
@@ -254,7 +238,7 @@ unfold round. rewrite Hda. destruct_match.
   apply Hconfig.
 Qed.
 
-(** A third subset of robots, moving ones *)
+(** A third subset of robots: moving ones *)
 Definition moving r da config :=
   List.filter
     (fun id => if round r da config id =?= config id then false else true)
@@ -295,8 +279,7 @@ intros r config da id. rewrite moving_spec, active_spec.
 unfold round. destruct_match; intuition.
 Qed.
 
-(** Some results *)
-
+(** If no robot is active, then the configuration does not change. *)
 Lemma no_active_same_config : forall r da config,
   active da = List.nil -> round r da config == config.
 Proof.
@@ -329,7 +312,6 @@ Qed.
 
 (** **  Fairness  **)
 
-(* FIXME: these definitions are very likely wrong because of the quantification on config. *)
 (** A [demon] is [Fair] if at any time it will later activate any robot. *)
 (* RMK: This is a stronger version of eventually because P is negated in the Later clause *)
 Inductive LocallyFairForOne id (d : demon) : Prop :=
@@ -350,9 +332,10 @@ Inductive Between id id' (d : demon) : nat -> Prop :=
                      activate (Stream.hd d) id' = false ->
                      Between id id' (Stream.tl d) k -> Between id id' d k.
 
-(* k-fair: every robot g is activated within at most k activation of any other robot h *)
+(** k-fairnes: Every robot is activated within at most k activation of any other robot. *)
 Definition kFair k : demon -> Prop := Stream.forever (fun d => forall id id', Between id id' d k).
 
+(** Compatibility properties *)
 Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
   d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
 Proof.
@@ -386,10 +369,6 @@ Qed.
 Global Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
 Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
-Lemma Between_LocallyFair : forall id (d : demon) id' k,
-  Between id id' d k -> LocallyFairForOne id d.
-Proof. intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
-
 (** A robot is never activated before itself with a fair demon!
     The fairness hypothesis is necessary, otherwise the robot may never be activated. *)
 Lemma Between_same :
@@ -397,6 +376,10 @@ Lemma Between_same :
 Proof. intros id d k Hd. induction Hd; now econstructor; eauto. Qed.
 
 (** A k-fair demon is fair. *)
+Lemma Between_LocallyFair : forall id (d : demon) id' k,
+  Between id id' d k -> LocallyFairForOne id d.
+Proof. intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
+
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
 Proof. intro. apply Stream.forever_impl_compat. intros ? ? id. eauto using (@Between_LocallyFair id _ id). Qed.
 
@@ -410,7 +393,7 @@ destruct k'.
 - constructor; assumption || now (apply IHHd; auto with arith).
 Qed.
 
-(** [kFair k d] is monotonic on [k] relation. *)
+(** [kFair k d] is monotonic on [k]. *)
 Theorem kFair_mono : forall k (d: demon),
   kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
 Proof.
@@ -419,6 +402,8 @@ coinduction fair; match goal with H : kFair _ _ |- _ => destruct H end.
 - now apply (fair k).
 Qed.
 
+(** If a demon is 0-fair, then the activation states of all robots are the same:
+    either all are activated, or none is. *)
 Theorem Fair0 : forall d, kFair 0 d ->
   forall id id', (Stream.hd d).(activate) id = (Stream.hd d).(activate) id'.
 Proof.
@@ -455,17 +440,16 @@ Qed.
 
 (** ** Full synchronicity
 
-  A fully synchronous demon is a particular case of fair demon: all good robots
-  are activated at each round. In our setting this means that the activate function
-  of the demon never returns None. *)
+  A fully synchronous demon is a particular case of fair demon: all good robots are activated
+  at each round. In our setting this means that the [activate] function is always true. *)
 
 
 (** A demon is fully synchronous at the first step. *)
-Definition FullySynchronousInstant : demon -> Prop :=
-  Stream.instant (fun da => forall g, activate da g = true).
+Definition FullySynchronousInstant : demonic_action -> Prop :=
+  fun da => forall g, activate da g = true.
 
 (** A demon is fully synchronous if it is fully synchronous at all step. *)
-Definition FullySynchronous : demon -> Prop := Stream.forever FullySynchronousInstant.
+Definition FullySynchronous : demon -> Prop := Stream.forever (Stream.instant FullySynchronousInstant).
 
 (** A synchronous demon is fair *)
 Lemma fully_synchronous_implies_0Fair: ∀ d, FullySynchronous d → kFair 0 d.
@@ -478,41 +462,40 @@ End Formalism.
 
 Arguments update_choice_Setoid {_} {_}.
 Arguments update_choice_EqDec {_} {_}.
-Arguments update_function {loc} {info} T2 {_} {_} {_} {_} {_} {_} {_}.
-Arguments demonic_action {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
-Arguments demon {loc} {info} {T1} {T2} {_} {_} {_} {_} {_} {_} {_} {_}.
+Arguments update_function {info} {_} {_} {_} T2 {_}.
+Arguments demonic_action {info} {_} {_} {_} {T1} {T2} {_} {_}.
+Arguments demon {info} {_} {_} {_} {T1} {T2} {_} {_}.
 
 
 Section ChoiceExample.
+(** **  Most Common Examples of Demon Choices  **)
 
-Context {loc info : Type}.
-Context `{EqDec loc} `{EqDec info}.
-Context {Loc : IsLocation loc info}.
+Context `{State}.
 
-
-(** An exemple of first choice: just a bijection *)
-Definition FrameChoiceBijection : frame_choice (bijection loc) := {|
+(** An exemple of frame choice: just a bijection. *)
+Definition FrameChoiceBijection : frame_choice (bijection location) := {|
   frame_choice_bijection := Datatypes.id;
-  frame_choice_Setoid := @bij_Setoid loc _;
+  frame_choice_Setoid := @bij_Setoid location _;
   frame_choice_bijection_compat := fun _ _ Heq => Heq |}.
 
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
+Context {VS : RealVectorSpace location}.
 
-(* Similarities as a first choice, only inside real metric spaces *)
-Definition FirstChoiceSimilarity {RMS : RealMetricSpace loc}
-  : @frame_choice loc info (similarity loc) _ _ _ _ _ := {|
-  frame_choice_bijection := @sim_f loc _ _ _;
-  frame_choice_Setoid := similarity_Setoid loc;
+(* Similarities as a frame choice, only make sense inside real metric spaces. *)
+Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}
+  : frame_choice (similarity location) := {|
+  frame_choice_bijection := @sim_f location _ _ _ _;
+  frame_choice_Setoid := similarity_Setoid location;
   frame_choice_bijection_compat := f_compat |}.
 
 
-(** An exemple of second choice: no choice at all. *)
+(** An exemple of update choice: no choice at all. *)
 Definition NoChoice : update_choice Datatypes.unit := {|
   update_choice_Setoid := _;
   update_choice_EqDec := _ |}.
 
-(** Combining two choices into one. *)
+(** Combining two update choices into a choice over a pair. *)
 Definition MergeUpdateChoices A B `{update_choice A} `{update_choice B} : update_choice (A * B) := {|
   update_choice_Setoid := _;
   update_choice_EqDec := _ |}.

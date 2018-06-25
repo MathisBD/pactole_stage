@@ -109,8 +109,8 @@ Section IffSpec.
     Proof.
       split.
       - split.
-        + eapply filter_1 with f _ ;eauto.
-        + eapply filter_2 with s _ ;eauto.
+        + eapply filter_1; eauto.
+        + eapply filter_2; eauto.
       - destruct 1; eapply filter_3; eauto.
     Qed.
 
@@ -555,7 +555,7 @@ Section InductiveSpec.
     Proof.
       case_eq (for_all f s); intro H; constructor.
       - eapply for_all_2; eauto.
-      - intro abs; rewrite (for_all_1 abs) in H; discriminate.
+      - intro abs; rewrite for_all_1 in H; trivial; discriminate.
     Qed.
 
     Property exists_dec :
@@ -563,7 +563,7 @@ Section InductiveSpec.
     Proof.
       case_eq (exists_ f s); intro H; constructor.
       eapply exists_2; eauto.
-      intro abs; rewrite (exists_1 abs) in H; discriminate.
+      intro abs; rewrite exists_1 in H; trivial; discriminate.
     Qed.
   End Compat.
 

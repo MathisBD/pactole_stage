@@ -21,12 +21,8 @@ Require Import SetoidList.
 Require Import RelationClasses.
 Require Import Pactole.Spaces.Similarity.
 Require Import Pactole.Spaces.RealMetricSpace.
-Require Import Pactole.Core.RobotInfo.
-Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
-        
-(*Require Pactole.CommonRealFormalism.*)
-(* Require Pactole.Similarity. *)
+Require Import Pactole.Models.Flexible.
 
 
 Ltac coinduction proof :=
@@ -49,98 +45,62 @@ Module Make (Location : RealMetricSpace)
             (Common : CommonRealFormalism.Sig(Location)(N)(Names)(Info)(Config)(Spect)).
  *)
 Section ASynchFormalism.
-
-  Context {info loc : Type}.
-  Context `{EqDec info}.
-  Context {loc_Setoid: Setoid loc}.
-  Context {loc_eq : EqDec loc_Setoid}.
-  Context `{Setoid info}.
-  Instance SourceTarget : IsLocation loc (loc*loc*loc*info) :=
-    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (OnlyLocation))).
-  Context {RMS : RealMetricSpace loc }. (* only used for the equality case of the triangle inequality *)
+  
+  Variable (delta : R).
+  Context `{Location}.
+  Instance SourceTarget : State (location * location * location) :=
+    AddLocation _ (AddLocation _ OnlyLocation).
+  Context {VS : RealVectorSpace location}.
+  Context {RMS : RealMetricSpace location}. (* only used for the equality case of the triangle inequality *)
   Context `{Names}.
-  Context {Spect : Spectrum loc (loc*loc*loc*info)}.
+  Context {Spect : Spectrum}.
   Context {T : Type}.
-  Context {delta : R}.
-  Context `{@frame_choice loc (loc*loc*loc*info) loc _ _ _ _ _}.
-
-  Definition ratio_equiv: relation ratio := fun ra1 ra2=>
-      (proj_ratio ra1) = (proj_ratio ra2).
-
-  Definition ratio_setoid_equiv : Equivalence ratio_equiv. 
+  Context `{@frame_choice _ T}.
+  Instance ChooseUpdateAsync : update_choice ratio := OnlyFlexible.
+  (* The FlexibleChoice instance is given by Flexible.OnlyFlexibleChoice. *)
+  
+  Instance ASyncUpdate : update_function ratio := {
+    update := fun config g traj r =>
+      let '(pt, src, tgt) := config (Good g) in
+      if pt =?= tgt
+      then (traj ratio_1, tgt, tgt) (* the robot does not move *)
+      else
+        if Rle_bool delta (dist pt (traj r))
+        then (traj r, src, tgt) (* the robot moves at least delta *)
+        else (traj ratio_1, src, tgt) (* otherwise, it directly goes to its target *) }.
   Proof.
-    split; unfold ratio_equiv; try intuition.
+  intros config1 config2 Hconfig g0 g ? traj1 traj2 Htraj ratio1 ratio2 Hratio.
+  subst g0. specialize (Hconfig (Good g)).
+  destruct (config1 (Good g)) as [[pt1 src1] tgt1] eqn:Hconfig1,
+           (config2 (Good g)) as [[pt2 src2] tgt2] eqn:Hconfig2,
+           Hconfig as [[Hpt Hsrc] Htgt].
+  simpl in Hpt, Htgt, Hsrc.
+  destruct (pt1 =?= tgt1) as [Heq1 | Hneq1], (pt2 =?= tgt2) as [Heq2 | Hneq2].
+  + now repeat split; simpl.
+  + elim Hneq2. now rewrite <- Hpt, Heq1.
+  + elim Hneq1. now rewrite Hpt, Heq2.
+  + rewrite Hpt, Hratio, Htraj at 1.
+    destruct_match; repeat split; simpl; rewrite ?Hratio; auto.
+  Defined.
+  
+  (** Let us prove that this update function indeed defines flexibles moves. *)
+  Instance Flex : FlexibleUpdate delta.
+  Proof.
+  split. intros config g traj r loc pt'.
+  simpl in *. unfold Datatypes.id in *.
+  destruct (config (Good g)) as [[pt src] tgt].
+  subst loc pt'. simpl in *.
+  destruct_match; try destruct_match_eq Hle; simpl.
+  + now left.
+  + right. split; try reflexivity; [].
+    now rewrite <- Rle_bool_true_iff.
+  + now left.
   Qed.
-
   
-  Definition ratio_Setoid : Setoid ratio :=
-    {| equiv := ratio_equiv;
-       setoid_equiv := ratio_setoid_equiv
-    |}.
-       
+  (* This is the property we just proved: robot moves either goes toward its target or move at least delta. *)
+  Check ratio_spec.
   
-  Instance ChooseUpdateAsync : (update_choice ratio) :=
-    {|
-      update_choice_Setoid := ratio_Setoid;
-      update_choice_EqDec := R_EqDec
-    |}.
-
-  Definition llli : Type := loc * loc * loc * info.
-  Context `{Configuration llli }.
-  
-(*  Context {Config : @Configuration llli _ _ _}.
-  Context {config : @configuration llli _ _ _ Config}.*)
-(*  Definition update_as :  configuration → G → path loc → ratio → (loc*loc*loc*info):=
-    fun config g traj ratio =>
-      let (conf1, inf) := (config (Good g)) in
-      let (conf2, tgt) := conf1 in
-      let (loc0, src) := conf2 in 
-      if loc_eq loc0 tgt then (tgt,tgt,traj ratio_0,inf)
-      else
-        (* ration a mettre entre 0 et 1*)
-        let new_loc := add loc0 (mul ratio (add tgt (opp loc0))) in
-        (new_loc, src, tgt, inf).
-*)
-  
-  Instance ASyncUpdate : @update_function _ _ ratio _ _ _ _ _  SourceTarget ChooseUpdateAsync(*`{IsLocation loc info} `{update_choice} *) :=
-    {
-    update := fun config g traj ratio =>
-      let (conf1, inf) := (config (Good g)) in
-      let (conf2, tgt) := conf1 in
-      let (loc0, src) := conf2 in 
-      if loc_eq loc0 tgt then (tgt,tgt,traj ratio,inf)
-      else
-        (* ration a mettre entre 0 et 1*)
-        let new_loc := add loc0 (mul ratio (add tgt (opp loc0))) in
-        (new_loc, src, tgt, inf)}.
-Proof.
-  intros config1 config2 Hconf g1 g2 Hg traj1 traj2 Htraj ratio1 ratio2 Hratio.
-  specialize (Hconf (Good g1)) .
-  rewrite Hg in *.
-  destruct (config1 (Good g2)) as (c11, inf1) eqn : Hconf1,
-           (config2 (Good g2)) as (c21, inf2) eqn : Hconf2.
-  destruct c11 as (c12, tgt1), c21 as (c22, tgt2).
-  destruct c12 as (loc1, src1), c22 as (loc2, src2). 
-  destruct Hconf as (((Hloc, Hsrc),Htgt), Hinf).
-  simpl in Hinf, Hloc, Htgt, Hsrc.
-  destruct (loc_eq loc1 tgt1), (loc_eq loc2 tgt2) .
-  repeat split; simpl; auto.
-  intuition.
-  rewrite Htraj.
-  apply path_compat.
-  auto.
-  now rewrite Hloc, Htgt in e.
-  now rewrite Hloc, Htgt in c.
-  intuition.
-  repeat split; simpl;auto.
-  apply add_compat.
-  auto.
-  apply mul_compat; try apply Hratio.
-  apply add_compat; try apply Htgt.
-  apply opp_compat; apply Hloc.
-Qed.
-
-End  ASynchFormalism. 
+End ASynchFormalism. 
 
 (*
 

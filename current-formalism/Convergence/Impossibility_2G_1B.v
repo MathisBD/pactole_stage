@@ -34,25 +34,24 @@ Require Import Pactole.Models.Similarity.
 Require Import Pactole.Models.Rigid.
 Set Implicit Arguments.
 Close Scope R_scope.
+Close Scope VectorSpace_scope.
 Import Datatypes.
 Import List.
 Import SetoidClass.
 
 
-(* BUG?: To help finding correct instances, loops otherwise! *)
-Existing Instance R_Setoid.
-Existing Instance R_EqDec.
-Existing Instance R_RMS.
-
 (** There are [2 * n] good robots and [n] byzantine ones. *)
 Parameter n : nat.
-Axiom n_non_0 : n <> 0%nat.
+Axiom n_non_0 : n <> 0.
 Instance MyRobots : Names := Robots (2 * n) n.
 
+(** The space is R, and it is a Euclidean space. *)
+Instance Loc : Location := make_Location R.
+Instance location_ES : EuclideanSpace location := R_ES.
 (** The only information in the state of a robot is its location. *)
-Instance Info : IsLocation R R := OnlyLocation.
+Instance Info : State location := OnlyLocation.
 (** Demons use similarities to perform the change of frame of reference. *)
-Instance FC : frame_choice (Similarity.similarity R) := FrameChoiceSimilarity.
+Instance FC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
 (** Demons do not make any choice in how a robot state is updated. *)
 Instance NoChoice : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec}.
 (** Updates are rigid. *)
@@ -62,14 +61,7 @@ Proof. now repeat intro. Defined.
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.
 
-(* Some notations to avoid typeclass ambiguities. *)
-Notation "!!" := (fun config => spect_from_config config 0%R).
-Notation robogram := (@robogram R R _ _ _ _ _ MyRobots _).
-Notation configuration := (@configuration R _ _ _ _).
-Notation config_list := (@config_list R _ _ _ _).
-Notation round := (@round R R _ _ _ _ _ _ _ _ _ _).
-Notation execution := (@execution R _ _ _).
-Notation demonic_action := (@demonic_action R R _ _ _ _ _ _).
+Notation "!!" := (fun config => spect_from_config config origin).
 
 (* Helping [auto] handle basic real arithmetic contradictions *)
 Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.
@@ -95,7 +87,7 @@ Coercion paths_in_R : R >-> path_R.
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall config (pt : R),
   (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
- := fun config => @spect_from_config_spec R R _ _ _ _ _ _ _ config 0%R.
+ := fun config => @spect_from_config_spec R _ _ _ _ config 0%R.
 
 Lemma nB_value : nB = n.
 Proof. reflexivity. Qed.
@@ -105,8 +97,8 @@ Lemma no_moving_same_config : forall r da config,
   moving r da config = List.nil -> round r da config == config.
 Proof.
 intros r da config Hmove id.
-destruct (equiv_dec (round r da config id) (config id)) as [Heq | Heq]; trivial; [].
-rewrite <- moving_spec, Hmove in Heq. inversion Heq.
+destruct (round r da config id =?= config id) as [Heq | Heq]; trivial; [].
+apply <- moving_spec in Heq. rewrite Hmove in Heq. inversion Heq.
 Qed.
 
 Lemma nG_nB : nG = 2 * nB.
@@ -172,6 +164,7 @@ Lemma synchro : ∀ r, solution r → solution_FSYNC r.
 Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, fully_synchronous_implies_fair; autoclass. Qed.
 
 Close Scope R_scope.
+Close Scope vector_scope.
 
 
 (** We split good robots into two halves. *)
@@ -238,22 +231,23 @@ Hint Resolve gfirst_left glast_right left_right_exclusive.
 (** A demon that makes the robogram fail:
     - good robots are split into two distinct towers
     - byzantine robots move alternatively between both towers
-    - the stack with byzantine is activated, good robots cannot move
-      and you can scale it back on the next round. *)
+    - the stack with byzantine is activated, good robots cannot move. *)
 
 Open Scope R_scope.
+Open Scope vector_scope.
+
 (** The reference starting configuration **)
 Definition config1 : configuration := fun id =>
   match id with
     | Good g => if left_dec g then 0 else 1
-    | Byz b =>  0
+    | Byz b  => 0
   end.
 
 (** The second configuration **)
 Definition config2 : configuration := fun id =>
   match id with
     | Good g => if left_dec g then 0 else 1
-    | Byz b =>  1
+    | Byz b  => 1
   end.
 
 Arguments config1 id : simpl never.
@@ -316,7 +310,6 @@ change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_app, map_map, map_map, map_cst, map_app, map_map, map_alls, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
 rewrite (map_ext_in _ (fun x => if left_dec x then 0%R else 1%R)); auto; [].
-(* try (now setoid_rewrite mk_info_get_location); []. *)
 unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
 + destruct (pt =?= 0) as [Heq | Hneq]; [| destruct (pt =?= 1) as [Heq | ?]].
   - hnf in Heq. subst. rewrite countA_occ_alls_in; autoclass; [].
@@ -340,7 +333,6 @@ change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_map, map_app, map_map, map_map, map_cst, countA_occ_app.
 assert (H01 : 0 <> 1) by auto.
 rewrite (map_ext_in _ (fun x => if left_dec x then 0%R else 1%R)); auto; [].
-(* try (now setoid_rewrite mk_info_get_location); []. *)
 unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
 + destruct (pt =?= 0) as [Heq | Hneq]; [| destruct (pt =?= 1) as [Heq | Hneq']].
   - hnf in Heq. subst. rewrite countA_occ_alls_out; auto.
@@ -354,11 +346,16 @@ unfold left_dec, left. rewrite (spect_config_aux H01 _ nB).
 + rewrite Gnames_length. reflexivity.
 Qed.
 
-Lemma swap_spect2_spect1 : MMultisetExtraOps.map (homothecy 1 minus_1) spectrum2 == spectrum1.
+Definition swap (pt : location) := translation (opp pt) ∘ (homothecy pt minus_1).
+
+Instance swap_compat : Proper (equiv ==> equiv) swap.
+Proof. intros pt pt' Hpt x. simpl. rewrite Hpt. ring. Qed.
+
+Lemma swap_spect2_spect1 : MMultisetExtraOps.map (swap 1) spectrum2 == spectrum1.
 Proof.
-intro pt. unfold spectrum1, spectrum2. cbn [fst]. rewrite map_add, map_singleton; autoclass.
-simpl ((homothecy 1 minus_1) 0). ring_simplify (-1 * (0 + -1)).
-simpl ((homothecy 1 minus_1) 1). ring_simplify (-1 * (1 + -1)).
+intro pt. unfold spectrum1, spectrum2, swap. rewrite map_add, map_singleton; autoclass.
+simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 0). ring_simplify (1 + -1 * (0 + -1) + -1).
+simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 1). ring_simplify (1 + -1 * (1 + -1) + -1).
 destruct (Rdec pt 0); [| destruct (Rdec pt 1)]; subst;
 repeat rewrite ?add_same, ?singleton_same, ?singleton_other, ?add_other; auto.
 Qed.
@@ -374,7 +371,7 @@ Definition activate1 (id : ident) :=
     | Byz b => true
   end.
 
-Definition change_frame1 config g := translation (opp (get_location (config (Good g)))).
+Definition change_frame1 config g : similarity location := translation (opp (get_location (config (Good g)))).
 
 Definition bad_da1 : demonic_action.
 refine {|
@@ -384,8 +381,7 @@ refine {|
   choose_update := fun _ _ _ => tt |}.
 Proof.
 + abstract (now repeat intro).
-+ abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst;
-            f_equiv; apply opp_compat, get_location_compat, Heq).
++ abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
 Defined.
 
@@ -395,19 +391,15 @@ Definition activate2 (id : ident) :=
     | Byz b => true
   end.
 
-Definition change_frame2 config g := homothecy (get_location (config (Good g))) minus_1.
-
 Definition bad_da2 : demonic_action.
-refine {|
+simple refine {|
   activate := activate2;
   relocate_byz := fun _ _ => 0;
-  change_frame := change_frame2;
-  choose_update := fun _ _ _ => tt |}.
+  change_frame := fun config g => swap (get_location (config (Good g)));
+  choose_update := fun _ _ _ => tt |}; autoclass.
 Proof.
 + abstract (now repeat intro).
-+ abstract (unfold change_frame2; intros config1 config2 Heq ? x ? pt; subst; simpl; do 3 f_equal;
-            change (get_location (config1 (Good x)) == get_location (config2 (Good x)));
-            apply get_location_compat, Heq).
++ abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
 Defined.
 
@@ -475,15 +467,14 @@ Hypothesis sol : solution r.
     by the same amount in order to get the same translated configuration. *)
 
 Definition shifting_da (pt : R) : demonic_action.
-refine {| activate := fun _ => true;
-          relocate_byz := fun _ _ => pt;
-          change_frame := fun config g => (* FIXME: try avoiding passing all the implicit args *)
-            translation (@opp R _ _ R_RMS (@get_location R R _ _ _ _ Info (config (Good g))));
-          choose_update := fun _ _ _ => tt |}.
+simple refine {| activate := fun _ => true;
+                 relocate_byz := fun _ _ => pt;
+                 change_frame := fun config g => (* FIXME: try avoiding passing all the implicit args *)
+                 translation (opp (get_location (config (Good g))));
+                 choose_update := fun _ _ _ => tt |}; autoclass.
 Proof.
 + abstract (now repeat intro).
-+ abstract (intros config1 config2 Hconfig ? g ?; subst; f_equiv;
-            apply opp_compat, get_location_compat, Hconfig).
++ abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
 Defined.
 
@@ -508,8 +499,8 @@ Definition config0 pt : configuration := fun id =>
 (** An execution that shifts by [d] at each round, starting from [pt]. *)
 CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
-Lemma spectrum_config0 : forall pt,
-  !! (map_config (RobotInfo.app (fun x => RealMetricSpace.add x (opp pt))) (config0 pt)) == spectrum1.
+Lemma spectrum_config0 : forall pt : location,
+  @equiv spectrum _ (!! (map_config (lift (translation (opp pt))) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
 rewrite spect_from_config_spec, config_list_spec.
@@ -525,15 +516,14 @@ rewrite (map_ext_in _ (fun _ : G => 0)), (map_ext_in _ (fun _ : B => 1)).
     rewrite add_other, singleton_same; auto.
   - repeat rewrite countA_occ_alls_out; auto.
     rewrite add_other, singleton_other; auto.
-+ intros b Hin. unfold map_config. rewrite get_location_app. compute. ring.
-+ intros g Hin. unfold map_config. rewrite get_location_app. compute. ring.
++ intros b Hin. unfold map_config. rewrite get_location_lift. compute. ring.
++ intros g Hin. unfold map_config. rewrite get_location_lift. compute. ring.
 Qed.
 
 Corollary spect_config0_0 : !! (config0 0) == spectrum1.
 Proof.
-rewrite <- (spectrum_config0 0).
-assert (Heq : (fun x => RealMetricSpace.add x (opp 0)) 0 == 0) by (simpl; ring).
-f_equiv. intro. simpl. unfold map_config, id. ring.
+rewrite <- (spectrum_config0 0). f_equiv.
+now rewrite opp_origin, translation_origin, map_config_id.
 Qed.
 
 
@@ -548,7 +538,7 @@ destruct id as [g | b].
 - assert (Htranslate := spectrum_config0 pt).
   ring_simplify (pt + - pt). rewrite Ropp_involutive.
   simpl map_config in *. unfold id in *.
-  apply (pgm_compat r) in Htranslate. rewrite Htranslate. fold move. simpl. ring.
+  apply (pgm_compat r) in Htranslate. rewrite Htranslate. unfold move. simpl. ring.
 - reflexivity.
 Qed.
 
@@ -579,7 +569,8 @@ induction Hpt as [e IHpt | e IHpt]; intros start Hstart.
     unfold Rdiv. rewrite Rabs_mult, Rabs_Rinv; try lra.
     assert (Habs3 : Rabs 3 = 3). { apply Rabs_pos_eq. lra. } rewrite Habs3 in *.
     lra.
-  - replace move with ((pt - start) - (pt - (start + move))) at 1 by ring.
+  - rewrite sqrt_square in Hnow1, Hnow2.
+    replace move with ((pt - start) - (pt - (start + move))) at 1 by ring.
     unfold Rminus at 1. eapply Rle_trans; try (now apply Rabs_triang); [].
     apply Rplus_le_compat; trivial; []. now rewrite Rabs_Ropp.
 + apply (IHIHpt (start + move)). subst e. simpl. reflexivity.
@@ -593,15 +584,15 @@ destruct (Rdec (r spectrum1 ratio_1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (map_config (homothecy 1 minus_1) config2)) ratio_1 = 0.
+Corollary no_move2 : r (!! (map_config (swap 1) config2)) ratio_1 == 0.
 Proof.
 setoid_rewrite <- no_move1 at 2.
-change eq with equiv. do 2 f_equiv.
-change (Bijection.section (homothecy 1 minus_1)) with (RobotInfo.app (homothecy 1 minus_1)).
-replace 0%R with (homothecy 1 minus_1 1) by (simpl; ring).
-rewrite <- swap_spect2_spect1, <- spect_from_config_map; autoclass; [].
-apply MMultisetExtraOps.map_compat; autoclass; [].
-rewrite spect_from_config_ignore_snd. apply spect_config2.
+do 2 f_equiv.
+change (Bijection.section (swap 1)) with (lift (swap 1)).
+replace origin with (swap 1 1) by (compute; ring).
+rewrite <- spect_from_config_map; autoclass; [].
+rewrite spect_from_config_ignore_snd, spect_config2.
+apply swap_spect2_spect1.
 Qed.
 
 Lemma round_config1 : round r bad_da1 config1 == config2.
@@ -614,9 +605,8 @@ cbn -[spect_from_config config1 config2 translation]. unfold change_frame1, id.
 assert (Hg1 : config1 (Good g) = 0) by (unfold config1; destruct_match; auto; contradiction).
 assert (Hg2 : config2 (Good g) = 0) by (unfold config2; destruct_match; auto; contradiction).
 rewrite Hg1, Hg2. change (opp (get_location 0)) with (- 0).
-rewrite Ropp_0. change 0 with origin.
-unfold translation. rewrite Similarity.translation_origin.
-cbn. assert (Hext : @equiv configuration _ (λ id : ident, config1 id + 0) config1).
+rewrite Ropp_0. rewrite Similarity.translation_origin. cbn.
+assert (Hext : @equiv configuration _ (λ id : ident, config1 id + 0) config1).
 { intro. now rewrite Rplus_0_r. }
 rewrite Hext, spect_config1. apply no_move1.
 Qed.
@@ -627,11 +617,11 @@ intros id. unfold round.
 simpl (activate bad_da2). unfold activate2.
 destruct id as [g | b]; try reflexivity; [].
 destruct (left_dec g) as [Hleft | Hright]; try reflexivity; [].
-cbn -[homothecy map_config]. unfold change_frame2. simpl get_location. unfold id.
+cbn -[swap map_config]. unfold id.
 assert (Hg1 : config1 (Good g) = 1) by (unfold config1; destruct_match; auto; contradiction).
 assert (Hg2 : config2 (Good g) = 1) by (unfold config2; destruct_match; auto; contradiction).
-unfold map_config at 2. rewrite Hg1, Hg2. simpl ((homothecy 1 minus_1) 1).
-ring_simplify (-1 * (1 + -1)). rewrite no_move2. simpl. field.
+rewrite Hg1, Hg2, spect_from_config_ignore_snd, no_move2.
+simpl. ring.
 Qed.
 
 Theorem execute_bad_demon : execute r bad_demon config1 == exec.
@@ -685,8 +675,9 @@ induction Hpt using attracted_ind2.
   - now apply (left_right_exclusive glast).
   - clear -Hfirst Hlast. cut (1 <= 1/4 + 1/4). lra.
     replace 1 with ((pt - 0) + (1 - pt)) at 1 by ring.
-    setoid_rewrite <- Rabs_pos_eq at 1; try lra.
-    eapply Rle_trans; try now apply Rabs_triang.
+    setoid_rewrite <- Rabs_pos_eq at 1; try lra; [].
+    eapply Rle_trans; try (now apply Rabs_triang); [].
+    simpl dist in *. rewrite sqrt_square in *.
     apply Rplus_le_compat; assumption || now rewrite Rabs_minus_sym.
 + (* Second step, same proof *)
   rewrite He in H. inversion H as [Habs _].
@@ -696,10 +687,11 @@ induction Hpt using attracted_ind2.
   destruct (left_dec gfirst); try contradiction.
   destruct (left_dec glast).
   - now apply (left_right_exclusive glast).
-  - clear -Hfirst Hlast. cut (1 <= 1/4 + 1/4). lra.
+  - clear -Hfirst Hlast. cut (1 <= 1/4 + 1/4); try lra; [].
     replace 1 with ((pt - 0) + (1 - pt)) at 1 by ring.
-    setoid_rewrite <- Rabs_pos_eq at 1; try lra.
-    eapply Rle_trans; try now apply Rabs_triang.
+    setoid_rewrite <- Rabs_pos_eq at 1; try lra; [].
+    eapply Rle_trans; try (now apply Rabs_triang); [].
+    simpl dist in *. rewrite sqrt_square in *.
     apply Rplus_le_compat; assumption || now rewrite Rabs_minus_sym.
 + (* Inductive step *)
   apply IHHpt. rewrite He. reflexivity.

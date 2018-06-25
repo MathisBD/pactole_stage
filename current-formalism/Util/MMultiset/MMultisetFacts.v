@@ -166,7 +166,7 @@ Section MMultisetFacts.
   - destruct Hm. intro. now apply le_antisym.
   Qed.
   
-  (** **  Compatibility with respect to [eq]  **)
+  (** **  Compatibility with respect to [equiv]  **)
   
   Global Instance InA_elt_compat : Proper (eq_elt ==> PermutationA eq_pair ==> iff) (InA eq_elt).
   Proof.
@@ -499,7 +499,7 @@ Section MMultisetFacts.
   
   (** **  Results about [singleton]  **)
   
-  Lemma singleton_spec : forall x y n, multiplicity y (singleton x n) = if equiv_dec y x then n else 0.
+  Lemma singleton_spec : forall x y n, (singleton x n)[y] = if equiv_dec y x then n else 0.
   Proof. repeat intro. msetdec. Qed.
   
   Lemma singleton_0 : forall x, singleton x 0 == empty.
@@ -716,7 +716,7 @@ Section MMultisetFacts.
   (** **  Results about [add]  **)
   
   Lemma add_spec : forall x y n m,
-    multiplicity y (add x n m) = if equiv_dec y x then multiplicity y m + n else multiplicity y m.
+    (add x n m)[y] = if equiv_dec y x then m[y] + n else m[y].
   Proof. repeat intro. msetdec. Qed.
   
   Lemma add_0 : forall x m, add x 0 m == m.
@@ -725,7 +725,7 @@ Section MMultisetFacts.
   Lemma add_comm : forall x1 x2 n1 n2 m, add x1 n1 (add x2 n2 m) == add x2 n2 (add x1 n1 m).
   Proof. repeat intro. msetdec. Qed.
   
-  Lemma add_multiplicity_inf_bound : forall x n m, n <= multiplicity x (add x n m).
+  Lemma add_multiplicity_inf_bound : forall x n m, n <= (add x n m)[x].
   Proof. intros. msetdec. Qed.
   
   Lemma add_disjoint : forall x n m, add x n m == add x (m[x] + n) (remove x m[x] m).
@@ -756,7 +756,7 @@ Section MMultisetFacts.
   Lemma add_subset_remove : forall x n m1 m2, add x n m1 [<=] m2 -> m1 [<=] remove x n m2.
   Proof. intros x n m1 m2 Hsub y. specialize (Hsub y). msetdec. Qed.
 
-  Lemma add_In : forall x y n m, In x (add y n m) <-> In x m \/ n <> 0 /\ equiv x y.
+  Lemma add_In : forall x y n m, In x (add y n m) <-> equiv x y /\ n > 0 \/ In x m.
   Proof.
   intros x y n m. unfold In. destruct (equiv_dec x y) as [Heq | Heq].
   - repeat rewrite (multiplicity_compat _ _ Heq _ _ (reflexivity _)). rewrite add_same. destruct n; intuition.
@@ -768,8 +768,7 @@ Section MMultisetFacts.
   
   (** ** Results about [remove] **)
   
-  Lemma remove_spec : forall x y n m,
-    multiplicity y (remove x n m) = if equiv_dec y x then multiplicity y m - n else multiplicity y m.
+  Lemma remove_spec : forall x y n m, (remove x n m)[y] = if equiv_dec y x then m[y] - n else m[y].
   Proof. repeat intro. msetdec. Qed.
   
   Lemma remove_0 : forall x m, remove x 0 m == m.
@@ -1332,8 +1331,8 @@ Section MMultisetFacts.
   - apply (@PermutationA_nil _ eq_pair _). now rewrite Heq, elements_empty.
   Qed.
   
-  Lemma elements_add : forall x y n p m, InA eq_pair (x, n) (elements (add y p m))
-    <-> equiv x y /\ n = p + multiplicity y m /\ n > 0
+  Lemma elements_add_In : forall x y n p m, InA eq_pair (x, n) (elements (add y p m))
+    <-> equiv x y /\ n = p + m[y] /\ n > 0
         \/ ~equiv x y /\ InA eq_pair (x, n) (elements m).
   Proof.
   intros x y n p m. rewrite elements_spec. simpl. split; intro Hx.
@@ -1346,7 +1345,7 @@ Section MMultisetFacts.
   Qed.
   
   Lemma elements_remove : forall x y n p m, InA eq_pair (x, n) (elements (remove y p m))
-    <-> equiv x y /\ n = multiplicity y m - p /\ n > 0
+    <-> equiv x y /\ n = m[y] - p /\ n > 0
         \/ ~equiv x y /\ InA eq_pair (x, n) (elements m).
   Proof.
   intros x y n p m. rewrite elements_spec. simpl. split; intro Hx.
@@ -1398,7 +1397,7 @@ Section MMultisetFacts.
   * constructor.
     + rewrite elements_spec. simpl. intros [? _]. apply Hin. unfold In. omega.
     + apply (NoDupA_strengthen _ (elements_NoDupA _)).
-  * intros [y p]. rewrite elements_add. split; intro Hm.
+  * intros [y p]. rewrite elements_add_In. split; intro Hm.
     + destruct Hm as [[Hm1 [Hm2 Hpos]] | [Hm1 Hm2]]; simpl in *.
       - unfold In in Hin. left. split. assumption. compute. omega.
       - now right.
@@ -1621,7 +1620,7 @@ Section MMultisetFacts.
   Proof. intros. setoid_rewrite <- elements_from_elements; trivial. now f_equiv. Qed.
   
   (* If [l] contains duplicates of [x], we need to sum all their contribution. *)
-  Theorem from_elements_spec : forall x n l, multiplicity x (from_elements l) = n <->
+  Theorem from_elements_spec : forall x n l, (from_elements l)[x] = n <->
     List.fold_left (fun acc yp => if equiv_dec (fst yp) x then (snd yp) + acc else acc) l 0 = n.
   Proof.
   intros x n l. rewrite <- Nat.add_0_r at 1. generalize 0. revert n. induction l as [| [y p] l]; intros n q; simpl.
@@ -1638,12 +1637,12 @@ Section MMultisetFacts.
     + elim (In_empty Hin).
     + destruct Hin as [? [Hin _]]. rewrite InA_nil in Hin. elim Hin.
   * simpl. rewrite add_In, IHl; trivial. split; intros Hin.
-    + destruct Hin as [[n [Hin Hn]] | [? Heq]].
-      - exists n. split; trivial. now right.
+    + destruct Hin as [[? Heq] | [n [Hin Hn]]].
       - exists p. split; try (left; split); auto; omega.
+      - exists n. split; trivial. now right.
     + destruct Hin as [n [Hin Hn]]. inversion_clear Hin.
-      - destruct H. right. compute in *. split; trivial. omega.
-      - left. exists n. now split.
+      - destruct H. left. compute in *. split; trivial. omega.
+      - right. exists n. now split.
   Qed.
   
   Corollary from_elements_In_valid : forall x l, is_elements l ->
@@ -1658,7 +1657,7 @@ Section MMultisetFacts.
   Qed.
   
   Theorem from_elements_nodup_spec : forall l x n, n > 0 -> NoDupA eq_elt l ->
-    multiplicity x (from_elements l) = n <-> InA eq_pair (x, n) l.
+    (from_elements l)[x] = n <-> InA eq_pair (x, n) l.
   Proof.
   induction l as [| [y p] l]; intros x n Hn Hnodup.
   * simpl. rewrite InA_nil, empty_spec. omega.
@@ -1680,7 +1679,7 @@ Section MMultisetFacts.
   Qed.
   
   Corollary from_elements_valid_spec : forall l x n, n > 0 -> is_elements l ->
-    multiplicity x (from_elements l) = n <-> InA eq_pair (x, n) l.
+    (from_elements l)[x] = n <-> InA eq_pair (x, n) l.
   Proof.  intros ? ? ? ? [? _]. now apply from_elements_nodup_spec. Qed.
   
   Lemma from_elements_append : forall l1 l2,
@@ -1691,22 +1690,28 @@ Section MMultisetFacts.
   - simpl from_elements. rewrite IHl. symmetry. apply union_add_comm_l.
   Qed.
   
-  Lemma elements_add_in : forall x n m, In x m ->
+  Lemma elements_add : forall x n m, 0 < n \/ In x m ->
     PermutationA eq_pair (elements (add x n m))
                          ((x, n + m[x]) :: removeA pair_dec (x, m[x]) (elements m)).
   Proof.
-  intros x n m Hin.
-  rewrite <- (elements_In x 0) in Hin. apply elements_elt_strengthen, PermutationA_split in Hin; refine _.
-  destruct Hin as [l' Hin]. rewrite <- (from_elements_elements m), Hin at 1.
-  assert (Hl' : is_elements ((x, m[x]) :: l')). { rewrite <- Hin. apply elements_is_elements. }
-  assert (Hout : ~InA eq_elt (x, (m[x])) l'). { apply proj1 in Hl'. now inversion_clear Hl'. }
-  rewrite from_elements_cons, add_merge. rewrite elements_add_out.
-  + constructor; try reflexivity. apply is_elements_cons_inv in Hl'.
-    rewrite Hin, elements_from_elements; trivial. simpl.
-    destruct pair_dec as [? | Habs]; try now elim Habs.
-    rewrite removeA_out; try reflexivity. intro Habs. apply Hout. revert Habs. apply InA_pair_elt.
-  + apply proj2 in Hl'. inversion_clear Hl'. simpl in *. omega.
-  + apply is_elements_cons_inv in Hl'. rewrite <- elements_In, elements_from_elements; eauto.
+  intros x n m Hn.
+  destruct (In_dec x m) as [Hin | Hout].
+  + rewrite <- (elements_In x 0) in Hin. apply elements_elt_strengthen, PermutationA_split in Hin; refine _.
+    destruct Hin as [l' Hin]. rewrite <- (from_elements_elements m), Hin at 1.
+    assert (Hl' : is_elements ((x, m[x]) :: l')). { rewrite <- Hin. apply elements_is_elements. }
+    assert (Hout : ~InA eq_elt (x, (m[x])) l'). { apply proj1 in Hl'. now inversion_clear Hl'. }
+    rewrite from_elements_cons, add_merge. rewrite elements_add_out.
+    - constructor; try reflexivity. apply is_elements_cons_inv in Hl'.
+      rewrite Hin, elements_from_elements; trivial. simpl.
+      destruct pair_dec as [? | Habs]; try now elim Habs.
+      rewrite removeA_out; try reflexivity. intro Habs. apply Hout. revert Habs. apply InA_pair_elt.
+    - apply proj2 in Hl'. inversion_clear Hl'. simpl in *. omega.
+    - apply is_elements_cons_inv in Hl'. rewrite <- elements_In, elements_from_elements; eauto.
+  + assert (0 < n) by tauto.
+    rewrite not_In in Hout. rewrite Hout, plus_0_r. rewrite <- not_In in Hout.
+    rewrite elements_add_out; trivial; []. f_equiv.
+    rewrite removeA_out; try reflexivity; [].
+    rewrite elements_spec. simpl. omega.
   Qed.
   
   (*
@@ -1860,7 +1865,7 @@ Section MMultisetFacts.
     rewrite Heq.
     - specialize (Hfg m' ltac:(intro; msetdec) x).
       rewrite add_same, Hx in Hfg. simpl in Hfg. apply Hfg; trivial; [].
-      rewrite add_In. right. split; try reflexivity. unfold In in *. omega.
+      rewrite add_In. left. split; try reflexivity. unfold In in *. omega.
     - intros m'' Hm'' x' acc' Hin' Hout'.
       assert (Hneq : x' =/= x). { intro Habs. apply Hout. now rewrite <- Habs. }
       rewrite <- (add_other x x' m[x] m' Hneq).
@@ -1894,7 +1899,7 @@ Section MMultisetFacts.
   Proof. intros. apply rect; trivial. intros ? ? Heq. now rewrite Heq. Qed.
   
   (** Direct definition by induction on [elements m], which does not use [fold]. **)
-  Definition rect2 : forall P, (forall m1 m2, m1 == m2 -> P m1 -> P m2) ->
+  Definition rect_bis : forall P, (forall m1 m2, m1 == m2 -> P m1 -> P m2) ->
     (forall m x n, ~In x m -> P m -> P (add x n m)) ->
     P empty -> forall m, P m.
   Proof.
@@ -1934,7 +1939,7 @@ Section MMultisetFacts.
   intro m. split.
   + pattern m. apply ind; clear m.
     - intros m1 m2 Hm. setoid_rewrite Hm. reflexivity.
-    - intros m x n Hm Hn Hrec _. exists x. apply add_In. right. split; omega || reflexivity.
+    - intros m x n Hm Hn Hrec _. exists x. apply add_In. left. split; omega || reflexivity.
     - intro Habs. now elim Habs.
   + intros [x Hin]. intro Habs. revert Hin. rewrite Habs. apply In_empty.
   Qed.
@@ -1964,14 +1969,11 @@ Section MMultisetFacts.
   + assert (Hin : In x m). { rewrite <- support_spec, Hm. now left. }
     unfold In in Hin. split; try omega. intro y. rewrite singleton_spec.
     destruct (equiv_dec y x) as [Heq | Hneq]. now rewrite Heq.
-    destruct (multiplicity y m) eqn:Hy. reflexivity.
+    destruct m[y] eqn:Hy. reflexivity.
     assert (Hiny : In y m). { unfold In. rewrite Hy. omega. }
     rewrite <- support_spec, Hm in Hiny. inversion_clear Hiny. contradiction. inversion H.
   + destruct Hm as [Hm Hmult]. rewrite Hm. apply support_singleton. omega.
   Qed.
-  
-  Lemma support_In : forall x m, InA equiv x (support m) <-> In x m.
-  Proof. intros. rewrite support_elements, elements_spec. unfold In. intuition. Qed.
   
   Lemma support_add : forall x n m, n > 0 ->
     PermutationA equiv (support (add x n m)) (if In_dec x m then support m else x :: support m).
@@ -2025,7 +2027,7 @@ Section MMultisetFacts.
   Proof. intros. repeat rewrite support_spec. apply inter_In. Qed.
   
   Lemma support_diff : forall x m1 m2, InA equiv x (support (diff m1 m2)) <-> m2[x] < m1[x].
-  Proof. intros. rewrite support_In, diff_In. intuition. Qed.
+  Proof. intros. rewrite support_spec, diff_In. intuition. Qed.
   
   Lemma support_lub : forall k m1 m2,
     InA equiv k (support (lub m1 m2)) <-> InA equiv k (support m1) \/ InA equiv k (support m2).
@@ -2233,7 +2235,7 @@ Section MMultisetFacts.
   intro m. split; intro Hin.
   + rewrite size_spec in Hin. destruct (support m) as [| x l] eqn:Heq.
     - inversion Hin.
-    - exists x. rewrite <- support_In, Heq. now left.
+    - exists x. rewrite <- support_spec, Heq. now left.
   + destruct Hin as [x Hin]. destruct (size m) eqn:Hsize.
     - rewrite size_0 in Hsize. rewrite Hsize in Hin. elim (In_empty Hin).
     - auto with arith.
@@ -2249,7 +2251,7 @@ Section MMultisetFacts.
   Proof.
   intros x n m Hin. do 2 rewrite size_spec. rewrite support_remove.
   destruct (le_dec (m[x]) n) as [Hle | ?]; trivial.
-  rewrite <- support_In in Hin. apply PermutationA_split in Hin; refine _. destruct Hin as [l Hin].
+  rewrite <- support_spec in Hin. apply PermutationA_split in Hin; refine _. destruct Hin as [l Hin].
   assert (Hnodup : NoDupA equiv (x :: l)). { rewrite <- Hin. apply support_NoDupA. }
   (* XXX: why does [rewrite Hin] fails here? *)
   rewrite removeA_Perm_compat; eauto; try reflexivity || apply setoid_equiv; []. rewrite Hin.
@@ -2368,10 +2370,10 @@ Section MMultisetFacts.
       destruct (f x n) eqn:Hfxn.
     - msetdec; try rewrite H in *.
           destruct (f x (m'[x])), (f x 0); omega.
-          destruct (f y (multiplicity y m')); omega || now rewrite Hbool.
+          destruct (f y m'[y]); omega || now rewrite Hbool.
       - msetdec; try rewrite H1 in *.
           simpl in Hbool. rewrite Hfxn in Hbool. now destruct (f x (m'[x])), (f x 0).
-          destruct (f y (multiplicity y m)), (f y (multiplicity y m')); omega || inversion Hbool.
+          destruct (f y m[y]), (f y m'[y]); omega || inversion Hbool.
     + intros m Hm. rewrite subset_empty_r in Hm. now rewrite Hm.
     Qed.
     
@@ -2548,7 +2550,7 @@ Section MMultisetFacts.
     assert (Hdisjoint' : forall x, In x m' -> f x m'[x] && g x m'[x] = false).
     { intros y Hy. assert (y =/= x) by (intro; msetdec).
       specialize (Hdisjoint y). rewrite add_other in Hdisjoint; trivial; [].
-      apply Hdisjoint. rewrite add_In. now left. }
+      apply Hdisjoint. rewrite add_In. tauto. }
     repeat rewrite nfilter_add; trivial.
     destruct (f x n) eqn:Hfxn, (g x n) eqn:Hgxn; cbn -[equiv].
     - assert (Hx : (add x n m')[x] = n) by msetdec.
@@ -2765,7 +2767,7 @@ Section MMultisetFacts.
     split; intros Hrec Hand; now rewrite Heq in *; apply Hrec; setoid_rewrite Heq || setoid_rewrite <- Heq.
   + intros m' x n Hin Hn Hrec Hdisjoint.
     assert (Hdisjoint' : forall y, In y m' -> f y && g y = false).
-    { intros y Hin'. apply Hdisjoint. rewrite add_In. now left. }
+    { intros y Hin'. apply Hdisjoint. rewrite add_In. tauto. }
     repeat rewrite filter_add; trivial.
     destruct (f x) eqn:Hfx, (g x) eqn:Hgx; simpl orb; cbn iota.
     - specialize (Hdisjoint x). rewrite Hfx, Hgx in Hdisjoint.
@@ -3574,16 +3576,16 @@ Section MMultisetFacts.
     * revert Hm. pattern m. apply ind; clear m.
       + intros m1 m2 Hm. now rewrite Hm.
       + intros m x n Hm Hn Hrec Hall. destruct (f x n) eqn:Hfxn.
-        - { destruct Hrec as [y [Hin Hy]].
-            + intro Habs. apply Hall. intros y Hin. rewrite add_In in Hin. destruct (equiv_dec y x) as [Heq | Heq].
-              - rewrite not_In in Hm. now rewrite Heq, add_same, Hm.
-              - destruct Hin as [Hin | [_ ?]]; try contradiction. apply Habs in Hin. now rewrite add_other.
-            + exists y. split.
-              - rewrite add_In. now left.
-              - rewrite add_other; trivial. intro Heq. apply Hm. now rewrite <- Heq. }
-        - { exists x. split.
-            + rewrite add_In. right. split. omega. reflexivity.
-            + rewrite not_In in Hm. rewrite add_same, Hm. simpl. now rewrite Hfxn. }
+        - destruct Hrec as [y [Hin Hy]].
+          ++ intro Habs. apply Hall. intros y Hin. rewrite add_In in Hin. destruct (equiv_dec y x) as [Heq | Heq].
+             -- rewrite not_In in Hm. now rewrite Heq, add_same, Hm.
+             -- destruct Hin as [[] | Hin]; try contradiction; []. apply Habs in Hin. now rewrite add_other.
+          ++ exists y. split.
+             -- rewrite add_In. tauto.
+             -- rewrite add_other; trivial. intro Heq. apply Hm. now rewrite <- Heq.
+        - exists x. split.
+          ++ rewrite add_In. left. split; omega || reflexivity.
+          ++ rewrite not_In in Hm. rewrite add_same, Hm. simpl. now rewrite Hfxn.
       + intro Habs. elim Habs. intros x Hin. elim (In_empty Hin).
     * intro Habs. destruct Hm as [x [Hin Hx]]. apply Habs in Hin. rewrite Hin in Hx. discriminate.
     Qed.
@@ -3601,7 +3603,7 @@ Section MMultisetFacts.
     assert (n = m[x]). { rewrite elements_spec in Hin. intuition. }
     rewrite InA_alt in Hin. destruct Hin as [[y p] [[Heqx Heqn] Hin]].
     compute in Heqx, Heqn. subst. rewrite Heqx in *. clear Heqx x. subst.
-    exists (y, multiplicity y m). auto.
+    exists (y, m[y]). auto.
   + destruct Hm as [[x n] [Hin Hfx]]. apply (@In_InA _ eq_pair _) in Hin. rewrite elements_spec in Hin.
     destruct Hin as [Heq Hpos]. simpl in *. subst. now exists x.
   Qed.
@@ -3693,7 +3695,7 @@ Section MMultisetFacts.
 End MMultisetFacts.
 
 
-(* Define tactics at toplevel. *)
+(** As tactics do not survive sections, we define [msetdec] again. *)
 
 Ltac saturate_Einequalities :=
   repeat match goal with
@@ -3753,4 +3755,4 @@ Ltac msetdec :=
 
 Tactic Notation "msetdec_n" integer(n) :=
   do n (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
-          msetdec_step; easy || (try omega)).
+        msetdec_step; easy || (try omega)).

@@ -1,16 +1,16 @@
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
-   P. Courtieu, L. Rieg, X. Urbain                                          
+(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
                                                                             
-   PACTOLE project                                                          
+     P. Courtieu, L. Rieg, X. Urbain                                        
                                                                             
-   This file is distributed under the terms of the CeCILL-C licence         
+     PACTOLE project                                                        
+                                                                            
+     This file is distributed under the terms of the CeCILL-C licence       
                                                                           *)
 (**************************************************************************)
 
 
 Require Import SetoidList.
-Require Import Lists.List.
 Require Import Arith_base.
 Require Import Omega.
 Require Import Pactole.Util.Preliminary.
@@ -18,15 +18,20 @@ Set Implicit Arguments.
 (* TODO: should we add a fold operator? *)
 (* FIXME: change the equalities to use equiv and the Setoid class *)
 
+(** Finite sets as a prefix of natural numbers. *)
+Notation "'fin' N" := {n : nat | n < N} (at level 10).
 
-Lemma subset_dec : forall N (x y : {n : nat | n < N}), {x = y} + {x <> y}.
+Lemma subset_dec : forall N (x y : fin N), {x = y} + {x <> y}.
 Proof.
 intros N [x Hx] [y Hy]. destruct (Nat.eq_dec x y).
 + subst. left. f_equal. apply le_unique.
 + right. intro Habs. inv Habs. auto.
 Qed.
 
-Program Fixpoint build_enum N k (Hle : k <= N) acc : list {n : nat | n < N} :=
+Lemma eq_proj1 : forall N (x y : fin N), proj1_sig x = proj1_sig y -> x = y.
+Proof. intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qed.
+
+Program Fixpoint build_enum N k (Hle : k <= N) acc : list (fin N) :=
   match k with
     | 0 => acc
     | S m => @build_enum N m _ (exist (fun x => x < N) m _ :: acc)
@@ -35,8 +40,10 @@ Next Obligation.
 omega.
 Qed.
 
-Definition enum N : list {n : nat | n < N} := build_enum (Nat.le_refl N) nil.
+(** A list containing all elements of [fin N]. *)
+Definition enum N : list (fin N) := build_enum (Nat.le_refl N) nil.
 
+(** Specification of [enum]. *)
 Lemma In_build_enum : forall N k (Hle : k <= N) l x, In x (build_enum Hle l) <-> In x l \/ proj1_sig x < k.
 Proof.
 intros N k. induction k; intros Hle l x; simpl.
@@ -53,6 +60,7 @@ Qed.
 Lemma In_enum : forall N x, In x (enum N) <-> proj1_sig x < N.
 Proof. intros. unfold enum. rewrite In_build_enum. simpl. intuition. Qed.
 
+(** Length of [enum]. *)
 Lemma build_enum_length : forall N k (Hle : k <= N) l, length (build_enum Hle l) = k + length l.
 Proof.
 intros N k. induction k; intros Hle l; simpl.
@@ -63,8 +71,9 @@ Qed.
 Lemma enum_length : forall N, length (enum N) = N.
 Proof. intro. unfold enum. now rewrite build_enum_length. Qed.
 
+(** [enum] does not contain duplicates. *)
 Lemma build_enum_NoDup : forall N k (Hle : k <= N) l,
-  (forall x, In x l -> k <= proj1_sig x) ->  NoDup l -> NoDup (build_enum Hle l).
+  (forall x, In x l -> k <= proj1_sig x) -> NoDup l -> NoDup (build_enum Hle l).
 Proof.
 intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
 apply IHk.
@@ -76,19 +85,36 @@ apply IHk.
 Qed.
 
 Lemma enum_NoDup : forall N, NoDup (enum N).
-Proof. intros. unfold enum. apply build_enum_NoDup; simpl; intuition; constructor. Qed.
+Proof. intro. unfold enum. apply build_enum_NoDup; simpl; intuition; constructor. Qed.
 
+(** [enum] is sorted in increasing order. *)
+Notation Flt := (fun x y => lt (proj1_sig x) (proj1_sig y)).
+
+Lemma build_enum_Sorted : forall N k (Hle : k <= N) l,
+  (forall x, In x l -> k <= proj1_sig x) -> Sorted Flt l -> Sorted Flt (build_enum Hle l).
+Proof.
+intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
+apply IHk.
++ intros x [Hx | Hx].
+  - now subst.
+  - apply Hin in Hx. omega.
++ constructor; trivial; [].
+  destruct l; constructor; []. simpl. apply Hin. now left.
+Qed.
+
+Lemma enum_Sorted : forall N, Sorted Flt (enum N).
+Proof. intro. unfold enum. apply build_enum_Sorted; simpl; intuition. Qed.
+
+(** Extensional equality of functions is decidable over finite domains. *)
 Lemma build_enum_app_nil : forall N k (Hle : k <= N) l,
   build_enum Hle l = build_enum Hle nil ++ l.
 Proof.
 intros N k. induction k; intros Hle l; simpl.
 + reflexivity.
-+ setoid_rewrite IHk. (*now rewrite <- app_assoc.
++ setoid_rewrite IHk. now rewrite <- app_assoc.
 Qed.
-                       *)
-Admitted.
-  
-Theorem build_enum_eq : forall {A} eqA N (f g : {n : nat | n < N} -> A) k (Hle : k <= N) l,
+
+Theorem build_enum_eq : forall {A} eqA N (f g : fin N -> A) k (Hle : k <= N) l,
   eqlistA eqA (List.map f (build_enum Hle l)) (List.map g (build_enum Hle l)) ->
   forall x, proj1_sig x < k -> eqA (f x) (g x).
 Proof.
@@ -107,20 +133,21 @@ intros A eqA N f g k. induction k; intros Hle l Heq x Hx; simpl.
       now rewrite Heqx.
 Qed.
 
-Corollary enum_eq : forall {A} eqA N (f g : {n : nat | n < N} -> A),
+Corollary enum_eq : forall {A} eqA N (f g : fin N -> A),
   eqlistA eqA (List.map f (enum N)) (List.map g (enum N)) -> forall x, eqA (f x) (g x).
 Proof.
 unfold enum. intros A eqA N f g Heq x.
 apply build_enum_eq with (x := x) in Heq; auto; []. apply proj2_sig.
 Qed.
 
+(** Cutting [enum] after some number of elements. *)
 Lemma firstn_build_enum_le : forall N k (Hle : k <= N) l k' (Hk : k' <= N), k' <= k ->
   firstn k' (build_enum Hle l) = @build_enum N k' Hk nil.
 Proof.
 intros N k. induction k; intros Hk l k' Hk' Hle.
 * assert (k' = 0) by omega. now subst.
 * rewrite build_enum_app_nil, firstn_app, build_enum_length.
-  replace (k' - (S k + length (@nil {n : nat | n < N}))) with 0 by omega.
+  replace (k' - (S k + length (@nil (fin N)))) with 0 by omega.
   rewrite app_nil_r.
   destruct (Nat.eq_dec k' (S k)) as [Heq | Heq].
   + subst k'. rewrite firstn_all2.
@@ -147,6 +174,17 @@ Proof. intros. unfold enum. now apply firstn_build_enum_le. Qed.
 Lemma firstn_enum_lt : forall N k, N <= k -> firstn k (enum N) = enum N.
 Proof. intros. unfold enum. now rewrite firstn_build_enum_lt, firstn_nil. Qed.
 
+Lemma firstn_enum_spec : forall N k x, In x (firstn k (enum N)) <-> proj1_sig x < k.
+Proof.
+intros N k x. destruct (le_lt_dec k N) as [Hle | Hlt].
++ rewrite (firstn_enum_le Hle), In_build_enum. simpl. intuition.
++ rewrite (firstn_enum_lt (lt_le_weak _ _ Hlt)).
+  split; intro Hin.
+  - transitivity N; trivial; []. apply proj2_sig.
+  - apply In_enum, proj2_sig.
+Qed.
+
+(** Removing some number of elements from the head of [enum]. *)
 Lemma skipn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
   skipn k' (build_enum Hle l) = skipn (k' - k) l.
 Proof.
@@ -157,15 +195,6 @@ Qed.
 
 Lemma skipn_enum_lt : forall N k, N <= k -> skipn k (enum N) = nil.
 Proof. intros. unfold enum. now rewrite skipn_build_enum_lt, skipn_nil. Qed.
-
-Lemma firstn_enum_spec : forall N k x, In x (firstn k (enum N)) <-> proj1_sig x < k.
-Proof.
-intros N k x. destruct (le_lt_dec k N) as [Hle | Hlt].
-+ rewrite (firstn_enum_le Hle), In_build_enum. simpl. intuition.
-+ rewrite (firstn_enum_lt (lt_le_weak _ _ Hlt)). split; intro Hin.
-  - transitivity N; trivial; []. apply proj2_sig.
-  - apply In_enum, proj2_sig.
-Qed.
 
 Lemma skipn_enum_spec : forall N k x, In x (skipn k (enum N)) <-> k <= proj1_sig x < N.
 Proof.
@@ -178,19 +207,15 @@ intros N k x. split; intro Hin.
   rewrite <- (firstn_skipn k), in_app_iff, firstn_enum_spec in Hin'. intuition omega.
 Qed.
 
-Lemma eq_proj1 : forall N (x y : {n : nat | n < N}), proj1_sig x = proj1_sig y -> x = y.
-Proof. intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qed.
-
-
 (** ** Byzantine Robots *)
 
-(** We have finetely many robots. Some are good, other are byzantine.
+(** We have finetely many robots. Some are good, others are Byzantine.
     Both are represented by an abtract type that can be enumerated. *)
 Class Names := {
-  (** Number of good and byzantine robots *)
+  (** Number of good and Byzantine robots *)
   nG : nat;
   nB : nat;
-  (** Types representing good and byzantine robots *)
+  (** Types representing good and Byzantine robots *)
   G : Type;
   B : Type;
   (** Enumerations of robots *)
@@ -216,7 +241,7 @@ Class Names := {
 Global Opaque In_Gnames In_Bnames Gnames_NoDup Bnames_NoDup
               Gnames_length Bnames_length Geq_dec Beq_dec fun_Gnames_eq fun_Bnames_eq.
 
-(** Identifiers makes good and byzantine robots undistinguishable *)
+(** Identifiers make good and Byzantine robots undistinguishable. *)
 Inductive ident `{Names} : Type :=
   | Good (g : G)
   | Byz (b : B).
@@ -275,24 +300,25 @@ Qed.
 
 (** Given a number of good and byzntine robots, we can build canonical names.
     It is not declared as a global instance to avoid creating spurious settings. *)
-Local Instance Robots (n m : nat) : Names := {|
+Definition Robots (n m : nat) : Names.
+Proof.
+refine {|
   nG := n;
   nB := m;
-  G := {k : nat | k < n};
-  B := {k : nat | k < m};
+  G := fin n;
+  B := fin m;
   Gnames := enum n;
   Bnames := enum m |}.
-Proof.
-+ intro g. apply In_enum, proj2_sig.
-+ intro b. apply In_enum, proj2_sig.
++ abstract (intro g; apply In_enum, proj2_sig).
++ abstract (intro b; apply In_enum, proj2_sig).
 + apply enum_NoDup.
 + apply enum_NoDup.
 + apply enum_length.
 + apply enum_length.
-+ intros g g'. destruct (subset_dec g g'); auto.
-+ intros b b'. destruct (subset_dec b b'); auto.
-+ intros. now apply enum_eq.
-+ intros. now apply enum_eq.
++ apply subset_dec.
++ apply subset_dec.
++ intros ? ?. apply enum_eq.
++ intros ? ?. apply enum_eq.
 Defined.
 
 Global Opaque G B.

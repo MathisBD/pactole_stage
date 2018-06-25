@@ -1,18 +1,20 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
-(*   PACTOLE project                                                      *)
+(*  Mechanised Framework for Local Interactions & Distributed Algorithms  *)
+(*  T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                        *)
+(*  PACTOLE project                                                       *)
 (*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence.    *)
+(*  This file is distributed under the terms of the CeCILL-C licence.     *)
 (*                                                                        *)
 (**************************************************************************)
 
 (**************************************************************************)
-(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
-     T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                         
-     PACTOLE project                                                        
+(** Mechanised Framework for Local Interactions & Distributed Algorithms    
                                                                             
-     This file is distributed under the terms of the CeCILL-C licence.      
+    T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                          
+                                                                            
+    PACTOLE project                                                         
+                                                                            
+    This file is distributed under the terms of the CeCILL-C licence.       
                                                                           *)
 (**************************************************************************)
 
@@ -28,22 +30,17 @@ Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 
 
-Typeclasses eauto := (bfs) 5.
-
-
 (** Flexible demons are a special case of demons with the additional property that
     the updated location of the robot is not necessarily the one chosen by the robogram,
     but lies on the segment delimited by the current and target locations.
     To avoid Zenon-based paradoxes, we require the robot to move at least a given distance δ. *)
 Section FlexibleFormalism.
 
-Context {loc info T1 T2 : Type}.
-Context `{IsLocation loc info}.
-Context {RMS : RealMetricSpace loc}. (* only used for the equality case of the triangle inequality *)
-Context `{Names}.
-Context {Spect : Spectrum loc info}.
-Context `{@frame_choice loc info T1 _ _ _ _ _}.
-
+Context `{Spectrum}.
+Context {VS : RealVectorSpace location}.
+Context {RMS : RealMetricSpace location}. (* for dist *)
+Variable T1 T2 : Type.
+Context {Frame : frame_choice T1}.
 
 Class FlexibleChoice `{update_choice T2} := {
   move_ratio : T2 -> ratio;
@@ -51,8 +48,8 @@ Class FlexibleChoice `{update_choice T2} := {
 
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
 Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R) := {
-  (** [move_ratio] is ratio between the achieved and the planned move distances. *)
-  ratio_spec : forall config g trajectory choice,
+  (** [move_ratio] is the ratio between the achieved and the planned move distances. *)
+  ratio_spec : forall (config : configuration) g trajectory choice,
     let pt := get_location (config (Good g)) in
     let pt' := get_location (update config g trajectory choice) in
     (* either we reach the target *)
@@ -63,20 +60,21 @@ Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R)
 
 End FlexibleFormalism.
 
-Definition OnlyFlexible : update_choice ratio := {|
-  update_choice_Setoid := _;
-  update_choice_EqDec := _ |}.
-
-Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
-
 (** If the robot is not trying to move, then it does not, no metter what the demon chooses. *)
-Lemma update_no_move `{FlexibleUpdate} : forall config g pt choice,
+Lemma update_no_move `{FlexibleUpdate} : forall (config : configuration) (g : G) (pt : location) (choice : T2),
   get_location (update config g (straight_path pt pt) choice) == pt.
 Proof.
 intros config g pt choice.
 destruct (ratio_spec config g (straight_path pt pt) choice) as [Heq | [Heq Hle]];
 rewrite Heq; simpl; now rewrite add_opp, mul_origin, add_origin.
 Qed.
+
+(** Specialized definition where the only choice made by the demon is the movement ratio. *)
+Definition OnlyFlexible : update_choice ratio := {|
+  update_choice_Setoid := _;
+  update_choice_EqDec := _ |}.
+
+Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
 
 (*
  *** Local Variables: ***

@@ -177,20 +177,13 @@ End MultisetConstruction.
 
 Section MultisetSpectrum.
 
-Context {loc info : Type}.
-Context `{EqDec loc}.
-Context `{EqDec info}.
-Context {Loc : IsLocation loc info}.
+Context `{State}.
 Context `{Names}.
-
-Notation configuration := (@configuration info _ _ _ _).
-Notation map_config := (@map_config info _ _ _ _).
-Notation config_list := (@config_list info _ _ _ _).
 
 Implicit Type config : configuration.
 
-Global Instance multiset_spectrum : Spectrum loc info := {
-  spectrum := multiset loc;
+Global Instance multiset_spectrum : Spectrum := {
+  spectrum := multiset location;
   
   spect_from_config config pt := make_multiset (List.map get_location (config_list config));
   spect_is_ok s config pt :=
@@ -205,28 +198,28 @@ Proof.
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
 Defined.
 
-Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
-Notation spect_from_config := (@spect_from_config loc info _ _ _ _ _ _ multiset_spectrum).
-
+(* To speed up typeclass resolution. *)
+Notation spect_from_config := (@spect_from_config _ _ _ _ multiset_spectrum).
 
 Require Pactole.Spaces.RealMetricSpace.
-Lemma spect_from_config_ignore_snd {RMS : RealMetricSpace.RealMetricSpace loc} : forall config pt,
-  spect_from_config config pt == spect_from_config config RealMetricSpace.origin.
+Lemma spect_from_config_ignore_snd {VS : RealVectorSpace.RealVectorSpace location}
+                                   {RMS : RealMetricSpace.RealMetricSpace location} :
+  forall config pt, spect_from_config config pt == spect_from_config config RealVectorSpace.origin.
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
   forall config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (app f) config) (f pt).
+  map f (spect_from_config config pt) == spect_from_config (map_config (lift f) config) (f pt).
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum.
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 + apply make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
-  assert (Hequiv : (@equiv info _ ==> @equiv loc _)%signature
-                     (fun x => f (get_location x)) (fun x => get_location (app f x))).
-  { intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
+  assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
+                     (fun x => f (get_location x)) (fun x => get_location (lift f x))).
+  { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).
 + assumption.
-+ now apply app_compat.
++ now apply lift_compat.
 Qed.
 
 Theorem cardinal_spect_from_config : forall config pt, cardinal (spect_from_config config pt) = nG + nB.

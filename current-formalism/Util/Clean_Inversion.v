@@ -8,9 +8,6 @@
 (**************************************************************************)
 
 
-(* Complements to the standard library on streams. *)
-
-
 Ltac harvest_hyps harvester := constr:(ltac:(harvester; constructor) : True).
 
 Ltac revert_clearbody_all := 
@@ -41,7 +38,7 @@ Ltac revert_new_hyps tac :=
   map_hyps revert_if_not_old new_hyps.
 
 
-(*demo:*)
+(* Demo *)
 Goal forall (a b c:nat), True.
 intros a b c.
 do 3 pose proof true as ?b; move b0 at top.

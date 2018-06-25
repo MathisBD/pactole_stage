@@ -1,18 +1,19 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
-(*   PACTOLE project                                                      *)
+(*  Mechanised Framework for Local Interactions & Distributed Algorithms  *)
+(*  T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                        *)
+(*  PACTOLE project                                                       *)
 (*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence     *)
+(*  This file is distributed under the terms of the CeCILL-C licence      *)
 (*                                                                        *)
 (**************************************************************************)
 
-(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
-     T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                         
+(** Mechanised Framework for Local Interactions & Distributed Algorithms    
                                                                             
-     PACTOLE project                                                        
+    T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                          
                                                                             
-     This file is distributed under the terms of the CeCILL-C licence     *)
+    PACTOLE project                                                         
+                                                                            
+    This file is distributed under the terms of the CeCILL-C licence      *)
 
 
 Require Import Rbase.
@@ -26,79 +27,83 @@ Import Pactole.Util.Bijection.Notations.
 Set Implicit Arguments.
 
 
-(** *  Robot Information  **)
+(** *  Space  **)
+
+(** The space in which robots evolve, which must have a decidable equality.
+
+    There is no direct instantiation, making sure that no spurious instance can be created.
+    Instead, the user must provide the instance using [make_Space]. *)
+Class Location := {
+  location : Type;
+  location_Setoid :> Setoid location;
+  location_EqDec :> EqDec location_Setoid }.
+
+Definition make_Location (T : Type) `{EqDec T} := {| location := T |}.
+Arguments make_Location T {_} {_}.
+
+(** *  Robot State  **)
 
 (** The states of robots is left as an abstract parameter.
-    To be able to use it effectively, we need projections mapping this abstract type
+    To be able to use it effectively, we need projections mlifting this abstract type
     to parts of it that enjoy additional properties.
     For instance, the space in which robots evolve may be a real metric space, a graph, ...  *)
 
 (** The minimum we ask for is the current location of the robot. *)
-Class IsLocation loc info `{EqDec info} `{EqDec loc} := {
-  get_location : info -> loc;
-(*   update_location : loc -> info -> info; (* The [loc] argument is relative to the current location *) *)
+Class State info `{Location} := {
+  get_location : info -> location;
+  (** States are equipped with a decidable equality *)
+  state_Setoid :> Setoid info;
+  state_EqDec :> EqDec state_Setoid;
   (** Lifting a change of frame to the location field *)
-  app : (loc -> loc) -> info -> info;
-  app_id : @equiv _ (fun_equiv _ _) (app id) id;
-  app_compose : forall f g state, app f (app g state) == app (fun x => f (g x)) state;
-  get_location_app : forall f state, get_location (app f state) == f (get_location state);
+  lift : (location -> location) -> info -> info;
+  lift_id : @equiv _ (fun_equiv _ _) (lift id) id;
+  lift_compose : forall f g state, lift f (lift g state) == lift (fun x => f (g x)) state;
+  get_location_lift : forall f state, get_location (lift f state) == f (get_location state);
   (** Compatibility properties *)
   get_location_compat :> Proper (equiv ==> equiv) get_location;
-(*   update_location_compat :> Proper (equiv ==> equiv ==> equiv) update_location; *)
-  app_compat :> Proper ((equiv ==> equiv) ==> equiv ==> equiv) app }.
+  lift_compat :> Proper ((equiv ==> equiv) ==> equiv ==> equiv) lift }.
 
-Arguments IsLocation loc info {_} {_} {_} {_}.
-
-
-(** Same class but different name. *)
-Class IsTarget loc info `{IsLocation loc info} := {
-  get_target : info -> loc;
-(*   update_target : loc -> info -> info; *)
-  get_target_app : forall f state, get_target (app f state) == f (get_target state);
-  (** Compatibility properties *)
-  get_target_compat :> Proper (equiv ==> equiv) get_target }.
-(*   update_target_compat :> Proper (equiv ==> equiv ==> equiv) update_target }. *)
-
-Arguments IsTarget loc info {_} {_} {_} {_} {_}.
+Arguments State info {_}.
 
 (* TODO: Define the disjoint union of such projections to ensure their independence. *)
 
-Definition OnlyLocation loc `{EqDec loc} : IsLocation loc loc := {|
+(** A basic state containing only the current location. *)
+Definition OnlyLocation `{Location} : State location := {|
   get_location := id;
-  app := id;
-  app_id := reflexivity _;
-  app_compose := ltac:(reflexivity);
-  get_location_app := ltac:(reflexivity) |}.
+  lift := id;
+  lift_id := reflexivity _;
+  lift_compose := ltac:(reflexivity);
+  get_location_lift := ltac:(reflexivity) |}.
 
-
-Section AddInfo.
-
-Variable T : Type.
-Context `{EqDec T}.
-
-Instance AddInfo loc info `(IsLocation loc info) : IsLocation loc (info * T) := {|
+(** Adding a location-typed field that is affected by frame change. *)
+Instance AddLocation info `(State info) : State (info * location) := {|
   get_location := fun x => get_location (fst x);
-  app := fun f x => (app f (fst x), snd x) |}.
+  lift := fun f x => (lift f (fst x), f (snd x)) |}.
 Proof.
-+ intros []. simpl. split; try reflexivity; []. apply app_id.
-+ intros f g []. simpl. split; try reflexivity; []. apply app_compose.
-+ intros f []. simpl. apply get_location_app.
-+ intros [] [] []. simpl. now apply get_location_compat.
-+ intros f g Hfg [] [] []. simpl. repeat split; trivial; []. now apply app_compat.
-Defined.
-
-End AddInfo.
-
-
-Instance AddLocation loc info `(IsLocation loc info) : IsLocation loc (info * loc) := {|
-  get_location := fun x => get_location (fst x);
-  app := fun f x => (app f (fst x), f (snd x)) |}.
-Proof.
-+ intros []. simpl. split; try reflexivity; []. apply app_id.
-+ intros f g []. simpl. split; try reflexivity; []. apply app_compose.
-+ intros f []. simpl. apply get_location_app.
++ apply prod_Setoid; apply state_Setoid || apply location_Setoid.
++ apply prod_EqDec; apply state_EqDec || apply location_EqDec.
++ intros []. simpl. split; try reflexivity; []. apply lift_id.
++ intros f g []. simpl. split; try reflexivity; []. apply lift_compose.
++ intros f []. simpl. apply get_location_lift.
 + intros [] [] []. simpl. now apply get_location_compat.
 + intros f g Hfg [] [] []. simpl. split.
-  - now apply app_compat.
+  - now apply lift_compat.
   - now apply Hfg.
 Defined.
+
+(** Adding information that is not affected by frame change. *)
+Instance AddInfo info T `{EqDec T} `(State info) : State (info * T) := {|
+  get_location := fun x => get_location (fst x);
+  lift := fun f x => (lift f (fst x), snd x) |}.
+Proof.
++ apply prod_Setoid; apply state_Setoid || auto.
++ apply prod_EqDec; apply state_EqDec || auto.
++ intros []. simpl. split; try reflexivity; []. apply lift_id.
++ intros f g []. simpl. split; try reflexivity; []. apply lift_compose.
++ intros f []. simpl. apply get_location_lift.
++ intros [] [] []. simpl. now apply get_location_compat.
++ intros f g Hfg [] [] []. simpl. repeat split; trivial; []. now apply lift_compat.
+Defined.
+
+(* RMK: As [AddLocation] has less parameters than [AddInfo], its priority is higher,
+        ensuring that we cannot use the wrong one. *)

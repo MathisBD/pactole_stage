@@ -23,7 +23,7 @@ mkdir ./package/Gathering/InR2
 coq_makefile -f _CoqProject -o Makefile
 
 # Copy files into each directory
-cp Util/FSets/OrderedType.v Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v ./package/Util/FSets/
+cp Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v ./package/Util/FSets/
 
 cp Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v ./package/Util/FMaps/
 
@@ -35,21 +35,20 @@ cp Core/Robots.v Core/RobotInfo.v Core/Configurations.v Core/Formalism.v ./packa
 
 cp Setting.v Makefile _CoqProject ./package/
 
-cp Spaces/RealMetricSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces/
+cp Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces/
 
 cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra/
 
-cp Models/Rigid.v Models/Similarity.v ./package/Models/
-# Models/Flexible.v Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v
+cp Models/Rigid.v Models/Flexible.v Models/Similarity.v ./package/Models/
+# Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v
 
 cp Convergence/Impossibility_2G_1B.v Convergence/Algorithm_noB.v ./package/Convergence/
 
-cp Gathering/Definitions.v Gathering/WithMultiplicity.v ./package/Gathering/
+cp Gathering/Definitions.v Gathering/WithMultiplicity.v Gathering/Impossibility.v ./package/Gathering/
 
 cp Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
 
-cp Gathering/InR2/Algorithm.v ./package/Gathering/InR2/
-# Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+cp Gathering/InR2/Algorithm.v Gathering/InR2/FSyncFlexNoMultAlgorithm.v Gathering/InR2/Peleg.v ./package/Gathering/InR2/
 
 ## Specific to the MoRoVer'17 workshop
 #cp Template.v script.bak ./package/

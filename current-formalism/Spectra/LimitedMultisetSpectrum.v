@@ -46,26 +46,21 @@ Set Default Proof Using "All".
 
 Section MultisetSpectrum.
 
-Context {loc info : Type}.
-Context `{RealMetricSpace loc}.
-Context `{EqDec info}.
-Context {Loc : IsLocation loc info}.
+Context `{State}.
+Context {VS : RealVectorSpace location}.
+Context {RMS : RealMetricSpace location}.
 Context `{Names}.
-
-Notation configuration := (@configuration info _ _ _ _).
-Notation map_config := (@map_config info _ _ _ _).
-Notation config_list := (@config_list info _ _ _ _).
 
 Implicit Type config : configuration.
 
-Global Instance limited_multiset_spectrum (radius : R) : Spectrum loc info := {
-  spectrum := multiset loc;
+Global Instance limited_multiset_spectrum (radius : R) : Spectrum := {
+  spectrum := multiset location;
   spect_from_config config pt :=
     MultisetSpectrum.make_multiset (List.filter (fun x => Rle_bool (dist x pt) radius)
                                                 (List.map get_location (config_list config)));
   spect_is_ok s config pt :=
     forall l, s[l] = if Rle_bool (dist l pt) radius
-                     then countA_occ _ equiv_dec l (List.map get_location (config_list config)) else 0 }.
+                     then countA_occ _ equiv_dec l (List.map get_location (config_list config)) else 0%nat }.
 Proof.
 (* BUG?: bullet forbidden here *)
 { intros config1 config2 Hconfig pt1 pt2 Hpt.
@@ -78,26 +73,27 @@ Proof.
   apply countA_occ_filter. intros ? ? Heq. f_equal. now rewrite Heq.
 Defined.
 
-Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _).
+(* Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _). *)
 Local Notation "'from_config' radius" :=
-  (@spect_from_config loc info _ _ _ _ _ _ (limited_multiset_spectrum radius)) (at level 1).
+  (@spect_from_config _ _ _ _ (limited_multiset_spectrum radius)) (at level 1).
 
 Lemma spect_from_config_ignore_snd : forall config pt,
   spect_from_config config pt == spect_from_config config origin.
 Proof. reflexivity. Qed.
 
-Lemma spect_from_config_map : forall sim : similarity loc,
+Lemma spect_from_config_map : forall sim : similarity location,
   forall radius config pt,
   map sim (from_config radius config pt)
-  == from_config (sim.(Similarity.zoom) * radius) (map_config (app sim) config) (sim pt).
+  == from_config (sim.(Similarity.zoom) * radius) (map_config (lift sim) config) (sim pt).
 Proof.
 repeat intro. unfold spect_from_config, limited_multiset_spectrum.
 rewrite config_list_map, map_map, 2 filter_map, <- MultisetSpectrum.make_multiset_map, map_map; autoclass; [].
 apply MultisetSpectrum.make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
-assert (Hequiv : (equiv ==> equiv)%signature (fun x => sim (get_location x)) (fun x => get_location (app sim x))).
-{ intros pt1 pt2 Heq. now rewrite get_location_app, Heq. }
+assert (Hequiv : (@equiv _ state_Setoid ==> @equiv _ location_Setoid)%signature
+         (fun x => sim (get_location x)) (fun x => get_location (lift sim x))).
+{ intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
 apply (map_extensionalityA_compat _ Hequiv). f_equiv.
-intros ? ? Heq. rewrite get_location_app, sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].
+intros ? ? Heq. rewrite get_location_lift, sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].
 apply Similarity.zoom_pos.
 Qed.
 

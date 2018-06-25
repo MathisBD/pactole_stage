@@ -41,6 +41,8 @@ Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
 Notation "x == y" := (equiv x y).
 Arguments complement A R x y /.
+Arguments PermutationA {A}%type eqA%signature l1%list l2%list.
+Arguments Proper {A}%type R%signature m.
 
 
 (** A tactic simplifying coinduction proofs. *)
@@ -168,7 +170,7 @@ Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
   Pactole.Util.FMaps.FMapInterface.prod_Setoid.
 Instance prod_EqDec A B `(EqDec A) `(EqDec B) : EqDec (@prod_Setoid A B _ _) :=
   Pactole.Util.FMaps.FMapInterface.prod_EqDec _ _.
-Arguments prod_EqDec [A] [B] {_} _ {_} _ _ _.
+Arguments prod_EqDec [A] [B] {_} _ {_} _.
 
 Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
 Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
@@ -451,6 +453,9 @@ Fixpoint alls (x : A) n :=
     | 0 => Datatypes.nil
     | S m => x :: alls x m
   end.
+
+Global Instance alls_compat : Proper (eqA ==> Logic.eq ==> eqlistA eqA) alls.
+Proof. intros x y Hxy ? n ?. subst. now induction n; simpl; constructor. Qed.
 
 Lemma alls_length : forall (x : A) n, length (alls x n) = n.
 Proof. intros x n. induction n; simpl; auto. Qed.
@@ -964,7 +969,8 @@ Global Instance Permutation_NoDup_compat {A : Type} : Proper (@Permutation A ==>
 Proof. repeat intro. now split; apply Permutation_NoDup. Qed.
 
 (** ***  Results about [remove]  **)
-
+(*
+(* TODO: use [removeA] instead of [remove] *)
 Section Remove_results.
 Context (A : Type).
 Hypothesis eq_dec : forall x y : A, {x = y} + {x <> y}.
@@ -1064,7 +1070,7 @@ intros l x. induction l; simpl.
 Qed.
 
 End Remove_results.
-
+*)
 (** ***  Results about [filter]  **)
 
 Section Filter_results.
@@ -1305,9 +1311,9 @@ intros l1. induction l1; intros l2 x; simpl.
 - destruct (eq_dec a x); now rewrite IHl1.
 Qed.
 
-Global Instance countA_occ_compat : Proper (eq ==> PermutationA eqA ==> eq) (countA_occ).
+Global Instance countA_occ_compat : Proper (eqA ==> PermutationA eqA ==> eq) (countA_occ).
 Proof.
-intros a b Hab l. induction l as [| x l]; intros [| x' l'] Hl; subst.
+intros a b Hab l. induction l as [| x l]; intros [| x' l'] Hl.
 + reflexivity.
 + apply (PermutationA_nil _) in Hl. discriminate Hl.
 + symmetry in Hl. apply (PermutationA_nil _) in Hl. discriminate Hl.
@@ -1315,9 +1321,9 @@ intros a b Hab l. induction l as [| x l]; intros [| x' l'] Hl; subst.
   destruct Hperm as [l1 [y [l2 [Hxy Heql]]]]; try now left.
   rewrite Heql in *. rewrite Hxy, <- (PermutationA_middle _) in Hl. apply (PermutationA_cons_inv _) in Hl.
   apply IHl in Hl. simpl. rewrite Hl. repeat rewrite countA_occ_app. simpl.
-  destruct (eq_dec x b) as [Hx | Hx], (eq_dec y b) as [Hy | Hy]; try omega.
-  - elim Hy. rewrite <- Hxy. assumption.
-  - elim Hx. rewrite Hxy. assumption.
+  destruct (eq_dec x a) as [Hx | Hx], (eq_dec y b) as [Hy | Hy]; try omega.
+  - elim Hy. now rewrite <- Hxy, <- Hab.
+  - elim Hx. now rewrite Hxy, Hab.
 Qed.
 (*
 Lemma countA_occ_remove_in eq_dec : forall (x : A) l, count_occ eq_dec (remove eq_dec x l) x = 0%nat.
@@ -1342,7 +1348,7 @@ Global Arguments count_occ_remove_out [eq_dec] x [y] [l] _.
 Lemma countA_occ_alls_in : forall x n, countA_occ x (alls x n) = n.
 Proof.
 intros x n. induction n; simpl; trivial.
-destruct (eq_dec x x) as [| Hneq]. now rewrite IHn. now elim Hneq. 
+destruct (eq_dec x x) as [| Hneq]. now rewrite IHn. now elim Hneq.
 Qed.
 
 Lemma countA_occ_alls_out : forall x y n, ~eqA x y -> countA_occ y (alls x n) = 0%nat.
@@ -1426,36 +1432,35 @@ intros f Hf l x. induction l as [| y l]; simpl.
 Qed.
 
 Theorem countA_occ_spec : forall x l n,
-  countA_occ x l = n <-> exists l', PermutationA eqA l (alls x n ++ l') /\ ~InA eqA x l'.
+  countA_occ x l = n <-> PermutationA eqA l (alls x n ++ removeA eq_dec x l).
 Proof.
 intros x l. induction l as [| a l]; intro n; simpl.
-* split; intro Hin.
-  + subst. exists nil. simpl. rewrite InA_nil. intuition.
-  + destruct Hin as [l' [Hperm _]]. apply PermutationA_nil in Hperm; autoclass; [].
-    apply app_eq_nil in Hperm. now destruct n; simpl in Hperm.
+* rewrite app_nil_r. split; intro Heq.
+  + subst. simpl. reflexivity.
+  + apply PermutationA_nil in Heq; autoclass; now destruct n.
 * destruct (eq_dec a x) as [Heq | Heq].
-  + split; intro Hin.
+  + split; intro Hn.
     - destruct n as [| n]; try omega; [].
-      apply eq_add_S in Hin. rewrite IHl in Hin. destruct Hin as [l' [Hper Hin]].
-      exists l'. split; trivial; []. simpl. now constructor.
-    - destruct Hin as [l' [Hperm Hin]].
-      assert (n <> 0). { intro. subst. simpl in Hperm. apply Hin. rewrite <- Hperm. now left. }
+      apply eq_add_S in Hn. rewrite IHl in Hn.
+      simpl. constructor; trivial; [].
+      destruct_match; auto; now symmetry in Heq.
+    - destruct (eq_dec x a); try (now symmetry in Heq); [].
+      assert (n <> 0).
+      { intro. subst. simpl in Hn. assert (Hin : InA eqA a (a :: l)) by now left.
+        rewrite Hn, removeA_InA in Hin; autoclass; tauto. }
       destruct n as [| n]; try omega; [].
-      f_equal. rewrite IHl. exists l'. split; trivial; [].
-      simpl in Hperm. rewrite Heq in Hperm. now apply PermutationA_cons_inv in Hperm.
-  + rewrite IHl. split; intros [l' [Hperm Hin]].
-    - exists (a :: l'). split.
-      ++ now apply PermutationA_cons_app.
-      ++ intro Habs. apply Heq. now inv Habs.
-    - assert (Hin' : InA eqA a (a :: l)) by now left.
-      rewrite Hperm, InA_app_iff in Hin'. destruct Hin' as [Hin' | Hin'].
-      ++ apply alls_InA in Hin'. contradiction.
-      ++ apply PermutationA_split in Hin'; autoclass; []. destruct Hin' as [l'' Hl''].
-         exists l''. split.
-         -- rewrite ?Hl'' in Hperm. rewrite PermutationA_app_comm in Hperm |- *; autoclass; [].
-            simpl in Hperm. now apply PermutationA_cons_inv in Hperm.
-         -- intro Habs. apply Hin. rewrite Hl''. now right.
+      f_equal. rewrite IHl. simpl in Hn. rewrite <- Heq in Hn at 1.
+      apply PermutationA_cons_inv in Hn; autoclass.
+  + rewrite IHl. destruct (eq_dec x a); try (now elim Heq); [].
+    rewrite <- PermutationA_middle; autoclass; [].
+    split; intro Hperm.
+    - now constructor.
+    - now apply PermutationA_cons_inv in Hperm.
 Qed.
+
+Corollary PermutationA_count_split : forall x l,
+  PermutationA eqA l (alls x (countA_occ x l) ++ removeA eq_dec x l).
+Proof. intros. now rewrite <- countA_occ_spec. Qed.
 
 End CountA.
 
@@ -1681,27 +1686,51 @@ End List_halves.
 (** ***  To sort out  **)
 
 Section ToSortOut_results.
-Context (A B : Type).
-Context (eqA eqA' : relation A) (eqB : relation B).
-Context (HeqA : Equivalence eqA) (HeqB : Equivalence eqB).
+Context {A B : Type}.
+Context {eqA eqA' : relation A} {eqB : relation B}.
+Context {HeqA : Equivalence eqA} {HeqB : Equivalence eqB}.
+
+Global Instance fold_left_compat : Proper ((eqB ==> eqA ==> eqB) ==> eqlistA eqA ==> eqB ==> eqB) (@fold_left B A).
+Proof.
+intros f1 f2 Hf l1 l2 Hl.
+induction Hl; intros i1 i2 Hi; simpl.
++ assumption.
++ now apply IHHl, Hf.
+Qed.
 
 Global Instance fold_left_start : forall f, Proper (eqB ==> eqA ==> eqB) f ->
   forall l, Proper (eqB ==> eqB) (fold_left f l).
-Proof.
-intros f Hf l. induction l; intros i1 i2 Hi; simpl.
-  assumption.
-  rewrite IHl. reflexivity. now rewrite Hi.
-Qed.
+Proof. intros. now apply fold_left_compat. Qed.
 
 Global Instance fold_left_symmetry_PermutationA : forall (f : B -> A -> B),
   Proper (eqB ==> eqA ==> eqB) f -> (forall x y z, eqB (f (f z x) y) (f (f z y) x)) ->
   Proper (PermutationA eqA ==> eqB ==> eqB) (fold_left f).
 Proof.
-intros f Hfcomm Hf l1 l2 perm. induction perm; simpl.
-- now repeat intro.
-- intros ? ? Heq. rewrite H, Heq. now apply IHperm.
-- intros ? ? Heq. now rewrite Hf, Heq.
-- repeat intro. etransitivity. now apply IHperm1. now apply IHperm2.
+intros f Hf Hfcomm l1 l2 perm. induction perm; intros i1 i2 Hi; simpl.
+- assumption.
+- now apply IHperm, Hf.
+- now rewrite Hfcomm, Hi.
+- etransitivity. now apply IHperm1. now apply IHperm2.
+Qed.
+
+Global Instance fold_right_compat : Proper ((eqA ==> eqB ==> eqB) ==> eqB ==> eqlistA eqA ==> eqB) (@fold_right B A).
+Proof.
+intros f1 f2 Hf i1 i2 Hi l1 l2 Hl. revert i1 i2 Hi.
+induction Hl; intros i1 i2 Hi; simpl.
++ assumption.
++ now apply Hf, IHHl.
+Qed.
+
+Global Instance fold_right_symmetry_PermutationA : forall (f : A -> B -> B),
+  Proper (eqA ==> eqB ==> eqB) f -> (forall x y z, eqB (f y (f x z)) (f x (f y z))) ->
+  Proper (eqB ==> PermutationA eqA ==> eqB) (fold_right f).
+Proof.
+intros f Hf Hfcomm i1 i2 Hi l1 l2 perm. revert i1 i2 Hi.
+induction perm; intros i1 i2 Hi; simpl.
+- assumption.
+- now apply Hf, IHperm.
+- now rewrite Hfcomm, Hi.
+- etransitivity. now apply IHperm1. now apply IHperm2.
 Qed.
 
 Lemma HdRel_app : forall l1 l2 R (a : A), HdRel R a l1 -> HdRel R a l2 -> HdRel R a (l1++l2).
@@ -1907,6 +1936,14 @@ Instance R_EqDec : @EqDec R _ := Rdec.
 Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.
 Proof. intros a b ? ?. now apply Fourier_util.Rle_mult_inv_pos. Qed.
 
+Lemma Rdiv_le_1 : forall a b, 0 < b -> a <= b -> a / b <= 1.
+Proof.
+intros a b Hb Ha. rewrite <- (Rinv_r b ltac:(lra)).
+apply Rmult_le_compat_r; trivial; [].
+now apply Rlt_le, Rinv_0_lt_compat.
+Qed.
+
+
 (* Lemma Rdiv_le_compat : forall a b c, (0 <= a -> a <= b -> 0 < c -> a / c <= b / c)%R.
 Proof.
 intros a b c ? ? ?. unfold Rdiv. apply Rmult_le_compat; try lra.
@@ -1997,10 +2034,10 @@ Corollary Rle_bool_mult_r : forall k r r', (0 < k)%R -> Rle_bool (r * k) (r' * k
 Proof. intros. setoid_rewrite Rmult_comm. now apply Rle_bool_mult_l. Qed.
 
 
-Definition remove_Perm_properR := remove_Perm_proper Rdec.
+(* Definition remove_Perm_properR := remove_Perm_proper Rdec. *)
 Existing Instance Permutation_length_compat.
 Existing Instance Permutation_NoDup_compat.
-Existing Instance remove_Perm_properR.
+(* Existing Instance remove_Perm_properR. *)
 Existing Instance In_perm_compat.
 Existing Instance InA_impl_compat.
 Existing Instance InA_compat.
@@ -2009,14 +2046,6 @@ Existing Instance PermutationA_length.
 Existing Instance fold_left_start.
 Existing Instance fold_left_symmetry_PermutationA.
 Existing Instance PermutationA_map.
-
-
-Close Scope R_scope.
-
-Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
-Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
-
-Local Open Scope R_scope.
 
 Lemma Rle_neq_lt : forall x y : R, x <= y -> x <> y -> x < y.
 Proof. intros ? ? Hle ?. now destruct (Rle_lt_or_eq_dec _ _ Hle). Qed.
@@ -2028,8 +2057,192 @@ intros x Habs. assert (Heq : x = x + 0) by ring. rewrite Heq in Habs at 1. clear
 apply Rplus_eq_reg_l in Habs. symmetry in Habs. revert Habs. exact R1_neq_R0.
 Qed.
 
+Lemma sqrt_square : forall x, sqrt (x * x) = Rabs x.
+Proof.
+intro x. unfold Rabs. destruct (Rcase_abs x).
++ replace (x * x) with ((-x) * (-x)) by lra. apply sqrt_square; lra.
++ apply sqrt_square; lra.
+Qed.
+
+(** Some results about [R]. *)
+Lemma sqrt_subadditive : forall x y, 0 <= x -> 0 <= y -> sqrt (x + y) <= sqrt x + sqrt y.
+Proof.
+intros x y Hx Hy. apply R_sqr.Rsqr_incr_0.
+- repeat rewrite Rsqr_sqrt, ?R_sqr.Rsqr_plus; try lra.
+  assert (0 <= 2 * sqrt x * sqrt y).
+  { repeat apply Rmult_le_pos; try lra; now apply sqrt_positivity. }
+  lra.
+- apply sqrt_positivity. lra.
+- apply Rplus_le_le_0_compat; now apply sqrt_positivity.
+Qed.
+
+Lemma pos_Rsqr_eq : forall x y, 0 <= x -> 0 <= y -> x² = y² -> x = y.
+Proof. intros. setoid_rewrite <- sqrt_Rsqr; trivial. now f_equal. Qed.
+
+Lemma pos_Rsqr_le : forall x y, 0 <= x -> 0 <= y -> (x² <= y² <-> x <= y).
+Proof. intros. split; intro; try now apply R_sqr.Rsqr_incr_0 + apply R_sqr.Rsqr_incr_1. Qed.
+
+Lemma pos_Rsqr_lt : forall x y, 0 <= x -> 0 <= y -> (x² < y² <-> x < y).
+Proof. intros. split; intro; try now apply R_sqr.Rsqr_incrst_0 + apply R_sqr.Rsqr_incrst_1. Qed.
+
+Lemma pos_Rsqr_le_impl : forall x y, 0 <= y -> x² <= y² -> x <= y.
+Proof.
+intros x y Hle Hsqr.
+destruct (Rle_dec 0 x).
+- now apply R_sqr.Rsqr_incr_0.
+- transitivity 0; lra.
+Qed.
+
+(** ***  Computing the max value of a real-valued function on a list  **)
+
+Set Implicit Arguments.
+Section FunMaxList.
+Context {A : Type}.
+Context `{EqDec A}.
+
+Definition max_list f (l : list A) : R :=
+  fold_right (fun pt max => Rmax (f pt) max) 0%R l.
+
+Lemma max_list_aux_min : forall (f : A -> R) l r,
+  (r <= fold_right (fun pt max => Rmax (f pt) max) r l)%R.
+Proof.
+intros f l. induction l; intro r; simpl.
++ reflexivity.
++ rewrite Rmax_Rle. now right.
+Qed.
+
+Corollary max_list_nonneg : forall f l, 0 <= max_list f l.
+Proof. intros. now apply max_list_aux_min. Qed.
+
+Corollary max_list_aux_eq : forall f l r, 0 <= r ->
+  fold_right (fun pt max => Rmax (f pt) max) r l = Rmax r (max_list f l).
+Proof.
+intros f l r Hr. induction l; simpl.
++ symmetry. now apply Rmax_left.
++ setoid_rewrite IHl. now rewrite Rmax_assoc, (Rmax_comm _ r), Rmax_assoc.
+Qed.
+
+Lemma max_list_app : forall f l1 l2, max_list f (l1 ++ l2) = Rmax (max_list f l1) (max_list f l2).
+Proof.
+intros f l1 l2.
+unfold max_list. rewrite fold_right_app, max_list_aux_eq.
++ apply Rmax_comm.
++ apply max_list_aux_min.
+Qed.
+
+Lemma max_list_alls : forall f pt n, n <> 0%nat -> max_list f (alls pt n) = Rmax (f pt) 0.
+Proof.
+intros f pt n Hn. induction n as [| n]; try tauto; [].
+destruct (Nat.eq_dec n 0) as [Heq | Heq].
++ subst. simpl. reflexivity.
++ specialize (IHn Heq). simpl. setoid_rewrite IHn.
+  rewrite Rmax_assoc, (Rmax_left (f pt)); auto; reflexivity.
+Qed.
+
+Instance max_list_compat_aux : Proper ((equiv ==> eq) ==> PermutationA equiv ==> eq) max_list.
+Proof.
+intros f g Hfg l1 l2 Hl. unfold max_list.
+assert (Heq : (equiv ==> eq ==> eq)%signature (fun pt max => Rmax (f pt) max)
+                                              (fun pt max => Rmax (g pt) max)).
+{ intros i1 i2 Hi m1 m2 Hm. subst. f_equal. now apply Hfg. }
+assert (Hg : Proper (equiv ==> eq) g).
+{ intros x y Hxy. transitivity (f x).
+  - symmetry. now apply Hfg.
+  - now apply Hfg. }
+rewrite (fold_right_compat Heq 0 0 (reflexivity 0) (reflexivity l1)).
+clear f Hfg Heq. revert l2 Hl.
+apply fold_right_symmetry_PermutationA.
++ intros ? ? Heq ? ? ?. subst. f_equal. now rewrite Heq.
++ intros. now rewrite 2 Rmax_assoc, (Rmax_comm _ (g _)).
++ reflexivity.
+Qed.
+
+Instance max_list_compat : Proper ((equiv ==> eq) ==> equivlistA equiv ==> eq) max_list.
+Proof.
+intros f g Hfg l1.
+assert (Hf : Proper (equiv ==> eq) f).
+{ intros x y Hxy. transitivity (g y).
+  - now apply Hfg.
+  - symmetry. now apply Hfg. }
+assert (Hg : Proper (equiv ==> eq) g).
+{ intros x y Hxy. transitivity (f x).
+  - symmetry. now apply Hfg.
+  - now apply Hfg. }
+revert g Hg Hfg. induction l1 as [| e1 l1]; intros g Hg Hfg l2 Hl.
+* assert (l2 = nil). { symmetry in Hl. apply (equivlistA_nil_eq _ _ Hl). }
+  subst. simpl. reflexivity.
+* assert (l2 <> nil). { intro. subst. apply equivlistA_cons_nil in Hl; autoclass. }
+  assert (Hin : InA equiv e1 l2). { rewrite <- Hl. now left. }
+  destruct (InA_dec equiv_dec e1 l1) as [Hagain | Hagain].
+  + assert (Hequiv : equivlistA equiv l1 l2).
+    { intro r. rewrite <- Hl. split; intro Hr.
+      - now right.
+      - inv Hr; trivial; []. revert_one equiv. intro Heq. now rewrite Heq. }
+    rewrite <- (IHl1 _ Hg Hfg _ Hequiv). symmetry. apply (IHl1 _ Hf Hf).
+    intro r. split; intro Hr.
+    - now right.
+    - inv Hr; trivial; []. revert_one equiv. intro Heq. now rewrite Heq.
+  + assert (Hl2 := PermutationA_count_split _ equiv_dec e1 l2).
+    assert (Hequiv := removeA_equivlistA _ equiv_dec Hagain Hl).
+    rewrite (max_list_compat_aux Hg Hl2).
+    rewrite max_list_app, max_list_alls.
+    - rewrite <- (IHl1 _ Hg Hfg _ Hequiv). simpl.
+      rewrite <- Rmax_assoc, (Rmax_right 0); try apply max_list_nonneg; [].
+      f_equal. apply Hfg. reflexivity.
+    - rewrite <- (countA_occ_pos _ equiv_dec) in Hin; autoclass. omega.
+Qed.
+
+Lemma max_list_le : forall f, Proper (equiv ==> eq) f ->
+  forall l pt, InA equiv pt l -> f pt <= max_list f l.
+Proof.
+intros f Hf l pt Hin.
+induction l as [| e l].
++ now rewrite InA_nil in *.
++ simpl. inv Hin.
+  - match goal with H : _ == _ |- _ => rewrite H end.
+    apply Rmax_l.
+  - unfold max_list in *. simpl.
+    eapply Rle_trans; [now apply IHl | apply Rmax_r].
+Qed.
+
+Lemma max_list_ex : forall f l, l <> nil ->
+  exists pt, InA equiv pt l /\ max_list f l = Rmax (f pt) 0.
+Proof.
+intros f l Hl. induction l as [| pt l].
+* now elim Hl.
+* destruct (nil_or_In_dec l) as [? | Hin].
+  + subst l. eauto.
+  + assert (Hnil : l <> nil). { intro. subst. destruct Hin as [? []]. }
+    destruct (IHl Hnil) as [pt' [Hin' Heq]].
+    simpl. rewrite Heq. clear Heq.
+    destruct (Rle_dec (f pt') (f pt)) as [Hle | Hle].
+    - exists pt. split; auto; [].
+      now rewrite Rmax_assoc, (Rmax_left _ (f pt')).
+    - exists pt'. split; auto; [].
+      rewrite Rmax_assoc, (Rmax_right _ (f pt')); lra.
+Qed.
+
+Lemma max_list_eq_0 : forall f, Proper (equiv ==> eq) f -> (forall x, 0 <= f x) ->
+  forall l, max_list f l = 0%R <-> forall x, InA equiv x l -> f x = 0.
+Proof.
+intros f Hf Hfle l. destruct l as [| pt l].
+* cbn. setoid_rewrite InA_nil. tauto.
+* split; intro Hprop.
+  + intros x Hin. assert (Hle := max_list_le Hf Hin).
+    rewrite Hprop in Hle. symmetry. now apply antisymmetry.
+  + destruct (@max_list_ex f (pt :: l) ltac:(discriminate)) as [? [Hin Heq]].
+    apply Hprop in Hin. rewrite Heq, Hin, Rmax_left; reflexivity.
+Qed.
+
+End FunMaxList.
+
+Close Scope R_scope.
+
 
 (** *  The same for integers. **)
+
+Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
+Proof. intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
 
 Open Scope Z.
 

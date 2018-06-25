@@ -1,18 +1,20 @@
 (**************************************************************************)
-(*   Mechanised Framework for Local Interactions & Distributed Algorithms *)
-(*   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                       *)
-(*   PACTOLE project                                                      *)
+(*  Mechanised Framework for Local Interactions & Distributed Algorithms  *)
+(*  T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                        *)
+(*  PACTOLE project                                                       *)
 (*                                                                        *)
-(*   This file is distributed under the terms of the CeCILL-C licence.    *)
+(*  This file is distributed under the terms of the CeCILL-C licence.     *)
 (*                                                                        *)
 (**************************************************************************)
 
 (**************************************************************************)
-(**  Mechanised Framework for Local Interactions & Distributed Algorithms   
-     T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                         
-     PACTOLE project                                                        
+(** Mechanised Framework for Local Interactions & Distributed Algorithms    
                                                                             
-     This file is distributed under the terms of the CeCILL-C licence.      
+    T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                          
+                                                                            
+    PACTOLE project                                                         
+                                                                            
+    This file is distributed under the terms of the CeCILL-C licence.       
                                                                           *)
 (**************************************************************************)
 
@@ -28,15 +30,11 @@ Require Import Pactole.Setting.
 
 Section RigidFormalism.
 
-Context {loc info T1 T2 : Type}.
-Context `{IsLocation loc info}.
-Context {N : Names}.
-Context {Spect : Spectrum loc info}.
-Context `{@frame_choice loc info T1 _ _ _ _ _}.
+Context `{Spectrum}.
+Context {T1 T2 : Type}.
+Context `{@frame_choice _ T1}.
 Context `{update_choice T2}.
-Context {Update : @update_function loc info T2 _ _ _ _ _ _ _}.
-
-Local Notation update := (@update loc info T2 _ _ _ _ _ _ _ Update).
+Context {Update : update_function T2}.
 
 (** Rigid moves are a special case of state updates where the updated location of the robot
     is the one chosen by the robogram. *)

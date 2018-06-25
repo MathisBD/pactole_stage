@@ -8,14 +8,14 @@
 (**************************************************************************)
 
 (**************************************************************************)
-(**   Mechanised Framework for Local Interactions & Distributed Algorithms 
-
-   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                            
-
-   PACTOLE project                                                      
-                                                                        
-   This file is distributed under the terms of the CeCILL-C licence     
-                                                                        *)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+                                                                            
+   T. Balabonski, P. Courtieu, L. Rieg, X. Urbain                           
+                                                                            
+   PACTOLE project                                                          
+                                                                            
+   This file is distributed under the terms of the CeCILL-C licence         
+                                                                          *)
 (**************************************************************************)
 
 
@@ -46,6 +46,8 @@ Proof. now destruct s. Qed.
 CoFixpoint constant (c : A) := cons c (constant c).
 
 CoFixpoint alternate (c1 c2 : A) := cons c1 (cons c2 (alternate c1 c2)).
+
+(** **  Operators over streams  **)
 
 (** Logical operators on properties over streams. *)
 
@@ -107,6 +109,10 @@ Proof. reflexivity. Qed.
 Lemma alternate_tl_hd : forall c1 c2 : A, hd (tl (alternate c1 c2)) = c2.
 Proof. reflexivity. Qed.
 
+(** Alternative caracterisation of [alternate]. *)
+Lemma alternate_tl : forall c1 c2 : A, tl (alternate c1 c2) == alternate c2 c1.
+Proof. cofix alt. constructor; [| constructor]; simpl; auto; []. apply alt. Qed.
+
 (** Compatibility lemmas. *)
 
 Global Instance hd_compat : Proper (equiv ==> equiv) hd.
@@ -120,7 +126,6 @@ Proof. unfold constant. now coinduction Heq. Qed.
 
 Global Instance aternate_compat : Proper (@equiv A _ ==> equiv ==> equiv) alternate.
 Proof. cofix Heq. do 2 (constructor; trivial). cbn. now apply Heq. Qed.
-
 
 Global Instance instant_compat : Proper ((equiv ==> iff) ==> equiv ==> iff) instant.
 Proof. intros P Q HPQ s s' Hs. unfold instant. apply HPQ, Hs. Qed.
@@ -257,7 +262,6 @@ Qed.
 (* It does not apprear t be transitive for lack of synchronisation of the streams. *)
 Global Instance eventually2_trans R `{Transitive _ R} : Transitive (eventually2 R).
 Proof. Abort.
-
 
 (** **  Operators [forever] and [eventually] skipping half the streams   **)
 
@@ -452,7 +456,9 @@ Qed.
 Lemma map_cons : forall f x s, map f (cons x s) = cons (f x) (map f s).
 Proof. intros. apply stream_eq. Qed.
 
+Lemma map_hd : forall f s, hd (map f s) = f (hd s).
+Proof. intros. now rewrite (stream_eq s). Qed.
+
 Lemma map_tl : forall f s, map f (tl s) = tl (map f s).
 Proof. intros. now rewrite (stream_eq s). Qed.
 End Map.
-

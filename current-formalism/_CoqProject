@@ -2,11 +2,12 @@
 -R . Pactole
 
 ## External libraries
-Util/FSets/OrderedType.v
+#Util/FSets/OrderedType.v
 Util/FSets/FSetInterface.v
 Util/FSets/FSetFacts.v
+Util/FSets/FSetList.v
+Util/FMaps/FMapInterface.v
 Util/FMaps/FMapFacts.v
-#Util/FMaps/FmapsIterface.v
 Util/FMaps/FMapList.v
 Util/MMultiset/MMultisetInterface.v
 Util/MMultiset/MMultisetWMap.v
@@ -42,10 +43,13 @@ Models/Similarity.v
 Models/ASync.v
 
 ## Spaces
+Spaces/RealVectorSpace.v
 Spaces/RealMetricSpace.v
+Spaces/RealNormedSpace.v
+Spaces/EuclideanSpace.v
 Spaces/Similarity.v
 Spaces/R.v
-#Spaces/R2.v
+Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
 #Spaces/DiscreteSpace.v
@@ -60,17 +64,17 @@ Spectra/LimitedMultisetSpectrum.v
 #Spectra/PointedMultisetSpectrum.v
 
 ## Case Study: Convergence
-#Convergence/Impossibility_2G_1B.v
+Convergence/Impossibility_2G_1B.v
 
 ## Case Study: Gathering
 Gathering/Definitions.v
 Gathering/WithMultiplicity.v
-#Gathering/Impossibility.v
-#Gathering/InR/Impossibility.v
+Gathering/Impossibility.v
+Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
-#Gathering/InR2/Algorithm.v
-#Gathering/FlexDefinitions.v
-#Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+Gathering/InR2/Algorithm.v
+Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+Gathering/InR2/Peleg.v
 
 ## Case Study: Ring Exploration
 #Exploration/Graph/Definitions.v
