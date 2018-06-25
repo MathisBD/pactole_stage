@@ -37,7 +37,7 @@ Notation "x == y" := (equiv x y).
 
 Section Formalism.
 Context (V E info  : Type).
-Context `{Names}.
+Context {Names : Names}.
 Context `{Setoid info} `{@EqDec info _}.
 Context {Graph : Graph V E}.
 Instance Info : IsLocation V (V*info) :=
@@ -389,9 +389,17 @@ Set Debug Typeclasses.
 
 Definition lli :=  (location * location * info)%type.
 
+Instance Info3V : IsLocation V (V*V*V*info) :=
+    AddInfo _ _ (AddLocation _ _ (AddLocation _ _ (@OnlyLocation V _ _))).
+
+Instance vvvi_Setoid : Setoid vvvi := prod_Setoid (prod_Setoid (prod_Setoid V_Setoid V_Setoid) V_Setoid) _.
+
+Instance vvvi_EqDec : EqDec vvvi_Setoid := prod_EqDec (prod_EqDec (prod_EqDec V_EqDec V_EqDec) V_EqDec) _. 
+
+
 Instance Spect : @Spectrum location llli _ _ _ _ Info3 _ := {
-  spectrum := spectrum V vvvi _ _ _ _ _ _ SpectA;
-  spect_from_config := fun (config: @configuration llli _ _ _ _) => spect_from_config (projectS config);
+  spectrum := spectrum V vvvi vvvi_Setoid vvvi_EqDec V_Setoid V_EqDec Info3V Names SpectA;
+  spect_from_config := fun (config: @configuration llli _ _ _ _) l => spect_from_config (projectS config) (projectS_loc l);
   spect_is_ok s config := spect_is_ok s (projectS config) }.
 Proof.
 + repeat intro. now do 2 f_equiv.
