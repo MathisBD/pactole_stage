@@ -222,7 +222,7 @@ Class Names := {
   Gnames : list G;
   Bnames : list B;
   (** The enumerations are complete and without duplicates *)
-  In_Gnames : forall g : G, In g Gnames;  
+  In_Gnames : forall g : G, In g Gnames;
   In_Bnames : forall b : B, In b Bnames;
   Gnames_NoDup : NoDup Gnames;
   Bnames_NoDup : NoDup Bnames;

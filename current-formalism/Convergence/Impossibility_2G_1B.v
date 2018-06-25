@@ -469,7 +469,7 @@ Hypothesis sol : solution r.
 Definition shifting_da (pt : R) : demonic_action.
 simple refine {| activate := fun _ => true;
                  relocate_byz := fun _ _ => pt;
-                 change_frame := fun config g => (* FIXME: try avoiding passing all the implicit args *)
+                 change_frame := fun config g =>
                  translation (opp (get_location (config (Good g))));
                  choose_update := fun _ _ _ => tt |}; autoclass.
 Proof.

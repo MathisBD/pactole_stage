@@ -23,7 +23,7 @@ Require Import Rbase Rbasic_fun.
 Require Import Lra.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Spaces.RealNormedSpace.
+Require Import Pactole.Spaces.EuclideanSpace.
 Set Implicit Arguments.
 
 
@@ -141,10 +141,13 @@ Proof. intro. unfold center. apply compose_inverse_r. Qed.
 Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _ _).
 Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
+(* TODO: prove that similarities preserve barycenters *)
 
-Section Normed_Results.
+
 (** The existence of homothecy and translation similarities (implied by these two hypotheses)
     is actually equivalent to defining a normed vector space. *)
+
+Section TranslationHomothecy.
 Context (T : Type).
 Context `{rnsT : RealNormedSpace T}.
 
@@ -229,82 +232,10 @@ Proof. simpl. intros. apply add_comm. Qed.
 Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == id.
 Proof. repeat intro. simpl. now rewrite mul_1, add_comm, <- add_assoc, (add_comm _ c), add_opp, add_origin. Qed.
 
-(** We can build a similarity that maps any pair of distinct points into any other one. *)
-Lemma build_sim_aux : forall pt1 pt2 pt3 pt4, pt1 =/= pt2 -> pt3 =/= pt4 -> dist pt4 pt3 / dist pt2 pt1 ≠ 0.
-Proof.
-intros ** Habs. apply Rmult_integral in Habs.
-destruct Habs as [Habs | Habs].
-- rewrite dist_defined in Habs. symmetry in Habs. contradiction.
-- revert Habs. apply Rinv_neq_0_compat. intro Habs.
-  rewrite dist_defined in Habs. symmetry in Habs. contradiction.
-Qed.
+Lemma homothecy_fixpoint : forall c ρ (Hρ : ρ <> 0), homothecy c Hρ c == c.
+Proof. intros. simpl. now rewrite add_opp, mul_origin, add_origin. Qed.
 
-(* FIXME: the orientation is not checked *)
-Definition build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity T.
-Proof.
-refine (translation (add pt3 (opp pt1)) ∘ (@homothecy pt1 ((dist pt4 pt3) / (dist pt2 pt1)) _)).
-now apply build_sim_aux.
-Defined.
-
-Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
-  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
-  pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
-  build_similarity H12 H34 == build_similarity H12' H34'.
-Proof. intros * Heq1 Heq2 Heq3 Heq4 x. simpl in *. now rewrite Heq1, Heq2, Heq3, Heq4. Qed.
-
-Lemma build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
-Proof.
-intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x.
-unfold build_similarity, translation, homothecy. cbn -[dist]. rewrite (dist_sym pt4), (dist_sym pt2).
-remember (dist pt4 pt3 / dist pt2 pt1) as D.
-transitivity (add pt4 (add (mul D x) (opp (mul D pt2))));
-[| symmetry; transitivity (add pt3 (add (mul D x) (opp (mul D pt1))))].
-+ now rewrite add_comm, add_assoc, (add_comm pt4), (add_comm _ pt2),
-              add_assoc, add_opp, (add_comm origin), add_origin, mul_distr_add, mul_opp.
-+ now rewrite add_comm, add_assoc, (add_comm pt3), (add_comm _ pt1),
-              add_assoc, add_opp, (add_comm origin), add_origin, mul_distr_add, mul_opp.
-+ rewrite add_comm, <- add_assoc, (add_comm pt4), <- add_assoc.
-  apply add_compat; try reflexivity; [].
-  apply add_reg_r with (opp pt3). rewrite <- add_assoc, add_opp, add_origin.
-  apply add_reg_l with (mul D pt2). rewrite 2 add_assoc, add_opp, (add_comm origin), add_origin.
-  rewrite <- mul_opp, <- mul_distr_add, <- dist_defined.
-Admitted.
-
-Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  build_similarity Hdiff12 Hdiff34 pt1 == pt3.
-Proof.
-simpl. intros pt1 pt2 pt3 pt4 ? ?.
-now rewrite add_opp, mul_origin, add_origin, (add_comm pt3),
-            add_assoc, add_opp, add_comm, add_origin.
-Qed.
-
-(* This is wrong without proper orientation *)
-Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  build_similarity Hdiff12 Hdiff34 pt2 == pt4.
-Proof.
-simpl. intros pt1 t2 pt3 pt4 ? ?.
-rewrite add_assoc, add_comm, 2 add_assoc, (add_comm _ pt1), add_opp, (add_comm origin), add_origin, add_comm.
-apply add_reg_l with (opp pt3).
-rewrite add_assoc, (add_comm _ pt3), add_opp, add_comm, add_origin, (add_comm _ pt4).
-Admitted.
-
-Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
-  (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
-Proof.
-intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x. simpl.
-assert (norm (pt2 - pt1) <> 0).
-{ rewrite norm_defined. intro Habs. apply Hdiff12. eapply add_reg_r. now rewrite Habs, add_opp. }
-assert (norm (pt4 - pt3) <> 0).
-{ rewrite norm_defined. intro Habs. apply Hdiff34. eapply add_reg_r. now rewrite Habs, add_opp. }
-rewrite Rpower.Rinv_Rdiv; trivial; []. remember (norm (pt2 - pt1) / norm (pt4 - pt3)) as k.
-rewrite (add_comm pt3 (mul _ _)).
-rewrite opp_distr_add, <- 2 add_assoc, opp_opp, add_opp, add_origin.
-rewrite <- add_assoc, (add_comm pt1), (add_assoc pt3), add_opp, (add_comm origin), add_origin.
-reflexivity.
-Qed.
-
-End Normed_Results.
+End TranslationHomothecy.
 
 
 Module Notations.

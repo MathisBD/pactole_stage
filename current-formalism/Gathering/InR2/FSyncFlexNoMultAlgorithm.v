@@ -374,7 +374,7 @@ Proof.
     rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
     rewrite dist_translation in Hle.
     rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
-    assert (0 <= r <= 1) by (destruct r as [r Hr]; apply Hr).
+    assert (0 <= r <= 1) by apply ratio_bounds.
     rewrite Rabs_pos_eq in Hle; try tauto; [].
     apply (Rlt_irrefl delta). do 2 (eapply Rle_lt_trans; eauto; []).
     rewrite dist_sym, <- Rmult_1_l. apply Rmult_le_compat_r.
@@ -385,7 +385,8 @@ Proof.
             forall g,
               InA equiv (get_location (config (Good g))) elems ->
               delta <= dist (config (Good g)) C ->
-              exists r : ratio, round ffgatherR2 da config (Good g) == (config (Good g) + r * (C - (config (Good g))))%VS
+              exists r : ratio, round ffgatherR2 da config (Good g)
+                                == (config (Good g) + r * (C - (config (Good g))))%VS
                      /\ delta <= norm (r * (C - (config (Good g))))%VS).
   { intros g Hin HdeltaP.
     setoid_rewrite (round_simplify_FSync _ _ HFSync (Good g)).
@@ -549,23 +550,22 @@ Proof.
   now auto.
 Qed.
 
-(* FIXME: cleanup! *)
-Theorem round_last_step : forall d config,
+Theorem round_last_step : forall da config,
     delta > 0 ->
-    FullySynchronous d ->
+    FullySynchronousInstant da ->
     measure config <= delta ->
-    measure (round ffgatherR2 (Stream.hd d) config) == 0.
+    measure (round ffgatherR2 da config) == 0.
 Proof.
-intros [da d] config Hdelta HFS Hlt.
+intros da config Hdelta HFSync Hlt.
 unfold measure.
 set (elems := (elements (!! config))).
 set (C := isobarycenter elems).
-remember (elements (!! (round ffgatherR2 da config))) as nxt_elems.
+pose (nxt_elems := elements (!! (round ffgatherR2 da config))).
 assert (Hantec : forall KP, InA equiv KP nxt_elems ->
                    exists g, InA equiv (get_location (config (Good g))) elems
                           /\ get_location (round ffgatherR2 da config (Good g)) == KP).
 { intros [KP k'] HinKP.
-  rewrite Heqnxt_elems, elements_spec, spect_from_config_In in HinKP.
+  unfold nxt_elems in HinKP. rewrite elements_spec, spect_from_config_In in HinKP.
   destruct HinKP as [id Hid].
   destruct id as [g | b]; try (destruct b; omega); [].
   exists g. split; trivial; [].
@@ -574,23 +574,22 @@ assert (Hantec : forall KP, InA equiv KP nxt_elems ->
 assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
 { intros KP HinKP.
   destruct (Hantec KP HinKP) as [g [Hin Hround]].
-  destruct HFS as [Hsync HS].
   rewrite <- Hround in *. clear Hround KP.
-  rewrite (round_simplify_FSync _ _ Hsync (Good g)).
+  rewrite (round_simplify_FSync _ _ HFSync (Good g)).
   cbn zeta.
   edestruct (ratio_spec config g) as [Hupdate | Hupdate]; try rewrite Hupdate.
   + (* valid case: mvt smaller than delta *)
     rewrite straight_path_1. reflexivity.
   + (* mvt at least delta: it is exactly delta *)
     destruct Hupdate as [Hupdate Hle]. rewrite Hupdate in *.
-    remember (move_ratio (choose_update (Stream.hd (Stream.cons da d)) config g
+    remember (move_ratio (choose_update da config g
                (straight_path (get_location (config (Good g))) (isobarycenter (elements !! config))))) as r.
     cbn [straight_path path_f] in Hle.
     rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
     rewrite dist_translation in Hle.
     rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
-    assert (0 <= r) by (destruct r as [r Hr]; apply Hr).
-    rewrite Rabs_pos_eq in Hle; trivial; [].
+    assert (0 <= r <= 1) by apply ratio_bounds.
+    rewrite Rabs_pos_eq in Hle; try tauto; [].
     assert (Hmeasure : forall p1 p2, InA equiv p1 elems -> InA equiv p2 elems -> dist p1 p2 <= measure config).
     { intros p1 p2 Hin1 Hin2. now apply max_dist_spect_le. }
     assert (Hle' := isobarycenter_dist_decrease elems (measure config) (elements_non_nil config) Hmeasure _ Hin).
@@ -598,13 +597,11 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
     assert (Hr : r == ratio_1).
     { apply (Rmult_eq_reg_r delta); try lra; [].
       rewrite Rmult_1_l. apply antisymmetry.
-      - rewrite <- Rmult_1_l. apply Rmult_le_compat_r; try lra; [].
-        destruct r as [r Hr]. apply Hr.
-      - etransitivity; eauto; []. apply Rmult_le_compat_l; trivial; []. etransitivity; eauto. }
+      - rewrite <- Rmult_1_l. apply Rmult_le_compat_r; lra || tauto.
+      - etransitivity; eauto; []. apply Rmult_le_compat_l; try tauto; []. etransitivity; eauto. }
     rewrite Hr. rewrite straight_path_1. reflexivity. }
 destruct (max_dist_spect_ex _ (elements_non_nil (round ffgatherR2 da config)))
   as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].
-simpl Stream.hd.
 rewrite <- Hdist, HonlyC, (HonlyC pt1); try (now subst); [].
 now apply dist_defined.
 Qed.
@@ -742,7 +739,8 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
   apply Stream.Later, Stream.Now. rewrite execute_tail. now apply gathered_at_OK.
 * (* General case, use [round_lt_config] *)
   assert (delta <= measure config).
-  { apply Rnot_lt_le. intro Habs. eapply Rlt_le, round_last_step in Habs; eauto; [].
+  { apply Rnot_lt_le. intro Habs. destruct HFS.
+    eapply Rlt_le, (round_last_step da) in Habs; eauto; [].
     simpl equiv in Habs. rewrite gathered_measure in Habs. destruct Habs as [pt Habs].
     apply Hmove'. apply (gathered_precise Habs (Good g1)). }
   destruct HFS, (Hind (round ffgatherR2 da config)) with d as [pt Hpt].
@@ -754,3 +752,4 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
 Qed.
 
 Print Assumptions FSGathering_in_R2.
+(* FIXME: find and eliminate the use of Classical_Prop.classic *)

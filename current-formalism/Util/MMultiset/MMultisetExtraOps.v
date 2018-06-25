@@ -951,7 +951,7 @@ Section MMultisetExtra.
   try rewrite ?Nat.compare_eq_iff, ?Nat.compare_lt_iff, ?Nat.compare_gt_iff in *;
   subst; split; cbn -[equiv]; omega || (now f_equiv) || trivial.
   - apply add_comm.
-  - apply add_singleton_other_comm. omega.
+  - apply add_singleton_comm.
   Qed.
   
   Local Hint Resolve max_aux_transpose.

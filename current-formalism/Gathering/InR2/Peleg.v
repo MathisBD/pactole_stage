@@ -346,7 +346,6 @@ Corollary round_simplify_FSync : forall da config, FullySynchronousInstant da ->
                end.
 Proof. intros da config Hda. rewrite round_simplify. intro id. now rewrite Hda. Qed.
 
-(* FIXME: cleanup! *)
 Theorem round_lt_config : forall da config,
     delta > 0 ->
     FullySynchronousInstant da ->
@@ -471,7 +470,7 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
            -- setoid_rewrite Hfst. apply max_dist_spect_le.
            -- rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
         ++ apply max_dist_spect_le; now subst elems.
-        ++ cut (proj_ratio kp <> 0%R); try lra.
+        ++ cut (proj_ratio kp <> 0%R); try lra; [].
            intro Habs. rewrite Habs, mul_0, norm_origin in Hkplow. lra.
         ++ tauto.
       - cut (delta <= kp * max_dist_spect !! config); try lra; [].
@@ -575,7 +574,6 @@ rewrite <- Hdist.
 now auto.
 Qed.
 
-(* FIXME: cleanup! *)
 Theorem round_last_step : forall da config,
     delta > 0 ->
     FullySynchronousInstant da ->
@@ -622,8 +620,8 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
     rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
     rewrite dist_translation in Hle.
     rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
-    assert (0 <= r) by (destruct r as [r Hr]; apply Hr).
-    rewrite Rabs_pos_eq in Hle; trivial; [].
+    assert (0 <= r <= 1) by apply ratio_bounds.
+    rewrite Rabs_pos_eq in Hle; try tauto; [].
     assert (Hmeasure : forall p1 p2, InA equiv p1 elems -> InA equiv p2 elems -> dist p1 p2 <= measure config).
     { intros p1 p2 Hin1 Hin2. now apply max_dist_spect_le. }
     setoid_rewrite <- Hfst in Hmeasure. rewrite <- Hfst in Hin.
@@ -632,9 +630,8 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
     assert (Hr : r == ratio_1).
     { apply (Rmult_eq_reg_r delta); try lra; [].
       rewrite Rmult_1_l. apply antisymmetry.
-      - rewrite <- Rmult_1_l. apply Rmult_le_compat_r; try lra; [].
-        destruct r as [r Hr]. apply Hr.
-      - etransitivity; eauto; []. apply Rmult_le_compat_l; trivial; []. etransitivity; eauto. }
+      - rewrite <- Rmult_1_l. apply Rmult_le_compat_r; lra || tauto.
+      - etransitivity; eauto; []. apply Rmult_le_compat_l; try tauto; []. etransitivity; eauto. }
     rewrite Hr. rewrite straight_path_1. reflexivity. }
 destruct (max_dist_spect_ex _ (support_non_nil (round ffgatherR2 da config)))
   as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].

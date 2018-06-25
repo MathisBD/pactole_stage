@@ -130,6 +130,20 @@ split.
   - rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config, even_div2; auto; omega.
 Qed.
 
+Lemma invalid_same_location : nB = 0 -> forall config pt1 pt2 pt3, invalid config ->
+  In pt1 (!! config) -> In pt2 (!! config) -> In pt3 (!! config) ->
+  pt1 =/= pt3 -> pt2 =/= pt3 -> pt1 == pt2.
+Proof.
+intros HnB config pt1 pt2 pt3 Hinvalid Hin1 Hin2 Hin3 Hdiff13 Hdiff23.
+destruct (invalid_strengthen HnB Hinvalid) as [pta [ptb Hdiff Hspect]].
+rewrite Hspect, add_In, In_singleton in Hin1, Hin2, Hin3.
+destruct Hin1 as [[] | []], Hin2 as [[] | []], Hin3 as [[] | []];
+solve [ etransitivity; eauto
+      | elim Hdiff13; etransitivity; eauto
+      | elim Hdiff23; etransitivity; eauto ].
+Qed.
+Arguments invalid_same_location _ config {pt1} {pt2} pt3 _ _ _ _ _.
+
 Lemma invalid_dec : nB = 0 -> forall config, {invalid config} + {~invalid config}.
 Proof.
 intros HnB config.

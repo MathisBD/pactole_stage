@@ -36,6 +36,7 @@ Import Datatypes.
 Import List.
 Import SetoidClass.
 Import Pactole.Spaces.Similarity.Notations.
+Typeclasses eauto := (bfs).
 
 
 (** There are [n] good robots and no byzantine one. *)
@@ -45,41 +46,51 @@ Axiom n_non_0 : n <> 0%nat.
 Instance MyRobots : Names := Robots n 0.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
-Existing Instance R2_Setoid.
-Existing Instance R2_EqDec.
-Existing Instance R2_RMS.
+Instance Loc : Location := {| location := R2 |}.
+Instance Loc_VS : RealVectorSpace location := R2_VS.
+Instance Loc_ES : EuclideanSpace location := R2_ES.
+Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
+Instance Info : State location := OnlyLocation.
+Instance FDC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
+Instance NoChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
 
-
-Instance Info : IsLocation R2 R2 := OnlyLocation.
-Instance FDC : frame_choice (Similarity.similarity R2) := FrameChoiceSimilarity.
-Instance NoChoice : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec}.
-
-Instance UpdateFun : update_function Datatypes.unit := {update := fun _ _ pt _ => pt }.
+Instance UpdateFun : update_function unit := {update := fun _ _ pt _ => pt ratio_1 }.
 Proof. now repeat intro. Defined.
 
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.
 
-(** The spectrum is a multiset of positions *)
-Notation "!!" := (fun config => spect_from_config config origin).
-Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
+(* Refolding typeclass instances *)
+Ltac changeR2 :=
+  change R2 with location in *;
+  change R2_Setoid with location_Setoid in *;
+  change state_Setoid with location_Setoid in *;
+  change R2_EqDec with location_EqDec in *;
+  change state_EqDec with location_EqDec in *;
+  change R2_VS with Loc_VS in *;
+  change R2_ES with Loc_ES in *.
+
+(** The spectrum is a set of positions *)
+Notation "!!" := (fun config => @spect_from_config location _ _ _ set_spectrum config origin).
+(* Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
 Notation configuration := (@configuration R2 _ _ _ _).
 Notation config_list := (@config_list R2 _ _ _ _).
 Notation round := (@round R2 R2 _ _ _ _ _ _ _ _ _ _).
 Notation execution := (@execution R2 _ _ _).
-Notation demonic_action := (@demonic_action R2 R2 _ _ _ _ _ _).
+Notation demonic_action := (@demonic_action R2 R2 _ _ _ _ _ _). *)
 
 
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
+Implicit Type pt : location.
 
 (** As there are robots, the spectrum can never be empty. *)
-Lemma spect_non_empty : forall config pt, spect_from_config config pt =/= empty.
+Lemma spect_non_empty : forall config pt, spect_from_config config pt =/= @empty location _ _ _.
 Proof.
 intros config pt.
 rewrite spect_from_config_ignore_snd. intro Habs.
-assert (Hn : 0 < n). { generalize n_non_0. omega. }
-pose (g := exist _ 0 Hn : G).
+assert (Hn : 0%nat < n). { generalize n_non_0. omega. }
+pose (g := exist _ 0%nat Hn : G).
 specialize (Habs (config (Good g))).
 rewrite empty_spec in Habs.
 assert (Hin := pos_in_config config origin (Good g)).
@@ -118,15 +129,15 @@ intros ? ? Hc ? ? Hr ? ? Hconfig. subst. unfold contained.
 setoid_rewrite Hc. setoid_rewrite Hconfig. reflexivity.
 Qed.
 
-Instance imprisoned_compat : Proper (equiv ==> Logic.eq ==> equiv ==> iff) imprisoned.
+Instance imprisoned_compat : Proper (equiv ==> Logic.eq ==> @equiv _ Stream.stream_Setoid ==> iff) imprisoned.
 Proof.
 unfold imprisoned. repeat intro.
-apply Stream.forever_compat; trivial. repeat intro.
-apply Stream.instant_compat; trivial.
+apply Stream.forever_compat; trivial; []. repeat intro.
+apply Stream.instant_compat; trivial; [].
 now apply contained_compat.
 Qed.
 
-Instance attracted_compat : Proper (equiv ==> eq ==> equiv ==> iff) attracted.
+Instance attracted_compat : Proper (equiv ==> eq ==> @equiv _ Stream.stream_Setoid ==> iff) attracted.
 Proof. intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
 (** A robogram solves convergence if all robots are attracted to a point,
@@ -150,26 +161,23 @@ Close Scope R_scope.
 
 (** * Proof of correctness of a convergence algorithm with no byzantine robot. *)
 
-Definition convergeR2_pgm (s : spectrum) : R2 := barycenter (elements s).
+Definition convergeR2_pgm (s : spectrum) : path location :=
+  local_straight_path (isobarycenter (elements s)).
 
 Instance convergeR2_pgm_compat : Proper (equiv ==> equiv) convergeR2_pgm.
-Proof. intros ? ? Heq. unfold convergeR2_pgm. apply barycenter_compat. now rewrite Heq. Qed.
+Proof.
+intros ? ? Heq. unfold convergeR2_pgm.
+apply local_straight_path_compat, isobarycenter_compat.
+now rewrite Heq.
+Qed.
 
 Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
 (** Rewriting round using only the global frame fo reference. *)
-Lemma barycenter_sim : forall (sim : Similarity.similarity R2) s, s =/= empty ->
-  barycenter (elements (FSetFacts.map sim s)) == sim (barycenter (elements s)).
-Proof.
-intros sim s Hs.
-rewrite map_injective_elements; autoclass; try apply Similarity.injective; [].
-apply barycenter_sim_morph. now rewrite elements_nil.
-Qed.
-
 Theorem round_simplify : forall da config,
   round convergeR2 da config
-  == fun id => if da.(activate) config id
-               then (barycenter (elements (spect_from_config config (config id))))
+  == fun id => if da.(activate) id
+               then isobarycenter (@elements location _ _ _ (!! config))
                else config id.
 Proof.
 intros da config id.
@@ -179,30 +187,32 @@ destruct_match; try reflexivity; [].
 remember (change_frame da config g) as sim.
 change (Bijection.section (Bijection.inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
-cbn -[equiv spect_from_config map_config barycenter RobotInfo.app Similarity.inverse].
-unfold id, convergeR2_pgm.
-rewrite <- barycenter_sim, spect_from_config_map; autoclass.
-assert (Hconfig : map_config (RobotInfo.app (sim ⁻¹)) (map_config (RobotInfo.app sim) config) == config).
-{ rewrite map_config_merge; autoclass; []. rewrite <- (map_config_id config) at 2.
-  apply map_config_compat; try reflexivity; [].
-  simpl. intros ? ? ?. unfold id. now rewrite Bijection.retraction_section. }
-rewrite Hconfig. f_equiv.
+cbn -[equiv spect_from_config map_config isobarycenter lift Similarity.inverse location mul].
+rewrite mul_1, <- isobarycenter_sim_morph; changeR2.
++ simpl map_config at 2. unfold id.
+  rewrite <- spect_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
+  rewrite spect_from_config_ignore_snd. changeR2.
+  change (spect_from_config config 0) with (!! config).
+  rewrite map_map. apply isobarycenter_compat.
+  change (fun x => (sim ⁻¹) (sim x)) with (Bijection.section (Similarity.compose (sim ⁻¹) sim)).
+  rewrite Similarity.compose_inverse_l, map_id. reflexivity.
++ rewrite elements_nil. apply spect_non_empty.
 Qed.
 
 (** Once robots are contained within a circle, they will never escape it. *)
 
-(* First, we assume a geometric property of the barycenter:
-   if all points are included in a circle, then so is their barycenter. *)
-Axiom barycenter_circle : forall center radius (l : list R2),
+(* First, we assume a geometric property of the isobarycenter:
+   if all points are included in a circle, then so is their isobarycenter. *)
+Axiom isobarycenter_circle : forall center radius (l : list R2),
   List.Forall (fun pt => dist center pt <= radius)%R l ->
-  (dist center (barycenter l) <= radius)%R.
+  (dist center (isobarycenter l) <= radius)%R.
 
-Lemma contained_barycenter : forall c r config,
-  contained c r config -> (dist c (barycenter (elements (spect_from_config config origin))) <= r)%R.
+Lemma contained_isobarycenter : forall c r config,
+  contained c r config -> (dist c (isobarycenter (elements (!! config))) <= r)%R.
 Proof.
-intros c r config Hc. apply barycenter_circle.
+intros c r config Hc. apply isobarycenter_circle.
 rewrite Forall_forall. intro.
-rewrite <- InA_Leibniz. change eq with equiv.
+rewrite <- InA_Leibniz. change eq with (@equiv location _).
 rewrite elements_spec, spect_from_config_In.
 intros [id Hpt]. rewrite <- Hpt.
 pattern id. apply no_byz. apply Hc.
@@ -214,7 +224,7 @@ Proof.
 intros da c r config Hconfig g.
 rewrite round_simplify.
 destruct_match.
-- now apply contained_barycenter.
+- now apply contained_isobarycenter.
 - auto.
 Qed.
 
@@ -223,20 +233,19 @@ Lemma converge_forever : forall d c r config,
 Proof. coinduction Hcorec; auto using contained_next. Qed.
 
 
-(***********************)
-(** *  Final theorem  **)
-(***********************)
+(************************)
+(** *  Final theorems  **)
+(************************)
 
 Theorem convergence_FSYNC : solution_FSYNC convergeR2.
 Proof.
 intros config d Hfair ε Hε.
-eexists (barycenter (elements _)).
+eexists (isobarycenter (elements _)).
 apply Stream.Later, Stream.Now. rewrite execute_tail.
 apply converge_forever.
 intro g. rewrite round_simplify.
 destruct Hfair as [Hfair _]; hnf in Hfair.
-rewrite Hfair.
-rewrite spect_from_config_ignore_snd.
+rewrite Hfair. changeR2.
 transitivity 0%R; try (now apply Rlt_le); [].
 apply Req_le.
 apply R2_dist_defined_2.

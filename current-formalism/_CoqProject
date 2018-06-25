@@ -65,6 +65,7 @@ Spectra/LimitedMultisetSpectrum.v
 
 ## Case Study: Convergence
 Convergence/Impossibility_2G_1B.v
+Convergence/Algorithm_noB.v
 
 ## Case Study: Gathering
 Gathering/Definitions.v

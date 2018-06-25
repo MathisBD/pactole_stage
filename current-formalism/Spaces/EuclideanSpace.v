@@ -91,6 +91,7 @@ Section PerpendicularResults.
   Context `{EuclideanSpace}.
 
   Definition perpendicular u v := inner_product u v = 0.
+  Notation "u '⟂' v" := (perpendicular u v) (at level 50, no associativity).
 (*   Definition colinear `{EuclideanSpace} u v := perpendicular u (orthogonal v). *)
   
   (* could be strenghtened to colinear *)
@@ -147,6 +148,7 @@ Section PerpendicularResults.
   
 End PerpendicularResults.
 Arguments perpendicular {T%type} {_} {_} {_} {_} u%VS v%VS.
+Notation "u ⟂ v" := (perpendicular u v) (at level 50, no associativity).
 
 (** The norm induced by the inner_product. *)
 Instance Euclidean2Normed {T} `{EuclideanSpace T} : RealNormedSpace T := {
@@ -207,7 +209,7 @@ repeat rewrite ?squared_norm_product,
 ring.
 Qed.
 
-Lemma polarization_identity  `{EuclideanSpace} : forall u v, 〈u, v〉 = ((norm (u + v))² - (norm (u - v))²) / 4.
+Lemma polarization_identity `{EuclideanSpace} : forall u v, 〈u, v〉 = ((norm (u + v))² - (norm (u - v))²) / 4.
 Proof.
 intros.
 rewrite 2 squared_norm_product, 2 inner_product_add_l, 4 inner_product_add_r,
@@ -340,28 +342,28 @@ Section Normed2Euclidean.
   Lemma product_sqr : forall k u v, product (k² * u)%VS v = k² * product u v.
   Proof. intros k u v. unfold Rsqr at 2 4. now rewrite <- mul_morph, product_mul_switch, product_mul. Qed.
   
-Instance Normed2Euclidean : EuclideanSpace T.
-simple refine {| inner_product := fun u v => 1/4 * product u v |}; autoclass; simpl.
-Proof.
-+ abstract (intros u u' Hu v v' Hv; now rewrite Hu, Hv).
-+ intros u v. do 2 f_equal.
-  - now rewrite add_comm.
-  - now rewrite <- norm_opp, opp_distr_add, opp_opp, add_comm.
-+ intros u v w. rewrite <- Rmult_plus_distr_l. f_equal.
-  apply product_add.
-+ intros k u v.
-  rewrite <- Rmult_assoc, (Rmult_comm k), Rmult_assoc. f_equal.
-  destruct (Rle_dec 0 k) as [Hk | Hk].
-  - rewrite <- (Rsqr_sqrt _ Hk). apply product_sqr.
-  - rewrite <- (Ropp_involutive k) at 1 2. rewrite minus_morph, product_opp.
-    assert (Hk' : 0 <= - k) by lra.
-    rewrite <- (Rsqr_sqrt _ Hk'), product_sqr, (Rsqr_sqrt _ Hk').
-    ring.
-+ intro u. rewrite add_opp, norm_origin. unfold Rsqr. nra.
-+ intro u. rewrite add_opp, norm_origin, <- norm_defined.
-  assert (Heq : (u + u == 2 * u)%VS) by now rewrite <- add_morph, mul_1.
-  rewrite Heq, norm_mul, Rabs_pos_eq; try lra; []. unfold Rsqr. nra.
-Defined.
+  Instance Normed2Euclidean : EuclideanSpace T.
+  simple refine {| inner_product := fun u v => 1/4 * product u v |}; autoclass; simpl.
+  Proof.
+  + abstract (intros u u' Hu v v' Hv; now rewrite Hu, Hv).
+  + intros u v. do 2 f_equal.
+    - now rewrite add_comm.
+    - now rewrite <- norm_opp, opp_distr_add, opp_opp, add_comm.
+  + intros u v w. rewrite <- Rmult_plus_distr_l. f_equal.
+    apply product_add.
+  + intros k u v.
+    rewrite <- Rmult_assoc, (Rmult_comm k), Rmult_assoc. f_equal.
+    destruct (Rle_dec 0 k) as [Hk | Hk].
+    - rewrite <- (Rsqr_sqrt _ Hk). apply product_sqr.
+    - rewrite <- (Ropp_involutive k) at 1 2. rewrite minus_morph, product_opp.
+      assert (Hk' : 0 <= - k) by lra.
+      rewrite <- (Rsqr_sqrt _ Hk'), product_sqr, (Rsqr_sqrt _ Hk').
+      ring.
+  + intro u. rewrite add_opp, norm_origin. unfold Rsqr. nra.
+  + intro u. rewrite add_opp, norm_origin, <- norm_defined.
+    assert (Heq : (u + u == 2 * u)%VS) by now rewrite <- add_morph, mul_1.
+    rewrite Heq, norm_mul, Rabs_pos_eq; try lra; []. unfold Rsqr. nra.
+  Defined.
   
 End Normed2Euclidean.
 

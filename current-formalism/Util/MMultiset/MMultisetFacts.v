@@ -531,14 +531,14 @@ Section MMultisetFacts.
   Lemma add_singleton_same : forall x n p, add x p (singleton x n) == singleton x (n + p).
   Proof. repeat intro. msetdec. Qed.
   
-  Lemma add_singleton_other_comm : forall x y n p, p > 0 -> add y p (singleton x n) == add x n (singleton y p).
+  Lemma add_singleton_comm : forall x y n p, add y p (singleton x n) == add x n (singleton y p).
   Proof. repeat intro. msetdec. Qed.
   
   Lemma remove_singleton_same : forall x n p, remove x n (singleton x p) == singleton x (p - n).
   Proof. repeat intro. msetdec. Qed.
   
   Lemma remove_singleton_other : forall x y n p, ~y == x -> remove y n (singleton x p) == singleton x p.
-  Proof. repeat intro. msetdec. (* BUG?: saturate_Einequalities shou work! *) now elim H. Qed.
+  Proof. repeat intro. msetdec. (* BUG?: saturate_Einequalities should work! *) now elim H. Qed.
   
   Theorem elements_singleton : forall x n, n > 0 -> eqlistA eq_pair (elements (singleton x n)) ((x, n) :: nil).
   Proof.

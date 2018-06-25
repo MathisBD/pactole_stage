@@ -28,6 +28,7 @@ Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R.
+Require Import Pactole.Models.Rigid.
 Require Import Pactole.Gathering.WithMultiplicity.
 Set Implicit Arguments.
 Close Scope R_scope.
@@ -60,6 +61,9 @@ Instance Choice : update_choice Datatypes.unit := NoChoice.
 Instance UpdFun : update_function Datatypes.unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
   update_compat := ltac:(now repeat intro) }.
+(* This update function is indeed rigid. *)
+Instance Rigid : RigidUpdate.
+Proof. split. intros. simpl. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").

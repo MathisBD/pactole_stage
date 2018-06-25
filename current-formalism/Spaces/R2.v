@@ -18,7 +18,7 @@
 
 
 Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
-Require Import Rbase R_sqrt Rbasic_fun.
+Require Import Rbase R_sqrt Rbasic_fun Rtrigo.
 Require Import Psatz.
 Require Import RelationPairs.
 Require Import SetoidPermutation.
@@ -49,7 +49,6 @@ Defined.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
-(* FIXME: should we use fst/snd instead? *)
 Instance R2_VS : RealVectorSpace R2 := {|
   origin := (0, 0);
   one := (1, 0);
@@ -187,12 +186,11 @@ intros abs. rewrite e in abs. now elim abs.
 Qed.
 
 
-(** **  Poor man's formalization of euclidean spaces  **)
+(** **  Results not holding in generic Euclidean spaces  **)
 
-(* FIXME: we should have instead a proper formalisation of euclidean spaces! *)
+(** The unitary orthogonal vector (with direcet orientation). *)
 Definition orthogonal (u : R2) : R2 := (/(norm u) * (snd u, (- fst u)%R))%VS.
 Definition colinear (u v : R2) := perpendicular u (orthogonal v).
-
 
 (* Compatibilities *)
 Instance orthogonal_compat : Proper (equiv ==> equiv) orthogonal.
@@ -585,6 +583,232 @@ intros pt1 pt2 pt Hnull. split; intro Hpt.
   apply perpendicular_opp_compat_l, perpendicular_opp_compat_r,
         perpendicular_mul_compat_l, perpendicular_mul_compat_r, orthogonal_perpendicular.
 Qed.
+
+
+(** We can build a similarity that maps any pair of distinct points into any other one. *)
+
+(** The rotation similarity, centered on the origin. *)
+Local Definition bij_rotation_f θ x := (Rgeom.xr (fst x) (snd x) θ, Rgeom.yr (fst x) (snd x) θ).
+
+Local Lemma bij_rotation_0 : forall x, bij_rotation_f 0 x == x.
+Proof. intros []. unfold bij_rotation_f. simpl. f_equal; apply Rgeom.rotation_0. Qed.
+
+Lemma bij_rotation_compose : forall θ θ' x,
+  bij_rotation_f θ' (bij_rotation_f θ x) == bij_rotation_f (θ + θ') x.
+Proof. intros. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. rewrite cos_plus, sin_plus. simpl. f_equal; ring. Qed.
+
+Corollary bij_rotation_Inversion : forall θ (x y : R2),
+  bij_rotation_f θ x == y <-> bij_rotation_f (-θ) y == x.
+Proof.
+intros θ x y. split; intro Heq; rewrite <- Heq, bij_rotation_compose;
+ring_simplify (θ + - θ) || ring_simplify (- θ + θ); apply bij_rotation_0.
+Qed.
+
+Definition bij_rotation (θ : R) : Bijection.bijection R2 := {|
+  Bijection.section := bij_rotation_f θ;
+  Bijection.retraction := bij_rotation_f (-θ);
+  Bijection.Inversion := bij_rotation_Inversion θ |}.
+
+Lemma rotation_zoom : forall θ x y, dist (bij_rotation θ  x) (bij_rotation θ y) = 1 * dist x y.
+Proof.
+intros θ x y. change (dist x y) with (Rgeom.dist_euc (fst x) (snd x) (fst y) (snd y)).
+rewrite Rmult_1_l, (Rgeom.isometric_rotation _ _ _ _ θ). reflexivity.
+Qed.
+
+Definition rotation (θ : R) : similarity R2 := {|
+  sim_f := bij_rotation θ;
+  zoom := 1;
+  dist_prop := rotation_zoom θ |}.
+
+Global Instance translation_compat : Proper (equiv ==> equiv) rotation.
+Proof. intros θ θ' Hθ x. simpl. now rewrite Hθ. Qed.
+
+Lemma rotation_0 : rotation 0 == id.
+Proof. intro. simpl. apply bij_rotation_0. Qed.
+
+Lemma rotation_origin : forall θ, rotation θ origin == origin.
+Proof. intros θ. simpl. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr, origin. simpl. f_equal; ring. Qed.
+
+Lemma rotation_inverse : forall θ, inverse (rotation θ) == rotation (-θ).
+Proof. intros θ x. simpl. reflexivity. Qed.
+
+Lemma rotation_add : forall θ u v, (rotation θ (u + v) == rotation θ u + rotation θ v)%VS.
+Proof. intros. cbn. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. simpl. f_equal; ring. Qed.
+
+Lemma rotation_mul : forall θ k u, (rotation θ (k * u) == k * rotation θ u)%VS.
+Proof. intros. cbn. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. simpl. f_equal; ring. Qed.
+
+Lemma cos_carac : forall x, -1 <= x <= 1 -> {θ | 0 <= θ <= PI & x = cos θ}.
+Proof.
+intros x Hx.
+Admitted.
+
+Lemma angle_from_points : forall x y, {θ | norm y * rotation θ x == norm x * y}%VS.
+Proof.
+intros x y. null y; [| null x].
+* exists 0. now rewrite norm_origin, mul_0, mul_origin.
+* exists 0. now rewrite rotation_origin, norm_origin, mul_0, mul_origin.
+* destruct (@cos_carac (inner_product (unitary x) (unitary y))) as [θ Hbounds Hcos].
+  + assert (Hle := Cauchy_Schwarz (unitary x) (unitary y)).
+    rewrite 2 norm_unitary, Rmult_1_l in Hle; trivial; [].
+    rewrite <- Rabs_bounds; lra.
+  + exists θ.
+    rewrite (unitary_id x) at 1. rewrite (unitary_id y) at 2.
+    rewrite rotation_mul, 2 mul_morph, Rmult_comm.
+    apply mul_compat; trivial; []. (* TODO: make [f_equiv] work *)
+    cbn -[unitary]. destruct (unitary x) as [x1 x2], (unitary y) as [y1 y2].
+    unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. cbn [fst snd].
+Admitted.
+
+Lemma angle_from_points_swap : forall u v,
+  proj1_sig (angle_from_points v u) == - proj1_sig (angle_from_points u v).
+Proof.
+Admitted.
+
+Definition rotation_from_points x y : similarity R2 :=
+  rotation (proj1_sig (angle_from_points x y)).
+
+Lemma rotation_from_points_compat : forall x1 x2, x1 == x2 -> forall y1 y2, y1 == y2 ->
+  rotation_from_points x1 y1 == rotation_from_points x2 y2.
+Proof. intros x1 x2 Hx y1 y2 Hy Z. simpl. now rewrite Hx, Hy. Qed.
+
+Lemma rotation_from_points_spec : forall x y, (norm y * rotation_from_points x y x == norm x * y)%VS.
+Proof. intros x y. apply (proj2_sig (angle_from_points x y)). Qed.
+
+Lemma rotation_from_points_nonnull : forall x y, (y =/= 0 -> rotation_from_points x y x == norm x / norm y * y)%VS.
+Proof.
+intros x y Hy. rewrite <- mul_1. rewrite <- (Rinv_r (norm y)).
++ setoid_rewrite Rmult_comm. rewrite <- 2 mul_morph. apply mul_compat; trivial; [].
+  apply rotation_from_points_spec.
++ now rewrite norm_defined.
+Qed.
+
+Lemma rotation_from_points_opp : forall u v, rotation_from_points (-u) (-v) == rotation_from_points u v.
+Proof.
+intros u v x. simpl.
+Admitted.
+
+Lemma rotation_from_points_mul : forall u v k x,
+  (rotation_from_points u v (k * x) == k * rotation_from_points u v x)%VS.
+Proof. intros. unfold rotation_from_points. apply rotation_mul. Qed.
+
+Lemma rotation_from_points_inverse : forall u v, inverse (rotation_from_points u v) == rotation_from_points v u.
+Proof. intros. unfold rotation_from_points. now rewrite rotation_inverse, <- angle_from_points_swap. Qed.
+
+Lemma build_sim_aux : forall pt1 pt2 pt3 pt4, pt1 =/= pt2 -> pt3 =/= pt4 -> dist pt4 pt3 / dist pt2 pt1 <> 0.
+Proof.
+intros ** Habs. apply Rmult_integral in Habs.
+destruct Habs as [Habs | Habs].
+- rewrite dist_defined in Habs. symmetry in Habs. contradiction.
+- revert Habs. apply Rinv_neq_0_compat. intro Habs.
+  rewrite dist_defined in Habs. symmetry in Habs. contradiction.
+Qed.
+
+Definition build_similarity pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R2 :=
+  translation pt3 ∘ rotation_from_points (pt2 - pt1) (pt4 - pt3)
+  ∘ (homothecy origin (build_sim_aux Hdiff12 Hdiff34)) ∘ (translation (opp pt1)).
+
+Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
+  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
+  pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
+  build_similarity H12 H34 == build_similarity H12' H34'.
+Proof. intros * Heq1 Heq2 Heq3 Heq4 x. simpl. now rewrite Heq1, Heq2, Heq3, Heq4 in *. Qed.
+
+Lemma build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
+Proof.
+intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x.
+unfold build_similarity.
+rewrite <- rotation_from_points_opp, 2 opp_distr_add, 2 opp_opp, (add_comm _ pt2), (add_comm _ pt4).
+(*
+cbn -[rotation homothecy].
+simpl build_similarity_aux.
+do 2 destruct_match; cbn -[dist] in *;
+match goal with H : context[dist pt3 pt4] |- _ =>
+  setoid_rewrite (dist_sym pt4 pt3) in H; setoid_rewrite (dist_sym pt2 pt1) in H end;
+setoid_rewrite (dist_sym pt4 pt3); setoid_rewrite (dist_sym pt2 pt1);
+remember (dist pt4 pt3 / dist pt2 pt1) as D.
+* transitivity (add pt4 (add (mul D x) (opp (mul D pt2))));
+  [| symmetry; transitivity (add pt3 (add (mul D x) (opp (mul D pt1))))].
+  + now rewrite add_comm, add_assoc, (add_comm pt4), (add_comm _ pt2),
+                add_assoc, add_opp, (add_comm origin), add_origin, mul_distr_add, mul_opp.
+  + now rewrite add_comm, add_assoc, (add_comm pt3), (add_comm _ pt1),
+                add_assoc, add_opp, (add_comm origin), add_origin, mul_distr_add, mul_opp.
+  + rewrite add_comm, <- add_assoc, (add_comm pt4), <- add_assoc.
+    apply add_compat; try reflexivity; [].
+    apply add_reg_r with (opp pt3). rewrite <- add_assoc, add_opp, add_origin.
+    apply add_reg_l with (mul D pt2). rewrite 2 add_assoc, add_opp, (add_comm origin), add_origin.
+    rewrite <- mul_opp, <- mul_distr_add. assumption.
+* exfalso.
+  match goal with H : _ == (_ - _)%VS, H' : _ == (_ - _)%VS -> False |- _ =>
+    apply H'; rename H into Heq end.
+  apply opp_reg. rewrite opp_distr_add, (add_comm _ (- - _)%VS), opp_opp.
+  rewrite <- Heq. rewrite <- mul_opp, opp_distr_add, opp_opp, add_comm.
+  reflexivity.
+* exfalso.
+  match goal with H : _ == (_ - _)%VS, H' : _ == (_ - _)%VS -> False |- _ =>
+    apply H'; rename H into Heq end.
+  apply opp_reg. rewrite opp_distr_add, (add_comm _ (- - _)%VS), opp_opp.
+  rewrite <- Heq. rewrite <- mul_opp, opp_distr_add, opp_opp, add_comm.
+  reflexivity.
+* rewrite (add_comm _ (pt4 - pt2)), (add_assoc _ pt2), <- (add_assoc pt4),
+          (add_comm _ pt2), add_opp, add_origin, (add_comm pt4), mul_distr_add.
+  rewrite (add_comm _ (pt3 - pt1)), (add_assoc _ pt1), <- (add_assoc pt3),
+          (add_comm _ pt1), add_opp, add_origin, (add_comm pt3), mul_distr_add.
+  repeat rewrite <- add_assoc. apply add_compat; try reflexivity. (* BUG?: f_equiv should work *)
+*)
+Admitted.
+
+Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt1 == pt3.
+Proof.
+intros pt1 pt2 pt3 pt4 ? ?. cbn -[rotation translation homothecy add opp equiv].
+change ((translation (- pt1)%VS) pt1) with (pt1 - pt1)%VS. rewrite add_opp.
+rewrite homothecy_fixpoint.
+unfold rotation_from_points. rewrite rotation_origin.
+cbn -[add equiv]. rewrite add_origin_l. reflexivity.
+Qed.
+
+(* This is wrong without proper orientation *)
+Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt2 == pt4.
+Proof.
+intros pt1 pt2 pt3 pt4 ? ?. cbn -[rotation translation homothecy add opp equiv].
+change ((translation (- pt1)%VS) pt2) with (pt2 - pt1)%VS.
+change ((homothecy origin (build_sim_aux Hdiff12 Hdiff34)) (pt2 - pt1)%VS)
+  with (0 + dist pt4 pt3 / dist pt2 pt1 * (pt2 - pt1 - origin))%VS.
+rewrite add_origin_l, opp_origin, add_origin.
+unfold rotation_from_points. rewrite rotation_mul.
+change ((rotation (proj1_sig (angle_from_points (pt2 - pt1) (pt4 - pt3)))) (pt2 - pt1))%VS
+  with ((rotation_from_points (pt2 - pt1) (pt4 - pt3)) (pt2 - pt1))%VS.
+rewrite rotation_from_points_nonnull.
++ rewrite <- 2 norm_dist. rewrite mul_morph.
+  cut (dist pt4 pt3 / dist pt2 pt1 * (dist pt2 pt1 / dist pt4 pt3) = 1).
+  - intro Heq. rewrite Heq, mul_1. cbn -[opp add equiv].
+    now rewrite <- add_assoc, (add_comm _ pt3), add_opp, add_origin.
+  - field. rewrite 2 dist_defined. auto.
++ hnf. rewrite R2sub_origin. auto.
+Qed.
+
+Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
+Proof.
+intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x.
+unfold build_similarity. repeat rewrite inverse_compose.
+cbn -[inverse rotation translation homothecy add opp equiv].
+change ((homothecy origin (build_sim_aux Hdiff34 Hdiff12)) ((translation (- pt3)%VS) x))%VS
+  with (0 + dist pt2 pt1 / dist pt4 pt3 * (x - pt3 - origin))%VS.
+rewrite rotation_from_points_inverse, 2 translation_inverse.
+rewrite add_origin_l, opp_origin, add_origin, opp_opp.
+rewrite rotation_from_points_mul.
+change ((translation (- pt3)%VS) x) with (x - pt3)%VS.
+remember ((rotation_from_points (pt4 - pt3) (pt2 - pt1)) (x - pt3)%VS) as pt.
+f_equiv.
+change (/ (norm (pt4 - pt3) / norm (pt2 - pt1)) * (pt - 0) + 0 == dist pt2 pt1 / dist pt4 pt3 * pt)%VS.
+rewrite <- 2 norm_dist, opp_origin, 2 add_origin.
+f_equiv. field. rewrite 2 dist_defined. auto.
+Qed.
+
 
 (** ** Segments **)
 

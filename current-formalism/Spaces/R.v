@@ -68,6 +68,13 @@ Proof.
   + now rewrite Heq, Rmult_0_l.
 Defined.
 
+Lemma norm_R : forall x, norm x = Rabs x.
+Proof. intro. simpl. apply sqrt_square. Qed.
+
+Lemma dist_R : forall x y, dist x y = Rabs (x - y).
+Proof. intros. cbn -[norm]. now rewrite norm_R. Qed.
+
+
 (** Small dedicated decision tactic for reals handling 1<>0 and and r=r. *)
 Ltac Rdec := repeat
   match goal with
@@ -434,3 +441,39 @@ destruct Hk; subst k1.
   apply Rmult_eq_reg_l in H2; trivial; [].
   simpl in Hdiff. lra.
 Qed.
+
+(* We can build a similarity that maps any pair of distinct points to any other pair. *)
+Definition build_similarity (pt1 pt2 pt3 pt4 : R) (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4) : similarity R.
+simple refine {| sim_f := {| section := fun x => pt3 + (pt4 - pt3) / (pt2 - pt1) * (x - pt1);
+                      retraction := fun x => pt1 + (pt2 - pt1) / (pt4 - pt3) * (x - pt3) |};
+                 zoom := dist pt4 pt3 / dist pt2 pt1 |}; autoclass.
+Proof.
+* abstract (intros; simpl in *; split; intro; subst; field; lra).
+* intros x y. cbn -[dist]. repeat rewrite dist_R. unfold Rdiv.
+  rewrite <- Rabs_Rinv.
+  + repeat rewrite <- Rabs_mult. f_equal. ring.
+  + simpl in *. lra.
+Defined.
+
+Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
+  (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
+  pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
+  build_similarity H12 H34 == build_similarity H12' H34'.
+Proof. intros * Heq1 Heq2 Heq3 Heq4 x. simpl. now rewrite Heq1, Heq2, Heq3, Heq4 in *. Qed.
+
+Lemma build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
+Proof. repeat intro. simpl in *. field. lra. Qed.
+
+Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt1 == pt3.
+Proof. intros. simpl in *. field. lra. Qed.
+
+(* This is wrong without proper orientation *)
+Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  build_similarity Hdiff12 Hdiff34 pt2 == pt4.
+Proof. intros. simpl in *. field. lra. Qed.
+
+Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+  (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
+Proof. repeat intro. simpl in *. field. lra. Qed.

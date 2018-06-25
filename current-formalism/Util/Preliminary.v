@@ -2093,6 +2093,17 @@ destruct (Rle_dec 0 x).
 - transitivity 0; lra.
 Qed.
 
+Lemma Rabs_bounds : forall x y, 0 <= y -> (Rabs x <= y <-> -y <= x <= y).
+Proof.
+intros x y Hy. split; intro Hle.
++ split.
+  - cut (-x <= y); try lra; []. etransitivity; eauto; [].
+    rewrite <- Rabs_Ropp. apply Rle_abs.
+  - etransitivity; eauto; []. apply Rle_abs.
++ now apply Rabs_le.
+Qed.
+
+
 (** ***  Computing the max value of a real-valued function on a list  **)
 
 Set Implicit Arguments.
