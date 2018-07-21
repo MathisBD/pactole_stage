@@ -25,6 +25,7 @@ Require Import SetoidPermutation.
 Require Import Omega.
 Import List Permutation SetoidList.
 Require Import SetoidDec.
+Require Import FunInd.
 Require Import Pactole.Util.Preliminary.
 Require Export Pactole.Spaces.EuclideanSpace.
 Require Import Pactole.Spaces.Similarity.
@@ -651,7 +652,8 @@ intros x y. null y; [| null x].
 * destruct (@cos_carac (inner_product (unitary x) (unitary y))) as [θ Hbounds Hcos].
   + assert (Hle := Cauchy_Schwarz (unitary x) (unitary y)).
     rewrite 2 norm_unitary, Rmult_1_l in Hle; trivial; [].
-    rewrite <- Rabs_bounds; lra.
+    change (Zneg xH) with (Zopp (Zpos xH)).
+    rewrite opp_IZR, <- Rabs_bounds; lra.
   + exists θ.
     rewrite (unitary_id x) at 1. rewrite (unitary_id y) at 2.
     rewrite rotation_mul, 2 mul_morph, Rmult_comm.
@@ -1021,7 +1023,7 @@ destruct (Req_dec kq 1).
     change eq with equiv. apply add_origin.
   }
   rewrite Heq, norm_dist.
-  assert (Heq' : (P + kp * (C - P) - C = (- 1 + kp) * (C - P))%VS).
+  assert (Heq' : (P + kp * (C - P) - C = (- (1) + kp) * (C - P))%VS).
   { rewrite <- add_morph, minus_morph, mul_1, opp_distr_add, opp_opp.
     symmetry. now rewrite <- add_assoc, add_comm. }
   rewrite Heq', norm_mul, <- Rabs_Ropp.
@@ -1174,7 +1176,8 @@ assert (Hsim : sim == translation (sim origin) ∘ sim').
   rewrite <- Similarity.compose_inverse_r.
   do 2 f_equiv. apply Similarity.translation_inverse. }
 rewrite Hsim at -5. cbn -[add opp mul sim' inner_product].
-repeat rewrite ?inner_product_add_l, ?inner_product_add_r, ?inner_product_opp, ?inner_product_opp_l, ?inner_product_opp_r, Hsim'.
+repeat rewrite ?inner_product_add_l, ?inner_product_add_r, ?inner_product_opp,
+               ?inner_product_opp_l, ?inner_product_opp_r, Hsim'.
 ring.
 Qed.
 
@@ -1263,7 +1266,7 @@ rewrite <- sim_add, add_opp.
 setoid_rewrite add_comm at 3. rewrite add_assoc, add_opp.
 setoid_rewrite add_comm at 2. rewrite add_origin.
 setoid_rewrite <- mul_1 at 8. rewrite <- minus_morph, add_morph.
-ring_simplify (2 + -1). now rewrite mul_1.
+ring_simplify (2 + -(1)). now rewrite mul_1.
 Qed.
 
 Corollary sim_mul : forall (sim : similarity R2) k x, (sim (k * x) = k * sim x + (1 - k) * sim origin)%VS.
@@ -1395,7 +1398,7 @@ Function classify_triangle (pt1 pt2 pt3 : R2) : triangle_type :=
   else if Rdec_bool (dist pt1 pt2) (dist pt1 pt3) then Isosceles pt1
   else Scalene.
 
-Function opposite_of_max_side (pt1 pt2 pt3 : R2) :=
+Definition opposite_of_max_side (pt1 pt2 pt3 : R2) :=
   let len12 := dist pt1 pt2 in
   let len23 := dist pt2 pt3 in
   let len13 := dist pt1 pt3 in
@@ -1451,9 +1454,7 @@ Proof.
   match goal with
   | |- ?x = ?x => reflexivity
   | |- opposite_of_max_side ?a ?b ?c = opposite_of_max_side ?a' ?b' ?c'
-    =>
-    functional induction (opposite_of_max_side a b c);auto;
-    functional induction (opposite_of_max_side a' b' c');auto
+    => unfold opposite_of_max_side; do 4 (let H := fresh in destruct_match_eq H)
   end;
   repeat rewrite ?Rle_bool_true_iff, ?Rle_bool_false_iff in *
   ; repeat progress normalize_R2dist pt1' pt2' pt3' ;try contradiction;
@@ -1466,7 +1467,7 @@ Proof.
            assert (h_ltxx':A<A) by (eapply Rlt_trans;eauto);elim (Rlt_irrefl _ h_ltxx')
          | H1:?A <> ?B, H2: ?A <= ?B |- _ => assert (A<B) by (apply Rle_neq_lt;auto);clear H2
          | H1:?A <> ?B, H2: ?B <= ?A |- _ => assert (B<A) by (apply Rle_neq_lt;auto;apply not_eq_sym;auto);clear H2
-         end.
+         end; reflexivity.
 Qed.
 
 (** Specification of [classify_triangle] *)
@@ -1561,7 +1562,8 @@ Lemma scalene_vertex_is_vertex: forall ptx pty ptz,
   InA equiv (opposite_of_max_side ptx pty ptz) (ptx :: pty :: ptz :: nil).
 Proof.
 intros ptx pty ptz H.
-functional induction (opposite_of_max_side ptx pty ptz);
+unfold opposite_of_max_side;
+repeat (let H := fresh in destruct_match_eq H);
 repeat (left + right); reflexivity.
 Qed.
 
@@ -2139,8 +2141,9 @@ rewrite Heq', Heq.
 rewrite <- pos_Rsqr_lt; try apply dist_nonneg; [].
 assert (Heq_pt' := decompose_on Hneq' (pt' - pt'')).
 do 2 rewrite norm_dist. rewrite Heq_pt'.
-assert (Hperp : perpendicular (inner_product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt''))
-                      (inner_product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
+assert (Hperp : perpendicular
+                  (inner_product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt''))
+                  (inner_product (pt' - pt'') (orthogonal (center circ - pt'')) * orthogonal (center circ - pt''))).
 { apply perpendicular_mul_compat_l, perpendicular_mul_compat_r, unitary_orthogonal_perpendicular. }
 rewrite Pythagoras in Hperp. rewrite Hperp. clear Hperp.
 replace (inner_product (pt' - pt'') (unitary (center circ - pt'')) * unitary (center circ - pt'') +
@@ -3128,7 +3131,7 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
          rewrite Hpair in Hpt3'. simpl radius in Hpt3'. unfold center in Hpt3'. fold (middle pt1' pt2').
          apply Rlt_not_eq. eapply Rlt_le_trans; try eassumption; [].
          change (~pt3' == (1 / 2 * (pt1' + pt2'))%VS) in Heq.
-         rewrite <- dist_defined in Heq. setoid_rewrite <- Rmult_1_l at 9.
+         rewrite <- dist_defined in Heq. setoid_rewrite <- Rmult_1_l at 5.
          apply Rmult_lt_compat_r; lra || apply Rle_neq_lt; auto using dist_nonneg.
       -- destruct pt1', pt2', pt3'. simpl. f_equal; field.
   + (* let c be the center of the SEC and r its radius.

@@ -677,7 +677,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
       -- rewrite map_length, <- Permuted_sort. simpl. omega.
       -- rewrite map_length, <- Permuted_sort. simpl. exists 1%nat. omega.
   + (* Generic case *)
-    change R0 with (@origin location _ _ _). rewrite <- sim.(Similarity.center_prop) at 1.
+    change (IZR Z0) with (@origin location _ _ _). rewrite <- sim.(Similarity.center_prop) at 1.
     rewrite Hmap, is_extremal_similarity_invariant.
     (* These are the only two places where we use the fact that similarities are centered
        on the location of the observing robot (i.e. [similarity_center]. *)

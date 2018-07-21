@@ -301,7 +301,7 @@ Section Normed2Euclidean.
   cut ((norm (u + v + w))² + (norm (u - w))² + (norm (v - w))²
      = (norm (u + v - w))² + (norm (u + w))²  + (norm (v + w))²); try lra; [].
   apply Rmult_eq_reg_l with 4; try lra; []. ring_simplify.
-  rewrite double. setoid_rewrite Rmult_plus_distr_r.
+  replace 4 with (2 + 2) by field. setoid_rewrite Rmult_plus_distr_r.
   assert (Heq : forall x y z, x + y = z <-> x = z - y) by (intros; lra).
   assert (Heq1 := parallelogram_law u (v + w)%VS).
   assert (Heq2 := parallelogram_law v (u + w)%VS).
@@ -361,7 +361,7 @@ Section Normed2Euclidean.
       ring.
   + intro u. rewrite add_opp, norm_origin. unfold Rsqr. nra.
   + intro u. rewrite add_opp, norm_origin, <- norm_defined.
-    assert (Heq : (u + u == 2 * u)%VS) by now rewrite <- add_morph, mul_1.
+    assert (Heq : (u + u == 2 * u)%VS) by now replace 2 with (1 + 1)%R by field; rewrite <- add_morph, mul_1.
     rewrite Heq, norm_mul, Rabs_pos_eq; try lra; []. unfold Rsqr. nra.
   Defined.
   

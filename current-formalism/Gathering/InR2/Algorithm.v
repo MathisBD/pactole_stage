@@ -30,6 +30,7 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
+Require Import FunInd.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Gathering.WithMultiplicity.
 Require Import Pactole.Models.Rigid.
@@ -171,7 +172,7 @@ Open Scope R_scope.
 
 (** The target in the triangle case. *)
 (* TODO: replace [isobarycenter_3_pts] with the general [isobarycenter]. *)
-Function target_triangle (pt1 pt2 pt3 : location) : location :=
+Definition target_triangle (pt1 pt2 pt3 : location) : location :=
   let typ := classify_triangle pt1 pt2 pt3 in
   match typ with
     | Equilateral => isobarycenter_3_pts pt1 pt2 pt3
@@ -186,17 +187,16 @@ Proof.
 intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
 generalize (classify_triangle_compat hpermut).
 intro h_classify.
-functional induction (target_triangle pt1 pt2 pt3);
-generalize h_classify; intro h_classify';
-symmetry in h_classify'; rewrite e in h_classify'; unfold target_triangle;
-rewrite h_classify'; auto.
+unfold target_triangle.
+functional induction (classify_triangle pt1 pt2 pt3);
+rewrite <- h_classify; auto.
 - apply isobarycenter_3_pts_compat; auto.
-- apply opposite_of_max_side_compat; auto.
+- symmetry in hpermut |- *. apply opposite_of_max_side_compat; auto.
 Qed.
 
 (** A function computing the target location of robots.
     Safe to use only when there is no majority tower. *)
-Function target (s : spectrum) : location :=
+Definition target (s : spectrum) : location :=
   let l := support s in
   match on_SEC l with
     | nil => (0, 0) (* no robot *)

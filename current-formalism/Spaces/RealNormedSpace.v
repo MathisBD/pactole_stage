@@ -286,7 +286,7 @@ Section BarycenterResults.
     - destruct E; discriminate || rewrite InA_nil in Hin; tauto.
     - rewrite Forall_forall. intros. apply Hweight. apply In_InA; autoclass. }
   rewrite <- (mul_1 sum) in Hrec.
-  replace 1 with (weight * (1 / weight))%R in Hrec by now field; apply RMicromega.Rlt_neq.
+  replace 1 with (weight * (1 / weight))%R in Hrec by now field; apply Rgt_not_eq.
   rewrite <- mul_morph, dist_homothecy, Rabs_pos_eq in Hrec; try lra; [].
   apply Rmult_le_reg_l in Hrec; trivial.
   - now rewrite <- Heq'.
@@ -342,7 +342,7 @@ Section BarycenterResults.
   induction E as [| a [| b E]].
   + now elim Hnotempty.
   + specialize (Hp a ltac:(now left)). cbn -[mul add norm].
-    setoid_replace ((-1 * p) + (0 + a))%VS with (a - p)%VS
+    setoid_replace ((-(1) * p) + (0 + a))%VS with (a - p)%VS
       by now rewrite add_origin_l, add_comm, minus_morph, mul_1.
     now rewrite Rmult_1_l, <- norm_dist, dist_sym.
   + clear Hlength_pos Hnotempty.
@@ -352,7 +352,7 @@ Section BarycenterResults.
     rewrite add_comm, S_INR, Ropp_plus_distr, <- add_morph, Rmult_plus_distr_r, Rmult_1_l.
     cbn [fold_left].
     rewrite fold_add_acc, <- add_assoc, (add_comm a), <- add_assoc, add_assoc.
-    setoid_replace ((-1 * p) + a)%VS with (a - p)%VS by now rewrite add_comm, minus_morph, mul_1.
+    setoid_replace ((-(1) * p) + a)%VS with (a - p)%VS by now rewrite add_comm, minus_morph, mul_1.
     rewrite triang_ineq.
     apply Rplus_le_compat.
     - rewrite add_comm. apply IHE; intuition; unfold lF, F; try discriminate; [].

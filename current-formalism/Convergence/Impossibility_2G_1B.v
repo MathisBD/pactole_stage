@@ -128,7 +128,7 @@ Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
 Definition imprisoned (center : R) (radius : R) (e : execution) : Prop :=
-  Stream.forever (Stream.instant (fun config => forall g, dist center (get_location (config (Good g))) <= radius)) e.
+  Stream.forever (Stream.instant (fun config => forall g, dist center (get_location (config (Good g))) <=radius)) e.
 
 (** The execution will end in a small disk. *)
 Definition attracted (c : R) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
@@ -357,8 +357,8 @@ Proof. intros pt pt' Hpt x. simpl. rewrite Hpt. ring. Qed.
 Lemma swap_spect2_spect1 : MMultisetExtraOps.map (swap 1) spectrum2 == spectrum1.
 Proof.
 intro pt. unfold spectrum1, spectrum2, swap. rewrite map_add, map_singleton; autoclass.
-simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 0). ring_simplify (1 + -1 * (0 + -1) + -1).
-simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 1). ring_simplify (1 + -1 * (1 + -1) + -1).
+simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 0). ring_simplify (1 + -1 * (0 + -(1)) + -(1)).
+simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 1). ring_simplify (1 + -1 * (1 + -(1)) + -(1)).
 destruct (Rdec pt 0); [| destruct (Rdec pt 1)]; subst;
 repeat rewrite ?add_same, ?singleton_same, ?singleton_other, ?add_other; auto.
 Qed.
