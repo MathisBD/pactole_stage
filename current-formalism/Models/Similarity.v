@@ -22,7 +22,6 @@ Set Implicit Arguments.
 Require Import Utf8.
 Require Import SetoidDec.
 Require Import Reals.
-Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.

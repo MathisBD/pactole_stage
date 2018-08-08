@@ -44,6 +44,14 @@ Arguments complement A R x y /.
 Arguments PermutationA {A}%type eqA%signature l1%list l2%list.
 Arguments Proper {A}%type R%signature m.
 
+(* To avoid infinite loops, we use a breadth-first search... *)
+Typeclasses eauto := (bfs) 20.
+(* but we need to remove [eq_setoid] as it matches everything... *)
+Remove Hints eq_setoid : Setoid.
+(* while still declaring it for the types for which we still want to use it. *)
+Instance R_Setoid : Setoid R := eq_setoid R.
+Instance nat_Setoid : Setoid nat := eq_setoid nat.
+Instance bool_Setoid : Setoid bool := eq_setoid bool.
 
 (** A tactic simplifying coinduction proofs. *)
 Global Ltac coinduction proof :=
@@ -826,9 +834,8 @@ intros. split.
     destruct l₂ as [| x'' [| y'' [| z'' [| ? ?]]]]; discriminate Hlength || clear Hlength.
     specialize (IHperm1 _ _ _ _ _ _ ltac:(reflexivity) ltac:(reflexivity)).
     specialize (IHperm2 _ _ _ _ _ _ ltac:(reflexivity) ltac:(reflexivity)).
-    repeat destruct IHperm1 as [IHperm1 | IHperm1]; destruct IHperm1 as [H11 [H12 H13]];
     repeat destruct IHperm2 as [IHperm2 | IHperm2]; destruct IHperm2 as [H21 [H22 H23]];
-    rewrite H11, H12, H13, <- H21, <- H22, <-H23; intuition.
+    rewrite <- H21, <- H22, <- H23; clear perm1 perm2; intuition.
 + intro Hperm. repeat destruct Hperm as [Hperm | Hperm]; destruct Hperm as [Heq1 [Heq2 Heq3]].
   - repeat apply PermutationA_cons; trivial. constructor.
   - apply PermutationA_cons; trivial. rewrite PermutationA_2. intuition.
@@ -1930,7 +1937,6 @@ intros x y. destruct (Rle_dec x y). destruct (Rle_dec y x).
   right; intro; subst. pose (Rle_refl y). contradiction.
 Qed.
 
-Instance R_Setoid : Setoid R := {| equiv := @Logic.eq R |}.
 Instance R_EqDec : @EqDec R _ := Rdec.
 
 Lemma Rdiv_le_0_compat : forall a b, 0 <= a -> 0 < b -> 0 <= a / b.

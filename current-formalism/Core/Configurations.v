@@ -140,8 +140,20 @@ intros config₁ config₂. split; intro Hneq.
 + destruct Hneq as [id Hneq]. intro Habs. apply Hneq, Habs.
 Qed.
 
+End Configuration.
+
 (** Applying a function on all states of a configuration. *)
-Definition map_config (f : info -> info) (config : configuration) : configuration := fun id => f (config id).
+
+Section MapConfig.
+
+Context `{Location}.
+Context {info1 info2 : Type}.
+Context {St1 : @State info1 _}.
+Context {St2 : @State info2 _}.
+Context `{Names}.
+
+Definition map_config (f : info1 -> info2) (config : @configuration _ _ St1 _) : configuration :=
+  fun id => f (config id).
 
 Global Instance map_config_compat :
     Proper ((equiv ==> equiv) ==> @equiv _ configuration_Setoid ==> @equiv _ configuration_Setoid) map_config.
@@ -151,14 +163,15 @@ Lemma config_list_map : forall f, Proper (equiv ==> equiv) f ->
   forall config, config_list (map_config f config) == List.map f (config_list config).
 Proof. intros. now rewrite 2 config_list_spec, map_map. Qed.
 
-Lemma map_config_merge : forall f g, Proper (equiv ==> equiv) f ->
-  Proper (equiv ==> equiv) g -> forall config : configuration,
-  map_config g (map_config f config) == map_config (fun x => g (f x)) config.
+End MapConfig.
+
+Arguments map_config {_} {info1} {info2} {_} {_} {_} f config /.
+
+Lemma map_config_id `{State} `{Names} : forall config,
+  map_config Datatypes.id config == config.
 Proof. now repeat intro. Qed.
 
-Lemma map_config_id : forall config, map_config Datatypes.id config == config.
+Lemma map_config_merge  `{Location} {T U V : Type} `{@State T _} `{@State U _} `{@State V _} `{Names} :
+  forall (f : T -> U) (g : U -> V), Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
+  forall config : configuration, map_config g (map_config f config) == map_config (fun x => g (f x)) config.
 Proof. now repeat intro. Qed.
-
-End Configuration.
-
-Arguments map_config {info} {_} {_} {_} f config /.

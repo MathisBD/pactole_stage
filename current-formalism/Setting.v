@@ -8,3 +8,5 @@ Require Export Pactole.Core.RobotInfo.
 Require Export Pactole.Core.Configurations.
 Require Export Pactole.Spectra.Definition.
 Require Export Pactole.Core.Formalism.
+
+Remove Hints eq_setoid : Setoid.
