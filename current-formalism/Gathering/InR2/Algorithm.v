@@ -714,7 +714,7 @@ destruct (support (max s1)) as [| pt1 [| ? ?]] eqn:Hs1,
          (support (max s2)) as [| pt2 [| ? ?]] eqn:Hs2;
 simpl in Hsize; omega || clear Hsize.
 + reflexivity.
-+ rewrite Hs. repeat f_equal.
++ do 2 f_equal. rewrite Hs. f_equal.
   rewrite <- (PermutationA_1 _). rewrite <- Hs1, <- Hs2. rewrite Hs. reflexivity.
 + clear -Hs.
   assert (Hperm : Permutation (on_SEC (support s1)) (on_SEC (support s2))).
@@ -3330,7 +3330,7 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_config in Heq.
     destruct Hrec as [pt Hpt].
-    - setoid_rewrite Heq. apply Hind.
+    - intros ? Hlt. apply Hind. eapply lt_config_compat; try eassumption; autoclass.
     - now destruct Hprop.
     - now destruct Hfair.
     - rewrite Heq. assumption.

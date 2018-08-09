@@ -73,13 +73,15 @@ Parameter delta : R.
 
 Instance UpdFun : update_function ratio := {|
   update := fun config g trajectory ρ => let pt' := trajectory ρ in
-              if Rle_dec delta (dist (config (Good g)) pt') then pt' else trajectory ratio_1 |}.
+              if Rle_dec delta (@dist _ _ _ Loc_VS _ (@get_location _ _ Info (config (Good g))) pt')
+              then pt' else trajectory ratio_1 |}.
 Proof.
-intros ? ? Hconfig ? g ? ? ? Hpt [? Hρ1] [ρ Hρ2] Heq.
-simpl in Heq. subst. rewrite Hpt, Hconfig. cbn zeta.
-assert (Heq : y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ1)%R
-           == y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ2)%R) by f_equiv.
-rewrite Heq. now destruct_match; f_equiv.
++ autoclass.
++ intros ? ? Hconfig ? g ? ? ? Hpt [? Hρ1] [ρ Hρ2] Heq.
+  simpl in Heq. subst. rewrite Hpt, Hconfig. cbn zeta.
+  assert (Heq : y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ1)%R
+             == y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ2)%R) by f_equiv.
+  rewrite Heq. now destruct_match; f_equiv.
 Defined.
 
 Instance Flex : Flexible.FlexibleUpdate delta.

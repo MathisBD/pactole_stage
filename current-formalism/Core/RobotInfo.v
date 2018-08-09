@@ -57,7 +57,8 @@ Class State info `{Location} := {
   (** Lifting a change of frame to the location field *)
   lift : (location -> location) -> info -> info;
   lift_id : @equiv _ (fun_equiv _ _) (lift id) id;
-  lift_compose : forall f g state, lift f (lift g state) == lift (fun x => f (g x)) state;
+(*  lift_compose : forall f g state, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
+    lift f (lift g state) == lift (fun x => f (g x)) state;*)
   get_location_lift : forall f state, get_location (lift f state) == f (get_location state);
   (** Compatibility properties *)
   get_location_compat :> Proper (equiv ==> equiv) get_location;
@@ -65,14 +66,12 @@ Class State info `{Location} := {
 
 Arguments State info {_}.
 
-(* TODO: Define the disjoint union of such projections to ensure their independence. *)
-
 (** A basic state containing only the current location. *)
 Definition OnlyLocation `{Location} : State location := {|
   get_location := id;
   lift := id;
   lift_id := reflexivity _;
-  lift_compose := ltac:(reflexivity);
+(*   lift_compose := ltac:(reflexivity); *)
   get_location_lift := ltac:(reflexivity) |}.
 
 (** Adding a location-typed field that is affected by frame change. *)
@@ -83,7 +82,7 @@ Proof.
 + apply prod_Setoid; apply state_Setoid || apply location_Setoid.
 + apply prod_EqDec; apply state_EqDec || apply location_EqDec.
 + intros []. simpl. split; try reflexivity; []. apply lift_id.
-+ intros f g []. simpl. split; try reflexivity; []. apply lift_compose.
+(* + intros f g [] **. simpl. split; try reflexivity; []. now apply lift_compose. *)
 + intros f []. simpl. apply get_location_lift.
 + intros [] [] []. simpl. now apply get_location_compat.
 + intros f g Hfg [] [] []. simpl. split.
@@ -99,7 +98,7 @@ Proof.
 + apply prod_Setoid; apply state_Setoid || auto.
 + apply prod_EqDec; apply state_EqDec || auto.
 + intros []. simpl. split; try reflexivity; []. apply lift_id.
-+ intros f g []. simpl. split; try reflexivity; []. apply lift_compose.
+(* + intros f g [] **. simpl. split; try reflexivity; []. now apply lift_compose. *)
 + intros f []. simpl. apply get_location_lift.
 + intros [] [] []. simpl. now apply get_location_compat.
 + intros f g Hfg [] [] []. simpl. repeat split; trivial; []. now apply lift_compat.

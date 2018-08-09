@@ -62,6 +62,7 @@ Spectra/SetSpectrum.v
 Spectra/LimitedSetSpectrum.v
 Spectra/LimitedMultisetSpectrum.v
 #Spectra/PointedMultisetSpectrum.v
+Spectra/PreCompositionSpectrum.v
 
 ## Case Study: Convergence
 Convergence/Impossibility_2G_1B.v

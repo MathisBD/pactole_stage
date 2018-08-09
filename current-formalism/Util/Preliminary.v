@@ -194,6 +194,18 @@ Defined.
 Instance sig_EqDec {T} {S : Setoid T} (E : EqDec S) (P : T -> Prop) : EqDec (@sig_Setoid T S P).
 Proof. intros ? ?. simpl. apply equiv_dec. Defined.
 
+(** Setoid by precomposition *)
+Instance compose_Setoid {T U} (f : T -> U) `{Setoid U} : Setoid T := {
+  equiv := fun x y => (f x) == (f y) }.
+Proof. split.
++ intro. reflexivity.
++ repeat intro. now symmetry.
++ repeat intro. now transitivity (f y).
+Defined.
+
+Instance compose_EqDec {T U} (f : T -> U) `{EqDec U} : EqDec (compose_Setoid f) :=
+  fun x y => (f x) =?= (f y).
+
 
 (******************************)
 (** *  Some results on Lists  *)
