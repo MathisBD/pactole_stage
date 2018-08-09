@@ -7,5 +7,9 @@
 .coq-native/
 *.v.crashcoqide
 
-makefile.bak
+.lia.cache
+.lra.cache
+.nia.cache
+.nra.cache
+Makefile
 Makefile.bak
