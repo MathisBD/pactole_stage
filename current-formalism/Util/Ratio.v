@@ -32,16 +32,50 @@ intros n m Hm Hn. apply le_INR in Hn. apply lt_0_INR in Hm. split.
 Qed.
 
 (* Convenient notations.
-   The first one is used to autoamtically provide the proofs, whereas the second one is used for display. *)
+   The first one is used to automatically provide the proofs, whereas the second one is used for display. *)
 Definition mk_ratio n m Hm Hn : ratio := exist _ _ (mk_ratio_proof n m Hm Hn).
-Notation "n '//r' m" := (mk_ratio n m ltac:(clear; abstract omega) ltac:(clear; abstract omega)) (only parsing, at level 10).
-Notation "n '/r' m" := (mk_ratio n m _ _) (at level 10).
+Notation "n '/r' m" := (mk_ratio n m ltac:(clear; abstract omega) ltac:(clear; abstract omega))
+  (only parsing, at level 10).
+Notation "n '/r' m" := (mk_ratio n m _ _) (at level 10, only printing).
 
 (** 0 and 1 are ratios. *)
 Definition ratio_0 : ratio.
 Proof. refine (exist _ 0%R _). abstract lra. Defined.
 Definition ratio_1 : ratio.
 Proof. refine (exist _ 1%R _). abstract lra. Defined.
+
+(** A strict ratio is a [ratio] that is neither [0] nor [1]. *)
+Definition strict_ratio := {x : R | 0 < x < 1}%R.
+
+Instance strict_ratio_Setoid : Setoid ratio := sig_Setoid.
+
+Definition proj_strict_ratio (x : strict_ratio) : ratio :=
+  let '(exist _ v Hv) := x in
+  exist _ v (conj (Rlt_le _ _ (proj1 Hv)) (Rlt_le _ _ (proj2 Hv))).
+
+Instance proj_strict_ratio_compat : Proper (equiv ==> equiv) proj_strict_ratio.
+Proof. intros [] [] Heq. apply Heq. Qed.
+
+Coercion proj_strict_ratio : strict_ratio >-> ratio.
+
+Lemma strict_ratio_bounds : forall r : strict_ratio, (0 < r < 1)%R.
+Proof. intros [r Hr]. apply Hr. Qed.
+
+Lemma mk_strict_ratio_proof : forall n m, 0 < n -> n < m -> (0 < INR n / INR m < 1)%R.
+Proof.
+intros n m Hm Hn. apply lt_INR in Hn. apply lt_0_INR in Hm. split.
++ apply Rdiv_lt_0_compat; eauto using Rlt_trans.
++ apply Rle_neq_lt.
+  - apply Rdiv_le_1; lra.
+  - intro Habs. eapply Rlt_not_eq; eauto; [].
+    replace (INR n) with (INR n / INR m * INR m)%R by (field; lra).
+    now rewrite Habs, Rmult_1_l.
+Qed.
+
+Definition mk_strict_ratio n m Hm Hn : strict_ratio := exist _ _ (mk_strict_ratio_proof n m Hm Hn).
+Notation "n '/sr' m" := (mk_strict_ratio n m ltac:(clear; abstract omega) ltac:(clear; abstract omega))
+  (only parsing, at level 10).
+Notation "n '/sr' m" := (mk_strict_ratio n m _ _) (at level 10, only printing).
 
 (** **  Trajectory  **)
 

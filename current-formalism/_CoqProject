@@ -32,9 +32,9 @@ Setting.v
 Models/Flexible.v
 Models/Rigid.v
 #Models/RigidFlexibleEquivalence.v
-#Models/DiscreteGraph.v
+Models/DiscreteGraph.v
 Models/Similarity.v
-#Models/ContinuousGraph.v
+Models/ContinuousGraph.v
 #Models/GraphEquivalence.v
 #Models/DiscreteRigid.v
 #Models/DiscreteASync.v

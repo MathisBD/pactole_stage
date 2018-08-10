@@ -4,15 +4,13 @@
                                                                             
       PACTOLE project                                                       
                                                                             
-      This file is distributed under the terms of the CeCILL-C licence      
+      This file is distributed under the terms of the CeCILL-C licence.     
                                                                           *)
 (**************************************************************************)
 
 
 Require Import Utf8.
 Require Import SetoidDec.
-(* Require Import Equalities. *)
-(* Require Import Morphisms. *)
 Require Import Rbase Rbasic_fun.
 Require Import Psatz.
 Require Import Pactole.Util.Preliminary.
@@ -23,7 +21,7 @@ Set Implicit Arguments.
 
 
 (****************************)
-(** *  Grapb Isomorphisms  **)
+(** *  Graph Isomorphisms  **)
 (****************************)
 
 
