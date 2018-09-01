@@ -105,11 +105,14 @@ Record demonic_action := {
   change_frame : configuration -> G -> T1;
   (** Update the state of (activated) good robots in the move phase  *)
   choose_update : configuration -> G -> path location -> T2;
+  (** Update the state of inactive robots *)
+  inactive_update : configuration -> ident -> info;
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
   change_frame_compat : Proper (equiv ==> Logic.eq ==> equiv) change_frame;
-  choose_update_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) choose_update }.
+  choose_update_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) choose_update;
+  inactive_update_compat : Proper (equiv ==> equiv ==> equiv) inactive_update }.
 
 
 (** Equivalence relation over [demonic_action]. *)
@@ -118,11 +121,12 @@ Global Instance da_Setoid : Setoid demonic_action := {|
            (forall id, da1.(activate) id == da2.(activate) id)
         /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
         /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
-        /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt) |}.
+        /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt)
+        /\ (forall config id, da1.(inactive_update) config id == da2.(inactive_update) config id) |}.
 Proof. split.
-+ intuition.
-+ intros da1 da2 [? [? [? ?]]]. repeat split; intros; symmetry; auto.
-+ intros da1 da2 da3 [? [? [? ?]]] [? [? [? ?]]]. repeat split; intros; etransitivity; eauto.
++ repeat split; intuition.
++ intros da1 da2 [? [? [? [? ?]]]]. repeat split; intros; symmetry; auto.
++ intros da1 da2 da3 [? [? [? [? ?]]]] [? [? [? [? ?]]]]. repeat split; intros; etransitivity; eauto.
 Defined.
 
 Global Instance activate_da_compat : Proper (equiv ==> Logic.eq ==> equiv) activate.
@@ -137,9 +141,13 @@ Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply chang
 Global Instance choose_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) choose_update.
 Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
 
+Global Instance inactive_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) inactive_update.
+Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply inactive_update_compat. Qed.
+
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition active da := List.filter (activate da) names.
 
+(* FIXME: rename into inactive? *)
 Definition idle da := List.filter (fun id => negb (activate da id)) names.
 
 Global Instance active_compat : Proper (equiv ==> Logic.eq) active.
@@ -216,7 +224,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           (* the actual update of the robot state is performed by the update function *)
           update config g global_trajectory choice
         end
-    else state.
+    else da.(inactive_update) config id.
 
 Global Instance round_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
@@ -235,7 +243,7 @@ unfold round. rewrite Hda. destruct_match.
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
-  apply Hconfig.
+  now apply inactive_update_da_compat.
 Qed.
 
 (** A third subset of robots: moving ones *)
@@ -273,24 +281,6 @@ split; intro Hin.
   - destruct (round r da config id =?= config id) as [Heq | _]; intuition.
 Qed.
 
-Lemma moving_active : forall r da config, List.incl (moving r da config) (active da).
-Proof.
-intros r config da id. rewrite moving_spec, active_spec.
-unfold round. destruct_match; intuition.
-Qed.
-
-(** If no robot is active, then the configuration does not change. *)
-Lemma no_active_same_config : forall r da config,
-  active da = List.nil -> round r da config == config.
-Proof.
-intros r da config Hactive.
-assert (Hfalse : forall id, activate da id = false).
-{ intro id. destruct (activate da id) eqn:Heq; trivial; []. exfalso.
-  rewrite <- active_spec, Hactive in Heq. intuition. }
-intro id. unfold round. now rewrite (Hfalse id).
-Qed.
-
-
 (** [execute r d config] returns an (infinite) execution from an initial global
     configuration [config], a demon [d] and a robogram [r] running on each good robot. *)
 Definition execute (r : robogram) : demon -> configuration -> execution :=
@@ -308,6 +298,105 @@ intros r1 r2 Hr. coinduction proof.
 - simpl. assumption.
 - now f_equiv.
 - apply round_compat; trivial. now f_equiv.
+Qed.
+
+(** **  Execution models  **)
+
+(** ***  Semi-synchronous (SSYNC) model  **)
+
+(* FIXME?: this must hold for all configurations whereas only the current one may be useful *)
+(* TODO?: Do we want to only enforce equality about location? What if, say, the battery level goes down? *)
+(* NB: The precondition is necessary to have the implication FSYNC -> SSYNC. *)
+Definition SSYNC_da da := forall config id, da.(activate) id = false -> da.(inactive_update) config id == config id.
+
+Definition SSYNC d := Stream.forever (Stream.instant SSYNC_da) d.
+
+Global Instance SSYNC_da_compat : Proper (equiv ==> iff) SSYNC_da.
+Proof. intros da1 da2 Hda. unfold SSYNC_da. now setoid_rewrite Hda. Qed.
+
+Global Instance SSYNC_compat : Proper (equiv ==> iff) SSYNC.
+Proof. apply Stream.forever_compat, Stream.instant_compat, SSYNC_da_compat. Qed.
+
+(* This is only true for the SSYNC (and FSYNC) model *)
+Lemma moving_active : forall da, SSYNC_da da ->
+  forall r config, List.incl (moving r da config) (active da).
+Proof.
+intros da HSSYNC r config id. rewrite moving_spec, active_spec.
+unfold round. destruct_match_eq Hcase; intuition.
+Qed.
+
+(** If no robot is active, then the configuration does not change. *)
+Lemma no_active_same_config : forall da, SSYNC_da da ->
+  forall r config, active da = List.nil -> round r da config == config.
+Proof.
+intros da HSSYNC r config Hactive.
+assert (Hfalse : forall id, activate da id = false).
+{ intro id. destruct (activate da id) eqn:Heq; trivial; []. exfalso.
+  rewrite <- active_spec, Hactive in Heq. intuition. }
+intro id. unfold round. rewrite (Hfalse id). intuition.
+Qed.
+
+Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
+  round r da config 
+  == fun id =>
+    let state := config id in
+    if da.(activate) id
+    then
+      match id with
+        | Byz b => da.(relocate_byz) config b
+        | Good g =>
+          let new_frame := frame_choice_bijection (da.(change_frame) config g) in
+          let local_config := map_config (lift new_frame) config in
+          let local_pos := get_location (local_config (Good g)) in
+          let spect := spect_from_config local_config local_pos in
+          let local_trajectory := r spect in
+          let global_trajectory := lift_path (new_frame ⁻¹) local_trajectory in
+          let choice := da.(choose_update) config g global_trajectory in
+          update config g global_trajectory choice
+        end
+    else state.
+Proof. unfold round. repeat intro. destruct_match_eq Hcase; auto. Qed.
+
+(** ***  Fully-synchronous (FSYNC) model  **)
+
+(** A fully synchronous demon is a particular case of fair demon: all good robots are activated
+    at each round. In our setting this means that the [activate] function is always true. *)
+
+Definition FSYNC_da da := forall id, da.(activate) id = true.
+
+Definition FSYNC d := Stream.forever (Stream.instant FSYNC_da) d.
+
+Global Instance FSYNC_da_compat : Proper (equiv ==> iff) FSYNC_da.
+Proof. intros da1 da2 Hda. unfold FSYNC_da. now setoid_rewrite Hda. Qed.
+
+Global Instance FSYNC_compat : Proper (equiv ==> iff) FSYNC.
+Proof. apply Stream.forever_compat, Stream.instant_compat, FSYNC_da_compat. Qed.
+
+Lemma FSYNC_SSYNC_da : forall da, FSYNC_da da -> SSYNC_da da.
+Proof. unfold FSYNC_da, SSYNC_da. intuition. congruence. Qed.
+
+Theorem FSYNC_SSYNC : forall d, FSYNC d -> SSYNC d.
+Proof. apply Stream.forever_impl_compat, Stream.instant_impl_compat, FSYNC_SSYNC_da. Qed.
+
+Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
+  round r da config 
+  == fun id =>
+    let state := config id in
+    match id with
+      | Byz b => da.(relocate_byz) config b
+      | Good g =>
+        let new_frame := frame_choice_bijection (da.(change_frame) config g) in
+        let local_config := map_config (lift new_frame) config in
+        let local_pos := get_location (local_config (Good g)) in
+        let spect := spect_from_config local_config local_pos in
+        let local_trajectory := r spect in
+        let global_trajectory := lift_path (new_frame ⁻¹) local_trajectory in
+        let choice := da.(choose_update) config g global_trajectory in
+        update config g global_trajectory choice
+      end.
+Proof.
+intros * HFSYNC. rewrite SSYNC_round_simplify; auto using FSYNC_SSYNC_da; [].
+repeat intro. now rewrite HFSYNC.
 Qed.
 
 (** **  Fairness  **)
@@ -402,6 +491,13 @@ coinduction fair; match goal with H : kFair _ _ |- _ => destruct H end.
 - now apply (fair k).
 Qed.
 
+(** A synchronous demon is fair *)
+Lemma FSYNC_implies_0Fair: ∀ d, FSYNC d → kFair 0 d.
+Proof. apply Stream.forever_impl_compat. intros s Hs id id'. constructor. apply Hs. Qed.
+
+Corollary FSYNC_implies_fair: ∀ d, FSYNC d → Fair d.
+Proof. intros. now eapply kFair_Fair, FSYNC_implies_0Fair. Qed.
+
 (** If a demon is 0-fair, then the activation states of all robots are the same:
     either all are activated, or none is. *)
 Theorem Fair0 : forall d, kFair 0 d ->
@@ -437,26 +533,6 @@ intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
     - now rewrite Hr, Hd, Hc.
     - destruct Hd. apply IHHfirst; trivial. now apply round_compat; f_equiv.
 Qed.
-
-(** ** Full synchronicity
-
-  A fully synchronous demon is a particular case of fair demon: all good robots are activated
-  at each round. In our setting this means that the [activate] function is always true. *)
-
-
-(** A demon is fully synchronous at the first step. *)
-Definition FullySynchronousInstant : demonic_action -> Prop :=
-  fun da => forall g, activate da g = true.
-
-(** A demon is fully synchronous if it is fully synchronous at all step. *)
-Definition FullySynchronous : demon -> Prop := Stream.forever (Stream.instant FullySynchronousInstant).
-
-(** A synchronous demon is fair *)
-Lemma fully_synchronous_implies_0Fair: ∀ d, FullySynchronous d → kFair 0 d.
-Proof. apply Stream.forever_impl_compat. intros s Hs id id'. constructor. apply Hs. Qed.
-
-Corollary fully_synchronous_implies_fair: ∀ d, FullySynchronous d → Fair d.
-Proof. intros. now eapply kFair_Fair, fully_synchronous_implies_0Fair. Qed.
 
 End Formalism.
 

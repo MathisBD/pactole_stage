@@ -58,7 +58,7 @@ Instance Info : State location := OnlyLocation.
 Context {VS : RealVectorSpace location}.
 Context {ES : EuclideanSpace location}.
 
-(** We assume that the space is equipped with a build similarity function
+(** We assume that the space is equipped with a [build_similarity] function
     that can map any pair of distinct points to any other pair. *)
 Parameter build_similarity : forall {pt1 pt2 pt3 pt4 : location}, pt1 =/= pt2 -> pt3 =/= pt4 -> similarity location.
 Axiom build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
@@ -411,11 +411,13 @@ Definition da1 : demonic_action := {|
   relocate_byz := fun _ b => mk_info origin;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt;
+  inactive_update := id;
   
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
   change_frame_compat := change_frame1_compat;
-  choose_update_compat := ltac:(now repeat intro) |}.
+  choose_update_compat := ltac:(now repeat intro);
+  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; hnf in Hid; subst; unfold id; apply Heq) |}.
 
 Definition bad_demon1 : demon := Stream.constant da1.
 
@@ -844,22 +846,26 @@ Definition da2_left config : demonic_action := {|
   relocate_byz := fun _ _ => mk_info origin;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
+  inactive_update := id;
   
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
-  choose_update_compat := ltac:(now repeat intro) |}.
+  choose_update_compat := ltac:(now repeat intro);
+  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; hnf in Hid; subst; unfold id; apply Heq) |}.
 
 Definition da2_right config : demonic_action := {|
   activate := activate2 false true config;
   relocate_byz := fun _ _ => mk_info origin;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
+  inactive_update := id;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
-  choose_update_compat := ltac:(now repeat intro) |}.
+  choose_update_compat := ltac:(now repeat intro);
+  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; hnf in Hid; subst; unfold id; apply Heq) |}.
 
 Lemma round_simplify2_left : forall config,
   !! config == map ((change_frame2 config g0)⁻¹) spectrum0 ->

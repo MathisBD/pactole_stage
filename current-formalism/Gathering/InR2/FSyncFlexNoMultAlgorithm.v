@@ -283,24 +283,22 @@ Lemma dist_prop_retraction : forall (sim : similarity location) (x y : location)
   dist ((sim ⁻¹) x) ((sim ⁻¹) y) = /(Similarity.zoom sim) * dist x y.
 Proof. intros sim x y. rewrite Similarity.dist_prop. now simpl. Qed.
 
-Theorem round_simplify : forall da config,
+Theorem round_simplify : forall da config, FSYNC_da da ->
   round ffgatherR2 da config
-  == fun id => if da.(activate) id
-               then match id with
-                      | Byz b => config (Byz b) (* dummy case *)
-                      | Good g => let global_trajectory :=
-                                    straight_path (get_location (config (Good g)))
-                                                  (isobarycenter (elements (!! config))) in
-                                  let choice := da.(choose_update) config g global_trajectory in
-                                  update config g global_trajectory choice
-                    end
-               else config id.
+  == fun id => match id with
+                 | Byz b => config (Byz b) (* dummy case *)
+                 | Good g => let global_trajectory :=
+                               straight_path (get_location (config (Good g)))
+                                             (isobarycenter (elements (!! config))) in
+                             let choice := da.(choose_update) config g global_trajectory in
+                             update config g global_trajectory choice
+               end.
 Proof.
-intros da config. apply no_byz_eq. intro g. unfold round.
+intros da config Hfsync. rewrite FSYNC_round_simplify; trivial; [].
+apply no_byz_eq. intro g. unfold round.
 assert (supp_nonempty := elements_non_nil config).
 assert (Hda := similarity_center da config g).
 remember (change_frame da config g) as sim.
-destruct (activate da (Good g)) eqn:Hstep; auto; [].
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 Local Opaque lift. Local Opaque map_config.
 assert (Hperm : PermutationA equiv (List.map sim (elements (!! config)))
@@ -324,22 +322,10 @@ assert (lift_path (Bijection.inverse sim) (paths_in_R2 (sim (isobarycenter E)))
 apply get_location_compat, update_compat, choose_update_compat; auto.
 Qed.
 
-Corollary round_simplify_FSync : forall da config, FullySynchronousInstant da ->
-  round ffgatherR2 da config
-  == fun id => match id with
-                 | Byz b => config (Byz b) (* dummy case *)
-                 | Good g => let global_trajectory :=
-                               straight_path (get_location (config (Good g)))
-                                             (isobarycenter (elements (!! config))) in
-                             let choice := da.(choose_update) config g global_trajectory in
-                             update config g global_trajectory choice
-               end.
-Proof. intros da config Hda. rewrite round_simplify. intro id. now rewrite Hda. Qed.
-
 (* FIXME: cleanup! *)
 Theorem round_lt_config : forall da config,
     delta > 0 ->
-    FullySynchronousInstant da ->
+    FSYNC_da da ->
     delta <= measure config ->
     measure (round ffgatherR2 da config) <= measure config - delta.
 Proof.
@@ -364,7 +350,7 @@ Proof.
               get_location (round ffgatherR2 da config id) == C).
   { intro id. pattern id. apply no_byz. clear id.
     intros g Hin HdeltaP.
-    rewrite (round_simplify_FSync _ _ HFSync (Good g)).
+    rewrite (round_simplify _ _ HFSync (Good g)).
     cbn zeta.
     edestruct (ratio_spec config g) as [Heq | [Heq Hle]]; try rewrite Heq.
     + rewrite straight_path_1. reflexivity.
@@ -391,7 +377,7 @@ Proof.
                                 == (config (Good g) + r * (C - (config (Good g))))%VS
                      /\ delta <= norm (r * (C - (config (Good g))))%VS).
   { intros g Hin HdeltaP.
-    setoid_rewrite (round_simplify_FSync _ _ HFSync (Good g)).
+    setoid_rewrite (round_simplify _ _ HFSync (Good g)).
     cbn zeta.
     edestruct (ratio_spec config g) as [Heq | [Heq Hle]]; try setoid_rewrite Heq.
     + exists ratio_1. setoid_rewrite straight_path_1.
@@ -554,7 +540,7 @@ Qed.
 
 Theorem round_last_step : forall da config,
     delta > 0 ->
-    FullySynchronousInstant da ->
+    FSYNC_da da ->
     measure config <= delta ->
     measure (round ffgatherR2 da config) == 0.
 Proof.
@@ -577,7 +563,7 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
 { intros KP HinKP.
   destruct (Hantec KP HinKP) as [g [Hin Hround]].
   rewrite <- Hround in *. clear Hround KP.
-  rewrite (round_simplify_FSync _ _ HFSync (Good g)).
+  rewrite (round_simplify _ _ HFSync (Good g)).
   cbn zeta.
   edestruct (ratio_spec config g) as [Hupdate | Hupdate]; try rewrite Hupdate.
   + (* valid case: mvt smaller than delta *)
@@ -679,22 +665,21 @@ apply NoDupA_equivlistA_PermutationA; autoclass.
     transitivity pt; trivial; []. symmetry. now rewrite <- Hgather.
 Qed.
 
-Lemma gathered_at_forever : forall da config pt,
+Lemma gathered_at_forever : forall da config pt, FSYNC_da da ->
   gathered_at pt config -> gathered_at pt (round ffgatherR2 da config).
 Proof.
-intros da config pt Hgather g.
-rewrite round_simplify. destruct_match; trivial; [].
-cbn zeta.
+intros da config pt Hda Hgather g.
+rewrite round_simplify; trivial; []. cbn zeta.
 rewrite (gathered_at_elements Hgather), isobarycenter_singleton.
 now rewrite Hgather, ?update_no_move.
 Qed.
 
-Lemma gathered_at_OK : forall d conf pt,
+Lemma gathered_at_OK : forall d conf pt, FSYNC (similarity_demon2demon d) ->
   gathered_at pt conf -> Gather pt (execute ffgatherR2 d conf).
 Proof.
-cofix Hind. intros d conf pt Hgather. constructor.
+cofix Hind. intros d conf pt [] Hgather. constructor.
 + clear Hind. simpl. assumption.
-+ rewrite execute_tail. apply Hind. now apply gathered_at_forever.
++ rewrite execute_tail. apply Hind; now try apply gathered_at_forever.
 Qed.
 
 (*
@@ -725,11 +710,11 @@ Qed.
 
 (** The final theorem. *)
 Theorem FSGathering_in_R2 :
-  forall d, delta > 0 -> FullySynchronous d -> FullSolGathering ffgatherR2 d.
+  forall d, delta > 0 -> FSYNC (similarity_demon2demon d) -> FullSolGathering ffgatherR2 d.
 Proof.
 intros d Hdelta HFS config. revert d HFS. pattern config.
 apply (well_founded_ind (wf_lt_config Hdelta)). clear config.
-intros config Hind [da d] HFS.
+intros config Hind [da d] [Hda HFS].
 (* Are we already gathered? *)
 destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
 [| destruct (gathered_at_dec (round ffgatherR2 da config)
@@ -749,7 +734,7 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
   + apply lt_config_decrease; trivial; [].
     change da with (Stream.hd (Stream.cons da d)).
     now apply round_lt_config.
-  + assumption.
+  + now constructor.
   + exists pt. apply Stream.Later. apply Hpt.
 Qed.
 

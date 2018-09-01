@@ -378,11 +378,13 @@ Definition da1 : demonic_action := {|
   relocate_byz := fun _ b => mk_info 0;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt;
+  inactive_update := id;
   
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
   change_frame_compat := change_frame1_compat;
-  choose_update_compat := ltac:(now repeat intro) |}.
+  choose_update_compat := ltac:(now repeat intro);
+  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq) |}.
 
 Definition bad_demon1 : demon := Stream.constant da1.
 
@@ -667,22 +669,26 @@ Definition da2_left config : demonic_action := {|
   relocate_byz := fun _ _ => mk_info 0;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
+  inactive_update := id;
   
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
-  choose_update_compat := ltac:(now repeat intro) |}.
+  choose_update_compat := ltac:(now repeat intro);
+  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq) |}.
 
 Definition da2_right config : demonic_action := {|
   activate := activate2 false true config;
   relocate_byz := fun _ _ => mk_info 0;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
+  inactive_update := id;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
-  choose_update_compat := ltac:(now repeat intro) |}.
+  choose_update_compat := ltac:(now repeat intro);
+  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq) |}.
 
 Lemma round_simplify2_left : forall config (sim : similarity location),
   !! config == map sim spectrum0 ->
@@ -804,7 +810,7 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
 * destruct (select_tower_case_1 (fun pt1 pt2 (_ : pt1 =/= pt2) => false)
     (fun pt1 pt2 (_ : pt1 =/= pt2) => true) true (Good g) Hvalid Hcase) as [pt [Hdiff [Hactivate Hpt]]].
   rewrite Hactivate.
-  destruct_match; simpl in *; congruence.
+  destruct_match; simpl in *; unfold id in *; congruence.
 * assert (Hsim0 : get_location (config (Good g)) == sim 0).
   { assert (Hin := pos_in_config config origin (Good g)).
     rewrite Hspect in Hin. unfold spectrum0 in Hin.

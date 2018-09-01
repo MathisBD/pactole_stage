@@ -156,12 +156,12 @@ Definition solution (r : robogram) : Prop :=
   forall (ε : R), 0 < ε → exists (pt : R), attracted pt ε (execute r d config).
 
 Definition solution_FSYNC (r : robogram) : Prop :=
-  forall (config : configuration) (d : demon), FullySynchronous d →
+  forall (config : configuration) (d : demon), FSYNC d →
   forall (ε : R), 0 < ε → exists (pt : R), attracted pt ε (execute r d config).
 
 (** A SSYNC solution is also a FSYNC solution. *)
 Lemma synchro : ∀ r, solution r → solution_FSYNC r.
-Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, fully_synchronous_implies_fair; autoclass. Qed.
+Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, FSYNC_implies_fair; autoclass. Qed.
 
 Close Scope R_scope.
 Close Scope vector_scope.
@@ -378,11 +378,13 @@ refine {|
   activate := activate1;
   relocate_byz := fun _ _ => 1;
   change_frame := change_frame1;
-  choose_update := fun _ _ _ => tt |}.
+  choose_update := fun _ _ _ => tt;
+  inactive_update := id |}.
 Proof.
 + abstract (now repeat intro).
 + abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
++ abstract (intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq).
 Defined.
 
 Definition activate2 (id : ident) :=
@@ -396,11 +398,13 @@ simple refine {|
   activate := activate2;
   relocate_byz := fun _ _ => 0;
   change_frame := fun config g => swap (get_location (config (Good g)));
-  choose_update := fun _ _ _ => tt |}; autoclass.
+  choose_update := fun _ _ _ => tt;
+  inactive_update := id |}; autoclass.
 Proof.
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
++ abstract (intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq).
 Defined.
 
 Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
@@ -471,11 +475,13 @@ simple refine {| activate := fun _ => true;
                  relocate_byz := fun _ _ => pt;
                  change_frame := fun config g =>
                  translation (opp (get_location (config (Good g))));
-                 choose_update := fun _ _ _ => tt |}; autoclass.
+                 choose_update := fun _ _ _ => tt;
+                 inactive_update := id |}; autoclass.
 Proof.
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
++ abstract (intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq).
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
@@ -483,7 +489,7 @@ CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifti
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
-intros d pt. apply fully_synchronous_implies_fair; autoclass; []. revert pt.
+intros d pt. apply FSYNC_implies_fair; autoclass; []. revert pt.
 cofix shift_fair. intro pt. constructor.
 + repeat intro. simpl. reflexivity.
 + cbn. apply shift_fair.

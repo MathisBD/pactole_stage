@@ -147,13 +147,13 @@ Definition solution_SSYNC (r : robogram) : Prop :=
   forall (ε : R), 0 < ε → exists (pt : R2), attracted pt ε (execute r d config).
 
 Definition solution_FSYNC (r : robogram) : Prop :=
-  forall (config : configuration) (d : similarity_demon), FullySynchronous d →
+  forall (config : configuration) (d : similarity_demon), FSYNC (similarity_demon2demon d) →
   forall (ε : R), 0 < ε → exists (pt : R2), attracted pt ε (execute r d config).
 
 Lemma synchro : ∀ r, solution_SSYNC r → solution_FSYNC r.
 Proof.
 unfold solution_SSYNC. intros r Hfair config d Hd.
-apply Hfair, fully_synchronous_implies_fair; autoclass.
+apply Hfair, FSYNC_implies_fair; autoclass.
 Qed.
 
 Close Scope R_scope.
@@ -174,16 +174,15 @@ Qed.
 Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
 (** Rewriting round using only the global frame fo reference. *)
-Theorem round_simplify : forall da config,
+Theorem round_simplify : forall da config, SSYNC_da da ->
   round convergeR2 da config
   == fun id => if da.(activate) id
                then isobarycenter (@elements location _ _ _ (!! config))
                else config id.
 Proof.
-intros da config id.
-pattern id. apply no_byz. clear id. intro g.
-unfold round.
-destruct_match; try reflexivity; [].
+intros da config HSSYNC. rewrite SSYNC_round_simplify; trivial; [].
+intro id. pattern id. apply no_byz. clear id. intro g.
+unfold round. destruct_match; try reflexivity; [].
 remember (change_frame da config g) as sim.
 change (Bijection.section (Bijection.inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
@@ -218,19 +217,23 @@ intros [id Hpt]. rewrite <- Hpt.
 pattern id. apply no_byz. apply Hc.
 Qed.
 
-Lemma contained_next : forall da c r config,
+Lemma contained_next : forall da c r config, SSYNC_da da ->
   contained c r config -> contained c r (round convergeR2 da config).
 Proof.
-intros da c r config Hconfig g.
-rewrite round_simplify.
+intros da c r config HSSYNC Hconfig g.
+rewrite round_simplify; trivial; [].
 destruct_match.
 - now apply contained_isobarycenter.
 - auto.
 Qed.
 
-Lemma converge_forever : forall d c r config,
+Lemma converge_forever : forall d c r config, SSYNC d ->
   contained c r config -> imprisoned c r (execute convergeR2 d config).
-Proof. coinduction Hcorec; auto using contained_next. Qed.
+Proof.
+cofix Hcorec. intros d c r config [] Hrec. constructor.
+- apply Hrec.
+- apply Hcorec; auto using contained_next.
+Qed.
 
 
 (************************)
@@ -239,12 +242,11 @@ Proof. coinduction Hcorec; auto using contained_next. Qed.
 
 Theorem convergence_FSYNC : solution_FSYNC convergeR2.
 Proof.
-intros config d Hfair ε Hε.
+intros config d [Hfair ?] ε Hε.
 eexists (isobarycenter (elements _)).
 apply Stream.Later, Stream.Now. rewrite execute_tail.
-apply converge_forever.
-intro g. rewrite round_simplify.
-destruct Hfair as [Hfair _]; hnf in Hfair.
+apply converge_forever; auto using FSYNC_SSYNC; [].
+intro g. rewrite round_simplify; auto using FSYNC_SSYNC_da; [].
 rewrite Hfair. changeR2.
 transitivity 0%R; try (now apply Rlt_le); [].
 apply Req_le.

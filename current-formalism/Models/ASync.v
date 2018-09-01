@@ -98,7 +98,7 @@ Section ASynchFormalism.
   Qed.
   
   (* This is the property we just proved: robot moves either goes toward its target or move at least delta. *)
-  Check ratio_spec.
+  
   
 End ASynchFormalism. 
 
