@@ -76,10 +76,13 @@ Axiom build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hd
   build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
 
 (** We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
-Instance Choice : update_choice unit := NoChoice.
-Instance UpdFun : update_function unit := {
+Instance ActiveChoice : update_choice unit := NoChoice.
+Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance UpdFun : update_functions unit unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
-  update_compat := ltac:(now repeat intro) }.
+  inactive := fun config id _ => config id;
+  update_compat := ltac:(now repeat intro);
+  inactive_compat := ltac:(repeat intro; subst; auto) }.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
@@ -411,13 +414,13 @@ Definition da1 : demonic_action := {|
   relocate_byz := fun _ b => mk_info origin;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id;
+  choose_inactive := fun _ _ => tt;
   
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
   change_frame_compat := change_frame1_compat;
   choose_update_compat := ltac:(now repeat intro);
-  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; hnf in Hid; subst; unfold id; apply Heq) |}.
+  choose_inactive_compat := ltac:(now repeat intro) |}.
 
 Definition bad_demon1 : demon := Stream.constant da1.
 
@@ -846,26 +849,26 @@ Definition da2_left config : demonic_action := {|
   relocate_byz := fun _ _ => mk_info origin;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id;
+  choose_inactive := fun _ _ => tt;
   
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
   choose_update_compat := ltac:(now repeat intro);
-  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; hnf in Hid; subst; unfold id; apply Heq) |}.
+  choose_inactive_compat := ltac:(now repeat intro) |}.
 
 Definition da2_right config : demonic_action := {|
   activate := activate2 false true config;
   relocate_byz := fun _ _ => mk_info origin;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id;
+  choose_inactive := fun _ _ => tt;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
   choose_update_compat := ltac:(now repeat intro);
-  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; hnf in Hid; subst; unfold id; apply Heq) |}.
+  choose_inactive_compat := ltac:(now repeat intro) |}.
 
 Lemma round_simplify2_left : forall config,
   !! config == map ((change_frame2 config g0)⁻¹) spectrum0 ->

@@ -39,7 +39,7 @@ Typeclasses eauto := 5.
 Section Formalism.
 
 Context `{Spectrum}.
-Variables T1 T2 : Type.
+Variables T1 T2 T3 : Type.
 
 (** **  Robograms and Executions  **)
 
@@ -86,14 +86,22 @@ Class update_choice := {
   update_choice_Setoid :> Setoid T2;
   update_choice_EqDec :> EqDec update_choice_Setoid }.
 
-(** These choices are then used by an update function that depends on the model. *)
-Class update_function `{update_choice} := {
+(** An [inactive_choice] represents the choices the demon makes when a robot is not activated. *)
+Class inactive_choice := {
+  inactive_choice_Setoid :> Setoid T3;
+  inactive_choice_EqDec :> EqDec inactive_choice_Setoid }.
+
+(** These choices are then used by update functions that depend on the model. *)
+Class update_functions `{update_choice} `{inactive_choice} := {
   update :> configuration -> G -> path location -> T2 -> info;
-  update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update }.
+  inactive :> configuration -> ident -> T3 -> info;
+  update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update;
+  inactive_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv) inactive }.
 
 Context `{@frame_choice}.
 Context `{update_choice}.
-Context `{@update_function _}.
+Context `{inactive_choice}.
+Context `{@update_functions _ _}.
 
 (* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
 Record demonic_action := {
@@ -106,13 +114,13 @@ Record demonic_action := {
   (** Update the state of (activated) good robots in the move phase  *)
   choose_update : configuration -> G -> path location -> T2;
   (** Update the state of inactive robots *)
-  inactive_update : configuration -> ident -> info;
+  choose_inactive : configuration -> ident -> T3;
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
   change_frame_compat : Proper (equiv ==> Logic.eq ==> equiv) change_frame;
   choose_update_compat : Proper (equiv ==> Logic.eq ==> equiv ==> equiv) choose_update;
-  inactive_update_compat : Proper (equiv ==> equiv ==> equiv) inactive_update }.
+  choose_inactive_compat : Proper (equiv ==> equiv ==> equiv) choose_inactive }.
 
 
 (** Equivalence relation over [demonic_action]. *)
@@ -122,7 +130,7 @@ Global Instance da_Setoid : Setoid demonic_action := {|
         /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
         /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
         /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt)
-        /\ (forall config id, da1.(inactive_update) config id == da2.(inactive_update) config id) |}.
+        /\ (forall config id, da1.(choose_inactive) config id == da2.(choose_inactive) config id) |}.
 Proof. split.
 + repeat split; intuition.
 + intros da1 da2 [? [? [? [? ?]]]]. repeat split; intros; symmetry; auto.
@@ -141,8 +149,8 @@ Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply chang
 Global Instance choose_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) choose_update.
 Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
 
-Global Instance inactive_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) inactive_update.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply inactive_update_compat. Qed.
+Global Instance choose_inactive_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) choose_inactive.
+Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_inactive_compat. Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition active da := List.filter (activate da) names.
@@ -224,7 +232,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           (* the actual update of the robot state is performed by the update function *)
           update config g global_trajectory choice
         end
-    else da.(inactive_update) config id.
+    else inactive config id (da.(choose_inactive) config id).
 
 Global Instance round_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) round.
 Proof.
@@ -243,7 +251,7 @@ unfold round. rewrite Hda. destruct_match.
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
-  now apply inactive_update_da_compat.
+  now apply inactive_compat, choose_inactive_da_compat.
 Qed.
 
 (** A third subset of robots: moving ones *)
@@ -306,8 +314,10 @@ Qed.
 
 (* FIXME?: this must hold for all configurations whereas only the current one may be useful *)
 (* TODO?: Do we want to only enforce equality about location? What if, say, the battery level goes down? *)
+(* We could impose that T3 = unit but this might create problems further down the line when comparing settings. *)
 (* NB: The precondition is necessary to have the implication FSYNC -> SSYNC. *)
-Definition SSYNC_da da := forall config id, da.(activate) id = false -> da.(inactive_update) config id == config id.
+Definition SSYNC_da da := forall config id, da.(activate) id = false ->
+                                            inactive config id (da.(choose_inactive) config id) == config id.
 
 Definition SSYNC d := Stream.forever (Stream.instant SSYNC_da) d.
 
@@ -538,9 +548,9 @@ End Formalism.
 
 Arguments update_choice_Setoid {_} {_}.
 Arguments update_choice_EqDec {_} {_}.
-Arguments update_function {info} {_} {_} {_} T2 {_}.
-Arguments demonic_action {info} {_} {_} {_} {T1} {T2} {_} {_}.
-Arguments demon {info} {_} {_} {_} {T1} {T2} {_} {_}.
+Arguments update_functions {info} {_} {_} {_} T2 T3 {_} {_}.
+Arguments demonic_action {info} {_} {_} {_} {T1} {T2} {T3} {_} {_} {_}.
+Arguments demon {info} {_} {_} {_} {T1} {T2} {T3} {_} {_} {_}.
 
 
 Section ChoiceExample.

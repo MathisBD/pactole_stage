@@ -18,7 +18,8 @@ Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 Context {Choice : update_choice T}.
-Context {UpdFun : update_function T}.
+Context `{inactive_choice}.
+Context {UpdFun : update_functions T _}.
 
 Notation "!! config" := (@spect_from_config location _ _ _ multiset_spectrum config origin : spectrum) (at level 10).
 

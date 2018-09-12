@@ -52,10 +52,13 @@ Instance Loc_ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
 Instance Info : State location := OnlyLocation.
 Instance FDC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
-Instance NoChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
+Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
+Instance NoInactiveChoice : inactive_choice unit := {inactive_choice_EqDec := unit_eqdec}.
 
-Instance UpdateFun : update_function unit := {update := fun _ _ pt _ => pt ratio_1 }.
-Proof. now repeat intro. Defined.
+Instance UpdateFun : update_functions unit unit := {
+  update := fun _ _ pt _ => pt ratio_1;
+  inactive := fun config id _ => config id }.
+Proof. all:repeat intro; subst; auto. Defined.
 
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.

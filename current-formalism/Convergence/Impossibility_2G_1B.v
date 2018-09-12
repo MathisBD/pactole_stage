@@ -52,12 +52,15 @@ Instance location_ES : EuclideanSpace location := R_ES.
 Instance Info : State location := OnlyLocation.
 (** Demons use similarities to perform the change of frame of reference. *)
 Instance FC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
-(** Demons do not make any choice in how a robot state is updated. *)
-Instance NoChoice : update_choice Datatypes.unit := {update_choice_EqDec := unit_eqdec}.
+(** Demons do not make any choice in how a robot state is updated, both when active or not. *)
+Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
+Instance NoInactiveChoice : inactive_choice unit := {inactive_choice_EqDec := unit_eqdec}.
 (** Updates are rigid. *)
-Instance UpdateFun : update_function Datatypes.unit := {
-  update := fun _ _ trajectory _ => trajectory ratio_1 }.
-Proof. now repeat intro. Defined.
+Instance UpdateFun : update_functions unit unit := {
+  update := fun _ _ trajectory _ => trajectory ratio_1;
+  inactive := fun config id _ => config id }.
+Proof. all:repeat intro; subst; auto. Defined.
+
 Instance Update : RigidUpdate.
 Proof. split. now intros. Qed.
 
@@ -379,12 +382,12 @@ refine {|
   relocate_byz := fun _ _ => 1;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id |}.
+  choose_inactive := fun _ _ => tt |}.
 Proof.
 + abstract (now repeat intro).
 + abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
-+ abstract (intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq).
++ abstract (now repeat intro).
 Defined.
 
 Definition activate2 (id : ident) :=
@@ -399,12 +402,12 @@ simple refine {|
   relocate_byz := fun _ _ => 0;
   change_frame := fun config g => swap (get_location (config (Good g)));
   choose_update := fun _ _ _ => tt;
-  inactive_update := id |}; autoclass.
+  choose_inactive := fun _ _ => tt |}; autoclass.
 Proof.
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
-+ abstract (intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq).
++ abstract (now repeat intro).
 Defined.
 
 Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
@@ -476,12 +479,12 @@ simple refine {| activate := fun _ => true;
                  change_frame := fun config g =>
                  translation (opp (get_location (config (Good g))));
                  choose_update := fun _ _ _ => tt;
-                 inactive_update := id |}; autoclass.
+                 choose_inactive := fun _ _ => tt |}; autoclass.
 Proof.
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
-+ abstract (intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq).
++ abstract (now repeat intro).
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)

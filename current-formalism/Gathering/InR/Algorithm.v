@@ -58,10 +58,13 @@ Instance Loc : Location := make_Location R.
 Instance VS : RealVectorSpace location := R_VS.
 Instance ES : EuclideanSpace location := R_ES.
 Remove Hints R_VS R_ES : typeclass_instances.
-Instance Choice : update_choice Datatypes.unit := NoChoice.
-Instance UpdFun : update_function Datatypes.unit := {
+Instance ActiveChoice : update_choice unit := NoChoice.
+Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance UpdFun : update_functions unit unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
-  update_compat := ltac:(now repeat intro) }.
+  inactive := fun config id _ => config id;
+  update_compat := ltac:(now repeat intro);
+  inactive_compat := ltac:(repeat intro; subst; auto) }.
 Instance Rigid : RigidUpdate.
 Proof. split. reflexivity. Qed.
 

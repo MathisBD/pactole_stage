@@ -39,15 +39,16 @@ Section FlexibleFormalism.
 Context `{Spectrum}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}. (* for dist *)
-Variable T1 T2 : Type.
+Variable T1 T2 T3 : Type.
 Context {Frame : frame_choice T1}.
+Context {Inactive : inactive_choice T3}.
 
 Class FlexibleChoice `{update_choice T2} := {
   move_ratio : T2 -> ratio;
   move_ratio_compat :> Proper (@equiv T2 update_choice_Setoid ==> @equiv _ sig_Setoid) move_ratio }.
 
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
-Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R) := {
+Class FlexibleSetting `{FlexibleChoice} {Update : update_functions T2 T3} (delta : R) := {
   (** [move_ratio] is the ratio between the achieved and the planned move distances. *)
   ratio_spec : forall (config : configuration) g trajectory choice,
     let pt := get_location (config (Good g)) in
@@ -58,10 +59,8 @@ Class FlexibleUpdate `{FlexibleChoice} {Update : update_function T2} (delta : R)
     \/ pt' == trajectory (move_ratio choice)
        /\ delta <= dist pt pt' }.
 
-End FlexibleFormalism.
-
 (** If the robot is not trying to move, then it does not, no metter what the demon chooses. *)
-Lemma update_no_move `{FlexibleUpdate} : forall (config : configuration) (g : G) (pt : location) (choice : T2),
+Lemma update_no_move `{FlexibleSetting} : forall (config : configuration) (g : G) (pt : location) (choice : T2),
   get_location (update config g (straight_path pt pt) choice) == pt.
 Proof.
 intros config g pt choice.
@@ -69,12 +68,49 @@ destruct (ratio_spec config g (straight_path pt pt) choice) as [Heq | [Heq Hle]]
 rewrite Heq; simpl; now rewrite add_opp, mul_origin, add_origin.
 Qed.
 
+End FlexibleFormalism.
+
+Section OnlyFlexibleSetting.
+
+Context `{Location}.
+Context {VS : RealVectorSpace location}.
+Context {RMS : RealMetricSpace location}. (* for dist *)
+Context `{Names}.
+
+Instance St : State location := OnlyLocation.
+
 (** Specialized definition where the only choice made by the demon is the movement ratio. *)
-Definition OnlyFlexible : update_choice ratio := {|
-  update_choice_Setoid := _;
+Instance OnlyFlexible : update_choice ratio := {|
+  update_choice_Setoid := ratio_Setoid;
   update_choice_EqDec := _ |}.
 
-Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
+Global Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
+
+Instance FlexibleUpdate {T} `{inactive_choice T} (delta : R) (f : configuration → ident → T → location)
+                        (Hf : Proper (equiv ==> eq ==> equiv ==> equiv) f) : update_functions ratio _.
+refine {|
+  update := fun config g traj ρ => if Rle_dec delta (dist (get_location (config (Good g))) (get_location (traj ρ)))
+                                   then traj ρ else traj ratio_1;
+  inactive := f |}.
+Proof.
+intros config1 config2 Hconfig gg g ? traj1 traj2 Htraj ρ1 ρ2 Hρ. subst gg.
+assert (Heq : get_location (traj1 ρ1) == get_location (traj2 ρ2)).
+{ apply get_location_compat. now f_equiv. }
+do 2 destruct_match; rewrite Heq in *;
+solve [ reflexivity
+      | now f_equiv
+      | exfalso; revert_one not; intro Hgoal; apply Hgoal;
+        revert_all; rewrite Hconfig; intro Hle; apply Hle ].
+Defined.
+
+Global Instance FlexibleChoiceFlexibleUpdate `{inactive_choice} f Hf delta
+  : FlexibleSetting (Update := FlexibleUpdate delta f Hf) delta.
+Proof. split.
+intros config g traj choice pt pt'.
+simpl update in *. unfold pt'. destruct_match; now left + right.
+Qed.
+
+End OnlyFlexibleSetting.
 
 (*
  *** Local Variables: ***

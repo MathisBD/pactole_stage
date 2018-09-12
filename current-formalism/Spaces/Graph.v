@@ -29,9 +29,9 @@ Class Graph (V E : Type) := {
   tgt : E -> V;
   threshold : E -> R;
   threshold_pos : forall e, (0 < threshold e < 1)%R;
-  src_compat : Proper (equiv ==> equiv) src;
-  tgt_compat : Proper (equiv ==> equiv) tgt;
-  threshold_compat : Proper (equiv ==> Logic.eq) threshold;
+  src_compat :> Proper (equiv ==> equiv) src;
+  tgt_compat :> Proper (equiv ==> equiv) tgt;
+  threshold_compat :> Proper (equiv ==> Logic.eq) threshold;
 
   find_edge : V -> V -> option E;
   find_edge_compat : Proper (equiv ==> equiv ==> opt_eq equiv) find_edge;

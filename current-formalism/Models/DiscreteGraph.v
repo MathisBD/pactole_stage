@@ -24,7 +24,7 @@ Require Import Pactole.Spaces.Isomorphism.
 
 Section DGF.
 
-Context `{update_function}.
+Context `{update_functions}.
 Context (E : Type).
 Context {G : Graph location E}.
 Context `{@frame_choice _ (isomorphism G)}.
@@ -41,33 +41,5 @@ Class DiscreteGraphUpdate := {
  (* if the robogram tries to move on an adjacent node *)
     get_location (update config g target (da.(choose_update) config g target)) == target ratio_1 }.
  (* then the update let it go there *)
-
-(** **  Full synchronicity  **)
-
-(** A fully synchronous demon is a particular case of fair demon: all good robots
-    are activated at each round.  In our setting, this means that the demon never
-    returns a null reference. *)
-
-(** A demonic action is synchronous if it activates all robots at the same time. *)
-Definition da_Synchronous (da : demonic_action) : Prop := forall id id', activate da id = activate da id'.
-
-Instance da_Synchronous_compat : Proper (equiv ==> iff) da_Synchronous.
-Proof. unfold da_Synchronous. intros d1 d2 Hd. now setoid_rewrite Hd. Qed.
-
-Definition StepSynchronous := Stream.forever (Stream.instant da_Synchronous).
-
-Instance StepSynchronous_compat : Proper (equiv ==> iff) StepSynchronous.
-Proof. unfold StepSynchronous. autoclass. Qed.
-
-
-(* Graph updates are rigid, provided the move is legal (the edge exists).
-
-Require Import Pactole.Models.Rigid.
-
-Instance graph_update_rigid `{DiscreteGraphUpdate} : @RigidUpdate V info _ _ _ _ _ _ _ _ _ _ _.
-Proof. split.
-intros. rewrite discrete_graph_update; try reflexivity; [].
-Qed.
-*)
 
 End DGF.

@@ -12,6 +12,7 @@ Require Import Pactole.Util.Preliminary.
 Definition ratio := {x : R | 0 <= x <= 1}%R.
 
 Instance ratio_Setoid : Setoid ratio := sig_Setoid.
+Instance ratio_EqDec : EqDec ratio_Setoid := sig_EqDec _ _.
 
 Definition proj_ratio : ratio -> R := @proj1_sig _ _.
 
@@ -44,10 +45,23 @@ Proof. refine (exist _ 0%R _). abstract lra. Defined.
 Definition ratio_1 : ratio.
 Proof. refine (exist _ 1%R _). abstract lra. Defined.
 
+(** Addition between ratios *)
+Definition add_ratio (r1 r2 : ratio) : ratio.
+refine (if Rle_dec R1 (r1 + r2) then ratio_1
+        else exist _ (r1 + r2)%R _).
+Proof.
+abstract (split; solve [ apply Rplus_le_le_0_compat; apply ratio_bounds
+                       | now apply Rlt_le, Rnot_le_lt ]).
+Defined.
+
+Instance add_ratio_compat : Proper (equiv ==> equiv ==> equiv) add_ratio.
+Proof. intros [] [] ? [] [] ?. unfold add_ratio. simpl in *. subst. destruct_match; reflexivity. Qed.
+
 (** A strict ratio is a [ratio] that is neither [0] nor [1]. *)
 Definition strict_ratio := {x : R | 0 < x < 1}%R.
 
 Instance strict_ratio_Setoid : Setoid ratio := sig_Setoid.
+Instance strict_ratio_EqDec : EqDec strict_ratio_Setoid := sig_EqDec _ _.
 
 Definition proj_strict_ratio (x : strict_ratio) : ratio :=
   let '(exist _ v Hv) := x in

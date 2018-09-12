@@ -68,27 +68,17 @@ Ltac changeR2 :=
 (* We are in a flexible formalism with no other info than the location,
    so the demon only chooses the move ratio. *)
 Instance FlexChoice : update_choice ratio := Flexible.OnlyFlexible.
+(* NB: The inactive instance actually does not matter since we are in a FSYNC setting,
+       so we could instead leave it as a parameter. *)
+Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
 
 Parameter delta : R.
 
-Instance UpdFun : update_function ratio := {|
-  update := fun config g trajectory ρ => let pt' := trajectory ρ in
-              if Rle_dec delta (@dist _ _ _ Loc_VS _ (@get_location _ _ Info (config (Good g))) pt')
-              then pt' else trajectory ratio_1 |}.
-Proof.
-+ autoclass.
-+ intros ? ? Hconfig ? g ? ? ? Hpt [? Hρ1] [ρ Hρ2] Heq.
-  simpl in Heq. subst. rewrite Hpt, Hconfig. cbn zeta.
-  assert (Heq : y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ1)%R
-             == y0 (exist (fun x : R => 0 <= x <= 1) ρ Hρ2)%R) by f_equiv.
-  rewrite Heq. now destruct_match; f_equiv.
-Defined.
+Lemma inactive_proper : Proper (equiv ==> eq ==> equiv ==> equiv)
+  (fun (config : configuration) (id : ident) (_ : unit) => config id).
+Proof. repeat intro; subst; auto. Qed.
 
-Instance Flex : Flexible.FlexibleUpdate delta.
-Proof.
-split. intros da config g target. cbn -[dist].
-destruct_match; unfold id; tauto.
-Qed.
+Instance UpdFun : update_functions ratio unit := FlexibleUpdate delta _ inactive_proper.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "!! config" := (@spect_from_config _ _ Info MyRobots multiset_spectrum config origin) (at level 1).
@@ -730,7 +720,7 @@ apply gathered_at_elements, (Preliminary.PermutationA_map _ Hf) in Hgather.
 apply barycenter_compat in Hgather. cbn [List.map] in Hgather.
 assert (INR nG <> 0). { apply not_0_INR. generalize size_G. intro. simpl. omega. }
 rewrite barycenter_singleton in Hgather; trivial; [].
-now rewrite Hgather, update_no_move.
+rewrite Hgather, update_no_move; autoclass.
 Qed.
 
 Lemma gathered_at_OK : forall d conf pt, FSYNC (similarity_demon2demon d) ->

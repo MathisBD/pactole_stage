@@ -66,6 +66,12 @@ Instance LocationG : Location := { location := loc }.
 Notation locV := (@location LocationV).
 Notation locG := (@location LocationG).
 
+Global Instance OnVertex_compat : Proper (equiv ==> equiv) OnVertex.
+Proof. repeat intro. auto. Qed.
+
+Global Instance OnEdge_compat : Proper (equiv ==> equiv ==> equiv) OnEdge.
+Proof. repeat intro. auto. Qed.
+
 
 (** *  Projection functions  **)
 
@@ -96,7 +102,7 @@ Qed.
 
 Definition location_V2G : locV -> locG := OnVertex.
 
-Instance location_V2G_compat : Proper (equiv ==> equiv) location_V2G.
+Global Instance location_V2G_compat : Proper (equiv ==> equiv) location_V2G.
 Proof. repeat intro. now simpl. Qed.
 
 (** ** Translation of states **)
@@ -108,22 +114,21 @@ Notation locG3 := (locG * locV * locV)%type.
 Definition rc_V2G (state : locV3) : locG3 :=
   (OnVertex (fst (fst state)), snd (fst state), snd state).
 
-Instance rc_V2G_compat : Proper (equiv ==> equiv) rc_V2G.
+Global Instance rc_V2G_compat : Proper (equiv ==> equiv) rc_V2G.
 Proof. intros ? ? HrcA. unfold rc_V2G. repeat try (split; simpl); apply HrcA. Qed.
 
 Definition rc_G2V (state : locG3) : locV3 :=
   (location_G2V (fst (fst state)), snd (fst state), snd state).
 
-Instance rcC2D_compat : Proper (equiv ==> equiv) rc_G2V.
+Global Instance rc_G2V_compat : Proper (equiv ==> equiv) rc_G2V.
 Proof. intros ? ? HrcV. unfold rc_G2V. repeat try (split; simpl); f_equiv; apply HrcV. Qed.
-(*
-Lemma rc_D2C2D : forall state, rcC2D (rcD2C state) == state.
+
+Lemma rc_V2G2V : forall state, rc_G2V (rc_V2G state) == state.
 Proof. intro. simpl. repeat (split; try reflexivity). Qed.
-*)
 
 (** ** On configurations *)
 
-Instance Info : State location := OnlyLocation.
+(* Instance Info : State location := OnlyLocation. *)
 Instance InfoV3 : @State locV3 LocationV := AddLocation _ (AddLocation _ OnlyLocation).
 Instance InfoG3 : @State locG3 LocationG.
 refine {|
@@ -145,15 +150,15 @@ Defined.
 Notation configV := (@configuration locV3 _ _ _).
 Notation configG := (@configuration locG3 _ _ _).
 
-(* We cannot use map_config as the Location instance is not the same. *)
+(* RMK: we cannot use map_config as the Location instance is not the same. *)
 Definition config_V2G (config : configV) : configG := fun id => rc_V2G (config id).
 
-Instance config_V2G_compat : Proper (equiv ==> equiv) config_V2G.
+Global Instance config_V2G_compat : Proper (equiv ==> equiv) config_V2G.
 Proof. intros ? ? Hca id. unfold config_V2G. f_equiv. apply Hca. Qed.
 
 Definition config_G2V (config : configG) : configV := fun id => rc_G2V (config id).
 
-Instance config_G2V_compat : Proper (equiv ==> equiv) config_G2V.
+Global Instance config_G2V_compat : Proper (equiv ==> equiv) config_G2V.
 Proof. intros ? ? Hcd id. unfold config_G2V. f_equiv. apply Hcd. Qed.
 
 Lemma config_V2G2V : forall config : configV, config_G2V (config_V2G config) == config.
@@ -198,12 +203,12 @@ Class robogram_range `{@Spectrum _ LocationV _ _} r := {
 
 (** ** Translation of robograms **)
 
-Context (spect : @Spectrum _ _ InfoV3 _).
-Notation robogramV := (@robogram _ _ InfoV3 _ spect).
-Notation robogramG := (@robogram _ _ InfoG3 _ (spect_V2G spect)).
+Context {Spect : @Spectrum _ _ InfoV3 _}.
+Notation robogramV := (@robogram _ _ InfoV3 _ Spect).
+Notation robogramG := (@robogram _ _ InfoG3 _ (spect_V2G Spect)).
 
 Definition rbg_V2G (rbgV : robogramV) : robogramG.
-refine (@Build_robogram _ _ InfoG3 _ (spect_V2G spect)
+refine (@Build_robogram _ _ InfoG3 _ (spect_V2G Spect)
          (fun s => lift_path location_V2G (rbgV s)) _).
 Proof.
 intros s1 s2 Hs r. unfold lift_path. cbn -[equiv].
@@ -211,11 +216,11 @@ apply location_V2G_compat. now rewrite Hs.
 Unshelve. apply location_V2G_compat.
 Defined.
 
-Instance rbg_V2G_compat : Proper (equiv ==> equiv) rbg_V2G.
+Global Instance rbg_V2G_compat : Proper (equiv ==> equiv) rbg_V2G.
 Proof. intros ra1 ra2 Hra. simpl. apply Hra. Qed.
 
 Definition rbg_G2V (rbgG : robogramG) : robogramV.
-refine (@Build_robogram _ _ InfoV3 _ spect
+refine (@Build_robogram _ _ InfoV3 _ Spect
          (fun s => lift_path location_G2V (rbgG s)) _).
 Proof.
 intros s1 s2 Hs r. unfold lift_path. cbn -[equiv].
@@ -223,7 +228,7 @@ apply location_G2V_compat. now rewrite Hs.
 Unshelve. apply location_G2V_compat.
 Defined.
 
-Instance rbg_G2V_compat : Proper (equiv ==> equiv) rbg_G2V.
+Global Instance rbg_G2V_compat : Proper (equiv ==> equiv) rbg_G2V.
 Proof. intros ra1 ra2 Hra s r. simpl. apply location_G2V_compat, Hra. Qed.
 
 Lemma rbg_V2G2V : forall rbgV, rbg_G2V (rbg_V2G rbgV) == rbgV.
@@ -232,15 +237,51 @@ Proof. intro. simpl. reflexivity. Qed.
 (** **  Demonic schedulers  **)
 
 (** Graph isomorphisms as a frame choice *)
-Global Instance FrameChoiceIsomorphism : @frame_choice LocationV (@isomorphism locV E G) := {|
+Global Instance FrameChoiceIsomorphismV : @frame_choice LocationV (@isomorphism locV E G) := {|
   frame_choice_bijection := @iso_V locV E G;
   frame_choice_Setoid := @isomorphism_Setoid locV E G;
   frame_choice_bijection_compat := @iso_V_compat locV E G |}.
 
+(** Using the isomorphism to build a bijection continuous graphs. *)
+
+Definition bijectionG (iso : isomorphism G) : Bijection.bijection loc.
+simple refine {| Bijection.section := fun pt => match pt with
+          | OnVertex v => OnVertex (iso.(iso_V) v)
+          | OnEdge e p => OnEdge (iso.(iso_E) e) p
+        end;
+  Bijection.retraction := fun pt => match pt with
+          | OnVertex v => OnVertex (Bijection.retraction iso.(iso_V) v)
+          | OnEdge e p => OnEdge (Bijection.retraction iso.(iso_E) e) p
+        end |}.
+Proof.
++ intros [] [] Heq; simpl in Heq; trivial; now repeat f_equiv.
++ intros [] []; simpl in *; try tauto; [|]; split; intro Heq.
+  - rewrite <- Heq. apply Bijection.retraction_section.
+  - rewrite <- Heq. apply Bijection.section_retraction.
+  - destruct Heq as [Heq1 Heq2]. rewrite Heq2, Heq1 || rewrite Heq2, <- Heq1.
+    split; trivial; []. apply Bijection.retraction_section.
+  - destruct Heq as [Heq1 Heq2]. rewrite Heq2, Heq1 || rewrite Heq2, <- Heq1.
+    split; trivial; []. apply Bijection.section_retraction.
+Defined.
+
+Global Instance bijectionG_compat :  Proper (equiv ==> equiv) bijectionG.
+Proof.
+intros iso1 iso2 Hiso []; simpl.
++ apply Hiso.
++ split; trivial; []. apply Hiso.
+Qed.
+
+Global Instance FrameChoiceIsomorphismG : @frame_choice LocationG (@isomorphism locV E G) := {|
+  frame_choice_bijection := bijectionG |}.
+
 (** The update only contains the movement ratio. *)
-Global Instance graph_update : update_choice ratio := Flexible.OnlyFlexible.
+Instance graph_update_bool : update_choice bool := { update_choice_EqDec := bool_eqdec }.
+Instance graph_update_ratio : update_choice ratio := Flexible.OnlyFlexible.
 (* TODO: Ensure that the following invariant holds:
          if activate is true, then the current location, the source and target are all the same. *)
+
+Instance graph_inactive_bool : inactive_choice bool := { inactive_choice_EqDec := bool_eqdec }.
+Instance graph_inactive_ratio : inactive_choice ratio := { inactive_choice_EqDec := ratio_EqDec }.
 
 (*
 (** [round r da conf] return the new configuration of robots (that is a function

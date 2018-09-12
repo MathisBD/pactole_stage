@@ -57,10 +57,13 @@ Instance Loc : Location := make_Location R.
 Instance VS : RealVectorSpace location := R_VS.
 Instance ES : EuclideanSpace location := R_ES.
 Remove Hints R_VS R_ES : typeclass_instances.
-Instance Choice : update_choice Datatypes.unit := NoChoice.
-Instance UpdFun : update_function Datatypes.unit := {
+Instance ActiveChoice : update_choice unit := NoChoice.
+Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance UpdFun : update_functions unit unit := {
   update := fun _ _ trajectory _ => trajectory ratio_1;
-  update_compat := ltac:(now repeat intro) }.
+  inactive := fun config id _ => config id;
+  update_compat := ltac:(now repeat intro);
+  inactive_compat := ltac:(repeat intro; subst; auto) }.
 (* This update function is indeed rigid. *)
 Instance Rigid : RigidUpdate.
 Proof. split. intros. simpl. reflexivity. Qed.
@@ -378,13 +381,13 @@ Definition da1 : demonic_action := {|
   relocate_byz := fun _ b => mk_info 0;
   change_frame := change_frame1;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id;
+  choose_inactive := fun _ _ => tt;
   
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
   change_frame_compat := change_frame1_compat;
   choose_update_compat := ltac:(now repeat intro);
-  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq) |}.
+  choose_inactive_compat := ltac:(now repeat intro) |}.
 
 Definition bad_demon1 : demon := Stream.constant da1.
 
@@ -669,26 +672,26 @@ Definition da2_left config : demonic_action := {|
   relocate_byz := fun _ _ => mk_info 0;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id;
+  choose_inactive := fun _ _ => tt;
   
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
   choose_update_compat := ltac:(now repeat intro);
-  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq) |}.
+  choose_inactive_compat := ltac:(now repeat intro) |}.
 
 Definition da2_right config : demonic_action := {|
   activate := activate2 false true config;
   relocate_byz := fun _ _ => mk_info 0;
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
-  inactive_update := id;
+  choose_inactive := fun _ _ => tt;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
   choose_update_compat := ltac:(now repeat intro);
-  inactive_update_compat := ltac:(intros ? ? Heq ? ? Hid; simpl in Hid; subst; unfold id; apply Heq) |}.
+  choose_inactive_compat := ltac:(now repeat intro) |}.
 
 Lemma round_simplify2_left : forall config (sim : similarity location),
   !! config == map sim spectrum0 ->

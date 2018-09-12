@@ -33,10 +33,10 @@ Typeclasses eauto := (bfs).
 Section SimilarityCenter.
 
 Context `{Spectrum}.
-Context {T : Type}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
-Context `{update_choice T}.
+Context `{update_choice}.
+Context `{inactive_choice}.
 
 (** Similarities as a frame choice, inside real metric spaces *)
 Global Instance FrameChoiceSimilarity : frame_choice (similarity location) := {|
