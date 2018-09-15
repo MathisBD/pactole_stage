@@ -183,15 +183,15 @@ Lemma spect_from_config_ignore_snd `{RMS : RealMetricSpace.RealMetricSpace locat
   spect_from_config config pt == spect_from_config config RealVectorSpace.origin.
 Proof. reflexivity. Qed.
 
-Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
+Lemma spect_from_config_map : forall f Pf, Proper (equiv ==> equiv) f ->
   forall config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (lift f) config) (f pt).
+  map f (spect_from_config config pt) == spect_from_config (map_config (lift f Pf) config) (f pt).
 Proof.
 repeat intro. unfold spect_from_config, set_spectrum.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
 + apply make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
   assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
-                     (fun x => f (get_location x)) (fun x => get_location (lift f x))).
+                     (fun x => f (get_location x)) (fun x => get_location (lift f Pf x))).
   { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).
 + assumption.

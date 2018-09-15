@@ -177,7 +177,9 @@ End MultisetConstruction.
 
 Section MultisetSpectrum.
 
-Context `{State}.
+Context `{Location}.
+Context {info : Type}.
+Context `{St : State info}.
 Context `{Names}.
 
 Implicit Type config : configuration.
@@ -208,14 +210,14 @@ Lemma spect_from_config_ignore_snd {VS : RealVectorSpace.RealVectorSpace locatio
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
-  forall config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (lift f) config) (f pt).
+  forall Pf config pt,
+  map f (spect_from_config config pt) == spect_from_config (map_config (lift f Pf) config) (f pt).
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum.
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 + apply make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
   assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
-                     (fun x => f (get_location x)) (fun x => get_location (lift f x))).
+                     (fun x => f (get_location x)) (fun x => get_location (lift f Pf x))).
   { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).
 + assumption.

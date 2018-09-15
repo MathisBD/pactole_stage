@@ -1107,8 +1107,8 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
   subst pt1'. cbn -[Bijection.inverse mul]. unfold id.
   rewrite <- (Bijection.compose_inverse_l sim pt1) at 2.
   simpl. f_equiv. changeR2. destruct (sim pt1); simpl; f_equal; ring.
-* change (map_config sim config) with (map_config (lift sim) config).
-  rewrite <- (spect_from_config_ignore_snd (map_config (lift sim) config) (sim origin)),
+* change (map_config sim config) with (map_config (lift sim I) config).
+  rewrite <- (spect_from_config_ignore_snd (map_config (lift (State := OnlyLocation) sim I) config) (sim origin)),
           <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
   + rewrite rigid_update, <- (spect_from_config_ignore_snd _ (sim origin)),
@@ -1133,6 +1133,7 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
       rewrite spect_from_config_map; trivial; [].
       rewrite spect_from_config_ignore_snd. simpl. unfold id. changeR2.
       destruct (target (!! (fun id => sim (config id)))); simpl; f_equal; ring.
+Unshelve. all:exact I. (* FIXME: there should be no shelved goals. *)
 Qed.
 
 (** ****  Specialization of [round_simplify] in the three main cases of the robogram  **)

@@ -148,8 +148,8 @@ Section MapConfig.
 
 Context `{Location}.
 Context {info1 info2 : Type}.
-Context {St1 : @State info1 _}.
-Context {St2 : @State info2 _}.
+Context {St1 : @State _ info1}.
+Context {St2 : @State _ info2}.
 Context `{Names}.
 
 Definition map_config (f : info1 -> info2) (config : @configuration _ _ St1 _) : configuration :=
@@ -171,7 +171,7 @@ Lemma map_config_id `{State} `{Names} : forall config,
   map_config Datatypes.id config == config.
 Proof. now repeat intro. Qed.
 
-Lemma map_config_merge  `{Location} {T U V : Type} `{@State T _} `{@State U _} `{@State V _} `{Names} :
+Lemma map_config_merge `{Location} {T U V : Type} `{@State _ T} `{@State _ U} `{@State _ V} `{Names} :
   forall (f : T -> U) (g : U -> V), Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
   forall config : configuration, map_config g (map_config f config) == map_config (fun x => g (f x)) config.
 Proof. now repeat intro. Qed.

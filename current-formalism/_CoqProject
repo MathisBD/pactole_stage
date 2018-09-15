@@ -40,7 +40,7 @@ Models/ContinuousGraph.v
 #Models/DiscreteASync.v
 #Models/DiscreteGraphSSync.v
 #Models/GraphRigid.v
-Models/ASync.v
+#Models/ASync.v
 
 ## Spaces
 Spaces/RealVectorSpace.v

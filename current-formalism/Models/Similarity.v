@@ -51,7 +51,7 @@ Definition similarity_da_prop da :=
     the center of the similarity is the location of the robot. *)
 Definition similarity_da := { sim_da : demonic_action | similarity_da_prop sim_da }.
 
-Instance similarity_da_Setoid : Setoid similarity_da := sig_Setoid.
+Instance similarity_da_Setoid : Setoid similarity_da := sig_Setoid _.
 
 Definition proj_sim_da : similarity_da -> demonic_action := @proj1_sig _ _.
 

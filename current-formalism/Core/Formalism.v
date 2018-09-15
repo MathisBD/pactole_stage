@@ -46,7 +46,7 @@ Variables T1 T2 T3 : Type.
 (** Good robots have a common program, which we call a [robogram]. *)
 Record robogram := {
   pgm :> spectrum -> path location; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
-  pgm_compat : Proper (equiv ==> equiv) pgm}.
+  pgm_compat :> Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid : Setoid robogram := {|
   equiv := fun r1 r2 => forall s, pgm r1 s == pgm r2 s |}.
@@ -74,7 +74,7 @@ Definition execution := Stream.t configuration.
     and while updating robot states.  These choice points will be represented explicitely as demon choices. *)
 
 (** A [frame_choice] represents the choices made by the demon to compute the spectrum.
-    It must at least contain at bijection to compute the change of frame of reference.  *)
+    It must at least contain a bijection to compute the change of frame of reference.  *)
 Class frame_choice := {
   frame_choice_bijection : T1 -> bijection location;
   frame_choice_Setoid :> Setoid T1;
@@ -115,6 +115,8 @@ Record demonic_action := {
   choose_update : configuration -> G -> path location -> T2;
   (** Update the state of inactive robots *)
   choose_inactive : configuration -> ident -> T3;
+  (** The change of frame must satisfy the condition to be lifted to states. *)
+  precondition_satisfied : forall config g, precondition (frame_choice_bijection (change_frame config g));
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -219,7 +221,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         | Good g =>
           (* change the frame of reference *)
           let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-          let local_config := map_config (lift new_frame) config in
+          let local_config := map_config (lift new_frame (precondition_satisfied da config g)) config in
           let local_pos := get_location (local_config (Good g)) in
           (* compute the spectrum *)
           let spect := spect_from_config local_config local_pos in
@@ -356,7 +358,7 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
         | Byz b => da.(relocate_byz) config b
         | Good g =>
           let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-          let local_config := map_config (lift new_frame) config in
+          let local_config := map_config (lift new_frame (precondition_satisfied da config g)) config in
           let local_pos := get_location (local_config (Good g)) in
           let spect := spect_from_config local_config local_pos in
           let local_trajectory := r spect in
@@ -396,7 +398,7 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
       | Byz b => da.(relocate_byz) config b
       | Good g =>
         let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-        let local_config := map_config (lift new_frame) config in
+        let local_config := map_config (lift new_frame (precondition_satisfied da config g)) config in
         let local_pos := get_location (local_config (Good g)) in
         let spect := spect_from_config local_config local_pos in
         let local_trajectory := r spect in

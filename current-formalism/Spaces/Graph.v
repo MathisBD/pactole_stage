@@ -34,7 +34,7 @@ Class Graph (V E : Type) := {
   threshold_compat :> Proper (equiv ==> Logic.eq) threshold;
 
   find_edge : V -> V -> option E;
-  find_edge_compat : Proper (equiv ==> equiv ==> opt_eq equiv) find_edge;
+  find_edge_compat :> Proper (equiv ==> equiv ==> opt_eq equiv) find_edge;
   find_edge_None : forall a b : V, find_edge a b = None <-> forall e : E, ~(src e == a /\ tgt e == b);
   find_edge_Some : forall v1 v2 e, find_edge v1 v2 == Some e <-> v1 == src e /\ v2 == tgt e }.
 

@@ -11,7 +11,7 @@ Require Import Pactole.Util.Preliminary.
 (** A ratio (of some quantity), as a real number between [0] and [1]. *)
 Definition ratio := {x : R | 0 <= x <= 1}%R.
 
-Instance ratio_Setoid : Setoid ratio := sig_Setoid.
+Instance ratio_Setoid : Setoid ratio := sig_Setoid _.
 Instance ratio_EqDec : EqDec ratio_Setoid := sig_EqDec _ _.
 
 Definition proj_ratio : ratio -> R := @proj1_sig _ _.
@@ -60,7 +60,7 @@ Proof. intros [] [] ? [] [] ?. unfold add_ratio. simpl in *. subst. destruct_mat
 (** A strict ratio is a [ratio] that is neither [0] nor [1]. *)
 Definition strict_ratio := {x : R | 0 < x < 1}%R.
 
-Instance strict_ratio_Setoid : Setoid ratio := sig_Setoid.
+Instance strict_ratio_Setoid : Setoid ratio := sig_Setoid _.
 Instance strict_ratio_EqDec : EqDec strict_ratio_Setoid := sig_EqDec _ _.
 
 Definition proj_strict_ratio (x : strict_ratio) : ratio :=

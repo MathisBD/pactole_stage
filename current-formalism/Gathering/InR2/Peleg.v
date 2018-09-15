@@ -85,8 +85,8 @@ Notation "!! config" := (@spect_from_config _ _ Info MyRobots multiset_spectrum 
 Notation "x == y" := (equiv x y).
 Notation spectrum := (@spectrum location Loc Info MyRobots multiset_spectrum).
 Notation robogram := (@robogram location Loc Info MyRobots multiset_spectrum).
-Notation configuration := (@configuration location Loc Info MyRobots).
-Notation config_list := (@config_list location Loc Info MyRobots).
+Notation configuration := (@configuration Loc location Info MyRobots).
+Notation config_list := (@config_list Loc location Info MyRobots).
 Notation round := (@round location Loc Info MyRobots multiset_spectrum _ _ _ _ _).
 Notation execution := (@execution location Loc Info MyRobots).
 Notation Madd := (MMultisetInterface.add).
@@ -296,7 +296,7 @@ assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq.
 Local Opaque lift. Local Opaque map_config.
 assert (Hperm : PermutationA (equiv * eq)%signature
                        (List.map (fun xn => (sim (fst xn), snd xn)) (elements (!! config)))
-                       (elements (!! (map_config (lift sim) config)))).
+                       (elements (elt := location) (!! (map_config (lift sim I) config)))).
 { rewrite <- map_injective_elements, spect_from_config_map, spect_from_config_ignore_snd;
   autoclass; reflexivity || apply Bijection.injective. }
 rewrite spect_from_config_ignore_snd.

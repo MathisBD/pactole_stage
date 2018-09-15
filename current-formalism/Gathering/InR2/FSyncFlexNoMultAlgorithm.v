@@ -84,8 +84,8 @@ Notation "!! config" := (@spect_from_config _ _ Info MyRobots set_spectrum confi
 Notation "x == y" := (equiv x y).
 Notation spectrum := (@spectrum location Loc Info MyRobots set_spectrum).
 Notation robogram := (@robogram location Loc Info MyRobots set_spectrum).
-Notation configuration := (@configuration location Loc Info MyRobots).
-Notation config_list := (@config_list location Loc Info MyRobots).
+Notation configuration := (@configuration Loc location Info MyRobots).
+Notation config_list := (@config_list Loc location Info MyRobots).
 Notation round := (@round location Loc Info MyRobots set_spectrum _ _ _ _ _).
 Notation execution := (@execution location Loc Info MyRobots).
 Notation Sadd := (FSetInterface.add).
@@ -292,13 +292,13 @@ remember (change_frame da config g) as sim.
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 Local Opaque lift. Local Opaque map_config.
 assert (Hperm : PermutationA equiv (List.map sim (elements (!! config)))
-                            (elements (!! (map_config (lift sim) config)))).
+                                   (elements (elt := location) (!! (map_config (lift sim I) config)))).
 { rewrite <- map_injective_elements, spect_from_config_map, spect_from_config_ignore_snd;
   autoclass; reflexivity || apply Bijection.injective. }
 rewrite spect_from_config_ignore_snd.
 simpl pgm. unfold ffgatherR2_pgm. changeR2.
 remember (elements (!! config)) as E.
-remember (elements (!! (map_config (lift sim) config))) as E'.
+remember (elements (!! (map_config (lift (State := OnlyLocation) sim I) config))) as E'.
 Time rewrite <- Hperm, isobarycenter_sim_morph; trivial; [].
 assert (lift_path (Bijection.inverse sim) (paths_in_R2 (sim (isobarycenter E)))
         == straight_path (get_location (config (Good g))) (isobarycenter E)).

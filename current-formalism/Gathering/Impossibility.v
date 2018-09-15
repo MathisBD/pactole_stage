@@ -416,6 +416,8 @@ Definition da1 : demonic_action := {|
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt;
   
+  precondition_satisfied := fun _ _ => I;
+  
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
   change_frame_compat := change_frame1_compat;
@@ -495,7 +497,7 @@ assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (conf
 (* We build the similarity that performs the swap. *)
 assert (Hdiff' : pt2 =/= pt1) by now symmetry.
 pose (sim := build_similarity Hdiff Hdiff' : similarity location).
-assert (Hconfig : round r da1 config == map_config (lift sim) config).
+assert (Hconfig : round r da1 config == map_config (lift sim I) config).
 { rewrite (round_simplify1 config Hdiff Hspect).
   apply no_byz_eq. intro g.
   cbn [map_config]. rewrite get_location_lift, mk_info_get_location.
@@ -584,7 +586,7 @@ assert (Hcase2 : forall id, get_location (config2 id) == pt1' \/ get_location (c
 { intro id. assert (Hin := pos_in_config config2 origin id).
   rewrite Hspect', add_In, In_singleton in Hin. tauto. }
 clear Hspect Hspect' Hvalid1 Hvalid2.
-Time repeat destruct_match; rewrite Hconfig in *;try (first [ assert (Heq : pt1 == pt1' /\ pt2 == pt2')
+Time repeat destruct_match; rewrite Hconfig in *; try (first [ assert (Heq : pt1 == pt1' /\ pt2 == pt2')
                by (destruct Hperm as [? | [Heq1 Heq2]]; trivial; [];
                    rewrite Heq1, Heq2 in *;
                    split; transitivity (get_location (config2 (Good g0))); auto)
@@ -851,6 +853,8 @@ Definition da2_left config : demonic_action := {|
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt;
   
+  precondition_satisfied := fun _ _ => I;
+  
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
@@ -863,6 +867,8 @@ Definition da2_right config : demonic_action := {|
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt;
+  
+  precondition_satisfied := fun _ _ => I;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
@@ -890,7 +896,7 @@ destruct_match_eq Hcase.
 * (* The robot is on the first tower so it moves like g0. *)
   rewrite activate2_spec1 in Hcase; trivial; [].
   assert (Hsim := proj1 (change_frame2_eq _ _ Hinvalid) Hcase).
-  setoid_rewrite Hsim at -3. fold sim.
+  setoid_rewrite Hsim at -2 3. fold sim.
   change (Bijection.inverse sim) with (Similarity.sim_f (sim ⁻¹)).
   assert (Hsimg : get_location (config (Good g)) == sim⁻¹ origin) by (etransitivity; eauto).
   destruct_match; try contradiction; [].
@@ -901,8 +907,9 @@ destruct_match_eq Hcase.
   { rewrite <- (map_id spectrum0) at 2. apply map_extensionality_compat.
     - now repeat intro.
     - intro. simpl. apply Bijection.section_retraction. }
-  rewrite Hspectrum0. change ((r spectrum0) ratio_1) with move.
-  rewrite Hsim. reflexivity.
+  rewrite Hsim. fold sim. unfold move. rewrite <- Hspectrum0 at 2.
+  change get_location with (@id location). unfold id.
+  do 2 f_equiv. apply pgm_compat, map_extensionality_compat; autoclass.
 * (* The robot is on the second tower so it does not move. *)
   rewrite activate2_spec2 in Hcase; trivial; [].
   fold sim.
@@ -920,7 +927,7 @@ assert (Hspect := change_frame2_spect g0 Hinvalid). fold sim in Hspect.
 (* sim' maps the canonical config to the next round one *)
 pose (sim' := build_similarity (symmetry non_trivial) Hdiff_move).
 apply (invalid_reverse sim').
-assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘ sim)) config).
+assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘ sim) I) config).
 { rewrite round_simplify2_left; auto; [].
   apply no_byz_eq. intro g. fold sim.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.
@@ -940,7 +947,7 @@ assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘
     unfold sim'. now rewrite build_similarity_eq2. }
 rewrite Hconfig.
 rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect; [| now autoclass].
-rewrite map_merge; autoclass; [].
+Time rewrite map_merge; autoclass; [].
 apply map_extensionality_compat; autoclass; [].
 intro. cbn -[equiv sim']. now rewrite Bijection.section_retraction.
 Qed.
@@ -1010,7 +1017,7 @@ destruct_match_eq Hcase.
     elim Hcase. etransitivity; eauto; []. now apply center_change_frame2. }
   rewrite spect_from_config_ignore_snd.
   assert (Hspect' : spectrum0 == map (change_frame2 config g) (!! config)).
-  { rewrite <- map_id. change id with (Bijection.section Similarity.id).
+  { rewrite <- map_id. Time change id with (Bijection.section Similarity.id).
     rewrite <- (map_extensionality_compat _ _ (Similarity.compose_inverse_r (change_frame2 config g))).
     rewrite (change_frame2_spect g Hinvalid), map_merge; autoclass. }
   rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, <- Hspect'; autoclass; [].
@@ -1054,7 +1061,7 @@ assert (Hdiff_move1 : sim1⁻¹ move =/= sim1⁻¹ one).
 (* sim' maps the canonical config to the next round one *)
 pose (sim' := build_similarity non_trivial Hdiff_move1).
 apply (invalid_reverse sim').
-assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' ∘ sim0)) config).
+assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' ∘ sim0) I) config).
 { rewrite round_simplify2_right; auto; [].
   apply no_byz_eq. intro g. fold sim0.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.
@@ -1073,7 +1080,7 @@ assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' �
     rewrite <- Hg1, change_frame2_eq in Heq'; trivial; []. now rewrite Heq'. }
 rewrite Hconfig.
 rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect0; [| now autoclass].
-rewrite map_merge; autoclass; [].
+rewrite map_merge; [| autoclass | autoclass]; [].
 apply map_extensionality_compat; autoclass; [].
 intro. cbn -[equiv sim']. now rewrite Bijection.section_retraction.
 Qed.

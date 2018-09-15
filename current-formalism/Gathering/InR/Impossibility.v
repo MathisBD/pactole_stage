@@ -383,6 +383,8 @@ Definition da1 : demonic_action := {|
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt;
   
+  precondition_satisfied := fun _ _ => I;
+  
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
   change_frame_compat := change_frame1_compat;
@@ -460,7 +462,7 @@ assert (Hcase : forall id, get_location (config id) = pt1 \/ get_location (confi
 (* We build the similarity that performs the swap. *)
 assert (Hdiff' : pt2 =/= pt1). { simpl in *. lra. }
 pose (sim := build_similarity Hdiff Hdiff' : similarity location).
-assert (Hconfig : round r da1 config == map_config (lift sim) config).
+assert (Hconfig : round r da1 config == map_config (lift sim I) config).
 { rewrite (round_simplify1 config Hdiff Hspect).
   apply no_byz_eq. intro g.
   cbn [map_config]. rewrite get_location_lift, mk_info_get_location.
@@ -674,6 +676,8 @@ Definition da2_left config : demonic_action := {|
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt;
   
+  precondition_satisfied := fun _ _ => I;
+  
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
   change_frame_compat := change_frame2_compat;
@@ -686,6 +690,8 @@ Definition da2_right config : demonic_action := {|
   change_frame := change_frame2;
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt;
+  
+  precondition_satisfied := fun _ _ => I;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
@@ -754,7 +760,7 @@ assert (Hdiff_move : sim move =/= sim 1).
 { intro Heq. now apply Similarity.injective in Heq. }
 pose (sim' := build_similarity neq_0_1 Hdiff_move).
 apply (invalid_reverse sim').
-assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘ sim ⁻¹)) config).
+assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘ sim ⁻¹) I) config).
 { rewrite round_simplify2_left; auto; [].
   apply no_byz_eq. intro g.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.
@@ -878,7 +884,7 @@ assert (Hdiff_move : sim move =/= sim 1).
 { intro Heq. now apply Similarity.injective in Heq. }
 pose (sim' := build_similarity neq_0_1 Hdiff_move).
 apply (invalid_reverse sim').
-assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' ∘ sim ⁻¹)) config).
+assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' ∘ sim ⁻¹) I) config).
 { rewrite round_simplify2_right; auto; [].
   apply no_byz_eq. intro g.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.

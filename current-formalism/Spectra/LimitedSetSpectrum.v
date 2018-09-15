@@ -70,15 +70,15 @@ Lemma spect_from_config_ignore_snd : forall config pt,
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall sim : similarity location,
-  forall radius config pt,
+  forall Psim radius config pt,
   map sim (from_config radius config pt)
-  == from_config (sim.(Similarity.zoom) * radius) (map_config (lift sim) config) (sim pt).
+  == from_config (sim.(Similarity.zoom) * radius) (map_config (lift sim Psim) config) (sim pt).
 Proof.
 repeat intro. unfold spect_from_config, limited_set_spectrum.
 rewrite config_list_map, map_map, 2 filter_map, <- SetSpectrum.make_set_map, map_map; autoclass; [].
 apply SetSpectrum.make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
 assert (Hequiv : (@equiv _ state_Setoid ==> @equiv _ location_Setoid)%signature
-          (fun x => sim (get_location x)) (fun x => get_location (lift sim x))).
+          (fun x => sim (get_location x)) (fun x => get_location (lift sim Psim x))).
 { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
 apply (map_extensionalityA_compat _ Hequiv). f_equiv.
 intros ? ? Heq. rewrite get_location_lift, sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].

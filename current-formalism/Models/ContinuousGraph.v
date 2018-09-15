@@ -72,6 +72,34 @@ Proof. repeat intro. auto. Qed.
 Global Instance OnEdge_compat : Proper (equiv ==> equiv ==> equiv) OnEdge.
 Proof. repeat intro. auto. Qed.
 
+(** Using the isomorphism to build a bijection on continuous graphs. *)
+
+Definition bijectionG (iso : isomorphism G) : Bijection.bijection loc.
+simple refine {| Bijection.section := fun pt => match pt with
+          | OnVertex v => OnVertex (iso.(iso_V) v)
+          | OnEdge e p => OnEdge (iso.(iso_E) e) p
+        end;
+  Bijection.retraction := fun pt => match pt with
+          | OnVertex v => OnVertex (Bijection.retraction iso.(iso_V) v)
+          | OnEdge e p => OnEdge (Bijection.retraction iso.(iso_E) e) p
+        end |}.
+Proof.
++ intros [] [] Heq; simpl in Heq; trivial; now repeat f_equiv.
++ intros [] []; simpl in *; try tauto; [|]; split; intro Heq.
+  - rewrite <- Heq. apply Bijection.retraction_section.
+  - rewrite <- Heq. apply Bijection.section_retraction.
+  - destruct Heq as [Heq1 Heq2]. rewrite Heq2, Heq1 || rewrite Heq2, <- Heq1.
+    split; trivial; []. apply Bijection.retraction_section.
+  - destruct Heq as [Heq1 Heq2]. rewrite Heq2, Heq1 || rewrite Heq2, <- Heq1.
+    split; trivial; []. apply Bijection.section_retraction.
+Defined.
+
+Global Instance bijectionG_compat :  Proper (equiv ==> equiv) bijectionG.
+Proof.
+intros iso1 iso2 Hiso []; simpl.
++ apply Hiso.
++ split; trivial; []. apply Hiso.
+Qed.
 
 (** *  Projection functions  **)
 
@@ -107,56 +135,86 @@ Proof. repeat intro. now simpl. Qed.
 
 (** ** Translation of states **)
 
-Notation locV3 := (locV * locV * locV)%type.
+Definition valid_stateV (state : locV * locV * locV) :=
+  fst (fst state) == snd (fst state) \/ fst (fst state) == snd state.
+
+Definition valid_stateG state :=
+  match state with
+    | (OnVertex v, src, tgt) => v == src \/ v == tgt
+    | (OnEdge e p, src, tgt) => src == Graph.src e /\ tgt == Graph.tgt e
+  end.
+
+Global Instance valid_stateV_compat : Proper (equiv ==> iff) valid_stateV.
+Proof.
+intros state1 state2 [[Hpt Hsrc] Htgt]. unfold valid_stateV.
+now rewrite Hpt, Hsrc, Htgt.
+Qed.
+
+Global Instance valid_stateG_compat : Proper (equiv ==> iff) valid_stateG.
+Proof.
+intros [[] ?] [[] ?] [[Hpt Hsrc] Htgt]. unfold valid_stateG. simpl in *.
+do 2 destruct_match; try destruct Hpt as [Hpt _]; now rewrite ?Hpt, ?Hsrc, ?Htgt.
+Qed.
+
+Definition locV3 := sig valid_stateV.
 (* source and target are still in locV but the location is now in locG *)
-Notation locG3 := (locG * locV * locV)%type.
+Definition locG3 := sig valid_stateG.
 
-Definition rc_V2G (state : locV3) : locG3 :=
-  (OnVertex (fst (fst state)), snd (fst state), snd state).
+Definition state_V2G (state : locV3) : locG3 :=
+  exist _
+    (OnVertex (fst (fst (proj1_sig state))), snd (fst (proj1_sig state)), snd (proj1_sig state))
+    (proj2_sig state).
 
-Global Instance rc_V2G_compat : Proper (equiv ==> equiv) rc_V2G.
-Proof. intros ? ? HrcA. unfold rc_V2G. repeat try (split; simpl); apply HrcA. Qed.
+Global Instance state_V2G_compat : Proper (equiv ==> equiv) state_V2G.
+Proof. intros ? ? Hstate. unfold state_V2G. repeat try (split; simpl); apply Hstate. Qed.
 
-Definition rc_G2V (state : locG3) : locV3 :=
-  (location_G2V (fst (fst state)), snd (fst state), snd state).
+Definition state_G2V (state : locG3) : locV3.
+refine (exist _
+  (location_G2V (fst (fst (proj1_sig state))), snd (fst (proj1_sig state)), snd (proj1_sig state)) _).
+Proof.
+abstract (destruct state as [[[[] src] tgt] Hstate]; simpl in *; auto; [];
+          destruct_match; now left + right).
+Defined.
 
-Global Instance rc_G2V_compat : Proper (equiv ==> equiv) rc_G2V.
-Proof. intros ? ? HrcV. unfold rc_G2V. repeat try (split; simpl); f_equiv; apply HrcV. Qed.
+Global Instance state_G2V_compat : Proper (equiv ==> equiv) state_G2V.
+Proof. intros ? ? Hstate. unfold state_G2V. repeat try (split; simpl); f_equiv; apply Hstate. Qed.
 
-Lemma rc_V2G2V : forall state, rc_G2V (rc_V2G state) == state.
+Lemma state_V2G2V : forall state, state_G2V (state_V2G state) == state.
 Proof. intro. simpl. repeat (split; try reflexivity). Qed.
 
 (** ** On configurations *)
 
 (* Instance Info : State location := OnlyLocation. *)
-Instance InfoV3 : @State locV3 LocationV := AddLocation _ (AddLocation _ OnlyLocation).
-Instance InfoG3 : @State locG3 LocationG.
+Instance InfoV3 : @State LocationV locV3 :=
+  AddProperty _ valid_stateV (AddLocation _ (AddLocation _ OnlyLocation)).
+
+Instance InfoG3 : @State LocationG locG3.
+apply AddProperty.
 refine {|
-  get_location := fun st => fst (fst st);
-  lift := fun f st => (f (fst (fst st)),
-                       location_G2V (f (location_V2G (snd (fst st)))),
-                       location_G2V (f (location_V2G (snd st))));
-  lift_id := fun st => let '(loc, src, tgt) := st in ltac:(reflexivity) |}.
+  state_EqDec := @prod_EqDec (locG * locV) locV _ (prod_EqDec _ _) _ _;
+  precondition := fun _ => True;
+  get_location := fun state => fst (fst state);
+  lift := fun f Pf state => (f (fst (fst state)),
+                             location_G2V (f (location_V2G (snd (fst state)))),
+                             location_G2V (f (location_V2G (snd state)))) |}; autoclass.
 Proof.
-+ (* get_location_lift *)
-  intros. cbn [fst snd]. reflexivity.
 + (* get_location_compat *)
   now intros ? ? [[] ?].
 + (* lift_compat *)
-  intros f g Hfg st1 st2 Hst. repeat split; cbn [fst snd];
-  repeat (f_equiv; try eassumption); apply Hst.
+  intros f g Pf Pg Hfg state1 state2 Hstate. repeat split; cbn [fst snd];
+  repeat (f_equiv; try eassumption); apply Hstate.
 Defined.
 
-Notation configV := (@configuration locV3 _ _ _).
-Notation configG := (@configuration locG3 _ _ _).
+Notation configV := (@configuration _ locV3 _ _).
+Notation configG := (@configuration _ locG3 _ _).
 
 (* RMK: we cannot use map_config as the Location instance is not the same. *)
-Definition config_V2G (config : configV) : configG := fun id => rc_V2G (config id).
+Definition config_V2G (config : configV) : configG := fun id => state_V2G (config id).
 
 Global Instance config_V2G_compat : Proper (equiv ==> equiv) config_V2G.
 Proof. intros ? ? Hca id. unfold config_V2G. f_equiv. apply Hca. Qed.
 
-Definition config_G2V (config : configG) : configV := fun id => rc_G2V (config id).
+Definition config_G2V (config : configG) : configV := fun id => state_G2V (config id).
 
 Global Instance config_G2V_compat : Proper (equiv ==> equiv) config_G2V.
 Proof. intros ? ? Hcd id. unfold config_G2V. f_equiv. apply Hcd. Qed.
@@ -241,35 +299,6 @@ Global Instance FrameChoiceIsomorphismV : @frame_choice LocationV (@isomorphism 
   frame_choice_bijection := @iso_V locV E G;
   frame_choice_Setoid := @isomorphism_Setoid locV E G;
   frame_choice_bijection_compat := @iso_V_compat locV E G |}.
-
-(** Using the isomorphism to build a bijection continuous graphs. *)
-
-Definition bijectionG (iso : isomorphism G) : Bijection.bijection loc.
-simple refine {| Bijection.section := fun pt => match pt with
-          | OnVertex v => OnVertex (iso.(iso_V) v)
-          | OnEdge e p => OnEdge (iso.(iso_E) e) p
-        end;
-  Bijection.retraction := fun pt => match pt with
-          | OnVertex v => OnVertex (Bijection.retraction iso.(iso_V) v)
-          | OnEdge e p => OnEdge (Bijection.retraction iso.(iso_E) e) p
-        end |}.
-Proof.
-+ intros [] [] Heq; simpl in Heq; trivial; now repeat f_equiv.
-+ intros [] []; simpl in *; try tauto; [|]; split; intro Heq.
-  - rewrite <- Heq. apply Bijection.retraction_section.
-  - rewrite <- Heq. apply Bijection.section_retraction.
-  - destruct Heq as [Heq1 Heq2]. rewrite Heq2, Heq1 || rewrite Heq2, <- Heq1.
-    split; trivial; []. apply Bijection.retraction_section.
-  - destruct Heq as [Heq1 Heq2]. rewrite Heq2, Heq1 || rewrite Heq2, <- Heq1.
-    split; trivial; []. apply Bijection.section_retraction.
-Defined.
-
-Global Instance bijectionG_compat :  Proper (equiv ==> equiv) bijectionG.
-Proof.
-intros iso1 iso2 Hiso []; simpl.
-+ apply Hiso.
-+ split; trivial; []. apply Hiso.
-Qed.
 
 Global Instance FrameChoiceIsomorphismG : @frame_choice LocationG (@isomorphism locV E G) := {|
   frame_choice_bijection := bijectionG |}.

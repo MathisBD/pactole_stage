@@ -45,7 +45,7 @@ Context {Inactive : inactive_choice T3}.
 
 Class FlexibleChoice `{update_choice T2} := {
   move_ratio : T2 -> ratio;
-  move_ratio_compat :> Proper (@equiv T2 update_choice_Setoid ==> @equiv _ sig_Setoid) move_ratio }.
+  move_ratio_compat :> Proper (@equiv T2 update_choice_Setoid ==> @equiv _ (sig_Setoid _)) move_ratio }.
 
 (** Flexible moves are parametrized by the minimum distance [delta] that robots must move when they are activated. *)
 Class FlexibleSetting `{FlexibleChoice} {Update : update_functions T2 T3} (delta : R) := {

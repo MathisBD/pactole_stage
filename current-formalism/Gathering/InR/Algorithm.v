@@ -634,7 +634,7 @@ unfold gatherR, gatherR_pgm. cbn [pgm].
 assert (Hperm : PermutationA equiv (support (max (!! (map_config sim config))))
                                    (List.map sim (support (max (!! config))))).
 { rewrite <- map_injective_support; trivial. f_equiv.
-  rewrite <- max_similarity, (spect_from_config_map Hsim_compat); auto. }
+  rewrite <- max_similarity, (spect_from_config_map (St := OnlyLocation) Hsim_compat I); auto. }
 destruct (support (max (!! config))) as [| pt' [| pt2' l']].
 * (* Empty support *)
   simpl List.map in Hperm. symmetry in Hperm.
@@ -651,8 +651,9 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
   assert (Hmap : !! (map_config (Bijection.section (Similarity.sim_f sim)) config)
                  == map (Bijection.section (Similarity.sim_f sim)) (!! config)).
-  { change (Bijection.section (Similarity.sim_f sim)) with (lift sim).
-    rewrite <- spect_from_config_ignore_snd, <- (spect_from_config_map _ config origin); reflexivity. }
+  { change (Bijection.section (Similarity.sim_f sim)) with (lift sim I).
+    rewrite <- (spect_from_config_ignore_snd config (sim origin)),
+            (spect_from_config_map (St := OnlyLocation) _ I config origin); reflexivity. }
   rewrite Hmap.
   rewrite map_injective_size; trivial; [].
   destruct (size (!! config) =? 3) eqn:Hlen.

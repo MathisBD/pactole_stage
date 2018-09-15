@@ -183,7 +183,7 @@ Arguments prod_EqDec [A] [B] {_} _ {_} _.
 Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
 Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
 
-Instance sig_Setoid {T} {S : Setoid T} {P : T -> Prop} : Setoid (sig P) := {|
+Instance sig_Setoid {T} (S : Setoid T) {P : T -> Prop} : Setoid (sig P) := {|
   equiv := fun x y => proj1_sig x == proj1_sig y |}.
 Proof. split.
 + intro. reflexivity.

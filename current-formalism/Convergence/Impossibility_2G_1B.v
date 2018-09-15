@@ -385,6 +385,7 @@ refine {|
   choose_inactive := fun _ _ => tt |}.
 Proof.
 + abstract (now repeat intro).
++ abstract (now repeat intro).
 + abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
 + abstract (now repeat intro).
@@ -404,6 +405,7 @@ simple refine {|
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt |}; autoclass.
 Proof.
++ abstract (now repeat intro).
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
@@ -476,11 +478,11 @@ Hypothesis sol : solution r.
 Definition shifting_da (pt : R) : demonic_action.
 simple refine {| activate := fun _ => true;
                  relocate_byz := fun _ _ => pt;
-                 change_frame := fun config g =>
-                 translation (opp (get_location (config (Good g))));
+                 change_frame := fun config g => translation (opp (get_location (config (Good g))));
                  choose_update := fun _ _ _ => tt;
                  choose_inactive := fun _ _ => tt |}; autoclass.
 Proof.
++ abstract (now repeat intro).
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
@@ -509,7 +511,7 @@ Definition config0 pt : configuration := fun id =>
 CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt : location,
-  @equiv spectrum _ (!! (map_config (lift (translation (opp pt))) (config0 pt))) spectrum1.
+  @equiv spectrum _ (!! (map_config (lift (translation (opp pt)) I) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
 rewrite spect_from_config_spec, config_list_spec.
@@ -531,8 +533,9 @@ Qed.
 
 Corollary spect_config0_0 : !! (config0 0) == spectrum1.
 Proof.
-rewrite <- (spectrum_config0 0). f_equiv.
-now rewrite opp_origin, translation_origin, map_config_id.
+rewrite <- (spectrum_config0 0). f_equiv. simpl lift.
+rewrite <- map_config_id at 1. f_equiv.
+intros ? ? Heq. rewrite Heq. unfold id. simpl in *. field.
 Qed.
 
 
@@ -597,7 +600,7 @@ Corollary no_move2 : r (!! (map_config (swap 1) config2)) ratio_1 == 0.
 Proof.
 setoid_rewrite <- no_move1 at 2.
 do 2 f_equiv.
-change (Bijection.section (swap 1)) with (lift (swap 1)).
+change (Bijection.section (swap 1)) with (lift (swap 1) I).
 replace origin with (swap 1 1) by (compute; ring).
 rewrite <- spect_from_config_map; autoclass; [].
 rewrite spect_from_config_ignore_snd, spect_config2.

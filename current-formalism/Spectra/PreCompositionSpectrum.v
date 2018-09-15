@@ -28,8 +28,8 @@ Section CompositionSpectrum.
 (** **  Loosing information inside the state before building the spectrum  **)
 Context `{Location}.
 Context {info1 info2 : Type}.
-Context `{St1 : @State info1 _}.
-Context `{St2 : @State info2 _}.
+Context `{St1 : @State _ info1}.
+Context `{St2 : @State _ info2}.
 Context `{Names}.
 Context `(@Spectrum _ _ St2 _).
 
