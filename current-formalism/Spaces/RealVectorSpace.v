@@ -72,6 +72,8 @@ Open Scope VectorSpace_scope.
 
 (** ***  Proofs of derivable properties about MetricSpace  **)
 
+Definition add_origin_r `{RealVectorSpace} := add_origin.
+
 Lemma add_origin_l `{RealVectorSpace} : forall u, 0 + u == u.
 Proof. intro. rewrite add_comm. apply add_origin. Qed.
 
@@ -186,6 +188,10 @@ Proof. intros pt1 pt2 Heq x. simpl. now apply mul_compat. Qed.
 
 Lemma local_straight_path_1 `{RealVectorSpace} : forall pt, local_straight_path pt ratio_1 == pt.
 Proof. intro. simpl. now rewrite mul_1. Qed.
+
+Lemma local_straight_path_global `{RealVectorSpace} :
+  forall pt, local_straight_path pt == straight_path origin pt.
+Proof. repeat intro. simpl. now rewrite add_origin_l, opp_origin, add_origin. Qed.
 
 (** ***  Weighted barycenter of a list of locations  **)
 

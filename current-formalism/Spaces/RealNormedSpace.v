@@ -36,7 +36,10 @@ Notation "∥ u ∥" := (norm u) :  VectorSpace_scope.
 (** ***  Proofs of derivable properties about RealNormedSpace  **)
 
 Lemma norm_opp `{RealNormedSpace} : forall u, norm (- u) = norm u.
-Proof. intro u. rewrite <- (mul_1 u) at 1. now rewrite <- minus_morph, norm_mul, Rabs_Ropp, Rabs_R1, Rmult_1_l. Qed.
+Proof.
+intro u. rewrite <- (mul_1 u) at 1.
+now rewrite <- minus_morph, norm_mul, Rabs_Ropp, Rabs_R1, Rmult_1_l.
+Qed.
 
 (** The metric space induced by the norm. *)
 Instance Normed2Metric {T} `{RealNormedSpace T} : RealMetricSpace T := {
@@ -80,11 +83,11 @@ Lemma Normed2Normed {T} `{rnsT : RealNormedSpace T} :
 Proof. intro. simpl. now rewrite opp_origin, add_origin. Qed.
 
 Lemma Metric2Metric {T} `{rmsT : RealMetricSpace T}
-                    (translation_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
+                    (trans_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
                     (homothecy_prop : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R) :
-  forall u v, @dist _ _ _ _ (@Normed2Metric _ _ _ _ (Metric2Normed translation_prop homothecy_prop)) u v = dist u v.
+  forall u v, @dist _ _ _ _ (@Normed2Metric _ _ _ _ (Metric2Normed trans_prop homothecy_prop)) u v = dist u v.
 Proof.
-intros. simpl. now rewrite <- (translation_prop v), <- add_assoc,
+intros. simpl. now rewrite <- (trans_prop v), <- add_assoc,
                            (add_comm _ v), add_opp, (add_comm _ v), 2 add_origin.
 Qed.
 
@@ -133,7 +136,10 @@ Section NormedResults.
   Proof. intros. reflexivity. Qed.
   
   Lemma square_norm_equiv : forall u k, 0 <= k -> (norm u = k <-> (norm u)² = k²).
-  Proof. intros u k Hk. split; intro Heq; try congruence; []. apply pos_Rsqr_eq; trivial; apply norm_nonneg. Qed.
+  Proof.
+  intros u k Hk. split; intro Heq; try congruence; [].
+  apply pos_Rsqr_eq; trivial; apply norm_nonneg.
+  Qed.
   
   Corollary squared_norm : forall u v, norm u = norm v <-> (norm u)² = (norm v)².
   Proof. intros u v. apply square_norm_equiv. apply norm_nonneg. Qed.
@@ -230,7 +236,8 @@ Section BarycenterResults.
   Axiom barycenter_n_unique: forall E a b,
       is_barycenter_n E a -> is_barycenter_n E b -> a == b.
   
-  Lemma weighted_sqr_dist_sum_compat : Proper (equiv ==> PermutationA (equiv * eq) ==> eq) weighted_sqr_dist_sum.
+  Lemma weighted_sqr_dist_sum_compat :
+    Proper (equiv ==> PermutationA (equiv * eq) ==> eq) weighted_sqr_dist_sum.
   Proof.
   intros u v Hpt E1 E2 Hperm.
   unfold weighted_sqr_dist_sum.
@@ -253,14 +260,45 @@ Section BarycenterResults.
   
   Lemma barycenter_dist_decrease_aux : forall dm E pt sumR,
     0 <= sumR ->
+    (forall p, InA (equiv@@1)%signature p E -> dist (sumR * (fst p)) pt <= sumR * dm) ->
     (forall p, InA (equiv * eq)%signature p E -> 0 < snd p) ->
-    (forall p1 p2, InA (equiv * eq)%signature p1 E -> InA (equiv * eq)%signature p2 E ->
+    (forall p1 p2, InA (equiv@@1)%signature p1 E -> InA (equiv@@1)%signature p2 E ->
                    dist (fst p1) (fst p2) <= dm) ->
     let '(sum_pt, sum_coeff) := barycenter_aux E (pt, sumR) in
     forall p, InA (equiv@@1)%signature p E -> dist (sum_coeff * (fst p)) sum_pt <= sum_coeff * dm.
-  Proof. Admitted.
+  Proof.
+  intros dm E.
+  assert (Hincl : inclA (equiv * eq)%signature E E) by easy.
+  revert Hincl. generalize E at 1 7. intro E'.
+  induction E' as [| [pt1 w1] E']; intros Hincl pt sum Hsum Hbase Hpos Hdm.
+  * simpl. intros ? Habs. now apply Hbase.
+  * assert (Hincl' : inclA (equiv * eq)%signature E' E). { intros ? ?. apply Hincl. now right. }
+    assert (0 < w1). { change w1 with (snd (pt1, w1)). apply Hpos, Hincl; now left. }
+    specialize (IHE' Hincl' (w1 * pt1 + pt) (w1 + sum)%R). simpl.
+    destruct (barycenter_aux E' (w1 * pt1 + pt, (w1 + sum)%R)) as [bary coeff] eqn:Hbary.
+    intros [pt' w'] Hptw'. simpl.
+    assert (Hin : exists w, InA (equiv * eq)%signature (pt', w) E).
+    { setoid_rewrite InA_alt. rewrite InA_alt in Hptw'. destruct Hptw' as [y [Heq Hin]].
+      exists (snd y), y. split; trivial; []. destruct y. split; try reflexivity; []. apply Heq. }
+    clear Hptw' w'. destruct Hin as [w' Hptw'].
+    change pt' with (fst (pt', w')). apply IHE'.
+    + lra.
+    + intros pw Hin. simpl.
+      rewrite <- add_morph. etransitivity; try apply dist_subadditive; [].
+      rewrite Rmult_plus_distr_r. apply Rplus_le_compat.
+      - rewrite dist_homothecy, Rabs_right; try lra; []. apply Rmult_le_compat_l; try lra; [].
+        change pt1 with (fst (pt1, w1)). apply Hdm; trivial; [].
+        cut (InA (equiv * eq)%signature (pt1, w1) E);
+        try (now apply InA_impl_compat; reflexivity || apply FstRel_sub); [].
+        apply Hincl. now left.
+      - now apply Hbase.
+    + repeat intro. now apply Hpos.
+    + repeat intro. now apply Hdm.
+    + revert Hptw'. apply InA_impl_compat; try reflexivity; []. apply FstRel_sub.
+  Qed.
   
-  (* NB: This lemma requires a normed space for [dist_homothecy], everything else can be done in metric space. *)
+  (* NB: This lemma requires a normed space for [dist_homothecy],
+         everything else can be done in a metric space. *)
   Lemma barycenter_dist_decrease : forall (E : list (T * R)) (dm : R),
     (forall p, InA (equiv * eq)%signature p E -> 0 < snd p) ->
     (forall p1 p2, InA equiv p1 (List.map fst E) -> InA equiv p2 (List.map fst E) ->
@@ -269,12 +307,14 @@ Section BarycenterResults.
   Proof.
   intros E dm Hweight Hdist p Hin.
   assert (Proper (equiv ==> equiv) (@fst T R)). { intros [] [] [Heq _]. apply Heq. }
-  assert (Hdist' : forall p1 p2, InA (equiv * eq)%signature p1 E ->
-                                 InA (equiv * eq)%signature p2 E -> dist (fst p1) (fst p2) <= dm).
+  assert (Hdist' : forall p1 p2, InA (equiv@@1)%signature p1 E ->
+                                 InA (equiv@@1)%signature p2 E -> dist (fst p1) (fst p2) <= dm).
   { intros [] [] Hin1 Hin2. cbn -[dist].
-    apply Hdist; rewrite (@InA_map_iff _ _ (equiv * eq)%signature); autoclass;
+    apply Hdist; rewrite (@InA_map_iff _ _ (equiv@@1)%signature); autoclass; try easy; [|];
     (eexists; now split; [| apply Hin1 + apply Hin2]; eauto). }
-  assert (Hrec := @barycenter_dist_decrease_aux dm E origin 0 (Rle_refl 0) Hweight Hdist').
+  assert (Hbase' : forall p, InA (equiv @@1)%signature p E -> dist (0 * fst p) 0 <= 0 * dm).
+  { clear. intros p _. rewrite mul_0, dist_same. lra. }
+  assert (Hrec := @barycenter_dist_decrease_aux dm E origin 0 (Rle_refl 0) Hbase' Hweight Hdist').
   unfold barycenter.
   destruct (barycenter_aux E (origin, 0%R)) as [sum weight] eqn:Heq.
   rewrite (@InA_map_iff _ _ (equiv * eq)%signature) in Hin; autoclass; [].
@@ -307,7 +347,8 @@ Section BarycenterResults.
   Axiom isobarycenter_n_unique: forall E a b,
       is_isobarycenter_n E a -> is_isobarycenter_n E b -> a == b.
   
-  Lemma sqr_dist_sum_aux_compat : Proper (Logic.eq ==> equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum_aux.
+  Lemma sqr_dist_sum_aux_compat :
+    Proper (Logic.eq ==> equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum_aux.
   Proof.
   intros i1 i2 Heqi pt1 pt2 Heqpt E1 E2 Hperm.
   unfold sqr_dist_sum_aux.
@@ -320,7 +361,7 @@ Section BarycenterResults.
   + intros. ring.
   Qed.
   
-  Lemma sqr_dist_sum_compat : Proper (equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum.
+  Global Instance sqr_dist_sum_compat : Proper (equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum.
   Proof. now apply sqr_dist_sum_aux_compat. Qed.
   
   Lemma isobarycenter_dist_decrease_aux : forall E dm,

@@ -46,6 +46,9 @@ intros x y. apply Rmult_le_reg_l with 2%R.
   setoid_rewrite dist_sym at 3. apply triang_ineq.
 Qed.
 
+Lemma dist_same `{RealMetricSpace} : forall u, (dist u u = 0)%R.
+Proof. intro. rewrite dist_defined. reflexivity. Qed.
+
 Section MaxDist.
 Context `{RealMetricSpace}.
 
