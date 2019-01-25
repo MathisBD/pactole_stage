@@ -31,16 +31,11 @@ Setting.v
 ## Models
 Models/Flexible.v
 Models/Rigid.v
-#Models/RigidFlexibleEquivalence.v
+Models/RigidFlexibleEquivalence.v
 Models/DiscreteGraph.v
 Models/Similarity.v
 Models/ContinuousGraph.v
-#Models/GraphEquivalence.v
-#Models/DiscreteRigid.v
-#Models/DiscreteASync.v
-#Models/DiscreteGraphSSync.v
-#Models/GraphRigid.v
-#Models/ASync.v
+Models/GraphEquivalence.v
 
 ## Spaces
 Spaces/RealVectorSpace.v
@@ -52,8 +47,6 @@ Spaces/R.v
 Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
-#Spaces/DiscreteSpace.v
-#Spaces/DiscreteSimilarity.v
 
 ## Spectra
 Spectra/Definition.v

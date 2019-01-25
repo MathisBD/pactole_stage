@@ -52,7 +52,7 @@ Instance MyRobots : Names := Robots n 0.
 Instance Loc : Location := make_Location R2.
 Instance Loc_VS : @RealVectorSpace location location_Setoid location_EqDec := R2_VS.
 Instance Loc_ES : @EuclideanSpace location location_Setoid location_EqDec Loc_VS := R2_ES.
-Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
+Remove Hints R2_EqDec R2_VS R2_ES : typeclass_instances.
 
 (* Refolding typeclass instances *)
 Ltac changeR2 :=
@@ -72,13 +72,20 @@ Instance FlexChoice : update_choice ratio := Flexible.OnlyFlexible.
        so we could instead leave it as a parameter. *)
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
 
+(** The robots choose the path they want to follow to a target. *)
+Instance Robot : robot_choice (path location) := { robot_choice_Setoid := path_Setoid location }.
+
+(** In a flexible setting, the minimum distance that robots are allowed to move is delta. *)
 Parameter delta : R.
 
 Lemma inactive_proper : Proper (equiv ==> eq ==> equiv ==> equiv)
   (fun (config : configuration) (id : ident) (_ : unit) => config id).
 Proof. repeat intro; subst; auto. Qed.
 
-Instance UpdFun : update_functions ratio unit := FlexibleUpdate delta _ inactive_proper.
+Instance UpdFun : update_function (path location) (Similarity.similarity location) ratio :=
+  FlexibleUpdate delta.
+
+Instance InaFun : inactive_function unit := NoChoiceInaFun.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "!! config" := (@spect_from_config _ _ Info MyRobots multiset_spectrum config origin) (at level 1).
@@ -271,9 +278,33 @@ intros config. split; intro H.
   now transitivity pt.
 Qed.
 
-Lemma dist_prop_retraction : forall (sim : similarity location) x y,
-  dist ((sim ⁻¹) x) ((sim ⁻¹) y) = /(Similarity.zoom sim) * dist x y.
-Proof. intros sim x y. rewrite Similarity.dist_prop. now simpl. Qed.
+Lemma lift_update_swap : forall da config1 config2 g target,
+  @equiv location _
+    (lift (existT precondition (frame_choice_bijection (change_frame da config1 g ⁻¹))
+                               (precondition_satisfied_inv da config1 g))
+          (update config2
+           g (change_frame da config1 g) target (choose_update da config2 g target)))
+    (update (map_config (lift (existT precondition (frame_choice_bijection (change_frame da config1 g ⁻¹))
+                                      (precondition_satisfied_inv da config1 g)))
+                        config2)
+            g Similarity.id
+            (lift_path (frame_choice_bijection (change_frame da config1 g ⁻¹)) target)
+            (choose_update da config2 g target)).
+Proof.
+intros da config1 config2 g target. cbn -[Similarity.inverse]. unfold id.
+rewrite Similarity.dist_prop, Rmult_1_l.
+destruct_match_eq Hle; destruct_match_eq Hle'; try reflexivity; [|];
+rewrite Rle_bool_true_iff, Rle_bool_false_iff in *;
+exfalso; revert_one not; intro Hgoal; apply Hgoal.
+- assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g)).
+  eapply Rmult_le_reg_l; eauto; []. simpl.
+  rewrite <- Rmult_assoc, Rinv_r, Rmult_1_l; trivial; [].
+  changeR2. lra.
+- assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g ⁻¹)).
+  eapply Rmult_le_reg_l; eauto; []. simpl.
+  rewrite <- Rmult_assoc, Rinv_l, Rmult_1_l; trivial; [].
+  changeR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
+Qed.
 
 Theorem round_simplify : forall da config, FSYNC_da da ->
   round ffgatherR2 da config
@@ -284,19 +315,21 @@ Theorem round_simplify : forall da config, FSYNC_da da ->
                                              (barycenter (List.map (fun xn => (fst xn, INR (snd xn)))
                                                                    (elements (!! config)))) in
                              let choice := da.(choose_update) config g global_trajectory in
-                             update config g global_trajectory choice
+                             update config g Similarity.id global_trajectory choice
                end.
 Proof.
 intros da config Hfsync. rewrite FSYNC_round_simplify; trivial; [].
-apply no_byz_eq. intro g. unfold round.
+apply no_byz_eq. intro g. cbn beta iota zeta.
 assert (supp_nonempty := support_non_nil config).
 assert (Hda := similarity_center da config g).
 remember (change_frame da config g) as sim.
+change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 Local Opaque lift. Local Opaque map_config.
 assert (Hperm : PermutationA (equiv * eq)%signature
                        (List.map (fun xn => (sim (fst xn), snd xn)) (elements (!! config)))
-                       (elements (elt := location) (!! (map_config (lift sim I) config)))).
+                       (elements (elt := location) (!! (map_config (lift (existT precondition sim
+                                                         (precondition_satisfied da config g))) config)))).
 { rewrite <- map_injective_elements, spect_from_config_map, spect_from_config_ignore_snd;
   autoclass; reflexivity || apply Bijection.injective. }
 rewrite spect_from_config_ignore_snd.
@@ -308,7 +341,10 @@ rewrite map_map, <- (map_map (fun xn => (fst xn, INR (snd xn))) (fun xn => (sim 
 apply barycenter_compat, paths_in_R2_compat in Hperm.
 rewrite barycenter_sim_morph in Hperm;
 try (intro Habs; apply map_eq_nil in Habs; rewrite HeqE, elements_nil in Habs; now apply spect_non_nil in Habs); [].
-rewrite <- Hperm.
+(* change precondition with (fun _ : location -> location => True) in Hperm. *)
+subst sim. changeR2.
+rewrite lift_update_swap, <- Hperm.
+remember (change_frame da config g) as sim.
 remember (List.map (fun xn : location * nat => (fst xn, INR (snd xn))) E) as E'.
 change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
 assert (lift_path (frame_choice_bijection (sim ⁻¹)) (paths_in_R2 (sim (barycenter E')))
@@ -320,8 +356,20 @@ assert (lift_path (frame_choice_bijection (sim ⁻¹)) (paths_in_R2 (sim (baryce
   rewrite Hda. unfold Rminus.
   rewrite mul_distr_add, <- add_morph, minus_morph, mul_opp, mul_1, 2 add_assoc.
   apply add_compat; try reflexivity; []. apply add_comm. }
-apply get_location_compat, update_compat, choose_update_compat; auto.
-Qed.
+apply get_location_compat, update_compat; auto.
++ transitivity (map_config id config); try apply map_config_id; [].
+  rewrite map_config_merge.
+  - f_equiv. intros x y Hxy.
+    changeR2. rewrite <- Heqsim.
+    transitivity (get_location (lift (existT precondition (frame_choice_bijection (sim ⁻¹))
+                                                          (precondition_satisfied_inv da config g))
+                                     (lift (existT precondition (frame_choice_bijection sim)
+                                           (precondition_satisfied da config g)) x))); try reflexivity; [].
+    rewrite 2 get_location_lift. simpl. rewrite Bijection.retraction_section. apply Hxy.
+  - autoclass.
+  - apply lift_compat. intros x y Hxy. now rewrite Hxy.
++ 
+Admitted.
 
 Theorem round_lt_config : forall da config,
     delta > 0 ->
@@ -338,7 +386,7 @@ assert (Hfst : PermutationA equiv (List.map fst relems) elems).
 assert (forall p : R2 * R, InA (equiv * eq)%signature p relems -> 0 < snd p).
 { unfold relems, elems. intros ? Hin.
   rewrite (@InA_map_iff _ _ (equiv * eq)%signature) in Hin; autoclass;
-    try (intros ? ? []; hnf in *; simpl in *; split; auto); [].
+    try (intros ? ? [[] ?]; hnf in *; simpl in *; split; auto); [].
   destruct Hin as [[] [Heq Hin]]. rewrite <- Heq.
   apply elements_pos in Hin. now apply lt_0_INR. }
 remember (support (!! (round ffgatherR2 da config))) as nxt_elems.
@@ -369,16 +417,17 @@ assert (Hrobot_move_less_than_delta:
                (get_location (config (Good g))) (barycenter (List.map
                         (fun xn : location * nat => (fst xn, INR (snd xn)))
                         (elements !! config)))))) as r.
-  cbn [straight_path path_f] in Hle.
-  rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
-  rewrite dist_translation in Hle.
-  rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
-  assert (0 <= r <= 1) by (destruct r as [r Hr]; apply Hr).
-  rewrite Rabs_pos_eq in Hle; try tauto; [].
-  apply (Rlt_irrefl delta). do 2 (eapply Rle_lt_trans; eauto; []).
-  rewrite dist_sym, <- Rmult_1_l. apply Rmult_le_compat_r.
-  - apply dist_nonneg.
-  - tauto. }
+    cbn [straight_path path_f] in Hle.
+    rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
+    rewrite dist_translation in Hle.
+    rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
+    assert (0 <= r <= 1) by (destruct r as [r Hr]; apply Hr).
+    rewrite Rabs_pos_eq in Hle; try tauto; [].
+    apply (Rlt_irrefl delta). eapply Rle_lt_trans; [| eassumption].
+    rewrite dist_sym. setoid_rewrite <- Rmult_1_l.
+    etransitivity; try apply Hle; []. apply Rmult_le_compat_r.
+    - apply dist_nonneg.
+    - tauto. }
 
 assert (Hrobot_move:
           forall g,
@@ -401,7 +450,7 @@ assert (Hrobot_move:
     exists r. split; try reflexivity; [].
     rewrite Heq in Hle. cbn [straight_path path_f] in Hle.
     rewrite norm_dist, opp_distr_add, add_assoc, add_opp in Hle.
-    rewrite add_comm, add_origin, norm_opp in Hle. apply Hle. }
+    rewrite add_comm, add_origin, norm_opp, Rmult_1_l in Hle. apply Hle. }
 
 assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_elems ->
         dist KP KQ <= max_dist_spect (!! config) - delta).
@@ -443,7 +492,7 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
       - rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
         apply distance_after_move; try assumption.
         ++ eapply barycenter_dist_decrease.
-           -- assumption.
+           -- apply H.
            -- setoid_rewrite Hfst. apply max_dist_spect_le.
            -- rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
         ++ apply max_dist_spect_le; now subst elems.
@@ -608,7 +657,8 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
     { apply (Rmult_eq_reg_r delta); try lra; [].
       rewrite Rmult_1_l. apply antisymmetry.
       - rewrite <- Rmult_1_l. apply Rmult_le_compat_r; lra || tauto.
-      - etransitivity; eauto; []. apply Rmult_le_compat_l; try tauto; []. etransitivity; eauto. }
+      - rewrite Rmult_1_l in Hle. etransitivity; eauto; [].
+        apply Rmult_le_compat_l; try tauto; []. etransitivity; eauto. }
     rewrite Hr. rewrite straight_path_1. reflexivity. }
 destruct (max_dist_spect_ex _ (support_non_nil (round ffgatherR2 da config)))
   as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].
@@ -720,7 +770,7 @@ apply gathered_at_elements, (Preliminary.PermutationA_map _ Hf) in Hgather.
 apply barycenter_compat in Hgather. cbn [List.map] in Hgather.
 assert (INR nG <> 0). { apply not_0_INR. generalize size_G. intro. simpl. omega. }
 rewrite barycenter_singleton in Hgather; trivial; [].
-rewrite Hgather, update_no_move; autoclass.
+rewrite Hgather, update_no_move; eauto using FlexibleChoiceFlexibleUpdate.
 Qed.
 
 Lemma gathered_at_OK : forall d conf pt, FSYNC (similarity_demon2demon d) ->

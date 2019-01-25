@@ -15,6 +15,10 @@ Require Import RelationPairs.
 Require Import Pactole.Util.Preliminary.
 
 
+Typeclasses eauto := (bfs).
+Remove Hints eq_setoid : typeclass_instances.
+
+
 Class RealVectorSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   origin : T;
   
@@ -312,8 +316,16 @@ Section Barycenter.
   Proof.
   induction E; intros acc w.
   + simpl. now rewrite Rplus_0_r.
-  + cbn -[INR equiv]. rewrite S_INR, IHE. split; cbn; try ring; []. now rewrite mul_1, add_comm.
+  + cbn -[INR equiv]. rewrite S_INR, IHE.
+    split; simpl; try ring; [].
+    now rewrite mul_1, add_comm.
   Qed.
+(*
+  + cbn -[INR equiv]. rewrite S_INR.
+    replace (w + (INR (length E) + 1))%R with (w + 1 + (INR (length E)))%R by ring.
+    rewrite <- IHE. Print Instances Proper. apply barycenter_aux_compat. f_equiv. rewrite mul_1. f_equiv; try ring; [].
+    now rewrite mul_1, add_comm.
+*)
   
   Corollary isobarycenter_barycenter : forall E,
     isobarycenter E == barycenter (List.map (fun x => (x, 1)) E).

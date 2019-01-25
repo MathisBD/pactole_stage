@@ -17,11 +17,14 @@ Context {T : Type}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
+Context `{robot_choice}.
 Context {Choice : update_choice T}.
 Context `{inactive_choice}.
-Context {UpdFun : update_functions T _}.
+Context {UpdFun : update_function _ _ T}.
+Context {InaFun : inactive_function _}.
 
-Notation "!! config" := (@spect_from_config location _ _ _ multiset_spectrum config origin : spectrum) (at level 10).
+Notation "!! config" :=
+  (@spect_from_config location _ _ _ multiset_spectrum config origin : spectrum) (at level 10).
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)

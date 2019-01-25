@@ -52,6 +52,14 @@ Defined.
 Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f _ _ _ _ _).
 Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 
+Global Instance zoom_compat {T} `{RealMetricSpace T} : Proper (equiv ==> equiv) (@zoom T _ _ _ _).
+Proof.
+intros sim1 sim2 Hsim.
+apply Rmult_eq_reg_r with (dist origin one).
++ now rewrite <- 2 dist_prop, Hsim.
++ rewrite dist_defined. intro. apply non_trivial. now symmetry.
+Qed.
+
 (** As similarities are defined as bijections, we can prove that k <> 0
     (this requires that the metric space is not trivial (i.e. has dimension > 0). *)
 Lemma zoom_non_null `{RealMetricSpace} : forall sim, sim.(zoom) <> 0.
@@ -132,7 +140,11 @@ Proof. intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
 Lemma inverse_compose {T} `{RealMetricSpace T} : forall f g : similarity T, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. intros f g x. simpl. reflexivity. Qed.
 
-(* Center of a similarity, that is, the point that gets mapped to the origin. *)
+Lemma inverse_dist_prop {T} `{RealMetricSpace T} : forall (sim : similarity T) x y,
+  dist ((sim ⁻¹) x) ((sim ⁻¹) y) = /(zoom sim) * dist x y.
+Proof. intros sim x y. rewrite dist_prop. now simpl. Qed.
+
+(** Center of a similarity, that is, the point that gets mapped to the origin. *)
 Definition center {T} `{RealMetricSpace T} (sim : similarity T) : T := sim⁻¹ origin.
 
 Lemma center_prop {T} `{RealMetricSpace T} : forall sim : similarity T, sim (center sim) == origin.

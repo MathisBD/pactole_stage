@@ -14,7 +14,12 @@ Require Import SetoidList.
 Require Import Arith_base.
 Require Import Omega.
 Require Import Pactole.Util.Preliminary.
+
+
 Set Implicit Arguments.
+Typeclasses eauto := (bfs).
+
+
 (* TODO: should we add a fold operator? *)
 (* FIXME: change the equalities to use equiv and the Setoid class *)
 
@@ -111,7 +116,7 @@ Lemma build_enum_app_nil : forall N k (Hle : k <= N) l,
 Proof.
 intros N k. induction k; intros Hle l; simpl.
 + reflexivity.
-+ setoid_rewrite IHk. now rewrite <- app_assoc.
++ now rewrite (IHk _ (_ :: nil)), IHk, <- app_assoc.
 Qed.
 
 Theorem build_enum_eq : forall {A} eqA N (f g : fin N -> A) k (Hle : k <= N) l,
@@ -190,7 +195,8 @@ Lemma skipn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
 Proof.
 intros N k Hle l k' Hk'. apply app_inv_head with (firstn k' (build_enum Hle l)).
 rewrite firstn_skipn, firstn_build_enum_lt; trivial; [].
-setoid_rewrite build_enum_app_nil. now rewrite <- app_assoc, firstn_skipn.
+rewrite (build_enum_app_nil Hle (firstn _ _)).
+now rewrite build_enum_app_nil, <- app_assoc, firstn_skipn.
 Qed.
 
 Lemma skipn_enum_lt : forall N k, N <= k -> skipn k (enum N) = nil.
@@ -209,7 +215,7 @@ Qed.
 
 (** ** Byzantine Robots *)
 
-(** We have finetely many robots. Some are good, others are Byzantine.
+(** We have finitely many robots. Some are good, others are Byzantine.
     Both are represented by an abtract type that can be enumerated. *)
 Class Names := {
   (** Number of good and Byzantine robots *)
@@ -241,7 +247,9 @@ Class Names := {
 Global Opaque In_Gnames In_Bnames Gnames_NoDup Bnames_NoDup
               Gnames_length Bnames_length Geq_dec Beq_dec fun_Gnames_eq fun_Bnames_eq.
 
-(** Identifiers make good and Byzantine robots undistinguishable. *)
+(** Identifiers make good and Byzantine robots undistinguishable.
+    They have their own enumeration without duplicates,
+    and both equality and extensional function equality are decidable. *)
 Inductive ident `{Names} : Type :=
   | Good (g : G)
   | Byz (b : B).

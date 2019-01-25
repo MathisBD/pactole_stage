@@ -51,16 +51,20 @@ Instance Loc_VS : RealVectorSpace location := R2_VS.
 Instance Loc_ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
 Instance Info : State location := OnlyLocation.
+Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance FDC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
 Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
 Instance NoInactiveChoice : inactive_choice unit := {inactive_choice_EqDec := unit_eqdec}.
 
-Instance UpdateFun : update_functions unit unit := {
-  update := fun _ _ pt _ => pt ratio_1;
-  inactive := fun config id _ => config id }.
-Proof. all:repeat intro; subst; auto. Defined.
+Instance UpdateFun : update_function location (Similarity.similarity location) unit := {
+  update := fun _ _ _ pt _ => pt }.
+Proof. repeat intro; subst; auto. Defined.
 
-Instance Update : RigidUpdate.
+Instance InactiveFun : inactive_function unit := {
+  inactive := fun config id _ => config id }.
+Proof. repeat intro; subst; auto. Defined.
+
+Instance Update : RigidSetting.
 Proof. split. now intros. Qed.
 
 (* Refolding typeclass instances *)
@@ -164,15 +168,11 @@ Close Scope R_scope.
 
 (** * Proof of correctness of a convergence algorithm with no byzantine robot. *)
 
-Definition convergeR2_pgm (s : spectrum) : path location :=
-  local_straight_path (isobarycenter (elements s)).
+Definition convergeR2_pgm (s : spectrum) : location :=
+  isobarycenter (elements s).
 
 Instance convergeR2_pgm_compat : Proper (equiv ==> equiv) convergeR2_pgm.
-Proof.
-intros ? ? Heq. unfold convergeR2_pgm.
-apply local_straight_path_compat, isobarycenter_compat.
-now rewrite Heq.
-Qed.
+Proof. intros ? ? Heq. unfold convergeR2_pgm. apply isobarycenter_compat. now rewrite Heq. Qed.
 
 Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
@@ -189,15 +189,12 @@ unfold round. destruct_match; try reflexivity; [].
 remember (change_frame da config g) as sim.
 change (Bijection.section (Bijection.inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
-cbn -[equiv spect_from_config map_config isobarycenter lift Similarity.inverse location mul].
-rewrite mul_1, <- isobarycenter_sim_morph; changeR2.
-+ simpl map_config at 2. unfold id.
-  rewrite <- spect_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
-  rewrite spect_from_config_ignore_snd. changeR2.
-  change (spect_from_config config 0) with (!! config).
-  rewrite map_map. apply isobarycenter_compat.
-  change (fun x => (sim ⁻¹) (sim x)) with (Bijection.section (Similarity.compose (sim ⁻¹) sim)).
-  rewrite Similarity.compose_inverse_l, map_id. reflexivity.
+cbn -[equiv location mul map_config lift precondition Similarity.inverse].
+unfold convergeR2_pgm. simpl map_config at 2. unfold id.
+rewrite <- spect_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
+cbn -[Similarity.inverse isobarycenter equiv].
+rewrite spect_from_config_ignore_snd, isobarycenter_sim_morph.
++ now simpl; rewrite Bijection.retraction_section.
 + rewrite elements_nil. apply spect_non_empty.
 Qed.
 
@@ -246,14 +243,13 @@ Qed.
 Theorem convergence_FSYNC : solution_FSYNC convergeR2.
 Proof.
 intros config d [Hfair ?] ε Hε.
-eexists (isobarycenter (elements _)).
+exists (isobarycenter (elements (spect_from_config (Spectrum := set_spectrum) config 0))).
 apply Stream.Later, Stream.Now. rewrite execute_tail.
 apply converge_forever; auto using FSYNC_SSYNC; [].
 intro g. rewrite round_simplify; auto using FSYNC_SSYNC_da; [].
 rewrite Hfair. changeR2.
 transitivity 0%R; try (now apply Rlt_le); [].
-apply Req_le.
-apply R2_dist_defined_2.
+apply Req_le. now apply dist_defined.
 Qed.
 
 Theorem convergence_SSYNC : solution_SSYNC convergeR2.

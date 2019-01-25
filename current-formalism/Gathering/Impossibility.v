@@ -45,16 +45,17 @@ Section ImpossibilityProof.
 
 (** There are n good robots and no byzantine ones. *)
 Parameter n : nat.
+Instance MyRobots : Names := Robots n 0.
+
 (** We assume that the number of robots is even and non-null. *)
 Axiom even_nG : Nat.Even n.
 Axiom nG_non_0 : n <> 0.
 
-Instance MyRobots : Names := Robots n 0.
 Local Transparent G B.
 
 (** The setting is an arbitrary metric space over R. *)
 Context {Loc : Location}.
-Instance Info : State location := OnlyLocation.
+(* Instance Info : State location := OnlyLocation. *)
 Context {VS : RealVectorSpace location}.
 Context {ES : EuclideanSpace location}.
 
@@ -75,13 +76,16 @@ Axiom build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) 
 Axiom build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
 
-(** We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
+(** We are in a rigid formalism with no other info than the location,
+    so the demon makes no choice and robots compute a target destination in the considered space. *)
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
-Instance UpdFun : update_functions unit unit := {
-  update := fun _ _ trajectory _ => trajectory ratio_1;
+Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
+Instance UpdFun : update_function location (Similarity.similarity location) unit := {
+  update := fun _ _ _ target _ => target;
+  update_compat := ltac:(now repeat intro) }.
+Instance InaFun : inactive_function unit := {
   inactive := fun config id _ => config id;
-  update_compat := ltac:(now repeat intro);
   inactive_compat := ltac:(repeat intro; subst; auto) }.
 
 (* Trying to avoid notation problem with implicit arguments *)
@@ -89,13 +93,11 @@ Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "
 Notation spect_from_config := (@spect_from_config _ _ _ _ multiset_spectrum).
 Notation "!! config" := (spect_from_config config origin) (at level 10).
 
+(* FIXME: why is this instance not taken from Similarity from Definition *)
+Instance Frame : frame_choice (similarity location) := FrameChoiceSimilarity.
+
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
-
-(* The robot trajectories are straight paths. *)
-Definition path_loc := path location.
-Definition paths_in_loc : location -> path_loc := local_straight_path.
-Coercion paths_in_loc : location >-> path_loc.
 
 
 Lemma nG_ge_2 : 2 <= nG.
@@ -379,7 +381,7 @@ repeat split; trivial; [|].
 Qed.
 
 (** The movement of robots in the reference configuration. *)
-Definition move := r spectrum0 ratio_1.
+Definition move := r spectrum0.
 
 (** The key idea is to prove that we can always make robots see the same spectrum in any invalid configuration.
     If they do not gather in one step, then they will never do so.
@@ -417,6 +419,7 @@ Definition da1 : demonic_action := {|
   choose_inactive := fun _ _ => tt;
   
   precondition_satisfied := fun _ _ => I;
+  precondition_satisfied_inv := fun _ _ => I;
   
   activate_compat := ltac:(now repeat intro);
   relocate_byz_compat := ltac:(now repeat intro; f_equiv);
@@ -445,12 +448,16 @@ assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (conf
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
 unfold round. cbn -[equiv equiv_dec get_location map_config lift].
-rewrite spect_from_config_ignore_snd.
+rewrite get_location_lift. simpl map_config at 2. cbn [projT1]. simpl get_location at 2. unfold id.
+rewrite <- spect_from_config_map, spect_from_config_ignore_snd; autoclass; [].
 unfold change_frame1.
 destruct (invalid_dec config) as [Hvalid | Hvalid].
-* destruct (invalid_spect Hvalid g) as [sim Hspect1 Horigin1].
+* (* invalid configuration *)
+  destruct (invalid_spect Hvalid g) as [sim Hspect1 Horigin1].
   simpl proj1_sig2.
-  change (Bijection.retraction (sim ⁻¹)) with (Bijection.section sim).
+  rewrite Hspect1, map_merge; autoclass; [].
+  rewrite map_extensionality_compat, map_id; autoclass; try apply Similarity.compose_inverse_l; [].
+  rewrite Hmove.
   assert (Hperm : PermutationA equiv (pt1 :: pt2 :: nil) (sim origin :: sim one :: nil)).
   { apply support_compat in Hspect1. revert Hspect1.
     rewrite Hspect. unfold spectrum0.
@@ -464,21 +471,16 @@ destruct (invalid_dec config) as [Hvalid | Hvalid].
       symmetry in Hin'. elim (non_trivial Hin').
     - rewrite 2 support_singleton; auto. }
   rewrite PermutationA_2 in Hperm; autoclass; [].
-  rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect1; autoclass; [].
-  rewrite map_merge; autoclass; [].
-  rewrite map_extensionality_compat, map_id; autoclass; try apply Similarity.compose_inverse_l; [].
   destruct_match.
   + assert (Hpt1 : sim origin == pt1) by (etransitivity; eauto).
     assert (Hpt2 : sim one == pt2).
     { decompose [and or] Hperm; auto; []. rewrite Hpt1 in *. now elim Hdiff. }
-    simpl get_location. unfold id.
-    rewrite <- Hpt2. f_equiv. now rewrite <- Hmove.
+    now rewrite <- Hpt2.
   + assert (Hpt2 : sim origin == pt2).
     { destruct (Hcase (Good g)); try contradiction; []. etransitivity; eauto. }
     assert (Hpt1 : sim one == pt1).
     { decompose [and or] Hperm; auto; []. rewrite Hpt2 in *. now elim Hdiff. }
-    simpl get_location. unfold id.
-    rewrite <- Hpt1. f_equiv. now rewrite <- Hmove.
+    now rewrite <- Hpt1.
 * elim Hvalid.
   apply (invalid_reverse (build_similarity non_trivial Hdiff)).
   rewrite Hspect. unfold spectrum0.
@@ -497,7 +499,7 @@ assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (conf
 (* We build the similarity that performs the swap. *)
 assert (Hdiff' : pt2 =/= pt1) by now symmetry.
 pose (sim := build_similarity Hdiff Hdiff' : similarity location).
-assert (Hconfig : round r da1 config == map_config (lift sim I) config).
+assert (Hconfig : round r da1 config == map_config (lift (existT precondition sim I)) config).
 { rewrite (round_simplify1 config Hdiff Hspect).
   apply no_byz_eq. intro g.
   cbn [map_config]. rewrite get_location_lift, mk_info_get_location.
@@ -854,6 +856,7 @@ Definition da2_left config : demonic_action := {|
   choose_inactive := fun _ _ => tt;
   
   precondition_satisfied := fun _ _ => I;
+  precondition_satisfied_inv := fun _ _ => I;
   
   activate_compat := activate2_compat _ _ (reflexivity _);
   relocate_byz_compat := ltac:(now repeat intro);
@@ -869,6 +872,7 @@ Definition da2_right config : demonic_action := {|
   choose_inactive := fun _ _ => tt;
   
   precondition_satisfied := fun _ _ => I;
+  precondition_satisfied_inv := fun _ _ => I;
   
   activate_compat := ltac:(now repeat intro; subst);
   relocate_byz_compat := ltac:(now repeat intro);
@@ -896,7 +900,8 @@ destruct_match_eq Hcase.
 * (* The robot is on the first tower so it moves like g0. *)
   rewrite activate2_spec1 in Hcase; trivial; [].
   assert (Hsim := proj1 (change_frame2_eq _ _ Hinvalid) Hcase).
-  setoid_rewrite Hsim at -2 3. fold sim.
+  rewrite get_location_lift. cbn [projT1].
+  setoid_rewrite Hsim at 1. fold sim.
   change (Bijection.inverse sim) with (Similarity.sim_f (sim ⁻¹)).
   assert (Hsimg : get_location (config (Good g)) == sim⁻¹ origin) by (etransitivity; eauto).
   destruct_match; try contradiction; [].
@@ -909,7 +914,7 @@ destruct_match_eq Hcase.
     - intro. simpl. apply Bijection.section_retraction. }
   rewrite Hsim. fold sim. unfold move. rewrite <- Hspectrum0 at 2.
   change get_location with (@id location). unfold id.
-  do 2 f_equiv. apply pgm_compat, map_extensionality_compat; autoclass.
+  rewrite map_extensionality_compat; autoclass.
 * (* The robot is on the second tower so it does not move. *)
   rewrite activate2_spec2 in Hcase; trivial; [].
   fold sim.
@@ -927,7 +932,8 @@ assert (Hspect := change_frame2_spect g0 Hinvalid). fold sim in Hspect.
 (* sim' maps the canonical config to the next round one *)
 pose (sim' := build_similarity (symmetry non_trivial) Hdiff_move).
 apply (invalid_reverse sim').
-assert (Hconfig : round r (da2_left config) config == map_config (lift (sim' ∘ sim) I) config).
+assert (Hconfig : round r (da2_left config) config
+                  == map_config (lift (existT precondition (sim' ∘ sim) I)) config).
 { rewrite round_simplify2_left; auto; [].
   apply no_byz_eq. intro g. fold sim.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.
@@ -1061,7 +1067,8 @@ assert (Hdiff_move1 : sim1⁻¹ move =/= sim1⁻¹ one).
 (* sim' maps the canonical config to the next round one *)
 pose (sim' := build_similarity non_trivial Hdiff_move1).
 apply (invalid_reverse sim').
-assert (Hconfig : round r (da2_right config) config == map_config (lift (sim' ∘ sim0) I) config).
+assert (Hconfig : round r (da2_right config) config
+                  == map_config (lift (existT precondition (sim' ∘ sim0) I)) config).
 { rewrite round_simplify2_right; auto; [].
   apply no_byz_eq. intro g. fold sim0.
   cbn [map_config]. rewrite mk_info_get_location, get_location_lift.

@@ -48,6 +48,8 @@ Instance MyRobots : Names := Robots (2 * n) n.
 (** The space is R, and it is a Euclidean space. *)
 Instance Loc : Location := make_Location R.
 Instance location_ES : EuclideanSpace location := R_ES.
+(** Robots compute a target location. *)
+Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 (** The only information in the state of a robot is its location. *)
 Instance Info : State location := OnlyLocation.
 (** Demons use similarities to perform the change of frame of reference. *)
@@ -56,12 +58,13 @@ Instance FC : frame_choice (Similarity.similarity location) := FrameChoiceSimila
 Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
 Instance NoInactiveChoice : inactive_choice unit := {inactive_choice_EqDec := unit_eqdec}.
 (** Updates are rigid. *)
-Instance UpdateFun : update_functions unit unit := {
-  update := fun _ _ trajectory _ => trajectory ratio_1;
-  inactive := fun config id _ => config id }.
-Proof. all:repeat intro; subst; auto. Defined.
+Instance UpdateFun : update_function location (Similarity.similarity location) unit := {
+  update := fun _ _ _ target _ => target }.
+Proof. repeat intro; subst; auto. Defined.
+Instance InactiveFun : inactive_function unit := { inactive := fun config id _ => config id }.
+Proof. repeat intro; subst; auto. Defined.
 
-Instance Update : RigidUpdate.
+Instance Update : RigidSetting.
 Proof. split. now intros. Qed.
 
 Notation "!!" := (fun config => spect_from_config config origin).
@@ -386,6 +389,7 @@ refine {|
 Proof.
 + abstract (now repeat intro).
 + abstract (now repeat intro).
++ abstract (now repeat intro).
 + abstract (unfold change_frame1; intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
 + abstract (now repeat intro).
@@ -405,6 +409,7 @@ simple refine {|
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt |}; autoclass.
 Proof.
++ abstract (now repeat intro).
 + abstract (now repeat intro).
 + abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
@@ -484,6 +489,7 @@ simple refine {| activate := fun _ => true;
 Proof.
 + abstract (now repeat intro).
 + abstract (now repeat intro).
++ abstract (now repeat intro).
 + abstract (intros ? ? Heq ? ? ?; subst; now rewrite Heq).
 + abstract (now repeat intro).
 + abstract (now repeat intro).
@@ -511,7 +517,7 @@ Definition config0 pt : configuration := fun id =>
 CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt : location,
-  @equiv spectrum _ (!! (map_config (lift (translation (opp pt)) I) (config0 pt))) spectrum1.
+  @equiv spectrum _ (!! (map_config (lift (existT precondition (translation (opp pt)) I)) (config0 pt))) spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
 rewrite spect_from_config_spec, config_list_spec.
@@ -540,7 +546,7 @@ Qed.
 
 
 Section AbsurdMove.
-Definition move := r spectrum1 ratio_1.
+Definition move := r spectrum1.
 Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt, round r (shifting_da (pt + move + 1)) (config0 pt) == config0 (pt + move).
@@ -590,19 +596,19 @@ Qed.
 
 End AbsurdMove.
 
-Theorem no_move1 : r spectrum1 ratio_1 = 0.
+Theorem no_move1 : r spectrum1 = 0.
 Proof.
-destruct (Rdec (r spectrum1 ratio_1) 0) as [? | Hmove]; trivial.
+destruct (Rdec (r spectrum1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
-Corollary no_move2 : r (!! (map_config (swap 1) config2)) ratio_1 == 0.
+Corollary no_move2 : r (!! (map_config (swap 1) config2)) == 0.
 Proof.
 setoid_rewrite <- no_move1 at 2.
-do 2 f_equiv.
-change (Bijection.section (swap 1)) with (lift (swap 1) I).
+apply (pgm_compat r). f_equiv.
+change (Bijection.section (swap 1)) with (lift (existT precondition (swap 1) I)).
 replace origin with (swap 1 1) by (compute; ring).
-rewrite <- spect_from_config_map; autoclass; [].
+rewrite <- (spect_from_config_map (f := swap 1)); autoclass; [].
 rewrite spect_from_config_ignore_snd, spect_config2.
 apply swap_spect2_spect1.
 Qed.

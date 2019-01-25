@@ -26,7 +26,7 @@ Set Implicit Arguments.
 
 
 Section Isomorphism.
-Context (V E : Type).
+Context {V E : Type}.
 Context {G : Graph V E}.
 
 Record isomorphism := {
@@ -150,3 +150,30 @@ Global Arguments isomorphism {V} {E} G.
 Global Infix "∘" := compose (left associativity, at level 40).
 Global Notation "iso ⁻¹" := (inverse iso) (at level 39).
 End Notations.
+
+Lemma find_edge_iso_Some `{G : Graph} : forall (iso : isomorphism G) src tgt e,
+  @find_edge _ _ G (iso src) (iso tgt) == Some (iso.(iso_E) e) <-> @find_edge _ _ G src tgt == Some e.
+Proof.
+intros iso src tgt e.
+assert (strong_and : forall T U V W (A B : T -> U -> V -> W -> Prop),
+          (forall x y z t, B x y z t) ->
+          ((forall x y z t, B x y z t) -> (forall x y z t, A x y z t)) ->
+          forall x y z t, A x y z t /\ B x y z t) by intuition.
+revert iso src tgt e. apply strong_and.
++ intros iso src tgt e. rewrite 2 find_edge_Some. intro Hfind.
+  rewrite (proj1 Hfind), (proj2 Hfind). apply iso_morphism.
++ intros Hstep iso src tgt e H. specialize (Hstep (inverse iso) (iso src) (iso tgt) (iso_E iso e) H).
+  simpl in Hstep. now rewrite 3 Bijection.retraction_section in Hstep.
+Qed.
+
+Lemma find_edge_iso_None `{G : Graph} : forall (iso : isomorphism G) src tgt,
+  @find_edge _ _ G (iso src) (iso tgt) == None <-> @find_edge _ _ G src tgt == None.
+Proof.
+intros iso src tgt. destruct (find_edge src tgt) eqn:Hcase.
++ apply (eq_subrelation (R := equiv)) in Hcase; autoclass; [].
+  rewrite <- find_edge_iso_Some in Hcase. rewrite Hcase. tauto.
++ intuition; []. destruct (find_edge (iso src) (iso tgt)) eqn:Hcase'; try reflexivity; [].
+  exfalso. apply (eq_subrelation (R := equiv)) in Hcase'; autoclass; [].
+  rewrite <- (find_edge_iso_Some (inverse iso)) in Hcase'. cbn -[equiv] in Hcase'.
+  rewrite 2 Bijection.retraction_section in Hcase'. rewrite Hcase in Hcase'. tauto.
+Qed.

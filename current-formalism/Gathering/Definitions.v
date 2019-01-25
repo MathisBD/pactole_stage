@@ -47,9 +47,11 @@ Global Instance Info : State location := OnlyLocation.
 
 (** The spectrum and the way updates are made to the robot state are still arbitrary. *)
 Context {Spect : Spectrum}.
+Context `{robot_choice}.
 Context {UC : update_choice T}.
 Context `{inactive_choice}.
-Context {UpdFun : update_functions T _}.
+Context {UpdFun : update_function _ _ T}.
+Context {InaFun : inactive_function _}.
 
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
 Proof. now intros. Qed.

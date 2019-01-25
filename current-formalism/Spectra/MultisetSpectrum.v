@@ -73,7 +73,7 @@ Proof. intuition. Qed.
 
 Instance make_multiset_compat : Proper (PermutationA equiv ==> equiv) make_multiset.
 Proof.
-intros ? ? ?. unfold make_multiset. f_equiv. eapply PermutationA_map; eauto.
+intros ? ? ?. unfold make_multiset. eapply from_elements_compat, PermutationA_map; eauto.
 - autoclass.
 - repeat intro. split; hnf; auto.
 Qed.
@@ -191,12 +191,11 @@ Global Instance multiset_spectrum : Spectrum := {
   spect_is_ok s config pt :=
     forall l, s[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config)) }.
 Proof.
-(* BUG?: bullet forbidden here? *)
-{ repeat intro.
++ repeat intro.
   apply make_multiset_compat, eqlistA_PermutationA_subrelation,
         (@map_eqlistA_compat _ _ equiv equiv _ get_location).
   - autoclass.
-  - apply config_list_compat. assumption. }
+  - apply config_list_compat. assumption.
 + unfold spect_from_config, spect_is_ok. intros. apply make_multiset_spec.
 Defined.
 
@@ -211,13 +210,13 @@ Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
   forall Pf config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (lift f Pf) config) (f pt).
+  map f (spect_from_config config pt) == spect_from_config (map_config (lift (existT _ f Pf)) config) (f pt).
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum.
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 + apply make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
   assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
-                     (fun x => f (get_location x)) (fun x => get_location (lift f Pf x))).
+                     (fun x => f (get_location x)) (fun x => get_location (lift (existT _ f Pf) x))).
   { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
   now apply (map_extensionalityA_compat _ Hequiv).
 + assumption.

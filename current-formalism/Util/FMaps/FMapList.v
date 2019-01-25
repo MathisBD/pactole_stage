@@ -266,8 +266,9 @@ Proof. split.
   + inversion_clear Hm. simpl. destruct (equiv_dec x y).
     - inversion_clear Hin; try (now f_equal); [].
       assert (Heq : equiv@@1 (x, e) (y, p)) by assumption.
-      elim H0. rewrite <- Heq. revert H2.
-      apply Pactole.Util.Preliminary.InA_impl_compat; trivial; []. now repeat intro.
+      elim H0. eapply InA_eqA; eauto with typeclass_instances; [].
+      revert H2. apply Pactole.Util.Preliminary.InA_impl_compat; trivial; [].
+      now repeat intro.
     - inversion_clear Hin; now auto.
 * intros elt [m Hm] x e Hin. simpl in *. induction m as [| [y p] l].
   + inversion Hin.
@@ -378,8 +379,9 @@ Proof. split.
     - left. simpl. split; trivial. inversion_clear Hin.
       -- simpl in *. destruct H2. now subst.
       -- assert (Heq : equiv@@1 (x, e) (y, p)) by assumption.
-         elim H0. rewrite <- Heq. revert H2.
-         apply Pactole.Util.Preliminary.InA_impl_compat; trivial; []. now repeat intro.
+         elim H0. eapply InA_eqA; eauto with typeclass_instances; [].
+         revert H2. apply Pactole.Util.Preliminary.InA_impl_compat; trivial; [].
+         now repeat intro.
     - inversion_clear Hin; try easy; [].
       right. auto.
 * unfold In. intros elt elt' [m Hm] x f [e Hin]. simpl in *. induction m as [| [y p] m].
@@ -400,8 +402,9 @@ Proof. split.
       simpl. split; trivial. inversion_clear Hin.
       -- simpl in *. destruct H2. now subst.
       -- assert (Heq : equiv@@1 (x, e) (y, p)) by assumption.
-         elim H0. rewrite <- Heq. revert H2.
-         apply Pactole.Util.Preliminary.InA_impl_compat; trivial; []. now repeat intro.
+         elim H0. eapply InA_eqA; eauto with typeclass_instances; [].
+         revert H2. apply Pactole.Util.Preliminary.InA_impl_compat; trivial; [].
+         now repeat intro.
     - inversion_clear Hin; try easy; [].
       destruct IHm as [y' Hy']; trivial; []. exists y'.
       split; try (now symmetry); []. now right.

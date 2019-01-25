@@ -67,14 +67,16 @@ Instance Loc : Location := make_Location R2.
 Instance VS : RealVectorSpace location := R2_VS.
 Instance ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_VS R2_ES : typeclass_instances.
+Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
-Instance UpdFun : update_functions unit unit := {
-  update := fun _ _ trajectory _ => trajectory ratio_1;
+Instance UpdFun : update_function location (Similarity.similarity location) unit := {
+  update := fun _ _ _ target _ => target;
+  update_compat := ltac:(now repeat intro) }.
+Instance InaFun : inactive_function unit := {
   inactive := fun config id _ => config id;
-  update_compat := ltac:(now repeat intro);
   inactive_compat := ltac:(repeat intro; subst; auto) }.
-Instance Rigid : RigidUpdate.
+Instance Rigid : RigidSetting.
 Proof. split. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
@@ -95,13 +97,6 @@ Implicit Type config : configuration.
 Implicit Type da : similarity_da.
 Implicit Type d : similarity_demon.
 Arguments origin : simpl never.
-
-(* The robot trajectories are straight paths. *)
-Definition path_R2 := path location.
-Definition paths_in_R2 : location -> path_R2 := local_straight_path.
-Coercion paths_in_R2 : location >-> path_R2.
-Instance paths_in_R2_compat : Proper (equiv ==> equiv) paths_in_R2.
-Proof. intros [] [] [] x. f_equiv. Qed.
 
 (* Refolding typeclass instances *)
 Ltac changeR2 :=
@@ -259,13 +254,13 @@ split; intro Hclean.
 Qed.
 
 (** The robogram solving the gathering problem in R². *)
-Definition gatherR2_pgm (s : spectrum) : path_R2 :=
+Definition gatherR2_pgm (s : spectrum) : location :=
   match support (max s) with
-    | nil => paths_in_R2 origin (* no robot *)
-    | pt :: nil => paths_in_R2 pt (* majority *)
+    | nil => origin (* no robot *)
+    | pt :: nil => pt (* majority *)
     | _ :: _ :: _ =>
-      if is_clean s then paths_in_R2 (target s) (* clean case *)
-      else if mem equiv_dec origin (SECT s) then paths_in_R2 origin else paths_in_R2 (target s) (* dirty case *)
+      if is_clean s then target s (* clean case *)
+      else if mem equiv_dec origin (SECT s) then origin else target s (* dirty case *)
   end.
 
 Instance gatherR2_pgm_compat : Proper (equiv ==> equiv) gatherR2_pgm.
@@ -279,14 +274,14 @@ simpl in Hsize; omega || clear Hsize.
 * apply max_compat, support_compat in Hs. rewrite Hs1, Hs2 in Hs.
   rewrite PermutationA_Leibniz in Hs. apply Permutation_length_1_inv in Hs. now inversion Hs.
 * rewrite Hs. destruct (is_clean s2).
-  + now do 2 f_equiv.
+  + now f_equiv.
   + assert (Heq : mem equiv_dec origin (SECT s1) = mem equiv_dec origin (SECT s2)).
     { apply mem_compat, PermutationA_equivlistA_subrelation; auto; []. now rewrite Hs. }
     (* BUG?: [rewrite Hs] should take care of this assert (and bypass it entirely) *)
     rewrite Heq.
     destruct (mem equiv_dec origin (SECT s2)) eqn:Hin.
     - reflexivity.
-    - now do 2 f_equiv.
+    - now f_equiv.
 Qed.
 
 Definition gatherR2 : robogram := {| pgm := gatherR2_pgm |}.
@@ -769,7 +764,7 @@ Proof.
 intros sim s hnonempty. unfold target.
 assert (Hperm : Permutation (List.map sim (on_SEC (support s))) (on_SEC (support (map sim s)))).
 { assert (Heq : on_SEC (support s)
-                == List.filter (fun x => on_circle (sim_circle sim (SEC (support s))) (sim x)) (support s)).
+                = List.filter (fun x => on_circle (sim_circle sim (SEC (support s))) (sim x)) (support s)).
   { apply Preliminary.filter_extensionality_compat; trivial; [].
     repeat intro. subst. now rewrite on_circle_morph. }
   rewrite Heq. rewrite <- filter_map.
@@ -1086,13 +1081,14 @@ Theorem round_simplify : forall config,
                else config id.
 Proof.
 intro config. rewrite SSYNC_round_simplify; trivial; [].
-apply no_byz_eq. intro g. unfold round.
+apply no_byz_eq. intro g. cbn zeta.
 destruct (da.(activate) (Good g)) eqn:Hactive; try reflexivity; [].
 remember (change_frame da config g) as sim.
-rewrite spect_from_config_ignore_snd. simpl lift. unfold id.
+rewrite spect_from_config_ignore_snd.
+rewrite get_location_lift. cbn -[equiv map_config support equiv_dec get_location].
 assert (supp_nonempty := support_non_nil config).
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
-unfold gatherR2, gatherR2_pgm. cbn [pgm].
+unfold gatherR2, gatherR2_pgm.
 assert (Hperm : Permutation (List.map sim (support (max (!! config))))
                             (support (max (!! (map_config sim config))))).
 { rewrite  <- PermutationA_Leibniz. change eq with (@equiv location _). changeR2.
@@ -1102,37 +1098,35 @@ changeR2.
 destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax,
          (support (max (!! (map_config sim config)))) as [| pt1' [| pt2' l']];
 simpl in Hlen; discriminate || clear Hlen; [| |].
-* rewrite support_nil, max_is_empty in Hmax. elim (spect_non_nil _ Hmax).
-* simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
-  subst pt1'. cbn -[Bijection.inverse mul]. unfold id.
-  rewrite <- (Bijection.compose_inverse_l sim pt1) at 2.
-  simpl. f_equiv. changeR2. destruct (sim pt1); simpl; f_equal; ring.
-* change (map_config sim config) with (map_config (lift sim I) config).
-  rewrite <- (spect_from_config_ignore_snd (map_config (lift (State := OnlyLocation) sim I) config) (sim origin)),
+* (* No maximal tower *)
+  rewrite support_nil, max_is_empty in Hmax. elim (spect_non_nil _ Hmax).
+* (* One maximal tower *)
+  simpl in Hperm. rewrite <- PermutationA_Leibniz, (PermutationA_1 _) in Hperm.
+  subst pt1'. apply Bijection.retraction_section.
+* (* Multiple maximal towers *)
+  change (map_config sim config) with (map_config (lift (existT precondition sim I)) config).
+  rewrite <- (spect_from_config_ignore_snd
+               (map_config (lift (State := OnlyLocation)
+                                 (existT (fun _ : location -> location => True) sim I)) config) (sim origin)),
           <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
-  + rewrite rigid_update, <- (spect_from_config_ignore_snd _ (sim origin)),
+  + (* Clean case *)
+    rewrite <- (spect_from_config_ignore_snd _ (sim origin)),
             <- spect_from_config_map, target_morph; trivial; [].
-    cbn -[Bijection.inverse mul]. unfold id.
-    rewrite <- (Bijection.compose_inverse_l sim (target (!! config))) at 2.
-    simpl. f_equiv. changeR2. destruct (sim (target (!! config))); simpl; f_equal; ring.
-  + change (0, 0)%R with origin. rewrite rigid_update. rewrite <- (center_prop sim) at 1.
+    apply Bijection.retraction_section.
+  + (* Dirty case *)
+    rewrite <- (center_prop sim) at 1.
     assert (Hperm' : PermutationA equiv (SECT (!! (map_config sim config))) (List.map sim (SECT (!! config)))).
     { rewrite <- SECT_morph; auto. f_equiv. now rewrite (spect_from_config_map Hsim). }
     rewrite (mem_compat equiv_dec _ _ (reflexivity _) (PermutationA_equivlistA _ Hperm')).
     rewrite (mem_injective_map _); trivial; try (now apply injective); [].
-    rewrite Heqsim at 3. rewrite similarity_center.
+    simpl lift. rewrite Heqsim at 2. rewrite similarity_center.
     destruct (mem equiv_dec (get_location (config (Good g))) (SECT (!! config))).
-    - rewrite <- (center_prop sim), Heqsim, similarity_center.
-      cbn -[Bijection.inverse mul]. unfold id.
-      rewrite <- (Bijection.compose_inverse_l sim (config (Good g))) at 2.
-      simpl. changeR2. rewrite <- Heqsim. f_equiv.
-      destruct (sim (config (Good g))); simpl; f_equal; ring.
-    - cbn. change eq with (@equiv location _). unfold id.
+    - rewrite Heqsim. apply similarity_center.
+    - simpl get_location. unfold id.
       rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
       rewrite spect_from_config_map; trivial; [].
-      rewrite spect_from_config_ignore_snd. simpl. unfold id. changeR2.
-      destruct (target (!! (fun id => sim (config id)))); simpl; f_equal; ring.
+      now rewrite spect_from_config_ignore_snd.
 Unshelve. all:exact I. (* FIXME: there should be no shelved goals. *)
 Qed.
 

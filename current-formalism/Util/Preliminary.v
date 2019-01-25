@@ -52,6 +52,7 @@ Remove Hints eq_setoid : Setoid.
 Instance R_Setoid : Setoid R := eq_setoid R.
 Instance nat_Setoid : Setoid nat := eq_setoid nat.
 Instance bool_Setoid : Setoid bool := eq_setoid bool.
+Instance unit_Setoid : Setoid unit := eq_setoid unit.
 
 (** A tactic simplifying coinduction proofs. *)
 Global Ltac coinduction proof :=
@@ -172,7 +173,10 @@ Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
 Proof. split; auto with typeclass_instances. Qed.
 
-Instance opt_setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
+Instance opt_Setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
+
+Instance Some_compat `(Setoid) : Proper (equiv ==> @equiv _ (opt_Setoid _)) Some.
+Proof. intros ? ? Heq. apply Heq. Qed.
 
 Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
   Pactole.Util.FMaps.FMapInterface.prod_Setoid.
@@ -194,17 +198,72 @@ Defined.
 Instance sig_EqDec {T} {S : Setoid T} (E : EqDec S) (P : T -> Prop) : EqDec (@sig_Setoid T S P).
 Proof. intros ? ?. simpl. apply equiv_dec. Defined.
 
+Instance sigT_Setoid {T} (S : Setoid T) {P : T -> Type} : Setoid (sigT P) := {|
+  equiv := fun x y => projT1 x == projT1 y |}.
+Proof. split.
++ intro. reflexivity.
++ intros ? ?. now symmetry.
++ intros ? ? ? ? ?. etransitivity; eauto.
+Defined.
+
+Instance sigT_EqDec {T} {S : Setoid T} (E : EqDec S) (P : T -> Type) : EqDec (@sigT_Setoid T S P).
+Proof. intros ? ?. simpl. apply equiv_dec. Defined.
+
+(* The intersection of equivalence relations is still an equivalence relation. *)
+Lemma inter_equivalence T R1 R2 (E1 : Equivalence R1) (E2 : Equivalence R2)
+  : Equivalence (fun x y : T => R1 x y /\ R2 x y).
+Proof. split.
++ split; reflexivity.
++ now split; symmetry.
++ intros ? ? ? [] []. split; etransitivity; eauto.
+Qed.
+
+(* TODO: set it as an instance and fix all the typeclass search loops that appear *)
+Definition inter_Setoid {T} (S1 : Setoid T) (S2 : Setoid T) : Setoid T := {|
+  equiv := fun x y => @equiv T S1 x y /\ @equiv T S2 x y;
+  setoid_equiv := inter_equivalence setoid_equiv setoid_equiv |}.
+
+Definition inter_EqDec {T} {S1 S2 : Setoid T} (E1 : EqDec S1) (E2 : EqDec S2) : EqDec (inter_Setoid S1 S2).
+Proof.
+intros x y. destruct (E1 x y), (E2 x y); (now left; split) || (right; intros []; contradiction).
+Defined.
+
+Definition inter_subrelation_l : forall {T} {S1 S2 : Setoid T},
+  subrelation (@equiv T (inter_Setoid S1 S2)) (@equiv T S1).
+Proof. now intros ? ? ? ? ? []. Qed.
+
+Definition inter_subrelation_r : forall {T} {S1 S2 : Setoid T},
+  subrelation (@equiv T (inter_Setoid S1 S2)) (@equiv T S2).
+Proof. now intros ? ? ? ? ? []. Qed.
+
+Definition inter_compat_l {T U} {S1 S2 : Setoid T} `{Setoid U} : forall f : T -> U,
+  Proper (@equiv T S1 ==> equiv) f -> Proper (@equiv T (inter_Setoid S1 S2) ==> equiv) f.
+Proof. intros f Hf x y Heq. apply Hf, Heq. Qed.
+
+Definition inter_compat_r {T U} {S1 S2 : Setoid T} `{Setoid U} : forall f : T -> U,
+  Proper (@equiv T S2 ==> equiv) f -> Proper (@equiv T (inter_Setoid S1 S2) ==> equiv) f.
+Proof. intros f Hf x y Heq. apply Hf, Heq. Qed.
+
 (** Setoid by precomposition *)
-Instance compose_Setoid {T U} (f : T -> U) `{Setoid U} : Setoid T := {
-  equiv := fun x y => (f x) == (f y) }.
+Definition compose_Equivalence T U R (E : @Equivalence U R) :
+  forall f : T -> U, Equivalence (fun x y => R (f x) (f y)).
 Proof. split.
 + intro. reflexivity.
 + repeat intro. now symmetry.
 + repeat intro. now transitivity (f y).
-Defined.
+Qed.
 
-Instance compose_EqDec {T U} (f : T -> U) `{EqDec U} : EqDec (compose_Setoid f) :=
-  fun x y => (f x) =?= (f y).
+(* TODO: set it as an instance and fix all the typeclass search loops that appear *)
+Definition compose_Setoid {T U} (f : T -> U) {S : Setoid U} : Setoid T := {|
+  equiv := fun x y => f x == f y;
+  setoid_equiv := compose_Equivalence setoid_equiv f |}.
+
+Definition compose_EqDec {T U} (f : T -> U) `{EqDec U}
+  : EqDec (compose_Setoid f) := fun x y => f x =?= f y.
+
+Definition compose_compat {T U} (f : T -> U) `{Setoid U} :
+  Proper (@equiv T (compose_Setoid f) ==> equiv) f.
+Proof. intros x y Heq. apply Heq. Qed.
 
 
 (******************************)
@@ -836,8 +895,10 @@ Lemma PermutationA_3 : forall x y z x' y' z',
   eqA x z' /\ eqA y y' /\ eqA z x' \/ eqA x z' /\ eqA y x' /\ eqA z y'.
 Proof using eqA HeqA.
 intros. split.
-+ generalize (eq_refl (x :: y :: z :: nil)). generalize (x :: y :: z :: nil) at -2. intros l1 Hl1.
-  generalize (eq_refl (x' :: y' :: z' :: nil)). generalize (x' :: y' :: z' :: nil) at -2. intros l2 Hl2 perm.
++ generalize (eq_refl (x :: y :: z :: nil)).
+  generalize (x :: y :: z :: nil) at -2. intros l1 Hl1.
+  generalize (eq_refl (x' :: y' :: z' :: nil)).
+  generalize (x' :: y' :: z' :: nil) at -2. intros l2 Hl2 perm.
   revert x y z x' y' z' Hl1 Hl2. induction perm; intros.
   - discriminate Hl1.
   - inversion Hl1. inversion Hl2. subst. rewrite PermutationA_2 in perm. intuition.
@@ -1115,7 +1176,8 @@ intros f g Hfg ? l ?; subst. induction l as [| x l]; simpl.
 + destruct (f x) eqn:Hfx; rewrite (Hfg _ _ (reflexivity _)) in Hfx; now rewrite Hfx, IHl.
 Qed.
 
-Global Instance filter_extensionalityA_compat : Proper ((eqA ==> Logic.eq) ==> eqlistA eqA ==> eqlistA eqA) (@filter A).
+Global Instance filter_extensionalityA_compat :
+  Proper ((eqA ==> Logic.eq) ==> eqlistA eqA ==> eqlistA eqA) (@filter A).
 Proof.
 intros f g Hfg l1. induction l1 as [| x l1]; intros l2 Hl; simpl.
 + inv Hl. reflexivity.
@@ -1732,7 +1794,8 @@ intros f Hf Hfcomm l1 l2 perm. induction perm; intros i1 i2 Hi; simpl.
 - etransitivity. now apply IHperm1. now apply IHperm2.
 Qed.
 
-Global Instance fold_right_compat : Proper ((eqA ==> eqB ==> eqB) ==> eqB ==> eqlistA eqA ==> eqB) (@fold_right B A).
+Global Instance fold_right_compat :
+  Proper ((eqA ==> eqB ==> eqB) ==> eqB ==> eqlistA eqA ==> eqB) (@fold_right B A).
 Proof.
 intros f1 f2 Hf i1 i2 Hi l1 l2 Hl. revert i1 i2 Hi.
 induction Hl; intros i1 i2 Hi; simpl.

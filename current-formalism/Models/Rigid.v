@@ -30,19 +30,19 @@ Require Import Pactole.Setting.
 Typeclasses eauto := (bfs).
 Section RigidFormalism.
 
-Context {T1 : Type}.
+Context {Tframe : Type}.
 Context `{Spectrum}.
-Context {Frame : frame_choice T1}.
+Context {Robot : robot_choice location}.
+Context {Frame : frame_choice Tframe}.
 Context `{update_choice}.
-Context `{inactive_choice}.
-Context {Upd : update_functions _ _}.
+Context {Upd : update_function location _ _}.
 
 
 (** Rigid moves are a special case of state updates where the updated location of the robot
     is the one chosen by the robogram. *)
-Class RigidUpdate := {
-  rigid_update : forall da config g trajectory,
-    get_location (update config g trajectory (da.(choose_update) config g trajectory)) == trajectory ratio_1 }.
+Class RigidSetting := {
+  rigid_update : forall config frame g target choice,
+    get_location (update config g frame target choice) == target }.
 
 End RigidFormalism.
 

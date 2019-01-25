@@ -35,7 +35,7 @@ Class Graph (V E : Type) := {
 
   find_edge : V -> V -> option E;
   find_edge_compat :> Proper (equiv ==> equiv ==> opt_eq equiv) find_edge;
-  find_edge_None : forall a b : V, find_edge a b = None <-> forall e : E, ~(src e == a /\ tgt e == b);
+  find_edge_None : forall a b : V, find_edge a b == None <-> forall e : E, ~(src e == a /\ tgt e == b);
   find_edge_Some : forall v1 v2 e, find_edge v1 v2 == Some e <-> v1 == src e /\ v2 == tgt e }.
 
 Global Opaque threshold_pos src_compat tgt_compat threshold_compat find_edge_compat find_edge_None find_edge_Some.
@@ -58,14 +58,14 @@ Existing Class FiniteGraph.
 Section Ring.
 Context {n : nat}.
 
-Inductive direction := Forward | Backward | AutoLoop.
+Inductive direction := Forward | Backward | SelfLoop.
 Definition ring_edge := (finite_node n * direction)%type.
 
 Instance ring_edge_Setoid : Setoid ring_edge := {
   equiv := fun e1 e2 => fst e1 == fst e2
                      /\ if (Nat.eq_dec n 2) then match snd e1, snd e2 with
-                                                   | AutoLoop, AutoLoop => True
-                                                   | AutoLoop, _ | _, AutoLoop  => False
+                                                   | SelfLoop, SelfLoop => True
+                                                   | SelfLoop, _ | _, SelfLoop  => False
                                                    | _, _ => True
                                                  end
                                             else snd e1 = snd e2 }.
@@ -135,12 +135,12 @@ refine ({|
   tgt := fun e => of_Z (match snd e with
                           | Forward => (to_Z (fst e) + 1)%Z
                           | Backward => (to_Z (fst e) - 1)%Z
-                          | AutoLoop => to_Z (fst e)
+                          | SelfLoop => to_Z (fst e)
                         end);
   threshold := thd;
   find_edge := fun v1 v2 : finite_node n => if v1 =?= of_Z (to_Z v2 + 1) then Some (v1, Backward) else
                                             if of_Z (to_Z v1 + 1) =?= v2 then Some (v1, Forward)  else
-                                            if v1 =?= v2 then Some (v1, AutoLoop) else None;
+                                            if v1 =?= v2 then Some (v1, SelfLoop) else None;
   V_EqDec := @finite_node_EqDec n;
   E_EqDec := ring_edge_EqDec |}).
 * exact thd_pos.
@@ -160,8 +160,8 @@ refine ({|
 * (* find_edge_None *)
   intros a b; split; unfold find_edge;
   destruct (a =?= of_Z (to_Z b + 1)) as [Heq_a | Hneq_a].
-  + discriminate.
-  + destruct (of_Z (to_Z a + 1) =?= b) as [Heq_b | Hneq_b], (a =?= b); try discriminate; [].
+  + tauto.
+  + destruct (of_Z (to_Z a + 1) =?= b) as [Heq_b | Hneq_b], (a =?= b); try tauto; [].
     intros _ e (Hsrc, Htgt).
     destruct (snd e); rewrite Hsrc in Htgt.
     - hnf in *. subst b. intuition.
@@ -180,8 +180,8 @@ refine ({|
   + intro Hedge. destruct (of_Z (to_Z a + 1) =?= b) as [Heq_b | Hneq_b].
     - elim (Hedge (a, Forward)).
       split; simpl; try reflexivity; []. now rewrite <- Heq_b.
-    - destruct (a =?= b) as [Heq |]; trivial; [].
-      elim (Hedge (a, AutoLoop)).
+    - destruct (a =?= b) as [Heq |]; try reflexivity; [].
+      elim (Hedge (a, SelfLoop)).
       split; simpl; try reflexivity; []. now rewrite V2V, Heq.
 * (* find_edge_Some *)
   clear dependent thd.

@@ -35,6 +35,7 @@ Section SimilarityCenter.
 Context `{Spectrum}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
+Context `{robot_choice}.
 Context `{update_choice}.
 Context `{inactive_choice}.
 

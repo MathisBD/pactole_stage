@@ -34,21 +34,28 @@ Import Pactole.Util.Bijection.Notations.
 
 
 Typeclasses eauto := 5.
+Remove Hints eq_setoid : Setoid.
 
 
 Section Formalism.
 
 Context `{Spectrum}.
-Variables T1 T2 T3 : Type.
+Variables Trobot Tframe Tactive Tinactive : Type.
 
 (** **  Robograms and Executions  **)
 
-(** Good robots have a common program, which we call a [robogram]. *)
-Record robogram := {
-  pgm :> spectrum -> path location; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
+(** Executions are simply streams of configurations. *)
+Definition execution := Stream.t configuration.
+
+(** Good robots have a common program, which we call a [robogram].
+    It returns some piece of information (e.g. target location) which must form a setoid. *)
+Class robot_choice := { robot_choice_Setoid :> Setoid Trobot }.
+
+Record robogram `{robot_choice} := {
+  pgm :> spectrum -> Trobot; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
   pgm_compat :> Proper (equiv ==> equiv) pgm}.
 
-Global Instance robogram_Setoid : Setoid robogram := {|
+Global Instance robogram_Setoid `{robot_choice} : Setoid robogram := {|
   equiv := fun r1 r2 => forall s, pgm r1 s == pgm r2 s |}.
 Proof. split.
 + intros ? ?. reflexivity.
@@ -56,11 +63,8 @@ Proof. split.
 + intros ? ? ? ? ? ?. etransitivity; eauto.
 Defined.
 
-Global Instance pgm_full_compat : Proper (equiv ==> equiv ==> equiv) pgm.
+Global Instance pgm_full_compat `{robot_choice} : Proper (equiv ==> equiv ==> equiv) pgm.
 Proof. intros r1 r2 Hr s1 s2 Hs. rewrite (Hr s1). now apply pgm_compat. Qed.
-
-(** Executions are simply streams of configurations. *)
-Definition execution := Stream.t configuration.
 
 (** ** Demonic schedulers *)
 
@@ -76,47 +80,57 @@ Definition execution := Stream.t configuration.
 (** A [frame_choice] represents the choices made by the demon to compute the spectrum.
     It must at least contain a bijection to compute the change of frame of reference.  *)
 Class frame_choice := {
-  frame_choice_bijection : T1 -> bijection location;
-  frame_choice_Setoid :> Setoid T1;
+  frame_choice_bijection :> Tframe -> bijection location;
+  frame_choice_Setoid :> Setoid Tframe;
   frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
 Global Existing Instance frame_choice_bijection_compat.
 
+(* FIXME: should we merge *_choice and *_function? *)
 (** An [update_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
 Class update_choice := {
-  update_choice_Setoid :> Setoid T2;
+  update_choice_Setoid :> Setoid Tactive;
   update_choice_EqDec :> EqDec update_choice_Setoid }.
 
 (** An [inactive_choice] represents the choices the demon makes when a robot is not activated. *)
 Class inactive_choice := {
-  inactive_choice_Setoid :> Setoid T3;
+  inactive_choice_Setoid :> Setoid Tinactive;
   inactive_choice_EqDec :> EqDec inactive_choice_Setoid }.
 
 (** These choices are then used by update functions that depend on the model. *)
-Class update_functions `{update_choice} `{inactive_choice} := {
-  update :> configuration -> G -> path location -> T2 -> info;
-  inactive :> configuration -> ident -> T3 -> info;
-  update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv) update;
+(* RMK: we cannot combine them toghether otherwise we get spurious dependencies on the unused parameters. *)
+Class update_function `{robot_choice} `{frame_choice} `{update_choice} := {
+  update :> configuration -> G -> Tframe -> Trobot -> Tactive -> info;
+  update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) update }.
+
+Class inactive_function  `{inactive_choice} := {
+  inactive :> configuration -> ident -> Tinactive -> info;
   inactive_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv) inactive }.
 
-Context `{@frame_choice}.
+Context `{robot_choice}.
+Context `{frame_choice}.
 Context `{update_choice}.
 Context `{inactive_choice}.
-Context `{@update_functions _ _}.
+Context `{@update_function _ _ _}.
+Context `{@inactive_function _}.
+
 
 (* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
+(* RMK: /!\ activate does not take the configuration as argument because we cannot define fairness
+            in that case: fairness properties are about a single execution, not a tree of them. *)
 Record demonic_action := {
   (** Select which robots are activated *)
   activate : ident -> bool;
   (** Update the state of (activated) byzantine robots *)
   relocate_byz : configuration -> B -> info;
   (** Local referential for (activated) good robots in the compute phase *)
-  change_frame : configuration -> G -> T1;
+  change_frame : configuration -> G -> Tframe;
   (** Update the state of (activated) good robots in the move phase  *)
-  choose_update : configuration -> G -> path location -> T2;
+  choose_update : configuration -> G -> Trobot -> Tactive;
   (** Update the state of inactive robots *)
-  choose_inactive : configuration -> ident -> T3;
-  (** The change of frame must satisfy the condition to be lifted to states. *)
+  choose_inactive : configuration -> ident -> Tinactive;
+  (** The change of frame and its inverse must satisfy the condition to be lifted to states *)
   precondition_satisfied : forall config g, precondition (frame_choice_bijection (change_frame config g));
+  precondition_satisfied_inv : forall config g, precondition ((frame_choice_bijection (change_frame config g)) ⁻¹);
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -220,19 +234,21 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
         | Byz b => da.(relocate_byz) config b (* byzantine robots are relocated by the demon *)
         | Good g =>
           (* change the frame of reference *)
-          let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-          let local_config := map_config (lift new_frame (precondition_satisfied da config g)) config in
+          let frame_choice := da.(change_frame) config g in
+          let new_frame := frame_choice_bijection frame_choice in
+          let local_config := map_config (lift (existT precondition new_frame (precondition_satisfied da config g)))
+                                         config in
           let local_pos := get_location (local_config (Good g)) in
           (* compute the spectrum *)
           let spect := spect_from_config local_config local_pos in
           (* apply r on spectrum *)
-          let local_trajectory := r spect in
-          (* return to the global frame of reference *)
-          let global_trajectory := lift_path (new_frame ⁻¹) local_trajectory in
+          let local_robot_decision := r spect in
           (* the demon chooses how to perform the state update *)
-          let choice := da.(choose_update) config g global_trajectory in
+          let choice := da.(choose_update) local_config g local_robot_decision in
           (* the actual update of the robot state is performed by the update function *)
-          update config g global_trajectory choice
+          let new_local_state := update local_config g frame_choice local_robot_decision choice in
+          (* return to the global frame of reference *)
+          lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
         end
     else inactive config id (da.(choose_inactive) config id).
 
@@ -243,18 +259,25 @@ unfold round. rewrite Hda. destruct_match.
 * (* active robot *)
   destruct id as [g | b].
   + (* good robot *)
-    apply update_compat; try apply choose_update_da_compat; trivial; [|];
-    apply lift_path_extensionality_compat;
-    do 2 (f_equiv; trivial); try (now apply frame_choice_bijection_compat; f_equiv);
-    solve [ apply map_config_compat; trivial; []; apply lift_compat; f_equiv;
-            apply frame_choice_bijection_compat; now do 2 f_equiv
-          | apply get_location_compat, map_config_compat; trivial; []; apply lift_compat; f_equiv;
-            apply frame_choice_bijection_compat; now do 2 f_equiv ].
+    assert (Heq : map_config (lift (existT precondition (frame_choice_bijection (change_frame da1 config1 g))
+                                      (precondition_satisfied da1 config1 g))) config1
+               == map_config (lift (existT precondition (frame_choice_bijection (change_frame da2 config2 g))
+                                      (precondition_satisfied da2 config2 g))) config2).
+    { f_equiv; trivial; []. apply lift_compat. intros x y Hxy. simpl. f_equiv; trivial; [].
+      apply frame_choice_bijection_compat. now f_equiv. }
+    apply lift_compat, update_compat.
+    - intros x y Hxy. simpl. f_equiv; trivial; []. apply frame_choice_bijection_compat. now f_equiv.
+    - apply Heq.
+    - reflexivity.
+    - now f_equiv.
+    - do 2 (f_equiv; trivial; []). now apply get_location_compat.
+    - do 3 (f_equiv; trivial; []). now apply get_location_compat.
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
   now apply inactive_compat, choose_inactive_da_compat.
 Qed.
+
 
 (** A third subset of robots: moving ones *)
 Definition moving r da config :=
@@ -357,14 +380,16 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
       match id with
         | Byz b => da.(relocate_byz) config b
         | Good g =>
-          let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-          let local_config := map_config (lift new_frame (precondition_satisfied da config g)) config in
+          let frame_choice := da.(change_frame) config g in
+          let new_frame := frame_choice_bijection frame_choice in
+          let local_config := map_config (lift (existT precondition new_frame (precondition_satisfied da config g)))
+                                         config in
           let local_pos := get_location (local_config (Good g)) in
           let spect := spect_from_config local_config local_pos in
-          let local_trajectory := r spect in
-          let global_trajectory := lift_path (new_frame ⁻¹) local_trajectory in
-          let choice := da.(choose_update) config g global_trajectory in
-          update config g global_trajectory choice
+          let local_robot_decision := r spect in
+          let choice := da.(choose_update) local_config g local_robot_decision in
+          let new_local_state := update local_config g frame_choice local_robot_decision choice in
+          lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
         end
     else state.
 Proof. unfold round. repeat intro. destruct_match_eq Hcase; auto. Qed.
@@ -397,14 +422,16 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
     match id with
       | Byz b => da.(relocate_byz) config b
       | Good g =>
-        let new_frame := frame_choice_bijection (da.(change_frame) config g) in
-        let local_config := map_config (lift new_frame (precondition_satisfied da config g)) config in
+        let frame_choice := da.(change_frame) config g in
+        let new_frame := frame_choice_bijection frame_choice in
+        let local_config := map_config (lift (existT precondition new_frame (precondition_satisfied da config g)))
+                                       config in
         let local_pos := get_location (local_config (Good g)) in
         let spect := spect_from_config local_config local_pos in
-        let local_trajectory := r spect in
-        let global_trajectory := lift_path (new_frame ⁻¹) local_trajectory in
-        let choice := da.(choose_update) config g global_trajectory in
-        update config g global_trajectory choice
+        let local_robot_decision := r spect in
+        let choice := da.(choose_update) local_config g local_robot_decision in
+        let new_local_state := update local_config g frame_choice local_robot_decision choice in
+        lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
       end.
 Proof.
 intros * HFSYNC. rewrite SSYNC_round_simplify; auto using FSYNC_SSYNC_da; [].
@@ -548,11 +575,18 @@ Qed.
 
 End Formalism.
 
+Arguments robogram {info} {_} {_} {_} {_} {Trobot} {_}.
+Arguments Build_robogram {info} {_} {_} {_} {_} {Trobot} {_} pgm {_}.
 Arguments update_choice_Setoid {_} {_}.
 Arguments update_choice_EqDec {_} {_}.
-Arguments update_functions {info} {_} {_} {_} T2 T3 {_} {_}.
-Arguments demonic_action {info} {_} {_} {_} {T1} {T2} {T3} {_} {_} {_}.
-Arguments demon {info} {_} {_} {_} {T1} {T2} {T3} {_} {_} {_}.
+Arguments update_function {info} {_} {_} {_} Trobot Tframe Tactive {_} {_} {_}.
+Arguments inactive_function {info} {_} {_} {_} Tinactive {_}.
+Arguments update {info} {_} {_} {_} {Trobot} {Tframe} {Tactive} {_} {_} {_} {_}.
+Arguments update_compat {info} {_} {_} {_} {Trobot} {Tframe} {Tactive} {_} {_} {_} {_}.
+Arguments inactive {info} {_} {_} {_} {Tinactive} {_} {_}.
+Arguments inactive_compat {info} {_} {_} {_} {Tinactive} {_} {_}.
+Arguments demonic_action {info} {_} {_} {_} {Trobot} {Tframe} {Tactive} {Tinactive} {_} {_} {_} {_}.
+Arguments demon {info} {_} {_} {_} {Trobot} {Tframe} {Tactive} {Tinactive} {_} {_} {_} {_}.
 
 
 Section ChoiceExample.
@@ -579,7 +613,7 @@ Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}
 
 
 (** An exemple of update choice: no choice at all. *)
-Definition NoChoice : update_choice Datatypes.unit := {|
+Definition NoChoice : update_choice unit := {|
   update_choice_Setoid := _;
   update_choice_EqDec := _ |}.
 
@@ -587,5 +621,18 @@ Definition NoChoice : update_choice Datatypes.unit := {|
 Definition MergeUpdateChoices A B `{update_choice A} `{update_choice B} : update_choice (A * B) := {|
   update_choice_Setoid := _;
   update_choice_EqDec := _ |}.
+
+(** Idem for inactive choice. *)
+Instance NoChoiceIna : inactive_choice unit := {|
+  inactive_choice_Setoid := _;
+  inactive_choice_EqDec := _ |}.
+
+Definition MergeInactiveChoices A B `{inactive_choice A} `{inactive_choice B} : inactive_choice (A * B) := {|
+  inactive_choice_Setoid := _;
+  inactive_choice_EqDec := _ |}.
+
+Instance NoChoiceInaFun `{Names} : inactive_function unit := {|
+  inactive := fun config g _ => config g;
+  inactive_compat := ltac:(intros ? ? Heq ? ? ? ? ? ?; subst; apply Heq) |}.
 
 End ChoiceExample.

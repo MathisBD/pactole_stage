@@ -52,20 +52,21 @@ Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS. *)
 
-
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Loc : Location := make_Location R.
 Instance VS : RealVectorSpace location := R_VS.
 Instance ES : EuclideanSpace location := R_ES.
 Remove Hints R_VS R_ES : typeclass_instances.
+Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
-Instance UpdFun : update_functions unit unit := {
-  update := fun _ _ trajectory _ => trajectory ratio_1;
+Instance UpdFun : update_function location (Similarity.similarity location) unit := {
+  update := fun _ _ _ target _ => target;
+  update_compat := ltac:(now repeat intro) }.
+Instance InaFun : inactive_function unit := {
   inactive := fun config id _ => config id;
-  update_compat := ltac:(now repeat intro);
   inactive_compat := ltac:(repeat intro; subst; auto) }.
-Instance Rigid : RigidUpdate.
+Instance Rigid : RigidSetting.
 Proof. split. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
@@ -76,11 +77,6 @@ Notation "!! config" := (spect_from_config config origin) (at level 10).
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.
 Arguments origin : simpl never.
-
-(* The robot trajectories are straight paths. *)
-Definition path_R := path location.
-Definition paths_in_R : R -> path_R := local_straight_path.
-Coercion paths_in_R : R >-> path_R.
 
 (* Refolding typeclass instances *)
 Ltac changeR :=
@@ -553,6 +549,30 @@ Lemma extreme_center_similarity_invariant : forall (sim : similarity R) config,
   extreme_center (map sim (!! config)) = sim (extreme_center (!! config)).
 Proof. intros. apply extreme_center_similarity. apply spect_non_nil. Qed.
 
+Lemma middle_map_monotonic_invariant : forall f,
+  Proper (equiv ==> equiv) f -> monotonic Rleb Rleb f -> Util.Preliminary.injective eq eq f ->
+  forall config, size (!! config) = 3%nat -> middle (map f (!! config)) == f (middle (!! config)).
+Proof.
+intros f Hf Hmono Hinj config Hsize. unfold middle. changeR.
+rewrite map_injective_support; trivial; [].
+rewrite <- (map_nth f).
+destruct Hmono as [Hincr | Hdecr].
++ rewrite sort_map_increasing; trivial; []. apply nth_indep.
+  rewrite map_length, <- Permuted_sort, <- size_spec, Hsize. omega.
++ rewrite sort_map_decreasing; trivial; [].
+  rewrite size_spec, Permuted_sort in Hsize.
+  destruct (sort (support (!! config))) as [| ? [| ? [| ? [| ? ?]]]]; simpl in Hsize; try discriminate; [].
+  reflexivity.
+Qed.
+
+Lemma middle_sim_invariant : forall (sim : similarity R) config, size (!! config) = 3%nat ->
+  middle (map sim (!! config)) == sim (middle (!! config)).
+Proof.
+intros sim config Hsize.
+apply middle_map_monotonic_invariant; autoclass; [].
+apply similarity_monotonic.
+Qed.
+
 
 (** *  The robogram solving the gathering **)
 
@@ -564,7 +584,7 @@ Proof. intros. apply extreme_center_similarity. apply spect_non_nil. Qed.
 **)
 
 
-Definition gatherR_pgm (s : spectrum) : path_R :=
+Definition gatherR_pgm (s : spectrum) : location :=
   match support (max s) with
     | nil => 0 (* only happen with no robots *)
     | pt :: nil => pt (* case 1: one majority stack *)
@@ -587,7 +607,7 @@ destruct (support (max s)) as [| pt [| pt2 l]].
   destruct (is_extremal 0 s'); try rewrite Hs; reflexivity.
 Qed.
 
-Definition gatherR := Build_robogram gatherR_pgm_compat.
+Definition gatherR := Build_robogram gatherR_pgm.
 
 Section SSYNC_Results.
 
@@ -607,7 +627,7 @@ Lemma round_simplify : forall config,
                        | pt :: nil => pt (* case 1: one majority stack *)
                        | _ => (* several majority stacks *)
                               if beq_nat (size s) 3
-                              then List.nth 1 (sort (support s)) 0 else
+                              then middle s else
                               if is_extremal (config id) s then config id else extreme_center s
                      end
                end.
@@ -615,20 +635,23 @@ Proof.
 intros config. rewrite SSYNC_round_simplify; trivial; [].
 apply no_byz_eq. intro g. unfold round.
 destruct (activate da (Good g)) eqn:Hactive; try reflexivity; [].
-rewrite rigid_update.
+rewrite get_location_lift, rigid_update.
 remember (change_frame da config g) as sim.
-simpl lift. unfold Datatypes.id, lift_path. cbn [path_f].
+simpl lift.
 (* Simplify the similarity *)
 destruct (similarity_in_R sim) as [k [Hk Hsim]].
 assert (Hinvsim : forall x, (sim ⁻¹) x = x / k + Similarity.center sim).
 { apply inverse_similarity_in_R; trivial; [].
   destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null. }
-rewrite Hinvsim.
+(* Print Graph.
+change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
+rewrite Hinvsim. *)
 assert(Hsim_compat : Proper (equiv ==> equiv) sim). { subst. autoclass. }
 assert (Hsim_inj2 := Similarity.injective sim).
 assert (Hspect := spect_from_config_ignore_snd (map_config sim config)
                                                (get_location (map_config sim config (Good g)))).
 rewrite (pgm_compat _ _ _ Hspect).
+cbn [projT1].
 (* Unfold the robogram *)
 unfold gatherR, gatherR_pgm. cbn [pgm].
 assert (Hperm : PermutationA equiv (support (max (!! (map_config sim config))))
@@ -643,39 +666,25 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   simpl List.map in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
   rewrite Hperm. hnf in Hy |- *. subst y. rewrite Hsim.
 (*   assert (Heq : 1 * (k * (pt' - center sim)) / k = pt' - center sim) by now simpl; field. *)
+  change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
+  rewrite Hinvsim.
   simpl. unfold id, ES, VS. field.
   destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null.
 * (* No majority stack *)
   apply PermutationA_length in Hperm.
   destruct (support (max (!! (map_config sim config)))) as [| pt'' [| pt2'' l'']];
-  try discriminate Hperm. clear Hperm pt' pt2' l' pt'' pt2'' l''.
+  try discriminate Hperm; []. clear Hperm pt' pt2' l' pt'' pt2'' l''.
   assert (Hmap : !! (map_config (Bijection.section (Similarity.sim_f sim)) config)
                  == map (Bijection.section (Similarity.sim_f sim)) (!! config)).
-  { change (Bijection.section (Similarity.sim_f sim)) with (lift sim I).
+  { change (Bijection.section (Similarity.sim_f sim)) with (lift (existT precondition sim I)).
     rewrite <- (spect_from_config_ignore_snd config (sim origin)),
             (spect_from_config_map (St := OnlyLocation) _ I config origin); reflexivity. }
-  rewrite Hmap.
-  rewrite map_injective_size; trivial; [].
+  rewrite Hmap, map_injective_size; trivial; [].
   destruct (size (!! config) =? 3) eqn:Hlen.
   + (* There are three towers *)
-    cbn [path_f paths_in_R local_straight_path]. rewrite mul_1.
-    unfold middle.
-    rewrite size_spec in Hlen.
-    rewrite Hmap, map_injective_support; trivial; [].
-    changeR.
-    destruct (support (!! config)) as [| pt1 [| pt2 [| pt3 [| ? ?]]]]; try discriminate Hlen.
-    destruct (similarity_monotonic sim) as [Hinc | Hdec].
-    - rewrite (sort_map_increasing Hinc), (nth_indep _ 0 (sim 0)), map_nth, <- Hinvsim.
-      -- simpl. change eq with (@equiv location _). now rewrite Bijection.retraction_section.
-      -- rewrite map_length, <- Permuted_sort. simpl. omega.
-    - rewrite (sort_map_decreasing Hdec).
-      assert (Heq1 : Nat.div2 (length (List.map sim (sort (pt1 :: pt2 :: pt3 :: nil)))) = 1%nat).
-      { now rewrite map_length, <- Permuted_sort. }
-      rewrite <- Heq1 at 1. rewrite odd_middle, (nth_indep _ 0 (sim 0)).
-      -- rewrite map_nth, <- Hinvsim. simpl. change eq with (@equiv location _).
-         rewrite <- sim.(Bijection.Inversion), <- Heq1; reflexivity.
-      -- rewrite map_length, <- Permuted_sort. simpl. omega.
-      -- rewrite map_length, <- Permuted_sort. simpl. exists 1%nat. omega.
+    rewrite Hmap, middle_sim_invariant.
+    - simpl. now rewrite Bijection.retraction_section.
+    - now rewrite <- Nat.eqb_eq.
   + (* Generic case *)
     change (IZR Z0) with (@origin location _ _ _). rewrite <- sim.(Similarity.center_prop) at 1.
     rewrite Hmap, is_extremal_similarity_invariant.
@@ -685,13 +694,11 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
     simpl get_location. unfold id. changeR.
     destruct (is_extremal (config (Good g)) (!! config)).
     - (* The current robot is exremal *)
-      simpl. unfold origin. simpl. field.
-      destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null.
+      change (center (change_frame da config g) == config (Good g)).
+      now rewrite similarity_center.
     - (* The current robot is not exremal *)
-      rewrite Hmap, extreme_center_similarity; apply spect_non_nil || trivial; [].
-      change (config (Good g)) with (get_location (config (Good g))).
-      rewrite <- similarity_center, <- Heqsim, <- Hinvsim.
-      simpl. change eq with (@equiv location _). now rewrite Rmult_1_l, <- sim.(Bijection.Inversion).
+      rewrite Hmap, extreme_center_similarity, Heqsim; apply spect_non_nil || trivial; [].
+      simpl. now rewrite Bijection.retraction_section.
 Qed.
 
 (** ***  Specialization of [round_simplify] in the three main cases of the robogram  **)
