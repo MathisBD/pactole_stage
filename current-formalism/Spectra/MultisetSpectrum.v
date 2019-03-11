@@ -200,10 +200,8 @@ Defined.
 (* To speed up typeclass resolution. *)
 Notation spect_from_config := (@spect_from_config _ _ _ _ multiset_spectrum).
 
-Require Pactole.Spaces.RealMetricSpace.
-Lemma spect_from_config_ignore_snd {VS : RealVectorSpace.RealVectorSpace location}
-                                   {RMS : RealMetricSpace.RealMetricSpace location} :
-  forall config pt, spect_from_config config pt == spect_from_config config RealVectorSpace.origin.
+Lemma spect_from_config_ignore_snd ref_pt :
+  forall config pt, spect_from_config config pt == spect_from_config config ref_pt.
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->

@@ -648,7 +648,7 @@ change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijec
 rewrite Hinvsim. *)
 assert(Hsim_compat : Proper (equiv ==> equiv) sim). { subst. autoclass. }
 assert (Hsim_inj2 := Similarity.injective sim).
-assert (Hspect := spect_from_config_ignore_snd (map_config sim config)
+assert (Hspect := spect_from_config_ignore_snd origin (map_config sim config)
                                                (get_location (map_config sim config (Good g)))).
 rewrite (pgm_compat _ _ _ Hspect).
 cbn [projT1].
@@ -677,7 +677,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   assert (Hmap : !! (map_config (Bijection.section (Similarity.sim_f sim)) config)
                  == map (Bijection.section (Similarity.sim_f sim)) (!! config)).
   { change (Bijection.section (Similarity.sim_f sim)) with (lift (existT precondition sim I)).
-    rewrite <- (spect_from_config_ignore_snd config (sim origin)),
+    rewrite <- (spect_from_config_ignore_snd origin config (sim origin)),
             (spect_from_config_map (St := OnlyLocation) _ I config origin); reflexivity. }
   rewrite Hmap, map_injective_size; trivial; [].
   destruct (size (!! config) =? 3) eqn:Hlen.
@@ -1082,11 +1082,11 @@ Proof.
     specialize (Hg id). intuition.
 Qed.
 
-(* Because of same_destination, we can strengthen the previous result as an equivalence. *)
-Lemma increase_move_iff :
-  forall config pt,
-    ((!! config)[pt] < (!! (round gatherR da config))[pt])%nat <->
-    exists id, get_location (round gatherR da config id) == pt /\ round gatherR da config id =/= config id.
+(* Because of same_destination, we can strengthen the previous result into an equivalence. *)
+Lemma increase_move_iff : forall config pt,
+  ((!! config)[pt] < (!! (round gatherR da config))[pt])%nat
+  <-> exists id, get_location (round gatherR da config id) == pt
+              /\ round gatherR da config id =/= config id.
 Proof.
 intros config pt. split.
 * apply increase_move.
@@ -1104,14 +1104,16 @@ intros config pt. split.
   assert (Hin : List.In id names) by apply In_names.
   induction names as [| id' l]; try (now inversion Hin); [].
   inversion_clear Hin.
-  + subst id'. clear IHl. simpl. hnf in Hroundid. Rdec_full.
+  + subst id'. clear IHl. simpl. hnf in Hroundid. unfold Datatypes.id.
+    destruct_match. revert_one @equiv. intro Heq.
     - rewrite <- Hid in Heq. elim Hroundid. now apply no_info.
-    - Rdec_full; try contradiction; []. apply le_n_S. induction l; simpl.
+    - destruct_match; try contradiction; []. apply le_n_S. induction l; simpl.
       -- reflexivity.
-      -- repeat Rdec_full; try now idtac + apply le_n_S + apply le_S; apply IHl.
-         elim Hneq0. now apply Hstay.
-  + apply IHl in H. simpl in *. repeat Rdec_full; try omega; [].
-    elim Hneq. apply Hdest. rewrite moving_spec. intro Habs. apply Hneq. now rewrite Habs.
+      -- repeat destruct_match; try now idtac + apply le_n_S + apply le_S; apply IHl.
+         revert_one @complement. intro Hneq. elim Hneq. now apply Hstay.
+  + apply IHl in H. simpl in *. repeat destruct_match; try omega; [].
+    revert_one @complement. intro Hneq. elim Hneq. 
+    apply Hdest. rewrite moving_spec. intro Habs. apply Hneq. now rewrite Habs.
 Qed.
 
 
@@ -1187,7 +1189,7 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
       + apply lt_le_trans with (div2 nG); try assumption. apply half_size_config.
       + auto.
       + eapply lt_le_trans; try apply (sum3_le_total config Hp Hdiff13 Hdiff23); [].
-        unfold In in Hpt3_in. rewrite <- (even_div2 HnG). omega. }
+        unfold In in Hpt3_in. rewrite <- (even_div2 _ HnG). omega. }
     assert (Hmaj' : MajTower_at pt' config).
     { intros x Hx. apply lt_le_trans with (div2 nG); trivial. now apply Hlt. }
     apply MajTower_at_forever, Majority_not_invalid in Hmaj'. contradiction. }

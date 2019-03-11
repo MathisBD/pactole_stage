@@ -427,7 +427,8 @@ destruct (invalid_dec config) as [Hvalid | Hvalid].
               | destruct Hin' as [Hin' _]; apply Similarity.injective in Hin'; simpl in *; lra ]; [].
     rewrite 2 support_singleton; auto. }
     rewrite PermutationA_2 in Hperm; auto; [].
-  rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect1; autoclass; [].
+  rewrite <- (spect_from_config_ignore_snd origin),
+          <- spect_from_config_map, Hspect1; autoclass; [].
   rewrite map_merge; autoclass; [].
   rewrite map_extensionality_compat, map_id; autoclass; try apply compose_inverse_l; [].
   destruct_match.
@@ -473,7 +474,7 @@ assert (Hconfig : round r da1 config == map_config (lift (existT precondition si
 destruct (invalid_spect Hvalid g0) as [sim1 Hsim1 ?].
 apply (invalid_reverse (sim ∘ sim1)).
 rewrite Hconfig.
-rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hsim1, map_merge; autoclass.
+rewrite spect_from_config_ignore_snd, <- spect_from_config_map, Hsim1, map_merge; autoclass.
 Qed.
 
 (* Trick to perform rewriting in coinductive proofs : assert your property on any configuration
@@ -711,7 +712,7 @@ intros config sim Hspect Hsim0.
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
 unfold round. cbn -[equiv equiv_dec get_location map_config lift].
-rewrite spect_from_config_ignore_snd.
+rewrite (spect_from_config_ignore_snd origin).
 unfold activate2, change_frame2.
 assert (Hvalid := invalid_reverse sim config Hspect).
 destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as [Hcase | Hcase].
@@ -728,7 +729,7 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
     - rewrite build_similarity_eq2. rewrite Hspect in Hpt'. unfold spectrum0 in Hpt'.
       rewrite map_add, map_singleton, add_In, In_singleton in Hpt'; autoclass; [].
       decompose [and or] Hpt'; auto; []. elim Hdiff'. etransitivity; eauto. }
-  rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map; autoclass; [].
+  rewrite spect_from_config_ignore_snd, <- spect_from_config_map; autoclass; [].
   rewrite Hspect, map_merge; autoclass; [].
   rewrite <- (map_extensionality_compat Similarity.id), map_id; autoclass; [|].
   + destruct_match.
@@ -775,7 +776,7 @@ assert (Hconfig : round r (da2_left config) config
     rewrite Hsim1. cbn -[equiv sim']. rewrite Bijection.retraction_section.
     unfold sim'. now rewrite build_similarity_eq2. }
 rewrite Hconfig.
-rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect; [| now autoclass].
+rewrite spect_from_config_ignore_snd, <- spect_from_config_map, Hspect; [| now autoclass].
 rewrite map_merge; autoclass; [].
 apply map_extensionality_compat; autoclass; [].
 intro. cbn -[equiv sim']. now rewrite Bijection.retraction_section.
@@ -812,7 +813,7 @@ intros config sim Hspect Hsim1.
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
 unfold round. cbn -[equiv equiv_dec get_location map_config lift].
-rewrite spect_from_config_ignore_snd.
+rewrite (spect_from_config_ignore_snd origin).
 unfold activate2, change_frame2.
 assert (Hvalid := invalid_reverse sim config Hspect).
 destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as [Hcase | Hcase].
@@ -835,7 +836,7 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
   { apply (similarity_eq _ _ neq_0_1).
     - now rewrite build_similarity_eq2, Hsim0.
     - now rewrite build_similarity_eq1. }
-  rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map; autoclass; [].
+  rewrite spect_from_config_ignore_snd, <- spect_from_config_map; autoclass; [].
   rewrite Hspect, map_merge; autoclass; [].
   rewrite <- (map_extensionality_compat Similarity.id), map_id; autoclass; [|].
   + destruct_match.
@@ -900,7 +901,7 @@ assert (Hconfig : round r (da2_right config) config
     rewrite Hsim1'. cbn -[equiv sim']. rewrite Bijection.retraction_section.
     unfold sim'. now rewrite build_similarity_eq1. }
 rewrite Hconfig.
-rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect'; [| now autoclass].
+rewrite spect_from_config_ignore_snd, <- spect_from_config_map, Hspect'; [| now autoclass].
 rewrite map_merge; autoclass; [].
 apply map_extensionality_compat; autoclass; [].
 intro. cbn -[equiv sim']. now rewrite Bijection.retraction_section.

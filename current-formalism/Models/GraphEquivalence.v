@@ -307,9 +307,6 @@ try destruct (v1 =?= src target1) as [Hsrc1 | Hsrc1],
 + tauto.
 Defined.
 
-(* FIXME: why is the coercion forgotten? *)
-Coercion Bijection.section : Bijection.bijection >-> Funclass.
-
 Theorem graph_equivD2C : forall (config : DGF_config) (rbg : robogramV) (da : DGF_da),
   config_V2G (round rbg da config) == round (rbg_V2G rbg) (da_D2C da) (config_V2G config).
 Proof using All.

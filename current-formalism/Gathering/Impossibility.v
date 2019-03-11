@@ -905,8 +905,7 @@ destruct_match_eq Hcase.
   change (Bijection.inverse sim) with (Similarity.sim_f (sim ⁻¹)).
   assert (Hsimg : get_location (config (Good g)) == sim⁻¹ origin) by (etransitivity; eauto).
   destruct_match; try contradiction; [].
-  rewrite spect_from_config_ignore_snd, <- spect_from_config_ignore_snd,
-          <- spect_from_config_map; autoclass; [].
+  rewrite spect_from_config_ignore_snd, <- spect_from_config_map; autoclass; [].
   rewrite Hspect, map_merge; autoclass; [].
   assert (Hspectrum0 : map (fun x => sim ((sim ⁻¹) x)) spectrum0 == spectrum0).
   { rewrite <- (map_id spectrum0) at 2. apply map_extensionality_compat.
@@ -952,8 +951,8 @@ assert (Hconfig : round r (da2_left config) config
     rewrite Heq'. cbn -[equiv sim']. rewrite Bijection.section_retraction.
     unfold sim'. now rewrite build_similarity_eq2. }
 rewrite Hconfig.
-rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect; [| now autoclass].
-Time rewrite map_merge; autoclass; [].
+rewrite spect_from_config_ignore_snd, <- spect_from_config_map, Hspect; [| now autoclass].
+rewrite map_merge; autoclass; [].
 apply map_extensionality_compat; autoclass; [].
 intro. cbn -[equiv sim']. now rewrite Bijection.section_retraction.
 Qed.
@@ -1021,12 +1020,12 @@ destruct_match_eq Hcase.
     destruct Hin as [[] | []]; trivial; [].
     rewrite activate2_spec2 in Hcase; trivial; [].
     elim Hcase. etransitivity; eauto; []. now apply center_change_frame2. }
-  rewrite spect_from_config_ignore_snd.
+  rewrite (spect_from_config_ignore_snd origin).
   assert (Hspect' : spectrum0 == map (change_frame2 config g) (!! config)).
   { rewrite <- map_id. Time change id with (Bijection.section Similarity.id).
     rewrite <- (map_extensionality_compat _ _ (Similarity.compose_inverse_r (change_frame2 config g))).
     rewrite (change_frame2_spect g Hinvalid), map_merge; autoclass. }
-  rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, <- Hspect'; autoclass; [].
+  rewrite spect_from_config_ignore_snd, <- spect_from_config_map, <- Hspect'; autoclass; [].
   destruct_match; try reflexivity; [].
   fold move. rewrite Hsim0 in *. elim non_trivial. eapply Similarity.injective; eauto.
 * (* The robot is on the first tower so it does not move. *)
@@ -1086,7 +1085,7 @@ assert (Hconfig : round r (da2_right config) config
     unfold sim'. rewrite build_similarity_eq1.
     rewrite <- Hg1, change_frame2_eq in Heq'; trivial; []. now rewrite Heq'. }
 rewrite Hconfig.
-rewrite <- spect_from_config_ignore_snd, <- spect_from_config_map, Hspect0; [| now autoclass].
+rewrite spect_from_config_ignore_snd, <- spect_from_config_map, Hspect0; [| now autoclass].
 rewrite map_merge; [| autoclass | autoclass]; [].
 apply map_extensionality_compat; autoclass; [].
 intro. cbn -[equiv sim']. now rewrite Bijection.section_retraction.

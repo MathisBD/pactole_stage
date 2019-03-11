@@ -1084,7 +1084,7 @@ intro config. rewrite SSYNC_round_simplify; trivial; [].
 apply no_byz_eq. intro g. cbn zeta.
 destruct (da.(activate) (Good g)) eqn:Hactive; try reflexivity; [].
 remember (change_frame da config g) as sim.
-rewrite spect_from_config_ignore_snd.
+rewrite (spect_from_config_ignore_snd origin).
 rewrite get_location_lift. cbn -[equiv map_config support equiv_dec get_location].
 assert (supp_nonempty := support_non_nil config).
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
@@ -1105,13 +1105,13 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
   subst pt1'. apply Bijection.retraction_section.
 * (* Multiple maximal towers *)
   change (map_config sim config) with (map_config (lift (existT precondition sim I)) config).
-  rewrite <- (spect_from_config_ignore_snd
+  rewrite <- (spect_from_config_ignore_snd origin
                (map_config (lift (State := OnlyLocation)
                                  (existT (fun _ : location -> location => True) sim I)) config) (sim origin)),
           <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
   + (* Clean case *)
-    rewrite <- (spect_from_config_ignore_snd _ (sim origin)),
+    rewrite <- (spect_from_config_ignore_snd origin _ (sim origin)),
             <- spect_from_config_map, target_morph; trivial; [].
     apply Bijection.retraction_section.
   + (* Dirty case *)
@@ -1126,7 +1126,7 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
     - simpl get_location. unfold id.
       rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
       rewrite spect_from_config_map; trivial; [].
-      now rewrite spect_from_config_ignore_snd.
+      now rewrite (spect_from_config_ignore_snd origin).
 Unshelve. all:exact I. (* FIXME: there should be no shelved goals. *)
 Qed.
 

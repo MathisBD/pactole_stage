@@ -24,6 +24,7 @@ Require Import Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.RobotInfo.
 Set Implicit Arguments.
+Typeclasses eauto := (dfs).
 
 
 (** * Configurations *)
@@ -70,7 +71,10 @@ intros x y Hxy. cbn in Hxy. subst. apply Hfg.
 Qed.
 
 Global Instance config_list_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) config_list.
-Proof. intros f g Hfg. rewrite 2 config_list_spec. f_equiv. intros x y Hxy. cbn in Hxy. subst. apply Hfg. Qed.
+Proof.
+intros f g Hfg. rewrite 2 config_list_spec. f_equiv.
+intros x y Hxy. cbn in Hxy. subst. apply Hfg.
+Qed.
 
 (** Properties w.r.t. [InA] and [length]. *)
 Lemma Gpos_InA : forall l config, InA equiv l (Gpos config) <-> exists g, equiv l (config (Good g)).
@@ -121,7 +125,8 @@ rewrite 2 config_list_spec in Heq.
 + right. intro Habs. apply Heq. f_equiv. intros ? ? Hpt. hnf in Hpt. subst. apply Habs.
 Qed.
 
-(** If two configurations are not equal, then there exists a robot that is not located in the same place in both. *)
+(** If two configurations are not equal, then there exists a robot
+    that is not located in the same place in both. *)
 Theorem config_neq_equiv : forall config₁ config₂ : configuration,
   config₁ =/= config₂ <-> exists id, ~config₁ id == config₂ id.
 Proof.
@@ -175,3 +180,54 @@ Lemma map_config_merge `{Location} {T U V : Type} `{@State _ T} `{@State _ U} `{
   forall (f : T -> U) (g : U -> V), Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
   forall config : configuration, map_config g (map_config f config) == map_config (fun x => g (f x)) config.
 Proof. now repeat intro. Qed.
+
+(** Injective configurations *)
+Definition config_injective `{State} `{Names} :=
+  Util.Preliminary.injective (@eq ident) (@equiv _ state_Setoid).
+
+Lemma config_injective_equiv_NoDupA `{State} `{Names} : forall config : configuration,
+  config_injective config <-> NoDupA equiv (config_list config).
+Proof.
+intros config. rewrite config_list_spec. split; intro Hinj.
++ eapply map_injective_NoDupA; try apply Hinj; autoclass; [].
+  rewrite NoDupA_Leibniz. apply names_NoDup.
++ intros id id' Hconfig.
+  eapply (map_NoDupA_eq _ _ names_eq_dec _ Hinj); auto; rewrite InA_Leibniz; apply In_names.
+Qed.
+
+Lemma config_injective_dec `{State} `{Names} : forall config : configuration,
+  {config_injective config} + {~ config_injective config}.
+Proof.
+intros config.
+destruct (NoDupA_dec equiv equiv_dec (config_list config));
+rewrite <- (config_injective_equiv_NoDupA config) in *; tauto.
+Qed.
+
+Lemma config_not_injective `{State} `{Names} : forall config : configuration,
+  ~ config_injective config <-> exists id id', id <> id' /\ config id == config id'.
+Proof.
+intros config. split; intro Hinj. 
++ rewrite config_injective_equiv_NoDupA, not_NoDupA in Hinj; autoclass; try apply state_EqDec; [].
+  destruct Hinj as [state [l Hperm]].
+  assert (Hid : exists id, state == config id).
+  { rewrite <- config_list_InA, Hperm. now left. }
+  destruct Hid as [id Hid]. exists id.
+  rewrite config_list_spec in Hperm.
+  assert (Hin : In id names) by apply In_names.
+  rewrite <- InA_Leibniz in Hin.
+  apply PermutationA_split in Hin; autoclass; [].
+  destruct Hin as [l' Hnames].
+  assert (Hl' := Hnames). apply (PermutationA_map _ (f := config)) in Hl'; autoclass; [].
+  rewrite Hl' in Hperm. simpl in Hperm. rewrite <- Hid in Hperm.
+  apply PermutationA_cons_inv in Hperm; autoclass; [].
+  assert (Hid' : InA equiv state (state :: l)) by now left.
+  rewrite <- Hperm in Hid'.
+  destruct (PermutationA_split _ Hid') as [l'' Hl''].
+  rewrite (InA_map_iff (eqA := eq)) in Hid'; autoclass; [].
+  destruct Hid' as [id' [Heq Hid']].
+  exists id'. rewrite Heq, <- Hid. split; try reflexivity; [].
+  intro Habs.
+  assert (Hnodup := names_NoDup).
+  rewrite <- NoDupA_Leibniz, Hnames in Hnodup. inversion_clear Hnodup. subst. tauto.
++ destruct Hinj as [id [id' [Hid Heq]]]. intro Habs. apply Habs in Heq. contradiction.
+Qed.
