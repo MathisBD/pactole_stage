@@ -23,7 +23,7 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import SetoidClass.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.FSets.FSetList.
 Require Export Pactole.Util.FSets.FSetInterface.
 Require Export Pactole.Util.FSets.FSetFacts.
@@ -189,7 +189,7 @@ Lemma spect_from_config_map : forall f Pf, Proper (equiv ==> equiv) f ->
 Proof.
 repeat intro. unfold spect_from_config, set_spectrum.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
-+ apply make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
++ apply make_set_compat, eqlistA_PermutationA_subrelation.
   assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
                      (fun x => f (get_location x)) (fun x => get_location (lift (existT _ f Pf) x))).
   { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }

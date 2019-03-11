@@ -13,7 +13,7 @@ Require Import Utf8.
 Require Import SetoidDec.
 Require Import Rbase Rbasic_fun.
 Require Import Psatz.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Core.Configurations.
 Require Import Pactole.Spaces.Graph.

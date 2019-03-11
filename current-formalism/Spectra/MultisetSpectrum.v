@@ -18,7 +18,7 @@ Require Import Pactole.Util.MMultiset.MMultisetWMap.
 Require Export Pactole.Util.MMultiset.MMultisetInterface.
 Require Export Pactole.Util.MMultiset.MMultisetFacts.
 Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.Configurations.
 Require Import Pactole.Core.RobotInfo.
@@ -177,11 +177,9 @@ End MultisetConstruction.
 
 Section MultisetSpectrum.
 
-Context `{Location}.
 Context {info : Type}.
 Context `{St : State info}.
 Context `{Names}.
-
 Implicit Type config : configuration.
 
 Global Instance multiset_spectrum : Spectrum := {

@@ -23,7 +23,7 @@ Require Import Relations.
 Require Import Morphisms.
 Require Import SetoidDec.
 Require Import RelationClasses.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Set Implicit Arguments.
 
 

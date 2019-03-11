@@ -9,13 +9,9 @@
 (**************************************************************************)
 
 
-Require Import Rbase.
-Require Import Omega.
-Require Import Psatz.
-Require Import SetoidDec.
-Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
+Require Import Rbase SetoidDec.
+Require Import Pactole.Util.Coqlib.
+Require Pactole.Core.Robots.
 Set Implicit Arguments.
 
 

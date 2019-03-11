@@ -21,7 +21,7 @@ Require Import Utf8.
 Require Import SetoidDec.
 Require Import Rbase Rbasic_fun.
 Require Import Lra.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Spaces.EuclideanSpace.
 Set Implicit Arguments.
@@ -72,7 +72,7 @@ Qed.
 
 Lemma zoom_pos `{RealMetricSpace} : forall sim, 0 < sim.(zoom).
 Proof.
-intros sim. apply Preliminary.Rle_neq_lt.
+intros sim. apply Rle_neq_lt.
 - destruct sim as [f k Hk]. simpl.
   assert (Hnon_triv := non_trivial). specialize (Hk one origin).
   unfold complement in Hnon_triv. rewrite <- dist_defined in Hnon_triv.

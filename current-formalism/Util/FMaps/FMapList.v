@@ -4,7 +4,7 @@ Require Import RelationPairs.
 Require Import List SetoidList.
 Require Import Bool.
 Require Import SetoidDec.
-Require Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.FMaps.FMapInterface.
 
 
@@ -267,7 +267,7 @@ Proof. split.
     - inversion_clear Hin; try (now f_equal); [].
       assert (Heq : equiv@@1 (x, e) (y, p)) by assumption.
       elim H0. eapply InA_eqA; eauto with typeclass_instances; [].
-      revert H2. apply Pactole.Util.Preliminary.InA_impl_compat; trivial; [].
+      revert H2. apply InA_impl_compat; trivial; [].
       now repeat intro.
     - inversion_clear Hin; now auto.
 * intros elt [m Hm] x e Hin. simpl in *. induction m as [| [y p] l].
@@ -380,7 +380,7 @@ Proof. split.
       -- simpl in *. destruct H2. now subst.
       -- assert (Heq : equiv@@1 (x, e) (y, p)) by assumption.
          elim H0. eapply InA_eqA; eauto with typeclass_instances; [].
-         revert H2. apply Pactole.Util.Preliminary.InA_impl_compat; trivial; [].
+         revert H2. apply InA_impl_compat; trivial; [].
          now repeat intro.
     - inversion_clear Hin; try easy; [].
       right. auto.
@@ -403,7 +403,7 @@ Proof. split.
       -- simpl in *. destruct H2. now subst.
       -- assert (Heq : equiv@@1 (x, e) (y, p)) by assumption.
          elim H0. eapply InA_eqA; eauto with typeclass_instances; [].
-         revert H2. apply Pactole.Util.Preliminary.InA_impl_compat; trivial; [].
+         revert H2. apply InA_impl_compat; trivial; [].
          now repeat intro.
     - inversion_clear Hin; try easy; [].
       destruct IHm as [y' Hy']; trivial; []. exists y'.

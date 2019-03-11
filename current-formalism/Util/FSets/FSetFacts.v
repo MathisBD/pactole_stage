@@ -671,7 +671,7 @@ Defined.
 
 (** *  Map  **)
 
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 
 Instance fold_compat {A B} `{FSetSpecs A} `{Setoid B} :
   forall f : A -> B -> B, Proper (equiv ==> equiv ==> equiv) f -> transpose equiv f ->

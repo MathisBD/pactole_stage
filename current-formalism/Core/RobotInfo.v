@@ -21,7 +21,7 @@ Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Decidable.
 Require Import Classes.RelationPairs.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
 Import Pactole.Util.Bijection.Notations.
@@ -75,14 +75,14 @@ Arguments State {_} info.
 (** **  Some operators to build states  **)
 
 (** A basic state containing only the current location. *)
-Instance OnlyLocation `{Location} : State location := {|
+Local Instance OnlyLocation `{Location} : State location := {|
   get_location := id;
   lift := fun f => projT1 f;
   precondition := fun _ => True |}.
 Proof. all:autoclass. abstract (intros ? ? Heq x; apply Heq; reflexivity). Defined.
 
 (** Adding a location-typed field that is affected by frame change. *)
-Instance AddLocation `{Location} info (St : State info) : State (info * location) := {|
+Local Instance AddLocation `{Location} info (St : State info) : State (info * location) := {|
   get_location := fun x => get_location (fst x);
   lift := fun f x => (lift f (fst x), projT1 f (snd x));
   precondition := precondition |}.
@@ -99,7 +99,7 @@ Proof.
 Defined.
 
 (** Adding information that is not affected by frame change. *)
-Instance AddInfo `{Location} info T `{EqDec T} (St : State info) : State (info * T) := {|
+Local Instance AddInfo `{Location} info T `{EqDec T} (St : State info) : State (info * T) := {|
   get_location := fun x => get_location (fst x);
   lift := fun f x => (lift f (fst x), snd x);
   precondition := precondition |}.
@@ -117,7 +117,7 @@ Defined.
         ensuring that we cannot use the wrong one. *)
 
 (** Restricting a state to satisfy some property. *)
-Instance AddProp `{Location} info (P : info -> Prop) (St : State info) : State (sig P) := {|
+Local Instance AddProp `{Location} info (P : info -> Prop) (St : State info) : State (sig P) := {|
   get_location := fun x => get_location (proj1_sig x);
   precondition := fun f => prod (@precondition _ _ St f) (forall x Pf, P x -> P (lift (existT precondition f Pf) x));
   lift := fun f x => exist P (lift (existT precondition (projT1 f) (fst (projT2 f))) (proj1_sig x)) _ |}.
@@ -132,7 +132,7 @@ Proof.
 Defined.
 
 (** A more general version restricting a state to have a dependent witness of some type. *)
-Instance AddType `{Location} info (P : info -> Type) (St : State info) : State (sigT P) := {|
+Local Instance AddType `{Location} info (P : info -> Type) (St : State info) : State (sigT P) := {|
   get_location := fun x => get_location (projT1 x);
   precondition := fun f => prod (@precondition _ _ St f) (forall x Pf, P x -> P (lift (existT precondition f Pf) x));
   lift := fun f x => existT P (lift (existT precondition (projT1 f) (fst (projT2 f))) (projT1 x)) _ |}.

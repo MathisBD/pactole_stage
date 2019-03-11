@@ -14,7 +14,7 @@ Require Import Lra.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import RelationPairs.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Export Pactole.Spaces.RealMetricSpace.
 Open Scope R_scope.
 Open Scope VectorSpace_scope.

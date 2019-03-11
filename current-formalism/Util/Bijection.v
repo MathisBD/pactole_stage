@@ -11,7 +11,7 @@
 
 Require Import Utf8.
 Require Import SetoidDec.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Set Implicit Arguments.
 
 

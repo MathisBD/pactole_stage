@@ -1,5 +1,5 @@
 Require Export SetoidDec.
-Require Export Pactole.Util.Preliminary.
+Require Export Pactole.Util.Coqlib.
 Require Export Pactole.Util.Ratio.
 Require Pactole.Util.Stream.
 Require Pactole.Util.Lexprod.

@@ -13,7 +13,7 @@
 Require Import SetoidList.
 Require Import Arith_base.
 Require Import Omega.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 
 
 Set Implicit Arguments.

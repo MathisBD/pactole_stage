@@ -18,6 +18,9 @@ Util/MMultiset/Preliminary.v
 
 ## Core
 Util/Preliminary.v
+Util/NumberComplements.v
+Util/ListComplements.v
+Util/Coqlib.v
 Util/Bijection.v
 Util/Stream.v
 Util/Lexprod.v

@@ -4,7 +4,7 @@ Require Import Rbase.
 Require Import Psatz.
 Require Import SetoidDec.
 Require Import SetoidClass.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 
 (** **  Ratio  **)
 

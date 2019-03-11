@@ -12,7 +12,7 @@ Require Import Reals.
 Require Import Lra.
 Require Import SetoidDec.
 Require Import RelationPairs.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 
 
 Typeclasses eauto := (bfs).

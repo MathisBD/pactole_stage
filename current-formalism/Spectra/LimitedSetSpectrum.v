@@ -23,7 +23,7 @@ Require Import SetoidDec.
 Require Import Rbase.
 Require Import Pactole.Util.FSets.FSetInterface.
 Require Import Pactole.Util.FSets.FSetFacts.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.Configurations.
 Require Import Pactole.Core.RobotInfo.
@@ -77,7 +77,7 @@ Proof.
 repeat intro. unfold spect_from_config, limited_set_spectrum.
 rewrite config_list_map; try (now apply lift_compat; simpl; apply Bijection.section_compat); [].
 rewrite map_map, 2 filter_map, <- SetSpectrum.make_set_map, map_map; autoclass; [].
-apply SetSpectrum.make_set_compat, Preliminary.eqlistA_PermutationA_subrelation.
+apply SetSpectrum.make_set_compat, eqlistA_PermutationA_subrelation.
 assert (Hequiv : (@equiv _ state_Setoid ==> @equiv _ location_Setoid)%signature
           (fun x => sim (get_location x)) (fun x => get_location (lift (existT precondition sim Psim) x))).
 { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }

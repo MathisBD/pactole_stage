@@ -19,7 +19,7 @@
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Decidable.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.RobotInfo.

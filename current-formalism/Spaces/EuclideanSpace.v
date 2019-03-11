@@ -11,7 +11,7 @@
 Require Import Reals.
 Require Import Lra.
 Require Import SetoidDec.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Export Pactole.Spaces.RealNormedSpace.
 Open Scope R_scope.
 

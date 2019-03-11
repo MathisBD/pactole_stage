@@ -22,7 +22,7 @@ Set Automatic Coercions Import. (* coercions are available as soon as functor ap
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import SetoidDec.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Util.Ratio.
 Require Pactole.Util.Stream.
@@ -114,7 +114,8 @@ Context `{@update_function _ _ _}.
 Context `{@inactive_function _}.
 
 
-(* NB: The byzantine robots are not always activated because fairness depends on all robots, not only good ones. *)
+(* NB: The byzantine robots are not always activated
+       because fairness depends on all robots, not only good ones. *)
 (* RMK: /!\ activate does not take the configuration as argument because we cannot define fairness
             in that case: fairness properties are about a single execution, not a tree of them. *)
 Record demonic_action := {
@@ -130,7 +131,8 @@ Record demonic_action := {
   choose_inactive : configuration -> ident -> Tinactive;
   (** The change of frame and its inverse must satisfy the condition to be lifted to states *)
   precondition_satisfied : forall config g, precondition (frame_choice_bijection (change_frame config g));
-  precondition_satisfied_inv : forall config g, precondition ((frame_choice_bijection (change_frame config g)) ⁻¹);
+  precondition_satisfied_inv : forall config g,
+    precondition ((frame_choice_bijection (change_frame config g)) ⁻¹);
   (** Compatibility properties *)
   activate_compat : Proper (Logic.eq ==> equiv) activate;
   relocate_byz_compat : Proper (equiv ==> Logic.eq ==> equiv) relocate_byz;
@@ -236,7 +238,8 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           (* change the frame of reference *)
           let frame_choice := da.(change_frame) config g in
           let new_frame := frame_choice_bijection frame_choice in
-          let local_config := map_config (lift (existT precondition new_frame (precondition_satisfied da config g)))
+          let local_config := map_config (lift (existT precondition new_frame
+                                                       (precondition_satisfied da config g)))
                                          config in
           let local_pos := get_location (local_config (Good g)) in
           (* compute the spectrum *)
@@ -382,7 +385,8 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
         | Good g =>
           let frame_choice := da.(change_frame) config g in
           let new_frame := frame_choice_bijection frame_choice in
-          let local_config := map_config (lift (existT precondition new_frame (precondition_satisfied da config g)))
+          let local_config := map_config (lift (existT precondition new_frame
+                                                       (precondition_satisfied da config g)))
                                          config in
           let local_pos := get_location (local_config (Good g)) in
           let spect := spect_from_config local_config local_pos in
@@ -424,7 +428,8 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
       | Good g =>
         let frame_choice := da.(change_frame) config g in
         let new_frame := frame_choice_bijection frame_choice in
-        let local_config := map_config (lift (existT precondition new_frame (precondition_satisfied da config g)))
+        let local_config := map_config (lift (existT precondition new_frame
+                                                     (precondition_satisfied da config g)))
                                        config in
         let local_pos := get_location (local_config (Good g)) in
         let spect := spect_from_config local_config local_pos in

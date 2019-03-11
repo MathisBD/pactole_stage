@@ -765,11 +765,11 @@ intros sim s hnonempty. unfold target.
 assert (Hperm : Permutation (List.map sim (on_SEC (support s))) (on_SEC (support (map sim s)))).
 { assert (Heq : on_SEC (support s)
                 = List.filter (fun x => on_circle (sim_circle sim (SEC (support s))) (sim x)) (support s)).
-  { apply Preliminary.filter_extensionality_compat; trivial; [].
+  { apply ListComplements.filter_extensionality_compat; trivial; [].
     repeat intro. subst. now rewrite on_circle_morph. }
   rewrite Heq. rewrite <- filter_map.
   rewrite <- PermutationA_Leibniz. rewrite <- map_injective_support; trivial.
-  - unfold on_SEC. rewrite Preliminary.filter_extensionality_compat; try reflexivity; [].
+  - unfold on_SEC. rewrite ListComplements.filter_extensionality_compat; try reflexivity; [].
     repeat intro. subst. f_equal. symmetry. rewrite <- SEC_morph.
     apply SEC_compat. rewrite <- PermutationA_Leibniz.
     change eq with (@equiv location _). apply map_sim_support.
@@ -803,7 +803,7 @@ transitivity (List.filter (on_circle (SEC (support (map sim s)))) (List.map sim 
   cut (List.map sim (List.filter (fun x => on_circle (SEC (support (map sim s))) (sim x)) (support s))
        = (List.map sim (on_SEC (support s)))).
   - intro Heq. now rewrite Heq.
-  - f_equal. apply Preliminary.filter_extensionality_compat; trivial.
+  - f_equal. apply ListComplements.filter_extensionality_compat; trivial; [].
     repeat intro. subst. now rewrite map_sim_support, SEC_morph, on_circle_morph.
 Qed.
 
@@ -1404,8 +1404,8 @@ Lemma dirty_next_on_SEC_same : forall config,
   PermutationA equiv (on_SEC (support (!! (round gatherR2 da config)))) (on_SEC (support (!! config))).
 Proof.
 intros config Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
-* unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), support_NoDupA.
-* unfold on_SEC. apply (Preliminary.NoDupA_filter_compat _), support_NoDupA.
+* unfold on_SEC. apply (NoDupA_filter_compat _), support_NoDupA.
+* unfold on_SEC. apply (NoDupA_filter_compat _), support_NoDupA.
 * intro pt.
   unfold on_SEC in *. rewrite dirty_next_SEC_same; trivial; [].
   do 2 (rewrite filter_InA; autoclass); [].
@@ -1716,7 +1716,7 @@ apply (NoDupA_inclA_length_PermutationA _).
 - assert (Hdiff : ptx <> pty).
   { assert (Hnodup : NoDupA equiv (on_SEC (support (!! config)))).
     { unfold on_SEC in HonSEC.
-      apply Preliminary.NoDupA_filter_compat;autoclass.
+      apply NoDupA_filter_compat; autoclass.
       apply support_NoDupA. }
     rewrite HonSEC in Hnodup.
     inversion Hnodup as [ | ? ? h1 h2]; subst.

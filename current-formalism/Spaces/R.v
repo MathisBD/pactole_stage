@@ -29,7 +29,7 @@ Require Import List.
 Require Import Relations.
 Require Import RelationPairs.
 Require Import SetoidDec.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.Configurations.

@@ -3,7 +3,7 @@
 Require Import List SetoidPermutation SetoidList.
 Require Import Bool.
 Require Import SetoidDec.
-Require Pactole.Util.Preliminary.
+Require Pactole.Util.Coqlib.
 Require Import Pactole.Util.FSets.FSetInterface.
 
 
