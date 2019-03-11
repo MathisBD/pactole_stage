@@ -47,6 +47,7 @@ Spaces/R.v
 Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
+Spaces/Ring.v
 
 ## Spectra
 Spectra/Definition.v
@@ -72,13 +73,6 @@ Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 Gathering/InR2/Peleg.v
 
 ## Case Study: Ring Exploration
-#Exploration/Graph/Definitions.v
-#Exploration/Graph/ImpossibilityKDividesN.v
-#Exploration/Graph/DefinitionsSSync.v
-#Exploration/Graph/ImpossibilityKDividesNSSync.v
-#Exploration/Graph/TowersSSync.v
-#Exploration/ZnZ/test_modulo.v
-#Exploration/ZnZ/Definitions.v
-#Exploration/ZnZ/ImpossibilityKDividesN.v
-#Exploration/Graph/ImpossibilityKNotPrimeN.v
-#Exploration/Graph/Towers.v
+Exploration/Definitions.v
+Exploration/ImpossibilityKDividesN.v
+Exploration/Tower.v
