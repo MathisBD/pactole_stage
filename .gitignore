@@ -6,10 +6,20 @@
 .*.vo.aux
 .coq-native/
 *.v.crashcoqide
+html/
 
 .lia.cache
 .lra.cache
 .nia.cache
 .nra.cache
+.coqdeps.d
+makefile
 Makefile
+makefile.bak
 Makefile.bak
+Makefile.conf
+
+.lia.cache
+.nia.cache
+.lra.cache
+.nra.cache
