@@ -66,7 +66,7 @@ Class FlexibleSetting `{FlexibleChoice}
     \/ pt' == trajectory (move_ratio choice)
        /\ (zoom sim) * delta <= dist pt pt' }.
 
-(** If the robot is not trying to move, then it does not, no metter what the demon chooses. *)
+(** If the robot is not trying to move, then it does not, no matter what the demon chooses. *)
 Lemma update_no_move `{FlexibleSetting} : forall config g sim pt choice,
   get_location (update config g sim (straight_path pt pt) choice) == pt.
 Proof.

@@ -189,7 +189,7 @@ Qed.
 
 (** **  Results not holding in generic Euclidean spaces  **)
 
-(** The unitary orthogonal vector (with direcet orientation). *)
+(** The unitary orthogonal vector (with direct orientation). *)
 Definition orthogonal (u : R2) : R2 := (/(norm u) * (snd u, (- fst u)%R))%VS.
 Definition colinear (u v : R2) := perpendicular u (orthogonal v).
 
@@ -1278,7 +1278,7 @@ repeat rewrite mul_distr_add, ?mul_morph. repeat rewrite <- add_assoc. do 2 f_eq
 rewrite add_morph. ring_simplify (k + (1 - k)). now rewrite mul_1.
 Qed.
 
-(** To prove that isobarycenter are invariant by similarities, we handle translations first and then *)
+(** To prove that isobarycenter are invariant by similarities, we handle translations first. *)
 Lemma isobarycenter_translation_morph : forall t l, l <> nil ->
   isobarycenter (map (translation t) l) == translation t (isobarycenter l).
 Proof.
@@ -1569,8 +1569,8 @@ Qed.
 
 (** **  Barycenter and middle  **)
 
+(* TODO: use instead the generic definition of barycenter from RealVectorSpace.v *)
 (* Barycenter is the center of SEC for an equilateral triangle *)
-
 Definition isobarycenter_3_pts (pt1 pt2 pt3:R2) := mul (Rinv 3) (add pt1 (add pt2 pt3)).
 
 Lemma isobarycenter_3_pts_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',

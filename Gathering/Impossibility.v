@@ -254,12 +254,12 @@ Definition lift_config {A} (config : G -> A) : ident -> A := fun id =>
 Local Opaque G B.
 
 (** We define a particular robot [g0] that will help us distinguish two towers:
-    the first one will be the one that [g)] belongs to.
+    the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
 Proof. exists 0. generalize nG_non_0. omega. Qed.
 
-(** *  Proof of the impossiblity of gathering for two robots  **)
+(** *  Proof of the impossiblity of gathering  **)
 
 (** From now on and until the final theorem we assume given a robogram [r]. *)
 
@@ -386,7 +386,7 @@ Definition move := r spectrum0.
 (** The key idea is to prove that we can always make robots see the same spectrum in any invalid configuration.
     If they do not gather in one step, then they will never do so.
 
-    So, in [config1], if the robot move to [unit], we activate all robots and they swap locations.
+    So, in [config1], if the robot move to [one], we activate all robots and they swap locations.
     If it does not, we activate only this tower which does not reach to other one.
     The new configuration is the same up to scaling, translation and rotation.  *)
 
@@ -411,6 +411,7 @@ try reflexivity || (apply invalid_compat in Heq; tauto); [].
 f_equiv. apply invalid_spect_compat; trivial; now rewrite Heq.
 Qed.
 
+(** A demon swapping both towers *)
 Definition da1 : demonic_action := {|
   activate := fun _ => true;
   relocate_byz := fun _ b => mk_info origin;
@@ -432,7 +433,7 @@ Definition bad_demon1 : demon := Stream.constant da1.
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof. coinduction bad_fair1. intros id1 id2. now constructor. Qed.
 
-(* It is a more restrained version where we assume that the starting configuration is invalid. *)
+(* It is a more restricted version where we assume that the starting configuration is invalid. *)
 Lemma round_simplify1 : forall config pt1 pt2,
   pt1 =/= pt2 ->
   !! config == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG)) ->
@@ -608,6 +609,7 @@ Time repeat destruct_match; rewrite Hconfig in *; try (first [ assert (Heq : pt1
   now apply Hb.
 Qed.
 
+(** General properties about [select_tower] *)
 Lemma select_tower_case_1 : forall {A} `{Setoid A} b1 b2 (d : A) config id,
   (forall pt1 pt2 pt1' pt2' (Hdiff : pt1 =/= pt2) (Hdiff' : pt1' =/= pt2'),
      pt1 == pt1' -> pt2 == pt2' -> b1 pt1 pt2 Hdiff == b1 pt1' pt2' Hdiff') ->
@@ -670,7 +672,7 @@ Lemma select_tower_default : forall {A} b1 b2 (d : A) config id,
   ~invalid config -> select_tower b1 b2 d config id = d.
 Proof. intros A b1 b2 d config id Hvalid. unfold select_tower. destruct_match; tauto. Qed.
 
-(** We instantiate this general function for both activation and frame change. *)
+(** Using [select_tower], we define activation and change of frame. *)
 Definition activate2 (b1 b2 : bool) := select_tower (fun _ _ _ => b1) (fun _ _ _ => b2) true.
 
 Instance activate2_compat : forall b1 b2, Proper (equiv ==> eq ==> eq) (activate2 b1 b2).
@@ -1166,6 +1168,7 @@ do 2 destruct_match.
   rewrite Heq1. split; reflexivity.
 Qed.
 
+(** A demon alternatively activating the "left" and "right" towers. *)
 CoFixpoint bad_demon2 config : demon :=
    Stream.cons (da2_left config)
   (Stream.cons (da2_right (round r (da2_left config) config))

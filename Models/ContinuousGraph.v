@@ -33,7 +33,7 @@ Context {G : Graph V E}.
 
 Instance LocationV : Location := { location := V }.
 
-(** We do not want to use the default equivalence on E
+(** We do not want to use the default equivalence on [E]
     because we only need equality of source, target and threshold on the edge. *)
 Global Instance E_src_tgt_thd_Setoid : Setoid E :=
   @inter_Setoid E (@inter_Setoid E (compose_Setoid src) (compose_Setoid tgt))
@@ -65,17 +65,8 @@ repeat split; unfold equiv in *; cbn -[equiv] in *.
 - rewrite <- 2 iso_threshold. now f_equiv.
 Qed.
 
-(*
-(** Another equivalence with only source and target. *)
-Definition E_src_tgt_Setoid : Setoid E := @inter_Setoid E (compose_Setoid src) (compose_Setoid tgt).
-Definition E_src_tgt_EqDec : EqDec E_src_tgt_Setoid :=
-  inter_EqDec (compose_EqDec src) (compose_EqDec tgt).
 
-Instance E_src_tgt_subrelation_Setoid : subrelation (@equiv E E_Setoid) (@equiv E E_src_tgt_Setoid).
-Proof. intros ? ? Heq. split; simpl; now rewrite Heq. Qed.
-*)
-
-(* Robots can be either on a location or on an edge. *)
+(** Robots can be either on a location or somewhere on an edge. *)
 Inductive loc :=
   | OnVertex (l : location)
   | OnEdge (e : E) (p : strict_ratio).
@@ -114,8 +105,7 @@ Proof. repeat intro. auto. Qed.
 Global Instance OnEdge_compat : Proper (equiv ==> equiv ==> equiv) OnEdge.
 Proof. repeat intro. auto. Qed.
 
-(** Using the isomorphism to build a bijection on continuous graphs. *)
-
+(** We can use an isomorphism to build a bijection on a continuous graph. *)
 Definition bijectionG (iso : isomorphism G) : Bijection.bijection loc.
 simple refine {| Bijection.section := fun pt => match pt with
           | OnVertex v => OnVertex (iso.(iso_V) v)
@@ -165,10 +155,7 @@ intros iso1 iso2 Hiso []; simpl.
                                        || apply Graph.threshold_compat; apply Hiso.
 Qed.
 
-(** *  Projection functions  **)
-
-(** ** On space *)
-(** a robot can be on a node (Loc) or on an edge (Mvt) *)
+(** ** Translation of locations *)
 
 Definition location_G2V (loc : locG) : locV :=
   match loc with
@@ -199,8 +186,8 @@ Proof. repeat intro. now simpl. Qed.
 
 (** ** Translation of states **)
 
-(** The current location is either the source or the target of the edge
-    the robot wants to move along. *)
+(** Even in the discrete setting, the current location is either the source or the target
+    of the edge the robot wants to move along. *)
 Definition valid_stateV (state : locV * E) :=
   fst state == src (snd state) \/ fst state == tgt (snd state).
 
@@ -218,6 +205,7 @@ intros ? ? [Hpt [[Hsrc Htgt] _]]. simpl in Hsrc, Htgt.
 unfold valid_stateV. now rewrite Hpt, Hsrc, Htgt.
 Qed.
 
+(** Applying a graph isomorphism preserves this property. *)
 Lemma valid_stateV_iso : forall state iso,
   valid_stateV state -> valid_stateV (iso.(iso_V) (fst state), iso.(iso_E) (snd state)).
 Proof.
@@ -234,8 +222,9 @@ intros v e iso pt Hpt [Hcase | Hcase].
 + right. simpl in *. rewrite Hpt, Hcase. apply iso_morphism.
 Qed.
 
-(** In the continuous case, if the robot is on a vertex, it is the same as the discrete case,
-    if it is on an edge, the edge contains all the information we need. *)
+(** In the continuous case, the state must also contain the destination of the robot.
+    If it is on an edge, the destination is the [tgt] of the edge.
+    If it is on a vertex, we it is the case as in the discrete case: we add the destination. *)
 Inductive stateG :=
   | SOnVertex v e (proof : valid_stateV (v, e))
   | SOnEdge (e : E) (p : strict_ratio).
@@ -276,7 +265,7 @@ Definition stateG2loc state :=
   end.
 
 Instance stateG2loc_compat : Proper (equiv ==> equiv) stateG2loc.
-Proof.  intros [] [] *; simpl in *; tauto. Qed.
+Proof. intros [] [] *; simpl in *; tauto. Qed.
 
 (** Embedding and projection between both kinds of states. *)
 Definition state_V2G (state : stateV) : stateG :=
@@ -285,7 +274,7 @@ Definition state_V2G (state : stateV) : stateG :=
 Global Instance state_V2G_compat : Proper (equiv ==> equiv) state_V2G.
 Proof. intros ? ? []. unfold state_V2G. now split. Qed.
 
-Definition state_G2V (state : stateG) : stateV:=
+Definition state_G2V (state : stateG) : stateV :=
   match state with
     | SOnVertex v e p => exist valid_stateV (v, e) p
     | SOnEdge e p => if Rle_dec (@threshold locV E G e) p
@@ -307,7 +296,7 @@ Proof. intro. simpl. repeat (split; try reflexivity). Qed.
 
 (** ** On configurations *)
 
-(* The precondition of liftable change of frame is that it must come from an isomorphism. *)
+(** The precondition for liftable changes of frame is that they must come from isomorphisms. *)
 Global Instance InfoV : @State LocationV stateV := {|
   get_location := fun state => fst (proj1_sig state);
   state_Setoid := stateV_Setoid;
@@ -465,12 +454,9 @@ Proof.
 Defined.
 
 (** Robograms can only pick which edge they want to move on.
-    We need to check that they only move to adjacent locations. *)
+    The update function will check that they only move to adjacent locations. *)
 Global Instance Robot : robot_choice E := {robot_choice_Setoid := E_src_tgt_thd_Setoid}.
-(*
-Class robogram_range `{@Spectrum _ LocationV _ _} r := {
-  pgm_range : forall pt config, src (pgm r (spect_from_config pt config)) == pt }.
-*)
+
 (** ** Translation of robograms **)
 
 Context {Spect : @Spectrum _ _ InfoV _}.
@@ -508,21 +494,22 @@ Qed.
 Global Instance FrameChoiceIsomorphismV : @frame_choice LocationV (sig stable_threshold) := {|
   frame_choice_bijection := fun f => @iso_V locV E G (proj1_sig f);
   frame_choice_Setoid := sig_Setoid (@isomorphism_Setoid locV E G);
-  frame_choice_bijection_compat := fun f g => @iso_V_compat locV E G (proj1_sig f) (proj1_sig g) |}.
+  frame_choice_bijection_compat :=
+    fun f g => @iso_V_compat locV E G (proj1_sig f) (proj1_sig g) |}.
 
 Global Instance FrameChoiceIsomorphismG : @frame_choice LocationG (sig stable_threshold) := {|
   frame_choice_bijection := fun f => bijectionG (proj1_sig f);
   frame_choice_Setoid := sig_Setoid (@isomorphism_Setoid locV E G);
   frame_choice_bijection_compat := fun f g => bijectionG_compat (proj1_sig f) (proj1_sig g) |}.
 
-(** The update only contains the movement ratio. *)
+(** The demon update choice only contains the movement ratio, either a boolean or a ratio. *)
 Global Instance graph_update_bool : update_choice bool := { update_choice_EqDec := bool_eqdec }.
 Global Instance graph_update_ratio : update_choice ratio := Flexible.OnlyFlexible.
-(* TODO: Ensure that the following invariant holds:
-         if activate is true, then the current location, the source and target are all the same. *)
 
-Global Instance graph_inactive_bool : inactive_choice bool := { inactive_choice_EqDec := bool_eqdec }.
-Global Instance graph_inactive_ratio : inactive_choice ratio := { inactive_choice_EqDec := ratio_EqDec }.
+Global Instance graph_inactive_bool : inactive_choice bool := {
+  inactive_choice_EqDec := bool_eqdec }.
+Global Instance graph_inactive_ratio : inactive_choice ratio := {
+  inactive_choice_EqDec := ratio_EqDec }.
 
 End CGF.
 

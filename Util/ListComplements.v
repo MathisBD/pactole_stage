@@ -846,8 +846,9 @@ Qed.
 Global Instance Permutation_NoDup_compat {A : Type} : Proper (@Permutation A ==> iff) (@NoDup A).
 Proof. repeat intro. now split; apply Permutation_NoDup. Qed.
 
-(** ***  Results about [remove]  **)
 (*
+(** ***  Results about [remove]  **)
+
 (* TODO: use [removeA] instead of [remove] *)
 Section Remove_results.
 Context (A : Type).

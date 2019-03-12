@@ -40,11 +40,12 @@ Section ImpossibilityProof.
 
 (** There are n good robots and no byzantine ones. *)
 Parameter n : nat.
+Instance MyRobots : Names := Robots n 0.
+
 (** We assume that the number of robots is even and non-null. *)
 Axiom even_nG : Nat.Even n.
 Axiom nG_non_0 : n <> 0.
 
-Instance MyRobots : Names := Robots n 0.
 Local Transparent G B.
 
 (* (* BUG?: To help finding correct instances, loops otherwise! *)
@@ -113,13 +114,6 @@ Proof. intros config1 config2 Heq id. apply (no_byz id), Heq. Qed.
 Definition mk_info : location -> location := id.
 Lemma mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
 Proof. reflexivity. Qed.
-(* 
-(** We only assume that we know how to build a state from a position and this is compatible with [get_location]. *)
-Variable mk_info : R -> info.
-Hypothesis mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
-Instance mk_info_compat : Proper (equiv ==> equiv) mk_info.
-Proof. simpl. repeat intro. now subst. Qed.
-*)
 
 (* To avoid passing the [nB = 0] argument each time. *)
 Definition invalid_dec := invalid_dec (reflexivity nB).
@@ -230,12 +224,12 @@ Definition lift_config {A} (config : G -> A) : ident -> A := fun id =>
 Local Opaque G B.
 
 (** We define a particular robot [g0] that will help us distinguish two towers:
-    the first one will be the one that [g)] belongs to.
+    the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
 Proof. exists 0. generalize nG_non_0. omega. Qed.
 
-(** *  Proof of the impossiblity of gathering for two robots  **)
+(** *  Proof of the impossiblity of gathering  **)
 
 (** From now on and until the final theorem we assume given a robogram [r]. *)
 
@@ -372,6 +366,7 @@ try reflexivity || (apply invalid_compat in Heq; tauto); [].
 f_equiv. apply invalid_spect_compat; trivial; now rewrite Heq.
 Qed.
 
+(** A demon swapping both towers *)
 Definition da1 : demonic_action := {|
   activate := fun _ => true;
   relocate_byz := fun _ b => mk_info 0;
@@ -393,7 +388,7 @@ Definition bad_demon1 : demon := Stream.constant da1.
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
 Proof. coinduction bad_fair1. intros id1 id2. now constructor. Qed.
 
-(* It is a more restrained version where we assume that the starting configuration is invalid. *)
+(* It is a more restricted version where we assume that the starting configuration is invalid. *)
 Lemma round_simplify1 : forall config pt1 pt2,
   pt1 =/= pt2 ->
   !! config == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG)) ->
@@ -489,7 +484,7 @@ Qed.
 
 End Move1.
 
-(** **  Second case: Only one robot is activated at a time **)
+(** **  Second case: Only one robot is activated at a time  **)
 
 Section MoveNot1.
 
@@ -501,7 +496,8 @@ Proof. apply Rminus_eq_contra. intro. now apply Hmove. Qed.
 Hint Immediate minus_1_move.
 
 (** A function that return different results depending on which tower the robot is.
-    Both results are parametrized by the ordered locations of the towers. *)
+    Both results are parametrized by the ordered locations of the towers.
+    The first function argument is the one for the tower where [g0] is. *)
 Definition select_tower {A} (b_g0 b : forall pt1 pt2 : location, pt1 =/= pt2 -> A)
                             (default : A) (config : configuration) (id : ident) :=
   match invalid_dec config with
@@ -565,6 +561,7 @@ try (exfalso; revert Hvalid1 Hvalid2; rewrite Hconfig; tauto).
 + assumption.
 Qed.
 
+(** General properties about [select_tower] *)
 Lemma select_tower_case_1' : forall {A} `{Setoid A} b1 b2 (d : A) pt config id
   (Hdiff : get_location (config (Good g0)) =/= pt),
   !! config == add (get_location (config (Good g0))) (Nat.div2 nG) (singleton pt (Nat.div2 nG)) ->
@@ -646,6 +643,7 @@ Lemma select_tower_default : forall {A} b1 b2 (d : A) config id,
   ~invalid config -> select_tower b1 b2 d config id = d.
 Proof. intros A b1 b2 d config id Hvalid. unfold select_tower. destruct_match; tauto. Qed.
 
+(** Using [select_tower], we define activation and change of frame. *)
 Definition activate2 (b1 b2 : bool) := select_tower (fun _ _ _ => b1) (fun _ _ _ => b2) true.
 
 Instance activate2_compat : forall b1 b2, Proper (equiv ==> eq ==> eq) (activate2 b1 b2).
@@ -667,6 +665,7 @@ generalize (Good g1), (Good g2). revert config1 config2 Hconfig.
 apply select_tower_compat; reflexivity || intros; now apply build_similarity_compat.
 Qed.
 
+(** A demonic action activating the "left" tower, that is, the one [g0] is on. *)
 Definition da2_left config : demonic_action := {|
   activate := activate2 true false config;
   relocate_byz := fun _ _ => mk_info 0;
@@ -683,6 +682,7 @@ Definition da2_left config : demonic_action := {|
   choose_update_compat := ltac:(now repeat intro);
   choose_inactive_compat := ltac:(now repeat intro) |}.
 
+(** A demonic action activating the "right" tower, that is, the one [g0] is not on. *)
 Definition da2_right config : demonic_action := {|
   activate := activate2 false true config;
   relocate_byz := fun _ _ => mk_info 0;
@@ -946,6 +946,7 @@ do 2 destruct_match; try (simpl in *; split; intro; congruence); [].
 destruct (Hcase' (Good g1)), (Hcase' (Good g2)); split; intro; simpl in *; tauto || congruence.
 Qed.
 
+(** A demon alternatively activating the "left" and "right" towers. *)
 CoFixpoint bad_demon2 config : demon :=
    Stream.cons (da2_left config)
   (Stream.cons (da2_right (round r (da2_left config) config))

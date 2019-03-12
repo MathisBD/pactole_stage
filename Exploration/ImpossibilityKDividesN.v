@@ -36,7 +36,8 @@ Hypothesis kdn : (ring_size mod kG = 0)%nat.
 Hypothesis k_inf_n : (kG < ring_size)%nat.
 Hypothesis k_sup_1 : (1 < kG)%nat.
 
-(** There is no byzantine robot so we can simplify properties about identifiers and configurations. *)
+(** There is no byzantine robot so we can simplify properties
+    about identifiers and configurations. *)
 Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof.
 intros [g | b] P HP.
@@ -99,10 +100,7 @@ apply Nat2Z.inj, Nat.mul_cancel_r in Heq; auto.
 Local Transparent G. unfold G. now apply eq_proj1.
 Qed.
 
-(* Definition trans (c : Z) : sigT precondition :=
-  existT precondition (trans c) (existT _ (Ring.trans c) (conj (reflexivity _) (reflexivity _))). *)
-
-(**  Translating [ref_config] by multiples of [n / kG] does not change its spectrum. *)
+(**  Translating [ref_config] by multiples of [ring_size / kG] does not change its spectrum. *)
 Lemma spect_trans_ref_config : forall g,
   !! (map_config (Ring.trans (to_Z (create_ref_config g))) ref_config) == !! ref_config.
 Proof.
@@ -133,7 +131,8 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
   assert (Z.of_nat ring_size <> 0) by omega.
   assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; omega).
   assert (Hg : (proj1_sig g < kG)%nat) by apply proj2_sig.
-  assert (Hsize : (kG * (ring_size / kG) = ring_size)%nat). { symmetry. now rewrite Nat.div_exact. }
+  assert (Hsize : (kG * (ring_size / kG) = ring_size)%nat).
+  { symmetry. now rewrite Nat.div_exact. }
   split; intros [id [Hpt _]]; revert Hpt; apply (no_byz id); clear id; intros g' Hpt.
   + assert (Hlt : ((proj1_sig g' + (kG - proj1_sig g)) mod kG < kG)%nat)
       by now apply Nat.mod_upper_bound.

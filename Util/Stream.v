@@ -271,6 +271,7 @@ Inductive until (P Q : t A -> Prop) (s : t A) : Prop :=
 Definition weak_until P Q s := forever P s \/ until P Q s.
 End Streams.
 
+(** Map on streams *)
 Section Map.
 Context {A B : Type}.
 

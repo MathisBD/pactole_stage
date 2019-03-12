@@ -91,6 +91,7 @@ Proof. repeat intro. simpl. now rewrite section_retraction. Qed.
 Lemma inverse_compose : forall f g : bijection, (f ∘ g)⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. repeat intro. reflexivity. Qed.
 
+(** Bijections are in particular injective. *)
 Lemma injective : forall bij : bijection, injective equiv equiv bij.
 Proof. intros bij x y Heq. now rewrite <- (retraction_section bij x), Heq, retraction_section. Qed.
 

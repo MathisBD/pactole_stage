@@ -19,6 +19,7 @@ Typeclasses eauto := (bfs).
 Remove Hints eq_setoid : typeclass_instances.
 
 
+(** A real vector space *)
 Class RealVectorSpace (T : Type) {S : Setoid T} `{@EqDec T S} := {
   origin : T;
   
@@ -74,7 +75,7 @@ Ltac null x :=
 Open Scope R_scope.
 Open Scope VectorSpace_scope.
 
-(** ***  Proofs of derivable properties about MetricSpace  **)
+(** ***  Proofs of derivable properties  **)
 
 Definition add_origin_r `{RealVectorSpace} := add_origin.
 

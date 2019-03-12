@@ -22,14 +22,17 @@ Typeclasses eauto := (bfs).
 
 Section ExplorationDefs.
 
+(** Setting definitions *)
+
+
 (** Definition of the ring. *)
 Context {RR : RingSpec}.
 (* We do not care about threshold values, so we just take 1/2 everywhere. *)
 Instance Ring : FiniteGraph _ _ := nothresholdRing.
 Notation ring_node := (finite_node ring_size).
-
 (* NB: These instances will be replaced by the glob_* ones so they are local. *)
 
+(* begin show *)
 (** Number of good and Byzantine robots *)
 Context {Robots : Names}.
 
@@ -43,31 +46,6 @@ Local Instance Loc : Location := {
 Local Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
 
 (** States of robots only contains their location. *)
-(*
-Inductive info :=
-  | OnVertex (v : ring_node)
-  | OnEdge (e : ring_edge).
-
-Instance info_Setoid : Setoid info := {
-  equiv := fun x y => match x, y with
-                        | OnVertex vx, OnVertex vy => vx == vy
-                        | OnEdge ex, OnEdge ey => ex == ey
-                        | OnVertex _, OnEdge _ | OnEdge _, OnVertex _ => False
-                      end }.
-Proof. split.
-+ abstract (now intros []).
-+ abstract (now intros [] []).
-+ abstract (intros [] [] []; try tauto; etransitivity; eauto).
-Defined.
-
-Instance info_EqDec : EqDec info_Setoid := 
-  fun x y => match x, y with
-               | OnVertex vx, OnVertex vy => vx =?= vy
-               | OnEdge ex, OnEdge ey => @equiv_dec _ _ ring_edge_EqDec ex ey
-               | OnVertex _, OnEdge _ | OnEdge _, OnVertex _ => right (fun x => x)
-             end.
-*)
-
 Local Instance Info : State location := {|
   get_location := Datatypes.id;
   state_EqDec := location_EqDec;
@@ -93,6 +71,7 @@ Local Existing Instance NoChoiceInaFun.
 Local Instance UpdFun : update_function direction (Z * bool) unit := {
   update := fun config g _ dir _ => move_along (config (Good g)) dir }.
 Proof. repeat intro. subst. now apply move_along_compat. Defined.
+(* end show *)
 
 Global Instance setting : GlobalDefinitions := {
   (* Number of good and Byzantine robots *)
@@ -122,16 +101,20 @@ Global Instance setting : GlobalDefinitions := {
   glob_update_function := UpdFun;
   glob_inactive_function := NoChoiceInaFun }.
 
+(** ** Specification of exploration with stop *)
+
+(** Any node will eventually be visited. *)
 Definition is_visited (pt : location) (config : configuration) :=
   exists g, config (Good g) == pt.
 
 Definition Will_be_visited (pt : location) (e : execution) : Prop :=
   Stream.eventually (Stream.instant (is_visited pt)) e.
 
+(** Eventually, all robots stop moving. *)
 Definition Stall (e : execution) := Stream.hd e == (Stream.hd (Stream.tl e)).
 
 Definition Stopped (e : execution) : Prop :=
-  Stream.forever (Stall) e.
+  Stream.forever Stall e.
 
 Definition Will_stop (e : execution) : Prop :=
   Stream.eventually Stopped e.

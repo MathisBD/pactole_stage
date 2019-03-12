@@ -8,7 +8,7 @@ Require Import Pactole.Spaces.Isomorphism.
 Typeclasses eauto := (bfs).
 Remove Hints eq_setoid.
 
-(** A ring. *)
+(** ** A ring  **)
 
 (** What we need to define a ring. *)
 Class RingSpec := {
@@ -100,7 +100,7 @@ intros [k Hk]. hnf. unfold to_Z, of_Z. apply eq_proj1. simpl.
 rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; omega.
 Qed.
 
-(** From a node, if we in one direction, get get to another node. *)
+(** From a node, if we move in one direction, get get to another node. *)
 Definition move_along (v : ring_node) (dir : direction) :=
   match dir with 
     | SelfLoop => v
@@ -244,7 +244,7 @@ Open Scope Z_scope.
     ring_simplify (to_Z v - 1 + 1). symmetry. apply Z.mod_small, to_Z_small.
 Defined.
 
-(* If we do not care about threshold values, we just take 1/2 everywhere. *)
+(** If we do not care about threshold values, we just take 1/2 everywhere. *)
 Definition nothresholdRing : FiniteGraph ring_size (ring_edge) :=
   Ring (fun _ => 1/2)%R
        ltac:(abstract (intro; lra))
@@ -252,17 +252,16 @@ Definition nothresholdRing : FiniteGraph ring_size (ring_edge) :=
 End Ring.
 
 
-(* TODO: generalize the definition of translation to thresholds. *)
-(** We define translation along the ring as an ismorphism. *)
+(** **  Ring operations **)
+
 Section RingTranslation.
 Context {RR : RingSpec}.
-
 Local Instance localRing : FiniteGraph ring_size ring_edge := nothresholdRing.
-
 Notation ring_node := (finite_node ring_size).
-(* Notation of_Z := (@of_Z n Hn).
-Notation ring_edge := (@ring_edge n). *)
 
+(** ***  Translation along a ring  **)
+
+(* TODO: generalize the definition of translation to thresholds. *)
 Lemma bij_trans_V_proof : forall c x y,
   of_Z (to_Z x - c) == y <-> of_Z (to_Z y + c) == x.
 Proof.
@@ -294,7 +293,6 @@ Proof.
             destruct (Nat.eq_dec ring_size 2);
             solve [simpl in *; destruct dx, dy; tauto | symmetry; apply Hd]).
 Defined.
-
 
 Definition trans (c : Z) : isomorphism localRing.
 refine {|
@@ -336,7 +334,7 @@ Qed.
 Lemma trans_same : forall k, Bijection.section (trans (to_Z k)) k == of_Z 0.
 Proof. intro k. simpl. f_equal. ring. Qed.
 
-(** Symmetry of a ring w.r.t. a point [c]. *)
+(** ***  Symmetry of a ring w.r.t. a point [c]  **)
 
 Definition swap_direction dir :=
   match dir with

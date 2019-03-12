@@ -24,9 +24,9 @@ Require Import Reals.
 Require Import Omega Psatz.
 
 
-(* ******************************* *)
-(** *  The same for real numbers. **)
-(* ******************************* *)
+(* ******************************** *)
+(** *  Results about real numbers  **)
+(* ******************************** *)
 
 
 Set Implicit Arguments.
@@ -215,7 +215,7 @@ Qed.
 Close Scope R_scope.
 
 
-(** *  The same for integers. **)
+(** *  Results about integers  **)
 
 Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
 Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.

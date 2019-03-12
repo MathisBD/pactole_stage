@@ -77,8 +77,9 @@ Global Instance is_rigid_demon_compat : Proper (equiv ==> iff) is_rigid_demon.
 Proof. intros ? ? Heq. unfold is_rigid_demon. now rewrite Heq. Qed.
 
 Lemma is_rigid_da_update : forall da : flex_da, is_rigid_da da ->
-  forall config g target frame ,
-  get_location (update config g frame target (choose_update da config g target)) == target ratio_1.
+  forall config g target frame,
+  get_location (update config g frame target (choose_update da config g target))
+  == target ratio_1.
 Proof.
 intros da Hda config g target frame.
 destruct (Flexible.ratio_spec config g frame target (choose_update da config g target))
@@ -89,13 +90,14 @@ Qed.
 (** **  Conversions between [demonic_choice]s  **)
 
 (** We assume a way to convert demon choices back and forth. *)
-Parameter R2F_choice : Trigid -> Tflex.
-Parameter F2R_choice : Tflex -> Trigid.
+Variable R2F_choice : Trigid -> Tflex.
+Variable F2R_choice : Tflex -> Trigid.
 Declare Instance F2R_choice_compat : Proper (equiv ==> equiv) F2R_choice.
 Declare Instance R2F_choice_compat : Proper (equiv ==> equiv) R2F_choice.
-Axiom R2F2R_choice : forall choice, F2R_choice (R2F_choice choice) == choice.
-Axiom F2R2F_choice : forall choice, is_rigid choice -> R2F_choice (F2R_choice choice) == choice.
-Axiom R2F_choice_rigid : forall choice, is_rigid (R2F_choice choice).
+Hypothesis R2F2R_choice : forall choice, F2R_choice (R2F_choice choice) == choice.
+Hypothesis F2R2F_choice : forall choice,
+  is_rigid choice -> R2F_choice (F2R_choice choice) == choice.
+Hypothesis R2F_choice_rigid : forall choice, is_rigid (R2F_choice choice).
 
 (** **  Conversions between [demonic_action]s  **)
 
@@ -118,12 +120,15 @@ simple refine {|
   activate := fda.(activate);
   relocate_byz := fda.(relocate_byz);
   change_frame := fda.(change_frame);
-  choose_update := fun config g target => F2R_choice (fda.(choose_update) config g (local_straight_path target));
+  choose_update := fun config g target =>
+    F2R_choice (fda.(choose_update) config g (local_straight_path target));
   choose_inactive := fda.(choose_inactive) |}; autoclass.
 Proof.
 + apply precondition_satisfied.
 + apply precondition_satisfied_inv.
-+ repeat intro. apply F2R_choice_compat. f_equiv; trivial; []. now apply local_straight_path_compat.
++ repeat intro. apply F2R_choice_compat.
+  f_equiv; trivial; [].
+  now apply local_straight_path_compat.
 Defined.
 
 Lemma R2F2R_da : forall rda : rigid_da, F2R_da (R2F_da rda) == rda.
@@ -162,20 +167,24 @@ Qed.
 Notation flex_robogram := (@robogram _ _ _ _ _ (path location) _).
 Notation rigid_robogram := (@robogram _ _ _ _ _ location _).
 
-Instance pgm_R2F_compat : forall r : rigid_robogram, Proper (equiv ==> equiv) (fun s => local_straight_path (r s)).
+Instance pgm_R2F_compat : forall r : rigid_robogram,
+  Proper (equiv ==> equiv) (fun s => local_straight_path (r s)).
 Proof. intros r s1 s2 Hs. now rewrite Hs. Qed.
 
-Instance pgm_F2R_compat : forall r : flex_robogram, Proper (equiv ==> equiv) (fun s => r s ratio_1).
+Instance pgm_F2R_compat : forall r : flex_robogram,
+  Proper (equiv ==> equiv) (fun s => r s ratio_1).
 Proof. intros r s1 s2 Hs. now rewrite Hs. Qed.
 
-Definition R2F_robogram (r : rigid_robogram) : flex_robogram := {| pgm := fun s => local_straight_path (r s) |}.
+Definition R2F_robogram (r : rigid_robogram) : flex_robogram := {|
+  pgm := fun s => local_straight_path (r s) |}.
 
 Definition F2R_robogram (r : flex_robogram) : rigid_robogram := {| pgm := fun s => r s ratio_1 |}.
 
 Lemma R2F2R_robogram : forall r : rigid_robogram, F2R_robogram (R2F_robogram r) == r.
 Proof. intros r s. simpl. now rewrite mul_1. Qed.
 
-(** We don't have equality of paths, only of the target point as rigid robograms use straight paths. *)
+(** We don't have equality of paths,
+    only of the target point as rigid robograms use straight paths. *)
 Lemma F2R2F_robogram : forall r : flex_robogram,
   forall s, R2F_robogram (F2R_robogram r) s ratio_1 == r s ratio_1.
 Proof. intros r s. simpl. now rewrite mul_1. Qed.
@@ -184,8 +193,10 @@ Proof. intros r s. simpl. now rewrite mul_1. Qed.
 (** **  Equivalence between [round]s  **)
 
 (** If the location part of the update is the same, then the rest is also the same. *)
-Axiom update_only_location : forall g config frame target1 target2 (choice1 : Tflex) (choice2 : Trigid),
-  get_location (update config g frame target1 choice1) == get_location (update config g frame target2 choice2) ->
+Hypothesis update_only_location :
+  forall g config frame target1 target2 (choice1 : Tflex) (choice2 : Trigid),
+  get_location (update config g frame target1 choice1)
+  == get_location (update config g frame target2 choice2) ->
   update config g frame target1 choice1 == update config g frame target2 choice2.
 
 Lemma R2F_round : forall (r : robogram) (rda : rigid_da),
@@ -194,8 +205,9 @@ Proof.
 intros r rda config id. unfold round.
 simpl activate. simpl change_frame. simpl precondition_satisfied. simpl choose_inactive.
 repeat destruct_match; try reflexivity ; [].
-remember (lift (existT precondition (Bijection.section (frame_choice_bijection (change_frame rda config g)))
-                                    (precondition_satisfied rda config g))) as sim.
+remember (lift (existT precondition
+                       (Bijection.section (frame_choice_bijection (change_frame rda config g)))
+                       (precondition_satisfied rda config g))) as sim.
 apply lift_compat; try (now intros x y Hxy; simpl; now rewrite Hxy); [].
 apply update_only_location.
 rewrite Rigid.rigid_update, is_rigid_da_update.
@@ -209,8 +221,9 @@ Proof.
 intros r fda Hrigid config id. unfold round.
 simpl activate. simpl change_frame. simpl precondition_satisfied. simpl choose_inactive.
 repeat destruct_match; try reflexivity; [].
-remember (lift (existT precondition (Bijection.section (frame_choice_bijection (change_frame fda config g)))
-                                    (precondition_satisfied fda config g))) as sim.
+remember (lift (existT precondition
+                       (Bijection.section (frame_choice_bijection (change_frame fda config g)))
+                       (precondition_satisfied fda config g))) as sim.
 apply lift_compat; try (now intros x y Hxy; simpl; now rewrite Hxy); [].
 symmetry. apply update_only_location.
 rewrite Rigid.rigid_update, is_rigid_da_update.

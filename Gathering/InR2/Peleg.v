@@ -65,8 +65,8 @@ Ltac changeR2 :=
   change R2_ES with Loc_ES in *.
 
 
-(* We are in a flexible formalism with no other info than the location,
-   so the demon only chooses the move ratio. *)
+(** We are in a flexible formalism with no other info than the location,
+    so the demon only chooses the move ratio. *)
 Instance FlexChoice : update_choice ratio := Flexible.OnlyFlexible.
 (* NB: The inactive instance actually does not matter since we are in a FSYNC setting,
        so we could instead leave it as a parameter. *)
@@ -209,6 +209,7 @@ Proof. intros. now apply max_dist_list_list_ex. Qed.
 
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
 
+(** A non-negative measure *)
 Definition measure (conf: configuration) : R :=
   max_dist_spect (!! conf).
 
@@ -223,6 +224,7 @@ destruct (support (!! config)) as [| pt l] eqn:Heq.
 + rewrite <- (R2_dist_defined_2 pt). apply max_dist_spect_le; rewrite Heq; now left.
 Qed.
 
+(** The minimum value 0 is reached only on gathered configurations. *)
 Lemma gathered_support : forall config pt,
   gathered_at pt config <-> PermutationA (@equiv _ location_Setoid) (support (!! config)) (pt :: nil).
 Proof.
@@ -306,6 +308,7 @@ exfalso; revert_one not; intro Hgoal; apply Hgoal.
   changeR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
 Qed.
 
+(** Rewriting the [round] function in the global setting. *)
 Theorem round_simplify : forall da config, FSYNC_da da ->
   round ffgatherR2 da config
   == fun id => match id with
@@ -371,6 +374,7 @@ apply get_location_compat, update_compat; auto.
 + 
 Admitted.
 
+(** If possible, the measure decreases by at least delta at each step. *)
 Theorem round_lt_config : forall da config,
     delta > 0 ->
     FSYNC_da da ->
@@ -600,6 +604,7 @@ rewrite <- Hdist.
 now auto.
 Qed.
 
+(** If the measure is too small, it saturates at 0. *)
 Theorem round_last_step : forall da config,
     delta > 0 ->
     FSYNC_da da ->

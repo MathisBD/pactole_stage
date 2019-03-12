@@ -3192,7 +3192,7 @@ Qed.
 
 End SSYNC_Results.
 
-(** ***  With the termination, the rest of the proof is easy  **)
+(** ***  With termination, the rest of the proof is easy  **)
 
 Lemma gathered_precise : forall config pt,
   gathered_at pt config -> forall id, gathered_at (get_location (config id)) config.
@@ -3217,7 +3217,7 @@ destruct (forallb (fun x => if get_location (config x) =?= pt then true else fal
   destruct Hall as [id' [_ Hid']]. revert Hid'. destruct_match; discriminate || now exists id'.
 Qed.
 
-(** Correctness proof: given a non-gathered, non invalid configuration, then some robot will move some day. *)
+(** Correctness proof: given a non-gathered, non-invalid configuration, then some robot will move some day. *)
 Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (get_location (config id)) config ->
   exists gmove, forall da, SSYNC_da da -> List.In gmove (active da) -> List.In gmove (moving gatherR2 da config).
 Proof.
@@ -3260,7 +3260,7 @@ destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
       contradiction.
 Qed.
 
-(** Given a k-fair demon, in any non gathered, non invalid configuration, a robot will be the first to move. *)
+(** Given a k-fair demon, in any non-gathered, non-invalid configuration, a robot will be the first to move. *)
 Theorem Fair_FirstMove : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> forall config id,
   ~invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR2 d config.
 Proof.
@@ -3356,7 +3356,7 @@ Print Assumptions Gathering_in_R2.
 (* FIXME: Find and remove the uses of [Eqdep.Eq_rect_eq.eq_rect_eq] and [Classical_Prop.classic]. *)
 
 (** Let us change the assumption over the demon, it is no longer fair
-    but instead activates at least a robot that should move at each round *)
+    but instead activates at least a robot that should move at each round. *)
 Definition OKunfair r :=
   Stream.forever (Stream.instant (fun da => forall config, ~invalid config -> moving r da config <> nil)).
 

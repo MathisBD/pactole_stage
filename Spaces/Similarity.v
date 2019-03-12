@@ -156,9 +156,6 @@ Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, 
 (* TODO: prove that similarities preserve barycenters *)
 
 
-(** The existence of homothecy and translation similarities (implied by these two hypotheses)
-    is actually equivalent to defining a normed vector space. *)
-
 Section TranslationHomothecy.
 Context (T : Type).
 Context `{rnsT : RealNormedSpace T}.

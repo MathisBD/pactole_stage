@@ -209,6 +209,7 @@ Proof. intros. now apply max_dist_list_list_ex. Qed.
 
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
 
+(** A non-negative measure *)
 Definition measure (conf: configuration) : R :=
   max_dist_spect (!! conf).
 
@@ -223,6 +224,7 @@ destruct (elements (!! config)) as [| pt l] eqn:Heq.
 + rewrite <- (R2_dist_defined_2 pt). apply max_dist_spect_le; rewrite Heq; now left.
 Qed.
 
+(** The minimum value 0 is reached only on gathered configurations. *)
 Lemma gathered_elements : forall config pt,
   gathered_at pt config <-> PermutationA (@equiv _ location_Setoid) (elements (!! config)) (pt :: nil).
 Proof.
@@ -241,8 +243,8 @@ split; intro H.
 * intro id.
   assert (Hin : InA equiv (get_location (config (Good id))) (elements (!! config))).
   { simpl get_location. unfold Datatypes.id.
-    rewrite elements_spec, spect_from_config_spec, map_id, (@config_list_InA _ _ Info). eexists; reflexivity. }
-  rewrite H in Hin. now inv Hin.
+    rewrite elements_spec, spect_from_config_spec, map_id, (@config_list_InA _ _ Info).
+    eexists; reflexivity. }  rewrite H in Hin. now inv Hin.
 Qed.
 
 Lemma gathered_measure : forall config, measure config = 0%R <-> exists pt, gathered_at pt config.
@@ -278,9 +280,9 @@ Qed.
 
 Lemma update_morph : forall (sim : similarity location) config g traj choice,
   @equiv location state_Setoid
-  (@update _ _ _ _ _ _ _ _ _ _ UpdFun
-    (map_config (projT1 (existT precondition sim I)) config) g sim (lift_path sim traj) choice)
-   (lift (existT precondition sim I) (update config g Similarity.id traj choice)).
+    (@update _ _ _ _ _ _ _ _ _ _ UpdFun
+       (map_config (projT1 (existT precondition sim I)) config) g sim (lift_path sim traj) choice)
+    (lift (existT precondition sim I) (update config g Similarity.id traj choice)).
 Proof.
 intros sim config g traj choice.
 simpl update. unfold id.
@@ -316,7 +318,7 @@ exfalso; revert_one not; intro Hgoal; apply Hgoal.
   changeR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
 Qed.
 
-
+(** Rewriting the [round] function in the global setting. *)
 Theorem round_simplify : forall da config, FSYNC_da da ->
   round ffgatherR2 da config
   == fun id => match id with
@@ -372,6 +374,7 @@ apply get_location_compat, update_compat, choose_update_compat; auto.
 Qed.
 *) Admitted.
 
+(** If possible, the measure decreases by at least delta at each step. *)
 (* FIXME: cleanup! *)
 Theorem round_lt_config : forall da config,
     delta > 0 ->
@@ -589,6 +592,7 @@ Proof.
   now auto.
 Qed.
 
+(** If the measure is too small, it saturates at 0. *)
 Theorem round_last_step : forall da config,
     delta > 0 ->
     FSYNC_da da ->

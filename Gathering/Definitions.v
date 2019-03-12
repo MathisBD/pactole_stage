@@ -34,7 +34,8 @@ Set Implicit Arguments.
 
 Section GatheringDefinitions.
 
-(** We only required the space to be a real metric space.  The actual number of robots is arbitrary. *)
+(** We only require the space to be a real metric space.
+    The actual number of robots is arbitrary. *)
 Context {T : Type}.
 Context `{Location}.
 Context {VS : RealVectorSpace location}.
@@ -42,7 +43,7 @@ Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 
 (** The only information available is the current location.
-    The change of frame of reference uses a similarity, so we exported Pactole.Models.Similarity. *)
+    The change of frame of reference uses a similarity, so we export [Pactole.Models.Similarity]. *)
 Global Instance Info : State location := OnlyLocation.
 
 (** The spectrum and the way updates are made to the robot state are still arbitrary. *)

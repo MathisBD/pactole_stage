@@ -73,6 +73,7 @@ Class State `{Location} info := {
 Arguments State {_} info.
 
 (** **  Some operators to build states  **)
+(* begin show *)
 
 (** A basic state containing only the current location. *)
 Local Instance OnlyLocation `{Location} : State location := {|

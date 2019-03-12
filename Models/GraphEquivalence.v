@@ -59,8 +59,7 @@ Ltac Rdec := repeat
 Existing Instance InfoV.
 Existing Instance InfoG.
 
-(** ** Translations of demonic actions **)
-
+(** Notations to avoid typeclass resolution issues. *)
 Notation locV := (@location LocationV).
 Notation locG := (@location LocationG).
 
@@ -71,6 +70,8 @@ Notation DGF_da :=
   (@demonic_action _ _ InfoV _ _ _ _ _ _ FrameChoiceIsomorphismV graph_update_bool graph_inactive_bool).
 Notation CGF_da :=
   (@demonic_action _ _ InfoG _ _ _ _ _ _ FrameChoiceIsomorphismG graph_update_ratio graph_inactive_ratio).
+
+(** ** Translations of demonic actions **)
 
 Definition relocate_byz_D2C (rel_byz : DGF_config -> B -> stateV) : CGF_config -> B -> stateG.
 refine (fun (config : CGF_config) (b : B) =>
@@ -486,15 +487,17 @@ simpl activate. destruct_match.
 Time Qed.
 
 (** NB: For the converse result to hold, we need two extra hypotheses:
-        1) the demon choices must only depend on the discrete position of robots,
+        1) all the demon choices must only depend on the discrete position of robots,
            otherwise the continuous demon can make more distinctions than the discrete one;
         2) robots can only be activated on vertices, a robot on an edge waits to reach its tgt. *)
 Theorem graph_equiv_C2D : forall (config : CGF_config) (rbg : robogramG) (da : CGF_da),
+  (** demon choices only depends on the discrete locations of robots *)
   (forall g, change_frame da (config_V2G (config_G2V config)) g  == change_frame da config g) ->
   (forall config g x, (* we need to quantify over [config] as it is the local version that is used *)
      choose_update da (config_V2G (config_G2V config)) g x == choose_update da config g x) ->
   (forall b, relocate_byz da (config_V2G (config_G2V config)) b == relocate_byz da config b) ->
   (forall id, choose_inactive da (config_V2G (config_G2V config)) id == choose_inactive da config id) ->
+  (** robots are only activated on vertices *)
   (forall g, activate da (Good g) = true -> forall e p, config (Good g) =/= SOnEdge e p) ->
   config_G2V (round rbg da config) == round (rbg_G2V rbg) (da_C2D da config) (config_G2V config).
 Proof using All.

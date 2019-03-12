@@ -577,8 +577,8 @@ Qed.
 (** *  The robogram solving the gathering **)
 
 (** I works as follows:
-    1) if there is a majority stack, everyone goes there;
-    2) if there are three stacks, everyone goes on the middle one;
+    1) if there is a majority tower, everyone goes there;
+    2) if there are three towers, everyone goes on the middle one;
     3) otherwise, robots located at non extremal locations go to the middle of the extremal locations.
     The last case will necessarily end into one of the first two, ensuring termination.
 **)
@@ -997,6 +997,7 @@ rewrite remove_add_comm, remove_add_comm, cardinal_add; trivial; [].
 omega.
 Qed.
 
+(** All robots moving in a round move towards the same destination. *)
 Theorem same_destination : forall config id1 id2,
   List.In id1 (moving gatherR da config) -> List.In id2 (moving gatherR da config) ->
   round gatherR da config id1 == round gatherR da config id2.
@@ -1117,11 +1118,13 @@ intros config pt. split.
 Qed.
 
 
-(* Any non-invalid config without a majority tower contains at least three towers.
-   All robots move toward the same place (same_destination), wlog pt1.
-   |\before(pt2)| >= |\after(pt2)| = nG / 2
-   As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
-   thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
+(** An invalid configurataion cannot appear during execution.
+    
+    Any non-invalid config without a majority tower contains at least three towers.
+    All robots move toward the same place (same_destination), wlog pt1.
+    |\before(pt2)| >= |\after(pt2)| = nG / 2
+    As there are [nG] robots, [nG/2] at [p2], we must spread [nG/2] into at least two locations
+    thus each of these towers has less than [nG/2] and [pt2] was a majority tower. *)
 Theorem never_invalid : forall config, ~invalid config -> ~invalid (round gatherR da config).
 Proof.
 intros config Hok.

@@ -150,7 +150,8 @@ End PerpendicularResults.
 Arguments perpendicular {T%type} {_} {_} {_} {_} u%VS v%VS.
 Notation "u ⟂ v" := (perpendicular u v) (at level 50, no associativity).
 
-(** The norm induced by the inner_product. *)
+(** *** The norm induced by the [inner_product]  **)
+
 Instance Euclidean2Normed {T} `{EuclideanSpace T} : RealNormedSpace T := {
   norm := fun u => sqrt (inner_product u u) }.
 Proof.

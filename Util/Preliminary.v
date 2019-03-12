@@ -45,6 +45,9 @@ Instance nat_Setoid : Setoid nat := eq_setoid nat.
 Instance bool_Setoid : Setoid bool := eq_setoid bool.
 Instance unit_Setoid : Setoid unit := eq_setoid unit.
 
+
+(** **  Tactics  **)
+
 (** A tactic simplifying coinduction proofs. *)
 Global Ltac coinduction proof :=
   cofix proof; intros; constructor;
@@ -102,6 +105,7 @@ Instance relation_equivalence_subrelation {A} :
 Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
 Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
+
 
 (** **  Setoid Definitions  **)
 
