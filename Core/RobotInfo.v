@@ -33,7 +33,7 @@ Set Implicit Arguments.
 (** The space in which robots evolve, which must have a decidable equality.
 
     There is no direct instantiation, making sure that no spurious instance can be created.
-    Instead, the user must provide the instance using [make_Space]. *)
+    Instead, the user must explicitely provide the instance. *)
 Class Location := {
   location : Type;
   location_Setoid :> Setoid location;
@@ -145,3 +145,4 @@ Proof.
 + repeat intro. now apply get_location_compat.
 + intros f g Hfg x y Hxy. simpl. now apply lift_compat.
 Defined.
+(* end show *)

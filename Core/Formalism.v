@@ -71,7 +71,7 @@ Proof. intros r1 r2 Hr s1 s2 Hs. rewrite (Hr s1). now apply pgm_compat. Qed.
 (** A [demonic_action] performs four things:
     - it selects which robots are activated,
     - it moves all activated byzantine robots as it wishes,
-    - in the compute phase, it sets the referential of all activated good robots,
+    - in the look phase, it sets the referential of all activated good robots,
     - in the move phase, it makes some choices about how the robots' states should be updated.
     
     Therefore, it can make choices at two places: while computing the local frame of reference for a robot
@@ -219,13 +219,12 @@ Definition demon := Stream.t demonic_action.
 
 (** **  One step executions  **)
 
-(** [round r da config] returns the new configuration of robots (that is a function
+(** [round r da config] returns the new configuration of robots (that is, a function
     giving the position of each robot) from the previous one [config] by applying
     the robogram [r] on each spectrum seen by each robot. [da.(relocate_byz)]
     is used for byzantine robots.
     
-    As this is a general setting similarities preserve distance ratios, we can perform the multiplication
-    by [mv_ratio] either in the local frame or in the global one. *)
+    This setting is general enough to accomodate all models we have considered so far. *)
 Definition round (r : robogram) (da : demonic_action) (config : configuration) : configuration :=
   (* for a given robot, we compute the new configuration *)
   fun id =>
@@ -282,7 +281,7 @@ unfold round. rewrite Hda. destruct_match.
 Qed.
 
 
-(** A third subset of robots: moving ones *)
+(** A third subset of robots: moving ones. *)
 Definition moving r da config :=
   List.filter
     (fun id => if round r da config id =?= config id then false else true)
@@ -345,7 +344,7 @@ Qed.
 (* We could impose that T3 = unit but this might create problems further down the line when comparing settings. *)
 (* NB: The precondition is necessary to have the implication FSYNC -> SSYNC. *)
 Definition SSYNC_da da := forall config id, da.(activate) id = false ->
-                                            inactive config id (da.(choose_inactive) config id) == config id.
+  inactive config id (da.(choose_inactive) config id) == config id.
 
 Definition SSYNC d := Stream.forever (Stream.instant SSYNC_da) d.
 
@@ -355,7 +354,9 @@ Proof. intros da1 da2 Hda. unfold SSYNC_da. now setoid_rewrite Hda. Qed.
 Global Instance SSYNC_compat : Proper (equiv ==> iff) SSYNC.
 Proof. apply Stream.forever_compat, Stream.instant_compat, SSYNC_da_compat. Qed.
 
-(* This is only true for the SSYNC (and FSYNC) model *)
+(** All moving robots are active.
+    This is only true for the SSYNC (and FSYNC) model: in the ASYNC one,
+    robots can keep moving while others are activated. *)
 Lemma moving_active : forall da, SSYNC_da da ->
   forall r config, List.incl (moving r da config) (active da).
 Proof.
@@ -609,7 +610,7 @@ Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 Context {VS : RealVectorSpace location}.
 
-(* Similarities as a frame choice, only make sense inside real metric spaces. *)
+(** Similarities as a frame choice, only make sense inside real metric spaces. *)
 Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}
   : frame_choice (similarity location) := {|
   frame_choice_bijection := @sim_f location _ _ _ _;

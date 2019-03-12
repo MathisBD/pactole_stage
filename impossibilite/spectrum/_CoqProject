@@ -1,9 +1,0 @@
--install none
--R . Pactole
-Preliminary.v
-FMultisetInterface.v
-FMultisetMap.v
-FMultisetFacts.v
-ConvergentFormalismR.v
-EqualitiesR.v
-generalRDV.v
