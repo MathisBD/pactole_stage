@@ -38,6 +38,7 @@ Section SetConstruction.
 Context {loc : Type}.
 Context `{EqDec loc}.
 
+(* FIXME: tauto introduces spurious axioms: Eq_dep.eq_rect_eq and excluded middle. *)
 Ltac fsetdec := set_iff; tauto.
 
 (** **  Building sets from lists  **)
@@ -67,7 +68,8 @@ Lemma make_set_empty : forall l, make_set l == empty <-> l = nil.
 Proof.
 intro l. split; intro Hl.
 + destruct l as [| x l]. reflexivity. rewrite make_set_cons in Hl.
-  specialize (Hl x). rewrite add_spec, empty_spec in Hl. intuition.
+  specialize (Hl x). rewrite add_spec, empty_spec in Hl.
+  exfalso. rewrite <- Hl. now left.
 + subst l. apply make_set_nil.
 Qed.
 
@@ -116,7 +118,7 @@ Theorem make_set_spec : forall x l, In x (make_set l) <-> InA equiv x l.
 Proof.
 intros x l. induction l.
 + rewrite make_set_nil, InA_nil. fsetdec.
-+ rewrite make_set_cons, add_spec, IHl. intuition. inversion_clear H2; auto.
++ rewrite make_set_cons, add_spec, IHl, InA_cons. split; intros [|]; auto.
 Qed.
 
 Theorem cardinal_make_set : forall l, cardinal (make_set l) <= length l.
@@ -175,6 +177,8 @@ Proof.
   - apply config_list_compat. assumption.
 + unfold spect_from_config, spect_is_ok. intros. apply make_set_spec.
 Defined.
+Print Assumptions  set_spectrum.
+Print Assumptions make_set_spec.
 
 Notation spect_from_config := (@spect_from_config _ _ _ _ set_spectrum).
 

@@ -1228,7 +1228,7 @@ destruct (existsb (fun x => if get_location (round r da config x) =?= pt then
 - exfalso. rewrite <- negb_true_iff, forallb_existsb, forallb_forall in Hex.
   (* Let us remove the In x (Gnames nG) and perform some rewriting. *)
   assert (Hg : forall id, get_location (round r da config id) <> pt \/ get_location (config id) = pt).
-  { intro id. specialize (Hex id (In_names _)). revert Hex. repeat destruct_match; discriminate || tauto. }
+  { intro id. specialize (Hex id (In_names _)). revert Hex. repeat destruct_match; try discriminate; auto. }
   (** We prove a contradiction by showing that the opposite inequality of Hlt holds. *)
   clear Hex. revert Hlt. apply le_not_lt.
   do 2 rewrite spect_from_config_spec, config_list_spec.
@@ -1236,7 +1236,6 @@ destruct (existsb (fun x => if get_location (round r da config x) =?= pt then
   destruct (get_location (round r da config id) =?= pt) as [Heq | Heq];
   simpl; (do 2 R2dec_full; simpl in *; subst; try omega; []); specialize (Hg id); intuition.
 Qed.
-
 
 (** Because of [same_destination], we can strengthen the previous result into an equivalence. *)
 Theorem increase_move_iff :
@@ -1565,7 +1564,7 @@ assert (Heq : @equiv spectrum spectrum_Setoid (filter f_out_target (!! (round ga
               destruct (InA_dec equiv_dec pt (SECT (!! config))); try discriminate; [].
               rewrite negb_true_iff in Htest.
               unfold f_target in Htest.
-              revert Htest. destruct_match; discriminate || intuition.
+              revert Htest. destruct_match; try discriminate; auto.
            -- apply IHl.
       - destruct_match; (now elim Hneq) || apply IHl. }
 rewrite Heq.
@@ -1617,6 +1616,7 @@ Qed.
    |\before(pt2)| >= |\after(pt2)| = nG / 2
    As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
    thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
+
 Theorem never_invalid : forall config, ~invalid config -> ~invalid (round gatherR2 da config).
 Proof.
 intros config Hok.
@@ -3353,7 +3353,7 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
 Qed.
 
 Print Assumptions Gathering_in_R2.
-(* FIXME: Find and remove the uses of [Eqdep.Eq_rect_eq.eq_rect_eq] and [Classical_Prop.classic]. *)
+
 
 (** Let us change the assumption over the demon, it is no longer fair
     but instead activates at least a robot that should move at each round. *)

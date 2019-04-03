@@ -52,7 +52,7 @@ Definition execution := Stream.t configuration.
 Class robot_choice := { robot_choice_Setoid :> Setoid Trobot }.
 
 Record robogram `{robot_choice} := {
-  pgm :> spectrum -> Trobot; (* TODO: switch [loc] for [info] as a robogram can upate its memory, etc. *)
+  pgm :> spectrum -> Trobot;
   pgm_compat :> Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid `{robot_choice} : Setoid robogram := {|
@@ -85,7 +85,6 @@ Class frame_choice := {
   frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
 Global Existing Instance frame_choice_bijection_compat.
 
-(* FIXME: should we merge *_choice and *_function? *)
 (** An [update_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
 Class update_choice := {
   update_choice_Setoid :> Setoid Tactive;
@@ -173,7 +172,7 @@ Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choos
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition active da := List.filter (activate da) names.
 
-(* FIXME: rename into inactive? *)
+(* TODO: rename into inactive? *)
 Definition idle da := List.filter (fun id => negb (activate da id)) names.
 
 Global Instance active_compat : Proper (equiv ==> Logic.eq) active.
@@ -340,11 +339,10 @@ Qed.
 (** ***  Semi-synchronous (SSYNC) model  **)
 
 (* FIXME?: this must hold for all configurations whereas only the current one may be useful *)
-(* TODO?: Do we want to only enforce equality about location? What if, say, the battery level goes down? *)
-(* We could impose that T3 = unit but this might create problems further down the line when comparing settings. *)
-(* NB: The precondition is necessary to have the implication FSYNC -> SSYNC. *)
-Definition SSYNC_da da := forall config id, da.(activate) id = false ->
-  inactive config id (da.(choose_inactive) config id) == config id.
+(* NB: The precondition is necessary to have the implication FSYNC -> SSYNC.
+       We could impose that [Tinactive = unit] but this might create problems when comparing settings. *)
+Definition SSYNC_da da := forall id, da.(activate) id = false ->
+  forall config, inactive config id (da.(choose_inactive) config id) == config id.
 
 Definition SSYNC d := Stream.forever (Stream.instant SSYNC_da) d.
 
@@ -470,7 +468,7 @@ Inductive Between id id' (d : demon) : nat -> Prop :=
 Definition kFair k : demon -> Prop := Stream.forever (fun d => forall id id', Between id id' d k).
 
 (** Compatibility properties *)
-Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
+Local Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
   d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
 Proof.
 intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda;
@@ -487,7 +485,7 @@ Qed.
 Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
 Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
-Lemma Between_compat_aux : forall id id' k d1 d2, d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
+Local Lemma Between_compat_aux : forall id id' k d1 d2, d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
 Proof.
 intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq;
 constructor; solve [now rewrite <- Heq | apply IHbet; now f_equiv].

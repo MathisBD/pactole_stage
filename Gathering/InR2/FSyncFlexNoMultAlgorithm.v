@@ -244,7 +244,8 @@ split; intro H.
   assert (Hin : InA equiv (get_location (config (Good id))) (elements (!! config))).
   { simpl get_location. unfold Datatypes.id.
     rewrite elements_spec, spect_from_config_spec, map_id, (@config_list_InA _ _ Info).
-    eexists; reflexivity. }  rewrite H in Hin. now inv Hin.
+    eexists; reflexivity. }
+  rewrite H in Hin. now inv Hin.
 Qed.
 
 Lemma gathered_measure : forall config, measure config = 0%R <-> exists pt, gathered_at pt config.
@@ -795,4 +796,5 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
 Qed.
 
 Print Assumptions FSGathering_in_R2.
-(* FIXME: find and eliminate the use of Classical_Prop.classic *)
+(* FIXME: find and eliminate the use of Classical_Prop.classic
+          It comes from a bug in intuition/tauto. See set_spectrum.v. *)
