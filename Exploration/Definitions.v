@@ -46,15 +46,7 @@ Local Instance Loc : Location := {
 Local Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
 
 (** States of robots only contains their location. *)
-Local Instance Info : State location := {|
-  get_location := Datatypes.id;
-  state_EqDec := location_EqDec;
-  precondition := fun f => sigT (fun iso => f == @iso_V _ _ Ring iso
-                                              /\ iso_T iso == @Bijection.id R _);
-  lift := @projT1 _ _;
-  lift_id := ltac:(reflexivity);
-  get_location_lift := ltac:(reflexivity);
-  lift_compat := ltac:(intros [] [] ?; simpl in *; tauto) |}.
+Local Existing Instance OnlyLocation.
 
 (** Demon's frame choice: we move back the robot to the origin with a translation
                           and we can choose the orientation of the ring. *)
@@ -80,7 +72,7 @@ Global Instance setting : GlobalDefinitions := {
   glob_Loc := Loc;
   (* The state of robots (must contain at least the current location) *)
   glob_info := location;
-  glob_State := Info;
+  glob_State := OnlyLocation;
   (* The spectrum: what robots can see from their surroundings *)
   glob_spect := multiset_spectrum;
   (* The output type of robograms: some information that we can use to get a target location *)

@@ -171,18 +171,6 @@ Program Definition da : demonic_action := {|
   change_frame := fun config g => (to_Z (config (Good g)), false);
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt |}.
-Next Obligation. (* precondition_satisfied *)
-pose (gg := exist (fun x => x < kG)%nat g H). fold gg.
-change (fin kG) with G in gg.
-exists (Ring.trans (to_Z (config (Good gg)))).
-repeat split.
-Qed.
-Next Obligation. (* precondition_satisfied_inv *)
-pose (gg := exist (fun x => x < kG)%nat g H). fold gg.
-change (fin kG) with G in gg.
-exists (Ring.trans (- to_Z (config (Good gg)))).
-repeat split; []. intro. simpl. f_equal. ring.
-Qed.
 Next Obligation. (* activate_compat *)
 now repeat intro.
 Qed.
