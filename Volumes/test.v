@@ -365,18 +365,19 @@ Definition move_to (cible:ILA) (spect:spect_multi):R2 :=
 une fonction axiomatisé qui choisit en fonction de la cible et de la distance à 
 celle ci un endroit dans la zone qui est l'intersection de {x, dist nous x < D} et
 de {y, dist cible y < 7D}. *)
-Context {move_to: location -> spect_ILA -> location -> option location }.
+Context {move_to: spect_ILA -> location -> option location }.
 
-Axiom move_to_Some_zone : forall loc spect cible new_pos,
-    move_to loc spect cible = Some new_pos ->
-    (dist new_pos cible < Dp /\ dist new_pos loc < D
+Axiom move_to_Some_zone : forall spect cible new_pos,
+    move_to spect cible = Some new_pos ->
+    (dist new_pos cible < Dp /\ dist new_pos (0,0)%R < D
     /\ forall x, List.In x spect -> let (pos_x, light_x) := x in
                                     dist new_pos pos_x > 2*D)%R.
 
-Axiom move_to_None : forall loc spect cible,
-    move_to loc spect cible = None ->
+Axiom move_to_None : forall spect cible,
+    move_to spect cible = None ->
     ~(exists pos, forall x, List.In x spect -> let (pos_x, ligth_x) := x in
                                                dist pos pos_x > 2*D)%R.
+Context {move_to_compat : Proper (equiv ==> equiv ==> equiv) move_to}.
 (* todo *)
 
 
@@ -424,6 +425,16 @@ Proof. intros [] [] [] x. f_equiv. Qed.
 Context {activ_ila :ident-> bool}.
 
 Context {change_frame_ILA : config -> G -> R2}.
+
+Axiom change_frame_not_dist : forall config g loc,
+    change_frame_ILA config g = loc ->
+    let (pos_c,_) := config (Good g) in
+    forall g',
+    let (pos_c',_) := config (Good g') in
+    dist pos_c pos_c' = dist loc (change_frame_ILA config g').
+
+
+    
 Context {change_frame_ILA_compat : @Proper (@configuration Loc (R2 * ILA) State_ILA Robots -> @G Robots -> R2)
     (@equiv (@configuration Loc (R2 * ILA) State_ILA Robots)
        (@configuration_Setoid Loc (R2 * ILA) State_ILA Robots) ==>
@@ -431,10 +442,17 @@ Context {change_frame_ILA_compat : @Proper (@configuration Loc (R2 * ILA) State_
     change_frame_ILA}. 
 Context {inactive_ila : config -> ident-> bool}.
 
-Context {inactive_ila_compat : Proper (equiv ==> equiv ==> equiv) inactive_ila}.
+Context {inactive_choice_ila : inactive_choice bool}.
+Context {inactive_ila_compat :
+           @Proper (@configuration Loc (R2 * ILA) State_ILA Robots -> @ident Robots -> bool)
+                   (@equiv (@configuration Loc (R2 * ILA) State_ILA Robots)
+                           (@configuration_Setoid Loc (R2 * ILA) State_ILA Robots) ==>
+                           @equiv (@ident Robots) (eq_setoid (@ident Robots)) ==>
+                           @equiv bool (@inactive_choice_Setoid bool inactive_choice_ila))
+                   inactive_ila}.
+
 Context {relocate_ila : config -> B -> R2*ILA}.
 Context {relocate_ila_compat : Proper (equiv ==> eq ==> equiv) relocate_ila}.
-Context {inactive_choice_ila : inactive_choice bool}.
 
 Definition demonic_action_ILA : 
   @demonic_action (R2*ILA) Loc State_ILA _ (R2*light) R2 bool bool robot_choice_RL Frame Choice _.
@@ -460,45 +478,24 @@ Proof.
     destruct (c1 (Good g2)) as (r1,((i1,l1),a1)),
     (c2 (Good g2)) as (r2, ((i2, l2), a2)).
     now destruct Hc as (_,(_,(_,Ha))).
-  - apply inactive_ila_compat.
 Defined.
 
 Set Printing Implicit.
 
-
-Definition rbg_fnc (s:spect_ILA) : path_ILA
+Definition rbg_fnc (s:spect_ILA) : R2*light
   :=
-    let (l,spect) := s in
-    match l with (pos, ident, light, alive) => 
-                 let dist_clos := distance_closest ident spect in
-                 match alive with
-                 |false =>
-                  if
-                    (match ident ?= threshold with |Eq => true |_ => false end)
-                      && Rle_bool (7*D)%R dist_clos 
-                  then let cible := choose_cible spect l in
-                       let new_pos := move_to cible spect in
-                       paths_in_ILA (new_pos, ident, light, true)
-                  else paths_in_ILA l
-                 |true => let cible := choose_cible spect l in
-                          match Rle_bool dist_clos D with
-                          |true => paths_in_ILA (pos, ident, light, false)
-                          |false =>
-                           match move_to spect new_pos with
-                           |Some pos_n => paths_in_ILA
-                                                       (new_pos, ident, light, alive)
-                                    |None => paths_in_ILA (pos, ident, false, alive)
-                                    end
-                           |false => match  Rle_bool Dp dist_clos with
-                                     |true => 
-                                      paths_in_ILA (new_pos, ident, light, alive)
-                                     |false => paths_in_ILA l
-                                     end
-                           end
-                          end
-                 end
-    end.
-
+    (* on regarde quel est le robot à 0/0 *)
+    let (pos_n, light_n) := List.fold_left (fun acc (elt:R2*light) => let (pos, light) := elt in
+                                   if R2dec_bool pos (0,0)%R then
+                                     elt
+                                   else
+                                     acc) s ((0,0)%R,true) in
+    (* on choisit la cible *)
+    let cible := choose_cible s (pos_n, light_n) in
+    match move_to s (fst cible) with
+    | Some x => (x,true)
+    | None => ((0,0)%R, false)
+    end. 
   
 (* 
 Lemma bourreau_non_coloré : forall (elt:ILA),
