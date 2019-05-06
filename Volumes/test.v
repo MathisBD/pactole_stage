@@ -219,22 +219,11 @@ Axiom find_id_true : forall config loc ila,
 Context {find_lower: configuration -> R2*ILA -> list (R2*light)}.
 
 Definition RLList_eq (list1: (list (R2*light))) (list2:(list (R2*light))) :=
-  eqlistA (fun (rl1:R2*light) (rl2:R2*light) => let (r1,l1) := rl1 in let (r2, l2) := rl2 in
-           r1 == r2 /\ l1 == l2) list1 list2.
+  eqlistA equiv.
 
 Instance RLList_eq_Setoid : Setoid (list (R2*light)) :=
 {
-    equiv := fun (list1: (list (R2*light))) (list2:(list (R2*light))) =>
-  eqlistA (fun (rl1:R2*light) (rl2:R2*light) => let (r1,l1) := rl1 in let (r2, l2) := rl2 in
-           r1 == r2 /\ l1 == l2) list1 list2
-             }.
-Proof. 
-  apply eqlistA_equiv.
-  split; intros (rx,lx).
-  - intuition.
-  - intros (ry,ly); intuition.
-  - intros (ry, ly) (rz, lz); intuition. now transitivity ry. now transitivity ly.
-Defined.
+    equiv := eqlistA equiv}.
 
 Instance RLList_eq_EqDec : EqDec RLList_eq_Setoid. 
 Proof.
@@ -245,7 +234,7 @@ Proof.
   intros (r1, l1) (r2, l2).
   cbn.
   destruct (R2_EqDec r1 r2), (bool_dec l1 l2); intuition.
-Defined.
+Defined. 
 
 Context {find_lower_compat : Proper (equiv ==> equiv ==> equiv) find_lower}.
 Axiom find_lower_true : forall (config:config) (ri:R2*ILA) id list,
@@ -270,7 +259,7 @@ spect =  (fun config loc =>
 Instance Spect_ILA : Spectrum :=
   {|
     spectrum := list (R2*light);
-    spectrum_Setoid := RLList_eq_Setoid;
+    spectrum_Setoid := RLList_eq_Setoid ;
     spectrum_EqDec := RLList_eq_EqDec;
     spect_from_config := (fun config loc =>
                             let us := find_id config loc in
@@ -332,15 +321,16 @@ Context {choose_cible : spect_ILA -> (R2*light) -> (R2*light)}.
 
 (* propiété de choose_cible*)
 
+Context {choose_cible_compat : Proper (equiv ==> equiv ==> equiv) choose_cible}.
+
 Axiom light_off_first: forall spect nous cible,
     choose_cible spect nous = cible ->
     match cible,nous with |(pos_c, light_c), (pos_n, light_n) => 
                            light_c = true ->
                            (* il n'y a pas de robots etein *)
-                           List.filter (fun (elt: R2*light) =>
+                           List.Forall (fun (elt: R2*light) =>
                                            let (_,light_e) := elt in
-                                        eqb light_e false) spect
-    = nil
+                                        light_e == true) spect
     end.
 
 Axiom light_close_first : forall spect nous cible,
@@ -348,10 +338,12 @@ Axiom light_close_first : forall spect nous cible,
     match cible,nous with |(pos_c, light_c), (pos_n, light_n) =>       
     light_c = true ->
     Rle Dp (dist pos_n pos_c) ->
-    List.filter (fun (elt : R2*light) =>
-                        match elt with (pos_e, light_e) =>
-              negb (Rle_bool (dist pos_n pos_e) Dp) end) spect = nil
+    List.Forall (fun (elt : R2*light) =>
+                   match elt with (pos_e, light_e) =>
+                                  ((dist pos_n pos_e) > Dp)%R
+                   end) spect
     end.
+
 (* todo *)(*
 Definition move_to (cible:ILA) (spect:spect_multi):R2 := 
   match cible with (pos, _, _, _) => 
@@ -369,18 +361,19 @@ Context {move_to: spect_ILA -> location -> option location }.
 
 Axiom move_to_Some_zone : forall spect cible new_pos,
     move_to spect cible = Some new_pos ->
-    (dist new_pos cible < Dp /\ dist new_pos (0,0)%R < D
+    (dist new_pos cible <= Dp /\ dist new_pos (0,0)%R <= D
     /\ forall x, List.In x spect -> let (pos_x, light_x) := x in
                                     dist new_pos pos_x > 2*D)%R.
 
 Axiom move_to_None : forall spect cible,
     move_to spect cible = None ->
     ~(exists pos, forall x, List.In x spect -> let (pos_x, ligth_x) := x in
-                                               dist pos pos_x > 2*D)%R.
-Context {move_to_compat : Proper (equiv ==> equiv ==> equiv) move_to}.
+                                               dist pos pos_x > 2*D /\ dist pos (0,0)%R <= D)%R.
 (* todo *)
 
+Context {move_to_compat : Proper (equiv ==> equiv ==> equiv) move_to}.
 
+(*
 Definition robot_a_portée (ident : identifiants) (spect:spect_ILA) (D:R) (new_pos: R2) :bool :=
   (Rle_bool (distance_closest ident spect) (2*D)%R)
     &&
@@ -395,7 +388,7 @@ Definition robot_a_portée (ident : identifiants) (spect:spect_ILA) (D:R) (new_p
                  else a
               end) spect new_pos
         in Rle_bool (dist closest new_pos) (2*D)%R .
-
+*)
 (* todo *)
 (* si il y a un robot a portée tel qu'il risque de rentré en colision avec nous, il faut aller dans une zone d'esquive, mais comment trouver une position dans cette zone?
 il faudrait caractérisier les ensemble de points Sd et Rd (voir tableau) *)
@@ -414,89 +407,89 @@ Axiom esquive_Some : forall spect D ident x,
 (*  @robogram (@location Loc) Loc State_ILA _ Spect 
 
 le robogram te donne juste la nouvelle position, mais doit_il changer la couleur aussi? *)
+ Definition fnc_fold acc  (elt:R2*light) :=
+   let (pos, light) := elt in
+   if R2dec_bool pos (0,0)%R then
+     elt
+   else
+     acc
+.
 
-Definition path_ILA := path location.
-Definition paths_in_ILA : location -> path_ILA := local_straight_path.
-Coercion paths_in_ILA : location >-> path_ILA.
-Instance paths_in_ILA_compat : Proper (equiv ==> equiv) paths_in_ILA.
-Proof. intros [] [] [] x. f_equiv. Qed.
-
-
-Context {activ_ila :ident-> bool}.
-
-Context {change_frame_ILA : config -> G -> R2}.
-
-Axiom change_frame_not_dist : forall config g loc,
-    change_frame_ILA config g = loc ->
-    let (pos_c,_) := config (Good g) in
-    forall g',
-    let (pos_c',_) := config (Good g') in
-    dist pos_c pos_c' = dist loc (change_frame_ILA config g').
-
-
-    
-Context {change_frame_ILA_compat : @Proper (@configuration Loc (R2 * ILA) State_ILA Robots -> @G Robots -> R2)
-    (@equiv (@configuration Loc (R2 * ILA) State_ILA Robots)
-       (@configuration_Setoid Loc (R2 * ILA) State_ILA Robots) ==>
-     @eq (@G Robots) ==> @equiv R2 (@frame_choice_Setoid Loc R2 Frame))
-    change_frame_ILA}. 
-Context {inactive_ila : config -> ident-> bool}.
-
-Context {inactive_choice_ila : inactive_choice bool}.
-Context {inactive_ila_compat :
-           @Proper (@configuration Loc (R2 * ILA) State_ILA Robots -> @ident Robots -> bool)
-                   (@equiv (@configuration Loc (R2 * ILA) State_ILA Robots)
-                           (@configuration_Setoid Loc (R2 * ILA) State_ILA Robots) ==>
-                           @equiv (@ident Robots) (eq_setoid (@ident Robots)) ==>
-                           @equiv bool (@inactive_choice_Setoid bool inactive_choice_ila))
-                   inactive_ila}.
-
-Context {relocate_ila : config -> B -> R2*ILA}.
-Context {relocate_ila_compat : Proper (equiv ==> eq ==> equiv) relocate_ila}.
-
-Definition demonic_action_ILA : 
-  @demonic_action (R2*ILA) Loc State_ILA _ (R2*light) R2 bool bool robot_choice_RL Frame Choice _.
-  refine {|
-    activate := activ_ila;
-    relocate_byz := relocate_ila;
-    change_frame := change_frame_ILA;
-    choose_update := fun config g rl =>
-                       match (config (Good g)) with
-                         (pos_c, (ident_c, light_c, alive_c))
-                         => alive_c
-                       end;
-    choose_inactive := inactive_ila 
-  |}.
+Instance fnc_fold_compat : Proper (equiv ==> equiv ==> equiv) fnc_fold.
 Proof.
-  - intros.
-    cbn in *. 
-    intuition.
-  - intros. cbn in *. intuition.
-  - intros c1 c2 Hc g1 g2 Hg _ _ _.
-    specialize (Hc (Good g1)).
-    rewrite Hg in *.
-    destruct (c1 (Good g2)) as (r1,((i1,l1),a1)),
-    (c2 (Good g2)) as (r2, ((i2, l2), a2)).
-    now destruct Hc as (_,(_,(_,Ha))).
-Defined.
+  intros acc1 acc2 Hacc (r1,l1) (r2,l2) (Hr, Hl).
+  cbn in *.
+  rewrite Hr, Hl.
+  destruct (R2dec_bool r2 (0,0)%R); intuition.
+Qed.  
 
-Set Printing Implicit.
 
 Definition rbg_fnc (s:spect_ILA) : R2*light
   :=
     (* on regarde quel est le robot à 0/0 *)
-    let (pos_n, light_n) := List.fold_left (fun acc (elt:R2*light) => let (pos, light) := elt in
-                                   if R2dec_bool pos (0,0)%R then
-                                     elt
-                                   else
-                                     acc) s ((0,0)%R,true) in
+    let (pos_n, light_n) := List.fold_left fnc_fold s ((0,0)%R,true) in
     (* on choisit la cible *)
     let cible := choose_cible s (pos_n, light_n) in
     match move_to s (fst cible) with
-    | Some x => (x,true)
-    | None => ((0,0)%R, false)
+    (* Si on a pu bouger, on change la position, et on est pas allumé *)
+    | Some x => (x,false)
+    (* si on a pas pu bouger, on change de couleur *)
+    | None => ((0,0)%R, true)
     end. 
+
+
+Instance rbg_compat : Proper (equiv ==> equiv) rbg_fnc.
+Proof.
+  intros s1 s2 Hs.
+  unfold rbg_fnc.
+  destruct (fold_left fnc_fold s1 (0%R, 0%R, true)) as (r1, l1) eqn : Hrl1.
+  destruct (fold_left fnc_fold s2 (0%R, 0%R, true)) as (r2, l2) eqn : Hrl2.
+  assert (Hequiv : (r1,l1) == (r2,l2)).  
+  { 
+    rewrite <- Hrl1, <- Hrl2.
+    apply (fold_left_compat fnc_fold_compat).
+    cbn in *. 
+    assumption. 
+    reflexivity.
+    }
+  destruct (move_to s1 (fst (choose_cible s1 (r1, l1)))) as [(rm1, lm1)|] eqn : Hm1;
+  destruct (move_to s2 (fst (choose_cible s2 (r2, l2)))) as [(rm2, lm2)|] eqn : Hm2;
+  assert (Hmcompat := move_to_compat Hs (fst_compat _ _ _ _ (choose_cible_compat Hs Hequiv)));
+  unfold light in *;
+  rewrite Hm1, Hm2 in Hmcompat;
+  simpl in *; try intuition.
+Qed.
+
+Definition rbg_ila : robogram :=
+  {| pgm := rbg_fnc |}.
+
+(* au lieu de def une DA, et de metttre des truc dans le contexte petit a petit, ecrire les propriété qu'on veut que la DA suive, les mettres dans un seul prédicat, et dire dans les lemmes qui suivent que la DA utilisée (ou le démon utilisé dans le cas des lemmes sur les execution) suit le prédicat *)
+Context {inactive_choice_ila : inactive_choice bool}.
+
+Definition da_ila := @demonic_action (R2*ILA) Loc State_ILA _ (R2*light) R2 bool bool robot_choice_RL Frame Choice _.
+
+Definition change_frame_not_dist (da:da_ila):= forall (config:config) g (loc:R2),
+    da.(change_frame) config g = loc ->
+    let (pos_c,_) := config (Good g) in
+    forall g',
+    let (pos_c',_) := config (Good g') in
+    dist pos_c pos_c' = dist loc (da.(change_frame) config g').
+
   
+Definition choose_update_close (da:da_ila) := forall config g rl,
+    da.(choose_update) config g rl = false ->
+    match (config (Good g)) with
+      (pos_c, (ident_c, light_c, alive_c)) =>
+      alive_c == false \/
+      exists g',
+        match (config (Good g')) with
+          (pos', (ident', light', alive')) =>
+          ident' < ident_c -> alive' = true -> (dist pos_c pos' <= D)%R
+        end
+    end.
+
+Definition da_predicat (da:da_ila) := (change_frame_not_dist da) /\ (choose_update_close da).
+
 (* 
 Lemma bourreau_non_coloré : forall (elt:ILA),
     let (x, D) := elt in
@@ -534,54 +527,105 @@ Notation execution := (@execution R2 _). *)
 (* pour tout ce qui est config initiale 
 ===============================================================================*)
 
-Context{ config_init :config }. (* @configuration ILA Loc State_ILA _}.*)
+(* faire la même chose que pour la DA/le démon, faire un predicat ""global"" *)
 
 (* tous les robots sont a plus de D dans la conf init *)
-Axiom config_init_not_close : forall id,
+Definition config_init_not_close (config_init:config) := forall id,
     match (config_init id) with
-      (pos, ident, light, alive) =>
+      (pos, ((ident, light), alive)) =>
       exists id',
       match config_init id' with
-        (pos', ident', light', alive') => 
+        (pos', ((ident', light'), alive')) => 
                 (dist pos pos' > D)%R end end.
 
 (* tout le monde est eteint au début *)
-Axiom config_init_off : forall id,
+Definition config_init_off (config_init:config) := forall id,
     match (config_init id) with
-      (_, _, light, _) => light = false
+      (_,(( _, light), _)) => light = false
     end.
 
 (* tout robot voit un robot inférieur, ou alors on est le robot 1. *)
-Axiom config_init_lower : forall id,
+Definition config_init_lower (config_init:config) := forall id,
     match (config_init id) with
-      (pos,ident,light,alive)
+      (pos,((ident,light),alive))
       => alive = true -> ident = 1 \/ exists id', match(config_init id') with
-                                             (pos',ident',_,alive') =>
+                                             (pos',((ident',_),alive')) =>
                                              alive' = true ->
                                              (dist pos pos' < Dmax)%R
                                            end
       end.
 
 
-(* le travail sur le demon/la demonic_action  *)
+Definition config_init_pred config :=
+  config_init_lower config
+  /\ config_init_off config
+  /\ config_init_not_close config.
+
+Definition demon_ila_type := @demon  (R2*ILA) Loc State_ILA _ (R2*light) R2 bool bool robot_choice_RL Frame Choice _.
+
+Definition demon_ILA (demon : demon_ila_type) := Stream.forever (Stream.instant da_predicat) demon.
 
 
-                                            
+Context {inactive_ila : @inactive_function (R2 * ILA) Loc State_ILA Robots bool
+         inactive_choice_ila}.
+
+Lemma bourreau_non_coloré : forall (exec: @execution (R2*ILA)%type Loc State_ILA _)
+                                   (demon:demon_ila_type) (config : config),
+    demon_ILA demon ->
+    config_init_pred config ->
+    exec = execute rbg_ila demon config ->
+    Stream.forever
+      (Stream.instant
+         (fun config => forall g g',
+              match (config (Good g)), (config (Good g')) with
+                (pos, ((ident, light), alive)), (pos', ((ident', light'), alive'))
+                => (dist pos pos' <= D)%R -> ident < ident' ->
+                   alive = alive' -> alive = true -> light = false
+         end)
+       ) exec.
 Proof.
-  unfold RealVectorSpace.
-  cbn.
-  intros x.
-
-Defined.
-
-  Context {sim_f_rila : @similarity ILA ILA_Setoid}.
-
-Context {change_frame_rila: config -> G -> R2}.
-
-Axiom change_frame_same_dist : forall config g1 g2,
-    
-
-Definition da_rila : demonic_action
-
-Definition demon_rila : Demon  
+  cofix Hcofix.
+  intros exec demon config_init Hdemon Hconfig Hexec.
+  split.
+  - simpl.
+    intros g g'.
+    destruct (@Stream.hd (@ident Robots -> R2 * (nat * bool * bool)) exec (@Good Robots g)) as (pos, ((ident,light), alive)) eqn : H_hd.
+    destruct (@Stream.hd (@Robots.ident Robots -> R2 * (nat * bool * bool)) exec (@Good Robots g')) as (pos', ((ident',light'), alive')) eqn : H_hd'. 
+    intros Hdist Hid Halive1 Halive2.
+    destruct Hconfig as (_, (Hoff, _)).
+    specialize (Hoff (Good g)).
+    rewrite Hexec in *.
+    simpl in *.
+    rewrite H_hd in *.
+    now simpl in *.    
+  (*assert (Hequiv_exec1 : @Stream.hd (@Robots.ident Robots -> R2 * (nat * bool * bool)) exec
+           (@Good Robots g) == (pos, (ident, light, alive))).
+    now rewrite H_hd.
+    cbn in Hexec.
+    destruct Hexec as (Hexec,_).
+    specialize (Hexec (Good g)).
+    Set Printing Implicit.
+    unfold configuration, ILA, identifiants, Top.light, Top.alive in *.
+    simpl in *.
+    destruct Hexec as (Hpos_exec, Hila_exec).
+    destruct Hequiv_exec1 as (Hpos_equiv, Hila_equiv).
+    unfold ILA, identifiants, Top.light, Top.alive in *.
+    destruct (@snd R2 (nat * bool * bool)
+                   (@Stream.hd (@Robots.ident Robots -> R2 * (nat * bool * bool))
+                      exec (@Good Robots g))) as ((i,l),a).
+    destruct ((config_init (@Good Robots g))) as (pos_c, ((ident_c, light_c), alive_c)).
+    simpl in *.
+    destruct Hila_exec as (_,(Hl1, _)).
+    destruct Hila_equiv as (_,(Hl2,_)).
+    now rewrite Hl1, Hl2 in *. 
+   *)
+  - rewrite Hexec in *.
+    unfold execute in *.
+    simpl in *.
+    split.
+    Focus 2.
+    simpl. 
+    apply 
+Qed.
   
+(* le travail sur le demon/la demonic_action  *)
