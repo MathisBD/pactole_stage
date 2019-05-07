@@ -569,6 +569,74 @@ Definition demon_ILA (demon : demon_ila_type) := Stream.forever (Stream.instant 
 Context {inactive_ila : @inactive_function (R2 * ILA) Loc State_ILA Robots bool
          inactive_choice_ila}.
 
+(* faire les invariant en tant que définition de Prop, puis faire une preuve de tous les invariant a une conf C -> tous les invariants a round C (et apres sur la conf init aussi). *)
+(* [cible vivlante] est une propriété sur une config qui suis tout les invariants *)
+
+
+
+
+
+Definition allume_a_porte :Prop := forall (conf:config) g g',
+     match conf (Good g), conf (Good g') with
+       (pos, ((ident,light), alive)), (pos', ((ident', light'), alive')) =>
+       alive == true /\ alive' == true ->
+       (dist pos pos' <= Dmax)%R -> light' == true
+       ->  exists g'', match conf (Good g'') with
+                         (pos'',(_,alive''))
+                         =>
+                         alive'' == true ->
+                         (dist pos pos'' <= Dp)%R 
+                       end
+       end.
+
+Definition etein_et_vivant := forall (conf : config) g,
+     match conf (Good g) with
+       (pos, ((ident,light), alive)) =>
+       alive == false -> light == true
+     end.
+
+
+Definition boureau_eteint : Prop := forall (conf : config) g g', 
+     match conf (Good g), conf (Good g') with
+       (pos, ((ident,light), alive)), (pos', ((ident', light'), alive')) =>
+       alive == true /\ alive' == true ->
+       ident < ident' -> (dist pos pos' <= D)%R -> light == false
+       end.
+
+Inductive robot_inferieur : config -> G -> Prop  :=
+  |Ri_Is_1 : forall conf g, 
+ match conf (Good g) with
+       (pos, ((ident,light), alive)) =>
+    ident == 1
+ end -> robot_inferieur conf g
+| Ri_Path_to_1 : forall (conf:config) g g',
+    match conf (Good g) with
+      (pos, ((ident,light), alive)) =>
+      match conf (Good g') with
+        (pos', ((ident', light'), alive')) =>
+        ident' < ident /\ alive'== true /\ alive == true /\
+        (dist pos' pos <= Dmax)%R
+      end
+    end
+    -> robot_inferieur conf g' -> robot_inferieur conf g.
+(* faire aussi toutes les propiété sur els volumes des robots, et la propriété de l'execution que si on a tous les invariants précédents, il n'y a aps de collision : il n'y a aps d'intersection sur les trajets de deux robots vivant avant et après le mouvement *)
+
+
+(*
+Lemma bourreau_bouge : forall (exec: @execution (R2*ILA)%type Loc State_ILA _)
+                              (demon:demon_ila_type) (config : config),
+    demon_ILA demon ->
+    config_init_pred config ->
+    exec = execute rbg_ila demon config ->
+    Stream.Always (Stream.instant (fun conf => forall g,
+              match (conf (Good g)), (conf (Good g')) with
+                (pos, ((ident, light), alive)), (pos', ((ident', light'), alive'))
+                => (dist pos pos' <= D)%R -> ident < ident' ->
+                   alive = alive' -> alive = true ->
+                   ~ (pos == Stream.hd (Stream.tl exec))end )) exec.*)
+
+
+(* DEPRECIATED---------------------------------------------------------------
 Lemma bourreau_non_coloré : forall (exec: @execution (R2*ILA)%type Loc State_ILA _)
                                    (demon:demon_ila_type) (config : config),
     demon_ILA demon ->
@@ -576,8 +644,8 @@ Lemma bourreau_non_coloré : forall (exec: @execution (R2*ILA)%type Loc State_IL
     exec = execute rbg_ila demon config ->
     Stream.forever
       (Stream.instant
-         (fun config => forall g g',
-              match (config (Good g)), (config (Good g')) with
+         (fun conf => forall g g',
+              match (conf (Good g)), (conf (Good g')) with
                 (pos, ((ident, light), alive)), (pos', ((ident', light'), alive'))
                 => (dist pos pos' <= D)%R -> ident < ident' ->
                    alive = alive' -> alive = true -> light = false
@@ -598,27 +666,6 @@ Proof.
     simpl in *.
     rewrite H_hd in *.
     now simpl in *.    
-  (*assert (Hequiv_exec1 : @Stream.hd (@Robots.ident Robots -> R2 * (nat * bool * bool)) exec
-           (@Good Robots g) == (pos, (ident, light, alive))).
-    now rewrite H_hd.
-    cbn in Hexec.
-    destruct Hexec as (Hexec,_).
-    specialize (Hexec (Good g)).
-    Set Printing Implicit.
-    unfold configuration, ILA, identifiants, Top.light, Top.alive in *.
-    simpl in *.
-    destruct Hexec as (Hpos_exec, Hila_exec).
-    destruct Hequiv_exec1 as (Hpos_equiv, Hila_equiv).
-    unfold ILA, identifiants, Top.light, Top.alive in *.
-    destruct (@snd R2 (nat * bool * bool)
-                   (@Stream.hd (@Robots.ident Robots -> R2 * (nat * bool * bool))
-                      exec (@Good Robots g))) as ((i,l),a).
-    destruct ((config_init (@Good Robots g))) as (pos_c, ((ident_c, light_c), alive_c)).
-    simpl in *.
-    destruct Hila_exec as (_,(Hl1, _)).
-    destruct Hila_equiv as (_,(Hl2,_)).
-    now rewrite Hl1, Hl2 in *. 
-   *)
   - rewrite Hexec in *.
     unfold execute in *.
     simpl in *.
@@ -627,5 +674,5 @@ Proof.
     simpl. 
     apply 
 Qed.
-  
+*)  
 (* le travail sur le demon/la demonic_action  *)
