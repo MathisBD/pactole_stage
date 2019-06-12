@@ -90,3 +90,15 @@ Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
 Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
 
+(** Notations for composition and inverse *)
+Class Composition T `{Setoid T} := {
+  compose : T -> T -> T;
+  compose_compat :> Proper (equiv ==> equiv ==> equiv) compose }.
+Infix "∘" := compose (left associativity, at level 40).
+Arguments Composition T {_}.
+
+Class Inverse T `{Setoid T} := {
+  inverse : T -> T;
+  inverse_compat :> Proper (equiv ==> equiv) inverse }.
+Notation "bij ⁻¹" := (inverse bij) (at level 39).
+Arguments Inverse T {_}.

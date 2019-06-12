@@ -293,7 +293,7 @@ Lemma lift_update_swap : forall da config1 config2 g target,
             (lift_path (frame_choice_bijection (change_frame da config1 g ⁻¹)) target)
             (choose_update da config2 g target)).
 Proof.
-intros da config1 config2 g target. cbn -[Similarity.inverse]. unfold id.
+intros da config1 config2 g target. cbn -[inverse]. unfold id.
 rewrite Similarity.dist_prop, Rmult_1_l.
 destruct_match_eq Hle; destruct_match_eq Hle'; try reflexivity; [|];
 rewrite Rle_bool_true_iff, Rle_bool_false_iff in *;
@@ -326,7 +326,7 @@ apply no_byz_eq. intro g. cbn beta iota zeta.
 assert (supp_nonempty := support_non_nil config).
 assert (Hda := similarity_center da config g).
 remember (change_frame da config g) as sim.
-change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
+change (inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 Local Opaque lift. Local Opaque map_config.
 assert (Hperm : PermutationA (equiv * eq)%signature
@@ -344,16 +344,15 @@ rewrite map_map, <- (map_map (fun xn => (fst xn, INR (snd xn))) (fun xn => (sim 
 apply barycenter_compat, paths_in_R2_compat in Hperm.
 rewrite barycenter_sim_morph in Hperm;
 try (intro Habs; apply map_eq_nil in Habs; rewrite HeqE, elements_nil in Habs; now apply spect_non_nil in Habs); [].
-(* change precondition with (fun _ : location -> location => True) in Hperm. *)
 subst sim. changeR2.
 rewrite lift_update_swap, <- Hperm.
 remember (change_frame da config g) as sim.
 remember (List.map (fun xn : location * nat => (fst xn, INR (snd xn))) E) as E'.
-change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
 assert (lift_path (frame_choice_bijection (sim ⁻¹)) (paths_in_R2 (sim (barycenter E')))
         == straight_path (get_location (config (Good g))) (barycenter E')).
 { intro r. cbn [path_f lift_path straight_path paths_in_R2 local_straight_path].
-  rewrite (sim_mul (sim⁻¹)). changeR2.
+simpl frame_choice_bijection.
+  assert (Heq := sim_mul (sim ⁻¹) r). rewrite Heq. clear Heq. changeR2.
   change (sim ⁻¹ (sim (barycenter E')))%VS with ((sim ⁻¹ ∘ sim) (barycenter E'))%VS.
   rewrite Similarity.compose_inverse_l. change (Similarity.id (barycenter E')) with (barycenter E').
   rewrite Hda. unfold Rminus.

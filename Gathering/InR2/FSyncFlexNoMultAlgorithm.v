@@ -304,7 +304,7 @@ Lemma lift_update_swap : forall da config1 config2 g target,
             (lift_path (frame_choice_bijection (change_frame da config1 g ⁻¹)) target)
             (choose_update da config2 g target)).
 Proof.
-intros da config1 config2 g target. cbn -[Similarity.inverse]. unfold id.
+intros da config1 config2 g target. cbn -[inverse]. unfold id.
 rewrite Similarity.dist_prop, Rmult_1_l.
 destruct_match_eq Hle; destruct_match_eq Hle'; try reflexivity; [|];
 rewrite Rle_bool_true_iff, Rle_bool_false_iff in *;

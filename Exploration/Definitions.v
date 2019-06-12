@@ -28,7 +28,7 @@ Section ExplorationDefs.
 (** Definition of the ring. *)
 Context {RR : RingSpec}.
 (* We do not care about threshold values, so we just take 1/2 everywhere. *)
-Instance Ring : FiniteGraph _ _ := nothresholdRing.
+Existing Instance localRing.
 Notation ring_node := (finite_node ring_size).
 (* NB: These instances will be replaced by the glob_* ones so they are local. *)
 
@@ -40,19 +40,20 @@ Context {Robots : Names}.
 Local Instance Loc : Location := {
   location := ring_node;
   location_Setoid := V_Setoid;
-  location_EqDec := V_EqDec (Graph := Ring) }.
+  location_EqDec := V_EqDec (Graph := localRing) }.
 
 (** Robot only decide in which direction they want to move *)
 Local Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
 
 (** States of robots only contains their location. *)
 Local Existing Instance OnlyLocation.
+Local Existing Instance proj_graph.
 
 (** Demon's frame choice: we move back the robot to the origin with a translation
                           and we can choose the orientation of the ring. *)
 Local Instance FC : frame_choice (Z * bool) := {
   frame_choice_bijection :=
-    fun nb => if snd nb then compose (Ring.trans (fst nb)) (Ring.sym (fst nb))
+    fun nb => if snd nb then @compose _ _ IsoComposition (Ring.trans (fst nb)) (Ring.sym (fst nb))
                         else Ring.trans (fst nb);
   frame_choice_Setoid := eq_setoid _ }.
 

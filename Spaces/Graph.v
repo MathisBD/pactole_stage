@@ -47,4 +47,4 @@ Instance finite_node_EqDec n : EqDec (finite_node_Setoid n) := @Robots.subset_de
 
 Definition FiniteGraph (n : nat) E := Graph (finite_node n) E.
 Existing Class FiniteGraph.
-Identity Coercion proj_graph : FiniteGraph >-> Graph.
+Global Identity Coercion proj_graph : FiniteGraph >-> Graph.

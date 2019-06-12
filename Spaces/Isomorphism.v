@@ -72,7 +72,7 @@ Proof.
 Defined.
 
 
-Definition compose (f g : isomorphism) : isomorphism.
+Definition comp (f g : isomorphism) : isomorphism.
 refine {|
     iso_V := compose f.(iso_V) g.(iso_V);
     iso_E := compose f.(iso_E) g.(iso_E);
@@ -84,17 +84,18 @@ Proof.
 + intro. simpl. now rewrite 2 iso_bound_T.
 Defined.
 
-Infix "∘" := compose (left associativity, at level 59).
+Global Instance IsoComposition : Composition isomorphism := { compose := comp }.
+Proof. intros f1 f2 Hf g1 g2 Hg. repeat split; intro; simpl; now rewrite Hf, Hg. Defined.
 
-Global Instance compose_compat : Proper (equiv ==> equiv ==> equiv) compose.
-Proof. intros f1 f2 Hf g1 g2 Hg. repeat split; intro; simpl; now rewrite Hf, Hg. Qed.
+(* Global Instance compose_compat : Proper (equiv ==> equiv ==> equiv) compose.
+Proof. intros f1 f2 Hf g1 g2 Hg. repeat split; intro; simpl; now rewrite Hf, Hg. Qed. *)
 
 Lemma compose_assoc : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
 Proof. intros f g h; repeat split; simpl; reflexivity. Qed.
 
 Set Printing Implicit.
 
-Definition inverse (iso : isomorphism) : isomorphism.
+Definition inv (iso : isomorphism) : isomorphism.
   refine {| iso_V := inverse iso.(iso_V);
             iso_E := inverse iso.(iso_E);
             iso_T := inverse iso.(iso_T)
@@ -120,10 +121,17 @@ Proof.
   now rewrite section_retraction in Hbound.
 Defined.
 
-Notation "s ⁻¹" := (inverse s) (at level 99).
+Global Instance IsoInverse : Inverse isomorphism := { inverse := inv }.
+Proof.
+intros f g [? [? ?]].
+repeat split; intro; simpl; change eq with (@equiv R _); f_equiv; auto.
+Defined.
 
-Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
-Proof. intros f g [? [? ?]]. repeat split; intro; simpl; change eq with (@equiv R _); f_equiv; auto. Qed.
+(* Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
+Proof.
+intros f g [? [? ?]].
+repeat split; intro; simpl; change eq with (@equiv R _); f_equiv; auto.
+Qed. *)
 
 Lemma compose_inverse_l : forall iso : isomorphism, iso ⁻¹ ∘ iso == id.
 Proof. intro. repeat split; intro; simpl; try now rewrite retraction_section; autoclass. Qed.

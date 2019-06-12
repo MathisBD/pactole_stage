@@ -98,15 +98,18 @@ Definition id {T} `{RealMetricSpace T} : similarity T := {|
   dist_prop := ltac:(intros; simpl; now rewrite Rmult_1_l) |}. (* TODO: make abstract work *)
 
 (** Composition of similarities *)
-Definition compose {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
+Definition comp {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
 refine {|
-  sim_f := compose f g;
+  sim_f := @compose (Bijection.bijection T) _ _ f g;
   zoom := f.(zoom) * g.(zoom); |}.
-Proof. simpl. abstract (intros; rewrite f.(dist_prop), g.(dist_prop); ring). Defined.
-Global Infix "∘" := compose (left associativity, at level 40).
+Proof. abstract (intros; simpl; rewrite f.(dist_prop), g.(dist_prop); ring). Defined.
 
-Global Instance compose_compat `{RealMetricSpace} : Proper (equiv ==> equiv ==> equiv) compose.
-Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed.
+Instance SimilarityComposition {T} `{RealMetricSpace T} : Composition (similarity T) :=
+  { compose := comp }.
+Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Defined.
+
+(* Global Instance compose_compat `{RealMetricSpace} : Proper (equiv ==> equiv ==> equiv) compose.
+Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed. *)
 
 Lemma compose_assoc `{RealMetricSpace} : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
 Proof. repeat intro. reflexivity. Qed.
@@ -118,7 +121,7 @@ Lemma compose_id_r `{RealMetricSpace} : forall sim, sim ∘ id == sim.
 Proof. intros sim x. simpl. reflexivity. Qed.
 
 (** Inverse of a similarity *)
-Definition inverse {T} `{RealMetricSpace T} (sim : similarity T) : similarity T.
+Definition inv {T} `{RealMetricSpace T} (sim : similarity T) : similarity T.
 refine {| sim_f := inverse sim.(sim_f);
           zoom := /sim.(zoom) |}.
 Proof.
@@ -126,10 +129,13 @@ assert (sim.(zoom) <> 0) by apply zoom_non_null.
 intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
 rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
 Defined.
-Global Notation "s ⁻¹" := (inverse s) (at level 39).
 
-Global Instance inverse_compat `{RealMetricSpace} : Proper (equiv ==> equiv) inverse.
-Proof. intros f g Hfg x. simpl. now f_equiv. Qed.
+Instance SimilarityInverse {T} `{RealMetricSpace T} : Inverse (similarity T) :=
+  { inverse := inv }.
+Proof. intros f g Hfg x. simpl. now f_equiv. Defined.
+
+(* Global Instance inverse_compat `{RealMetricSpace} : Proper (equiv ==> equiv) inv.
+Proof. intros f g Hfg x. simpl. now f_equiv. Qed. *)
 
 Lemma compose_inverse_l {T} `{RealMetricSpace T} : forall sim : similarity T, (sim ⁻¹ ∘ sim) == id.
 Proof. intros sim x. simpl. now rewrite retraction_section; autoclass. Qed.

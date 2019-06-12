@@ -399,8 +399,9 @@ repeat split; try reflexivity; [].
 repeat destruct_match; tauto.
 Qed.
 
+Print Instances Composition.
 Lemma sym_involutive : forall c,
-  @equiv _ isomorphism_Setoid (compose (sym c) (sym c)) Isomorphism.id.
+  @equiv _ isomorphism_Setoid (@compose _ _ IsoComposition (sym c) (sym c)) Isomorphism.id.
 Proof.
 intro c. split; [| split; [| simpl; reflexivity]].
 + intro x. apply eq_proj1. cbn -[of_Z]. rewrite Z2Z. unfold of_Z. simpl.

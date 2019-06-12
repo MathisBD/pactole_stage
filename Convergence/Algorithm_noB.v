@@ -187,12 +187,12 @@ intros da config HSSYNC. rewrite SSYNC_round_simplify; trivial; [].
 intro id. pattern id. apply no_byz. clear id. intro g.
 unfold round. destruct_match; try reflexivity; [].
 remember (change_frame da config g) as sim.
-change (Bijection.section (Bijection.inverse (frame_choice_bijection sim)))
+change (Bijection.section (inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
-cbn -[equiv location mul map_config lift precondition Similarity.inverse].
+cbn -[equiv location mul map_config lift precondition inverse].
 unfold convergeR2_pgm. simpl map_config at 2. unfold id.
 rewrite <- spect_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
-cbn -[Similarity.inverse isobarycenter equiv].
+cbn -[inverse isobarycenter equiv].
 rewrite spect_from_config_ignore_snd, isobarycenter_sim_morph.
 + now simpl; rewrite Bijection.retraction_section.
 + rewrite elements_nil. apply spect_non_empty.

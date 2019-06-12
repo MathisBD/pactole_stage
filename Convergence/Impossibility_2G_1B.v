@@ -76,7 +76,8 @@ Hint Extern 0 (1 <> 0)%R => apply R1_neq_R0.
 Hint Extern 0 (0 <> 1)%R => intro; apply R1_neq_R0; now symmetry.
 Hint Extern 0 (~@equiv R _ 1 0)%R => apply R1_neq_R0.
 Hint Extern 0 (~@equiv R _ 0 1)%R => intro; apply R1_neq_R0; now symmetry.
-Hint Extern 0 (_ <> _) => match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
+Hint Extern 0 (_ <> _) =>
+  match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
 Hint Extern 0 (~equiv R _ _ _) =>
   match goal with | H : ~@equiv R _ ?x ?y |- ~@equiv R _ ?y ?x => intro; apply H; now symmetry end.
 
@@ -131,7 +132,8 @@ Open Scope R_scope.
 
 (** Expressing that all good robots are confined in a small disk. *)
 Definition imprisoned (center : R) (radius : R) (e : execution) : Prop :=
-  Stream.forever (Stream.instant (fun config => forall g, dist center (get_location (config (Good g))) <=radius)) e.
+  Stream.forever (Stream.instant 
+    (fun config => forall g, dist center (get_location (config (Good g))) <=radius)) e.
 
 (** The execution will end in a small disk. *)
 Definition attracted (c : R) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
@@ -287,7 +289,8 @@ intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
     - now rewrite <- NoDupA_Leibniz.
     - rewrite in_app_iff in Hin. intro Heq. subst. intuition. }
   destruct Hdup as [Hal [Hzl [Hl Haz]]].
-  assert (Hlen' : (length l = 2 * n)%nat). { simpl in Hlen. rewrite app_length in Hlen. simpl in *. omega. }
+  assert (Hlen' : (length l = 2 * n)%nat).
+  { simpl in Hlen. rewrite app_length in Hlen. simpl in *. omega. }
   cbn [map]. rewrite map_app. cbn [map].
    destruct (in_dec Geq_dec a (a :: half1 l)) as [_ | Habs].
    destruct (in_dec Geq_dec z (a :: half1 l)) as [Habs | _].
@@ -360,8 +363,9 @@ Proof. intros pt pt' Hpt x. simpl. rewrite Hpt. ring. Qed.
 Lemma swap_spect2_spect1 : MMultisetExtraOps.map (swap 1) spectrum2 == spectrum1.
 Proof.
 intro pt. unfold spectrum1, spectrum2, swap. rewrite map_add, map_singleton; autoclass.
-simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 0). ring_simplify (1 + -1 * (0 + -(1)) + -(1)).
-simpl ((translation (opp 1) ∘ homothecy 1 minus_1) 1). ring_simplify (1 + -1 * (1 + -(1)) + -(1)).
+cbn -[add singleton].
+ring_simplify (1 + -1 * (0 + -(1)) + -(1)).
+ring_simplify (1 + -1 * (1 + -(1)) + -(1)).
 destruct (Rdec pt 0); [| destruct (Rdec pt 1)]; subst;
 repeat rewrite ?add_same, ?singleton_same, ?singleton_other, ?add_other; auto.
 Qed.
@@ -377,7 +381,8 @@ Definition activate1 (id : ident) :=
     | Byz b => true
   end.
 
-Definition change_frame1 config g : similarity location := translation (opp (get_location (config (Good g)))).
+Definition change_frame1 config g : similarity location :=
+  translation (opp (get_location (config (Good g)))).
 
 Definition bad_da1 : demonic_action.
 refine {|
@@ -476,9 +481,9 @@ Section PropRobogram.
 Variable r : robogram.
 Hypothesis sol : solution r.
 
-(** In any spectrum containing a tower of size at least [nG], the robogram does not make robots move.
-    Indeed, otherwise they all go to the same location and we can build a demon that shift byzantine robots
-    by the same amount in order to get the same translated configuration. *)
+(** In any spectrum containing a tower of size at least [nG], the robogram does not make robots
+    move.  Indeed, otherwise they all go to the same location and we can build a demon that shift
+    byzantine robots by the same amount in order to get the same translated configuration. *)
 
 Definition shifting_da (pt : R) : demonic_action.
 simple refine {| activate := fun _ => true;
@@ -496,7 +501,8 @@ Proof.
 Defined.
 
 (** A demon that shifts byzantine robots by d each round. *)
-CoFixpoint shifting_demon d pt := Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
+CoFixpoint shifting_demon d pt :=
+  Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
 Proof.
@@ -517,14 +523,17 @@ Definition config0 pt : configuration := fun id =>
 CoFixpoint shifting_execution d pt := Stream.cons (config0 pt) (shifting_execution d (pt + d)).
 
 Lemma spectrum_config0 : forall pt : location,
-  @equiv spectrum _ (!! (map_config (lift (existT precondition (translation (opp pt)) I)) (config0 pt))) spectrum1.
+  @equiv spectrum _
+    (!! (map_config (lift (existT precondition (translation (opp pt)) I)) (config0 pt)))
+    spectrum1.
 Proof.
 intros pt x. unfold config0, spectrum1.
 rewrite spect_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
 rewrite map_map, map_app, map_map, map_map, countA_occ_app.
 rewrite (map_ext_in _ (fun _ : G => 0)), (map_ext_in _ (fun _ : B => 1)).
-+ do 2 rewrite map_cst. destruct (equiv_dec x 0) as [Hx | Hnx]; [| destruct (equiv_dec x 1) as [Hx | Hnx']].
++ do 2 rewrite map_cst.
+  destruct (equiv_dec x 0) as [Hx | Hnx]; [| destruct (equiv_dec x 1) as [Hx | Hnx']].
   - rewrite Hx, countA_occ_alls_in, Gnames_length; autoclass.
     rewrite countA_occ_alls_out; auto.
     rewrite add_same, singleton_other; auto.
@@ -549,7 +558,8 @@ Section AbsurdMove.
 Definition move := r spectrum1.
 Hypothesis absurdmove : move <> 0.
 
-Lemma round_move : forall pt, round r (shifting_da (pt + move + 1)) (config0 pt) == config0 (pt + move).
+Lemma round_move : forall pt,
+  round r (shifting_da (pt + move + 1)) (config0 pt) == config0 (pt + move).
 Proof.
 intros pt id. unfold round. cbn -[fst spect_from_config].
 destruct id as [g | b].
@@ -569,7 +579,8 @@ constructor.
 + simpl. apply shift_exec. now rewrite <- round_move, Heq.
 Qed.
 
-Theorem keep_moving : forall pt, execute r (shifting_demon move pt) (config0 pt) == shifting_execution move pt.
+Theorem keep_moving : forall pt,
+  execute r (shifting_demon move pt) (config0 pt) == shifting_execution move pt.
 Proof. intro. apply keep_moving_by_eq. reflexivity. Qed.
 
 Theorem absurd : False.

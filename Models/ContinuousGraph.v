@@ -36,10 +36,10 @@ Instance LocationV : Location := { location := V }.
 (** We do not want to use the default equivalence on [E]
     because we only need equality of source, target and threshold on the edge. *)
 Global Instance E_src_tgt_thd_Setoid : Setoid E :=
-  @inter_Setoid E (@inter_Setoid E (compose_Setoid src) (compose_Setoid tgt))
-                  (compose_Setoid threshold).
+  @inter_Setoid E (@inter_Setoid E (precompose_Setoid src) (precompose_Setoid tgt))
+                  (precompose_Setoid threshold).
 Global Instance E_src_tgt_thd_EqDec : EqDec E_src_tgt_thd_Setoid :=
-  inter_EqDec (inter_EqDec (compose_EqDec src) (compose_EqDec tgt)) (compose_EqDec threshold).
+  inter_EqDec (inter_EqDec (precompose_EqDec src) (precompose_EqDec tgt)) (precompose_EqDec threshold).
 
 Global Instance E_subrelation : subrelation (@equiv E E_Setoid) (@equiv E E_src_tgt_thd_Setoid).
 Proof. intros ? ? Heq. split; simpl; now rewrite Heq. Qed.

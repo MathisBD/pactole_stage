@@ -721,6 +721,7 @@ Lemma build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hd
 Proof.
 intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x.
 unfold build_similarity.
+cbn -[equiv translation add opp homothecy rotation].
 rewrite <- rotation_from_points_opp, 2 opp_distr_add, 2 opp_opp, (add_comm _ pt2), (add_comm _ pt4).
 (*
 cbn -[rotation homothecy].
@@ -795,20 +796,19 @@ Qed.
 Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
 Proof.
-intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34 x.
+intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34.
 unfold build_similarity. repeat rewrite inverse_compose.
-cbn -[inverse rotation translation homothecy add opp equiv].
-change ((homothecy origin (build_sim_aux Hdiff34 Hdiff12)) ((translation (- pt3)%VS) x))%VS
-  with (0 + dist pt2 pt1 / dist pt4 pt3 * (x - pt3 - origin))%VS.
-rewrite rotation_from_points_inverse, 2 translation_inverse.
-rewrite add_origin_l, opp_origin, add_origin, opp_opp.
+rewrite 2 translation_inverse, opp_opp.
+repeat rewrite compose_assoc. apply (compose_compat); try reflexivity; [].
+repeat rewrite <- compose_assoc. apply compose_compat; try reflexivity; [].
+intro x. unfold homothecy.
+cbn -[rotation translation homothecy add opp equiv dist mul].
+rewrite add_origin_l, opp_origin, 3 add_origin.
 rewrite rotation_from_points_mul.
-change ((translation (- pt3)%VS) x) with (x - pt3)%VS.
-remember ((rotation_from_points (pt4 - pt3) (pt2 - pt1)) (x - pt3)%VS) as pt.
-f_equiv.
-change (/ (norm (pt4 - pt3) / norm (pt2 - pt1)) * (pt - 0) + 0 == dist pt2 pt1 / dist pt4 pt3 * pt)%VS.
-rewrite <- 2 norm_dist, opp_origin, 2 add_origin.
-f_equiv. field. rewrite 2 dist_defined. auto.
+apply mul_compat.
+- field. rewrite 2 dist_defined. auto.
+- unfold rotation_from_points. cbn -[equiv add opp]. f_equiv.
+  symmetry. apply angle_from_points_swap.
 Qed.
 
 
@@ -1173,8 +1173,7 @@ assert (Hsim' : forall u v, inner_product (sim' u) (sim' v) = (Similarity.zoom s
 assert (Hsim : sim == translation (sim origin) ∘ sim').
 { unfold sim'. rewrite Similarity.compose_assoc.
   rewrite <- Similarity.compose_id_l at 1.
-  rewrite <- Similarity.compose_inverse_r.
-  do 2 f_equiv. apply Similarity.translation_inverse. }
+  now rewrite <- Similarity.compose_inverse_r, Similarity.translation_inverse. }
 rewrite Hsim at -5. cbn -[add opp mul sim' inner_product].
 repeat rewrite ?inner_product_add_l, ?inner_product_add_r, ?inner_product_opp,
                ?inner_product_opp_l, ?inner_product_opp_r, Hsim'.
@@ -1323,8 +1322,7 @@ assert (Hsim' : isobarycenter (map sim' l) == sim' (isobarycenter l)).
 assert (Hsim : sim == translation (sim origin) ∘ sim').
 { unfold sim'. rewrite Similarity.compose_assoc.
   rewrite <- Similarity.compose_id_l at 1.
-  rewrite <- Similarity.compose_inverse_r.
-  do 2 f_equiv. apply Similarity.translation_inverse. }
+  now rewrite <- Similarity.compose_inverse_r, Similarity.translation_inverse. }
 rewrite Hsim at 2.
 change ((translation (sim origin) ∘ sim') (isobarycenter l))
   with (translation (sim origin) (sim' (isobarycenter l))).
@@ -1354,8 +1352,7 @@ Proof.
     unfold weighted_sqr_dist_sum.
     change p with (Similarity.id p).
     rewrite <- (Similarity.compose_inverse_r sim) with (x := p) by apply eq_equiv.
-    change ((Similarity.compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
-
+    change ((compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
     assert (Hfold_dist_prop: forall pt init,
               fold_left (fun acc pt' => acc + snd pt'* (dist (sim pt) (fst pt'))²)
                         (List.map (fun xn => (Bijection.section (Similarity.sim_f sim) (fst xn), snd xn)) m) init
@@ -1617,7 +1614,7 @@ Proof.
 intros sim pt1 pt2 pt3. eapply bary3_unique.
 + apply bary3_spec.
 + intro p. change p with (Similarity.id p). rewrite <- (Similarity.compose_inverse_r sim).
-  change ((Similarity.compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
+  change ((compose sim (sim ⁻¹)) p) with (sim ((sim ⁻¹) p)).
   repeat rewrite sim.(Similarity.dist_prop), R_sqr.Rsqr_mult. repeat rewrite <- Rmult_plus_distr_l.
   apply Rmult_le_compat_l.
   - apply Rle_0_sqr.

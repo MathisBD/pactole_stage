@@ -42,6 +42,9 @@ Defined.
 Global Instance section_full_compat : Proper (equiv ==> (equiv ==> equiv)) section.
 Proof. intros f g Hfg x y Hxy. rewrite Hxy. now apply Hfg. Qed.
 
+Global Instance retraction_compat : Proper (equiv ==> (equiv ==> equiv)) retraction.
+Proof. intros f g Hfg x y Hxy. now rewrite <- f.(Inversion), Hxy, Hfg, g.(Inversion). Qed.
+
 (** The identity bijection *)
 Definition id := {|
   section := fun x => x;
@@ -50,32 +53,41 @@ Definition id := {|
   Inversion := ltac:(easy) |}.
 
 (** Composition of bijections *)
-Definition compose (f g : bijection) : bijection.
+Definition comp (f g : bijection) : bijection.
 refine {| section := fun x => f (g x);
           retraction := fun x => g.(retraction) (f.(retraction) x) |}.
 Proof.
 + abstract (intros x y Hxy; now apply f.(section_compat), g.(section_compat)).
 + abstract (intros x y; now rewrite f.(Inversion), <- g.(Inversion)).
 Defined.
-Infix "∘" := compose (left associativity, at level 40).
 
+Global Instance BijectionComposition : Composition bijection := { compose := comp }.
+Proof.
+intros f1 f2 Hf g1 g2 Hg x. cbn -[equiv].
+rewrite (Hf (g1 x)). f_equiv. apply Hg.
+Defined.
+(*
+Global Instance compose_compat : Proper (equiv ==> equiv ==> equiv) compose.
+Proof.
+intros f1 f2 Hf g1 g2 Hg x. cbn -[equiv].
+rewrite (Hf (g1 x)). f_equiv. apply Hg.
+Qed.
+*)
 Lemma compose_assoc : forall f g h : bijection, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
 Proof. repeat intro. reflexivity. Qed.
 
 (** Properties about inverse functions *)
-Global Instance retraction_compat : Proper (equiv ==> (equiv ==> equiv)) retraction.
-Proof. intros f g Hfg x y Hxy. now rewrite <- f.(Inversion), Hxy, Hfg, g.(Inversion). Qed.
-
-Definition inverse (bij : bijection) : bijection.
+Definition inv (bij : bijection) : bijection.
 refine {| section := bij.(retraction);
           retraction := bij.(section) |}.
 Proof. abstract (intros; rewrite bij.(Inversion); reflexivity). Defined.
 
-Notation "bij ⁻¹" := (inverse bij) (at level 39).
-
+Global Instance BijectionInverse : Inverse bijection := { inverse := inv }.
+Proof. repeat intro. simpl. now f_equiv. Defined.
+(*
 Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
 Proof. repeat intro. simpl. now f_equiv. Qed.
-
+*)
 Lemma retraction_section : forall (bij : bijection) x, bij.(retraction) (bij.(section) x) == x.
 Proof. intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
 

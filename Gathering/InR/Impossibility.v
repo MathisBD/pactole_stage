@@ -363,7 +363,7 @@ unfold change_frame1. intros config1 config2 Heq gg g ?. subst gg.
 destruct (invalid_dec config1) as [H1 | ?],
          (invalid_dec config2) as [H2 | ?];
 try reflexivity || (apply invalid_compat in Heq; tauto); [].
-f_equiv. apply invalid_spect_compat; trivial; now rewrite Heq.
+apply inverse_compat, invalid_spect_compat; trivial; now rewrite Heq.
 Qed.
 
 (** A demon swapping both towers *)
@@ -738,7 +738,7 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
     - simpl in *; congruence.
   + change (Similarity.id == build_similarity Hdiff' neq_0_1 ∘ sim).
     assert (Hsim' : sim⁻¹ == build_similarity Hdiff' neq_0_1).
-    { rewrite <- (build_similarity_inverse neq_0_1 Hdiff'). now f_equiv. }
+    { rewrite <- (build_similarity_inverse neq_0_1 Hdiff'). now apply inverse_compat. }
     rewrite <- Hsim'. symmetry. apply compose_inverse_l.
 * assert (Hsim1 : get_location (config (Good g)) == sim 1).
   { assert (Hin := pos_in_config config origin (Good g)).
@@ -847,7 +847,7 @@ destruct (get_location (config (Good g)) =?= get_location (config (Good g0))) as
       now apply build_similarity_compat.
   + change (Similarity.id == build_similarity (symmetry Hcase) neq_1_0 ∘ sim).
     assert (Hsim' : sim⁻¹ == build_similarity (symmetry Hcase) neq_1_0).
-    { rewrite <- build_similarity_inverse, Hsim. f_equiv. now apply build_similarity_compat. }
+    { rewrite <- build_similarity_inverse, Hsim. now apply inverse_compat, build_similarity_compat. }
     rewrite <- Hsim'. symmetry. apply compose_inverse_l.
 Qed.
 

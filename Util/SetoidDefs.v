@@ -150,7 +150,7 @@ Definition inter_compat_r {T U} {S1 S2 : Setoid T} `{Setoid U} : forall f : T ->
 Proof. intros f Hf x y Heq. apply Hf, Heq. Qed.
 
 (** Setoid by precomposition *)
-Definition compose_Equivalence T U R (E : @Equivalence U R) :
+Definition precompose_Equivalence T U R (E : @Equivalence U R) :
   forall f : T -> U, Equivalence (fun x y => R (f x) (f y)).
 Proof. split.
 + intro. reflexivity.
@@ -159,13 +159,13 @@ Proof. split.
 Qed.
 
 (* TODO: set it as an instance and fix all the typeclass search loops that appear *)
-Definition compose_Setoid {T U} (f : T -> U) {S : Setoid U} : Setoid T := {|
+Definition precompose_Setoid {T U} (f : T -> U) {S : Setoid U} : Setoid T := {|
   equiv := fun x y => f x == f y;
-  setoid_equiv := compose_Equivalence setoid_equiv f |}.
+  setoid_equiv := precompose_Equivalence setoid_equiv f |}.
 
-Definition compose_EqDec {T U} (f : T -> U) `{EqDec U}
-  : EqDec (compose_Setoid f) := fun x y => f x =?= f y.
+Definition precompose_EqDec {T U} (f : T -> U) `{EqDec U}
+  : EqDec (precompose_Setoid f) := fun x y => f x =?= f y.
 
-Definition compose_compat {T U} (f : T -> U) `{Setoid U} :
-  Proper (@equiv T (compose_Setoid f) ==> equiv) f.
+Definition precompose_compat {T U} (f : T -> U) `{Setoid U} :
+  Proper (@equiv T (precompose_Setoid f) ==> equiv) f.
 Proof. intros x y Heq. apply Heq. Qed.

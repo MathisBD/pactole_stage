@@ -666,7 +666,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   simpl List.map in Hperm. apply (PermutationA_length1 _) in Hperm. destruct Hperm as [y [Hy Hperm]].
   rewrite Hperm. hnf in Hy |- *. subst y. rewrite Hsim.
 (*   assert (Heq : 1 * (k * (pt' - center sim)) / k = pt' - center sim) by now simpl; field. *)
-  change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
+  change (inverse (frame_choice_bijection sim)) with (frame_choice_bijection (sim ⁻¹)).
   rewrite Hinvsim.
   simpl. unfold id, ES, VS. field.
   destruct Hk; subst; try apply Ropp_neq_0_compat; apply Similarity.zoom_non_null.

@@ -112,7 +112,7 @@ Proof.
 + intros config g. exists (proj1_sig (change_frame da (config_G2V config) g)).
   split; try reflexivity; []. apply (@proj2_sig _ stable_threshold).
 + intros config g.
-  exists (Isomorphism.inverse (proj1_sig (change_frame da (config_G2V config) g))).
+  exists (inverse (proj1_sig (change_frame da (config_G2V config) g))).
   split; try reflexivity; []. cbn -[equiv]. apply stable_threshold_inverse, proj2_sig.
 + intros config1 config2 Hconfig gg g ?. subst gg. now rewrite Hconfig.
 + intros config1 config2 Hconfig gg g ? traj1 traj2 Htraj. subst gg. now rewrite Hconfig, Htraj.
@@ -150,7 +150,7 @@ try exact G; autoclass.
 Proof.
 + intros config g. exists (proj1_sig (change_frame da (config_V2G config) g)).
   split; try reflexivity; []. apply proj2_sig.
-+ intros config g. exists (Isomorphism.inverse (proj1_sig (change_frame da (config_V2G config) g))).
++ intros config g. exists (inverse (proj1_sig (change_frame da (config_V2G config) g))).
   split; try reflexivity; []. apply stable_threshold_inverse, proj2_sig.
 + intros config1 config2 Hconfig gg g ?. subst gg. now rewrite Hconfig.
 + intros config1 config2 Hconfig gg g ? pt1 pt2 Hpt.
@@ -736,13 +736,14 @@ simpl activate. destruct_match_eq Hactive.
          change (Bijection.retraction (iso_E Diso)) with (Bijection.section (iso_E (inverse Diso))).
          symmetry. etransitivity; try apply (iso_E_compat (inverse Ciso)), He; [].
          apply E_subrelation. f_equiv.
-         now apply Isomorphism.iso_E_compat, inverse_compat.
+         apply Isomorphism.iso_E_compat. clear -Hiso. now apply inverse_compat.
       -- simpl snd. etransitivity; try apply HCisoE; [].
          change (Bijection.retraction (iso_E Diso)) with (Bijection.section (iso_E (inverse Diso))).
          symmetry. etransitivity; try apply (iso_E_compat (inverse Ciso)), He; [].
          apply E_subrelation. f_equiv.
          now apply Isomorphism.iso_E_compat, inverse_compat.
       -- unfold equiv. cbn -[equiv Dnew_local_state inverse].
+         change (iso_E Diso ⁻¹) with (iso_E (Diso ⁻¹)).
          rewrite <- 2 iso_threshold.
          rewrite (proj2 (projT2 (precondition_satisfied_inv da config g))),
                  (proj2 (projT2 (precondition_satisfied_inv (da_C2D da config) (config_G2V config) g))).

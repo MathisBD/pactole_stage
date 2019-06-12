@@ -9,7 +9,7 @@
 
 
 Require Import SetoidDec.
-Require Import Pactole.Util.Preliminary.
+Require Import Pactole.Util.SetoidDefs.
 Require Import Pactole.Core.RobotInfo.
 Require Import Pactole.Spectra.Definition.
 Set Implicit Arguments.
