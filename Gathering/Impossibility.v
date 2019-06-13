@@ -59,7 +59,8 @@ Context {ES : EuclideanSpace location}.
 
 (** We assume that the space is equipped with a [build_similarity] function
     that can map any pair of distinct points to any other pair. *)
-Parameter build_similarity : forall {pt1 pt2 pt3 pt4 : location}, pt1 =/= pt2 -> pt3 =/= pt4 -> similarity location.
+Parameter build_similarity : forall {pt1 pt2 pt3 pt4 : location},
+  pt1 =/= pt2 -> pt3 =/= pt4 -> similarity location.
 Axiom build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
   (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
   pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->

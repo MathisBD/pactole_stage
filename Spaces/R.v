@@ -353,7 +353,7 @@ Open Scope R_scope.
 (** A similarity in R is described by its ratio and its center. *)
 
 Theorem similarity_in_R_case : forall sim : similarity R,
-  (forall x : R, sim x == sim.(zoom) * (x - sim.(center))) \/
+  (forall x, sim x == sim.(zoom) * (x - sim.(center))) \/
   (forall x, sim x == - sim.(zoom) * (x - sim.(center))).
 Proof.
 intro sim. assert (Hkpos : 0 < sim.(zoom)) by apply zoom_pos.
@@ -372,7 +372,7 @@ destruct (equiv_dec k 0) as [Hk0 | Hk0].
     rewrite Heq in Hk; ring_simplify in Hk; cbn in *; lra. }
   destruct Hc1 as [Hc1 | Hc1].
   + left. intro x. apply (GPS (f c) (f (c + 1))).
-    - rewrite Hc, Hc1. unfold origin. cbn. lra.
+    - rewrite Hc, Hc1. lra.
     - rewrite (Hk x c), Hc. cbn. rewrite 2 sqrt_square. change (retraction f origin) with c.
       replace (k * (x - c) - 0) with (k * (x - c)) by ring.
       rewrite Ropp_0, Rplus_0_r, Rabs_mult, (Rabs_pos_eq k); trivial. lra.
@@ -469,7 +469,7 @@ Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdi
   build_similarity Hdiff12 Hdiff34 pt1 == pt3.
 Proof. intros. simpl in *. field. lra. Qed.
 
-(* This is wrong without proper orientation *)
+(* This is wrong without the proper orientation *)
 Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity Hdiff12 Hdiff34 pt2 == pt4.
 Proof. intros. simpl in *. field. lra. Qed.

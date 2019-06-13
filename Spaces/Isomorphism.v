@@ -78,7 +78,8 @@ refine {|
     iso_E := compose f.(iso_E) g.(iso_E);
     iso_T := compose f.(iso_T) g.(iso_T) |}.
 Proof.
-+ intro. simpl. split; now rewrite <- 2 (proj1 (iso_morphism _ _)) || rewrite <- 2 (proj2 (iso_morphism _ _)).
++ intro. simpl.
+  split; now rewrite <- 2 (proj1 (iso_morphism _ _)) || rewrite <- 2 (proj2 (iso_morphism _ _)).
 + intro. simpl. now rewrite 2 iso_threshold.
 + intros. simpl. now do 2 apply iso_incr.
 + intro. simpl. now rewrite 2 iso_bound_T.
@@ -112,7 +113,8 @@ Proof.
   { intros.
     specialize (Hincr (@retraction R _ (iso_T iso) x) (@retraction R _ (iso_T iso) y) H).
     now do 2 rewrite section_retraction in Hincr. }
-  assert (Hnondecr: (forall x y,  x <= y -> @retraction R _ (iso_T iso) x <= @retraction R _ (iso_T iso) y)%R).
+  assert (Hnondecr:
+    (forall x y,  x <= y -> @retraction R _ (iso_T iso) x <= @retraction R _ (iso_T iso) y)%R).
   { intros x y Hle. apply Rnot_lt_le. apply Rle_not_lt in Hle. intuition. }
   destruct (Hnondecr a b) as [| Heq]; auto; intuition; [].
   apply (f_equal (iso_T iso)) in Heq. rewrite 2 section_retraction in Heq. lra.
@@ -154,7 +156,8 @@ End Isomorphism.
 Arguments isomorphism {V} {E} G.
 
 Lemma find_edge_iso_Some `{G : Graph} : forall (iso : isomorphism G) src tgt e,
-  @find_edge _ _ G (iso src) (iso tgt) == Some (iso.(iso_E) e) <-> @find_edge _ _ G src tgt == Some e.
+  @find_edge _ _ G (iso src) (iso tgt) == Some (iso.(iso_E) e)
+  <-> @find_edge _ _ G src tgt == Some e.
 Proof.
 intros iso src tgt e.
 assert (strong_and : forall T U V W (A B : T -> U -> V -> W -> Prop),

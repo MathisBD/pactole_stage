@@ -595,7 +595,10 @@ Proof. intros []. unfold bij_rotation_f. simpl. f_equal; apply Rgeom.rotation_0.
 
 Lemma bij_rotation_compose : forall θ θ' x,
   bij_rotation_f θ' (bij_rotation_f θ x) == bij_rotation_f (θ + θ') x.
-Proof. intros. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. rewrite cos_plus, sin_plus. simpl. f_equal; ring. Qed.
+Proof.
+intros. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr.
+rewrite cos_plus, sin_plus. simpl. f_equal; ring.
+Qed.
 
 Corollary bij_rotation_Inversion : forall θ (x y : R2),
   bij_rotation_f θ x == y <-> bij_rotation_f (-θ) y == x.
@@ -673,10 +676,12 @@ Lemma rotation_from_points_compat : forall x1 x2, x1 == x2 -> forall y1 y2, y1 =
   rotation_from_points x1 y1 == rotation_from_points x2 y2.
 Proof. intros x1 x2 Hx y1 y2 Hy Z. simpl. now rewrite Hx, Hy. Qed.
 
-Lemma rotation_from_points_spec : forall x y, (norm y * rotation_from_points x y x == norm x * y)%VS.
+Lemma rotation_from_points_spec : forall x y,
+  (norm y * rotation_from_points x y x == norm x * y)%VS.
 Proof. intros x y. apply (proj2_sig (angle_from_points x y)). Qed.
 
-Lemma rotation_from_points_nonnull : forall x y, (y =/= 0 -> rotation_from_points x y x == norm x / norm y * y)%VS.
+Lemma rotation_from_points_nonnull : forall x y,
+  (y =/= 0 -> rotation_from_points x y x == norm x / norm y * y)%VS.
 Proof.
 intros x y Hy. rewrite <- mul_1. rewrite <- (Rinv_r (norm y)).
 + setoid_rewrite Rmult_comm. rewrite <- 2 mul_morph. apply mul_compat; trivial; [].
@@ -684,7 +689,8 @@ intros x y Hy. rewrite <- mul_1. rewrite <- (Rinv_r (norm y)).
 + now rewrite norm_defined.
 Qed.
 
-Lemma rotation_from_points_opp : forall u v, rotation_from_points (-u) (-v) == rotation_from_points u v.
+Lemma rotation_from_points_opp : forall u v,
+  rotation_from_points (-u) (-v) == rotation_from_points u v.
 Proof.
 intros u v x. simpl.
 Admitted.
@@ -693,7 +699,8 @@ Lemma rotation_from_points_mul : forall u v k x,
   (rotation_from_points u v (k * x) == k * rotation_from_points u v x)%VS.
 Proof. intros. unfold rotation_from_points. apply rotation_mul. Qed.
 
-Lemma rotation_from_points_inverse : forall u v, inverse (rotation_from_points u v) == rotation_from_points v u.
+Lemma rotation_from_points_inverse : forall u v,
+  inverse (rotation_from_points u v) == rotation_from_points v u.
 Proof. intros. unfold rotation_from_points. now rewrite rotation_inverse, <- angle_from_points_swap. Qed.
 
 Lemma build_sim_aux : forall pt1 pt2 pt3 pt4, pt1 =/= pt2 -> pt3 =/= pt4 -> dist pt4 pt3 / dist pt2 pt1 <> 0.
@@ -1160,13 +1167,15 @@ Lemma translation_inner_product : forall t u1 u2 v1 v2,
 Proof. intros [] [] [] [] []. compute. ring. Qed.
 
 Lemma similarity_inner_product : forall (sim : similarity R2) u1 u2 v1 v2,
-  inner_product (sim v1 - sim u1) (sim v2 - sim u2) = (Similarity.zoom sim)² * inner_product (v1 - u1) (v2 - u2).
+  inner_product (sim v1 - sim u1) (sim v2 - sim u2)
+  = (Similarity.zoom sim)² * inner_product (v1 - u1) (v2 - u2).
 Proof.
 intros sim u1 u2 v1 v2.
 pose (sim' := translation (opp (sim origin)) ∘ sim).
 assert (Hzoom' :  Similarity.zoom sim' = Similarity.zoom sim).
 { unfold sim'. compute. apply Rmult_1_l. }
-assert (Hsim' : forall u v, inner_product (sim' u) (sim' v) = (Similarity.zoom sim)² * inner_product u v).
+assert (Hsim' : forall u v, inner_product (sim' u) (sim' v)
+                            = (Similarity.zoom sim)² * inner_product u v).
 { setoid_rewrite <- Hzoom'. apply similarity_origin_inner_product.
   unfold sim'. unfold origin. simpl. destruct (sim (0, 0)). f_equal; ring. }
 assert (Hsim : sim == translation (sim origin) ∘ sim').
