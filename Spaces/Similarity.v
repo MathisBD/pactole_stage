@@ -252,12 +252,6 @@ Proof. intros. simpl. now rewrite add_opp, mul_origin, add_origin. Qed.
 
 End TranslationHomothecy.
 
-
-Module Notations.
 Global Arguments similarity T {_} {_} {_} {_}.
 Global Arguments translation {T} {_} {_} {_} {_} v.
 Global Arguments homothecy {T} {_} {_} {_} {_} c {ρ} Hρ.
-Notation similarity := similarity.
-Global Infix "∘" := compose (left associativity, at level 40).
-Global Notation "sim ⁻¹" := (inverse sim) (at level 39).
-End Notations.

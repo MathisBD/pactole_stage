@@ -35,8 +35,6 @@ Close Scope R_scope.
 Import Datatypes. (* To recover Datatypes.id *)
 Typeclasses eauto := (bfs).
 Remove Hints eq_setoid : typeclass_instances.
-Instance bool_Setoid : Setoid bool := eq_setoid bool.
-Instance nat_Setoid : Setoid nat := eq_setoid nat.
 (* TODO: make equiv not unfolded everywhere. *)
 Arguments equiv : simpl never.
 

@@ -37,8 +37,7 @@ Require Import Pactole.Core.RobotInfo.
 Require Import Pactole.Spectra.Definition.
 Require Pactole.Spectra.MultisetSpectrum.
 Require Import Pactole.Spaces.RealMetricSpace.
-Require Pactole.Spaces.Similarity.
-Import Pactole.Spaces.Similarity.Notations.
+Require Import Pactole.Spaces.Similarity.
 Close Scope R_scope.
 Set Implicit Arguments.
 Set Default Proof Using "All".

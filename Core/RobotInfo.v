@@ -24,7 +24,6 @@ Require Import Classes.RelationPairs.
 Require Import Pactole.Util.Coqlib.
 Require Pactole.Util.Bijection.
 Require Import Pactole.Core.Robots.
-Import Pactole.Util.Bijection.Notations.
 Set Implicit Arguments.
 
 

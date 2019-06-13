@@ -30,11 +30,10 @@ Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.RobotInfo.
 Require Import Pactole.Core.Configurations.
 Require Import Pactole.Spectra.Definition.
-Import Pactole.Util.Bijection.Notations.
 
 
 Typeclasses eauto := 5.
-Remove Hints eq_setoid : Setoid.
+Remove Hints eq_setoid.
 
 
 Section Formalism.

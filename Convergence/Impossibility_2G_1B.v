@@ -362,7 +362,7 @@ Proof. intros pt pt' Hpt x. simpl. rewrite Hpt. ring. Qed.
 
 Lemma swap_spect2_spect1 : MMultisetExtraOps.map (swap 1) spectrum2 == spectrum1.
 Proof.
-intro pt. unfold spectrum1, spectrum2, swap. rewrite map_add, map_singleton; autoclass.
+intro pt. unfold spectrum1, spectrum2, swap. rewrite map_add, map_singleton; autoclass; [].
 cbn -[add singleton].
 ring_simplify (1 + -1 * (0 + -(1)) + -(1)).
 ring_simplify (1 + -1 * (1 + -(1)) + -(1)).

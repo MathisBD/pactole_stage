@@ -31,7 +31,6 @@ Require Export Pactole.Spaces.EuclideanSpace.
 Require Import Pactole.Spaces.Similarity.
 Set Implicit Arguments.
 Open Scope R_scope.
-Import Pactole.Spaces.Similarity.Notations.
 
 
 (** **  R² as a Euclidean space over R  **)

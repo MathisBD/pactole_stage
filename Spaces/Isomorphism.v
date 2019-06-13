@@ -153,12 +153,6 @@ End Isomorphism.
 
 Arguments isomorphism {V} {E} G.
 
-Module Notations.
-Global Arguments isomorphism {V} {E} G.
-Global Infix "∘" := compose (left associativity, at level 40).
-Global Notation "iso ⁻¹" := (inverse iso) (at level 39).
-End Notations.
-
 Lemma find_edge_iso_Some `{G : Graph} : forall (iso : isomorphism G) src tgt e,
   @find_edge _ _ G (iso src) (iso tgt) == Some (iso.(iso_E) e) <-> @find_edge _ _ G src tgt == Some e.
 Proof.

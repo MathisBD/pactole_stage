@@ -286,7 +286,7 @@ Lemma update_morph : forall (sim : similarity location) config g traj choice,
     (lift (existT precondition sim I) (update config g Similarity.id traj choice)).
 Proof.
 intros sim config g traj choice.
-simpl update. unfold id.
+simpl update. unfold Datatypes.id.
 rewrite Rmult_1_l, Similarity.dist_prop, Rle_bool_mult_l; try apply Similarity.zoom_pos; [].
 destruct_match_eq Hle; reflexivity.
 Qed.

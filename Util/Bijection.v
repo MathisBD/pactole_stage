@@ -109,8 +109,6 @@ Proof. intros bij x y Heq. now rewrite <- (retraction_section bij x), Heq, retra
 
 End Bijections.
 
-Module Notations.
-Global Arguments bijection T {_}.
-Global Infix "∘" := compose (left associativity, at level 40).
-Global Notation "bij ⁻¹" := (inverse bij) (at level 39).
-End Notations.
+Arguments bijection T {_}.
+Arguments section {_} {_} !_ x.
+Arguments retraction {_} {_} !_ x.

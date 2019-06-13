@@ -25,9 +25,8 @@ Require Export SetoidDec.
 Require Export Pactole.Util.Preliminary.
 Require Export Pactole.Setting.
 Require Export Pactole.Spaces.RealMetricSpace.
-Require Pactole.Spaces.Similarity.
+Require Export Pactole.Spaces.Similarity.
 Require Export Pactole.Models.Similarity.
-Export Pactole.Spaces.Similarity.Notations.
 Close Scope R_scope.
 Set Implicit Arguments.
 

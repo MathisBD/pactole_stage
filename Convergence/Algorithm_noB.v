@@ -35,7 +35,6 @@ Close Scope R_scope.
 Import Datatypes.
 Import List.
 Import SetoidClass.
-Import Pactole.Spaces.Similarity.Notations.
 Typeclasses eauto := (bfs).
 
 
