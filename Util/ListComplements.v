@@ -79,6 +79,18 @@ Qed.
 Lemma length_0 : forall l : list A, length l = 0 -> l = nil.
 Proof. intros [|] H; reflexivity || discriminate H. Qed.
 
+Lemma InA_nth : forall d x (l : list A), InA eqA x l ->
+  exists n y, (n < length l)%nat /\ eqA x y /\ nth n l d = y.
+Proof.
+intros d x l Hin. induction l as [| e l].
++ inversion Hin.
++ inversion_clear Hin.
+  - exists 0, e. repeat split; trivial; simpl; omega.
+  - destruct IHl as [n [y [Hn [Hy Hl]]]]; trivial; [].
+    apply lt_n_S in Hn. exists (S n), y. now repeat split.
+Qed.
+
+(* Already exists as [List.In_nth] but with a reversed argument order
 Lemma In_nth : forall d x (l : list A), In x l -> exists n, (n < length l)%nat /\ nth n l d = x.
 Proof.
 intros x d l Hin. induction l.
@@ -86,9 +98,9 @@ intros x d l Hin. induction l.
 + destruct Hin.
   - subst. exists 0%nat. split. simpl. now auto with arith. reflexivity.
   - destruct (IHl H) as [n [Hn Hl]]. apply lt_n_S in Hn. exists (S n). now split.
-Qed.
-(*
-Lemma In_split_first : forall (x : A) l, In x l -> exists l1, exists l2, ~List.In x l1 /\ l = l1 ++ x :: l2.
+Qed. *)
+
+(* Lemma In_split_first : forall (x : A) l, In x l -> exists l1, exists l2, ~List.In x l1 /\ l = l1 ++ x :: l2.
 Proof.
 intros x l. induction l as [| a l]; intro Hin.
   now elim (List.in_nil Hin).
@@ -96,8 +108,8 @@ intros x l. induction l as [| a l]; intro Hin.
     subst. exists nil. exists l. intuition.
     destruct (IHl H) as [l1 [l2 [Hnin Heq]]].
     exists (a :: l1). exists l2. subst. intuition.
-Abort. (* require decidability of equality *)
-*)
+Abort. (* require decidability of equality *) *)
+
 Lemma Permutation_in_inside : forall (x : A) l l',
   Permutation l l' -> In x l -> exists l1 l2, l' = l1 ++ x :: l2.
 Proof.
@@ -723,11 +735,41 @@ Qed.
 Lemma PermutationA_split : forall x l, InA eqA x l -> exists l', PermutationA eqA l (x :: l').
 Proof.
 intros x l Hin. induction l; inversion_clear Hin.
-  exists l. now rewrite H.
-  apply IHl in H. destruct H as [l' Hperm]. exists (a :: l'). transitivity (a :: x :: l').
++ exists l. now rewrite H.
++ apply IHl in H. destruct H as [l' Hperm]. exists (a :: l'). transitivity (a :: x :: l').
+  - now rewrite <- Hperm.
+  - constructor 3.
+Qed.
+
+Lemma PermutationA_split_dec (eqdec : forall x y : A, {eqA x y} + {~eqA x y}) :
+  forall x l, InA eqA x l -> {l' | PermutationA eqA l (x :: l')}.
+Proof.
+intros x l Hin. induction l as [| e l].
+* exfalso. now rewrite InA_nil in Hin.
+* destruct (eqdec x e).
+  + exists l. now constructor.
+  + assert (Hl : InA eqA x l). { now inversion_clear Hin. }
+    apply IHl in Hl. destruct Hl as [l' Hperm].
+    exists (e :: l'). transitivity (e :: x :: l').
     now rewrite <- Hperm.
     constructor 3.
 Qed.
+
+Lemma PermutationA_dec (eqdec : forall x y : A, {eqA x y} + {~eqA x y}) :
+  forall l1 l2 : list A, {PermutationA eqA l1 l2} + {~PermutationA eqA l1 l2}.
+Proof.
+intro l1. induction l1 as [| e l1]; intro l2.
+* destruct l2.
+  + left. constructor.
+  + right. abstract (intro Habs; apply PermutationA_nil in Habs; discriminate).
+* destruct (InA_dec eqdec e l2) as [He | He].
+  + destruct (PermutationA_split_dec eqdec He) as [l' Hl'].
+    destruct (IHl1 l') as [Hrec | Hrec].
+    - left. abstract (now rewrite Hl'; constructor).
+    - right. intro Habs. apply Hrec.
+      abstract (rewrite Hl' in Habs; apply (PermutationA_cons_inv Habs)).
+  + right. abstract (intro Habs; apply He; rewrite <- Habs; now left).
+Defined.
 
 End List_results.
 

@@ -52,6 +52,7 @@ Spaces/R2.v
 Spaces/Graph.v
 Spaces/Isomorphism.v
 Spaces/Ring.v
+Spaces/Grid.v
 
 ## Spectra
 Spectra/Definition.v
