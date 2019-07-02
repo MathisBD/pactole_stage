@@ -63,7 +63,7 @@ Variable r : robogram.
 (** The key idea is to prove that we can always make robots think that there are
     in the same configuration.  Thus, is they move at all, then they will never stop.
     If they do not move, they do not explore the ring.
-    The configuration to which we will always come back is [config1],
+    The configuration to which we will always come back is [ref_config],
     in which robots are evenly spaced on the ring.  *)
 
 (** ***  Definition of the reference configuration and demon used in the proof  **)
@@ -80,8 +80,8 @@ Definition ref_config : configuration :=
               | Byz b => dummy_val
             end.
 
-Lemma ref_config_injective : forall id1 id2,
-  get_location (ref_config id1) == get_location (ref_config id2) -> id1 = id2.
+Lemma ref_config_injective :
+  Util.Preliminary.injective eq equiv (fun id => get_location (ref_config id)).
 Proof.
 intros id1 id2.
 assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; omega).
