@@ -426,7 +426,7 @@ Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
 Proof.
-cofix.
+cofix cofx.
 constructor; [| constructor].
 * intros [g1 | b1] id2; [destruct (left_dec g1) |].
   + apply kReset. simpl. now destruct (left_dec g1).
