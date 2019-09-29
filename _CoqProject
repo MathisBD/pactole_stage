@@ -1,0 +1,83 @@
+-install none
+-R . Pactole
+
+## External libraries
+#Util/FSets/OrderedType.v
+Util/FSets/FSetInterface.v
+Util/FSets/FSetFacts.v
+Util/FSets/FSetList.v
+Util/FMaps/FMapInterface.v
+Util/FMaps/FMapFacts.v
+Util/FMaps/FMapList.v
+Util/MMultiset/MMultisetInterface.v
+Util/MMultiset/MMultisetWMap.v
+#Util/MMultiset/MMultisetMap.v
+Util/MMultiset/MMultisetFacts.v
+Util/MMultiset/MMultisetExtraOps.v
+Util/MMultiset/Preliminary.v
+
+## Core
+Util/Preliminary.v
+Util/SetoidDefs.v
+Util/NumberComplements.v
+Util/ListComplements.v
+Util/Coqlib.v
+Util/Bijection.v
+Util/Stream.v
+Util/Lexprod.v
+Util/Ratio.v
+Core/Robots.v
+Core/RobotInfo.v
+Core/Configurations.v
+Core/Formalism.v
+Setting.v
+
+## Models
+Models/Flexible.v
+Models/Rigid.v
+Models/RigidFlexibleEquivalence.v
+Models/DiscreteGraph.v
+Models/Similarity.v
+Models/ContinuousGraph.v
+Models/GraphEquivalence.v
+
+## Spaces
+Spaces/RealVectorSpace.v
+Spaces/RealMetricSpace.v
+Spaces/RealNormedSpace.v
+Spaces/EuclideanSpace.v
+Spaces/Similarity.v
+Spaces/R.v
+Spaces/R2.v
+Spaces/Graph.v
+Spaces/Isomorphism.v
+Spaces/Ring.v
+Spaces/Grid.v
+
+## Spectra
+Spectra/Definition.v
+Spectra/MultisetSpectrum.v
+Spectra/SetSpectrum.v
+Spectra/LimitedSetSpectrum.v
+Spectra/LimitedMultisetSpectrum.v
+#Spectra/PointedSpectrum.v
+#Spectra/PreCompositionSpectrum.v
+
+## Case Study: Convergence
+Convergence/Impossibility_2G_1B.v
+Convergence/Algorithm_noB.v
+
+## Case Study: Gathering
+Gathering/Definitions.v
+Gathering/WithMultiplicity.v
+Gathering/Impossibility.v
+Gathering/InR/Impossibility.v
+Gathering/InR/Algorithm.v
+Gathering/InR2/Algorithm.v
+#Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+#Gathering/InR2/Peleg.v
+
+## Case Study: Ring Exploration
+Exploration/Definitions.v
+Exploration/ImpossibilityKDividesN.v
+Exploration/Tower.v

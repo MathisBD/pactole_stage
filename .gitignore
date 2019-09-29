@@ -8,11 +8,16 @@
 *.v.crashcoqide
 html/
 
+.lia.cache
+.lra.cache
+.nia.cache
+.nra.cache
 .coqdeps.d
+makefile
+Makefile
 makefile.bak
 Makefile.bak
 Makefile.conf
-Makefile
 
 .lia.cache
 .nia.cache
