@@ -166,8 +166,8 @@ Require Import Pactole.Util.Ratio.
 Program Definition straight_path {T} `{RealVectorSpace T} (pt pt' : T) : path T :=
   Build_path _ _ (fun x => pt + (x * (pt' - pt))) _.
 Next Obligation.
-abstract (intros x y Hxy; apply add_compat; auto; []; apply mul_compat; try apply Hxy; [];
-          apply add_compat, opp_compat; reflexivity).
+abstract (intros x y Hxy; apply add_compat; try reflexivity; [];
+          apply mul_compat; try apply Hxy; []; apply add_compat, opp_compat; reflexivity).
 Defined.
 
 Instance straight_path_compat {T} `{RealVectorSpace T} :
@@ -293,7 +293,7 @@ Section Barycenter.
     List.fold_left add l1 a == List.fold_left add l2 a.
   Proof.
   intros.
-  apply (fold_left_symmetry_PermutationA add_compat); auto; [].
+  apply (fold_left_symmetry_PermutationA add_compat); try easy; [].
   intros x y z. now rewrite <- 2 add_assoc, (add_comm x).
   Qed.
   
@@ -305,7 +305,7 @@ Section Barycenter.
   intros l1 l2 Hpermut. unfold isobarycenter.
   assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).
   rewrite Hl; clear Hl. (* BUG?: f_equiv should find mul_compat *) apply mul_compat; trivial; [].
-  apply (fold_left_symmetry_PermutationA add_compat); auto; [].
+  apply (fold_left_symmetry_PermutationA add_compat); try easy; [].
   intros x y z. now rewrite <- 2 add_assoc, (add_comm x).
   Qed.
   

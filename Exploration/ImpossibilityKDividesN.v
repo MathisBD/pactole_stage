@@ -480,7 +480,7 @@ Proof. intros k ? ? Hequiv. apply (AlwaysMoving_equiv_compat (execute_equiv_comp
 
 (** ***  Proof when robots move  **)
 
-(** In this case, the configuration is equivalent after two rounds so the algorithm never stops. *)
+(** In this case, the configuration is equivalent after a round so the algorithm never stops. *)
 
 Section DoesMove.
 

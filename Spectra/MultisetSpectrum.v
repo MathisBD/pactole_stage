@@ -7,7 +7,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Omega.

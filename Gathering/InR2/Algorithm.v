@@ -18,7 +18,6 @@
 (**************************************************************************)
 
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega Field.
@@ -52,8 +51,11 @@ Close Scope VectorSpace_scope.
 
 (** **  Framework of the correctness proof: a finite set with at least three elements  **)
 
-Parameter n : nat.
-Axiom size_G : (3 <= n)%nat.
+Section GatheringInR2.
+
+(** Let [n] be an integer greater than 2. *)
+Variable n : nat.
+Hypothesis size_G : (3 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
@@ -138,7 +140,7 @@ Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma spect_non_nil : forall config, !! config =/= empty.
-Proof. changeR2. apply spect_non_nil. generalize size_G. simpl. omega. Qed.
+Proof. changeR2. apply spect_non_nil. generalize size_G. simpl. intro. omega. Qed.
 
 Lemma support_non_nil : forall config, support (!! config) <> nil.
 Proof. intros config Habs. rewrite support_nil in Habs. apply (spect_non_nil _ Habs). Qed.
@@ -714,7 +716,7 @@ simpl in Hsize; omega || clear Hsize.
 + reflexivity.
 + do 2 f_equal. rewrite Hs. f_equal.
   rewrite <- (PermutationA_1 _). rewrite <- Hs1, <- Hs2. rewrite Hs. reflexivity.
-+ clear -Hs.
++ clear -Hs size_G.
   assert (Hperm : Permutation (on_SEC (support s1)) (on_SEC (support s2))).
   { now rewrite <- PermutationA_Leibniz, Hs. }
   destruct (on_SEC (support s1)) as [| a1 [| a2 [| a3 [| ? ?]]]] eqn:Hs1.
@@ -1127,7 +1129,7 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
       rewrite <- sim.(Bijection.Inversion), <- target_morph; auto; [].
       rewrite spect_from_config_map; trivial; [].
       now rewrite (spect_from_config_ignore_snd origin).
-Unshelve. all:exact I. (* FIXME: there should be no shelved goals. *)
+Unshelve. all:exact I. (* FIXME: why are there shelved goals? *)
 Qed.
 
 (** ****  Specialization of [round_simplify] in the three main cases of the robogram  **)
@@ -3286,7 +3288,7 @@ Qed.
 
 (** Define one robot to get the location whenever they are gathered. *)
 Definition g1 : G.
-Proof. exists 0. generalize size_G; abstract omega. Defined.
+Proof. exists 0. generalize size_G; intro; abstract omega. Defined.
 
 Lemma gathered_at_forever : forall da config pt, SSYNC_da da ->
   gathered_at pt config -> gathered_at pt (round gatherR2 da config).
@@ -3380,3 +3382,5 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
   - now apply never_invalid.
   - exists pt. apply Stream.Later. rewrite execute_tail. apply Hpt.
 Qed.
+
+End GatheringInR2.

@@ -18,7 +18,6 @@
 (**************************************************************************)
 
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8.
 Require Import Reals.
 Require Import SetoidDec.
@@ -38,9 +37,10 @@ Import SetoidClass.
 Typeclasses eauto := (bfs).
 
 
+Section ConvergenceAlgo.
 (** There are [n] good robots and no byzantine one. *)
-Parameter n : nat.
-Axiom n_non_0 : n <> 0%nat.
+Variable n : nat.
+Hypothesis n_non_0 : n <> 0%nat.
 
 Instance MyRobots : Names := Robots n 0.
 
@@ -95,7 +95,7 @@ Lemma spect_non_empty : forall config pt, spect_from_config config pt =/= @empty
 Proof.
 intros config pt.
 rewrite spect_from_config_ignore_snd. intro Habs.
-assert (Hn : 0%nat < n). { generalize n_non_0. omega. }
+assert (Hn : 0%nat < n). { generalize n_non_0. intro. omega. }
 pose (g := exist _ 0%nat Hn : G).
 specialize (Habs (config (Good g))).
 rewrite empty_spec in Habs.
@@ -254,3 +254,5 @@ Qed.
 Theorem convergence_SSYNC : solution_SSYNC convergeR2.
 Proof.
 Abort.
+
+End ConvergenceAlgo.

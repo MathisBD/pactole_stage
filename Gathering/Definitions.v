@@ -35,7 +35,6 @@ Section GatheringDefinitions.
 
 (** We only require the space to be a real metric space.
     The actual number of robots is arbitrary. *)
-Context {T : Type}.
 Context `{Location}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
@@ -48,9 +47,9 @@ Global Instance Info : State location := OnlyLocation.
 (** The spectrum and the way updates are made to the robot state are still arbitrary. *)
 Context {Spect : Spectrum}.
 Context `{robot_choice}.
-Context {UC : update_choice T}.
+Context `{update_choice}.
 Context `{inactive_choice}.
-Context {UpdFun : update_function _ _ T}.
+Context {UpdFun : update_function _ _ _}.
 Context {InaFun : inactive_function _}.
 
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.

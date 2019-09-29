@@ -41,10 +41,10 @@ Ltac destruct_match := match goal with | |- ?A => destr_match A end.
 Global Instance NotRel_symmetric A (R : relation A) `(Symmetric A R) : Symmetric (fun x y => ~R x y).
 Proof. intros x y Hxy Habs. apply Hxy. now symmetry. Qed.
 *)
-Lemma nat_compare_Eq_comm : forall n m, nat_compare n m = Eq <-> nat_compare m n = Eq.
-Proof. intros n m. do 2 rewrite nat_compare_eq_iff. now split. Qed.
+Lemma nat_compare_Eq_comm : forall n m, Nat.compare n m = Eq <-> Nat.compare m n = Eq.
+Proof. intros n m. do 2 rewrite Nat.compare_eq_iff. now split. Qed.
 
-Lemma nat_compare_Lt_Gt : forall n m, nat_compare n m = Lt <-> nat_compare m n = Gt.
+Lemma nat_compare_Lt_Gt : forall n m, Nat.compare n m = Lt <-> Nat.compare m n = Gt.
 Proof. intros n m. rewrite <- nat_compare_lt, <- nat_compare_gt. now split. Qed.
 
 Definition injective {A B : Type} eqA eqB (f : A -> B) := (forall x y, eqB (f x) (f y) -> eqA x y).

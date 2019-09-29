@@ -17,8 +17,6 @@
      This file is distributed under the terms of the CeCILL-C licence.    *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Psatz.
 Require Import Morphisms.
@@ -39,19 +37,14 @@ Import Datatypes. (* To recover Datatypes.id *)
 Section ImpossibilityProof.
 
 (** There are n good robots and no byzantine ones. *)
-Parameter n : nat.
+Variable n : nat.
 Instance MyRobots : Names := Robots n 0.
 
 (** We assume that the number of robots is even and non-null. *)
-Axiom even_nG : Nat.Even n.
-Axiom nG_non_0 : n <> 0.
+Hypothesis even_nG : Nat.Even n.
+Hypothesis nG_non_0 : n <> 0.
 
 Local Transparent G B.
-
-(* (* BUG?: To help finding correct instances, loops otherwise! *)
-Existing Instance R_Setoid.
-Existing Instance R_EqDec.
-Existing Instance R_RMS. *)
 
 (* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
 Instance Loc : Location := make_Location R.
@@ -89,7 +82,7 @@ Qed.
 Lemma half_size_config : Nat.div2 nG > 0.
 Proof.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
-simpl. destruct n as [| [| n]].
+simpl. destruct n as [| [| ?]].
 - omega.
 - destruct Heven. omega.
 - simpl. omega.
@@ -127,7 +120,7 @@ intro config.
 unfold spect_from_config. cbn -[get_location config_list elements equiv location].
 unfold make_multiset.
 induction (List.map get_location (config_list config)) as [| e l]; try reflexivity; [].
-(* maybe only the seond arg is useful *)
+(* maybe only the second argument is useful *)
 assert (Hcompat : Proper (PermutationA equiv ==> PermutationA equiv ==> PermutationA equiv)
                          (fold_right (fun '(x, n) (acc : list location) => alls x n ++ acc))).
 { clear IHl l. intros l1 l1' Hl1 l2 l2' Hl2.
@@ -151,14 +144,14 @@ destruct (Nat.eq_dec (from_elements (List.map (fun x : location => (x, 1)) l))[e
   rewrite Preliminary.removeA_out; try reflexivity; []. (* TODO: put it also in Util/Preliminary *)
   rewrite elements_spec. simpl. intuition.
 * (* [e] does appear in the spectrum *)
-  change (alls e (from_elements (List.map (fun x : location => (x, 1)) l))[e] ++
+  change (alls e (from_elements (List.map (fun y : location => (y, 1)) l))[e] ++
           fold_right (fun '(x, n) (acc : list location) => alls x n ++ acc) nil
-            (removeA (eqA:=eq_pair) pair_dec (e, (from_elements (List.map (fun x : location => (x, 1)) l))[e])
-              (elements (from_elements (List.map (fun x : location => (x, 1)) l)))))
+            (removeA (eqA:=eq_pair) pair_dec (e, (from_elements (List.map (fun t : location => (t, 1)) l))[e])
+              (elements (from_elements (List.map (fun z : location => (z, 1)) l)))))
     with (fold_right (fun '(x, n) (acc : list location) => alls x n ++ acc) nil
-           ((e, (from_elements (List.map (fun x : location => (x, 1)) l))[e])
+           ((e, (from_elements (List.map (fun y : location => (y, 1)) l))[e])
             :: (removeA (eqA:=eq_pair) pair_dec (e, (from_elements (List.map (fun x : location => (x, 1)) l))[e])
-               (elements (from_elements (List.map (fun x : location => (x, 1)) l)))))).
+               (elements (from_elements (List.map (fun z : location => (z, 1)) l)))))).
   apply Hcompat; try reflexivity; [].
   apply NoDupA_equivlistA_PermutationA; autoclass.
   + eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_elt.
@@ -190,7 +183,6 @@ Instance Always_invalid_compat : Proper (equiv ==> iff) Always_invalid.
 Proof. apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat. Qed.
 
 (** **  Linking the different properties  **)
-Set Printing Matching.
 
 Theorem different_no_gathering : forall (e : execution),
   Always_invalid e -> forall pt, ~WillGather pt e.
@@ -227,7 +219,7 @@ Local Opaque G B.
     the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
-Proof. exists 0. generalize nG_non_0. omega. Qed.
+Proof. exists 0. generalize nG_non_0. intro. omega. Qed.
 
 (** *  Proof of the impossiblity of gathering  **)
 

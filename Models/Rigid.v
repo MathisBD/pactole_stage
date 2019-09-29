@@ -18,8 +18,6 @@
                                                                           *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import SetoidDec.

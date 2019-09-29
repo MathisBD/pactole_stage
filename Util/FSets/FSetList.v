@@ -470,7 +470,7 @@ Qed.
 Instance SetListFacts_singleton elt `{EqDec elt} : FSetSpecs_singleton (SetList _).
 Proof. split.
 * intros x y Hin. simpl in *. unfold list_add in Hin.
-  destruct (list_mem x nil); inversion_clear Hin; auto.
+  destruct (list_mem x nil); now inversion_clear Hin.
 * intros x y Heq. simpl. rewrite <- Heq.
   unfold list_add. simpl. now left.
 Qed.

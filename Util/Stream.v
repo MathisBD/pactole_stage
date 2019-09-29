@@ -111,7 +111,7 @@ Proof. reflexivity. Qed.
 
 (** Alternative caracterisation of [alternate]. *)
 Lemma alternate_tl : forall c1 c2 : A, tl (alternate c1 c2) == alternate c2 c1.
-Proof. cofix alt. constructor; [| constructor]; simpl; auto; []. apply alt. Qed.
+Proof. cofix alt. constructor; [| constructor]; simpl; try reflexivity; []. apply alt. Qed.
 
 (** Compatibility lemmas. *)
 

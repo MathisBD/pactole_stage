@@ -18,7 +18,6 @@
 (**************************************************************************)
 
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8.
 Require Import Reals.
 Require Import Psatz.
@@ -40,9 +39,10 @@ Import List.
 Import SetoidClass.
 
 
+Section ConvergenceImpossibility.
 (** There are [2 * n] good robots and [n] byzantine ones. *)
-Parameter n : nat.
-Axiom n_non_0 : n <> 0.
+Variable n : nat.
+Hypothesis n_non_0 : n <> 0.
 Instance MyRobots : Names := Robots (2 * n) n.
 
 (** The space is R, and it is a Euclidean space. *)
@@ -120,7 +120,7 @@ Proof. rewrite nG_nB. assert (Hn0 := n_non_0). simpl. omega. Qed.
 Corollary half_size_pos : Nat.div2 nG > 0.
 Proof.
 assert (Hn0 := n_non_0). rewrite nG_nB, nB_value.
-destruct n as [| n].
+destruct n as [| ?].
 - omega.
 - simpl. rewrite plus_comm. simpl. omega.
 Qed.
@@ -216,10 +216,10 @@ Qed.
 
 (** First and last robots are resp. in the first and in the second half. *)
 Definition gfirst : G.
-Proof. exists 0. abstract (generalize n_non_0; omega). Defined.
+Proof. exists 0. abstract (generalize n_non_0; intro; omega). Defined.
 
 Definition glast : G.
-Proof. exists (pred nG). abstract (simpl; generalize n_non_0; omega). Defined.
+Proof. exists (pred nG). abstract (simpl; generalize n_non_0; intro; omega). Defined.
 
 Lemma gfirst_left : In gfirst left.
 Proof. rewrite left_spec. simpl. apply half_size_pos. Qed.
@@ -274,9 +274,9 @@ Lemma spect_config_aux : forall pt1 pt2 : R, pt1 =/= pt2 ->
     (map (fun x  => if in_dec Geq_dec x (half1 l) then pt1 else pt2) l)
   = (add pt1 n (singleton pt2 n))[pt].
 Proof.
-intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
+intros pt1 pt2 Hdiff pt k. induction k as [| k]; intros l Hnodup Hlen.
 * apply length_0 in Hlen. subst. simpl map. now rewrite add_0, singleton_0 (* , empty_spec *) .
-* replace (2 * S n)%nat with (S (S (2 * n)))%nat in Hlen by ring.
+* replace (2 * S k)%nat with (S (S (2 * k)))%nat in Hlen by ring.
   destruct l as [| a [| b l']]; try discriminate.
   destruct (@not_nil_last _ (b :: l') ltac:(discriminate)) as [z [l Hl]].
   rewrite Hl in *. clear Hl b l'. rewrite half1_cons2.
@@ -289,7 +289,7 @@ intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
     - now rewrite <- NoDupA_Leibniz.
     - rewrite in_app_iff in Hin. intro Heq. subst. intuition. }
   destruct Hdup as [Hal [Hzl [Hl Haz]]].
-  assert (Hlen' : (length l = 2 * n)%nat).
+  assert (Hlen' : (length l = 2 * k)%nat).
   { simpl in Hlen. rewrite app_length in Hlen. simpl in *. omega. }
   cbn [map]. rewrite map_app. cbn [map].
    destruct (in_dec Geq_dec a (a :: half1 l)) as [_ | Habs].
@@ -297,7 +297,7 @@ intros pt1 pt2 Hdiff pt n. induction n as [| n]; intros l Hnodup Hlen.
   + inversion_clear Habs; try (now elim Haz); [].
     exfalso. now apply Hzl, half1_incl.
   + rewrite (map_ext_in _ (fun x => if in_dec Geq_dec x (half1 l) then pt1 else pt2)).
-    - cbn [countA_occ]. rewrite countA_occ_app. rewrite IHn; trivial.
+    - cbn [countA_occ]. rewrite countA_occ_app. rewrite IHk; trivial.
       assert (Hneq : pt2 =/= pt1) by intuition.
       cbn [countA_occ].
       destruct (pt1 =?= pt) as [Heq1 | ?], (pt2 =?= pt) as [Heq2 | ?];
@@ -592,7 +592,7 @@ remember (shifting_execution move 0) as e. remember (Rabs (move / 3)) as ε.
 revert Heqe. generalize 0.
 induction Hpt as [e IHpt | e IHpt]; intros start Hstart.
 + subst e ε. destruct IHpt as [Hnow1 [Hnow2 Hlater]]. cbn in *.
-  clear -absurdmove Hnow1 Hnow2. specialize (Hnow1 gfirst). specialize (Hnow2 gfirst).
+  clear -absurdmove Hnow1 Hnow2 n_non_0. specialize (Hnow1 gfirst). specialize (Hnow2 gfirst).
   cut (Rabs move <= Rabs (move / 3) + Rabs (move / 3)).
   - assert (Hpos : 0 < Rabs move) by now apply Rabs_pos_lt.
     unfold Rdiv. rewrite Rabs_mult, Rabs_Rinv; try lra.
@@ -635,9 +635,7 @@ assert (Hg1 : config1 (Good g) = 0) by (unfold config1; destruct_match; auto; co
 assert (Hg2 : config2 (Good g) = 0) by (unfold config2; destruct_match; auto; contradiction).
 rewrite Hg1, Hg2. change (opp (get_location 0)) with (- 0).
 rewrite Ropp_0. rewrite Similarity.translation_origin. cbn.
-assert (Hext : @equiv configuration _ (λ id : ident, config1 id + 0) config1).
-{ intro. now rewrite Rplus_0_r. }
-rewrite Hext, spect_config1. apply no_move1.
+rewrite spect_config1. apply no_move1.
 Qed.
 
 Lemma round_config2 : round r bad_da2 config2 == config1.
@@ -725,5 +723,7 @@ induction Hpt using attracted_ind2.
 + (* Inductive step *)
   apply IHHpt. rewrite He. reflexivity.
 Qed.
+
+End ConvergenceImpossibility.
 
 Print Assumptions noConvergence.

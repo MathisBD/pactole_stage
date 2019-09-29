@@ -22,12 +22,14 @@
 Require Import Relations.
 Require Import Morphisms.
 Require Import SetoidClass.
-Require Pactole.Util.FMaps.FMapFacts. (* for prod_Setoid and prod_EqDec *)
+Require Pactole.Util.FMaps.FMapInterface. (* for prod_Setoid and prod_EqDec *)
 Set Implicit Arguments.
 
 
 Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
+Hint Extern 1 (equiv ?x ?x) => reflexivity.
+Hint Extern 2 (equiv ?y ?x) => now symmetry.
 
 
 (** **  Tactics  **)

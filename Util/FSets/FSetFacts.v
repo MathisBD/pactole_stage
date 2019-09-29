@@ -1,11 +1,13 @@
 (* Order of import is important here, Equivalence.equiv must be hidden by SetoidClass.equiv. *)
 Require Import Coq.Classes.Equivalence Morphisms.
 Require Import SetoidList SetoidPermutation SetoidDec.
-Require Import Program.Basics.
+Require Import Bool Program.Basics.
+Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.FSets.FSetInterface.
+
+
 Set Implicit Arguments.
 Unset Strict Implicit.
-
 Generalizable All Variables.
 Local Open Scope set_scope.
 Local Open Scope equiv_scope.
@@ -132,7 +134,7 @@ Ltac set_iff :=
   || rewrite empty_spec)).
 
 (**  * Specifications written using boolean predicates *)
-Require Import Bool.
+
 Section BoolSpec.
   Context `{HF : @FSetSpecs elt St Helt F}.
 
@@ -158,7 +160,7 @@ Section BoolSpec.
     generalize (mem_spec (add x s) y)(mem_spec s y)(add_spec s x y); unfold eqb.
     unfold equiv_decb.
     destruct (equiv_dec x y) ; destruct (mem y s);
-      destruct (mem y (add x s)); simpl;intuition.
+      destruct (mem y (add x s)); simpl; intuition.
   Qed.
 
   Lemma add_neq_b : x =/= y -> mem y (add x s) = mem y s.
@@ -670,8 +672,6 @@ Defined.
 
 
 (** *  Map  **)
-
-Require Import Pactole.Util.Coqlib.
 
 Instance fold_compat {A B} `{FSetSpecs A} `{Setoid B} :
   forall f : A -> B -> B, Proper (equiv ==> equiv ==> equiv) f -> transpose equiv f ->

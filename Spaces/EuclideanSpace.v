@@ -338,10 +338,10 @@ Section Normed2Euclidean.
   Proof.
   intros k u v. cut (product (k * u)%VS v - product u (k * v)%VS = 0); try lra; [].
   unfold product.
-  Admitted. (* TODO *)
+  Admitted. (* TODO: product_mul_switch for Normed2Euclidean *)
   
   Lemma product_sqr : forall k u v, product (k² * u)%VS v = k² * product u v.
-  Proof. intros k u v. unfold Rsqr at 2 4. now rewrite <- mul_morph, product_mul_switch, product_mul. Qed.
+  Proof. intros. unfold Rsqr at 2 4. now rewrite <- mul_morph, product_mul_switch, product_mul. Qed.
   
   Instance Normed2Euclidean : EuclideanSpace T.
   simple refine {| inner_product := fun u v => 1/4 * product u v |}; autoclass; simpl.

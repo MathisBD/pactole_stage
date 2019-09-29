@@ -7,7 +7,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-
 Require Import SetoidDec.
 Require Import Pactole.Util.SetoidDefs.
 Require Import Pactole.Core.RobotInfo.

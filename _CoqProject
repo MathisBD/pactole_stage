@@ -60,8 +60,8 @@ Spectra/MultisetSpectrum.v
 Spectra/SetSpectrum.v
 Spectra/LimitedSetSpectrum.v
 Spectra/LimitedMultisetSpectrum.v
-Spectra/PointedSpectrum.v
-Spectra/PreCompositionSpectrum.v
+#Spectra/PointedSpectrum.v
+#Spectra/PreCompositionSpectrum.v
 
 ## Case Study: Convergence
 Convergence/Impossibility_2G_1B.v
@@ -74,8 +74,8 @@ Gathering/Impossibility.v
 Gathering/InR/Impossibility.v
 Gathering/InR/Algorithm.v
 Gathering/InR2/Algorithm.v
-Gathering/InR2/FSyncFlexNoMultAlgorithm.v
-Gathering/InR2/Peleg.v
+#Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+#Gathering/InR2/Peleg.v
 
 ## Case Study: Ring Exploration
 Exploration/Definitions.v

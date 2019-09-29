@@ -17,8 +17,6 @@
      This file is distributed under the terms of the CeCILL-C licence.    *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Set Implicit Arguments.
 Require Import Utf8.
 Require Import SetoidDec.
@@ -592,20 +590,20 @@ Arguments demonic_action {info} {_} {_} {_} {Trobot} {Tframe} {Tactive} {Tinacti
 Arguments demon {info} {_} {_} {_} {Trobot} {Tframe} {Tactive} {Tinactive} {_} {_} {_} {_}.
 
 
+Require Import Pactole.Spaces.RealMetricSpace.
+Require Import Pactole.Spaces.Similarity.
+
 Section ChoiceExample.
 (** **  Most Common Examples of Demon Choices  **)
 
 Context `{State}.
+Context {VS : RealVectorSpace location}.
 
 (** An exemple of frame choice: just a bijection. *)
 Definition FrameChoiceBijection : frame_choice (bijection location) := {|
   frame_choice_bijection := Datatypes.id;
   frame_choice_Setoid := @bij_Setoid location _;
   frame_choice_bijection_compat := fun _ _ Heq => Heq |}.
-
-Require Import Pactole.Spaces.RealMetricSpace.
-Require Import Pactole.Spaces.Similarity.
-Context {VS : RealVectorSpace location}.
 
 (** Similarities as a frame choice, only make sense inside real metric spaces. *)
 Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}

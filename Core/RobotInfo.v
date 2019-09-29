@@ -79,7 +79,7 @@ Local Instance OnlyLocation `{Location} : State location := {|
   get_location := id;
   lift := fun f => projT1 f;
   precondition := fun _ => True |}.
-Proof. all:autoclass. abstract (intros ? ? Heq x; apply Heq; reflexivity). Defined.
+Proof. all:(autoclass; try reflexivity). abstract (intros ? ? Heq x; now apply Heq). Defined.
 
 (** Adding a location-typed field that is affected by frame change. *)
 Local Instance AddLocation `{Location} info (St : State info) : State (info * location) := {|

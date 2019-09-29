@@ -17,7 +17,6 @@
 (**************************************************************************)
 
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Rbase R_sqrt Rbasic_fun Rtrigo.
 Require Import Psatz.
 Require Import RelationPairs.
@@ -31,6 +30,7 @@ Require Export Pactole.Spaces.EuclideanSpace.
 Require Import Pactole.Spaces.Similarity.
 Set Implicit Arguments.
 Open Scope R_scope.
+Coercion Bijection.section : Bijection.bijection >-> Funclass.
 
 
 (** **  R² as a Euclidean space over R  **)
@@ -654,7 +654,7 @@ intros x y. null y; [| null x].
 * destruct (@cos_carac (inner_product (unitary x) (unitary y))) as [θ Hbounds Hcos].
   + assert (Hle := Cauchy_Schwarz (unitary x) (unitary y)).
     rewrite 2 norm_unitary, Rmult_1_l in Hle; trivial; [].
-    change (Zneg xH) with (Zopp (Zpos xH)).
+    change (Zneg xH) with (Z.opp (Zpos xH)).
     rewrite opp_IZR, <- Rabs_bounds; lra.
   + exists θ.
     rewrite (unitary_id x) at 1. rewrite (unitary_id y) at 2.

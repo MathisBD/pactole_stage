@@ -92,8 +92,8 @@ Qed.
 (** We assume a way to convert demon choices back and forth. *)
 Variable R2F_choice : Trigid -> Tflex.
 Variable F2R_choice : Tflex -> Trigid.
-Declare Instance F2R_choice_compat : Proper (equiv ==> equiv) F2R_choice.
-Declare Instance R2F_choice_compat : Proper (equiv ==> equiv) R2F_choice.
+Context (F2R_choice_compat : Proper (equiv ==> equiv) F2R_choice).
+Context (R2F_choice_compat : Proper (equiv ==> equiv) R2F_choice).
 Hypothesis R2F2R_choice : forall choice, F2R_choice (R2F_choice choice) == choice.
 Hypothesis F2R2F_choice : forall choice,
   is_rigid choice -> R2F_choice (F2R_choice choice) == choice.
@@ -141,8 +141,9 @@ Lemma F2R2F_da : forall fda : flex_da, is_rigid_da fda -> R2F_da (F2R_da fda) ==
 Proof.
 intros fda Hrigid. repeat split; try reflexivity; [].
 intros config g target. simpl. rewrite F2R2F_choice; auto; []. f_equiv.
+intro r.
 (* the demon should only depend on the final target, not the path *)
-Admitted.
+Abort.
 
 Lemma R2F_da_is_rigid : forall rda, is_rigid_da (R2F_da rda).
 Proof. intro. hnf. intros. simpl. apply R2F_choice_rigid. Qed.
@@ -158,9 +159,9 @@ Proof. coinduction Hcorec. apply R2F2R_da. Qed.
 Lemma F2R2F_demon : forall d, is_rigid_demon d -> R2F_demon (F2R_demon d) == d.
 Proof.
 coinduction Hcorec; match goal with H : is_rigid_demon _ |- _ => destruct H end.
-- now apply F2R2F_da.
+- (* now apply F2R2F_da. *) admit.
 - assumption.
-Qed.
+Abort.
 
 (** **  Conversions between [robogram]s  **)
 

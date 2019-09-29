@@ -310,11 +310,12 @@ induction m as [| [k e] m].
   assert (Hin : In k m') by now apply H1; exists e; simpl; left.
   destruct Hin as (e', Hin).
   unfold list_check at 2. apply find_1 in Hin. simpl in Hin. rewrite Hin.
-  rewrite (H2 k); simpl; auto.
+  rewrite (H2 k); simpl.
   + apply (IHm H3).
     split; intuition.
     - apply H1. destruct H4 as [e'' H4]; exists e''; simpl in *; auto.
     - apply H2 with k0; auto.
+  + now left.
   + change (MapsTo k e' m'). now apply find_2.
 Qed.
 

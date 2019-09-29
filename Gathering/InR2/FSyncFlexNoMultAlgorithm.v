@@ -9,8 +9,6 @@
                                                                         *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega Field.
@@ -41,9 +39,10 @@ Typeclasses eauto := (bfs) 10.
     A [demon] is an infinite stream of [demonic_action]s. *)
 
 (** **  Framework of the correctness proof: a finite set with at least two elements  **)
+Section GatheringInR2.
 
-Parameter n : nat.
-Axiom size_G : (2 <= n)%nat.
+Variable n : nat.
+Hypothesis size_G : (2 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
@@ -279,44 +278,24 @@ intros config. split; intro H.
   etransitivity; eauto.
 Qed.
 
-Lemma update_morph : forall (sim : similarity location) config g traj choice,
-  @equiv location state_Setoid
-    (@update _ _ _ _ _ _ _ _ _ _ UpdFun
-       (map_config (projT1 (existT precondition sim I)) config) g sim (lift_path sim traj) choice)
-    (lift (existT precondition sim I) (update config g Similarity.id traj choice)).
+Lemma lift_update_swap : forall da config2 g target sim choice,
+    (frame_choice_bijection sim) ⁻¹ (update config2 g sim target choice)
+    == update (map_config (frame_choice_bijection (sim ⁻¹)) config2)
+         g Similarity.id (lift_path (frame_choice_bijection (sim ⁻¹)) target) choice.
 Proof.
-intros sim config g traj choice.
-simpl update. unfold Datatypes.id.
-rewrite Rmult_1_l, Similarity.dist_prop, Rle_bool_mult_l; try apply Similarity.zoom_pos; [].
-destruct_match_eq Hle; reflexivity.
-Qed.
-
-Lemma lift_update_swap : forall da config1 config2 g target,
-  @equiv location _
-    (lift (existT precondition (frame_choice_bijection (change_frame da config1 g ⁻¹))
-                               (precondition_satisfied_inv da config1 g))
-          (update config2
-           g (change_frame da config1 g) target (choose_update da config2 g target)))
-    (update (map_config (lift (existT precondition (frame_choice_bijection (change_frame da config1 g ⁻¹))
-                                      (precondition_satisfied_inv da config1 g)))
-                        config2)
-            g Similarity.id
-            (lift_path (frame_choice_bijection (change_frame da config1 g ⁻¹)) target)
-            (choose_update da config2 g target)).
-Proof.
-intros da config1 config2 g target. cbn -[inverse]. unfold id.
+intros da config2 g target sim choice. cbn -[inverse]. unfold Datatypes.id.
 rewrite Similarity.dist_prop, Rmult_1_l.
 destruct_match_eq Hle; destruct_match_eq Hle'; try reflexivity; [|];
 rewrite Rle_bool_true_iff, Rle_bool_false_iff in *;
 exfalso; revert_one not; intro Hgoal; apply Hgoal.
-- assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g)).
+- assert (Hzoom := Similarity.zoom_pos sim).
   eapply Rmult_le_reg_l; eauto; []. simpl.
   rewrite <- Rmult_assoc, Rinv_r, Rmult_1_l; trivial; [].
   changeR2. lra.
-- assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g ⁻¹)).
+- assert (Hzoom := Similarity.zoom_pos (sim ⁻¹)).
   eapply Rmult_le_reg_l; eauto; []. simpl.
   rewrite <- Rmult_assoc, Rinv_l, Rmult_1_l; trivial; [].
-  changeR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
+  changeR2. generalize (Similarity.zoom_pos sim). lra.
 Qed.
 
 (** Rewriting the [round] function in the global setting. *)
@@ -338,42 +317,34 @@ remember (change_frame da config g) as sim.
 assert (Hsim : Proper (equiv ==> equiv) sim). { intros ? ? Heq. now rewrite Heq. }
 Local Opaque lift. Local Opaque map_config.
 assert (Hperm : PermutationA equiv (List.map sim (elements (!! config)))
-                                   (elements (elt := location)
-                                             (!! (map_config (lift (existT precondition sim I)) config)))).
+                                   (elements (!! (map_config sim config)))).
 { rewrite <- map_injective_elements, spect_from_config_map, spect_from_config_ignore_snd;
   autoclass; reflexivity || apply Bijection.injective. }
 rewrite spect_from_config_ignore_snd.
+change (lift (existT _ ?x _)) with x.
+change get_location with (@Datatypes.id location). unfold Datatypes.id.
 simpl pgm. unfold ffgatherR2_pgm. changeR2.
 remember (elements (!! config)) as E.
-remember (elements (!! (map_config (lift (State := OnlyLocation)
-                                         (existT (fun _ : location -> location => True) sim I)) config))) as E'.
+remember (elements (!! (map_config sim config))) as E'.
 Time rewrite <- Hperm, isobarycenter_sim_morph; trivial; [].
-rewrite get_location_lift. simpl precondition.
-replace (precondition_satisfied (proj_sim_da da) config g) with I;
-try (now destruct (precondition_satisfied (proj_sim_da da) config g)); [].
-change (projT1 (existT _ ?x _)) with x.
-assert (Hpath : paths_in_R2 (Bijection.section (Similarity.sim_f sim) (isobarycenter E))
+assert (Hpath : paths_in_R2 (sim (isobarycenter E))
                 == lift_path sim (straight_path (Similarity.center sim) (isobarycenter E))).
 { intro r. cbn [path_f lift_path straight_path paths_in_R2 local_straight_path].
   rewrite sim_add, sim_mul, sim_add, sim_opp. changeR2.
   rewrite Similarity.center_prop, opp_origin, add_origin, add_origin_l.
   simpl; f_equal; simpl; field. }
-(* rewrite Hpath.
-intro. simpl. reflexivity.
-rewrite update_morph.
-rewrite lift_update_swap.
-assert (lift_path (Bijection.inverse sim) (paths_in_R2 (sim (isobarycenter E)))
-        == straight_path (get_location (config (Good g))) (isobarycenter E)).
-{ intro r. cbn [path_f lift_path straight_path paths_in_R2 local_straight_path].
-  rewrite (sim_mul (sim⁻¹)). changeR2.
-  change (sim ⁻¹ (sim (isobarycenter E)))%VS with ((sim ⁻¹ ∘ sim) (isobarycenter E))%VS.
-  rewrite Similarity.compose_inverse_l. change (Similarity.id (isobarycenter E)) with (isobarycenter E).
-  rewrite Hda. unfold Rminus.
-  rewrite mul_distr_add, <- add_morph, minus_morph, mul_opp, mul_1, 2 add_assoc.
-  apply add_compat; try reflexivity; []. apply add_comm. }
-apply get_location_compat, update_compat, choose_update_compat; auto.
-Qed.
-*) Admitted.
+rewrite lift_update_swap, Hpath.
+apply (update_compat
+  (map_config (frame_choice_bijection (sim ⁻¹)) (map_config (frame_choice_bijection sim) config))
+  config); auto.
++ rewrite <- (map_config_id config) at 2. rewrite map_config_merge.
+  - f_equiv. intros x y Hxy. simpl. now rewrite Bijection.retraction_section.
+  - auto.
+  - simpl. repeat intro. now subst.
++ unfold lift_path; cbn -[straight_path isobarycenter].
+  intro. now rewrite Bijection.retraction_section, Hda.
++ (* This should be assumed as a hypothesis *)
+Admitted. (* *)
 
 (** If possible, the measure decreases by at least delta at each step. *)
 (* FIXME: cleanup! *)
@@ -794,6 +765,8 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
   + now constructor.
   + exists pt. apply Stream.Later. apply Hpt.
 Qed.
+
+End GatheringInR2.
 
 Print Assumptions FSGathering_in_R2.
 (* FIXME: find and eliminate the use of Classical_Prop.classic

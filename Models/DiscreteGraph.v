@@ -8,8 +8,16 @@
                                                                           *)
 (**************************************************************************)
 
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain              
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
+                                                                          *)
+(**************************************************************************)
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Reals.

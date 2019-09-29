@@ -1,3 +1,14 @@
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain              
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
+                                                                          *)
+(**************************************************************************)
+
+
 Require Import Omega Psatz SetoidDec Rbase.
 Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Core.Robots.
@@ -399,7 +410,6 @@ repeat split; try reflexivity; [].
 repeat destruct_match; tauto.
 Qed.
 
-Print Instances Composition.
 Lemma sym_involutive : forall c,
   @equiv _ isomorphism_Setoid (@compose _ _ IsoComposition (sym c) (sym c)) Isomorphism.id.
 Proof.

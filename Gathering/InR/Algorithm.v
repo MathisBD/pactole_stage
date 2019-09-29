@@ -17,8 +17,6 @@
      This file is distributed under the terms of the CeCILL-C licence     *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.
@@ -42,8 +40,8 @@ Set Implicit Arguments.
 
 Section CorrectnessProof.
 
-Parameter n : nat.
-Axiom size_G : n >= 2.
+Variable n : nat.
+Hypothesis size_G : n >= 2.
 (** We assume that we have at least two good robots and no byzantine one. *)
 Instance MyRobots : Names := Robots n 0.
 
@@ -121,7 +119,7 @@ apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexiv
 Qed.
 
 Lemma half_size_config : Nat.div2 nG > 0.
-Proof. assert (Heven := size_G). simpl. destruct n as [| [| n]]; simpl; omega. Qed.
+Proof. assert (Heven := size_G). simpl. destruct n as [| [| ?]]; simpl; omega. Qed.
 
 (* We need to unfold [spect_is_ok] for rewriting *)
 Definition spect_from_config_spec : forall config l,
@@ -1414,7 +1412,7 @@ Close Scope VectorSpace_scope.
 
 Definition g1 : G.
 Proof.
-exists 0. abstract (generalize size_G; omega).
+exists 0. abstract (generalize size_G; intro; omega).
 Defined.
 
 Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
@@ -1454,7 +1452,7 @@ intros config id Hinvalid Hgather Hmaj.
 assert (size (!! config) > 1).
 { unfold no_Majority in Hmaj. eapply lt_le_trans; try eassumption; []. now rewrite max_subset. }
 rewrite invalid_equiv in Hinvalid.
-destruct (size (!! config)) as [| [| [| n]]]; omega || tauto.
+destruct (size (!! config)) as [| [| [| ?]]]; omega || tauto.
 Qed.
 
 (** Given a non-gathered, non invalid configuration, then some robot will move some day *)

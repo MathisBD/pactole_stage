@@ -1752,12 +1752,12 @@ Proof.
 intros f l Hl. induction l as [| pt l].
 * now elim Hl.
 * destruct (nil_or_In_dec l) as [? | Hin].
-  + subst l. eauto.
+  + subst l. exists pt. split; eauto; now left.
   + assert (Hnil : l <> nil). { intro. subst. destruct Hin as [? []]. }
     destruct (IHl Hnil) as [pt' [Hin' Heq]].
     simpl. rewrite Heq. clear Heq.
     destruct (Rle_dec (f pt') (f pt)) as [Hle | Hle].
-    - exists pt. split; auto; [].
+    - exists pt. split; try (now left); [].
       now rewrite Rmax_assoc, (Rmax_left _ (f pt')).
     - exists pt'. split; auto; [].
       rewrite Rmax_assoc, (Rmax_right _ (f pt')); lra.

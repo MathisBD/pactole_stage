@@ -170,7 +170,7 @@ Proof. intros. now rewrite 2 config_list_spec, map_map. Qed.
 
 End MapConfig.
 
-Arguments map_config {_} {info1} {info2} {_} {_} {_} f config /.
+Arguments map_config {_} {info1} {info2} {_} {_} {_} f config id /.
 
 Lemma map_config_id `{State} `{Names} : forall config,
   map_config Datatypes.id config == config.

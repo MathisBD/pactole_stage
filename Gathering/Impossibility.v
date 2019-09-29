@@ -17,8 +17,6 @@
      This file is distributed under the terms of the CeCILL-C licence.    *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Reals.
 Require Import Psatz.
 Require Import Morphisms.
@@ -42,12 +40,12 @@ Arguments equiv : simpl never.
 Section ImpossibilityProof.
 
 (** There are n good robots and no byzantine ones. *)
-Parameter n : nat.
+Variable n : nat.
 Instance MyRobots : Names := Robots n 0.
 
 (** We assume that the number of robots is even and non-null. *)
-Axiom even_nG : Nat.Even n.
-Axiom nG_non_0 : n <> 0.
+Hypothesis even_nG : Nat.Even n.
+Hypothesis nG_non_0 : n <> 0.
 
 Local Transparent G B.
 
@@ -59,20 +57,20 @@ Context {ES : EuclideanSpace location}.
 
 (** We assume that the space is equipped with a [build_similarity] function
     that can map any pair of distinct points to any other pair. *)
-Parameter build_similarity : forall {pt1 pt2 pt3 pt4 : location},
+Variable build_similarity : forall {pt1 pt2 pt3 pt4 : location},
   pt1 =/= pt2 -> pt3 =/= pt4 -> similarity location.
-Axiom build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
+Hypothesis build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
   (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
   pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
   build_similarity H12 H34 == build_similarity H12' H34'.
 
-Axiom build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+Hypothesis build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity Hdiff12 Hdiff34 pt1 == pt3.
-Axiom build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+Hypothesis build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity Hdiff12 Hdiff34 pt2 == pt4.
-Axiom build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+Hypothesis build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   inverse (build_similarity Hdiff12 Hdiff34) == build_similarity Hdiff34 Hdiff12.
-Axiom build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
+Hypothesis build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
 
 (** We are in a rigid formalism with no other info than the location,
@@ -109,7 +107,7 @@ Qed.
 Lemma half_size_config : Nat.div2 nG > 0.
 Proof.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
-simpl. destruct n as [| [| n]].
+simpl. destruct n as [| [| ?]].
 - omega.
 - destruct Heven. omega.
 - simpl. omega.
@@ -256,7 +254,7 @@ Local Opaque G B.
     the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
-Proof. exists 0. generalize nG_non_0. omega. Qed.
+Proof. exists 0. generalize nG_non_0. intro. omega. Qed.
 
 (** *  Proof of the impossiblity of gathering  **)
 

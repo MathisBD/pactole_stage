@@ -11,7 +11,9 @@ Require Export Pactole.Core.Formalism.
 
 
 Remove Hints eq_setoid : Setoid.
-Global Coercion Bijection.section : Bijection.bijection >-> Funclass.
+Coercion Bijection.section : Bijection.bijection >-> Funclass.
+Coercion Similarity.sim_f : Similarity.similarity >-> Bijection.bijection.
+
 Existing Instance Stream.stream_Setoid.
 Existing Instance Stream.hd_compat.
 Existing Instance Stream.tl_compat.

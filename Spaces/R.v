@@ -19,7 +19,6 @@
 (**************************************************************************)
 
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega.

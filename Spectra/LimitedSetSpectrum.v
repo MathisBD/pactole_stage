@@ -16,7 +16,6 @@
     This file is distributed under the terms of the CeCILL-C licence      *)
 (**************************************************************************)
 
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8_core.
 Require Import SetoidList.
 Require Import SetoidDec.
@@ -31,6 +30,7 @@ Require Import Pactole.Spectra.Definition.
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.
 Require Pactole.Spectra.SetSpectrum.
+Coercion Bijection.section : Bijection.bijection >-> Funclass.
 
 
 Section LimitedSetSpectrum.

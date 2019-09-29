@@ -1,3 +1,14 @@
+(**************************************************************************)
+(**   Mechanised Framework for Local Interactions & Distributed Algorithms  
+      T. Balabonski, P. Courtieu, R. Pelle, L. Rieg, X. Urbain              
+                                                                            
+      PACTOLE project                                                       
+                                                                            
+      This file is distributed under the terms of the CeCILL-C licence      
+                                                                          *)
+(**************************************************************************)
+
+
 Require Import Psatz SetoidDec ZArith Rbase.
 Require Import Pactole.Util.Coqlib.
 (*Require Import Pactole.Core.Robots.*)

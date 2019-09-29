@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Remove any previous archive
-rm -rf ./package
+rm -rf ./package/ package.tgz
 
 # Create all the required (sub-)directories
 mkdir ./package
@@ -17,7 +17,7 @@ mkdir ./package/Convergence
 mkdir ./package/Gathering
 mkdir ./package/Gathering/InR
 mkdir ./package/Gathering/InR2
-#mkdir ./package/Exploration
+mkdir ./package/Exploration
 
 # Create a fresh Makefile from the _CoqPoject
 coq_makefile -f _CoqProject -o Makefile
@@ -29,18 +29,17 @@ cp Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v ./pac
 
 cp Util/MMultiset/Preliminary.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetExtraOps.v ./package/Util/MMultiset/
 
-cp Util/Preliminary.v Util/Ratio.v Util/Lexprod.v Util/Stream.v Util/Bijection.v ./package/Util/
+cp Util/Coqlib.v Util/Preliminary.v Util/SetoidDefs.v Util/NumberComplements.v Util/ListComplements.v Util/Ratio.v Util/Lexprod.v Util/Stream.v Util/Bijection.v ./package/Util/
 
 cp Core/Robots.v Core/RobotInfo.v Core/Configurations.v Core/Formalism.v ./package/Core/
 
 cp Setting.v Makefile _CoqProject ./package/
 
-cp Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v ./package/Spaces/
+cp Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Ring.v Spaces/Grid.v Spaces/Isomorphism.v ./package/Spaces/
 
 cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra/
 
-cp Models/Rigid.v Models/Flexible.v Models/Similarity.v ./package/Models/
-# Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v
+cp Models/Rigid.v Models/Flexible.v Models/Similarity.v Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v Models/ContinuousGraph.v Models/GraphEquivalence.v ./package/Models/
 
 cp Convergence/Impossibility_2G_1B.v Convergence/Algorithm_noB.v ./package/Convergence/
 
@@ -48,10 +47,13 @@ cp Gathering/Definitions.v Gathering/WithMultiplicity.v Gathering/Impossibility.
 
 cp Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
 
-cp Gathering/InR2/Algorithm.v Gathering/InR2/FSyncFlexNoMultAlgorithm.v Gathering/InR2/Peleg.v ./package/Gathering/InR2/
+cp Gathering/InR2/Algorithm.v ./package/Gathering/InR2/
+#Gathering/InR2/FSyncFlexNoMultAlgorithm.v Gathering/InR2/Peleg.v
 
-## Specific to the MoRoVer'17 workshop
-#cp Template.v script.bak ./package/
+cp Exploration/Definitions.v Exploration/ImpossibilityKDividesN.v Exploration/Tower.v ./package/Exploration/
+
+# Specific to the MoRoVer'17 and FuReTherMoRe'19 workshops
+cp Template.v script.bak ./package/
 
 # Compile the archive to make sure it works
 make -C package -j 3 \
@@ -59,12 +61,13 @@ make -C package -j 3 \
   Gathering/InR/Impossibility.vo \
   Gathering/InR2/Algorithm.vo \
   Convergence/Impossibility_2G_1B.vo \
+  Exploration/ImpossibilityKDividesN.vo \
+  Exploration/Tower.v
 # Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
 
 # Clean the compilation
 make -C package cleanall
-# Extra cleanup due to a bug in Coq 8.6
-rm -f package/.*.aux package/*/.*.aux package/*/*/.*.aux
+rm package/Makefile.conf
 
 # Create the actual archive
-tar cvfz package.tgz package
+tar cfz package.tgz package

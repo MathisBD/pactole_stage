@@ -156,6 +156,8 @@ End SetConstruction.
 
 (** Building a spectrum from a configuration *)
 
+Require Pactole.Spaces.RealMetricSpace.
+
 Section SetSpectrum.
 
 Context `{State}.
@@ -177,12 +179,12 @@ Proof.
   - apply config_list_compat. assumption.
 + unfold spect_from_config, spect_is_ok. intros. apply make_set_spec.
 Defined.
+(* TODO: remove the use of classical logic
 Print Assumptions  set_spectrum.
-Print Assumptions make_set_spec.
+Print Assumptions make_set_spec. *)
 
 Notation spect_from_config := (@spect_from_config _ _ _ _ set_spectrum).
 
-Require Pactole.Spaces.RealMetricSpace.
 Lemma spect_from_config_ignore_snd `{RMS : RealMetricSpace.RealMetricSpace location} : forall config pt,
   spect_from_config config pt == spect_from_config config RealVectorSpace.origin.
 Proof. reflexivity. Qed.

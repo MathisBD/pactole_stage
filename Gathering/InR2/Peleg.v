@@ -9,8 +9,6 @@
                                                                         *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
 Require Import Omega Field.
@@ -42,9 +40,10 @@ Typeclasses eauto := (bfs) 10.
     A [demon] is an infinite stream of [demonic_action]s. *)
 
 (** **  Framework of the correctness proof: a finite set with at least two elements  **)
+Section GatheringInR2.
 
-Parameter n : nat.
-Axiom size_G : (2 <= n)%nat.
+Variable n : nat.
+Hypothesis size_G : (2 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
@@ -734,7 +733,7 @@ intros config pt Hgather.
 apply NoDupA_equivlistA_PermutationA; autoclass.
 * eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_elt.
 * repeat constructor. now rewrite InA_nil.
-* intros [x n].
+* intros [x k].
   rewrite elements_spec. cbn -[nG].
   unfold spect_from_config. simpl. rewrite config_list_spec.
   assert (Hnames : names = List.map Good Gnames).
@@ -747,7 +746,7 @@ apply NoDupA_equivlistA_PermutationA; autoclass.
     rewrite map_extensionalityA_compat; try reflexivity; autoclass; [].
     intros ? ? ?. subst. apply Hgather. }
   split; intro Hin.
-  + destruct Hin as [? Hlt]. subst n. left. revert Hlt.
+  + destruct Hin as [? Hlt]. subst k. left. revert Hlt.
     apply make_multiset_compat in Hperm.
     rewrite Hperm, make_multiset_alls, singleton_spec. changeR2.
     destruct (x =?= pt) as [Hpt | Hpt].
@@ -839,5 +838,7 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
   + assumption.
   + exists pt. apply Stream.Later. apply Hpt.
 Qed.
+
+End GatheringInR2.
 
 Print Assumptions FSGathering_in_R2.

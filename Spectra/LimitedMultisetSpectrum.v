@@ -16,8 +16,6 @@
     This file is distributed under the terms of the CeCILL-C licence      *)
 (**************************************************************************)
 
-
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
 Require Import Utf8_core.
 Require Import Bool.
 Require Import Arith_base.
@@ -41,6 +39,7 @@ Require Import Pactole.Spaces.Similarity.
 Close Scope R_scope.
 Set Implicit Arguments.
 Set Default Proof Using "All".
+Coercion Bijection.section : Bijection.bijection >-> Funclass.
 
 
 Section MultisetSpectrum.
