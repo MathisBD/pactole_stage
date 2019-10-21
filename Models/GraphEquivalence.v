@@ -237,6 +237,7 @@ Existing Instance graph_update_ratio.
 Existing Instance graph_inactive_ratio.
 Existing Instance FrameChoiceIsomorphismG.
 
+(** Build the state on edge [e] at ratio [ρ1 + ρ2]. *)
 Definition add_edge (e : E) (ρ1 ρ2 : ratio) : stateG.
 refine (if (ρ1 + ρ2)%R =?= 0%R then SOnVertex (src e) e ltac:(now left) else
         if Rle_dec 1 (ρ1 + ρ2) then SOnVertex (tgt e) e ltac:(now right)
@@ -255,6 +256,7 @@ Time repeat destruct_match; solve [ rewrite Hρ1, Hρ2 in *; contradiction
                                   | simpl; rewrite ?Hρ1, ?Hρ2; repeat split; apply He ].
 Qed.
 
+(** Move by a ratio [ρ] from the state [state]. *)
 Definition move (state : stateG) (ρ : ratio) : stateG :=
   match state with
     | SOnVertex v e proof => if v =?= src e then add_edge e ratio_0 ρ
@@ -326,8 +328,8 @@ simpl activate. destruct_match.
     pose (Dlocal_config := map_config (lift (existT precondition
                      (Bijection.section Dnew_frame) (precondition_satisfied da config g))) config).
     fold (Dlocal_config).
-    pose (Dlocal_pos := get_location (State := InfoV) (Dlocal_config (Good g))). fold Dlocal_pos.
-    pose (Dspect := spect_from_config Dlocal_config Dlocal_pos). fold Dspect.
+    pose (Dlocal_state := Dlocal_config (Good g)). fold Dlocal_state.
+    pose (Dspect := spect_from_config Dlocal_config Dlocal_state). fold Dspect.
     pose (Dlocal_robot_decision := rbg Dspect). fold Dlocal_robot_decision.
     pose (Dchoice := choose_update da Dlocal_config g Dlocal_robot_decision). fold Dchoice.
     pose (Dnew_local_state := update Dlocal_config g Dframe_choice Dlocal_robot_decision Dchoice).
@@ -341,8 +343,8 @@ simpl activate. destruct_match.
                      (Bijection.section Cnew_frame) (precondition_satisfied (da_D2C da)
                                                       (config_V2G config) g))) (config_V2G config)).
     fold (Clocal_config).
-    pose (Clocal_pos := get_location (State := InfoG) (Clocal_config (Good g))). fold Clocal_pos.
-    pose (Cspect := spect_from_config Clocal_config Clocal_pos). fold Cspect.
+    pose (Clocal_state := Clocal_config (Good g)). fold Clocal_state.
+    pose (Cspect := spect_from_config Clocal_config Clocal_state). fold Cspect.
     pose (Clocal_robot_decision := (rbg_V2G rbg) Cspect). fold Clocal_robot_decision.
     pose (Cchoice := choose_update (da_D2C da) Clocal_config g Clocal_robot_decision). fold Cchoice.
     pose (Cnew_local_state := update Clocal_config g Cframe_choice Clocal_robot_decision Cchoice).
@@ -383,11 +385,11 @@ simpl activate. destruct_match.
           - unfold equiv. cbn -[equiv].
             rewrite <- 2 iso_threshold. unfold Diso. rewrite (proj2_sig Dframe_choice).
             destruct  (precondition_satisfied da config g) as [? [? Ht]]. simpl. now rewrite Ht. }
-    assert (Hlocal_pos : Clocal_pos == OnVertex Dlocal_pos).
-    { unfold Clocal_pos. rewrite Hlocal_config. reflexivity. }
+    assert (Hlocal_state : Clocal_state == state_V2G Dlocal_state).
+    { unfold Clocal_state. rewrite Hlocal_config. reflexivity. }
     assert (Hspect : Cspect == Dspect).
     { unfold Cspect, Dspect. unfold spect_from_config at 1. unfold spect_V2G.
-      rewrite Hlocal_config, Hlocal_pos. reflexivity. }
+      rewrite Hlocal_config, Hlocal_state. reflexivity. }
     assert (Hlocal_robot_decision : Clocal_robot_decision == Dlocal_robot_decision).
     { unfold Dlocal_robot_decision. cbn -[equiv]. rewrite Hspect. reflexivity. }
     assert (Hchoice : Cchoice == if Dchoice then ratio_1 else ratio_0).
@@ -395,12 +397,12 @@ simpl activate. destruct_match.
       rewrite Hlocal_config, config_V2G2V, Hspect. reflexivity. }
     assert (Hnew_local_state : Cnew_local_state == state_V2G Dnew_local_state).
     { unfold Cnew_local_state, Dnew_local_state. unfold update, UpdateG, UpdateV.
-      assert (Hlocal_state := Hlocal_config (Good g)). unfold config_V2G in Hlocal_state.
+      assert (Hlocal_g := Hlocal_config (Good g)). unfold config_V2G in Hlocal_g.
       destruct (Dlocal_config (Good g)) as [[v e] Hvalid] eqn:Hg.
-      simpl get_location. unfold state_V2G in Hlocal_state. simpl fst in Hlocal_state.
-      simpl snd in Hlocal_state. simpl proj2_sig in Hlocal_state.
+      simpl get_location. unfold state_V2G in Hlocal_g. simpl fst in Hlocal_g.
+      simpl snd in Hlocal_g. simpl proj2_sig in Hlocal_g.
       destruct (Clocal_config (Good g)) as [v' e' proof' |] eqn:Hg'; try tauto; [].
-      destruct Hlocal_state as [Heqv Heqe].
+      destruct Hlocal_g as [Heqv Heqe].
       destruct (v' =?= src Clocal_robot_decision) as [Hv' | Hv'],
                (v =?= src Dlocal_robot_decision) as [Hv | Hv].
       + (* valid case: the robot chooses an adjacent edge *)
@@ -516,8 +518,8 @@ simpl activate. destruct_match_eq Hactive.
     pose (Clocal_config := map_config
             (lift (existT precondition Cnew_frame (precondition_satisfied da config g)))
             config). fold Clocal_config.
-    pose (Clocal_pos := get_location (State := InfoG) (Clocal_config (Good g))). fold Clocal_pos.
-    pose (Cspect := spect_from_config Clocal_config Clocal_pos). fold Cspect.
+    pose (Clocal_state := Clocal_config (Good g)). fold Clocal_state.
+    pose (Cspect := spect_from_config Clocal_config Clocal_state). fold Cspect.
     pose (Clocal_robot_decision := rbg Cspect). fold Clocal_robot_decision.
     pose (Cchoice := choose_update da Clocal_config g Clocal_robot_decision). fold Cchoice.
     pose (Cnew_local_state := update Clocal_config g Cframe_choice Clocal_robot_decision Cchoice).
@@ -531,8 +533,8 @@ simpl activate. destruct_match_eq Hactive.
            (lift (existT precondition Dnew_frame
               (precondition_satisfied (da_C2D da config) (config_G2V config) g))) (config_G2V config)).
     fold Dlocal_config.
-    pose (Dlocal_pos := get_location (State := InfoV) (Dlocal_config (Good g))). fold Dlocal_pos.
-    pose (Dspect := spect_from_config Dlocal_config Dlocal_pos). fold Dspect.
+    pose (Dlocal_state := Dlocal_config (Good g)). fold Dlocal_state.
+    pose (Dspect := spect_from_config Dlocal_config Dlocal_state). fold Dspect.
     pose (Dlocal_robot_decision := (rbg_G2V rbg) Dspect). fold Dlocal_robot_decision.
     pose (Dchoice := choose_update (da_C2D da config) Dlocal_config g Dlocal_robot_decision).
     fold Dchoice.
@@ -628,12 +630,11 @@ simpl activate. destruct_match_eq Hactive.
             rewrite (proj2 (projT2 (precondition_satisfied da config g))),
                     (proj2 (projT2 (precondition_satisfied (da_C2D da config) (config_G2V config) g))).
             reflexivity. }
-    assert (Hlocal_pos : Dlocal_pos == location_G2V Clocal_pos).
-    { unfold Dlocal_pos, Clocal_pos. rewrite Hlocal_config. simpl.
-      destruct (Clocal_config (Good g)); simpl; try destruct_match; reflexivity. }
+    assert (Hlocal_state : Dlocal_state == state_G2V Clocal_state).
+    { unfold Dlocal_state, Clocal_state. rewrite Hlocal_config. reflexivity. }
     assert (Hspect : Dspect == Cspect).
     { unfold Cspect, Dspect. unfold spect_from_config at 2. unfold spect_V2G.
-      rewrite Hlocal_config, Hlocal_pos. reflexivity. }
+      rewrite Hlocal_config, Hlocal_state. reflexivity. }
     assert (Hlocal_robot_decision : Dlocal_robot_decision == Clocal_robot_decision).
     { unfold Dlocal_robot_decision. cbn -[equiv]. rewrite Hspect. reflexivity. }
     assert (Hchoice : Dchoice == if Rle_dec (threshold Clocal_robot_decision) Cchoice
@@ -680,13 +681,13 @@ simpl activate. destruct_match_eq Hactive.
       - cbn -[equiv]. apply E_subrelation, Bijection.retraction_section. }
     assert (Hnew_local_state : Dnew_local_state == state_G2V Cnew_local_state).
     { unfold Cnew_local_state, Dnew_local_state. unfold update, UpdateG, UpdateV.
-      assert (Hlocal_state := Hlocal_config (Good g)). unfold config_G2V in Hlocal_state.
+      assert (Hlocal_g := Hlocal_config (Good g)). unfold config_G2V in Hlocal_g.
       destruct (Clocal_config (Good g)) as [v e proof | e p] eqn:Hg;
       try (exfalso; apply (HnotOnEdge _ _ (reflexivity _))); [].
       (* the robot is on a vertex *)
-      apply get_location_compat in Hlocal_state.
-      unfold state_G2V in Hlocal_state.
-      simpl get_location in Hlocal_state at 2.
+      apply get_location_compat in Hlocal_g.
+      unfold state_G2V in Hlocal_g.
+      simpl get_location in Hlocal_g at 2.
       unfold move. simpl fst. symmetry.
       do 2 destruct_match.
       * (* valid case: the robot chooses an adjacent edge *)
@@ -713,10 +714,10 @@ simpl activate. destruct_match_eq Hactive.
             symmetry. repeat split; simpl; apply Hlocal_robot_decision.
       * (* absurd case: the robot does not make the same choice *)
         match goal with | H : complement _ _ _ |- _ => elim H end.
-        rewrite Hlocal_state. etransitivity; eauto. symmetry. apply Hlocal_robot_decision.
+        rewrite Hlocal_g. etransitivity; eauto. symmetry. apply Hlocal_robot_decision.
       * (* absurd case: the robot does not make the same choice *)
         match goal with | H : complement _ _ _ |- _ => elim H end.
-        rewrite <- Hlocal_state. etransitivity; eauto. apply Hlocal_robot_decision.
+        rewrite <- Hlocal_g. etransitivity; eauto. apply Hlocal_robot_decision.
       * (* invalid case: the robot does not choose an adjacent edge *)
         rewrite Hlocal_config, <- Hg. reflexivity. }
     (*  actual proof *)

@@ -46,7 +46,7 @@ Local Instance Loc : Location := {
 Local Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
 
 (** States of robots only contains their location. *)
-Local Existing Instance OnlyLocation.
+Local Instance St : State location := OnlyLocation (fun _ => True).
 Local Existing Instance proj_graph.
 
 (** Demon's frame choice: we move back the robot to the origin with a translation
@@ -73,7 +73,7 @@ Global Instance setting : GlobalDefinitions := {
   glob_Loc := Loc;
   (* The state of robots (must contain at least the current location) *)
   glob_info := location;
-  glob_State := OnlyLocation;
+  glob_State := OnlyLocation (fun _ => True);
   (* The spectrum: what robots can see from their surroundings *)
   glob_spect := multiset_spectrum;
   (* The output type of robograms: some information that we can use to get a target location *)

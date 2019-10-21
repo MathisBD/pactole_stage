@@ -42,7 +42,7 @@ Context `{Names}.
 
 (** The only information available is the current location.
     The change of frame of reference uses a similarity, so we export [Pactole.Models.Similarity]. *)
-Global Instance Info : State location := OnlyLocation.
+Global Instance Info : State location := OnlyLocation (fun _ => True).
 
 (** The spectrum and the way updates are made to the robot state are still arbitrary. *)
 Context {Spect : Spectrum}.
@@ -56,15 +56,6 @@ Lemma no_info : forall x y, get_location x == get_location y -> x == y.
 Proof. now intros. Qed.
 
 Notation "!!" := (fun config => spect_from_config config origin).
-
-(** Not true in general as the info may change even if the robot does not move. *)
-Lemma no_moving_same_config : forall r da config,
-  moving r da config = List.nil -> round r da config == config.
-Proof.
-intros r da config Hmove id.
-destruct (round r da config id =?= config id) as [Heq | Heq]; trivial; [].
-apply <- moving_spec in Heq. rewrite Hmove in Heq. inversion Heq.
-Qed.
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)

@@ -185,13 +185,14 @@ Print Assumptions make_set_spec. *)
 
 Notation spect_from_config := (@spect_from_config _ _ _ _ set_spectrum).
 
-Lemma spect_from_config_ignore_snd `{RMS : RealMetricSpace.RealMetricSpace location} : forall config pt,
-  spect_from_config config pt == spect_from_config config RealVectorSpace.origin.
+Lemma spect_from_config_ignore_snd : forall config state state',
+  spect_from_config config state == spect_from_config config state'.
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f Pf, Proper (equiv ==> equiv) f ->
   forall config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (lift (existT _ f Pf)) config) (f pt).
+  map f (spect_from_config config pt)
+  == spect_from_config (map_config (lift (existT _ f Pf)) config) (lift (existT _ f Pf) pt).
 Proof.
 repeat intro. unfold spect_from_config, set_spectrum.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
@@ -204,16 +205,18 @@ rewrite config_list_map, map_map, <- make_set_map, map_map.
 + now apply lift_compat.
 Qed.
 
-Theorem cardinal_spect_from_config : forall config pt, cardinal (spect_from_config config pt) <= nG + nB.
+Theorem cardinal_spect_from_config : forall config state,
+  cardinal (spect_from_config config state) <= nG + nB.
 Proof.
 intros. unfold spect_from_config, set_spectrum.
 etransitivity; try apply cardinal_make_set; [].
 now rewrite map_length, config_list_length.
 Qed.
 
-Property pos_in_config : forall config pt id, In (get_location (config id)) (spect_from_config config pt).
+Property pos_in_config : forall config state id,
+  In (get_location (config id)) (spect_from_config config state).
 Proof.
-intros config pt id. unfold spect_from_config. simpl.
+intros config state id. unfold spect_from_config. simpl.
 rewrite make_set_spec, InA_map_iff; autoclass; [].
 eexists. split; auto; []. apply config_list_InA. now exists id.
 Qed.

@@ -204,8 +204,9 @@ Lemma spect_from_config_ignore_snd ref_pt :
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall f, Proper (equiv ==> equiv) f ->
-  forall Pf config pt,
-  map f (spect_from_config config pt) == spect_from_config (map_config (lift (existT _ f Pf)) config) (f pt).
+  forall Pf config state,
+  map f (spect_from_config config state)
+  == spect_from_config (map_config (lift (existT _ f Pf)) config) ((lift (existT _ f Pf)) state).
 Proof.
 repeat intro. unfold spect_from_config, multiset_spectrum.
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.

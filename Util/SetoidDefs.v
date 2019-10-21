@@ -37,6 +37,12 @@ Instance nat_Setoid : Setoid nat := eq_setoid nat.
 Instance bool_Setoid : Setoid bool := eq_setoid bool.
 Instance unit_Setoid : Setoid unit := eq_setoid unit.
 
+Instance R_EqDec : EqDec R_Setoid := Req_EM_T.
+Instance Z_EqDec : EqDec Z_Setoid := Z.eq_dec.
+Instance nat_EqDec : EqDec nat_Setoid := Nat.eq_dec.
+Instance bool_EqDec : EqDec bool_Setoid := Bool.bool_dec.
+Instance unit_EqDec : EqDec unit_Setoid := fun x y => match x, y with tt, tt => left eq_refl end.
+
 Notation "x == y" := (equiv x y).
 Arguments complement A R x y /.
 Arguments Proper {A}%type R%signature m.

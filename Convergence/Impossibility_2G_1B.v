@@ -39,6 +39,9 @@ Import List.
 Import SetoidClass.
 
 
+Typeclasses eauto := (bfs).
+
+
 Section ConvergenceImpossibility.
 (** There are [2 * n] good robots and [n] byzantine ones. *)
 Variable n : nat.
@@ -50,8 +53,11 @@ Instance Loc : Location := make_Location R.
 Instance location_ES : EuclideanSpace location := R_ES.
 (** Robots compute a target location. *)
 Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
-(** The only information in the state of a robot is its location. *)
-Instance Info : State location := OnlyLocation.
+(** The only information in the state of a robot is its location.
+    Changes of frame must come from a similarity. *)
+(* Instance Info : State location := OnlyLocation
+  (fun f => sigT (fun sim : similarity location => Bijection.section sim == f)). *)
+Instance Info : State location := OnlyLocation (fun _ => True).
 (** Demons use similarities to perform the change of frame of reference. *)
 Instance FC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
 (** Demons do not make any choice in how a robot state is updated, both when active or not. *)
@@ -618,7 +624,7 @@ Proof.
 setoid_rewrite <- no_move1 at 2.
 apply (pgm_compat r). f_equiv.
 change (Bijection.section (swap 1)) with (lift (existT precondition (swap 1) I)).
-replace origin with (swap 1 1) by (compute; ring).
+replace origin with ((lift (existT precondition (swap 1) I)) 1) by (compute; ring).
 rewrite <- (spect_from_config_map (f := swap 1)); autoclass; [].
 rewrite spect_from_config_ignore_snd, spect_config2.
 apply swap_spect2_spect1.

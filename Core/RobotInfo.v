@@ -74,11 +74,12 @@ Arguments State {_} info.
 (** **  Some operators to build states  **)
 (* begin show *)
 
-(** A basic state containing only the current location. *)
-Local Instance OnlyLocation `{Location} : State location := {|
+(** A basic state containing only the current location.
+    We can restrict the allowed changes of frame with the [precond] argument. *)
+Local Instance OnlyLocation `{Location} precond : State location := {|
   get_location := id;
   lift := fun f => projT1 f;
-  precondition := fun _ => True |}.
+  precondition := precond |}.
 Proof. all:(autoclass; try reflexivity). abstract (intros ? ? Heq x; now apply Heq). Defined.
 
 (** Adding a location-typed field that is affected by frame change. *)

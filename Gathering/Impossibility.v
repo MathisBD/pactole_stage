@@ -446,7 +446,7 @@ assert (Hcase : forall id, get_location (config id) == pt1 \/ get_location (conf
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
 unfold round. cbn -[equiv equiv_dec get_location map_config lift].
-rewrite get_location_lift. simpl map_config at 2. cbn [projT1]. simpl get_location at 2. unfold id.
+rewrite get_location_lift. unfold map_config at 2. cbn [projT1]. simpl get_location at 2. unfold id.
 rewrite <- spect_from_config_map, spect_from_config_ignore_snd; autoclass; [].
 unfold change_frame1.
 destruct (invalid_dec config) as [Hvalid | Hvalid].

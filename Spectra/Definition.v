@@ -39,13 +39,13 @@ Class Spectrum {info} `{State info} `{Names} := {
   spectrum_Setoid : Setoid spectrum;
   spectrum_EqDec : EqDec spectrum_Setoid;
   
-  (** Converting a (local) configuration into a spectrum, given the point of observation *)
-  spect_from_config : configuration -> location -> spectrum;
+  (** Converting a (local) configuration into a spectrum, given the state of the observer *)
+  spect_from_config : configuration -> info -> spectrum;
   spect_from_config_compat : Proper (equiv ==> equiv ==> equiv) spect_from_config;
   
   (** A predicate characterizing correct spectra for a given (local) configuration *)
-  spect_is_ok : spectrum ->  configuration -> location -> Prop;
-  spect_from_config_spec : forall config pt, spect_is_ok (spect_from_config config pt) config pt }.
+  spect_is_ok : spectrum ->  configuration -> info -> Prop;
+  spect_from_config_spec : forall config st, spect_is_ok (spect_from_config config st) config st }.
 
 Existing Instance spectrum_Setoid.
 Existing Instance spectrum_EqDec.

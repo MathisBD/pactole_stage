@@ -83,7 +83,7 @@ Context {RMS : RealMetricSpace location}. (* for dist *)
 Context `{Names}.
 Instance Robot : robot_choice (path location) := { robot_choice_Setoid := path_Setoid location }.
 
-Instance St : State location := OnlyLocation.
+Instance St : State location := OnlyLocation (fun _ => True).
 
 (** Specialized definition where the only choice made by the demon is the movement ratio. *)
 Instance OnlyFlexible : update_choice ratio := {|

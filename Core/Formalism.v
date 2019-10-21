@@ -236,9 +236,9 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           let local_config := map_config (lift (existT precondition new_frame
                                                        (precondition_satisfied da config g)))
                                          config in
-          let local_pos := get_location (local_config (Good g)) in
+          let local_state := local_config (Good g) in
           (* compute the spectrum *)
-          let spect := spect_from_config local_config local_pos in
+          let spect := spect_from_config local_config local_state in
           (* apply r on spectrum *)
           let local_robot_decision := r spect in
           (* the demon chooses how to perform the state update *)
@@ -268,8 +268,8 @@ unfold round. rewrite Hda. destruct_match.
     - apply Heq.
     - reflexivity.
     - now f_equiv.
-    - do 2 (f_equiv; trivial; []). now apply get_location_compat.
-    - do 3 (f_equiv; trivial; []). now apply get_location_compat.
+    - repeat (f_equiv; trivial).
+    - repeat (f_equiv; trivial).
   + (* byzantine robot *)
     now f_equiv.
 * (* inactive robot *)
@@ -312,16 +312,28 @@ split; intro Hin.
   - destruct (round r da config id =?= config id) as [Heq | _]; intuition.
 Qed.
 
+Lemma no_moving_same_config : forall r da config,
+  moving r da config = List.nil -> round r da config == config.
+Proof.
+intros r da config Hmove id.
+destruct (round r da config id =?= config id) as [Heq | Heq]; trivial; [].
+apply <- moving_spec in Heq. rewrite Hmove in Heq. inversion Heq.
+Qed.
+
 (** [execute r d config] returns an (infinite) execution from an initial global
     configuration [config], a demon [d] and a robogram [r] running on each good robot. *)
 Definition execute (r : robogram) : demon -> configuration -> execution :=
   cofix execute d config :=
   Stream.cons config (execute (Stream.tl d) (round r (Stream.hd d) config)).
 
-(** Decomposition lemma for [execute]. *)
+(** Decomposition lemmas for [execute]. *)
+Lemma execute_hd : forall (r : robogram) (d : demon) (config : configuration),
+  Stream.hd (execute r d config) = config.
+Proof. reflexivity. Qed.
+
 Lemma execute_tail : forall (r : robogram) (d : demon) (config : configuration),
   Stream.tl (execute r d config) = execute r (Stream.tl d) (round r (Stream.hd d) config).
-Proof. intros. destruct d. reflexivity. Qed.
+Proof. reflexivity. Qed.
 
 Global Instance execute_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) execute.
 Proof.
@@ -384,8 +396,8 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
           let local_config := map_config (lift (existT precondition new_frame
                                                        (precondition_satisfied da config g)))
                                          config in
-          let local_pos := get_location (local_config (Good g)) in
-          let spect := spect_from_config local_config local_pos in
+          let local_state := local_config (Good g) in
+          let spect := spect_from_config local_config local_state in
           let local_robot_decision := r spect in
           let choice := da.(choose_update) local_config g local_robot_decision in
           let new_local_state := update local_config g frame_choice local_robot_decision choice in
@@ -427,8 +439,8 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
         let local_config := map_config (lift (existT precondition new_frame
                                                      (precondition_satisfied da config g)))
                                        config in
-        let local_pos := get_location (local_config (Good g)) in
-        let spect := spect_from_config local_config local_pos in
+        let local_state := local_config (Good g) in
+        let spect := spect_from_config local_config local_state in
         let local_robot_decision := r spect in
         let choice := da.(choose_update) local_config g local_robot_decision in
         let new_local_state := update local_config g frame_choice local_robot_decision choice in

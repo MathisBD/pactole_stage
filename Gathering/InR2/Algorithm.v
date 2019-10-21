@@ -1107,13 +1107,17 @@ simpl in Hlen; discriminate || clear Hlen; [| |].
   subst pt1'. apply Bijection.retraction_section.
 * (* Multiple maximal towers *)
   change (map_config sim config) with (map_config (lift (existT precondition sim I)) config).
-  rewrite <- (spect_from_config_ignore_snd origin
-               (map_config (lift (State := OnlyLocation)
-                                 (existT (fun _ : location -> location => True) sim I)) config) (sim origin)),
+  rewrite (spect_from_config_ignore_snd
+             (lift (State := OnlyLocation (fun _ => True))
+                   (existT (fun _ : location -> location => True) sim I) origin)
+             (map_config (lift (State := OnlyLocation (fun _ => True))
+                               (existT (fun _ : location -> location => True) sim I)) config) origin),
           <- spect_from_config_map, is_clean_morph; trivial; [].
   destruct (is_clean (!! config)).
   + (* Clean case *)
-    rewrite <- (spect_from_config_ignore_snd origin _ (sim origin)),
+    rewrite (spect_from_config_ignore_snd
+              (lift (State := OnlyLocation (fun _ => True))
+                    (existT (fun _ : location -> location => True) sim I) origin) _ origin),
             <- spect_from_config_map, target_morph; trivial; [].
     apply Bijection.retraction_section.
   + (* Dirty case *)

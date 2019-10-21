@@ -454,8 +454,8 @@ Proof. intros. unfold config_G2V, config_V2G. now repeat try (split; simpl). Qed
     and add the current location. *)
 Global Instance spect_V2G (Spect : @Spectrum _ _ InfoV _) : @Spectrum _ _ InfoG _ := {
   spectrum := @spectrum _ _ _ _ Spect;
-  spect_from_config := fun config pt => spect_from_config (config_G2V config) (location_G2V pt);
-  spect_is_ok s config pt := spect_is_ok s (config_G2V config) (location_G2V pt) }.
+  spect_from_config := fun config st => spect_from_config (config_G2V config) (state_G2V st);
+  spect_is_ok s config st := spect_is_ok s (config_G2V config) (state_G2V st) }.
 Proof.
 + abstract (now repeat intro; repeat f_equiv).
 + repeat intro. apply spect_from_config_spec.

@@ -44,11 +44,12 @@ Implicit Type config : configuration.
 
 Global Instance limited_set_spectrum (radius : R) : Spectrum := {
   spectrum := set location;
-  spect_from_config config pt :=
-    SetSpectrum.make_set (List.filter (fun x => Rle_bool (dist x pt) radius)
+  spect_from_config config state :=
+    SetSpectrum.make_set (List.filter (fun x => Rle_bool (dist x (get_location state)) radius)
                                       (List.map get_location (config_list config)));
-  spect_is_ok s config pt :=
-    forall l, In l s <-> InA equiv l (List.map get_location (config_list config)) /\ (dist l pt <= radius)%R }.
+  spect_is_ok s config state :=
+    forall l, In l s <-> InA equiv l (List.map get_location (config_list config))
+                           /\ (dist l (get_location state) <= radius)%R }.
 Proof.
 (* BUG?: bullet forbidden here *)
 { intros config1 config2 Hconfig pt1 pt2 Hpt.
@@ -65,14 +66,16 @@ Defined.
 (* Notation spectrum := (@spectrum loc info _ _ _ _ _ _ _). *)
 Local Notation "'from_config' radius" := (@spect_from_config _ _ _ _ (limited_set_spectrum radius)) (at level 1).
 
-Lemma spect_from_config_ignore_snd : forall config pt,
-  spect_from_config config pt == spect_from_config config origin.
+Lemma spect_from_config_ignore_snd : forall ref_state config state,
+  spect_from_config config state == spect_from_config config ref_state.
 Proof. reflexivity. Qed.
 
 Lemma spect_from_config_map : forall sim : similarity location,
   forall Psim radius config pt,
   map sim (from_config radius config pt)
-  == from_config (Similarity.zoom sim * radius) (map_config (lift (existT precondition sim Psim)) config) (sim pt).
+  == from_config (Similarity.zoom sim * radius)
+                 (map_config (lift (existT precondition sim Psim)) config)
+                 ((lift (existT precondition sim Psim)) pt).
 Proof.
 repeat intro. unfold spect_from_config, limited_set_spectrum.
 rewrite config_list_map; try (now apply lift_compat; simpl; apply Bijection.section_compat); [].
@@ -82,16 +85,16 @@ assert (Hequiv : (@equiv _ state_Setoid ==> @equiv _ location_Setoid)%signature
           (fun x => sim (get_location x)) (fun x => get_location (lift (existT precondition sim Psim) x))).
 { intros pt1 pt2 Heq. now rewrite get_location_lift, Heq. }
 apply (map_extensionalityA_compat _ Hequiv). f_equiv.
-intros ? ? Heq. rewrite get_location_lift. simpl.
+intros ? ? Heq. rewrite 2 get_location_lift. simpl.
 rewrite sim.(Similarity.dist_prop), Heq, Rle_bool_mult_l; trivial; [].
 apply Similarity.zoom_pos.
 Qed.
 
-Property pos_in_config : forall radius config pt id,
-  ((dist (get_location (config id)) pt) <= radius)%R ->
-  In (get_location (config id)) (from_config radius config pt).
+Property pos_in_config : forall radius config state id,
+  ((dist (get_location (config id)) (get_location state)) <= radius)%R ->
+  In (get_location (config id)) (from_config radius config state).
 Proof.
-intros radius config pt id. unfold spect_from_config. simpl.
+intros radius config state id. unfold spect_from_config. simpl.
 rewrite SetSpectrum.make_set_spec, filter_InA, InA_map_iff; autoclass; [|].
 + intro Hle. repeat esplit; auto; [|].
   - apply config_list_InA. now exists id.
@@ -99,10 +102,11 @@ rewrite SetSpectrum.make_set_spec, filter_InA, InA_map_iff; autoclass; [|].
 + intros ? ? Heq. now rewrite Heq.
 Qed.
 
-Property spect_from_config_In : forall radius config pt l,
-  In l (from_config radius config pt) <-> exists id, get_location (config id) == l /\ (dist l pt <= radius)%R.
+Property spect_from_config_In : forall radius config state l,
+  In l (from_config radius config state)
+  <-> exists id, get_location (config id) == l /\ (dist l (get_location state) <= radius)%R.
 Proof.
-intros radius config pt l. split; intro Hin.
+intros radius config state l. split; intro Hin.
 + unfold spect_is_ok, spect_from_config, limited_set_spectrum in *. simpl in *.
   rewrite SetSpectrum.make_set_spec, filter_InA in Hin.
   - rewrite config_list_spec, map_map, InA_map_iff, Rle_bool_true_iff in Hin;

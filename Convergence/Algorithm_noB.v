@@ -49,7 +49,7 @@ Instance Loc : Location := {| location := R2 |}.
 Instance Loc_VS : RealVectorSpace location := R2_VS.
 Instance Loc_ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
-Instance Info : State location := OnlyLocation.
+Instance Info : State location := OnlyLocation (fun _ => True).
 Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance FDC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
 Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.
@@ -189,7 +189,7 @@ remember (change_frame da config g) as sim.
 change (Bijection.section (inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
 cbn -[equiv location mul map_config lift precondition inverse].
-unfold convergeR2_pgm. simpl map_config at 2. unfold id.
+unfold convergeR2_pgm. unfold map_config at 2.
 rewrite <- spect_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
 cbn -[inverse isobarycenter equiv].
 rewrite spect_from_config_ignore_snd, isobarycenter_sim_morph.
