@@ -17,37 +17,37 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.Configurations.
 Require Import Pactole.Core.RobotInfo.
-Require Import Pactole.Spectra.Definition.
+Require Import Pactole.Observations.Definition.
 Close Scope R_scope.
 Set Implicit Arguments.
 Set Default Proof Using "All".
 
 
-Section CompositionSpectrum.
+Section CompositionObservation.
 
-(** **  Loosing information inside the state before building the spectrum  **)
+(** **  Loosing information inside the state before building the observation  **)
 Context `{Location}.
 Context {info1 info2 : Type}.
 Context `{St1 : @State _ info1}.
 Context `{St2 : @State _ info2}.
 Context `{Names}.
-Context `(@Spectrum _ _ St2 _).
+Context `(@Observation _ _ St2 _).
 
 Variable f : info1 -> info2.
 Hypothesis f_compat : Proper (equiv ==> equiv) f.
 
 (* TODO: find a better name *)
-Instance FSpectrum : @Spectrum _ _ St1 _ := {|
-  spect_from_config := fun config pt => spect_from_config (map_config f config) pt;
-  spect_is_ok := fun sp config pt => spect_is_ok sp (map_config f config) pt |}.
+Instance FObservation : @Observation _ _ St1 _ := {|
+  obs_from_config := fun config st => obs_from_config (map_config f config) (f st);
+  obs_is_ok := fun sp config st => obs_is_ok sp (map_config f config) (f st) |}.
 Proof.
 (* BUG?: + forbidden here? *)
-{ autoclass. }
++ autoclass.
 + autoclass.
 + repeat intro. do 2 (f_equiv; trivial).
-+ intros. apply spect_from_config_spec.
++ intros. apply obs_from_config_spec.
 Defined.
 
-End CompositionSpectrum.
+End CompositionObservation.
 
-Arguments FSpectrum {_} {info1} {info2} {_} {_} {_} _ f {_}.
+Arguments FObservation {_} {info1} {info2} {_} {_} {_} _ f {_}.

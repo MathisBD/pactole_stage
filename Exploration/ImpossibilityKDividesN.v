@@ -50,7 +50,7 @@ Definition origin : location := of_Z 0.
 Definition dummy_val : location := origin. (* could be anything *)
 
 Existing Instance setting.
-Notation "!! config" := (spect_from_config config origin) (at level 0).
+Notation "!! config" := (obs_from_config config origin) (at level 0).
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
@@ -100,12 +100,12 @@ apply Nat2Z.inj, Nat.mul_cancel_r in Heq; auto.
 Local Transparent G. unfold G. now apply eq_proj1.
 Qed.
 
-(**  Translating [ref_config] by multiples of [ring_size / kG] does not change its spectrum. *)
-Lemma spect_trans_ref_config : forall g,
+(**  Translating [ref_config] by multiples of [ring_size / kG] does not change its observation. *)
+Lemma obs_trans_ref_config : forall g,
   !! (map_config (Ring.trans (to_Z (create_ref_config g))) ref_config) == !! ref_config.
 Proof.
-unfold spect_from_config, glob_spect, setting,
-       MultisetSpectrum.multiset_spectrum, MultisetSpectrum.make_multiset.
+unfold obs_from_config, glob_obs, setting,
+       MultisetObservation.multiset_observation, MultisetObservation.make_multiset.
 intro g. apply MMultisetFacts.from_elements_compat. (* FIXME: [f_equiv] works but is too long *)
 rewrite 2 config_list_spec, 4 map_map.
 change (finite_node ring_size) with location.
@@ -192,7 +192,7 @@ Proof. split. Qed.
 Lemma FYSNC_setting : FSYNC bad_demon.
 Proof. coinduction Hcoind. apply FSYNC_one. Qed.
 
-(** As all robots see the same spectrum, we take for instance the one at location [origin]. *)
+(** As all robots see the same observation, we take for instance the one at location [origin]. *)
 Definition move := pgm r (!! ref_config).
 Definition target := move_along origin move.
 
@@ -211,8 +211,8 @@ rewrite FSYNC_round_simplify; try (now split); [].
 apply no_byz_eq. intro g.
 cbn -[Ring.trans equiv setting ring_edge map_config].
 unfold lift. cbn -[map_config Ring.trans equiv].
-rewrite (MultisetSpectrum.spect_from_config_ignore_snd origin).
-rewrite spect_trans_ref_config, Hmove. cbn [move_along map_config].
+rewrite (MultisetObservation.obs_from_config_ignore_snd origin).
+rewrite obs_trans_ref_config, Hmove. cbn [move_along map_config].
 apply Bijection.retraction_section.
 Qed.
 
@@ -356,9 +356,10 @@ Qed.
 Instance eq_equiv_subrelation : subrelation equiv equiv_config.
 Proof. intros ? ? ?. exists 0. unfold equiv_config_k. now rewrite f_config_0. Qed.
 
-(** Equivalent configurations produce the same spectrum hence the same answer from the robogram. *)
+(** Equivalent configurations produce the same observation
+    hence the same answer from the robogram. *)
 
-Lemma config1_spect_equiv : forall config1 config2,
+Lemma config1_obs_equiv : forall config1 config2,
   equiv_config config1 config2 ->
   forall g, !! (map_config (trans (to_Z (config1 (Good g)))) config1)
          == !! (map_config (trans (to_Z (config2 (Good g)))) config2).
@@ -382,7 +383,7 @@ simpl. unfold f_config. simpl. apply to_Z_injective. repeat rewrite Z2Z.
 rewrite 2 Z.sub_diag, Z.sub_opp_r, Z.add_mod_idemp_l; try omega; [].
 unfold Datatypes.id. rewrite <- Z.add_assoc. setoid_rewrite Z.add_mod; try omega; [].
 do 2 f_equal.
-+ do 3 f_equiv. apply (pgm_compat r), spect_from_config_compat; try reflexivity; [].
++ do 3 f_equiv. apply (pgm_compat r), obs_from_config_compat; try reflexivity; [].
   intro. symmetry. apply (f_config_same_sub Hequiv).
 + rewrite Hequiv. unfold f_config. simpl. rewrite Z2Z, Z.sub_opp_r, Z.mod_mod; omega.
 Qed.
@@ -492,8 +493,8 @@ Proof.
 apply no_byz_eq. intro g.
 rewrite (FSYNC_round_simplify r ref_config FSYNC_one).
 cbn -[equiv map_config trans].
-rewrite MultisetSpectrum.spect_from_config_ignore_snd.
-rewrite spect_trans_ref_config.
+rewrite MultisetObservation.obs_from_config_ignore_snd.
+rewrite obs_trans_ref_config.
 cbn -[trans equiv]. rewrite trans_same. fold origin.
 unfold f_config, map_config. simpl. now rewrite Z.add_comm, Z.sub_opp_r.
 Qed.

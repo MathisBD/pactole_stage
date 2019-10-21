@@ -27,7 +27,7 @@ Require Pactole.Util.Stream.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.RobotInfo.
 Require Import Pactole.Core.Configurations.
-Require Import Pactole.Spectra.Definition.
+Require Import Pactole.Observations.Definition.
 
 
 Typeclasses eauto := 5.
@@ -36,7 +36,7 @@ Remove Hints eq_setoid.
 
 Section Formalism.
 
-Context `{Spectrum}.
+Context `{Observation}.
 Variables Trobot Tframe Tactive Tinactive : Type.
 
 (** **  Robograms and Executions  **)
@@ -49,7 +49,7 @@ Definition execution := Stream.t configuration.
 Class robot_choice := { robot_choice_Setoid :> Setoid Trobot }.
 
 Record robogram `{robot_choice} := {
-  pgm :> spectrum -> Trobot;
+  pgm :> observation -> Trobot;
   pgm_compat :> Proper (equiv ==> equiv) pgm}.
 
 Global Instance robogram_Setoid `{robot_choice} : Setoid robogram := {|
@@ -74,7 +74,7 @@ Proof. intros r1 r2 Hr s1 s2 Hs. rewrite (Hr s1). now apply pgm_compat. Qed.
     Therefore, it can make choices at two places: while computing the local frame of reference for a robot
     and while updating robot states.  These choice points will be represented explicitely as demon choices. *)
 
-(** A [frame_choice] represents the choices made by the demon to compute the spectrum.
+(** A [frame_choice] represents the choices made by the demon to compute the observation.
     It must at least contain a bijection to compute the change of frame of reference.  *)
 Class frame_choice := {
   frame_choice_bijection :> Tframe -> bijection location;
@@ -217,7 +217,7 @@ Definition demon := Stream.t demonic_action.
 
 (** [round r da config] returns the new configuration of robots (that is, a function
     giving the position of each robot) from the previous one [config] by applying
-    the robogram [r] on each spectrum seen by each robot. [da.(relocate_byz)]
+    the robogram [r] on each observation seen by each robot. [da.(relocate_byz)]
     is used for byzantine robots.
     
     This setting is general enough to accomodate all models we have considered so far. *)
@@ -237,10 +237,10 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
                                                        (precondition_satisfied da config g)))
                                          config in
           let local_state := local_config (Good g) in
-          (* compute the spectrum *)
-          let spect := spect_from_config local_config local_state in
-          (* apply r on spectrum *)
-          let local_robot_decision := r spect in
+          (* compute the observation *)
+          let obs := obs_from_config local_config local_state in
+          (* apply r on the observation *)
+          let local_robot_decision := r obs in
           (* the demon chooses how to perform the state update *)
           let choice := da.(choose_update) local_config g local_robot_decision in
           (* the actual update of the robot state is performed by the update function *)
@@ -397,8 +397,8 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
                                                        (precondition_satisfied da config g)))
                                          config in
           let local_state := local_config (Good g) in
-          let spect := spect_from_config local_config local_state in
-          let local_robot_decision := r spect in
+          let obs := obs_from_config local_config local_state in
+          let local_robot_decision := r obs in
           let choice := da.(choose_update) local_config g local_robot_decision in
           let new_local_state := update local_config g frame_choice local_robot_decision choice in
           lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
@@ -440,8 +440,8 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
                                                      (precondition_satisfied da config g)))
                                        config in
         let local_state := local_config (Good g) in
-        let spect := spect_from_config local_config local_state in
-        let local_robot_decision := r spect in
+        let obs := obs_from_config local_config local_state in
+        let local_robot_decision := r obs in
         let choice := da.(choose_update) local_config g local_robot_decision in
         let new_local_state := update local_config g frame_choice local_robot_decision choice in
         lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state

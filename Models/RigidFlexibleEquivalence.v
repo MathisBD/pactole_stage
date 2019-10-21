@@ -30,7 +30,7 @@ Require Pactole.Models.Flexible.
 
 Section RigidFlexibleEquivalence.
 
-Context `{Spectrum}.
+Context `{Observation}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}. (* for dist *)
 Instance Frame : frame_choice (similarity location) := Similarity.FrameChoiceSimilarity.

@@ -6,7 +6,7 @@ Require Pactole.Util.Lexprod.
 Require Export Pactole.Core.Robots.
 Require Export Pactole.Core.RobotInfo.
 Require Export Pactole.Core.Configurations.
-Require Export Pactole.Spectra.Definition.
+Require Export Pactole.Observations.Definition.
 Require Export Pactole.Core.Formalism.
 
 
@@ -46,8 +46,8 @@ Class GlobalDefinitions := {
   (** The state of robots (must contain at least the current location) *)
   glob_info : Type;
   glob_State :> @State glob_Loc glob_info;
-  (** The spectrum: what robots can see from their surroundings *)
-  glob_spect :> @Spectrum _ _ glob_State glob_Names;
+  (** The observation: what robots can see from their surroundings *)
+  glob_obs :> @Observation _ _ glob_State glob_Names;
   (** The output type of robograms: some information that we can use to get a target location *)
   glob_Trobot : Type;
   glob_robot_choice :> robot_choice glob_Trobot;

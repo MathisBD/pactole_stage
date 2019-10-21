@@ -1,5 +1,5 @@
 -install none
--R . Pactole
+-Q . Pactole
 
 ## External libraries
 #Util/FSets/OrderedType.v
@@ -55,13 +55,13 @@ Spaces/Ring.v
 Spaces/Grid.v
 
 ## Spectra
-Spectra/Definition.v
-Spectra/MultisetSpectrum.v
-Spectra/SetSpectrum.v
-Spectra/LimitedSetSpectrum.v
-Spectra/LimitedMultisetSpectrum.v
-#Spectra/PointedSpectrum.v
-#Spectra/PreCompositionSpectrum.v
+Observations/Definition.v
+Observations/MultisetObservation.v
+Observations/SetObservation.v
+Observations/LimitedSetObservation.v
+Observations/LimitedMultisetObservation.v
+#Observations/PointedObservation.v
+#Observations/PreCompositionObservation.v
 
 ## Case Study: Convergence
 Convergence/Impossibility_2G_1B.v

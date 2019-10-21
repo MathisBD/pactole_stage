@@ -41,7 +41,7 @@ Context (E : Type).
 Context {G : Graph location E}.
 Context `{@frame_choice _ (isomorphism G)}.
 Context {Upd : update_function location (isomorphism G) _}.
-Context `{@Spectrum _ _ _ _}.
+Context `{@Observation _ _ _ _}.
 
 
 (** The robogram should return only adjacent node values.

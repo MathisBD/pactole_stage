@@ -69,8 +69,8 @@ Proof. split. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
-Notation spect_from_config := (@spect_from_config _ _ _ _ multiset_spectrum).
-Notation "!! config" := (spect_from_config config origin) (at level 10).
+Notation obs_from_config := (@obs_from_config _ _ _ _ multiset_observation).
+Notation "!! config" := (obs_from_config config origin) (at level 10).
 
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.
@@ -108,12 +108,12 @@ Qed.
 
 
 (** Spectra can never be empty as the number of robots is non null. *)
-Lemma spect_non_nil : forall config, !! config =/= empty.
-Proof. apply spect_non_nil. apply size_G. Qed.
+Lemma obs_non_nil : forall config, !! config =/= empty.
+Proof. apply obs_non_nil. apply size_G. Qed.
 
 Corollary sort_non_nil : forall config, sort (support (!! config)) <> nil.
 Proof.
-intros config Habs. apply (spect_non_nil config).
+intros config Habs. apply (obs_non_nil config).
 setoid_rewrite <- support_nil.
 apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
@@ -121,10 +121,10 @@ Qed.
 Lemma half_size_config : Nat.div2 nG > 0.
 Proof. assert (Heven := size_G). simpl. destruct n as [| [| ?]]; simpl; omega. Qed.
 
-(* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall config l,
+(* We need to unfold [obs_is_ok] for rewriting *)
+Definition obs_from_config_spec : forall config l,
   (!! config)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
-  := spect_from_config_spec.
+  := obs_from_config_spec.
 
 (** **  Property expressing the existence of a majority tower  **)
 
@@ -147,7 +147,7 @@ intros. apply max_map_injective.
 Qed.
 
 Lemma support_max_non_nil : forall config, support (max (!! config)) <> nil.
-Proof. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (spect_non_nil _ Habs). Qed.
+Proof. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (obs_non_nil _ Habs). Qed.
 
 (** ***  Computational equivalent of having a majority tower  **)
 
@@ -168,7 +168,7 @@ intros config pt. split; intro Hmaj.
   + apply NoDupA_singleton.
   + apply support_NoDupA.
   + intro y. rewrite InA_singleton.
-    rewrite support_spec, max_spec1_iff; try (now apply spect_non_nil); [].
+    rewrite support_spec, max_spec1_iff; try (now apply obs_non_nil); [].
     split; intro Hpt.
     - rewrite Hpt. intro x. destruct (Rdec x pt).
       -- subst x. reflexivity.
@@ -205,7 +205,7 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
   + rewrite add_other, singleton_spec.
     - repeat destruct_match; simpl in *; contradiction || omega.
     - assumption.
-* rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
+* rewrite cardinal_add, cardinal_singleton, cardinal_obs_from_config.
   simpl. rewrite plus_0_r. now apply even_div2.
 Qed.
 
@@ -293,7 +293,7 @@ Proof.
                     (support_NoDupA _)
                     (support_NoDupA _)
                     h Hlen'').
-      assert (toto:=cardinal_spect_from_config config origin).
+      assert (toto:=cardinal_obs_from_config config origin).
       unfold nB in toto.
       rewrite <- plus_n_O in toto.
       assert (~ equiv pt1 pt2). {
@@ -505,7 +505,7 @@ intros sim conf r. apply is_extremal_map_monotonic_invariant.
 Qed.
 
 (* When there is no robot (s is empty), the center is 0. *)
-Definition extreme_center (s : spectrum) := (mini s + maxi s) / 2.
+Definition extreme_center (s : observation) := (mini s + maxi s) / 2.
 
 Instance extreme_center_compat : Proper (equiv ==> eq) extreme_center.
 Proof. intros s s' Hs. unfold extreme_center, mini, maxi. now rewrite Hs. Qed.
@@ -545,7 +545,7 @@ Qed.
 
 Lemma extreme_center_similarity_invariant : forall (sim : similarity R) config,
   extreme_center (map sim (!! config)) = sim (extreme_center (!! config)).
-Proof. intros. apply extreme_center_similarity. apply spect_non_nil. Qed.
+Proof. intros. apply extreme_center_similarity. apply obs_non_nil. Qed.
 
 Lemma middle_map_monotonic_invariant : forall f,
   Proper (equiv ==> equiv) f -> monotonic Rleb Rleb f -> Util.Preliminary.injective eq eq f ->
@@ -582,7 +582,7 @@ Qed.
 **)
 
 
-Definition gatherR_pgm (s : spectrum) : location :=
+Definition gatherR_pgm (s : observation) : location :=
   match support (max s) with
     | nil => 0 (* only happen with no robots *)
     | pt :: nil => pt (* case 1: one majority stack *)
@@ -592,7 +592,7 @@ Definition gatherR_pgm (s : spectrum) : location :=
            if is_extremal 0 s then 0 else extreme_center s
   end.
 
-(** The robogram is invariant by permutation of spectra. *)
+(** The robogram is invariant by permutation of obsra. *)
 Instance gatherR_pgm_compat : Proper (equiv ==> equiv) gatherR_pgm.
 Proof.
 unfold gatherR_pgm. intros s s' Hs. assert (Hperm := support_compat (max_compat Hs)).
@@ -646,16 +646,16 @@ change (Bijection.inverse (frame_choice_bijection sim)) with (frame_choice_bijec
 rewrite Hinvsim. *)
 assert(Hsim_compat : Proper (equiv ==> equiv) sim). { subst. autoclass. }
 assert (Hsim_inj2 := Similarity.injective sim).
-assert (Hspect := spect_from_config_ignore_snd origin (map_config sim config)
+assert (Hobs := obs_from_config_ignore_snd origin (map_config sim config)
                                                (get_location (map_config sim config (Good g)))).
-rewrite (pgm_compat _ _ _ Hspect).
+rewrite (pgm_compat _ _ _ Hobs).
 cbn [projT1].
 (* Unfold the robogram *)
 unfold gatherR, gatherR_pgm. cbn [pgm].
 assert (Hperm : PermutationA equiv (support (max (!! (map_config sim config))))
                                    (List.map sim (support (max (!! config))))).
 { rewrite <- map_injective_support; trivial. f_equiv.
-  rewrite <- max_similarity, (spect_from_config_map (St := OnlyLocation (fun _ => True)) Hsim_compat I); auto. }
+  rewrite <- max_similarity, (obs_from_config_map (St := OnlyLocation (fun _ => True)) Hsim_compat I); auto. }
 destruct (support (max (!! config))) as [| pt' [| pt2' l']].
 * (* Empty support *)
   simpl List.map in Hperm. symmetry in Hperm.
@@ -675,8 +675,8 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
   assert (Hmap : !! (map_config (Bijection.section (Similarity.sim_f sim)) config)
                  == map (Bijection.section (Similarity.sim_f sim)) (!! config)).
   { change (Bijection.section (Similarity.sim_f sim)) with (lift (existT precondition sim I)).
-    rewrite <- (spect_from_config_ignore_snd origin config (sim origin)),
-            (spect_from_config_map (St := OnlyLocation (fun _ => True)) _ I config origin); reflexivity. }
+    rewrite <- (obs_from_config_ignore_snd origin config (sim origin)),
+            (obs_from_config_map (St := OnlyLocation (fun _ => True)) _ I config origin); reflexivity. }
   rewrite Hmap, map_injective_size; trivial; [].
   destruct (size (!! config) =? 3) eqn:Hlen.
   + (* There are three towers *)
@@ -695,7 +695,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
       change (center (change_frame da config g) == config (Good g)).
       now rewrite similarity_center.
     - (* The current robot is not exremal *)
-      rewrite Hmap, extreme_center_similarity, Heqsim; apply spect_non_nil || trivial; [].
+      rewrite Hmap, extreme_center_similarity, Heqsim; apply obs_non_nil || trivial; [].
       simpl. now rewrite Bijection.retraction_section.
 Qed.
 
@@ -755,7 +755,7 @@ Theorem Majority_grow :  forall pt config, MajTower_at pt config ->
 Proof.
 intros pt config Hmaj.
 rewrite (round_simplify_Majority Hmaj).
-do 2 rewrite spect_from_config_spec, config_list_spec.
+do 2 rewrite obs_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 + reflexivity.
 + unfold Datatypes.id. changeR.
@@ -770,7 +770,7 @@ Theorem Majority_wither : forall pt pt' config, pt <> pt' ->
 Proof.
 intros pt pt' config Hdiff Hmaj.
 rewrite (round_simplify_Majority Hmaj).
-do 2 rewrite spect_from_config_spec, config_list_spec.
+do 2 rewrite obs_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 + reflexivity.
 + unfold Datatypes.id. changeR.
@@ -837,7 +837,7 @@ intros config Hmaj Hlen.
 assert (Hhdin := sort_non_nil config). apply (hd_In 0%R) in Hhdin.
 rewrite <- Permuted_sort in Hhdin at 2.
 rewrite <- InA_Leibniz in Hhdin. change eq with (@equiv location _) in Hhdin.
-rewrite support_spec, (spect_from_config_In config origin) in Hhdin.
+rewrite support_spec, (obs_from_config_In config origin) in Hhdin.
 destruct Hhdin as [id Hid].
 (* Its position 	before and after are the same *)
 assert (Heq : config id == round gatherR da config id).
@@ -852,12 +852,12 @@ apply Rle_antisym.
   rewrite support_spec, Heq. apply (pos_in_config (round gatherR da config) origin).
 * apply sort_min.
   rewrite <- InA_Leibniz. change eq with (@equiv location _).
-  rewrite support_spec. apply (spect_from_config_In config origin).
+  rewrite support_spec. apply (obs_from_config_In config origin).
   exists id. apply min_sort.
   + rewrite Heq, <- InA_Leibniz. change eq with (@equiv location _).
     rewrite support_spec. apply (pos_in_config (round gatherR da config) origin).
   + intros y Hy. rewrite <- InA_Leibniz in Hy. change eq with (@equiv location _) in Hy.
-    rewrite support_spec, (spect_from_config_In (round gatherR da config) origin) in Hy.
+    rewrite support_spec, (obs_from_config_In (round gatherR da config) origin) in Hy.
     destruct Hy as [id' Hid']. rewrite <- Hid', Hid.
     rewrite (round_simplify_Generic Hmaj Hlen id'); trivial; [].
     destruct (da.(activate) id').
@@ -880,7 +880,7 @@ intros config Hmaj Hlen.
 assert (Hlastin := sort_non_nil config). apply (last_In 0%R) in Hlastin.
 rewrite <- Permuted_sort in Hlastin at 2.
 rewrite <- InA_Leibniz in Hlastin. change eq with (@equiv location _) in Hlastin.
-rewrite support_spec, (spect_from_config_In config origin) in Hlastin.
+rewrite support_spec, (obs_from_config_In config origin) in Hlastin.
 destruct Hlastin as [id Hid].
 (* Its position before and after are the same *)
 assert (Heq : config id == round gatherR da config id).
@@ -892,12 +892,12 @@ assert (Heq : config id == round gatherR da config id).
 apply Rle_antisym.
 * apply sort_max.
   rewrite <- InA_Leibniz. change eq with (@equiv location _).
-  rewrite support_spec. apply (spect_from_config_In config origin).
+  rewrite support_spec. apply (obs_from_config_In config origin).
   exists id. apply max_sort.
   + rewrite Heq, <- InA_Leibniz. change eq with (@equiv location _).
     rewrite support_spec. apply (pos_in_config (round gatherR da config)).
   + intros y Hy. rewrite <- InA_Leibniz in Hy. change eq with (@equiv location _) in Hy.
-    rewrite support_spec, (spect_from_config_In (round gatherR da config) origin) in Hy.
+    rewrite support_spec, (obs_from_config_In (round gatherR da config) origin) in Hy.
     destruct Hy as [id' Hid']. rewrite <- Hid', Hid.
     rewrite (round_simplify_Generic Hmaj Hlen id'); try reflexivity; [].
     destruct (da.(activate) id').
@@ -930,7 +930,7 @@ Proof.
 intros config Hmaj Hlen.
 (* We simplify the lhs *)
 rewrite round_simplify_Generic; trivial.
-do 2 rewrite spect_from_config_spec, config_list_spec.
+do 2 rewrite obs_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl in *; unfold Datatypes.id in *.
 * reflexivity.
 * changeR. destruct (activate da id).
@@ -957,7 +957,7 @@ Proof.
 intros config Hmaj Hlen.
 (* We simplify the lhs *)
 rewrite round_simplify_Generic; trivial.
-do 2 rewrite spect_from_config_spec, config_list_spec.
+do 2 rewrite obs_from_config_spec, config_list_spec.
 induction names as [| id l]; simpl.
 * reflexivity.
 * changeR. unfold Datatypes.id.
@@ -985,7 +985,7 @@ Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1
 Proof.
 intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
 replace nG with (nG + nB)%nat by (simpl; omega).
-rewrite <- (cardinal_spect_from_config config origin).
+rewrite <- (cardinal_obs_from_config config origin).
 rewrite <- (add_remove_id pt1 (!! config) (reflexivity _)) at 4.
 rewrite cardinal_add.
 rewrite <- (add_remove_id pt2 (!! config) (reflexivity _)) at 6.
@@ -1007,7 +1007,7 @@ destruct (da.(activate) id1) eqn:Hmove1; [destruct (da.(activate) id2) eqn:Hmove
   cbv zeta.
   destruct (support (max (!! config))) as [| pt [| ? ?]] eqn:Hmaj.
   + (* no robots *)
-    rewrite support_nil, max_is_empty in Hmaj. elim (spect_non_nil _ Hmaj).
+    rewrite support_nil, max_is_empty in Hmaj. elim (obs_non_nil _ Hmaj).
   + (* a majority tower *)
     reflexivity.
   + destruct (size (!! config) =? 3) eqn:Hlen.
@@ -1055,7 +1055,7 @@ rewrite Hperm in *. inversion_clear Hnodup. inversion_clear H0. repeat split.
 Qed.
 
 (* TODO: move it somewhere else? inside MultisetSpectrum? *)
-(** Generic result of robograms using multiset spectra. *)
+(** Generic result of robograms using multiset obsra. *)
 Lemma increase_move :
   forall r config pt,
     ((!! config)[pt] < (!! (round r da config))[pt])%nat ->
@@ -1075,7 +1075,7 @@ Proof.
     { intro id. specialize (Hex id (In_names _)). revert Hex. repeat destruct_match; auto. }
     (** We prove a contradiction by showing that the opposite inequality of Hlt holds. *)
     clear Hex. revert Hlt. apply le_not_lt.
-    do 2 rewrite spect_from_config_spec, config_list_spec.
+    do 2 rewrite obs_from_config_spec, config_list_spec.
     induction names as [| id l]; simpl; trivial; [].
     unfold Datatypes.id in *. repeat destruct_match; auto using le_n_S; [].
     specialize (Hg id). intuition.
@@ -1099,7 +1099,7 @@ intros config pt. split.
     assert (Habs' : round gatherR da config id' =/= config id').
     { intro Habs'. rewrite Habs' in Habs. now elim Habs. }
     rewrite <- (moving_spec gatherR) in Habs'. apply Hdest in Habs'. contradiction. }
-  do 2 rewrite spect_from_config_spec, config_list_spec.
+  do 2 rewrite obs_from_config_spec, config_list_spec.
   assert (Hin : List.In id names) by apply In_names.
   induction names as [| id' l]; try (now inversion Hin); [].
   inversion_clear Hin.
@@ -1282,7 +1282,7 @@ Lemma multiplicity_le_nG : forall pt config, (!! config)[pt] <= nG.
 Proof.
 intros pt config. etransitivity.
 - apply cardinal_lower.
-- rewrite cardinal_spect_from_config. simpl. omega.
+- rewrite cardinal_obs_from_config. simpl. omega.
 Qed.
 
 (* When we only have three towers, the new configuration does not create new positions. *)
@@ -1293,7 +1293,7 @@ Lemma support_round_Three_incl : forall config,
        (support (!! config)).
 Proof.
 intros config Hmaj Hlen pt Hin.
-rewrite <- InA_Leibniz in Hin. change eq with (@equiv location _) in Hin. rewrite support_spec, spect_from_config_In in Hin.
+rewrite <- InA_Leibniz in Hin. change eq with (@equiv location _) in Hin. rewrite support_spec, obs_from_config_In in Hin.
 destruct Hin as [id Hid]. rewrite (round_simplify_Three Hmaj Hlen id) in Hid.
 destruct (da.(activate) id).
 + rewrite <- Hid. setoid_rewrite Permuted_sort at 3. apply nth_In.
@@ -1498,7 +1498,7 @@ destruct (support (max (!! config))) as [| pt [| pt' l]] eqn:Hmaj.
         rewrite <- support_spec, InA_Leibniz, Permuted_sort, Hsup. intuition.
       - exists pt2. repeat split; try now intro; subst; intuition.
         rewrite <- support_spec, InA_Leibniz, Permuted_sort, Hsup. intuition. }
-    destruct Hex as [pt [Hin Hmove]]. rewrite spect_from_config_In in Hin.
+    destruct Hex as [pt [Hin Hmove]]. rewrite obs_from_config_In in Hin.
     destruct Hin as [gmove Heq]. rewrite <- Heq in Hmove.
     exists gmove. intros da Hda Hactive. rewrite active_spec in Hactive. rewrite moving_spec.
     rewrite (round_simplify_Generic da Hda Hmaj Hlen gmove), Hactive.
@@ -1539,7 +1539,7 @@ intros da Hda config pt Hgather. rewrite (round_simplify_Majority).
 + assumption.
 + intros pt' Hdiff.
   assert (H0 : (!! config)[pt'] = 0).
-  { rewrite spect_from_config_spec, config_list_spec.
+  { rewrite obs_from_config_spec, config_list_spec.
     induction names as [| id l].
     + reflexivity.
     + simpl. destruct_match.

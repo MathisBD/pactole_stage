@@ -448,17 +448,17 @@ Proof. intros ? ? Hconfig id. unfold config_G2V. f_equiv. apply Hconfig. Qed.
 Lemma config_V2G2V : forall config : configV, config_G2V (config_V2G config) == config.
 Proof. intros. unfold config_G2V, config_V2G. now repeat try (split; simpl). Qed.
 
-(** The spectrum for continuous setting is almost the same as for the discrete one:
+(** The observation for continuous setting is almost the same as for the discrete one:
     we simply project robots on edges either to the source or target of the edge
     depending on where they are located compared to the threshold of the edge;
     and add the current location. *)
-Global Instance spect_V2G (Spect : @Spectrum _ _ InfoV _) : @Spectrum _ _ InfoG _ := {
-  spectrum := @spectrum _ _ _ _ Spect;
-  spect_from_config := fun config st => spect_from_config (config_G2V config) (state_G2V st);
-  spect_is_ok s config st := spect_is_ok s (config_G2V config) (state_G2V st) }.
+Global Instance obs_V2G (Spect : @Observation _ _ InfoV _) : @Observation _ _ InfoG _ := {
+  observation := @observation _ _ _ _ Spect;
+  obs_from_config := fun config st => obs_from_config (config_G2V config) (state_G2V st);
+  obs_is_ok s config st := obs_is_ok s (config_G2V config) (state_G2V st) }.
 Proof.
 + abstract (now repeat intro; repeat f_equiv).
-+ repeat intro. apply spect_from_config_spec.
++ repeat intro. apply obs_from_config_spec.
 Defined.
 
 (** Robograms can only pick which edge they want to move on.
@@ -467,18 +467,18 @@ Global Instance Robot : robot_choice E := {robot_choice_Setoid := E_src_tgt_thd_
 
 (** ** Translation of robograms **)
 
-Context {Spect : @Spectrum _ _ InfoV _}.
-Notation robogramV := (@robogram _ _ InfoV _ Spect).
-Notation robogramG := (@robogram _ _ InfoG _ (spect_V2G Spect)).
+Context {Obs : @Observation _ _ InfoV _}.
+Notation robogramV := (@robogram _ _ InfoV _ Obs).
+Notation robogramG := (@robogram _ _ InfoG _ (obs_V2G Obs)).
 
 Definition rbg_V2G (rbgV : robogramV) : robogramG :=
-  @Build_robogram _ _ InfoG _ (spect_V2G Spect) _ _ rbgV rbgV.(pgm_compat).
+  @Build_robogram _ _ InfoG _ (obs_V2G Obs) _ _ rbgV rbgV.(pgm_compat).
 
 Global Instance rbg_V2G_compat : Proper (equiv ==> equiv) rbg_V2G.
 Proof. intros ra1 ra2 Hra. simpl. apply Hra. Qed.
 
 Definition rbg_G2V (rbgG : robogramG) : robogramV :=
-  @Build_robogram _ _ InfoV _ Spect _ _ rbgG rbgG.(pgm_compat).
+  @Build_robogram _ _ InfoV _ Obs _ _ rbgG rbgG.(pgm_compat).
 
 Global Instance rbg_G2V_compat : Proper (equiv ==> equiv) rbg_G2V.
 Proof. intros ra1 ra2 Hra s. simpl. apply Hra. Qed.

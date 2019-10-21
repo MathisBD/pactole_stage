@@ -191,9 +191,9 @@ Qed.
 
 (** ** Final results: the translations commute with [round]. **)
 
-Context {Spect : @Spectrum _ _ InfoV _}.
-Notation robogramV := (@robogram _ _ InfoV _ Spect E _).
-Notation robogramG := (@robogram _ _ InfoG _ (spect_V2G Spect) E _).
+Context {Obs : @Observation _ _ InfoV _}.
+Notation robogramV := (@robogram _ _ InfoV _ Obs E _).
+Notation robogramG := (@robogram _ _ InfoG _ (obs_V2G Obs) E _).
 
 (** ***  Setting for discrete graphs  **)
 
@@ -329,8 +329,8 @@ simpl activate. destruct_match.
                      (Bijection.section Dnew_frame) (precondition_satisfied da config g))) config).
     fold (Dlocal_config).
     pose (Dlocal_state := Dlocal_config (Good g)). fold Dlocal_state.
-    pose (Dspect := spect_from_config Dlocal_config Dlocal_state). fold Dspect.
-    pose (Dlocal_robot_decision := rbg Dspect). fold Dlocal_robot_decision.
+    pose (Dobs := obs_from_config Dlocal_config Dlocal_state). fold Dobs.
+    pose (Dlocal_robot_decision := rbg Dobs). fold Dlocal_robot_decision.
     pose (Dchoice := choose_update da Dlocal_config g Dlocal_robot_decision). fold Dchoice.
     pose (Dnew_local_state := update Dlocal_config g Dframe_choice Dlocal_robot_decision Dchoice).
     fold Dnew_local_state.
@@ -344,8 +344,8 @@ simpl activate. destruct_match.
                                                       (config_V2G config) g))) (config_V2G config)).
     fold (Clocal_config).
     pose (Clocal_state := Clocal_config (Good g)). fold Clocal_state.
-    pose (Cspect := spect_from_config Clocal_config Clocal_state). fold Cspect.
-    pose (Clocal_robot_decision := (rbg_V2G rbg) Cspect). fold Clocal_robot_decision.
+    pose (Cobs := obs_from_config Clocal_config Clocal_state). fold Cobs.
+    pose (Clocal_robot_decision := (rbg_V2G rbg) Cobs). fold Clocal_robot_decision.
     pose (Cchoice := choose_update (da_D2C da) Clocal_config g Clocal_robot_decision). fold Cchoice.
     pose (Cnew_local_state := update Clocal_config g Cframe_choice Clocal_robot_decision Cchoice).
     fold Cnew_local_state.
@@ -387,14 +387,14 @@ simpl activate. destruct_match.
             destruct  (precondition_satisfied da config g) as [? [? Ht]]. simpl. now rewrite Ht. }
     assert (Hlocal_state : Clocal_state == state_V2G Dlocal_state).
     { unfold Clocal_state. rewrite Hlocal_config. reflexivity. }
-    assert (Hspect : Cspect == Dspect).
-    { unfold Cspect, Dspect. unfold spect_from_config at 1. unfold spect_V2G.
+    assert (Hobs : Cobs == Dobs).
+    { unfold Cobs, Dobs. unfold obs_from_config at 1. unfold obs_V2G.
       rewrite Hlocal_config, Hlocal_state. reflexivity. }
     assert (Hlocal_robot_decision : Clocal_robot_decision == Dlocal_robot_decision).
-    { unfold Dlocal_robot_decision. cbn -[equiv]. rewrite Hspect. reflexivity. }
+    { unfold Dlocal_robot_decision. cbn -[equiv]. rewrite Hobs. reflexivity. }
     assert (Hchoice : Cchoice == if Dchoice then ratio_1 else ratio_0).
     { cbn -[equiv]. unfold Dchoice.
-      rewrite Hlocal_config, config_V2G2V, Hspect. reflexivity. }
+      rewrite Hlocal_config, config_V2G2V, Hobs. reflexivity. }
     assert (Hnew_local_state : Cnew_local_state == state_V2G Dnew_local_state).
     { unfold Cnew_local_state, Dnew_local_state. unfold update, UpdateG, UpdateV.
       assert (Hlocal_g := Hlocal_config (Good g)). unfold config_V2G in Hlocal_g.
@@ -519,8 +519,8 @@ simpl activate. destruct_match_eq Hactive.
             (lift (existT precondition Cnew_frame (precondition_satisfied da config g)))
             config). fold Clocal_config.
     pose (Clocal_state := Clocal_config (Good g)). fold Clocal_state.
-    pose (Cspect := spect_from_config Clocal_config Clocal_state). fold Cspect.
-    pose (Clocal_robot_decision := rbg Cspect). fold Clocal_robot_decision.
+    pose (Cobs := obs_from_config Clocal_config Clocal_state). fold Cobs.
+    pose (Clocal_robot_decision := rbg Cobs). fold Clocal_robot_decision.
     pose (Cchoice := choose_update da Clocal_config g Clocal_robot_decision). fold Cchoice.
     pose (Cnew_local_state := update Clocal_config g Cframe_choice Clocal_robot_decision Cchoice).
     fold Cnew_local_state.
@@ -534,8 +534,8 @@ simpl activate. destruct_match_eq Hactive.
               (precondition_satisfied (da_C2D da config) (config_G2V config) g))) (config_G2V config)).
     fold Dlocal_config.
     pose (Dlocal_state := Dlocal_config (Good g)). fold Dlocal_state.
-    pose (Dspect := spect_from_config Dlocal_config Dlocal_state). fold Dspect.
-    pose (Dlocal_robot_decision := (rbg_G2V rbg) Dspect). fold Dlocal_robot_decision.
+    pose (Dobs := obs_from_config Dlocal_config Dlocal_state). fold Dobs.
+    pose (Dlocal_robot_decision := (rbg_G2V rbg) Dobs). fold Dlocal_robot_decision.
     pose (Dchoice := choose_update (da_C2D da config) Dlocal_config g Dlocal_robot_decision).
     fold Dchoice.
     pose (Dnew_local_state := update Dlocal_config g Dframe_choice Dlocal_robot_decision Dchoice).
@@ -632,11 +632,11 @@ simpl activate. destruct_match_eq Hactive.
             reflexivity. }
     assert (Hlocal_state : Dlocal_state == state_G2V Clocal_state).
     { unfold Dlocal_state, Clocal_state. rewrite Hlocal_config. reflexivity. }
-    assert (Hspect : Dspect == Cspect).
-    { unfold Cspect, Dspect. unfold spect_from_config at 2. unfold spect_V2G.
+    assert (Hobs : Dobs == Cobs).
+    { unfold Cobs, Dobs. unfold obs_from_config at 2. unfold obs_V2G.
       rewrite Hlocal_config, Hlocal_state. reflexivity. }
     assert (Hlocal_robot_decision : Dlocal_robot_decision == Clocal_robot_decision).
-    { unfold Dlocal_robot_decision. cbn -[equiv]. rewrite Hspect. reflexivity. }
+    { unfold Dlocal_robot_decision. cbn -[equiv]. rewrite Hobs. reflexivity. }
     assert (Hchoice : Dchoice == if Rle_dec (threshold Clocal_robot_decision) Cchoice
                                  then true else false).
     { unfold Dchoice, choose_update, da_C2D.

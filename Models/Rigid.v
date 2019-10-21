@@ -29,7 +29,7 @@ Typeclasses eauto := (bfs).
 Section RigidFormalism.
 
 Context {Tframe : Type}.
-Context `{Spectrum}.
+Context `{Observation}.
 Context {Robot : robot_choice location}.
 Context {Frame : frame_choice Tframe}.
 Context `{update_choice}.

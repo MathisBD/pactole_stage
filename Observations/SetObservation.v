@@ -30,7 +30,7 @@ Require Export Pactole.Util.FSets.FSetFacts.
 Require Import Pactole.Core.Robots.
 Require Import Pactole.Core.Configurations.
 Require Import Pactole.Core.RobotInfo.
-Require Import Pactole.Spectra.Definition.
+Require Import Pactole.Observations.Definition.
 
 
 Section SetConstruction.
@@ -154,22 +154,22 @@ Qed.
 
 End SetConstruction.
 
-(** Building a spectrum from a configuration *)
+(** Building an observation from a configuration *)
 
 Require Pactole.Spaces.RealMetricSpace.
 
-Section SetSpectrum.
+Section SetObservation.
 
 Context `{State}.
 Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance set_spectrum : Spectrum := {
-  spectrum := set location;
+Global Instance set_observation : Observation := {
+  observation := set location;
   
-  spect_from_config config pt := make_set (List.map get_location (config_list config));
-  spect_is_ok s config pt :=
+  obs_from_config config pt := make_set (List.map get_location (config_list config));
+  obs_is_ok s config pt :=
     forall l, In l s <-> InA equiv l (List.map get_location (config_list config)) }.
 Proof.
 + repeat intro.
@@ -177,24 +177,24 @@ Proof.
         (@map_eqlistA_compat _ _ equiv equiv _ get_location).
   - autoclass.
   - apply config_list_compat. assumption.
-+ unfold spect_from_config, spect_is_ok. intros. apply make_set_spec.
++ unfold obs_from_config, obs_is_ok. intros. apply make_set_spec.
 Defined.
 (* TODO: remove the use of classical logic
-Print Assumptions  set_spectrum.
+Print Assumptions  set_observation.
 Print Assumptions make_set_spec. *)
 
-Notation spect_from_config := (@spect_from_config _ _ _ _ set_spectrum).
+Notation obs_from_config := (@obs_from_config _ _ _ _ set_observation).
 
-Lemma spect_from_config_ignore_snd : forall config state state',
-  spect_from_config config state == spect_from_config config state'.
+Lemma obs_from_config_ignore_snd : forall ref_state config state,
+  obs_from_config config state == obs_from_config config ref_state.
 Proof. reflexivity. Qed.
 
-Lemma spect_from_config_map : forall f Pf, Proper (equiv ==> equiv) f ->
+Lemma obs_from_config_map : forall f Pf, Proper (equiv ==> equiv) f ->
   forall config pt,
-  map f (spect_from_config config pt)
-  == spect_from_config (map_config (lift (existT _ f Pf)) config) (lift (existT _ f Pf) pt).
+  map f (obs_from_config config pt)
+  == obs_from_config (map_config (lift (existT _ f Pf)) config) (lift (existT _ f Pf) pt).
 Proof.
-repeat intro. unfold spect_from_config, set_spectrum.
+repeat intro. unfold obs_from_config, set_observation.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
 + apply make_set_compat, eqlistA_PermutationA_subrelation.
   assert (Hequiv : (@equiv info _ ==> @equiv location _)%signature
@@ -205,32 +205,32 @@ rewrite config_list_map, map_map, <- make_set_map, map_map.
 + now apply lift_compat.
 Qed.
 
-Theorem cardinal_spect_from_config : forall config state,
-  cardinal (spect_from_config config state) <= nG + nB.
+Theorem cardinal_obs_from_config : forall config state,
+  cardinal (obs_from_config config state) <= nG + nB.
 Proof.
-intros. unfold spect_from_config, set_spectrum.
+intros. unfold obs_from_config, set_observation.
 etransitivity; try apply cardinal_make_set; [].
 now rewrite map_length, config_list_length.
 Qed.
 
 Property pos_in_config : forall config state id,
-  In (get_location (config id)) (spect_from_config config state).
+  In (get_location (config id)) (obs_from_config config state).
 Proof.
-intros config state id. unfold spect_from_config. simpl.
+intros config state id. unfold obs_from_config. simpl.
 rewrite make_set_spec, InA_map_iff; autoclass; [].
 eexists. split; auto; []. apply config_list_InA. now exists id.
 Qed.
 
-Property spect_from_config_In : forall config pt l,
-  In l (spect_from_config config pt) <-> exists id, get_location (config id) == l.
+Property obs_from_config_In : forall config pt l,
+  In l (obs_from_config config pt) <-> exists id, get_location (config id) == l.
 Proof.
 intros config pt l. split; intro Hin.
-+ assert (Heq := spect_from_config_spec config pt).
-  unfold spect_is_ok, spect_from_config, set_spectrum in *.
++ assert (Heq := obs_from_config_spec config pt).
+  unfold obs_is_ok, obs_from_config, set_observation in *.
   rewrite Heq, config_list_spec, map_map, (InA_map_iff _ _) in Hin.
   - firstorder.
   - repeat intro. cbn in *. now subst.
 + destruct Hin as [id Hid]. rewrite <- Hid. apply pos_in_config.
 Qed.
 
-End SetSpectrum.
+End SetObservation.

@@ -45,6 +45,7 @@ Hypothesis k_inf_n : (kG < ring_size)%nat.
 Hypothesis k_sup_1 : (1 < kG)%nat.
 
 (** There is no byzantine robot so we can simplify properties about identifiers and configurations. *)
+(* TODO: put properties with no byz into a file Models/NoByzantine.v *)
 Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof.
 intros [g | b] P HP.
@@ -57,7 +58,7 @@ Definition origin : location := of_Z 0.
 Definition dummy_val : location := origin. (* could be anything *)
 
 Existing Instance setting.
-Notation "!! config" := (@spect_from_config _ _ _ _ multiset_spectrum config origin) (at level 0).
+Notation "!! config" := (@obs_from_config _ _ _ _ multiset_observation config origin) (at level 0).
 Notation execute := (execute (H7 := glob_update_function)).
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
@@ -86,12 +87,12 @@ assert (Hsize : size (!! config) < ring_size).
     rewrite names_length. simpl. omega. }
 assert (Hle : ring_size <= size (!! config)).
 { rewrite size_spec.
-  assert (Hspect : forall pt, InA equiv pt (support (!! config))).
+  assert (Hobs : forall pt, InA equiv pt (support (!! config))).
   { intro pt. specialize (Hall pt). now rewrite support_spec. }
   rewrite <- Vlist_length.
   apply (Preliminary.inclA_length setoid_equiv).
   - apply Vlist_NoDup.
-  - repeat intro. apply Hspect. }
+  - repeat intro. apply Hobs. }
 omega.
 Qed.
 
@@ -130,7 +131,7 @@ rewrite <- Heqe in *.
 induction Hvisit.
 + rewrite Heqe in *.
   match goal with H : Stream.instant _ _ |- _ => destruct H as [g Hg] end.
-  rewrite (spect_from_config_In config origin) in Hfalse;
+  rewrite (obs_from_config_In config origin) in Hfalse;
     destruct Hfalse.
   exists (Good g).
   apply Hg.
@@ -153,7 +154,7 @@ assert (Hvalid : ~Valid_starting_config config) by tauto.
 apply config_not_injective in Hvalid.
 destruct Hvalid as [id [id' [Hid Heq]]].
 exists (config id).
-assert (Hspect := spect_from_config_spec config origin (config id)).
+assert (Hobs := obs_from_config_spec config origin (config id)).
 assert (Hperm : exists l, PermutationA equiv (config_list config) (config id :: config id' :: l)).
 { assert (Hin : List.In id names) by apply In_names.
   assert (Hin' : List.In id' names) by apply In_names.
@@ -168,7 +169,7 @@ assert (Hperm : exists l, PermutationA equiv (config_list config) (config id :: 
   exists (List.map config l).
   now rewrite config_list_spec, Hperm. }
 destruct Hperm as [l Hperm].
-rewrite Hspect.
+rewrite Hobs.
 (* FIXME: why does [rewrite Hperm] fail here? *)
 rewrite (countA_occ_compat _ equiv_dec _ _ (reflexivity (config id))
           (PermutationA_map _ _ Hperm)).
@@ -207,7 +208,7 @@ destruct (Hexr d config Hfair Hstop) as [d' [config' [Hfair' Hstop']]].
 specialize (Htower r d' config' Hfair' Hsol Hstop').
 destruct Htower.
 assert (Hcard := cardinal_lower x (!! config')).
-rewrite cardinal_spect_from_config in Hcard.
+rewrite cardinal_obs_from_config in Hcard.
 lia.
 Qed.
 

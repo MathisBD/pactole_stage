@@ -22,7 +22,7 @@ Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Setting.
 Require Import Pactole.Models.Flexible.
-Require Import Pactole.Spectra.MultisetSpectrum.
+Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Gathering.WithMultiplicity.
 
@@ -69,13 +69,13 @@ Ltac changeR2 :=
 Instance FlexChoice : update_choice ratio := Flexible.OnlyFlexible.
 (* NB: The inactive instance actually does not matter since we are in a FSYNC setting,
        so we could instead leave it as a parameter. *)
-Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance InactiveChoice : inactive_choice unit := NoChoiceIna.
 
 (** The robots choose the path they want to follow to a target. *)
 Instance Robot : robot_choice (path location) := { robot_choice_Setoid := path_Setoid location }.
 
 (** In a flexible setting, the minimum distance that robots are allowed to move is delta. *)
-Parameter delta : R.
+Variable delta : R.
 
 Lemma inactive_proper : Proper (equiv ==> eq ==> equiv ==> equiv)
   (fun (config : configuration) (id : ident) (_ : unit) => config id).
@@ -87,13 +87,13 @@ Instance UpdFun : update_function (path location) (Similarity.similarity locatio
 Instance InaFun : inactive_function unit := NoChoiceInaFun.
 
 (* Trying to avoid notation problem with implicit arguments *)
-Notation "!! config" := (@spect_from_config _ _ Info MyRobots multiset_spectrum config origin) (at level 1).
+Notation "!! config" := (@obs_from_config _ _ Info MyRobots multiset_observation config origin) (at level 1).
 Notation "x == y" := (equiv x y).
-Notation spectrum := (@spectrum location Loc Info MyRobots multiset_spectrum).
-Notation robogram := (@robogram location Loc Info MyRobots multiset_spectrum).
+Notation observation := (@observation location Loc Info MyRobots multiset_observation).
+Notation robogram := (@robogram location Loc Info MyRobots multiset_observation).
 Notation configuration := (@configuration Loc location Info MyRobots).
 Notation config_list := (@config_list Loc location Info MyRobots).
-Notation round := (@round location Loc Info MyRobots multiset_spectrum _ _ _ _ _).
+Notation round := (@round location Loc Info MyRobots multiset_observation _ _ _ _ _).
 Notation execution := (@execution location Loc Info MyRobots).
 Notation Madd := (MMultisetInterface.add).
 
@@ -146,16 +146,16 @@ Lemma map_sim_elements : forall (sim : similarity location) s,
 Proof. intros. apply map_injective_elements; autoclass; apply Similarity.injective. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
-Lemma spect_non_nil : forall config, !! config =/= empty.
-Proof. apply spect_non_nil. apply size_G. Qed.
+Lemma obs_non_nil : forall config, !! config =/= empty.
+Proof. apply obs_non_nil. apply size_G. Qed.
 
 Lemma support_non_nil : forall config, support (!! config) <> nil.
-Proof. intro. rewrite support_nil. apply spect_non_nil. Qed.
+Proof. intro. rewrite support_nil. apply obs_non_nil. Qed.
 
-(* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall (config : configuration) pt,
+(* We need to unfold [obs_is_ok] for rewriting *)
+Definition obs_from_config_spec : forall (config : configuration) pt,
   (!! config)[pt] = countA_occ equiv equiv_dec pt (List.map get_location (config_list config))
-  := spect_from_config_spec.
+  := obs_from_config_spec.
 
 
 (** **  Definition of the robogram  **)
@@ -164,7 +164,7 @@ Open Scope R_scope.
 (* Open Scope VectorSpace_scope. *)
 
 (** The robogram solving the gathering problem in R². *)
-Definition ffgatherR2_pgm (s : spectrum) : @path location location_Setoid :=
+Definition ffgatherR2_pgm (s : observation) : @path location location_Setoid :=
   paths_in_R2 (barycenter (List.map (fun xn => (fst xn, INR (snd xn))) (elements s))).
 
 Instance ffgatherR2_pgm_compat : Proper (equiv ==> equiv) ffgatherR2_pgm.
@@ -183,26 +183,26 @@ Definition ffgatherR2 : robogram := {| pgm := ffgatherR2_pgm |}.
 
 (** ***  Global decreasing measure  **)
 
-Definition max_dist_spect (s : spectrum) : R :=
+Definition max_dist_obs (s : observation) : R :=
   max_dist_list_list (support s) (support s).
 
-Instance max_dist_spect_compat : Proper (equiv ==> eq) max_dist_spect.
-Proof. intros ? ? Heq. unfold max_dist_spect. now rewrite Heq. Qed.
+Instance max_dist_obs_compat : Proper (equiv ==> eq) max_dist_obs.
+Proof. intros ? ? Heq. unfold max_dist_obs. now rewrite Heq. Qed.
 
-Lemma max_dist_spect_le :
-  forall (s : spectrum) pt0 pt1,
+Lemma max_dist_obs_le :
+  forall (s : observation) pt0 pt1,
     InA equiv pt0 (support s) ->
     InA equiv pt1 (support s) ->
-    dist pt0 pt1 <= max_dist_spect s.
+    dist pt0 pt1 <= max_dist_obs s.
 Proof. intros. now apply max_dist_list_list_le. Qed.
 
-Lemma max_dist_spect_ex :
-  forall (s : spectrum),
+Lemma max_dist_obs_ex :
+  forall (s : observation),
     support s <> nil ->
     exists pt0 pt1, 
       InA equiv pt0 (support s)
       /\ InA equiv pt1 (support s)
-      /\ dist pt0 pt1 = max_dist_spect s.
+      /\ dist pt0 pt1 = max_dist_obs s.
 Proof. intros. now apply max_dist_list_list_ex. Qed.
 
 
@@ -210,7 +210,7 @@ Proof. intros. now apply max_dist_list_list_ex. Qed.
 
 (** A non-negative measure *)
 Definition measure (conf: configuration) : R :=
-  max_dist_spect (!! conf).
+  max_dist_obs (!! conf).
 
 Instance measure_compat : Proper (equiv ==> eq) measure.
 Proof. intros ? ? Heq. unfold measure. now rewrite Heq. Qed.
@@ -219,8 +219,8 @@ Lemma measure_nonneg : forall config, 0 <= measure config.
 Proof.
 intros config. unfold measure.
 destruct (support (!! config)) as [| pt l] eqn:Heq.
-+ rewrite support_nil in Heq. elim (spect_non_nil _ Heq).
-+ rewrite <- (R2_dist_defined_2 pt). apply max_dist_spect_le; rewrite Heq; now left.
++ rewrite support_nil in Heq. elim (obs_non_nil _ Heq).
++ rewrite <- (R2_dist_defined_2 pt). apply max_dist_obs_le; rewrite Heq; now left.
 Qed.
 
 (** The minimum value 0 is reached only on gathered configurations. *)
@@ -233,22 +233,22 @@ split; intro Hgather.
   + apply support_NoDupA.
   + repeat constructor. intro Hin. inv Hin.
   + intro pt'.
-    rewrite support_spec, (spect_from_config_In config pt').
+    rewrite support_spec, (obs_from_config_In config pt').
 	split; intro Hin.
     - destruct Hin as [id Hid]. revert Hid. pattern id. apply no_byz. clear id; intros g Hid.
       specialize (Hgather g). rewrite Hgather in Hid. rewrite Hid. now left.
     - inv Hin; try inv H0; []. exists (Good g1). apply Hgather.
 * intro id.
   assert (Hin : InA equiv (get_location (config (Good id))) (support (!! config))).
-  { rewrite support_spec. apply (spect_from_config_In config). eexists; reflexivity. }
+  { rewrite support_spec. apply (obs_from_config_In config). eexists; reflexivity. }
   rewrite Hgather in Hin. now inv Hin.
 Qed.
 
 Lemma gathered_measure : forall config, measure config = 0 <-> exists pt, gathered_at pt config.
 Proof.
 intros config. split; intro H.
-* unfold measure, max_dist_spect in *.
-  assert (Hnil := spect_non_nil config).
+* unfold measure, max_dist_obs in *.
+  assert (Hnil := obs_non_nil config).
   hnf in Hnil. rewrite <- (support_nil (!! config)) in Hnil.
   assert (Hdup := support_NoDupA (!! config)).
   setoid_rewrite gathered_support.
@@ -273,7 +273,7 @@ intros config. split; intro H.
     - apply dist_nonneg.
     - rewrite Rmax_left; apply dist_nonneg.
 * destruct H as [pt Hgather]. unfold measure.
-  destruct (max_dist_spect_ex _ (support_non_nil config)) as [pt1 [pt2 [Hpt1 [Hpt2 Heq]]]].
+  destruct (max_dist_obs_ex _ (support_non_nil config)) as [pt1 [pt2 [Hpt1 [Hpt2 Heq]]]].
   rewrite <- Heq, dist_defined. rewrite gathered_support in Hgather. rewrite Hgather in *.
   repeat match goal with H : InA equiv _ _ |- _ => inv H end.
   now transitivity pt.
@@ -332,9 +332,9 @@ assert (Hperm : PermutationA (equiv * eq)%signature
                        (List.map (fun xn => (sim (fst xn), snd xn)) (elements (!! config)))
                        (elements (elt := location) (!! (map_config (lift (existT precondition sim
                                                          (precondition_satisfied da config g))) config)))).
-{ rewrite <- map_injective_elements, spect_from_config_map, spect_from_config_ignore_snd;
+{ rewrite <- map_injective_elements, obs_from_config_map, obs_from_config_ignore_snd;
   autoclass; reflexivity || apply Bijection.injective. }
-rewrite spect_from_config_ignore_snd.
+rewrite obs_from_config_ignore_snd.
 simpl pgm. unfold ffgatherR2_pgm. changeR2.
 remember (elements (!! config)) as E.
 apply (@PermutationA_map _ _ _ (equiv * eq)%signature _ (fun xn => (fst xn, INR (snd xn)))) in Hperm;
@@ -342,7 +342,7 @@ apply (@PermutationA_map _ _ _ (equiv * eq)%signature _ (fun xn => (fst xn, INR 
 rewrite map_map, <- (map_map (fun xn => (fst xn, INR (snd xn))) (fun xn => (sim (fst xn), snd xn))) in Hperm.
 apply barycenter_compat, paths_in_R2_compat in Hperm.
 rewrite barycenter_sim_morph in Hperm;
-try (intro Habs; apply map_eq_nil in Habs; rewrite HeqE, elements_nil in Habs; now apply spect_non_nil in Habs); [].
+try (intro Habs; apply map_eq_nil in Habs; rewrite HeqE, elements_nil in Habs; now apply obs_non_nil in Habs); [].
 subst sim. changeR2.
 rewrite lift_update_swap, <- Hperm.
 remember (change_frame da config g) as sim.
@@ -370,7 +370,7 @@ apply get_location_compat, update_compat; auto.
   - autoclass.
   - apply lift_compat. intros x y Hxy. now rewrite Hxy.
 + 
-Admitted.
+Admitted. (* Peleg's gathering in FSYNC: round_simplify -> hypothesis missing on the demon *)
 
 (** If possible, the measure decreases by at least delta at each step. *)
 Theorem round_lt_config : forall da config,
@@ -396,10 +396,10 @@ assert (Hantec : forall KP, InA equiv KP nxt_elems ->
                  exists Pid, InA equiv (get_location (config Pid)) elems
                             /\ get_location (round ffgatherR2 da config Pid) == KP).
 { intros [KP k'] HinKP.
-  rewrite Heqnxt_elems, support_spec, spect_from_config_In in HinKP.
+  rewrite Heqnxt_elems, support_spec, obs_from_config_In in HinKP.
   destruct HinKP as [Pid HPid].
   exists Pid. split; trivial; [].
-  unfold elems. rewrite support_spec, spect_from_config_In.
+  unfold elems. rewrite support_spec, obs_from_config_In.
   now exists Pid. }
 
 assert (Hrobot_move_less_than_delta:
@@ -455,7 +455,7 @@ assert (Hrobot_move:
     rewrite add_comm, add_origin, norm_opp, Rmult_1_l in Hle. apply Hle. }
 
 assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_elems ->
-        dist KP KQ <= max_dist_spect (!! config) - delta).
+        dist KP KQ <= max_dist_obs (!! config) - delta).
 { intros KP KQ HinKP HinKQ.
   apply Hantec in HinKP.
   apply Hantec in HinKQ.
@@ -490,45 +490,45 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
     assert (0 <= kq <= 1) by apply ratio_bounds.
     (* Wlog. we assume that kp <= kq *)
     destruct (Rle_dec kp kq).
-    + apply Rle_trans with (r2 := (1 - kp) * (max_dist_spect (!! config))).
+    + apply Rle_trans with (r2 := (1 - kp) * (max_dist_obs (!! config))).
       - rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
         apply distance_after_move; try assumption.
         ++ eapply barycenter_dist_decrease.
            -- apply H.
-           -- setoid_rewrite Hfst. apply max_dist_spect_le.
+           -- setoid_rewrite Hfst. apply max_dist_obs_le.
            -- rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
-        ++ apply max_dist_spect_le; now subst elems.
+        ++ apply max_dist_obs_le; now subst elems.
         ++ cut (proj_ratio kp <> 0%R); try lra; [].
            intro Habs. rewrite Habs, mul_0, norm_origin in Hkplow. lra.
         ++ tauto.
-      - cut (delta <= kp * max_dist_spect !! config); try lra; [].
+      - cut (delta <= kp * max_dist_obs !! config); try lra; [].
         apply (Rle_trans _ _ _ Hkplow).
         rewrite norm_mul, Rabs_pos_eq; try tauto; [].
         apply Rmult_le_compat_l; try tauto; [].
         rewrite <- norm_dist, dist_sym.
         apply barycenter_dist_decrease.
         ++ assumption.
-        ++ setoid_rewrite Hfst. apply max_dist_spect_le.
+        ++ setoid_rewrite Hfst. apply max_dist_obs_le.
         ++ rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
-    + apply Rle_trans with (r2 := (1 - kq) * (max_dist_spect (!! config))).
+    + apply Rle_trans with (r2 := (1 - kq) * (max_dist_obs (!! config))).
       - rewrite <- HroundP in *. rewrite <- HroundQ in *. clear HroundP HroundQ KP KQ.
         rewrite dist_sym.
         apply distance_after_move; try assumption || lra.
         ++ apply barycenter_dist_decrease.
            -- assumption.
-           -- setoid_rewrite Hfst. apply max_dist_spect_le.
+           -- setoid_rewrite Hfst. apply max_dist_obs_le.
            -- rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
-        ++ apply max_dist_spect_le; now subst elems.
+        ++ apply max_dist_obs_le; now subst elems.
         ++ cut (proj_ratio kq <> 0%R); try lra.
            intro Habs. rewrite Habs, mul_0, norm_origin in Hkqlow. lra.
-      - cut (delta <= kq * max_dist_spect !! config); try lra; [].
+      - cut (delta <= kq * max_dist_obs !! config); try lra; [].
         apply (Rle_trans _ _ _ Hkqlow).
         rewrite norm_mul, Rabs_pos_eq; try tauto; [].
         apply Rmult_le_compat_l; try tauto; [].
         rewrite <- norm_dist, dist_sym.
         apply barycenter_dist_decrease.
         ++ assumption.
-        ++ setoid_rewrite Hfst. apply max_dist_spect_le.
+        ++ setoid_rewrite Hfst. apply max_dist_obs_le.
         ++ rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
   * (* Q is close to C but not P *)
     assert (HinPP := HinP).
@@ -554,7 +554,7 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
     + apply Rplus_le_compat_r.
       apply barycenter_dist_decrease.
       - assumption.
-      - setoid_rewrite Hfst. apply max_dist_spect_le.
+      - setoid_rewrite Hfst. apply max_dist_obs_le.
       - rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
   * (* P is close to C but not Q *)
     assert (HinPP := HinP).
@@ -580,7 +580,7 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
     + apply Rplus_le_compat_r.
       apply barycenter_dist_decrease.
       - assumption.
-      - setoid_rewrite Hfst. apply max_dist_spect_le.
+      - setoid_rewrite Hfst. apply max_dist_obs_le.
       - rewrite Hfst. unfold elems. rewrite support_spec. apply pos_in_config.
   * (* Both P and Q are close to C *)
     apply Hrobot_move_less_than_delta in HinP; try lra; [].
@@ -592,12 +592,12 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
     unfold measure in Hnotdone. lra. }
 
 unfold measure.
-generalize (max_dist_spect_ex (!! (round ffgatherR2 da config))).
+generalize (max_dist_obs_ex (!! (round ffgatherR2 da config))).
 intros Hmax_dist_ex.
-assert (Hspect_non_nil : nxt_elems <> nil).
+assert (Hobs_non_nil : nxt_elems <> nil).
 { rewrite Heqnxt_elems. apply support_non_nil. }
 rewrite <- Heqnxt_elems in Hmax_dist_ex.
-destruct (Hmax_dist_ex Hspect_non_nil) as [pt0 [pt1 [Hin0 [Hin1 Hdist]]]].
+destruct (Hmax_dist_ex Hobs_non_nil) as [pt0 [pt1 [Hin0 [Hin1 Hdist]]]].
 rewrite <- Hdist.
 now auto.
 Qed.
@@ -627,10 +627,10 @@ assert (Hantec : forall KP, InA equiv KP nxt_elems ->
                  exists g, InA equiv (get_location (config (Good g))) elems
                         /\ get_location (round ffgatherR2 da config (Good g)) == KP).
 { intros [KP k'] HinKP.
-  rewrite Heqnxt_elems, support_spec, spect_from_config_In in HinKP.
+  rewrite Heqnxt_elems, support_spec, obs_from_config_In in HinKP.
   destruct HinKP as [[g | []] Hg]; try omega; [].
   exists g. split; trivial; [].
-  unfold elems. rewrite support_spec, spect_from_config_In.
+  unfold elems. rewrite support_spec, obs_from_config_In.
   now exists (Good g). }
 assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
 { intros KP HinKP.
@@ -652,7 +652,7 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
     assert (0 <= r <= 1) by apply ratio_bounds.
     rewrite Rabs_pos_eq in Hle; try tauto; [].
     assert (Hmeasure : forall p1 p2, InA equiv p1 elems -> InA equiv p2 elems -> dist p1 p2 <= measure config).
-    { intros p1 p2 Hin1 Hin2. now apply max_dist_spect_le. }
+    { intros p1 p2 Hin1 Hin2. now apply max_dist_obs_le. }
     setoid_rewrite <- Hfst in Hmeasure. rewrite <- Hfst in Hin.
     assert (Hle' := barycenter_dist_decrease relems (measure config) Hrelems Hmeasure _ Hin).
     clear Hupdate Heqr Hmeasure. rewrite dist_sym in Hle'.
@@ -663,7 +663,7 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
       - rewrite Rmult_1_l in Hle. etransitivity; eauto; [].
         apply Rmult_le_compat_l; try tauto; []. etransitivity; eauto. }
     rewrite Hr. rewrite straight_path_1. reflexivity. }
-destruct (max_dist_spect_ex _ (support_non_nil (round ffgatherR2 da config)))
+destruct (max_dist_obs_ex _ (support_non_nil (round ffgatherR2 da config)))
   as [pt0 [pt1 [Hinpt0 [Hinpt1 Hdist]]]].
 rewrite <- Hdist, HonlyC, (HonlyC pt1); try (now subst); [].
 now apply dist_defined.
@@ -672,17 +672,13 @@ Qed.
 Definition lt_config delta x y :=
   lt (Z.to_nat (up (measure x / delta))) (Z.to_nat (up (measure y / delta))).
 
-Lemma wf_lt_config (delta: R) (Hdeltapos: delta > 0) : well_founded (lt_config delta).
-Proof.
-  unfold lt_config.
-  apply wf_inverse_image.
-  apply lt_wf.
-Qed.
+Lemma wf_lt_config (Hdeltapos: delta > 0) : well_founded (lt_config delta).
+Proof. unfold lt_config. apply wf_inverse_image, lt_wf. Qed.
 
-Lemma lt_config_decrease : forall delta config1 config2, 0 < delta ->
+Lemma lt_config_decrease : forall config1 config2, 0 < delta ->
   measure config1 <= measure config2 - delta -> lt_config delta config1 config2.
 Proof.
-intros delta config1 config2 Hdelta Hle. unfold lt_config.
+intros config1 config2 Hdelta Hle. unfold lt_config.
 rewrite <- Z2Nat.inj_lt.
 + apply Zup_lt. field_simplify; try lra. unfold Rdiv. apply Rmult_le_compat.
   - apply measure_nonneg.
@@ -735,7 +731,7 @@ apply NoDupA_equivlistA_PermutationA; autoclass.
 * repeat constructor. now rewrite InA_nil.
 * intros [x k].
   rewrite elements_spec. cbn -[nG].
-  unfold spect_from_config. simpl. rewrite config_list_spec.
+  unfold obs_from_config. simpl. rewrite config_list_spec.
   assert (Hnames : names = List.map Good Gnames).
   { unfold names. cut (Bnames = nil).
     - intro Hb. rewrite Hb. simpl. apply app_nil_r.

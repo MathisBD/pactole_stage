@@ -26,7 +26,7 @@ Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.Spectra.SetSpectrum.
+Require Import Pactole.Observations.SetObservation.
 Require Import Pactole.Models.Rigid.
 Require Import Pactole.Models.Similarity.
 Set Implicit Arguments.
@@ -76,8 +76,8 @@ Ltac changeR2 :=
   change R2_VS with Loc_VS in *;
   change R2_ES with Loc_ES in *.
 
-(** The spectrum is a set of positions *)
-Notation "!!" := (fun config => @spect_from_config location _ _ _ set_spectrum config origin).
+(** The observation is a set of positions *)
+Notation "!!" := (fun config => @obs_from_config location _ _ _ set_observation config origin).
 (* Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
 Notation configuration := (@configuration R2 _ _ _ _).
 Notation config_list := (@config_list R2 _ _ _ _).
@@ -90,11 +90,11 @@ Implicit Type config : configuration.
 Implicit Type da : demonic_action.
 Implicit Type pt : location.
 
-(** As there are robots, the spectrum can never be empty. *)
-Lemma spect_non_empty : forall config pt, spect_from_config config pt =/= @empty location _ _ _.
+(** As there are robots, the observation can never be empty. *)
+Lemma obs_non_empty : forall config pt, obs_from_config config pt =/= @empty location _ _ _.
 Proof.
 intros config pt.
-rewrite spect_from_config_ignore_snd. intro Habs.
+rewrite obs_from_config_ignore_snd. intro Habs.
 assert (Hn : 0%nat < n). { generalize n_non_0. intro. omega. }
 pose (g := exist _ 0%nat Hn : G).
 specialize (Habs (config (Good g))).
@@ -103,7 +103,7 @@ assert (Hin := pos_in_config config origin (Good g)).
 simpl in Hin. unfold id in Hin. tauto.
 Qed.
 
-Hint Resolve spect_non_empty.
+Hint Resolve obs_non_empty.
 
 (** There is no byzantine robot so to prove anything about an ident
     we just need to consider good robots.*)
@@ -167,7 +167,7 @@ Close Scope R_scope.
 
 (** * Proof of correctness of a convergence algorithm with no byzantine robot. *)
 
-Definition convergeR2_pgm (s : spectrum) : location :=
+Definition convergeR2_pgm (s : observation) : location :=
   isobarycenter (elements s).
 
 Instance convergeR2_pgm_compat : Proper (equiv ==> equiv) convergeR2_pgm.
@@ -190,11 +190,11 @@ change (Bijection.section (inverse (frame_choice_bijection sim)))
   with (Bijection.section (sim ⁻¹)).
 cbn -[equiv location mul map_config lift precondition inverse].
 unfold convergeR2_pgm. unfold map_config at 2.
-rewrite <- spect_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
+rewrite <- obs_from_config_map, map_injective_elements; autoclass; try apply Similarity.injective; [].
 cbn -[inverse isobarycenter equiv].
-rewrite spect_from_config_ignore_snd, isobarycenter_sim_morph.
+rewrite obs_from_config_ignore_snd, isobarycenter_sim_morph.
 + now simpl; rewrite Bijection.retraction_section.
-+ rewrite elements_nil. apply spect_non_empty.
++ rewrite elements_nil. apply obs_non_empty.
 Qed.
 
 (** Once robots are contained within a circle, they will never escape it. *)
@@ -211,7 +211,7 @@ Proof.
 intros c r config Hc. apply isobarycenter_circle.
 rewrite Forall_forall. intro.
 rewrite <- InA_Leibniz. change eq with (@equiv location _).
-rewrite elements_spec, spect_from_config_In.
+rewrite elements_spec, obs_from_config_In.
 intros [id Hpt]. rewrite <- Hpt.
 pattern id. apply no_byz. apply Hc.
 Qed.
@@ -242,7 +242,7 @@ Qed.
 Theorem convergence_FSYNC : solution_FSYNC convergeR2.
 Proof.
 intros config d [Hfair ?] ε Hε.
-exists (isobarycenter (elements (spect_from_config (Spectrum := set_spectrum) config 0))).
+exists (isobarycenter (elements (obs_from_config (Observation := set_observation) config 0))).
 apply Stream.Later, Stream.Now. rewrite execute_tail.
 apply converge_forever; auto using FSYNC_SSYNC; [].
 intro g. rewrite round_simplify; auto using FSYNC_SSYNC_da; [].

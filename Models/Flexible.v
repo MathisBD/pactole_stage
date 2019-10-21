@@ -37,7 +37,7 @@ Typeclasses eauto := (bfs).
     To avoid Zenon-based paradoxes, we require the robot to move at least a given distance δ. *)
 Section FlexibleFormalism.
 
-Context `{Spectrum}.
+Context `{Observation}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}. (* for dist *)
 Variable Tactive : Type.

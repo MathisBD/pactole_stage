@@ -12,7 +12,7 @@ Require Import Reals Omega Arith.Div2 Psatz SetoidDec.
 Require Export Pactole.Setting.
 Require Export Pactole.Spaces.Ring.
 Require Export Pactole.Spaces.Isomorphism.
-Require Export Pactole.Spectra.MultisetSpectrum.
+Require Export Pactole.Observations.MultisetObservation.
 
 
 Close Scope Z_scope.
@@ -74,8 +74,8 @@ Global Instance setting : GlobalDefinitions := {
   (* The state of robots (must contain at least the current location) *)
   glob_info := location;
   glob_State := OnlyLocation (fun _ => True);
-  (* The spectrum: what robots can see from their surroundings *)
-  glob_spect := multiset_spectrum;
+  (* The observation: what robots can see from their surroundings *)
+  glob_obs := multiset_observation;
   (* The output type of robograms: some information that we can use to get a target location *)
   glob_Trobot := direction;
   glob_robot_choice := RC;
@@ -122,7 +122,7 @@ forall d config, (forall l, Will_be_visited l (execute r d config))
     that is, all robots are at different locations. *)
 Definition Valid_starting_config config : Prop :=
   Util.Preliminary.injective (@Logic.eq ident) (@equiv _ state_Setoid) config.
-(*   forall pt : location, ((spect_from_config config (of_Z 0))[pt] <= 1)%nat. *)
+(*   forall pt : location, ((obs_from_config config (of_Z 0))[pt] <= 1)%nat. *)
 
 Definition Explore_and_Stop (r : robogram) :=
   forall d config, Fair d -> Valid_starting_config config ->

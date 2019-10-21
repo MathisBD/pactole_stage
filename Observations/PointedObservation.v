@@ -10,17 +10,27 @@
 Require Import SetoidDec.
 Require Import Pactole.Util.SetoidDefs.
 Require Import Pactole.Core.RobotInfo.
-Require Import Pactole.Spectra.Definition.
+Require Import Pactole.Observations.Definition.
 Set Implicit Arguments.
 
 
-Instance PointedSpectrum `{Spectrum} : Spectrum := {|
-  spectrum := spectrum * location;
-  spectrum_Setoid := prod_Setoid _ _;
-  spectrum_EqDec := prod_EqDec spectrum_EqDec location_EqDec;
-  spect_from_config := fun config pt => (spect_from_config config pt, pt);
-  spect_is_ok := fun spect config pt => spect_is_ok (fst spect) config pt /\ pt == snd spect;
-  spect_from_config_spec := fun config pt => conj (spect_from_config_spec config pt) (reflexivity pt) |}.
+Section PointedObservation.
+
+Context `{Location}.
+Context {info : Type}.
+Context {St : State info}.
+Context `{Robots.Names}.
+Context {Obs : Observation}.
+
+Instance PointedObservation : Observation := {|
+  observation := observation * info;
+  observation_Setoid := prod_Setoid _ _;
+  observation_EqDec := prod_EqDec observation_EqDec state_EqDec;
+  obs_from_config := fun config st => (obs_from_config config st, st);
+  obs_is_ok := fun obs config st => obs_is_ok (fst obs) config st /\ st == snd obs;
+  obs_from_config_spec := fun config st => conj (obs_from_config_spec config st) (reflexivity st) |}.
 Proof.
-abstract (repeat intro; now split; trivial; apply spect_from_config_compat).
+abstract (repeat intro; now split; trivial; apply obs_from_config_compat).
 Defined.
+
+End PointedObservation.

@@ -44,8 +44,8 @@ Context `{Names}.
     The change of frame of reference uses a similarity, so we export [Pactole.Models.Similarity]. *)
 Global Instance Info : State location := OnlyLocation (fun _ => True).
 
-(** The spectrum and the way updates are made to the robot state are still arbitrary. *)
-Context {Spect : Spectrum}.
+(** The observation and the way updates are made to the robot state are still arbitrary. *)
+Context {Obs : Observation}.
 Context `{robot_choice}.
 Context `{update_choice}.
 Context `{inactive_choice}.
@@ -55,7 +55,7 @@ Context {InaFun : inactive_function _}.
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
 Proof. now intros. Qed.
 
-Notation "!!" := (fun config => spect_from_config config origin).
+Notation "!!" := (fun config => obs_from_config config origin).
 
 (** [gathered_at conf pt] means that in configuration [conf] all good robots
     are at the same location [pt] (exactly). *)

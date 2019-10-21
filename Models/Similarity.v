@@ -30,7 +30,7 @@ Typeclasses eauto := (bfs).
 
 Section SimilarityCenter.
 
-Context `{Spectrum}.
+Context `{Observation}.
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{robot_choice}.

@@ -22,14 +22,14 @@
 Require Import Omega.
 Require Import SetoidList.
 Require Export Pactole.Gathering.Definitions.
-Require Export Pactole.Spectra.MultisetSpectrum.
+Require Export Pactole.Observations.MultisetObservation.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
 Set Implicit Arguments.
 Typeclasses eauto := (bfs) 5.
 
 
-(** Gathering Definitions specific to a setting with multiplicities, i.e. a multiset spectrum. *)
+(** Gathering Definitions specific to a setting with multiplicities, i.e. a multiset observation. *)
 
 Section MultisetGathering.
 
@@ -45,7 +45,7 @@ Context {UpdFun : update_function _ _ T}.
 Context {InaFun : inactive_function _}.
 
 Notation "!! config" :=
-  (@spect_from_config location _ _ _ multiset_spectrum config origin : spectrum) (at level 10).
+  (@obs_from_config location _ _ _ multiset_observation config origin : observation) (at level 10).
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)
@@ -68,15 +68,15 @@ Definition ValidSolGathering (r : robogram) (d : demon) :=
 
 (** **  Generic properties  **)
 
-(* We need to unfold [spect_is_ok] for rewriting *)
-Definition spect_from_config_spec : forall (config : configuration) (pt : location),
+(* We need to unfold [obs_is_ok] for rewriting *)
+Definition obs_from_config_spec : forall (config : configuration) (pt : location),
   (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
-  := fun config => spect_from_config_spec config origin.
+  := fun config => obs_from_config_spec config origin.
 
-Lemma spect_non_nil : 2 <= nG -> forall config,
+Lemma obs_non_nil : 2 <= nG -> forall config,
   !! config =/= MMultisetInterface.empty.
 Proof.
-simpl spect_from_config. intros HnG config Heq.
+simpl obs_from_config. intros HnG config Heq.
 assert (Hlgth:= config_list_length config).
 assert (Hl : config_list config = nil).
 { apply List.map_eq_nil with _ get_location.
@@ -113,7 +113,7 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
   - rewrite add_other, singleton_spec; auto; [].
     destruct_match; try contradiction; [].
     auto with arith.
-+ rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config.
++ rewrite cardinal_add, cardinal_singleton, cardinal_obs_from_config.
   rewrite HnB, plus_0_r. now apply even_div2.
 Qed.
 
@@ -128,7 +128,7 @@ assert (Hlen := invalid_size HnB Hconfig). rewrite size_spec in Hlen.
 destruct (support (!! config)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try discriminate; [].
 (* Transforming sig2 into sig to have only one goal after instanciating pt1 and pt2 *)
 cut {pt1 : location & {pt2 : location
-     | pt1 =/= pt2 /\ spect_from_config config origin == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG))}}.
+     | pt1 =/= pt2 /\ obs_from_config config origin == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG))}}.
 { intros [? [? [? ?]]]. eauto. }
 exists pt1, pt2.
 destruct Hconfig as [Heven [Hge2 [pt1' [pt2' [Hdiff [Hpt1' Hpt2']]]]]].
@@ -152,7 +152,7 @@ split.
     rewrite Heq1 in *; rewrite Heq2 in *;
     try match goal with H : pt == _ |- _ => rewrite H in *; clear H end;
     rewrite ?Hpt1', ?Hpt2'; omega || now elim Hdiff.
-  - rewrite cardinal_add, cardinal_singleton, cardinal_spect_from_config, even_div2; auto; omega.
+  - rewrite cardinal_add, cardinal_singleton, cardinal_obs_from_config, even_div2; auto; omega.
 Qed.
 
 Lemma invalid_same_location : nB = 0 -> forall config pt1 pt2 pt3, invalid config ->
@@ -160,8 +160,8 @@ Lemma invalid_same_location : nB = 0 -> forall config pt1 pt2 pt3, invalid confi
   pt1 =/= pt3 -> pt2 =/= pt3 -> pt1 == pt2.
 Proof.
 intros HnB config pt1 pt2 pt3 Hinvalid Hin1 Hin2 Hin3 Hdiff13 Hdiff23.
-destruct (invalid_strengthen HnB Hinvalid) as [pta [ptb Hdiff Hspect]].
-rewrite Hspect, add_In, In_singleton in Hin1, Hin2, Hin3.
+destruct (invalid_strengthen HnB Hinvalid) as [pta [ptb Hdiff Hobs]].
+rewrite Hobs, add_In, In_singleton in Hin1, Hin2, Hin3.
 destruct Hin1 as [[] | []], Hin2 as [[] | []], Hin3 as [[] | []];
 solve [ etransitivity; eauto
       | elim Hdiff13; etransitivity; eauto
@@ -180,7 +180,7 @@ try discriminate; [].
 destruct (n1 =?= n2) as [Hn | Hn].
 * left.
   assert (2 * n1 = nG).
-  { assert (Hcardinal := cardinal_spect_from_config config origin).
+  { assert (Hcardinal := cardinal_obs_from_config config origin).
     rewrite cardinal_fold_elements, Helem in Hcardinal. simpl in Hcardinal.
     rewrite <- Hn, HnB in Hcardinal. omega. }
   assert (n1 = Nat.div2 nG). { rewrite <- (Exp_prop.div2_double n1). now f_equal. }
@@ -206,10 +206,10 @@ destruct (n1 =?= n2) as [Hn | Hn].
   intro Hvalid. elim Hn.
   assert (Hhalf : 0 < Nat.div2 nG).
   { destruct Hvalid as [_ [Hle _]]. destruct nG as [| [| ?]]; simpl; omega. }
-  destruct (invalid_strengthen HnB Hvalid) as [pt1' [pt2' Hdiff Hspect]].
+  destruct (invalid_strengthen HnB Hvalid) as [pt1' [pt2' Hdiff Hobs]].
   assert (Hperm : PermutationA eq_pair ((pt1, n1) :: (pt2, n2) :: nil)
                                        ((pt1', Nat.div2 nG) :: (pt2', Nat.div2 nG) :: nil)).
-  { rewrite <- Helem, Hspect. rewrite elements_add, elements_singleton; auto; [].
+  { rewrite <- Helem, Hobs. rewrite elements_add, elements_singleton; auto; [].
     cbn [removeA]. rewrite singleton_other; trivial; [].
     constructor.
     + split; simpl; reflexivity || omega.
