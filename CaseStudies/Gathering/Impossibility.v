@@ -26,7 +26,7 @@ Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.EuclideanSpace.
-Require Import Pactole.Gathering.WithMultiplicity.
+Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
 Require Import Pactole.Models.Rigid.
 Set Implicit Arguments.
 Close Scope R_scope.

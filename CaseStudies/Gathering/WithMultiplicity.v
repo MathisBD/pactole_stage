@@ -21,7 +21,7 @@
 
 Require Import Omega.
 Require Import SetoidList.
-Require Export Pactole.Gathering.Definitions.
+Require Export Pactole.CaseStudies.Gathering.Definitions.
 Require Export Pactole.Observations.MultisetObservation.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.

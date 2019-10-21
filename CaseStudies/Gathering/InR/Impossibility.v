@@ -27,7 +27,7 @@ Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R.
 Require Import Pactole.Models.Rigid.
-Require Import Pactole.Gathering.WithMultiplicity.
+Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
 Set Implicit Arguments.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.

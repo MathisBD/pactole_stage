@@ -15,7 +15,7 @@ Require Import Omega.
 Require Import Decidable.
 Require Import Equalities.
 Require Import List Setoid SetoidList Compare_dec Morphisms.
-Require Import Pactole.Exploration.Definitions.
+Require Import Pactole.CaseStudies.Exploration.Definitions.
 
 
 Open Scope Z_scope.

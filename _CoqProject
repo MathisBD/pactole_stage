@@ -54,30 +54,30 @@ Spaces/Isomorphism.v
 Spaces/Ring.v
 Spaces/Grid.v
 
-## Spectra
+## Observations
 Observations/Definition.v
 Observations/MultisetObservation.v
 Observations/SetObservation.v
 Observations/LimitedSetObservation.v
 Observations/LimitedMultisetObservation.v
-#Observations/PointedObservation.v
-#Observations/PreCompositionObservation.v
+Observations/PointedObservation.v
+Observations/PreCompositionObservation.v
 
 ## Case Study: Convergence
-Convergence/Impossibility_2G_1B.v
-Convergence/Algorithm_noB.v
+CaseStudies/Convergence/Impossibility_2G_1B.v
+CaseStudies/Convergence/Algorithm_noB.v
 
 ## Case Study: Gathering
-Gathering/Definitions.v
-Gathering/WithMultiplicity.v
-Gathering/Impossibility.v
-Gathering/InR/Impossibility.v
-Gathering/InR/Algorithm.v
-Gathering/InR2/Algorithm.v
-#Gathering/InR2/FSyncFlexNoMultAlgorithm.v
-#Gathering/InR2/Peleg.v
+CaseStudies/Gathering/Definitions.v
+CaseStudies/Gathering/WithMultiplicity.v
+CaseStudies/Gathering/Impossibility.v
+CaseStudies/Gathering/InR/Impossibility.v
+CaseStudies/Gathering/InR/Algorithm.v
+CaseStudies/Gathering/InR2/Algorithm.v
+CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+CaseStudies/Gathering/InR2/Peleg.v
 
 ## Case Study: Ring Exploration
-Exploration/Definitions.v
-Exploration/ImpossibilityKDividesN.v
-Exploration/Tower.v
+CaseStudies/Exploration/Definitions.v
+CaseStudies/Exploration/ImpossibilityKDividesN.v
+CaseStudies/Exploration/Tower.v

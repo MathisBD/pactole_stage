@@ -23,7 +23,7 @@ Require Import Decidable.
 Require Import Setoid Equalities Morphisms.
 Require Import Compare_dec FinFun.
 Require Import Arith_base Arith.Div2 Omega Psatz.
-Require Import Pactole.Exploration.Definitions.
+Require Import Pactole.CaseStudies.Exploration.Definitions.
 
 
 Open Scope list_scope.

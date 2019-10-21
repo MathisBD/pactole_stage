@@ -67,7 +67,8 @@ Class State `{Location} info := {
   (** Compatibility properties *)
   get_location_compat :> Proper (equiv ==> equiv) get_location;
   lift_compat :> Proper ((equiv ==> equiv)%signature @@ (@projT1 _ precondition) ==> equiv ==> equiv) lift }.
-(*   lift_compat :> Proper ((equiv ==> equiv) ==> equiv ==> equiv) lift }. *)
+(* We cannot have [lift_compat :> Proper (equiv ==> equiv ==> equiv) lift]
+   because we also need extensionality in the input function, which function's [equiv] has not. *)
 
 Arguments State {_} info.
 

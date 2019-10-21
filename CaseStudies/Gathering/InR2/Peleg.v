@@ -24,7 +24,7 @@ Require Import Pactole.Setting.
 Require Import Pactole.Models.Flexible.
 Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.Gathering.WithMultiplicity.
+Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
 
 
 Import Permutation.

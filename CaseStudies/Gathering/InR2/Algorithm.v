@@ -31,7 +31,7 @@ Require Import Psatz.
 Require Import Inverse_Image.
 Require Import FunInd.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.Gathering.WithMultiplicity.
+Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
 Require Import Pactole.Models.Rigid.
 Import Permutation.
 Import Pactole.Spaces.Similarity.

@@ -24,7 +24,7 @@ Require Import Pactole.Setting.
 Require Import Pactole.Models.Flexible.
 Require Import Pactole.Observations.SetObservation.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.Gathering.Definitions.
+Require Import Pactole.CaseStudies.Gathering.Definitions.
 
 
 Set Implicit Arguments.

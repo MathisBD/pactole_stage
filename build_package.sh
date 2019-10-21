@@ -11,13 +11,14 @@ mkdir ./package/Util/FMaps
 mkdir ./package/Util/MMultiset
 mkdir ./package/Core
 mkdir ./package/Spaces
-mkdir ./package/Spectra
+mkdir ./package/Observations
 mkdir ./package/Models
-mkdir ./package/Convergence
-mkdir ./package/Gathering
-mkdir ./package/Gathering/InR
-mkdir ./package/Gathering/InR2
-mkdir ./package/Exploration
+mkdir ./package/CaseStudies
+mkdir ./package/CaseStudies/Convergence
+mkdir ./package/CaseStudies/Gathering
+mkdir ./package/CaseStudies/Gathering/InR
+mkdir ./package/CaseStudies/Gathering/InR2
+mkdir ./package/CaseStudies/Exploration
 
 # Create a fresh Makefile from the _CoqPoject
 coq_makefile -f _CoqProject -o Makefile
@@ -37,33 +38,33 @@ cp Setting.v Makefile _CoqProject ./package/
 
 cp Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Ring.v Spaces/Grid.v Spaces/Isomorphism.v ./package/Spaces/
 
-cp Spectra/Definition.v Spectra/MultisetSpectrum.v Spectra/SetSpectrum.v Spectra/LimitedMultisetSpectrum.v Spectra/LimitedSetSpectrum.v ./package/Spectra/
+cp Observations/Definition.v Observations/MultisetObservation.v Observations/SetObservation.v Observations/LimitedMultisetObservation.v Observations/LimitedSetObservation.v ./package/Observations/
 
 cp Models/Rigid.v Models/Flexible.v Models/Similarity.v Models/RigidFlexibleEquivalence.v Models/DiscreteGraph.v Models/ContinuousGraph.v Models/GraphEquivalence.v ./package/Models/
 
-cp Convergence/Impossibility_2G_1B.v Convergence/Algorithm_noB.v ./package/Convergence/
+cp CaseStudies/Convergence/Impossibility_2G_1B.v CaseStudies/Convergence/Algorithm_noB.v ./package/CaseStudies/Convergence/
 
-cp Gathering/Definitions.v Gathering/WithMultiplicity.v Gathering/Impossibility.v ./package/Gathering/
+cp CaseStudies/Gathering/Definitions.v CaseStudies/Gathering/WithMultiplicity.v CaseStudies/Gathering/Impossibility.v ./package/CaseStudies/Gathering/
 
-cp Gathering/InR/Algorithm.v Gathering/InR/Impossibility.v ./package/Gathering/InR/
+cp CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Impossibility.v ./package/CaseStudies/Gathering/InR/
 
-cp Gathering/InR2/Algorithm.v ./package/Gathering/InR2/
+cp CaseStudies/Gathering/InR2/Algorithm.v ./package/CaseStudies/Gathering/InR2/
 #Gathering/InR2/FSyncFlexNoMultAlgorithm.v Gathering/InR2/Peleg.v
 
-cp Exploration/Definitions.v Exploration/ImpossibilityKDividesN.v Exploration/Tower.v ./package/Exploration/
+cp CaseStudies/Exploration/Definitions.v CaseStudies/Exploration/ImpossibilityKDividesN.v CaseStudies/Exploration/Tower.v ./package/CaseStudies/Exploration/
 
-# Specific to the MoRoVer'17 and FuReTherMoRe'19 workshops
-cp Template.v script.bak ./package/
+# Specific to workshops/lectures
+cp exercises.v ./package/
 
 # Compile the archive to make sure it works
-make -C package -j 3 \
-  Gathering/InR/Algorithm.vo \
-  Gathering/InR/Impossibility.vo \
-  Gathering/InR2/Algorithm.vo \
-  Convergence/Impossibility_2G_1B.vo \
-  Exploration/ImpossibilityKDividesN.vo \
-  Exploration/Tower.v
-# Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
+time make -C package -j 3 \
+  CaseStudies/Gathering/InR/Algorithm.vo \
+  CaseStudies/Gathering/InR/Impossibility.vo \
+  CaseStudies/Gathering/InR2/Algorithm.vo \
+  CaseStudies/Convergence/Impossibility_2G_1B.vo \
+  CaseStudies/Exploration/ImpossibilityKDividesN.vo \
+  CaseStudies/Exploration/Tower.vo
+# CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
 
 # Clean the compilation
 make -C package cleanall
