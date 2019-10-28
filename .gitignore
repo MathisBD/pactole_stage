@@ -8,6 +8,9 @@
 *.v.crashcoqide
 html/
 
+package/
+package.tgz
+
 .lia.cache
 .lra.cache
 .nia.cache
@@ -18,8 +21,3 @@ Makefile
 makefile.bak
 Makefile.bak
 Makefile.conf
-
-.lia.cache
-.nia.cache
-.lra.cache
-.nra.cache
