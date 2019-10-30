@@ -47,6 +47,9 @@ Notation "x == y" := (equiv x y).
 Arguments complement A R x y /.
 Arguments Proper {A}%type R%signature m.
 
+Lemma equiv_dec_refl {T U} {S : Setoid T} {E : EqDec S} :
+  forall (e : T) (A B : U), (if equiv_dec e e then A else B) = A.
+Proof. intros. destruct_match; intuition. Qed.
 
 (** **  Setoid Definitions  **)
 
@@ -98,6 +101,7 @@ Arguments prod_EqDec [A] [B] {_} _ {_} _.
 Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_compat.
 Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
 
+(* Setoid over [sig] types *)
 Instance sig_Setoid {T} (S : Setoid T) {P : T -> Prop} : Setoid (sig P) := {|
   equiv := fun x y => proj1_sig x == proj1_sig y |}.
 Proof. split.
@@ -120,7 +124,7 @@ Defined.
 Instance sigT_EqDec {T} {S : Setoid T} (E : EqDec S) (P : T -> Type) : EqDec (@sigT_Setoid T S P).
 Proof. intros ? ?. simpl. apply equiv_dec. Defined.
 
-(* The intersection of equivalence relations is still an equivalence relation. *)
+(** The intersection of equivalence relations is still an equivalence relation. *)
 Lemma inter_equivalence T R1 R2 (E1 : Equivalence R1) (E2 : Equivalence R2)
   : Equivalence (fun x y : T => R1 x y /\ R2 x y).
 Proof. split.

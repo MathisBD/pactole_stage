@@ -37,15 +37,6 @@ Existing Instance FMOps_WMap.
 Existing Instance MakeFMultisetsFacts.
 
 
-Lemma eq_refl_left : forall (e : loc) A (a b:A), (if equiv_dec e e then a else b) = a.
-Proof.
-intros e A a b.
-destruct (equiv_dec e e) as [| Hneq].
-- reflexivity.
-- now elim Hneq.
-Qed.
-
-
 (** **  Building multisets from lists  **)
 
 Definition make_multiset l := from_elements (List.map (fun x => (x, 1)) l).
@@ -84,9 +75,9 @@ intros x l. induction l; intros n Hin.
 exists nil. split. now auto. rewrite make_multiset_nil, empty_spec in Hin. subst n. simpl. reflexivity.
 rewrite make_multiset_cons in Hin. destruct (equiv_dec x a) as [Heq | Heq].
 - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite add_spec in Hin. destruct n.
-  + rewrite eq_refl_left in Hin.
+  + rewrite equiv_dec_refl in Hin.
     omega.
-  + rewrite eq_refl_left in Hin.
+  + rewrite equiv_dec_refl in Hin.
     rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S, IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
   exists l'. split. assumption. simpl. now constructor.
 - rewrite add_other in Hin; auto. apply IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
@@ -143,7 +134,7 @@ Proof.
 intros x l. induction l.
 + rewrite make_multiset_nil. now rewrite empty_spec.
 + rewrite make_multiset_cons. simpl countA_occ. destruct (equiv_dec a x) as [Heq | Hneq].
-  - rewrite <- Heq at 1. rewrite add_spec, eq_refl_left, Heq, IHl. omega.
+  - rewrite <- Heq at 1. rewrite add_spec, equiv_dec_refl, Heq, IHl. omega.
   - apply nequiv_sym in Hneq. rewrite add_other. now apply IHl. assumption.
 Qed.
 
