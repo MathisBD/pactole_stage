@@ -50,8 +50,8 @@ Hypothesis nG_non_0 : n <> 0.
 Local Transparent G B.
 
 (** The setting is an arbitrary metric space over R. *)
-Context {Loc : Location}.
-(* Instance Info : State location := OnlyLocation. *)
+Context `{Location}.
+(* Instance St : State location := OnlyLocation (fun _ => True). *)
 Context {VS : RealVectorSpace location}.
 Context {ES : EuclideanSpace location}.
 
@@ -99,14 +99,14 @@ Implicit Type da : demonic_action.
 
 Lemma nG_ge_2 : 2 <= nG.
 Proof.
-assert (Heven := even_nG). assert (H0 := nG_non_0).
+assert (Heven := even_nG). assert (HnG0 := nG_non_0).
 inversion Heven. simpl.
 destruct n as [| [| ?]]; omega.
 Qed.
 
 Lemma half_size_config : Nat.div2 nG > 0.
 Proof.
-assert (Heven := even_nG). assert (H0 := nG_non_0).
+assert (Heven := even_nG). assert (HnG0 := nG_non_0).
 simpl. destruct n as [| [| ?]].
 - omega.
 - destruct Heven. omega.
@@ -217,13 +217,12 @@ Instance Always_invalid_compat : Proper (equiv ==> iff) Always_invalid.
 Proof. apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat. Qed.
 
 (** **  Linking the different properties  **)
-Set Printing Matching.
 
 Theorem different_no_gathering : forall (e : execution),
-  Always_invalid e -> forall pt, ~WillGather pt e.
+  Always_invalid e -> ~WillGather e.
 Proof.
-intros e He pt Habs. induction Habs as [e Habs | e].
-+ destruct Habs as [Hnow Hlater]. destruct He as [Hinvalid He].
+intros e He Habs. induction Habs as [e Habs | e].
++ destruct Habs as [pt [Hnow Hlater]]. destruct He as [Hinvalid He].
   destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
   - assert (Hin : In pt1 (!! (Stream.hd e))).
@@ -335,10 +334,10 @@ repeat destruct_match; simpl; rewrite Hgh in *; intro.
   now apply build_similarity_compat.
 + assert (Heq2 : pt2 == pt4).
   { transitivity (get_location (config2 (Good h))).
-    + assert (Hin := pos_in_config config1 origin (Good h)).
+    - assert (Hin := pos_in_config config1 origin (Good h)).
       rewrite Hobs, Heq, add_In, In_singleton in Hin.
       simpl complement in *. symmetry. tauto.
-    + assert (Hin := pos_in_config config2 origin (Good h)).
+    - assert (Hin := pos_in_config config2 origin (Good h)).
       rewrite Hobs', add_In, In_singleton in Hin.
       simpl complement in *. tauto. }
   rewrite Heq2 in Hperm. setoid_rewrite permA_swap in Hperm.
@@ -378,7 +377,7 @@ repeat split; trivial; [|].
 Qed.
 
 (** The movement of robots in the reference configuration. *)
-Definition move := r observation0.
+Definition move := get_location (r observation0).
 
 (** The key idea is to prove that we can always make robots see the same observation in any invalid configuration.
     If they do not gather in one step, then they will never do so.
@@ -1286,7 +1285,7 @@ Theorem noGathering :
   forall k, (1<=k)%nat ->
   forall config, invalid config ->
   exists d, kFair k d
-         /\ forall pt, ~WillGather pt (execute r d config).
+         /\ ~WillGather (execute r d config).
 Proof.
 intros k Hk config Hvalid. exists (bad_demon config).
 split.

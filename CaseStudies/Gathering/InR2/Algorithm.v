@@ -3331,8 +3331,8 @@ intros config Hind d' Hprop Hssync Hfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (get_location (config (Good g1))).
-  rewrite <- (demon2demon Hprop) in Hssync |- *. now apply Stream.Now, gathered_at_OK.
+  apply Stream.Now. exists (get_location (config (Good g1))).
+  rewrite <- (demon2demon Hprop) in Hssync |- *. now apply gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   rewrite <- (demon2demon Hprop) in Hssync, Hfair.
   apply (Fair_FirstMove _ Hssync Hfair (Good g1)) in Hmove; trivial.
@@ -3340,22 +3340,20 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
   destruct Hssync.
   induction Hmove as [d config Hmove | d config Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
-    destruct (Hind (round gatherR2 (Stream.hd d) config)) with (Stream.tl d) as [pt Hpt].
+    apply Stream.Later. apply Hind.
     - rewrite <- (demon2demon Hprop). apply round_lt_config; assumption.
     - now destruct Hprop.
     - now rewrite <- (demon2demon Hprop).
     - now destruct Hfair.
     - rewrite <- (demon2demon Hprop). now apply never_invalid.
-    - exists pt. apply Stream.Later. rewrite execute_tail. apply Hpt.
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_config in Heq.
-    edestruct Hrec as [pt Hpt].
+    apply Stream.Later. eapply Hrec.
     - intros ? Hlt. apply Hind. eapply lt_config_compat; try eassumption; autoclass.
     - now destruct Hssync.
     - apply Hssync.
     - now destruct Hfair.
     - rewrite Heq. assumption.
-    - exists pt. apply Stream.Later. rewrite execute_tail. apply Hpt.
 Qed.
 
 Print Assumptions Gathering_in_R2.
@@ -3375,16 +3373,15 @@ intros config Hind d Hssync Hunfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | Hmove].
 + (* If so, not much to do *)
-  exists (get_location (config (Good g1))). now apply Stream.Now, gathered_at_OK.
+  apply Stream.Now. exists (get_location (config (Good g1))). now apply gathered_at_OK.
 + (* Otherwise, by assumption on the demon, a robot should move
      so we can use our well-founded induction hypothesis. *)
- destruct Hunfair as [Hactive Hunfair]. hnf in Hactive.
-  destruct Hssync, (Hind (round gatherR2 (Stream.hd d) config)) with (Stream.tl d) as [pt Hpt].
+  destruct Hunfair as [Hactive Hunfair], Hssync. hnf in Hactive.
+  apply Stream.Later, Hind.
   - apply round_lt_config; auto.
   - assumption.
   - assumption.
   - now apply never_invalid.
-  - exists pt. apply Stream.Later. rewrite execute_tail. apply Hpt.
 Qed.
 
 End GatheringInR2.

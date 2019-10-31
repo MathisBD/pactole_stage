@@ -34,7 +34,7 @@ Typeclasses eauto := (bfs) 10.
 
 (** *  The Gathering Problem  **)
 
-(** Vocabulary: we call a [location] the coordinate of a robot.
+(** Vocabulary: we call a [location] the coordinates of a robot.
     We call a [configuration] a function from robots to configuration.
     An [execution] is an infinite (coinductive) stream of [configuration]s.
     A [demon] is an infinite stream of [demonic_action]s. *)
@@ -818,21 +818,21 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
 [| destruct (gathered_at_dec (round ffgatherR2 da config)
                              (round ffgatherR2 da config (Good g1))) as [Hmove' | Hmove']].
 * (* If we are already gathered, not much to do *)
-  exists (config (Good g1)). now apply Stream.Now, gathered_at_OK.
+  apply Stream.Now. exists (config (Good g1)). now apply gathered_at_OK.
 * (* If we are gathered at the next step, not much to do either. *)
-  exists (round ffgatherR2 da config (Good g1)).
-  apply Stream.Later, Stream.Now. rewrite execute_tail. destruct HFS. now apply gathered_at_OK.
+  apply Stream.Later, Stream.Now. exists (round ffgatherR2 da config (Good g1)).
+  rewrite execute_tail. destruct HFS. now apply gathered_at_OK.
 * (* General case, use [round_lt_config] *)
   assert (delta <= measure config).
   { destruct HFS as [HFSync _]. simpl in HFSync.
     apply Rnot_lt_le. intro Habs. eapply Rlt_le, round_last_step in Habs; eauto; [].
     simpl equiv in Habs. rewrite gathered_measure in Habs. destruct Habs as [pt Habs].
     apply Hmove'. apply (gathered_precise Habs (Good g1)). }
-  destruct HFS, (Hind (round ffgatherR2 da config)) with d as [pt Hpt].
+  destruct HFS.
+  apply Stream.Later. apply Hind.
   + apply lt_config_decrease; trivial; [].
     now apply round_lt_config.
   + assumption.
-  + exists pt. apply Stream.Later. apply Hpt.
 Qed.
 
 End GatheringInR2.

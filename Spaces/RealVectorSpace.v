@@ -152,6 +152,9 @@ Qed.
 
 Definition middle `{RealVectorSpace} u v := (1/2) * (u + v).
 
+Instance middle_compat `{RealVectorSpace} : Proper (equiv ==> equiv ==> equiv) middle.
+Proof. intros u1 u2 Hu v1 v2 Hv. unfold middle. now rewrite Hu, Hv. Qed.
+
 Lemma mul_integral `{RealVectorSpace} : forall k u, k * u == 0 -> k = 0%R \/ u == 0.
 Proof.
 intros k u Heq. destruct (Rdec k 0%R).

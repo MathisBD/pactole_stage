@@ -1636,7 +1636,7 @@ intros x y C sim Hmid.
 red.
 intros p.
 unfold is_middle in Hmid.
-rewrite <- (@Bijection.section_retraction _ _ sim p).
+rewrite <- (Bijection.section_retraction sim p).
 setoid_rewrite sim.(Similarity.dist_prop).
 setoid_rewrite R_sqr.Rsqr_mult.
 setoid_rewrite <- Rmult_plus_distr_l.

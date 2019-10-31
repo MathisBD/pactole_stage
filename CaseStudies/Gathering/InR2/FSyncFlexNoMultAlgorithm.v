@@ -52,6 +52,11 @@ Instance Loc_VS : @RealVectorSpace location location_Setoid location_EqDec := R2
 Instance Loc_ES : @EuclideanSpace location location_Setoid location_EqDec Loc_VS := R2_ES.
 Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
 
+Instance Info : State location := OnlyLocation (fun _ => True).
+
+Lemma no_info : forall x y, get_location x == get_location y -> x == y.
+Proof. now intros. Qed.
+
 (* Refolding typeclass instances *)
 Ltac changeR2 :=
   change R2 with location in *;
@@ -744,22 +749,22 @@ destruct (gathered_at_dec config (config (Good g1))) as [Hmove | Hmove];
 [| destruct (gathered_at_dec (round ffgatherR2 da config)
                              (round ffgatherR2 da config (Good g1))) as [Hmove' | Hmove']].
 * (* If we are already gathered, not much to do *)
-  exists (config (Good g1)). now apply Stream.Now, gathered_at_OK.
+  apply Stream.Now. exists (config (Good g1)). now apply gathered_at_OK.
 * (* If we are gathered at the next step, not much to do either. *)
-  exists (round ffgatherR2 da config (Good g1)).
-  apply Stream.Later, Stream.Now. rewrite execute_tail. now apply gathered_at_OK.
+  apply Stream.Later, Stream.Now. exists (round ffgatherR2 da config (Good g1)).
+  rewrite execute_tail. now apply gathered_at_OK.
 * (* General case, use [round_lt_config] *)
   assert (delta <= measure config).
   { apply Rnot_lt_le. intro Habs. destruct HFS.
     eapply Rlt_le, (round_last_step da) in Habs; eauto; [].
     simpl equiv in Habs. rewrite gathered_measure in Habs. destruct Habs as [pt Habs].
     apply Hmove'. apply (gathered_precise Habs (Good g1)). }
-  destruct HFS, (Hind (round ffgatherR2 da config)) with d as [pt Hpt].
+  destruct HFS.
+  apply Stream.Later, Hind. (* (Hind (round ffgatherR2 da config)) with d as [pt Hpt]. *)
   + apply lt_config_decrease; trivial; [].
     change da with (Stream.hd (Stream.cons da d)).
     now apply round_lt_config.
   + now constructor.
-  + exists pt. apply Stream.Later. apply Hpt.
 Qed.
 
 End GatheringInR2.

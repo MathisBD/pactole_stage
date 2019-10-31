@@ -185,10 +185,10 @@ Proof. apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat.
 (** **  Linking the different properties  **)
 
 Theorem different_no_gathering : forall (e : execution),
-  Always_invalid e -> forall pt, ~WillGather pt e.
+  Always_invalid e -> ~WillGather e.
 Proof.
-intros e He pt Habs. induction Habs as [e Habs | e].
-+ destruct Habs as [Hnow Hlater]. destruct He as [Hinvalid He].
+intros e He Habs. induction Habs as [e Habs | e].
++ destruct Habs as [pt [Hnow Hlater]]. destruct He as [Hinvalid He].
   destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
   - assert (Hin : In pt1 (!! (Stream.hd e))).
@@ -1061,7 +1061,7 @@ Theorem noGathering :
   forall k, (1<=k)%nat ->
   forall config, invalid config ->
   exists d, kFair k d
-         /\ forall pt, ~WillGather pt (execute r d config).
+         /\ ~WillGather (execute r d config).
 Proof.
 intros k Hk config Hvalid. exists (bad_demon config).
 split.

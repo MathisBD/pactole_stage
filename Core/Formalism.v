@@ -35,8 +35,13 @@ Remove Hints eq_setoid.
 
 
 Section Formalism.
-
-Context `{Observation}.
+(* We use explicit names instead of simply `{Observation}
+   in order to get meaningful names for implicit arguments. *)
+Context {info : Type}.
+Context {Loc : Location}.
+Context {St : State info}.
+Context `{Names}.
+Context {Obs : Observation}.
 Variables Trobot Tframe Tactive Tinactive : Type.
 
 (** **  Robograms and Executions  **)
@@ -621,7 +626,7 @@ Definition FrameChoiceBijection : frame_choice (bijection location) := {|
 Definition FirstChoiceSimilarity {RMS : RealMetricSpace location}
   : frame_choice (similarity location) := {|
   frame_choice_bijection := @sim_f location _ _ _ _;
-  frame_choice_Setoid := similarity_Setoid location;
+  frame_choice_Setoid := similarity_Setoid;
   frame_choice_bijection_compat := f_compat |}.
 
 

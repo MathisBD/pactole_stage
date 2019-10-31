@@ -1567,29 +1567,27 @@ intros config Hind d' Hprop HSSYNC Hfair Hok.
 (* Are we already gathered? *)
 destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | Hmove].
 * (* If so, not much to do *)
-  exists (get_location (config (Good g1))).
-  rewrite <- (demon2demon Hprop) in HSSYNC |- *. now apply Stream.Now, gathered_at_OK.
+  apply Stream.Now. exists (get_location (config (Good g1))).
+  rewrite <- (demon2demon Hprop) in HSSYNC |- *. now apply gathered_at_OK.
 * (* Otherwise, we need to make an induction on fairness to find the first robot moving *)
   rewrite <- (demon2demon Hprop) in HSSYNC, Hfair.
   apply (Fair_FirstMove _ HSSYNC Hfair (Good g1)) in Hmove; trivial; [].
   rewrite (demon2demon Hprop) in Hfair, Hmove.
   induction Hmove as [d config Hmove | d config Heq Hmove Hrec].
   + (* Base case: we have first move, we can use our well-founded induction hypothesis. *)
-    destruct (Hind (round gatherR (Stream.hd d) config)) with (Stream.tl d) as [pt Hpt].
+    apply Stream.Later. apply Hind.
     - rewrite <- (demon2demon Hprop) in Hmove |- *. destruct HSSYNC. now apply round_lt_config.
     - now destruct Hprop.
     - rewrite <- (demon2demon Hprop). now destruct HSSYNC.
     - now destruct Hfair.
     - rewrite <- (demon2demon Hprop). destruct HSSYNC. now apply never_invalid.
-    - exists pt. constructor; cbn; apply Hpt.
   + (* Inductive case: we know by induction hypothesis that the wait will end *)
     apply no_moving_same_config in Heq.
-    edestruct Hrec as [pt Hpt].
+    apply Stream.Later. eapply Hrec.
     - setoid_rewrite Heq. apply Hind.
     - apply HSSYNC.
     - now destruct Hfair.
     - rewrite Heq. assumption.
-    - exists pt. constructor; cbn; apply Hpt.
 Qed.
 
 End CorrectnessProof.

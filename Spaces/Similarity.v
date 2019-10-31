@@ -33,15 +33,20 @@ Set Implicit Arguments.
 
 Open Scope R_scope.
 
+Section SimilarityDefinition.
+
+Context {T : Type}.
+Context `{RealMetricSpace T}.
+
 (** Similarities are functions that multiply distances by a constant zoom.
     Unlike bijections that only need a setoid, we need here a metric space. *)
-Record similarity T `{RealMetricSpace T} := {
+Record similarity := {
   sim_f :> bijection T;
   zoom : R;
   dist_prop : forall x y, dist (sim_f x) (sim_f y) = zoom * dist x y}.
-Arguments similarity T {_} {_} {_} {_}.
+(* Arguments similarity T {_} {_} {_} {_}. *)
 
-Global Instance similarity_Setoid T `{RealMetricSpace T} : Setoid (similarity T) := {|
+Global Instance similarity_Setoid : Setoid similarity := {|
   equiv := fun sim1 sim2 => equiv (sim_f sim1) (sim_f sim2) |}.
 Proof. split.
 + repeat intro. reflexivity.
@@ -49,10 +54,10 @@ Proof. split.
 + repeat intro. etransitivity; eauto.
 Defined.
 
-Instance f_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@sim_f _ _ _ _ _).
+Global Instance f_compat : Proper (equiv ==> equiv) sim_f.
 Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 
-Global Instance zoom_compat {T} `{RealMetricSpace T} : Proper (equiv ==> equiv) (@zoom T _ _ _ _).
+Global Instance zoom_compat : Proper (equiv ==> equiv) zoom.
 Proof.
 intros sim1 sim2 Hsim.
 apply Rmult_eq_reg_r with (dist origin one).
@@ -62,7 +67,7 @@ Qed.
 
 (** As similarities are defined as bijections, we can prove that k <> 0
     (this requires that the metric space is not trivial (i.e. has dimension > 0). *)
-Lemma zoom_non_null `{RealMetricSpace} : forall sim, sim.(zoom) <> 0.
+Lemma zoom_non_null : forall sim, sim.(zoom) <> 0.
 Proof.
 intros sim Heq. apply non_trivial.
 assert (Heqsim : equiv (sim one) (sim origin)).
@@ -70,7 +75,7 @@ assert (Heqsim : equiv (sim one) (sim origin)).
 rewrite sim.(Inversion) in Heqsim. rewrite <- Heqsim, <- sim.(Inversion). reflexivity.
 Qed.
 
-Lemma zoom_pos `{RealMetricSpace} : forall sim, 0 < sim.(zoom).
+Lemma zoom_pos : forall sim, 0 < sim.(zoom).
 Proof.
 intros sim. apply Rle_neq_lt.
 - destruct sim as [f k Hk]. simpl.
@@ -83,8 +88,7 @@ intros sim. apply Rle_neq_lt.
 - intro. now apply (zoom_non_null sim).
 Qed.
 
-Theorem injective {T} `{RealMetricSpace T} :
-  forall sim : similarity T, Preliminary.injective equiv equiv sim.
+Theorem injective : forall sim : similarity, Preliminary.injective equiv equiv sim.
 Proof.
 intros sim z t Heqf.
 rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
@@ -93,36 +97,35 @@ assert (Hsim := zoom_non_null sim). contradiction.
 Qed.
 
 (** The identity similarity *)
-Definition id {T} `{RealMetricSpace T} : similarity T := {|
+Definition id : similarity := {|
   sim_f := @Bijection.id T _;
   zoom := 1;
-  dist_prop := ltac:(intros; simpl; now rewrite Rmult_1_l) |}. (* TODO: make abstract work *)
+  dist_prop := ltac:(abstract (intros; simpl; now rewrite Rmult_1_l)) |}.
 
 (** Composition of similarities *)
-Definition comp {T} `{RealMetricSpace T} (f g : similarity T) : similarity T.
+Definition comp (f g : similarity) : similarity.
 refine {|
   sim_f := @compose (Bijection.bijection T) _ _ f g;
   zoom := f.(zoom) * g.(zoom); |}.
 Proof. abstract (intros; simpl; rewrite f.(dist_prop), g.(dist_prop); ring). Defined.
 
-Instance SimilarityComposition {T} `{RealMetricSpace T} : Composition (similarity T) :=
-  { compose := comp }.
+Global Instance SimilarityComposition : Composition similarity := { compose := comp }.
 Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Defined.
 
 (* Global Instance compose_compat `{RealMetricSpace} : Proper (equiv ==> equiv ==> equiv) compose.
 Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed. *)
 
-Lemma compose_assoc `{RealMetricSpace} : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
+Lemma compose_assoc : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
 Proof. repeat intro. reflexivity. Qed.
 
-Lemma compose_id_l `{RealMetricSpace} : forall sim, id ∘ sim == sim.
+Lemma compose_id_l : forall sim, id ∘ sim == sim.
 Proof. intros sim x. simpl. reflexivity. Qed.
 
-Lemma compose_id_r `{RealMetricSpace} : forall sim, sim ∘ id == sim.
+Lemma compose_id_r : forall sim, sim ∘ id == sim.
 Proof. intros sim x. simpl. reflexivity. Qed.
 
 (** Inverse of a similarity *)
-Definition inv {T} `{RealMetricSpace T} (sim : similarity T) : similarity T.
+Definition inv (sim : similarity) : similarity.
 refine {| sim_f := inverse sim.(sim_f);
           zoom := /sim.(zoom) |}.
 Proof.
@@ -131,41 +134,41 @@ intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
 rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
 Defined.
 
-Instance SimilarityInverse {T} `{RealMetricSpace T} : Inverse (similarity T) :=
-  { inverse := inv }.
+Global Instance SimilarityInverse : Inverse similarity := { inverse := inv }.
 Proof. intros f g Hfg x. simpl. now f_equiv. Defined.
 
 (* Global Instance inverse_compat `{RealMetricSpace} : Proper (equiv ==> equiv) inv.
 Proof. intros f g Hfg x. simpl. now f_equiv. Qed. *)
 
-Lemma compose_inverse_l {T} `{RealMetricSpace T} : forall sim : similarity T, (sim ⁻¹ ∘ sim) == id.
+Lemma compose_inverse_l : forall sim : similarity, (sim ⁻¹ ∘ sim) == id.
 Proof. intros sim x. simpl. now rewrite retraction_section; autoclass. Qed.
 
-Lemma compose_inverse_r {T} `{RealMetricSpace T} : forall sim : similarity T, sim ∘ (sim ⁻¹) == id.
+Lemma compose_inverse_r : forall sim : similarity, sim ∘ (sim ⁻¹) == id.
 Proof. intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
 
-Lemma inverse_compose {T} `{RealMetricSpace T} :
-  forall f g : similarity T, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
+Lemma inverse_compose : forall f g : similarity, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
 Proof. intros f g x. simpl. reflexivity. Qed.
 
-Lemma inverse_dist_prop {T} `{RealMetricSpace T} : forall (sim : similarity T) x y,
+Lemma inverse_dist_prop : forall (sim : similarity) x y,
   dist ((sim ⁻¹) x) ((sim ⁻¹) y) = /(zoom sim) * dist x y.
 Proof. intros sim x y. rewrite dist_prop. now simpl. Qed.
 
 (** Center of a similarity, that is, the point that gets mapped to the origin. *)
-Definition center {T} `{RealMetricSpace T} (sim : similarity T) : T := sim⁻¹ origin.
+Definition center (sim : similarity) : T := sim⁻¹ origin.
 
-Lemma center_prop {T} `{RealMetricSpace T} : forall sim : similarity T, sim (center sim) == origin.
+Lemma center_prop : forall sim : similarity, sim (center sim) == origin.
 Proof. intro. unfold center. apply compose_inverse_r. Qed.
 
-Instance center_compat `{RealMetricSpace} : Proper (equiv ==> equiv) (@center _ _ _ _ _).
+Global Instance center_compat : Proper (equiv ==> equiv) center.
 Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
 (* TODO: prove that similarities preserve barycenters *)
+End SimilarityDefinition.
+Arguments similarity T {_} {_} {_} {_}.
 
 
 Section TranslationHomothecy.
-Context (T : Type).
+Context {T : Type}.
 Context `{rnsT : RealNormedSpace T}.
 
 (** The translation similarity *)
@@ -257,7 +260,3 @@ Lemma homothecy_fixpoint : forall c ρ (Hρ : ρ <> 0), homothecy c Hρ c == c.
 Proof. intros. simpl. now rewrite add_opp, mul_origin, add_origin. Qed.
 
 End TranslationHomothecy.
-
-Global Arguments similarity T {_} {_} {_} {_}.
-Global Arguments translation {T} {_} {_} {_} {_} v.
-Global Arguments homothecy {T} {_} {_} {_} {_} c {ρ} Hρ.

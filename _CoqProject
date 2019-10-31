@@ -76,6 +76,7 @@ CaseStudies/Gathering/InR/Algorithm.v
 CaseStudies/Gathering/InR2/Algorithm.v
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v
 CaseStudies/Gathering/InR2/Peleg.v
+CaseStudies/Gathering/InR2/Viglietta.v
 
 ## Case Study: Ring Exploration
 CaseStudies/Exploration/Definitions.v

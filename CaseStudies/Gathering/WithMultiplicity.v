@@ -33,19 +33,24 @@ Typeclasses eauto := (bfs) 5.
 
 Section MultisetGathering.
 
+(** Here, we restrict the state to only contain the location. *)
 Context `{Location}.
-Context {T : Type}.
+(* TODO: add the existence of a similarity here *)
+Global Instance Info : State location := OnlyLocation (fun _ => True).
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
 Context `{robot_choice}.
-Context {Choice : update_choice T}.
+Context `{update_choice}.
 Context `{inactive_choice}.
-Context {UpdFun : update_function _ _ T}.
+Context {UpdFun : update_function _ _ _}.
 Context {InaFun : inactive_function _}.
 
 Notation "!! config" :=
   (@obs_from_config location _ _ _ multiset_observation config origin : observation) (at level 10).
+
+Lemma no_info : forall x y, get_location x == get_location y -> x == y.
+Proof. now intros. Qed.
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)
@@ -64,7 +69,7 @@ Qed.
     configuration not [invalid], will *eventually* be [Gather]ed.
     This is the statement used for the correctness proof of the algorithms. *)
 Definition ValidSolGathering (r : robogram) (d : demon) :=
-  forall config : configuration, ~invalid config -> exists pt : location, WillGather pt (execute r d config).
+  forall config : configuration, ~invalid config -> WillGather (execute r d config).
 
 (** **  Generic properties  **)
 
