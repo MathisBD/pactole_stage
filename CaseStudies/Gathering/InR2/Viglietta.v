@@ -58,6 +58,15 @@ Definition info := (location * light)%type.
 Instance St : State info := AddInfo light
    (OnlyLocation (fun f => sigT (fun sim : similarity location => Bijection.section sim == f))).
 
+(** Since there are none, we can ignore Byzantine robots. *)
+Lemma no_byz_eq : forall config1 config2 : configuration,
+  (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
+Proof.
+intros config1 config2 Heq id. destruct id as [g | b].
++ apply Heq.
++ destruct b. exfalso. lia.
+Qed.
+
 (** The robot have access to the full state of all robots, that is, their locations and lights. *)
 Instance Obs : @Observation info Loc St N := {|
   observation := info * info;   (* self & other robot's state *)
@@ -100,9 +109,9 @@ Proof. now repeat intro; subst. Defined.
 Lemma SSYNC_setting : forall da, SSYNC_da da.
 Proof. repeat intro. reflexivity. Qed.
 
-(** The robogram in the global frame of reference, with first argument being the current location. *)
-Definition global_rendezvous : location -> observation -> info :=
-  fun pt1 '((pt1, l1), (pt2, l2)) =>
+(** The robogram in both the local and global frames of reference. *)
+Definition rendezvous_pgm : observation -> info :=
+  fun '((pt1, l1), (pt2, l2)) =>
     match l1, l2 with
       | A, A => (middle pt1 pt2, B)
       | B, A => (pt1, l1)
@@ -110,21 +119,17 @@ Definition global_rendezvous : location -> observation -> info :=
       | B, B => (pt1, A)
     end.
 
-(** Local version of the robogram. *)
-Definition rendezvous_pgm := global_rendezvous origin.
-
-Instance global_rdv_compat : Proper (equiv ==> equiv ==> equiv) global_rendezvous.
+Instance rdv_compat : Proper (equiv ==> equiv) rendezvous_pgm.
 Proof.
-intros  ? ? ? [[] []] [[] []] [[] []]. simpl in *.
+intros [[] []] [[] []] [[] []]. simpl in *.
 repeat destruct_match; simpl; repeat split; congruence.
 Qed.
-Instance rdv_compat : Proper (equiv ==> equiv) rendezvous_pgm.
-Proof. now apply global_rdv_compat. Qed.
 
 Definition rendezvous : robogram := {| pgm := rendezvous_pgm |}.
 
 Notation "!! config § st " := (obs_from_config (Observation := Obs) config st) (at level 60).
 
+(** Express the algorithm in the global frame of reference. *)
 Definition map_spect f : observation -> observation :=
   fun s => (f (fst s), f (snd s)).
 
@@ -147,36 +152,20 @@ repeat destruct_match.
 + now repeat split.
 Qed.
 
-Lemma rendezvous_pgm_map : forall pt f s, projT1 f pt == origin ->
-  rendezvous_pgm (map_spect (lift f) s) == lift f (global_rendezvous pt s).
+Lemma rendezvous_pgm_map : forall f s,
+  rendezvous_pgm (map_spect (lift (State := St) f) s) == lift f (rendezvous_pgm s).
 Proof.
-intros pt [f Pf] [[pt1 l1] [pt2 l2]] Hf.
-unfold rendezvous_pgm, global_rendezvous. cbn -[equiv middle].
+intros [f Pf] [[pt1 l1] [pt2 l2]].
+unfold rendezvous_pgm. cbn -[equiv middle].
 destruct l1, l2; cbn -[equiv middle] in *; repeat split; auto; [].
 cbn [fst]. destruct Pf as [sim Hsim]. rewrite <- Hsim. apply R2_middle_morph.
-Qed.
-
-(* Lemma obs_fst : forall config id, fst (!! config § config id) == config id.
-Proof.
-intros config id. unfold obs_from_config, Obs.
-destruct_match; trivial; [].
-cut (id = Good r1); [now intuition subst |].
-destruct (id_case id); trivial; []. subst id. intuition.
-Qed. *)
-
-Lemma no_byz_eq : forall config1 config2 : configuration,
-  (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
-Proof.
-intros config1 config2 Heq id. destruct id as [g | b].
-+ apply Heq.
-+ destruct b. exfalso. lia.
 Qed.
 
 Lemma round_simplify : forall da config,
   similarity_da_prop da -> (* the frame of the observing robot is centered on itself *)
   round rendezvous da config
-  == fun id => if activate da id (* why!!! *)
-               then global_rendezvous (get_location (config id)) (!! config § config id)
+  == fun id => if activate da id
+               then rendezvous (!! config § config id)
                else config id.
 Proof.
 intros da config Hda. apply no_byz_eq. intro g. unfold round.
@@ -193,91 +182,20 @@ pose (f_state_inv := existT (fun f => {sim : similarity location & Bijection.sec
 change (@equiv info _
         (lift f_state_inv (rendezvous_pgm
            (!! map_config (lift f_state) config § lift f_state (config (Good g)))))
-        (global_rendezvous (get_location (config (Good g))) (!! config § config (Good g)))).
+        (rendezvous (!! config § config (Good g)))).
 assert (Hrel : Proper
   (RelationPairs.RelCompFun (equiv ==> equiv)%signature (projT1 (P:=precondition))) f_state_inv).
 { intros x y Hxy. cbn -[equiv]. now rewrite Hxy. }
 transitivity (lift f_state_inv
   (rendezvous_pgm (map_spect (lift f_state)
        (!! config § config (Good g))))).
-* apply (lift_compat Hrel), (pgm_compat rendezvous), obs_from_config_map.
++ apply (lift_compat Hrel), (pgm_compat rendezvous), obs_from_config_map.
   intros x y Hxy. destruct f_state as [f [sim Hsim]]. cbn -[equiv]. rewrite <- Hsim. now f_equiv.
-* rewrite rendezvous_pgm_map.
-  + cbn -[equiv]. split; cbn -[equiv]; try reflexivity; []. apply Bijection.retraction_section.
-  + cbn -[equiv].
-    cut (Similarity.center (change_frame da config g) == (Datatypes.id (fst (config (Good g))))).
-    - intro Heq. rewrite <- Heq. apply center_prop.
-    - apply Hda.
++ rewrite rendezvous_pgm_map.
+  cbn -[equiv]. split; cbn -[equiv]; try reflexivity; []. apply Bijection.retraction_section.
 Qed.
 
-Lemma OneMustMove : forall config, ~(exists pt, gathered_at pt config) ->
-  exists r, forall da, similarity_da_prop da -> activate da r = true ->
-                       round rendezvous da config r =/= config r.
-Proof.
-intros config Hnotgather.
-destruct (config (Good r0)) as [pt1 l1] eqn:Hr0,
-         (config (Good r1)) as [pt2 l2] eqn:Hr1.
-assert (Hpt : pt1 =/= pt2).
-{ intro Habs. rewrite Habs in Hr0. apply Hnotgather.
-  exists (get_location (config (Good r0))). intros [[| [| ?]] ?]; simpl.
-  + unfold r0. do 4 f_equal. now apply eq_proj1.
-  + transitivity (Datatypes.id (fst (config (Good r1)))).
-    - unfold r1. simpl. do 4 f_equal. now apply eq_proj1.
-    - now rewrite Hr0, Hr1.
-  + exfalso. lia. }
-destruct l1 eqn:Hl1; [| destruct l2 eqn:Hl2].
-+ (* if r0's color is A, it changes its location *)
-  exists (Good r0). intros da Hda Hactivate.
-  rewrite (round_simplify da config Hda (Good r0)).
-  rewrite Hactivate. rewrite Hr0. unfold global_rendezvous, obs_from_config.
-  cbn -[equiv equiv_dec middle]. rewrite Hr0, Hr1.
-  destruct_match; try (now intuition); [].
-  destruct_match.
-  - intros [_ Habs]. simpl in Habs. congruence.
-  - intros []. cbn -[equiv] in *. congruence.
-+ (* if r1's color is A, it changes its location *)
-  exists (Good r1). intros da Hda Hactivate.
-  rewrite (round_simplify da config Hda (Good r1)).
-  rewrite Hactivate. rewrite Hr1. unfold global_rendezvous, obs_from_config.
-  cbn -[equiv equiv_dec middle]. rewrite Hr0, Hr1.
-  assert ((pt1, B) =/= (pt2, A)) by (intros []; contradiction).
-  destruct_match; try (now intuition); [].
-  intros []; contradiction.
-+ (* when both robots have color B, they change color. *) 
-  exists (Good r0). intros da Hda Hactivate.
-  rewrite (round_simplify da config Hda (Good r0)).
-  rewrite Hactivate. rewrite Hr0. unfold global_rendezvous, obs_from_config.
-  cbn -[equiv equiv_dec middle]. rewrite Hr0, Hr1.
-  destruct_match; try (now intuition); [].
-  intros [_ Habs]. simpl in Habs. congruence.
-Qed.
-
-Lemma Fair_FirstMove : forall d, Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
-  forall config, ~(exists pt, gathered_at pt config) -> FirstMove rendezvous d config.
-Proof.
-intros d Hfair Hsim config Hgather.
-destruct (OneMustMove config Hgather) as [idmove Hmove].
-destruct Hfair as [locallyfair Hfair].
-specialize (locallyfair idmove).
-revert config Hgather Hmove.
-induction locallyfair as [d Hnow | d]; intros config Hgather Hmove.
-* apply MoveNow. apply Hmove in Hnow.
-  + rewrite <- (moving_spec rendezvous (Stream.hd d) config idmove) in Hnow.
-    intro Habs. rewrite Habs in Hnow. tauto.
-  + apply Hsim.
-* destruct (moving rendezvous (Stream.hd d) config) as [| id mov] eqn:Hmoving.
-  + apply MoveLater; trivial; [].
-    apply IHlocallyfair.
-    - now destruct Hfair.
-    - apply Hsim.
-    - apply no_moving_same_config in Hmoving. now setoid_rewrite Hmoving.
-    - intros da Hda Hactive. apply no_moving_same_config in Hmoving.
-      rewrite (Hmoving idmove).
-      apply (round_compat (reflexivity rendezvous) (reflexivity da)) in Hmoving; trivial; [].
-      rewrite (Hmoving idmove).
-      now apply Hmove.
-  + apply MoveNow. rewrite Hmoving. discriminate.
-Qed.
+(** Correctness: if the program terminates, it is correct *)
 
 (** Once we are gathered, everything is good. *)
 Lemma gathered_at_forever : forall da config pt, similarity_da_prop da ->
@@ -286,7 +204,7 @@ Proof.
 intros da config pt Hsim Hgather.
 rewrite round_simplify; trivial; [].
 intro g. destruct (da.(activate) (Good g)); [| now apply Hgather].
-unfold global_rendezvous, obs_from_config, Obs.
+unfold rendezvous, rendezvous_pgm, obs_from_config, Obs.
 destruct (config (Good r0)) as [pt1 l1] eqn:Hr0,
          (config (Good r1)) as [pt2 l2] eqn:Hr1.
 assert (Hpt1 : pt1 == pt) by now rewrite <- Hgather, Hr0.
@@ -297,13 +215,13 @@ assert (Hg : g = r0 \/ g = r1).
   - right. unfold r1. f_equal. apply le_unique.
   - exfalso. lia. }
 destruct Hg; subst g.
-* rewrite Hr0. destruct_match; try (now exfalso; auto); [].
+* rewrite Hr0. rewrite equiv_dec_refl.
   destruct l1, l2; cbn -[equiv middle]; trivial;
   try match goal with H : lt _ _, H' : lt _ _ |- _ => clear -H H'; exfalso; lia end; [].
   now rewrite Hpt1, middle_eq.
 * rewrite Hr1. destruct_match.
-  + match goal with H : _ == _ |- _ => destruct H as [Hpt Hl] end.
-    simpl in Hpt, Hl. rewrite Hl.
+  + match goal with H : (_, _) == _ |- _ => destruct H as [Hpt Hl] end.
+    simpl in Hpt, Hl. subst. cbn -[equiv middle].
     repeat destruct_match; cbn -[equiv middle]; trivial; [].
     now rewrite Hpt1, middle_eq.
   + assert (Hl : l1 =/= l2).
@@ -325,7 +243,7 @@ cofix Hind. intros d Hsim pt config Hgather. constructor.
 Qed.
 
 (** Termination measure *)
-Definition measure (config : configuration) :=
+Definition measure (config : configuration) : nat :=
   match snd (config (Good r0)), snd (config (Good r1)) with
     | A, A => 2
     | B, A | A, B => 1
@@ -342,6 +260,7 @@ cbn -[location] in Hl1, Hl2. rewrite Hl1, Hl2.
 destruct l1, l2; simpl; reflexivity.
 Qed.
 
+(* A result ensuring that the measure strictly decreases after each round. *)
 Lemma round_measure : forall da config, similarity_da_prop da ->
   moving rendezvous da config <> nil ->
   (exists pt, gathered_at pt (round rendezvous da config))
@@ -435,6 +354,77 @@ destruct (gathered_at_dec config (get_location (config (Good r0)))) as [| Hgathe
     destruct Hone_active; discriminate.
 Qed.
 
+(** Fairness entails progress. *)
+Lemma OneMustMove : forall config, ~(exists pt, gathered_at pt config) ->
+  exists r, forall da, similarity_da_prop da -> activate da r = true ->
+                       round rendezvous da config r =/= config r.
+Proof.
+intros config Hnotgather.
+destruct (config (Good r0)) as [pt1 l1] eqn:Hr0,
+         (config (Good r1)) as [pt2 l2] eqn:Hr1.
+assert (Hpt : pt1 =/= pt2).
+{ intro Habs. rewrite Habs in Hr0. apply Hnotgather.
+  exists (get_location (config (Good r0))). intros [[| [| ?]] ?]; simpl.
+  + unfold r0. do 4 f_equal. now apply eq_proj1.
+  + transitivity (Datatypes.id (fst (config (Good r1)))).
+    - unfold r1. simpl. do 4 f_equal. now apply eq_proj1.
+    - now rewrite Hr0, Hr1.
+  + exfalso. lia. }
+destruct l1 eqn:Hl1; [| destruct l2 eqn:Hl2].
++ (* if r0's color is A, it changes its location *)
+  exists (Good r0). intros da Hda Hactivate.
+  rewrite (round_simplify da config Hda (Good r0)).
+  rewrite Hactivate. rewrite Hr0. unfold rendezvous, rendezvous_pgm, obs_from_config.
+  cbn -[equiv equiv_dec middle]. rewrite Hr0, Hr1.
+  destruct_match; try (now intuition); [].
+  destruct_match.
+  - intros [_ Habs]. simpl in Habs. congruence.
+  - intros []. cbn -[equiv] in *. congruence.
++ (* if r1's color is A, it changes its location *)
+  exists (Good r1). intros da Hda Hactivate.
+  rewrite (round_simplify da config Hda (Good r1)).
+  rewrite Hactivate. rewrite Hr1. unfold rendezvous, rendezvous_pgm, obs_from_config.
+  cbn -[equiv equiv_dec middle]. rewrite Hr0, Hr1.
+  assert ((pt1, B) =/= (pt2, A)) by (intros []; contradiction).
+  destruct_match; try (now intuition); [].
+  intros []; contradiction.
++ (* when both robots have color B, they change color. *) 
+  exists (Good r0). intros da Hda Hactivate.
+  rewrite (round_simplify da config Hda (Good r0)).
+  rewrite Hactivate. rewrite Hr0. unfold rendezvous, rendezvous_pgm, obs_from_config.
+  cbn -[equiv equiv_dec middle]. rewrite Hr0, Hr1.
+  destruct_match; try (now intuition); [].
+  intros [_ Habs]. simpl in Habs. congruence.
+Qed.
+
+Lemma Fair_FirstMove : forall d, Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
+  forall config, ~(exists pt, gathered_at pt config) -> FirstMove rendezvous d config.
+Proof.
+intros d Hfair Hsim config Hgather.
+destruct (OneMustMove config Hgather) as [idmove Hmove].
+destruct Hfair as [locallyfair Hfair].
+specialize (locallyfair idmove).
+revert config Hgather Hmove.
+induction locallyfair as [d Hnow | d]; intros config Hgather Hmove.
+* apply MoveNow. apply Hmove in Hnow.
+  + rewrite <- (moving_spec rendezvous (Stream.hd d) config idmove) in Hnow.
+    intro Habs. rewrite Habs in Hnow. tauto.
+  + apply Hsim.
+* destruct (moving rendezvous (Stream.hd d) config) as [| id mov] eqn:Hmoving.
+  + apply MoveLater; trivial; [].
+    apply IHlocallyfair.
+    - now destruct Hfair.
+    - apply Hsim.
+    - apply no_moving_same_config in Hmoving. now setoid_rewrite Hmoving.
+    - intros da Hda Hactive. apply no_moving_same_config in Hmoving.
+      rewrite (Hmoving idmove).
+      apply (round_compat (reflexivity rendezvous) (reflexivity da)) in Hmoving; trivial; [].
+      rewrite (Hmoving idmove).
+      now apply Hmove.
+  + apply MoveNow. rewrite Hmoving. discriminate.
+Qed.
+
+(** Final result: correctness of the Viglietta algorithm *)
 Theorem Viglietta_correct : forall d, Fair d ->
   Stream.forever (Stream.instant similarity_da_prop) d ->
   forall config, WillGather (execute rendezvous d config).
