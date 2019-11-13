@@ -9,9 +9,9 @@
 (**************************************************************************)
 
 Require Import SetoidDec.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.RobotInfo.
-Require Import Pactole.Core.Configurations.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
+Require Import Pactole.Core.Configuration.
 
 
 (** **  Observations  **)

@@ -27,9 +27,9 @@ Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.FSets.FSetList.
 Require Export Pactole.Util.FSets.FSetInterface.
 Require Export Pactole.Util.FSets.FSetFacts.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
+Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 
 

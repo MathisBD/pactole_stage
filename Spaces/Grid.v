@@ -102,7 +102,7 @@ Defined.
 (** **  Change of frame of reference in Z²  **)
 
 Require Pactole.Util.Bijection.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.State.
 Require Import Pactole.Core.Formalism.
 
 Instance Loc : Location := {| location := node |}.

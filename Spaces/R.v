@@ -30,8 +30,6 @@ Require Import RelationPairs.
 Require Import SetoidDec.
 Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
 Require Export Pactole.Spaces.EuclideanSpace.
 Require Export Pactole.Spaces.Similarity.
 Require Import Psatz.

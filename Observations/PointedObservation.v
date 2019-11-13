@@ -9,17 +9,17 @@
 
 Require Import SetoidDec.
 Require Import Pactole.Util.SetoidDefs.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.State.
 Require Import Pactole.Observations.Definition.
 Set Implicit Arguments.
 
 
 Section PointedObservation.
 
-Context `{Location}.
+Context {Loc : Location}.
 Context {info : Type}.
 Context {St : State info}.
-Context `{Robots.Names}.
+Context {N : Identifiers.Names}.
 Context {Obs : Observation}.
 
 Instance PointedObservation : Observation := {|

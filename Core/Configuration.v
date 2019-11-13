@@ -21,8 +21,8 @@ Require Import SetoidDec.
 Require Import Decidable.
 Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
 Set Implicit Arguments.
 Typeclasses eauto := (dfs).
 

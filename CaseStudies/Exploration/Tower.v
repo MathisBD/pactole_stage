@@ -57,16 +57,15 @@ Qed.
 Definition origin : location := of_Z 0.
 Definition dummy_val : location := origin. (* could be anything *)
 
-Existing Instance setting.
 Notation "!! config" := (@obs_from_config _ _ _ _ multiset_observation config origin) (at level 0).
-Notation execute := (execute (H7 := glob_update_function)).
+Notation execute := (execute (UpdFun := UpdFun)).
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
 Proof. intros config1 config2 Heq id. apply (no_byz id). intro g. apply Heq. Qed.
 
 (** In order to prove that at least one position is occupied, we define the list of positions. *)
-Definition Vlist := Robots.enum ring_size.
+Definition Vlist := Identifiers.enum ring_size.
 
 Lemma Vlist_NoDup : NoDupA equiv Vlist.
 Proof. rewrite NoDupA_Leibniz. apply enum_NoDup. Qed.
@@ -118,7 +117,7 @@ Theorem no_stop_on_starting_config : forall r d config,
   ~Stopped (execute r d config).
 Proof.
 intros r d config.
-generalize (@reflexivity execution _ _ (execute r d config)).
+generalize (@reflexivity execution equiv _ (execute r d config)).
 generalize (execute r d config) at -2.
 intros e Heqe Hfair Hsol Hvalid Hsto.
 destruct (Hsol d config Hfair Hvalid) as [Hvisit Hstop].

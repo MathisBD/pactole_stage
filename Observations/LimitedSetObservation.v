@@ -23,9 +23,9 @@ Require Import Rbase.
 Require Import Pactole.Util.FSets.FSetInterface.
 Require Import Pactole.Util.FSets.FSetFacts.
 Require Import Pactole.Util.Coqlib.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
+Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.Similarity.

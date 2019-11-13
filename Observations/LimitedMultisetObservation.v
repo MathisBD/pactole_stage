@@ -29,9 +29,9 @@ Require Export Pactole.Util.MMultiset.MMultisetInterface.
 Require Export Pactole.Util.MMultiset.MMultisetFacts.
 Require Export Pactole.Util.MMultiset.MMultisetExtraOps.
 Require Import Pactole.Util.Coqlib.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
+Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 Require Pactole.Observations.MultisetObservation.
 Require Import Pactole.Spaces.RealMetricSpace.

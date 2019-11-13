@@ -11,7 +11,6 @@ Util/FMaps/FMapFacts.v
 Util/FMaps/FMapList.v
 Util/MMultiset/MMultisetInterface.v
 Util/MMultiset/MMultisetWMap.v
-#Util/MMultiset/MMultisetMap.v
 Util/MMultiset/MMultisetFacts.v
 Util/MMultiset/MMultisetExtraOps.v
 Util/MMultiset/Preliminary.v
@@ -26,9 +25,9 @@ Util/Bijection.v
 Util/Stream.v
 Util/Lexprod.v
 Util/Ratio.v
-Core/Robots.v
-Core/RobotInfo.v
-Core/Configurations.v
+Core/Identifiers.v
+Core/State.v
+Core/Configuration.v
 Core/Formalism.v
 Setting.v
 

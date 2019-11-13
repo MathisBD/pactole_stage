@@ -55,7 +55,7 @@ Proof. all:abstract (auto; discriminate). Defined.
 
 Definition info := (location * light)%type.
 
-Instance St : State info := AddInfo location light
+Instance St : State info := AddInfo light
    (OnlyLocation (fun f => sigT (fun sim : similarity location => Bijection.section sim == f))).
 
 (** The robot have access to the full state of all robots, that is, their locations and lights. *)

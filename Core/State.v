@@ -23,7 +23,7 @@ Require Import Decidable.
 Require Import Classes.RelationPairs.
 Require Import Pactole.Util.Coqlib.
 Require Pactole.Util.Bijection.
-Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Identifiers.
 Set Implicit Arguments.
 
 
@@ -101,7 +101,7 @@ Proof.
 Defined.
 
 (** Adding information that is not affected by frame change. *)
-Local Instance AddInfo `{Location} info T `{EqDec T} (St : State info) : State (info * T) := {|
+Local Instance AddInfo `{Location} {info} T `{EqDec T} (St : State info) : State (info * T) := {|
   get_location := fun x => get_location (fst x);
   lift := fun f x => (lift f (fst x), snd x);
   precondition := precondition |}.

@@ -11,7 +11,7 @@
 
 Require Import Omega Psatz SetoidDec Rbase.
 Require Import Pactole.Util.Coqlib.
-Require Import Pactole.Core.Robots.
+Require Import Pactole.Core.Identifiers.
 Require Export Pactole.Spaces.Graph.
 Require Import Pactole.Spaces.Isomorphism.
 

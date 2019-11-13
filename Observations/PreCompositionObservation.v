@@ -14,9 +14,9 @@ Require Import Omega.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.Configurations.
-Require Import Pactole.Core.RobotInfo.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
+Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 Close Scope R_scope.
 Set Implicit Arguments.
@@ -26,12 +26,12 @@ Set Default Proof Using "All".
 Section CompositionObservation.
 
 (** **  Loosing information inside the state before building the observation  **)
-Context `{Location}.
+Context {Loc : Location}.
 Context {info1 info2 : Type}.
-Context `{St1 : @State _ info1}.
-Context `{St2 : @State _ info2}.
-Context `{Names}.
-Context `(@Observation _ _ St2 _).
+Context {St1 : @State _ info1}.
+Context {St2 : @State _ info2}.
+Context {N : Names}.
+Context (Obs : @Observation _ _ St2 _).
 
 Variable f : info1 -> info2.
 Hypothesis f_compat : Proper (equiv ==> equiv) f.

@@ -49,7 +49,6 @@ Qed.
 Definition origin : location := of_Z 0.
 Definition dummy_val : location := origin. (* could be anything *)
 
-Existing Instance setting.
 Notation "!! config" := (obs_from_config config origin) (at level 0).
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
@@ -104,7 +103,7 @@ Qed.
 Lemma obs_trans_ref_config : forall g,
   !! (map_config (Ring.trans (to_Z (create_ref_config g))) ref_config) == !! ref_config.
 Proof.
-unfold obs_from_config, glob_obs, setting,
+unfold obs_from_config,
        MultisetObservation.multiset_observation, MultisetObservation.make_multiset.
 intro g. apply MMultisetFacts.from_elements_compat. (* FIXME: [f_equiv] works but is too long *)
 rewrite 2 config_list_spec, 4 map_map.
@@ -209,7 +208,7 @@ Lemma round_id : round r da ref_config == ref_config.
 Proof.
 rewrite FSYNC_round_simplify; try (now split); [].
 apply no_byz_eq. intro g.
-cbn -[Ring.trans equiv setting ring_edge map_config].
+cbn -[Ring.trans equiv ring_edge map_config].
 unfold lift. cbn -[map_config Ring.trans equiv].
 rewrite (MultisetObservation.obs_from_config_ignore_snd origin).
 rewrite obs_trans_ref_config, Hmove. cbn [move_along map_config].

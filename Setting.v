@@ -3,9 +3,9 @@ Require Export Pactole.Util.Coqlib.
 Require Export Pactole.Util.Ratio.
 Require Pactole.Util.Stream.
 Require Pactole.Util.Lexprod.
-Require Export Pactole.Core.Robots.
-Require Export Pactole.Core.RobotInfo.
-Require Export Pactole.Core.Configurations.
+Require Export Pactole.Core.Identifiers.
+Require Export Pactole.Core.State.
+Require Export Pactole.Core.Configuration.
 Require Export Pactole.Observations.Definition.
 Require Export Pactole.Core.Formalism.
 
@@ -35,7 +35,7 @@ Existing Instance Stream.eventually2_refl.
 Existing Instance Stream.eventually2_sym.
 Existing Instance Stream.map_compat.
 
-
+(* By experience, this is not very useful
 (** For simplicity, we gather into one definition all the classes that must be instanciated
     in order to define a complete and working environment. *)
 Class GlobalDefinitions := {
@@ -67,3 +67,4 @@ Class GlobalDefinitions := {
                             glob_robot_choice glob_frame_choice glob_update_choice;
   glob_inactive_function :> @inactive_function _ _ glob_State glob_Names _ glob_inactive_choice
   }.
+*)

@@ -37,36 +37,36 @@ Notation ring_node := (finite_node ring_size).
 Context {Robots : Names}.
 
 (** Robots are on nodes *)
-Local Instance Loc : Location := {
+Global Instance Loc : Location := {
   location := ring_node;
   location_Setoid := V_Setoid;
   location_EqDec := V_EqDec (Graph := localRing) }.
 
 (** Robot only decide in which direction they want to move *)
-Local Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
+Global Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
 
 (** States of robots only contains their location. *)
-Local Instance St : State location := OnlyLocation (fun _ => True).
-Local Existing Instance proj_graph.
+Global Instance St : State location := OnlyLocation (fun _ => True).
+Global Existing Instance proj_graph.
 
 (** Demon's frame choice: we move back the robot to the origin with a translation
                           and we can choose the orientation of the ring. *)
-Local Instance FC : frame_choice (Z * bool) := {
+Global Instance FC : frame_choice (Z * bool) := {
   frame_choice_bijection :=
     fun nb => if snd nb then @compose _ _ IsoComposition (Ring.trans (fst nb)) (Ring.sym (fst nb))
                         else Ring.trans (fst nb);
   frame_choice_Setoid := eq_setoid _ }.
 
-Local Existing Instance NoChoice.
-Local Existing Instance NoChoiceIna.
-Local Existing Instance NoChoiceInaFun.
+Global Existing Instance NoChoice.
+Global Existing Instance NoChoiceIna.
+Global Existing Instance NoChoiceInaFun.
 
-Local Instance UpdFun : update_function direction (Z * bool) unit := {
+Global Instance UpdFun : update_function direction (Z * bool) unit := {
   update := fun config g _ dir _ => move_along (config (Good g)) dir }.
 Proof. repeat intro. subst. now apply move_along_compat. Defined.
 (* end show *)
 
-Global Instance setting : GlobalDefinitions := {
+(* Global Instance setting : GlobalDefinitions := {
   (* Number of good and Byzantine robots *)
   glob_Names := Robots;
   (* The space in which robots evolve *)
@@ -92,7 +92,7 @@ Global Instance setting : GlobalDefinitions := {
      - if active, using the result of the robogram and the decision from the demon
      - if inactive, using only the decision from the demon *)
   glob_update_function := UpdFun;
-  glob_inactive_function := NoChoiceInaFun }.
+  glob_inactive_function := NoChoiceInaFun }. *)
 
 (** ** Specification of exploration with stop *)
 

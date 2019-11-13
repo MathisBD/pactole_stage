@@ -24,9 +24,9 @@ Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Util.Bijection.
 Require Import Pactole.Util.Ratio.
 Require Pactole.Util.Stream.
-Require Import Pactole.Core.Robots.
-Require Import Pactole.Core.RobotInfo.
-Require Import Pactole.Core.Configurations.
+Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Core.State.
+Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 
 
@@ -40,7 +40,7 @@ Section Formalism.
 Context {info : Type}.
 Context {Loc : Location}.
 Context {St : State info}.
-Context `{Names}.
+Context {N : Names}.
 Context {Obs : Observation}.
 Variables Trobot Tframe Tactive Tinactive : Type.
 
@@ -107,12 +107,12 @@ Class inactive_function  `{inactive_choice} := {
   inactive :> configuration -> ident -> Tinactive -> info;
   inactive_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv) inactive }.
 
-Context `{robot_choice}.
-Context `{frame_choice}.
-Context `{update_choice}.
-Context `{inactive_choice}.
-Context `{@update_function _ _ _}.
-Context `{@inactive_function _}.
+Context {RC : robot_choice}.
+Context {FC : frame_choice}.
+Context {UC : update_choice}.
+Context {IC : inactive_choice}.
+Context {UpdFun : @update_function _ _ _}.
+Context {InaFun : @inactive_function _}.
 
 
 (* NB: The byzantine robots are not always activated

@@ -11,7 +11,7 @@
 
 Require Import Rbase SetoidDec.
 Require Import Pactole.Util.Coqlib.
-Require Pactole.Core.Robots.
+Require Pactole.Core.Identifiers.
 Set Implicit Arguments.
 
 
@@ -43,7 +43,7 @@ Definition finite_node n := {m : nat | m < n}.
 
 (* We explictely define the setoid here to avoid using proj1_Setoid instead. *)
 Instance finite_node_Setoid n : Setoid (finite_node n) := eq_setoid _.
-Instance finite_node_EqDec n : EqDec (finite_node_Setoid n) := @Robots.subset_dec n.
+Instance finite_node_EqDec n : EqDec (finite_node_Setoid n) := @Identifiers.subset_dec n.
 
 Definition FiniteGraph (n : nat) E := Graph (finite_node n) E.
 Existing Class FiniteGraph.

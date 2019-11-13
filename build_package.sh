@@ -57,14 +57,7 @@ cp CaseStudies/Exploration/Definitions.v CaseStudies/Exploration/ImpossibilityKD
 cp exercises.v ./package/
 
 # Compile the archive to make sure it works
-time make -C package -j 3 \
-  CaseStudies/Gathering/InR/Algorithm.vo \
-  CaseStudies/Gathering/InR/Impossibility.vo \
-  CaseStudies/Gathering/InR2/Algorithm.vo \
-  CaseStudies/Convergence/Impossibility_2G_1B.vo \
-  CaseStudies/Exploration/ImpossibilityKDividesN.vo \
-  CaseStudies/Exploration/Tower.vo
-# CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
+time make -C package -j 3
 
 # Clean the compilation
 make -C package cleanall
