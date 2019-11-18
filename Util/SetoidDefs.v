@@ -102,8 +102,8 @@ Instance fst_compat {A B} : forall R S, Proper (R * S ==> R) (@fst A B) := fst_c
 Instance snd_compat {A B} : forall R S, Proper (R * S ==> S) (@snd A B) := snd_compat.
 
 (* Setoid over [sig] types *)
-Instance sig_Setoid {T} (S : Setoid T) {P : T -> Prop} : Setoid (sig P) := {|
-  equiv := fun x y => proj1_sig x == proj1_sig y |}.
+Instance sig_Setoid {T} (S : Setoid T) {P : T -> Prop} : Setoid (sig P).
+simple refine {| equiv := fun x y => proj1_sig x == proj1_sig y |}; auto; [].
 Proof. split.
 + intro. reflexivity.
 + intros ? ?. now symmetry.
@@ -113,8 +113,8 @@ Defined.
 Instance sig_EqDec {T} {S : Setoid T} (E : EqDec S) (P : T -> Prop) : EqDec (@sig_Setoid T S P).
 Proof. intros ? ?. simpl. apply equiv_dec. Defined.
 
-Instance sigT_Setoid {T} (S : Setoid T) {P : T -> Type} : Setoid (sigT P) := {|
-  equiv := fun x y => projT1 x == projT1 y |}.
+Instance sigT_Setoid {T} (S : Setoid T) {P : T -> Type} : Setoid (sigT P).
+simple refine {| equiv := fun x y => projT1 x == projT1 y |}; auto; [].
 Proof. split.
 + intro. reflexivity.
 + intros ? ?. now symmetry.
@@ -138,7 +138,8 @@ Definition inter_Setoid {T} (S1 : Setoid T) (S2 : Setoid T) : Setoid T := {|
   equiv := fun x y => @equiv T S1 x y /\ @equiv T S2 x y;
   setoid_equiv := inter_equivalence setoid_equiv setoid_equiv |}.
 
-Definition inter_EqDec {T} {S1 S2 : Setoid T} (E1 : EqDec S1) (E2 : EqDec S2) : EqDec (inter_Setoid S1 S2).
+Definition inter_EqDec {T} {S1 S2 : Setoid T} (E1 : EqDec S1) (E2 : EqDec S2)
+  : EqDec (inter_Setoid S1 S2).
 Proof.
 intros x y. destruct (E1 x y), (E2 x y); (now left; split) || (right; intros []; contradiction).
 Defined.

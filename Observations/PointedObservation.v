@@ -24,13 +24,11 @@ Context {Obs : Observation}.
 
 Instance PointedObservation : Observation := {|
   observation := observation * info;
-  observation_Setoid := prod_Setoid _ _;
+  observation_Setoid := prod_Setoid observation_Setoid state_Setoid;
   observation_EqDec := prod_EqDec observation_EqDec state_EqDec;
   obs_from_config := fun config st => (obs_from_config config st, st);
+  obs_from_config_compat := ltac:(repeat intro; now split; trivial; apply obs_from_config_compat);
   obs_is_ok := fun obs config st => obs_is_ok (fst obs) config st /\ st == snd obs;
   obs_from_config_spec := fun config st => conj (obs_from_config_spec config st) (reflexivity st) |}.
-Proof.
-abstract (repeat intro; now split; trivial; apply obs_from_config_compat).
-Defined.
 
 End PointedObservation.

@@ -226,7 +226,7 @@ intro Hl. induction Hl as [e [g Hvisited] | e Hlater IHvisited].
   apply (f_equal (@proj1_sig _ (fun x => lt x ring_size))) in Hvisited. revert Hvisited.
   assert (1 < ring_size / kG)%nat by (apply <- Nat.div_exact in kdn; nia).
   unfold Ring.of_Z. simpl. rewrite Z.mod_1_l, Z.mod_small; try omega; [|].
-  + change 1 with (Z.of_nat 1). rewrite 2 Nat2Z.id. nia.
+  + change 1 with (Z.of_nat 1). rewrite 2 Nat2Z.id. destruct (proj1_sig g); nia.
   + split; try apply Zle_0_nat; [].
     apply inj_lt, Nat.lt_le_trans with (kG * (ring_size / kG))%nat.
     - apply mult_lt_compat_r; try omega; []. apply proj2_sig.

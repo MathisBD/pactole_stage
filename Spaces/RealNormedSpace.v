@@ -35,77 +35,15 @@ Notation "∥ u ∥" := (norm u) :  VectorSpace_scope.
 
 (** ***  Proofs of derivable properties about RealNormedSpace  **)
 
-Lemma norm_opp `{RealNormedSpace} : forall u, norm (- u) = norm u.
-Proof.
-intro u. rewrite <- (mul_1 u) at 1.
-now rewrite <- minus_morph, norm_mul, Rabs_Ropp, Rabs_R1, Rmult_1_l.
-Qed.
-
-(** The metric space induced by the norm. *)
-Instance Normed2Metric {T} `{RealNormedSpace T} : RealMetricSpace T := {
-  dist := fun u v => norm (u - v)}.
-Proof.
-+ intros u v. rewrite norm_defined. split; intro Heq.
-  - apply (add_reg_r (- v)). now rewrite add_opp.
-  - now rewrite Heq, add_opp.
-+ intros u v. now rewrite <- (opp_opp (v - u)), opp_distr_add, norm_opp, opp_opp, add_comm.
-+ intros u v w. rewrite <- add_origin, <-(add_opp v), <- add_assoc, (add_assoc (- w)),
-                          (add_comm (- w)), (add_comm _ (- v)), add_assoc.
-  apply triang_ineq.
-Defined.
-
-Lemma dist_translation {T} `{RealNormedSpace T} : forall w u v : T, dist (u + w) (v + w) = dist u v.
-Proof.
-intros w u v. simpl.
-now rewrite opp_distr_add, (add_comm (opp v)), <- add_assoc, (add_assoc w), add_opp, add_assoc, add_origin.
-Qed.
-
-Lemma dist_homothecy {T} `{RealNormedSpace T} : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R.
-Proof. intros. simpl. now rewrite <- norm_mul, mul_distr_add, mul_opp. Qed.
-
-(** The above two properties are enough to characterize a normed space. *)
-Definition Metric2Normed {T} `{rmsT : RealMetricSpace T}
-                         (translation_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
-                         (homothecy_prop : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R)
-  : RealNormedSpace T.
-simple refine {| norm := fun x => @dist _ _ _ _ rmsT x (@origin _ _ _ _) |}; autoclass.
-Proof.
-+ abstract (intros ? ? Heq; now rewrite Heq).
-+ abstract (intros ρ u; simpl; rewrite <- (mul_origin ρ) at 1; now rewrite homothecy_prop).
-+ abstract (intro; apply dist_defined).
-+ abstract (intros u v; rewrite Rplus_comm, <- (translation_prop u v origin), 2 (add_comm _ u), add_origin;
-            apply RealMetricSpace.triang_ineq).
-Defined.
-
-(* These space transformations are inverse of each other. *)
-Lemma Normed2Normed {T} `{rnsT : RealNormedSpace T} :
-  forall u, @norm _ _ _ _ (Metric2Normed dist_translation dist_homothecy) u = norm u.
-Proof. intro. simpl. now rewrite opp_origin, add_origin. Qed.
-
-Lemma Metric2Metric {T} `{rmsT : RealMetricSpace T}
-                    (trans_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
-                    (homothecy_prop : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R) :
-  forall u v, @dist _ _ _ _ (@Normed2Metric _ _ _ _ (Metric2Normed trans_prop homothecy_prop)) u v = dist u v.
-Proof.
-intros. simpl. now rewrite <- (trans_prop v), <- add_assoc,
-                           (add_comm _ v), add_opp, (add_comm _ v), 2 add_origin.
-Qed.
-
-Lemma dist_subadditive `{RealNormedSpace} : forall u u' v v', dist (u + v) (u' + v') <= dist u u' + dist v v'.
-Proof.
-intros. etransitivity; [now apply (RealMetricSpace.triang_ineq _ (u' + v)) |].
-rewrite dist_translation. setoid_rewrite add_comm. rewrite dist_translation. reflexivity.
-Qed.
-
-Lemma dist_opp `{RealNormedSpace} : forall u v, dist (-u) (-v) = dist u v.
-Proof.
-intros u v. simpl. rewrite <- (norm_opp (u - v)).
-apply norm_compat. now rewrite opp_distr_add.
-Qed.
-
 Section NormedResults.
   Context {T : Type}.
   Context `{RealNormedSpace T}.
+  
+  Lemma norm_opp `{RealNormedSpace} : forall u, norm (- u) = norm u.
+  Proof.
+  intro u. rewrite <- (mul_1 u) at 1.
+  now rewrite <- minus_morph, norm_mul, Rabs_Ropp, Rabs_R1, Rmult_1_l.
+  Qed.
   
   Lemma norm_origin : norm 0 = 0%R.
   Proof. now rewrite norm_defined. Qed.
@@ -131,9 +69,6 @@ Section NormedResults.
     rewrite <- norm_origin.
     apply triang_ineq_bis.
   Qed.
-  
-  Lemma norm_dist : forall u v, dist u v = norm (u - v).
-  Proof. intros. reflexivity. Qed.
   
   Lemma square_norm_equiv : forall u k, 0 <= k -> (norm u = k <-> (norm u)² = k²).
   Proof.
@@ -198,12 +133,82 @@ Section NormedResults.
   Proof.
   intro u. null u.
   - now rewrite unitary_origin at 1.
-  - unfold unitary at 1. rewrite norm_unitary; trivial; []. replace (/1) with 1 by field. apply mul_1.
+  - unfold unitary at 1. rewrite norm_unitary; trivial; [].
+    replace (/1) with 1 by field. apply mul_1.
   Qed.
+  
+  (** ***  Normed and Metric Spaces  **)
+  
+  (** The metric space induced by the norm. *)
+  Global Instance Normed2Metric : RealMetricSpace T.
+  refine {| dist := fun u v => norm (u - v) |}.
+  Proof.
+  + intros u v. rewrite norm_defined. split; intro Heq.
+    - apply (add_reg_r (- v)). now rewrite add_opp.
+    - now rewrite Heq, add_opp.
+  + intros u v. now rewrite <- (opp_opp (v - u)), opp_distr_add, norm_opp, opp_opp, add_comm.
+  + intros u v w. rewrite <- add_origin, <-(add_opp v), <- add_assoc, (add_assoc (- w)),
+                            (add_comm (- w)), (add_comm _ (- v)), add_assoc.
+    apply triang_ineq.
+  Defined.
+  
+  Lemma dist_translation : forall w u v, dist (u + w) (v + w) = dist u v.
+  Proof.
+  intros w u v. simpl.
+  now rewrite opp_distr_add, (add_comm (opp v)),
+              <- add_assoc, (add_assoc w), add_opp, add_assoc, add_origin.
+  Qed.
+  
+  Lemma dist_homothecy : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R.
+  Proof. intros. simpl. now rewrite <- norm_mul, mul_distr_add, mul_opp. Qed.
+  
+  Lemma dist_subadditive : forall u u' v v', dist (u + v) (u' + v') <= dist u u' + dist v v'.
+  Proof.
+  intros. etransitivity; [now apply (RealMetricSpace.triang_ineq _ (u' + v)) |].
+  rewrite dist_translation. setoid_rewrite add_comm. rewrite dist_translation. reflexivity.
+  Qed.
+  
+  Lemma dist_opp : forall u v, dist (-u) (-v) = dist u v.
+  Proof.
+  intros u v. simpl. rewrite <- (norm_opp (u - v)).
+  apply norm_compat. now rewrite opp_distr_add.
+  Qed.
+  
+  Lemma norm_dist : forall u v, dist u v = norm (u - v).
+  Proof. intros. reflexivity. Qed.
   
 End NormedResults.
 
-Arguments unitary {T%type} {_} {_} {_} {_} u%VS.
+(** Building a normed space from a metric one. *)
+Definition Metric2Normed {T} `{rmsT : RealMetricSpace T}
+  (translation_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
+  (homothecy_prop : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R)
+  : RealNormedSpace T.
+simple refine {| norm := fun x => @dist _ _ _ _ rmsT x (@origin _ _ _ _) |}; autoclass.
+Proof.
++ abstract (intros ? ? Heq; now rewrite Heq).
++ abstract (intros ρ u; simpl; rewrite <- (mul_origin ρ) at 1; now rewrite homothecy_prop).
++ abstract (intro; apply dist_defined).
++ abstract (intros u v; rewrite Rplus_comm, <- (translation_prop u v origin), 2 (add_comm _ u),
+                                add_origin; apply RealMetricSpace.triang_ineq).
+Defined.
+
+(* These space transformations are inverse of each other. *)
+Lemma Normed2Normed {T} `{rnsT : RealNormedSpace T} :
+  forall u, @norm _ _ _ _ (Metric2Normed dist_translation dist_homothecy) u = norm u.
+Proof. intro. simpl. now rewrite opp_origin, add_origin. Qed.
+
+Lemma Metric2Metric {T} `{rmsT : RealMetricSpace T}
+                    (trans_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
+                    (homothecy_prop : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R) :
+  forall u v, @dist _ _ _ _ (@Normed2Metric _ _ _ _ (Metric2Normed trans_prop homothecy_prop)) u v
+              = dist u v.
+Proof.
+intros. simpl. now rewrite <- (trans_prop v), <- add_assoc,
+                           (add_comm _ v), add_opp, (add_comm _ v), 2 add_origin.
+Qed.
+
+(** ***  Results about barycenters  **)
 
 Section BarycenterResults.
   Context {T : Type}.
@@ -216,8 +221,8 @@ Section BarycenterResults.
         forall pt, dist(W pt, PT) = R2norm(W pt - PT)
                                   = R2norm(Sum[i=0..n](w_i pt) - Sum[i=0..n](w_i p_i))
                                   = R2norm(Sum[i=0..n](w_i (pt - p_i)))
-                                 <= Sum[i=0..n](w_i R2norm(pt - p_i))           by triangular inequality
-                                 <= Sum[i=0..n](w_i dm))                        by definition of diameter
+                                 <= Sum[i=0..n](w_i R2norm(pt - p_i))     by triangular inequality
+                                 <= Sum[i=0..n](w_i dm))                  by definition of diameter
                                   = dm Sum[i=0..n](w_i)
                                   = dm W *)
   Definition weighted_sqr_dist_sum (pt: T) (E: list (T * R)) : R :=
@@ -244,17 +249,17 @@ Section BarycenterResults.
   assert (Heq : (eq ==> equiv * eq ==> eq)%signature
                   (fun (acc : R) (pt' : T * R) => (acc + snd pt' * (dist u (fst pt'))²)%R)
                   (fun (acc : R) (pt' : T * R) => (acc + snd pt' * (dist v (fst pt'))²)%R)).
-  { intros ? acc ? [u1 k1] [u2 k2] [Heq1 Heq2]. compute in Heq1, Heq2. subst. simpl. rewrite Heq1, Hpt. ring. }
-(* Anomaly: cannot define an evar twice. Please report at http://coq.inria.fr/bugs/.
-   [rewrite (fold_left_compat Heq (reflexivity E1) (reflexivity 0%R))]. *)
-  rewrite (fold_left_compat Heq (reflexivity E1) 0%R 0%R (reflexivity 0%R)). clear u Hpt Heq.
+  { intros ? acc ? [u1 k1] [u2 k2] [Heq1 Heq2].
+    compute in Heq1, Heq2. subst. simpl. rewrite Heq1, Hpt. ring. }
+  rewrite (fold_left_compat Heq (reflexivity E1) _ _ (reflexivity 0%R)). clear u Hpt Heq.
   generalize (eq_refl 0%R).
   generalize 0%R at 2 4. generalize 0%R.
   revert E1 E2 Hperm.
   change (Proper (PermutationA (equiv * eq) ==> eq ==> eq)
                  (List.fold_left (fun acc pt'  => acc + snd pt' * (dist v (fst pt'))²))%R).
   apply fold_left_symmetry_PermutationA; autoclass.
-  + intros ? ? ? [] [] [Heq ?]. hnf in *; cbn -[dist] in *; subst. do 3 f_equal. now apply dist_compat.
+  + intros ? ? ? [] [] [Heq ?]. hnf in *; cbn -[dist] in *; subst.
+    do 3 f_equal. now apply dist_compat.
   + intros [] [] ?. hnf; simpl in *; ring || f_equal; ring.
   Qed.
   
@@ -352,8 +357,9 @@ Section BarycenterResults.
   Proof.
   intros i1 i2 Heqi pt1 pt2 Heqpt E1 E2 Hperm.
   unfold sqr_dist_sum_aux.
-  assert (Heq : (eq ==> equiv ==> eq)%signature (fun (acc : R) (pt' : T) => (acc + (dist pt1 pt')²)%R)
-                                                (fun (acc : R) (pt' : T) => (acc + (dist pt2 pt')²)%R)).
+  assert (Heq : (eq ==> equiv ==> eq)%signature
+                  (fun (acc : R) (pt' : T) => (acc + (dist pt1 pt')²)%R)
+                  (fun (acc : R) (pt' : T) => (acc + (dist pt2 pt')²)%R)).
   { intros ? ? ? ? ? Heq. subst. now rewrite Heq, Heqpt. }
   rewrite (fold_left_compat Heq (reflexivity E1) _ _ Heqi). clear Heq Heqi i1.
   apply fold_left_symmetry_PermutationA; trivial.
@@ -361,7 +367,8 @@ Section BarycenterResults.
   + intros. ring.
   Qed.
   
-  Global Instance sqr_dist_sum_compat : Proper (equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum.
+  Global Instance sqr_dist_sum_compat :
+    Proper (equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum.
   Proof. now apply sqr_dist_sum_aux_compat. Qed.
   
   Lemma isobarycenter_dist_decrease_aux : forall E dm,
@@ -413,3 +420,5 @@ Section BarycenterResults.
   Qed.
   
 End BarycenterResults.
+
+Arguments unitary {T%type} {_} {_} {_} {_} u%VS.

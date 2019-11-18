@@ -165,12 +165,14 @@ Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance set_observation : Observation := {
+Global Instance set_observation : Observation.
+simple refine {|
   observation := set location;
   
   obs_from_config config pt := make_set (List.map get_location (config_list config));
   obs_is_ok s config pt :=
-    forall l, In l s <-> InA equiv l (List.map get_location (config_list config)) }.
+    forall l, In l s <-> InA equiv l (List.map get_location (config_list config)) |};
+autoclass; [|].
 Proof.
 + repeat intro.
   apply make_set_compat, eqlistA_PermutationA_subrelation,

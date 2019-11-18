@@ -46,9 +46,11 @@ Record similarity := {
   dist_prop : forall x y, dist (sim_f x) (sim_f y) = zoom * dist x y}.
 (* Arguments similarity T {_} {_} {_} {_}. *)
 
-Global Instance similarity_Setoid : Setoid similarity := {|
-  equiv := fun sim1 sim2 => equiv (sim_f sim1) (sim_f sim2) |}.
-Proof. split.
+Global Instance similarity_Setoid : Setoid similarity.
+simple refine {| equiv := fun sim1 sim2 => equiv (sim_f sim1) (sim_f sim2) |}.
+Proof.
+* apply bij_Setoid.
+* split.
 + repeat intro. reflexivity.
 + repeat intro. now symmetry.
 + repeat intro. etransitivity; eauto.
@@ -109,7 +111,8 @@ refine {|
   zoom := f.(zoom) * g.(zoom); |}.
 Proof. abstract (intros; simpl; rewrite f.(dist_prop), g.(dist_prop); ring). Defined.
 
-Global Instance SimilarityComposition : Composition similarity := { compose := comp }.
+Global Instance SimilarityComposition : Composition similarity.
+refine {| compose := comp |}.
 Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Defined.
 
 (* Global Instance compose_compat `{RealMetricSpace} : Proper (equiv ==> equiv ==> equiv) compose.
@@ -134,7 +137,8 @@ intros x y. apply Rmult_eq_reg_l with sim.(zoom); trivial.
 rewrite <- sim.(dist_prop). simpl. repeat rewrite section_retraction; autoclass; []. now field.
 Defined.
 
-Global Instance SimilarityInverse : Inverse similarity := { inverse := inv }.
+Global Instance SimilarityInverse : Inverse similarity.
+refine {| inverse := inv |}.
 Proof. intros f g Hfg x. simpl. now f_equiv. Defined.
 
 (* Global Instance inverse_compat `{RealMetricSpace} : Proper (equiv ==> equiv) inv.

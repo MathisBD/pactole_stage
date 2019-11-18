@@ -33,7 +33,7 @@ Require Import Pactole.Util.Coqlib.
 Definition ratio := {x : R | 0 <= x <= 1}%R.
 
 Instance ratio_Setoid : Setoid ratio := sig_Setoid _.
-Instance ratio_EqDec : EqDec ratio_Setoid := sig_EqDec _ _.
+Instance ratio_EqDec : EqDec ratio_Setoid := @sig_EqDec _ _ _ _.
 
 Definition proj_ratio : ratio -> R := @proj1_sig _ _.
 
@@ -82,7 +82,7 @@ Proof. intros [] [] ? [] [] ?. unfold add_ratio. simpl in *. subst. destruct_mat
 Definition strict_ratio := {x : R | 0 < x < 1}%R.
 
 Instance strict_ratio_Setoid : Setoid ratio := sig_Setoid _.
-Instance strict_ratio_EqDec : EqDec strict_ratio_Setoid := sig_EqDec _ _.
+Instance strict_ratio_EqDec : EqDec strict_ratio_Setoid := @sig_EqDec _ _ _ _.
 
 Definition proj_strict_ratio (x : strict_ratio) : ratio :=
   let '(exist _ v Hv) := x in
@@ -122,7 +122,8 @@ Record path T `{Setoid T}:= {
   path_compat :> Proper (equiv ==> equiv) path_f }.
 Arguments path_f {T} {_} _ _.
 
-Instance path_Setoid T {S : Setoid T} : Setoid (path T) := { equiv := fun x y => path_f x == y }.
+Instance path_Setoid T {S : Setoid T} : Setoid (path T).
+simple refine {| equiv := fun x y => path_f x == y |}; try apply fun_equiv; auto; [].
 Proof. split.
 + intro. reflexivity.
 + intros ? ? ?. now symmetry.

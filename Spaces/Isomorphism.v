@@ -39,12 +39,12 @@ Record isomorphism := {
   iso_incr : forall a b, (a < b)%R -> (iso_T a < iso_T b)%R;
   iso_bound_T : forall r, (0 < iso_T r < 1)%R <-> (0 < r < 1)%R }.
 
-Global Instance isomorphism_Setoid : Setoid isomorphism := {
-  equiv := fun iso1 iso2 => iso1.(iso_V) == iso2.(iso_V)
-                         /\ iso1.(iso_E) == iso2.(iso_E)
-                         /\ iso1.(iso_T) == iso2.(iso_T) }.
-Proof. simpl. split.
-+ intro f. repeat split; now intro.
+Global Instance isomorphism_Setoid : Setoid isomorphism.
+simple refine {| equiv := fun iso1 iso2 => iso1.(iso_V) == iso2.(iso_V)
+                                        /\ iso1.(iso_E) == iso2.(iso_E)
+                                        /\ iso1.(iso_T) == iso2.(iso_T) |}; autoclass.
+Proof. split.
++ intro f. now repeat split.
 + intros f g Hfg; destruct Hfg as [HV [HE HT]]. repeat split; intro; now symmetry.
 + intros f g h Hfg Hgh. destruct Hfg as [? [? ?]], Hgh as [? [? ?]].
   repeat split; intro; etransitivity; eauto.
@@ -85,7 +85,8 @@ Proof.
 + intro. simpl. now rewrite 2 iso_bound_T.
 Defined.
 
-Global Instance IsoComposition : Composition isomorphism := { compose := comp }.
+Global Instance IsoComposition : Composition isomorphism.
+refine {| compose := comp |}.
 Proof. intros f1 f2 Hf g1 g2 Hg. repeat split; intro; simpl; now rewrite Hf, Hg. Defined.
 
 (* Global Instance compose_compat : Proper (equiv ==> equiv ==> equiv) compose.
@@ -123,7 +124,8 @@ Proof.
   now rewrite section_retraction in Hbound.
 Defined.
 
-Global Instance IsoInverse : Inverse isomorphism := { inverse := inv }.
+Global Instance IsoInverse : Inverse isomorphism.
+refine {| inverse := inv |}.
 Proof.
 intros f g [? [? ?]].
 repeat split; intro; simpl; change eq with (@equiv R _); f_equiv; auto.
@@ -167,7 +169,8 @@ assert (strong_and : forall T U V W (A B : T -> U -> V -> W -> Prop),
 revert iso src tgt e. apply strong_and.
 + intros iso src tgt e. rewrite 2 find_edge_Some. intro Hfind.
   rewrite (proj1 Hfind), (proj2 Hfind). apply iso_morphism.
-+ intros Hstep iso src tgt e H. specialize (Hstep (inverse iso) (iso src) (iso tgt) (iso_E iso e) H).
++ intros Hstep iso src tgt e H.
+  specialize (Hstep (inverse iso) (iso src) (iso tgt) (iso_E iso e) H).
   simpl in Hstep. now rewrite 3 Bijection.retraction_section in Hstep.
 Qed.
 

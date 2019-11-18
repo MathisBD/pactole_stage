@@ -42,19 +42,19 @@ Typeclasses eauto := (bfs).
 
 
 (** R as a Euclidean space over itself. *)
-Instance R_VS : RealVectorSpace R := {|
-  origin := 0;
-  one := 1;
-  add := Rplus;
-  mul := Rmult;
-  opp := Ropp |}.
+Instance R_VS : RealVectorSpace R.
+refine {| origin := 0;
+          one := 1;
+          add := Rplus;
+          mul := Rmult;
+          opp := Ropp |}.
 Proof.
 all:try now intros; cbn; field.
 apply R1_neq_R0.
 Defined.
 
-Instance R_ES : EuclideanSpace R := {|
-  inner_product := Rmult |}.
+Instance R_ES : EuclideanSpace R.
+refine {| inner_product := Rmult |}.
 Proof.
 * apply Rmult_comm.
 * apply Rmult_plus_distr_r.
@@ -164,7 +164,8 @@ Definition Rleb (x y : R) := if Rle_lt_dec x y then true else false.
 
 Lemma Rleb_spec : forall x y, Rleb x y = true <-> Rle x y.
 Proof.
-intros x y; unfold Rleb; destruct (Rle_lt_dec x y); split; intro H; trivial. inversion H. elim (Rlt_not_le _ _ r H).
+intros x y; unfold Rleb; destruct (Rle_lt_dec x y); split; intro H; trivial.
+inversion H. elim (Rlt_not_le _ _ r H).
 Qed.
 
 Corollary Rleb_total : forall x y, Rleb x y = true \/ Rleb y x = true.
@@ -191,7 +192,7 @@ Theorem StronglySorted_uniq :
   forall l l', StronglySorted Rleb l -> StronglySorted Rleb l' -> Permutation l l' -> l = l'.
 Proof.
 intros l l' Hl. revert l Hl l'.
-apply (StronglySorted_ind (fun l => forall l' : list R, StronglySorted Rleb l' -> Permutation l l' -> l = l')).
+apply (StronglySorted_ind (fun l => forall l', StronglySorted Rleb l' -> Permutation l l' -> l = l')).
 + intros l' _ Hperm. symmetry. now apply Permutation_nil.
 + intros a l Hl IHl Hle l' Hl' Hperm. destruct l' as [| b l'].
   - apply Permutation_nil. now symmetry.
@@ -350,8 +351,8 @@ Open Scope R_scope.
 (** A similarity in R is described by its ratio and its center. *)
 
 Theorem similarity_in_R_case : forall sim : similarity R,
-  (forall x, sim x == sim.(zoom) * (x - sim.(center))) \/
-  (forall x, sim x == - sim.(zoom) * (x - sim.(center))).
+  (forall x, sim x == sim.(zoom) * (x - center sim)) \/
+  (forall x, sim x == - sim.(zoom) * (x - center sim)).
 Proof.
 intro sim. assert (Hkpos : 0 < sim.(zoom)) by apply zoom_pos.
 pose (c := sim ⁻¹ 0).
@@ -387,11 +388,11 @@ destruct (equiv_dec k 0) as [Hk0 | Hk0].
 Qed.
 
 Corollary similarity_in_R : forall sim, exists k, (k = sim.(zoom) \/ k = - sim.(zoom))
-  /\ forall x, sim x = k * (x - sim.(center)).
+  /\ forall x, sim x = k * (x - center sim).
 Proof. intro sim. destruct (similarity_in_R_case sim); eauto. Qed.
 
 Corollary inverse_similarity_in_R : forall (sim : similarity R) k, k <> 0 ->
-  (forall x, sim x == k * (x - sim.(center))) -> forall x, (sim ⁻¹) x == x / k + sim.(center).
+  (forall x, sim x == k * (x - center sim)) -> forall x, (sim ⁻¹) x == x / k + center sim.
 Proof.
 intros sim k Hk Hdirect x. unfold inverse. simpl. change eq with (@equiv R _).
 rewrite <- sim.(Inversion), Hdirect. hnf. now field.

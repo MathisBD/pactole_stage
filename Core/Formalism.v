@@ -57,8 +57,9 @@ Record robogram `{robot_choice} := {
   pgm :> observation -> Trobot;
   pgm_compat :> Proper (equiv ==> equiv) pgm}.
 
-Global Instance robogram_Setoid `{robot_choice} : Setoid robogram := {|
-  equiv := fun r1 r2 => forall s, pgm r1 s == pgm r2 s |}.
+Global Instance robogram_Setoid `{robot_choice} : Setoid robogram.
+simple refine {| equiv := fun r1 r2 => forall s, pgm r1 s == pgm r2 s |};
+try apply robot_choice_Setoid; [].
 Proof. split.
 + intros ? ?. reflexivity.
 + intros ? ? ? ?. now symmetry.
@@ -76,18 +77,18 @@ Proof. intros r1 r2 Hr s1 s2 Hs. rewrite (Hr s1). now apply pgm_compat. Qed.
     - in the look phase, it sets the referential of all activated good robots,
     - in the move phase, it makes some choices about how the robots' states should be updated.
     
-    Therefore, it can make choices at two places: while computing the local frame of reference for a robot
-    and while updating robot states.  These choice points will be represented explicitely as demon choices. *)
+    Therefore, it can make choices at two places: while computing the local frame of reference
+    for a robot and while updating robot states.
+    These choice points will be represented explicitely as demon choices. *)
 
 (** A [frame_choice] represents the choices made by the demon to compute the observation.
     It must at least contain a bijection to compute the change of frame of reference.  *)
 Class frame_choice := {
-  frame_choice_bijection :> Tframe -> bijection location;
+  frame_choice_bijection : Tframe -> bijection location;
   frame_choice_Setoid :> Setoid Tframe;
   frame_choice_bijection_compat :> Proper (equiv ==> equiv) frame_choice_bijection }.
-Global Existing Instance frame_choice_bijection_compat.
 
-(** An [update_choice] represents the choices the demon makes after a robot decides where it wants to go. *)
+(** An [update_choice] represents the choices the demon makes after a robot computation. *)
 Class update_choice := {
   update_choice_Setoid :> Setoid Tactive;
   update_choice_EqDec :> EqDec update_choice_Setoid }.
@@ -98,13 +99,13 @@ Class inactive_choice := {
   inactive_choice_EqDec :> EqDec inactive_choice_Setoid }.
 
 (** These choices are then used by update functions that depend on the model. *)
-(* RMK: we cannot combine them toghether otherwise we get spurious dependencies on the unused parameters. *)
+(* RMK: we cannot combine them toghether otherwise we get dependencies on the other parameter. *)
 Class update_function `{robot_choice} `{frame_choice} `{update_choice} := {
-  update :> configuration -> G -> Tframe -> Trobot -> Tactive -> info;
+  update : configuration -> G -> Tframe -> Trobot -> Tactive -> info;
   update_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv ==> equiv ==> equiv) update }.
 
 Class inactive_function  `{inactive_choice} := {
-  inactive :> configuration -> ident -> Tinactive -> info;
+  inactive : configuration -> ident -> Tinactive -> info;
   inactive_compat :> Proper (equiv ==> Logic.eq ==> equiv ==> equiv) inactive }.
 
 Context {RC : robot_choice}.
@@ -131,7 +132,8 @@ Record demonic_action := {
   (** Update the state of inactive robots *)
   choose_inactive : configuration -> ident -> Tinactive;
   (** The change of frame and its inverse must satisfy the condition to be lifted to states *)
-  precondition_satisfied : forall config g, precondition (frame_choice_bijection (change_frame config g));
+  precondition_satisfied : forall config g,
+    precondition (frame_choice_bijection (change_frame config g));
   precondition_satisfied_inv : forall config g,
     precondition ((frame_choice_bijection (change_frame config g)) ⁻¹);
   (** Compatibility properties *)
@@ -143,33 +145,41 @@ Record demonic_action := {
 
 
 (** Equivalence relation over [demonic_action]. *)
-Global Instance da_Setoid : Setoid demonic_action := {|
-  equiv := fun (da1 da2 : demonic_action) =>
-           (forall id, da1.(activate) id == da2.(activate) id)
-        /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
-        /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
-        /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt)
-        /\ (forall config id, da1.(choose_inactive) config id == da2.(choose_inactive) config id) |}.
+Global Instance da_Setoid : Setoid demonic_action.
+simple refine {| equiv := fun (da1 da2 : demonic_action) =>
+     (forall id, da1.(activate) id == da2.(activate) id)
+  /\ (forall config b, da1.(relocate_byz) config b == da2.(relocate_byz) config b)
+  /\ (forall config g, da1.(change_frame) config g == da2.(change_frame) config g)
+  /\ (forall config g pt, da1.(choose_update) config g pt == da2.(choose_update) config g pt)
+  /\ (forall config id, da1.(choose_inactive) config id == da2.(choose_inactive) config id) |};
+try apply bool_Setoid || apply state_Setoid || apply frame_choice_Setoid
+                       || apply update_choice_Setoid || apply inactive_choice_Setoid; [].
 Proof. split.
 + repeat split; intuition.
 + intros da1 da2 [? [? [? [? ?]]]]. repeat split; intros; symmetry; auto.
-+ intros da1 da2 da3 [? [? [? [? ?]]]] [? [? [? [? ?]]]]. repeat split; intros; etransitivity; eauto.
++ intros da1 da2 da3 [? [? [? [? ?]]]] [? [? [? [? ?]]]].
+  repeat split; intros; etransitivity; eauto.
 Defined.
 
 Global Instance activate_da_compat : Proper (equiv ==> Logic.eq ==> equiv) activate.
 Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply activate_compat. Qed.
 
-Global Instance relocate_byz_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) relocate_byz.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply relocate_byz_compat. Qed.
+Global Instance relocate_byz_da_compat : Proper (equiv ==> equiv ==> eq ==> equiv) relocate_byz.
+Proof. intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply relocate_byz_compat. Qed.
 
-Global Instance change_frame_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) change_frame.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply change_frame_compat. Qed.
+Global Instance change_frame_da_compat : Proper (equiv ==> equiv ==> eq ==> equiv) change_frame.
+Proof. intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply change_frame_compat. Qed.
 
-Global Instance choose_update_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) choose_update.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
+Global Instance choose_update_da_compat :
+  Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) choose_update.
+Proof. intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
 
-Global Instance choose_inactive_da_compat : Proper (equiv ==> equiv ==> Logic.eq ==> equiv) choose_inactive.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply choose_inactive_compat. Qed.
+Global Instance choose_inactive_da_compat :
+  Proper (equiv ==> equiv ==> Logic.eq ==> equiv) choose_inactive.
+Proof.
+intros ? ? Hda. repeat intro.
+now etransitivity; apply Hda || apply choose_inactive_compat.
+Qed.
 
 (** Definitions of two subsets of robots: active and idle ones. *)
 Definition active da := List.filter (activate da) names.
@@ -251,7 +261,8 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
           (* the actual update of the robot state is performed by the update function *)
           let new_local_state := update local_config g frame_choice local_robot_decision choice in
           (* return to the global frame of reference *)
-          lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
+          lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g))
+               new_local_state
         end
     else inactive config id (da.(choose_inactive) config id).
 
@@ -262,14 +273,16 @@ unfold round. rewrite Hda. destruct_match.
 * (* active robot *)
   destruct id as [g | b].
   + (* good robot *)
-    assert (Heq : map_config (lift (existT precondition (frame_choice_bijection (change_frame da1 config1 g))
+    assert (Heq : map_config (lift (existT precondition
+                                      (frame_choice_bijection (change_frame da1 config1 g))
                                       (precondition_satisfied da1 config1 g))) config1
-               == map_config (lift (existT precondition (frame_choice_bijection (change_frame da2 config2 g))
+               == map_config (lift (existT precondition
+                                      (frame_choice_bijection (change_frame da2 config2 g))
                                       (precondition_satisfied da2 config2 g))) config2).
     { f_equiv; trivial; []. apply lift_compat. intros x y Hxy. simpl. f_equiv; trivial; [].
       apply frame_choice_bijection_compat. now f_equiv. }
     apply lift_compat, update_compat.
-    - intros x y Hxy. simpl. f_equiv; trivial; []. apply frame_choice_bijection_compat. now f_equiv.
+    - intros ? ? ?. simpl. f_equiv; trivial; []. apply frame_choice_bijection_compat. now f_equiv.
     - apply Heq.
     - reflexivity.
     - now f_equiv.
@@ -354,7 +367,7 @@ Qed.
 
 (* FIXME?: this must hold for all configurations whereas only the current one may be useful *)
 (* NB: The precondition is necessary to have the implication FSYNC -> SSYNC.
-       We could impose that [Tinactive = unit] but this might create problems when comparing settings. *)
+       We could impose [Tinactive = unit] but this can create problems when comparing settings. *)
 Definition SSYNC_da da := forall id, da.(activate) id = false ->
   forall config, inactive config id (da.(choose_inactive) config id) == config id.
 
@@ -406,7 +419,8 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
           let local_robot_decision := r obs in
           let choice := da.(choose_update) local_config g local_robot_decision in
           let new_local_state := update local_config g frame_choice local_robot_decision choice in
-          lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
+          lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g))
+               new_local_state
         end
     else state.
 Proof. unfold round. repeat intro. destruct_match_eq Hcase; auto. Qed.
@@ -449,7 +463,8 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
         let local_robot_decision := r obs in
         let choice := da.(choose_update) local_config g local_robot_decision in
         let new_local_state := update local_config g frame_choice local_robot_decision choice in
-        lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g)) new_local_state
+        lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g))
+             new_local_state
       end.
 Proof.
 intros * HFSYNC. rewrite SSYNC_round_simplify; auto using FSYNC_SSYNC_da; [].
@@ -499,13 +514,14 @@ Qed.
 Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
 Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
-Local Lemma Between_compat_aux : forall id id' k d1 d2, d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
+Local Lemma Between_compat_aux : forall id id' k d1 d2,
+  d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
 Proof.
 intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq;
 constructor; solve [now rewrite <- Heq | apply IHbet; now f_equiv].
 Qed.
 
-Global Instance Between_compat : Proper (Logic.eq ==> Logic.eq ==> equiv ==> Logic.eq ==> iff) Between.
+Global Instance Between_compat : Proper (eq ==> eq ==> equiv ==> eq ==> iff) Between.
 Proof.
 intros ? ? ? ? ? ? ? ? Heq ? ? ?. subst. split; intro.
 - now eapply Between_compat_aux; eauto.
@@ -513,7 +529,7 @@ intros ? ? ? ? ? ? ? ? Heq ? ? ?. subst. split; intro.
 Qed.
 
 Global Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
-Proof. intros k ? ?. subst. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
+Proof. intros k ??. subst. apply Stream.forever_compat. intros ?? Heq. now setoid_rewrite Heq. Qed.
 
 (** A robot is never activated before itself with a fair demon!
     The fairness hypothesis is necessary, otherwise the robot may never be activated. *)
@@ -527,7 +543,10 @@ Lemma Between_LocallyFair : forall id (d : demon) id' k,
 Proof. intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
 
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
-Proof. intro. apply Stream.forever_impl_compat. intros ? ? id. eauto using (@Between_LocallyFair id _ id). Qed.
+Proof.
+intro. apply Stream.forever_impl_compat.
+intros ? ? id. eauto using (@Between_LocallyFair id _ id).
+Qed.
 
 (** [Between g h d k] is monotonic on [k]. *)
 Lemma Between_mono : forall id id' (d : demon) k,
@@ -636,18 +655,18 @@ Definition NoChoice : update_choice unit := {|
   update_choice_EqDec := _ |}.
 
 (** Combining two update choices into a choice over a pair. *)
-Definition MergeUpdateChoices A B `{update_choice A} `{update_choice B} : update_choice (A * B) := {|
-  update_choice_Setoid := _;
-  update_choice_EqDec := _ |}.
+Definition MergeUpdateChoices A B `{update_choice A} `{update_choice B} : update_choice (A * B) :=
+  {| update_choice_Setoid := _;
+     update_choice_EqDec := _ |}.
 
 (** Idem for inactive choice. *)
 Instance NoChoiceIna : inactive_choice unit := {|
   inactive_choice_Setoid := _;
   inactive_choice_EqDec := _ |}.
 
-Definition MergeInactiveChoices A B `{inactive_choice A} `{inactive_choice B} : inactive_choice (A * B) := {|
-  inactive_choice_Setoid := _;
-  inactive_choice_EqDec := _ |}.
+Definition MergeInactiveChoices A B `{inactive_choice A} `{inactive_choice B}
+  : inactive_choice (A * B) := {| inactive_choice_Setoid := _;
+                                  inactive_choice_EqDec := _ |}.
 
 Instance NoChoiceInaFun `{Names} : inactive_function unit := {|
   inactive := fun config g _ => config g;

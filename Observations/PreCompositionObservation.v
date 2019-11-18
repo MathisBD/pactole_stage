@@ -37,12 +37,12 @@ Variable f : info1 -> info2.
 Hypothesis f_compat : Proper (equiv ==> equiv) f.
 
 (* TODO: find a better name *)
-Instance FObservation : @Observation _ _ St1 _ := {|
+Instance FObservation : @Observation _ _ St1 _.
+refine {|
   obs_from_config := fun config st => obs_from_config (map_config f config) (f st);
   obs_is_ok := fun sp config st => obs_is_ok sp (map_config f config) (f st) |}.
 Proof.
 (* BUG?: + forbidden here? *)
-+ autoclass.
 + autoclass.
 + repeat intro. do 2 (f_equiv; trivial).
 + intros. apply obs_from_config_spec.

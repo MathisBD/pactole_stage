@@ -120,7 +120,8 @@ Proof. intros x y [H _]. apply H. Qed.
 Global Instance eq_key_eq_key_elt_subrelation : subrelation (@eq_key_elt elt _ _ _ positive) eq_key.
 Proof. intros x y [H _]. apply H. Qed.
 
-Global Instance multiset_Setoid : Setoid (multiset elt) := {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
+Global Instance multiset_Setoid : Setoid (multiset elt).
+refine {| equiv := fun m m' => forall x, m[x] = m'[x] |}.
 Proof. split; repeat intro; solve [ eauto | etransitivity; eauto ]. Defined.
 
 Global Instance multiplicity_compat : Proper (equiv ==> equiv ==> Logic.eq) MMultisetInterface.multiplicity.

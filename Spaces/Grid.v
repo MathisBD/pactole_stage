@@ -68,19 +68,23 @@ Definition edge_tgt (e : edge) : node :=
 Arguments edge_tgt !e.
 
 (** The Z² grid is a graph. *)
-Instance Z2 : Graph (Z*Z)%type (Z*Z*direction) := {
-  src := fst;
-  tgt := edge_tgt;
-  threshold := fun _ => (1 / 2)%R;
-  find_edge := fun x y => if y =?= x then Some (x, Self) else
-                          if y =?= (fst x + 1, snd x) then Some (x, East) else
-                          if y =?= (fst x, snd x + 1) then Some (x, North) else
-                          if y =?= (fst x - 1, snd x) then Some (x, West) else
-                          if y =?= (fst x, snd x - 1) then Some (x, South) else None}.
+Instance Z2 : Graph node edge.
+simple refine {| V_EqDec := node_EqDec;
+                 E_EqDec := edge_EqDec;
+                 src := fst;
+                 tgt := edge_tgt;
+                 threshold := fun _ => (1 / 2)%R |}.
 Proof.
-* intros _. lra.
+* (* threshold_pos *)
+  intros. lra.
+* (* find_edge *)
+  exact (fun x y : node => if equiv_dec (EqDec := node_EqDec) y x then Some (x, Self) else
+                           if y =?= (fst x + 1, snd x) then Some (x, East) else
+                           if y =?= (fst x, snd x + 1) then Some (x, North) else
+                           if y =?= (fst x - 1, snd x) then Some (x, West) else
+                           if y =?= (fst x, snd x - 1) then Some (x, South) else None).
 * (* find_edge_None *)
-  intros x y. repeat destruct_match.
+  intros x y. cbn -[equiv]. repeat destruct_match.
   + abstract (split; try tauto; []; intro He; apply (He (x, Self)); auto).
   + abstract (split; try tauto; []; intro He; apply (He (x, East)); auto).
   + abstract (split; try tauto; []; intro He; apply (He (x, North)); auto).
@@ -90,7 +94,7 @@ Proof.
     abstract (intros [x' d] [Hx He]; simpl in Hx; subst x';
               rewrite <- He in *; destruct d; unfold edge_tgt in *; simpl in *; auto).
 * (* find_edge_Some *)
-  intros x y e. repeat destruct_match; simpl;
+  intros x y e. cbn -[equiv]. repeat destruct_match; simpl;
   try abstract (solve [ split; intro Heq; subst; unfold edge_tgt; simpl in *; try tauto; [];
               destruct e as [p d], Heq as [? Heq]; simpl in *; f_equal; trivial; [];
               subst; unfold edge_tgt in *;
@@ -187,19 +191,22 @@ Instance FCTranslation : frame_choice (Z*Z) := {|
   frame_choice_bijection_compat := _ |}.
 
 (** Rigid Motion  **)
+Instance rigid_motion_compat :
+  Proper (equiv ==> equiv) (fun rm => rotation (snd rm) ∘ translation (fst rm)).
+Proof. intros ? ? [Hv Ha]; do 2 f_equiv; assumption. Qed.
+
 Instance FCRigidMotion : frame_choice (Z*Z*angle) := {|
-  frame_choice_bijection := fun rm => compose (rotation (snd rm)) (translation (fst rm));
-  frame_choice_Setoid := prod_Setoid node_Setoid angle_Setoid |}.
-Proof. abstract (intros ? ? [Hv Ha]; do 2 f_equiv; assumption). Defined.
+  frame_choice_bijection := fun rm => rotation (snd rm) ∘ translation (fst rm);
+  frame_choice_Setoid := prod_Setoid node_Setoid angle_Setoid;
+  frame_choice_bijection_compat := rigid_motion_compat |}.
 
 (** Similarities *)
-Instance FCSimilarity : frame_choice (bool*(Z*Z)*angle)%type := {|
-  frame_choice_bijection := fun '(b,v,a) =>
-    compose (rotation a)
-   (compose (translation v)
-            (if b : bool then reflection angle0 else @Bijection.id node _));
+Instance FCSimilarity : frame_choice (bool*(Z*Z)*angle)%type.
+simple refine {|
+  frame_choice_bijection := fun '(b, v, a) =>
+   rotation a ∘ translation v ∘ (if b : bool then reflection angle0 else @Bijection.id node _);
   frame_choice_Setoid := prod_Setoid (prod_Setoid bool_Setoid node_Setoid) angle_Setoid |}.
 Proof.
-intros [[b1 v1] a1] [[b2 v2] a2] [[Hb Hv] Ha]. cbn -[equiv] in *.
-repeat f_equiv; trivial; []. now rewrite Hb.
-Qed.
+abstract (intros [[b1 v1] a1] [[b2 v2] a2] [[Hb Hv] Ha]; cbn -[equiv] in *;
+          repeat f_equiv; trivial; []; now rewrite Hb).
+Defined.

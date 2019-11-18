@@ -62,7 +62,8 @@ Lemma max_dist_pt_list_app : forall pt l1 l2,
   max_dist_pt_list pt (l1 ++ l2) = Rmax (max_dist_pt_list pt l1) (max_dist_pt_list pt l2).
 Proof. intros. apply max_list_app. Qed.
 
-Global Instance max_dist_pt_list_compat : Proper (equiv ==> equivlistA equiv ==> eq) max_dist_pt_list.
+Global Instance max_dist_pt_list_compat :
+  Proper (equiv ==> equivlistA equiv ==> eq) max_dist_pt_list.
 Proof. intros ? ? Heq1. apply max_list_compat. intros ? ? Heq2. now rewrite Heq1, Heq2. Qed.
 
 Lemma max_dist_pt_list_le : forall pt l pt1,
@@ -90,7 +91,8 @@ Qed.
 Definition max_dist_list_list l1 l2 : R :=
   max_list (fun pt => max_dist_pt_list pt l2) l1.
 
-Global Instance max_dist_list_list_compat : Proper (equivlistA equiv ==> equivlistA equiv ==> eq) max_dist_list_list.
+Global Instance max_dist_list_list_compat :
+  Proper (equivlistA equiv ==> equivlistA equiv ==> eq) max_dist_list_list.
 Proof.
 repeat intro. apply max_list_compat; trivial; [].
 repeat intro. now apply max_dist_pt_list_compat.

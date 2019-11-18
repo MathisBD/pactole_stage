@@ -56,12 +56,12 @@ Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqd
 Instance NoInactiveChoice : inactive_choice unit := {inactive_choice_EqDec := unit_eqdec}.
 
 Instance UpdateFun : update_function location (Similarity.similarity location) unit := {
-  update := fun _ _ _ pt _ => pt }.
-Proof. repeat intro; subst; auto. Defined.
+  update := fun _ _ _ pt _ => pt;
+  update_compat := ltac:(repeat intro; subst; auto) }.
 
 Instance InactiveFun : inactive_function unit := {
-  inactive := fun config id _ => config id }.
-Proof. repeat intro; subst; auto. Defined.
+  inactive := fun config id _ => config id;
+  inactive_compat := ltac:(repeat intro; subst; auto) }.
 
 Instance Update : RigidSetting.
 Proof. split. now intros. Qed.
@@ -78,13 +78,6 @@ Ltac changeR2 :=
 
 (** The observation is a set of positions *)
 Notation "!!" := (fun config => @obs_from_config location _ _ _ set_observation config origin).
-(* Notation robogram := (@robogram R2 R2 _ _ _ _ _ MyRobots _).
-Notation configuration := (@configuration R2 _ _ _ _).
-Notation config_list := (@config_list R2 _ _ _ _).
-Notation round := (@round R2 R2 _ _ _ _ _ _ _ _ _ _).
-Notation execution := (@execution R2 _ _ _).
-Notation demonic_action := (@demonic_action R2 R2 _ _ _ _ _ _). *)
-
 
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
@@ -103,7 +96,7 @@ assert (Hin := pos_in_config config origin (Good g)).
 simpl in Hin. unfold id in Hin. tauto.
 Qed.
 
-Hint Resolve obs_non_empty.
+Hint Resolve obs_non_empty : core.
 
 (** There is no byzantine robot so to prove anything about an ident
     we just need to consider good robots.*)

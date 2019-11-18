@@ -34,14 +34,15 @@ Notation ring_node := (finite_node ring_size).
 Inductive direction := Forward | Backward | SelfLoop.
 Definition ring_edge := (ring_node * direction)%type.
 
-Global Instance direction_Setoid : Setoid direction := {
+Global Instance direction_Setoid : Setoid direction.
+simple refine {|
   equiv := fun d1 d2 => if (Nat.eq_dec ring_size 2)
                         then match d1, d2 with
                                | SelfLoop, SelfLoop => True
                                | SelfLoop, _ | _, SelfLoop  => False
                                | _, _ => True
                              end
-                        else d1 = d2 }.
+                        else d1 = d2 |}; trivial; [].
 Proof. split.
 + intro. repeat destruct_match; reflexivity.
 + intros ? ? ?. repeat destruct_match; auto; now symmetry.

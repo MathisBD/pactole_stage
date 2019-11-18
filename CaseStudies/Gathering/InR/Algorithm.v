@@ -684,7 +684,7 @@ destruct (support (max (!! config))) as [| pt' [| pt2' l']].
     - simpl. now rewrite Bijection.retraction_section.
     - now rewrite <- Nat.eqb_eq.
   + (* Generic case *)
-    change (IZR Z0) with (@origin location _ _ _). rewrite <- sim.(Similarity.center_prop) at 1.
+    change (IZR Z0) with (@origin location _ _ _). rewrite <- (Similarity.center_prop sim) at 1.
     rewrite Hmap, is_extremal_similarity_invariant.
     (* These are the only two places where we use the fact that similarities are centered
        on the location of the observing robot (i.e. [similarity_center]. *)
@@ -798,7 +798,8 @@ Qed.
 (** **  Properties in the generic case  **)
 
 Open Scope R_scope.
-(** If we have no majority stack (hence more than one stack), then the extreme locations are different. **)
+(** If we have no majority stack (hence more than one stack),
+    then the extreme locations are different. **)
 Lemma Generic_min_max_lt_aux : forall l, (length l > 1)%nat -> NoDupA equiv l ->
   hd 0 (sort l) < last (sort l) 0.
 Proof.
@@ -1161,7 +1162,8 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
             rewrite <- InA_Leibniz. change eq with (@equiv location _). rewrite support_spec.
             unfold In. rewrite Hpt2. apply half_size_config. }
       assert (Hpt : List.In (get_location (round gatherR da config rmove)) (pt1 :: pt2 :: nil)).
-      { rewrite <- Hperm, <- InA_Leibniz. change eq with (@equiv location _). rewrite support_spec. apply pos_in_config. }
+      { rewrite <- Hperm, <- InA_Leibniz. change eq with (@equiv location _).
+        rewrite support_spec. apply pos_in_config. }
       inversion_clear Hpt; try (now exists pt1, pt2; eauto); [].
       inversion_clear H; now exists pt2, pt1; eauto. }
     destruct Hpt as [pt [pt' [Hpt Hrmove_pt]]].

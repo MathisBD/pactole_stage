@@ -42,14 +42,16 @@ Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance limited_set_observation (radius : R) : Observation := {
+Global Instance limited_set_observation (radius : R) : Observation.
+simple refine {|
   observation := set location;
   obs_from_config config state :=
-    SetObservation.make_set (List.filter (fun x => Rle_bool (dist x (get_location state)) radius)
-                                         (List.map get_location (config_list config)));
+    SetObservation.make_set (List.filter
+                               (fun x => Rle_bool (dist x (get_location state)) radius)
+                               (List.map get_location (config_list config)));
   obs_is_ok s config state :=
     forall l, In l s <-> InA equiv l (List.map get_location (config_list config))
-                           /\ (dist l (get_location state) <= radius)%R }.
+                         /\ (dist l (get_location state) <= radius)%R |}; autoclass; [|].
 Proof.
 * intros config1 config2 Hconfig pt1 pt2 Hpt.
   apply SetObservation.make_set_compat, eqlistA_PermutationA_subrelation.

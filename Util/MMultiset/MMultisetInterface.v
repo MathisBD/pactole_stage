@@ -115,8 +115,8 @@ Arguments multiset elt {_} {_} {_} : simpl never.
 Arguments multiplicity {elt} {_} {_} {_} x m : simpl never.
 Arguments fold {elt} {_} {_} {_} {A} f m i : simpl never.
 
-Global Instance MMultiset_Setoid elt `{FMOps elt} : Setoid (multiset elt) := {
-  equiv := fun s s' => forall x, multiplicity x s = multiplicity x s' }.
+Global Instance MMultiset_Setoid elt `{FMOps elt} : Setoid (multiset elt).
+refine {| equiv := fun s s' => forall x, multiplicity x s = multiplicity x s' |}.
 Proof. split.
 + repeat intro. reflexivity.
 + repeat intro. now symmetry.
@@ -229,7 +229,7 @@ Class SizeSpec elt `(FMOps elt) := {
 
 (** ***  Full specification  **)
 
-Global Class FMultisetsOn elt `(Ops : FMOps elt) := {
+Class FMultisetsOn elt `(Ops : FMOps elt) := {
   FullMultiplicitySpec :> MultiplicitySpec elt Ops;
   FullEmptySpec :> EmptySpec elt Ops;
   FullSingletonSpec :> SingletonSpec elt Ops;

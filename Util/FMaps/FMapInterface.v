@@ -11,8 +11,8 @@ Generalizable All Variables.
 
 Definition Cmp {elt : Type} (cmp : elt -> elt -> bool) e1 e2 := cmp e1 e2 = true.
 
-Instance prod_Setoid A B `{Setoid A} `{Setoid B} : Setoid (A * B) := {|
-  equiv := fun xn yp : A * B => fst xn == fst yp /\ snd xn == snd yp |}.
+Instance prod_Setoid A B {SA : Setoid A} {SB : Setoid B} : Setoid (A * B).
+simple refine {| equiv := fun xn yp => fst xn == fst yp /\ snd xn == snd yp |}; auto; [].
 Proof. split.
 + repeat intro; now split.
 + repeat intro; split; now symmetry.
@@ -99,6 +99,7 @@ Arguments dict key%type_scope {S0} {H} {FMap} elt%type_scope.
 (** Map notations (see below) are interpreted in scope [map_scope],
    delimited with key [scope]. We bind it to the type [map] and to
    other operations defined in the interface. *)
+Declare Scope map_scope.
 Delimit Scope map_scope with map.
 Bind Scope map_scope with dict.
 Arguments MapsTo {key%type_scope} {_} {_} {_} {elt%type_scope} _ _ _%map_scope.
@@ -372,5 +373,5 @@ Hint Resolve @zmem_1 @zis_empty_1 @zis_empty_2 @zadd_1 @zadd_2 @zremove_1
   @zremove_2 @zfind_1 @zfold_1 @zmap_1 @zmapi_1 @zmapi_2
 (*   @zinsert_1 @zinsert_2 @zinsert_3 @zadjust_1 @zadjust_2 *)
   : map.
-Hint Unfold eq_key eq_key_elt.
+Hint Unfold eq_key eq_key_elt : core.
 (* Typeclasses Opaque dict. *)

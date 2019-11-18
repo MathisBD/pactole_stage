@@ -137,8 +137,8 @@ Global Opaque
 
 (** There follow definitions of predicates about sets expressable
    in terms of [In], and which are not provided by the [FSet] class. *)
-Global Instance Set_Setoid elt `{FSet elt} : Setoid (set elt) := {
-  equiv := fun s s' => forall x, In x s <-> In x s' }.
+Global Instance Set_Setoid elt `{FSet elt} : Setoid (set elt).
+refine {| equiv := fun s s' => forall x, In x s <-> In x s' |}.
 Proof. split.
 + repeat intro. reflexivity.
 + repeat intro. now symmetry.

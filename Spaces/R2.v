@@ -49,19 +49,19 @@ Defined.
 
 Ltac solve_R := repeat intros [? ?] || intro; compute; f_equal; ring.
 
-Instance R2_VS : RealVectorSpace R2 := {|
-  origin := (0, 0);
-  one := (1, 0);
-  add := fun x y => (fst x + fst y, snd x + snd y)%R;
-  mul := fun k x => (k * fst x, k * snd x)%R;
-  opp := fun x => (-fst x, -snd x)%R |}.
+Instance R2_VS : RealVectorSpace R2.
+refine {| origin := (0, 0);
+          one := (1, 0);
+          add := fun x y => (fst x + fst y, snd x + snd y)%R;
+          mul := fun k x => (k * fst x, k * snd x)%R;
+          opp := fun x => (-fst x, -snd x)%R |}.
 Proof.
 all:try solve_R.
 compute. injection. auto using R1_neq_R0.
 Defined.
 
-Instance R2_ES : EuclideanSpace R2 := {|
-  inner_product := fun u v => fst u  * fst v + snd u * snd v |}.
+Instance R2_ES : EuclideanSpace R2.
+refine {| inner_product := fun u v => fst u  * fst v + snd u * snd v |}.
 Proof.
 * intros. ring.
 * intros [] [] []. simpl. ring.

@@ -200,11 +200,11 @@ Notation robogramG := (@robogram _ _ InfoG _ (obs_V2G Obs) E _).
 Existing Instance graph_update_bool.
 Existing Instance graph_inactive_bool.
 
-Instance InactiveV : @inactive_function stateV LocationV InfoV NN bool _ := {|
-  inactive := fun (config : DGF_config) id (b : bool) =>
-                if b then let '(exist _ (v, e) proof) := config id in
-                          exist _ (tgt e, e) (or_intror (reflexivity _))
-                     else config id |}.
+Instance InactiveV : @inactive_function stateV LocationV InfoV NN bool _.
+simple refine {| inactive := fun (config : DGF_config) id (b : bool) =>
+                               if b then let '(exist _ (v, e) proof) := config id in
+                                         exist _ (tgt e, e) (or_intror (reflexivity _))
+                                    else config id |}; auto; [].
 Proof.
 intros config1 config2 Hconfig ? id ? ? ? Hb. simpl in Hb. subst.
 specialize (Hconfig id).
@@ -213,13 +213,14 @@ repeat destruct_match; simpl in *. tauto.
 Defined.
 
 Instance UpdateV : @update_function stateV LocationV InfoV NN E (sig stable_threshold) bool
-   _ (FrameChoiceIsomorphismV) graph_update_bool := {|
+   _ (FrameChoiceIsomorphismV) graph_update_bool.
+simple refine {|
   update := fun config g (frame : sig stable_threshold) (target : E) (choice : bool) =>
     let pt : locV := get_location (config (Good g)) in
     if pt =?= src target
     then if choice then exist valid_stateV (tgt target, target) (or_intror (reflexivity _))
                    else exist valid_stateV (src target, target) (or_introl (reflexivity _))
-    else config (Good g) |}.
+    else config (Good g) |}; [| | eassumption | ..]; autoclass; [].
 Proof.
 intros ? ? Hconfig ? ? ? ? ? Hframe ? ? Htarget ? ? Hchoice.
 simpl in Hchoice. subst. cbn zeta.
@@ -278,12 +279,13 @@ intros [v1 e1 proof1 | e1 p1] [v2 e2 proof2 | e2 p2] Heq ρ1 ρ2 Hρ; simpl in H
 + unfold move. f_equiv; auto; []. now destruct p1, p2.
 Qed.
 
-Instance InactiveG : @inactive_function _ _ InfoG _ ratio _ := {|
-  inactive := fun config id ρ => move (config id) ρ |}.
+Instance InactiveG : @inactive_function _ _ InfoG _ ratio _.
+refine {| inactive := fun config id ρ => move (config id) ρ |}.
 Proof. repeat intro. subst. now f_equiv. Defined.
 
 Instance UpdateG : @update_function _ _ _ _ _ (sig stable_threshold) ratio
-                                    _ FrameChoiceIsomorphismG _ := {|
+                                    _ FrameChoiceIsomorphismG _.
+refine {|
   update := fun (config : CGF_config) g frame target ρ =>
     match config (Good g) with
       | SOnVertex v e proof =>

@@ -65,10 +65,12 @@ Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqd
 Instance NoInactiveChoice : inactive_choice unit := {inactive_choice_EqDec := unit_eqdec}.
 (** Updates are rigid. *)
 Instance UpdateFun : update_function location (Similarity.similarity location) unit := {
-  update := fun _ _ _ target _ => target }.
-Proof. repeat intro; subst; auto. Defined.
-Instance InactiveFun : inactive_function unit := { inactive := fun config id _ => config id }.
-Proof. repeat intro; subst; auto. Defined.
+  update := fun _ _ _ target _ => target;
+  update_compat := ltac:(repeat intro; subst; auto) }.
+
+Instance InactiveFun : inactive_function unit := {
+  inactive := fun config id _ => config id;
+  inactive_compat := ltac:(repeat intro; subst; auto) }.
 
 Instance Update : RigidSetting.
 Proof. split. now intros. Qed.
@@ -76,16 +78,17 @@ Proof. split. now intros. Qed.
 Notation "!!" := (fun config => obs_from_config config origin).
 
 (* Helping [auto] handle basic real arithmetic contradictions *)
-Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0.
-Hint Extern 0 (0 =/= 1)%R => symmetry; trivial.
-Hint Extern 0 (1 <> 0)%R => apply R1_neq_R0.
-Hint Extern 0 (0 <> 1)%R => intro; apply R1_neq_R0; now symmetry.
-Hint Extern 0 (~@equiv R _ 1 0)%R => apply R1_neq_R0.
-Hint Extern 0 (~@equiv R _ 0 1)%R => intro; apply R1_neq_R0; now symmetry.
+Hint Extern 0 (1 =/= 0)%R => apply R1_neq_R0 : core.
+Hint Extern 0 (0 =/= 1)%R => symmetry; trivial : core.
+Hint Extern 0 (1 <> 0)%R => apply R1_neq_R0 : core.
+Hint Extern 0 (0 <> 1)%R => intro; apply R1_neq_R0; now symmetry : core.
+Hint Extern 0 (~@equiv R _ 1 0)%R => apply R1_neq_R0 : core.
+Hint Extern 0 (~@equiv R _ 0 1)%R => intro; apply R1_neq_R0; now symmetry : core.
 Hint Extern 0 (_ <> _) =>
-  match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end.
+  match goal with | H : ?x <> ?y |- ?y <> ?x => intro; apply H; now symmetry end : core.
 Hint Extern 0 (~equiv R _ _ _) =>
-  match goal with | H : ~@equiv R _ ?x ?y |- ~@equiv R _ ?y ?x => intro; apply H; now symmetry end.
+  match goal with | H : ~@equiv R _ ?x ?y |- ~@equiv R _ ?y ?x =>
+         intro; apply H; now symmetry end : core.
 
 
 Implicit Type config : configuration.
@@ -237,7 +240,7 @@ destruct n as [| [| ]]; simpl; auto; [].
 apply le_n_S, Nat.div2_decr, le_n_Sn.
 Qed.
 
-Hint Resolve gfirst_left glast_right left_right_exclusive.
+Hint Resolve gfirst_left glast_right left_right_exclusive : core.
 
 
 (** * Proof of the impossiblity of convergence with one third of robots byzantine. *)

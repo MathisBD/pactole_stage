@@ -47,7 +47,8 @@ Global Instance E_src_tgt_thd_Setoid : Setoid E :=
   @inter_Setoid E (@inter_Setoid E (precompose_Setoid src) (precompose_Setoid tgt))
                   (precompose_Setoid threshold).
 Global Instance E_src_tgt_thd_EqDec : EqDec E_src_tgt_thd_Setoid :=
-  inter_EqDec (inter_EqDec (precompose_EqDec src) (precompose_EqDec tgt)) (precompose_EqDec threshold).
+  inter_EqDec (inter_EqDec (precompose_EqDec src) (precompose_EqDec tgt))
+              (precompose_EqDec threshold).
 
 Global Instance E_subrelation : subrelation (@equiv E E_Setoid) (@equiv E E_src_tgt_thd_Setoid).
 Proof. intros ? ? Heq. split; simpl; now rewrite Heq. Qed.
@@ -79,13 +80,13 @@ Inductive loc :=
   | OnVertex (l : location)
   | OnEdge (e : E) (p : strict_ratio).
 
-Global Instance locG_Setoid : Setoid loc := {
-  equiv := fun l l' =>
-             match l, l' with
-               | OnVertex l, OnVertex l' => l == l'
-               | OnEdge e p, OnEdge e' p' => e == e' /\ p == p'
-               | _, _ => False
-             end}.
+Global Instance locG_Setoid : Setoid loc.
+simple refine {| equiv := fun l l' =>
+                     match l, l' with
+                       | OnVertex l, OnVertex l' => l == l'
+                       | OnEdge e p, OnEdge e' p' => e == e' /\ p == p'
+                       | _, _ => False
+                     end |}; autoclass; [].
 Proof. split.
 + now intros [].
 + intros [] [] Heq; simpl in *; decompose [False and] Heq; repeat split; now symmetry.
@@ -204,7 +205,7 @@ Definition stateV := sig valid_stateV.
 Instance stateV_Setoid : Setoid stateV :=
   sig_Setoid (prod_Setoid location_Setoid E_src_tgt_thd_Setoid).
 Instance stateV_EqDec : EqDec stateV_Setoid :=
-  sig_EqDec (prod_EqDec location_EqDec E_src_tgt_thd_EqDec) _.
+  @sig_EqDec _ _ (prod_EqDec location_EqDec E_src_tgt_thd_EqDec) _.
 
 Global Instance valid_stateV_compat :
   Proper (@equiv _ (prod_Setoid _ E_src_tgt_thd_Setoid) ==> iff) valid_stateV.
@@ -237,13 +238,13 @@ Inductive stateG :=
   | SOnVertex v e (proof : valid_stateV (v, e))
   | SOnEdge (e : E) (p : strict_ratio).
 
-Global Instance stateG_Setoid : Setoid stateG := {
-  equiv := fun x y =>
-             match x, y with
-               | SOnVertex v e _, SOnVertex v' e' _ => v == v' /\ e == e'
-               | SOnEdge e p, SOnEdge e' p' => e == e' /\ p == p'
-               | _, _ => False
-             end}.
+Global Instance stateG_Setoid : Setoid stateG.
+simple refine {| equiv := fun x y =>
+                            match x, y with
+                              | SOnVertex v e _, SOnVertex v' e' _ => v == v' /\ e == e'
+                              | SOnEdge e p, SOnEdge e' p' => e == e' /\ p == p'
+                              | _, _ => False
+                            end |}; autoclass; [].
 Proof. split.
 + intros [|]; split; reflexivity.
 + intros [|] [|] []; split; now symmetry.
@@ -305,12 +306,13 @@ Proof. intro. simpl. repeat (split; try reflexivity). Qed.
 (** ** On configurations *)
 
 (** The precondition for liftable changes of frame is that they must come from isomorphisms. *)
-Global Instance InfoV : @State LocationV stateV := {|
+Global Instance InfoV : @State LocationV stateV.
+simple refine {|
   get_location := fun state => fst (proj1_sig state);
   state_Setoid := stateV_Setoid;
   precondition := fun f => sigT (fun iso => f == iso.(iso_V) /\ iso_T iso == @Bijection.id R _);
   lift := fun f state => exist _ (projT1 f (fst (proj1_sig state)),
-                                  iso_E (projT1 (projT2 f)) (snd (proj1_sig state))) _ |}.
+                                  iso_E (projT1 (projT2 f)) (snd (proj1_sig state))) _ |}; autoclass.
 Proof.
 + abstract (destruct f as [f [iso [Hiso ?]]], state as [state [Hcase | Hcase]];
             cbn; left + right; rewrite Hiso, Hcase; cbn; apply iso_morphism).
@@ -321,7 +323,6 @@ Proof.
   rewrite (Hiso (src (snd state))), (Hiso (tgt (snd state))).
   repeat split; symmetry; try apply iso_morphism; [].
   now rewrite <- iso_threshold, Ht.
-+ reflexivity.
 + intros ? ? Heq. apply Heq.
 + (* lift_compat *)
   intros [f [iso1 [Hiso1 Ht1]]] [g [iso2 [Hiso2 Ht2]]] Heq [] [] [Heq1 [Heq2 Heq3]].
@@ -399,7 +400,8 @@ unfold compose_precondition.
 destruct x; simpl; repeat split; reflexivity.
 Qed.
 
-Global Instance InfoG : @State LocationG stateG := {|
+Global Instance InfoG : @State LocationG stateG.
+simple refine {|
   get_location := stateG2loc;
   state_Setoid := stateG_Setoid;
   precondition := preconditionG;
@@ -452,10 +454,11 @@ Proof. intros. unfold config_G2V, config_V2G. now repeat try (split; simpl). Qed
     we simply project robots on edges either to the source or target of the edge
     depending on where they are located compared to the threshold of the edge;
     and add the current location. *)
-Global Instance obs_V2G (Spect : @Observation _ _ InfoV _) : @Observation _ _ InfoG _ := {
+Global Instance obs_V2G (Spect : @Observation _ _ InfoV _) : @Observation _ _ InfoG _.
+simple refine {|
   observation := @observation _ _ _ _ Spect;
   obs_from_config := fun config st => obs_from_config (config_G2V config) (state_G2V st);
-  obs_is_ok s config st := obs_is_ok s (config_G2V config) (state_G2V st) }.
+  obs_is_ok s config st := obs_is_ok s (config_G2V config) (state_G2V st) |}; autoclass; [|].
 Proof.
 + abstract (now repeat intro; repeat f_equiv).
 + repeat intro. apply obs_from_config_spec.

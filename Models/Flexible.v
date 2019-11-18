@@ -92,10 +92,11 @@ Instance OnlyFlexible : update_choice ratio := {|
 
 Global Instance OnlyFlexibleChoice : @FlexibleChoice _ OnlyFlexible := {| move_ratio := Datatypes.id |}.
 
-Instance FlexibleUpdate (delta : R) : update_function (path location) (similarity location) ratio := {|
-  update := fun config g sim (traj : path location) ρ =>
-              if Rle_bool ((zoom sim) * delta) (dist (get_location (config (Good g))) (get_location (traj ρ)))
-              then traj ρ else traj ratio_1 |}.
+Instance FlexibleUpdate (delta : R) : update_function (path location) (similarity location) ratio.
+refine {| update := fun config g sim (traj : path location) ρ =>
+                      if Rle_bool ((zoom sim) * delta) 
+                                  (dist (get_location (config (Good g))) (get_location (traj ρ)))
+                      then traj ρ else traj ratio_1 |}.
 Proof.
 intros config1 config2 Hconfig gg g ? sim1 sim2 Hsim traj1 traj2 Htraj ρ1 ρ2 Hρ. subst gg.
 assert (Heq : get_location (traj1 ρ1) == get_location (traj2 ρ2)).

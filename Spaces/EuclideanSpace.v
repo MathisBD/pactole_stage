@@ -22,7 +22,8 @@ Class EuclideanSpace (T : Type) {S : Setoid T} {EQ : @EqDec T S} {VS : RealVecto
   inner_product_compat : Proper (equiv ==> equiv ==> Logic.eq) inner_product;
   
   inner_product_sym : forall u v, inner_product u v = inner_product v u;
-  inner_product_add_l : forall u v w, inner_product (add u v) w = inner_product u w + inner_product v w;
+  inner_product_add_l : forall u v w,
+    inner_product (add u v) w = inner_product u w + inner_product v w;
   inner_product_mul_l : forall k u v, inner_product (mul k u) v = k * inner_product u v;
   inner_product_nonneg : forall u, 0 <= inner_product u u;
   inner_product_defined : forall u, inner_product u u = 0%R <-> u == origin}.
@@ -37,9 +38,11 @@ Notation "〈 u , v 〉" := (inner_product u v) (format "'〈' u ,  v '〉'"): V
 Section InnerProductResults.
   Context `{EuclideanSpace}.
   
-  Lemma inner_product_add_r : forall u v w, (inner_product u (v + w) = inner_product u v + inner_product u w).
+  Lemma inner_product_add_r : forall u v w,
+    (inner_product u (v + w) = inner_product u v + inner_product u w).
   Proof.
-  intros u v w. now rewrite inner_product_sym, inner_product_add_l, inner_product_sym, (inner_product_sym w).
+  intros u v w. now rewrite inner_product_sym, inner_product_add_l,
+                            inner_product_sym, (inner_product_sym w).
   Qed.
   
   Lemma inner_product_mul_r : forall k u v, inner_product u (k * v) = (k * inner_product u v).
@@ -63,7 +66,8 @@ Section InnerProductResults.
   Lemma inner_product_opp : forall u v, inner_product (- u) (- v) = inner_product u v.
   Proof. intros u v. now rewrite inner_product_opp_l, inner_product_opp_r, Ropp_involutive. Qed.
   
-  Lemma squared_Cauchy_Schwarz : forall u v, (inner_product u v)² <= inner_product u u * inner_product v v.
+  Lemma squared_Cauchy_Schwarz : forall u v,
+    (inner_product u v)² <= inner_product u u * inner_product v v.
   Proof.
   intros u v. null v.
   * rewrite 2 inner_product_origin_r, Rsqr_0, Rmult_0_r. reflexivity.
@@ -72,7 +76,8 @@ Section InnerProductResults.
     + intro Hle. rewrite Rmult_comm, <- (Rmult_1_l _²), <- (Rinv_r _ Hnull), Rmult_assoc.
       apply Rmult_le_compat_l; apply inner_product_nonneg || lra.
     + pose (λ := inner_product u v / inner_product v v).
-      rewrite <- Rplus_0_r. rewrite <- (Rminus_diag_eq _ _ (eq_refl (λ² * (inner_product v v)))) at 2.
+      rewrite <- Rplus_0_r.
+      rewrite <- (Rminus_diag_eq _ _ (eq_refl (λ² * (inner_product v v)))) at 2.
       replace (〈u, v〉² / 〈v, v〉) with (λ² * 〈v, v〉) by now unfold λ, Rsqr; field.
       assert (Heq : λ² * 〈v, v〉 = λ * 〈u, v〉). { unfold λ, Rsqr. now field. }
       rewrite Heq at 1 3. unfold Rsqr. rewrite (Rmult_assoc λ).
@@ -120,8 +125,10 @@ Section PerpendicularResults.
   Lemma perpendicular_opp_compat_r : forall u v, perpendicular u (- v)%VS <-> perpendicular u v.
   Proof.
   intros u v. unfold perpendicular. split; intro Hperp.
-  - setoid_rewrite <- mul_1 in Hperp at 2. rewrite mul_opp, <- minus_morph, inner_product_mul_r in Hperp. lra.
-  - setoid_rewrite <- mul_1 at 2. rewrite mul_opp, <- minus_morph, inner_product_mul_r, Hperp. field.
+  - setoid_rewrite <- mul_1 in Hperp at 2.
+    rewrite mul_opp, <- minus_morph, inner_product_mul_r in Hperp. lra.
+  - setoid_rewrite <- mul_1 at 2.
+    rewrite mul_opp, <- minus_morph, inner_product_mul_r, Hperp. field.
   Qed.
 
   Lemma perpendicular_mul_compat_l : forall k u v, perpendicular u v -> perpendicular (k * u)%VS v.
@@ -130,7 +137,8 @@ Section PerpendicularResults.
   Lemma perpendicular_mul_compat_r : forall k u v, perpendicular u v -> perpendicular u (k * v)%VS.
   Proof. intros k u v Hperp. unfold perpendicular. rewrite inner_product_mul_r, Hperp. field. Qed.
 
-  Lemma perpendicular_mul_compat_l_iff : forall k u v, k <> 0 -> (perpendicular (k * u)%VS v <-> perpendicular u v).
+  Lemma perpendicular_mul_compat_l_iff : forall k u v, k <> 0 ->
+    (perpendicular (k * u)%VS v <-> perpendicular u v).
   Proof.
   intros k u v Hk. split; intro Hperp.
   - rewrite <- (mul_1 u), <- (Rinv_l k), <- mul_morph; trivial; [].
@@ -138,7 +146,8 @@ Section PerpendicularResults.
   - now apply perpendicular_mul_compat_l.
   Qed.
 
-  Lemma perpendicular_mul_compat_r_iff : forall k u v, k <> 0 -> (perpendicular u (k * v)%VS <-> perpendicular u v).
+  Lemma perpendicular_mul_compat_r_iff : forall k u v, k <> 0 ->
+    (perpendicular u (k * v)%VS <-> perpendicular u v).
   Proof.
   intros k u v Hk. split; intro Hperp.
   - rewrite <- (mul_1 v), <- (Rinv_l k), <- mul_morph; trivial; [].
@@ -151,89 +160,93 @@ Arguments perpendicular {T%type} {_} {_} {_} {_} u%VS v%VS.
 Notation "u ⟂ v" := (perpendicular u v) (at level 50, no associativity).
 
 (** *** The norm induced by the [inner_product]  **)
+Section NormedResults.
+  Context `{EuclideanSpace}.
 
-Instance Euclidean2Normed {T} `{EuclideanSpace T} : RealNormedSpace T := {
-  norm := fun u => sqrt (inner_product u u) }.
-Proof.
-+ abstract (intros ? ? Heq; now rewrite Heq).
-+ intros a u. rewrite inner_product_mul_l, inner_product_mul_r, <- Rmult_assoc.
-  rewrite sqrt_mult_alt, sqrt_square; try reflexivity; []. clear.
-  destruct (Rle_dec 0 a); try (now apply Rmult_le_pos); [].
-  assert (0 <= -a) by lra. replace (a * a)%R with ((-a) * (-a))%R by lra. now apply Rmult_le_pos.
-+ split; intro Heq.
-  - apply sqrt_eq_0 in Heq; try apply inner_product_nonneg; [].
-    now rewrite <- inner_product_defined.
-  - now rewrite Heq, inner_product_origin_l, sqrt_0.
-+ intros u v. rewrite <- pos_Rsqr_le.
-  - rewrite Rsqr_plus, 3 Rsqr_sqrt; try apply inner_product_nonneg; [].
-    rewrite inner_product_add_l, 2 inner_product_add_r, (inner_product_sym v u).
-    cut (inner_product u v <= sqrt (inner_product u u) * sqrt (inner_product v v))%R; try lra; [].
-    apply pos_Rsqr_le_impl; try (now apply Rmult_le_pos; apply sqrt_pos); [].
-    rewrite Rsqr_mult, 2 Rsqr_sqrt; try apply inner_product_nonneg.
-    apply squared_Cauchy_Schwarz.
-  - apply sqrt_pos.
-  - apply Rplus_le_le_0_compat; apply sqrt_pos.
-Defined.
+  Global Instance Euclidean2Normed : RealNormedSpace T.
+  simple refine {| norm := fun u => sqrt (inner_product u u) |}; trivial.
+  Proof.
+  + abstract (intros ? ? Heq; now rewrite Heq).
+  + intros a u. simpl. rewrite inner_product_mul_l, inner_product_mul_r, <- Rmult_assoc.
+    rewrite sqrt_mult_alt, sqrt_square; try reflexivity; []. clear.
+    destruct (Rle_dec 0 a); try (now apply Rmult_le_pos); [].
+    assert (0 <= -a) by lra. replace (a * a)%R with ((-a) * (-a))%R by lra. now apply Rmult_le_pos.
+  + split; intro Heq.
+    - apply sqrt_eq_0 in Heq; try apply inner_product_nonneg; [].
+      now rewrite <- inner_product_defined.
+    - now rewrite Heq, inner_product_origin_l, sqrt_0.
+  + intros u v. rewrite <- pos_Rsqr_le.
+    - rewrite Rsqr_plus, 3 Rsqr_sqrt; try apply inner_product_nonneg; [].
+      rewrite inner_product_add_l, 2 inner_product_add_r, (inner_product_sym v u).
+      cut (inner_product u v <= sqrt (inner_product u u) * sqrt (inner_product v v))%R; try lra; [].
+      apply pos_Rsqr_le_impl; try (now apply Rmult_le_pos; apply sqrt_pos); [].
+      rewrite Rsqr_mult, 2 Rsqr_sqrt; try apply inner_product_nonneg.
+      apply squared_Cauchy_Schwarz.
+    - apply sqrt_pos.
+    - apply Rplus_le_le_0_compat; apply sqrt_pos.
+  Defined.
 
-Lemma norm_add `{EuclideanSpace} : forall u v, (norm (u + v))² = (norm u)² + 2 * inner_product u v + (norm v)².
-Proof.
-intros u v. simpl norm.
-repeat rewrite Rsqr_sqrt; try apply inner_product_nonneg; [].
-rewrite inner_product_add_l, inner_product_add_r, inner_product_add_r. rewrite (inner_product_sym v u). ring.
-Qed.
+  Lemma norm_add : forall u v, (norm (u + v))² = (norm u)² + 2 * inner_product u v + (norm v)².
+  Proof.
+  intros u v. simpl norm.
+  repeat rewrite Rsqr_sqrt; try apply inner_product_nonneg; [].
+  rewrite inner_product_add_l, inner_product_add_r, inner_product_add_r.
+  rewrite (inner_product_sym v u). ring.
+  Qed.
 
-Lemma norm_sub `{EuclideanSpace} : forall u v, (norm (u - v))² = (norm u)² - 2 * inner_product u v + (norm v)².
-Proof.
-intros u v. simpl norm.
-repeat rewrite Rsqr_sqrt; try apply inner_product_nonneg; [].
-rewrite inner_product_add_l, inner_product_add_r, inner_product_add_r.
-repeat rewrite inner_product_opp_l, inner_product_opp_r. rewrite (inner_product_sym v u). ring.
-Qed.
+  Lemma norm_sub : forall u v, (norm (u - v))² = (norm u)² - 2 * inner_product u v + (norm v)².
+  Proof.
+  intros u v. simpl norm.
+  repeat rewrite Rsqr_sqrt; try apply inner_product_nonneg; [].
+  rewrite inner_product_add_l, inner_product_add_r, inner_product_add_r.
+  repeat rewrite inner_product_opp_l, inner_product_opp_r. rewrite (inner_product_sym v u). ring.
+  Qed.
 
-Lemma squared_norm_product `{EuclideanSpace} : forall u, (norm u)² = inner_product u u.
-Proof. intro. simpl norm. rewrite Rsqr_sqrt; trivial; []. apply inner_product_nonneg. Qed.
+  Lemma squared_norm_product : forall u, (norm u)² = inner_product u u.
+  Proof. intro. simpl norm. rewrite Rsqr_sqrt; trivial; []. apply inner_product_nonneg. Qed.
 
-Lemma unitary_product `{EuclideanSpace} : forall u v,
-  inner_product u v = norm u * norm v * inner_product (unitary u) (unitary v).
-Proof.
-intros. setoid_rewrite unitary_id at 1 2.
-rewrite inner_product_mul_l, inner_product_mul_r. field.
-Qed.
+  Lemma unitary_product : forall u v,
+    inner_product u v = norm u * norm v * inner_product (unitary u) (unitary v).
+  Proof.
+  intros. setoid_rewrite unitary_id at 1 2.
+  rewrite inner_product_mul_l, inner_product_mul_r. field.
+  Qed.
 
-Lemma parallelogram_law `{EuclideanSpace} : forall u v,
-  (norm (u + v))² + (norm (u - v))² = 2 * (norm u)² + 2 * (norm v)².
-Proof.
-intros u v.
-repeat rewrite ?squared_norm_product,
-               ?inner_product_add_l, ?inner_product_add_r,
-               ?inner_product_opp_l, ?inner_product_opp_r.
-ring.
-Qed.
+  Lemma parallelogram_law : forall u v,
+    (norm (u + v))² + (norm (u - v))² = 2 * (norm u)² + 2 * (norm v)².
+  Proof.
+  intros u v.
+  repeat rewrite ?squared_norm_product,
+                 ?inner_product_add_l, ?inner_product_add_r,
+                 ?inner_product_opp_l, ?inner_product_opp_r.
+  ring.
+  Qed.
 
-Lemma polarization_identity `{EuclideanSpace} : forall u v, 〈u, v〉 = ((norm (u + v))² - (norm (u - v))²) / 4.
-Proof.
-intros.
-rewrite 2 squared_norm_product, 2 inner_product_add_l, 4 inner_product_add_r,
-        2 inner_product_opp_l, 2 inner_product_opp_r, (inner_product_sym v u).
-field.
-Qed.
+  Lemma polarization_identity : forall u v, 〈u, v〉 = ((norm (u + v))² - (norm (u - v))²) / 4.
+  Proof.
+  intros.
+  rewrite 2 squared_norm_product, 2 inner_product_add_l, 4 inner_product_add_r,
+          2 inner_product_opp_l, 2 inner_product_opp_r, (inner_product_sym v u).
+  field.
+  Qed.
 
-Lemma polarization_identity1 `{EuclideanSpace} : forall u v, 〈u, v〉 = ((norm (u + v))² - (norm u)² - (norm v)²) / 2.
-Proof.
-intros.
-rewrite 3 squared_norm_product, inner_product_add_l,
-        2 inner_product_add_r, (inner_product_sym v u).
-field.
-Qed.
+  Lemma polarization_identity1 : forall u v, 〈u, v〉 = ((norm (u + v))² - (norm u)² - (norm v)²) / 2.
+  Proof.
+  intros.
+  rewrite 3 squared_norm_product, inner_product_add_l,
+          2 inner_product_add_r, (inner_product_sym v u).
+  field.
+  Qed.
 
-Lemma polarization_identity2 `{EuclideanSpace} : forall u v, 〈u, v〉 = ((norm u)² + (norm v)² - (norm (u-v))²) / 2.
-Proof.
-intros.
-rewrite 3 squared_norm_product, inner_product_add_l,
-        2 inner_product_add_r, inner_product_opp,
-        (inner_product_sym (-v)%VS u), inner_product_opp_r.
-field.
-Qed.
+  Lemma polarization_identity2 : forall u v, 〈u, v〉 = ((norm u)² + (norm v)² - (norm (u-v))²) / 2.
+  Proof.
+  intros.
+  rewrite 3 squared_norm_product, inner_product_add_l,
+          2 inner_product_add_r, inner_product_opp,
+          (inner_product_sym (-v)%VS u), inner_product_opp_r.
+  field.
+  Qed.
+End NormedResults.
 
 Lemma perpendicular_unitary_compat_l `{EuclideanSpace} :
   forall u v, perpendicular (unitary u) v <-> perpendicular u v.
@@ -260,7 +273,8 @@ intros u v. null v.
 Qed.
 
 (** Important theorems *)
-Theorem Pythagoras `{EuclideanSpace} : forall u v, perpendicular u v <-> (norm (u + v)%VS)² = (norm u)² + (norm v)².
+Theorem Pythagoras `{EuclideanSpace} : forall u v,
+  perpendicular u v <-> (norm (u + v)%VS)² = (norm u)² + (norm v)².
 Proof.
 intros u v.
 repeat rewrite squared_norm_product.
@@ -268,7 +282,8 @@ rewrite inner_product_add_l, inner_product_add_r, inner_product_add_r, (inner_pr
 unfold perpendicular. lra.
 Qed.
 
-Theorem Cauchy_Schwarz `{EuclideanSpace} : forall u v, Rabs (inner_product u v) <= (norm u) * norm v.
+Theorem Cauchy_Schwarz `{EuclideanSpace} : forall u v,
+  Rabs (inner_product u v) <= (norm u) * norm v.
 Proof.
 intros u v. apply pos_Rsqr_le.
 + apply Rabs_pos.
@@ -362,7 +377,8 @@ Section Normed2Euclidean.
       ring.
   + intro u. rewrite add_opp, norm_origin. unfold Rsqr. nra.
   + intro u. rewrite add_opp, norm_origin, <- norm_defined.
-    assert (Heq : (u + u == 2 * u)%VS) by now replace 2 with (1 + 1)%R by field; rewrite <- add_morph, mul_1.
+    assert (Heq : (u + u == 2 * u)%VS)
+      by now replace 2 with (1 + 1)%R by field; rewrite <- add_morph, mul_1.
     rewrite Heq, norm_mul, Rabs_pos_eq; try lra; []. unfold Rsqr. nra.
   Defined.
   
@@ -373,7 +389,8 @@ Lemma unitary_orthogonal : forall u, unitary (orthogonal u) == orthogonal u.
 Proof.
 intro u. null u.
 - rewrite orthogonal_origin. apply unitary_origin.
-- unfold unitary. rewrite R2norm_orthogonal; trivial; []. replace (/1) with 1 by field. now rewrite mul_1.
+- unfold unitary. rewrite R2norm_orthogonal; trivial; [].
+  replace (/1) with 1 by field. now rewrite mul_1.
 Qed.
 
 Lemma orthogonal_unitary : forall u, orthogonal (unitary u) == orthogonal u.

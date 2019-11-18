@@ -49,8 +49,8 @@ Inductive light := A | B.
 
 Instance light_Setoid : Setoid light := eq_setoid light.
 
-Instance light_EqDec : EqDec light_Setoid :=
-  fun x y => match x, y with A, A | B, B => left _ | A, B | B, A => right _ end.
+Instance light_EqDec : EqDec light_Setoid.
+refine (fun x y => match x, y with A, A | B, B => left _ | A, B | B, A => right _ end).
 Proof. all:abstract (auto; discriminate). Defined.
 
 Definition info := (location * light)%type.
@@ -68,23 +68,23 @@ intros config1 config2 Heq id. destruct id as [g | b].
 Qed.
 
 (** The robot have access to the full state of all robots, that is, their locations and lights. *)
-Instance Obs : @Observation info Loc St N := {|
-  observation := info * info;   (* self & other robot's state *)
-  observation_Setoid := prod_Setoid state_Setoid state_Setoid;
-  obs_from_config config st :=
-    let st0 := config (Good r0) in
-    let st1 := config (Good r1) in
-    if st0 =?= st then (st0, st1) else (st1, st0);
-  obs_is_ok obs config st :=
-    let st0 := config (Good r0) in
-    let st1 := config (Good r1) in
-    obs == if st0 =?= st then (st0, st1) else ( st1, st0) |}.
+Instance Obs : @Observation info Loc St N.
+simple refine {| observation := info * info;   (* self & other robot's state *)
+                 observation_Setoid := prod_Setoid state_Setoid state_Setoid;
+                 obs_from_config config st :=
+                   let st0 := config (Good r0) in
+                   let st1 := config (Good r1) in
+                   if st0 =?= st then (st0, st1) else (st1, st0);
+                 obs_is_ok obs config st :=
+                   let st0 := config (Good r0) in
+                   let st1 := config (Good r1) in
+                   obs == if st0 =?= st then (st0, st1) else ( st1, st0) |}; autoclass; [|].
 Proof.
 + Time abstract (intros ? ? Hconfig ? ? Hpt; cbn zeta;
                  repeat destruct_match;
                  solve [ split; apply Hconfig
                        | rewrite Hconfig, Hpt in *; now exfalso ]).
-+ reflexivity.
++ intros. cbn -[equiv]. reflexivity.
 Defined.
 
 (** Robot choices *)
@@ -100,9 +100,13 @@ Instance UC2 : update_choice unit := {| update_choice_EqDec := unit_EqDec |}.
 Instance IC2 : inactive_choice unit := {| inactive_choice_EqDec := unit_EqDec |}.
 
 (** Update functions: the robot gets to its target, and nothing happne ot inactive robots. *)
-Instance UF : update_function _ _ _ := {| update := fun _ _ _ pt _ => pt |}.
+Instance UF : update_function _ _ _.
+refine {| update := fun _ _ _ pt _ => pt;
+          update_compat := _ |}.
 Proof. now repeat intro. Defined.
-Instance IF2 : inactive_function _ := {| inactive := fun config id _ => config id |}.
+Instance IF2 : inactive_function _.
+refine {| inactive := fun config id _ => config id;
+          inactive_compat := _ |}.
 Proof. now repeat intro; subst. Defined.
 
 (** In this setting, only SSYNC demons can be defined (the inactive choice is ignored). *)

@@ -53,14 +53,17 @@ Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance limited_multiset_observation (radius : R) : Observation := {
+Global Instance limited_multiset_observation (radius : R) : Observation.
+simple refine {|
   observation := multiset location;
   obs_from_config config state :=
-    MultisetObservation.make_multiset (List.filter (fun x => Rle_bool (dist x (get_location state)) radius)
-                                                (List.map get_location (config_list config)));
+    MultisetObservation.make_multiset (List.filter
+                                         (fun x => Rle_bool (dist x (get_location state)) radius)
+                                         (List.map get_location (config_list config)));
   obs_is_ok s config state :=
     forall l, s[l] = if Rle_bool (dist l (get_location state)) radius
-                     then countA_occ _ equiv_dec l (List.map get_location (config_list config)) else 0%nat }.
+                     then countA_occ _ equiv_dec l (List.map get_location (config_list config))
+                     else 0%nat |}; autoclass; [|].
 Proof.
 * intros config1 config2 Hconfig pt1 pt2 Hpt.
   apply MultisetObservation.make_multiset_compat, eqlistA_PermutationA_subrelation.

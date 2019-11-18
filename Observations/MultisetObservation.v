@@ -44,7 +44,7 @@ Definition make_multiset l := from_elements (List.map (fun x => (x, 1)) l).
 Lemma make_multiset_nil : make_multiset nil == empty.
 Proof. reflexivity. Qed.
 
-Lemma make_multiset_cons : forall x l, make_multiset (x :: l) == MMultisetInterface.add x 1 (make_multiset l).
+Lemma make_multiset_cons : forall x l, make_multiset (x :: l) == add x 1 (make_multiset l).
 Proof. reflexivity. Qed.
 
 Lemma make_multiset_empty : forall l, make_multiset l == empty <-> l = nil.
@@ -55,7 +55,8 @@ destruct l; cbn.
 - split; intro Hl; inv Hl. discriminate.
 Qed.
 
-Lemma make_multiset_app : forall l l', make_multiset (l ++ l') == union (make_multiset l) (make_multiset l').
+Lemma make_multiset_app : forall l l',
+  make_multiset (l ++ l') == union (make_multiset l) (make_multiset l').
 Proof. intros. unfold make_multiset. now rewrite List.map_app, from_elements_append. Qed.
 
 Lemma nequiv_sym : forall x y, ~x == y -> ~y == x.
@@ -172,12 +173,14 @@ Context `{St : State info}.
 Context `{Names}.
 Implicit Type config : configuration.
 
-Global Instance multiset_observation : Observation := {
+Global Instance multiset_observation : Observation.
+simple refine {|
   observation := multiset location;
   
   obs_from_config config st := make_multiset (List.map get_location (config_list config));
   obs_is_ok s config st :=
-    forall l, s[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config)) }.
+    forall l, s[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config)) |};
+autoclass; [|].
 Proof.
 + repeat intro.
   apply make_multiset_compat, eqlistA_PermutationA_subrelation,

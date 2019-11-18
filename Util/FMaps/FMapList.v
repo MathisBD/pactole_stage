@@ -184,13 +184,14 @@ Instance MapList key `{EqDec key} : FMap := {|
   cardinal := fun elt m => @length _ (proj1_sig m);
   elements := fun elt m => (proj1_sig m) |}.
 
-Local Transparent dict MapsTo empty is_empty mem add find remove equal map mapi fold cardinal elements.
+Local Transparent dict MapsTo empty is_empty mem add find
+                  remove equal map mapi fold cardinal elements.
 Local Notation t := (sig (@NoDupA (_ * _) (equiv@@1))).
 Local Notation eq_pair := (fun xn yp => fst xn == fst yp /\ snd xn = snd yp).
 
 (** **  Proofs of the specifications  **)
 
-Instance MapListFacts_MapsTo key `{EqDec key} : FMapSpecs_MapsTo (MapList _).
+Instance MapListFacts_MapsTo key `{EqDec key} : FMapSpecs_MapsTo MapList.
 Proof.
 split. intros elt [m Hm] x y e Hxy Hx. simpl in *.
 induction m; inversion_clear Hx.
@@ -198,7 +199,7 @@ induction m; inversion_clear Hx.
 - right. inversion_clear Hm. now apply IHm.
 Qed.
 
-Instance MapListFacts_mem key `{EqDec key} : FMapSpecs_mem (MapList _).
+Instance MapListFacts_mem key `{EqDec key} : FMapSpecs_mem MapList.
 Proof. split.
 * intros elt [m Hm] x [e Hin]. simpl in *. induction m as [| [y n] l]; inversion_clear Hin.
   + simpl. destruct (equiv_dec x y) as [Hxy | Hxy]; trivial. elim Hxy. now destruct H0.
@@ -207,13 +208,14 @@ Proof. split.
   + discriminate.
   + destruct (equiv_dec x y) as [Hxy | Hxy].
     - exists n. left. now split.
-    - inversion_clear Hm. apply IHl in Hmem; trivial; []. destruct Hmem as [e ?]. exists e. now right.
+    - inversion_clear Hm. apply IHl in Hmem; trivial; [].
+      destruct Hmem as [e ?]. exists e. now right.
 Qed.
 
-Instance MapListFacts_empty key `{EqDec key} : FMapSpecs_empty (MapList _).
+Instance MapListFacts_empty key `{EqDec key} : FMapSpecs_empty MapList.
 Proof. split. intros elt x e Hin. inversion Hin. Qed.
 
-Instance MapListFacts_is_empty key `{EqDec key} : FMapSpecs_is_empty (MapList _).
+Instance MapListFacts_is_empty key `{EqDec key} : FMapSpecs_is_empty MapList.
 Proof. split.
 * intros elt [m Hm] Hm'. destruct m as [| [x n] l]; trivial.
   elim Hm' with x n. now left.
@@ -221,7 +223,7 @@ Proof. split.
   intros x n Hin. inversion Hin.
 Qed.
 
-Instance MapListFacts_add key `{EqDec key} : FMapSpecs_add (MapList _).
+Instance MapListFacts_add key `{EqDec key} : FMapSpecs_add MapList.
 Proof. split.
 * intros elt [m Hm] x y e Hxy. simpl in *. induction m as [| [z p] l]; simpl.
   + now left.
@@ -239,7 +241,7 @@ Proof. split.
     - inversion_clear Hm. inversion_clear Hy; now left + (right; apply IHl).
 Qed.
 
-Instance MapListFacts_remove key `{EqDec key} : FMapSpecs_remove (MapList _).
+Instance MapListFacts_remove key `{EqDec key} : FMapSpecs_remove MapList.
 Proof. split.
 * intros elt [m Hm] x y Hxy. simpl. unfold t_remove, In. simpl. induction m as [| [z p] l].
   + simpl. intros [? Habs]. inversion Habs.
@@ -259,7 +261,7 @@ Proof. split.
     inversion_clear Hy; now left + (right; apply IHl).
 Qed.
 
-Instance MapListFacts_find key `{EqDec key} : FMapSpecs_find (MapList _).
+Instance MapListFacts_find key `{EqDec key} : FMapSpecs_find MapList.
 Proof. split.
 * intros elt [m Hm] x e Hin. simpl in *. induction m as [| [y p] l].
   + inversion Hin.
@@ -277,17 +279,17 @@ Proof. split.
     - right. auto.
 Qed.
 
-Instance MapListFacts_elements key `{EqDec key} : FMapSpecs_elements (MapList _).
+Instance MapListFacts_elements key `{EqDec key} : FMapSpecs_elements MapList.
 Proof. split.
 * tauto.
 * tauto.
 * intros elt [m Hm]. simpl. assumption.
 Qed.
 
-Instance MapListFacts_cardinal key `{EqDec key} : FMapSpecs_cardinal (MapList _).
+Instance MapListFacts_cardinal key `{EqDec key} : FMapSpecs_cardinal MapList.
 Proof. split. tauto. Qed.
 
-Instance MapListFacts_fold key `{EqDec key} : FMapSpecs_fold (MapList _).
+Instance MapListFacts_fold key `{EqDec key} : FMapSpecs_fold MapList.
 Proof. split.
 intros elt [m Hm] A i f. simpl. revert i. induction m as [| [y p] l]; simpl.
 - reflexivity.
@@ -359,7 +361,7 @@ intros [m Hm]. induction m as [| [k e] m].
 Qed.
 
 
-Instance MapListFacts_equal key `{EqDec key} : FMapSpecs_equal (MapList _).
+Instance MapListFacts_equal key `{EqDec key} : FMapSpecs_equal MapList.
 Proof. split.
 * unfold Equivb, equal.
   intuition.
@@ -372,7 +374,7 @@ Proof. split.
   firstorder.
 Qed.
 
-Instance MapListFacts_map key `{EqDec key} : FMapSpecs_map (MapList _).
+Instance MapListFacts_map key `{EqDec key} : FMapSpecs_map MapList.
 Proof. split.
 * intros elt elt' [m Hm] x e f Hin. simpl in *. induction m as [| [y p] m].
   + inversion Hin.
@@ -394,7 +396,7 @@ Proof. split.
       exists e'. now right.
 Qed.
 
-Instance MapListFacts_mapi key `{EqDec key} : FMapSpecs_mapi (MapList _).
+Instance MapListFacts_mapi key `{EqDec key} : FMapSpecs_mapi MapList.
 Proof. split.
 * intros elt elt' [m Hm] x e f Hin. simpl in *. induction m as [| [y p] m].
   + inversion Hin.
@@ -419,5 +421,5 @@ Proof. split.
 Qed.
 
 (** The full set of specifications. *)
-Instance MapListFacts key `{EqDec key} : FMapSpecs (MapList _).
+Instance MapListFacts key `{EqDec key} : FMapSpecs MapList.
 Proof. split; auto with typeclass_instances. Qed.

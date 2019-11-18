@@ -32,7 +32,8 @@ Record bijection := {
   Inversion : ∀ x y, section x == y ↔ retraction y == x}.
 Global Existing Instance section_compat.
 
-Global Instance bij_Setoid : Setoid bijection := {| equiv := fun f g => forall x, f.(section) x == g x |}.
+Global Instance bij_Setoid : Setoid bijection.
+simple refine {| equiv := fun f g => forall x, f.(section) x == g x |}; auto; [].
 Proof. split.
 + repeat intro. reflexivity.
 + repeat intro. now symmetry.
@@ -61,7 +62,8 @@ Proof.
 + abstract (intros x y; now rewrite f.(Inversion), <- g.(Inversion)).
 Defined.
 
-Global Instance BijectionComposition : Composition bijection := { compose := comp }.
+Global Instance BijectionComposition : Composition bijection.
+refine {| compose := comp |}.
 Proof.
 intros f1 f2 Hf g1 g2 Hg x. cbn -[equiv].
 rewrite (Hf (g1 x)). f_equiv. apply Hg.
@@ -82,7 +84,8 @@ refine {| section := bij.(retraction);
           retraction := bij.(section) |}.
 Proof. abstract (intros; rewrite bij.(Inversion); reflexivity). Defined.
 
-Global Instance BijectionInverse : Inverse bijection := { inverse := inv }.
+Global Instance BijectionInverse : Inverse bijection.
+refine {| inverse := inv |}.
 Proof. repeat intro. simpl. now f_equiv. Defined.
 (*
 Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.

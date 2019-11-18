@@ -387,7 +387,7 @@ Local Transparent
   union inter diff equal subset fold
   for_all exists_ filter partition cardinal elements choose.
 
-Instance SetListFacts_In elt `{EqDec elt} : FSetSpecs_In (SetList _).
+Instance SetListFacts_In elt `{EqDec elt} : FSetSpecs_In SetList.
 Proof. split. simpl. intros s x y Heq. now rewrite Heq. Qed.
 
 Local Lemma mem_aux elt `{EqDec elt} : forall x l, list_mem x l = true <-> InA equiv x l.
@@ -401,16 +401,16 @@ intros x l. induction l as [| e l]; simpl.
     - inversion_clear Hin; assumption || contradiction.
 Qed.
 
-Instance SetListFacts_mem elt `{EqDec elt} : FSetSpecs_mem (SetList _).
+Instance SetListFacts_mem elt `{EqDec elt} : FSetSpecs_mem SetList.
 Proof. split.
 * intros [s Hs] x Hin. simpl in *. now rewrite mem_aux.
 * intros [s Hs] x Hin. simpl in *. now rewrite mem_aux in Hin.
 Qed.
 
-Instance SetLIst_Facts_empty elt `{EqDec elt} : FSetSpecs_empty (SetList _).
+Instance SetLIst_Facts_empty elt `{EqDec elt} : FSetSpecs_empty SetList.
 Proof. split. intros x Hin; simpl in *. now rewrite InA_nil in Hin. Qed.
 
-Instance SetListFacts_is_empty elt `{EqDec elt} : FSetSpecs_is_empty (SetList _).
+Instance SetListFacts_is_empty elt `{EqDec elt} : FSetSpecs_is_empty SetList.
 Proof. split.
 * intros [[| e s] Hs] Hempty; simpl in *.
   + reflexivity.
@@ -434,7 +434,7 @@ destruct (list_mem e l) eqn:Hmem.
   - destruct Hin; now left + right.
 Qed.
 
-Instance SetListFacts_add elt `{EqDec elt} : FSetSpecs_add (SetList _).
+Instance SetListFacts_add elt `{EqDec elt} : FSetSpecs_add SetList.
 Proof. split.
 * intros [s Hs] x y Heq. simpl. rewrite add_aux. now left.
 * intros [s Hs] x y Hin. simpl in *. rewrite add_aux. now right.
@@ -460,14 +460,14 @@ intros x e l Hnodup. induction l as [| e' l]; simpl.
     - destruct Hin as [[] ?]; now left + right.
 Qed.
 
-Instance SetListFacts_remove elt `{EqDec elt} : FSetSpecs_remove (SetList _).
+Instance SetListFacts_remove elt `{EqDec elt} : FSetSpecs_remove SetList.
 Proof. split.
 * intros [s Hs] x y Heq. simpl. symmetry in Heq. now rewrite remove_aux.
 * intros [s Hs] x y Hxy Hin. simpl in *. now rewrite remove_aux.
 * intros [s Hs] x y Hin. simpl in *. now rewrite remove_aux in Hin.
 Qed.
 
-Instance SetListFacts_singleton elt `{EqDec elt} : FSetSpecs_singleton (SetList _).
+Instance SetListFacts_singleton elt `{EqDec elt} : FSetSpecs_singleton SetList.
 Proof. split.
 * intros x y Hin. simpl in *. unfold list_add in Hin.
   destruct (list_mem x nil); now inversion_clear Hin.
@@ -484,7 +484,7 @@ intros s1. induction s1 as [| e1 s1]; simpl; intros s2 x Hin.
   unfold list_add. now destruct (list_mem e1 s2); try right.
 Qed.
 
-Instance SetListFacts_union elt `{EqDec elt} : FSetSpecs_union (SetList _).
+Instance SetListFacts_union elt `{EqDec elt} : FSetSpecs_union SetList.
 Proof. split.
 * intros [s1 Hs1] [s2 Hs2]. simpl.
   unfold list_union, list_fold, flip.
@@ -542,7 +542,7 @@ destruct (x == e), (y == e).
 - apply IHl.
 Qed.
 
-Instance SetListFacts_inter elt `{EqDec elt} : FSetSpecs_inter (SetList _).
+Instance SetListFacts_inter elt `{EqDec elt} : FSetSpecs_inter SetList.
 Proof. split.
 * intros [s1 Hs1] [s2 Hs2] x. simpl.
   unfold list_inter, list_fold, flip. rewrite inter_aux.
@@ -569,14 +569,14 @@ intros l1 l2 x. revert l1. induction l2 as [| e2 l2]; simpl; intros l1 Hnodup.
   + now apply t_remove_lemma.
 Qed.
 
-Instance SetListFacts_diff elt `{EqDec elt} : FSetSpecs_diff (SetList _).
+Instance SetListFacts_diff elt `{EqDec elt} : FSetSpecs_diff SetList.
 Proof.
 split;
 intros [s1 Hs1] [s2 Hs2] x; simpl;
 unfold list_diff, list_fold, flip; now rewrite diff_aux.
 Qed.
 
-Instance SetListFacts_subset elt `{EqDec elt} : FSetSpecs_subset (SetList _).
+Instance SetListFacts_subset elt `{EqDec elt} : FSetSpecs_subset SetList.
 Proof. split.
 * intros s1 s2 Hle. simpl. unfold list_subset.
   change (is_empty (diff s1 s2) = true).
@@ -592,7 +592,7 @@ Proof. split.
     intro Habs. apply mem_1 in Habs. congruence.
 Qed.
 
-Instance SetListFacts_equal elt `{EqDec elt} : FSetSpecs_equal (SetList _).
+Instance SetListFacts_equal elt `{EqDec elt} : FSetSpecs_equal SetList.
 Proof. split.
 * intros s1 s2 Heq. simpl.
   change (subset s1 s2 && subset s2 s1 = true).
@@ -605,13 +605,13 @@ Proof. split.
   split; now apply subset_2.
 Qed.
 
-Instance SetListFacts_cardinal elt `{EqDec elt} : FSetSpecs_cardinal (SetList _).
+Instance SetListFacts_cardinal elt `{EqDec elt} : FSetSpecs_cardinal SetList.
 Proof. split. reflexivity. Qed.
 
-Instance SetListFacts_fold elt `{EqDec elt} : FSetSpecs_fold (SetList _).
+Instance SetListFacts_fold elt `{EqDec elt} : FSetSpecs_fold SetList.
 Proof. split. reflexivity. Qed.
 
-Instance SetListFacts_filter elt `{EqDec elt} : FSetSpecs_filter (SetList _).
+Instance SetListFacts_filter elt `{EqDec elt} : FSetSpecs_filter SetList.
 Proof. split.
 * intros [s Hs] x f Hf Hin.
   induction s as [| e s]; simpl in *.
@@ -639,7 +639,7 @@ Proof. split.
       rewrite <- Hfe, <- Hfx. now apply Hf.
 Qed.
 
-Instance SetListFacts_for_all elt `{EqDec elt} : FSetSpecs_for_all (SetList _).
+Instance SetListFacts_for_all elt `{EqDec elt} : FSetSpecs_for_all SetList.
 Proof. split.
 * intros [s Hs] f Hf Hall. unfold For_all in Hall. simpl in *.
   rewrite forallb_forall. intros x Hin. apply Hall. apply In_InA; Preliminary.autoclass.
@@ -649,7 +649,7 @@ Proof. split.
   rewrite Heq. auto.
 Qed.
 
-Instance SetListFacts_exists elt `{EqDec elt} : FSetSpecs_exists (SetList _).
+Instance SetListFacts_exists elt `{EqDec elt} : FSetSpecs_exists SetList.
 Proof. split.
 * intros [s Hs] f Hf [x [Hin Hfx]]. simpl in *. rewrite existsb_exists.
   rewrite InA_alt in Hin. destruct Hin as [y [Heq Hin]].
@@ -658,7 +658,7 @@ Proof. split.
   destruct Hex as [x [Hin Hfx]]. exists x. simpl. split; trivial; []. apply In_InA; Preliminary.autoclass.
 Qed.
 
-Instance SetListFacts_partition elt `{EqDec elt} : FSetSpecs_partition (SetList _).
+Instance SetListFacts_partition elt `{EqDec elt} : FSetSpecs_partition SetList.
 Proof. split.
 * intros [s Hs] f Hf x. simpl. induction s as [| e s]; simpl.
   + reflexivity.
@@ -678,14 +678,14 @@ Proof. split.
       (progress rewrite IHs in * || rewrite <- IHs in *); auto.
 Qed.
 
-Instance SetListFacts_elements elt `{EqDec elt} : FSetSpecs_elements (SetList _).
+Instance SetListFacts_elements elt `{EqDec elt} : FSetSpecs_elements SetList.
 Proof. split.
 * simpl. auto.
 * simpl. auto.
 * intros [s Hs]. simpl. assumption.
 Qed.
 
-Instance SetListFacts_choose elt `{EqDec elt} : FSetSpecs_choose (SetList _).
+Instance SetListFacts_choose elt `{EqDec elt} : FSetSpecs_choose SetList.
 Proof. split.
 * intros [[| e s] Hs] x Hin; simpl in *.
   + discriminate.
@@ -697,5 +697,5 @@ Qed.
 
 
 (** The full set of specifications. *)
-Instance SetListFacts elt `{EqDec elt} : FSetSpecs (SetList _).
+Instance SetListFacts elt `{EqDec elt} : FSetSpecs SetList.
 Proof. split; auto with typeclass_instances. Qed.
