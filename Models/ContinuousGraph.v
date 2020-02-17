@@ -305,7 +305,8 @@ Proof. intro. simpl. repeat (split; try reflexivity). Qed.
 
 (** ** On configurations *)
 
-(** The precondition for liftable changes of frame is that they must come from isomorphisms. *)
+(** The precondition for liftable changes of frame is that they must come from isomorphisms
+    (which must not change the thresholds). *)
 Global Instance InfoV : @State LocationV stateV.
 simple refine {|
   get_location := fun state => fst (proj1_sig state);
@@ -436,7 +437,7 @@ Defined.
 Notation configV := (@configuration _ stateV _ _).
 Notation configG := (@configuration _ stateG _ _).
 
-(* RMK: we cannot use map_config as the Location instance is not the same. *)
+(* RMK: we cannot use [map_config] here as the Location instance is not the same. *)
 Definition config_V2G (config : configV) : configG := fun id => state_V2G (config id).
 
 Global Instance config_V2G_compat : Proper (equiv ==> equiv) config_V2G.
@@ -450,7 +451,7 @@ Proof. intros ? ? Hconfig id. unfold config_G2V. f_equiv. apply Hconfig. Qed.
 Lemma config_V2G2V : forall config : configV, config_G2V (config_V2G config) == config.
 Proof. intros. unfold config_G2V, config_V2G. now repeat try (split; simpl). Qed.
 
-(** The observation for continuous setting is almost the same as for the discrete one:
+(** The observation for the continuous setting is almost the same as for the discrete one:
     we simply project robots on edges either to the source or target of the edge
     depending on where they are located compared to the threshold of the edge;
     and add the current location. *)
@@ -501,7 +502,7 @@ intros iso Hstable x. unfold stable_threshold in *. simpl in *.
 now rewrite <- (Hstable x), Bijection.retraction_section.
 Qed.
 
-(** Graph isomorphisms not changing thresholds as a frame choice *)
+(** Frame choice: graph isomorphisms not changing thresholds *)
 Global Instance FrameChoiceIsomorphismV : @frame_choice LocationV (sig stable_threshold) := {|
   frame_choice_bijection := fun f => @iso_V locV E G (proj1_sig f);
   frame_choice_Setoid := sig_Setoid (@isomorphism_Setoid locV E G);

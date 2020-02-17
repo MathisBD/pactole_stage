@@ -156,14 +156,6 @@ Proof.
 + intros config1 config2 Hconfig gg g ? pt1 pt2 Hpt.
   f_equiv; try apply Hpt; [].
   f_equiv. now apply (choose_update_compat da); f_equiv.
-(*   destruct (Hconfig (Good g)) as [Hptg [[Hsrc Htgt] Hthd]],
-           (proj1_sig (config1 (Good g))) as [ptg1 e1],
-           (proj1_sig (config2 (Good g))) as [ptg2 e2].
-  simpl in Hptg, Hsrc, Htgt, Hthd.
-  destruct (ptg1 =?= tgt e1), (ptg2 =?= tgt e2), (ptg1 =?= src e1), (ptg2 =?= src e2);
-  solve [ reflexivity
-        | rewrite Hptg, Hsrc, Htgt in *; contradiction
-        | now rewrite Hthd, Hconfig, Hpt ]. *)
 + intros config1 config2 Hconfig id1 id2 Hid. simpl in Hid. subst id1.
   assert (Hpt := Hconfig id2).
   destruct Hpt as [Hpt [[Hsrc Htgt] Hthd]],

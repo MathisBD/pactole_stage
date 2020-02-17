@@ -23,7 +23,7 @@ Class Graph (V E : Type) := {
 
   src : E -> V; (* source and target of an edge *)
   tgt : E -> V;
-  threshold : E -> R;
+  threshold : E -> R; (* TODO: use [strict_ratio] instead? *)
   threshold_pos : forall e, (0 < threshold e < 1)%R;
   src_compat :> Proper (equiv ==> equiv) src;
   tgt_compat :> Proper (equiv ==> equiv) tgt;

@@ -59,7 +59,7 @@ Context (Rigid : Rigid.RigidSetting).
 Notation rigid_da := (@demonic_action _ _ _ _ location (similarity location) Trigid _ _ _).
 Notation rigid_demon := (@demon _ _ _ _ location (similarity location) Trigid _ _ _).
 
-(** **  Characterization of flexible demons that acts rigidly  **)
+(** **  Characterization of flexible demons that act rigidly  **)
 
 (** A flexible choice is rigid if its [move_ratio] is 1. *)
 Definition is_rigid choice := Flexible.move_ratio choice == ratio_1.
