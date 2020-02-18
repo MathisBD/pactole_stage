@@ -99,7 +99,7 @@ Proof.
   rewrite dist_defined.
   reflexivity.
 Qed.
-Hint Resolve R2_dist_defined_2.
+Hint Resolve R2_dist_defined_2 : core.
 
 Lemma R2dist_ref_0 : forall u v, dist u v = dist (u - v)%VS origin.
 Proof. intros u v. now rewrite <- (dist_translation (-v)%VS), add_opp. Qed.

@@ -1,5 +1,7 @@
 -install none
 -Q . Pactole
+-arg -w
+-arg -notation-overridden
 
 ## External libraries
 #Util/FSets/OrderedType.v

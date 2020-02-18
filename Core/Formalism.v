@@ -31,7 +31,7 @@ Require Import Pactole.Observations.Definition.
 
 
 Typeclasses eauto := 5.
-Remove Hints eq_setoid.
+Remove Hints eq_setoid : typeclass_instances.
 
 
 Section Formalism.

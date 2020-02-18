@@ -32,7 +32,7 @@ Section Equal.
     constructor; firstorder eauto.
   Qed.
 End Equal.
-Hint Unfold Equal_pw.
+Hint Unfold Equal_pw : set.
 
 
 (** * [FSet] : the interface of sets
@@ -99,6 +99,7 @@ Arguments set elt%type_scope {_} {_} {FSet}.
 (** Set notations (see below) are interpreted in scope [set_scope],
    delimited with elt [scope]. We bind it to the type [set] and to
    other operations defined in the interface. *)
+Declare Scope set_scope.
 Delimit Scope set_scope with set.
 Bind Scope set_scope with set.
 Global Arguments In  {_%type_scope} {_} {_} {_} _ _%set_scope.

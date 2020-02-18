@@ -16,7 +16,7 @@ Require Export Pactole.Spaces.Graph.
 
 
 Typeclasses eauto := (bfs).
-Remove Hints eq_setoid.
+Remove Hints eq_setoid : typeclass_instances.
 Open Scope Z_scope.
 
 

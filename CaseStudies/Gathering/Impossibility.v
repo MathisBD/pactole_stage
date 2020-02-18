@@ -238,7 +238,7 @@ intros e He Habs. induction Habs as [e Habs | e].
 + inversion He. now apply IHHabs.
 Qed.
 
-Hint Resolve half_size_config.
+Hint Resolve half_size_config : core.
 
 (** As there is no byzantine robot, we can lift configurations for good robots as a full configuration.  *)
 Definition lift_config {A} (config : G -> A) : ident -> A := fun id =>

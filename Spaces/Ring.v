@@ -17,14 +17,15 @@ Require Import Pactole.Spaces.Isomorphism.
 
 
 Typeclasses eauto := (bfs).
-Remove Hints eq_setoid.
+Remove Hints eq_setoid : typeclass_instances.
 
 (** ** A ring  **)
 
 (** What we need to define a ring. *)
 Class RingSpec := {
   ring_size : nat;
-  ring_size_spec :> 1 < ring_size }.
+  ring_size_spec : 1 < ring_size }.
+Coercion ring_size_spec : RingSpec >-> lt.
 
 Section Ring.
 Context {RR : RingSpec}.

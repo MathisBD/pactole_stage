@@ -10,7 +10,7 @@
 (**************************************************************************)
 
 
-Require Import SetoidList.
+Require Import SetoidDec SetoidList.
 Require Import Arith_base.
 Require Import Omega.
 Require Import Pactole.Util.Coqlib.
@@ -294,6 +294,16 @@ destruct id as [g | b], id' as [g' | b']; try (now right; discriminate); [|].
   - left; subst; auto.
   - right; intro Habs. now injection Habs.
 Qed.
+
+Instance ident_Setoid `{Names} : Setoid ident := { equiv := eq; setoid_equiv := eq_equivalence }.
+Instance ident_EqDec `{Names} : EqDec ident_Setoid := names_eq_dec.
+
+Instance fun_refl `{Names} : forall A (f : ident -> A) R,
+  Reflexive R -> Proper (@SetoidClass.equiv ident _ ==> R) f.
+Proof. intros A f R HR ? ? Heq. simpl in Heq. now subst. Qed.
+
+Instance list_ident_Setoid `{Names} : Setoid (list ident) := { equiv := eq; setoid_equiv := eq_equivalence }.
+Instance list_ident_Eqdec `{Names} : EqDec list_ident_Setoid := list_eq_dec ident_EqDec.
 
 Lemma fun_names_eq `{Names} : forall {A : Type} eqA f g,
   @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).

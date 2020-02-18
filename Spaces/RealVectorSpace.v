@@ -49,6 +49,7 @@ Global Existing Instance add_compat.
 Global Existing Instance mul_compat.
 Global Existing Instance opp_compat.
 
+Declare Scope VectorSpace_scope.
 Delimit Scope VectorSpace_scope with VS.
 Arguments add T%type _ _ _ u%VS v%VS.
 Arguments mul T%type _ _ _ k%R u%VS.

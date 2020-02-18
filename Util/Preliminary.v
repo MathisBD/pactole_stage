@@ -28,8 +28,8 @@ Set Implicit Arguments.
 
 Ltac autoclass := eauto with typeclass_instances.
 Ltac inv H := inversion H; subst; clear H.
-Hint Extern 1 (equiv ?x ?x) => reflexivity.
-Hint Extern 2 (equiv ?y ?x) => now symmetry.
+Hint Extern 1 (equiv ?x ?x) => reflexivity : core.
+Hint Extern 2 (equiv ?y ?x) => now symmetry : core.
 
 
 (** **  Tactics  **)
@@ -84,13 +84,13 @@ Definition monotonic {A B : Type} (RA : relation A) (RB : relation B) (f : A -> 
 
 Definition full_relation {A : Type} := fun _ _ : A => True.
 
-Global Hint Extern 0 (full_relation _ _) => exact I.
+Global Hint Extern 0 (full_relation _ _) => exact I : core.
 
 Instance relation_equivalence_subrelation {A} :
   forall R R' : relation A, relation_equivalence R R' -> subrelation R R'.
 Proof. intros R R' Heq x y Hxy. now apply Heq. Qed.
 
-Global Hint Extern 3 (relation_equivalence _ _) => symmetry.
+Global Hint Extern 3 (relation_equivalence _ _) => symmetry : core.
 
 (** Notations for composition and inverse *)
 Class Composition T `{Setoid T} := {

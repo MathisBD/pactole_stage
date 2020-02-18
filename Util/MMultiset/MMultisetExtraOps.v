@@ -925,7 +925,7 @@ Section MMultisetExtra.
   Instance eqb_max_compat : Proper (equiv ==> Logic.eq ==> Logic.eq ==> Logic.eq) (fun _ : elt => Init.Nat.max).
   Proof. repeat intro. now subst. Qed.
   
-  Local Hint Immediate eqb_max_mult_compat eqb_max_compat.
+  Local Hint Immediate eqb_max_mult_compat eqb_max_compat : core.
   
   (** A simple definition used for specification, proved to be equivalent to the efficient one. *)
   Definition simple_max m := nfilter (fun _ => beq_nat (max_mult m)) m.
@@ -954,7 +954,7 @@ Section MMultisetExtra.
   - apply add_singleton_comm.
   Qed.
   
-  Local Hint Resolve max_aux_transpose.
+  Local Hint Resolve max_aux_transpose : core.
   
   Global Instance max_compat : Proper (equiv ==> equiv) max.
   Proof. intros m1 m2 Heq. unfold max. f_equiv. apply fold_compat; autoclass; reflexivity. Qed.

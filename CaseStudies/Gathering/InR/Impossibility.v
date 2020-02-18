@@ -204,7 +204,7 @@ intros e He Habs. induction Habs as [e Habs | e].
 + inversion He. now apply IHHabs.
 Qed.
 
-Hint Resolve half_size_config.
+Hint Resolve half_size_config : core.
 
 (** As there is no byzantine robot, we can lift configurations for good robots as a full configuration.  *)
 Definition lift_config {A} (config : G -> A) : ident -> A := fun id =>
@@ -485,7 +485,7 @@ Hypothesis Hmove : move <> 1.
 Lemma minus_1_move : 1 - move <> 0.
 Proof. apply Rminus_eq_contra. intro. now apply Hmove. Qed.
 
-Hint Immediate minus_1_move.
+Hint Immediate minus_1_move : core.
 
 (** A function that return different results depending on which tower the robot is.
     Both results are parametrized by the ordered locations of the towers.

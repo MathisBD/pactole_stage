@@ -110,7 +110,7 @@ intros radius config state l. split; intro Hin.
 + unfold obs_is_ok, obs_from_config, limited_set_observation in *. simpl in *.
   rewrite SetObservation.make_set_spec, filter_InA in Hin.
   - rewrite config_list_spec, map_map, InA_map_iff, Rle_bool_true_iff in Hin;
-    autoclass || (decompose [ex and] Hin; eauto).
+    autoclass || firstorder.
   - intros ? ? Heq. now rewrite Heq.
 + destruct Hin as [id [Hid Hle]]. rewrite <- Hid. apply pos_in_config. now rewrite Hid.
 Qed.

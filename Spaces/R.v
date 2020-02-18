@@ -401,7 +401,7 @@ Qed.
 Lemma sim_Minjective : forall (sim : similarity R), Preliminary.injective equiv equiv sim.
 Proof. apply injective. Qed.
 
-Hint Immediate injective sim_Minjective.
+Hint Immediate injective sim_Minjective : core.
 
 Corollary similarity_monotonic : forall sim : similarity R, monotonic Rleb Rleb sim.
 Proof.
