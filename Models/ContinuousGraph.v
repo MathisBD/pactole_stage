@@ -51,22 +51,22 @@ Global Instance E_src_tgt_thd_EqDec : EqDec E_src_tgt_thd_Setoid :=
               (precompose_EqDec threshold).
 
 Global Instance E_subrelation : subrelation (@equiv E E_Setoid) (@equiv E E_src_tgt_thd_Setoid).
-Proof. intros ? ? Heq. split; simpl; now rewrite Heq. Qed.
+Proof using . intros ? ? Heq. split; simpl; now rewrite Heq. Qed.
 
 Global Instance src_compat : Proper (equiv ==> equiv) src.
-Proof. intros ? ? Heq. apply Heq. Qed.
+Proof using . intros ? ? Heq. apply Heq. Qed.
 
 Global Instance tgt_compat : Proper (equiv ==> equiv) tgt.
-Proof. intros ? ? Heq. apply Heq. Qed.
+Proof using . intros ? ? Heq. apply Heq. Qed.
 
 Global Instance threshold_compat : Proper (equiv ==> equiv) threshold.
-Proof. intros ? ? Heq. apply Heq. Qed.
+Proof using . intros ? ? Heq. apply Heq. Qed.
 
 (* Since iso_E gives a bijection that comes with its setoid,
    we need to be lower level to change it from [E_Setoid] to [E_src_tgt_thd_Setoid]. *)
 Global Instance iso_E_compat : forall iso,
   Proper (equiv ==> equiv) (iso_E iso).
-Proof.
+Proof using .
 intros iso ? ? [[Hsrc Htgt] Hthd].
 repeat split; unfold equiv in *; cbn -[equiv] in *.
 - now rewrite <- 2 (proj1 (iso_morphism _ _)), Hsrc.
@@ -95,7 +95,7 @@ Proof. split.
 Defined.
 
 Global Instance locG_EqDec: EqDec locG_Setoid.
-Proof.
+Proof using .
   intros [l1 | e1 p1] [l2 | e2 p2]; simpl.
 + apply equiv_dec.
 + intuition.
@@ -109,10 +109,10 @@ Notation locV := (@location LocationV).
 Notation locG := (@location LocationG).
 
 Global Instance OnVertex_compat : Proper (equiv ==> equiv) OnVertex.
-Proof. repeat intro. auto. Qed.
+Proof using . repeat intro. auto. Qed.
 
 Global Instance OnEdge_compat : Proper (equiv ==> equiv ==> equiv) OnEdge.
-Proof. repeat intro. auto. Qed.
+Proof using . repeat intro. auto. Qed.
 
 (** We can use an isomorphism to build a bijection on a continuous graph. *)
 Definition bijectionG (iso : isomorphism G) : Bijection.bijection loc.
@@ -157,7 +157,7 @@ Proof.
 Defined.
 
 Global Instance bijectionG_compat :  Proper (equiv ==> equiv) bijectionG.
-Proof.
+Proof using .
 intros iso1 iso2 Hiso []; simpl.
 + apply Hiso.
 + repeat split; apply Graph.src_compat || apply Graph.tgt_compat
@@ -173,7 +173,7 @@ Definition location_G2V (loc : locG) : locV :=
   end.
 
 Global Instance location_G2V_compat : Proper (equiv ==> equiv) location_G2V.
-Proof.
+Proof using .
 unfold location_G2V. intros [l1 | e1 p1] [l2 | e2 p2] Hxy; try tauto; [].
 destruct Hxy as [Hexy Hpxy],
          (Rle_dec (threshold e1) p1) eqn:Hx,
@@ -191,7 +191,7 @@ Qed.
 Definition location_V2G : locV -> locG := OnVertex.
 
 Global Instance location_V2G_compat : Proper (equiv ==> equiv) location_V2G.
-Proof. repeat intro. now simpl. Qed.
+Proof using . repeat intro. now simpl. Qed.
 
 (** ** Translation of states **)
 
@@ -209,7 +209,7 @@ Instance stateV_EqDec : EqDec stateV_Setoid :=
 
 Global Instance valid_stateV_compat :
   Proper (@equiv _ (prod_Setoid _ E_src_tgt_thd_Setoid) ==> iff) valid_stateV.
-Proof.
+Proof using .
 intros ? ? [Hpt [[Hsrc Htgt] _]]. simpl in Hsrc, Htgt.
 unfold valid_stateV. now rewrite Hpt, Hsrc, Htgt.
 Qed.
@@ -217,7 +217,7 @@ Qed.
 (** Applying a graph isomorphism preserves this property. *)
 Lemma valid_stateV_iso : forall state iso,
   valid_stateV state -> valid_stateV (iso.(iso_V) (fst state), iso.(iso_E) (snd state)).
-Proof.
+Proof using .
 intros [pt e] iso [Hcase | Hcase].
 + left. simpl in *. rewrite Hcase. apply iso_morphism.
 + right. simpl in *. rewrite Hcase. apply iso_morphism.
@@ -225,7 +225,7 @@ Qed.
 
 Lemma valid_stateV_iso' : forall v e iso pt, pt == iso.(iso_V) v ->
   valid_stateV (v, e) -> valid_stateV (pt, iso.(iso_E) e).
-Proof.
+Proof using .
 intros v e iso pt Hpt [Hcase | Hcase].
 + left. simpl in *. rewrite Hpt, Hcase. apply iso_morphism.
 + right. simpl in *. rewrite Hpt, Hcase. apply iso_morphism.
@@ -262,10 +262,10 @@ Defined.
 
 Lemma SOnVertex_compat : forall v v' e e' p p',
   v == v' -> e == e' -> SOnVertex v e p == SOnVertex v' e' p'.
-Proof. intros. now split. Qed.
+Proof using . intros. now split. Qed.
 
 Global Instance SOnEdge_compat : Proper (equiv ==> equiv ==> equiv) SOnEdge.
-Proof. intros ? ? He ? ? Hp. now split. Qed.
+Proof using . intros ? ? He ? ? Hp. now split. Qed.
 
 Definition stateG2loc state :=
   match state with
@@ -274,14 +274,14 @@ Definition stateG2loc state :=
   end.
 
 Instance stateG2loc_compat : Proper (equiv ==> equiv) stateG2loc.
-Proof. intros [] [] *; simpl in *; tauto. Qed.
+Proof using . intros [] [] *; simpl in *; tauto. Qed.
 
 (** Embedding and projection between both kinds of states. *)
 Definition state_V2G (state : stateV) : stateG :=
   SOnVertex (fst (proj1_sig state)) (snd (proj1_sig state)) (proj2_sig state).
 
 Global Instance state_V2G_compat : Proper (equiv ==> equiv) state_V2G.
-Proof. intros ? ? []. unfold state_V2G. now split. Qed.
+Proof using . intros ? ? []. unfold state_V2G. now split. Qed.
 
 Definition state_G2V (state : stateG) : stateV :=
   match state with
@@ -292,7 +292,7 @@ Definition state_G2V (state : stateG) : stateV :=
   end.
 
 Global Instance state_G2V_compat : Proper (equiv ==> equiv) state_G2V.
-Proof.
+Proof using .
 intros [v e p | e p] [v' e' p' | e' p'] Hstate; auto; [].
 destruct Hstate as [[[Hsrc Htgt] Hthd] Hp]. simpl.
 destruct (Rle_dec (threshold e) p), (Rle_dec (threshold e') p');
@@ -301,7 +301,7 @@ destruct p, p'; simpl in *; subst; contradiction.
 Qed.
 
 Lemma state_V2G2V : forall state, state_G2V (state_V2G state) == state.
-Proof. intro. simpl. repeat (split; try reflexivity). Qed.
+Proof using . intro. simpl. repeat (split; try reflexivity). Qed.
 
 (** ** On configurations *)
 
@@ -351,7 +351,7 @@ Definition liftG (f : sigT preconditionG) state :=
   end.
 
 Global Instance liftG_compat : Proper (@equiv (sigT preconditionG) _ ==> equiv ==> equiv) liftG.
-Proof.
+Proof using .
 intros [f [iso1 [Hiso1 Ht1]]] [g [iso2 [Hiso2 Ht2]]] Hfg state1 state2 Hstate.
 assert (Heq : iso_V iso1 == iso2).
 { intro x. assert (Heq1 := Hiso1 (OnVertex x)). assert (Heq2 := Hiso2 (OnVertex x)).
@@ -395,7 +395,7 @@ Definition compose_precondition f g :=
 
 Lemma liftG_compose : forall f g,
   (fun x => liftG f (liftG g x)) == liftG (compose_precondition f g).
-Proof.
+Proof using .
 intros [f [isof [Hisof Hft]]] [g [isog [Hisog Hgt]]] x.
 unfold compose_precondition.
 destruct x; simpl; repeat split; reflexivity.
@@ -441,15 +441,15 @@ Notation configG := (@configuration _ stateG _ _).
 Definition config_V2G (config : configV) : configG := fun id => state_V2G (config id).
 
 Global Instance config_V2G_compat : Proper (equiv ==> equiv) config_V2G.
-Proof. intros ? ? Hconfig id. unfold config_V2G. f_equiv. apply Hconfig. Qed.
+Proof using . intros ? ? Hconfig id. unfold config_V2G. f_equiv. apply Hconfig. Qed.
 
 Definition config_G2V (config : configG) : configV := fun id => state_G2V (config id).
 
 Global Instance config_G2V_compat : Proper (equiv ==> equiv) config_G2V.
-Proof. intros ? ? Hconfig id. unfold config_G2V. f_equiv. apply Hconfig. Qed.
+Proof using . intros ? ? Hconfig id. unfold config_G2V. f_equiv. apply Hconfig. Qed.
 
 Lemma config_V2G2V : forall config : configV, config_G2V (config_V2G config) == config.
-Proof. intros. unfold config_G2V, config_V2G. now repeat try (split; simpl). Qed.
+Proof using . intros. unfold config_G2V, config_V2G. now repeat try (split; simpl). Qed.
 
 (** The observation for the continuous setting is almost the same as for the discrete one:
     we simply project robots on edges either to the source or target of the edge
@@ -479,16 +479,16 @@ Definition rbg_V2G (rbgV : robogramV) : robogramG :=
   @Build_robogram _ _ InfoG _ (obs_V2G Obs) _ _ rbgV rbgV.(pgm_compat).
 
 Global Instance rbg_V2G_compat : Proper (equiv ==> equiv) rbg_V2G.
-Proof. intros ra1 ra2 Hra. simpl. apply Hra. Qed.
+Proof using . intros ra1 ra2 Hra. simpl. apply Hra. Qed.
 
 Definition rbg_G2V (rbgG : robogramG) : robogramV :=
   @Build_robogram _ _ InfoV _ Obs _ _ rbgG rbgG.(pgm_compat).
 
 Global Instance rbg_G2V_compat : Proper (equiv ==> equiv) rbg_G2V.
-Proof. intros ra1 ra2 Hra s. simpl. apply Hra. Qed.
+Proof using . intros ra1 ra2 Hra s. simpl. apply Hra. Qed.
 
 Lemma rbg_V2G2V : forall rbgV, rbg_G2V (rbg_V2G rbgV) == rbgV.
-Proof. intro. simpl. repeat split; reflexivity. Qed.
+Proof using . intro. simpl. repeat split; reflexivity. Qed.
 
 (** **  Demonic schedulers  **)
 
@@ -497,7 +497,7 @@ Definition stable_threshold iso := iso_T iso == @Bijection.id R _.
 
 Definition stable_threshold_inverse : forall iso,
   stable_threshold iso -> stable_threshold (inverse iso).
-Proof.
+Proof using .
 intros iso Hstable x. unfold stable_threshold in *. simpl in *.
 now rewrite <- (Hstable x), Bijection.retraction_section.
 Qed.

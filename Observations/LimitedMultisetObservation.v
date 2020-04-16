@@ -40,7 +40,7 @@ Require Import Pactole.Spaces.Similarity.
 
 Close Scope R_scope.
 Set Implicit Arguments.
-Set Default Proof Using "All".
+
 Coercion Bijection.section : Bijection.bijection >-> Funclass.
 
 
@@ -80,7 +80,7 @@ Local Notation "'from_config' radius" :=
 
 Lemma obs_from_config_ignore_snd : forall ref_state config state,
   obs_from_config config state == obs_from_config config ref_state.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma obs_from_config_map : forall sim : similarity location,
   forall Psim radius config state,
@@ -88,7 +88,7 @@ Lemma obs_from_config_map : forall sim : similarity location,
   == from_config (Similarity.zoom sim * radius)
                  (map_config (lift (existT precondition sim Psim)) config)
                  ((lift (existT precondition sim Psim)) state).
-Proof.
+Proof using .
 repeat intro. unfold obs_from_config, limited_multiset_observation.
 rewrite config_list_map; try (now apply lift_compat; simpl; apply Bijection.section_compat); [].
 rewrite map_map, 2 filter_map, <- MultisetObservation.make_multiset_map, map_map; autoclass; [].
@@ -105,7 +105,7 @@ Qed.
 Property pos_in_config : forall radius config state id,
   ((dist (get_location (config id)) (get_location state)) <= radius)%R ->
   In (get_location (config id)) (from_config radius config state).
-Proof.
+Proof using .
 intros radius config state id. unfold obs_from_config. simpl. unfold In.
 rewrite MultisetObservation.make_multiset_spec. rewrite (countA_occ_pos _).
 rewrite filter_InA, InA_map_iff; autoclass; [|].
@@ -118,7 +118,7 @@ Qed.
 Property obs_from_config_In : forall radius config state l,
   In l (from_config radius config state)
   <-> exists id, get_location (config id) == l /\ (dist l (get_location state) <= radius)%R.
-Proof.
+Proof using .
 intros radius config state l. split; intro Hin.
 + unfold obs_is_ok, obs_from_config, limited_multiset_observation in *. simpl in *.
   rewrite MultisetObservation.make_multiset_In, filter_InA in Hin.

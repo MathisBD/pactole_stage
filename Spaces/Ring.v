@@ -72,10 +72,10 @@ Global Instance ring_edge_EqDec : EqDec ring_edge_Setoid := prod_EqDec _ _.
 (* the following lemmas are used to easily prove that 
          (Z.to_nat (l mod Z.of_nat n)) = (l mod Z.of_nat n) *)
 Lemma to_Z_sup_0 : forall l : Z, (0 <= l mod Z.of_nat ring_size)%Z.
-Proof. intros. apply Zdiv.Z_mod_lt. destruct RR. simpl. lia. Qed.
+Proof using . intros. apply Zdiv.Z_mod_lt. destruct RR. simpl. lia. Qed.
 
 Lemma to_Z_inf_n (x : Z): Z.to_nat (x mod Z.of_nat ring_size)%Z < ring_size.
-Proof.
+Proof using .
 intros. rewrite <- Nat2Z.id, <- Z2Nat.inj_lt;
 try apply Zdiv.Z_mod_lt; destruct RR; simpl; omega.
 Qed.
@@ -85,30 +85,30 @@ Definition of_Z (x : Z) : ring_node :=
   exist _ (Z.to_nat (x mod Z.of_nat ring_size)) (to_Z_inf_n x).
 
 Global Instance to_Z_compat : Proper (equiv ==> Z.eq) to_Z.
-Proof. repeat intro. hnf in *. now f_equal. Qed.
+Proof using . repeat intro. hnf in *. now f_equal. Qed.
 
 Global Instance of_Z_compat : Proper (Z.eq ==> equiv) of_Z.
-Proof. intros ? ? Heq. now rewrite Heq. Qed.
+Proof using . intros ? ? Heq. now rewrite Heq. Qed.
 
 Lemma to_Z_injective : Preliminary.injective equiv Logic.eq to_Z.
-Proof.
+Proof using .
 intros [x Hx] [y Hy] Heq.
 unfold to_Z in Heq. hnf in Heq |- *. simpl in Heq.
 apply Nat2Z.inj in Heq. subst. f_equal. apply le_unique.
 Qed.
 
 Lemma to_Z_small : forall v, (0 <= to_Z v < Z.of_nat ring_size)%Z.
-Proof. intro. unfold to_Z. split; try omega; []. apply Nat2Z.inj_lt. apply proj2_sig. Qed.
+Proof using . intro. unfold to_Z. split; try omega; []. apply Nat2Z.inj_lt. apply proj2_sig. Qed.
 
 Lemma Z2Z : forall l, (to_Z (of_Z l) = l mod Z.of_nat ring_size)%Z.
-Proof.
+Proof using .
 intros. unfold to_Z, of_Z. simpl.
 rewrite Z2Nat.id; trivial; [].
 apply Z.mod_pos_bound. destruct RR. simpl. lia.
 Qed.
 
 Lemma V2V : forall v, of_Z (to_Z v) == v.
-Proof.
+Proof using .
 intros [k Hk]. hnf. unfold to_Z, of_Z. apply eq_proj1. simpl.
 rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; omega.
 Qed.
@@ -122,7 +122,7 @@ Definition move_along (v : ring_node) (dir : direction) :=
   end.
 
 Global Instance move_along_compat : Proper (equiv ==> equiv ==> equiv) move_along.
-Proof.
+Proof using .
 intros v1 v2 Hv e1 e2. simpl in *. unfold move_along. subst.
 destruct (Nat.eq_dec ring_size 2) as [Hsize | Hsize];
 repeat destruct_match; try tauto || discriminate; [|];
@@ -277,7 +277,7 @@ Notation ring_node := (finite_node ring_size).
 (* TODO: generalize the definition of translation to thresholds. *)
 Lemma bij_trans_V_proof : forall c x y,
   of_Z (to_Z x - c) == y <-> of_Z (to_Z y + c) == x.
-Proof.
+Proof using .
 intros c [x ?] [y ?]. unfold of_Z, to_Z.
 split; intro Heq; apply (f_equal (@proj1_sig _ _)) in Heq;
 simpl in *; subst; apply eq_proj1; simpl;
@@ -331,21 +331,21 @@ Proof.
 Defined. (* TODO: abstract the proofs *)
 
 Instance trans_compat : Proper (equiv ==> @equiv _ isomorphism_Setoid) trans.
-Proof.
+Proof using .
 intros c1 c2 Hc. simpl in *. subst.
 repeat split; try reflexivity; [].
 repeat destruct_match; tauto.
 Qed.
 
 Lemma trans_origin : @equiv _ isomorphism_Setoid (trans 0) Isomorphism.id.
-Proof.
+Proof using .
 split; [| split; [| reflexivity]].
 + intro x. apply eq_proj1. cbn -[of_Z]. now rewrite Z.sub_0_r, V2V.
 + intros [x d]. cbn -[equiv]. now rewrite Z.sub_0_r, V2V.
 Qed.
 
 Lemma trans_same : forall k, Bijection.section (trans (to_Z k)) k == of_Z 0.
-Proof. intro k. simpl. f_equal. ring. Qed.
+Proof using . intro k. simpl. f_equal. ring. Qed.
 
 (** ***  Symmetry of a ring w.r.t. a point [c]  **)
 
@@ -357,7 +357,7 @@ Definition swap_direction dir :=
   end.
 
 Lemma bij_sym_V_proof : forall c x y, of_Z (c - to_Z x) == y <-> of_Z (c - to_Z y) == x.
-Proof.
+Proof using .
 intros c x y. simpl. split; intro; subst; rewrite Z2Z; apply eq_proj1;
 unfold of_Z; simpl proj1_sig; rewrite Zdiv.Zminus_mod_idemp_r;
 match goal with x : ring_node |- _ =>
@@ -406,7 +406,7 @@ Proof.
 Defined. (* TODO: abstract the proofs *)
 
 Instance sym_compat : Proper (equiv ==> @equiv _ isomorphism_Setoid) sym.
-Proof.
+Proof using .
 intros c1 c2 Hc. simpl in *. subst.
 repeat split; try reflexivity; [].
 repeat destruct_match; tauto.
@@ -414,17 +414,21 @@ Qed.
 
 Lemma sym_involutive : forall c,
   @equiv _ isomorphism_Setoid (@compose _ _ IsoComposition (sym c) (sym c)) Isomorphism.id.
-Proof.
+Proof using .
 intro c. split; [| split; [| simpl; reflexivity]].
 + intro x. apply eq_proj1. cbn -[of_Z]. rewrite Z2Z. unfold of_Z. simpl.
   rewrite Zdiv.Zminus_mod_idemp_r. ring_simplify (c - (c - to_Z x))%Z.
-  unfold to_Z. rewrite Z.mod_small, Nat2Z.id; trivial; []. assert (Hx := proj2_sig x). lia.
+  unfold to_Z. rewrite Z.mod_small, Nat2Z.id; trivial; []. assert (Hx := proj2_sig x).
+  simpl in Hx.
+  lia.
 + intro x. split.
   - (* TODO: same proof as above, factor it? *)
     apply eq_proj1. cbn -[of_Z]. rewrite Z2Z. unfold of_Z. simpl.
     rewrite Zdiv.Zminus_mod_idemp_r. ring_simplify (c - (c - to_Z (fst x)))%Z.
     unfold to_Z. rewrite Z.mod_small, Nat2Z.id; trivial; [].
-    assert (Hx := proj2_sig (fst x)). lia.
+    assert (Hx := proj2_sig (fst x)).
+    simpl in Hx.
+    lia.
   - simpl. destruct (snd x); simpl; now destruct_match.
 Qed.
 

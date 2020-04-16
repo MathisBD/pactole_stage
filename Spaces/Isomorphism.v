@@ -51,13 +51,13 @@ Proof. split.
 Defined.
 
 Instance iso_V_compat : Proper (equiv ==> equiv) iso_V.
-Proof. intros ? ? Heq ?. now apply Heq. Qed.
+Proof using . intros ? ? Heq ?. now apply Heq. Qed.
 
 Instance iso_E_compat : Proper (equiv ==> equiv) iso_E.
-Proof. intros ? ? Heq ?. now apply Heq. Qed.
+Proof using . intros ? ? Heq ?. now apply Heq. Qed.
 
 Instance iso_T_compat : Proper (equiv ==> equiv) iso_T.
-Proof. intros ? ? Heq ?. now apply Heq. Qed.
+Proof using . intros ? ? Heq ?. now apply Heq. Qed.
 
 
 Definition id : isomorphism.
@@ -93,7 +93,7 @@ Proof. intros f1 f2 Hf g1 g2 Hg. repeat split; intro; simpl; now rewrite Hf, Hg.
 Proof. intros f1 f2 Hf g1 g2 Hg. repeat split; intro; simpl; now rewrite Hf, Hg. Qed. *)
 
 Lemma compose_assoc : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
-Proof. intros f g h; repeat split; simpl; reflexivity. Qed.
+Proof using . intros f g h; repeat split; simpl; reflexivity. Qed.
 
 Set Printing Implicit.
 
@@ -138,16 +138,16 @@ repeat split; intro; simpl; change eq with (@equiv R _); f_equiv; auto.
 Qed. *)
 
 Lemma compose_inverse_l : forall iso : isomorphism, iso ⁻¹ ∘ iso == id.
-Proof. intro. repeat split; intro; simpl; try now rewrite retraction_section; autoclass. Qed.
+Proof using . intro. repeat split; intro; simpl; try now rewrite retraction_section; autoclass. Qed.
 
 Lemma compose_inverse_r : forall iso : isomorphism, iso ∘ (iso ⁻¹) == id.
-Proof. intro. repeat split; intro; simpl; try now rewrite section_retraction; autoclass. Qed.
+Proof using . intro. repeat split; intro; simpl; try now rewrite section_retraction; autoclass. Qed.
 
 Lemma inverse_compose : forall f g : isomorphism, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
-Proof. intros f g; repeat split; intro; simpl; reflexivity. Qed.
+Proof using . intros f g; repeat split; intro; simpl; reflexivity. Qed.
 
 Lemma injective : forall iso : isomorphism, Preliminary.injective equiv equiv iso.
-Proof.
+Proof using .
 intros f x y Heq. transitivity (id x); try reflexivity; [].
 rewrite <- (compose_inverse_l f). simpl. rewrite Heq.
 now apply compose_inverse_l.
@@ -160,7 +160,7 @@ Arguments isomorphism {V} {E} G.
 Lemma find_edge_iso_Some `{G : Graph} : forall (iso : isomorphism G) src tgt e,
   @find_edge _ _ G (iso src) (iso tgt) == Some (iso.(iso_E) e)
   <-> @find_edge _ _ G src tgt == Some e.
-Proof.
+Proof using .
 intros iso src tgt e.
 assert (strong_and : forall T U V W (A B : T -> U -> V -> W -> Prop),
           (forall x y z t, B x y z t) ->
@@ -176,7 +176,7 @@ Qed.
 
 Lemma find_edge_iso_None `{G : Graph} : forall (iso : isomorphism G) src tgt,
   @find_edge _ _ G (iso src) (iso tgt) == None <-> @find_edge _ _ G src tgt == None.
-Proof.
+Proof using .
 intros iso src tgt. destruct (find_edge src tgt) eqn:Hcase.
 + apply (eq_subrelation (R := equiv)) in Hcase; autoclass; [].
   rewrite <- find_edge_iso_Some in Hcase. rewrite Hcase. tauto.

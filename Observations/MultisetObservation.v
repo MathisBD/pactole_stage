@@ -24,7 +24,7 @@ Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 Close Scope R_scope.
 Set Implicit Arguments.
-Set Default Proof Using "All".
+
 
 
 Section MultisetConstruction.
@@ -42,13 +42,13 @@ Existing Instance MakeFMultisetsFacts.
 Definition make_multiset l := from_elements (List.map (fun x => (x, 1)) l).
 
 Lemma make_multiset_nil : make_multiset nil == empty.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma make_multiset_cons : forall x l, make_multiset (x :: l) == add x 1 (make_multiset l).
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma make_multiset_empty : forall l, make_multiset l == empty <-> l = nil.
-Proof.
+Proof using .
 intro l. unfold make_multiset. rewrite from_elements_empty.
 destruct l; cbn.
 - intuition.
@@ -57,13 +57,13 @@ Qed.
 
 Lemma make_multiset_app : forall l l',
   make_multiset (l ++ l') == union (make_multiset l) (make_multiset l').
-Proof. intros. unfold make_multiset. now rewrite List.map_app, from_elements_append. Qed.
+Proof using . intros. unfold make_multiset. now rewrite List.map_app, from_elements_append. Qed.
 
 Lemma nequiv_sym : forall x y, ~x == y -> ~y == x.
-Proof. intuition. Qed.
+Proof using . intuition. Qed.
 
 Instance make_multiset_compat : Proper (PermutationA equiv ==> equiv) make_multiset.
-Proof.
+Proof using .
 intros ? ? ?. unfold make_multiset. eapply from_elements_compat, PermutationA_map; eauto.
 - autoclass.
 - repeat intro. split; hnf; auto.
@@ -71,7 +71,7 @@ Qed.
 
 Lemma make_multiset_PermutationA : forall x l n, (make_multiset l)[x] = n ->
   exists l', ~InA equiv x l' /\ PermutationA equiv l (alls x n ++ l').
-Proof.
+Proof using .
 intros x l. induction l; intros n Hin.
 exists nil. split. now auto. rewrite make_multiset_nil, empty_spec in Hin. subst n. simpl. reflexivity.
 rewrite make_multiset_cons in Hin. destruct (equiv_dec x a) as [Heq | Heq].
@@ -87,7 +87,7 @@ rewrite make_multiset_cons in Hin. destruct (equiv_dec x a) as [Heq | Heq].
 Qed.
 
 Lemma make_multiset_alls : forall x n, make_multiset (alls x n) == singleton x n.
-Proof.
+Proof using .
 intros x n. induction n.
 + now rewrite singleton_0, make_multiset_nil.
 + simpl alls. rewrite make_multiset_cons. rewrite IHn. intro y. rewrite singleton_spec.
@@ -99,7 +99,7 @@ intros x n. induction n.
 Qed.
 
 Corollary make_multiset_In : forall x l, In x (make_multiset l) <-> InA equiv x l.
-Proof.
+Proof using .
 intros x l. unfold make_multiset. rewrite from_elements_In.
 setoid_rewrite InA_map_iff; autoclass.
 + split; intro Hin.
@@ -110,11 +110,11 @@ Qed.
 
 Theorem make_multiset_map : forall f, Proper (equiv ==> equiv) f ->
   forall l, make_multiset (List.map f l) == map f (make_multiset l).
-Proof. intros. unfold make_multiset. now rewrite map_from_elements, map_map, map_map. Qed.
+Proof using . intros. unfold make_multiset. now rewrite map_from_elements, map_map, map_map. Qed.
 
 Theorem make_multiset_filter : forall f, Proper (equiv ==> Logic.eq) f ->
   forall l, make_multiset (List.filter f l) == filter f (make_multiset l).
-Proof.
+Proof using .
 intros f Hf l. induction l as [| e l].
 + intro. rewrite (filter_compat Hf), make_multiset_nil; try apply make_multiset_nil; [].
   now rewrite filter_empty.
@@ -124,14 +124,14 @@ intros f Hf l. induction l as [| e l].
 Qed.
 
 Theorem cardinal_make_multiset : forall l, cardinal (make_multiset l) = length l.
-Proof.
+Proof using .
 induction l.
 + now rewrite make_multiset_nil, cardinal_empty.
 + rewrite make_multiset_cons, cardinal_add. simpl. apply f_equal, IHl.
 Qed.
 
 Theorem make_multiset_spec : forall x l, (make_multiset l)[x] = countA_occ _ equiv_dec x l.
-Proof.
+Proof using .
 intros x l. induction l.
 + rewrite make_multiset_nil. now rewrite empty_spec.
 + rewrite make_multiset_cons. simpl countA_occ. destruct (equiv_dec a x) as [Heq | Hneq].
@@ -141,7 +141,7 @@ Qed.
 
 Lemma make_multiset_remove : forall x l,
   make_multiset (removeA equiv_dec x l) == remove x (make_multiset l)[x] (make_multiset l).
-Proof.
+Proof using .
 intros x l y. induction l as [| a l].
 * rewrite make_multiset_nil. rewrite empty_spec. now rewrite remove_0, empty_spec.
 * rewrite make_multiset_cons. simpl removeA.
@@ -157,7 +157,7 @@ intros x l y. induction l as [| a l].
 Qed.
 
 Lemma make_multiset_support : forall x l, InA equiv x (support (make_multiset l)) <-> InA equiv x l.
-Proof.
+Proof using .
 intros x l. rewrite support_spec. unfold In.
 rewrite make_multiset_spec. apply countA_occ_pos. autoclass.
 Qed.
@@ -195,13 +195,13 @@ Notation obs_from_config := (@obs_from_config _ _ _ _ multiset_observation).
 
 Lemma obs_from_config_ignore_snd ref_st :
   forall config st, obs_from_config config st == obs_from_config config ref_st.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma obs_from_config_map : forall f, Proper (equiv ==> equiv) f ->
   forall Pf config state,
   map f (obs_from_config config state)
   == obs_from_config (map_config (lift (existT _ f Pf)) config) ((lift (existT _ f Pf)) state).
-Proof.
+Proof using .
 repeat intro. unfold obs_from_config, multiset_observation.
 rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 + apply make_multiset_compat, Preliminary.eqlistA_PermutationA_subrelation.
@@ -214,13 +214,13 @@ rewrite config_list_map, map_map, <- make_multiset_map, map_map.
 Qed.
 
 Theorem cardinal_obs_from_config : forall config pt, cardinal (obs_from_config config pt) = nG + nB.
-Proof.
+Proof using .
 intro. unfold obs_from_config, multiset_observation.
 now rewrite cardinal_make_multiset, map_length, config_list_length.
 Qed.
 
 Property pos_in_config : forall config pt id, In (get_location (config id)) (obs_from_config config pt).
-Proof.
+Proof using .
 intros config pt id. unfold obs_from_config. simpl. unfold In.
 rewrite make_multiset_spec. rewrite (countA_occ_pos _).
 rewrite InA_map_iff; autoclass; [].
@@ -229,7 +229,7 @@ Qed.
 
 Property obs_from_config_In : forall config pt l,
   In l (obs_from_config config pt) <-> exists id, get_location (config id) == l.
-Proof.
+Proof using .
 intros config pt l. split; intro Hin.
 + assert (Heq := obs_from_config_spec config pt).
   unfold obs_is_ok, obs_from_config, multiset_observation in *.

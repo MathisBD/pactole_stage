@@ -67,7 +67,7 @@ Class FlexibleSetting `{FlexibleChoice}
 (** If the robot is not trying to move, then it does not, no matter what the demon chooses. *)
 Lemma update_no_move `{FlexibleSetting} : forall config g sim pt choice,
   get_location (update config g sim (straight_path pt pt) choice) == pt.
-Proof.
+Proof using .
 intros config g sim pt choice.
 destruct (ratio_spec config g sim (straight_path pt pt) choice) as [Heq | [Heq Hle]];
 rewrite Heq; simpl; now rewrite add_opp, mul_origin, add_origin.
@@ -109,7 +109,7 @@ Unshelve. all:autoclass.
 Defined.
 
 Global Instance FlexibleChoiceFlexibleUpdate delta : FlexibleSetting (Update := FlexibleUpdate delta) delta.
-Proof. split.
+Proof using . split.
 intros config g traj choice pt pt'.
 simpl update in *. unfold pt'. destruct_match_eq Hle.
 - rewrite Rle_bool_true_iff in Hle. now right.

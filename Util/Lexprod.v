@@ -80,7 +80,7 @@ Global Arguments lexprod  [A] [B] leA leB _ _.
 
 
 Instance lexprod_compat: Proper (eq * eq ==> eq * eq ==> iff) (lexprod lt lt).
-Proof.
+Proof using .
 intros (a, b) (a', b') (heqa, heqb) (c, d) (c', d') (heqc, heqd).
 hnf in *|-. simpl in *|-. now subst.
 Qed.

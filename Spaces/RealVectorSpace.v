@@ -81,60 +81,60 @@ Open Scope VectorSpace_scope.
 Definition add_origin_r `{RealVectorSpace} := add_origin.
 
 Lemma add_origin_l `{RealVectorSpace} : forall u, 0 + u == u.
-Proof. intro. rewrite add_comm. apply add_origin. Qed.
+Proof using . intro. rewrite add_comm. apply add_origin. Qed.
 
 Lemma add_reg_r `{RealVectorSpace} : forall w u v, u + w == v + w -> u == v.
-Proof.
+Proof using .
 intros w u v Heq. setoid_rewrite <- add_origin.
 now rewrite <- (add_opp w), add_assoc, Heq, <- add_assoc.
 Qed.
 
 Lemma add_reg_l `{RealVectorSpace} : forall w u v, w + u == w + v -> u == v.
-Proof. setoid_rewrite add_comm. apply add_reg_r. Qed.
+Proof using . setoid_rewrite add_comm. apply add_reg_r. Qed.
 
 Lemma opp_origin `{RealVectorSpace} : - origin == origin.
-Proof. apply (add_reg_r origin). now rewrite add_comm, add_opp, add_origin. Qed.
+Proof using . apply (add_reg_r origin). now rewrite add_comm, add_opp, add_origin. Qed.
 
 Lemma opp_reg `{RealVectorSpace} : forall u v, - u == - v -> u == v.
-Proof. intros u v Heq. apply (add_reg_r (opp u)). rewrite add_opp, Heq, add_opp. reflexivity. Qed.
+Proof using . intros u v Heq. apply (add_reg_r (opp u)). rewrite add_opp, Heq, add_opp. reflexivity. Qed.
 
 Lemma opp_opp `{RealVectorSpace} : forall u, - (- u) == u.
-Proof. intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.
+Proof using . intro u. apply (add_reg_l (opp u)). now rewrite add_opp, add_comm, add_opp. Qed.
 
 Lemma opp_distr_add `{RealVectorSpace} : forall u v, - (u + v) == (- u) + (- v).
-Proof.
+Proof using .
 intros u v. apply (add_reg_l (add u v)). rewrite add_opp, add_assoc. setoid_rewrite add_comm at 3.
 setoid_rewrite <- add_assoc at 2. now rewrite add_opp, add_origin, add_opp.
 Qed.
 
 Lemma mul_0 `{RealVectorSpace} : forall u, 0 * u == 0.
-Proof.
+Proof using .
 intro u. apply (add_reg_l u).
 rewrite add_origin. rewrite <- (mul_1 u) at 1. rewrite add_morph.
 ring_simplify (1 + 0)%R. now rewrite mul_1.
 Qed.
 
 Lemma minus_morph `{RealVectorSpace} : forall k u, (-k) * u == - (k * u).
-Proof.
+Proof using .
 intros k u. apply (add_reg_l (mul k u)).
 rewrite add_opp. rewrite add_morph. ring_simplify (k + - k)%R.
 apply mul_0.
 Qed.
 
 Lemma mul_origin `{RealVectorSpace} : forall k, k * 0 == 0.
-Proof.
+Proof using .
 intro k. apply add_reg_l with (k * 0).
 rewrite <- mul_distr_add. setoid_rewrite add_origin. reflexivity.
 Qed.
 
 Lemma mul_opp `{RealVectorSpace} : forall k u, k * (- u) == - (k * u).
-Proof.
+Proof using .
 intros k u. apply (add_reg_l (k * u)). rewrite <- mul_distr_add.
 setoid_rewrite add_opp. now rewrite mul_origin.
 Qed.
 
 Lemma mul_reg_l `{RealVectorSpace} : forall k u v, k <> 0%R -> k * u == k * v -> u == v.
-Proof.
+Proof using .
 intros k u v Hk Heq. setoid_rewrite <- mul_1.
 replace 1%R with (/k * k)%R by now field.
 setoid_rewrite <- mul_morph. rewrite Heq.
@@ -142,7 +142,7 @@ reflexivity.
 Qed.
 
 Lemma mul_reg_r `{RealVectorSpace} : forall k k' u, u =/= 0 -> k * u == k' * u -> k = k'.
-Proof.
+Proof using .
 intros k k' u Hu Heq. destruct (Rdec k k') as [| Hneq]; trivial.
 assert (Heq0 : (k - k') * u == 0).
 { unfold Rminus. rewrite <- add_morph, minus_morph, Heq. apply add_opp. }
@@ -154,10 +154,10 @@ Qed.
 Definition middle `{RealVectorSpace} u v := (1/2) * (u + v).
 
 Instance middle_compat `{RealVectorSpace} : Proper (equiv ==> equiv ==> equiv) middle.
-Proof. intros u1 u2 Hu v1 v2 Hv. unfold middle. now rewrite Hu, Hv. Qed.
+Proof using . intros u1 u2 Hu v1 v2 Hv. unfold middle. now rewrite Hu, Hv. Qed.
 
 Lemma mul_integral `{RealVectorSpace} : forall k u, k * u == 0 -> k = 0%R \/ u == 0.
-Proof.
+Proof using .
 intros k u Heq. destruct (Rdec k 0%R).
 - now left.
 - right. apply mul_reg_l with k; trivial; []. now rewrite Heq, mul_origin.
@@ -176,13 +176,13 @@ Defined.
 
 Instance straight_path_compat {T} `{RealVectorSpace T} :
   Proper (equiv ==> equiv ==> equiv) straight_path.
-Proof.
+Proof using .
 intros pt1 pt2 Heq pt1' pt2' Heq' x. simpl.
 now apply add_compat, mul_compat, add_compat, opp_compat.
 Qed.
 
 Lemma straight_path_1 `{RealVectorSpace} : forall pt pt', straight_path pt pt' ratio_1 == pt'.
-Proof. intros. simpl. now rewrite mul_1, add_assoc, (add_comm pt), <- add_assoc, add_opp, add_origin. Qed.
+Proof using . intros. simpl. now rewrite mul_1, add_assoc, (add_comm pt), <- add_assoc, add_opp, add_origin. Qed.
 
 (** We can simplify this definition in the local frame as we start from the origin. *)
 Definition local_straight_path {T} `{RVS : RealVectorSpace T} (pt : T) : path T.
@@ -193,14 +193,14 @@ Defined.
 
 Instance local_straight_path_compat {T} `{RealVectorSpace T} :
   Proper (equiv ==> equiv) local_straight_path.
-Proof. intros pt1 pt2 Heq x. simpl. now apply mul_compat. Qed.
+Proof using . intros pt1 pt2 Heq x. simpl. now apply mul_compat. Qed.
 
 Lemma local_straight_path_1 `{RealVectorSpace} : forall pt, local_straight_path pt ratio_1 == pt.
-Proof. intro. simpl. now rewrite mul_1. Qed.
+Proof using . intro. simpl. now rewrite mul_1. Qed.
 
 Lemma local_straight_path_global `{RealVectorSpace} :
   forall pt, local_straight_path pt == straight_path origin pt.
-Proof. repeat intro. simpl. now rewrite add_origin_l, opp_origin, add_origin. Qed.
+Proof using . repeat intro. simpl. now rewrite add_origin_l, opp_origin, add_origin. Qed.
 
 (** ***  Weighted barycenter of a list of locations  **)
 
@@ -216,7 +216,7 @@ Section Barycenter.
   
   Instance barycenter_aux_compat :
     Proper (PermutationA (equiv * eq) ==> equiv * eq ==> equiv * eq) barycenter_aux.
-  Proof.
+  Proof using .
   apply fold_left_symmetry_PermutationA; autoclass.
   + intros [] [] [Heq1 ?] [] [] [Heq2 ?]. split; hnf in *; simpl in *; subst; trivial; [].
     apply add_compat; trivial; []. now apply mul_compat.
@@ -227,7 +227,7 @@ Section Barycenter.
   Qed.
   
   Global Instance barycenter_compat : Proper (PermutationA (equiv * eq) ==> equiv) barycenter.
-  Proof.
+  Proof using .
   intros l1 l2 Hperm.
   unfold barycenter.
   apply barycenter_aux_compat in Hperm.
@@ -239,17 +239,17 @@ Section Barycenter.
   (* The first component of [barycenter_aux] is the weighted sum of all points. *)
   Lemma barycenter_aux_fst : forall E pt sumR,
     fst (barycenter_aux E (pt, sumR)) = List.fold_left (fun acc xn => ((snd xn * fst xn) + acc)) E pt.
-  Proof. induction E; intros; simpl; trivial; now rewrite IHE. Qed.
+  Proof using . induction E; intros; simpl; trivial; now rewrite IHE. Qed.
   
   (* The second component of [barycenter_aux] is the sum of all coefficients. *)
   Lemma barycenter_aux_snd : forall E pt sumR,
     snd (barycenter_aux E (pt, sumR)) = List.fold_left (fun acc xn => snd xn + acc)%R E sumR.
-  Proof. induction E; intros; simpl; trivial; now rewrite IHE. Qed.
+  Proof using . induction E; intros; simpl; trivial; now rewrite IHE. Qed.
   
   Lemma barycenter_aux_snd_nonneg : forall E init,
     (List.Forall (fun x => 0 <= snd x) E) ->
     snd init <= snd (barycenter_aux E init).
-  Proof.
+  Proof using .
   induction E as [| e E]; intros init HE; simpl.
   + reflexivity.
   + transitivity (snd e + snd init)%R.
@@ -263,7 +263,7 @@ Section Barycenter.
     E <> Datatypes.nil ->
     (List.Forall (fun x => 0 < snd x) E) ->
     0 < snd (barycenter_aux E init).
-  Proof.
+  Proof using .
   intros E init Hinit Hnil HE.
   destruct E as [| e E]; try (now elim Hnil); [].
   simpl. apply Rlt_le_trans with (snd e + snd init)%R.
@@ -274,7 +274,7 @@ Section Barycenter.
   Qed.
   
   Lemma barycenter_singleton : forall pt w, w <> 0%R -> barycenter ((pt, w) :: Datatypes.nil) == pt.
-  Proof.
+  Proof using .
   intros pt w Hw. unfold barycenter. simpl.
   rewrite add_origin, Rplus_0_r, mul_morph, Rmult_comm.
   unfold Rdiv. now rewrite Rmult_1_l, Rinv_r, mul_1.
@@ -283,7 +283,7 @@ Section Barycenter.
   (** Isobarycenter of a list of locations *)
   Lemma fold_add_acc `{RealVectorSpace} : forall E a b,
     List.fold_left add E (a + b) == (List.fold_left add E a) + b.
-  Proof.
+  Proof using .
   induction E as [| x E].
   + reflexivity.
   + intros a b.
@@ -295,7 +295,7 @@ Section Barycenter.
   Lemma fold_add_permutation : forall l1 l2 a,
     PermutationA equiv l1 l2 ->
     List.fold_left add l1 a == List.fold_left add l2 a.
-  Proof.
+  Proof using .
   intros.
   apply (fold_left_symmetry_PermutationA add_compat); try easy; [].
   intros x y z. now rewrite <- 2 add_assoc, (add_comm x).
@@ -305,7 +305,7 @@ Section Barycenter.
     (/(INR (List.length E)) * (List.fold_left add E origin))%VS.
   
   Global Instance isobarycenter_compat : Proper (PermutationA equiv ==> equiv) isobarycenter.
-  Proof.
+  Proof using .
   intros l1 l2 Hpermut. unfold isobarycenter.
   assert (Hl: List.length l1 = List.length l2) by apply (PermutationA_length Hpermut).
   rewrite Hl; clear Hl. (* BUG?: f_equiv should find mul_compat *) apply mul_compat; trivial; [].
@@ -314,11 +314,11 @@ Section Barycenter.
   Qed.
   
   Lemma isobarycenter_singleton : forall pt, isobarycenter (pt :: Datatypes.nil) == pt.
-  Proof. intro. unfold isobarycenter. simpl. now rewrite add_origin_l, Rinv_1, mul_1. Qed.
+  Proof using . intro. unfold isobarycenter. simpl. now rewrite add_origin_l, Rinv_1, mul_1. Qed.
   
   Lemma isobarycenter_barycenter_aux : forall E acc w,
     barycenter_aux (List.map (fun x => (x, 1)) E) (acc, w) == (List.fold_left add E acc, w + INR (length E))%R.
-  Proof.
+  Proof using .
   induction E; intros acc w.
   + simpl. now rewrite Rplus_0_r.
   + cbn -[INR equiv]. rewrite S_INR, IHE.
@@ -334,7 +334,7 @@ Section Barycenter.
   
   Corollary isobarycenter_barycenter : forall E,
     isobarycenter E == barycenter (List.map (fun x => (x, 1)) E).
-  Proof.
+  Proof using .
   unfold isobarycenter, barycenter. intro E.
   destruct (barycenter_aux (List.map (fun x : T => (x, 1)) E) (0, 0%R)) eqn:Heq.
   apply (@eq_subrelation _ equiv _) in Heq.

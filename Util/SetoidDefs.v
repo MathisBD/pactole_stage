@@ -49,7 +49,7 @@ Arguments Proper {A}%type R%signature m.
 
 Lemma equiv_dec_refl {T U} {S : Setoid T} {E : EqDec S} :
   forall (e : T) (A B : U), (if equiv_dec e e then A else B) = A.
-Proof. intros. destruct_match; intuition. Qed.
+Proof using . intros. destruct_match; intuition. Qed.
 
 (** **  Setoid Definitions  **)
 
@@ -63,7 +63,7 @@ Defined.
 
 Instance fun_equiv_pointwise_compat A B `{Setoid B} :
   subrelation (@equiv _ (fun_equiv A _)) (pointwise_relation _ equiv).
-Proof. intros f g Hfg x. apply Hfg. Qed.
+Proof using . intros f g Hfg x. apply Hfg. Qed.
 
 Notation "x =?= y" := (equiv_dec x y) (at level 70, no associativity).
 
@@ -76,21 +76,21 @@ Definition opt_eq {T} (eqT : T -> T -> Prop) (xo yo : option T) :=
   end.
 
 Instance opt_eq_refl : forall T (R : T -> T -> Prop), Reflexive R -> Reflexive (opt_eq R).
-Proof. intros T R HR [x |]; simpl; auto. Qed.
+Proof using . intros T R HR [x |]; simpl; auto. Qed.
 
 Instance opt_eq_sym : forall T (R : T -> T -> Prop), Symmetric R -> Symmetric (opt_eq R).
-Proof. intros T R HR [x |] [y |]; simpl; auto. Qed.
+Proof using . intros T R HR [x |] [y |]; simpl; auto. Qed.
 
 Instance opt_eq_trans : forall T (R : T -> T -> Prop), Transitive R -> Transitive (opt_eq R).
-Proof. intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed.
+Proof using . intros T R HR [x |] [y |] [z |]; simpl; intros; eauto; contradiction. Qed.
 
 Instance opt_equiv T eqT (HeqT : @Equivalence T eqT) : Equivalence (opt_eq eqT).
-Proof. split; auto with typeclass_instances. Qed.
+Proof using . split; auto with typeclass_instances. Qed.
 
 Instance opt_Setoid T (S : Setoid T) : Setoid (option T) := {| equiv := opt_eq equiv |}.
 
 Instance Some_compat `(Setoid) : Proper (equiv ==> @equiv _ (opt_Setoid _)) Some.
-Proof. intros ? ? Heq. apply Heq. Qed.
+Proof using . intros ? ? Heq. apply Heq. Qed.
 
 Instance prod_Setoid : forall A B, Setoid A -> Setoid B -> Setoid (A * B) :=
   Pactole.Util.FMaps.FMapInterface.prod_Setoid.
@@ -127,7 +127,7 @@ Proof. intros ? ?. simpl. apply equiv_dec. Defined.
 (** The intersection of equivalence relations is still an equivalence relation. *)
 Lemma inter_equivalence T R1 R2 (E1 : Equivalence R1) (E2 : Equivalence R2)
   : Equivalence (fun x y : T => R1 x y /\ R2 x y).
-Proof. split.
+Proof using . split.
 + split; reflexivity.
 + now split; symmetry.
 + intros ? ? ? [] []. split; etransitivity; eauto.
@@ -146,24 +146,24 @@ Defined.
 
 Definition inter_subrelation_l : forall {T} {S1 S2 : Setoid T},
   subrelation (@equiv T (inter_Setoid S1 S2)) (@equiv T S1).
-Proof. now intros ? ? ? ? ? []. Qed.
+Proof using . now intros ? ? ? ? ? []. Qed.
 
 Definition inter_subrelation_r : forall {T} {S1 S2 : Setoid T},
   subrelation (@equiv T (inter_Setoid S1 S2)) (@equiv T S2).
-Proof. now intros ? ? ? ? ? []. Qed.
+Proof using . now intros ? ? ? ? ? []. Qed.
 
 Definition inter_compat_l {T U} {S1 S2 : Setoid T} `{Setoid U} : forall f : T -> U,
   Proper (@equiv T S1 ==> equiv) f -> Proper (@equiv T (inter_Setoid S1 S2) ==> equiv) f.
-Proof. intros f Hf x y Heq. apply Hf, Heq. Qed.
+Proof using . intros f Hf x y Heq. apply Hf, Heq. Qed.
 
 Definition inter_compat_r {T U} {S1 S2 : Setoid T} `{Setoid U} : forall f : T -> U,
   Proper (@equiv T S2 ==> equiv) f -> Proper (@equiv T (inter_Setoid S1 S2) ==> equiv) f.
-Proof. intros f Hf x y Heq. apply Hf, Heq. Qed.
+Proof using . intros f Hf x y Heq. apply Hf, Heq. Qed.
 
 (** Setoid by precomposition *)
 Definition precompose_Equivalence T U R (E : @Equivalence U R) :
   forall f : T -> U, Equivalence (fun x y => R (f x) (f y)).
-Proof. split.
+Proof using . split.
 + intro. reflexivity.
 + repeat intro. now symmetry.
 + repeat intro. now transitivity (f y).
@@ -179,4 +179,4 @@ Definition precompose_EqDec {T U} (f : T -> U) `{EqDec U}
 
 Definition precompose_compat {T U} (f : T -> U) `{Setoid U} :
   Proper (@equiv T (precompose_Setoid f) ==> equiv) f.
-Proof. intros x y Heq. apply Heq. Qed.
+Proof using . intros x y Heq. apply Heq. Qed.

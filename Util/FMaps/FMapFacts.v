@@ -27,13 +27,13 @@ Section WeakFacts.
   Definition eqb x y := x == y.
 
   Lemma eq_bool_alt : forall b b', b=b' <-> (b=true <-> b'=true).
-  Proof.
+  Proof using .
     destruct b; destruct b'; intuition.
   Qed.
 
   Lemma eq_option_alt : forall (elt:Type)(o o':option elt),
     o=o' <-> (forall e, o=Some e <-> o'=Some e).
-  Proof.
+  Proof using .
     split; intros.
     subst; split; auto.
     destruct o; destruct o'; try rewrite H; auto.
@@ -42,7 +42,7 @@ Section WeakFacts.
 
   Lemma MapsTo_fun : forall (elt:Type) m x (e e':elt),
     MapsTo x e m -> MapsTo x e' m -> e=e'.
-  Proof.
+  Proof using HF.
     intros.
     generalize (find_1 H) (find_1 H0); clear H H0.
     intros; rewrite H in H0; injection H0; auto.
@@ -56,7 +56,7 @@ Section WeakFacts.
     Implicit Type e: elt.
 
     Lemma In_iff : forall m x y, x == y -> (In x m <-> In y m).
-    Proof.
+    Proof using HF.
       unfold In.
       split; intros (e0,H0); exists e0.
       apply (MapsTo_1 H H0); auto.
@@ -65,34 +65,34 @@ Section WeakFacts.
 
     Lemma MapsTo_iff : forall m x y e, x == y ->
       (MapsTo x e m <-> MapsTo y e m).
-    Proof.
+    Proof using HF.
       split; apply MapsTo_1; auto using symmetry.
     Qed.
 
     Lemma mem_in_iff : forall m x, In x m <-> mem x m = true.
-    Proof.
+    Proof using HF.
       split; [apply mem_1|apply mem_2].
     Qed.
 
     Lemma not_mem_in_iff : forall m x, ~In x m <-> mem x m = false.
-    Proof.
+    Proof using HF.
       intros; rewrite mem_in_iff; destruct (mem x m); intuition.
     Qed.
 
     Lemma In_dec : forall m x, { In x m } + { ~ In x m }.
-    Proof.
+    Proof using HF.
       intros.
       generalize (mem_in_iff m x).
       destruct (mem x m); [left|right]; intuition.
     Qed.
 
     Lemma find_mapsto_iff : forall m x e, MapsTo x e m <-> find x m = Some e.
-    Proof.
+    Proof using HF.
       split; [apply find_1|apply find_2].
     Qed.
 
     Lemma not_find_in_iff : forall m x, ~In x m <-> find x m = None.
-    Proof.
+    Proof using HF.
       split; intros.
       rewrite eq_option_alt. intro e. rewrite <- find_mapsto_iff.
       split; intro H'; try discriminate. elim H; exists e; auto.
@@ -100,31 +100,31 @@ Section WeakFacts.
     Qed.
 
     Lemma in_find_iff : forall m x, In x m <-> find x m <> None.
-    Proof.
+    Proof using HF.
       intros; rewrite <- not_find_in_iff, mem_in_iff.
       destruct (mem x m); intuition.
     Qed.
 
     Lemma equal_iff : forall m m' cmp,
       Equivb cmp m m' <-> equal cmp m m' = true.
-    Proof.
+    Proof using HF.
       split; [apply equal_1|apply equal_2].
     Qed.
 
     Lemma empty_mapsto_iff :
       forall x e, MapsTo x e (empty elt) <-> False.
-    Proof.
+    Proof using HF.
       intuition; apply (empty_1 H).
     Qed.
 
     Lemma empty_in_iff : forall x, In x (empty elt) <-> False.
-    Proof.
+    Proof using HF.
       unfold In.
       split; [intros (e,H); rewrite empty_mapsto_iff in H|]; intuition.
     Qed.
 
     Lemma is_empty_iff : forall m, Empty m <-> is_empty m = true.
-    Proof.
+    Proof using HF.
       split; [apply is_empty_1|apply is_empty_2].
     Qed.
 
@@ -132,7 +132,7 @@ Section WeakFacts.
       MapsTo y e' (add x e m) <->
       (x == y /\ e=e') \/
       (x =/= y /\ MapsTo y e' m).
-    Proof.
+    Proof using HF.
       intros.
       intuition.
       destruct (equiv_dec x y); [left|right].
@@ -143,7 +143,7 @@ Section WeakFacts.
     Qed.
 
     Lemma add_in_iff : forall m x y e, In y (add x e m) <-> x == y \/ In y m.
-    Proof.
+    Proof using HF.
       unfold In; split.
       intros (e',H).
       destruct (equiv_dec x y) as [E|E]; auto.
@@ -159,13 +159,13 @@ Section WeakFacts.
 
     Lemma add_neq_mapsto_iff : forall m x y e e',
       x =/= y -> (MapsTo y e' (add x e m)  <-> MapsTo y e' m).
-    Proof.
+    Proof using HF.
       split; [apply add_3|apply add_2]; auto.
     Qed.
 
     Lemma add_neq_in_iff : forall m x y e,
       x =/= y -> (In y (add x e m)  <-> In y m).
-    Proof.
+    Proof using HF.
       split; intros (e',H0); exists e'.
       apply (add_3 H H0).
       apply add_2; auto.
@@ -173,7 +173,7 @@ Section WeakFacts.
 
     Lemma remove_mapsto_iff : forall m x y e,
       MapsTo y e (remove x m) <-> x =/= y /\ MapsTo y e m.
-    Proof.
+    Proof using HF.
       intros.
       split; intros.
       split.
@@ -185,7 +185,7 @@ Section WeakFacts.
 
     Lemma remove_in_iff :
       forall m x y, In y (remove x m) <-> x =/= y /\ In y m.
-    Proof.
+    Proof using HF.
       unfold In; split.
       intros (e,H).
       split.
@@ -197,13 +197,13 @@ Section WeakFacts.
 
     Lemma remove_neq_mapsto_iff : forall m x y e,
       x =/= y -> (MapsTo y e (remove x m)  <-> MapsTo y e m).
-    Proof.
+    Proof using HF.
       split; [apply remove_3|apply remove_2]; auto.
     Qed.
 
     Lemma remove_neq_in_iff : forall m x y,
       x =/= y -> (In y (remove x m)  <-> In y m).
-    Proof.
+    Proof using HF.
       split; intros (e',H0); exists e'.
       apply (remove_3 H0).
       apply remove_2; auto.
@@ -211,20 +211,20 @@ Section WeakFacts.
 
     Lemma elements_mapsto_iff : forall m x e,
       MapsTo x e m <-> InA eq_key_elt (x,e) (elements m).
-    Proof.
+    Proof using HF.
       split; [apply elements_1 | apply elements_2].
     Qed.
 
     Lemma elements_in_iff : forall m x,
       In x m <-> exists e, InA eq_key_elt (x,e) (elements m).
-    Proof.
+    Proof using HF.
       unfold In; split; intros (e,H);
         exists e; [apply elements_1 | apply elements_2]; auto.
     Qed.
 
     Lemma map_mapsto_iff : forall m x b (f : elt -> elt'),
       MapsTo x b (map f m) <-> exists a, b = f a /\ MapsTo x a m.
-    Proof.
+    Proof using HF.
       split.
       case_eq (find x m); intros.
       exists e.
@@ -240,7 +240,7 @@ Section WeakFacts.
 
     Lemma map_in_iff : forall m x (f : elt -> elt'),
       In x (map f m) <-> In x m.
-    Proof.
+    Proof using HF.
       split; intros; eauto with map.
       destruct H as (a,H).
       exists (f a); auto with map.
@@ -248,7 +248,7 @@ Section WeakFacts.
 
     Lemma mapi_in_iff : forall m x (f:key->elt->elt'),
       In x (mapi f m) <-> In x m.
-    Proof.
+    Proof using HF.
       split; intros; eauto with map.
       destruct H as (a,H).
       destruct (mapi_1 f H) as (y,(H0,H1)).
@@ -260,7 +260,7 @@ Section WeakFacts.
     Lemma mapi_inv : forall m x b (f : key -> elt -> elt'),
       MapsTo x b (mapi f m) ->
       exists a, exists y, y == x /\ b = f y a /\ MapsTo x a m.
-    Proof.
+    Proof using HF.
       intros; case_eq (find x m); intros.
       exists e.
       destruct (@mapi_1 _ _ _ _ _ _ _ m x e f) as (y,(H1,H2)).
@@ -275,7 +275,7 @@ Section WeakFacts.
     Lemma mapi_1bis : forall m x e (f:key->elt->elt'),
       (forall x y e, x == y -> f x e = f y e) ->
       MapsTo x e m -> MapsTo x (f x e) (mapi f m).
-    Proof.
+    Proof using HF.
       intros.
       destruct (mapi_1 f H0) as (y,(H1,H2)).
       replace (f x e) with (f y e) by auto.
@@ -285,7 +285,7 @@ Section WeakFacts.
     Lemma mapi_mapsto_iff : forall m x b (f:key->elt->elt'),
       (forall x y e, x == y -> f x e = f y e) ->
       (MapsTo x b (mapi f m) <-> exists a, b = f x a /\ MapsTo x a m).
-    Proof.
+    Proof using HF.
       split.
       intros.
       destruct (mapi_inv H0) as (a,(y,(H1,(H2,H3)))).
@@ -316,7 +316,7 @@ Section WeakFacts.
     Lemma mem_find_b :
       forall (elt:Type)(m:t elt)(x:key),
         mem x m = if find x m then true else false.
-    Proof.
+    Proof using HF.
       intros.
       generalize (find_mapsto_iff m x)(mem_in_iff m x); unfold In.
       destruct (find x m); destruct (mem x m); auto.
@@ -333,26 +333,26 @@ Section WeakFacts.
     Implicit Types e : elt.
 
     Lemma mem_b : forall m x y, x == y -> mem x m = mem y m.
-    Proof.
+    Proof using HF.
       intros.
       generalize (mem_in_iff m x) (mem_in_iff m y)(In_iff m H).
       destruct (mem x m); destruct (mem y m); intuition.
     Qed.
 
     Lemma find_o : forall m x y, x == y -> find x m = find y m.
-    Proof.
+    Proof using HF.
       intros. rewrite eq_option_alt. intro e. rewrite <- 2 find_mapsto_iff.
       apply MapsTo_iff; auto.
     Qed.
 
     Lemma empty_o : forall x, find x (empty elt) = None.
-    Proof.
+    Proof using HF.
       intros. rewrite eq_option_alt. intro e.
       rewrite <- find_mapsto_iff, empty_mapsto_iff; now intuition.
     Qed.
 
     Lemma empty_a : forall x, mem x (empty elt) = false.
-    Proof.
+    Proof using HF.
       intros.
       case_eq (mem x (empty elt)); intros; auto.
       generalize (mem_2 H).
@@ -361,13 +361,13 @@ Section WeakFacts.
 
     Lemma add_eq_o : forall m x y e,
       x == y -> find y (add x e m) = Some e.
-    Proof.
+    Proof using HF.
       auto with map.
     Qed.
 
     Lemma add_neq_o : forall m x y e,
       x =/= y -> find y (add x e m) = find y m.
-    Proof.
+    Proof using HF.
       intros. rewrite eq_option_alt. intro e'. rewrite <- 2 find_mapsto_iff.
       apply add_neq_mapsto_iff; auto.
     Qed.
@@ -375,19 +375,19 @@ Section WeakFacts.
 
     Lemma add_o : forall m x y e,
       find y (add x e m) = if x == y then Some e else find y m.
-    Proof.
+    Proof using HF.
       intros; destruct (equiv_dec x y); auto with map.
     Qed.
 
     Lemma add_eq_b : forall m x y e,
       x == y -> mem y (add x e m) = true.
-    Proof.
+    Proof using HF.
       intros; rewrite mem_find_b; rewrite add_eq_o; auto.
     Qed.
 
     Lemma add_neq_b : forall m x y e,
       x =/= y -> mem y (add x e m) = mem y m.
-    Proof.
+    Proof using HF.
       intros; do 2 rewrite mem_find_b; rewrite add_neq_o; auto.
     Qed.
 
@@ -400,7 +400,7 @@ Section WeakFacts.
 
     Lemma remove_eq_o : forall m x y,
       x == y -> find y (remove x m) = None.
-    Proof.
+    Proof using HF.
     intros. rewrite eq_option_alt. intro e.
     rewrite <- find_mapsto_iff, remove_mapsto_iff.
     (* BUG?: [now intuition] introduces a dependency on EqDep.eq_rect_eq. *)
@@ -412,7 +412,7 @@ Section WeakFacts.
 
     Lemma remove_neq_o : forall m x y,
       x =/= y -> find y (remove x m) = find y m.
-    Proof.
+    Proof using HF.
       intros. rewrite eq_option_alt. intro e.
       rewrite <- find_mapsto_iff, remove_neq_mapsto_iff; now intuition.
     Qed.
@@ -420,19 +420,19 @@ Section WeakFacts.
 
     Lemma remove_o : forall m x y,
       find y (remove x m) = if x == y then None else find y m.
-    Proof.
+    Proof using HF.
       intros; destruct (equiv_dec x y); auto with map.
     Qed.
 
     Lemma remove_eq_b : forall m x y,
       x == y -> mem y (remove x m) = false.
-    Proof.
+    Proof using HF.
       intros; rewrite mem_find_b; rewrite remove_eq_o; auto.
     Qed.
 
     Lemma remove_neq_b : forall m x y,
       x =/= y -> mem y (remove x m) = mem y m.
-    Proof.
+    Proof using HF.
       intros; do 2 rewrite mem_find_b; rewrite remove_neq_o; auto.
     Qed.
 
@@ -451,7 +451,7 @@ Section WeakFacts.
 
     Lemma map_o : forall m x (f:elt->elt'),
       find x (map f m) = option_map f (find x m).
-    Proof.
+    Proof using HF.
       intros.
       generalize (find_mapsto_iff (map f m) x) (find_mapsto_iff m x)
         (fun b => map_mapsto_iff m x b f).
@@ -466,14 +466,14 @@ Section WeakFacts.
 
     Lemma map_b : forall m x (f:elt->elt'),
       mem x (map f m) = mem x m.
-    Proof.
+    Proof using HF.
       intros; do 2 rewrite mem_find_b; rewrite map_o.
       destruct (find x m); simpl; auto.
     Qed.
 
     Lemma mapi_b : forall m x (f:key->elt->elt'),
       mem x (mapi f m) = mem x m.
-    Proof.
+    Proof using HF.
       intros.
       generalize (mem_in_iff (mapi f m) x) (mem_in_iff m x) (mapi_in_iff m x f).
       destruct (mem x (mapi f m)); destruct (mem x m); simpl; auto; intros.
@@ -484,7 +484,7 @@ Section WeakFacts.
     Lemma mapi_o : forall m x (f:key->elt->elt'),
       (forall x y e, x == y -> f x e = f y e) ->
       find x (mapi f m) = option_map (f x) (find x m).
-    Proof.
+    Proof using HF.
       intros.
       generalize (find_mapsto_iff (mapi f m) x) (find_mapsto_iff m x)
         (fun b => mapi_mapsto_iff m x b H).
@@ -520,7 +520,7 @@ Section WeakFacts.
     Qed. *)
 
     Lemma eqb_dec : forall x y, {x == y} + {x =/= y}.
-    Proof. apply equiv_dec. Qed.
+    Proof using key_EqDec. apply equiv_dec. Qed.
 
 (*     Remark findA_rew : forall (l : list (key * elt)) x,
       findA (eqb x) l =
@@ -575,7 +575,7 @@ Section WeakFacts.
 
     Lemma Equal_mapsto_iff : forall m1 m2 : t elt,
       Equal m1 m2 <-> (forall k e, MapsTo k e m1 <-> MapsTo k e m2).
-    Proof.
+    Proof using HF.
       intros m1 m2. split; [intros Heq k e|intros Hiff].
       rewrite 2 find_mapsto_iff, Heq. split; auto.
       intro k. rewrite eq_option_alt. intro e.
@@ -588,7 +588,7 @@ Section WeakFacts.
 
     Lemma Equal_Equiv : forall (m m' : t elt),
       Equal m m' <-> Equiv (@Logic.eq elt) m m'.
-    Proof.
+    Proof using HF.
       intros. rewrite Equal_mapsto_iff. split; intros.
       split.
       split; intros (e,Hin); exists e; [rewrite <- H|rewrite H]; auto.
@@ -616,7 +616,7 @@ Section WeakFacts.
 
       Lemma Equiv_Equivb : compat_cmp ->
         forall m m', Equiv eq_elt m m' <-> Equivb cmp m m'.
-      Proof.
+      Proof using .
         unfold Equivb, Equiv, Cmp; intuition.
         red in H; rewrite H; eauto.
         red in H; rewrite <-H; eauto.
@@ -629,7 +629,7 @@ Section WeakFacts.
     Lemma Equal_Equivb : forall cmp,
       (forall e e', cmp e e' = true <-> e = e') ->
       forall (m m':t elt), Equal m m' <-> Equivb cmp m m'.
-    Proof.
+    Proof using HF.
       intros; rewrite Equal_Equiv.
       apply Equiv_Equivb; auto.
     Qed.
@@ -638,7 +638,7 @@ Section WeakFacts.
       forall eq_elt_dec : (forall e e', { e = e' } + { e <> e' }),
         let cmp := fun e e' => if eq_elt_dec e e' then true else false in
           forall (m m':t elt), Equal m m' <-> Equivb cmp m m'.
-    Proof.
+    Proof using HF.
       intros; apply Equal_Equivb.
       unfold cmp; clear cmp; intros.
       destruct eq_elt_dec; now intuition.
@@ -648,18 +648,18 @@ Section WeakFacts.
 
   (** * [Equal] is a setoid equality. *)
     Lemma Equal_refl : forall (elt:Type)(m : t elt), Equal m m.
-  Proof. red; reflexivity. Qed.
+  Proof using . red; reflexivity. Qed.
 
   Lemma Equal_sym : forall (elt:Type)(m m' : t elt),
     Equal m m' -> Equal m' m.
-  Proof. unfold Equal; auto. Qed.
+  Proof using . unfold Equal; auto. Qed.
 
   Lemma Equal_trans : forall (elt:Type)(m m' m'' : t elt),
     Equal m m' -> Equal m' m'' -> Equal m m''.
-  Proof. unfold Equal; congruence. Qed.
+  Proof using . unfold Equal; congruence. Qed.
 
   Global Instance Equal_ST elt : Equivalence (Equal (elt:=elt)).
-  Proof.
+  Proof using .
     constructor; red; [apply Equal_refl | apply Equal_sym | apply Equal_trans].
   Qed.
 
@@ -678,7 +678,7 @@ Section WeakFacts.
   Defined.
 
   Global Instance eq_key_Equivalence elt : Equivalence (@eq_key key _ _ _ elt).
-  Proof.
+  Proof using .
   unfold eq_key. split; repeat intro; reflexivity + symmetry + etransitivity; eassumption.
   Qed.
 
@@ -689,31 +689,31 @@ Section WeakFacts.
 
   Global Instance eq_key_elt_eq_key_subrelation elt
     : subrelation (@eq_key_elt key _ _ _ elt) (@eq_key key _ _ _ elt).
-  Proof. intros [x n] [y p] [H _]. apply H. Qed.
+  Proof using . intros [x n] [y p] [H _]. apply H. Qed.
 
   Global Instance fst_compat elt : Proper (equiv ==> equiv) (@fst key elt).
-  Proof. intros [? ?] [? ?] H. apply H. Qed.
+  Proof using . intros [? ?] [? ?] H. apply H. Qed.
 
   Global Instance snd_compat elt
     : Proper (@equiv _ (eq_key_elt_Setoid elt) ==> equiv) (@snd key elt).
-  Proof. intros [? ?] [? ?] H. apply H. Qed.
+  Proof using . intros [? ?] [? ?] H. apply H. Qed.
 
   Global Instance In_m elt : Proper (@equiv key _ ==> Equal ==> iff) (In (elt:=elt)).
-  Proof.
+  Proof using HF.
     unfold Equal. intros k k' Hk m m' Hm.
     rewrite (In_iff m Hk), in_find_iff, in_find_iff, Hm; intuition.
   Qed.
 
   Global Instance Morphism_m elt :
     Proper (@equiv key _ ==> Leibniz ==> Equal ==> iff) (MapsTo (elt:=elt)).
-  Proof.
+  Proof using HF.
     unfold Equal; intros k k' Hk e e' He m m' Hm.
     rewrite (MapsTo_iff m e Hk), find_mapsto_iff, find_mapsto_iff, Hm;
       subst; intuition.
   Qed.
 
   Global Instance Empty_m elt : Proper (Equal ==> iff) (@Empty key _ _ _ elt).
-  Proof.
+  Proof using HF.
     unfold Empty; intros m m' Hm; intuition.
     rewrite <-Hm in H0; eauto.
     rewrite Hm in H0; eauto.
@@ -721,28 +721,28 @@ Section WeakFacts.
 
   Global Instance is_empty_m elt :
     Proper (Equal ==> Leibniz) (@is_empty key _ _ _ elt).
-  Proof.
+  Proof using HF.
     intros m m' Hm.
     rewrite eq_bool_alt, <-is_empty_iff, <-is_empty_iff, Hm; intuition.
   Qed.
 
   Global Instance mem_m :
     Proper (equiv ==> Equal ==> Leibniz) (@mem key _ _ _ elt).
-  Proof.
+  Proof using HF.
     intros elt k k' Hk m m' Hm.
     rewrite eq_bool_alt, <- mem_in_iff, <-mem_in_iff, Hk, Hm; intuition.
   Qed.
 
   Global Instance find_m elt :
     Proper (equiv ==> Equal ==> Leibniz) (@find key _ _ _ elt).
-  Proof.
+  Proof using HF.
     intros k k' Hk m m' Hm. rewrite eq_option_alt. intro e.
     rewrite <- 2 find_mapsto_iff, Hk, Hm. split; auto.
   Qed.
 
   Global Instance add_m elt :
     Proper (equiv ==> Leibniz ==> Equal ==> Equal) (@add key _ _ _ elt).
-  Proof.
+  Proof using HF.
     intros k k' Hk e e' He m m' Hm y.
     rewrite add_o, add_o; destruct (equiv_dec k y);
       destruct (equiv_dec k' y); subst; auto; rewrite Hk in *; contradiction.
@@ -750,7 +750,7 @@ Section WeakFacts.
 
   Global Instance remove_m elt :
     Proper (equiv ==> Equal ==> Equal) (@remove key _ _ _ elt).
-  Proof.
+  Proof using HF.
     intros k k' Hk m m' Hm y.
     rewrite remove_o, remove_o;
       destruct (equiv_dec k y); destruct (equiv_dec k' y); auto;
@@ -759,7 +759,7 @@ Section WeakFacts.
 
   Global Instance map_m elt elt' :
     Proper (Leibniz ==> Equal ==> Equal) (@map key _ _ _ elt elt').
-  Proof.
+  Proof using HF.
     intros f f' Hf m m' Hm y; subst.
     rewrite map_o, map_o, Hm; auto.
   Qed.
@@ -791,7 +791,7 @@ Section MoreWeakFacts.
 
     Lemma InA_eq_key_elt_eq_key : forall (k1 k2 : key) e1 e2 l,
       k1 == k2 -> InA eq_key_elt (k1,e1) l -> InA eq_key (k2,e2) l.
-    Proof.
+    Proof using .
       intros k1 k2 e1 e2 l Hk. rewrite 2 InA_alt.
       intros ((k',e') & (Hk',He') & H); simpl in *.
       exists (k',e'); split; auto.
@@ -800,7 +800,7 @@ Section MoreWeakFacts.
     Qed.
 
     Lemma NoDupA_eq_key_eq_key_elt : forall l, NoDupA eq_key l -> NoDupA eq_key_elt l.
-    Proof.
+    Proof using .
       induction 1; auto; []. constructor; trivial; [].
       destruct x. intro Hin. apply InA_eq_key_elt_eq_key with _ k _ e _ in Hin; auto.
     Qed.
@@ -834,7 +834,7 @@ Section MoreWeakFacts.
     (** * Elements *)
 
     Lemma elements_Empty : forall m:t elt, Empty m <-> elements m = nil.
-    Proof.
+    Proof using HF.
       intros.
       unfold Empty.
       split; intros.
@@ -851,7 +851,7 @@ Section MoreWeakFacts.
     Qed.
 
     Lemma elements_empty : elements (empty elt) = nil.
-    Proof.
+    Proof using HF.
       rewrite <-elements_Empty; apply empty_1.
     Qed.
 
@@ -865,7 +865,7 @@ Section MoreWeakFacts.
     Lemma of_list_1 : forall l k e,
       NoDupA eq_key l ->
       (MapsTo k e (of_list l) <-> InA eq_key_elt (k,e) l).
-    Proof.
+    Proof using HF.
       induction l as [|(k',e') l IH]; simpl; intros k e Hnodup.
       + rewrite empty_mapsto_iff, InA_nil; intuition.
       + inversion_clear Hnodup as [| ? ? Hnotin Hnodup'].
@@ -896,7 +896,7 @@ Section MoreWeakFacts.
 
     Lemma of_list_2 : forall l, NoDupA eq_key l ->
       equivlistA eq_key_elt l (to_list (of_list l)).
-    Proof.
+    Proof using HF.
       intros l Hnodup (k,e); unfold to_list.
       rewrite <- elements_mapsto_iff, of_list_1; intuition.
     Qed.
@@ -922,7 +922,7 @@ Section MoreWeakFacts.
           (forall k e a m' m'', MapsTo k e m -> ~In k m' ->
             Add k e m' m'' -> P m' a -> P m'' (f k e a)) ->
           P m (fold f m i).
-    Proof.
+    Proof using HF.
       intros A P f i m Hempty Hstep.
       rewrite fold_1, <- fold_left_rev_right.
       set (ff:=fun (y : key * elt) (x : A) => f (fst y) (snd y) x).
@@ -978,7 +978,7 @@ Section MoreWeakFacts.
           (forall k e a m', MapsTo k e m -> ~In k m' ->
             P m' a -> P (add k e m') (f k e a)) ->
           P m (fold f m i).
-    Proof.
+    Proof using HF.
       intros A P f i m Pmorphism Pempty Pstep.
       apply fold_rec; intros.
       apply Pmorphism with (empty _); auto. intro k. rewrite empty_o.
@@ -991,7 +991,7 @@ Section MoreWeakFacts.
       forall (A:Type)(P : A -> Type)(f : key -> elt -> A -> A)(i:A)(m:t elt),
         P i -> (forall k e a, MapsTo k e m -> P a -> P (f k e a)) ->
         P (fold f m i).
-    Proof.
+    Proof using HF.
       intros; apply fold_rec_bis with (P:=fun _ => P); auto.
     Qed.
 
@@ -1006,7 +1006,7 @@ Section MoreWeakFacts.
         P (empty _) i ->
         (forall k e a m, ~In k m -> P m a -> P (add k e m) (f k e a)) ->
         forall m, P m (fold f m i).
-    Proof.
+    Proof using HF.
       intros; apply fold_rec_bis; auto.
     Qed.
 
@@ -1017,7 +1017,7 @@ Section MoreWeakFacts.
      R i j ->
      (forall k e a b, MapsTo k e m -> R a b -> R (f k e a) (g k e b)) ->
      R (fold f m i) (fold g m j).
-    Proof.
+    Proof using HF.
       intros A B R f g i j m Rempty Rstep.
       do 2 rewrite fold_1, <- fold_left_rev_right.
       set (l:=rev (elements m)).
@@ -1037,7 +1037,7 @@ Section MoreWeakFacts.
         (forall m, Empty m -> P m) ->
         (forall m m', P m -> forall x e, ~In x m -> Add x e m m' -> P m') ->
         forall m, P m.
-    Proof.
+    Proof using HF.
       intros.
       apply (@fold_rec _ (fun s _ => P s) (fun _ _ _ => tt) tt m); eauto.
     Qed.
@@ -1048,7 +1048,7 @@ Section MoreWeakFacts.
         P (empty _) ->
         (forall x e m, ~In x m -> P m -> P (add x e m)) ->
         forall m, P m.
-    Proof.
+    Proof using HF.
       intros.
       apply (@fold_rec_bis _ (fun s _ => P s) (fun _ _ _ => tt) tt m); eauto.
     Qed.
@@ -1056,7 +1056,7 @@ Section MoreWeakFacts.
     (** [fold] can be used to reconstruct the same initial set. *)
     Lemma fold_identity :
       forall m : t elt, Equal (fold add  m (empty _)) m.
-    Proof.
+    Proof using HF.
       intros.
       apply fold_rec with (P:=fun m acc => Equal acc m); auto with map.
       intros m' Heq k'.
@@ -1083,14 +1083,14 @@ Section MoreWeakFacts.
 
       Lemma fold_init :
         forall m i i', eqA i i' -> eqA (fold f m i) (fold f m i').
-      Proof.
+      Proof using Comp HF.
         intros. apply fold_rel with (R:=eqA); auto.
         intros. apply Comp; auto.
       Qed.
 
       Lemma fold_Empty :
         forall m i, Empty m -> eqA (fold f m i) i.
-      Proof.
+      Proof using HF st.
         intros. apply fold_rec_nodep with (P:=fun a => eqA a i).
         reflexivity.
         intros. elim (H k e); auto.
@@ -1119,7 +1119,7 @@ Section MoreWeakFacts.
 
       Lemma fold_commutes : forall i m k e, ~In k m ->
         eqA (fold f m (f k e i)) (f k e (fold f m i)).
-      Proof.
+      Proof using Comp HF Tra st.
         intros i m k e Hnotin.
         apply fold_rel with (R:= fun a b => eqA a (f k e b)); auto.
         reflexivity.
@@ -1134,7 +1134,7 @@ Section MoreWeakFacts.
       Hint Resolve NoDupA_eq_key_eq_key_elt NoDupA_rev (* elements_3w *) : map.
       Lemma fold_Equal : forall m1 m2 i, Equal m1 m2 ->
         eqA (fold f m1 i) (fold f m2 i).
-      Proof.
+      Proof using Comp HF Tra st.
         intros; do 2 rewrite fold_1; do 2 rewrite <- fold_left_rev_right.
         assert (NoDupA eq_key (rev (elements m1))).
           (apply NoDupA_rev; [typeclasses eauto | apply elements_3]).
@@ -1157,7 +1157,7 @@ Section MoreWeakFacts.
 
       Lemma fold_Add : forall m1 m2 k e i, ~In k m1 -> Add k e m1 m2 ->
         eqA (fold f m2 i) (f k e (fold f m1 i)).
-      Proof.
+      Proof using Comp HF Tra st.
         assert (eq_key_elt_refl : forall p, eq_key_elt p p).
         red; auto.
         assert (eq_key_elt_sym : forall p p', eq_key_elt p p' -> eq_key_elt p' p).
@@ -1204,7 +1204,7 @@ Section MoreWeakFacts.
 
       Lemma fold_add : forall m k e i, ~In k m ->
         eqA (fold f (add k e m) i) (f k e (fold f m i)).
-      Proof.
+      Proof using Comp HF Tra st.
         intros. apply fold_Add; try red; auto.
       Qed.
 
@@ -1214,14 +1214,14 @@ Section MoreWeakFacts.
 
     Lemma cardinal_fold : forall m : t elt,
       cardinal m = fold (fun _ _ => S) m 0.
-    Proof.
+    Proof using HF.
       intros; rewrite cardinal_1, fold_1.
       symmetry; apply fold_left_length; auto.
     Qed.
 
     Lemma cardinal_Empty : forall m : t elt,
       Empty m <-> cardinal m = 0.
-    Proof.
+    Proof using HF.
       intros.
       rewrite cardinal_1, elements_Empty.
       destruct (elements m); intuition; discriminate.
@@ -1229,19 +1229,19 @@ Section MoreWeakFacts.
 
     Lemma Equal_cardinal : forall m m' : t elt,
       Equal m m' -> cardinal m = cardinal m'.
-    Proof.
+    Proof using HF.
       intros; do 2 rewrite cardinal_fold.
       apply fold_Equal with (eqA:=Leibniz); compute; auto.
     Qed.
 
     Lemma cardinal_1 : forall m : t elt, Empty m -> cardinal m = 0.
-    Proof.
+    Proof using HF.
       intros; rewrite <- cardinal_Empty; auto.
     Qed.
 
     Lemma cardinal_2 :
       forall m m' x e, ~ In x m -> Add x e m m' -> cardinal m' = S (cardinal m).
-    Proof.
+    Proof using HF.
       intros; do 2 rewrite cardinal_fold.
       change S with ((fun _ _ => S) x e).
       apply fold_Add with (eqA:=Leibniz); compute; auto.
@@ -1249,7 +1249,7 @@ Section MoreWeakFacts.
 
     Lemma cardinal_inv_1 : forall m : t elt,
       cardinal m = 0 -> Empty m.
-    Proof.
+    Proof using HF.
       intros; rewrite cardinal_Empty; auto.
     Qed.
     Hint Resolve cardinal_inv_1 : map.
@@ -1257,7 +1257,7 @@ Section MoreWeakFacts.
     Lemma cardinal_inv_2 :
       forall m n, cardinal m = S n ->
         { p : key*elt | MapsTo (fst p) (snd p) m }.
-    Proof.
+    Proof using HF.
       intros; rewrite FMapInterface.cardinal_1 in H.
       generalize (elements_mapsto_iff m).
       destruct (elements m); try discriminate.
@@ -1267,7 +1267,7 @@ Section MoreWeakFacts.
 
     Lemma cardinal_inv_2b :
       forall m, cardinal m <> 0 -> { p : key*elt | MapsTo (fst p) (snd p) m }.
-    Proof.
+    Proof using HF.
       intros.
       generalize (@cardinal_inv_2 m); destruct @cardinal.
       elim H;auto.
@@ -1319,7 +1319,7 @@ Section MoreWeakFacts.
 
       Lemma filter_iff : forall m k e,
         MapsTo k e (filter f m) <-> MapsTo k e m /\ f k e = true.
-      Proof.
+      Proof using HF Hf.
         unfold filter.
         set (f':=fun k e m => if f k e then add k e m else m).
         intro m. pattern m, (fold f' m (empty _)). apply fold_rec.
@@ -1340,7 +1340,7 @@ Section MoreWeakFacts.
 
       Lemma for_all_iff : forall m,
         for_all f m = true <-> (forall k e, MapsTo k e m -> f k e = true).
-      Proof.
+      Proof using HF Hf.
         unfold for_all.
         set (f':=fun k e b => if f k e then b else false).
         intro m. pattern m, (fold f' m true). apply fold_rec.
@@ -1366,7 +1366,7 @@ Section MoreWeakFacts.
       Lemma exists_iff : forall m,
         exists_ f m = true <->
         (exists p, MapsTo (fst p) (snd p) m /\ f (fst p) (snd p) = true).
-      Proof.
+      Proof using HF Hf.
         unfold exists_.
         set (f':=fun k e b => if f k e then true else b).
         intro m. pattern m, (fold f' m false). apply fold_rec.
@@ -1396,7 +1396,7 @@ Section MoreWeakFacts.
     Lemma Disjoint_alt : forall m m',
       Disjoint m m' <->
       (forall k e e', MapsTo k e m -> MapsTo k e' m' -> False).
-    Proof.
+    Proof using .
       unfold Disjoint; split.
       intros H k v v' H1 H2.
       apply H with k; split.
@@ -1413,7 +1413,7 @@ Section MoreWeakFacts.
       Lemma partition_iff_1 : forall m m1 k e,
         m1 = fst (partition f m) ->
         (MapsTo k e m1 <-> MapsTo k e m /\ f k e = true).
-      Proof.
+      Proof using HF Hf.
         unfold partition; simpl; intros. subst m1.
         apply filter_iff; auto.
       Qed.
@@ -1421,7 +1421,7 @@ Section MoreWeakFacts.
       Lemma partition_iff_2 : forall m m2 k e,
         m2 = snd (partition f m) ->
         (MapsTo k e m2 <-> MapsTo k e m /\ f k e = false).
-      Proof.
+      Proof using HF Hf.
         unfold partition; simpl; intros. subst m2.
         rewrite filter_iff.
         split; intros (H,H'); split; auto.
@@ -1432,7 +1432,7 @@ Section MoreWeakFacts.
 
       Lemma partition_Partition : forall m m1 m2,
         partition f m = (m1,m2) -> Partition m m1 m2.
-      Proof.
+      Proof using HF Hf.
         intros. split.
         rewrite Disjoint_alt. intros k e e'.
         rewrite (@partition_iff_1 m m1), (@partition_iff_2 m m2)
@@ -1458,13 +1458,13 @@ Section MoreWeakFacts.
     Defined.
 
     Lemma Disjoint_sym : forall m1 m2, Disjoint m1 m2 -> Disjoint m2 m1.
-    Proof.
+    Proof using .
       intros m1 m2 H k (H1,H2). elim (H k); auto.
     Qed.
 
     Lemma Partition_sym : forall m m1 m2,
       Partition m m1 m2 -> Partition m m2 m1.
-    Proof.
+    Proof using .
       intros m m1 m2 (H,H'); split.
       apply Disjoint_sym; auto.
       intros; rewrite H'; intuition.
@@ -1472,7 +1472,7 @@ Section MoreWeakFacts.
 
     Lemma Partition_Empty : forall m m1 m2, Partition m m1 m2 ->
       (Empty m <-> (Empty m1 /\ Empty m2)).
-    Proof.
+    Proof using .
       intros m m1 m2 (Hdisj,Heq). split.
       intro He.
       split; intros k e Hke; elim (He k e); rewrite Heq; auto.
@@ -1486,7 +1486,7 @@ Section MoreWeakFacts.
         forall m1 m2, Partition m' m1 m2 ->
           exists m3, (Add x e m3 m1 /\ Partition m m3 m2 \/
             Add x e m3 m2 /\ Partition m m1 m3).
-    Proof.
+    Proof using HF.
       unfold Partition. intros m m' x e Hn Hadd m1 m2 (Hdisj,Hor).
       assert (Heq : Equal m (remove x m')).
       change (Equal m' (add x e m)) in Hadd. rewrite Hadd.
@@ -1542,7 +1542,7 @@ Section MoreWeakFacts.
         forall m m1 m2 i,
           Partition m m1 m2 ->
           eqA (fold f m i) (fold f m1 (fold f m2 i)).
-    Proof.
+    Proof using HF.
       intros A eqA st f Comp Tra.
       induction m as [m Hm|m m' IH k e Hn Hadd] using map_induction.
 
@@ -1584,7 +1584,7 @@ Section MoreWeakFacts.
 
     Lemma Partition_cardinal : forall m m1 m2, Partition m m1 m2 ->
       cardinal m = cardinal m1 + cardinal m2.
-    Proof.
+    Proof using HF.
       intros.
       rewrite (cardinal_fold m), (cardinal_fold m1).
       set (f:=fun (_:key)(_:elt)=>S).
@@ -1599,7 +1599,7 @@ Section MoreWeakFacts.
     Lemma Partition_partition : forall m m1 m2, Partition m m1 m2 ->
       let f := fun k (_:elt) => mem k m1 in
         Equal m1 (fst (partition f m)) /\ Equal m2 (snd (partition f m)).
-    Proof.
+    Proof using HF.
       intros m m1 m2 Hm f.
       assert (Hf : Proper (equiv==>Leibniz==>Leibniz) f).
       intros k k' Hk e e' _; unfold f; rewrite Hk; auto.
@@ -1627,7 +1627,7 @@ Section MoreWeakFacts.
     Lemma update_mapsto_iff : forall m m' k e,
       MapsTo k e (update m m') <->
       (MapsTo k e m' \/ (MapsTo k e m /\ ~In k m')).
-    Proof.
+    Proof using HF.
       unfold update.
       intros m m'.
       pattern m', (fold add m' m). apply fold_rec.
@@ -1652,7 +1652,7 @@ Section MoreWeakFacts.
 
     Lemma update_in_iff : forall m m' k,
       In k (update m m') <-> In k m \/ In k m'.
-    Proof.
+    Proof using HF.
       intros m m' k. split.
       intros (e,H); rewrite update_mapsto_iff in H.
       destruct H; [right|left]; exists e; intuition.
@@ -1666,7 +1666,7 @@ Section MoreWeakFacts.
 
     Lemma diff_mapsto_iff : forall m m' k e,
       MapsTo k e (diff m m') <-> MapsTo k e m /\ ~In k m'.
-    Proof.
+    Proof using HF.
       intros m m' k e.
       unfold diff.
       rewrite filter_iff.
@@ -1677,7 +1677,7 @@ Section MoreWeakFacts.
 
     Lemma diff_in_iff : forall m m' k,
       In k (diff m m') <-> In k m /\ ~In k m'.
-    Proof.
+    Proof using HF.
       intros m m' k. split.
       intros (e,H); rewrite diff_mapsto_iff in H.
       destruct H; split; auto. exists e; auto.
@@ -1686,7 +1686,7 @@ Section MoreWeakFacts.
 
     Lemma restrict_mapsto_iff : forall m m' k e,
       MapsTo k e (restrict m m') <-> MapsTo k e m /\ In k m'.
-    Proof.
+    Proof using HF.
       intros m m' k e.
       unfold restrict.
       rewrite filter_iff.
@@ -1696,7 +1696,7 @@ Section MoreWeakFacts.
 
     Lemma restrict_in_iff : forall m m' k,
       In k (restrict m m') <-> In k m /\ In k m'.
-    Proof.
+    Proof using HF.
       intros m m' k. split.
       intros (e,H); rewrite restrict_mapsto_iff in H.
       destruct H; split; auto. exists e; auto.
@@ -1718,13 +1718,13 @@ Section MoreWeakFacts.
 
   Global Instance cardinal_m elt :
     Proper (Equal ==> Leibniz) (cardinal (elt:=elt)).
-  Proof.
+  Proof using HF.
     intros m m' Hm; apply Equal_cardinal; auto.
   Qed.
 
   Global Instance Disjoint_m elt :
     Proper (Equal ==> Equal ==> iff) (Disjoint (elt:=elt)).
-  Proof.
+  Proof using HF.
     intros m1 m1' Hm1 m2 m2' Hm2. unfold Disjoint. split; intros.
     rewrite <- Hm1, <- Hm2; auto.
     rewrite Hm1, Hm2; auto.
@@ -1732,7 +1732,7 @@ Section MoreWeakFacts.
 
   Global Instance Partition_m elt :
     Proper (Equal ==> Equal ==> Equal ==> iff) (Partition (elt:=elt)).
-  Proof.
+  Proof using HF.
     intros m1 m1' Hm1 m2 m2' Hm2 m3 m3' Hm3. unfold Partition.
     split; intros (H, H'); split; auto; intros.
     rewrite <- (Disjoint_m Hm2 Hm3); assumption.
@@ -1743,7 +1743,7 @@ Section MoreWeakFacts.
 
   Global Instance update_m elt :
     Proper (Equal ==> Equal ==> Equal) (update (elt:=elt)).
-  Proof.
+  Proof using HF.
     intros m1 m1' Hm1 m2 m2' Hm2.
     transitivity (update m1 m2'); unfold update.
     apply fold_Equal with (eqA:=Equal); auto.
@@ -1758,7 +1758,7 @@ Section MoreWeakFacts.
 
   Global Instance restrict_m elt :
     Proper (Equal ==> Equal ==> Equal) (@restrict elt).
-  Proof.
+  Proof using HF.
     intros m1 m1' Hm1 m2 m2' Hm2.
     transitivity (restrict m1 m2'); unfold restrict, filter.
     apply fold_rel with (R:=Equal); try red; auto.
@@ -1778,7 +1778,7 @@ Section MoreWeakFacts.
 
   Global Instance diff_m elt :
     Proper (Equal ==> Equal ==> Equal) (diff (elt:=elt)).
-  Proof.
+  Proof using HF.
     intros m1 m1' Hm1 m2 m2' Hm2.
     transitivity (diff m1 m2');  unfold diff, filter.
     apply fold_rel with (R:=Equal); try red; auto.
@@ -2281,14 +2281,14 @@ Section InductiveSpec.
   Variables e e' e'' : elt.
 
   Property mem_dec : reflects (In k m) (mem k m).
-  Proof.
+  Proof using HF.
     case_eq (mem k m); intro H; constructor.
     apply mem_2; exact H.
     intro abs; rewrite (mem_1 abs) in H; discriminate.
   Qed.
 
   Property is_empty_dec : reflects (Empty m) (is_empty m).
-  Proof.
+  Proof using HF.
     case_eq (is_empty m); intro H; constructor.
     apply is_empty_2; exact H.
     intro abs; rewrite (is_empty_1 abs) in H; discriminate.
@@ -2298,7 +2298,7 @@ Section InductiveSpec.
   | find_None : forall (Hnotin : ~In k m), find_spec None
   | find_Some : forall v (Hin : MapsTo k v m), find_spec (Some v).
   Property find_dec : find_spec (find k m).
-  Proof.
+  Proof using HF.
     case_eq (find k m); intros; constructor.
     apply find_2; assumption.
     intro abs; destruct abs as [y Hy].
@@ -2306,7 +2306,7 @@ Section InductiveSpec.
   Qed.
 
   Property equal_dec {cmp} : reflects (Equivb cmp m m') (equal cmp m m').
-  Proof.
+  Proof using HF.
     intros; case_eq (equal cmp m m'); intros; constructor.
     apply equal_2; assumption.
     intro abs; rewrite (equal_1 abs) in H; discriminate.

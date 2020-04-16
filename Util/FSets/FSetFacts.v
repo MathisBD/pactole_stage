@@ -34,37 +34,37 @@ Section IffSpec.
   Variable x y z : elt.
 
   Lemma In_eq_iff : x == y -> (In x s <-> In y s).
-  Proof.
+  Proof using HF.
     split; apply In_1;intros; auto.
   Qed.
 
   Lemma mem_spec : mem x s = true <-> In x s.
-  Proof. split; [apply mem_2 | apply mem_1]. Qed.
+  Proof using HF. split; [apply mem_2 | apply mem_1]. Qed.
 
   Lemma mem_false : mem x s = false <-> ~In x s.
-  Proof. intros; rewrite <- mem_spec; destruct (mem x s); intuition. Qed.
+  Proof using HF. intros; rewrite <- mem_spec; destruct (mem x s); intuition. Qed.
 
   Lemma equal_spec : equal s s' = true <-> s == s'.
-  Proof. split; [apply equal_2 | apply equal_1]. Qed.
+  Proof using HF. split; [apply equal_2 | apply equal_1]. Qed.
 
   Lemma subset_spec : subset s s' = true <-> s [<=] s'.
-  Proof. split; [apply subset_2 | apply subset_1]. Qed.
+  Proof using HF. split; [apply subset_2 | apply subset_1]. Qed.
 
   Lemma empty_spec : forall x, In x empty <-> False.
-  Proof. intuition; apply (empty_1 H). Qed.
+  Proof using HF. intuition; apply (empty_1 H). Qed.
 
   Lemma is_empty_spec : is_empty s = true <-> s == empty.
-  Proof.
+  Proof using HF.
   split.
   - intros H e. apply is_empty_2 in H. specialize (H e). rewrite empty_spec. tauto.
   - intro Heq. apply is_empty_1. intro e. rewrite (Heq e), empty_spec. tauto.
   Qed.
 
   Lemma singleton_spec : In y (singleton x) <-> x == y.
-  Proof. split; [apply singleton_1|apply singleton_2]. Qed.
+  Proof using HF. split; [apply singleton_1|apply singleton_2]. Qed.
 
   Lemma add_spec : In y (add x s) <-> x == y \/ In y s.
-  Proof.
+  Proof using HF.
     split; [| destruct 1; [apply add_1 | apply add_2]]; auto.
     destruct (Helt x y) as [E|E].
     - intro. auto.
@@ -72,10 +72,10 @@ Section IffSpec.
   Qed.
 
   Lemma add_other : x =/= y -> (In y (add x s) <-> In y s).
-  Proof. split; [apply add_3 | apply add_2]; auto. Qed.
+  Proof using HF. split; [apply add_3 | apply add_2]; auto. Qed.
 
   Lemma remove_spec : In y (remove x s) <-> In y s /\ x =/= y.
-  Proof.
+  Proof using HF.
     split; [split;
       [apply remove_3 with x |] | destruct 1; apply remove_2]; auto.
     intro.
@@ -83,32 +83,32 @@ Section IffSpec.
   Qed.
 
   Lemma remove_other : x =/= y -> (In y (remove x s) <-> In y s).
-  Proof. split; [apply remove_3 | apply remove_2]; auto. Qed.
+  Proof using HF. split; [apply remove_3 | apply remove_2]; auto. Qed.
 
   Lemma union_spec : In x (union s s') <-> In x s \/ In x s'.
-  Proof. split; [apply union_1 | destruct 1; [apply union_2 | apply union_3]]; auto. Qed.
+  Proof using HF. split; [apply union_1 | destruct 1; [apply union_2 | apply union_3]]; auto. Qed.
 
   Lemma inter_spec : In x (inter s s') <-> In x s /\ In x s'.
-  Proof.
+  Proof using HF.
     split; [split; [apply inter_1 with s' |
       apply inter_2 with s] | destruct 1; apply inter_3]; auto.
   Qed.
 
   Lemma diff_spec : In x (diff s s') <-> In x s /\ ~ In x s'.
-  Proof.
+  Proof using HF.
     split; [split; [apply diff_1 with s' |
       apply diff_2 with s] | destruct 1; apply diff_3]; auto.
   Qed.
 
   Lemma elements_spec : InA equiv x (elements s) <-> In x s.
-  Proof. split; [apply elements_2 | apply elements_1]. Qed.
+  Proof using HF. split; [apply elements_2 | apply elements_1]. Qed.
 
   Section ForFilter.
     Variable f : elt -> bool.
     Context {Hf : Proper (equiv ==> @eq bool) f}.
 
     Lemma filter_spec : (In x (filter f s) <-> In x s /\ f x = true).
-    Proof.
+    Proof using HF Hf.
       split.
       - split.
         + eapply filter_1; eauto.
@@ -117,10 +117,10 @@ Section IffSpec.
     Qed.
 
     Lemma for_all_spec : for_all f s = true <-> For_all (fun x => f x = true) s.
-    Proof. split; [eapply for_all_2; eauto | eapply for_all_1; eauto]; auto. Qed.
+    Proof using HF Hf. split; [eapply for_all_2; eauto | eapply for_all_1; eauto]; auto. Qed.
 
     Lemma exists_spec : exists_ f s = true <-> Exists (fun x => f x = true) s.
-    Proof. split; [eapply exists_2 | eapply exists_1]; eauto. Qed.
+    Proof using HF Hf. split; [eapply exists_2 | eapply exists_1]; eauto. Qed.
   End ForFilter.
   Arguments InA {A%type_scope} _ _ _.
 
@@ -143,20 +143,20 @@ Section BoolSpec.
   Variable x y z : elt.
 
   Lemma mem_b : x == y -> mem x s = mem y s.
-  Proof.
+  Proof using HF.
     intros.
     generalize (mem_spec s x) (mem_spec s y) (In_eq_iff s H).
     destruct (mem x s); destruct (mem y s); intuition.
   Qed.
 
   Lemma empty_b : mem y empty = false.
-  Proof.
+  Proof using HF.
     generalize (empty_spec y)(mem_spec empty y).
     destruct (mem y empty); intuition.
   Qed.
 
   Lemma add_b : mem y (add x s) = (x ==b y) || mem y s.
-  Proof.
+  Proof using HF.
     generalize (mem_spec (add x s) y)(mem_spec s y)(add_spec s x y); unfold eqb.
     unfold equiv_decb.
     destruct (equiv_dec x y) ; destruct (mem y s);
@@ -164,33 +164,33 @@ Section BoolSpec.
   Qed.
 
   Lemma add_neq_b : x =/= y -> mem y (add x s) = mem y s.
-  Proof.
+  Proof using HF.
     intros; generalize (mem_spec (add x s) y)(mem_spec s y)(add_other s H).
     destruct (mem y s); destruct (mem y (add x s)); intuition.
   Qed.
 
   Lemma remove_b : mem y (remove x s) = mem y s && negb (x ==b y).
-  Proof.
+  Proof using HF.
     generalize (mem_spec (remove x s) y)(mem_spec s y)(remove_spec s x y).
     unfold equiv_decb;destruct (equiv_dec x y); destruct (mem y s); destruct (mem y (remove x s));
       simpl; intuition ; contradiction.
   Qed.
 
   Lemma remove_neq_b : x =/= y -> mem y (remove x s) = mem y s.
-  Proof.
+  Proof using HF.
     intros; generalize (mem_spec (remove x s) y) (mem_spec s y)
       (remove_other s H).
     destruct (mem y s); destruct (mem y (remove x s)); intuition.
   Qed.
 
   Lemma singleton_b : mem y (singleton x) = (x ==b y).
-  Proof.
+  Proof using HF.
     generalize (mem_spec (singleton x) y)(singleton_spec x y); unfold eqb.
     unfold equiv_decb;destruct (equiv_dec x y); destruct (mem y (singleton x)); intuition.
   Qed.
 
   Lemma union_b : mem x (union s s') = mem x s || mem x s'.
-  Proof.
+  Proof using HF.
     generalize (mem_spec (union s s') x)(mem_spec s x)(mem_spec s' x)
       (union_spec s s' x).
     destruct (mem x s); destruct (mem x s');
@@ -198,7 +198,7 @@ Section BoolSpec.
   Qed.
 
   Lemma inter_b : mem x (inter s s') = mem x s && mem x s'.
-  Proof.
+  Proof using HF.
     generalize (mem_spec (inter s s') x)(mem_spec s x)
       (mem_spec s' x)(inter_spec s s' x).
     destruct (mem x s); destruct (mem x s');
@@ -206,7 +206,7 @@ Section BoolSpec.
   Qed.
 
   Lemma diff_b : mem x (diff s s') = mem x s && negb (mem x s').
-  Proof.
+  Proof using HF.
     generalize (mem_spec (diff s s') x)(mem_spec s x)
       (mem_spec s' x)(diff_spec s s' x).
     destruct (mem x s); destruct (mem x s');
@@ -214,7 +214,7 @@ Section BoolSpec.
   Qed.
 
   Lemma elements_b : mem x s = existsb (fun y => x ==b y) (elements s).
-  Proof.
+  Proof using HF.
     generalize (mem_spec s x)(elements_spec s x)
       (existsb_exists (fun y => x ==b y) (elements s)).
     rewrite InA_alt.
@@ -237,7 +237,7 @@ Section BoolSpec.
 
   Lemma filter_b `{Proper _ (equiv ==> @eq bool) f} :
     mem x (filter f s) = mem x s && f x.
-  Proof.
+  Proof using HF.
     intros.
     generalize (mem_spec (filter f s) x)(mem_spec s x)(filter_spec (f:=f) s x).
     destruct (mem x s); destruct (mem x (filter f s));
@@ -246,7 +246,7 @@ Section BoolSpec.
 
   Lemma for_all_b `{Proper _ (equiv ==> @eq bool) f} :
     for_all f s = forallb f (elements s).
-  Proof.
+  Proof using HF.
     intros.
     generalize (forallb_forall f (elements s))
       (for_all_spec (f:=f) s)(elements_spec s).
@@ -269,7 +269,7 @@ Section BoolSpec.
 
   Lemma exists_b `{Proper _ (equiv ==> @eq bool) f} :
     exists_ f s = existsb f (elements s).
-  Proof.
+  Proof using HF.
     intros.
     generalize (existsb_exists f (elements s))
       (exists_spec (f:=f) s)(elements_spec s).
@@ -295,14 +295,14 @@ End BoolSpec.
 
 Instance In_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> iff) In.
-Proof.
+Proof using .
   intros x y H s s' H0.
   rewrite (In_eq_iff s H); auto.
 Qed.
 
 Instance is_empty_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> @eq bool)  is_empty.
-Proof.
+Proof using .
   intros s s' H.
   generalize (is_empty_spec s)(is_empty_spec s').
   destruct (is_empty s); destruct (is_empty s');
@@ -312,11 +312,11 @@ Proof.
 Qed.
 
 Instance Empty_m `{HF : @FSetSpecs A St HA F} : Proper (equiv ==> iff) Empty.
-Proof. unfold Empty. intros ? ? H. now setoid_rewrite H. Qed.
+Proof using . unfold Empty. intros ? ? H. now setoid_rewrite H. Qed.
 
 Instance mem_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> @eq bool) mem.
-Proof.
+Proof using .
   intros x y H s s' H0.
   generalize (H0 x); clear H0; rewrite (In_eq_iff s' H).
   generalize (mem_spec s x)(mem_spec s' y).
@@ -325,7 +325,7 @@ Qed.
 
 Instance singleton_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv) singleton.
-Proof.
+Proof using .
   intros x y H a.
   do 2 rewrite singleton_spec.
   split; intros.
@@ -335,42 +335,42 @@ Qed.
 
 Instance add_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> equiv) add.
-Proof.
+Proof using .
   intros x y H s s' H0 a.
   do 2 rewrite add_spec; rewrite H; rewrite H0; intuition.
 Qed.
 
 Instance remove_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> equiv) remove.
-Proof.
+Proof using .
   intros x y H s s' H0 a.
   do 2 rewrite remove_spec; rewrite H; rewrite H0; intuition.
 Qed.
 
 Instance union_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> equiv) union.
-Proof.
+Proof using .
   intros s s' H s'' s''' H0 a.
   do 2 rewrite union_spec; rewrite H; rewrite H0; intuition.
 Qed.
 
 Instance inter_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> equiv) inter.
-Proof.
+Proof using .
   intros s s' H s'' s''' H0 a.
   do 2 rewrite inter_spec; rewrite H; rewrite H0; intuition.
 Qed.
 
 Instance diff_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> equiv) diff.
-Proof.
+Proof using .
   intros s s' H s'' s''' H0 a.
   do 2 rewrite diff_spec; rewrite H; rewrite H0; intuition.
 Qed.
 
 Instance elements_compat `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> PermutationA equiv) elements.
-Proof.
+Proof using .
 intros s s' Heq. apply NoDupA_equivlistA_PermutationA.
 + auto with typeclass_instances.
 + apply elements_NoDupA.
@@ -379,14 +379,14 @@ intros s s' Heq. apply NoDupA_equivlistA_PermutationA.
 Qed.
 
 Instance PermutationA_length {elt} `{Setoid elt} : Proper (PermutationA equiv ==> Logic.eq) (@length elt).
-Proof. clear. intros l1 l2 perm. induction perm; simpl; auto; congruence. Qed.
+Proof using . clear. intros l1 l2 perm. induction perm; simpl; auto; congruence. Qed.
 
 Instance cardinal_compat `{HF : @FSetSpecs A St HA F} : Proper (equiv ==> Logic.eq) cardinal.
-Proof. intros ? ? Heq. rewrite 2 cardinal_spec. now do 2 f_equiv. Qed.
+Proof using . intros ? ? Heq. rewrite 2 cardinal_spec. now do 2 f_equiv. Qed.
 
 Instance Subset_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> iff) Subset.
-Proof.
+Proof using .
   unfold Subset; intros s s' H u u' H'; split; intros.
   rewrite <- H'; apply H0; rewrite H; assumption.
   rewrite H'; apply H0; rewrite <- H; assumption.
@@ -394,7 +394,7 @@ Qed.
 
 Instance subset_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> @eq bool) subset.
-Proof.
+Proof using .
   intros s s' H s'' s''' H0.
   generalize (subset_spec s s'') (subset_spec s' s''').
   destruct (subset s s''); destruct (subset s' s'''); auto; intros.
@@ -404,7 +404,7 @@ Qed.
 
 Instance equal_m `{HF : @FSetSpecs A St HA F} :
   Proper (equiv ==> equiv ==> @eq bool) equal.
-Proof.
+Proof using .
   intros s s' H s'' s''' H0.
   generalize (equal_spec s s'') (equal_spec s' s''').
   destruct (equal s s''); destruct (equal s' s'''); auto; intros.
@@ -415,11 +415,11 @@ Qed.
 (** * [Subset] is a setoid order *)
 Lemma Subset_refl `{HF : @FSetSpecs A St HA F} :
   forall s, s[<=]s.
-Proof. red; auto. Qed.
+Proof using . red; auto. Qed.
 
 Lemma Subset_trans `{HF : @FSetSpecs A St HA F} :
   forall s s' s'', s[<=]s'->s'[<=]s''->s[<=]s''.
-Proof. unfold Subset; eauto. Qed.
+Proof using . unfold Subset; eauto. Qed.
 
 Instance SubsetSetoid `{@FSetSpecs A St HA F} :
   PreOrder Subset := {
@@ -430,48 +430,48 @@ Instance SubsetSetoid `{@FSetSpecs A St HA F} :
 (** * Set operations and morphisms *)
 Instance In_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (equiv ==> Subset ++> impl) In | 1.
-Proof.
+Proof using .
   simpl_relation; apply H2; rewrite <- H1; auto.
 Qed.
 
 Instance Empty_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (Subset --> impl) Empty.
-Proof.
+Proof using .
   simpl_relation; unfold Subset, Empty, impl; intros.
   exact (H2 a (H1 a H3)).
 Qed.
 
 Instance add_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (equiv ==> Subset ++> Subset) add.
-Proof.
+Proof using .
   unfold Subset; intros x y H1 s s' H2 a.
   do 2 rewrite add_spec; rewrite H1; intuition.
 Qed.
 
 Instance remove_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (equiv ==> Subset ++> Subset) remove.
-Proof.
+Proof using .
   unfold Subset; intros x y H1 s s' H2 a.
   do 2 rewrite remove_spec; rewrite H1; intuition.
 Qed.
 
 Instance union_s_m `{F : FSet A, @FSetSpecs _ _ _  F} :
   Proper (Subset ++> Subset ++> Subset) union.
-Proof.
+Proof using .
   intros s s' H1 s'' s''' H2 a.
   do 2 rewrite union_spec; intuition.
 Qed.
 
 Instance inter_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (Subset ++> Subset ++> Subset) inter.
-Proof.
+Proof using .
   intros s s' H1 s'' s''' H2 a.
   do 2 rewrite inter_spec; intuition.
 Qed.
 
 Instance diff_s_m `{F : FSet A, @FSetSpecs _ _ _ F} :
   Proper (Subset ++> Subset --> Subset) diff.
-Proof.
+Proof using .
   unfold Subset; intros s s' H1 s'' s''' H2 a.
   do 2 rewrite diff_spec; intuition.
 Qed.
@@ -481,7 +481,7 @@ Qed.
 Instance filter_m  `{F : FSet A, @FSetSpecs _ _ _ F} :
   forall f `{Proper _ (equiv ==> @eq bool) f},
     Proper (equiv ==> equiv) (filter f).
-Proof.
+Proof using .
   intros f Hf s s' H' x.
   repeat rewrite filter_spec; auto. rewrite H'; reflexivity.
 Qed.
@@ -489,7 +489,7 @@ Qed.
 Lemma filter_ext  `{F : FSet A, @FSetSpecs _ _ _ F} :
   forall f f' `{Proper _ (equiv ==> @eq bool) f}, (forall x, f x = f' x) ->
     forall s s', s==s' -> filter f s == filter f' s'.
-Proof.
+Proof using .
   intros f f' Hf Hff' s s' Hss' x. do 2 (rewrite filter_spec; auto).
   rewrite Hff', Hss'; intuition.
   red; repeat intro; rewrite <- 2 Hff'; auto.
@@ -498,7 +498,7 @@ Qed.
 Instance filter_s_m  `{F : FSet A, @FSetSpecs _ _ _ F} :
   forall f `{Proper _ (equiv ==> @eq bool) f},
     Proper (Subset ==> Subset) (filter f).
-Proof.
+Proof using .
   unfold Subset; intros f Hf s s' H' x.
   repeat rewrite filter_spec; auto; intro; intuition.
 Qed.
@@ -514,20 +514,20 @@ Section InductiveSpec.
   Variables x y z : elt.
 
   Property In_dec : reflects (In x s) (mem x s).
-  Proof.
+  Proof using HF.
     case_eq (mem x s); intro H; constructor.
     apply mem_2; exact H.
     intro abs; rewrite (mem_1 abs) in H; discriminate.
   Qed.
 
   Property is_empty_dec : reflects (Empty s) (is_empty s).
-  Proof.
+  Proof using HF.
     case_eq (is_empty s); intro H; constructor.
     apply is_empty_2; exact H.
     intro abs; rewrite (is_empty_1 abs) in H; discriminate.
   Qed.
   Corollary is_empty_dec2 : reflects (s == empty) (is_empty s).
-  Proof.
+  Proof using HF.
     destruct is_empty_dec; constructor.
     intro a; rewrite empty_spec; intuition; contradiction (Htrue a).
     intro R; rewrite R in Hfalse; contradiction Hfalse.
@@ -535,14 +535,14 @@ Section InductiveSpec.
   Qed.
 
   Property equal_dec : reflects (s == s') (equal s s').
-  Proof.
+  Proof using HF.
     case_eq (equal s s'); intro H; constructor.
     apply equal_2; exact H.
     intro abs; rewrite (equal_1 abs) in H; discriminate.
   Qed.
 
   Property subset_dec : reflects (s [<=] s') (subset s s').
-  Proof.
+  Proof using HF.
     case_eq (subset s s'); intro H; constructor.
     apply subset_2; exact H.
     intro abs; rewrite (subset_1 abs) in H; discriminate.
@@ -554,7 +554,7 @@ Section InductiveSpec.
 
     Property for_all_dec :
       reflects (For_all (fun x => f x = true) s) (for_all f s).
-    Proof.
+    Proof using Comp HF.
       case_eq (for_all f s); intro H; constructor.
       - eapply for_all_2; eauto.
       - intro abs; rewrite for_all_1 in H; trivial; discriminate.
@@ -562,7 +562,7 @@ Section InductiveSpec.
 
     Property exists_dec :
       reflects (Exists (fun x => f x = true) s) (exists_ f s).
-    Proof.
+    Proof using Comp HF.
       case_eq (exists_ f s); intro H; constructor.
       eapply exists_2; eauto.
       intro abs; rewrite exists_1 in H; trivial; discriminate.
@@ -573,7 +573,7 @@ Section InductiveSpec.
   | choose_spec_Some : forall x (Hin : In x s), choose_spec (Some x)
   | choose_Spec_None : forall (Hempty : Empty s), choose_spec None.
   Property choose_dec : choose_spec (choose s).
-  Proof.
+  Proof using HF.
     case_eq (choose s); intros; constructor.
     apply choose_1; auto.
     apply choose_2; auto.
@@ -609,7 +609,7 @@ Section InductiveSpec.
 End InductiveSpec.
 
 Lemma elements_empty `{F : FSet A, @FSetSpecs _ _ _ F} : elements empty = nil.
-Proof.
+Proof using .
 assert (Hspec := empty_spec). setoid_rewrite <- elements_spec in Hspec.
 destruct (elements empty) as [| e l]; trivial; [].
 exfalso. rewrite <- (Hspec e). now left.
@@ -617,7 +617,7 @@ Qed.
 
 Lemma PermutationA_nil : forall A (eqA : relation A), Equivalence eqA ->
   forall l, PermutationA eqA nil l -> l = nil.
-Proof.
+Proof using .
 intros A eqA HeqA l Hl. destruct l.
 + reflexivity.
 + exfalso. rewrite <- InA_nil. rewrite (Coq.Lists.SetoidPermutation.PermutationA_equivlistA HeqA).
@@ -626,7 +626,7 @@ intros A eqA HeqA l Hl. destruct l.
 Qed.
 
 Lemma elements_nil `{F : FSet A, @FSetSpecs _ _ _ F} : forall s, elements s = nil <-> s == empty.
-Proof.
+Proof using .
 intro s. split; intro Heq.
 + intro x. rewrite <- elements_spec, Heq, empty_spec, InA_nil. tauto.
 + apply (@PermutationA_nil _ equiv); auto with typeclass_instances.
@@ -634,11 +634,11 @@ intro s. split; intro Heq.
 Qed.
 
 Lemma cardinal_empty `{F : FSet A, @FSetSpecs _ _ _ F} : cardinal empty = 0.
-Proof. now rewrite cardinal_spec, length_zero_iff_nil, elements_empty. Qed.
+Proof using . now rewrite cardinal_spec, length_zero_iff_nil, elements_empty. Qed.
 
 Lemma elements_add_incl `{F : FSet A, @FSetSpecs _ _ _ F} :
   forall x s, inclA equiv (elements (add x s)) (x :: elements s).
-Proof.
+Proof using .
 intros x s y. rewrite elements_spec. set_iff. intros [Heq | Hin].
 - now left.
 - right. now rewrite elements_spec.
@@ -646,7 +646,7 @@ Qed.
 
 Lemma elements_add `{F : FSet A, @FSetSpecs _ _ _ F} : forall x s,
   ~In x s -> PermutationA equiv (elements (add x s)) (x :: elements s).
-Proof.
+Proof using .
 intros x s Hx. apply NoDupA_equivlistA_PermutationA.
 + auto with typeclass_instances.
 + apply elements_NoDupA.
@@ -661,7 +661,7 @@ Qed.
 
 Lemma cardinal_add `{F : FSet A, @FSetSpecs _ _ _ F} : forall x s,
   ~In x s -> cardinal (add x s) = S (cardinal s).
-Proof. intros. now rewrite 2 cardinal_spec, elements_add. Qed.
+Proof using . intros. now rewrite 2 cardinal_spec, elements_add. Qed.
 
 Global Instance Set_EqDec elt `{F : FSet elt, @FSetSpecs _ _ _ F} : @EqDec (set elt) _.
 Proof.
@@ -676,7 +676,7 @@ Defined.
 Instance fold_compat {A B} `{FSetSpecs A} `{Setoid B} :
   forall f : A -> B -> B, Proper (equiv ==> equiv ==> equiv) f -> transpose equiv f ->
   forall a, Proper (equiv ==> equiv) (fun x => fold f x a).
-Proof.
+Proof using .
 intros f Hf Ht a m1 m2 Heq. do 2 rewrite fold_spec.
 rewrite fold_left_symmetry_PermutationA; autoclass; [|].
 - repeat intro. now apply Hf.
@@ -686,7 +686,7 @@ Qed.
 Lemma fold_left_add_acc {A B} `{FSet A} `{FSetSpecs B} : forall (f : A -> B), Proper (equiv ==> equiv) f ->
   forall x l acc, In x (fold_left (fun acc y => add (f y) acc) l acc)
                   <-> In x acc \/ exists y, InA equiv y l /\ x == f y.
-Proof.
+Proof using .
 intros f Hf x l. induction l as [| e l]; intro acc; simpl.
 + intuition.
   match goal with H : exists _, InA _ _ nil /\ _ |- _ =>
@@ -703,18 +703,18 @@ Definition map {A B} `{FSet A} `{FSet B} (f : A -> B) s :=
 
 Instance map_compat {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
   Proper (equiv ==> equiv) (map f).
-Proof.
+Proof using .
 intros f Hf m₁ m₂ Hm. unfold map. apply fold_compat; autoclass; [|].
 - repeat intro. now repeat f_equiv.
 - repeat intro. set_iff. tauto.
 Qed.
 
 Lemma map_empty {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, map f empty == empty.
-Proof. intro. unfold map. rewrite fold_spec, elements_empty. simpl. reflexivity. Qed.
+Proof using . intro. unfold map. rewrite fold_spec, elements_empty. simpl. reflexivity. Qed.
 
 Lemma map_spec {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
   forall y s, In y (map f s) <-> exists x, In x s /\ y == (f x).
-Proof.
+Proof using .
 intros f Hf y s. unfold map.
 rewrite fold_spec, fold_left_add_acc, empty_spec; trivial; [].
 setoid_rewrite elements_spec. intuition.
@@ -722,11 +722,11 @@ Qed.
 
 Corollary map_In {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
   forall x m, In x m -> In (f x) (map f m).
-Proof. repeat intro. rewrite map_spec; eauto. Qed.
+Proof using . repeat intro. rewrite map_spec; eauto. Qed.
 
 Corollary map_add {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f : A -> B, Proper (equiv ==> equiv) f ->
   forall x m, map f (add x m) == add (f x) (map f m).
-Proof.
+Proof using .
 intros f Hf x m y. set_iff. rewrite 2 map_spec; trivial; [].
 split; intro Hin.
 + destruct Hin as [? [Hin Hy]]. revert Hin. set_iff. intros [Hx | Hin].
@@ -739,7 +739,7 @@ Lemma map_injective_elements {A B} `{FSetSpecs A} `{FSetSpecs B} : forall f,
   Proper (equiv ==> equiv) f ->
   injective equiv equiv f ->
   forall s, PermutationA equiv (elements (map f s)) (List.map f (elements s)).
-Proof.
+Proof using .
 intros f Hf Hf2 s.
 apply NoDupA_equivlistA_PermutationA; autoclass.
 + apply elements_NoDupA.

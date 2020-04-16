@@ -55,7 +55,7 @@ Instance similarity_da_Setoid : Setoid similarity_da := sig_Setoid _.
 Definition proj_sim_da : similarity_da -> demonic_action := @proj1_sig _ _.
 
 Global Instance proj_sim_da_compat : Proper (equiv ==> equiv) proj_sim_da.
-Proof. intros ? ? Heq. apply Heq. Qed.
+Proof using . intros ? ? Heq. apply Heq. Qed.
 
 Definition similarity_center : forall da config g,
   center (change_frame (proj_sim_da da) config g) == get_location (config (Good g))
@@ -75,19 +75,19 @@ Proof. coinduction Hcorec. simpl. unfold proj_sim_da. apply proj2_sig. Defined.
 
 Global Instance similarity_demon2demon_compat :
   Proper (@equiv _ Stream.stream_Setoid ==> @equiv _ Stream.stream_Setoid) similarity_demon2demon.
-Proof. unfold similarity_demon2demon. autoclass. Qed.
+Proof using . unfold similarity_demon2demon. autoclass. Qed.
 
 Lemma similarity2demon_hd : forall d, Stream.hd (similarity_demon2demon d) = proj_sim_da (Stream.hd d).
-Proof. now intros []. Qed.
+Proof using . now intros []. Qed.
 
 Lemma similarity2demon_tl : forall d, Stream.tl (similarity_demon2demon d) = similarity_demon2demon (Stream.tl d).
-Proof. now intros []. Qed.
+Proof using . now intros []. Qed.
 
 Lemma similarity2demon_cons : forall da d,
   @equiv _ Stream.stream_Setoid
     (similarity_demon2demon (Stream.cons da d))
     (Stream.cons (proj_sim_da da) (similarity_demon2demon d)).
-Proof. intros. unfold similarity_demon2demon. now rewrite Stream.map_cons. Qed.
+Proof using . intros. unfold similarity_demon2demon. now rewrite Stream.map_cons. Qed.
 
 (** Conversely, from a [demon] and a proof that [similarity_da_prop] is always true,
     we can build a [similarity_demon]. *)
@@ -102,15 +102,15 @@ Arguments demon2similarity_demon d Hd : clear implicits.
 
 Lemma demon2similarity_hd : forall d Hd,
   Stream.hd (demon2similarity_demon d Hd) == exist _ (Stream.hd d) (match Hd with Stream.Always x _ => x end).
-Proof. now intros [] []. Qed.
+Proof using . now intros [] []. Qed.
 
 Lemma demon2similarity_tl : forall d Hd,
   Stream.tl (demon2similarity_demon d Hd) == demon2similarity_demon (Stream.tl d) (match Hd with Stream.Always _ x => x end).
-Proof. now intros [] []. Qed.
+Proof using . now intros [] []. Qed.
 
 Theorem demon2demon : forall d Hd,
   @equiv _ Stream.stream_Setoid (similarity_demon2demon (demon2similarity_demon d Hd)) d.
-Proof. coinduction Hcorec. unfold Stream.instant2. now rewrite similarity2demon_hd, demon2similarity_hd. Qed.
+Proof using . coinduction Hcorec. unfold Stream.instant2. now rewrite similarity2demon_hd, demon2similarity_hd. Qed.
 
 End SimilarityCenter.
 

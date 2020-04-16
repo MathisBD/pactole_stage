@@ -92,7 +92,7 @@ Section ListOperations.
   
   Lemma t_add_lemma : forall x (s : t),
     NoDupA equiv s -> NoDupA equiv (list_add x s).
-  Proof.
+  Proof using .
   intros x s Hs. induction s as [| y l].
   + constructor; trivial; []. intro Habs. inversion Habs.
   + specialize (IHl ltac:(now inversion_clear Hs)).
@@ -111,7 +111,7 @@ Section ListOperations.
   
   Lemma list_remove_aux : forall (m : t) x y,
     InA equiv y (list_remove x m) -> InA equiv y m.
-  Proof.
+  Proof using .
   intros m x y Hy. simpl. induction m as [| z l].
   - inversion_clear Hy.
   - simpl in *. destruct (x == z); auto.
@@ -120,7 +120,7 @@ Section ListOperations.
   
   Lemma t_remove_lemma : forall k (s : t),
     NoDupA equiv s -> NoDupA equiv (list_remove k s).
-  Proof.
+  Proof using .
   intros x s Hs. induction s as [| y l].
   + now constructor.
   + simpl. destruct (x == y) as [Hxy | Hxy].
@@ -136,7 +136,7 @@ Section ListOperations.
   
   Lemma t_union_lemma : forall s1 s2,
     NoDupA equiv s1 -> NoDupA equiv s2 -> NoDupA equiv (list_union s1 s2).
-  Proof.
+  Proof using .
   intros s1 s2 Hs1. unfold list_union, list_fold, flip.
   revert s2. induction s1; simpl; intros s2 Hs2.
   + assumption.
@@ -149,7 +149,7 @@ Section ListOperations.
   
   Lemma t_inter_lemma : forall s1 s2,
     NoDupA equiv s1 -> NoDupA equiv (list_inter s1 s2).
-  Proof.
+  Proof using .
   intros s1 s2 Hs1. unfold list_inter, list_fold, flip.
   generalize (NoDupA_nil equiv). generalize (@nil elt) as acc.
   induction s1 as [| e1 s1]; simpl; intros acc Hacc.
@@ -164,7 +164,7 @@ Section ListOperations.
   
   Lemma t_diff_lemma : forall s1 s2,
     NoDupA equiv s1 -> NoDupA equiv (list_diff s1 s2).
-  Proof.
+  Proof using .
   intros s1 s2. unfold list_diff, list_fold, flip.
   revert s1. induction s2 as [| e2 s2]; simpl; intros s1 Hs1.
   + assumption.
@@ -176,7 +176,7 @@ Section ListOperations.
   
   
   Lemma list_filter_incl : forall f s, inclA equiv (list_filter f s) s.
-  Proof.
+  Proof using .
   intros f s. induction s as [| e s]; simpl.
   + reflexivity.
   + destruct (f e).
@@ -186,7 +186,7 @@ Section ListOperations.
   
   Lemma t_filter_lemma : forall (f : elt -> bool) (s : @set_ elt _ _),
     NoDupA equiv s -> NoDupA equiv (list_filter f s).
-  Proof.
+  Proof using .
   intros f s Hs. induction Hs as [| e s He Hs IHs]; simpl.
   + constructor.
   + destruct (f e); trivial; [].
@@ -199,7 +199,7 @@ Section ListOperations.
   
   
   Lemma list_partition_fst_incl : forall f s, inclA equiv (fst (list_partition f s)) s.
-  Proof.
+  Proof using .
   intros f s. induction s as [| e s]; simpl.
   + reflexivity.
   + destruct (list_partition f s) as [s1 s2], (f e); simpl.
@@ -209,7 +209,7 @@ Section ListOperations.
   
   Lemma t_partition_lemma_fst : forall (f : elt -> bool) (s : @set_ elt _ _),
     NoDupA equiv s -> NoDupA equiv (fst (list_partition f s)).
-  Proof.
+  Proof using .
   intros f s Hs. induction Hs as [| e s He Hs IHs]; simpl.
   + constructor.
   + destruct (list_partition f s) as [s1 s2] eqn:Hfs, (f e); simpl in *.
@@ -219,7 +219,7 @@ Section ListOperations.
   Qed.
   
   Lemma list_partition_snd_incl : forall f s, inclA equiv (snd (list_partition f s)) s.
-  Proof.
+  Proof using .
   intros f s. induction s as [| e s]; simpl.
   + reflexivity.
   + destruct (list_partition f s) as [s1 s2], (f e); simpl.
@@ -229,7 +229,7 @@ Section ListOperations.
   
   Lemma t_partition_lemma_snd : forall (f : elt -> bool) (s : @set_ elt _ _),
     NoDupA equiv s -> NoDupA equiv (snd (list_partition f s)).
-  Proof.
+  Proof using .
   intros f s Hs. induction Hs as [| e s He Hs IHs]; simpl.
   + constructor.
   + destruct (list_partition f s) as [s1 s2] eqn:Hfs, (f e); simpl in *.
@@ -276,7 +276,7 @@ Section SetMap.
   
   Lemma t_map_lemma {elt'} `{EqDec elt'} : forall (f : elt -> elt') (s : @set_ elt _ _),
     NoDupA equiv s -> NoDupA equiv (list_map f s).
-  Proof.
+  Proof using .
   intros f s Hs. unfold list_map, list_fold, list_add, flip.
   generalize (@NoDupA_nil elt' equiv).
   generalize (@nil elt') as acc.
@@ -388,10 +388,10 @@ Local Transparent
   for_all exists_ filter partition cardinal elements choose.
 
 Instance SetListFacts_In elt `{EqDec elt} : FSetSpecs_In SetList.
-Proof. split. simpl. intros s x y Heq. now rewrite Heq. Qed.
+Proof using . split. simpl. intros s x y Heq. now rewrite Heq. Qed.
 
 Local Lemma mem_aux elt `{EqDec elt} : forall x l, list_mem x l = true <-> InA equiv x l.
-Proof.
+Proof using .
 intros x l. induction l as [| e l]; simpl.
 * rewrite InA_nil. intuition.
 * destruct (x == e).
@@ -402,16 +402,16 @@ intros x l. induction l as [| e l]; simpl.
 Qed.
 
 Instance SetListFacts_mem elt `{EqDec elt} : FSetSpecs_mem SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] x Hin. simpl in *. now rewrite mem_aux.
 * intros [s Hs] x Hin. simpl in *. now rewrite mem_aux in Hin.
 Qed.
 
 Instance SetLIst_Facts_empty elt `{EqDec elt} : FSetSpecs_empty SetList.
-Proof. split. intros x Hin; simpl in *. now rewrite InA_nil in Hin. Qed.
+Proof using . split. intros x Hin; simpl in *. now rewrite InA_nil in Hin. Qed.
 
 Instance SetListFacts_is_empty elt `{EqDec elt} : FSetSpecs_is_empty SetList.
-Proof. split.
+Proof using . split.
 * intros [[| e s] Hs] Hempty; simpl in *.
   + reflexivity.
   + specialize (Hempty e ltac:(now left)). tauto.
@@ -422,7 +422,7 @@ Qed.
 
 Local Lemma add_aux elt `{EqDec elt} : forall x e l,
   InA equiv x (list_add e l) <-> x == e \/ InA equiv x l.
-Proof.
+Proof using .
 intros x e l. unfold list_add.
 destruct (list_mem e l) eqn:Hmem.
 + split; intro Hin.
@@ -435,7 +435,7 @@ destruct (list_mem e l) eqn:Hmem.
 Qed.
 
 Instance SetListFacts_add elt `{EqDec elt} : FSetSpecs_add SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] x y Heq. simpl. rewrite add_aux. now left.
 * intros [s Hs] x y Hin. simpl in *. rewrite add_aux. now right.
 * intros s x e Hneq Hin. simpl in *. rewrite add_aux in Hin.
@@ -444,7 +444,7 @@ Qed.
 
 Local Lemma remove_aux elt `{EqDec elt} : forall x e l, NoDupA equiv l ->
   InA equiv x (list_remove e l) <-> InA equiv x l /\ x =/= e.
-Proof.
+Proof using .
 intros x e l Hnodup. induction l as [| e' l]; simpl.
 * rewrite InA_nil. tauto.
 * destruct (e == e') as [Heq | Hneq]; repeat rewrite InA_cons.
@@ -461,14 +461,14 @@ intros x e l Hnodup. induction l as [| e' l]; simpl.
 Qed.
 
 Instance SetListFacts_remove elt `{EqDec elt} : FSetSpecs_remove SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] x y Heq. simpl. symmetry in Heq. now rewrite remove_aux.
 * intros [s Hs] x y Hxy Hin. simpl in *. now rewrite remove_aux.
 * intros [s Hs] x y Hin. simpl in *. now rewrite remove_aux in Hin.
 Qed.
 
 Instance SetListFacts_singleton elt `{EqDec elt} : FSetSpecs_singleton SetList.
-Proof. split.
+Proof using . split.
 * intros x y Hin. simpl in *. unfold list_add in Hin.
   destruct (list_mem x nil); now inversion_clear Hin.
 * intros x y Heq. simpl. rewrite <- Heq.
@@ -477,7 +477,7 @@ Qed.
 
 Local Lemma union_aux elt `{EqDec elt} : forall s1 s2 x,
   InA equiv x s2 -> InA equiv x (fold_left (fun s y => list_add y s) s1 s2).
-Proof.
+Proof using .
 intros s1. induction s1 as [| e1 s1]; simpl; intros s2 x Hin.
 + assumption.
 + apply IHs1; eauto using t_add_lemma; [].
@@ -485,7 +485,7 @@ intros s1. induction s1 as [| e1 s1]; simpl; intros s2 x Hin.
 Qed.
 
 Instance SetListFacts_union elt `{EqDec elt} : FSetSpecs_union SetList.
-Proof. split.
+Proof using . split.
 * intros [s1 Hs1] [s2 Hs2]. simpl.
   unfold list_union, list_fold, flip.
   revert s2 Hs2. induction s1 as [| e1 s1]; simpl; intros s2 Hs2 x Hin.
@@ -515,7 +515,7 @@ Lemma inter_aux elt `{EqDec elt} : forall (f : elt -> bool), Proper (equiv ==> e
   forall l1 l x,
   InA equiv x (fold_left (fun s y => if f y then list_add y s else s) l1 l)
   <-> InA equiv x l1 /\ f x = true \/ InA equiv x l.
-Proof.
+Proof using .
 intros f Hf l1. induction l1 as [| e1 l1]; simpl; intros l x.
 * rewrite InA_nil. tauto.
 * rewrite IHl1.
@@ -533,7 +533,7 @@ Qed.
 
 Local Lemma mem_compat elt `{EqDec elt} :
   forall l, Proper (equiv ==> equiv) (fun y => list_mem y l).
-Proof.
+Proof using .
 intros l x y Heq. induction l as [| e l]; simpl; trivial; [].
 destruct (x == e), (y == e).
 - reflexivity.
@@ -543,7 +543,7 @@ destruct (x == e), (y == e).
 Qed.
 
 Instance SetListFacts_inter elt `{EqDec elt} : FSetSpecs_inter SetList.
-Proof. split.
+Proof using . split.
 * intros [s1 Hs1] [s2 Hs2] x. simpl.
   unfold list_inter, list_fold, flip. rewrite inter_aux.
   + rewrite InA_nil. tauto.
@@ -561,7 +561,7 @@ Qed.
 Lemma diff_aux elt `{EqDec elt} : forall l1 l2 x, NoDupA equiv l1 ->
   InA equiv x (fold_left (fun s y => list_remove y s) l2 l1)
   <-> InA equiv x l1 /\ ~InA equiv x l2.
-Proof.
+Proof using .
 intros l1 l2 x. revert l1. induction l2 as [| e2 l2]; simpl; intros l1 Hnodup.
 * rewrite InA_nil. tauto.
 * rewrite IHl2.
@@ -570,14 +570,14 @@ intros l1 l2 x. revert l1. induction l2 as [| e2 l2]; simpl; intros l1 Hnodup.
 Qed.
 
 Instance SetListFacts_diff elt `{EqDec elt} : FSetSpecs_diff SetList.
-Proof.
+Proof using .
 split;
 intros [s1 Hs1] [s2 Hs2] x; simpl;
 unfold list_diff, list_fold, flip; now rewrite diff_aux.
 Qed.
 
 Instance SetListFacts_subset elt `{EqDec elt} : FSetSpecs_subset SetList.
-Proof. split.
+Proof using . split.
 * intros s1 s2 Hle. simpl. unfold list_subset.
   change (is_empty (diff s1 s2) = true).
   apply is_empty_1. intros x Hin.
@@ -593,7 +593,7 @@ Proof. split.
 Qed.
 
 Instance SetListFacts_equal elt `{EqDec elt} : FSetSpecs_equal SetList.
-Proof. split.
+Proof using . split.
 * intros s1 s2 Heq. simpl.
   change (subset s1 s2 && subset s2 s1 = true).
   rewrite andb_true_iff. split.
@@ -606,13 +606,13 @@ Proof. split.
 Qed.
 
 Instance SetListFacts_cardinal elt `{EqDec elt} : FSetSpecs_cardinal SetList.
-Proof. split. reflexivity. Qed.
+Proof using . split. reflexivity. Qed.
 
 Instance SetListFacts_fold elt `{EqDec elt} : FSetSpecs_fold SetList.
-Proof. split. reflexivity. Qed.
+Proof using . split. reflexivity. Qed.
 
 Instance SetListFacts_filter elt `{EqDec elt} : FSetSpecs_filter SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] x f Hf Hin.
   induction s as [| e s]; simpl in *.
   + assumption.
@@ -640,7 +640,7 @@ Proof. split.
 Qed.
 
 Instance SetListFacts_for_all elt `{EqDec elt} : FSetSpecs_for_all SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] f Hf Hall. unfold For_all in Hall. simpl in *.
   rewrite forallb_forall. intros x Hin. apply Hall. apply In_InA; Preliminary.autoclass.
 * intros [s Hs] f Hf Hall x Hin. simpl in *.
@@ -650,7 +650,7 @@ Proof. split.
 Qed.
 
 Instance SetListFacts_exists elt `{EqDec elt} : FSetSpecs_exists SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] f Hf [x [Hin Hfx]]. simpl in *. rewrite existsb_exists.
   rewrite InA_alt in Hin. destruct Hin as [y [Heq Hin]].
   rewrite Heq in Hfx. eauto.
@@ -659,7 +659,7 @@ Proof. split.
 Qed.
 
 Instance SetListFacts_partition elt `{EqDec elt} : FSetSpecs_partition SetList.
-Proof. split.
+Proof using . split.
 * intros [s Hs] f Hf x. simpl. induction s as [| e s]; simpl.
   + reflexivity.
   + destruct (list_partition f s) as [s1 s2]; simpl in *.
@@ -679,14 +679,14 @@ Proof. split.
 Qed.
 
 Instance SetListFacts_elements elt `{EqDec elt} : FSetSpecs_elements SetList.
-Proof. split.
+Proof using . split.
 * simpl. auto.
 * simpl. auto.
 * intros [s Hs]. simpl. assumption.
 Qed.
 
 Instance SetListFacts_choose elt `{EqDec elt} : FSetSpecs_choose SetList.
-Proof. split.
+Proof using . split.
 * intros [[| e s] Hs] x Hin; simpl in *.
   + discriminate.
   + inversion_clear Hin. now left.
@@ -698,4 +698,4 @@ Qed.
 
 (** The full set of specifications. *)
 Instance SetListFacts elt `{EqDec elt} : FSetSpecs SetList.
-Proof. split; auto with typeclass_instances. Qed.
+Proof using . split; auto with typeclass_instances. Qed.

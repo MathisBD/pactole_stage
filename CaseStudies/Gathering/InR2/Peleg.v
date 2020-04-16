@@ -79,7 +79,7 @@ Variable delta : R.
 
 Lemma inactive_proper : Proper (equiv ==> eq ==> equiv ==> equiv)
   (fun (config : configuration) (id : ident) (_ : unit) => config id).
-Proof. repeat intro; subst; auto. Qed.
+Proof using . repeat intro; subst; auto. Qed.
 
 Instance UpdFun : update_function (path location) (Similarity.similarity location) ratio :=
   FlexibleUpdate delta.
@@ -109,10 +109,10 @@ Definition paths_in_R2 : location -> path_R2 := local_straight_path.
 Coercion paths_in_R2 : location >-> path_R2.
 
 Instance paths_in_R2_compat : Proper (@equiv _ location_Setoid ==> equiv) paths_in_R2.
-Proof. intros pt1 pt2 Heq. now rewrite Heq. Qed.
+Proof using . intros pt1 pt2 Heq. now rewrite Heq. Qed.
 
 Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
-Proof.
+Proof using size_G.
 intros P Hconfig [g | b].
 + apply Hconfig.
 + destruct b. omega.
@@ -121,14 +121,14 @@ Qed.
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
-Proof.
+Proof using size_G.
 intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
 + apply Heq.
 + destruct b. omega.
 Qed.
 
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
-Proof.
+Proof using .
 intro. rewrite config_list_spec, map_cst.
 setoid_rewrite names_length. simpl. now rewrite plus_0_r.
 Qed.
@@ -143,14 +143,14 @@ Defined.
 
 Lemma map_sim_elements : forall (sim : similarity location) s,
   PermutationA equiv (elements (map sim s)) (List.map (fun xn => (sim (fst xn), snd xn)) (elements s)).
-Proof. intros. apply map_injective_elements; autoclass; apply Similarity.injective. Qed.
+Proof using . intros. apply map_injective_elements; autoclass; apply Similarity.injective. Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma obs_non_nil : forall config, !! config =/= empty.
-Proof. apply obs_non_nil. apply size_G. Qed.
+Proof using size_G. apply obs_non_nil. apply size_G. Qed.
 
 Lemma support_non_nil : forall config, support (!! config) <> nil.
-Proof. intro. rewrite support_nil. apply obs_non_nil. Qed.
+Proof using size_G. intro. rewrite support_nil. apply obs_non_nil. Qed.
 
 (* We need to unfold [obs_is_ok] for rewriting *)
 Definition obs_from_config_spec : forall (config : configuration) pt,
@@ -168,7 +168,7 @@ Definition ffgatherR2_pgm (s : observation) : @path location location_Setoid :=
   paths_in_R2 (barycenter (List.map (fun xn => (fst xn, INR (snd xn))) (elements s))).
 
 Instance ffgatherR2_pgm_compat : Proper (equiv ==> equiv) ffgatherR2_pgm.
-Proof.
+Proof using .
 intros ? ? Heq. unfold ffgatherR2_pgm, paths_in_R2.
 assert (Hf : Proper (equiv * eq ==> equiv * eq) (fun xn : location * nat => (fst xn, INR (snd xn)))).
 { intros [] [] [Heq1 Heq2]. hnf in *; simpl in *. auto. }
@@ -187,14 +187,14 @@ Definition max_dist_obs (s : observation) : R :=
   max_dist_list_list (support s) (support s).
 
 Instance max_dist_obs_compat : Proper (equiv ==> eq) max_dist_obs.
-Proof. intros ? ? Heq. unfold max_dist_obs. now rewrite Heq. Qed.
+Proof using . intros ? ? Heq. unfold max_dist_obs. now rewrite Heq. Qed.
 
 Lemma max_dist_obs_le :
   forall (s : observation) pt0 pt1,
     InA equiv pt0 (support s) ->
     InA equiv pt1 (support s) ->
     dist pt0 pt1 <= max_dist_obs s.
-Proof. intros. now apply max_dist_list_list_le. Qed.
+Proof using . intros. now apply max_dist_list_list_le. Qed.
 
 Lemma max_dist_obs_ex :
   forall (s : observation),
@@ -203,7 +203,7 @@ Lemma max_dist_obs_ex :
       InA equiv pt0 (support s)
       /\ InA equiv pt1 (support s)
       /\ dist pt0 pt1 = max_dist_obs s.
-Proof. intros. now apply max_dist_list_list_ex. Qed.
+Proof using . intros. unfold max_dist_obs. now apply max_dist_list_list_ex. Qed.
 
 
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
@@ -213,10 +213,10 @@ Definition measure (conf: configuration) : R :=
   max_dist_obs (!! conf).
 
 Instance measure_compat : Proper (equiv ==> eq) measure.
-Proof. intros ? ? Heq. unfold measure. now rewrite Heq. Qed.
+Proof using . intros ? ? Heq. unfold measure. now rewrite Heq. Qed.
 
 Lemma measure_nonneg : forall config, 0 <= measure config.
-Proof.
+Proof using size_G.
 intros config. unfold measure.
 destruct (support (!! config)) as [| pt l] eqn:Heq.
 + rewrite support_nil in Heq. elim (obs_non_nil _ Heq).
@@ -226,7 +226,7 @@ Qed.
 (** The minimum value 0 is reached only on gathered configurations. *)
 Lemma gathered_support : forall config pt,
   gathered_at pt config <-> PermutationA (@equiv _ location_Setoid) (support (!! config)) (pt :: nil).
-Proof.
+Proof using size_G.
 intros config pt.
 split; intro Hgather.
 * apply NoDupA_equivlistA_PermutationA; autoclass.
@@ -245,7 +245,7 @@ split; intro Hgather.
 Qed.
 
 Lemma gathered_measure : forall config, measure config = 0 <-> exists pt, gathered_at pt config.
-Proof.
+Proof using size_G.
 intros config. split; intro H.
 * unfold measure, max_dist_obs in *.
   assert (Hnil := obs_non_nil config).
@@ -291,7 +291,7 @@ Lemma lift_update_swap : forall da config1 config2 g target,
             g Similarity.id
             (lift_path (frame_choice_bijection (change_frame da config1 g ⁻¹)) target)
             (choose_update da config2 g target)).
-Proof.
+Proof using .
 intros da config1 config2 g target. cbn -[inverse]. unfold id.
 rewrite Similarity.dist_prop, Rmult_1_l.
 destruct_match_eq Hle; destruct_match_eq Hle'; try reflexivity; [|];
@@ -356,7 +356,7 @@ simpl frame_choice_bijection.
   rewrite Similarity.compose_inverse_l. change (Similarity.id (barycenter E')) with (barycenter E').
   rewrite Hda. unfold Rminus.
   rewrite mul_distr_add, <- add_morph, minus_morph, mul_opp, mul_1, 2 add_assoc.
-  apply add_compat; try reflexivity; []. apply add_comm. }
+  apply RealVectorSpace.add_compat; try reflexivity; []. apply RealVectorSpace.add_comm. }
 apply get_location_compat, update_compat; auto.
 + transitivity (map_config id config); try apply map_config_id; [].
   rewrite map_config_merge.
@@ -378,7 +378,7 @@ Theorem round_lt_config : forall da config,
     FSYNC_da da ->
     delta <= measure config ->
     measure (round ffgatherR2 da config) <= measure config - delta.
-Proof.
+Proof using size_G.
 intros da config Hdelta HFSync Hnotdone.
 set (elems := support (!! config)).
 set (relems := List.map (fun xn => (fst xn, INR (snd xn))) (elements (!! config))).
@@ -420,7 +420,7 @@ assert (Hrobot_move_less_than_delta:
                         (fun xn : location * nat => (fst xn, INR (snd xn)))
                         (elements !! config)))))) as r.
     cbn [straight_path path_f] in Hle.
-    rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
+    rewrite <- add_origin in Hle at 1. setoid_rewrite RealVectorSpace.add_comm in Hle.
     rewrite dist_translation in Hle.
     rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
     assert (0 <= r <= 1) by (destruct r as [r Hr]; apply Hr).
@@ -452,7 +452,8 @@ assert (Hrobot_move:
     exists r. split; try reflexivity; [].
     rewrite Heq in Hle. cbn [straight_path path_f] in Hle.
     rewrite norm_dist, opp_distr_add, add_assoc, add_opp in Hle.
-    rewrite add_comm, add_origin, norm_opp, Rmult_1_l in Hle. apply Hle. }
+    rewrite RealVectorSpace.add_comm, RealVectorSpace.add_origin,
+    norm_opp, Rmult_1_l in Hle. apply Hle. }
 
 assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_elems ->
         dist KP KQ <= max_dist_obs (!! config) - delta).
@@ -545,8 +546,8 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
       assert (Heq : (config (Good Pid) + kp * (C - config (Good Pid)) - C
                      == (1 + - kp) * -(C - config (Good Pid)))%VS).
       { symmetry. rewrite <- add_morph, mul_1.
-        now rewrite mul_opp, minus_morph, opp_opp, <- add_assoc, opp_distr_add, opp_opp,
-                    (add_comm (-C)), <- add_assoc, (add_comm (-C)). }
+        now rewrite RealVectorSpace.mul_opp, minus_morph, opp_opp, <- add_assoc, opp_distr_add, opp_opp,
+                    (RealVectorSpace.add_comm (-C)), <- add_assoc, (RealVectorSpace.add_comm (-C)). }
       rewrite Heq, norm_mul, norm_opp, dist_sym, norm_dist, Rabs_pos_eq,
               Rmult_plus_distr_r, Rmult_1_l, <- Ropp_mult_distr_l; try lra; [].
       apply Rplus_le_compat_l, Ropp_le_contravar.
@@ -571,8 +572,8 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
       assert (Heq : (get_location (config (Good Qid)) + kq * (C - get_location (config (Good Qid))) - C
                      == (1 + - kq) * -(C - get_location (config (Good Qid))))%VS).
       { symmetry. rewrite <- add_morph, mul_1.
-        now rewrite mul_opp, minus_morph, opp_opp, <- add_assoc, opp_distr_add, opp_opp,
-                    (add_comm (-C)), <- add_assoc, (add_comm (-C)). }
+        now rewrite RealVectorSpace.mul_opp, minus_morph, opp_opp, <- add_assoc, opp_distr_add, opp_opp,
+                    (RealVectorSpace.add_comm (-C)), <- add_assoc, (RealVectorSpace.add_comm (-C)). }
       rewrite Heq, norm_mul, norm_opp, dist_sym, norm_dist, Rabs_pos_eq,
               Rmult_plus_distr_r, Rmult_1_l, <- Ropp_mult_distr_l; try lra; [].
       apply Rplus_le_compat_l, Ropp_le_contravar.
@@ -608,7 +609,7 @@ Theorem round_last_step : forall da config,
     FSYNC_da da ->
     measure config <= delta ->
     measure (round ffgatherR2 da config) == 0.
-Proof.
+Proof using size_G.
 intros da config Hdelta HFSync Hlt.
 unfold measure.
 set (elems := support (!! config)).
@@ -646,7 +647,7 @@ assert (HonlyC: forall KP, InA equiv KP nxt_elems -> KP == C).
     remember (move_ratio (choose_update da config g
                (straight_path (get_location (config (Good g))) (barycenter relems)))) as r.
     cbn [straight_path path_f] in Hle.
-    rewrite <- add_origin in Hle at 1. setoid_rewrite add_comm in Hle.
+    rewrite <- add_origin in Hle at 1. setoid_rewrite RealVectorSpace.add_comm in Hle.
     rewrite dist_translation in Hle.
     rewrite mul_distr_add, mul_opp, dist_sym, <- R2dist_ref_0, dist_homothecy in Hle.
     assert (0 <= r <= 1) by apply ratio_bounds.
@@ -673,11 +674,11 @@ Definition lt_config delta x y :=
   lt (Z.to_nat (up (measure x / delta))) (Z.to_nat (up (measure y / delta))).
 
 Lemma wf_lt_config (Hdeltapos: delta > 0) : well_founded (lt_config delta).
-Proof. unfold lt_config. apply wf_inverse_image, lt_wf. Qed.
+Proof using . unfold lt_config. apply wf_inverse_image, lt_wf. Qed.
 
 Lemma lt_config_decrease : forall config1 config2, 0 < delta ->
   measure config1 <= measure config2 - delta -> lt_config delta config1 config2.
-Proof.
+Proof using size_G.
 intros config1 config2 Hdelta Hle. unfold lt_config.
 rewrite <- Z2Nat.inj_lt.
 + apply Zup_lt. field_simplify; try lra. unfold Rdiv. apply Rmult_le_compat.
@@ -697,7 +698,7 @@ Qed.
 
 Lemma gathered_precise : forall config pt,
   gathered_at pt config -> forall id, gathered_at (config id) config.
-Proof.
+Proof using size_G.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
 - symmetry. revert id. apply no_byz, Hgather.
@@ -724,7 +725,7 @@ Qed.
 
 Lemma gathered_at_elements : forall config pt,
   gathered_at pt config -> PermutationA eq_pair (elements (!! config)) ((pt, nG) :: nil).
-Proof.
+Proof using size_G.
 intros config pt Hgather.
 apply NoDupA_equivlistA_PermutationA; autoclass.
 * eapply NoDupA_strengthen, elements_NoDupA. apply subrelation_pair_elt.
@@ -758,7 +759,7 @@ Qed.
 
 Lemma gathered_at_forever : forall da config pt, FSYNC_da da ->
   gathered_at pt config -> gathered_at pt (round ffgatherR2 da config).
-Proof.
+Proof using size_G.
 intros da config pt Hda Hgather g.
 rewrite round_simplify; trivial; [].
 cbn zeta.
@@ -774,7 +775,7 @@ Qed.
 
 Lemma gathered_at_OK : forall d conf pt, FSYNC (similarity_demon2demon d) ->
   gathered_at pt conf -> Gather pt (execute ffgatherR2 d conf).
-Proof.
+Proof using size_G.
 cofix Hind. intros d conf pt Hd Hgather. constructor.
 + clear Hind. simpl. assumption.
 + rewrite execute_tail. destruct Hd. apply Hind; now try apply gathered_at_forever.
@@ -809,7 +810,7 @@ Qed.
 (** The final theorem. *)
 Theorem FSGathering_in_R2 :
   forall d, delta > 0 -> FSYNC (similarity_demon2demon d) -> FullSolGathering ffgatherR2 d.
-Proof.
+Proof using size_G.
 intros d Hdelta HFS config. revert d HFS. pattern config.
 apply (well_founded_ind (wf_lt_config Hdelta)). clear config.
 intros config Hind [da d] HFS.

@@ -40,16 +40,16 @@ Section NormedResults.
   Context `{RealNormedSpace T}.
   
   Lemma norm_opp `{RealNormedSpace} : forall u, norm (- u) = norm u.
-  Proof.
+  Proof using .
   intro u. rewrite <- (mul_1 u) at 1.
   now rewrite <- minus_morph, norm_mul, Rabs_Ropp, Rabs_R1, Rmult_1_l.
   Qed.
   
   Lemma norm_origin : norm 0 = 0%R.
-  Proof. now rewrite norm_defined. Qed.
+  Proof using . now rewrite norm_defined. Qed.
   
   Lemma triang_ineq_bis : forall u v, (Rabs (norm u - norm v) <= norm (u - v))%R.
-  Proof.
+  Proof using .
   intros u v.
   assert (Hle_u := triang_ineq (u - v) v).
   assert (Hle_v := triang_ineq (v - u) u).
@@ -61,7 +61,7 @@ Section NormedResults.
   Qed.
   
   Lemma norm_nonneg : forall x, 0 <= norm x.
-  Proof.
+  Proof using .
   intro x. transitivity (Rabs (norm x)).
   + apply Rabs_pos.
   + rewrite <- add_origin at 2. rewrite <- opp_origin.
@@ -71,23 +71,23 @@ Section NormedResults.
   Qed.
   
   Lemma square_norm_equiv : forall u k, 0 <= k -> (norm u = k <-> (norm u)² = k²).
-  Proof.
+  Proof using .
   intros u k Hk. split; intro Heq; try congruence; [].
   apply pos_Rsqr_eq; trivial; apply norm_nonneg.
   Qed.
   
   Corollary squared_norm : forall u v, norm u = norm v <-> (norm u)² = (norm v)².
-  Proof. intros u v. apply square_norm_equiv. apply norm_nonneg. Qed.
+  Proof using . intros u v. apply square_norm_equiv. apply norm_nonneg. Qed.
   
   (* Unitary vector in a given direction *)
   Definition unitary u := /(norm u) * u.
   
   (* could be strengthened with [colinear] (up to sign) *)
   Global Instance unitary_compat : Proper (equiv ==> equiv) unitary.
-  Proof. intros u v Heq. unfold unitary. now rewrite Heq. Qed.
+  Proof using . intros u v Heq. unfold unitary. now rewrite Heq. Qed.
   
   Lemma norm_unitary : forall u, u =/= origin -> norm (unitary u) = 1.
-  Proof.
+  Proof using .
   intros u Hnull.
   assert (norm u <> 0%R). { now rewrite norm_defined. }
   unfold unitary. rewrite norm_mul, Rabs_pos_eq.
@@ -96,10 +96,10 @@ Section NormedResults.
   Qed.
   
   Lemma unitary_origin : unitary origin == origin.
-  Proof. unfold unitary. apply mul_origin. Qed.
+  Proof using . unfold unitary. apply mul_origin. Qed.
   
   Lemma unitary_is_origin : forall u, unitary u == 0 <-> u == 0.
-  Proof.
+  Proof using .
   intro u. split; intro Heq.
   - null u; try reflexivity; [].
     apply norm_unitary in Hnull. rewrite Heq, norm_origin in Hnull.
@@ -108,10 +108,10 @@ Section NormedResults.
   Qed.
   
   Lemma unitary_opp : forall u, unitary (- u) == - unitary u.
-  Proof. intro u. unfold unitary. now rewrite norm_opp, mul_opp. Qed.
+  Proof using . intro u. unfold unitary. now rewrite norm_opp, mul_opp. Qed.
   
   Lemma unitary_mul : forall k u, 0 < k -> unitary (k * u) == unitary u.
-  Proof.
+  Proof using .
   intros k u Hk. null u.
   - now rewrite mul_origin.
   - unfold unitary. rewrite norm_mul. rewrite Rabs_pos_eq; try lra; [].
@@ -120,17 +120,17 @@ Section NormedResults.
   Qed.
   
   Lemma unitary_id : forall u, u == (norm u) * unitary u.
-  Proof.
+  Proof using .
   intro u. unfold unitary. rewrite mul_morph. null u.
   - now rewrite mul_origin.
   - rewrite Rinv_r, mul_1; try easy; []. now rewrite norm_defined.
   Qed.
   
   Corollary unitary_is_id : forall u, norm u = 1 -> unitary u == u.
-  Proof. intros u Hu. rewrite (unitary_id u) at 2. now rewrite Hu, mul_1. Qed.
+  Proof using . intros u Hu. rewrite (unitary_id u) at 2. now rewrite Hu, mul_1. Qed.
   
   Lemma unitary_idempotent : forall u, unitary (unitary u) == unitary u.
-  Proof.
+  Proof using .
   intro u. null u.
   - now rewrite unitary_origin at 1.
   - unfold unitary at 1. rewrite norm_unitary; trivial; [].
@@ -153,29 +153,29 @@ Section NormedResults.
   Defined.
   
   Lemma dist_translation : forall w u v, dist (u + w) (v + w) = dist u v.
-  Proof.
+  Proof using .
   intros w u v. simpl.
   now rewrite opp_distr_add, (add_comm (opp v)),
               <- add_assoc, (add_assoc w), add_opp, add_assoc, add_origin.
   Qed.
   
   Lemma dist_homothecy : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R.
-  Proof. intros. simpl. now rewrite <- norm_mul, mul_distr_add, mul_opp. Qed.
+  Proof using . intros. simpl. now rewrite <- norm_mul, mul_distr_add, mul_opp. Qed.
   
   Lemma dist_subadditive : forall u u' v v', dist (u + v) (u' + v') <= dist u u' + dist v v'.
-  Proof.
+  Proof using .
   intros. etransitivity; [now apply (RealMetricSpace.triang_ineq _ (u' + v)) |].
   rewrite dist_translation. setoid_rewrite add_comm. rewrite dist_translation. reflexivity.
   Qed.
   
   Lemma dist_opp : forall u v, dist (-u) (-v) = dist u v.
-  Proof.
+  Proof using .
   intros u v. simpl. rewrite <- (norm_opp (u - v)).
   apply norm_compat. now rewrite opp_distr_add.
   Qed.
   
   Lemma norm_dist : forall u v, dist u v = norm (u - v).
-  Proof. intros. reflexivity. Qed.
+  Proof using . intros. reflexivity. Qed.
   
 End NormedResults.
 
@@ -196,14 +196,14 @@ Defined.
 (* These space transformations are inverse of each other. *)
 Lemma Normed2Normed {T} `{rnsT : RealNormedSpace T} :
   forall u, @norm _ _ _ _ (Metric2Normed dist_translation dist_homothecy) u = norm u.
-Proof. intro. simpl. now rewrite opp_origin, add_origin. Qed.
+Proof using . intro. simpl. now rewrite opp_origin, add_origin. Qed.
 
 Lemma Metric2Metric {T} `{rmsT : RealMetricSpace T}
                     (trans_prop : forall w u v : T, dist (u + w) (v + w) = dist u v)
                     (homothecy_prop : forall ρ u v, dist (ρ * u) (ρ * v) = (Rabs ρ * dist u v)%R) :
   forall u v, @dist _ _ _ _ (@Normed2Metric _ _ _ _ (Metric2Normed trans_prop homothecy_prop)) u v
               = dist u v.
-Proof.
+Proof using .
 intros. simpl. now rewrite <- (trans_prop v), <- add_assoc,
                            (add_comm _ v), add_opp, (add_comm _ v), 2 add_origin.
 Qed.
@@ -243,7 +243,7 @@ Section BarycenterResults.
   
   Lemma weighted_sqr_dist_sum_compat :
     Proper (equiv ==> PermutationA (equiv * eq) ==> eq) weighted_sqr_dist_sum.
-  Proof.
+  Proof using .
   intros u v Hpt E1 E2 Hperm.
   unfold weighted_sqr_dist_sum.
   assert (Heq : (eq ==> equiv * eq ==> eq)%signature
@@ -271,7 +271,7 @@ Section BarycenterResults.
                    dist (fst p1) (fst p2) <= dm) ->
     let '(sum_pt, sum_coeff) := barycenter_aux E (pt, sumR) in
     forall p, InA (equiv@@1)%signature p E -> dist (sum_coeff * (fst p)) sum_pt <= sum_coeff * dm.
-  Proof.
+  Proof using .
   intros dm E.
   assert (Hincl : inclA (equiv * eq)%signature E E) by easy.
   revert Hincl. generalize E at 1 7. intro E'.
@@ -309,7 +309,7 @@ Section BarycenterResults.
     (forall p1 p2, InA equiv p1 (List.map fst E) -> InA equiv p2 (List.map fst E) ->
                    dist p1 p2 <= dm) ->
     forall p : T, InA equiv p (List.map fst E) -> dist p (barycenter E) <= dm.
-  Proof.
+  Proof using .
   intros E dm Hweight Hdist p Hin.
   assert (Proper (equiv ==> equiv) (@fst T R)). { intros [] [] [Heq _]. apply Heq. }
   assert (Hdist' : forall p1 p2, InA (equiv@@1)%signature p1 E ->
@@ -354,7 +354,7 @@ Section BarycenterResults.
   
   Lemma sqr_dist_sum_aux_compat :
     Proper (Logic.eq ==> equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum_aux.
-  Proof.
+  Proof using .
   intros i1 i2 Heqi pt1 pt2 Heqpt E1 E2 Hperm.
   unfold sqr_dist_sum_aux.
   assert (Heq : (eq ==> equiv ==> eq)%signature
@@ -369,14 +369,14 @@ Section BarycenterResults.
   
   Global Instance sqr_dist_sum_compat :
     Proper (equiv ==> PermutationA equiv ==> Logic.eq) sqr_dist_sum.
-  Proof. now apply sqr_dist_sum_aux_compat. Qed.
+  Proof using . now apply sqr_dist_sum_aux_compat. Qed.
   
   Lemma isobarycenter_dist_decrease_aux : forall E dm,
       E <> nil ->
       (forall p1 p2, InA equiv p1 E -> InA equiv p2 E -> dist p1 p2 <= dm) ->
       forall p, (forall q, InA equiv q E -> dist p q <= dm) ->
                 dist p (isobarycenter E) <= dm.
-  Proof.
+  Proof using .
   intros E dm Hnotempty Hdm p Hp.
   assert (Hlength_pos: 0 < INR (List.length E)).
   { apply lt_0_INR. destruct E; try (now elim Hnotempty); []. simpl. omega. }
@@ -413,7 +413,7 @@ Section BarycenterResults.
       E <> nil ->
       (forall p1 p2, InA equiv p1 E -> InA equiv p2 E -> dist p1 p2 <= dm) ->
       forall p, InA equiv p E -> dist p (isobarycenter E) <= dm.
-  Proof.
+  Proof using .
   intros E dm Hnotempty Hdm p Hp.
   apply (isobarycenter_dist_decrease_aux _ _ Hnotempty Hdm).
   intros q Hq. now apply Hdm.

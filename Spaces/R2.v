@@ -79,7 +79,7 @@ Bind Scope VectorSpace_scope with R2.
 
 Corollary square_dist_equiv : forall pt1 pt2 k, 0 <= k ->
   (dist pt1 pt2 = k <-> (dist pt1 pt2)² = k²).
-Proof.
+Proof using .
 intros pt1 pt2 k Hk. split; intro Heq.
 + now rewrite Heq.
 + cbn in *. rewrite Rsqr_sqrt in Heq.
@@ -88,13 +88,13 @@ intros pt1 pt2 k Hk. split; intro Heq.
 Qed.
 
 Lemma square_dist_simpl : forall pt1 pt2, (dist pt1 pt2)² = (fst pt1 - fst pt2)² + (snd pt1 - snd pt2)².
-Proof.
+Proof using .
 intros [] []. cbn. rewrite Rsqr_sqrt; trivial.
 replace 0 with (0 + 0) by ring. apply Rplus_le_compat; apply Rle_0_sqr.
 Qed.
 
 Lemma R2_dist_defined_2 : forall pt, dist pt pt = 0.
-Proof.
+Proof using .
   intros pt.
   rewrite dist_defined.
   reflexivity.
@@ -102,10 +102,10 @@ Qed.
 Hint Resolve R2_dist_defined_2 : core.
 
 Lemma R2dist_ref_0 : forall u v, dist u v = dist (u - v)%VS origin.
-Proof. intros u v. now rewrite <- (dist_translation (-v)%VS), add_opp. Qed.
+Proof using . intros u v. now rewrite <- (dist_translation (-v)%VS), add_opp. Qed.
 
 Lemma R2sub_origin : forall u v, (u - v)%VS == origin <-> u == v.
-Proof.
+Proof using .
 intros u v. split; intro Heq.
 - now rewrite <- dist_defined, <- (dist_translation (- v)%VS), add_opp, dist_defined.
 - now rewrite Heq, add_opp.
@@ -176,10 +176,10 @@ Ltac normalize_R2dist pt1 pt2 pt3 :=
 Definition R2dec_bool (x y : R2) := if equiv_dec x y then true else false.
 
 Lemma R2dec_bool_true_iff (x y : R2) : R2dec_bool x y = true <-> x == y.
-Proof. unfold R2dec_bool. destruct (equiv_dec x y); split; discriminate || auto. Qed.
+Proof using . unfold R2dec_bool. destruct (equiv_dec x y); split; discriminate || auto. Qed.
 
 Lemma R2dec_bool_false_iff (x y : R2) : R2dec_bool x y = false <-> x =/= y.
-Proof.
+Proof using .
 unfold R2dec_bool.
 destruct (equiv_dec x y); split; discriminate || auto.
 intros abs. rewrite e in abs. now elim abs.
@@ -194,26 +194,26 @@ Definition colinear (u v : R2) := perpendicular u (orthogonal v).
 
 (* Compatibilities *)
 Instance orthogonal_compat : Proper (equiv ==> equiv) orthogonal.
-Proof. intros u v Heq. now rewrite Heq. Qed.
+Proof using . intros u v Heq. now rewrite Heq. Qed.
 
 Instance colinear_compat : Proper (equiv ==> equiv ==> iff) colinear.
-Proof. intros u1 u2 Hu v1 v2 Hv. now rewrite Hu, Hv. Qed.
+Proof using . intros u1 u2 Hu v1 v2 Hv. now rewrite Hu, Hv. Qed.
 
 (** ***  Results about [norm]  **)
 
 Lemma norm_dist : forall u v, dist u v = norm (u - v)%VS.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma square_norm_equiv : forall u k, 0 <= k -> (norm u = k <-> (norm u)² = k²).
-Proof. intros u k Hk. split; intro Heq; try congruence; []. apply pos_Rsqr_eq; trivial. apply norm_nonneg. Qed.
+Proof using . intros u k Hk. split; intro Heq; try congruence; []. apply pos_Rsqr_eq; trivial. apply norm_nonneg. Qed.
 
 Corollary squared_norm : forall u v, norm u = norm v <-> (norm u)² = (norm v)².
-Proof. intros u v. apply square_norm_equiv. apply norm_nonneg. Qed.
+Proof using . intros u v. apply square_norm_equiv. apply norm_nonneg. Qed.
 
 (** ***  Results about [orthogonal]  **)
 
 Lemma orthogonal_perpendicular : forall u, perpendicular u (orthogonal u).
-Proof.
+Proof using .
 intro u. null u.
 - unfold perpendicular. now rewrite inner_product_origin_l.
 - destruct u as [x y]. unfold perpendicular. cbn. field.
@@ -221,10 +221,10 @@ intro u. null u.
 Qed.
 
 Lemma orthogonal_origin : orthogonal origin == origin.
-Proof. unfold orthogonal. simpl. now rewrite Ropp_0, Rmult_0_r. Qed.
+Proof using . unfold orthogonal. simpl. now rewrite Ropp_0, Rmult_0_r. Qed.
 
 Lemma orthogonal_origin_iff : forall u, orthogonal u == origin <-> u == origin.
-Proof.
+Proof using .
 intro u. null u.
 + split; now auto using orthogonal_origin.
 + split; intro Heq.
@@ -236,7 +236,7 @@ intro u. null u.
 Qed.
 
 Lemma norm_orthogonal : forall u, ~u == origin -> norm (orthogonal u) = 1.
-Proof.
+Proof using .
 intros u Hnull. rewrite <- norm_defined in Hnull. unfold orthogonal. rewrite norm_mul. rewrite Rabs_pos_eq.
 - destruct u as [u1 u2]. simpl.
   replace (u2 * u2 + - u1 * - u1) with (u1 * u1 + u2 * u2) by ring. now apply Rinv_l.
@@ -244,7 +244,7 @@ intros u Hnull. rewrite <- norm_defined in Hnull. unfold orthogonal. rewrite nor
 Qed.
 
 Lemma orthogonal_opp : forall u, orthogonal (- u)%VS == (- orthogonal u)%VS.
-Proof.
+Proof using .
 intro u. null u.
 - now rewrite opp_origin, orthogonal_origin, opp_origin.
 - destruct u as [? ?]. unfold orthogonal. rewrite norm_opp. cbn -[norm].
@@ -253,7 +253,7 @@ Qed.
 
 (* False in general because k may change the direction (but not the orientation) of u *)
 Lemma orthogonal_mul : forall k u, 0 < k -> orthogonal (k * u) == orthogonal u.
-Proof.
+Proof using .
 intros k u Hk. null u.
 - now rewrite mul_origin, orthogonal_origin.
 - rewrite <- norm_defined in Hnull. unfold orthogonal.
@@ -264,14 +264,14 @@ Qed.
 (** ***  Results about [unitary]  **)
 
 Lemma unitary_orthogonal : forall u, unitary (orthogonal u) == orthogonal u.
-Proof.
+Proof using .
 intro u. null u.
 - rewrite orthogonal_origin. apply unitary_origin.
 - unfold unitary. rewrite norm_orthogonal; trivial; []. replace (/1) with 1 by field. now rewrite mul_1.
 Qed.
 
 Lemma orthogonal_unitary : forall u, orthogonal (unitary u) == orthogonal u.
-Proof.
+Proof using .
 intro u. null u.
 - now rewrite unitary_origin.
 - unfold orthogonal. rewrite norm_unitary; trivial; []. unfold unitary. simpl.
@@ -280,7 +280,7 @@ Qed.
 
 Lemma perpendicular_orthogonal_compat : forall u v,
   perpendicular (orthogonal u) (orthogonal v) <-> perpendicular u v.
-Proof.
+Proof using .
 intros u v. split; intro Hperp.
 + null u; [| null v].
   - apply perpendicular_origin_l.
@@ -300,11 +300,11 @@ intros u v. split; intro Hperp.
 Qed.
 
 Lemma unitary_orthogonal_perpendicular : forall u, perpendicular (unitary u) (orthogonal u).
-Proof. intro. rewrite perpendicular_unitary_compat_l. apply orthogonal_perpendicular. Qed.
+Proof using . intro. rewrite perpendicular_unitary_compat_l. apply orthogonal_perpendicular. Qed.
 
 Lemma perpendicular_orthogonal_shift : forall u v,
   perpendicular (orthogonal u) v <-> perpendicular u (orthogonal v).
-Proof.
+Proof using .
 intros u v. null u; [| null v].
 + rewrite orthogonal_origin. split; intros _; apply perpendicular_origin_l.
 + rewrite orthogonal_origin. split; intros _; apply perpendicular_origin_r.
@@ -322,7 +322,7 @@ Qed.
 
 Lemma perpendicular_twice_colinear : forall u v w, ~equiv v origin ->
   perpendicular u v -> perpendicular v w -> colinear u w.
-Proof.
+Proof using .
 intros u v w Hv Huv Hvw.
 null u; [| null w].
 + apply perpendicular_origin_l.
@@ -355,13 +355,13 @@ Lemma colinear_dec : forall u v, {colinear u v} + {~colinear u v}.
 Proof. intros u v. unfold colinear. apply perpendicular_dec. Defined.
 
 Instance colinear_Reflexive : Reflexive colinear.
-Proof. intro. apply orthogonal_perpendicular. Qed.
+Proof using . intro. apply orthogonal_perpendicular. Qed.
 
 Instance colinear_Symmetric : Symmetric colinear.
-Proof. intros u v H. unfold colinear. now rewrite perpendicular_sym, perpendicular_orthogonal_shift. Qed.
+Proof using . intros u v H. unfold colinear. now rewrite perpendicular_sym, perpendicular_orthogonal_shift. Qed.
 
 Lemma colinear_trans : forall u v w, ~equiv v origin -> colinear u v -> colinear v w -> colinear u w.
-Proof.
+Proof using .
 intros u v w Hv Huv Hvw. apply perpendicular_twice_colinear with (orthogonal v).
 - now rewrite orthogonal_origin_iff.
 - assumption.
@@ -369,50 +369,50 @@ intros u v w Hv Huv Hvw. apply perpendicular_twice_colinear with (orthogonal v).
 Qed.
 
 Lemma colinear_sym : forall u v, colinear u v <-> colinear v u.
-Proof. intros. split; intros; now symmetry. Qed.
+Proof using . intros. split; intros; now symmetry. Qed.
 
 Lemma colinear_origin_l : forall u, colinear origin u.
-Proof. intro u. unfold colinear. apply perpendicular_origin_l. Qed.
+Proof using . intro u. unfold colinear. apply perpendicular_origin_l. Qed.
 
 Lemma colinear_origin_r : forall u, colinear u origin.
-Proof. intro u. unfold colinear. rewrite orthogonal_origin. apply perpendicular_origin_r. Qed.
+Proof using . intro u. unfold colinear. rewrite orthogonal_origin. apply perpendicular_origin_r. Qed.
 
 Lemma colinear_opp_compat_l : forall u v, colinear (- u) v <-> colinear u v.
-Proof. intros. unfold colinear. apply perpendicular_opp_compat_l. Qed.
+Proof using . intros. unfold colinear. apply perpendicular_opp_compat_l. Qed.
 
 Lemma colinear_orthogonal_shift : forall u v, colinear u (orthogonal v) <-> colinear (orthogonal u) v.
-Proof. intros. unfold colinear. now rewrite perpendicular_orthogonal_shift. Qed.
+Proof using . intros. unfold colinear. now rewrite perpendicular_orthogonal_shift. Qed.
 
 Lemma colinear_opp_compat_r : forall u v, colinear u (- v) <-> colinear u v.
-Proof.
+Proof using .
 intros. unfold colinear.
 now rewrite <- perpendicular_orthogonal_shift, perpendicular_opp_compat_r, perpendicular_orthogonal_shift.
 Qed.
 
 Lemma colinear_mul_compat_l : forall k u v, colinear u v -> colinear (k * u) v.
-Proof. intros. unfold colinear. now apply perpendicular_mul_compat_l. Qed.
+Proof using . intros. unfold colinear. now apply perpendicular_mul_compat_l. Qed.
 
 Lemma colinear_mul_compat_r : forall k u v, colinear u v -> colinear u (k * v).
-Proof.
+Proof using .
 intros. unfold colinear.
 rewrite <- perpendicular_orthogonal_shift. apply perpendicular_mul_compat_r.
 now rewrite perpendicular_orthogonal_shift.
 Qed.
 
 Lemma colinear_mul_compat_l_iff : forall k u v, k <> 0 -> (colinear (k * u) v <-> colinear u v).
-Proof. intros. unfold colinear. now apply perpendicular_mul_compat_l_iff. Qed.
+Proof using . intros. unfold colinear. now apply perpendicular_mul_compat_l_iff. Qed.
 
 Lemma colinear_mul_compat_r_iff : forall k u v, k <> 0 -> (colinear u (k * v) <-> colinear u v).
-Proof.
+Proof using .
 intros. unfold colinear.
 now rewrite <- perpendicular_orthogonal_shift, perpendicular_mul_compat_r_iff, perpendicular_orthogonal_shift.
 Qed.
 
 Lemma colinear_orthogonal_compat : forall u v, colinear (orthogonal u) (orthogonal v) <-> colinear u v.
-Proof. intros. unfold colinear. now rewrite perpendicular_orthogonal_compat. Qed.
+Proof using . intros. unfold colinear. now rewrite perpendicular_orthogonal_compat. Qed.
 
 Lemma colinear_add : forall u v, colinear u (u + v) <-> colinear u v.
-Proof.
+Proof using .
 intros u v. unfold colinear at 1. rewrite <- perpendicular_orthogonal_shift.
 unfold perpendicular. rewrite inner_product_add_r. rewrite inner_product_sym, orthogonal_perpendicular.
 rewrite Rplus_0_l. rewrite inner_product_sym. rewrite colinear_sym. reflexivity.
@@ -421,7 +421,7 @@ Qed.
 (* Beurk! *)
 Theorem decompose_on : forall u, ~equiv u origin -> forall v,
   (v = inner_product v (unitary u) * unitary u + inner_product v (orthogonal u) * orthogonal u)%VS.
-Proof.
+Proof using .
 intros [x1 y1] Hnull [x2 y2]. unfold unitary, orthogonal, norm, inner_product. simpl. f_equal.
 + ring_simplify. rewrite <- norm_defined in Hnull. unfold norm, inner_product in Hnull. simpl in Hnull.
   replace (Rpow_def.pow (/ sqrt (x1 * x1 + y1 * y1)) 2) with (/ sqrt (x1 * x1 + y1 * y1))²
@@ -449,7 +449,7 @@ Qed.
 
 Corollary colinear_decompose : forall u, ~equiv u origin -> forall v,
   colinear u v -> equiv v (norm v * unitary u)%VS \/ equiv v (- norm v * unitary u)%VS.
-Proof.
+Proof using .
 intros u Hnull v Huv. rewrite (decompose_on Hnull v).
 symmetry in Huv. rewrite Huv. rewrite mul_0, add_origin.
 rewrite norm_mul. rewrite norm_unitary, Rmult_1_r; trivial.
@@ -460,7 +460,7 @@ Qed.
 
 Lemma perpendicular_colinear_compat : forall u u' v v', ~equiv u origin -> ~equiv v origin ->
   colinear u u' -> colinear v v' -> perpendicular u v -> perpendicular u' v'.
-Proof.
+Proof using .
 intros u u' v v' Hu Hv Hcol_u Hcol_v Hperp.
 apply colinear_decompose in Hcol_u; trivial; [].
 apply colinear_decompose in Hcol_v; trivial; [].
@@ -470,7 +470,7 @@ rewrite Hcol_u, Hcol_v; apply perpendicular_mul_compat_l, perpendicular_mul_comp
 Qed.
 
 Lemma colinear_inner_product_spec : forall u v, Rabs (inner_product u v) = (norm u) * (norm v) <-> colinear u v.
-Proof.
+Proof using .
 intros u v. split; intro Huv.
 * apply (f_equal Rsqr) in Huv. rewrite <- R_sqr.Rsqr_abs in Huv.
   rewrite R_sqr.Rsqr_mult in Huv. do 2 rewrite squared_norm_product in Huv.
@@ -496,7 +496,7 @@ Qed.
 
 Theorem triang_ineq_eq : forall u v w,
   dist u w = dist u v + dist v w -> colinear (w - u) (v - u) /\ colinear (w - u) (w - v).
-Proof.
+Proof using .
 intros u v w Heq. null (w - u)%VS.
 * split; apply colinear_origin_l.
 * rewrite dist_sym, norm_dist in Heq.
@@ -519,7 +519,7 @@ Qed.
 
 Theorem triang_ineq_eq3 : forall t u v w,
   dist t w = dist t u + dist u v + dist v w -> colinear (u - t) (v - t) /\ colinear (w - t) (u - t).
-Proof.
+Proof using .
 intros t u v w Heq. null (u - t)%VS; [| null (v - t)%VS].
 + split; apply colinear_origin_l || apply colinear_origin_r.
 + split; try apply colinear_origin_r.
@@ -540,7 +540,7 @@ Qed.
 (* A very ugly proof! *)
 Lemma segment_bisector_spec : forall pt1 pt2 pt, ~equiv pt1 pt2 ->
   dist pt1 pt = dist pt pt2 <-> exists k, equiv pt (middle pt1 pt2 + k * orthogonal (pt2 - pt1))%VS.
-Proof.
+Proof using .
 intros pt1 pt2 pt Hnull. split; intro Hpt.
 + pose (ptx := (pt - pt1)%VS).
   exists (inner_product ptx (orthogonal (pt2 - pt1))).
@@ -591,18 +591,18 @@ Qed.
 Local Definition bij_rotation_f θ x := (Rgeom.xr (fst x) (snd x) θ, Rgeom.yr (fst x) (snd x) θ).
 
 Local Lemma bij_rotation_0 : forall x, bij_rotation_f 0 x == x.
-Proof. intros []. unfold bij_rotation_f. simpl. f_equal; apply Rgeom.rotation_0. Qed.
+Proof using . intros []. unfold bij_rotation_f. simpl. f_equal; apply Rgeom.rotation_0. Qed.
 
 Lemma bij_rotation_compose : forall θ θ' x,
   bij_rotation_f θ' (bij_rotation_f θ x) == bij_rotation_f (θ + θ') x.
-Proof.
+Proof using .
 intros. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr.
 rewrite cos_plus, sin_plus. simpl. f_equal; ring.
 Qed.
 
 Corollary bij_rotation_Inversion : forall θ (x y : R2),
   bij_rotation_f θ x == y <-> bij_rotation_f (-θ) y == x.
-Proof.
+Proof using .
 intros θ x y. split; intro Heq; rewrite <- Heq, bij_rotation_compose;
 ring_simplify (θ + - θ) || ring_simplify (- θ + θ); apply bij_rotation_0.
 Qed.
@@ -613,7 +613,7 @@ Definition bij_rotation (θ : R) : Bijection.bijection R2 := {|
   Bijection.Inversion := bij_rotation_Inversion θ |}.
 
 Lemma rotation_zoom : forall θ x y, dist (bij_rotation θ  x) (bij_rotation θ y) = 1 * dist x y.
-Proof.
+Proof using .
 intros θ x y. change (dist x y) with (Rgeom.dist_euc (fst x) (snd x) (fst y) (snd y)).
 rewrite Rmult_1_l, (Rgeom.isometric_rotation _ _ _ _ θ). reflexivity.
 Qed.
@@ -624,22 +624,22 @@ Definition rotation (θ : R) : similarity R2 := {|
   dist_prop := rotation_zoom θ |}.
 
 Global Instance translation_compat : Proper (equiv ==> equiv) rotation.
-Proof. intros θ θ' Hθ x. simpl. now rewrite Hθ. Qed.
+Proof using . intros θ θ' Hθ x. simpl. now rewrite Hθ. Qed.
 
 Lemma rotation_0 : rotation 0 == id.
-Proof. intro. simpl. apply bij_rotation_0. Qed.
+Proof using . intro. simpl. apply bij_rotation_0. Qed.
 
 Lemma rotation_origin : forall θ, rotation θ origin == origin.
-Proof. intros θ. simpl. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr, origin. simpl. f_equal; ring. Qed.
+Proof using . intros θ. simpl. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr, origin. simpl. f_equal; ring. Qed.
 
 Lemma rotation_inverse : forall θ, inverse (rotation θ) == rotation (-θ).
-Proof. intros θ x. simpl. reflexivity. Qed.
+Proof using . intros θ x. simpl. reflexivity. Qed.
 
 Lemma rotation_add : forall θ u v, (rotation θ (u + v) == rotation θ u + rotation θ v)%VS.
-Proof. intros. cbn. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. simpl. f_equal; ring. Qed.
+Proof using . intros. cbn. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. simpl. f_equal; ring. Qed.
 
 Lemma rotation_mul : forall θ k u, (rotation θ (k * u) == k * rotation θ u)%VS.
-Proof. intros. cbn. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. simpl. f_equal; ring. Qed.
+Proof using . intros. cbn. unfold bij_rotation_f, Rgeom.xr, Rgeom.yr. simpl. f_equal; ring. Qed.
 
 Lemma cos_carac : forall x, -1 <= x <= 1 -> {θ | 0 <= θ <= PI & x = cos θ}.
 Proof.
@@ -674,15 +674,15 @@ Definition rotation_from_points x y : similarity R2 :=
 
 Lemma rotation_from_points_compat : forall x1 x2, x1 == x2 -> forall y1 y2, y1 == y2 ->
   rotation_from_points x1 y1 == rotation_from_points x2 y2.
-Proof. intros x1 x2 Hx y1 y2 Hy Z. simpl. now rewrite Hx, Hy. Qed.
+Proof using . intros x1 x2 Hx y1 y2 Hy Z. simpl. now rewrite Hx, Hy. Qed.
 
 Lemma rotation_from_points_spec : forall x y,
   (norm y * rotation_from_points x y x == norm x * y)%VS.
-Proof. intros x y. apply (proj2_sig (angle_from_points x y)). Qed.
+Proof using . intros x y. apply (proj2_sig (angle_from_points x y)). Qed.
 
 Lemma rotation_from_points_nonnull : forall x y,
   (y =/= 0 -> rotation_from_points x y x == norm x / norm y * y)%VS.
-Proof.
+Proof using .
 intros x y Hy. rewrite <- mul_1. rewrite <- (Rinv_r (norm y)).
 + setoid_rewrite Rmult_comm. rewrite <- 2 mul_morph. apply mul_compat; trivial; [].
   apply rotation_from_points_spec.
@@ -697,14 +697,14 @@ Admitted.
 
 Lemma rotation_from_points_mul : forall u v k x,
   (rotation_from_points u v (k * x) == k * rotation_from_points u v x)%VS.
-Proof. intros. unfold rotation_from_points. apply rotation_mul. Qed.
+Proof using . intros. unfold rotation_from_points. apply rotation_mul. Qed.
 
 Lemma rotation_from_points_inverse : forall u v,
   inverse (rotation_from_points u v) == rotation_from_points v u.
-Proof. intros. unfold rotation_from_points. now rewrite rotation_inverse, <- angle_from_points_swap. Qed.
+Proof using . intros. unfold rotation_from_points. now rewrite rotation_inverse, <- angle_from_points_swap. Qed.
 
 Lemma build_sim_aux : forall pt1 pt2 pt3 pt4, pt1 =/= pt2 -> pt3 =/= pt4 -> dist pt4 pt3 / dist pt2 pt1 <> 0.
-Proof.
+Proof using .
 intros ** Habs. apply Rmult_integral in Habs.
 destruct Habs as [Habs | Habs].
 - rewrite dist_defined in Habs. symmetry in Habs. contradiction.
@@ -720,7 +720,7 @@ Lemma build_similarity_compat : forall pt1 pt1' pt2 pt2' pt3 pt3' pt4 pt4'
   (H12 : pt1 =/= pt2) (H34 : pt3 =/= pt4) (H12' : pt1' =/= pt2') (H34' : pt3' =/= pt4'),
   pt1 == pt1' -> pt2 == pt2' -> pt3 == pt3' -> pt4 == pt4' ->
   build_similarity H12 H34 == build_similarity H12' H34'.
-Proof. intros * Heq1 Heq2 Heq3 Heq4 x. simpl. now rewrite Heq1, Heq2, Heq3, Heq4 in *. Qed.
+Proof using . intros * Heq1 Heq2 Heq3 Heq4 x. simpl. now rewrite Heq1, Heq2, Heq3, Heq4 in *. Qed.
 
 Lemma build_similarity_swap : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity (symmetry Hdiff12) (symmetry Hdiff34) == build_similarity Hdiff12 Hdiff34.
@@ -770,7 +770,7 @@ Admitted.
 
 Lemma build_similarity_eq1 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity Hdiff12 Hdiff34 pt1 == pt3.
-Proof.
+Proof using .
 intros pt1 pt2 pt3 pt4 ? ?. cbn -[rotation translation homothecy add opp equiv].
 change ((translation (- pt1)%VS) pt1) with (pt1 - pt1)%VS. rewrite add_opp.
 rewrite homothecy_fixpoint.
@@ -781,7 +781,7 @@ Qed.
 (* This is wrong without proper orientation *)
 Lemma build_similarity_eq2 : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   build_similarity Hdiff12 Hdiff34 pt2 == pt4.
-Proof.
+Proof using .
 intros pt1 pt2 pt3 pt4 ? ?. cbn -[rotation translation homothecy add opp equiv].
 change ((translation (- pt1)%VS) pt2) with (pt2 - pt1)%VS.
 change ((homothecy origin (build_sim_aux Hdiff12 Hdiff34)) (pt2 - pt1)%VS)
@@ -801,7 +801,7 @@ Qed.
 
 Lemma build_similarity_inverse : forall pt1 pt2 pt3 pt4 (Hdiff12 : pt1 =/= pt2) (Hdiff34 : pt3 =/= pt4),
   (build_similarity Hdiff12 Hdiff34)⁻¹ == build_similarity Hdiff34 Hdiff12.
-Proof.
+Proof using .
 intros pt1 pt2 pt3 pt4 Hdiff12 Hdiff34.
 unfold build_similarity. repeat rewrite inverse_compose.
 rewrite 2 translation_inverse, opp_opp.
@@ -821,30 +821,30 @@ Qed.
 (** ** Segments **)
 
 Lemma Rplus_reg_r : forall r1 r2 r3, r1 = r3 + - r2 -> r1 + r2 = r3.
-Proof. intros. lra. Qed.
+Proof using . intros. lra. Qed.
 
 Lemma Rplus_reg_l : forall r1 r2 r3, r2 = r3 + -r1 -> r1 + r2 = r3.
-Proof. intros. lra. Qed.
+Proof using . intros. lra. Qed.
 
 Lemma Rplus_opp_r_rwrt : forall r1 r2,  r1 + - r2 = 0 -> r1 = r2.
-Proof.
+Proof using .
 intros. apply Rplus_opp_r_uniq in H. apply Ropp_eq_compat in H.
 repeat rewrite Ropp_involutive in H. subst. reflexivity.
 Qed.
 
 Lemma Rmult_inv_reg_r : forall r1 r2 r3, r2 <> 0 -> r1 = r3 * r2 -> r1 * / r2 = r3.
-Proof. intros. subst. now apply Rinv_r_simpl_l. Qed.
+Proof using . intros. subst. now apply Rinv_r_simpl_l. Qed.
 
 Lemma R2plus_opp_assoc_comm : forall u1 u2 u3, (u1 + u2 + - u3 = u1 + - u3 + u2)%VS.
-Proof. intros. now rewrite <- add_assoc, (add_comm u2), add_assoc. Qed.
+Proof using . intros. now rewrite <- add_assoc, (add_comm u2), add_assoc. Qed.
 
 Lemma R2_opp_dist : forall u v, (- (u + v) = -u + -v)%VS.
-Proof. intros [? ?] [? ?]. compute. f_equal; ring. Qed.
+Proof using . intros [? ?] [? ?]. compute. f_equal; ring. Qed.
 
 Lemma orthogonal_projection_aux :
   forall ptA ptB ptS, ptA =/= ptB ->
                       exists kH, perpendicular (ptB - ptA) (ptA - ptS + kH * (ptB - ptA)).
-Proof.
+Proof using .
   intros A B S Hineq.
   destruct A as (xA, yA).
   destruct B as (xB, yB).
@@ -894,7 +894,7 @@ Qed.
 Lemma orthogonal_projection :
   forall ptA ptB ptS, ptA =/= ptB ->
   exists kH, perpendicular (ptB - ptA) (ptA + kH * (ptB - ptA) - ptS).
-Proof.
+Proof using .
 intros A B S Hineq.
 destruct (orthogonal_projection_aux S Hineq) as (k, Hp).
 exists k.
@@ -902,7 +902,7 @@ now rewrite R2plus_opp_assoc_comm.
 Qed.
 
 Lemma squared_norm_le : forall u v, (norm u)² <= (norm v)² <-> norm u <= norm v.
-Proof. intros. apply pos_Rsqr_le; auto using norm_nonneg. Qed.
+Proof using . intros. apply pos_Rsqr_le; auto using norm_nonneg. Qed.
 
 Definition on_segment (ptA ptB pt : R2) :=
   exists k, (pt - ptA = k * (ptB - ptA))%VS /\ (0 <= k <= 1)%R.
@@ -911,7 +911,7 @@ Lemma inner_segment : forall ptA ptB ptS ptK,
   ~ ptA == ptB ->
   on_segment ptA ptB ptK ->
   dist ptS ptK <= dist ptS ptA \/ dist ptS ptK <= dist ptS ptB.
-Proof.
+Proof using .
 intros A B S K Hneq Hseg.
 destruct Hseg as (k, (Hcolinear, Hinside)).
 destruct (orthogonal_projection S Hneq) as (kh, Hp).
@@ -1008,11 +1008,11 @@ destruct (Rlt_le_dec k kh) as [Hlt | Hle].
 Qed.
 
 Lemma R2div_reg_l : forall k u v, k <> 0 -> (k * u = v)%VS -> (u = /k * v)%VS.
-Proof. intros k u v Hneqz Heq. subst. now rewrite mul_morph, Rinv_l, mul_1. Qed.
+Proof using . intros k u v Hneqz Heq. subst. now rewrite mul_morph, Rinv_l, mul_1. Qed.
 
 Lemma R2plus_compat_eq_r :
   forall u v w, (u = v)%VS -> (u + w = v + w)%VS.
-Proof. intros. subst. reflexivity. Qed.
+Proof using . intros. subst. reflexivity. Qed.
 
 Lemma distance_after_move
       (C P Q : R2) (kp kq dm : R)
@@ -1020,7 +1020,7 @@ Lemma distance_after_move
       (HdistPC : dist P C <= dm) (*(HdistQC: dist Q C <= dm)*) (HdistPQ : dist P Q <= dm)
       (Hkp: 0 < kp) (Hkpkq : kp <= kq) (Hkq : kq <= 1) :
   dist (P + kp * (C - P))%VS (Q + kq * (C - Q))%VS <= (1 - kp) * dm.
-Proof.
+Proof using .
 destruct (Req_dec kq 1).
 + subst kq.
   rewrite mul_1.
@@ -1145,7 +1145,7 @@ Qed.
 
 Lemma similarity_origin_norm : forall sim : similarity R2, sim origin == origin ->
   forall u, norm (sim u) = Similarity.zoom sim * norm u.
-Proof.
+Proof using .
 intros sim Hsim u.
 setoid_rewrite <- add_origin. rewrite <- opp_origin, <- 2 norm_dist.
 rewrite <- Hsim at 1. apply sim.(Similarity.dist_prop).
@@ -1153,7 +1153,7 @@ Qed.
 
 Lemma similarity_origin_inner_product : forall sim : similarity R2, sim origin == origin ->
   forall u v, inner_product (sim u) (sim v) = (Similarity.zoom sim)² * inner_product u v.
-Proof.
+Proof using .
 intros sim Hsim u v.
 rewrite 2 polarization_identity2, 2 (similarity_origin_norm sim Hsim).
 repeat rewrite R_sqr.Rsqr_mult.
@@ -1164,12 +1164,12 @@ Qed.
 Lemma translation_inner_product : forall t u1 u2 v1 v2,
   (inner_product (translation t v1 - translation t u1) (translation t v2 - translation t u2)
   = inner_product (v1 - u1) (v2 - u2))%VS.
-Proof. intros [] [] [] [] []. compute. ring. Qed.
+Proof using . intros [] [] [] [] []. compute. ring. Qed.
 
 Lemma similarity_inner_product : forall (sim : similarity R2) u1 u2 v1 v2,
   inner_product (sim v1 - sim u1) (sim v2 - sim u2)
   = (Similarity.zoom sim)² * inner_product (v1 - u1) (v2 - u2).
-Proof.
+Proof using .
 intros sim u1 u2 v1 v2.
 pose (sim' := translation (opp (sim origin)) ∘ sim).
 assert (Hzoom' :  Similarity.zoom sim' = Similarity.zoom sim).
@@ -1256,7 +1256,7 @@ repeat split.
 Admitted. (* similarity_in_R2 *)
 
 Corollary sim_add : forall (sim : similarity R2) x y, (sim (x + y) = sim x + sim y - sim origin)%VS.
-Proof.
+Proof using .
 intros sim x y. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
 repeat rewrite Heq, ?inner_product_origin_r, ?inner_product_add_r, <- ?add_morph, ?mul_0.
 rewrite add_origin, (add_comm origin t), add_origin.
@@ -1266,7 +1266,7 @@ change eq with equiv. apply add_comm.
 Qed.
 
 Corollary sim_opp : forall (sim : similarity R2) x, (sim (- x) = 2 * sim origin - sim x)%VS.
-Proof.
+Proof using .
 intros sim x. change eq with equiv.
 apply (add_reg_l (sim x)). apply (add_reg_r (- sim origin))%VS.
 rewrite <- sim_add, add_opp.
@@ -1277,7 +1277,7 @@ ring_simplify (2 + -(1)). now rewrite mul_1.
 Qed.
 
 Corollary sim_mul : forall (sim : similarity R2) k x, (sim (k * x) = k * sim x + (1 - k) * sim origin)%VS.
-Proof.
+Proof using .
 intros sim k x. destruct (similarity_in_R2 sim) as [u [v [t [Hu [Hv [Huv Heq]]]]]].
 repeat rewrite Heq, ?inner_product_origin_r, ?inner_product_mul_r, <- ?add_morph, ?mul_0.
 rewrite add_origin, (add_comm origin t), add_origin.
@@ -1288,7 +1288,7 @@ Qed.
 (** To prove that isobarycenter are invariant by similarities, we handle translations first. *)
 Lemma isobarycenter_translation_morph : forall t l, l <> nil ->
   isobarycenter (map (translation t) l) == translation t (isobarycenter l).
-Proof.
+Proof using .
 intros t l Hl. unfold isobarycenter. rewrite map_length.
 remember (INR (length l)) as k.
 assert (Hk : k <> 0).
@@ -1310,7 +1310,7 @@ Qed.
 
 Lemma isobarycenter_sim_morph_origin : forall (sim : similarity R2), sim origin == origin ->
   forall l, isobarycenter (map sim l) == sim (isobarycenter l).
-Proof.
+Proof using .
 intros sim Hsim l. unfold isobarycenter.
 rewrite sim_mul, Hsim, mul_origin, add_origin, map_length. f_equiv.
 induction l as [| e l].
@@ -1321,7 +1321,7 @@ Qed.
 
 Theorem isobarycenter_sim_morph : forall (sim : similarity R2) l,
   l <> nil -> isobarycenter (map sim l) == sim (isobarycenter l).
-Proof.
+Proof using .
 intros sim l Hl.
 pose (sim' := translation (opp (sim origin)) ∘ sim).
 assert (Hsim' : isobarycenter (map sim' l) == sim' (isobarycenter l)).
@@ -1344,7 +1344,7 @@ Qed.
 Local Lemma fold_mult_plus_distr : forall (f : R2 -> R) coeff E init,
   fold_left (fun acc pt => acc + snd pt * coeff * (f (fst pt))) E (coeff * init) =
   coeff * (fold_left (fun acc pt => acc + snd pt * (f (fst pt))) E init).
-Proof.
+Proof using .
   intros f coeff E.
   induction E; intro init.
   + now simpl.
@@ -1353,7 +1353,7 @@ Qed.
 
 Lemma barycenter_sim_morph : forall (sim : similarity R2) m, m <> nil ->
   barycenter (List.map (fun xn => (sim (fst xn), snd xn)) m) == sim (barycenter m).
-Proof.
+Proof using .
   intros sim m Hm. eapply barycenter_n_unique.
   + apply barycenter_n_spec.
   + intro p.
@@ -1415,7 +1415,7 @@ Definition opposite_of_max_side (pt1 pt2 pt3 : R2) :=
 Lemma classify_triangle_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     classify_triangle pt1 pt2 pt3 =  classify_triangle pt1' pt2' pt3'.
-Proof.
+Proof using .
   intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
   rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
   decompose [or and] Hperm; clear Hperm; subst;
@@ -1444,7 +1444,7 @@ Lemma opposite_of_max_side_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
     classify_triangle pt1 pt2 pt3 = Scalene ->
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     opposite_of_max_side pt1 pt2 pt3 = opposite_of_max_side pt1' pt2' pt3'.
-Proof.
+Proof using .
   intros pt1 pt2 pt3 pt1' pt2' pt3' scalene Hperm.
   generalize (classify_triangle_compat Hperm).
   intro scalene'.
@@ -1479,7 +1479,7 @@ Qed.
 Theorem classify_triangle_Equilateral_spec : forall pt1 pt2 pt3,
   classify_triangle pt1 pt2 pt3 = Equilateral
   <-> dist pt1 pt2 = dist pt2 pt3 /\ dist pt1 pt3 = dist pt2 pt3.
-Proof.
+Proof using .
 intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
 Qed.
@@ -1489,7 +1489,7 @@ Theorem classify_triangle_Isosceles_spec : forall pt1 pt2 pt3 pt,
   <-> (pt = pt1 /\ dist pt1 pt2 = dist pt1 pt3 /\ dist pt1 pt2 <> dist pt2 pt3)
    \/ (pt = pt2 /\ dist pt2 pt1 = dist pt2 pt3 /\ dist pt2 pt1 <> dist pt1 pt3)
    \/ (pt = pt3 /\ dist pt3 pt1 = dist pt3 pt2 /\ dist pt3 pt1 <> dist pt1 pt2).
-Proof.
+Proof using .
 intros pt1 pt2 pt3 pt. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *;
 repeat lazymatch goal with
@@ -1517,7 +1517,7 @@ Theorem classify_triangle_Scalene_spec : forall pt1 pt2 pt3,
   <-> dist pt1 pt2 <> dist pt2 pt3
    /\ dist pt1 pt2 <> dist pt1 pt3
    /\ dist pt1 pt3 <> dist pt2 pt3.
-Proof.
+Proof using .
 intros pt1 pt2 pt3. functional induction (classify_triangle pt1 pt2 pt3);
 rewrite ?Rdec_bool_true_iff, ?Rdec_bool_false_iff in *; split; intro; intuition discriminate.
 Qed.
@@ -1531,7 +1531,7 @@ Definition map_triangle_type f t :=
 
 Lemma classify_triangle_morph : forall (sim : similarity R2) pt1 pt2 pt3,
   classify_triangle (sim pt1) (sim pt2) (sim pt3) = map_triangle_type sim (classify_triangle pt1 pt2 pt3).
-Proof.
+Proof using .
 intros sim pt1 pt2 pt3.
 unfold classify_triangle at 1.
 setoid_rewrite (sim.(Similarity.dist_prop)).
@@ -1543,7 +1543,7 @@ Qed.
 
 Lemma opposite_of_max_side_morph : forall (sim : similarity R2) pt1 pt2 pt3,
   opposite_of_max_side (sim pt1) (sim pt2) (sim pt3) = sim (opposite_of_max_side pt1 pt2 pt3).
-Proof.
+Proof using .
 intros sim pt1 pt2 pt3. unfold opposite_of_max_side.
 repeat rewrite (sim.(Similarity.dist_prop)).
 assert (Hconfig : (0 < Similarity.zoom sim)%R) by apply Similarity.zoom_pos.
@@ -1556,7 +1556,7 @@ Qed.
 Lemma isoscele_vertex_is_vertex: forall ptx pty ptz vertex,
   classify_triangle ptx pty ptz = Isosceles vertex -> 
   InA equiv vertex (ptx :: pty :: ptz :: nil).
-Proof.
+Proof using .
 intros ptx pty ptz vertex H.
 functional induction (classify_triangle ptx pty ptz);
 try discriminate; inversion H; now repeat constructor.
@@ -1565,7 +1565,7 @@ Qed.
 Lemma scalene_vertex_is_vertex: forall ptx pty ptz,
   classify_triangle ptx pty ptz = Scalene ->
   InA equiv (opposite_of_max_side ptx pty ptz) (ptx :: pty :: ptz :: nil).
-Proof.
+Proof using .
 intros ptx pty ptz H.
 unfold opposite_of_max_side;
 repeat (let H := fresh in destruct_match_eq H);
@@ -1581,7 +1581,7 @@ Definition isobarycenter_3_pts (pt1 pt2 pt3:R2) := mul (Rinv 3) (add pt1 (add pt
 Lemma isobarycenter_3_pts_compat: forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     isobarycenter_3_pts pt1 pt2 pt3 =  isobarycenter_3_pts pt1' pt2' pt3'.
-Proof.
+Proof using .
   intros pt1 pt2 pt3 pt1' pt2' pt3' Hperm.
   rewrite <- PermutationA_Leibniz, (PermutationA_3 _) in Hperm.
   decompose [or and] Hperm; clear Hperm; subst;
@@ -1618,7 +1618,7 @@ Axiom bary3_unique: forall x y z a b,
 (* the [isobarycenter] is invariant by similarities. *)
 Lemma isobarycenter_3_morph: forall (sim : similarity R2) pt1 pt2 pt3,
   isobarycenter_3_pts (sim pt1) (sim pt2) (sim pt3) = sim (isobarycenter_3_pts pt1 pt2 pt3).
-Proof.
+Proof using .
 intros sim pt1 pt2 pt3. eapply bary3_unique.
 + apply bary3_spec.
 + intro p. change p with (Similarity.id p). rewrite <- (Similarity.compose_inverse_r sim).
@@ -1631,7 +1631,7 @@ Qed.
 
 Lemma R2_is_middle_morph : forall x y C (sim : similarity R2),
   is_middle x y C -> (is_middle (sim x) (sim y) (sim C)).
-Proof.
+Proof using .
 intros x y C sim Hmid.
 red.
 intros p.
@@ -1678,7 +1678,7 @@ Qed.
 
 Lemma R2dist_middle : forall pt1 pt2,
   dist pt1 (middle pt1 pt2) = /2 * dist pt1 pt2.
-Proof.
+Proof using .
 intros pt1 pt2.
 replace pt1 with (/2 * pt1 + /2 * pt1)%VS at 1.
 + unfold middle. rewrite mul_distr_add. setoid_rewrite add_comm.
@@ -1688,7 +1688,7 @@ replace pt1 with (/2 * pt1 + /2 * pt1)%VS at 1.
 Qed.
 
 Lemma middle_comm : forall ptx pty, middle ptx pty == middle pty ptx.
-Proof.
+Proof using .
 intros ptx pty.
 unfold middle.
 rewrite add_comm.
@@ -1696,10 +1696,10 @@ reflexivity.
 Qed.
 
 Lemma middle_shift : forall ptx pty, (middle ptx pty - ptx)%VS == (pty - middle ptx pty)%VS.
-Proof. unfold middle. destruct ptx, pty; simpl; hnf; f_equal; field. Qed.
+Proof using . unfold middle. destruct ptx, pty; simpl; hnf; f_equal; field. Qed.
 
 Lemma middle_eq : forall ptx pty, middle ptx pty == ptx <-> ptx == pty.
-Proof.
+Proof using .
   cbn. intros [? ?] [? ?].
   split; intro h.
   - inversion h; clear h; f_equal; lra.
@@ -1710,7 +1710,7 @@ Qed.
 
 Lemma middle_diff: forall ptx pty,
   ptx <> pty -> ~InA equiv (middle ptx pty) (ptx :: pty :: nil).
-Proof.
+Proof using .
 intros ptx pty Hdiff Hin.
 inversion_clear Hin; subst.
 * rewrite middle_eq in H. contradiction.
@@ -1721,7 +1721,7 @@ inversion_clear Hin; subst.
 Qed.
 
 Lemma middle_spec : forall pt1 pt2, is_middle pt1 pt2 (middle pt1 pt2).
-Proof.
+Proof using .
 intros pt1 pt2 pt.
 setoid_rewrite dist_sym. rewrite R2dist_middle, middle_comm, R2dist_middle, dist_sym.
 rewrite R_sqr.Rsqr_mult. unfold Rsqr at 1 3. field_simplify.
@@ -1738,7 +1738,7 @@ Qed.
 
 (* This is true because we use the euclidean distance. *)
 Lemma middle_is_R2middle : forall pt1 pt2 pt, is_middle pt1 pt2 pt -> pt == middle pt1 pt2.
-Proof.
+Proof using .
 intros pt1 pt2 pt Hpt. specialize (Hpt (middle pt1 pt2)).
 (* First, we simplify out middle pt1 pt2. *)
 assert (Hmid : (dist (middle pt1 pt2) pt1)² + (dist (middle pt1 pt2) pt2)² = (dist pt1 pt2)² / 2).
@@ -1798,13 +1798,13 @@ Qed.
 
 Corollary is_middle_uniq : forall pt1 pt2 mid1 mid2,
   is_middle pt1 pt2 mid1 -> is_middle pt1 pt2 mid2 -> mid1 = mid2.
-Proof. intros ? ? ? ? H1 H2. apply middle_is_R2middle in H1. apply middle_is_R2middle in H2. congruence. Qed.
+Proof using . intros ? ? ? ? H1 H2. apply middle_is_R2middle in H1. apply middle_is_R2middle in H2. congruence. Qed.
 
 Corollary R2_middle_morph : forall x y (sim : similarity R2), (middle (sim x) (sim y))%VS = sim ((middle x y))%VS.
-Proof. intros x y sim. symmetry. apply middle_is_R2middle, R2_is_middle_morph, middle_spec. Qed.
+Proof using . intros x y sim. symmetry. apply middle_is_R2middle, R2_is_middle_morph, middle_spec. Qed.
 
 Lemma colinear_middle : forall pt1 pt2, colinear (pt2 - pt1) (pt2 - middle pt1 pt2).
-Proof.
+Proof using .
 intros pt1 pt2.
 destruct (equiv_dec pt1 pt2) as [Heq | Hneq].
 + rewrite Heq, add_opp. apply colinear_origin_l.
@@ -1820,7 +1820,7 @@ Lemma middle_isobarycenter_3_neq: forall pt1 pt2 ptopp,
     classify_triangle pt1 pt2 ptopp = Equilateral ->
     middle pt1 pt2 = isobarycenter_3_pts pt1 pt2 ptopp ->
     pt1 = pt2.
-Proof.
+Proof using .
 intros pt1 pt2 ptopp Htriangle h_middle_eq_bary.
 unfold isobarycenter_3_pts,middle in h_middle_eq_bary;
   functional inversion Htriangle; rewrite -> ?Rdec_bool_true_iff in *;
@@ -1875,7 +1875,7 @@ Section Equilateral_results.
   
   (* The altitude of an equilateral triangle of side length a is (sqrt 2 / 3) * a. *)
   Lemma equilateral_altitude : dist pt1 (middle pt2 pt3) = sqrt 3 / 2 * dist pt1 pt2.
-  Proof.
+  Proof using Htriangle.
   assert (Hbase := equilateral_altitude_base).
   rewrite classify_triangle_Equilateral_spec in Htriangle. destruct Htriangle as [Heq12 Heq13]. clear Htriangle.
   null (pt3 - pt2)%VS; [| null (pt1 - middle pt2 pt3)%VS].
@@ -1903,7 +1903,7 @@ Section Equilateral_results.
   
   (* The radius of the circumscribed circle to an equilateral triangle of side length a is (sqrt 3 / 3) * a. *)
   Lemma equilateral_isobarycenter_dist : dist (isobarycenter_3_pts pt1 pt2 pt3) pt1 = sqrt 3 / 3 * dist pt1 pt2.
-  Proof.
+  Proof using Htriangle.
   unfold isobarycenter_3_pts. rewrite norm_dist.
   replace ((/ 3 * (pt1 + (pt2 + pt3)) - pt1))%VS with (2 / 3 * (middle pt2 pt3 - pt1))%VS
     by (unfold middle; destruct pt1, pt2, pt3; simpl; f_equal; lra).
@@ -1916,7 +1916,7 @@ Lemma same_dist_vertex_notin_sub_circle: forall ptx pty c,
   dist pty c = dist ptx c ->
   (dist (middle c ptx) pty <= dist c (middle c ptx))%R ->
   pty == ptx.
-Proof.
+Proof using .
 intros ptx pty c h_dist_iso hdist.
 destruct (Rtotal_order (dist (middle c ptx) pty) (dist c (middle c ptx))) as [Hlt | [Heq | Hlt]].
 - assert (Heq : ((dist c ptx) = 2 * dist c (middle c ptx))%R).
@@ -1970,7 +1970,7 @@ Lemma isosceles_vertex_notin_sub_circle: forall ptx pty c,
   classify_triangle ptx pty c = Isosceles c ->
   (dist (middle c ptx) pty <= dist c (middle c ptx))%R ->
   pty == ptx.
-Proof.
+Proof using .
 intros ptx pty c Hhiso hdist.
 assert (h_dist_iso:dist pty c = dist ptx c).
 { apply classify_triangle_Isosceles_spec in Hhiso.
@@ -2043,22 +2043,22 @@ Definition enclosing_circle (c : circle) l := forall x, In x l -> dist x (center
 Definition on_circle (c : circle) x := Rdec_bool (dist x (center c)) (radius c).
 
 Instance enclosing_circle_compat : forall c, Proper (@Permutation _ ==> iff) (enclosing_circle c).
-Proof.
+Proof using .
 repeat intro. unfold enclosing_circle.
 do 2 rewrite <- Forall_forall. apply Forall_Permutation_compat; trivial.
 intros ? ? ?. now subst.
 Qed.
 
 Instance on_circle_compat : Proper (eq ==> equiv ==> eq) on_circle.
-Proof. repeat intro. cbn in *. now subst. Qed.
+Proof using . repeat intro. cbn in *. now subst. Qed.
 
 Lemma on_circle_true_iff : forall c pt, on_circle c pt = true <-> dist pt (center c) = radius c.
-Proof. intros c pt. unfold on_circle. now rewrite Rdec_bool_true_iff. Qed.
+Proof using . intros c pt. unfold on_circle. now rewrite Rdec_bool_true_iff. Qed.
 
 (* If the radius of circle is not zero then the center is not part of it. *)
 Lemma center_not_on_circle : forall c,
     on_circle c (center c) = false <-> radius c <> 0%R.
-Proof.
+Proof using .
 intro.
 split; [intros hrad | intro honcirc]; unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
 - rewrite Rdec_bool_false_iff in *. auto.
@@ -2067,7 +2067,7 @@ Qed.
 
 Lemma center_on_circle : forall c,
   on_circle c (center c) = true <-> radius c = 0%R.
-Proof.
+Proof using .
 intro.
 split;[ intros hrad | intro honcirc];unfold on_circle in *; rewrite ?R2_dist_defined_2 in *; auto.
 - rewrite Rdec_bool_true_iff in *. auto.
@@ -2079,7 +2079,7 @@ Definition sim_circle (sim : similarity R2) c :=
 
 Lemma on_circle_morph :
   forall (sim : similarity R2) pt c, on_circle (sim_circle sim c) (sim pt) = on_circle c pt.
-Proof.
+Proof using .
 intros sim pt c.
 unfold on_circle at 1.
 unfold sim_circle.
@@ -2091,7 +2091,7 @@ Qed.
 
 Lemma enclosing_circle_morph :
   forall (sim : similarity R2) c l, enclosing_circle (sim_circle sim c) (List.map sim l) <-> enclosing_circle c l.
-Proof.
+Proof using .
 intros sim c l.
 unfold enclosing_circle.
 unfold sim_circle.
@@ -2192,11 +2192,11 @@ Axiom SEC_nil : radius (SEC nil) = 0.
 Declare Instance SEC_compat : Proper (@Permutation _ ==> Logic.eq) SEC.
 
 Global Instance SEC_compat_bis : Proper (PermutationA Logic.eq ==> Logic.eq) SEC.
-Proof. intros ? ? Heq. rewrite PermutationA_Leibniz in Heq. now rewrite Heq. Qed.
+Proof using . intros ? ? Heq. rewrite PermutationA_Leibniz in Heq. now rewrite Heq. Qed.
 
 (* The last axiom is useful because of the following degeneracy fact. *)
 Lemma enclosing_circle_nil : forall pt r, enclosing_circle {| center := pt; radius := r |} nil.
-Proof. intros. unfold enclosing_circle. intros x Hin. elim Hin. Qed.
+Proof using . intros. unfold enclosing_circle. intros x Hin. elim Hin. Qed.
 
 Definition center_eq c1 c2 := c1.(center) = c2.(center).
 Definition radius_eq c1 c2 := c1.(radius) = c2.(radius).
@@ -2204,7 +2204,7 @@ Definition radius_eq c1 c2 := c1.(radius) = c2.(radius).
 (** Unicity proof of the radius of the SEC *)
 Instance SEC_radius_compat :
   Proper (@Permutation _ ==> center_eq) SEC -> Proper (@Permutation _ ==> radius_eq) SEC.
-Proof.
+Proof using .
 intros Hspec l1 l2 Hperm.
 assert (Hup1 := SEC_spec1 l1). assert (Hdown1 := @SEC_spec2 l1).
 assert (Hup2 := SEC_spec1 l2). assert (Hdown2 := @SEC_spec2 l2).
@@ -2214,7 +2214,7 @@ apply Rle_antisym.
 Qed.
 
 Lemma SEC_radius_pos : forall l, 0 <= radius (SEC l).
-Proof.
+Proof using .
 intros [| pt ?].
 + now rewrite SEC_nil.
 + transitivity (dist pt (center (SEC (pt :: l)))).
@@ -2226,14 +2226,14 @@ Qed.
 Definition on_SEC l := List.filter (on_circle (SEC l)) l.
 
 Instance on_SEC_compat : Proper (PermutationA Logic.eq ==> PermutationA Logic.eq) on_SEC.
-Proof.
+Proof using .
 intros l1 l2 Hl. unfold on_SEC. rewrite Hl at 2.
 rewrite filter_extensionality_compat; try reflexivity.
 intros ? ? ?. subst. now rewrite Hl.
 Qed.
 
 Lemma on_SEC_In : forall pt l, In pt (on_SEC l) <-> In pt l /\ on_circle (SEC l) pt = true.
-Proof. intros. unfold on_SEC. apply filter_In. Qed.
+Proof using . intros. unfold on_SEC. apply filter_In. Qed.
 
 (** ***  Results about the [SEC]  **)
 
@@ -2242,7 +2242,7 @@ Proof. intros. unfold on_SEC. apply filter_In. Qed.
 Definition max_dist pt l := List.fold_left (fun r x => Rmax r (dist x pt)) l 0%R.
 
 Lemma max_dist_le_acc : forall pt l acc, acc <= List.fold_left (fun r x => Rmax r (dist x pt)) l acc.
-Proof.
+Proof using .
 intros pt l. induction l as [| e l]; intro acc; simpl.
 + apply Rle_refl.
 + apply Rle_trans with (Rmax acc (dist e pt)).
@@ -2251,17 +2251,17 @@ intros pt l. induction l as [| e l]; intro acc; simpl.
 Qed.
 
 Corollary max_dist_nonneg : forall pt l, 0 <= max_dist pt l.
-Proof. intros. apply max_dist_le_acc. Qed.
+Proof using . intros. apply max_dist_le_acc. Qed.
 
 Lemma max_dist_cons : forall pt x l, max_dist pt (x :: l) = Rmax (dist x pt) (max_dist pt l).
-Proof.
+Proof using .
 intros. unfold max_dist. simpl. generalize 0%R. induction l; intro acc; simpl.
 + apply Rmax_comm.
 + rewrite <- IHl. f_equal. setoid_rewrite <- Rmax_assoc. f_equal. apply Rmax_comm.
 Qed.
 
 Lemma max_dist_le : forall pt x l, In x l -> dist x pt <= max_dist pt l.
-Proof.
+Proof using .
 intros pt x l Hin.
 unfold max_dist. generalize 0. induction l as [| e l]; intro acc; simpl.
 * elim Hin.
@@ -2273,7 +2273,7 @@ unfold max_dist. generalize 0. induction l as [| e l]; intro acc; simpl.
 Qed.
 
 Lemma max_dist_exists : forall pt l, l <> nil -> exists x, In x l /\ dist x pt = max_dist pt l.
-Proof.
+Proof using .
 intros pt l Hl. induction l as [| e1 l].
 * now elim Hl.
 * destruct l as [| e2 l].
@@ -2287,7 +2287,7 @@ intros pt l Hl. induction l as [| e1 l].
 Qed.
 
 Lemma radius_is_max_dist : forall l, radius (SEC l) = max_dist (center (SEC l)) l.
-Proof.
+Proof using .
 intro l.
 apply Rle_antisym.
 + pose (c := {| center := center (SEC l); radius := max_dist (center (SEC l)) l |}).
@@ -2301,7 +2301,7 @@ apply Rle_antisym.
 Qed.
 
 Lemma max_dist_incl_compat : forall pt l1 l2, incl l1 l2 -> max_dist pt l1 <= max_dist pt l2.
-Proof.
+Proof using .
 intros pt l1. induction l1; intros l2 Hincl.
 + cbn. apply max_dist_nonneg.
 + rewrite max_dist_cons. apply Rmax_lub.
@@ -2311,7 +2311,7 @@ Qed.
 
 (* If we add more points the radius of the SEC cannot decrease. *)
 Lemma max_dist_enclosing : forall pt l, enclosing_circle {| center := pt; radius := max_dist pt l |} l.
-Proof.
+Proof using .
 intros pt l. induction l as [| e l].
 + apply enclosing_circle_nil.
 + intros pt' Hin. simpl. inversion Hin.
@@ -2321,7 +2321,7 @@ intros pt l. induction l as [| e l].
 Qed.
 
 Lemma SEC_incl_compat : forall l1 l2, incl l1 l2 -> radius (SEC l1) <= radius (SEC l2).
-Proof.
+Proof using .
 intros l1 l2 Hincl.
 transitivity (max_dist (center (SEC l2)) l1).
 - apply (SEC_spec2 (max_dist_enclosing (center (SEC l2)) l1)).
@@ -2331,21 +2331,21 @@ Qed.
 (** There is at least one point on the [SEC]. *)
 Lemma SEC_reached : forall l, l <> nil ->
   exists pt, In pt l /\ on_circle (SEC l) pt = true.
-Proof.
+Proof using .
 intros. unfold on_circle. rewrite radius_is_max_dist.
 setoid_rewrite Rdec_bool_true_iff. now apply max_dist_exists.
 Qed.
 
 
 Lemma max_dist_singleton: forall pt x, max_dist pt (x::nil) = dist x pt.
-Proof.
+Proof using .
   intros pt x.
   rewrite max_dist_cons.
   unfold max_dist. simpl fold_left. apply Rmax_left, dist_nonneg.
 Qed.
 
 Lemma enclosing_singleton : forall pt, enclosing_circle {| center := pt; radius := 0 |} (pt :: nil).
-Proof.
+Proof using .
   intros pt.
   red.
   intros pt' H.
@@ -2368,7 +2368,7 @@ Axiom SEC_unicity: forall l c,
     -> c = SEC l.
 
 Lemma SEC_singleton : forall pt, SEC (pt :: nil) = {| center := pt; radius := 0 |}.
-Proof.
+Proof using .
 intro pt. symmetry. apply SEC_unicity.
 - apply enclosing_singleton.
 - simpl. rewrite radius_is_max_dist, max_dist_singleton. apply dist_nonneg.
@@ -2378,7 +2378,7 @@ Opaque dist middle.
 (* OK even when the points are the same *)
 Lemma SEC_dueton : forall pt1 pt2,
   SEC (pt1 :: pt2 :: nil) = {| center := middle pt1 pt2; radius := /2 * dist pt1 pt2 |}.
-Proof.
+Proof using .
 intros pt1 pt2. symmetry. apply SEC_unicity.
 * intros pt Hin. simpl. inversion_clear Hin.
   + subst. now rewrite R2dist_middle.
@@ -2419,7 +2419,7 @@ end.
 Lemma farthest_from_in_exc_In : forall except c acc inl,
     farthest_from_in_except except c acc inl = acc \/
     In (farthest_from_in_except except c acc inl) inl.
-Proof.
+Proof using .
 intros except c acc inl.
 functional induction (farthest_from_in_except except c acc inl);
 try destruct IHr as [? | ?]; cbn; auto.
@@ -2427,7 +2427,7 @@ Qed.
 
 Lemma farthest_from_in_except_In : forall exc c l, (exists pt, pt <> exc /\ In pt l) ->
   In (farthest_from_in_except exc c c l) l.
-Proof.
+Proof using .
 intros exc c l Hl. induction l as [| e l].
 * now elim Hl.
 * cbn. destruct (equiv_dec e exc) as [Heq | Heq].
@@ -2446,7 +2446,7 @@ intros exc c l Hl. induction l as [| e l].
 Qed.
 
 Lemma farthest_from_in_except_diff : forall exc c acc l, acc <> exc -> farthest_from_in_except exc c acc l <> exc.
-Proof.
+Proof using .
 intros exc c acc l. revert acc. induction l as [| e l]; intros acc Hdiff; cbn.
 - assumption.
 - destruct (equiv_dec e exc); auto.
@@ -2455,7 +2455,7 @@ Qed.
 
 Lemma farthest_from_in_except_le_acc : forall exc c l acc,
   dist c acc <= dist c (farthest_from_in_except exc c acc l).
-Proof.
+Proof using .
 intros exc c l. induction l as [| e l]; intro acc; cbn.
 + apply Rle_refl.
 + destruct (equiv_dec e exc); auto.
@@ -2467,7 +2467,7 @@ Qed.
 
 Lemma farthest_from_in_except_le : forall exc c l acc x,
   In x l -> x <> exc -> dist c x <= dist c (farthest_from_in_except exc c acc l).
-Proof.
+Proof using .
 intros exc c l. induction l as [| e l]; intros acc x Hin Hneq.
 * inversion Hin.
 * inversion_clear Hin.
@@ -2480,7 +2480,7 @@ Qed.
 
 Lemma SEC_zero_radius_incl_singleton : forall l,
   radius (SEC l) = 0%R <-> exists pt, incl l (pt :: nil).
-Proof.
+Proof using .
 intro l.
 destruct l as [| e l].
 * rewrite SEC_nil. intuition. exists (0, 0). intuition.
@@ -2504,7 +2504,7 @@ Qed.
 Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l ->
   exists pt1 pt2, In pt1 l /\ In pt2 l /\ pt1 <> pt2
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
-Proof.
+Proof using .
 intros l Hl Hnodup.
 assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; omega. }
 destruct (SEC_reached Hnil) as [pt1 [Hin1 Hon1]].
@@ -2590,7 +2590,7 @@ Qed.
 
 (** The [SEC] is invariant by similarities. *)
 Lemma SEC_morph : forall (sim : similarity R2) l, SEC (List.map sim l) = sim_circle sim (SEC l).
-Proof.
+Proof using .
 intros sim l. symmetry. apply SEC_unicity.
 + intros pt' Hin. rewrite in_map_iff in Hin. destruct Hin as [pt [Hpt Hin]]. subst pt'.
   unfold sim_circle. simpl center. simpl radius. rewrite sim.(Similarity.dist_prop).
@@ -2616,7 +2616,7 @@ Qed.
 (** ***  Results about [on_SEC]  **)
 
 Lemma on_SEC_nil : forall l, on_SEC l = nil <-> l = nil.
-Proof.
+Proof using .
 intro l. split; intro H.
 - destruct l as [| e l]; trivial. exfalso.
   destruct (@SEC_reached (e :: l)) as [pt Hpt]; try discriminate.
@@ -2625,13 +2625,13 @@ intro l. split; intro H.
 Qed.
 
 Lemma on_SEC_singleton : forall pt, on_SEC (pt :: nil) = pt :: nil.
-Proof.
+Proof using .
 intro. cbn. rewrite SEC_singleton. unfold on_circle. cbn. rewrite R2_dist_defined_2.
 destruct (Rdec_bool 0 0) eqn:Htest; trivial. rewrite Rdec_bool_false_iff in Htest. now elim Htest.
 Qed.
 
 Lemma on_SEC_singleton_is_singleton : forall pt l, NoDup l -> on_SEC l = pt :: nil -> l = pt :: nil.
-Proof.
+Proof using .
 intros pt l Hnodup Hfilter.
 destruct l as [| pt1 [| pt2 l']] eqn:Hl.
   + cbn in *. assumption.
@@ -2650,7 +2650,7 @@ destruct l as [| pt1 [| pt2 l']] eqn:Hl.
 Qed.
 
 Lemma on_SEC_dueton : forall pt1 pt2, on_SEC (pt1 :: pt2 :: nil) = pt1 :: pt2 :: nil.
-Proof.
+Proof using .
 intros pt1 pt2. cbn. rewrite SEC_dueton. unfold on_circle. cbn.
 destruct (Rdec_bool (dist pt1 (middle pt1 pt2)) (/ 2 * dist pt1 pt2)) eqn:Hpt1.
 - destruct (Rdec_bool (dist pt2 (middle pt1 pt2)) (/ 2 * dist pt1 pt2)) eqn:Hpt2; trivial.
@@ -2669,14 +2669,14 @@ Qed.
 
 Lemma enclosing_twice_same_SEC : forall l1 l2,
   enclosing_circle (SEC l1) l2 -> enclosing_circle (SEC l2) l1 -> SEC l1 = SEC l2.
-Proof.
+Proof using .
 intros l1 l2 Hencl12 Hencl21. apply SEC_unicity.
 - assumption.
 - now apply SEC_spec2.
 Qed.
 
 Lemma SEC_min_radius : forall pt1 pt2 l, In pt1 l -> In pt2 l -> /2 * dist pt1 pt2 <= radius (SEC l).
-Proof.
+Proof using .
 intros pt1 pt2 l Hpt1 Hpt2.
 assert (Hperm : exists l', Permutation l (pt1 :: l')).
 { rewrite <- InA_Leibniz in Hpt1. setoid_rewrite <- PermutationA_Leibniz.
@@ -2696,7 +2696,7 @@ Qed.
 
 Lemma SEC_add_same : forall pt l,
   dist pt (center (SEC l)) <= radius (SEC l) -> (SEC (pt :: l)) = SEC l.
-Proof.
+Proof using .
 intros pt l H.
 apply SEC_unicity.
 - intro.
@@ -2713,7 +2713,7 @@ Qed.
 
 (* Actually, we have a strongler result stating that we can remove multiple copies of elements. *)
 Lemma SEC_alls : forall pt n, (0 < n)%nat ->  SEC (alls pt n) = {| center := pt; radius := 0 |}.
-Proof.
+Proof using .
 intros pt n Hn. induction n.
 + omega.
 + destruct n; simpl.
@@ -2868,7 +2868,7 @@ Admitted.
 
 Lemma SEC_add_same' : forall pt l,
   dist pt (center (SEC (pt::l))) < radius (SEC (pt::l)) -> (SEC (pt :: l)) = SEC l.
-Proof.
+Proof using .
 intros pt l H.
 apply SEC_unicity.
 + intros ? ?. apply SEC_spec1. now right.
@@ -2884,7 +2884,7 @@ Qed.
 
 Lemma on_SEC_add_same : forall pt l, dist pt (center (SEC l)) < radius (SEC l) ->
   equivlistA equiv (on_SEC (pt :: l)) (on_SEC l).
-Proof.
+Proof using .
 intros pt l H x.
 unfold on_SEC. setoid_rewrite (filter_InA _). rewrite SEC_add_same.
 - split; intros [Hin Hcircle]; split; trivial.
@@ -2897,7 +2897,7 @@ Qed.
 
 Lemma SEC_append_same : forall l1 l2, (forall pt, In pt l1 -> dist pt (center (SEC l2)) <= radius (SEC l2))
                -> SEC (l1 ++ l2) = SEC l2.
-Proof.
+Proof using .
 intros l1 l2 Hl1. induction l1.
 - reflexivity.
 - cbn.
@@ -2910,7 +2910,7 @@ Qed.
 Lemma SEC_append_same' : forall l1 l2,
     (forall pt, In pt l1 -> dist pt (center (SEC (l1++l2))) < radius (SEC (l1++l2)))
     -> SEC (l1 ++ l2) = SEC l2.
-Proof.
+Proof using .
   intros l1 l2 Hl1. induction l1.
 - reflexivity.
 - cbn.
@@ -2933,7 +2933,7 @@ Qed.
 
 Lemma middle_in_SEC_diameter : forall pt1 pt2,
   dist (middle pt1 pt2) (center (SEC (pt1 :: pt2 :: nil))) <= radius (SEC (pt1 :: pt2 :: nil)).
-Proof.
+Proof using .
 intros pt1 pt2.
 rewrite SEC_dueton. cbn.
 rewrite R2_dist_defined_2, <- (Rmult_0_l 0).
@@ -2943,7 +2943,7 @@ Qed.
 
 Lemma middle_strictly_in_SEC_diameter : forall pt1 pt2, pt1 <> pt2 ->
   dist (middle pt1 pt2) (center (SEC (pt1 :: pt2 :: nil))) < radius (SEC (pt1 :: pt2 :: nil)).
-Proof.
+Proof using .
 intros pt1 pt2 Hdiff.
 assert (Hle := middle_in_SEC_diameter pt1 pt2). destruct Hle as [Hlt | Heq]; trivial.
 rewrite SEC_dueton in Heq. simpl in Heq. rewrite R2_dist_defined_2 in Heq.
@@ -2951,14 +2951,14 @@ assert (Hsame : dist pt1 pt2 = 0) by lra. now rewrite dist_defined in Hsame.
 Qed.
 
 Lemma SEC_middle_diameter : forall pt1 pt2, SEC (middle pt1 pt2 :: pt1 :: pt2 :: nil) = SEC (pt1 :: pt2 :: nil).
-Proof. intros. apply SEC_add_same, middle_in_SEC_diameter. Qed.
+Proof using . intros. apply SEC_add_same, middle_in_SEC_diameter. Qed.
 
 Lemma on_SEC_NoDupA : forall l, NoDupA equiv l -> NoDupA equiv (on_SEC l).
-Proof. intros. unfold on_SEC. now apply (NoDupA_filter_compat _). Qed.
+Proof using . intros. unfold on_SEC. now apply (NoDupA_filter_compat _). Qed.
 
 Lemma on_SEC_middle_diameter : forall pt1 pt2, ~pt1 == pt2 ->
   PermutationA equiv (on_SEC (middle pt1 pt2 :: pt1 :: pt2 :: nil)) (on_SEC (pt1 :: pt2 :: nil)).
-Proof.
+Proof using .
 intros pt1 pt2 Hdiff.
 assert (~middle pt1 pt2 == pt1). { rewrite <- middle_eq in Hdiff. intuition. }
 assert (~middle pt1 pt2 == pt2).
@@ -2971,7 +2971,7 @@ apply (NoDupA_equivlistA_PermutationA _).
 Qed.
 
 Lemma filter_idempotent {A} : forall f (l : list A), filter f (filter f l) = filter f l.
-Proof.
+Proof using .
 intros f l. induction l as [| e l].
 - reflexivity.
 - cbn. destruct (f e) eqn:Hfe; cbn; try rewrite Hfe; now (f_equal + idtac).
@@ -2979,7 +2979,7 @@ Qed.
 
 Lemma on_SEC_is_max_dist : forall l pt pt', In pt l -> In pt' (on_SEC l) ->
   dist pt (center (SEC l)) <= dist pt' (center (SEC l)).
-Proof.
+Proof using .
 intros l pt pt' Hin Hin'. unfold on_SEC in Hin'.
 rewrite <- InA_Leibniz, (filter_InA _), on_circle_true_iff in Hin'.
 destruct Hin' as [_ Hin']. rewrite Hin'. now apply SEC_spec1.
@@ -2987,7 +2987,7 @@ Qed.
 
 Lemma split_on_SEC: forall l,
   PermutationA equiv l ((on_SEC l)++filter (fun x => negb (on_circle (SEC l) x)) l).
-Proof.
+Proof using .
 intros l. unfold on_SEC.
 change (on_circle (SEC l)) with (fun x : R2 => (on_circle (SEC l) x)).
 rewrite <- (map_id (filter (fun x : R2 => on_circle (SEC l) x) l)).
@@ -2999,7 +2999,7 @@ rewrite (map_ext (fun x : R2 => if on_circle (SEC l) x then x else x) (fun x => 
 Qed.
 
 Lemma SEC_on_SEC : forall l,  SEC l = SEC (on_SEC l) .
-Proof.
+Proof using .
 intros l.
 rewrite (split_on_SEC l) at 1.
 rewrite PermutationA_app_comm;autoclass.
@@ -3013,18 +3013,18 @@ apply Rle_neq_lt.
 Qed.
 
 Corollary on_SEC_idempotent : forall l, PermutationA equiv (on_SEC (on_SEC l)) (on_SEC l).
-Proof. intro l. unfold on_SEC at 1 3. unfold on_SEC at 2. rewrite (SEC_on_SEC l). now rewrite filter_twice. Qed.
+Proof using . intro l. unfold on_SEC at 1 3. unfold on_SEC at 2. rewrite (SEC_on_SEC l). now rewrite filter_twice. Qed.
 
 Lemma on_SEC_pair_is_diameter : forall pt1 pt2 l, on_SEC l = pt1 :: pt2 :: nil ->
   SEC l = {| center := middle pt1 pt2; radius := /2 * dist pt1 pt2 |}.
-Proof. intros pt1 pt2 l Hsec. rewrite SEC_on_SEC, Hsec. apply SEC_dueton. Qed.
+Proof using . intros pt1 pt2 l Hsec. rewrite SEC_on_SEC, Hsec. apply SEC_dueton. Qed.
 
 
 Lemma enclosing_same_on_SEC_is_same_SEC : forall l1 l2,
   enclosing_circle (SEC l2) l1 ->
   (forall pt, In pt (on_SEC l2) -> In pt l1) ->
   SEC l1 = SEC l2.
-Proof.
+Proof using .
 intros l1 l2 Hencl Hincl.
 symmetry. apply SEC_unicity; trivial.
 rewrite (SEC_on_SEC l2). apply SEC_spec2.
@@ -3036,7 +3036,7 @@ Qed.
 Lemma isobarycenter_3_pts_inside_SEC : forall pt1 pt2 pt3,
   dist (isobarycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
   <= radius (SEC (pt1 :: pt2 :: pt3 :: nil)).
-Proof.
+Proof using .
 intros pt1 pt2 pt3. unfold isobarycenter_3_pts. do 2 rewrite mul_distr_add.
 remember (center (SEC (pt1 :: pt2 :: pt3 :: nil))) as c.
 transitivity (dist (/3 * pt1)%VS (/3 * c)%VS + dist (/3 * pt2)%VS (/3 * c)%VS + dist (/3 * pt3)%VS (/3 * c)%VS).
@@ -3054,7 +3054,7 @@ Qed.
 
 Lemma triangle_isobarycenter_inside_aux : forall pt1 pt2,
   pt1 <> pt2 -> on_circle (SEC (pt1 :: pt1 :: pt2 :: nil)) (isobarycenter_3_pts pt1 pt1 pt2) = false.
-Proof.
+Proof using .
 intros pt1 pt2 Hneq.
 rewrite SEC_add_same.
 - rewrite SEC_dueton. apply Bool.not_true_iff_false. rewrite on_circle_true_iff. simpl.
@@ -3071,7 +3071,7 @@ Qed.
 
 Lemma triangle_isobarycenter_inside : forall pt1 pt2 pt3,
   ~(pt1 = pt2 /\ pt1 = pt3) -> on_circle (SEC (pt1 :: pt2 :: pt3 :: nil)) (isobarycenter_3_pts pt1 pt2 pt3) = false.
-Proof.
+Proof using .
 intros pt1 pt2 pt3 Hneq.
 (* if there are only two different points, we use triangle_isobarycenter_inside_aux. *)
 destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
@@ -3205,7 +3205,7 @@ Qed.
 Lemma isobarycenter_3_pts_strictly_inside_SEC : forall pt1 pt2 pt3, ~(pt1 = pt2 /\ pt1 = pt3) ->
   dist (isobarycenter_3_pts pt1 pt2 pt3) (center (SEC (pt1 :: pt2 :: pt3 :: nil)))
   < radius (SEC (pt1 :: pt2 :: pt3 :: nil)).
-Proof.
+Proof using .
 intros pt1 pt2 pt3 Hdiff.
 assert (Hle := isobarycenter_3_pts_inside_SEC pt1 pt2 pt3).
 destruct Hle as [? | Heq]; trivial.
@@ -3222,7 +3222,7 @@ Qed.
 Lemma on_SEC_isobarycenter_triangle : forall pt1 pt2 pt3, ~(pt1 = pt2 /\ pt1 = pt3) ->
   equivlistA equiv (on_SEC (isobarycenter_3_pts pt1 pt2 pt3 :: pt1 :: pt2 :: pt3 :: nil))
                    (on_SEC (pt1 :: pt2 :: pt3 :: nil)).
-Proof. intros. now apply on_SEC_add_same, isobarycenter_3_pts_strictly_inside_SEC. Qed.
+Proof using . intros. now apply on_SEC_add_same, isobarycenter_3_pts_strictly_inside_SEC. Qed.
 
 Axiom equilateral_SEC : forall pt1 pt2 pt3,
   classify_triangle pt1 pt2 pt3 = Equilateral ->
@@ -3232,7 +3232,7 @@ Axiom equilateral_SEC : forall pt1 pt2 pt3,
 
 Lemma equilateral_isobarycenter_not_eq : forall pt1 pt2 pt3,
   classify_triangle pt1 pt2 pt3 = Equilateral -> ~pt1 == pt2 -> ~isobarycenter_3_pts pt1 pt2 pt3 == pt1.
-Proof.
+Proof using .
 intros pt1 pt2 pt3 Htriangle Hneq.
 assert (Hcenter : center (SEC (pt1 :: pt2 :: pt3 :: nil)) = isobarycenter_3_pts pt1 pt2 pt3).
 { apply equilateral_SEC in Htriangle. now rewrite Htriangle. }
@@ -3245,7 +3245,7 @@ Qed.
 Lemma equilateral_NoDupA : forall ptx pty ptz,
   classify_triangle ptx pty ptz = Equilateral -> ptx <> pty ->
   NoDupA equiv (ptx :: pty :: ptz :: nil).
-Proof.
+Proof using .
 intros ptx pty ptz Htriangle Hdiff.
 functional induction (classify_triangle ptx pty ptz) as [Heq1 Heq2 | | | |]; try discriminate.
 rewrite Rdec_bool_true_iff in *. repeat constructor; intro Hin;
@@ -3261,7 +3261,7 @@ Qed.
 Lemma equilateral_isobarycenter_NoDupA : forall ptx pty ptz,
   classify_triangle ptx pty ptz = Equilateral -> ptx <> pty ->
   NoDupA equiv (isobarycenter_3_pts ptx pty ptz :: ptx :: pty :: ptz :: nil).
-Proof.
+Proof using .
 intros ptx pty ptz Htriangle Hdiff.
 constructor.
 - intro Hin.
@@ -3342,7 +3342,7 @@ Lemma equilateral_isobarycenter_degenerated: forall ptx pty ptopp white,
     white = isobarycenter_3_pts ptx pty ptopp ->
     ptx = middle ptopp white ->
     ptx = ptopp.
-Proof.
+Proof using .
   intros ptx pty ptopp white hequil hwhite hmid.
   assert (h_dist:=R2dist_middle white ptopp).
   assert (h_dist_bary:=@equilateral_SEC ptx pty ptopp hequil).
@@ -3383,7 +3383,7 @@ Lemma equilateral_isobarycenter_degenerated_gen: forall ptx pty ptz ptopp white 
     mid = middle ptopp white ->
     In mid (ptx :: pty :: ptz :: nil) ->
     mid = ptopp.
-Proof.
+Proof using .
   intros ptx pty ptz ptopp white mid hequil hwhite hptopp hmid h.
   simpl in h.
   decompose [or] h;clear h;try contradiction.

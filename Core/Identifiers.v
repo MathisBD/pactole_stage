@@ -27,14 +27,14 @@ Typeclasses eauto := (bfs).
 Notation "'fin' N" := {n : nat | n < N} (at level 10).
 
 Lemma subset_dec : forall N (x y : fin N), {x = y} + {x <> y}.
-Proof.
+Proof using .
 intros N [x Hx] [y Hy]. destruct (Nat.eq_dec x y).
 + subst. left. f_equal. apply le_unique.
 + right. intro Habs. inv Habs. auto.
 Qed.
 
 Lemma eq_proj1 : forall N (x y : fin N), proj1_sig x = proj1_sig y -> x = y.
-Proof. intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qed.
+Proof using . intros N [x Hx] [y Hy] ?. simpl in *. subst. f_equal. apply le_unique. Qed.
 
 Program Fixpoint build_enum N k (Hle : k <= N) acc : list (fin N) :=
   match k with
@@ -50,7 +50,7 @@ Definition enum N : list (fin N) := build_enum (Nat.le_refl N) nil.
 
 (** Specification of [enum]. *)
 Lemma In_build_enum : forall N k (Hle : k <= N) l x, In x (build_enum Hle l) <-> In x l \/ proj1_sig x < k.
-Proof.
+Proof using .
 intros N k. induction k; intros Hle l x; simpl.
 + intuition.
 + rewrite IHk. simpl. split; intro Hin.
@@ -63,23 +63,23 @@ intros N k. induction k; intros Hle l x; simpl.
 Qed.
 
 Lemma In_enum : forall N x, In x (enum N) <-> proj1_sig x < N.
-Proof. intros. unfold enum. rewrite In_build_enum. simpl. intuition. Qed.
+Proof using . intros. unfold enum. rewrite In_build_enum. simpl. intuition. Qed.
 
 (** Length of [enum]. *)
 Lemma build_enum_length : forall N k (Hle : k <= N) l, length (build_enum Hle l) = k + length l.
-Proof.
+Proof using .
 intros N k. induction k; intros Hle l; simpl.
 + reflexivity.
 + rewrite IHk. simpl. omega.
 Qed.
 
 Lemma enum_length : forall N, length (enum N) = N.
-Proof. intro. unfold enum. now rewrite build_enum_length. Qed.
+Proof using . intro. unfold enum. now rewrite build_enum_length. Qed.
 
 (** [enum] does not contain duplicates. *)
 Lemma build_enum_NoDup : forall N k (Hle : k <= N) l,
   (forall x, In x l -> k <= proj1_sig x) -> NoDup l -> NoDup (build_enum Hle l).
-Proof.
+Proof using .
 intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
 apply IHk.
 + intros x [Hx | Hx].
@@ -90,14 +90,14 @@ apply IHk.
 Qed.
 
 Lemma enum_NoDup : forall N, NoDup (enum N).
-Proof. intro. unfold enum. apply build_enum_NoDup; simpl; intuition; constructor. Qed.
+Proof using . intro. unfold enum. apply build_enum_NoDup; simpl; intuition; constructor. Qed.
 
 (** [enum] is sorted in increasing order. *)
 Notation Flt := (fun x y => lt (proj1_sig x) (proj1_sig y)).
 
 Lemma build_enum_Sorted : forall N k (Hle : k <= N) l,
   (forall x, In x l -> k <= proj1_sig x) -> Sorted Flt l -> Sorted Flt (build_enum Hle l).
-Proof.
+Proof using .
 intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
 apply IHk.
 + intros x [Hx | Hx].
@@ -108,12 +108,12 @@ apply IHk.
 Qed.
 
 Lemma enum_Sorted : forall N, Sorted Flt (enum N).
-Proof. intro. unfold enum. apply build_enum_Sorted; simpl; intuition. Qed.
+Proof using . intro. unfold enum. apply build_enum_Sorted; simpl; intuition. Qed.
 
 (** Extensional equality of functions is decidable over finite domains. *)
 Lemma build_enum_app_nil : forall N k (Hle : k <= N) l,
   build_enum Hle l = build_enum Hle nil ++ l.
-Proof.
+Proof using .
 intros N k. induction k; intros Hle l; simpl.
 + reflexivity.
 + now rewrite (IHk _ (_ :: nil)), IHk, <- app_assoc.
@@ -122,7 +122,7 @@ Qed.
 Theorem build_enum_eq : forall {A} eqA N (f g : fin N -> A) k (Hle : k <= N) l,
   eqlistA eqA (List.map f (build_enum Hle l)) (List.map g (build_enum Hle l)) ->
   forall x, proj1_sig x < k -> eqA (f x) (g x).
-Proof.
+Proof using .
 intros A eqA N f g k. induction k; intros Hle l Heq x Hx; simpl.
 * destruct x; simpl in *; omega.
 * assert (Hlt : k <= N) by omega.
@@ -140,7 +140,7 @@ Qed.
 
 Corollary enum_eq : forall {A} eqA N (f g : fin N -> A),
   eqlistA eqA (List.map f (enum N)) (List.map g (enum N)) -> forall x, eqA (f x) (g x).
-Proof.
+Proof using .
 unfold enum. intros A eqA N f g Heq x.
 apply build_enum_eq with (x := x) in Heq; auto; []. apply proj2_sig.
 Qed.
@@ -148,7 +148,7 @@ Qed.
 (** Cutting [enum] after some number of elements. *)
 Lemma firstn_build_enum_le : forall N k (Hle : k <= N) l k' (Hk : k' <= N), k' <= k ->
   firstn k' (build_enum Hle l) = @build_enum N k' Hk nil.
-Proof.
+Proof using .
 intros N k. induction k; intros Hk l k' Hk' Hle.
 * assert (k' = 0) by omega. now subst.
 * rewrite build_enum_app_nil, firstn_app, build_enum_length.
@@ -165,7 +165,7 @@ Qed.
 
 Lemma firstn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
   firstn k' (build_enum Hle l) = build_enum Hle (firstn (k' - k) l).
-Proof.
+Proof using .
 intros N k. induction k; intros Hle l k' Hk.
 + now rewrite Nat.sub_0_r.
 + rewrite build_enum_app_nil, firstn_app, build_enum_length, Nat.add_0_r.
@@ -174,13 +174,13 @@ intros N k. induction k; intros Hle l k' Hk.
 Qed.
 
 Lemma firstn_enum_le : forall N k (Hle : k <= N), firstn k (enum N) = build_enum Hle nil.
-Proof. intros. unfold enum. now apply firstn_build_enum_le. Qed.
+Proof using . intros. unfold enum. now apply firstn_build_enum_le. Qed.
 
 Lemma firstn_enum_lt : forall N k, N <= k -> firstn k (enum N) = enum N.
-Proof. intros. unfold enum. now rewrite firstn_build_enum_lt, firstn_nil. Qed.
+Proof using . intros. unfold enum. now rewrite firstn_build_enum_lt, firstn_nil. Qed.
 
 Lemma firstn_enum_spec : forall N k x, In x (firstn k (enum N)) <-> proj1_sig x < k.
-Proof.
+Proof using .
 intros N k x. destruct (le_lt_dec k N) as [Hle | Hlt].
 + rewrite (firstn_enum_le Hle), In_build_enum. simpl. intuition.
 + rewrite (firstn_enum_lt (lt_le_weak _ _ Hlt)).
@@ -192,7 +192,7 @@ Qed.
 (** Removing some number of elements from the head of [enum]. *)
 Lemma skipn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
   skipn k' (build_enum Hle l) = skipn (k' - k) l.
-Proof.
+Proof using .
 intros N k Hle l k' Hk'. apply app_inv_head with (firstn k' (build_enum Hle l)).
 rewrite firstn_skipn, firstn_build_enum_lt; trivial; [].
 rewrite (build_enum_app_nil Hle (firstn _ _)).
@@ -200,10 +200,10 @@ now rewrite build_enum_app_nil, <- app_assoc, firstn_skipn.
 Qed.
 
 Lemma skipn_enum_lt : forall N k, N <= k -> skipn k (enum N) = nil.
-Proof. intros. unfold enum. now rewrite skipn_build_enum_lt, skipn_nil. Qed.
+Proof using . intros. unfold enum. now rewrite skipn_build_enum_lt, skipn_nil. Qed.
 
 Lemma skipn_enum_spec : forall N k x, In x (skipn k (enum N)) <-> k <= proj1_sig x < N.
-Proof.
+Proof using .
 intros N k x. split; intro Hin.
 + assert (Hin' : ~In x (firstn k (enum N))).
   { intro Habs. rewrite <- InA_Leibniz in *. revert x Habs Hin. apply NoDupA_app_iff; autoclass; [].
@@ -257,14 +257,14 @@ Inductive ident `{Names} : Type :=
 Definition names `{Names} : list ident := List.map Good Gnames ++ List.map Byz Bnames.
 
 Lemma In_names `{Names} : forall r : ident, In r names.
-Proof.
+Proof using .
 intro r. cbn. unfold names. rewrite in_app_iff. destruct r as [g | b].
 - left. apply in_map, In_Gnames.
 - right. apply in_map, In_Bnames.
 Qed.
 
 Lemma names_NoDup `{Names} : NoDup names.
-Proof.
+Proof using .
 unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
 + apply (map_injective_NoDupA _ _).
   - now repeat intro; hnf in *; subst.
@@ -281,10 +281,10 @@ unfold names. rewrite <- NoDupA_Leibniz. apply (NoDupA_app _).
 Qed.
 
 Lemma names_length `{Names} : length names = nG + nB.
-Proof. unfold names. now rewrite app_length, map_length, map_length, Gnames_length, Bnames_length. Qed.
+Proof using . unfold names. now rewrite app_length, map_length, map_length, Gnames_length, Bnames_length. Qed.
 
 Lemma names_eq_dec `{Names} : forall id id' : ident, {id = id'} + { id <> id'}.
-Proof.
+Proof using .
 intros id id'.
 destruct id as [g | b], id' as [g' | b']; try (now right; discriminate); [|].
 + destruct (Geq_dec g g').
@@ -300,14 +300,14 @@ Instance ident_EqDec `{Names} : EqDec ident_Setoid := names_eq_dec.
 
 Instance fun_refl `{Names} : forall A (f : ident -> A) R,
   Reflexive R -> Proper (@SetoidClass.equiv ident _ ==> R) f.
-Proof. intros A f R HR ? ? Heq. simpl in Heq. now subst. Qed.
+Proof using . intros A f R HR ? ? Heq. simpl in Heq. now subst. Qed.
 
 Instance list_ident_Setoid `{Names} : Setoid (list ident) := { equiv := eq; setoid_equiv := eq_equivalence }.
 Instance list_ident_Eqdec `{Names} : EqDec list_ident_Setoid := list_eq_dec ident_EqDec.
 
 Lemma fun_names_eq `{Names} : forall {A : Type} eqA f g,
   @eqlistA A eqA (List.map f names) (List.map g names) -> forall x, eqA (f x) (g x).
-Proof.
+Proof using .
 intros A eqA f h Heq id.
 unfold names in Heq. repeat rewrite ?map_app, map_map in Heq. apply eqlistA_app_split in Heq.
 + destruct id as [g | b].

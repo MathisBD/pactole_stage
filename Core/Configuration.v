@@ -41,7 +41,7 @@ Context `{Names}.
 Global Instance configuration_Setoid : Setoid configuration := fun_equiv ident _.
 
 Global Instance configuration_compat : forall config : configuration, Proper (Logic.eq ==> equiv) config.
-Proof. repeat intro. now subst. Qed.
+Proof using . repeat intro. now subst. Qed.
 
 (** The lists of positions for good, Byzantine, and all robots. *)
 Definition Gpos := fun config : configuration => List.map (fun g => config (Good g)) Gnames.
@@ -49,36 +49,36 @@ Definition Bpos := fun config : configuration => List.map (fun b => config (Byz 
 Definition config_list := fun config => Gpos config ++ Bpos config.
 
 Lemma Gpos_spec : forall config, Gpos config = List.map (fun g => config (Good g)) Gnames.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma Bpos_spec : forall config, Bpos config = List.map (fun g => config (Byz g)) Bnames.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma config_list_spec : forall config, config_list config = List.map config names.
-Proof. intros. unfold config_list, names. rewrite map_app. now do 2 rewrite map_map. Qed.
+Proof using . intros. unfold config_list, names. rewrite map_app. now do 2 rewrite map_map. Qed.
 
 (** Compatilities with equivalences. *)
 Global Instance Gpos_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) Gpos.
-Proof.
+Proof using .
 intros f g Hfg. eapply map_extensionalityA_compat; reflexivity || autoclass; [].
 intros x y Hxy. cbn in Hxy. subst. apply Hfg.
 Qed.
 
 Global Instance Bpos_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) Bpos.
-Proof.
+Proof using .
 intros f g Hfg. eapply map_extensionalityA_compat; reflexivity || autoclass; [].
 intros x y Hxy. cbn in Hxy. subst. apply Hfg.
 Qed.
 
 Global Instance config_list_compat : Proper (@equiv _ configuration_Setoid ==> eqlistA equiv) config_list.
-Proof.
+Proof using .
 intros f g Hfg. rewrite 2 config_list_spec. f_equiv.
 intros x y Hxy. cbn in Hxy. subst. apply Hfg.
 Qed.
 
 (** Properties w.r.t. [InA] and [length]. *)
 Lemma Gpos_InA : forall l config, InA equiv l (Gpos config) <-> exists g, equiv l (config (Good g)).
-Proof.
+Proof using .
 intros. rewrite Gpos_spec, InA_map_iff; autoclass; [|].
 + split; intros [g Hg]; exists g.
   - now symmetry.
@@ -87,7 +87,7 @@ intros. rewrite Gpos_spec, InA_map_iff; autoclass; [|].
 Qed.
 
 Lemma Bpos_InA : forall l config, InA equiv l (Bpos config) <-> exists b, equiv l (config (Byz b)).
-Proof.
+Proof using .
 intros. rewrite Bpos_spec, InA_map_iff; autoclass; [|].
 + split; intros [b Hb]; exists b.
   - now symmetry.
@@ -96,7 +96,7 @@ intros. rewrite Bpos_spec, InA_map_iff; autoclass; [|].
 Qed.
 
 Lemma config_list_InA : forall l config, InA equiv l (config_list config) <-> exists id, equiv l (config id).
-Proof.
+Proof using .
 intros l config. rewrite config_list_spec. unfold names. rewrite map_app, (InA_app_iff _).
 repeat rewrite InA_map_iff; autoclass || (try now cbn; repeat intro; subst); [].
 split; intro Hin.
@@ -107,17 +107,17 @@ split; intro Hin.
 Qed.
 
 Lemma Gpos_length : forall config, length (Gpos config) = nG.
-Proof. intro. rewrite Gpos_spec, map_length. apply Gnames_length. Qed.
+Proof using . intro. rewrite Gpos_spec, map_length. apply Gnames_length. Qed.
 
 Lemma Bpos_length : forall config, length (Bpos config) = nB.
-Proof. intro. rewrite Bpos_spec, map_length. apply Bnames_length. Qed.
+Proof using . intro. rewrite Bpos_spec, map_length. apply Bnames_length. Qed.
 
 Lemma config_list_length : forall config, length (config_list config) = nG + nB.
-Proof. intro. now rewrite config_list_spec, map_length, names_length. Qed.
+Proof using . intro. now rewrite config_list_spec, map_length, names_length. Qed.
 
 (** As the number of robots is finite, extensional equality of configurations is decidable. *)
 Global Instance configuration_EqDec : @EqDec configuration _.
-Proof.
+Proof using .
 intros config₁ config₂.
 destruct (eqlistA_dec equiv_dec (config_list config₁) (config_list config₂)) as [Heq | Heq];
 rewrite 2 config_list_spec in Heq.
@@ -129,7 +129,7 @@ Qed.
     that is not located in the same place in both. *)
 Theorem config_neq_equiv : forall config₁ config₂ : configuration,
   config₁ =/= config₂ <-> exists id, ~config₁ id == config₂ id.
-Proof.
+Proof using .
 intros config₁ config₂. split; intro Hneq.
 + assert (Hlist : ~eqlistA equiv (List.map config₁ names) (List.map config₂ names)).
   { intro Habs. apply Hneq. hnf. cbn. intro id.
@@ -162,11 +162,11 @@ Definition map_config (f : info1 -> info2) (config : @configuration _ _ St1 _) :
 
 Global Instance map_config_compat :
     Proper ((equiv ==> equiv) ==> @equiv _ configuration_Setoid ==> @equiv _ configuration_Setoid) map_config.
-Proof. intros f g Hfg ? ? Hconfig id. unfold map. apply Hfg, Hconfig. Qed.
+Proof using . intros f g Hfg ? ? Hconfig id. unfold map. apply Hfg, Hconfig. Qed.
 
 Lemma config_list_map : forall f, Proper (equiv ==> equiv) f ->
   forall config, config_list (map_config f config) == List.map f (config_list config).
-Proof. intros. now rewrite 2 config_list_spec, map_map. Qed.
+Proof using . intros. now rewrite 2 config_list_spec, map_map. Qed.
 
 End MapConfig.
 
@@ -174,12 +174,12 @@ Arguments map_config {_} {info1} {info2} {_} {_} {_} f config id /.
 
 Lemma map_config_id `{State} `{Names} : forall config,
   map_config Datatypes.id config == config.
-Proof. now repeat intro. Qed.
+Proof using . now repeat intro. Qed.
 
 Lemma map_config_merge `{Location} {T U V : Type} `{@State _ T} `{@State _ U} `{@State _ V} `{Names} :
   forall (f : T -> U) (g : U -> V), Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) g ->
   forall config : configuration, map_config g (map_config f config) == map_config (fun x => g (f x)) config.
-Proof. now repeat intro. Qed.
+Proof using . now repeat intro. Qed.
 
 (** Injective configurations *)
 Definition config_injective `{State} `{Names} :=
@@ -187,7 +187,7 @@ Definition config_injective `{State} `{Names} :=
 
 Lemma config_injective_equiv_NoDupA `{State} `{Names} : forall config : configuration,
   config_injective config <-> NoDupA equiv (config_list config).
-Proof.
+Proof using .
 intros config. rewrite config_list_spec. split; intro Hinj.
 + eapply map_injective_NoDupA; try apply Hinj; autoclass; [].
   rewrite NoDupA_Leibniz. apply names_NoDup.
@@ -197,7 +197,7 @@ Qed.
 
 Lemma config_injective_dec `{State} `{Names} : forall config : configuration,
   {config_injective config} + {~ config_injective config}.
-Proof.
+Proof using .
 intros config.
 destruct (NoDupA_dec equiv equiv_dec (config_list config));
 rewrite <- (config_injective_equiv_NoDupA config) in *; tauto.
@@ -205,7 +205,7 @@ Qed.
 
 Lemma config_not_injective `{State} `{Names} : forall config : configuration,
   ~ config_injective config <-> exists id id', id <> id' /\ config id == config id'.
-Proof.
+Proof using .
 intros config. split; intro Hinj. 
 + rewrite config_injective_equiv_NoDupA, not_NoDupA in Hinj; autoclass; try apply state_EqDec; [].
   destruct Hinj as [state [l Hperm]].

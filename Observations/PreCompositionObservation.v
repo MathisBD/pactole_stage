@@ -20,7 +20,6 @@ Require Import Pactole.Core.Configuration.
 Require Import Pactole.Observations.Definition.
 Close Scope R_scope.
 Set Implicit Arguments.
-Set Default Proof Using "All".
 
 
 Section CompositionObservation.

@@ -85,7 +85,7 @@ Notation tt elt := (sig (@NoDupA (key * elt) (equiv@@1))).
 
 Lemma list_add_3 : forall (m : t elt) x y e e',
   x =/= y -> InA (equiv@@1) (y, e) (list_add x e' m) -> InA (equiv@@1) (y, e) m.
-Proof.
+Proof using .
 intros m x y e e' Hxy Hy. simpl. induction m as [| [z p] l].
 + inversion_clear Hy; try inversion H0. now elim Hxy.
 + simpl in *. destruct (equiv_dec x z).
@@ -95,7 +95,7 @@ Qed.
 
 Lemma t_add_lemma : forall k x (s : t elt),
   NoDupA (equiv@@1) s -> NoDupA (equiv@@1) (list_add x k s).
-Proof.
+Proof using .
 intros k x s Hs. induction s as [| [y p] l].
 + constructor; trivial. intro Habs. inversion Habs.
 + simpl. destruct (equiv_dec x y) as [Hxy | Hxy]; constructor; inversion_clear Hs.
@@ -111,7 +111,7 @@ Definition t_add (k : key) (x : elt) (s : tt elt) : tt elt :=
 
 Lemma list_remove_3 : forall (m : t elt) x y e,
   InA (equiv@@1) (y, e) (list_remove x m) -> InA (equiv@@1) (y, e) m.
-Proof.
+Proof using .
 intros m x y e Hy. simpl. induction m as [| [z p] l].
 - inversion_clear Hy.
 - simpl in *. destruct (equiv_dec x z); auto.
@@ -120,7 +120,7 @@ Qed.
 
 Lemma t_remove_lemma : forall k (s : t elt),
   NoDupA (equiv@@1) s -> NoDupA (equiv@@1) (list_remove k s).
-Proof.
+Proof using .
 intros x s Hs. induction s as [| [y p] l].
 + now constructor.
 + simpl. destruct (equiv_dec x y) as [Hxy | Hxy].
@@ -136,7 +136,7 @@ Definition t_remove (k : key) (s : tt elt) : tt elt :=
 
 Lemma t_map_lemma : forall {elt'} (f : elt -> elt') (s : t elt),
   NoDupA (equiv@@1) s -> NoDupA (equiv@@1) (list_map f s).
-Proof.
+Proof using .
 intros elt' f s Hs. induction s as [| [y p] l].
 + now constructor.
 + simpl. inversion_clear Hs. constructor.
@@ -152,7 +152,7 @@ Definition t_map {elt'} (f : elt -> elt') (s : tt elt) : tt elt' :=
 
 Lemma t_mapi_lemma : forall {elt'} (f : key -> elt -> elt') (s : t elt),
   NoDupA (equiv@@1) s -> NoDupA (equiv@@1) (list_mapi f s).
-Proof.
+Proof using .
 intros elt' f s Hs. induction s as [| [y p] l].
 + now constructor.
 + simpl. inversion_clear Hs. constructor.
@@ -192,7 +192,7 @@ Local Notation eq_pair := (fun xn yp => fst xn == fst yp /\ snd xn = snd yp).
 (** **  Proofs of the specifications  **)
 
 Instance MapListFacts_MapsTo key `{EqDec key} : FMapSpecs_MapsTo MapList.
-Proof.
+Proof using .
 split. intros elt [m Hm] x y e Hxy Hx. simpl in *.
 induction m; inversion_clear Hx.
 - left. simpl in *. now rewrite <- Hxy.
@@ -200,7 +200,7 @@ induction m; inversion_clear Hx.
 Qed.
 
 Instance MapListFacts_mem key `{EqDec key} : FMapSpecs_mem MapList.
-Proof. split.
+Proof using . split.
 * intros elt [m Hm] x [e Hin]. simpl in *. induction m as [| [y n] l]; inversion_clear Hin.
   + simpl. destruct (equiv_dec x y) as [Hxy | Hxy]; trivial. elim Hxy. now destruct H0.
   + simpl. destruct (equiv_dec x y) as [Hxy | Hxy]; trivial. inversion_clear Hm. auto.
@@ -213,10 +213,10 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_empty key `{EqDec key} : FMapSpecs_empty MapList.
-Proof. split. intros elt x e Hin. inversion Hin. Qed.
+Proof using . split. intros elt x e Hin. inversion Hin. Qed.
 
 Instance MapListFacts_is_empty key `{EqDec key} : FMapSpecs_is_empty MapList.
-Proof. split.
+Proof using . split.
 * intros elt [m Hm] Hm'. destruct m as [| [x n] l]; trivial.
   elim Hm' with x n. now left.
 * intros elt [m Hm] Hm'. destruct m as [| [x n] l]; try discriminate.
@@ -224,7 +224,7 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_add key `{EqDec key} : FMapSpecs_add MapList.
-Proof. split.
+Proof using . split.
 * intros elt [m Hm] x y e Hxy. simpl in *. induction m as [| [z p] l]; simpl.
   + now left.
   + inversion_clear Hm. destruct (equiv_dec x z); now left + right; auto.
@@ -242,7 +242,7 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_remove key `{EqDec key} : FMapSpecs_remove MapList.
-Proof. split.
+Proof using . split.
 * intros elt [m Hm] x y Hxy. simpl. unfold t_remove, In. simpl. induction m as [| [z p] l].
   + simpl. intros [? Habs]. inversion Habs.
   + simpl. inversion_clear Hm. destruct (equiv_dec x z) as [Hxz | Hxz]; auto; [].
@@ -262,7 +262,7 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_find key `{EqDec key} : FMapSpecs_find MapList.
-Proof. split.
+Proof using . split.
 * intros elt [m Hm] x e Hin. simpl in *. induction m as [| [y p] l].
   + inversion Hin.
   + inversion_clear Hm. simpl. destruct (equiv_dec x y).
@@ -280,17 +280,17 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_elements key `{EqDec key} : FMapSpecs_elements MapList.
-Proof. split.
+Proof using . split.
 * tauto.
 * tauto.
 * intros elt [m Hm]. simpl. assumption.
 Qed.
 
 Instance MapListFacts_cardinal key `{EqDec key} : FMapSpecs_cardinal MapList.
-Proof. split. tauto. Qed.
+Proof using . split. tauto. Qed.
 
 Instance MapListFacts_fold key `{EqDec key} : FMapSpecs_fold MapList.
-Proof. split.
+Proof using . split.
 intros elt [m Hm] A i f. simpl. revert i. induction m as [| [y p] l]; simpl.
 - reflexivity.
 - intro i. inversion_clear Hm. now rewrite IHl.
@@ -302,7 +302,7 @@ Definition Submap key `{EqDec key} {elt : Type} cmp (m m' : Map [key, elt]) :=
 
 Local Lemma submap_1 key elt `{EqDec key} : forall m m' cmp,
   Submap cmp m m' -> list_submap (elt:=elt) cmp (proj1_sig m) (proj1_sig m') = true.
-Proof.
+Proof using .
 unfold Submap, list_submap.
 intros [m Hm].
 induction m as [| [k e] m].
@@ -323,7 +323,7 @@ Qed.
 
 Local Lemma submap_2 key elt `{EqDec key} : forall m m' cmp,
   list_submap (elt:=elt) cmp (proj1_sig m) (proj1_sig m') = true -> Submap cmp m m'.
-Proof.
+Proof using .
 unfold Submap, list_submap.
 intros [m Hm]. induction m as [| [k e] m].
 * simpl in *; auto.
@@ -362,7 +362,7 @@ Qed.
 
 
 Instance MapListFacts_equal key `{EqDec key} : FMapSpecs_equal MapList.
-Proof. split.
+Proof using . split.
 * unfold Equivb, equal.
   intuition.
   apply andb_true_intro; split; apply submap_1; unfold Submap; firstorder.
@@ -375,7 +375,7 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_map key `{EqDec key} : FMapSpecs_map MapList.
-Proof. split.
+Proof using . split.
 * intros elt elt' [m Hm] x e f Hin. simpl in *. induction m as [| [y p] m].
   + inversion Hin.
   + inversion_clear Hm. simpl. destruct (equiv_dec x y).
@@ -397,7 +397,7 @@ Proof. split.
 Qed.
 
 Instance MapListFacts_mapi key `{EqDec key} : FMapSpecs_mapi MapList.
-Proof. split.
+Proof using . split.
 * intros elt elt' [m Hm] x e f Hin. simpl in *. induction m as [| [y p] m].
   + inversion Hin.
   + inversion_clear Hm. simpl. destruct (equiv_dec x y).
@@ -422,4 +422,4 @@ Qed.
 
 (** The full set of specifications. *)
 Instance MapListFacts key `{EqDec key} : FMapSpecs MapList.
-Proof. split; auto with typeclass_instances. Qed.
+Proof using . split; auto with typeclass_instances. Qed.

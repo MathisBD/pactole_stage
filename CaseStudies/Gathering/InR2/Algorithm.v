@@ -79,7 +79,7 @@ Instance InaFun : inactive_function unit := {
   inactive := fun config id _ => config id;
   inactive_compat := ltac:(repeat intro; subst; auto) }.
 Instance Rigid : RigidSetting.
-Proof. split. reflexivity. Qed.
+Proof using . split. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
@@ -109,13 +109,13 @@ Ltac changeR2 :=
   change R2_ES with ES in *.
 
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
-Proof.
+Proof using .
 intro. rewrite config_list_spec, map_cst.
 setoid_rewrite names_length. simpl. now rewrite plus_0_r.
 Qed.
 
 Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
-Proof.
+Proof using size_G.
 intros P Hg [g | b].
 + apply Hg.
 + destruct b. omega.
@@ -124,7 +124,7 @@ Qed.
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
-Proof.
+Proof using size_G.
 intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
 + apply Heq.
 + destruct b. omega.
@@ -132,7 +132,7 @@ Qed.
 
 Lemma map_sim_support : forall (f : Bijection.bijection location) (s : observation),
   PermutationA (@equiv location _) (support (map f s)) (List.map f (support s)).
-Proof.
+Proof using .
 intros f s. apply map_injective_support.
 - intros ? ? Heq. now rewrite Heq.
 - apply Bijection.injective.
@@ -140,24 +140,24 @@ Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma obs_non_nil : forall config, !! config =/= empty.
-Proof. changeR2. apply obs_non_nil. generalize size_G. simpl. intro. omega. Qed.
+Proof using size_G. changeR2. apply obs_non_nil. generalize size_G. simpl. intro. omega. Qed.
 
 Lemma support_non_nil : forall config, support (!! config) <> nil.
-Proof. intros config Habs. rewrite support_nil in Habs. apply (obs_non_nil _ Habs). Qed.
+Proof using size_G. intros config Habs. rewrite support_nil in Habs. apply (obs_non_nil _ Habs). Qed.
 
 Lemma support_max_non_nil : forall config, support (max (!! config)) <> nil.
-Proof. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (obs_non_nil _ Habs). Qed.
+Proof using size_G. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (obs_non_nil _ Habs). Qed.
 
 
 Lemma max_morph : forall (f : Bijection.bijection location) s, max (map f s) == map f (max s).
-Proof.
+Proof using .
 intros f s. apply max_map_injective.
 - intros ? ? Heq. now rewrite Heq.
 - apply Bijection.injective.
 Qed.
 
 Lemma multiplicity_le_nG : forall pt config, (!! config)[pt] <= nG.
-Proof.
+Proof using size_G.
 intros pt config. etransitivity.
 - apply cardinal_lower.
 - rewrite cardinal_obs_from_config. simpl. omega.
@@ -180,7 +180,7 @@ Definition target_triangle (pt1 pt2 pt3 : location) : location :=
 Lemma target_triangle_compat : forall pt1 pt2 pt3 pt1' pt2' pt3',
     Permutation (pt1 :: pt2 :: pt3 :: nil) (pt1' :: pt2' :: pt3' :: nil) ->
     target_triangle pt1 pt2 pt3 = target_triangle pt1' pt2' pt3'.
-Proof.
+Proof using .
 intros pt1 pt2 pt3 pt1' pt2' pt3' hpermut.
 generalize (classify_triangle_compat hpermut).
 intro h_classify.
@@ -204,7 +204,7 @@ Definition target (s : observation) : location :=
   end.
 
 Instance target_compat : Proper (equiv ==> Logic.eq) target.
-Proof.
+Proof using size_G.
 intros s1 s2 Hs. unfold target.
 assert (Hperm : Permutation (on_SEC (support s1)) (on_SEC (support s2))).
 { now rewrite <- PermutationA_Leibniz, Hs. }
@@ -225,7 +225,7 @@ Qed.
 Definition SECT (s : observation) : list location := target s :: on_SEC (support s).
 
 Instance SECT_compat : Proper (equiv ==> PermutationA equiv) SECT.
-Proof.
+Proof using size_G.
 intros ? ? Hs. unfold SECT. rewrite Hs at 1.
 constructor; try reflexivity; []. now rewrite Hs.
 Qed.
@@ -234,7 +234,7 @@ Definition is_clean (s : observation) : bool :=
   if inclA_bool _ equiv_dec (support s) (SECT s) then true else false.
 
 Instance is_clean_compat : Proper (equiv ==> Logic.eq) is_clean.
-Proof.
+Proof using size_G.
 intros ? ? Heq. unfold is_clean.
 destruct (inclA_bool _ equiv_dec (support x) (SECT x)) eqn:Hx,
          (inclA_bool _ equiv_dec (support y) (SECT y)) eqn:Hy;
@@ -246,7 +246,7 @@ destruct (inclA_bool _ equiv_dec (support x) (SECT x)) eqn:Hx,
 Qed.
 
 Lemma is_clean_spec : forall s, is_clean s = true <-> inclA equiv (support s) (SECT s).
-Proof.
+Proof using .
 intro s. unfold is_clean.
 split; intro Hclean.
 - rewrite <- (inclA_bool_true_iff _ equiv_dec).
@@ -266,7 +266,7 @@ Definition gatherR2_pgm (s : observation) : location :=
   end.
 
 Instance gatherR2_pgm_compat : Proper (equiv ==> equiv) gatherR2_pgm.
-Proof.
+Proof using size_G.
 intros s1 s2 Hs. unfold gatherR2_pgm.
 assert (Hsize : length (support (max s1)) = length (support (max s2))) by now rewrite Hs.
 destruct (support (max s1)) as [| pt1 [| ? ?]] eqn:Hs1,
@@ -319,22 +319,22 @@ Definition generic_case config :=
 
 
 Instance no_Majority_compat : Proper (equiv ==> iff) no_Majority.
-Proof. intros ? ? Hconfig. unfold no_Majority. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? Hconfig. unfold no_Majority. now setoid_rewrite Hconfig. Qed.
 
 Instance MajTower_at_compat : Proper (Logic.eq ==> equiv ==> iff) MajTower_at.
-Proof. intros ? ? ? ? ? Hconfig. subst. unfold MajTower_at. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? ? ? ? Hconfig. subst. unfold MajTower_at. now setoid_rewrite Hconfig. Qed.
 
 Instance diameter_case_compat : Proper (equiv ==> iff) diameter_case.
-Proof. intros ? ? Hconfig. unfold diameter_case. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? Hconfig. unfold diameter_case. now setoid_rewrite Hconfig. Qed.
 
 Instance triangle_case_compat : Proper (equiv ==> iff) triangle_case.
-Proof. intros ? ? Hconfig. unfold triangle_case. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? Hconfig. unfold triangle_case. now setoid_rewrite Hconfig. Qed.
 
 Instance equilateral_case_compat : Proper (equiv ==> iff) equilateral_case.
-Proof. intros ? ? Hconfig. unfold equilateral_case. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? Hconfig. unfold equilateral_case. now setoid_rewrite Hconfig. Qed.
 
 Instance generic_case_compat : Proper (equiv ==> iff) generic_case.
-Proof. intros ? ? Hconfig. unfold generic_case. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? Hconfig. unfold generic_case. now setoid_rewrite Hconfig. Qed.
 
 Definition clean_diameter_case config :=
   diameter_case config /\ is_clean (!! config) = true.
@@ -343,7 +343,7 @@ Definition clean_diameter_case config :=
 (** Some results about [MajTower_at] and [no_Majority]. *)
 Theorem MajTower_at_equiv : forall config pt, MajTower_at pt config <->
   support (max (!! config)) = pt :: nil.
-Proof.
+Proof using size_G.
 intros config pt. split; intro Hmaj.
 * apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz.
   change eq with (@equiv location _).
@@ -367,7 +367,7 @@ Qed.
 
 Theorem no_Majority_equiv : forall config, no_Majority config
   <-> exists pt1 pt2 l, support (max (!! config)) = pt1 :: pt2 :: l.
-Proof.
+Proof using size_G.
 intros config.
 unfold no_Majority. rewrite size_spec.
 split; intro Hmaj.
@@ -377,7 +377,7 @@ Qed.
 
 Corollary make_no_Majority : forall pt1 pt2 l config,
   PermutationA equiv (support (max (!! config))) (pt1 :: pt2 :: l) -> no_Majority config.
-Proof.
+Proof using size_G.
 intros pt1 pt2 l config Hperm.
 rewrite no_Majority_equiv. apply PermutationA_length in Hperm.
 destruct (support (max (!! config))) as [| ? [| ? ?]]; cbn in Hperm; omega || eauto.
@@ -385,7 +385,7 @@ Qed.
 
 Lemma no_Majority_on_SEC_length : forall config,
   no_Majority config -> 2 <= length (on_SEC (support (!! config))).
-Proof.
+Proof using size_G.
 intros config Hmaj.
 destruct (on_SEC (support (!! config))) as [| pt1 [| pt2 ?]] eqn:Hsec; simpl; omega || exfalso.
 + rewrite on_SEC_nil in Hsec.  apply (support_non_nil _ Hsec).
@@ -433,7 +433,7 @@ Ltac get_case config :=
 
 Lemma Majority_not_invalid : forall config pt,
   MajTower_at pt config -> ~invalid config.
-Proof.
+Proof using size_G.
 intros config pt Hmaj. rewrite MajTower_at_equiv in Hmaj.
 assert (Hmax : forall x, In x (max (!! config)) <-> x = pt).
 { intro x. rewrite <- support_spec, Hmaj. split.
@@ -472,7 +472,7 @@ Qed.
 (* invalid_size already proves the -> direction *)
 Lemma invalid_equiv : forall config,
   invalid config <-> no_Majority config /\ size (!! config) = 2%nat.
-Proof.
+Proof using size_G.
 intro config. unfold no_Majority. split.
 - intro Hinvalid. split.
   + rewrite size_spec. destruct (support (max (!! config))) as [| pt1 [| pt2 l]] eqn:Hmax.
@@ -634,7 +634,7 @@ Qed.
 
 Lemma not_invalid_no_majority_size : forall config,
   no_Majority config -> ~invalid config -> (size (!! config) >= 3)%nat.
-Proof.
+Proof using size_G.
 intros config H1 H2.
 assert (size (!! config) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption; []. f_equiv. apply max_subset. }
@@ -665,7 +665,7 @@ Definition SECT_cardinal s :=
   cardinal (filter (fun x => if InA_dec equiv_dec x (SECT s) then true else false) s).
 
 Instance SECT_cardinal_compat : Proper (equiv ==> Logic.eq) SECT_cardinal.
-Proof.
+Proof using size_G.
 intros s1 s2 Hs. unfold SECT_cardinal. f_equiv. rewrite Hs.
 apply filter_extensionality_compat.
 - intros x y Hxy. now rewrite Hxy.
@@ -674,7 +674,7 @@ apply filter_extensionality_compat.
 Qed.
 
 Lemma SECT_cardinal_le_nG : forall config, SECT_cardinal (!! config) <= nG.
-Proof.
+Proof using .
 intro config. unfold SECT_cardinal.
 replace nG with (nG + nB) by (simpl; apply plus_0_r).
 rewrite <- (cardinal_obs_from_config config origin).
@@ -701,13 +701,13 @@ Function measure (s : observation) : nat * nat :=
   end.
 
 Instance measure_clean_compat : Proper (equiv ==> Logic.eq) measure_clean.
-Proof. intros ? ? Heq. unfold measure_clean. now rewrite Heq. Qed.
+Proof using size_G. intros ? ? Heq. unfold measure_clean. now rewrite Heq. Qed.
 
 Instance measure_dirty_compat : Proper (equiv ==> Logic.eq) measure_dirty.
-Proof. intros ? ? Heq. unfold measure_dirty. now rewrite Heq. Qed.
+Proof using size_G. intros ? ? Heq. unfold measure_dirty. now rewrite Heq. Qed.
 
 Instance measure_compat : Proper (equiv ==> Logic.eq) measure.
-Proof.
+Proof using size_G.
 intros s1 s2 Hs. unfold measure.
 assert (Hsize : length (support (max s1)) = length (support (max s2))) by now rewrite Hs.
 destruct (support (max s1)) as [| pt1 [| ? ?]] eqn:Hs1,
@@ -737,10 +737,10 @@ Qed.
 Definition lt_config x y := Lexprod.lexprod lt lt (measure (!! x)) (measure (!! y)).
 
 Lemma wf_lt_config: well_founded lt_config.
-Proof. unfold lt_config. apply wf_inverse_image, Lexprod.wf_lexprod; apply lt_wf. Qed.
+Proof using . unfold lt_config. apply wf_inverse_image, Lexprod.wf_lexprod; apply lt_wf. Qed.
 
 Instance lt_config_compat : Proper (equiv ==> equiv ==> iff) lt_config.
-Proof.
+Proof using size_G.
 intros config1 config1' Heq1 config2 config2' Heq2.
 unfold lt_config.
 now rewrite <- Heq1, <- Heq2.
@@ -752,7 +752,7 @@ Qed.
 Lemma target_triangle_morph:
   forall (sim : similarity location) pt1 pt2 pt3, target_triangle (sim pt1) (sim pt2) (sim pt3)
                                   = sim (target_triangle pt1 pt2 pt3).
-Proof.
+Proof using .
 intros sim pt1 pt2 pt3. unfold target_triangle.
 rewrite classify_triangle_morph.
 destruct (classify_triangle pt1 pt2 pt3); simpl; auto.
@@ -762,7 +762,7 @@ Qed.
 
 Lemma target_morph : forall (sim : similarity location) (s : observation),
   support s <> nil -> target (map sim s) = sim (target s).
-Proof.
+Proof using size_G.
 intros sim s hnonempty. unfold target.
 assert (Hperm : Permutation (List.map sim (on_SEC (support s))) (on_SEC (support (map sim s)))).
 { assert (Heq : on_SEC (support s)
@@ -796,7 +796,7 @@ Qed.
 
 Corollary SECT_morph : forall (sim : similarity location) s,
   support s <> nil -> PermutationA (@equiv location _) (SECT (map sim s)) (List.map sim (SECT s)).
-Proof.
+Proof using size_G.
 intros sim s s_nonempty. unfold SECT.
 rewrite (target_morph _ _ s_nonempty). constructor; try reflexivity; [].
 transitivity (List.filter (on_circle (SEC (support (map sim s)))) (List.map sim (support s))).
@@ -811,7 +811,7 @@ Qed.
 
 Lemma is_clean_morph : forall (sim : similarity location) s,
     support s <> nil -> is_clean (map sim s) = is_clean s.
-Proof.
+Proof using size_G.
 intros sim s s_nonempty. unfold is_clean. changeR2.
 destruct (inclA_bool _ equiv_dec (support (map sim s)) (SECT (map sim s))) eqn:Hx,
          (inclA_bool _ equiv_dec (support s) (SECT s)) eqn:Hy;
@@ -830,7 +830,7 @@ Qed.
 Lemma diameter_target : forall config ptx pty,
   on_SEC (support (!! config)) = ptx :: pty :: nil ->
   target (!! config) = middle ptx pty.
-Proof.
+Proof using .
 intros config ptx pty HonSEC.
 unfold target.
 rewrite HonSEC.
@@ -842,7 +842,7 @@ Lemma equilateral_target : forall config ptx pty ptz,
   PermutationA equiv (on_SEC (support (!! config))) (ptx :: pty :: ptz :: nil) ->
   classify_triangle ptx pty ptz = Equilateral ->
   target (!! config) = isobarycenter_3_pts ptx pty ptz.
-Proof.
+Proof using .
 intros config ptx pty ptz Hperm Htriangle.
 unfold target.
 assert (Hlen : length (on_SEC (support (!! config))) = 3) by now rewrite Hperm.
@@ -855,7 +855,7 @@ Lemma isosceles_target : forall config ptx pty ptz vertex,
     PermutationA equiv (on_SEC (support (!! config))) (ptx :: pty :: ptz :: nil) ->
     classify_triangle ptx pty ptz = Isosceles vertex ->
     target (!! config) = vertex.
-Proof.
+Proof using size_G.
 intros config ptx pty ptz vertex Hsec Htriangle.
 unfold target.
 assert (Hlen : length (on_SEC (support (!! config))) = length (ptx :: pty :: ptz :: nil))
@@ -877,7 +877,7 @@ Lemma scalene_target : forall config ptx pty ptz,
     PermutationA equiv (on_SEC (support (!! config))) (ptx :: pty :: ptz :: nil) ->
     classify_triangle ptx pty ptz = Scalene ->
     target (!! config) = opposite_of_max_side ptx pty ptz.
-Proof.
+Proof using size_G.
 intros config ptx pty ptz Hsec Htriangle.
 remember (opposite_of_max_side ptx pty ptz) as vertex.
 unfold target.
@@ -908,7 +908,7 @@ Qed.
 Lemma generic_target : forall config,
   generic_case config ->
   target (!! config) = R2.center (SEC (support (!! config))).
-Proof.
+Proof using size_G.
 intros config [_ [? [? [? [? [? HpermSEC]]]]]]. unfold target.
 apply PermutationA_length in HpermSEC.
 destruct (on_SEC (support (!! config))) as [| ? [| ? [| ? [| ? ?]]]]; cbn in HpermSEC; omega || reflexivity.
@@ -919,7 +919,7 @@ Qed.
 Lemma same_on_SEC_same_target : forall config1 config2,
   PermutationA equiv (on_SEC (support (!! config1))) (on_SEC (support (!! config2))) ->
   target (!! config1) = target (!! config2).
-Proof.
+Proof using size_G.
 intros config1 config2 Hperm. unfold target.
 assert (Hlen := PermutationA_length Hperm).
 destruct (on_SEC (support (!! config1))) as [| ? [| ? [| ? [| ? ?]]]] eqn:Hsec1,
@@ -934,7 +934,7 @@ Qed.
 Lemma same_on_SEC_same_SECT : forall config1 config2,
   PermutationA equiv (on_SEC (support (!! config1))) (on_SEC (support (!! config2))) ->
   PermutationA equiv (SECT (!! config1)) (SECT (!! config2)).
-Proof.
+Proof using size_G.
 intros config1 config2 Hsame. unfold SECT.
 rewrite Hsame.
 apply same_on_SEC_same_target in Hsame.
@@ -945,7 +945,7 @@ Lemma target_inside_SEC : forall config,
   no_Majority config ->
   (dist (target (!! config)) (R2.center (SEC (support (!! config))))
    <= radius (SEC (support (!! config))))%R.
-Proof.
+Proof using size_G.
 Opaque Rmax. Opaque dist. Opaque middle.
 intros config Hmaj. unfold target.
 assert (Hlen := no_Majority_on_SEC_length Hmaj).
@@ -981,7 +981,7 @@ Qed.
 Lemma target_on_SEC_cases : forall config, no_Majority config ->
   (on_circle (SEC (support (!! config))) (target (!! config)) = true <->
   triangle_case config /\ ~equilateral_case config).
-Proof.
+Proof using size_G.
 intros config Hmaj. split.
 * intro Htarget.
   rewrite SEC_on_SEC in Htarget. unfold target in *.
@@ -1040,7 +1040,7 @@ Lemma target_on_SEC_already_occupied : forall config,
   no_Majority config ->
   on_circle (SEC (support (!! config))) (target (!! config)) = true ->
   InA equiv (target (!! config)) (support (!! config)).
-Proof.
+Proof using size_G.
 intros config Hmaj Htarget.
 apply target_on_SEC_cases in Htarget; trivial.
 destruct Htarget as [[_ [ptx [pty [ptz Hperm]]]] Hequilateral].
@@ -1081,7 +1081,7 @@ Theorem round_simplify : forall config,
                              if mem equiv_dec (get_location (config id)) (SECT s) then config id else target s
                     end
                else config id.
-Proof.
+Proof using Hssync.
 intro config. rewrite SSYNC_round_simplify; trivial; [].
 apply no_byz_eq. intro g. cbn zeta.
 destruct (da.(activate) (Good g)) eqn:Hactive; try reflexivity; [].
@@ -1142,7 +1142,7 @@ Qed.
 Lemma round_simplify_Majority : forall config pt,
     MajTower_at pt config ->
     round gatherR2 da config == fun id => if da.(activate) id then pt else config id.
-Proof.
+Proof using Hssync.
 intros config pt Hmaj. rewrite round_simplify.
 intro id. apply no_info.
 destruct (da.(activate) id); try reflexivity; [].
@@ -1154,7 +1154,7 @@ Lemma round_simplify_clean : forall config,
   no_Majority config ->
   is_clean (!! config) = true ->
   round gatherR2 da config == fun id => if da.(activate) id then target (!! config) else config id.
-Proof.
+Proof using Hssync.
 intros config Hmaj Hclean. rewrite round_simplify. apply no_byz_eq. intro g.
 destruct (da.(activate) (Good g)); try reflexivity; [].
 cbn zeta. rewrite Hclean.
@@ -1170,7 +1170,7 @@ Lemma round_simplify_dirty : forall config,
                                         then if mem equiv_dec (get_location (config id)) (SECT (!! config))
                                              then config id else target (!! config)
                                         else config id.
-Proof.
+Proof using Hssync.
 intros config Hmaj Hclean. rewrite round_simplify.
 apply no_byz_eq. intro g.
 destruct (da.(activate) (Good g)); try reflexivity; [].
@@ -1185,7 +1185,7 @@ Qed.
 Theorem destination_is_target : forall config, no_Majority config ->
   forall id, List.In id (moving gatherR2 da config) ->
              get_location (round gatherR2 da config id) = target (!! config).
-Proof.
+Proof using Hssync.
 intros config Hmaj id Hmove. rewrite (round_simplify config id).
 destruct (da.(activate) id) eqn:Hactive.
 * rewrite moving_spec, (round_simplify config id), Hactive in Hmove. cbn zeta in *.
@@ -1202,7 +1202,7 @@ Qed.
 Corollary same_destination : forall (config : configuration) id1 id2,
   List.In id1 (moving gatherR2 da config) -> List.In id2 (moving gatherR2 da config) ->
   round gatherR2 da config id1 == round gatherR2 da config id2.
-Proof.
+Proof using Hssync.
 intros config id1 id2 Hmove1 Hmove2. apply no_info.
 destruct (le_lt_dec 2 (length (support (max (!! config))))) as [Hle |Hlt].
 + assert (no_Majority config). { unfold no_Majority. now rewrite size_spec. }
@@ -1223,7 +1223,7 @@ Lemma increase_move :
     ((!! config)[pt] < (!! (round r da config))[pt])%nat ->
     exists id, get_location (round r da config id) == pt
             /\ get_location (round r da config id) =/= get_location (config id).
-Proof.
+Proof using size_G.
 intros r config pt Hlt.
 destruct (existsb (fun x => if get_location (round r da config x) =?= pt then
                             if get_location (config x) =?= pt then false else true else false) names) eqn:Hex.
@@ -1249,7 +1249,7 @@ Theorem increase_move_iff :
     ((!! config)[pt] < (!! (round gatherR2 da config))[pt])%nat <->
     exists id, get_location (round gatherR2 da config id) == pt
             /\ get_location (round gatherR2 da config id) =/= get_location (config id).
-Proof.
+Proof using Hssync.
 intros config pt. split.
 * apply increase_move.
 * intros [id [Hid Hroundid]].
@@ -1283,7 +1283,7 @@ Qed.
 Lemma incl_next : forall (config : configuration),
     (inclA equiv (support (!! (round gatherR2 da config)))
                  ((target (!! config)) :: (support (!! config)))).
-Proof.
+Proof using Hssync.
 intros config.
 red.
 intros x Hin.
@@ -1323,7 +1323,7 @@ Lemma incl_clean_next : forall config,
   is_clean (!! config) = true ->
   inclA equiv (support (!! (round gatherR2 da config)))
               (target (!! config) :: on_SEC (support (!! config))).
-Proof.
+Proof using Hssync.
 intros config H.
 transitivity ((target (!! config)) :: (support (!! config))).
 - apply incl_next.
@@ -1336,7 +1336,7 @@ Qed.
 Lemma next_SEC_enclosed : forall config,
   no_Majority config -> 
   enclosing_circle (SEC (support (!! config))) (support (!! (round gatherR2 da config))).
-Proof.
+Proof using Hssync.
 intros config Hmaj pt Hin.
 rewrite <- InA_Leibniz in Hin. change eq with (@equiv location _) in Hin.
 rewrite support_spec in Hin. unfold In in Hin. changeR2.
@@ -1367,7 +1367,7 @@ Lemma dirty_next_still_on_SEC : forall config id,
   is_clean (!! config) = false ->
   on_circle (SEC (support (!! config))) (get_location (config id)) = true ->
   round gatherR2 da config id == config id.
-Proof.
+Proof using Hssync.
 intros config id Hmaj Hclean Hcircle.
 rewrite (round_simplify_dirty  Hmaj Hclean id).
 destruct (da.(activate) id); try reflexivity; [].
@@ -1382,7 +1382,7 @@ Lemma dirty_next_SEC_same : forall config,
   no_Majority config ->
   is_clean (!! config) = false ->
   SEC (support (!! (round gatherR2 da config))) = SEC (support (!! config)).
-Proof.
+Proof using Hssync.
 intros config Hmaj Hclean.
 assert (HonSEC : forall id, List.In (get_location (config id)) (on_SEC (support (!! config))) ->
                    round gatherR2 da config id == config id).
@@ -1407,7 +1407,7 @@ Lemma dirty_next_on_SEC_same : forall config,
   no_Majority config ->
   is_clean (!! config) = false ->
   PermutationA equiv (on_SEC (support (!! (round gatherR2 da config)))) (on_SEC (support (!! config))).
-Proof.
+Proof using Hssync.
 intros config Hmaj Hclean. apply (NoDupA_equivlistA_PermutationA _).
 * unfold on_SEC. apply (NoDupA_filter_compat _), support_NoDupA.
 * unfold on_SEC. apply (NoDupA_filter_compat _), support_NoDupA.
@@ -1436,7 +1436,7 @@ Qed.
 (** When there is a majority tower, it grows and all other towers wither. **)
 Theorem Majority_grow :  forall pt config, MajTower_at pt config ->
   (!! config)[pt] <= (!! (round gatherR2 da config))[pt].
-Proof.
+Proof using Hssync.
 intros pt config Hmaj.
 rewrite (round_simplify_Majority Hmaj).
 do 2 rewrite obs_from_config_spec, config_list_spec.
@@ -1452,7 +1452,7 @@ Qed.
 (* This proof follows the exact same structure. *)
 Theorem Majority_wither : forall config pt, MajTower_at pt config ->
   forall pt', pt <> pt' -> (!! (round gatherR2 da config))[pt'] <= (!! config)[pt'].
-Proof.
+Proof using Hssync.
 intros config pt Hmaj pt' Hdiff.
 rewrite (round_simplify_Majority Hmaj).
 do 2 rewrite obs_from_config_spec, config_list_spec.
@@ -1466,7 +1466,7 @@ Qed.
 (** Whenever there is a majority tower, it remains forever so. *)
 Theorem MajTower_at_forever : forall pt config,
   MajTower_at pt config -> MajTower_at pt (round gatherR2 da config).
-Proof.
+Proof using Hssync.
 intros pt config Hmaj x Hx. assert (Hs := Hmaj x Hx).
 apply le_lt_trans with ((!! config)[x]); try eapply lt_le_trans; try eassumption; [|].
 - eapply Majority_wither; eauto.
@@ -1478,7 +1478,7 @@ Lemma solve_measure_clean : forall config,
   moving gatherR2 da config <> nil ->
   target (!! (round gatherR2 da config)) = target (!! config) ->
   measure_clean (!! (round gatherR2 da config)) < measure_clean (!! config).
-Proof.
+Proof using Hssync.
 intros config Hmaj Hmoving Htarget.
 unfold measure_clean. rewrite Htarget.
 assert (Hle := multiplicity_le_nG (target (!! config)) (round gatherR2 da config)).
@@ -1503,7 +1503,7 @@ Lemma solve_measure_dirty : forall (config : configuration),
   no_Majority (round gatherR2 da config) ->
   is_clean (!! (round gatherR2 da config)) = false ->
   measure_dirty (!! (round gatherR2 da config)) < measure_dirty (!! config).
-Proof.
+Proof using Hssync.
 intros config Hmoving Hmaj Hclean Hmaj' Hclean'.
 assert (HsameSEC := dirty_next_on_SEC_same Hmaj Hclean).
 assert (Htarget := same_on_SEC_same_target _ _ HsameSEC).
@@ -1584,7 +1584,7 @@ Lemma towers_elements_3 : forall config pt1 pt2,
   (size (!! config) >= 3)%nat ->
   In pt1 (!! config) -> In pt2 (!! config) -> pt1 <> pt2 ->
   exists pt3, pt1 <> pt3 /\ pt2 <> pt3 /\ In pt3 (!! config).
-Proof.
+Proof using size_G.
 intros config pt1 pt2 Hlen Hpt1 Hpt2 Hdiff12.
 rewrite <- support_spec in Hpt1, Hpt2. rewrite size_spec in Hlen.
 apply (PermutationA_split _) in Hpt1. destruct Hpt1 as [supp1 Hperm].
@@ -1603,7 +1603,7 @@ Qed.
 (* For [never_invalid] *)
 Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1 <> pt3 ->
   (!! config)[pt1] + (!! config)[pt2] + (!! config)[pt3] <= nG.
-Proof.
+Proof using size_G.
 intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
 replace nG with (nG + nB) by (simpl; omega).
 rewrite <- (cardinal_obs_from_config config origin).
@@ -1624,7 +1624,7 @@ Qed.
    thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
 
 Theorem never_invalid : forall config, ~invalid config -> ~invalid (round gatherR2 da config).
-Proof.
+Proof using Hssync.
 intros config Hok.
 (* Three cases for the robogram *)
 destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
@@ -1714,7 +1714,7 @@ Lemma diameter_clean_support : forall config ptx pty,
   is_clean (!! config) = true ->
   on_SEC (support (!! config)) = ptx :: pty :: nil ->
   PermutationA equiv (support (!! config)) (middle ptx pty :: ptx :: pty :: nil).
-Proof.
+Proof using size_G.
 intros config ptx pty Hinvalid hmax Hclean HonSEC.
 assert (Htarget : target (!! config) = middle ptx pty) by (apply (diameter_target); auto).
 apply (NoDupA_inclA_length_PermutationA _).
@@ -1743,7 +1743,7 @@ Lemma diameter_round_same : forall config ptx pty,
   PermutationA equiv (support (!! config)) (middle ptx pty :: ptx :: pty :: nil) ->
   PermutationA equiv (support (!! (round gatherR2 da config)))
                         (middle ptx pty :: ptx :: pty :: nil).
-Proof.
+Proof using Hssync.
 intros config ptx pty Hmaj Hperm.
 assert (Htarget : target (!! config) = middle ptx pty).
 { assert (HonSEC : PermutationA equiv (on_SEC (support (!! config))) (ptx :: pty :: nil)).
@@ -1779,7 +1779,7 @@ Lemma diameter_next_target_same : forall config,
   clean_diameter_case config ->
   no_Majority (round gatherR2 da config) ->
   target (!! (round gatherR2 da config)) = target (!! config).
-Proof.
+Proof using Hssync.
 intros config Hinvalid Hcleandiam Hmaj'.
 destruct Hcleandiam as [[Hmaj [pt1 [pt2 Htwocol]]] Hclean].
 apply PermutationA_length in Htwocol.
@@ -1821,7 +1821,7 @@ Lemma clean_diameter_next_maj_or_diameter : forall config ptx pty,
   (exists pt, MajTower_at pt (round gatherR2 da config))
   \/ no_Majority (round gatherR2 da config)
      /\ PermutationA equiv (on_SEC (support (!! (round gatherR2 da config)))) (ptx :: pty :: nil).
-Proof.
+Proof using Hssync.
 intros config ptx pty Hinvalid Hmaj Hclean Hsec.
 assert (Hperm := diameter_clean_support Hinvalid Hmaj Hclean Hsec).
 destruct (support (max (!! (round gatherR2 da config)))) as [| pt [| ? ?]] eqn:Hmax'.
@@ -1857,7 +1857,7 @@ Lemma SEC_3_to_2: forall config ptx pty ptz bary pt ptdiam,
   classify_triangle ptx pty ptz = Equilateral ->
   bary == (isobarycenter_3_pts ptx pty ptz) ->
   ~ InA equiv pt (support (!! (round gatherR2 da config))).
-Proof.
+Proof using .
 intros config ptx pty ptz bary pt ptdiam hIn_pt hIn_ptdiam hneq_pt_ptdiam Hsec Hsec' Htriangle heq_bary.
 intro abs.
 assert (h_bary:=@same_dist_vertex_notin_sub_circle ptdiam pt bary). 
@@ -2891,7 +2891,7 @@ Lemma clean_generic_next_generic_same_SEC : forall config,
   generic_case config ->
   generic_case (round gatherR2 da config) ->
   SEC (support (!! (round gatherR2 da config))) = SEC (support (!! config)).
-Proof.
+Proof using Hssync.
 intros config Hcase Hcase'.
 destruct (is_clean (!! config)) eqn:Hclean; try (now destruct Hcase; apply dirty_next_SEC_same); [].
 assert (Hincl' := incl_clean_next config Hclean).
@@ -3048,7 +3048,7 @@ Lemma clean_generic_next_generic_same_target_and_clean : forall config,
   generic_case (round gatherR2 da config) ->
   is_clean (!! (round gatherR2 da config)) = true
   /\ target (!! (round gatherR2 da config)) = target (!! config).
-Proof.
+Proof using Hssync.
 intros config Hcase Hclean Hcase'.
 assert (HSEC := clean_generic_next_generic_same_SEC Hcase Hcase').
 assert (Hincl' := incl_clean_next config Hclean).
@@ -3067,7 +3067,7 @@ Qed.
 Theorem round_lt_config : forall config,
   ~invalid config -> moving gatherR2 da config <> nil ->
   lt_config (round gatherR2 da config) config.
-Proof.
+Proof using Hssync.
   intros config Hvalid Hmove. unfold lt_config.
   unfold measure at 2.
   destruct (support (max (!! config))) as [| pt [| pt' smax]] eqn:Hmax.
@@ -3202,7 +3202,7 @@ End SSYNC_Results.
 
 Lemma gathered_precise : forall config pt,
   gathered_at pt config -> forall id, gathered_at (get_location (config id)) config.
-Proof.
+Proof using size_G.
 intros config pt Hgather id g'. transitivity pt.
 - apply Hgather.
 - pattern id. apply no_byz. clear id. intro g. symmetry. apply Hgather.
@@ -3210,11 +3210,11 @@ Qed.
 
 Corollary not_gathered_generalize : forall config id,
   ~gathered_at (get_location (config id)) config -> forall pt, ~gathered_at pt config.
-Proof. intros config id Hnot pt Hgather. apply Hnot. apply (gathered_precise Hgather). Qed.
+Proof using size_G. intros config id Hnot pt Hgather. apply Hnot. apply (gathered_precise Hgather). Qed.
 
 Lemma not_gathered_exists : forall config pt,
   ~ gathered_at pt config -> exists id, get_location (config id) =/= pt.
-Proof.
+Proof using .
 intros config pt Hgather.
 destruct (forallb (fun x => if get_location (config x) =?= pt then true else false) names) eqn:Hall.
 - elim Hgather. rewrite forallb_forall in Hall.
@@ -3226,7 +3226,7 @@ Qed.
 (** Correctness proof: given a non-gathered, non-invalid configuration, then some robot will move some day. *)
 Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (get_location (config id)) config ->
   exists gmove, forall da, SSYNC_da da -> List.In gmove (active da) -> List.In gmove (moving gatherR2 da config).
-Proof.
+Proof using .
 intros config id Hvalid Hgather.
 destruct (support (max (!! config))) as [| pt [| pt' lmax]] eqn:Hmax.
 * elim (support_max_non_nil _ Hmax).
@@ -3269,7 +3269,7 @@ Qed.
 (** Given a k-fair demon, in any non-gathered, non-invalid configuration, a robot will be the first to move. *)
 Theorem Fair_FirstMove : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> forall config id,
   ~invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR2 d config.
-Proof.
+Proof using .
 intro d. generalize (similarity_demon2prop d).
 generalize (similarity_demon2demon d). clear d.
 intros d Hprop Hssync [locallyfair Hfair] config id Hvalid Hgathered.
@@ -3296,7 +3296,7 @@ Proof. exists 0. generalize size_G; intro; abstract omega. Defined.
 
 Lemma gathered_at_forever : forall da config pt, SSYNC_da da ->
   gathered_at pt config -> gathered_at pt (round gatherR2 da config).
-Proof.
+Proof using .
 intros da config pt Hssync Hgather. rewrite (round_simplify_Majority).
 + intro g. destruct (da.(activate) (Good g)); reflexivity || apply Hgather.
 + assumption.
@@ -3313,7 +3313,7 @@ Qed.
 
 Lemma gathered_at_OK : forall d config pt, SSYNC (similarity_demon2demon d) ->
   gathered_at pt config -> Gather pt (execute gatherR2 d config).
-Proof.
+Proof using .
 cofix Hind. intros d config pt Hssync Hgather. constructor.
 + clear Hind. simpl. assumption.
 + rewrite execute_tail. destruct Hssync. apply Hind; now try apply gathered_at_forever.
@@ -3321,7 +3321,7 @@ Qed.
 
 (** The final theorem. *)
 Theorem Gathering_in_R2 : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> ValidSolGathering gatherR2 d.
-Proof.
+Proof using .
 intro d. generalize (similarity_demon2prop d).
 generalize (similarity_demon2demon d). clear d.
 intros d Hprop Hssync Hfair config.
@@ -3356,7 +3356,6 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
     - rewrite Heq. assumption.
 Qed.
 
-Print Assumptions Gathering_in_R2.
 
 
 (** Let us change the assumption over the demon, it is no longer fair
@@ -3366,7 +3365,7 @@ Definition OKunfair r :=
 
 Theorem unfair_Gathering_in_R2 :
   forall d, SSYNC (similarity_demon2demon d) -> OKunfair gatherR2 d -> ValidSolGathering gatherR2 d.
-Proof.
+Proof using .
 intros d Hssync Hunfair config. revert d Hssync Hunfair. pattern config.
 apply (well_founded_ind wf_lt_config). clear config.
 intros config Hind d Hssync Hunfair Hok.
@@ -3385,3 +3384,7 @@ destruct (gathered_at_dec config (get_location (config (Good g1)))) as [Hmove | 
 Qed.
 
 End GatheringInR2.
+
+(* this is ignored when coq -vos is used. This will fail when coqtop
+   if relying on .vos. But it will succeed when using .vo *)
+Print Assumptions Gathering_in_R2. 

@@ -84,7 +84,7 @@ Defined.
 
 Instance relocate_byz_D2C_compat :
   Proper ((equiv ==> eq ==> equiv) ==> (equiv ==> eq ==> equiv)) relocate_byz_D2C.
-Proof.
+Proof using .
 intros f g Hfg config1 config2 Hconfig bb b ?. subst bb.
 simpl. repeat split; apply Hfg; now f_equiv.
 Qed.
@@ -94,7 +94,7 @@ Definition relocate_byz_C2D (rel_byz : CGF_config -> B -> stateG) : DGF_config -
 
 Instance relocate_byz_C2D_compat :
   Proper ((equiv ==> eq ==> equiv) ==> (equiv ==> eq ==> equiv)) relocate_byz_C2D.
-Proof.
+Proof using .
 intros f g Hfg config1 config2 Hconfig bb b ?. subst bb.
 unfold relocate_byz_C2D. now apply state_G2V_compat, Hfg; f_equiv.
 Qed.
@@ -120,7 +120,7 @@ Proof.
 Defined.
 
 Instance da_D2C_compat : Proper (equiv ==> equiv) da_D2C.
-Proof.
+Proof using .
 intros da1 da2 Hda. split; [| split; [| split; [| split]]]; cbn -[equiv].
 + intro. now apply activate_da_compat.
 + intros. apply relocate_byz_D2C_compat; reflexivity || now apply relocate_byz_da_compat.
@@ -167,7 +167,7 @@ Proof.
 Defined.
 
 Instance da_C2D_compat : Proper (equiv ==> equiv ==> equiv) da_C2D.
-Proof.
+Proof using .
 intros da1 da2 Hda Cconfig1 Cconfig2 HCconfig.
 split; [| split; [| split; [| split]]]; cbn -[equiv].
 + intro. now apply activate_da_compat.
@@ -242,7 +242,7 @@ abstract (split; try solve [ apply Rle_neq_lt; (apply Rplus_le_le_0_compat; appl
 Defined.
 
 Instance add_edge_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) add_edge.
-Proof.
+Proof using .
 intros ? ? He ρ1 ρ1' Hρ1 ρ2 ρ2' Hρ2. unfold add_edge.
 Time repeat destruct_match; solve [ rewrite Hρ1, Hρ2 in *; contradiction
                                   | rewrite <- Hρ1, <- Hρ2 in *; contradiction
@@ -258,7 +258,7 @@ Definition move (state : stateG) (ρ : ratio) : stateG :=
   end.
 
 Instance move_compat : Proper (equiv ==> equiv ==> equiv) move.
-Proof.
+Proof using .
 intros [v1 e1 proof1 | e1 p1] [v2 e2 proof2 | e2 p2] Heq ρ1 ρ2 Hρ; simpl in Heq; try tauto; [|].
 + unfold move. destruct Heq as [Hv [[Hsrc Htgt] Hthd]].
   do 2 destruct_match.

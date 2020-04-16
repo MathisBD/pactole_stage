@@ -68,28 +68,28 @@ Definition FullSolGathering (r : robogram) (d : demon) :=
 
 (** Compatibility properties *)
 Global Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
-Proof.
+Proof using .
 intros pt1 pt2 Hpt config1 config2 Hconfig. unfold gathered_at.
 setoid_rewrite Hconfig. setoid_rewrite Hpt. reflexivity.
 Qed.
 
 Global Instance Gather_compat : Proper (equiv ==> equiv ==> iff) Gather.
-Proof.
+Proof using .
 intros pt1 pt2 Hpt. apply Stream.forever_compat, Stream.instant_compat.
 intros config1 config2 Hconfig. now rewrite Hpt, Hconfig.
 Qed.
 
 Global Instance WillGather_compat : Proper (equiv ==> iff) WillGather.
-Proof. apply Stream.eventually_compat. intros ? ? Hpt. now setoid_rewrite Hpt. Qed.
+Proof using . apply Stream.eventually_compat. intros ? ? Hpt. now setoid_rewrite Hpt. Qed.
 
 Global Instance FullSolGathering_compat : Proper (equiv ==> equiv ==> iff) FullSolGathering.
-Proof.
+Proof using .
 intros r1 r2 Hr d1 d2 Hd. unfold FullSolGathering.
 setoid_rewrite Hr. setoid_rewrite Hd. reflexivity.
 Qed.
 
 Lemma gathered_at_dec : forall config pt, {gathered_at pt config} + {~gathered_at pt config}.
-Proof.
+Proof using .
 intros config pt.
 destruct (List.forallb (fun g => if get_location (config (Good g)) =?= pt then true else false)
                        Gnames) eqn:Hall.

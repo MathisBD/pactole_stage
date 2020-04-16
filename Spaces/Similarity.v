@@ -57,10 +57,10 @@ Proof.
 Defined.
 
 Global Instance f_compat : Proper (equiv ==> equiv) sim_f.
-Proof. intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
+Proof using . intros sim1 sim2 Hsim ?. now apply Hsim. Qed.
 
 Global Instance zoom_compat : Proper (equiv ==> equiv) zoom.
-Proof.
+Proof using .
 intros sim1 sim2 Hsim.
 apply Rmult_eq_reg_r with (dist origin one).
 + now rewrite <- 2 dist_prop, Hsim.
@@ -70,7 +70,7 @@ Qed.
 (** As similarities are defined as bijections, we can prove that k <> 0
     (this requires that the metric space is not trivial (i.e. has dimension > 0). *)
 Lemma zoom_non_null : forall sim, sim.(zoom) <> 0.
-Proof.
+Proof using .
 intros sim Heq. apply non_trivial.
 assert (Heqsim : equiv (sim one) (sim origin)).
 { now rewrite <- dist_defined, sim.(dist_prop), Heq, Rmult_0_l. }
@@ -78,7 +78,7 @@ rewrite sim.(Inversion) in Heqsim. rewrite <- Heqsim, <- sim.(Inversion). reflex
 Qed.
 
 Lemma zoom_pos : forall sim, 0 < sim.(zoom).
-Proof.
+Proof using .
 intros sim. apply Rle_neq_lt.
 - destruct sim as [f k Hk]. simpl.
   assert (Hnon_triv := non_trivial). specialize (Hk one origin).
@@ -91,7 +91,7 @@ intros sim. apply Rle_neq_lt.
 Qed.
 
 Theorem injective : forall sim : similarity, Preliminary.injective equiv equiv sim.
-Proof.
+Proof using .
 intros sim z t Heqf.
 rewrite <- dist_defined in Heqf |- *. rewrite sim.(dist_prop) in Heqf.
 apply Rmult_integral in Heqf. destruct Heqf; trivial.
@@ -119,13 +119,13 @@ Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Defined.
 Proof. intros f1 f2 Hf g1 g2 Hg x. cbn. now rewrite Hf, Hg. Qed. *)
 
 Lemma compose_assoc : forall f g h, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
-Proof. repeat intro. reflexivity. Qed.
+Proof using . repeat intro. reflexivity. Qed.
 
 Lemma compose_id_l : forall sim, id ∘ sim == sim.
-Proof. intros sim x. simpl. reflexivity. Qed.
+Proof using . intros sim x. simpl. reflexivity. Qed.
 
 Lemma compose_id_r : forall sim, sim ∘ id == sim.
-Proof. intros sim x. simpl. reflexivity. Qed.
+Proof using . intros sim x. simpl. reflexivity. Qed.
 
 (** Inverse of a similarity *)
 Definition inv (sim : similarity) : similarity.
@@ -145,26 +145,26 @@ Proof. intros f g Hfg x. simpl. now f_equiv. Defined.
 Proof. intros f g Hfg x. simpl. now f_equiv. Qed. *)
 
 Lemma compose_inverse_l : forall sim : similarity, (sim ⁻¹ ∘ sim) == id.
-Proof. intros sim x. simpl. now rewrite retraction_section; autoclass. Qed.
+Proof using . intros sim x. simpl. now rewrite retraction_section; autoclass. Qed.
 
 Lemma compose_inverse_r : forall sim : similarity, sim ∘ (sim ⁻¹) == id.
-Proof. intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
+Proof using . intros sim x. simpl. now rewrite section_retraction; autoclass. Qed.
 
 Lemma inverse_compose : forall f g : similarity, (f ∘ g) ⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
-Proof. intros f g x. simpl. reflexivity. Qed.
+Proof using . intros f g x. simpl. reflexivity. Qed.
 
 Lemma inverse_dist_prop : forall (sim : similarity) x y,
   dist ((sim ⁻¹) x) ((sim ⁻¹) y) = /(zoom sim) * dist x y.
-Proof. intros sim x y. rewrite dist_prop. now simpl. Qed.
+Proof using . intros sim x y. rewrite dist_prop. now simpl. Qed.
 
 (** Center of a similarity, that is, the point that gets mapped to the origin. *)
 Definition center (sim : similarity) : T := sim⁻¹ origin.
 
 Lemma center_prop : forall sim : similarity, sim (center sim) == origin.
-Proof. intro. unfold center. apply compose_inverse_r. Qed.
+Proof using . intro. unfold center. apply compose_inverse_r. Qed.
 
 Global Instance center_compat : Proper (equiv ==> equiv) center.
-Proof. intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
+Proof using . intros sim ? Hsim. apply (injective sim). now rewrite center_prop, Hsim, center_prop. Qed.
 
 (* TODO: prove that similarities preserve barycenters *)
 End SimilarityDefinition.
@@ -177,7 +177,7 @@ Context `{rnsT : RealNormedSpace T}.
 
 (** The translation similarity *)
 Lemma bij_translation_Inversion : forall v x y : T, add x v == y ↔ add y (opp v) == x.
-Proof.
+Proof using .
 intros. split; intro Heq; rewrite Heq || rewrite <- Heq; rewrite <- add_assoc.
 - now rewrite add_opp, add_origin.
 - setoid_rewrite add_comm at 2. now rewrite add_opp, add_origin.
@@ -193,7 +193,7 @@ Proof.
 Defined.
 
 Lemma translation_zoom : forall v x y : T, dist (add x v) (add y v) = 1 * dist x y.
-Proof. intros. ring_simplify. apply dist_translation. Qed.
+Proof using . intros. ring_simplify. apply dist_translation. Qed.
 
 Definition translation (v : T) : similarity T.
 refine {| sim_f := bij_translation v;
@@ -201,18 +201,18 @@ refine {| sim_f := bij_translation v;
 Proof. cbn -[dist]. abstract (intros; now rewrite dist_translation, Rmult_1_l). Defined.
 
 Global Instance translation_compat : Proper (equiv ==> equiv) translation.
-Proof. intros u v Huv x. simpl. now rewrite Huv. Qed.
+Proof using . intros u v Huv x. simpl. now rewrite Huv. Qed.
 
 Lemma translation_origin : translation origin == id.
-Proof. intro. simpl. now rewrite add_origin. Qed.
+Proof using . intro. simpl. now rewrite add_origin. Qed.
 
 Lemma translation_inverse : forall t, inverse (translation t) == translation (opp t).
-Proof. intros t x. simpl. reflexivity. Qed.
+Proof using . intros t x. simpl. reflexivity. Qed.
 
 (** The homothetic similarity *)
 Lemma homothecy_Inversion : forall c ρ x y, ρ ≠ 0 ->
   add c (mul ρ (add x (opp c))) == y ↔ add (mul (/ ρ) (add y (opp c))) c == x.
-Proof.
+Proof using .
 intros. split; intro Heq; rewrite <- Heq; clear Heq.
 - now rewrite (add_comm c), <- add_assoc, add_opp, add_origin, mul_morph,
               Rinv_l, mul_1, <- add_assoc, (add_comm _ c), add_opp, add_origin.
@@ -232,7 +232,7 @@ Defined.
 
 Lemma bij_homothecy_zoom : forall c ρ (Hρ : ρ <> 0%R) (x y : T),
   dist ((bij_homothecy c Hρ) x) ((bij_homothecy c Hρ) y) = Rabs ρ * dist x y.
-Proof.
+Proof using .
 intros. cbn -[dist]. setoid_rewrite (add_comm c). rewrite dist_translation.
 rewrite dist_homothecy. f_equal. apply dist_translation.
 Qed.
@@ -248,19 +248,19 @@ Defined.
 
 Global Instance homothecy_compat :
   Proper (equiv ==> @forall_relation _ _ (fun _ => full_relation ==> equiv)) homothecy.
-Proof. intros c1 c2 Hc ρ ? ? ? ?. simpl. now rewrite Hc. Qed.
+Proof using . intros c1 c2 Hc ρ ? ? ? ?. simpl. now rewrite Hc. Qed.
 
 Lemma homothecy_inverse : forall c ρ (Hρ : ρ <> 0),
   inverse (homothecy c Hρ) == homothecy c (Rinv_neq_0_compat ρ Hρ).
-Proof. simpl. intros. apply add_comm. Qed.
+Proof using . simpl. intros. apply add_comm. Qed.
 
 Lemma homothecy_ratio_1 : forall c (H10 : 1 <> 0), homothecy c H10 == id.
-Proof.
+Proof using .
 repeat intro. simpl.
 now rewrite mul_1, add_comm, <- add_assoc, (add_comm _ c), add_opp, add_origin.
 Qed.
 
 Lemma homothecy_fixpoint : forall c ρ (Hρ : ρ <> 0), homothecy c Hρ c == c.
-Proof. intros. simpl. now rewrite add_opp, mul_origin, add_origin. Qed.
+Proof using . intros. simpl. now rewrite add_opp, mul_origin, add_origin. Qed.
 
 End TranslationHomothecy.

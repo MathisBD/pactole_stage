@@ -41,27 +41,27 @@ Section StrictOrderProps.
   Context `{StrictOrder A}.
 
   Property lt_antirefl : forall x, ~x <<< x.
-  Proof.
+  Proof using .
     intros; intro Hlt; apply (StrictOrder_Irreflexive x x Hlt); reflexivity.
   Qed.
   Property lt_not_eq : forall x y, x <<< y -> x =/= y.
-  Proof.
+  Proof using .
     intros; apply StrictOrder_Irreflexive; auto.
   Qed.
   Property gt_not_eq : forall x y, x >>> y -> x =/= y.
-  Proof.
+  Proof using .
     intros; intro abs; symmetry in abs; revert abs; apply lt_not_eq; auto.
   Qed.
   Property eq_not_lt : forall x y, x === y -> ~ x <<< y.
-  Proof.
+  Proof using .
     intros; intro abs; apply (lt_not_eq abs); auto.
   Qed.
   Property eq_not_gt : forall x y, x === y -> ~ x >>> y.
-  Proof.
+  Proof using .
     intros; intro abs; apply (gt_not_eq abs); auto.
   Qed.
   Property lt_not_gt : forall x y, x <<< y -> ~(x >>> y).
-  Proof.
+  Proof using .
     intros; intro abs; refine (lt_not_eq _ _).
     apply transitivity with y; eauto. reflexivity.
   Qed.
@@ -146,15 +146,15 @@ Notation " x >> y " :=
   (is_compare x y Gt) (no associativity, at level 70) : compare_scope.
 
 Property compare_1 `{OrderedType A} : forall x y, x =?= y = Lt -> x <<< y.
-Proof.
+Proof using .
   intros; destruct (compare_dec x y); auto; congruence.
 Qed.
 Property compare_2 `{OrderedType A} : forall x y, x =?= y = Eq -> x === y.
-Proof.
+Proof using .
   intros; destruct (compare_dec x y); auto; congruence.
 Qed.
 Property compare_3 `{OrderedType A} : forall x y, x =?= y = Gt -> x >>> y.
-Proof.
+Proof using .
   intros; destruct (compare_dec x y); auto; congruence.
 Qed.
 
@@ -166,7 +166,7 @@ Inductive decides {A} (R : relation A) (x y : A) : bool -> Prop :=
 
 Property eq_dec `{OrderedType A} :
   forall (x y : A), decides equiv x y (x==y).
-Proof.
+Proof using .
   intros; unfold is_compare. destruct (compare_dec x y); constructor.
   apply lt_not_eq; auto.
   assumption.
@@ -174,7 +174,7 @@ Proof.
 Qed.
 Property lt_dec `{OrderedType A} :
   forall x y, decides lt_StrictOrder x y (x<<y).
-Proof.
+Proof using .
   intros; unfold is_compare. destruct (compare_dec x y); constructor.
   assumption.
   intro abs; apply (lt_not_eq abs); auto.
@@ -182,7 +182,7 @@ Proof.
 Qed.
 Property gt_dec `{OrderedType A} :
   forall x y, decides lt_StrictOrder y x (x>>y).
-Proof.
+Proof using .
   intros; unfold is_compare. destruct (compare_dec x y); constructor.
   apply lt_not_gt; auto.
   intro abs; apply (gt_not_eq abs); auto.
@@ -194,32 +194,32 @@ Qed.
 Set Implicit Arguments. Unset Strict Implicit.
 Property eq_lt `{OrderedType A} :
   forall (x x' y : A), x === x' -> x <<< y -> x' <<< y.
-Proof.
+Proof using .
   intros; destruct (compare_dec x' y); auto.
   contradiction (lt_not_eq H1); transitivity x'; auto.
   contradiction (lt_not_eq (x:=x) (y:=x')); auto; transitivity y; auto.
 Qed.
 Corollary eq_lt2 `{OrderedType A} :
   forall (x x' y : A), x === x' -> x' <<< y -> x <<< y.
-Proof.
+Proof using .
   intros; apply eq_lt with x'; auto; symmetry; auto.
 Qed.
 Property eq_gt `{OrderedType A} :
   forall (x x' y : A), x === x' -> x >>> y -> x' >>> y.
-Proof.
+Proof using .
   intros; destruct (compare_dec x' y); auto.
   contradiction (gt_not_eq (x:=x) (y:=x')); auto; transitivity y; auto.
   contradiction (gt_not_eq H1); transitivity x'; auto.
 Qed.
 Instance lt_m `{OrderedType A} : Proper (_eq ==> _eq ==> iff) _lt.
-Proof.
+Proof using .
   repeat intro; split; intro Hlt.
   apply (eq_lt (x:=x)); auto. apply (eq_gt (x:=x0)); auto.
   apply (eq_lt (x:=y)); try symmetry; auto.
   apply (eq_gt (x:=y0)); try symmetry; auto.
 Qed.
 Instance le_m `{OrderedType A} : Proper (_eq ==> _eq ==> iff) (complement _lt).
-Proof.
+Proof using .
   repeat intro; split; intro Hlt; unfold complement in  *.
   rewrite H1 in Hlt; rewrite H0 in Hlt; assumption.
   rewrite H0, H1; assumption.
@@ -231,57 +231,57 @@ Section OrderLemmas.
   Variables x y z : A.
 
   Corollary lt_eq : x <<< y -> y === z -> x <<< z.
-  Proof.
+  Proof using .
     intros; rewrite <- H1; assumption.
   Qed.
   Corollary le_eq : ~x <<< y -> y === z -> ~x <<< z.
-  Proof.
+  Proof using .
     intros; rewrite <- H1; assumption.
   Qed.
   Corollary eq_le : x === y -> ~y <<< z -> ~x <<< z.
-  Proof.
+  Proof using .
     intros; rewrite H0; assumption.
   Qed.
   Corollary neq_eq : x =/= y -> y === z -> x =/= z.
-  Proof.
+  Proof using .
     intros; rewrite <- H1; assumption.
   Qed.
   Corollary eq_neq : x === y -> y =/= z -> x =/= z.
-  Proof.
+  Proof using .
     intros; rewrite H0; assumption.
   Qed.
 
   Property le_lt_trans : ~ y <<< x -> y <<< z -> x <<< z.
-  Proof.
+  Proof using .
     intros; destruct (compare_dec x z); auto.
     rewrite <- H2 in H1; contradiction.
     contradiction H0; transitivity z; auto.
   Qed.
   Property lt_le_trans : x <<< y -> ~ z <<< y -> x <<< z.
-  Proof.
+  Proof using .
     intros; destruct (compare_dec x z); auto.
     rewrite <- H2 in H1; contradiction.
     contradiction H1; transitivity x; auto.
   Qed.
   Property le_neq : ~x <<< y -> x =/= y -> x >>> y.
-  Proof.
+  Proof using .
     intros; destruct (compare_dec x y); auto; contradiction.
   Qed.
 
   Lemma elim_compare_eq : x === y -> x =?= y = Eq.
-  Proof.
+  Proof using .
     intros; destruct (compare_dec x y); auto.
     contradiction (lt_not_eq H1 H0).
     contradiction (lt_not_eq H1 (symmetry H0)).
   Qed.
   Lemma elim_compare_lt : x <<< y -> x =?= y = Lt.
-  Proof.
+  Proof using .
     intros; destruct (compare_dec x y); auto.
     contradiction (lt_not_eq H0 H1).
     contradiction (lt_not_gt H1 H0).
   Qed.
   Lemma elim_compare_gt : x >>> y -> x =?= y = Gt.
-  Proof.
+  Proof using .
     intros; destruct (compare_dec x y); auto.
     contradiction (lt_not_gt H1 H0).
     contradiction (gt_not_eq H0 H1).
@@ -476,8 +476,8 @@ Notation "'UsualOrderedType' A" :=
    They are used especially in [SetList] and [MapList].
    *)
 Set Implicit Arguments. Unset Strict Implicit.
+Require Import SetoidList.
 Section ForNotations.
-  Require Import SetoidList.
   Notation In:=(InA _eq).
   Notation Inf:=(lelistA _lt).
   Notation Sort:=(sort _lt).
@@ -487,42 +487,42 @@ Section ForNotations.
   Implicit Types x y : elt.
 
   Lemma In_eq : forall l x y, x === y -> In x l -> In y l.
-  Proof. apply InA_eqA; eauto with typeclass_instances. Qed.
+  Proof using . apply InA_eqA; eauto with typeclass_instances. Qed.
 
   Lemma ListIn_In : forall l x, List.In x l -> In x l.
-  Proof. apply In_InA; eauto with typeclass_instances. Qed.
+  Proof using . apply In_InA; eauto with typeclass_instances. Qed.
 
   Lemma Inf_lt : forall l x y, x <<< y -> Inf y l -> Inf x l.
-  Proof.
+  Proof using .
     apply InfA_ltA; constructor; repeat intro; order.
   Qed.
 
   Lemma Inf_eq : forall l x y, x === y -> Inf y l -> Inf x l.
-  Proof.
+  Proof using .
     apply InfA_eqA; eauto with typeclass_instances.
   Qed.
 
   Lemma Sort_Inf_In : forall l x a, Sort l -> Inf a l -> In x l -> a <<< x.
-  Proof.
+  Proof using .
     apply SortA_InfA_InA; eauto with typeclass_instances.
   Qed.
 
   Lemma ListIn_Inf : forall l x, (forall y, List.In y l -> x <<< y) -> Inf x l.
-  Proof. exact (@In_InfA _ _lt). Qed.
+  Proof using . exact (@In_InfA _ _lt). Qed.
 
   Lemma In_Inf : forall l x, (forall y, In y l -> x <<< y) -> Inf x l.
-  Proof.
+  Proof using .
     apply InA_InfA; eauto with typeclass_instances.
   Qed.
 
   Lemma Inf_alt :
     forall l x, Sort l -> (Inf x l <-> (forall y, In y l -> x <<< y)).
-  Proof.
+  Proof using .
     apply InfA_alt; eauto with typeclass_instances.
   Qed.
 
   Lemma Sort_NoDup : forall l, Sort l -> NoDup l.
-  Proof.
+  Proof using .
     apply SortA_NoDupA; eauto with typeclass_instances.
   Qed.
 End ForNotations.
@@ -545,22 +545,22 @@ Section KeyOrderedType.
   Definition ltk (p p':key*elt) := fst p <<< fst p'.
 
   Local Instance eqk_Equiv : Equivalence eqk.
-  Proof.
+  Proof using .
     constructor; repeat intro; unfold eqk in *; eauto.
     transitivity (fst y); auto.
   Qed.
   Local Instance eqke_Equiv : Equivalence eqke.
-  Proof.
+  Proof using .
     constructor; repeat intro; unfold eqke in *; intuition.
     transitivity (fst y); auto.
     congruence.
   Qed.
   Local Instance ltk_SO : RelationClasses.StrictOrder ltk.
-  Proof.
+  Proof using .
     constructor; repeat intro; unfold ltk in *; intuition order. 
   Qed.
   Local Instance ltk_m : Proper (eqk ==> eqk ==> iff) ltk.
-  Proof.
+  Proof using .
     repeat intro; unfold ltk, eqk in *; intuition order.
   Qed.
   Ltac teauto := eauto with typeclass_instances.
@@ -570,54 +570,54 @@ Section KeyOrderedType.
 
   (* eqke is stricter than eqk *)
   Lemma eqke_eqk : forall x x', eqke x x' -> eqk x x'.
-  Proof.
+  Proof using .
     unfold eqk, eqke; intuition.
   Qed.
 
   (* ltk ignore the second components *)
   Lemma ltk_right_r : forall x k e e', ltk x (k,e) -> ltk x (k,e').
-  Proof. auto. Qed.
+  Proof using . auto. Qed.
 
   Lemma ltk_right_l : forall x k e e', ltk (k,e) x -> ltk (k,e') x.
-  Proof. auto. Qed.
+  Proof using . auto. Qed.
   Hint Immediate ltk_right_r ltk_right_l.
 
   (* eqk, eqke are equalities, ltk is a strict order *)
   Lemma eqk_refl : forall e, eqk e e.
-  Proof. auto. Qed.
+  Proof using . auto. Qed.
 
   Lemma eqke_refl : forall e, eqke e e.
-  Proof. auto. Qed.
+  Proof using . auto. Qed.
 
   Lemma eqk_sym : forall e e', eqk e e' -> eqk e' e.
-  Proof. auto. Qed.
+  Proof using . auto. Qed.
 
   Lemma eqke_sym : forall e e', eqke e e' -> eqke e' e.
-  Proof. unfold eqke; intuition. Qed.
+  Proof using . unfold eqke; intuition. Qed.
 
   Lemma eqk_trans : forall e e' e'', eqk e e' -> eqk e' e'' -> eqk e e''.
-  Proof.
+  Proof using .
     intros; unfold eqk in *; auto; transitivity (fst e'); auto.
   Qed.
 
   Lemma eqke_trans : forall e e' e'', eqke e e' -> eqke e' e'' -> eqke e e''.
-  Proof.
+  Proof using .
     unfold eqke; intuition; [ eauto | congruence ].
     transitivity (fst (a0, b0)); auto.
   Qed.
 
   Lemma ltk_trans : forall e e' e'', ltk e e' -> ltk e' e'' -> ltk e e''.
-  Proof.
+  Proof using .
     intros; unfold ltk in *; auto; transitivity (fst e'); auto.
   Qed.
 
   Lemma ltk_not_eqk : forall e e', ltk e e' -> ~ eqk e e'.
-  Proof.
+  Proof using .
     unfold eqk, ltk; auto; intros; apply lt_not_eq; auto.
   Qed.
 
   Lemma ltk_not_eqke : forall e e', ltk e e' -> ~eqke e e'.
-  Proof.
+  Proof using .
     unfold eqke, ltk; intuition; simpl in *; subst.
     exact (lt_not_eq H H1).
   Qed.
@@ -629,18 +629,18 @@ Section KeyOrderedType.
   (* Additionnal facts *)
 
   Lemma eqk_not_ltk : forall x x', eqk x x' -> ~ltk x x'.
-  Proof.
+  Proof using .
     unfold eqk, ltk; simpl; auto.
     intros; apply eq_not_lt; auto.
   Qed.
 
   Lemma ltk_eqk : forall e e' e'', ltk e e' -> eqk e' e'' -> ltk e e''.
-  Proof.
+  Proof using .
     intros; unfold ltk, eqk in *; auto; order.
   Qed.
 
   Lemma eqk_ltk : forall e e' e'', eqk e e' -> ltk e' e'' -> ltk e e''.
-  Proof.
+  Proof using .
       intros (k,e) (k',e') (k'',e'').
       unfold ltk, eqk; simpl; eauto; order.
   Qed.
@@ -649,7 +649,7 @@ Section KeyOrderedType.
 
   Lemma InA_eqke_eqk :
      forall x m, InA eqke x m -> InA eqk x m.
-  Proof.
+  Proof using .
     unfold eqke; induction 1; intuition.
   Qed.
   Hint Resolve InA_eqke_eqk.
@@ -663,7 +663,7 @@ Section KeyOrderedType.
 
   (* An alternative formulation for [In k l] is [exists e, InA eqk (k,e) l] *)
   Lemma In_alt : forall k l, In k l <-> exists e, InA eqk (k,e) l.
-  Proof.
+  Proof using .
     firstorder.
     exists x; auto.
     induction H.
@@ -674,33 +674,33 @@ Section KeyOrderedType.
   Qed.
 
   Lemma MapsTo_eq : forall l x y e, x === y -> MapsTo x e l -> MapsTo y e l.
-  Proof.
+  Proof using .
     intros; unfold MapsTo in *; apply InA_eqA with (x,e); teauto.
   Qed.
 
   Lemma In_eq : forall l x y, x === y -> In x l -> In y l.
-  Proof.
+  Proof using .
     destruct 2 as (e,E); exists e; eapply MapsTo_eq; eauto.
   Qed.
 
   Lemma Inf_eq : forall l x x', eqk x x' -> Inf x' l -> Inf x l.
-  Proof. apply InfA_eqA; teauto. Qed.
+  Proof using . apply InfA_eqA; teauto. Qed.
 
   Lemma Inf_lt : forall l x x', ltk x x' -> Inf x' l -> Inf x l.
-  Proof. apply InfA_ltA; teauto. Qed.
+  Proof using . apply InfA_ltA; teauto. Qed.
 
   Hint Immediate Inf_eq.
   Hint Resolve Inf_lt.
 
   Lemma Sort_Inf_In :
       forall l p q, Sort l -> Inf q l -> InA eqk p l -> ltk q p.
-  Proof.
+  Proof using .
     apply SortA_InfA_InA; teauto.
   Qed.
 
   Lemma Sort_Inf_NotIn :
       forall l k e, Sort l -> Inf (k,e) l ->  ~In k l.
-  Proof.
+  Proof using .
     intros; red; intros.
     destruct H1 as [e' H2].
     elim (@ltk_not_eqk (k,e) (k,e')).
@@ -709,31 +709,31 @@ Section KeyOrderedType.
   Qed.
 
   Lemma Sort_NoDupA: forall l, Sort l -> NoDupA eqk l.
-  Proof.
+  Proof using .
     apply SortA_NoDupA; teauto.
   Qed.
 
   Lemma Sort_In_cons_1 : forall e l e', Sort (e::l) -> InA eqk e' l -> ltk e e'.
-  Proof.
+  Proof using .
    inversion 1; intros; eapply Sort_Inf_In; eauto.
   Qed.
 
   Lemma Sort_In_cons_2 : forall l e e', Sort (e::l) -> InA eqk e' (e::l) ->
       ltk e e' \/ eqk e e'.
-  Proof.
+  Proof using .
     inversion_clear 2; auto.
     left; apply Sort_In_cons_1 with l; auto.
   Qed.
 
   Lemma Sort_In_cons_3 :
     forall x l k e, Sort ((k,e)::l) -> In x l -> x =/= k.
-  Proof.
+  Proof using .
     inversion_clear 1; red; intros.
     exact (Sort_Inf_NotIn H0 H1 (In_eq H2 H)).
   Qed.
 
   Lemma In_inv : forall k k' e l, In k ((k',e) :: l) -> k === k' \/ In k l.
-  Proof.
+  Proof using .
     inversion 1.
     inversion_clear H0; eauto.
     destruct H1; simpl in *; intuition.
@@ -741,13 +741,13 @@ Section KeyOrderedType.
 
   Lemma In_inv_2 : forall k k' e e' l,
       InA eqk (k, e) ((k', e') :: l) -> k =/= k' -> InA eqk (k, e) l.
-  Proof.
+  Proof using .
    inversion_clear 1; unfold eqk in H0; simpl in H0; order.
   Qed.
 
   Lemma In_inv_3 : forall x x' l,
       InA eqke x (x' :: l) -> ~eqk x x' -> InA eqke x l.
-  Proof.
+  Proof using .
    inversion_clear 1; compute in H0; intuition.
   Qed.
 

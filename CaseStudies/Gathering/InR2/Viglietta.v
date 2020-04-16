@@ -35,7 +35,7 @@ Definition r0 : G := exist lt2 0%nat lt02.
 Definition r1 : G := exist lt2 1%nat lt12.
 
 Lemma id_case : forall id, id = Good r0 \/ id = Good r1.
-Proof.
+Proof using .
 intros [[[| [| ?]] ?] | []]; simpl;
 solve [ exfalso; lia
       | now left + right; f_equal; apply eq_proj1 ].
@@ -61,7 +61,7 @@ Instance St : State info := AddInfo light
 (** Since there are none, we can ignore Byzantine robots. *)
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
-Proof.
+Proof using .
 intros config1 config2 Heq id. destruct id as [g | b].
 + apply Heq.
 + destruct b. exfalso. lia.
@@ -111,7 +111,7 @@ Proof. now repeat intro; subst. Defined.
 
 (** In this setting, only SSYNC demons can be defined (the inactive choice is ignored). *)
 Lemma SSYNC_setting : forall da, SSYNC_da da.
-Proof. repeat intro. reflexivity. Qed.
+Proof using . repeat intro. reflexivity. Qed.
 
 (** The robogram in both the local and global frames of reference. *)
 Definition rendezvous_pgm : observation -> info :=
@@ -124,7 +124,7 @@ Definition rendezvous_pgm : observation -> info :=
     end.
 
 Instance rdv_compat : Proper (equiv ==> equiv) rendezvous_pgm.
-Proof.
+Proof using .
 intros [[] []] [[] []] [[] []]. simpl in *.
 repeat destruct_match; simpl; repeat split; congruence.
 Qed.
@@ -141,7 +141,7 @@ Lemma obs_from_config_map : forall (f : sigT precondition),
   Proper ((equiv ==> equiv)%signature) (projT1 f) ->
   forall config st,
     !! map_config (lift f) config § lift f st == map_spect (lift f) (!! config § st).
-Proof.
+Proof using .
 intros f Hf config st.
 unfold obs_from_config. cbn -[equiv_dec equiv].
 repeat destruct_match.
@@ -158,7 +158,7 @@ Qed.
 
 Lemma rendezvous_pgm_map : forall f s,
   rendezvous_pgm (map_spect (lift (State := St) f) s) == lift f (rendezvous_pgm s).
-Proof.
+Proof using .
 intros [f Pf] [[pt1 l1] [pt2 l2]].
 unfold rendezvous_pgm. cbn -[equiv middle].
 destruct l1, l2; cbn -[equiv middle] in *; repeat split; auto; [].
@@ -171,7 +171,7 @@ Lemma round_simplify : forall da config,
   == fun id => if activate da id
                then rendezvous (!! config § config id)
                else config id.
-Proof.
+Proof using .
 intros da config Hda. apply no_byz_eq. intro g. unfold round.
 cbn -[location_Setoid location inverse equiv get_location lift frame_choice_bijection].
 destruct_match; try reflexivity; [].
@@ -204,7 +204,7 @@ Qed.
 (** Once we are gathered, everything is good. *)
 Lemma gathered_at_forever : forall da config pt, similarity_da_prop da ->
   gathered_at pt config -> gathered_at pt (round rendezvous da config).
-Proof.
+Proof using .
 intros da config pt Hsim Hgather.
 rewrite round_simplify; trivial; [].
 intro g. destruct (da.(activate) (Good g)); [| now apply Hgather].
@@ -240,7 +240,7 @@ Lemma gathered_at_over : forall d,
   Stream.forever (Stream.instant similarity_da_prop) d ->
   forall pt (config : configuration),
     gathered_at pt config -> Gather pt (execute rendezvous d config).
-Proof.
+Proof using .
 cofix Hind. intros d Hsim pt config Hgather. constructor.
 + clear Hind. simpl. assumption.
 + apply Hind; try apply gathered_at_forever; trivial; apply Hd || apply Hsim.
@@ -255,7 +255,7 @@ Definition measure (config : configuration) : nat :=
   end.
 
 Instance measure_compat : Proper (equiv ==> eq) measure.
-Proof.
+Proof using .
 intros config1 config2 Hconfig. unfold measure.
 assert (Hr0 := Hconfig (Good r0)). assert (Hr1 := Hconfig (Good r1)).
 destruct (config1 (Good r0)) as [pt1 l1], (config1 (Good r1)) as [pt2 l2].
@@ -269,7 +269,7 @@ Lemma round_measure : forall da config, similarity_da_prop da ->
   moving rendezvous da config <> nil ->
   (exists pt, gathered_at pt (round rendezvous da config))
   \/ measure (round rendezvous da config) < measure config.
-Proof.
+Proof using .
 intros da config Hda Hmove.
 destruct (gathered_at_dec config (get_location (config (Good r0)))) as [| Hgather];
 [| destruct (gathered_at_dec (round rendezvous da config)
@@ -362,7 +362,7 @@ Qed.
 Lemma OneMustMove : forall config, ~(exists pt, gathered_at pt config) ->
   exists r, forall da, similarity_da_prop da -> activate da r = true ->
                        round rendezvous da config r =/= config r.
-Proof.
+Proof using .
 intros config Hnotgather.
 destruct (config (Good r0)) as [pt1 l1] eqn:Hr0,
          (config (Good r1)) as [pt2 l2] eqn:Hr1.
@@ -403,7 +403,7 @@ Qed.
 
 Lemma Fair_FirstMove : forall d, Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
   forall config, ~(exists pt, gathered_at pt config) -> FirstMove rendezvous d config.
-Proof.
+Proof using .
 intros d Hfair Hsim config Hgather.
 destruct (OneMustMove config Hgather) as [idmove Hmove].
 destruct Hfair as [locallyfair Hfair].
@@ -432,7 +432,7 @@ Qed.
 Theorem Viglietta_correct : forall d, Fair d ->
   Stream.forever (Stream.instant similarity_da_prop) d ->
   forall config, WillGather (execute rendezvous d config).
-Proof.
+Proof using .
 intros d Hfair Hsim config.
 generalize (eq_refl (measure config)). generalize (measure config) at -1.
 intro n. revert d Hfair Hsim config. pattern n. apply (well_founded_ind lt_wf). clear n.

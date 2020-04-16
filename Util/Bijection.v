@@ -41,10 +41,10 @@ Proof. split.
 Defined.
 
 Global Instance section_full_compat : Proper (equiv ==> (equiv ==> equiv)) section.
-Proof. intros f g Hfg x y Hxy. rewrite Hxy. now apply Hfg. Qed.
+Proof using . intros f g Hfg x y Hxy. rewrite Hxy. now apply Hfg. Qed.
 
 Global Instance retraction_compat : Proper (equiv ==> (equiv ==> equiv)) retraction.
-Proof. intros f g Hfg x y Hxy. now rewrite <- f.(Inversion), Hxy, Hfg, g.(Inversion). Qed.
+Proof using . intros f g Hfg x y Hxy. now rewrite <- f.(Inversion), Hxy, Hfg, g.(Inversion). Qed.
 
 (** The identity bijection *)
 Definition id := {|
@@ -76,7 +76,7 @@ rewrite (Hf (g1 x)). f_equiv. apply Hg.
 Qed.
 *)
 Lemma compose_assoc : forall f g h : bijection, f ∘ (g ∘ h) == (f ∘ g) ∘ h.
-Proof. repeat intro. reflexivity. Qed.
+Proof using . repeat intro. reflexivity. Qed.
 
 (** Properties about inverse functions *)
 Definition inv (bij : bijection) : bijection.
@@ -92,23 +92,23 @@ Global Instance inverse_compat : Proper (equiv ==> equiv) inverse.
 Proof. repeat intro. simpl. now f_equiv. Qed.
 *)
 Lemma retraction_section : forall (bij : bijection) x, bij.(retraction) (bij.(section) x) == x.
-Proof. intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
+Proof using . intros bij x. simpl. rewrite <- bij.(Inversion). now apply section_compat. Qed.
 
 Corollary compose_inverse_l : forall (bij : bijection), bij ⁻¹ ∘ bij == id.
-Proof. repeat intro. simpl. now rewrite retraction_section. Qed.
+Proof using . repeat intro. simpl. now rewrite retraction_section. Qed.
 
 Lemma section_retraction : forall (bij : bijection) x, bij.(section) (bij.(retraction) x) == x.
-Proof. intros bij x. rewrite bij.(Inversion). now apply retraction_compat. Qed.
+Proof using . intros bij x. rewrite bij.(Inversion). now apply retraction_compat. Qed.
 
 Corollary compose_inverse_r : forall (bij : bijection), bij ∘ bij ⁻¹ == id.
-Proof. repeat intro. simpl. now rewrite section_retraction. Qed.
+Proof using . repeat intro. simpl. now rewrite section_retraction. Qed.
 
 Lemma inverse_compose : forall f g : bijection, (f ∘ g)⁻¹ == (g ⁻¹) ∘ (f ⁻¹).
-Proof. repeat intro. reflexivity. Qed.
+Proof using . repeat intro. reflexivity. Qed.
 
 (** Bijections are in particular injective. *)
 Lemma injective : forall bij : bijection, injective equiv equiv bij.
-Proof. intros bij x y Heq. now rewrite <- (retraction_section bij x), Heq, retraction_section. Qed.
+Proof using . intros bij x y Heq. now rewrite <- (retraction_section bij x), Heq, retraction_section. Qed.
 
 End Bijections.
 

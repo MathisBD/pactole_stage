@@ -67,7 +67,9 @@ Proof. split.
 Defined.
 
 Global Instance pgm_full_compat `{robot_choice} : Proper (equiv ==> equiv ==> equiv) pgm.
-Proof. intros r1 r2 Hr s1 s2 Hs. rewrite (Hr s1). now apply pgm_compat. Qed.
+Proof using .
+  intros r1 r2 Hr s1 s2 Hs. rewrite (Hr s1). now apply pgm_compat.
+Qed.
 
 (** ** Demonic schedulers *)
 
@@ -162,21 +164,21 @@ Proof. split.
 Defined.
 
 Global Instance activate_da_compat : Proper (equiv ==> Logic.eq ==> equiv) activate.
-Proof. intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply activate_compat. Qed.
+Proof using . intros ? ? Hda. repeat intro. now etransitivity; apply Hda || apply activate_compat. Qed.
 
 Global Instance relocate_byz_da_compat : Proper (equiv ==> equiv ==> eq ==> equiv) relocate_byz.
-Proof. intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply relocate_byz_compat. Qed.
+Proof using . intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply relocate_byz_compat. Qed.
 
 Global Instance change_frame_da_compat : Proper (equiv ==> equiv ==> eq ==> equiv) change_frame.
-Proof. intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply change_frame_compat. Qed.
+Proof using . intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply change_frame_compat. Qed.
 
 Global Instance choose_update_da_compat :
   Proper (equiv ==> equiv ==> Logic.eq ==> equiv ==> equiv) choose_update.
-Proof. intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
+Proof using . intros ?? Hda. repeat intro. now etransitivity; apply Hda || apply choose_update_compat. Qed.
 
 Global Instance choose_inactive_da_compat :
   Proper (equiv ==> equiv ==> Logic.eq ==> equiv) choose_inactive.
-Proof.
+Proof using .
 intros ? ? Hda. repeat intro.
 now etransitivity; apply Hda || apply choose_inactive_compat.
 Qed.
@@ -188,7 +190,7 @@ Definition active da := List.filter (activate da) names.
 Definition idle da := List.filter (fun id => negb (activate da id)) names.
 
 Global Instance active_compat : Proper (equiv ==> Logic.eq) active.
-Proof.
+Proof using .
 intros da1 da2 Hda.
 unfold active. induction names as [| id l]; simpl.
 + reflexivity.
@@ -200,7 +202,7 @@ unfold active. induction names as [| id l]; simpl.
 Qed.
 
 Global Instance idle_compat : Proper (equiv ==> Logic.eq) idle.
-Proof.
+Proof using .
 intros da1 da2 Hda.
 unfold idle. induction names as [| id l]; simpl.
 + reflexivity.
@@ -212,14 +214,14 @@ unfold idle. induction names as [| id l]; simpl.
 Qed.
 
 Lemma idle_spec : forall da id, List.In id (idle da) <-> activate da id = false.
-Proof.
+Proof using .
 intros da id. unfold idle. rewrite List.filter_In.
 destruct (activate da id); intuition; try discriminate; [].
 apply In_names.
 Qed.
 
 Lemma active_spec : forall da id, List.In id (active da) <-> activate da id = true.
-Proof.
+Proof using .
 intros da id. unfold active. rewrite List.filter_In.
 destruct (activate da id); intuition; try discriminate; [].
 apply In_names.
@@ -267,7 +269,7 @@ Definition round (r : robogram) (da : demonic_action) (config : configuration) :
     else inactive config id (da.(choose_inactive) config id).
 
 Global Instance round_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) round.
-Proof.
+Proof using .
 intros r1 r2 Hr da1 da2 Hda config1 config2 Hconfig id.
 unfold round. rewrite Hda. destruct_match.
 * (* active robot *)
@@ -302,7 +304,7 @@ Definition moving r da config :=
     names.
 
 Global Instance moving_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) moving.
-Proof.
+Proof using .
 intros r1 r2 Hr da1 da2 Hda c1 c2 Hc. unfold moving.
 induction names as [| id l]; simpl.
 * reflexivity.
@@ -320,7 +322,7 @@ Qed.
 
 Lemma moving_spec : forall r da config id,
   List.In id (moving r da config) <-> round r da config id =/= config id.
-Proof.
+Proof using .
 intros r da config id. unfold moving. rewrite List.filter_In.
 split; intro Hin.
 + destruct Hin as [_ Hin].
@@ -332,7 +334,7 @@ Qed.
 
 Lemma no_moving_same_config : forall r da config,
   moving r da config = List.nil -> round r da config == config.
-Proof.
+Proof using .
 intros r da config Hmove id.
 destruct (round r da config id =?= config id) as [Heq | Heq]; trivial; [].
 apply <- moving_spec in Heq. rewrite Hmove in Heq. inversion Heq.
@@ -347,14 +349,14 @@ Definition execute (r : robogram) : demon -> configuration -> execution :=
 (** Decomposition lemmas for [execute]. *)
 Lemma execute_hd : forall (r : robogram) (d : demon) (config : configuration),
   Stream.hd (execute r d config) = config.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma execute_tail : forall (r : robogram) (d : demon) (config : configuration),
   Stream.tl (execute r d config) = execute r (Stream.tl d) (round r (Stream.hd d) config).
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Global Instance execute_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) execute.
-Proof.
+Proof using .
 intros r1 r2 Hr. coinduction proof.
 - simpl. assumption.
 - now f_equiv.
@@ -374,17 +376,17 @@ Definition SSYNC_da da := forall id, da.(activate) id = false ->
 Definition SSYNC d := Stream.forever (Stream.instant SSYNC_da) d.
 
 Global Instance SSYNC_da_compat : Proper (equiv ==> iff) SSYNC_da.
-Proof. intros da1 da2 Hda. unfold SSYNC_da. now setoid_rewrite Hda. Qed.
+Proof using . intros da1 da2 Hda. unfold SSYNC_da. now setoid_rewrite Hda. Qed.
 
 Global Instance SSYNC_compat : Proper (equiv ==> iff) SSYNC.
-Proof. apply Stream.forever_compat, Stream.instant_compat, SSYNC_da_compat. Qed.
+Proof using . apply Stream.forever_compat, Stream.instant_compat, SSYNC_da_compat. Qed.
 
 (** All moving robots are active.
     This is only true for the SSYNC (and FSYNC) model: in the ASYNC one,
     robots can keep moving while others are activated. *)
 Lemma moving_active : forall da, SSYNC_da da ->
   forall r config, List.incl (moving r da config) (active da).
-Proof.
+Proof using .
 intros da HSSYNC r config id. rewrite moving_spec, active_spec.
 unfold round. destruct_match_eq Hcase; intuition.
 Qed.
@@ -392,7 +394,7 @@ Qed.
 (** If no robot is active, then the configuration does not change. *)
 Lemma no_active_same_config : forall da, SSYNC_da da ->
   forall r config, active da = List.nil -> round r da config == config.
-Proof.
+Proof using .
 intros da HSSYNC r config Hactive.
 assert (Hfalse : forall id, activate da id = false).
 { intro id. destruct (activate da id) eqn:Heq; trivial; []. exfalso.
@@ -423,7 +425,7 @@ Lemma SSYNC_round_simplify : forall r da config, SSYNC_da da ->
                new_local_state
         end
     else state.
-Proof. unfold round. repeat intro. destruct_match_eq Hcase; auto. Qed.
+Proof using . unfold round. repeat intro. destruct_match_eq Hcase; auto. Qed.
 
 (** ***  Fully-synchronous (FSYNC) model  **)
 
@@ -435,16 +437,16 @@ Definition FSYNC_da da := forall id, da.(activate) id = true.
 Definition FSYNC d := Stream.forever (Stream.instant FSYNC_da) d.
 
 Global Instance FSYNC_da_compat : Proper (equiv ==> iff) FSYNC_da.
-Proof. intros da1 da2 Hda. unfold FSYNC_da. now setoid_rewrite Hda. Qed.
+Proof using . intros da1 da2 Hda. unfold FSYNC_da. now setoid_rewrite Hda. Qed.
 
 Global Instance FSYNC_compat : Proper (equiv ==> iff) FSYNC.
-Proof. apply Stream.forever_compat, Stream.instant_compat, FSYNC_da_compat. Qed.
+Proof using . apply Stream.forever_compat, Stream.instant_compat, FSYNC_da_compat. Qed.
 
 Lemma FSYNC_SSYNC_da : forall da, FSYNC_da da -> SSYNC_da da.
-Proof. unfold FSYNC_da, SSYNC_da. intuition. congruence. Qed.
+Proof using . unfold FSYNC_da, SSYNC_da. intuition. congruence. Qed.
 
 Theorem FSYNC_SSYNC : forall d, FSYNC d -> SSYNC d.
-Proof. apply Stream.forever_impl_compat, Stream.instant_impl_compat, FSYNC_SSYNC_da. Qed.
+Proof using . apply Stream.forever_impl_compat, Stream.instant_impl_compat, FSYNC_SSYNC_da. Qed.
 
 Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
   round r da config 
@@ -466,7 +468,7 @@ Lemma FSYNC_round_simplify : forall r da config, FSYNC_da da ->
         lift (existT precondition (new_frame ⁻¹) (precondition_satisfied_inv da config g))
              new_local_state
       end.
-Proof.
+Proof using .
 intros * HFSYNC. rewrite SSYNC_round_simplify; auto using FSYNC_SSYNC_da; [].
 repeat intro. now rewrite HFSYNC.
 Qed.
@@ -499,51 +501,51 @@ Definition kFair k : demon -> Prop := Stream.forever (fun d => forall id id', Be
 (** Compatibility properties *)
 Local Lemma LocallyFairForOne_compat_aux : forall id d1 d2,
   d1 == d2 -> LocallyFairForOne id d1 -> LocallyFairForOne id d2.
-Proof.
+Proof using .
 intros id da1 da2 Hda Hfair. revert da2 Hda. induction Hfair; intros da2 Hda;
 constructor; solve [now rewrite <- Hda | apply IHHfair; now f_equiv].
 Qed.
 
 Global Instance LocallyFairForOne_compat : Proper (Logic.eq ==> equiv ==> iff) LocallyFairForOne.
-Proof.
+Proof using .
 intros ? ? ? ? ? Heq. subst. split; intro.
 - eapply LocallyFairForOne_compat_aux; eauto.
 - symmetry in Heq. eapply LocallyFairForOne_compat_aux; eauto.
 Qed.
 
 Global Instance Fair_compat : Proper (equiv ==> iff) Fair.
-Proof. apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
+Proof using . apply Stream.forever_compat. intros ? ? Heq. now setoid_rewrite Heq. Qed.
 
 Local Lemma Between_compat_aux : forall id id' k d1 d2,
   d1 == d2 -> Between id id' d1 k -> Between id id' d2 k.
-Proof.
+Proof using .
 intros id id' k d1 d2 Heq bet. revert d2 Heq. induction bet; intros d2 Heq;
 constructor; solve [now rewrite <- Heq | apply IHbet; now f_equiv].
 Qed.
 
 Global Instance Between_compat : Proper (eq ==> eq ==> equiv ==> eq ==> iff) Between.
-Proof.
+Proof using .
 intros ? ? ? ? ? ? ? ? Heq ? ? ?. subst. split; intro.
 - now eapply Between_compat_aux; eauto.
 - symmetry in Heq. now eapply Between_compat_aux; eauto.
 Qed.
 
 Global Instance kFair_compat : Proper (Logic.eq ==> equiv ==> iff) kFair.
-Proof. intros k ??. subst. apply Stream.forever_compat. intros ?? Heq. now setoid_rewrite Heq. Qed.
+Proof using . intros k ??. subst. apply Stream.forever_compat. intros ?? Heq. now setoid_rewrite Heq. Qed.
 
 (** A robot is never activated before itself with a fair demon!
     The fairness hypothesis is necessary, otherwise the robot may never be activated. *)
 Lemma Between_same :
   forall id (d : demon) k, LocallyFairForOne id d -> Between id id d k.
-Proof. intros id d k Hd. induction Hd; now econstructor; eauto. Qed.
+Proof using . intros id d k Hd. induction Hd; now econstructor; eauto. Qed.
 
 (** A k-fair demon is fair. *)
 Lemma Between_LocallyFair : forall id (d : demon) id' k,
   Between id id' d k -> LocallyFairForOne id d.
-Proof. intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
+Proof using . intros * Hg. induction Hg; now constructor; trivial; firstorder. Qed.
 
 Theorem kFair_Fair : forall k (d : demon), kFair k d -> Fair d.
-Proof.
+Proof using .
 intro. apply Stream.forever_impl_compat.
 intros ? ? id. eauto using (@Between_LocallyFair id _ id).
 Qed.
@@ -551,7 +553,7 @@ Qed.
 (** [Between g h d k] is monotonic on [k]. *)
 Lemma Between_mono : forall id id' (d : demon) k,
   Between id id' d k -> forall k', (k <= k')%nat -> Between id id' d k'.
-Proof.
+Proof using .
 intros id id' d k Hd. induction Hd; intros k' Hk; auto using Between; [].
 destruct k'.
 - now inversion Hk.
@@ -561,7 +563,7 @@ Qed.
 (** [kFair k d] is monotonic on [k]. *)
 Theorem kFair_mono : forall k (d: demon),
   kFair k d -> forall k', (k <= k')%nat -> kFair k' d.
-Proof.
+Proof using .
 coinduction fair; match goal with H : kFair _ _ |- _ => destruct H end.
 - intros. now apply Between_mono with k.
 - now apply (fair k).
@@ -569,16 +571,16 @@ Qed.
 
 (** A synchronous demon is fair *)
 Lemma FSYNC_implies_0Fair: ∀ d, FSYNC d → kFair 0 d.
-Proof. apply Stream.forever_impl_compat. intros s Hs id id'. constructor. apply Hs. Qed.
+Proof using . apply Stream.forever_impl_compat. intros s Hs id id'. constructor. apply Hs. Qed.
 
 Corollary FSYNC_implies_fair: ∀ d, FSYNC d → Fair d.
-Proof. intros. now eapply kFair_Fair, FSYNC_implies_0Fair. Qed.
+Proof using . intros. now eapply kFair_Fair, FSYNC_implies_0Fair. Qed.
 
 (** If a demon is 0-fair, then the activation states of all robots are the same:
     either all are activated, or none is. *)
 Theorem Fair0 : forall d, kFair 0 d ->
   forall id id', (Stream.hd d).(activate) id = (Stream.hd d).(activate) id'.
-Proof.
+Proof using .
 intros d Hd id id'. destruct Hd as [Hd _].
 assert (Hg := Hd id id'). assert (Hh := Hd id' id).
 inv Hg; inv Hh;
@@ -596,7 +598,7 @@ Inductive FirstMove r (d : demon) (config : configuration) : Prop :=
                 FirstMove r (Stream.tl d) (round r (Stream.hd d) config) -> FirstMove r d config.
 
 Global Instance FirstMove_compat : Proper (equiv ==> equiv ==> equiv ==> iff) FirstMove.
-Proof.
+Proof using .
 intros r1 r2 Hr d1 d2 Hd c1 c2 Hc. split; intro Hfirst.
 * revert r2 d2 c2 Hr Hd Hc. induction Hfirst; intros r2 d2 c2 Hr Hd Hc.
   + apply MoveNow. now rewrite <- Hr, <- Hd, <- Hc.
