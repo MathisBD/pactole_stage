@@ -31,7 +31,9 @@ Require Import Psatz.
 Require Import Inverse_Image.
 Require Import FunInd.
 Require Import Pactole.Spaces.R2.
-Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
+(* For at least Names *)
+Require Import Pactole.CaseStudies.Gathering.Definitions.
+Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Rigid.
 Import Permutation.
 Import Pactole.Spaces.Similarity.
@@ -39,6 +41,7 @@ Import Datatypes. (* to recover [id] *)
 Set Implicit Arguments.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
+Require Pactole.CaseStudies.Gathering.WithMultiplicity.
 
 
 (** *  The Gathering Problem  **)
@@ -72,6 +75,7 @@ Remove Hints R2_VS R2_ES : typeclass_instances.
 Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance Info : State location := OnlyLocation (fun _ => True).
 Instance UpdFun : update_function location (Similarity.similarity location) unit := {
   update := fun _ _ _ target _ => target;
   update_compat := ltac:(now repeat intro) }.
@@ -111,7 +115,7 @@ Ltac changeR2 :=
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
 Proof using .
 intro. rewrite config_list_spec, map_cst.
-setoid_rewrite names_length. simpl. now rewrite plus_0_r.
+rewrite names_length. simpl. now rewrite plus_0_r.
 Qed.
 
 Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
@@ -125,7 +129,7 @@ Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
 Proof using size_G.
-intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
+intros config1 config2 Heq id. apply WithMultiplicity.no_info. destruct id as [g | b].
 + apply Heq.
 + destruct b. omega.
 Qed.
@@ -140,7 +144,7 @@ Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma obs_non_nil : forall config, !! config =/= empty.
-Proof using size_G. changeR2. apply obs_non_nil. generalize size_G. simpl. intro. omega. Qed.
+Proof using size_G. changeR2. apply WithMultiplicity.obs_non_nil. generalize size_G. simpl. intro. omega. Qed.
 
 Lemma support_non_nil : forall config, support (!! config) <> nil.
 Proof using size_G. intros config Habs. rewrite support_nil in Habs. apply (obs_non_nil _ Habs). Qed.
@@ -432,7 +436,7 @@ Ltac get_case config :=
 (** ***  Equivalent formulations of [invalid]  **)
 
 Lemma Majority_not_invalid : forall config pt,
-  MajTower_at pt config -> ~invalid config.
+  MajTower_at pt config -> ~WithMultiplicity.invalid config.
 Proof using size_G.
 intros config pt Hmaj. rewrite MajTower_at_equiv in Hmaj.
 assert (Hmax : forall x, In x (max (!! config)) <-> x = pt).
@@ -440,13 +444,13 @@ assert (Hmax : forall x, In x (max (!! config)) <-> x = pt).
   - intro Hin. inversion_clear Hin. assumption. inversion H.
   - intro. subst x. now left. }
 intro Hvalid.
-assert (Hsuplen := invalid_size eq_refl Hvalid).
+assert (Hsuplen := WithMultiplicity.invalid_size eq_refl Hvalid).
 destruct Hvalid as [Heven [? [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 assert (Hsup : Permutation (support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA equiv pt1 (support (!! config))).
-  { rewrite support_spec. unfold In. changeR2. rewrite Hpt1. now apply Exp_prop.div2_not_R0. }
+  { rewrite support_spec. unfold In. changeR2. setoid_rewrite Hpt1. now apply Exp_prop.div2_not_R0. }
   assert (Hin2 : InA equiv pt2 (support (!! config))).
-  { rewrite support_spec. unfold In. changeR2. rewrite Hpt2. now apply Exp_prop.div2_not_R0. }
+  { rewrite support_spec. unfold In. changeR2. setoid_rewrite Hpt2. now apply Exp_prop.div2_not_R0. }
   apply (PermutationA_split _) in Hin1. destruct Hin1 as [l Hl]. rewrite Hl in Hin2.
   inversion_clear Hin2; try now subst; elim Hdiff.
   rewrite size_spec, Hl in Hsuplen. destruct l as [| x [| ? ?]]; simpl in Hsuplen; try omega.
@@ -471,7 +475,7 @@ Qed.
 
 (* invalid_size already proves the -> direction *)
 Lemma invalid_equiv : forall config,
-  invalid config <-> no_Majority config /\ size (!! config) = 2%nat.
+  WithMultiplicity.invalid config <-> no_Majority config /\ size (!! config) = 2%nat.
 Proof using size_G.
 intro config. unfold no_Majority. split.
 - intro Hinvalid. split.
@@ -479,7 +483,7 @@ intro config. unfold no_Majority. split.
     * exfalso. revert Hmax. apply support_max_non_nil.
     * exfalso. revert Hmax Hinvalid. rewrite <- MajTower_at_equiv. apply Majority_not_invalid.
     * simpl. omega.
-  + changeR2. now apply invalid_size.
+  + changeR2. now apply WithMultiplicity.invalid_size.
 - intros [Hlen H2]. rewrite size_spec in Hlen, H2.
   destruct (support (!! config)) as [| pt1 [| pt2 [| ? ?]]] eqn:Hsupp; try (now simpl in H2; omega); [].
   red.
@@ -633,7 +637,7 @@ intro config. unfold no_Majority. split.
 Qed.
 
 Lemma not_invalid_no_majority_size : forall config,
-  no_Majority config -> ~invalid config -> (size (!! config) >= 3)%nat.
+  no_Majority config -> ~WithMultiplicity.invalid config -> (size (!! config) >= 3)%nat.
 Proof using size_G.
 intros config H1 H2.
 assert (size (!! config) > 1)%nat.
@@ -1144,7 +1148,7 @@ Lemma round_simplify_Majority : forall config pt,
     round gatherR2 da config == fun id => if da.(activate) id then pt else config id.
 Proof using Hssync.
 intros config pt Hmaj. rewrite round_simplify.
-intro id. apply no_info.
+intro id. apply WithMultiplicity.no_info.
 destruct (da.(activate) id); try reflexivity; [].
 rewrite MajTower_at_equiv in Hmaj. cbn zeta. now rewrite Hmaj.
 Qed.
@@ -1203,7 +1207,7 @@ Corollary same_destination : forall (config : configuration) id1 id2,
   List.In id1 (moving gatherR2 da config) -> List.In id2 (moving gatherR2 da config) ->
   round gatherR2 da config id1 == round gatherR2 da config id2.
 Proof using Hssync.
-intros config id1 id2 Hmove1 Hmove2. apply no_info.
+intros config id1 id2 Hmove1 Hmove2. apply WithMultiplicity.no_info.
 destruct (le_lt_dec 2 (length (support (max (!! config))))) as [Hle |Hlt].
 + assert (no_Majority config). { unfold no_Majority. now rewrite size_spec. }
   now repeat rewrite destination_is_target.
@@ -1237,7 +1241,8 @@ destruct (existsb (fun x => if get_location (round r da config x) =?= pt then
   { intro id. specialize (Hex id (In_names _)). revert Hex. repeat destruct_match; try discriminate; auto. }
   (** We prove a contradiction by showing that the opposite inequality of Hlt holds. *)
   clear Hex. revert Hlt. apply le_not_lt.
-  do 2 rewrite obs_from_config_spec, config_list_spec.
+  setoid_rewrite WithMultiplicity.obs_from_config_spec.
+  do 2 rewrite config_list_spec.
   induction names as [| id l]; trivial; [].
   destruct (get_location (round r da config id) =?= pt) as [Heq | Heq];
   simpl; (do 2 R2dec_full; simpl in *; subst; try omega; []); specialize (Hg id); intuition.
@@ -1263,7 +1268,8 @@ intros config pt. split.
     { intro Habs. apply Heq. now rewrite Habs. }
     rewrite <- Hid' in Habs. change (get_location (config id')) with (config id') in Habs.
     rewrite <- (moving_spec gatherR2) in Habs. apply Hdest in Habs. contradiction. }
-  do 2 rewrite obs_from_config_spec, config_list_spec.
+  setoid_rewrite WithMultiplicity.obs_from_config_spec.
+  do 2 rewrite config_list_spec.
   assert (Hin : List.In id names) by apply In_names.
   induction names as [| id' l]; try (now inversion Hin); [].
   inversion_clear Hin.
@@ -1340,7 +1346,8 @@ Proof using Hssync.
 intros config Hmaj pt Hin.
 rewrite <- InA_Leibniz in Hin. change eq with (@equiv location _) in Hin.
 rewrite support_spec in Hin. unfold In in Hin. changeR2.
-rewrite obs_from_config_spec, config_list_spec in Hin.
+setoid_rewrite WithMultiplicity.obs_from_config_spec in Hin.
+rewrite config_list_spec in Hin.
 induction names as [| id l]; try (simpl in *; omega); [].
 cbn -[get_location equiv_dec] in Hin.
 revert Hin. destruct_match; intro Hin; auto; [].
@@ -1439,7 +1446,8 @@ Theorem Majority_grow :  forall pt config, MajTower_at pt config ->
 Proof using Hssync.
 intros pt config Hmaj.
 rewrite (round_simplify_Majority Hmaj).
-do 2 rewrite obs_from_config_spec, config_list_spec.
+setoid_rewrite WithMultiplicity.obs_from_config_spec.
+do 2 rewrite config_list_spec.
 induction names as [| id l]; cbn -[get_location].
 + reflexivity.
 + changeR2. destruct (activate da id); cbn -[get_location].
@@ -1455,7 +1463,8 @@ Theorem Majority_wither : forall config pt, MajTower_at pt config ->
 Proof using Hssync.
 intros config pt Hmaj pt' Hdiff.
 rewrite (round_simplify_Majority Hmaj).
-do 2 rewrite obs_from_config_spec, config_list_spec.
+setoid_rewrite WithMultiplicity.obs_from_config_spec.
+do 2 rewrite config_list_spec.
 induction names as [| id l]; simpl.
 + reflexivity.
 + changeR2. destruct (activate (proj_sim_da da) id); simpl.
@@ -1488,7 +1497,7 @@ cut ((!! config)[target (!! config)] < (!! (round gatherR2 da config))[target (!
   apply not_nil_In in Hmoving. destruct Hmoving as [gmove Hmove].
   exists gmove. split.
   - now apply destination_is_target.
-  - intro Habs. apply no_info in Habs. revert Habs.
+  - intro Habs. apply WithMultiplicity.no_info in Habs. revert Habs.
     change (round gatherR2 da config gmove =/= config gmove).
     now rewrite <- (moving_spec gatherR2).
 Qed.
@@ -1516,7 +1525,7 @@ assert (Hlt : (!! config)[target (!! config)] < (!! (round gatherR2 da config))[
   apply not_nil_In in Hmoving. destruct Hmoving as [gmove Hmove].
   exists gmove. split.
   - now apply destination_is_target.
-  - intro Habs. apply no_info in Habs. revert Habs.
+  - intro Habs. apply WithMultiplicity.no_info in Habs. revert Habs.
     change (round gatherR2 da config gmove =/= config gmove).
     now rewrite <- (moving_spec gatherR2). }
 unfold SECT_cardinal.
@@ -1550,7 +1559,8 @@ assert (Heq : @equiv observation observation_Setoid (filter f_out_target (!! (ro
   destruct (f_out_target pt) eqn:Htest; trivial.
   rewrite round_simplify_dirty; trivial. symmetry.
   (* by induction on the list of robot names *)
-  do 2 rewrite obs_from_config_spec, config_list_spec.
+  setoid_rewrite WithMultiplicity.obs_from_config_spec.
+  do 2 rewrite config_list_spec.
   induction names as [| id l].
   * reflexivity.
   * simpl. R2dec_full; changeR2.
@@ -1623,7 +1633,7 @@ Qed.
    As there are nG robots, nG/2 at p2, we must spread nG/2 into at least two locations
    thus each of these towers has less than nG/2 and pt2 was a majority tower. *)
 
-Theorem never_invalid : forall config, ~invalid config -> ~invalid (round gatherR2 da config).
+Theorem never_invalid : forall config, ~WithMultiplicity.invalid config -> ~WithMultiplicity.invalid (round gatherR2 da config).
 Proof using Hssync.
 intros config Hok.
 (* Three cases for the robogram *)
@@ -1657,12 +1667,13 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
           - intro Habs. inversion Habs. now elim Hdiff. now inversion H.
           - intro Habs. now inversion Habs.
         + rewrite <- NoDupA_Leibniz. change eq with (@equiv location _). apply support_NoDupA.
-        + now rewrite <- size_spec, invalid_size.
+        + rewrite <- size_spec.
+          now setoid_rewrite <- WithMultiplicity.invalid_size.
         + intros pt Hpt. inversion_clear Hpt.
           - subst. rewrite <- InA_Leibniz. change eq with (@equiv location _). rewrite support_spec.
-            unfold In. rewrite Hpt1. apply Exp_prop.div2_not_R0. apply HsizeG.
+            unfold In. setoid_rewrite Hpt1. apply Exp_prop.div2_not_R0. apply HsizeG.
           - inversion H; (now inversion H0) || subst. rewrite <- InA_Leibniz. change eq with (@equiv location _).
-            rewrite support_spec. unfold In. rewrite Hpt2. apply Exp_prop.div2_not_R0. apply HsizeG. }
+            rewrite support_spec. unfold In. setoid_rewrite Hpt2. apply Exp_prop.div2_not_R0. apply HsizeG. }
       assert (Hpt : List.In (get_location (round gatherR2 da config rmove)) (pt1 :: pt2 :: nil)).
       { rewrite <- Hperm, <- InA_Leibniz. change eq with (@equiv location _).
         rewrite support_spec. apply pos_in_config. }
@@ -1676,7 +1687,9 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
     { intros id Hid. rewrite <- Hrmove_pt. apply same_destination; auto. rewrite moving_spec. congruence. }
     assert ((div2 nG) <= (!! config)[pt']).
     { transitivity ((!! (round gatherR2 da config))[pt']).
-      - decompose [and or] Hpt; subst; omega.
+      - decompose [and or] Hpt; clear Hpt; subst.
+        + setoid_rewrite Hpt2. simpl. reflexivity.
+        + setoid_rewrite Hpt1. simpl. reflexivity.
       - generalize (@increase_move_iff config pt').
         intro H1. apply Nat.nlt_ge.
         rewrite H1. intros [id [Hid1 Hid2]].
@@ -1709,7 +1722,7 @@ Qed.
 
 
 Lemma diameter_clean_support : forall config ptx pty,
-  ~invalid config ->
+  ~WithMultiplicity.invalid config ->
   no_Majority config ->
   is_clean (!! config) = true ->
   on_SEC (support (!! config)) = ptx :: pty :: nil ->
@@ -1775,7 +1788,7 @@ Qed.
 
 
 Lemma diameter_next_target_same : forall config,
-  ~invalid config ->
+  ~WithMultiplicity.invalid config ->
   clean_diameter_case config ->
   no_Majority (round gatherR2 da config) ->
   target (!! (round gatherR2 da config)) = target (!! config).
@@ -1814,7 +1827,7 @@ destruct HpermSEC' as [[Heq1 Heq2] | [Heq1 Heq2]]; rewrite Heq1, Heq2; trivial |
 Qed.
 
 Lemma clean_diameter_next_maj_or_diameter : forall config ptx pty,
-  ~invalid config ->
+  ~WithMultiplicity.invalid config ->
   no_Majority config ->
   is_clean (!! config) = true ->
   on_SEC (support (!! config)) = ptx :: pty :: nil ->
@@ -2007,7 +2020,7 @@ Ltac inv_nodup H :=
 (** ****  Merging results about the different kinds of triangles  **)
 
 Lemma triangle_next_maj_or_diameter_or_triangle : forall config,
-  ~invalid config ->
+  ~WithMultiplicity.invalid config ->
   triangle_case config ->
   (* A majority tower *)
   length (support (max (!! (round gatherR2 da config)))) = 1
@@ -2029,7 +2042,7 @@ destruct (support (max (!! (round gatherR2 da config)))) as [| pt1 [| pt2 l]] eq
 - right.
   get_case (round gatherR2 da config). rename Hmaj0 into Hmaj'.
   clear Hmax' pt1 pt2 l.
-  assert (Hinvalid' : ~invalid (round gatherR2 da config)) by now apply never_invalid.
+  assert (Hinvalid' : ~WithMultiplicity.invalid (round gatherR2 da config)) by now apply never_invalid.
   assert (Hlen' : size (!! (round gatherR2 da config)) >= 3) by now apply not_invalid_no_majority_size.
   destruct (classify_triangle ptx pty ptz) eqn:Htriangle.
   + (* Equilateral case *)
@@ -3065,7 +3078,7 @@ Qed.
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
 
 Theorem round_lt_config : forall config,
-  ~invalid config -> moving gatherR2 da config <> nil ->
+  ~WithMultiplicity.invalid config -> moving gatherR2 da config <> nil ->
   lt_config (round gatherR2 da config) config.
 Proof using Hssync.
   intros config Hvalid Hmove. unfold lt_config.
@@ -3086,7 +3099,9 @@ Proof using Hssync.
     { apply moving_active in Hmove; trivial; []. now rewrite active_spec in Hmove. }
     rewrite moving_spec in Hmove.
     rewrite increase_move_iff. exists gmove.
-    split; try (now intro; apply Hmove, no_info); [].
+    (* split; try (now intro; apply Hmove, no_info) ; []. *)
+    split;try now intro.
+    simpl.
     get_case config.
     rewrite (round_simplify_Majority Hcase0 gmove).
     destruct (da.(activate) gmove); try reflexivity; []. now elim Hactive.
@@ -3224,7 +3239,7 @@ destruct (forallb (fun x => if get_location (config x) =?= pt then true else fal
 Qed.
 
 (** Correctness proof: given a non-gathered, non-invalid configuration, then some robot will move some day. *)
-Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (get_location (config id)) config ->
+Theorem OneMustMove : forall config id, ~ WithMultiplicity.invalid config -> ~gathered_at (get_location (config id)) config ->
   exists gmove, forall da, SSYNC_da da -> List.In gmove (active da) -> List.In gmove (moving gatherR2 da config).
 Proof using .
 intros config id Hvalid Hgather.
@@ -3268,7 +3283,7 @@ Qed.
 
 (** Given a k-fair demon, in any non-gathered, non-invalid configuration, a robot will be the first to move. *)
 Theorem Fair_FirstMove : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> forall config id,
-  ~invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR2 d config.
+  ~WithMultiplicity.invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR2 d config.
 Proof using .
 intro d. generalize (similarity_demon2prop d).
 generalize (similarity_demon2demon d). clear d.
@@ -3302,7 +3317,8 @@ intros da config pt Hssync Hgather. rewrite (round_simplify_Majority).
 + assumption.
 + intros pt' Hdiff.
   assert (H0 : (!! config)[pt'] = 0%nat).
-  { rewrite obs_from_config_spec, config_list_spec.
+  { setoid_rewrite WithMultiplicity.obs_from_config_spec.
+    rewrite config_list_spec.
     induction names as [| id l].
     + reflexivity.
     + cbn -[equiv_dec]. destruct_match.
@@ -3320,7 +3336,7 @@ cofix Hind. intros d config pt Hssync Hgather. constructor.
 Qed.
 
 (** The final theorem. *)
-Theorem Gathering_in_R2 : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> ValidSolGathering gatherR2 d.
+Theorem Gathering_in_R2 : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> WithMultiplicity.ValidSolGathering gatherR2 d.
 Proof using .
 intro d. generalize (similarity_demon2prop d).
 generalize (similarity_demon2demon d). clear d.
@@ -3361,10 +3377,10 @@ Qed.
 (** Let us change the assumption over the demon, it is no longer fair
     but instead activates at least a robot that should move at each round. *)
 Definition OKunfair r :=
-  Stream.forever (Stream.instant (fun da => forall config, ~invalid config -> moving r da config <> nil)).
+  Stream.forever (Stream.instant (fun da => forall config, ~WithMultiplicity.invalid config -> moving r da config <> nil)).
 
 Theorem unfair_Gathering_in_R2 :
-  forall d, SSYNC (similarity_demon2demon d) -> OKunfair gatherR2 d -> ValidSolGathering gatherR2 d.
+  forall d, SSYNC (similarity_demon2demon d) -> OKunfair gatherR2 d -> WithMultiplicity.ValidSolGathering gatherR2 d.
 Proof using .
 intros d Hssync Hunfair config. revert d Hssync Hunfair. pattern config.
 apply (well_founded_ind wf_lt_config). clear config.

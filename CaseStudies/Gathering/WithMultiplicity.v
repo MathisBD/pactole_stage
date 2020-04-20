@@ -36,7 +36,7 @@ Section MultisetGathering.
 (** Here, we restrict the state to only contain the location. *)
 Context `{Location}.
 (* TODO: add the existence of a similarity here *)
-Global Instance Info : State location := OnlyLocation (fun _ => True).
+Instance Info : State location := OnlyLocation (fun _ => True).
 Context {VS : RealVectorSpace location}.
 Context {RMS : RealMetricSpace location}.
 Context `{Names}.
@@ -50,7 +50,7 @@ Notation "!! config" :=
   (@obs_from_config location _ _ _ multiset_observation config origin : observation) (at level 10).
 
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
-Proof. now intros. Qed.
+Proof using . now intros. Qed.
 
 (** When all robots are on two towers of the same height, there is no solution to the gathering problem.
     Therefore, we define these configurations as [invalid]. *)
@@ -59,7 +59,7 @@ Definition invalid (config : configuration) :=
   /\ (!! config)[pt1] = Nat.div2 nG /\ (!! config)[pt2] = Nat.div2 nG.
 
 Global Instance invalid_compat : Proper (equiv ==> iff) invalid.
-Proof.
+Proof using .
 intros ? ? Heq. split; intros [HnG [Hle [pt1 [pt2 [Hneq Hpt]]]]];
 repeat split; trivial; exists pt1, pt2; split; trivial; now rewrite Heq in *.
 Qed.
@@ -80,7 +80,7 @@ Definition obs_from_config_spec : forall (config : configuration) (pt : location
 
 Lemma obs_non_nil : 2 <= nG -> forall config,
   !! config =/= MMultisetInterface.empty.
-Proof.
+Proof using .
 simpl obs_from_config. intros HnG config Heq.
 assert (Hlgth:= config_list_length config).
 assert (Hl : config_list config = nil).
@@ -94,7 +94,7 @@ Qed.
 
 Lemma invalid_size : nB = 0 ->
   forall config : configuration, invalid config -> size (!! config) = 2.
-Proof.
+Proof using .
 intros HnB config [Heven [HsizeG [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).
 + rewrite size_add.
@@ -124,7 +124,7 @@ Qed.
 
 Lemma invalid_strengthen : nB = 0 -> forall config, invalid config ->
   { pt1 : location & { pt2 : location | pt1 =/= pt2 & !! config == add pt1 (Nat.div2 nG) (singleton pt2 (Nat.div2 nG)) } }.
-Proof.
+Proof using .
 intros HnB config Hconfig.
 (* Because we want a computational goal and the hypothesis is not,
    we first destruct the support to get the elements and only then
@@ -163,7 +163,7 @@ Qed.
 Lemma invalid_same_location : nB = 0 -> forall config pt1 pt2 pt3, invalid config ->
   In pt1 (!! config) -> In pt2 (!! config) -> In pt3 (!! config) ->
   pt1 =/= pt3 -> pt2 =/= pt3 -> pt1 == pt2.
-Proof.
+Proof using .
 intros HnB config pt1 pt2 pt3 Hinvalid Hin1 Hin2 Hin3 Hdiff13 Hdiff23.
 destruct (invalid_strengthen HnB Hinvalid) as [pta [ptb Hdiff Hobs]].
 rewrite Hobs, add_In, In_singleton in Hin1, Hin2, Hin3.
@@ -175,7 +175,7 @@ Qed.
 Arguments invalid_same_location _ config {pt1} {pt2} pt3 _ _ _ _ _.
 
 Lemma invalid_dec : nB = 0 -> forall config, {invalid config} + {~invalid config}.
-Proof.
+Proof using .
 intros HnB config.
 destruct (size (!! config)) as [| [| [| n]]] eqn:Hsize;
 try (right; intro Habs; apply invalid_size in Habs; omega); [].
