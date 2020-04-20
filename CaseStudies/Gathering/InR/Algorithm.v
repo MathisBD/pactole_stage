@@ -14,7 +14,7 @@
                                                                             
      PACTOLE project                                                        
                                                                             
-     This file is distributed under the terms of the CeCILL-C licence     *)
+     This file is distributed under the terms oaf the CeCILL-C licence     *)
 (**************************************************************************)
 
 Require Import Bool.
@@ -26,18 +26,31 @@ Require Import RelationPairs.
 Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
+(* Pactole basic definitions *)
+Require Export Pactole.Setting.
+(* Specific to R topology *)
 Require Import Pactole.Spaces.R.
-Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
+(* Specific to gathering *)
+Require Pactole.CaseStudies.Gathering.WithMultiplicity.
+Require Pactole.CaseStudies.Gathering.Definitions.
+(* Specific to multiplicity *)
+Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Similarity.
+(* Specific to rigidity *)
 Require Export Pactole.Models.Rigid.
+
+(* User defined *)
 Import Permutation.
 Import Datatypes.
 Close Scope R_scope.
 
-
+(* rule of thumb *)
 Typeclasses eauto := 10.
 Set Implicit Arguments.
 
+(* Now we declare the context of our proof: things left abstract are
+variables and hypothesis. Other things are defined by declaring type
+class instances. *)
 Section CorrectnessProof.
 
 Variable n : nat.
@@ -49,15 +62,18 @@ Instance MyRobots : Names := Robots n 0.
 Existing Instance R_Setoid.
 Existing Instance R_EqDec.
 Existing Instance R_RMS. *)
-
-(* We are in a rigid formalism with no other info than the location, so the demon makes no choice. *)
+(* Specific to R topology *)
 Instance Loc : Location := make_Location R.
 Instance VS : RealVectorSpace location := R_VS.
 Instance ES : EuclideanSpace location := R_ES.
 Remove Hints R_VS R_ES : typeclass_instances.
+(* We are in a rigid formalism with no other info than the location,
+   so the demon makes no choice. *)
+(* location_setoid uses R_setoid *)
 Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance Info : State location := OnlyLocation (fun _ => True).
 Instance UpdFun : update_function location (Similarity.similarity location) unit := {
   update := fun _ _ _ target _ => target;
   update_compat := ltac:(now repeat intro) }.
@@ -65,7 +81,7 @@ Instance InaFun : inactive_function unit := {
   inactive := fun config id _ => config id;
   inactive_compat := ltac:(repeat intro; subst; auto) }.
 Instance Rigid : RigidSetting.
-Proof. split. reflexivity. Qed.
+Proof using . split. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
@@ -85,13 +101,13 @@ Ltac changeR :=
   change R_ES with ES in *.
 
 Lemma similarity_middle : forall (sim : similarity R) x y, (sim ((x + y) / 2) = (sim x + sim y) / 2)%R.
-Proof.
+Proof using .
 intros sim x y. destruct (similarity_in_R_case sim) as [Hsim | Hsim];
 repeat rewrite Hsim; cbn in *; field.
 Qed.
 
 Lemma no_byz : forall P (config : configuration), (forall g, P (config (Good g))) -> forall id, P (config id).
-Proof.
+Proof using size_G.
 intros P config Hconfig [g | b].
 + apply Hconfig.
 + destruct b. omega.
@@ -100,8 +116,8 @@ Qed.
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
-Proof.
-intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
+Proof using size_G.
+intros config1 config2 Heq id. apply WithMultiplicity.no_info. destruct id as [g | b].
 + apply Heq.
 + destruct b. omega.
 Qed.
@@ -109,22 +125,22 @@ Qed.
 
 (** Spectra can never be empty as the number of robots is non null. *)
 Lemma obs_non_nil : forall config, !! config =/= empty.
-Proof. apply obs_non_nil. apply size_G. Qed.
+Proof using size_G. apply WithMultiplicity.obs_non_nil. apply size_G. Qed.
 
 Corollary sort_non_nil : forall config, sort (support (!! config)) <> nil.
-Proof.
+Proof using size_G.
 intros config Habs. apply (obs_non_nil config).
 setoid_rewrite <- support_nil.
 apply Permutation_nil. setoid_rewrite Permuted_sort at 2. rewrite Habs. reflexivity.
 Qed.
 
 Lemma half_size_config : Nat.div2 nG > 0.
-Proof. assert (Heven := size_G). simpl. destruct n as [| [| ?]]; simpl; omega. Qed.
+Proof using size_G. assert (Heven := size_G). simpl. destruct n as [| [| ?]]; simpl; omega. Qed.
 
 (* We need to unfold [obs_is_ok] for rewriting *)
 Definition obs_from_config_spec : forall config l,
   (!! config)[l] = countA_occ _ equiv_dec l (List.map get_location (config_list config))
-  := obs_from_config_spec.
+  := WithMultiplicity.obs_from_config_spec.
 
 (** **  Property expressing the existence of a majority tower  **)
 
@@ -132,7 +148,7 @@ Definition MajTower_at x config :=
   forall y, y <> x -> (!! config)[y] < (!! config)[x].
 
 Instance MajTower_at_compat : Proper (Logic.eq ==> equiv ==> iff) MajTower_at.
-Proof. intros ? ? ? ? ? Hconfig. subst. unfold MajTower_at. now setoid_rewrite Hconfig. Qed.
+Proof using . intros ? ? ? ? ? Hconfig. subst. unfold MajTower_at. now setoid_rewrite Hconfig. Qed.
 
 (** Computationally, it is equivalent to having only one tower with maximum multiplicity. *)
 
@@ -140,20 +156,20 @@ Proof. intros ? ? ? ? ? Hconfig. subst. unfold MajTower_at. now setoid_rewrite H
 
 Lemma max_similarity : forall (sim : similarity R),
   forall s, max (map sim s) == map sim (max s).
-Proof.
+Proof using .
 intros. apply max_map_injective.
 - intros ? ? Heq. now rewrite Heq.
 - apply Similarity.injective.
 Qed.
 
 Lemma support_max_non_nil : forall config, support (max (!! config)) <> nil.
-Proof. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (obs_non_nil _ Habs). Qed.
+Proof using size_G. intros config Habs. rewrite support_nil, max_is_empty in Habs. apply (obs_non_nil _ Habs). Qed.
 
 (** ***  Computational equivalent of having a majority tower  **)
 
 Lemma Majority_MajTower_at : forall config pt,
   support (max (!! config)) = pt :: nil -> MajTower_at pt config.
-Proof.
+Proof using .
 intros config pt Hmaj x Hx. apply max_spec_lub.
 - rewrite <- support_spec, Hmaj. now left.
 - rewrite <- support_spec, Hmaj. intro Habs. inversion_clear Habs. now auto. inversion H.
@@ -161,7 +177,7 @@ Qed.
 
 Theorem MajTower_at_equiv : forall config pt, MajTower_at pt config <->
   support (max (!! config)) = pt :: nil.
-Proof.
+Proof using size_G.
 intros config pt. split; intro Hmaj.
 * apply Permutation_length_1_inv. rewrite <- PermutationA_Leibniz. change eq with (@equiv location _).
   apply (NoDupA_equivlistA_PermutationA _).
@@ -182,12 +198,12 @@ Qed.
 
 (** **  Some properties of [invalid]  **)
 
-Lemma invalid_even : forall conf, invalid conf -> Nat.Even nG.
-Proof. now intros conf [? _]. Qed.
+Lemma invalid_even : forall conf, WithMultiplicity.invalid conf -> Nat.Even nG.
+Proof using . now intros conf [? _]. Qed.
 
-Lemma invalid_support_length : forall config, invalid config ->
+Lemma invalid_support_length : forall config, WithMultiplicity.invalid config ->
   size (!! config) = 2.
-Proof.
+Proof using size_G.
 intros config [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton pt1 (Nat.div2 nG)))).
 * rewrite size_add; try (now apply half_size_config); [].
@@ -198,9 +214,10 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
 * intro pt. destruct (Rdec pt pt2), (Rdec pt pt1); subst.
   + now elim Hdiff.
   + rewrite add_spec, singleton_spec.
-    repeat destruct_match; simpl in *; contradiction || omega.
+    setoid_rewrite Hpt2.
+    repeat destruct_match; simpl in *; contradiction || (try omega).
   + rewrite add_other, singleton_spec.
-    - repeat destruct_match; simpl in *; contradiction || omega.
+    - setoid_rewrite Hpt1. repeat destruct_match; simpl in *; contradiction || omega.
     - assumption.
   + rewrite add_other, singleton_spec.
     - repeat destruct_match; simpl in *; contradiction || omega.
@@ -210,8 +227,8 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
 Qed.
 
 Lemma support_max_1_not_invalid : forall config pt,
-  MajTower_at pt config -> ~invalid config.
-Proof.
+  MajTower_at pt config -> ~WithMultiplicity.invalid config.
+Proof using size_G.
 intros config pt Hmaj. rewrite MajTower_at_equiv in Hmaj.
 assert (Hmax : forall x, In x (max (!! config)) <-> x = pt).
 { intro x. rewrite <- support_spec, Hmaj. split.
@@ -222,9 +239,9 @@ assert (Hsuplen := invalid_support_length Hinvalid).
 destruct Hinvalid as [Heven [_ [pt1 [pt2 [Hdiff [Hpt1 Hpt2]]]]]].
 assert (Hsup : Permutation (support (!! config)) (pt1 :: pt2 :: nil)).
 { assert (Hin1 : InA equiv pt1 (support (!! config))).
-  { rewrite support_spec. unfold In. rewrite Hpt1. apply half_size_config. }
+  { rewrite support_spec. unfold In. setoid_rewrite Hpt1. apply half_size_config. }
   assert (Hin2 : InA equiv pt2 (support (!! config))).
-  { rewrite support_spec. unfold In. rewrite Hpt2. apply half_size_config. }
+  { rewrite support_spec. unfold In. setoid_rewrite Hpt2. apply half_size_config. }
   apply (PermutationA_split _) in Hin1. destruct Hin1 as [l Hl]. rewrite Hl in Hin2.
   inversion_clear Hin2; try now subst; elim Hdiff.
   rewrite size_spec, Hl in Hsuplen. destruct l as [| x [| ? ?]]; simpl in Hsuplen; try omega.
@@ -244,8 +261,8 @@ Definition no_Majority config := (size (max (!! config)) > 1)%nat.
 
 (* invalid_support_length already proves the <- direction *)
 Lemma invalid_equiv : forall config,
-  invalid config <-> no_Majority config /\ size (!! config) = 2%nat.
-Proof.
+  WithMultiplicity.invalid config <-> no_Majority config /\ size (!! config) = 2%nat.
+Proof using size_G.
   intro config. unfold no_Majority. split.
   - intro Hinvalid. split.
     + rewrite size_spec.
@@ -411,8 +428,8 @@ Proof.
 Qed.
 
 Lemma not_invalid_not_majority_length : forall config,
-  no_Majority config -> ~invalid config -> (size (!! config) >= 3)%nat.
-Proof.
+  no_Majority config -> ~WithMultiplicity.invalid config -> (size (!! config) >= 3)%nat.
+Proof using size_G.
 intros config H1 H2.
 assert (size (!! config) > 1)%nat.
 { unfold gt. eapply lt_le_trans; try eassumption.
@@ -430,20 +447,20 @@ Definition maxi s := List.last (sort (support s)) 0.
 Definition middle s := nth 1 (sort (support s)) 0.
 
 Instance mini_compat : Proper (equiv ==> eq) mini.
-Proof. intros s1 s2 Hs. unfold mini. now rewrite Hs. Qed.
+Proof using . intros s1 s2 Hs. unfold mini. now rewrite Hs. Qed.
 
 Instance maxi_compat : Proper (equiv ==> eq) maxi.
-Proof. intros s1 s2 Hs. unfold maxi. now rewrite Hs. Qed.
+Proof using . intros s1 s2 Hs. unfold maxi. now rewrite Hs. Qed.
 
 Instance middle_compat : Proper (equiv ==> eq) middle.
-Proof. intros s1 s2 Hs. unfold middle. now rewrite Hs. Qed.
+Proof using . intros s1 s2 Hs. unfold middle. now rewrite Hs. Qed.
 
 Definition is_extremal r s :=
   if Rdec r (mini s) then true else
   if Rdec r (maxi s) then true else false.
 
 Instance is_extremal_compat : Proper (equiv ==> equiv ==> eq) is_extremal.
-Proof.
+Proof using .
 intros x y Hxy s s' Hs. rewrite <- Hxy. unfold is_extremal, mini, maxi.
 destruct (Rdec x (hd 0 (sort (support s)))), (Rdec x (hd 0 (sort (support s'))));
 try rewrite Hs in *; contradiction || trivial; [].
@@ -454,7 +471,7 @@ Qed.
 Lemma is_extremal_map_monotonic_invariant : forall f,
   monotonic Rleb Rleb f -> Util.Preliminary.injective eq eq f ->
   forall x config, is_extremal (f x) (map f (!! config)) = is_extremal x (!! config).
-Proof.
+Proof using size_G.
 intros f Hfmon Hfinj x config. unfold is_extremal, mini, maxi.
 assert (Hf : Proper (equiv ==> equiv) f). { repeat intro. cbn in *. now subst. }
 destruct Hfmon as [Hfinc | Hfdec].
@@ -498,7 +515,7 @@ Qed.
 
 Corollary is_extremal_similarity_invariant : forall (sim : similarity R) config r,
   is_extremal (sim r) (map sim (!! config)) = is_extremal r (!! config).
-Proof.
+Proof using size_G.
 intros sim conf r. apply is_extremal_map_monotonic_invariant.
 - apply similarity_monotonic.
 - change eq with (@equiv location _). apply Similarity.injective.
@@ -508,11 +525,11 @@ Qed.
 Definition extreme_center (s : observation) := (mini s + maxi s) / 2.
 
 Instance extreme_center_compat : Proper (equiv ==> eq) extreme_center.
-Proof. intros s s' Hs. unfold extreme_center, mini, maxi. now rewrite Hs. Qed.
+Proof using . intros s s' Hs. unfold extreme_center, mini, maxi. now rewrite Hs. Qed.
 
 Lemma extreme_center_similarity : forall (sim : similarity location) s, s =/= empty ->
   extreme_center (map sim s) = sim (extreme_center s).
-Proof.
+Proof using .
 intros sim s Hs.
 assert (Hsim1 : Proper (equiv ==> equiv) sim). { intros x y Hxy. now rewrite Hxy. }
 assert (Hsim2 := Similarity.injective sim).
@@ -545,12 +562,12 @@ Qed.
 
 Lemma extreme_center_similarity_invariant : forall (sim : similarity R) config,
   extreme_center (map sim (!! config)) = sim (extreme_center (!! config)).
-Proof. intros. apply extreme_center_similarity. apply obs_non_nil. Qed.
+Proof using size_G. intros. apply extreme_center_similarity. apply obs_non_nil. Qed.
 
 Lemma middle_map_monotonic_invariant : forall f,
   Proper (equiv ==> equiv) f -> monotonic Rleb Rleb f -> Util.Preliminary.injective eq eq f ->
   forall config, size (!! config) = 3%nat -> middle (map f (!! config)) == f (middle (!! config)).
-Proof.
+Proof using size_G.
 intros f Hf Hmono Hinj config Hsize. unfold middle. changeR.
 rewrite map_injective_support; trivial; [].
 rewrite <- (map_nth f).
@@ -565,7 +582,7 @@ Qed.
 
 Lemma middle_sim_invariant : forall (sim : similarity R) config, size (!! config) = 3%nat ->
   middle (map sim (!! config)) == sim (middle (!! config)).
-Proof.
+Proof using size_G.
 intros sim config Hsize.
 apply middle_map_monotonic_invariant; autoclass; [].
 apply similarity_monotonic.
@@ -594,7 +611,7 @@ Definition gatherR_pgm (s : observation) : location :=
 
 (** The robogram is invariant by permutation of obsra. *)
 Instance gatherR_pgm_compat : Proper (equiv ==> equiv) gatherR_pgm.
-Proof.
+Proof using .
 unfold gatherR_pgm. intros s s' Hs. assert (Hperm := support_compat (max_compat Hs)).
 destruct (support (max s)) as [| pt [| pt2 l]].
 + now rewrite (PermutationA_nil _ Hperm).
@@ -629,7 +646,7 @@ Lemma round_simplify : forall config,
                               if is_extremal (config id) s then config id else extreme_center s
                      end
                end.
-Proof.
+Proof using Hda size_G.
 intros config. rewrite SSYNC_round_simplify; trivial; [].
 apply no_byz_eq. intro g. unfold round.
 destruct (activate da (Good g)) eqn:Hactive; try reflexivity; [].
@@ -706,7 +723,7 @@ Lemma round_simplify_Majority : forall config pt,
   MajTower_at pt config ->
   round gatherR da config
   == fun id => if activate da id then pt else config id.
-Proof.
+Proof using Hda size_G.
 intros config pt Hmaj. rewrite round_simplify. intro id.
 rewrite MajTower_at_equiv in Hmaj.
 destruct_match; try reflexivity. cbv zeta.
@@ -720,9 +737,9 @@ Lemma round_simplify_Three : forall config,
   (size (!! config) = 3)%nat ->
   round gatherR da config
   == fun id => if activate da id then nth 1 (sort (support (!! config))) 0 else config id.
-Proof.
+Proof using Hda size_G.
 intros config Hmaj H3. rewrite round_simplify.
-intro id. apply no_info.
+intro id. apply WithMultiplicity.no_info.
 destruct (da.(activate) id); try reflexivity; []. cbv zeta.
 unfold no_Majority in Hmaj. rewrite size_spec in Hmaj.
 destruct (support (max (!! config))) as [| ? [| ? ?]]; simpl in Hmaj; try omega; [].
@@ -737,9 +754,9 @@ Lemma round_simplify_Generic : forall config,
                                        then if is_extremal (config id) (!! config)
                                             then config id else extreme_center (!! config)
                                        else config id.
-Proof.
+Proof using Hda size_G.
 intros config Hmaj H3. rewrite round_simplify.
-intro id. apply no_info.
+intro id. apply WithMultiplicity.no_info.
 destruct_match; try reflexivity; []. cbv zeta.
 unfold no_Majority in Hmaj. rewrite size_spec in Hmaj.
 destruct (support (max (!! config))) as [| ? [| ? ?]]; simpl in Hmaj; try omega; [].
@@ -752,7 +769,7 @@ Close Scope R_scope.
 (** When there is a majority stack, it grows and all other stacks wither. **)
 Theorem Majority_grow :  forall pt config, MajTower_at pt config ->
   (!! config)[pt] <= (!! (round gatherR da config))[pt].
-Proof.
+Proof using Hda size_G.
 intros pt config Hmaj.
 rewrite (round_simplify_Majority Hmaj).
 do 2 rewrite obs_from_config_spec, config_list_spec.
@@ -767,7 +784,7 @@ Qed.
 (* This proof follows the exact same structure. *)
 Theorem Majority_wither : forall pt pt' config, pt <> pt' ->
   MajTower_at pt config -> (!! (round gatherR da config))[pt'] <= (!! config)[pt'].
-Proof.
+Proof using Hda size_G.
 intros pt pt' config Hdiff Hmaj.
 rewrite (round_simplify_Majority Hmaj).
 do 2 rewrite obs_from_config_spec, config_list_spec.
@@ -782,15 +799,15 @@ Qed.
 (** Whenever there is a majority stack, it remains forever so. **)
 Theorem MajTower_at_forever : forall pt config,
   MajTower_at pt config -> MajTower_at pt (round gatherR da config).
-Proof.
+Proof using Hda size_G.
 intros pt config Hmaj x Hx. assert (Hs := Hmaj x Hx).
 apply le_lt_trans with ((!! config)[x]); try eapply lt_le_trans; try eassumption; [|].
 - eapply Majority_wither; eauto.
 - eapply Majority_grow; eauto.
 Qed.
 
-Theorem Majority_not_invalid : forall pt config, MajTower_at pt config -> ~invalid config.
-Proof.
+Theorem Majority_not_invalid : forall pt config, MajTower_at pt config -> ~WithMultiplicity.invalid config.
+Proof using size_G.
 intros pt config Hmaj. rewrite invalid_equiv. unfold no_Majority. intros [Hmaj' _].
 rewrite MajTower_at_equiv in Hmaj. rewrite size_spec, Hmaj in Hmaj'. simpl in *. omega.
 Qed.
@@ -802,7 +819,7 @@ Open Scope R_scope.
     then the extreme locations are different. **)
 Lemma Generic_min_max_lt_aux : forall l, (length l > 1)%nat -> NoDupA equiv l ->
   hd 0 (sort l) < last (sort l) 0.
-Proof.
+Proof using size_G.
 intros l Hl Hnodup. rewrite Permuted_sort in Hl.
 apply (@PermutationA_NoDupA _ eq _ l (sort l)) in Hnodup.
 + apply Rle_neq_lt.
@@ -814,7 +831,7 @@ Qed.
 
 Lemma Generic_min_max_lt : forall config,
   no_Majority config -> mini (!! config) < maxi (!! config).
-Proof.
+Proof using size_G.
 intros config Hmaj. apply Generic_min_max_lt_aux.
 + apply lt_le_trans with (size (max (!! config))); trivial.
   rewrite <- size_spec. f_equiv. apply max_subset.
@@ -823,16 +840,16 @@ Qed.
 
 Corollary Generic_min_mid_lt : forall config,
   no_Majority config -> mini (!! config) < extreme_center (!! config).
-Proof. intros ? H. unfold extreme_center. apply Generic_min_max_lt in H. lra. Qed.
+Proof using size_G. intros ? H. unfold extreme_center. apply Generic_min_max_lt in H. lra. Qed.
 
 Corollary Generic_mid_max_lt : forall config,
   no_Majority config -> extreme_center (!! config) < maxi (!! config).
-Proof. intros ? H. unfold extreme_center. apply Generic_min_max_lt in H. lra. Qed.
+Proof using size_G. intros ? H. unfold extreme_center. apply Generic_min_max_lt in H. lra. Qed.
 
 Theorem Generic_min_same : forall config,
   no_Majority config -> (size (!! config) <> 3)%nat ->
   mini (!! (round gatherR da config)) = mini (!! config).
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen.
 (* We have a robot [id] at the minimal position in the original config. *)
 assert (Hhdin := sort_non_nil config). apply (hd_In 0%R) in Hhdin.
@@ -875,7 +892,7 @@ Qed.
 Theorem Generic_max_same : forall config,
   no_Majority config -> (size (!! config) <> 3)%nat ->
   maxi (!! (round gatherR da config)) = maxi (!! config).
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen.
 (* We have a robot [id] at the minimal position in the original config. *)
 assert (Hlastin := sort_non_nil config). apply (last_In 0%R) in Hlastin.
@@ -919,7 +936,7 @@ Qed.
 Corollary Generic_extreme_center_same : forall config,
   no_Majority config -> (size (!! config) <> 3)%nat ->
   extreme_center (!! (round gatherR da config)) = extreme_center (!! config).
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen. unfold extreme_center.
 now rewrite (Generic_min_same Hmaj Hlen), (Generic_max_same Hmaj Hlen).
 Qed.
@@ -927,7 +944,7 @@ Qed.
 Theorem Generic_min_mult_same : forall config,
   no_Majority config -> (size (!! config) <> 3)%nat ->
   (!! (round gatherR da config))[mini (!! config)] = (!! config)[mini (!! config)].
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen.
 (* We simplify the lhs *)
 rewrite round_simplify_Generic; trivial.
@@ -954,7 +971,7 @@ Qed.
 Theorem Generic_max_mult_same : forall config,
   no_Majority config -> (size (!! config) <> 3)%nat ->
   (!! (round gatherR da config))[maxi (!! config)] = (!! config)[maxi (!! config)].
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen.
 (* We simplify the lhs *)
 rewrite round_simplify_Generic; trivial.
@@ -983,7 +1000,7 @@ Close Scope R_scope.
 
 Lemma sum3_le_total : forall config pt1 pt2 pt3, pt1 <> pt2 -> pt2 <> pt3 -> pt1 <> pt3 ->
   (!! config)[pt1] + (!! config)[pt2] + (!! config)[pt3] <= nG.
-Proof.
+Proof using size_G.
 intros config pt1 pt2 pt3 Hpt12 Hpt23 Hpt13.
 replace nG with (nG + nB)%nat by (simpl; omega).
 rewrite <- (cardinal_obs_from_config config origin).
@@ -1000,7 +1017,7 @@ Qed.
 Theorem same_destination : forall config id1 id2,
   List.In id1 (moving gatherR da config) -> List.In id2 (moving gatherR da config) ->
   round gatherR da config id1 == round gatherR da config id2.
-Proof.
+Proof using Hda size_G.
 intros config id1 id2 Hid1 Hid2.
 rewrite (round_simplify config id1), (round_simplify config id2).
 destruct (da.(activate) id1) eqn:Hmove1; [destruct (da.(activate) id2) eqn:Hmove2 |].
@@ -1039,7 +1056,7 @@ Lemma towers_elements_3 : forall config pt1 pt2,
   (size (!! config) >= 3)%nat ->
   In pt1 (!! config) -> In pt2 (!! config) -> pt1 <> pt2 ->
   exists pt3, pt1 <> pt3 /\ pt2 <> pt3 /\ In pt3 (!! config).
-Proof.
+Proof using size_G.
 intros config pt1 pt2 Hlen Hpt1 Hpt2 Hdiff12.
 rewrite <- support_spec in Hpt1, Hpt2. rewrite size_spec in Hlen.
 apply (PermutationA_split _) in Hpt1. destruct Hpt1 as [supp1 Hperm].
@@ -1061,7 +1078,7 @@ Lemma increase_move :
   forall r config pt,
     ((!! config)[pt] < (!! (round r da config))[pt])%nat ->
     exists id, get_location (round r da config id) == pt /\ round r da config id =/= config id.
-Proof.
+Proof using .
   intros r config pt Hlt.
   destruct (existsb (fun x => if get_location (round r da config x) =?= pt then
                               if get_location (config x) =?= pt then false else true else false) names) eqn:Hex.
@@ -1087,7 +1104,7 @@ Lemma increase_move_iff : forall config pt,
   ((!! config)[pt] < (!! (round gatherR da config))[pt])%nat
   <-> exists id, get_location (round gatherR da config id) == pt
               /\ round gatherR da config id =/= config id.
-Proof.
+Proof using Hda size_G.
 intros config pt. split.
 * apply increase_move.
 * intros [id [Hid Hroundid]].
@@ -1106,7 +1123,7 @@ intros config pt. split.
   inversion_clear Hin.
   + subst id'. clear IHl. simpl. hnf in Hroundid. unfold Datatypes.id.
     destruct_match. revert_one @equiv. intro Heq.
-    - rewrite <- Hid in Heq. elim Hroundid. now apply no_info.
+    - rewrite <- Hid in Heq. elim Hroundid. now apply WithMultiplicity.no_info.
     - destruct_match; try contradiction; []. apply le_n_S. induction l; simpl.
       -- reflexivity.
       -- repeat destruct_match; try now idtac + apply le_n_S + apply le_S; apply IHl.
@@ -1124,8 +1141,8 @@ Qed.
     |\before(pt2)| >= |\after(pt2)| = nG / 2
     As there are [nG] robots, [nG/2] at [p2], we must spread [nG/2] into at least two locations
     thus each of these towers has less than [nG/2] and [pt2] was a majority tower. *)
-Theorem never_invalid : forall config, ~invalid config -> ~invalid (round gatherR da config).
-Proof.
+Theorem never_invalid : forall config, ~WithMultiplicity.invalid config -> ~WithMultiplicity.invalid (round gatherR da config).
+Proof using Hda size_G.
 intros config Hok.
 (* Three cases for the robogram *)
 destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
@@ -1157,10 +1174,10 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
         + simpl length at 2. now rewrite <- size_spec, invalid_support_length.
         + intros pt Hpt. inversion_clear Hpt.
           - subst. rewrite <- InA_Leibniz. change eq with (@equiv location _). rewrite support_spec.
-            unfold In. rewrite Hpt1. apply half_size_config.
+            unfold In. setoid_rewrite Hpt1. apply half_size_config.
           - inversion H; (now inversion H0) || subst.
             rewrite <- InA_Leibniz. change eq with (@equiv location _). rewrite support_spec.
-            unfold In. rewrite Hpt2. apply half_size_config. }
+            unfold In. setoid_rewrite Hpt2. apply half_size_config. }
       assert (Hpt : List.In (get_location (round gatherR da config rmove)) (pt1 :: pt2 :: nil)).
       { rewrite <- Hperm, <- InA_Leibniz. change eq with (@equiv location _).
         rewrite support_spec. apply pos_in_config. }
@@ -1175,7 +1192,9 @@ destruct (support (max (!! config))) as [| pt [| pt' l']] eqn:Hmaj.
       apply same_destination; auto. rewrite moving_spec. congruence. }
     assert ((div2 nG) <= (!! config)[pt']).
     { transitivity ((!! (round gatherR da config))[pt']).
-      - decompose [and or] Hpt; subst; omega.
+      - decompose [and or] Hpt; subst.
+        + setoid_rewrite  Hpt2. reflexivity.
+        + setoid_rewrite  Hpt1. reflexivity.
       - generalize (@increase_move_iff config pt').
         intro H1. apply Nat.nlt_ge.
         rewrite H1. intros [id [Hid1 Hid2]].
@@ -1215,7 +1234,7 @@ Definition config_to_NxN config :=
   end.
 
 Instance config_to_NxN_compat: Proper (equiv ==> eq * eq) config_to_NxN.
-Proof.
+Proof using .
 intros config1 config2 Heq. unfold config_to_NxN.
 assert (Hperm : PermutationA equiv (support (max (!! config1)))
                                    (support (max (!! config2)))) by now rewrite Heq.
@@ -1231,10 +1250,10 @@ Qed.
 Definition lt_config x y := Lexprod.lexprod lt lt (config_to_NxN x) (config_to_NxN y).
 
 Lemma wf_lt_config: well_founded lt_config.
-Proof. unfold lt_config. apply wf_inverse_image, Lexprod.wf_lexprod; apply lt_wf. Qed.
+Proof using . unfold lt_config. apply wf_inverse_image, Lexprod.wf_lexprod; apply lt_wf. Qed.
 
 Global Instance lt_config_compat: Proper (equiv ==> equiv ==> iff) lt_config.
-Proof.
+Proof using .
   intros config1 config1' Heq1 config2 config2' Heq2.
   unfold lt_config.
   rewrite <- Heq1, <- Heq2.
@@ -1243,12 +1262,12 @@ Qed.
 
 Lemma config_to_NxN_nil_spec : forall config,
   support (max (!! config)) = nil -> config_to_NxN config = (0, 0).
-Proof. intros config Heq. unfold config_to_NxN. rewrite Heq. reflexivity. Qed.
+Proof using . intros config Heq. unfold config_to_NxN. rewrite Heq. reflexivity. Qed.
 
 Lemma config_to_NxN_Majority_spec : forall config pt,
   MajTower_at pt config ->
   config_to_NxN config = (1, nG - (!! config)[pt])%nat.
-Proof.
+Proof using size_G.
   intros config pt H.
   unfold config_to_NxN.
   rewrite MajTower_at_equiv in H. rewrite H.
@@ -1259,7 +1278,7 @@ Lemma config_to_NxN_Three_spec : forall config,
   no_Majority config ->
   size (!! config) = 3 ->
   config_to_NxN config = (2, nG - (!! config)[nth 1 (sort (support (!! config))) 0%R]).
-Proof.
+Proof using size_G.
 intros config Hmaj Hlen. unfold config_to_NxN.
 unfold no_Majority in Hmaj. rewrite size_spec in Hmaj.
 destruct (support (max (!! config))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
@@ -1273,7 +1292,7 @@ Lemma config_to_NxN_Generic_spec : forall config,
     (3, nG - ((!! config)[extreme_center (!! config)]
               + (!! config)[mini (!! config)]
               + (!! config)[maxi (!! config)])).
-Proof.
+Proof using size_G.
 intros config Hmaj Hlen. unfold config_to_NxN.
 unfold no_Majority in Hmaj. rewrite size_spec in Hmaj.
 destruct (support (max (!! config))) as [| ? [| ? ?]]; simpl in Hmaj; try omega.
@@ -1281,7 +1300,7 @@ rewrite <- Nat.eqb_neq in Hlen. rewrite Hlen. reflexivity.
 Qed.
 
 Lemma multiplicity_le_nG : forall pt config, (!! config)[pt] <= nG.
-Proof.
+Proof using size_G.
 intros pt config. etransitivity.
 - apply cardinal_lower.
 - rewrite cardinal_obs_from_config. simpl. omega.
@@ -1293,7 +1312,7 @@ Lemma support_round_Three_incl : forall config,
   size (!! config) = 3 ->
   incl (support (!! (round gatherR da config)))
        (support (!! config)).
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen pt Hin.
 rewrite <- InA_Leibniz in Hin. change eq with (@equiv location _) in Hin. rewrite support_spec, obs_from_config_In in Hin.
 destruct Hin as [id Hid]. rewrite (round_simplify_Three Hmaj Hlen id) in Hid.
@@ -1307,7 +1326,7 @@ Corollary support_decrease : forall config,
   no_Majority config ->
   size (!! config) = 3 ->
   size (!! (round gatherR da config)) <= 3.
-Proof.
+Proof using Hda size_G.
 intros config Hmaj Hlen. rewrite <- Hlen.
 generalize (support_round_Three_incl Hmaj Hlen).
 rewrite <- inclA_Leibniz, size_spec, size_spec.
@@ -1315,9 +1334,9 @@ apply (NoDupA_inclA_length _). change eq with (@equiv location _). apply support
 Qed.
 
 Theorem round_lt_config : forall config,
-  ~invalid config -> moving gatherR da config <> nil ->
+  ~WithMultiplicity.invalid config -> moving gatherR da config <> nil ->
   lt_config (round gatherR da config) config.
-Proof.
+Proof using Hda size_G.
 intros config Hvalid Hmove.
 apply not_nil_In in Hmove. destruct Hmove as [gmove Hmove].
 assert (Hstep : da.(activate) gmove = true).
@@ -1418,14 +1437,14 @@ exists 0. abstract (generalize size_G; intro; omega).
 Defined.
 
 Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
-Proof.
+Proof using .
 intros ? pt Hpt config1 config2 Hconfig. simpl in Hpt. subst. unfold gathered_at.
 split; intros H g; rewrite <- (H g); idtac + symmetry; apply Hconfig.
 Qed.
 
 Lemma gathered_precise : forall config pt,
   gathered_at pt config -> forall id, gathered_at (get_location (config id)) config.
-Proof.
+Proof using size_G.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
 - symmetry. apply no_byz. apply Hgather.
@@ -1433,11 +1452,11 @@ Qed.
 
 Corollary not_gathered_generalize : forall config id,
   ~gathered_at (get_location (config id)) config -> forall pt, ~gathered_at pt config.
-Proof. intros config id Hnot pt Hgather. apply Hnot. apply (gathered_precise Hgather). Qed.
+Proof using size_G. intros config id Hnot pt Hgather. apply Hnot. apply (gathered_precise Hgather). Qed.
 
 Lemma not_gathered_exists : forall config pt,
   ~ gathered_at pt config -> exists id, get_location (config id) <> pt.
-Proof.
+Proof using .
 intros config pt Hgather.
 destruct (forallb (fun x => if get_location (config x) =?= pt then true else false) names) eqn:Hall.
 - elim Hgather. rewrite forallb_forall in Hall.
@@ -1447,9 +1466,9 @@ destruct (forallb (fun x => if get_location (config x) =?= pt then true else fal
 Qed.
 
 Lemma not_invalid_gathered_Majority_size : forall config id,
-  ~invalid config -> ~gathered_at (get_location (config id)) config -> no_Majority config ->
+  ~WithMultiplicity.invalid config -> ~gathered_at (get_location (config id)) config -> no_Majority config ->
   size (!! config) >= 3.
-Proof.
+Proof using size_G.
 intros config id Hinvalid Hgather Hmaj.
 assert (size (!! config) > 1).
 { unfold no_Majority in Hmaj. eapply lt_le_trans; try eassumption; []. now rewrite max_subset. }
@@ -1458,9 +1477,9 @@ destruct (size (!! config)) as [| [| [| ?]]]; omega || tauto.
 Qed.
 
 (** Given a non-gathered, non invalid configuration, then some robot will move some day *)
-Theorem OneMustMove : forall config id, ~ invalid config -> ~gathered_at (get_location (config id)) config ->
+Theorem OneMustMove : forall config id, ~ WithMultiplicity.invalid config -> ~gathered_at (get_location (config id)) config ->
   exists gmove, forall da, SSYNC_da da -> List.In gmove (active da) -> List.In gmove (moving gatherR da config).
-Proof.
+Proof using size_G.
 intros config id Hinvalid Hgather.
 destruct (support (max (!! config))) as [| pt [| pt' l]] eqn:Hmaj.
 * elim (support_max_non_nil _ Hmaj).
@@ -1510,8 +1529,8 @@ Qed.
 
 (* Given a k-fair demon, in any non gathered, non invalid configuration, a robot will be the first to move. *)
 Theorem Fair_FirstMove : forall (d : similarity_demon), SSYNC (similarity_demon2demon d) -> Fair d ->
-  forall config id, ~invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR d config.
-Proof.
+  forall config id, ~WithMultiplicity.invalid config -> ~gathered_at (get_location (config id)) config -> FirstMove gatherR d config.
+Proof using size_G.
 intros d HSSYNC Hfair config id Hinvalid Hgathered.
 destruct (OneMustMove id Hinvalid Hgathered) as [gmove Hmove].
 destruct Hfair as [locallyfair Hfair].
@@ -1535,7 +1554,7 @@ Qed.
 
 Lemma gathered_at_forever : forall da, SSYNC_da da -> forall config pt,
   gathered_at pt config -> gathered_at pt (round gatherR da config).
-Proof.
+Proof using size_G.
 intros da Hda config pt Hgather. rewrite (round_simplify_Majority).
 + intro g. destruct (da.(activate) (Good g)); reflexivity || apply Hgather.
 + assumption.
@@ -1552,14 +1571,14 @@ Qed.
 
 Lemma gathered_at_OK : forall (d : similarity_demon) config pt,
   SSYNC (similarity_demon2demon d) -> gathered_at pt config -> Gather pt (execute gatherR d config).
-Proof.
+Proof using size_G.
 cofix Hind. intros d config pt [] Hgather. constructor.
 + clear Hind. apply Hgather.
 + cbn. apply Hind; trivial; []. now apply gathered_at_forever.
 Qed.
 
-Theorem Gathering_in_R : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> ValidSolGathering gatherR d.
-Proof.
+Theorem Gathering_in_R : forall d, SSYNC (similarity_demon2demon d) -> Fair d -> WithMultiplicity.ValidSolGathering gatherR d.
+Proof using size_G.
 intro d. generalize (similarity_demon2prop d).
 generalize (similarity_demon2demon d). clear d.
 intros d Hprop HSSYNC Hfair config.

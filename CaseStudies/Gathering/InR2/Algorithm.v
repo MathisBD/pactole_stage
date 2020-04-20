@@ -30,18 +30,26 @@ Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import FunInd.
+
+(* Pactole basic definitions *)
+Require Export Pactole.Setting.
+(* Specific to R^2 topology *)
 Require Import Pactole.Spaces.R2.
-(* For at least Names *)
+(* Specific to gathering *)
+Require Pactole.CaseStudies.Gathering.WithMultiplicity.
 Require Import Pactole.CaseStudies.Gathering.Definitions.
+(* Specific to multiplicity *)
 Require Import Pactole.Observations.MultisetObservation.
+(* Specific to rigidity *)
 Require Import Pactole.Models.Rigid.
+
+(* User defined *)
 Import Permutation.
-Import Pactole.Spaces.Similarity.
 Import Datatypes. (* to recover [id] *)
+
 Set Implicit Arguments.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
-Require Pactole.CaseStudies.Gathering.WithMultiplicity.
 
 
 (** *  The Gathering Problem  **)
@@ -464,7 +472,10 @@ assert (Hsup : Permutation (support (!! config)) (pt1 :: pt2 :: nil)).
 assert (Hpt : pt = pt1 \/ pt = pt2).
 { assert (Hin : List.In pt (pt1 :: pt2 :: nil)).
   { rewrite <- Hsup, <- InA_Leibniz. change eq with (@equiv location _).
-    rewrite support_spec, <- (max_subset (!! config)), <- support_spec, Hmaj.
+    rewrite support_spec.
+    setoid_rewrite <- (max_subset (!! config)).
+    rewrite <- support_spec.
+    setoid_rewrite Hmaj.
     now left. }
 inversion_clear Hin; auto. inversion_clear H0; auto. inversion H1. }
 apply (lt_irrefl (Nat.div2 nG)). destruct Hpt; subst pt.
@@ -1207,7 +1218,7 @@ Corollary same_destination : forall (config : configuration) id1 id2,
   List.In id1 (moving gatherR2 da config) -> List.In id2 (moving gatherR2 da config) ->
   round gatherR2 da config id1 == round gatherR2 da config id2.
 Proof using Hssync.
-intros config id1 id2 Hmove1 Hmove2. apply WithMultiplicity.no_info.
+intros config id1 id2 Hmove1 Hmove2. changeR2. apply WithMultiplicity.no_info.
 destruct (le_lt_dec 2 (length (support (max (!! config))))) as [Hle |Hlt].
 + assert (no_Majority config). { unfold no_Majority. now rewrite size_spec. }
   now repeat rewrite destination_is_target.
@@ -1322,7 +1333,7 @@ destruct (@increase_move gatherR2 config x) as [r_moving [Hdest_rmoving Hrmoving
     assert (Hperm : PermutationA equiv (support (max (!! config))) (x :: nil)) by now rewrite H.
     rewrite support_1 in Hperm.
     destruct Hperm as [_ Hperm].
-    destruct (max_case (!! config) x); omega.
+    destruct (max_case (!! config) x); changeR2; omega.
 Qed.
 
 Lemma incl_clean_next : forall config,
@@ -1976,7 +1987,7 @@ replace (middle bary ptdiam) with (R2.center (SEC (support (!! (round gatherR2 d
 + rewrite dist_sym.
   apply max_dist_le.
   now rewrite InA_Leibniz in abs.
-+ now rewrite h_diameter_after.
++ changeR2. now rewrite h_diameter_after.
 Qed.
 
 (* Extracting nodupA and ~InA consequences (in terms of <>) *)
