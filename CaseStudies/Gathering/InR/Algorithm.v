@@ -32,7 +32,8 @@ Require Export Pactole.Setting.
 Require Import Pactole.Spaces.R.
 (* Specific to gathering *)
 Require Pactole.CaseStudies.Gathering.WithMultiplicity.
-Require Pactole.CaseStudies.Gathering.Definitions.
+(* I don't like this Import, but gathered_at is too frequent *)
+Require Import Pactole.CaseStudies.Gathering.Definitions.
 (* Specific to multiplicity *)
 Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Similarity.
@@ -1436,9 +1437,9 @@ Proof.
 exists 0. abstract (generalize size_G; intro; omega).
 Defined.
 
-Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) gathered_at.
+Instance gathered_at_compat : Proper (equiv ==> equiv ==> iff) Definitions.gathered_at.
 Proof using .
-intros ? pt Hpt config1 config2 Hconfig. simpl in Hpt. subst. unfold gathered_at.
+intros ? pt Hpt config1 config2 Hconfig. simpl in Hpt. subst. unfold Definitions.gathered_at.
 split; intros H g; rewrite <- (H g); idtac + symmetry; apply Hconfig.
 Qed.
 

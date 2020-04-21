@@ -25,6 +25,7 @@ Require Import Pactole.Models.Flexible.
 Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
+Require Import Pactole.CaseStudies.Gathering.Definitions.
 
 
 Import Permutation.
@@ -66,6 +67,7 @@ Ltac changeR2 :=
 
 (** We are in a flexible formalism with no other info than the location,
     so the demon only chooses the move ratio. *)
+Instance Info : State location := OnlyLocation (fun _ => True).
 Instance FlexChoice : update_choice ratio := Flexible.OnlyFlexible.
 (* NB: The inactive instance actually does not matter since we are in a FSYNC setting,
        so we could instead leave it as a parameter. *)
@@ -155,7 +157,7 @@ Proof using size_G. intro. rewrite support_nil. apply obs_non_nil. Qed.
 (* We need to unfold [obs_is_ok] for rewriting *)
 Definition obs_from_config_spec : forall (config : configuration) pt,
   (!! config)[pt] = countA_occ equiv equiv_dec pt (List.map get_location (config_list config))
-  := obs_from_config_spec.
+  := WithMultiplicity.obs_from_config_spec.
 
 
 (** **  Definition of the robogram  **)

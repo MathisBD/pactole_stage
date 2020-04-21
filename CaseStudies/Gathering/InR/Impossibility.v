@@ -54,6 +54,7 @@ Remove Hints R_VS R_ES : typeclass_instances.
 Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.
+Instance Info : State location := OnlyLocation (fun _ => True).
 Instance UpdFun : update_function location (Similarity.similarity location) unit := {
   update := fun _ _ _ target _ => target;
   update_compat := ltac:(now repeat intro) }.
@@ -62,7 +63,7 @@ Instance InaFun : inactive_function unit := {
   inactive_compat := ltac:(repeat intro; subst; auto) }.
 (* This update function is indeed rigid. *)
 Instance Rigid : RigidSetting.
-Proof. split. intros. simpl. reflexivity. Qed.
+Proof using . split. intros. simpl. reflexivity. Qed.
 
 (* Trying to avoid notation problem with implicit arguments *)
 Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "s [ x ]").
@@ -73,14 +74,14 @@ Implicit Type config : configuration.
 Implicit Type da : demonic_action.
 
 Lemma nG_ge_2 : 2 <= nG.
-Proof.
+Proof using even_nG nG_non_0.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
 inversion Heven. simpl.
 destruct n as [| [| ?]]; omega.
 Qed.
 
 Lemma half_size_config : Nat.div2 nG > 0.
-Proof.
+Proof using even_nG nG_non_0.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
 simpl. destruct n as [| [| ?]].
 - omega.
@@ -94,7 +95,7 @@ Definition obs_from_config_spec : forall config (pt : location),
   := obs_from_config_spec.
 
 Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
-Proof.
+Proof using nG_non_0.
 intros [g | b] P HP.
 + apply HP.
 + destruct b. omega.
@@ -102,11 +103,11 @@ Qed.
 
 Lemma no_byz_eq : forall config1 config2,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) -> config1 == config2.
-Proof. intros config1 config2 Heq id. apply (no_byz id), Heq. Qed.
+Proof using nG_non_0. intros config1 config2 Heq id. apply (no_byz id), Heq. Qed.
 
 Definition mk_info : location -> location := id.
 Lemma mk_info_get_location : forall pt, get_location (mk_info pt) == pt.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 (* To avoid passing the [nB = 0] argument each time. *)
 Definition invalid_dec := invalid_dec (reflexivity nB).
@@ -115,7 +116,7 @@ Definition invalid_dec := invalid_dec (reflexivity nB).
 Lemma obs_makes_config_list : forall config : configuration,
   PermutationA equiv (List.map get_location (config_list config))
                      (List.fold_right (fun '(x, n) acc => alls x n ++ acc) nil (elements (!! config))).
-Proof.
+Proof using nG_non_0.
 intro config.
 unfold obs_from_config. cbn -[get_location config_list elements equiv location].
 unfold make_multiset.
@@ -180,24 +181,24 @@ Qed.
 Definition Always_invalid (e : execution) := Stream.forever (Stream.instant invalid) e.
 
 Instance Always_invalid_compat : Proper (equiv ==> iff) Always_invalid.
-Proof. apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat. Qed.
+Proof using . apply Stream.forever_compat, Stream.instant_compat. apply invalid_compat. Qed.
 
 (** **  Linking the different properties  **)
 
 Theorem different_no_gathering : forall (e : execution),
   Always_invalid e -> ~WillGather e.
-Proof.
+Proof using even_nG nG_non_0.
 intros e He Habs. induction Habs as [e Habs | e].
 + destruct Habs as [pt [Hnow Hlater]]. destruct He as [Hinvalid He].
   destruct Hinvalid as [_ [_ [pt1 [pt2 [Hdiff [Hin1 Hin2]]]]]].
   apply Hdiff. transitivity pt.
   - assert (Hin : In pt1 (!! (Stream.hd e))).
-    { unfold In. rewrite Hin1. now apply half_size_config. }
+    { unfold In. setoid_rewrite Hin1. now apply half_size_config. }
     rewrite obs_from_config_In in Hin.
     destruct Hin as [id Hin]. rewrite <- Hin.
     apply (no_byz id). intro g. now unfold gathered_at in Hnow; specialize (Hnow g).
   - assert (Hin : In pt2 (!! (Stream.hd e))).
-    { unfold In. rewrite Hin2. now apply half_size_config. }
+    { unfold In. setoid_rewrite Hin2. now apply half_size_config. }
     rewrite obs_from_config_In in Hin.
     destruct Hin as [id Hin]. rewrite <- Hin.
     symmetry. apply (no_byz id). intro g. apply Hnow.
@@ -219,7 +220,7 @@ Local Opaque G B.
     the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
-Proof. exists 0. generalize nG_non_0. intro. omega. Qed.
+Proof using nG_non_0. exists 0. generalize nG_non_0. intro. omega. Qed.
 
 (** *  Proof of the impossiblity of gathering  **)
 
@@ -239,7 +240,7 @@ Definition observation0 : observation := add 0 (Nat.div2 nG) (singleton 1 (Nat.d
 (* The order constraint is required to ensure that we do not swap both points. *)
 Theorem invalid_obs : forall config, invalid config -> forall g,
   { sim : similarity location | !! config == map sim observation0 & sim origin == get_location (config (Good g)) }.
-Proof.
+Proof using nG_non_0.
 intros config Hconfig g.
 destruct (invalid_strengthen (reflexivity _) Hconfig) as [pt1 [pt2 Hdiff Hobs]].
 assert (H01 : 0 =/= 1) by (simpl; lra).
@@ -267,7 +268,7 @@ Lemma invalid_obs_compat : forall config1 config2 (H1 : invalid config1) (H2 : i
   config1 == config2 ->
   forall g h, get_location (config1 (Good g)) == get_location (config2 (Good h)) ->
   proj1_sig2 (invalid_obs H1 g) == proj1_sig2 (invalid_obs H2 h).
-Proof.
+Proof using even_nG.
 intros config1 config2 H1 H2 Heq g h Hgh.
 destruct (invalid_obs H1 g) as [sim1 Hsim1],
          (invalid_obs H2 h) as [sim2 Hsim2].
@@ -295,7 +296,7 @@ Qed.
 
 Theorem invalid_reverse : forall (sim : similarity location) config,
   !! config == map sim observation0 -> invalid config.
-Proof.
+Proof using even_nG nG_non_0.
 intros sim config Hsim.
 assert (Hcardinal := cardinal_obs_from_config config origin).
 assert (Heven : Nat.Even nG).
@@ -322,10 +323,10 @@ repeat split; trivial; [|].
 Qed.
 
 Lemma neq_0_1 : 0 =/= 1.
-Proof. simpl. lra. Qed.
+Proof using . simpl. lra. Qed.
 
 Lemma neq_1_0 : 1 =/= 0.
-Proof. simpl. lra. Qed.
+Proof using . simpl. lra. Qed.
 
 (** The movement of robots in the reference configuration. *)
 Definition move := r observation0.
@@ -350,7 +351,7 @@ Definition change_frame1 config (g : G) :=
   end.
 
 Instance change_frame1_compat : Proper (equiv ==> Logic.eq ==> equiv) change_frame1.
-Proof.
+Proof using even_nG.
 unfold change_frame1. intros config1 config2 Heq gg g ?. subst gg.
 destruct (invalid_dec config1) as [H1 | ?],
          (invalid_dec config2) as [H2 | ?];
@@ -378,7 +379,7 @@ Definition da1 : demonic_action := {|
 Definition bad_demon1 : demon := Stream.constant da1.
 
 Lemma kFair_bad_demon1 : kFair 0 bad_demon1.
-Proof. coinduction bad_fair1. intros id1 id2. now constructor. Qed.
+Proof using . coinduction bad_fair1. intros id1 id2. now constructor. Qed.
 
 (* It is a more restricted version where we assume that the starting configuration is invalid. *)
 Lemma round_simplify1 : forall config pt1 pt2,
@@ -388,7 +389,7 @@ Lemma round_simplify1 : forall config pt1 pt2,
                           | Good g => mk_info (if get_location (config (Good g)) =?= pt1 then pt2 else pt1)
                           | Byz b => mk_info 0
                         end.
-Proof.
+Proof using Hmove.
 intros config pt1 pt2 Hdiff Hobs.
 assert (Hcase : forall id, get_location (config id) = pt1 \/ get_location (config id) = pt2).
 { intro id. assert (Hin := pos_in_config config origin id).
@@ -437,7 +438,7 @@ destruct (invalid_dec config) as [Hvalid | Hvalid].
 Qed.
 
 Lemma invalid_da1_next : forall config, invalid config -> invalid (round r da1 config).
-Proof.
+Proof using Hmove.
 intros config Hvalid.
 destruct (invalid_strengthen (reflexivity _) Hvalid) as [pt1 [pt2 Hdiff Hobs]].
 (* As [config] is invalid, all robots are only on two locations. *)
@@ -468,7 +469,7 @@ Qed.
    equal to the one you want, then apply the cofixpoint before performing the required rewrites. *)
 Theorem Always_invalid1 : forall config, invalid config ->
   Always_invalid (execute r bad_demon1 config).
-Proof.
+Proof using Hmove.
 coinduction differs.
 + now simpl.
 + cbn. now apply invalid_da1_next.
@@ -483,7 +484,7 @@ Section MoveNot1.
 Hypothesis Hmove : move <> 1.
 
 Lemma minus_1_move : 1 - move <> 0.
-Proof. apply Rminus_eq_contra. intro. now apply Hmove. Qed.
+Proof using Hmove. apply Rminus_eq_contra. intro. now apply Hmove. Qed.
 
 Hint Immediate minus_1_move : core.
 
@@ -513,7 +514,7 @@ Instance select_tower_compat : forall A (eqA : relation A) b_g0 b,
   (forall pt1 pt2 pt1' pt2' (Hdiff : pt1 =/= pt2) (Hdiff' : pt1' =/= pt2'),
      pt1 == pt1' -> pt2 == pt2' -> eqA (b pt1 pt2 Hdiff) (b pt1' pt2' Hdiff')) ->
   Proper (eqA ==> @equiv configuration _ ==> eq ==> eqA) (select_tower b_g0 b).
-Proof.
+Proof using even_nG.
 intros A eqA b_g0 b Hb_g0 Hb default1 default2 Hdefault config1 config2 Hconfig gg g ?. subst gg.
 unfold select_tower.
 destruct (invalid_dec config1) as [Hvalid1 | Hvalid1],
@@ -560,7 +561,7 @@ Lemma select_tower_case_1' : forall {A} `{Setoid A} b1 b2 (d : A) pt config id
   (forall pt1 pt2 (Hdiff Hdiff' : pt1 =/= pt2), b1 pt1 pt2 Hdiff == b1 pt1 pt2 Hdiff') ->
   get_location (config id) == get_location (config (Good g0)) ->
   select_tower b1 b2 d config id == b1 (get_location (config (Good g0))) pt Hdiff.
-Proof.
+Proof using even_nG.
 intros A ? b1 b2 d pt config id Hdiff Hobs Hb1 Hcase.
 unfold select_tower.
 destruct (invalid_dec config) as [Hvalid | Hvalid].
@@ -590,7 +591,7 @@ Lemma select_tower_case_1 : forall {A} b1 b2 (d : A) config id,
   get_location (config id) == get_location (config (Good g0)) ->
   exists pt Hdiff, select_tower b1 b2 d config id = b1 (get_location (config (Good g0))) pt Hdiff
                 /\ In pt (!! config).
-Proof.
+Proof using even_nG.
 intros A b1 b2 d config id ? Hcase.
 unfold select_tower.
 destruct (invalid_dec config) as [Hvalid | Hvalid].
@@ -615,7 +616,7 @@ Lemma select_tower_case_2 : forall {A} b1 b2 (d : A) config id,
   get_location (config id) =/= get_location (config (Good g0)) ->
   exists Hdiff,
     select_tower b1 b2 d config id = b2 (get_location (config (Good g0))) (get_location (config id)) Hdiff.
-Proof.
+Proof using .
 intros A b1 b2 d config id ? Hdiff.
 unfold select_tower.
 destruct (invalid_dec config) as [Hvalid | Hvalid].
@@ -633,13 +634,13 @@ Qed.
 
 Lemma select_tower_default : forall {A} b1 b2 (d : A) config id,
   ~invalid config -> select_tower b1 b2 d config id = d.
-Proof. intros A b1 b2 d config id Hvalid. unfold select_tower. destruct_match; tauto. Qed.
+Proof using . intros A b1 b2 d config id Hvalid. unfold select_tower. destruct_match; tauto. Qed.
 
 (** Using [select_tower], we define activation and change of frame. *)
 Definition activate2 (b1 b2 : bool) := select_tower (fun _ _ _ => b1) (fun _ _ _ => b2) true.
 
 Instance activate2_compat : forall b1 b2, Proper (equiv ==> eq ==> eq) (activate2 b1 b2).
-Proof. intros. unfold activate2. now apply select_tower_compat. Qed.
+Proof using even_nG. intros. unfold activate2. now apply select_tower_compat. Qed.
 
 Definition change_frame2 (config : configuration) (g : G) : similarity location :=
   select_tower
@@ -650,7 +651,7 @@ Definition change_frame2 (config : configuration) (g : G) : similarity location 
     (Good g).
 
 Instance change_frame2_compat : Proper (equiv ==> eq ==> equiv) change_frame2.
-Proof.
+Proof using even_nG.
 intros config1 config2 Hconfig g1 g2 Hg. unfold change_frame2.
 cut (Good g1 = Good g2); try congruence; [].
 generalize (Good g1), (Good g2). revert config1 config2 Hconfig.
@@ -699,7 +700,7 @@ Lemma round_simplify2_left : forall config (sim : similarity location),
                  | Good g => mk_info (if get_location (config (Good g)) =?= sim origin then sim move else sim 1)
                  | Byz b => mk_info 0
                end.
-Proof.
+Proof using .
 intros config sim Hobs Hsim0.
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
@@ -745,7 +746,7 @@ Qed.
 
 Lemma invalid_da2_left_next : forall config,
   invalid config -> invalid (round r (da2_left config) config).
-Proof.
+Proof using Hmove.
 intros config Hvalid.
 destruct (invalid_obs Hvalid g0) as [sim Hobs Hsim0].
 assert (Hdiff_move : sim move =/= sim 1).
@@ -777,7 +778,7 @@ Qed.
 Lemma da2_left_injective : forall config, invalid config -> forall g1 g2,
   get_location (round r (da2_left config) config g1) == get_location (round r (da2_left config) config g2)
   <-> get_location (config g1) == get_location (config g2).
-Proof.
+Proof using Hmove.
 intros config Hvalid id1 id2.
 pattern id2. apply no_byz. pattern id1. apply no_byz. clear id1 id2. intros g1 g2.
 destruct (invalid_obs Hvalid g0) as [sim Hobs Hsim0].
@@ -800,7 +801,7 @@ Lemma round_simplify2_right : forall config (sim : similarity location),
                  | Good g => mk_info (if get_location (config (Good g)) =?= sim 1 then sim 1 else sim move)
                  | Byz b => mk_info 0
                end.
-Proof.
+Proof using .
 intros config sim Hobs Hsim1.
 apply no_byz_eq. intro g.
 rewrite mk_info_get_location.
@@ -845,7 +846,7 @@ Qed.
 
 Lemma invalid_da2_right_next : forall config,
   invalid config -> invalid (round r (da2_right config) config).
-Proof.
+Proof using Hmove.
 intros config Hvalid.
 destruct (invalid_strengthen (reflexivity _) Hvalid) as [pt1 [pt2 Hdiff Hobs]].
 (* As [config] is invalid, all robots are only on two locations. *)
@@ -902,7 +903,7 @@ Qed.
 Lemma da2_right_injective : forall config, invalid config -> forall g1 g2,
   get_location (round r (da2_right config) config g1) == get_location (round r (da2_right config) config g2)
   <-> get_location (config g1) == get_location (config g2).
-Proof.
+Proof using Hmove.
 intros config Hvalid id1 id2.
 pattern id2. apply no_byz. pattern id1. apply no_byz. clear id1 id2. intros g1 g2.
 destruct (invalid_strengthen (reflexivity _) Hvalid) as [pt1 [pt2 Hdiff Hobs]].
@@ -947,7 +948,7 @@ CoFixpoint bad_demon2 config : demon :=
 
 Theorem Always_invalid2 : forall config, invalid config ->
   Always_invalid (execute r (bad_demon2 config) config).
-Proof.
+Proof using Hmove.
 cofix differs. intros config Hconfig.
 constructor; [| constructor]; cbn.
 - (* Inital state *)
@@ -959,7 +960,7 @@ constructor; [| constructor]; cbn.
 Qed.
 
 Theorem kFair_bad_demon2 : forall config, invalid config -> kFair 1 (bad_demon2 config).
-Proof.
+Proof using Hmove.
 cofix fair_demon. intros config Hconfig.
 constructor; [| constructor].
 * clear fair_demon.
@@ -1037,7 +1038,7 @@ destruct (Rdec move 1) as [Hmove | Hmove].
 Defined.
 
 Theorem kFair_bad_demon : forall config, invalid config -> kFair 1 (bad_demon config).
-Proof.
+Proof using .
 intros. unfold bad_demon.
 destruct (Rdec move 1).
 - apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega.
@@ -1045,7 +1046,7 @@ destruct (Rdec move 1).
 Qed.
 
 Theorem kFair_bad_demon' : forall k config, (k>=1)%nat -> invalid config -> kFair k (bad_demon config).
-Proof.
+Proof using .
 intros.
 eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
@@ -1062,7 +1063,7 @@ Theorem noGathering :
   forall config, invalid config ->
   exists d, kFair k d
          /\ ~WillGather (execute r d config).
-Proof.
+Proof using even_nG nG_non_0.
 intros k Hk config Hvalid. exists (bad_demon config).
 split.
 + now apply kFair_bad_demon'.
