@@ -79,7 +79,6 @@ Existing Instance R2_RMS. *)
 Instance Loc : Location := make_Location R2.
 Instance VS : RealVectorSpace location := R2_VS.
 Instance ES : EuclideanSpace location := R2_ES.
-Remove Hints R2_VS R2_ES : typeclass_instances.
 Instance RobotChoice : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance ActiveChoice : update_choice unit := NoChoice.
 Instance InactiveChoice : inactive_choice unit := { inactive_choice_EqDec := unit_eqdec }.

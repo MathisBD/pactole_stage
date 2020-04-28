@@ -67,7 +67,7 @@ Existing Instance R_RMS. *)
 Instance Loc : Location := make_Location R.
 Instance VS : RealVectorSpace location := R_VS.
 Instance ES : EuclideanSpace location := R_ES.
-Remove Hints R_VS R_ES : typeclass_instances.
+
 (* We are in a rigid formalism with no other info than the location,
    so the demon makes no choice. *)
 (* location_setoid uses R_setoid *)
@@ -97,9 +97,7 @@ Arguments origin : simpl never.
 Ltac changeR :=
   change R with location in *;
   change R_Setoid with location_Setoid in *;
-  change R_EqDec with location_EqDec in *;
-  change R_VS with VS in *;
-  change R_ES with ES in *.
+  change R_EqDec with location_EqDec in *.
 
 Lemma similarity_middle : forall (sim : similarity R) x y, (sim ((x + y) / 2) = (sim x + sim y) / 2)%R.
 Proof using .

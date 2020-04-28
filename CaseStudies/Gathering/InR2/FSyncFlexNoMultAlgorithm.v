@@ -50,7 +50,7 @@ Instance MyRobots : Names := Robots n 0.
 Instance Loc : Location := make_Location R2.
 Instance Loc_VS : @RealVectorSpace location location_Setoid location_EqDec := R2_VS.
 Instance Loc_ES : @EuclideanSpace location location_Setoid location_EqDec Loc_VS := R2_ES.
-Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
+Remove Hints R2_Setoid R2_EqDec : typeclass_instances.
 
 Instance Info : State location := OnlyLocation (fun _ => True).
 

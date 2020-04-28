@@ -50,6 +50,7 @@ Instance MyRobots : Names := Robots (2 * n) n.
 
 (** The space is R, and it is a Euclidean space. *)
 Instance Loc : Location := make_Location R.
+Instance location_VS : RealVectorSpace location := R_VS.
 Instance location_ES : EuclideanSpace location := R_ES.
 (** Robots compute a target location. *)
 Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.

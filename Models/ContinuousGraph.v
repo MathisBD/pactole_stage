@@ -307,7 +307,7 @@ Proof using . intro. simpl. repeat (split; try reflexivity). Qed.
 
 (** The precondition for liftable changes of frame is that they must come from isomorphisms
     (which must not change the thresholds). *)
-Global Instance InfoV : @State LocationV stateV.
+Local Instance InfoV : @State LocationV stateV.
 simple refine {|
   get_location := fun state => fst (proj1_sig state);
   state_Setoid := stateV_Setoid;
@@ -401,7 +401,7 @@ unfold compose_precondition.
 destruct x; simpl; repeat split; reflexivity.
 Qed.
 
-Global Instance InfoG : @State LocationG stateG.
+Local Instance InfoG : @State LocationG stateG.
 simple refine {|
   get_location := stateG2loc;
   state_Setoid := stateG_Setoid;

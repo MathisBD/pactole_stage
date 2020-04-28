@@ -22,6 +22,8 @@ Typeclasses eauto := (bfs).
 (* Avoid problems with previous instances. *)
 Remove Hints eq_setoid : typeclass_instances.
 
+Local Existing Instance R2.R2_VS.
+Local Existing Instance R2.R2_ES.
 
 Section RDV.
 

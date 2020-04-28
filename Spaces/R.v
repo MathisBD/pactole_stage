@@ -42,7 +42,7 @@ Typeclasses eauto := (bfs).
 
 
 (** R as a Euclidean space over itself. *)
-Instance R_VS : RealVectorSpace R.
+Local Instance R_VS : RealVectorSpace R.
 refine {| origin := 0;
           one := 1;
           add := Rplus;
@@ -53,7 +53,7 @@ all:try now intros; cbn; field.
 apply R1_neq_R0.
 Defined.
 
-Instance R_ES : EuclideanSpace R.
+Local Instance R_ES : EuclideanSpace R.
 refine {| inner_product := Rmult |}.
 Proof.
 * apply Rmult_comm.

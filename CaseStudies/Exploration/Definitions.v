@@ -37,10 +37,7 @@ Notation ring_node := (finite_node ring_size).
 Context {Robots : Names}.
 
 (** Robots are on nodes *)
-Global Instance Loc : Location := {
-  location := ring_node;
-  location_Setoid := V_Setoid;
-  location_EqDec := V_EqDec (Graph := localRing) }.
+Global Instance Loc : Location := make_Location ring_node.
 
 (** Robot only decide in which direction they want to move *)
 Global Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.

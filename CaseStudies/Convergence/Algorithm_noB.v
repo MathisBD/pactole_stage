@@ -48,7 +48,7 @@ Instance MyRobots : Names := Robots n 0.
 Instance Loc : Location := {| location := R2 |}.
 Instance Loc_VS : RealVectorSpace location := R2_VS.
 Instance Loc_ES : EuclideanSpace location := R2_ES.
-Remove Hints R2_Setoid R2_EqDec R2_VS R2_ES : typeclass_instances.
+Remove Hints R2_Setoid R2_EqDec : typeclass_instances.
 Instance Info : State location := OnlyLocation (fun _ => True).
 Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance FDC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
