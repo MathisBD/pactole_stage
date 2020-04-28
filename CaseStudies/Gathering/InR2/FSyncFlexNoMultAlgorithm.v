@@ -48,8 +48,8 @@ Hypothesis size_G : (2 <= n)%nat.
 Instance MyRobots : Names := Robots n 0.
 
 Instance Loc : Location := make_Location R2.
-Instance Loc_VS : @RealVectorSpace location location_Setoid location_EqDec := R2_VS.
-Instance Loc_ES : @EuclideanSpace location location_Setoid location_EqDec Loc_VS := R2_ES.
+Local Existing Instance R2_VS.
+Local Existing Instance R2_ES.
 Remove Hints R2_Setoid R2_EqDec : typeclass_instances.
 
 Instance Info : State location := OnlyLocation (fun _ => True).
@@ -63,9 +63,7 @@ Ltac changeR2 :=
   change R2_Setoid with location_Setoid in *;
   change state_Setoid with location_Setoid in *;
   change R2_EqDec with location_EqDec in *;
-  change state_EqDec with location_EqDec in *;
-  change R2_VS with Loc_VS in *;
-  change R2_ES with Loc_ES in *.
+  change state_EqDec with location_EqDec in *.
 
 
 (** We are in a flexible formalism with no other info than the location,
@@ -199,7 +197,11 @@ Lemma max_dist_obs_le :
     InA equiv pt0 (elements s) ->
     InA equiv pt1 (elements s) ->
     dist pt0 pt1 <= max_dist_obs s.
-Proof using . intros. now apply max_dist_list_list_le. Qed.
+Proof using .
+  intros.
+  unfold max_dist_obs.
+  now apply max_dist_list_list_le.
+Qed.
 
 Lemma max_dist_obs_ex :
   forall (s : observation),
@@ -208,7 +210,7 @@ Lemma max_dist_obs_ex :
       InA equiv pt0 (elements s)
       /\ InA equiv pt1 (elements s)
       /\ dist pt0 pt1 = max_dist_obs s.
-Proof using . intros. now apply max_dist_list_list_ex. Qed.
+Proof using . intros. unfold max_dist_obs. now apply max_dist_list_list_ex. Qed.
 
 
 (** **  Main result for termination: the measure decreases after a step where a robot moves  *)
