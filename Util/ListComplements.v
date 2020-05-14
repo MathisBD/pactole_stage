@@ -472,11 +472,21 @@ intros f f' Hf l l' Hl. subst l'. induction l.
 - simpl. destruct (f a) eqn:Hfa; rewrite <- (Hf a), <- IHl, Hfa; reflexivity.
 Qed.
 
-Global Instance existsb_compat : Proper ((eq ==> eq) ==> eq ==> eq) (@existsb A).
+Global Instance existsb_compat (equivA : A -> A -> Prop) : Proper ((equivA ==> equiv) ==> (eqlistA equivA) ==> eq) (@existsb A).
 Proof using .
-intros f f' Hf l l' Hl. subst l'. induction l.
-- reflexivity.
-- simpl. destruct (f a) eqn:Hfa; rewrite <- (Hf a), <- IHl, Hfa; reflexivity.
+intros f f' Hf l l' Hl. simpl in Hl.
+  unfold existsb. 
+  induction Hl.
+  - reflexivity.
+  - rewrite (Hf x x'). case (f' x'). now simpl.
+    case ((fix existsb (l0 : list A) : bool :=
+        match l0 with
+        | nil => false
+        | a :: l1 => f a || existsb l1
+        end) l) eqn : Hcase;
+    rewrite <- IHHl;
+    auto.
+    auto. 
 Qed.
 
 Theorem existsb_forallb : forall (f : A -> bool) l,
@@ -492,8 +502,12 @@ Qed.
 Lemma forallb_existsb : forall (f : A -> bool) l,
   negb (existsb f l) = forallb (fun x : A => negb (f x)) l.
 Proof using .
-intros. rewrite <- negb_involutive, existsb_forallb. f_equal. f_equiv.
-repeat intro. subst. now rewrite negb_involutive.
+intros. rewrite <- negb_involutive, existsb_forallb. f_equal.
+  induction l as [| x l].
++ reflexivity.
++ simpl. destruct (f x) eqn:Hfx; simpl.
+  - reflexivity.
+  - simpl. apply IHl.
 Qed.
 
 (** ***  Results about [PermutationA]  **)

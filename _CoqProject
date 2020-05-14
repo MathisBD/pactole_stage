@@ -83,3 +83,6 @@ CaseStudies/Gathering/InR2/Viglietta.v
 CaseStudies/Exploration/Definitions.v
 CaseStudies/Exploration/ImpossibilityKDividesN.v
 CaseStudies/Exploration/Tower.v
+
+## Case Study: Volume
+CaseStudies/Volumes/NoCollisionAndPath.v
