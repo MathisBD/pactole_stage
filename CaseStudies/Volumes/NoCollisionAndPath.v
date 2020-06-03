@@ -10445,10 +10445,6 @@ Proof.
   unfold get_light in *; simpl in *; rewrite Hoff in *; discriminate.
 Qed.
 
-
-Definition demon_pred (demon : demon_ila_type) :=
-  @Stream.forever da_ila (Stream.instant (fun da => da_predicat da)) demon.
-
 Definition NoCollAndPath e := 
     Stream.forever (Stream.instant (fun conf => no_collision_conf conf /\ path_conf conf )) e.
 
@@ -10507,8 +10503,8 @@ Axiom config_init_pred_true : config_init_pred config_init.
 
 Lemma validity:
   forall(demon : demon_ila_type) conf,
-  conf_pred conf ->  
-  demon_pred demon ->
+    conf_pred conf ->
+    demon_ILA demon ->
   NoCollAndPath (execute rbg_ila demon conf).
 Proof.
   cofix Hcoind. constructor.
@@ -10531,7 +10527,7 @@ Proof.
 Qed.
 
 Lemma validity_conf_init:
-  forall demon, demon_pred demon ->
+  forall demon, demon_ILA demon ->
                 NoCollAndPath (execute rbg_ila demon config_init).
 Proof.
   intros.
