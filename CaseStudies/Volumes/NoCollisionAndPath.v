@@ -7006,6 +7006,7 @@ Lemma exists_at_less_round :   forall conf da,
     executed_means_light_on conf ->
     exists_at_less_that_Dp conf ->
     exists_at_less_that_Dp (round rbg_ila da conf).      
+Proof.
   intros conf da Hpred Hpath Hcol Hexecutioner Hexecuted Hexists.
   assert (Hexecuted_round := executed_means_light_on_round Hpred Hpath Hcol Hexecutioner Hexecuted Hexists).
   assert (Hexecutioner_round := executioner_means_light_off_round Hpred Hpath Hcol Hexecutioner Hexecuted Hexists).
