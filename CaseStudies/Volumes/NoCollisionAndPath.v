@@ -10541,3 +10541,12 @@ Proof.
   now apply exists_at_less_that_Dp_init.
   auto.
 Qed.
+
+(* on  a une base, qui envoie des robots : exists g, get_location (conf (Good g)) = (0,0)%R /\ get_alive (conf (Good g)) = true /\ (forall g', get_alive (conf (Good g')) -> get_ident (conf (Good g)) >= get_ident (conf (Good g'))).
+
+ceci ne marche pas comme ça, car il reste le problème de l'élimination sur la base, et le fait que la base en elle même ne puisse pas bouger.
+
+a voir une autre fois
+
+ on veut prouver qu'il existe toujours un robot à moins de Dp de (0,0). donc il faut en faire sortir de la base.
+  *)
