@@ -1301,6 +1301,18 @@ split.
   - now apply Always_invalid2.
 Qed.
 
+(** We can weaken the previous result to only proving that the demon is fair.
+    This way, the statement is exactly complementary to the algorithm in InR2/Algorithm.v *)
+Theorem noGathering_Fair :
+  forall config, WithMultiplicity.invalid config ->
+  exists d, Fair d /\ ~WillGather (execute r d config).
+Proof using build_similarity_compat build_similarity_eq1 build_similarity_eq2 build_similarity_inverse even_nG nG_non_0.
+intros config Hvalid.
+destruct (noGathering ltac:(reflexivity) Hvalid) as [d [Hfair HnotGather]].
+exists d. split; trivial; [].
+eauto using kFair_Fair.
+Qed.
+
 End ImpossibilityProof.
 
 Print Assumptions noGathering.

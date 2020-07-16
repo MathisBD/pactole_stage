@@ -33,8 +33,12 @@ Instance Robots : Names := Robots kG 0.
 
 (** Assumptions on the number of robots: it is non zero, less than and divides the ring size. *)
 Hypothesis kdn : (ring_size mod kG = 0)%nat.
-Hypothesis k_inf_n : (kG < ring_size)%nat.
+(* This version triggers an "out of memory" error in the Program Definition of [da]!
+Hypothesis k_bounds : (1 < kG < ring_size)%nat.
+Definition k_sup_1 : (1 < kG)%nat := proj1 k_bounds.
+Definition k_inf_n : (kG < ring_size)%nat := proj2 k_bounds. *)
 Hypothesis k_sup_1 : (1 < kG)%nat.
+Hypothesis k_inf_n : (kG < ring_size)%nat.
 
 (** There is no byzantine robot so we can simplify properties
     about identifiers and configurations. *)
@@ -243,10 +247,10 @@ destruct (NeverVisited_ref_config (reflexivity _)) as [pt Hpt].
 apply Hpt, Hw.
 Qed.
 
-Theorem no_exploration_idle : ~ FullSolExplorationStop r.
+Theorem no_exploration_idle : exists d, FSYNC d  /\ ~ FullSolExplorationStop r d.
 Proof.
+exists bad_demon. split; [apply FYSNC_setting |].
 intros Habs.
-specialize (Habs bad_demon).
 destruct (Habs ref_config) as [Hexpl _].
 now apply never_visited.
 Qed.
@@ -540,10 +544,10 @@ cofix Hcoind. intros k e Hequiv. constructor.
 Qed.
 
 (** Final theorem when robots move. *)
-Theorem no_exploration_moving : ~ FullSolExplorationStop r.
+Theorem no_exploration_moving : exists d, FSYNC d /\ ~ FullSolExplorationStop r d.
 Proof.
+exists bad_demon. split; [apply FYSNC_setting |].
 intros Habs.
-specialize (Habs bad_demon).
 unfold FullSolExplorationStop in *.
 destruct (Habs ref_config) as [_ Hstop]. revert Hstop.
 now apply AlwaysMoving_not_WillStop, ref_config_AlwaysMoving.
@@ -555,7 +559,7 @@ End DoesMove.
 (** Final theorem combining both cases:
     In the asynchronous model, if the number of robots [kG] divides the size [n] of the ring,
     then the exploration with stop of a n-node ring is not possible. *)
-Theorem no_exploration : ~ FullSolExplorationStop r.
+Theorem no_exploration : exists d, FSYNC d /\ ~ FullSolExplorationStop r d.
 Proof.
 destruct (move =?= SelfLoop) as [Hmove | Hmove].
 + now apply no_exploration_idle.
