@@ -11977,7 +11977,7 @@ Proof.
 Qed.
 
 Definition NoCollAndPath e := 
-    Stream.forever (Stream.instant (fun conf => no_collision_conf conf /\ path_conf conf) )) e.
+    Stream.forever (Stream.instant (fun conf => no_collision_conf conf /\ path_conf conf) ) e.
 
 Instance no_collision_conf_compat : Proper (equiv ==> equiv) no_collision_conf.
 Proof.
