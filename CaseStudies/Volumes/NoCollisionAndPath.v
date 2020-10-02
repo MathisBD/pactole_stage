@@ -489,7 +489,7 @@ Axiom find_us_true : forall config loc ila,
     
 
 
-Instance Spect_ILA : Observation .
+Instance Obs_ILA : Observation .
   refine {|
     observation := set (R2*ILA);
     observation_Setoid := (Set_Setoid (R2*ILA)%type);
@@ -549,7 +549,7 @@ Instance Spect_ILA : Observation .
       now rewrite H, H0, H1, H2.
 Defined.
 
-Definition spect_ILA := @observation (R2*ILA) Loc State_ILA _ Spect_ILA.
+Definition obs_ILA := @observation (R2*ILA) Loc State_ILA _ Obs_ILA.
 
 
 (* pour ce qui est du robogramme
@@ -557,39 +557,39 @@ Definition spect_ILA := @observation (R2*ILA) Loc State_ILA _ Spect_ILA.
 
 Parameter threshold : identifiants.
 
-Context {choose_target : spect_ILA -> (R2*ILA)}.
+Context {choose_target : obs_ILA -> (R2*ILA)}.
 
 (* propiété de choose_cible*)
 
 Context {choose_target_compat : Proper (equiv ==> equiv) choose_target}.
 
-Axiom choose_target_alive : forall spect target,
-    choose_target spect == target
+Axiom choose_target_alive : forall obs target,
+    choose_target obs == target
     -> get_alive target == true.
 
-Axiom light_off_first: forall spect target,
-    choose_target spect == target -> 
+Axiom light_off_first: forall obs target,
+    choose_target obs == target -> 
                       get_light (target) == true ->
                       (* il n'y a pas de robots etein *)
                       For_all (fun (elt: R2*ILA) =>
-                                     get_light elt == true) spect
+                                     get_light elt == true) obs
     .
 
-Axiom target_lower : forall spect target (zero: R2*ILA),
-        In zero spect -> get_location zero == (0,0)%R ->
-        choose_target spect == target ->
+Axiom target_lower : forall obs target (zero: R2*ILA),
+        In zero obs -> get_location zero == (0,0)%R ->
+        choose_target obs == target ->
         get_ident target < get_ident zero.
         
 
     
-Axiom light_close_first : forall spect target,
-    choose_target spect == target ->
+Axiom light_close_first : forall obs target,
+    choose_target obs == target ->
     get_light target == true ->
     ((dist (0,0)%R (get_location target)) > Dp)%R ->
     For_all (fun (elt : R2*ILA) =>
-               ((dist (0,0)%R (get_location elt)) > Dp)%R) spect.
+               ((dist (0,0)%R (get_location elt)) > Dp)%R) obs.
 
-(* ça ne veux pas dire que il y a toujours au moins un robot dans le spectre? 
+(* ça ne veux pas dire que il y a toujours au moins un robot dans le obsre? 
 
 faire attention
 
@@ -600,30 +600,30 @@ faire attention
       /________\    /________\
 
 *)
-Axiom choose_target_in_spect : forall spect target,
-    choose_target spect = target  ->
-    In target spect.
+Axiom choose_target_in_obs : forall obs target,
+    choose_target obs = target  ->
+    In target obs.
 
 
-Context {move_to: spect_ILA -> location -> bool }.
+Context {move_to: obs_ILA -> location -> bool }.
 
 (* rajouter un truc qui dit ce qui se passe quand un robot doit s'éliminer. *)
 
-Axiom move_to_Some_zone : forall spect choice,
-    move_to spect choice = true ->
-    (forall x, In x spect -> let (pos_x, light_x) := x in
+Axiom move_to_Some_zone : forall obs choice,
+    move_to obs choice = true ->
+    (forall x, In x obs -> let (pos_x, light_x) := x in
                                     dist choice pos_x > 2*D)%R.
 
 Axiom move_to_None :
-  forall (spect : spect_ILA) (choice : location),
-  move_to spect choice = false ->
+  forall (obs : obs_ILA) (choice : location),
+  move_to obs choice = false ->
   forall pos : location,
   (dist pos (0,0)%R <= D)%R ->
   exists other : R2 * ILA,
-    (other ∈ spect)%set /\
-    (exists inf, In inf spect /\ (get_location inf) == pos /\ get_ident other < get_ident inf) /\
+    (other ∈ obs)%set /\
+    (exists inf, In inf obs /\ (get_location inf) == pos /\ get_ident other < get_ident inf) /\
     (dist (get_location other) choice <= 2*D)%R. 
-(*    ~(exists pos, forall x, In x spect -> let (pos_x, ligth_x) := x in
+(*    ~(exists pos, forall x, In x obs -> let (pos_x, ligth_x) := x in
                                                dist pos pos_x > 2*D /\ dist pos (0,0)%R <= D)%R.*)
 (* todo *)
 
@@ -632,14 +632,14 @@ Context {move_to_compat : Proper (equiv ==> equiv ==> equiv) move_to}.
 
 le robogram te donne juste la nouvelle position, mais doit_il changer la couleur aussi? *)
 
-Context {choose_new_pos: spect_ILA -> location -> location}.
+Context {choose_new_pos: obs_ILA -> location -> location}.
 Context {choose_new_pos_compat : Proper (equiv ==> equiv ==> equiv) choose_new_pos}.
-Axiom choose_new_pos_correct : forall spect target new,
-    new == choose_new_pos spect target ->
+Axiom choose_new_pos_correct : forall obs target new,
+    new == choose_new_pos obs target ->
     (dist new target < Dp /\ dist new (0,0) < D)%R.
     
 
-Definition rbg_fnc (s:spect_ILA) : R2*light
+Definition rbg_fnc (s:obs_ILA) : R2*light
   :=
     (* on choisit la target *)
     let target := choose_target s in
@@ -818,7 +818,7 @@ Context {inactive_ila : @inactive_function (R2 * ILA) Loc State_ILA Identifiers 
 
 (* il se passe quoi après un round: 
     si il y a un robot a moins de D, ou qu'il n'y a pas de robots on s'élimine.
-    sinon on bouge en fonction du resultat de "move_to" du spectre
+    sinon on bouge en fonction du resultat de "move_to" du obsre
     
  *)
 
@@ -844,8 +844,8 @@ Lemma round_good_g :
           (lift (existT precondition new_frame (precondition_satisfied da config g)))
           config in
 (*    let local_pos := get_location (local_config (Good g)) in*)
-    let spect := obs_from_config local_config (local_config (Good g)) in
-    let local_robot_decision := rbg_ila spect in
+    let obs := obs_from_config local_config (local_config (Good g)) in
+    let local_robot_decision := rbg_ila obs in
     let choice := choose_update da local_config g local_robot_decision in
     let new_local_state :=
         update local_config g frame_choice local_robot_decision choice in
@@ -2185,9 +2185,9 @@ Proof.
   - unfold rbg_fnc.
     destruct (move_to _) eqn : Hmove.
     set (new_pos := choose_new_pos _ _ ).
-    set (spect := obs_from_config _ _ ) in *. 
-    assert (Hcorrect := @choose_new_pos_correct spect (fst
-                  (choose_target spect)) new_pos).
+    set (obs := obs_from_config _ _ ) in *. 
+    assert (Hcorrect := @choose_new_pos_correct obs (fst
+                  (choose_target obs)) new_pos).
     destruct Hcorrect.
     unfold new_pos. reflexivity.
     fold new_pos.
@@ -2800,7 +2800,7 @@ Proof.
                        ((fst ((if b then reflexion else Similarity.id) pos) + fst t)%R,
                        (snd ((if b then reflexion else Similarity.id) pos) + snd t)%R),
                     (i, l, a, b')))%set).
-         unfold obs_from_config, Spect_ILA.
+         unfold obs_from_config, Obs_ILA.
          rewrite make_set_spec, filter_InA.
          split.
          rewrite config_list_InA.
@@ -2882,14 +2882,14 @@ Proof.
             unfold equiv, bool_Setoid, eq_setoid in Hd_round.
             rewrite Rle_bool_true_iff in Hd_round.
             set (d2_r := (@fst R2 ILA
-                           (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                           (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                               (prod R2 light) (prod (prod R R2) bool) bool bool
                               robot_choice_RL Frame Choice inactive_choice_ila
                               UpdFun inactive_ila rbg_ila da conf 
                               (@Good Identifiers g)))) in *.
             set (d1 := (fst (conf (Good g')))) in *.
             set (d1_r := (@fst R2 ILA
-                               (@round (R2 * ILA) Loc State_ILA Identifiers Spect_ILA 
+                               (@round (R2 * ILA) Loc State_ILA Identifiers Obs_ILA 
            (R2 * light) (R * R2 * bool) bool bool robot_choice_RL Frame Choice
            inactive_choice_ila UpdFun inactive_ila rbg_ila da conf 
            (@Good Identifiers g)))) in *.
@@ -2923,18 +2923,18 @@ Proof.
               apply Hr.
             }
             apply (Rle_not_lt _ _ H0 H2).
-       * set ( spect := ( obs_from_config _ _ )) in *.
-         assert (Hin_spect := choose_target_in_spect (reflexivity (choose_target spect))).
+       * set ( obs := ( obs_from_config _ _ )) in *.
+         assert (Hin_obs := choose_target_in_obs (reflexivity (choose_target obs))).
          assert (Hg: exists g0, (R2.bij_rotation_f r
            ((fst ((if b then reflexion else Similarity.id) (fst (conf (Good g0)))) +
              fst t)%R,
            (snd ((if b then reflexion else Similarity.id) (fst (conf (Good g0)))) +
-            snd t)%R), snd (conf (Good g0))) == choose_target spect).
-         { unfold spect, obs_from_config, Spect_ILA in Hin_spect.
-           rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff in Hin_spect.
-           destruct Hin_spect as ((id,Hin), (Hdist, Halive_g')).
+            snd t)%R), snd (conf (Good g0))) == choose_target obs).
+         { unfold obs, obs_from_config, Obs_ILA in Hin_obs.
+           rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff in Hin_obs.
+           destruct Hin_obs as ((id,Hin), (Hdist, Halive_g')).
            destruct id as [g0|byz].
-           unfold spect, obs_from_config, Spect_ILA.
+           unfold obs, obs_from_config, Obs_ILA.
            exists g0.
            symmetry.
            apply Hin.
@@ -2952,7 +2952,7 @@ Proof.
          destruct Hg as (g', Hg).
          exists g'.
          assert (Hlower := @target_lower
-                             spect (choose_target spect)
+                             obs (choose_target obs)
                              ((fun id : ident =>
                                  (R2.bij_rotation_f
                                     r
@@ -2984,9 +2984,9 @@ Proof.
                                                    ((fst ((if b then reflexion else Similarity.id) (fst (conf id))) +
                                                      fst t)%R,
                                                     (snd ((if b then reflexion else Similarity.id) (fst (conf id))) +
-                                                     snd t)%R), snd (conf id))) (Good g) ∈ spect)%set).
+                                                     snd t)%R), snd (conf id))) (Good g) ∈ obs)%set).
             { rewrite Heq.
-              unfold spect, obs_from_config, Spect_ILA.
+              unfold obs, obs_from_config, Obs_ILA.
               rewrite make_set_spec, filter_InA, config_list_InA.
               
               split.          
@@ -3064,7 +3064,7 @@ Proof.
            (Rgeom.xr (fst new_pos) (snd new_pos) (- r) + - fst t,
            Rgeom.yr (fst new_pos) (snd new_pos) (- r) + - snd t))) == new_pos)%R.
             destruct b; simpl in *; auto.
-            fold spect in new_pos.
+            fold obs in new_pos.
             fold new_pos.
             destruct b; rewrite H;
               rewrite dist_sym;
@@ -3173,7 +3173,7 @@ Lemma not_moving_means_near_or_dangerous :
     \/
     (* move_to_none *)
     (* forall pot_pos, dist pot_pos g < D -> forall g', ident g' < ident g -> 
-       dist g' pot_pos <= 2D \/  COMMENT PARLER DE LA CIBLE DU SPECTRE SANS RENTRER DANS LES DETAILS*)
+       dist g' pot_pos <= 2D \/  COMMENT PARLER DE LA CIBLE DU OBSRE SANS RENTRER DANS LES DETAILS*)
 
 
 
@@ -3182,7 +3182,7 @@ Lemma not_moving_means_near_or_dangerous :
     (forall pot_pos, dist (get_location (conf (Good g))) pot_pos > D \/
                  (exists other, (get_ident other < get_ident  (conf (Good g)))
                                 /\ (dist (get_location other) pot_pos <= 2 * D)%R)
-                   \/ (dist (fst (choose_target spect)) (fst (conf (Good g))) > Dp)
+                   \/ (dist (fst (choose_target obs)) (fst (conf (Good g))) > Dp)
     ).
 *)
 
@@ -5304,12 +5304,12 @@ Proof.
       destruct Hchoose_correct as (Hdist_choose_dp, Hdist_chose_d).
       assert (Hmove_Some := move_to_Some_zone Hmove).
       set (target := choose_target _) in *.
-      assert (Htarget_in_spect := @choose_target_in_spect _ target (reflexivity _)).
-      specialize (Hmove_Some _ Htarget_in_spect).
-      unfold obs_from_config, Spect_ILA in Htarget_in_spect.
-      rewrite make_set_spec, filter_InA, config_list_InA in Htarget_in_spect.
-      * rewrite 3 andb_true_iff, Rle_bool_true_iff in Htarget_in_spect.
-        destruct Htarget_in_spect as (([g_target|b_target],Htarget_spec),
+      assert (Htarget_in_obs := @choose_target_in_obs _ target (reflexivity _)).
+      specialize (Hmove_Some _ Htarget_in_obs).
+      unfold obs_from_config, Obs_ILA in Htarget_in_obs.
+      rewrite make_set_spec, filter_InA, config_list_InA in Htarget_in_obs.
+      * rewrite 3 andb_true_iff, Rle_bool_true_iff in Htarget_in_obs.
+        destruct Htarget_in_obs as (([g_target|b_target],Htarget_spec),
                                       (((Htarget_Dmax, Htarget_alive), Htarget_aux), Htarget_ident));
           try (assert (Hfalse := In_Bnames b_target);
                now simpl in * ).
@@ -5339,7 +5339,7 @@ Proof.
                            (comp (bij_translation t) (if b then reflexion else Similarity.id)))
                           (fst (conf (Good g_near))), snd (conf (Good g_near)))).
              apply Hall_lighted.
-             unfold obs_from_config, Spect_ILA.
+             unfold obs_from_config, Obs_ILA.
              rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff, Rle_bool_true_iff.
              repeat split.
              exists (Good g_near).
@@ -5417,7 +5417,7 @@ Proof.
                                                  (@Euclidean2Normed R2 R2_Setoid R2_EqDec VS ES)))
                                      end)) (@fst R2 ILA (conf (@Good Identifiers x))))
                             (@snd R2 ILA (conf (@Good Identifiers x))))
-                         (@obs_from_config (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                         (@obs_from_config (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                             (fun id : @Identifiers.ident Identifiers =>
                              @pair R2 ILA
                                (@section R2 R2_Setoid
@@ -5477,7 +5477,7 @@ Proof.
                                            NoCollisionAndPath.alive
                                            (@pair identifiants NoCollisionAndPath.light ident light)
                                            alive) false)))))).
-             unfold obs_from_config, Spect_ILA.
+             unfold obs_from_config, Obs_ILA.
              rewrite make_set_spec, filter_InA.
              rewrite (@config_list_InA Loc _ State_ILA), 3 andb_true_iff, Rle_bool_true_iff.
              repeat split.
@@ -5611,7 +5611,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                    unfold get_based in Hbased_target; rewrite Hconf_target in *; simpl in Hbased_target; rewrite Hbased_target.
 
                    unfold get_light. now simpl in *.
-                   unfold obs_from_config, Spect_ILA.
+                   unfold obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff.                   repeat split.
                    exists (Good g_too_close).
                    destruct b; reflexivity.
@@ -5678,16 +5678,16 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                    destruct Hpred as (Horigin, ?).
                    specialize (Horigin conf g (change_frame da conf g) (reflexivity _)).
                    revert Horigin; intro Horigin.
-                   set (spect := obs_from_config _ _) in *.
-                   assert (Htarget_ident' := @target_lower spect target).
+                   set (obs := obs_from_config _ _) in *.
+                   assert (Htarget_ident' := @target_lower obs target).
                    specialize (Htarget_ident' (((frame_choice_bijection (change_frame da conf g)) (get_location (conf (Good g))) ), snd(conf (Good g)))).
                    rewrite Htarget_spec in Htarget_ident'.
                    rewrite Hconf_target, Hconf in *.
                    apply Nat.lt_le_incl.
                    unfold get_ident in *; simpl in *; apply Htarget_ident'.
-                   unfold spect.
+                   unfold obs.
                    rewrite Hchange.
-                   unfold obs_from_config, Spect_ILA.
+                   unfold obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, (@config_list_InA Loc _ State_ILA), 3 andb_true_iff, Rle_bool_true_iff.
                    repeat split.
                    exists (Good g).
@@ -5793,15 +5793,15 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                       ++ rewrite <- 2 ident_preserved; try apply Hpred.
                          destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange.
                          destruct (conf (Good g_target)) as (pos_target, (((ident_target, light_target), alive_target), based_target)) eqn : Hconf_target.
-                         set (spect := obs_from_config _ _) in *.
-                     assert (Htarget_ident' := @target_lower spect target).
+                         set (obs := obs_from_config _ _) in *.
+                     assert (Htarget_ident' := @target_lower obs target).
                      specialize (Htarget_ident' (((frame_choice_bijection (change_frame da conf g)) (get_location (conf (Good g))) ), snd(conf (Good g)))).
                      rewrite Htarget_spec in Htarget_ident'.
                      rewrite  Hconf in *.
                      unfold get_ident in *; simpl in *; apply Htarget_ident'.
-                     unfold spect.
+                     unfold obs.
                      rewrite Hchange.
-                     unfold obs_from_config, Spect_ILA.
+                     unfold obs_from_config, Obs_ILA.
                      rewrite make_set_spec, filter_InA, (@config_list_InA Loc _ State_ILA), 3 andb_true_iff, Rle_bool_true_iff.
                      repeat split.
                      exists (Good g).
@@ -5942,15 +5942,15 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
 rewrite <- 2 ident_preserved; try apply Hpred.
                          destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange.
                          destruct (conf (Good g_target)) as (pos_target, (((ident_target, light_target), alive_target), based_target)) eqn : Hconf_target.
-                         set (spect := obs_from_config _ _) in *.
-                     assert (Htarget_ident' := @target_lower spect target).
+                         set (obs := obs_from_config _ _) in *.
+                     assert (Htarget_ident' := @target_lower obs target).
                      specialize (Htarget_ident' (((frame_choice_bijection (change_frame da conf g)) (get_location (conf (Good g))) ), snd(conf (Good g)))).
                      rewrite Htarget_spec in Htarget_ident'.
                      rewrite  Hconf in *.
                      unfold get_ident in *; simpl in *; apply Htarget_ident'.
-                     unfold spect.
+                     unfold obs.
                      rewrite Hchange.
-                     unfold obs_from_config, Spect_ILA.
+                     unfold obs_from_config, Obs_ILA.
                      rewrite make_set_spec, filter_InA, (@config_list_InA Loc _ State_ILA), 3 andb_true_iff, Rle_bool_true_iff.
                      repeat split.
                      exists (Good g).
@@ -6111,7 +6111,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                          rewrite retraction_section.
                          now cbn.
                        }
-                       destruct Hmove_None as (other,(Hother_spect, Hmove_other)).
+                       destruct Hmove_None as (other,(Hother_obs, Hmove_other)).
                        -- destruct Hpred as (Horigin,_).
                           revert Horigin; intro Horigin.
                           specialize (Horigin (conf) g (r,t,b) Hchange).
@@ -6125,10 +6125,10 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                           unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location.
                           unfold Datatypes.id.
                           destruct b; rewrite dist_same; generalize D_0; lra.
-                       -- unfold obs_from_config, Spect_ILA in Hother_spect.
-                          rewrite make_set_spec, filter_InA, config_list_InA in Hother_spect.
-                          rewrite 3 andb_true_iff, Rle_bool_true_iff in Hother_spect.
-                          destruct Hother_spect as (([g_other|b_other],Hother_spec),
+                       -- unfold obs_from_config, Obs_ILA in Hother_obs.
+                          rewrite make_set_spec, filter_InA, config_list_InA in Hother_obs.
+                          rewrite 3 andb_true_iff, Rle_bool_true_iff in Hother_obs.
+                          destruct Hother_obs as (([g_other|b_other],Hother_spec),
                                                     (((Hother_Dmax, Hother_alive), Hother_alive_g), Hother_ident)).
                           destruct (get_alive (round rbg_ila da conf (Good g_other)))
                                    eqn : Halive_other_round.
@@ -6142,7 +6142,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                              destruct Hmove_other as (other1, (Hother_in,(Hother_pos, Hother_ident'))). 
                              revert Hcoll; intro Hcoll.
                              unfold no_collision_conf in Hcoll.
-                             unfold obs_from_config, Spect_ILA, map_config in Hother_in.
+                             unfold obs_from_config, Obs_ILA, map_config in Hother_in.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hother_in.
                              rewrite 3 andb_true_iff in Hother_in.
                              destruct Hother_in as (([g_other'|byz], Hother1_spec), (((Hother1_dist,Hother1_alive),Hother1_aliveg), Hother1_ident));
@@ -6342,7 +6342,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                              rewrite <- ident_preserved; auto.
                              transitivity (get_ident (conf (Good g_other))); auto.
                              destruct Hmove_other as ((copy, (Hcopy_spec, (Hcopy_pos, Hcopy_ident))), _).
-                             unfold obs_from_config, Spect_ILA in Hcopy_spec.
+                             unfold obs_from_config, Obs_ILA in Hcopy_spec.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hcopy_spec.
                              rewrite 3 andb_true_iff, Rle_bool_true_iff in Hcopy_spec.
                              destruct Hcopy_spec as (([g_inf|byz],Hinf_spec), ((Hinf_dist, Hinf_alive), Hinf));
@@ -6704,7 +6704,7 @@ Proof.
                                     robot_choice_RL Frame Choice inactive_choice_ila
                                     da'
                                     (@round (prod R2 ILA) Loc State_ILA Identifiers
-                                       Spect_ILA (prod R2 NoCollisionAndPath.light)
+                                       Obs_ILA (prod R2 NoCollisionAndPath.light)
                                        (prod (prod R R2) bool) bool bool
                                        robot_choice_RL Frame Choice
                                        inactive_choice_ila UpdFun inactive_ila
@@ -6747,13 +6747,13 @@ Proof.
                                 end
                                 (@fst R2 ILA
                                    (@round (prod R2 ILA) Loc State_ILA Identifiers
-                                      Spect_ILA (prod R2 NoCollisionAndPath.light)
+                                      Obs_ILA (prod R2 NoCollisionAndPath.light)
                                       (prod (prod R R2) bool) bool bool
                                       robot_choice_RL Frame Choice
                                       inactive_choice_ila UpdFun inactive_ila
                                       rbg_ila da conf id)))
                              (@snd R2 ILA
-                                (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                    (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool
                                    bool robot_choice_RL Frame Choice
                                    inactive_choice_ila UpdFun inactive_ila rbg_ila
@@ -6787,7 +6787,7 @@ Proof.
   assert (Hmsz := move_to_Some_zone Hmove).
   simpl.
   exfalso.
-(*il faut un robot dans le spectre pour dire qu'il est à plus de 2*D  *)
+(*il faut un robot dans le obsre pour dire qu'il est à plus de 2*D  *)
 
 (*  destruct Hmsz as (Hdist_some, (Hdist, Hforall)).*)
   assert (Hpath_backup := Hpath).
@@ -6861,8 +6861,8 @@ Proof.
             (lift
                (existT precondition new_frame (precondition_satisfied da conf g)))
             conf in
-        let spect := obs_from_config local_config (local_config (Good g_exec))  in
-        let local_robot_decision := rbg_ila spect in
+        let obs := obs_from_config local_config (local_config (Good g_exec))  in
+        let local_robot_decision := rbg_ila obs in
         let choice := choose_update da local_config g_exec local_robot_decision in
         let new_local_state :=
           update local_config g_exec frame_choice local_robot_decision choice in
@@ -6892,8 +6892,8 @@ Proof.
             (lift
                (existT precondition new_frame (precondition_satisfied da conf g)))
             conf in
-        let spect := obs_from_config local_config (local_config (Good g_exec)) in
-        let local_robot_decision := rbg_ila spect in
+        let obs := obs_from_config local_config (local_config (Good g_exec)) in
+        let local_robot_decision := rbg_ila obs in
         let choice := choose_update da local_config g_exec local_robot_decision in
         let new_local_state :=
           update local_config g_exec frame_choice local_robot_decision choice in
@@ -6936,7 +6936,7 @@ Proof.
                  (fst (conf (Good g_exec))), snd (conf (Good g_exec))) in
             (dist new_pos pos_x > 2 * D)%R).
            { apply Hmsz.
-             unfold obs_from_config, Spect_ILA.
+             unfold obs_from_config, Obs_ILA.
              rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff.
              destruct (change_frame da conf g) as ((?,?),?).
              repeat split.
@@ -7141,14 +7141,14 @@ Proof.
              now simpl in *.
       * rewrite forallb_existsb, forallb_forall in Hfar.
         set (target := choose_target _) in *.
-        assert (Hin_spect := @choose_target_in_spect (obs_from_config _  _)
+        assert (Hin_obs := @choose_target_in_obs (obs_from_config _  _)
                            (target) (reflexivity _)).
         destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange;
           destruct (change_frame da' (round rbg_ila da conf) g) as ((r_r, t_r),b_r) eqn : Hchange_r.
         
-        unfold obs_from_config, Spect_ILA in Hin_spect.
-        rewrite make_set_spec, filter_InA in Hin_spect.
-        destruct Hin_spect.
+        unfold obs_from_config, Obs_ILA in Hin_obs.
+        rewrite make_set_spec, filter_InA in Hin_obs.
+        destruct Hin_obs.
         rewrite config_list_InA in H.
         destruct H as (id, H).
         destruct id as [g_far|byz].
@@ -7177,12 +7177,12 @@ Proof.
                                          (@Euclidean2Normed R2 R2_Setoid R2_EqDec VS ES)))
                              end))
                        (@fst R2 ILA
-                          (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                          (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                              (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                              robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                              rbg_ila da conf (@Good Identifiers g_far))))
                     (@snd R2 ILA
-                       (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                       (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                           (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                           robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila rbg_ila
                           da conf (@Good Identifiers g_far))))
@@ -7214,13 +7214,13 @@ Proof.
                                                         (@Euclidean2Normed R2 R2_Setoid R2_EqDec VS ES))
                                                end)))
                                       (@fst R2 ILA
-                                         (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                         (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                             (prod R2 NoCollisionAndPath.light) 
                                             (prod (prod R R2) bool) bool bool robot_choice_RL Frame
                                             Choice inactive_choice_ila UpdFun inactive_ila rbg_ila da
                                             conf (@Good Identifiers g))))
                                    (@snd R2 ILA
-                                      (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                      (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                          (prod R2 NoCollisionAndPath.light) 
                                          (prod (prod R R2) bool) bool bool robot_choice_RL Frame Choice
                                          inactive_choice_ila UpdFun inactive_ila rbg_ila da conf
@@ -7249,12 +7249,12 @@ Proof.
                                                (@Euclidean2Normed R2 R2_Setoid R2_EqDec VS ES))
                                       end)))
                              (@fst R2 ILA
-                                (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                    (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                    robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                    rbg_ila da conf id)))
                           (@snd R2 ILA
-                             (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                             (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                 (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                 robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                 rbg_ila da conf id)))))).
@@ -7273,8 +7273,8 @@ Proof.
             assert (Hlower_target := target_lower).
             changeR2.
             fold obs_from_config in *.
-            set (spect :=  obs_from_config _ _) in *.
-            specialize (@Hlower_target spect 
+            set (obs :=  obs_from_config _ _) in *.
+            specialize (@Hlower_target obs 
                                        target
             ((let (p, b) := change_frame da conf g in
                               let (r, t) := p in
@@ -7286,7 +7286,7 @@ Proof.
                        ).
             unfold get_ident in Hlower_target.
             simpl (snd _) in Hlower_target.
-            unfold obs_from_config, Spect_ILA in Hlower_target.
+            unfold obs_from_config, Obs_ILA in Hlower_target.
             destruct (change_frame _) as ((rr,tt),bb) eqn : Hchangee.
             assert (((r,t),b) == ((rr,tt),bb)).
             rewrite <- Hchange, <- Hchangee.
@@ -7309,7 +7309,7 @@ Proof.
             destruct Hsnd as (?,(?,?)).
             
             rewrite H. now simpl.
-            unfold spect, obs_from_config, Spect_ILA.
+            unfold obs, obs_from_config, Obs_ILA.
             rewrite make_set_spec, filter_InA, config_list_InA.
             split.
             exists (Good g).
@@ -7402,7 +7402,7 @@ Proof.
               auto. 
             }
             assert (Htarget_light : get_light (target) = true).
-            unfold target, obs_from_config, Spect_ILA.
+            unfold target, obs_from_config, Obs_ILA.
             unfold target in *.
             rewrite H, <- Hconf_far.
             now unfold get_light in *; simpl in *.
@@ -7411,20 +7411,20 @@ Proof.
             set (new_pos := choose_new_pos _ _) in *.
             assert (Hchoose_correct := @choose_new_pos_correct _ _ new_pos (reflexivity _)).
             destruct Hchoose_correct as (Hdist_dp, Hdist_d).
-            unfold obs_from_config, Spect_ILA in Hdist_dp.
+            unfold obs_from_config, Obs_ILA in Hdist_dp.
             assert ((dist pos p_far) <= Dp)%R.
             { destruct Hconfr as (Hpos_rl,_).
-              set (spect := obs_from_config _ _) in *.
+              set (obs := obs_from_config _ _) in *.
               assert (Hpos_rl' : @equiv R2 R2_Setoid (retraction
               (comp (bij_rotation r)
                  (comp (bij_translation t) (if b then reflexion else Similarity.id)))
               (fst
                  (rbg_fnc
-                    spect)))             pos_r) by (rewrite <- Hpos_rl; destruct b; now simpl). 
+                    obs)))             pos_r) by (rewrite <- Hpos_rl; destruct b; now simpl). 
               rewrite <- Inversion in Hpos_rl'.
               destruct b;
                 rewrite (RelationPairs.fst_compat _ _ _ _ H) in Hdist_dp;
-                unfold rbg_fnc in Hpos_rl';  unfold new_pos, spect, target, spect in *; rewrite Hmove in Hpos_rl';
+                unfold rbg_fnc in Hpos_rl';  unfold new_pos, obs, target, obs in *; rewrite Hmove in Hpos_rl';
               simpl (fst _) in Hpos_rl';
               unfold equiv, R2_Setoid in Hpos_rl';
               simpl in *; rewrite <- Hpos_rl' in Hdist_dp;
@@ -7503,7 +7503,7 @@ Proof.
                    unfold equiv, bool_Setoid, eq_setoid in Hlight_off_first.
                    rewrite <- Hlight_off_first, <- Hexecutioner.
                    unfold get_light; now simpl in *.
-                   unfold obs_from_config, Spect_ILA.
+                   unfold obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff.                   repeat split.
                    exists (Good g_too_close).
                    destruct b; reflexivity.
@@ -7541,8 +7541,8 @@ Proof.
                    unfold get_alive; now simpl.
                    unfold get_alive; now simpl. 
                    assert (Htarget_lower := target_lower).
-                   set (spect := obs_from_config _ _) in *.
-                   specialize (Htarget_lower spect ((comp (bij_rotation r)
+                   set (obs := obs_from_config _ _) in *.
+                   specialize (Htarget_lower obs ((comp (bij_rotation r)
           (comp (bij_translation t) (if b then reflexion else Similarity.id)))
          (fst (p_far, (i_far, l_far, a_far, b_far))), snd (p_far, (i_far, l_far, a_far, b_far))) ((comp (bij_rotation r)
          (comp (bij_translation t) (if b then reflexion else Similarity.id)))
@@ -7550,7 +7550,7 @@ Proof.
                    rewrite Hconf in Htarget_lower.
                    assert (get_ident (conf (Good g_far)) < get_ident (conf (Good g))).
                    unfold get_ident in *; simpl (fst _) in *; rewrite Hconf, Hconf_far; apply Htarget_lower.
-                   unfold spect, obs_from_config, Spect_ILA.
+                   unfold obs, obs_from_config, Obs_ILA.
 
                    rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff.
                    repeat split.
@@ -7578,7 +7578,7 @@ Proof.
                    rewrite Hchange.
                    unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location, Datatypes.id in *.
                    rewrite Hconf; simpl. destruct b; simpl; reflexivity.
-                   unfold target, obs_from_config, Spect_ILA in *.
+                   unfold target, obs_from_config, Obs_ILA in *.
                    unfold get_alive in *.
                    unfold location, Loc, make_Location.
                    rewrite H.
@@ -7736,13 +7736,13 @@ Proof.
          destruct (conf (Good g_far)) as (p_far, (((i_far, l_far), a_far), b_far)) eqn : Hconf_far.
          assert ((dist pos p_far) <= Dp)%R.
          { destruct Hconfr as (Hpos_rl,_).
-           set (spect := obs_from_config _ _) in *.
+           set (obs := obs_from_config _ _) in *.
            assert (Hpos_rl' : @equiv R2 R2_Setoid (retraction
               (comp (bij_rotation r)
                  (comp (bij_translation t) (if b then reflexion else Similarity.id)))
               (fst
                  (rbg_fnc
-                    spect)))
+                    obs)))
                                      pos_r) by (rewrite <- Hpos_rl; destruct b; now simpl). 
               rewrite <- Inversion in Hpos_rl'.
               set (new_pos := choose_new_pos _ _) in *.
@@ -7751,7 +7751,7 @@ Proof.
             
               destruct b;
                 rewrite (RelationPairs.fst_compat _ _ _ _ H) in Hdist_dp;
-                unfold rbg_fnc in Hpos_rl'; unfold new_pos, spect, target, spect in *; rewrite Hmove in Hpos_rl';
+                unfold rbg_fnc in Hpos_rl'; unfold new_pos, obs, target, obs in *; rewrite Hmove in Hpos_rl';
               simpl (fst _) in Hpos_rl';
               unfold equiv, R2_Setoid in Hpos_rl';
               simpl in *; rewrite <- Hpos_rl' in Hdist_dp;
@@ -7833,7 +7833,7 @@ Proof.
                                @change_frame (prod R2 ILA) Loc State_ILA Identifiers
                                  (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                  robot_choice_RL Frame Choice inactive_choice_ila da'
-                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                     (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                     robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                     rbg_ila da conf) g return (@bijection R2 R2_Setoid)
@@ -7862,12 +7862,12 @@ Proof.
                                  end
                              end
                              (@fst R2 ILA
-                                (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                    (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                    robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                    rbg_ila da conf (@Good Identifiers g_near))))
                           (@snd R2 ILA
-                             (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                             (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                 (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                 robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                 rbg_ila da conf (@Good Identifiers g_near)))))
@@ -7878,7 +7878,7 @@ Proof.
                                @change_frame (prod R2 ILA) Loc State_ILA Identifiers
                                  (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                  robot_choice_RL Frame Choice inactive_choice_ila da'
-                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                     (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                     robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                     rbg_ila da conf) g return (@bijection R2 R2_Setoid)
@@ -7969,7 +7969,7 @@ Proof.
                                @change_frame (prod R2 ILA) Loc State_ILA Identifiers
                                  (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                  robot_choice_RL Frame Choice inactive_choice_ila da'
-                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                     (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                     robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                     rbg_ila da conf) g return (@bijection R2 R2_Setoid)
@@ -7998,12 +7998,12 @@ Proof.
                                  end
                              end
                              (@fst R2 ILA
-                                (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                    (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                    robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                    rbg_ila da conf (@Good Identifiers g_near))))
                           (@snd R2 ILA
-                             (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                             (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                 (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                 robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                 rbg_ila da conf (@Good Identifiers g_near)))))
@@ -8014,7 +8014,7 @@ Proof.
                                @change_frame (prod R2 ILA) Loc State_ILA Identifiers
                                  (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                  robot_choice_RL Frame Choice inactive_choice_ila da'
-                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Spect_ILA
+                                 (@round (prod R2 ILA) Loc State_ILA Identifiers Obs_ILA
                                     (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
                                     robot_choice_RL Frame Choice inactive_choice_ila UpdFun inactive_ila
                                     rbg_ila da conf) g return (@bijection R2 R2_Setoid)
@@ -8076,7 +8076,7 @@ Proof.
         assert (Htri := RealMetricSpace.triang_ineq pos_r (fst (round rbg_ila da conf (Good g_near))) (fst (conf (Good g_near)))). 
         generalize D_0. rewrite dist_sym in H. lra.
         
-        unfold obs_from_config, Spect_ILA.
+        unfold obs_from_config, Obs_ILA.
         rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff.
         repeat split.
         exists (Good g_near).
@@ -8118,15 +8118,15 @@ Proof.
         rewrite Hconf in Hident_near'; unfold get_ident in *; simpl in *; omega.
         intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy).
         reflexivity.
-      * set (spect := obs_from_config _ _) in *.
-        assert (Hin_spect := @choose_target_in_spect spect
-                           (choose_target spect) (reflexivity _)).
+      * set (obs := obs_from_config _ _) in *.
+        assert (Hin_obs := @choose_target_in_obs obs
+                           (choose_target obs) (reflexivity _)).
         destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange;
           destruct (change_frame da' (round rbg_ila da conf) g) as ((r_r, t_r),b_r) eqn : Hchange_r.
         
-        unfold spect, obs_from_config, Spect_ILA in Hin_spect.
-        rewrite make_set_spec, filter_InA in Hin_spect.
-        destruct Hin_spect.
+        unfold obs, obs_from_config, Obs_ILA in Hin_obs.
+        rewrite make_set_spec, filter_InA in Hin_obs.
+        destruct Hin_obs.
         rewrite config_list_InA in H.
         destruct H as (id, H).
         destruct id as [g_far|byz];
@@ -8157,14 +8157,14 @@ Proof.
             assert (Hlower_target := target_lower).
             changeR2.
             fold obs_from_config in *.
-            specialize (@Hlower_target spect (choose_target spect) ((comp (bij_rotation r)
+            specialize (@Hlower_target obs (choose_target obs) ((comp (bij_rotation r)
                       (comp (bij_translation t)
                          (if b then reflexion else Similarity.id))) 
                                                              (fst (conf (Good g))), snd (conf (Good g)))).
-            unfold spect, obs_from_config, Spect_ILA in *.
+            unfold obs, obs_from_config, Obs_ILA in *.
             rewrite H in Hlower_target.
             unfold get_ident in *.
-            unfold obs_from_config, Spect_ILA in Hlower_target.
+            unfold obs_from_config, Obs_ILA in Hlower_target.
             destruct (change_frame _) as ((rr,tt),bb) eqn : Hchangee.
             assert (((r,t),b) == ((rr,tt),bb)).
             rewrite <- Hchange, <- Hchangee.
@@ -8207,8 +8207,8 @@ Proof.
 
             (* rewrite Hchangee, H2, H3, H4. *)
             rewrite Hconf; simpl.
-            fold Frame. fold Spect_ILA.
-            fold Frame in Hchangee. fold Spect_ILA in Hchangee.
+            fold Frame. fold Obs_ILA.
+            fold Frame in Hchangee. fold Obs_ILA in Hchangee.
             destruct (change_frame _) eqn : Heq.
             destruct p.
             rewrite H3.
@@ -8294,7 +8294,7 @@ Proof.
             set (new_pos := choose_new_pos _ _) in *.
               assert (Hchoose_correct := @choose_new_pos_correct _ _ new_pos (reflexivity _)).
               destruct Hchoose_correct as (Hdist_dp, Hdist_d).
-            unfold obs_from_config, Spect_ILA in Hdist_dp.
+            unfold obs_from_config, Obs_ILA in Hdist_dp.
             assert ((dist pos_r p_far) <= Dp)%R.
             { destruct Hconfr as (Hpos_rl,_).
               revert Hpos_rl; intros Hpos_rl.
@@ -8370,7 +8370,7 @@ Proof.
                    unfold equiv, bool_Setoid, eq_setoid in Hlight_off_first.
                    rewrite <- Hlight_off_first, <- Hexecutioner.
                    unfold get_light; now simpl in *.
-                   unfold obs_from_config, Spect_ILA.
+                   unfold obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff.                   repeat split.
                    exists (Good g_too_close).
                    destruct b; reflexivity.
@@ -8453,8 +8453,8 @@ Proof.
                    rewrite <- Nat.le_succ_l in Hident_g'.
                    intros g_near Halive_near  Hdist_near Hindent_near.
                    simpl.
-                   assert (Hlight_off_first_2 := @light_off_first spect _ (reflexivity _)).
-                   unfold spect, target in *.
+                   assert (Hlight_off_first_2 := @light_off_first obs _ (reflexivity _)).
+                   unfold obs, target in *.
                    rewrite (get_light_compat H) in Hlight_off_first_2.
                    unfold get_light in *; rewrite Hconf_far in Hexecuted;
                      simpl ( snd (fst _)) in *.
@@ -8468,7 +8468,7 @@ Proof.
                    simpl (snd (fst  _)) in *.
                    apply Hlight_off_first_2.
                    {
-                     unfold obs_from_config, Spect_ILA.
+                     unfold obs_from_config, Obs_ILA.
                      rewrite make_set_spec, filter_InA, config_list_InA,
                      3 andb_true_iff, Rle_bool_true_iff.
                      repeat split.
@@ -8535,7 +8535,7 @@ Proof.
                    }
                    rewrite <- H8.
                    apply Hlight_close_first.
-                   unfold obs_from_config, Spect_ILA.
+                   unfold obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, config_list_InA,
                    3 andb_true_iff, Rle_bool_true_iff.
                    repeat split. 
@@ -8574,7 +8574,7 @@ Proof.
         (comp (bij_translation t) (if b then reflexion else Similarity.id)))
        (fst (pos, (ident, light, alive, false))), snd (pos, (ident, light, alive, false)))).
                    assert (Htarget_lower:= target_lower).
-                   specialize (Htarget_lower spect
+                   specialize (Htarget_lower obs
                                              
                                  ((comp (bij_rotation r)
         (comp (bij_translation t) (if b then reflexion else Similarity.id)))
@@ -8586,7 +8586,7 @@ Proof.
 
                               ).
                    unfold get_ident in *; apply Htarget_lower.
-                   unfold spect, obs_from_config, Spect_ILA.
+                   unfold obs, obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff.
                    repeat split.            
                    exists (Good g).
@@ -8615,7 +8615,7 @@ Proof.
                    rewrite <- Horigin.
                    unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location, Datatypes.id in *.
                    rewrite Hchange, Hconf; destruct b; simpl; reflexivity.
-                   destruct b; rewrite <- H; unfold target, spect, obs_from_config, Spect_ILA;
+                   destruct b; rewrite <- H; unfold target, obs, obs_from_config, Obs_ILA;
                    unfold get_alive, get_ident; reflexivity. 
                    unfold get_ident in *; simpl in *; 
                    destruct b; omega.
@@ -8763,7 +8763,7 @@ Proof.
               unfold equiv, R2_Setoid in Hpos_rl';
                 simpl (obs_from_config _ _) in *. 
                 rewrite <- Hpos_rl' in Hdist_dp. 
-              destruct b; unfold new_pos, spect in *;
+              destruct b; unfold new_pos, obs in *;
                 rewrite (fst_compat H) in Hdist_dp;
               rewrite (@frame_dist pos_r p_far (@change_frame (prod R2 ILA) Loc State_ILA Identifiers 
                  (prod R2 NoCollisionAndPath.light) (prod (prod R R2) bool) bool bool
@@ -9223,13 +9223,13 @@ Proof.
                  ((comp (bij_rotation r)
                      (comp (bij_translation t) (if b then reflexion else Similarity.id)))
                     (fst (conf id)), snd (conf id))) (Good g))).
-    set (spect := obs_from_config _ _) in *.
+    set (obs := obs_from_config _ _) in *.
     assert (((fun id : ident =>
              ((comp (bij_rotation r)
                  (comp (bij_translation t) (if b then reflexion else Similarity.id)))
                 (fst (conf id)), snd (conf id))) (Good g)
-            ∈ spect)%set).
-    unfold spect, obs_from_config, Spect_ILA.
+            ∈ obs)%set).
+    unfold obs, obs_from_config, Obs_ILA.
     rewrite make_set_spec, filter_InA, config_list_InA, andb_true_iff.
     repeat split.
     exists (Good g).
@@ -9270,7 +9270,7 @@ Proof.
               ((comp (bij_rotation r)
                   (comp (bij_translation t) (if b then reflexion else Similarity.id)))
                  (fst (conf (Good g))), snd (conf (Good g)))) )) > 2 * D)%R).
-    unfold spect in *.
+    unfold obs in *.
     rewrite Hconf' in *. 
     destruct b; specialize (Hfalse H0); apply Hfalse.
     clear Hfalse H0; rename Hfalse' into Hfalse.
@@ -9606,7 +9606,7 @@ Proof.
 
 
 
-      assert (Htarget_in := @choose_target_in_spect (obs_from_config
+      assert (Htarget_in := @choose_target_in_obs (obs_from_config
                           (fun id : ident =>
                            ((let (p0, b) := change_frame da conf g in
                              let (r, t) := p0 in
@@ -9621,7 +9621,7 @@ Proof.
                                  (comp (bij_translation t)
                                     (if b then reflexion else Similarity.id)))
                                 (fst (conf (Good g))), snd (conf (Good g))))) _ (reflexivity _)).
-      unfold obs_from_config at 2, Spect_ILA at 2 in Htarget_in;
+      unfold obs_from_config at 2, Obs_ILA at 2 in Htarget_in;
         rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff, Rle_bool_true_iff in Htarget_in;
         try (now intros x y Hxy;
              rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy)).
@@ -9715,7 +9715,7 @@ Proof.
                     unfold get_light in *.
                     simpl (snd (fst _)) in *.
                     apply Hoff_first.
-                    unfold obs_from_config, Spect_ILA;
+                    unfold obs_from_config, Obs_ILA;
                       rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff, Rle_bool_true_iff.
                     repeat split.
                     exists (Good g0); destruct b; reflexivity.
@@ -9766,7 +9766,7 @@ Proof.
                                                                   (comp (bij_translation t) (if b then reflexion else Similarity.id)))
                                                               (fst (conf (Good g_near))), snd (conf (Good g_near))))).
                     rewrite Hoff_first in Hexecutioner; try discriminate.
-                    { unfold obs_from_config, Spect_ILA.
+                    { unfold obs_from_config, Obs_ILA.
                       rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff, Rle_bool_true_iff.
                       repeat split.
                       exists (Good g_near); destruct b; reflexivity.
@@ -9800,7 +9800,7 @@ Proof.
                    rewrite Hconf in Htarget_lower.
                    assert (get_ident (conf (Good g_target)) < get_ident (conf (Good g))).
                    unfold get_ident in *; simpl (fst _) in *; rewrite Hconf, Hconf_target; apply Htarget_lower.
-                   unfold obs_from_config, Spect_ILA.
+                   unfold obs_from_config, Obs_ILA.
                    rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff.
                    repeat split.
                    exists (Good g).
@@ -9891,7 +9891,7 @@ Proof.
                     rewrite Hchange.
                     unfold frame_choice_bijection, Frame in *;
                       destruct b; simpl in *; lra.
-                    unfold obs_from_config, Spect_ILA.
+                    unfold obs_from_config, Obs_ILA.
                     rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff, Rle_bool_true_iff.
                     repeat split.
                     exists (Good g_exi); destruct b; reflexivity.
@@ -9980,7 +9980,7 @@ Proof.
                               (comp (bij_translation t)
                                  (if b then reflexion else Similarity.id)))
                              (fst (conf (Good g)))), snd (conf (Good g))))).
-                  { unfold obs_from_config, Spect_ILA.
+                  { unfold obs_from_config, Obs_ILA.
                     rewrite make_set_spec, filter_InA, config_list_InA, 3 andb_true_iff, Rle_bool_true_iff.
                     repeat split.
                     exists (Good g); destruct b; reflexivity.
@@ -10098,7 +10098,7 @@ Proof.
                        assert (get_light (round rbg_ila da conf (Good g_target)) = true).
                        {
                          apply Hlighted.
-                         specialize (Htarget_lower (@obs_from_config _ _ _ _ Spect_ILA
+                         specialize (Htarget_lower (@obs_from_config _ _ _ _ Obs_ILA
                (fun id : ident =>
                               ((comp (bij_rotation r)
                                   (comp (bij_translation t)
@@ -10124,7 +10124,7 @@ Proof.
                          unfold get_ident in *.
                          simpl (fst (fst( snd _))) in *.
                          apply Htarget_lower.
-                         unfold obs_from_config, Spect_ILA.
+                         unfold obs_from_config, Obs_ILA.
                          rewrite make_set_spec, filter_InA, config_list_InA.
                          split.
                          exists (Good g).
@@ -10256,7 +10256,7 @@ Proof.
                                  (comp (bij_translation t)
                                     (if b then reflexion else Similarity.id)))
                                 (fst (pos, (ide, lig, ali,bas)))), snd (pos, (ide,lig,ali,bas))))%set).
-                         unfold obs_from_config, Spect_ILA.
+                         unfold obs_from_config, Obs_ILA.
                          rewrite make_set_spec, filter_InA, config_list_InA.
                          split.
                          exists (Good g_near).
@@ -10336,7 +10336,7 @@ Proof.
                                  (comp (bij_translation t)
                                     (if b then reflexion else Similarity.id)))
                                 (fst (pos, (ide, lig, ali,bas)))), snd (pos, (ide,lig,ali,bas))))%set).
-                         unfold obs_from_config, Spect_ILA.
+                         unfold obs_from_config, Obs_ILA.
                          rewrite make_set_spec, filter_InA, config_list_InA.
                          split.
                          exists (Good g_false).
@@ -10528,7 +10528,7 @@ Proof.
                                  (comp (bij_translation t)
                                     (if b then reflexion else Similarity.id)))
                                 (fst (pos, (ide, lig, ali, bas)))), snd (pos, (ide,lig,ali,bas))))%set).
-                         unfold obs_from_config, Spect_ILA.
+                         unfold obs_from_config, Obs_ILA.
                          rewrite make_set_spec, filter_InA, config_list_InA.
                          split.
                          exists (Good g_near).
@@ -10574,7 +10574,7 @@ Proof.
                                  (comp (bij_translation t)
                                     (if b then reflexion else Similarity.id)))
                                 (fst (pos, (ide, lig, ali, bas)))), snd (pos, (ide, lig, ali, bas))))%set).
-                         unfold obs_from_config, Spect_ILA.
+                         unfold obs_from_config, Obs_ILA.
                          rewrite make_set_spec, filter_InA, config_list_InA.
                          split.
                          exists (Good g_false).
@@ -10623,7 +10623,7 @@ Proof.
                        rewrite <- Hconf_round.
                        rewrite <- 2 ident_preserved.
 
-                       assert  (Htarget_lower := @target_lower (@obs_from_config _ _ _ _ Spect_ILA
+                       assert  (Htarget_lower := @target_lower (@obs_from_config _ _ _ _ Obs_ILA
                (fun id : ident =>
                               ((comp (bij_rotation r)
                                   (comp (bij_translation t)
@@ -10647,7 +10647,7 @@ Proof.
                          unfold get_ident in *.
                          simpl (fst (fst( snd _))) in *.
                          apply Htarget_lower.
-unfold obs_from_config, Spect_ILA.
+unfold obs_from_config, Obs_ILA.
                          rewrite make_set_spec, filter_InA, config_list_InA.
                          split.
                          exists (Good g).
@@ -10750,7 +10750,7 @@ unfold obs_from_config, Spect_ILA.
                  simpl (fst _) in Htarget_lower.
                  simpl.
                  apply Htarget_lower.
-                 unfold obs_from_config, Spect_ILA.
+                 unfold obs_from_config, Obs_ILA.
                  rewrite make_set_spec, filter_InA, config_list_InA.
                  split.
                  exists (Good g).
@@ -10882,7 +10882,7 @@ unfold obs_from_config, Spect_ILA.
                  simpl (fst _) in Htarget_lower.
                  simpl.
                  apply Htarget_lower.
-                 unfold obs_from_config, Spect_ILA.
+                 unfold obs_from_config, Obs_ILA.
                  rewrite make_set_spec, filter_InA, config_list_InA.
                  split.
                  exists (Good g).
@@ -10966,7 +10966,7 @@ unfold obs_from_config, Spect_ILA.
                          rewrite retraction_section.
                          now cbn.
                        }
-                       destruct Hmove_None as (other,(Hother_spect, Hmove_other)).
+                       destruct Hmove_None as (other,(Hother_obs, Hmove_other)).
                        -- destruct Hpred as (Horigin,_).
                           revert Horigin; intro Horigin.
                           specialize (Horigin (conf) g (r,t,b) Hchange).
@@ -10980,10 +10980,10 @@ unfold obs_from_config, Spect_ILA.
                           unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location.
                           unfold Datatypes.id.
                           destruct b; rewrite dist_same; generalize D_0; lra.
-                       -- unfold obs_from_config, Spect_ILA, map_config in Hother_spect.
-                          rewrite make_set_spec, filter_InA, config_list_InA in Hother_spect.
-                          rewrite 3 andb_true_iff, Rle_bool_true_iff in Hother_spect.
-                          destruct Hother_spect as (([g_other|b_other],Hother_spec),
+                       -- unfold obs_from_config, Obs_ILA, map_config in Hother_obs.
+                          rewrite make_set_spec, filter_InA, config_list_InA in Hother_obs.
+                          rewrite 3 andb_true_iff, Rle_bool_true_iff in Hother_obs.
+                          destruct Hother_obs as (([g_other|b_other],Hother_spec),
                                                     (((Hother_Dmax, Hother_alive), Hother_alive'), Hother_ident)).
                           destruct (get_alive (round rbg_ila da conf (Good g_other)))
                                    eqn : Halive_other_round.
@@ -10998,7 +10998,7 @@ unfold obs_from_config, Spect_ILA.
                              destruct Hmove_other as (other1, (Hother_in,(Hother_pos, Hother_ident'))). 
                              revert Hcol; intro Hcol.
                              unfold no_collision_conf in Hcol.
-                             unfold obs_from_config, Spect_ILA, map_config in Hother_in.
+                             unfold obs_from_config, Obs_ILA, map_config in Hother_in.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hother_in.
                              rewrite 3 andb_true_iff in Hother_in.
                              destruct Hother_in as (([g_other'|byz], Hother1_spec), (((Hother1_dist,Hother1_alive),Hother1_aliveg), Hother1_ident));
@@ -11190,7 +11190,7 @@ unfold obs_from_config, Spect_ILA.
 
                              (* début  *)
                              destruct Hmove_other as ((copy, (Hcopy_spec, (Hcopy_pos, Hcopy_ident))), _).
-                             unfold obs_from_config, Spect_ILA in Hcopy_spec.
+                             unfold obs_from_config, Obs_ILA in Hcopy_spec.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hcopy_spec.
                              rewrite 3 andb_true_iff, Rle_bool_true_iff in Hcopy_spec.
                              destruct Hcopy_spec as (([g_inf|byz],Hinf_spec), ((Hinf_dist, Hinf_alive), Hinf));
@@ -11311,7 +11311,7 @@ unfold obs_from_config, Spect_ILA.
                              apply moving_means_alive_next
                              rewrite existsb_exists in *.
                              destruct Hmove_other as ((inf, (Hin, (Hpos_eq, Hlower))), Hmove_other).
-                             unfold obs_from_config, Spect_ILA in Hin.
+                             unfold obs_from_config, Obs_ILA in Hin.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hin.
                              rewrite 2 andb_true_iff, Rle_bool_true_iff in Hin.
                              destruct Hin as (([g_inf|byz],Hinf_spec), ((Hinf_dist, Hinf_alive), Hinf));
@@ -11370,7 +11370,7 @@ intros x y Hxy.
                              repeat split; try auto.
                              rewrite existsb_exists in *.
                              destruct Hmove_other as ((inf, (Hin, (Hpos_eq, Hlower))), Hmove_other).
-                             unfold obs_from_config, Spect_ILA in Hin.
+                             unfold obs_from_config, Obs_ILA in Hin.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hin.
                              rewrite 2 andb_true_iff, Rle_bool_true_iff in Hin.
                              destruct Hin as (([g_inf|byz],Hinf_spec), ((Hinf_dist, Hinf_alive), Hinf));
@@ -11430,7 +11430,7 @@ intros x y Hxy.
                              repeat split; try auto.
                              rewrite existsb_exists in *.
                              destruct Hmove_other as ((inf, (Hin, (Hpos_eq, Hlower))), Hmove_other).
-                             unfold obs_from_config, Spect_ILA in Hin.
+                             unfold obs_from_config, Obs_ILA in Hin.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hin.
                              rewrite 2 andb_true_iff, Rle_bool_true_iff in Hin.
                              destruct Hin as (([g_inf|byz],Hinf_spec), ((Hinf_dist, Hinf_alive), Hinf));
@@ -12048,7 +12048,7 @@ Proof.
   split.
   now destruct H.
   now destruct H.
-  assert (Hexec_tail := @execute_tail (R2*ILA)%type Loc State_ILA _ Spect_ILA).
+  assert (Hexec_tail := @execute_tail (R2*ILA)%type Loc State_ILA _ Obs_ILA).
   rewrite Hexec_tail in *.
   apply (Hcoind (Stream.tl demon)).
   unfold conf_pred in *; split; 
