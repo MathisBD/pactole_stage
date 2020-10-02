@@ -22,14 +22,13 @@ Require Import List SetoidList.
 Require Import Decidable.
 Require Import Setoid Equalities Morphisms.
 Require Import Compare_dec FinFun.
-Require Import Arith_base Arith.Div2 Omega Psatz.
+Require Import ZArith Arith_base Arith.Div2 Lia Psatz.
 Require Import Pactole.CaseStudies.Exploration.Definitions.
 
 
 Open Scope list_scope.
 Set Implicit Arguments.
 Typeclasses eauto := (bfs).
-
 
 Section Tower.
 
@@ -50,7 +49,7 @@ Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof.
 intros [g | b] P HP.
 + apply HP.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 (** A dummy state used for (inexistant) byzantine robots. *)
@@ -80,10 +79,10 @@ generalize k_inf_n; intros Hkin config Hall.
 assert (Hsize : size (!! config) < ring_size).
 { apply le_lt_trans with (cardinal (!! config)).
   - apply size_cardinal.
-  - cut (cardinal (!! config) = kG); try omega; [].
+  - cut (cardinal (!! config) = kG); try lia; [].
     change (cardinal (make_multiset (List.map get_location (config_list config))) = kG).
     rewrite cardinal_make_multiset, config_list_spec, map_map, map_length.
-    rewrite names_length. simpl. omega. }
+    rewrite names_length. simpl. lia. }
 assert (Hle : ring_size <= size (!! config)).
 { rewrite size_spec.
   assert (Hobs : forall pt, InA equiv pt (support (!! config))).
@@ -92,7 +91,7 @@ assert (Hle : ring_size <= size (!! config)).
   apply (Preliminary.inclA_length setoid_equiv).
   - apply Vlist_NoDup.
   - repeat intro. apply Hobs. }
-omega.
+lia.
 Qed.
 
 Lemma Stopped_same : forall e, Stopped e -> e == Stream.tl e.
@@ -173,7 +172,7 @@ rewrite Hobs.
 rewrite (countA_occ_compat _ equiv_dec _ _ (reflexivity (config id))
           (PermutationA_map _ _ Hperm)).
 simpl List.map. rewrite List.map_id. unfold Datatypes.id. simpl.
-repeat destruct_match; solve [omega | exfalso; auto].
+repeat destruct_match; solve [lia | exfalso; auto].
 Qed.
 
 Lemma exec_stopped r : forall d c, Fair d -> Will_stop (execute r d c) ->

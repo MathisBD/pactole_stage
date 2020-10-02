@@ -10,7 +10,7 @@
 
 
 Require Import Bool.
-Require Import Omega.
+Require Import Lia PeanoNat.
 Require Import PArith.
 Require Import RelationPairs.
 (* Require Import Equalities. *)
@@ -108,11 +108,11 @@ Section MMultisetFacts.
   
   Ltac msetdec :=
     repeat (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
-            msetdec_step; easy || (try omega)).
+            msetdec_step; easy || (try lia)).
   
   Tactic Notation "msetdec_n" integer(n) :=
     do n (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
-            msetdec_step; easy || (try omega)).
+            msetdec_step; easy || (try lia)).
   
   Lemma subrelation_pair_elt : subrelation eq_pair eq_elt.
   Proof using . now intros [x n] [y p] [Heq _]. Qed.
@@ -138,7 +138,7 @@ Section MMultisetFacts.
   Lemma pair_dec : forall xn yp, {eq_pair xn yp} + {~eq_pair xn yp}.
   Proof using .
   intros [x n] [y p]. destruct (equiv_dec x y).
-  + destruct (eq_nat_dec n p).
+  + destruct (Nat.eq_dec n p).
     - left. split; assumption.
     - right. intros [_ Habs]. contradiction.
   + right. intros [Habs _]. contradiction.
@@ -162,7 +162,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros m1 m2. split; intro Hm.
   - now split; intro x; rewrite Hm.
-  - destruct Hm. intro. now apply le_antisym.
+  - destruct Hm. intro. now apply Nat.le_antisymm.
   Qed.
   
   (** **  Compatibility with respect to [equiv]  **)
@@ -290,7 +290,7 @@ Section MMultisetFacts.
   intros s1 s2 Hs. do 2 rewrite cardinal_spec, fold_spec. rewrite (fold_left_symmetry_PermutationA _ _).
   - reflexivity.
   - intros x ? ? [? ?] [? ?] [? Heq]. hnf in *. simpl in *. now subst.
-  - intros [? ?] [? ?] ?. cbn. omega.
+  - intros [? ?] [? ?] ?. cbn. lia.
   - now rewrite Hs.
   - reflexivity.
   Qed.
@@ -301,16 +301,16 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. intros ? ? Heq ? ? Hle. rewrite Heq. apply Hle. Qed.
   
   Global Instance In_sub_compat : Proper (equiv ==> Subset ==> impl) In.
-  Proof using FMultisetsSpec. intros ? y ? ? ? Hs H. msetdec. specialize (Hs y). omega. Qed.
+  Proof using FMultisetsSpec. intros ? y ? ? ? Hs H. msetdec. specialize (Hs y). lia. Qed.
   
   Global Instance add_sub_compat : Proper (equiv ==> le ==> Subset ==> Subset) add.
-  Proof using FMultisetsSpec. repeat intro. msetdec. now apply plus_le_compat. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. now apply Plus.plus_le_compat. Qed.
   
   Global Instance singleton_sub_compat : Proper (equiv ==> le ==> Subset) singleton.
   Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Global Instance remove_sub_compat : Proper (equiv ==> le --> Subset ==> Subset) remove.
-  Proof using FMultisetsSpec. intros ? y ? ? ? Hle ? ? Hsub ?. msetdec. specialize (Hsub y). compute in Hle. omega. Qed.
+  Proof using FMultisetsSpec. intros ? y ? ? ? Hle ? ? Hsub ?. msetdec. specialize (Hsub y). compute in Hle. lia. Qed.
   
   Global Instance union_sub_compat : Proper (Subset ==> Subset ==> Subset) union.
   Proof using FMultisetsSpec. intros ? ? Hsub1 ? ? Hsub2 x. specialize (Hsub1 x). specialize (Hsub2 x). msetdec. Qed.
@@ -318,7 +318,6 @@ Section MMultisetFacts.
   Global Instance inter_sub_compat : Proper (Subset ==> Subset ==> Subset) inter.
   Proof using FMultisetsSpec.
   intros ? ? Hsub1 ? ? Hsub2 x. specialize (Hsub1 x). specialize (Hsub2 x). msetdec.
-  apply Min.min_glb. now etransitivity; try apply Min.le_min_l. now etransitivity; try apply Min.le_min_r.
   Qed.
   
   Global Instance diff_sub_compat : Proper (Subset ==> Subset --> Subset) diff.
@@ -327,7 +326,7 @@ Section MMultisetFacts.
   Global Instance lub_sub_compat : Proper (Subset ==> Subset ==> Subset) lub.
   Proof using FMultisetsSpec.
   intros ? ? Hsub1 ? ? Hsub2 x. specialize (Hsub1 x). specialize (Hsub2 x).
-  msetdec. now apply Nat.max_le_compat.
+  msetdec.
   Qed.
   
   Global Instance subset_sub_compat : Proper (Subset --> Subset ==> impl) Subset.
@@ -448,7 +447,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   destruct (elements empty) as [| [x n] l] eqn:Habs. reflexivity.
   assert (Hin : InA eq_pair (x, n) ((x, n) :: l)) by now left.
-  rewrite <- Habs, elements_spec, empty_spec in Hin. omega.
+  rewrite <- Habs, elements_spec, empty_spec in Hin. lia.
   Qed.
   
   Corollary fold_empty : forall A f (i : A), fold f empty i = i.
@@ -460,7 +459,7 @@ Section MMultisetFacts.
   Corollary support_empty : support empty = nil.
   Proof using FMultisetsSpec.
   destruct (support empty) as [| e l] eqn:Habs. reflexivity.
-  cut (InA equiv e (e :: l)). rewrite <- Habs, support_spec. unfold In. rewrite empty_spec. omega. now left.
+  cut (InA equiv e (e :: l)). rewrite <- Habs, support_spec. unfold In. rewrite empty_spec. lia. now left.
   Qed.
   
   Corollary size_empty : size empty = 0.
@@ -554,7 +553,7 @@ Section MMultisetFacts.
   Lemma singleton_injective : forall x y n p, n > 0 -> singleton x n == singleton y p -> equiv x y /\ n = p.
   Proof using FMultisetsSpec.
   intros x y n p Hn Heq.
-  assert (p > 0) by (destruct p; try rewrite singleton_0, singleton_empty in Heq; omega).
+  assert (p > 0) by (destruct p; try rewrite singleton_0, singleton_empty in Heq; lia).
   assert (Hel := elements_singleton x Hn). apply eqlistA_PermutationA_subrelation in Hel.
   rewrite Heq in Hel. apply (PermutationA_length1 _) in Hel. rewrite elements_singleton in Hel; trivial.
   inversion_clear Hel. now destruct H0.
@@ -574,7 +573,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros. destruct n.
   - rewrite singleton_0. apply cardinal_empty.
-  - rewrite cardinal_spec, fold_singleton; omega || now repeat intro; subst.
+  - rewrite cardinal_spec, fold_singleton; lia || now repeat intro; subst.
   Qed.
   
   Lemma support_singleton : forall x n, n > 0 -> PermutationA equiv (support (singleton x n)) (x :: nil).
@@ -594,7 +593,7 @@ Section MMultisetFacts.
     (nfilter f (singleton x n) == singleton x n <-> f x n = true).
   Proof using FMultisetsSpec.
   intros f x n Hf Hn. split; intro Heq.
-  - specialize (Heq x). msetdec. destruct (f x n); reflexivity || omega.
+  - specialize (Heq x). msetdec. destruct (f x n); reflexivity || lia.
   - intro y. msetdec. now destruct (f y 0).
   Qed.
   
@@ -602,7 +601,7 @@ Section MMultisetFacts.
     (nfilter f (singleton x n) == empty <-> f x n = false).
   Proof using FMultisetsSpec.
   intros f x n Hf Hn. split; intro Heq.
-  - specialize (Heq x). msetdec. destruct (f x n); reflexivity || omega.
+  - specialize (Heq x). msetdec. destruct (f x n); reflexivity || lia.
   - intro y. msetdec. now destruct (f y 0).
   Qed.
   
@@ -610,7 +609,7 @@ Section MMultisetFacts.
     (filter f (singleton x n) == singleton x n <-> f x = true).
   Proof using FMultisetsSpec.
   intros f x n Hf Hn. split; intro Heq.
-  - specialize (Heq x). msetdec. destruct (f x); reflexivity || omega.
+  - specialize (Heq x). msetdec. destruct (f x); reflexivity || lia.
   - intro y. msetdec. now destruct (f y).
   Qed.
   
@@ -618,7 +617,7 @@ Section MMultisetFacts.
     (filter f (singleton x n) == empty <-> f x = false).
   Proof using FMultisetsSpec.
   intros f x n Hf Hn. split; intro Heq.
-  - specialize (Heq x). msetdec. destruct (f x); reflexivity || omega.
+  - specialize (Heq x). msetdec. destruct (f x); reflexivity || lia.
   - intro y. msetdec. now destruct (f y).
   Qed.
   
@@ -709,7 +708,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros x n Hn. destruct (choose (singleton x n)) eqn:Hx.
   + exists e. repeat split. apply choose_Some in Hx. rewrite In_singleton in Hx. now destruct Hx as [Hx _].
-  + rewrite choose_None, singleton_empty in Hx. omega.
+  + rewrite choose_None, singleton_empty in Hx. lia.
   Qed.
   
   (** **  Results about [add]  **)
@@ -745,7 +744,7 @@ Section MMultisetFacts.
   Lemma add_is_singleton : forall x y n p m, add x n m == singleton y p -> m == singleton y (p - n).
   Proof using FMultisetsSpec.
   intros x y n p m Hadd z. destruct n.
-  + rewrite add_0 in Hadd. now rewrite Hadd, <- minus_n_O.
+  + rewrite add_0 in Hadd. now rewrite Hadd, <- Minus.minus_n_O.
   + assert (Heq := Hadd x). msetdec. rewrite <- (add_other y z (S n)), Hadd; trivial. msetdec.
   Qed.
   
@@ -826,7 +825,7 @@ Section MMultisetFacts.
     - intro y. specialize (Heq y). msetdec.
     - specialize (Heq x). msetdec.
   + destruct Heq as [Heq1 Heq2]. rewrite Heq1. intro y. destruct (equiv_dec y x) as [Heq | Hneq].
-    - rewrite Heq, remove_same, singleton_spec, empty_spec. destruct (equiv_dec x x); omega.
+    - rewrite Heq, remove_same, singleton_spec, empty_spec. destruct (equiv_dec x x); lia.
     - rewrite remove_other, singleton_spec, empty_spec; trivial. now destruct (equiv_dec y x).
   Qed.
   
@@ -920,7 +919,7 @@ Section MMultisetFacts.
   Qed.
   
   Lemma union_In : forall x m1 m2, In x (union m1 m2) <-> In x m1 \/ In x m2.
-  Proof using FMultisetsSpec. intros. unfold In. rewrite union_spec. omega. Qed.
+  Proof using FMultisetsSpec. intros. unfold In. rewrite union_spec. lia. Qed.
   
   Lemma union_out : forall x m1 m2, ~In x (union m1 m2) <-> ~In x m1 /\ ~In x m2.
   Proof using FMultisetsSpec. intros x m1 m2. rewrite union_In. tauto. Qed.
@@ -943,19 +942,19 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_empty_r : forall m, inter m empty == empty.
-  Proof using FMultisetsSpec. repeat intro. msetdec. auto with arith. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_comm : forall m1 m2, inter m1 m2 == inter m2 m1.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Min.min_comm. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_assoc : forall m1 m2 m3, inter m1 (inter m2 m3) == inter (inter m1 m2) m3.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Min.min_assoc. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma add_inter_distr : forall x n m1 m2, add x n (inter m1 m2) == inter (add x n m1) (add x n m2).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Min.plus_min_distr_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma remove_inter_distr : forall x n m1 m2, remove x n (inter m1 m2) == inter (remove x n m1) (remove x n m2).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.sub_min_distr_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_singleton_l : forall x n m, inter (singleton x n) m == singleton x (min n m[x]).
   Proof using FMultisetsSpec. intros x n m y. msetdec. Qed.
@@ -969,15 +968,15 @@ Section MMultisetFacts.
   intros x m1 m2. split; intro Hin.
   * intros y Hy. destruct Hin as [n Hin]. destruct (m1[y]) eqn:Hm1.
     + msetdec.
-    + right. specialize (Hin y). msetdec. destruct (m2[y]). omega. discriminate Hin.
+    + right. specialize (Hin y). msetdec.
   * exists (min m1[x] m2[x]).
     intro y. msetdec. apply Hin in c. destruct (m1[y]) as [| n].
     + msetdec.
-    + destruct (m2[y]); trivial. destruct n; omega.
+    + destruct (m2[y]); trivial. destruct n; lia.
   Qed.
   
   Lemma inter_In : forall x m1 m2, In x (inter m1 m2) <-> In x m1 /\ In x m2.
-  Proof using FMultisetsSpec. intros. unfold In. rewrite inter_spec. unfold gt. rewrite Nat.min_glb_lt_iff. omega. Qed.
+  Proof using FMultisetsSpec. intros. unfold In. rewrite inter_spec. unfold gt. rewrite Nat.min_glb_lt_iff. lia. Qed.
   
   Lemma inter_out : forall x m1 m2, ~In x (inter m1 m2) <-> ~In x m1 \/ ~In x m2.
   Proof using FMultisetsSpec. intros x m1 m2. rewrite inter_In. destruct (In_dec x m1); intuition. Qed.
@@ -1000,9 +999,9 @@ Section MMultisetFacts.
   Lemma inter_add_l2 : forall x n m1 m2, m2[x] <= n ->
     inter (add x n m1) m2 == add x (m2[x]) (inter m1 (remove x n m2)).
   Proof using FMultisetsSpec.
-  intros x n m1 m2 Hn. assert (Heq : n = m2[x] + (n - m2[x])) by omega.
+  intros x n m1 m2 Hn. assert (Heq : n = m2[x] + (n - m2[x])) by lia.
   rewrite <- (add_remove_cancel (reflexivity (m2[x]))) at 1.
-  rewrite Heq, <- add_merge, <- add_inter_distr. f_equiv. clear Heq. intro. msetdec. Psatz.lia. Qed.
+  rewrite Heq, <- add_merge, <- add_inter_distr. f_equiv. clear Heq. intro. msetdec. Qed.
   
   Corollary inter_add_r1 : forall x n m1 m2, n <= m1[x] ->
     inter m1 (add x n m2) == add x n (inter (remove x n m1) m2).
@@ -1014,27 +1013,23 @@ Section MMultisetFacts.
   
   Lemma remove_inter_add_l : forall x n m1 m2, inter (remove x n m1) m2 == remove x n (inter m1 (add x n m2)).
   Proof using FMultisetsSpec.
-  repeat intro. msetdec. rewrite <- Nat.sub_min_distr_r.
-  assert (Heq : m2[x] + n - n = m2[x]) by omega. now rewrite Heq.
+  repeat intro. msetdec.
   Qed.
   
   Lemma remove_inter_add_r : forall x n m1 m2, inter m1 (remove x n m2) == remove x n (inter (add x n m1) m2).
   Proof using FMultisetsSpec.
-  repeat intro. msetdec. rewrite <- Nat.sub_min_distr_r.
-  assert (Heq : m1[x] + n - n = m1[x]) by omega. now rewrite Heq.
+  repeat intro. msetdec.
   Qed.
   
   Lemma inter_subset_l : forall m1 m2, inter m1 m2 [<=] m1.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Min.le_min_l. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_subset_r : forall m1 m2, inter m1 m2 [<=] m2.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Min.le_min_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_eq_subset_l : forall m1 m2, inter m1 m2 == m1 <-> m1 [<=] m2.
   Proof using FMultisetsSpec.
   intros. split; intros Hm y; specialize (Hm y); msetdec.
-  + rewrite <- Hm. apply Min.le_min_r.
-  + apply Min.min_l. assumption.
   Qed.
   
   Lemma inter_eq_subset_r : forall m1 m2, inter m1 m2 == m2 <-> m2 [<=] m1.
@@ -1043,7 +1038,7 @@ Section MMultisetFacts.
   (** **  Results about [diff]  **)
   
   Lemma diff_In : forall x m1 m2, In x (diff m1 m2) <-> m1[x] > m2[x].
-  Proof using FMultisetsSpec. intros. unfold In. rewrite diff_spec. omega. Qed.
+  Proof using FMultisetsSpec. intros. unfold In. rewrite diff_spec. lia. Qed.
   
   Lemma diff_empty_l : forall m, diff empty m == empty.
   Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
@@ -1086,17 +1081,13 @@ Section MMultisetFacts.
   Lemma diff_remove_r1 : forall x n m1 m2, m1[x] <= n -> m2[x] <= n ->
     diff m1 (remove x n m2) == add x (min (m1[x]) (m2[x])) (diff m1 m2).
   Proof using FMultisetsSpec.
-  repeat intro. msetdec. destruct (le_lt_dec (m1[x]) (m2[x])).
-  - rewrite min_l; omega.
-  - rewrite min_r; omega.
+  repeat intro. msetdec.
   Qed.
   
   Lemma diff_remove_r2 : forall x n m1 m2, n <= m1[x] -> m2[x] <= m1[x] ->
     diff m1 (remove x n m2) == add x (min n (m2[x])) (diff m1 m2).
   Proof using FMultisetsSpec.
-  repeat intro. msetdec. destruct (le_lt_dec n (m2[x])).
-  - rewrite min_l; omega.
-  - rewrite min_r; omega.
+  repeat intro. msetdec.
   Qed.
   
   Lemma diff_remove_r3 : forall x n m1 m2, n <= m2[x] -> m1[x] <= m2[x] ->
@@ -1110,19 +1101,19 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. intros ? ? ? Hle x. specialize (Hle x). msetdec. Qed.
   
   Lemma inter_diff_l : forall m1 m2 m3, inter (diff m1 m2) m3 == diff (inter m1 (union m2 m3)) m2.
-  Proof using FMultisetsSpec. repeat intro. msetdec. setoid_rewrite <- minus_plus at 5. rewrite Nat.sub_min_distr_r. reflexivity. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_diff_r : forall m1 m2 m3, inter m1 (diff m2 m3) == diff (inter m2 (union m1 m3)) m3.
   Proof using FMultisetsSpec. intros. rewrite inter_comm, union_comm. apply inter_diff_l. Qed.
   
   Lemma diff_inter_distr_l : forall m1 m2 m3, diff (inter m1 m2) m3 == inter (diff m1 m3) (diff m2 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. rewrite Nat.sub_min_distr_r. reflexivity. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma diff_inter_r : forall m1 m2 m3, diff m1 (inter m2 m3) == lub (diff m1 m2) (diff m1 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.sub_max_distr_l. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma diff_inter : forall m1 m2, diff m1 m2 == diff m1 (inter m1 m2).
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Nat.min_case_strong; omega. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Corollary diff_disjoint : forall m1 m2, inter m1 m2 == empty -> diff m1 m2 == m1.
   Proof using FMultisetsSpec. intros m1 m2 Hm. rewrite diff_inter, Hm. apply diff_empty_r. Qed.
@@ -1131,7 +1122,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. intros ? ? ? Hle1 Hle2 Heq x. specialize (Heq x). specialize (Hle1 x). specialize (Hle2 x). msetdec. Qed.
   
   Lemma inter_as_diff : forall m1 m2, inter m1 m2 == diff m1 (diff m1 m2).
-  Proof using FMultisetsSpec. intros ? ? ?. msetdec. apply Nat.min_case_strong; omega. Qed.
+  Proof using FMultisetsSpec. intros ? ? ?. msetdec. Qed.
   
   Lemma subset_split : forall m1 m2, m1 [<=] m2 <-> union (diff m2 m1) m1 == m2.
   Proof using FMultisetsSpec. intros. split; intros Hle x; specialize (Hle x); msetdec. Qed.
@@ -1142,10 +1133,10 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. intros. unfold In, gt. rewrite lub_spec. apply Nat.max_lt_iff. Qed.
   
   Lemma lub_comm : forall m1 m2, lub m1 m2 == lub m2 m1.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Nat.max_comm. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_assoc : forall m1 m2 m3, lub m1 (lub m2 m3) == lub (lub m1 m2) m3.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Nat.max_assoc. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_empty_l : forall m, lub empty m == m.
   Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
@@ -1154,10 +1145,10 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. intros. rewrite lub_comm. apply lub_empty_l. Qed.
   
   Lemma lub_subset_l : forall m1 m2, m1 [<=] lub m1 m2.
-  Proof using FMultisetsSpec. repeat intro. msetdec. auto with arith. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_subset_r : forall m1 m2, m2 [<=] lub m1 m2.
-  Proof using FMultisetsSpec. repeat intro. msetdec. auto with arith. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_is_empty : forall m1 m2, lub m1 m2 == empty <-> m1 == empty /\ m2 == empty.
   Proof using FMultisetsSpec.
@@ -1178,20 +1169,18 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec. intros. now rewrite lub_comm, lub_eq_l. Qed.
   
   Lemma add_lub_distr : forall x n m1 m2, add x n (lub m1 m2) == lub (add x n m1) (add x n m2).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.add_max_distr_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_add_l : forall x n m1 m2, lub (add x n m1) m2 == add x n (lub m1 (remove x n m2)).
   Proof using FMultisetsSpec.
-  intros x n m1 m2 y. msetdec. destruct (le_lt_dec (m2[x]) n).
-  + replace (m2[x] - n) with 0 by omega. rewrite Nat.max_0_r. apply max_l. omega.
-  + rewrite <- Nat.add_max_distr_r. now replace (m2[x] - n + n) with (m2[x]) by omega.
+  intros x n m1 m2 y. msetdec.
   Qed.
   
   Lemma lub_add_r : forall x n m1 m2, lub m1 (add x n m2) == add x n (lub (remove x n m1) m2).
   Proof using FMultisetsSpec. intros. setoid_rewrite lub_comm. apply lub_add_l. Qed.
   
   Lemma lub_singleton_l : forall x n m, lub (singleton x n) m == add x (n - m[x]) m.
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Max.max_case_strong; omega. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_singleton_r : forall x n m, lub m (singleton x n) == add x (n - m[x]) m.
   Proof using FMultisetsSpec. intros. rewrite lub_comm. apply lub_singleton_l. Qed.
@@ -1202,66 +1191,61 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros x n m1 m2. split; intro Heq.
   + repeat split; try intro y.
-    - specialize (Heq y). msetdec. destruct (m1[y]), (m2[y]); trivial; discriminate.
-    - specialize (Heq y). msetdec. destruct (m1[y]), (m2[y]); trivial; discriminate.
+    - specialize (Heq y). msetdec.
+    - specialize (Heq y). msetdec.
     - specialize (Heq x). msetdec.
   + destruct Heq as [Hm1 [Hm2 Hn]]. rewrite Hm1, Hm2, lub_singleton_l, add_singleton_same. f_equiv. subst.
-    rewrite singleton_same. apply Max.max_case_strong; omega.
+    rewrite singleton_same. apply Max.max_case_strong; lia.
   Qed.
   
   Lemma remove_lub : forall x n m1 m2, remove x n (lub m1 m2) == lub (remove x n m1) (remove x n m2).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.sub_max_distr_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_remove_l : forall x n m1 m2, lub (remove x n m1) m2 == remove x n (lub m1 (add x n m2)).
-  Proof using FMultisetsSpec. repeat intro. msetdec. rewrite <- Nat.sub_max_distr_r. f_equal. omega. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_remove_r : forall x n m1 m2, lub m1 (remove x n m2) == remove x n (lub (add x n m1) m2).
   Proof using FMultisetsSpec. intros. setoid_rewrite lub_comm. apply lub_remove_l. Qed.
   
   Lemma union_lub_distr_l : forall m1 m2 m3, union (lub m1 m2) m3 == lub (union m1 m3) (union m2 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.add_max_distr_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma union_lub_distr_r : forall m1 m2 m3, union m1 (lub m2 m3) == lub (union m1 m2) (union m1 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.add_max_distr_l. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_union_l : forall m1 m2 m3, lub (union m1 m2) m3 == union m1 (lub m2 (diff m3 m1)).
   Proof using FMultisetsSpec.
-  repeat intro. msetdec. rewrite <- Nat.add_max_distr_l.
-  destruct (le_lt_dec (m1[x]) (m3[x])).
-  + now replace (m1[x] + (m3[x] - m1[x])) with (m3[x]) by omega.
-  + replace (m1[x] + (m3[x] - m1[x])) with (m1[x]) by omega.
-    repeat rewrite max_l; omega.
-  Qed.
+  repeat intro. msetdec. Qed.
   
   Lemma lub_union_r : forall m1 m2 m3, lub m1 (union m2 m3) == union (lub m3 (diff m1 m2)) m2.
   Proof using FMultisetsSpec. intros. rewrite lub_comm. setoid_rewrite union_comm at 2. apply lub_union_l. Qed.
   
   Lemma lub_inter_distr_l : forall m1 m2 m3, lub m1 (inter m2 m3) == inter (lub m1 m2) (lub m1 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Nat.max_min_distr. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_inter_distr_r : forall m1 m2 m3, lub (inter m1 m2) m3 == inter (lub m1 m3) (lub m2 m3).
   Proof using FMultisetsSpec. intros. setoid_rewrite lub_comm. apply lub_inter_distr_l. Qed.
   
   Lemma inter_lub_distr_l : forall m1 m2 m3, inter m1 (lub m2 m3) == lub (inter m1 m2) (inter m1 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. apply Nat.min_max_distr. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma inter_lub_distr_r : forall m1 m2 m3, inter (lub m1 m2) m3 == lub (inter m1 m3) (inter m2 m3).
   Proof using FMultisetsSpec. intros. setoid_rewrite inter_comm. apply inter_lub_distr_l. Qed.
   
   Lemma lub_diff_l : forall m1 m2 m3, lub (diff m1 m2) m3 == diff (lub m1 (union m2 m3)) m2.
-  Proof using FMultisetsSpec. repeat intro. msetdec. rewrite <- Nat.sub_max_distr_r, minus_plus. reflexivity. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_diff_r : forall m1 m2 m3, lub m1 (diff m2 m3) == diff (lub (union m1 m3) m2) m3.
   Proof using FMultisetsSpec. intros. setoid_rewrite lub_comm. rewrite union_comm. apply lub_diff_l. Qed.
   
   Lemma diff_lub_distr_r : forall m1 m2 m3, diff (lub m1 m2) m3 == lub (diff m1 m3) (diff m2 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.sub_max_distr_r. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma diff_lub_l : forall m1 m2 m3, diff m1 (lub m2 m3) == inter (diff m1 m2) (diff m1 m3).
-  Proof using FMultisetsSpec. repeat intro. msetdec. symmetry. apply Nat.sub_min_distr_l. Qed.
+  Proof using FMultisetsSpec. repeat intro. msetdec. Qed.
   
   Lemma lub_subset_union : forall m1 m2, lub m1 m2 [<=] union m1 m2.
-  Proof using FMultisetsSpec. intros m1 m2 ?. msetdec. Psatz.lia. Qed.
+  Proof using FMultisetsSpec. intros m1 m2 ?. msetdec. Qed.
   
   (** **  Results about [elements]  **)
   
@@ -1288,11 +1272,11 @@ Section MMultisetFacts.
     apply (NoDupA_equivlistA_PermutationA _) in Heq; trivial. clear Hdup₁ Hdup₂.
     intro x. destruct (m₂[x]) eqn:Hm₂.
     - assert (Hin : forall n, ~InA eq_pair (x, n) (elements m₂)).
-      { intros n Habs. rewrite elements_spec in Habs. destruct Habs. simpl in *. omega. }
+      { intros n Habs. rewrite elements_spec in Habs. destruct Habs. simpl in *. lia. }
       destruct (m₁[x]) eqn:Hm₁. reflexivity.
       specialize (Hin (S n)). rewrite <- Heq in Hin. rewrite elements_spec in Hin.
-      elim Hin. split; simpl. assumption. omega.
-    - assert (Hin : InA eq_pair (x, S n) (elements m₂)). { rewrite elements_spec. split; simpl. assumption. omega. }
+      elim Hin. split; simpl. assumption. lia.
+    - assert (Hin : InA eq_pair (x, S n) (elements m₂)). { rewrite elements_spec. split; simpl. assumption. lia. }
       rewrite <- Heq in Hin. rewrite elements_spec in Hin. now destruct Hin.
   + intros [x n]. now rewrite Heq.
   Qed.
@@ -1310,7 +1294,7 @@ Section MMultisetFacts.
   intros x n m₁ m₂ Hm. setoid_rewrite elements_spec. simpl. intros [Heq Hpos].
   exists (m₂[x]); repeat split.
   - rewrite <- Heq. apply Hm.
-  - specialize (Hm x). omega.
+  - specialize (Hm x). lia.
   Qed.
   
   Lemma elements_elt_subset : forall xn m₁ m₂,
@@ -1326,7 +1310,7 @@ Section MMultisetFacts.
       change x with (fst (x, m[x])) in Habs at 1.
       change (m[x]) with (snd (x, m[x])) in Habs at 2 3.
       rewrite <- elements_spec in Habs. rewrite Heq in Habs. now rewrite InA_nil in Habs. }
-    rewrite empty_spec. omega.
+    rewrite empty_spec. lia.
   - apply (@PermutationA_nil _ eq_pair _). now rewrite Heq, elements_empty.
   Qed.
   
@@ -1336,10 +1320,10 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros x y n p m. rewrite elements_spec. simpl. split; intro Hx.
   + destruct Hx as [Hx1 Hx2]. destruct (equiv_dec x y) as [Heq | Hneq].
-    - left. repeat split; try assumption. subst n. rewrite <- Heq. rewrite add_same. apply plus_comm.
+    - left. repeat split; try assumption. subst n. rewrite <- Heq. rewrite add_same. apply Nat.add_comm.
     - right. split. assumption. rewrite elements_spec. rewrite add_other in Hx1. simpl. now split. auto.
   + destruct Hx as [[Hx1 [Hx2 Hx3]] | [Hx1 Hx2]].
-    - rewrite Hx1, add_same. split; omega.
+    - rewrite Hx1, add_same. split; lia.
     - rewrite elements_spec in Hx2. destruct Hx2. simpl in *. rewrite add_other. now split. auto.
   Qed.
   
@@ -1360,7 +1344,7 @@ Section MMultisetFacts.
     <-> (In x m₁ \/ In x m₂) /\ n = m₁[x] + m₂[x].
   Proof using FMultisetsSpec.
   intros x n m₁ m₂. rewrite elements_spec, union_spec. simpl. unfold In.
-  split; intros [Heq Hpos]; split; now symmetry || omega.
+  split; intros [Heq Hpos]; split; now symmetry || lia.
   Qed.
   
   Lemma elements_inter : forall x n m₁ m₂, InA eq_pair (x, n) (elements (inter m₁ m₂))
@@ -1394,14 +1378,14 @@ Section MMultisetFacts.
   intros x n m Hn Hin. apply (NoDupA_equivlistA_PermutationA _).
   * apply (NoDupA_strengthen _ (elements_NoDupA _)).
   * constructor.
-    + rewrite elements_spec. simpl. intros [? _]. apply Hin. unfold In. omega.
+    + rewrite elements_spec. simpl. intros [? _]. apply Hin. unfold In. lia.
     + apply (NoDupA_strengthen _ (elements_NoDupA _)).
   * intros [y p]. rewrite elements_add_In. split; intro Hm.
     + destruct Hm as [[Hm1 [Hm2 Hpos]] | [Hm1 Hm2]]; simpl in *.
-      - unfold In in Hin. left. split. assumption. compute. omega.
+      - unfold In in Hin. left. split. assumption. compute. lia.
       - now right.
     + simpl. inversion_clear Hm.
-      - destruct H as [Hy Hp]. compute in Hy, Hp. left. subst. unfold In in Hin. repeat split; trivial. omega.
+      - destruct H as [Hy Hp]. compute in Hy, Hp. left. subst. unfold In in Hin. repeat split; trivial. lia.
       - right. split; trivial. intro Habs. apply Hin. rewrite <- Habs. rewrite <- support_spec, support_elements.
         assert (Hy := H). rewrite elements_spec in Hy. destruct Hy as [Hy _]. simpl in Hy. now subst.
   Qed.
@@ -1433,7 +1417,7 @@ Section MMultisetFacts.
       rewrite elements_spec. auto.
     - { destruct (equiv_dec y x) as [Heq | Heq].
         + inversion_clear H.
-          - left. destruct H0. repeat split; auto. hnf in *. simpl in *. omega.
+          - left. destruct H0. repeat split; auto. hnf in *. simpl in *. lia.
           - apply (InA_pair_elt (m[x])) in H0. rewrite Heq, removeA_InA in H0; refine _.
             destruct H0 as [_ Habs]. elim Habs. reflexivity.
         + right. split; trivial. inversion_clear H.
@@ -1548,7 +1532,7 @@ Section MMultisetFacts.
   intros [| [x n] l] Hl.
   - simpl. intuition.
   - destruct Hl as [_ Hl]. inversion_clear Hl. simpl from_elements.
-    rewrite add_is_empty. cbn in *. intuition (omega || discriminate).
+    rewrite add_is_empty. cbn in *. intuition (lia || discriminate).
   Qed.
   
   Lemma from_elements_empty : forall l, from_elements l == empty <-> Forall (fun xn => snd xn = 0) l.
@@ -1563,7 +1547,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros x n l Hl Hn. destruct l as [| [y p] [| [z q] l]].
   + split; intro Hin.
-    - symmetry in Hin. rewrite singleton_empty in Hin. omega.
+    - symmetry in Hin. rewrite singleton_empty in Hin. lia.
     - inversion_clear Hin.
   + simpl from_elements. rewrite add_empty. split; intro Heq.
     - symmetry in Heq. apply singleton_injective in Heq; trivial. destruct Heq. now repeat constructor.
@@ -1571,9 +1555,9 @@ Section MMultisetFacts.
   + split; intro Hin.
     - assert (Heq : equiv y x /\ equiv z x).
       { simpl in *. split.
-        + specialize (Hin y). msetdec. destruct Hl as [_ Hl]. inversion_clear Hl. cbn in *. omega.
+        + specialize (Hin y). msetdec. destruct Hl as [_ Hl]. inversion_clear Hl. cbn in *. lia.
         + apply add_is_singleton in Hin. specialize (Hin z). msetdec. destruct Hl as [_ Hl].
-          inversion_clear Hl. inversion_clear H0. simpl in *. omega. }
+          inversion_clear Hl. inversion_clear H0. simpl in *. lia. }
       destruct Heq as [Heq1 Heq2]. destruct Hl as [Hl _]. inversion_clear Hl.
       elim H. left. compute. now transitivity x.
     - inversion_clear Hin. inversion_clear H0.
@@ -1602,8 +1586,8 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros m x. destruct (m[x]) eqn:Hn.
   - apply from_elements_out with 0. intro Habs. apply InA_elt_pair in Habs.
-    destruct Habs as [n Habs]. rewrite elements_spec in Habs. simpl in Habs. omega.
-  - apply from_elements_in. apply elements_NoDupA. rewrite elements_spec. simpl. omega.
+    destruct Habs as [n Habs]. rewrite elements_spec in Habs. simpl in Habs. lia.
+  - apply from_elements_in. apply elements_NoDupA. rewrite elements_spec. simpl. lia.
   Qed.
   
   Lemma elements_from_elements : forall l, is_elements l -> PermutationA eq_pair (elements (from_elements l)) l.
@@ -1637,10 +1621,10 @@ Section MMultisetFacts.
     + destruct Hin as [? [Hin _]]. rewrite InA_nil in Hin. elim Hin.
   * simpl. rewrite add_In, IHl; trivial. split; intros Hin.
     + destruct Hin as [[? Heq] | [n [Hin Hn]]].
-      - exists p. split; try (left; split); auto; omega.
+      - exists p. split; try (left; split); auto; lia.
       - exists n. split; trivial. now right.
     + destruct Hin as [n [Hin Hn]]. inversion_clear Hin.
-      - destruct H. left. compute in *. split; trivial. omega.
+      - destruct H. left. compute in *. split; trivial. lia.
       - right. exists n. now split.
   Qed.
   
@@ -1659,10 +1643,10 @@ Section MMultisetFacts.
     (from_elements l)[x] = n <-> InA eq_pair (x, n) l.
   Proof using FMultisetsSpec.
   induction l as [| [y p] l]; intros x n Hn Hnodup.
-  * simpl. rewrite InA_nil, empty_spec. omega.
+  * simpl. rewrite InA_nil, empty_spec. lia.
   * simpl. destruct (equiv_dec x y) as [Heq | Heq].
     + assert (Hin : (from_elements l)[y] = 0).
-      { setoid_replace ((from_elements l)[y] = 0) with (~In y (from_elements l)) by (unfold In; cbn; omega).
+      { setoid_replace ((from_elements l)[y] = 0) with (~In y (from_elements l)) by (unfold In; cbn; lia).
         destruct l as [| z l]; try apply In_empty. inversion_clear Hnodup.
         rewrite from_elements_In; trivial. intros [q [Hin Hq]]. apply H. revert Hin. apply InA_pair_elt. }
       rewrite Heq, add_same, Hin. simpl. split; intro Hp.
@@ -1671,7 +1655,7 @@ Section MMultisetFacts.
         -- destruct H; auto.
         -- inversion_clear Hnodup. elim H0. revert H. apply InA_pair_elt.
     + rewrite add_other; trivial. destruct l as [| z l].
-      - simpl. rewrite empty_spec. intuition; try omega.
+      - simpl. rewrite empty_spec. intuition; try lia.
         inversion_clear H. destruct H0; try contradiction. rewrite InA_nil in H0. elim H0.
       - inversion_clear Hnodup. rewrite IHl; discriminate || trivial. intuition.
         inversion_clear H1; trivial. destruct H2. contradiction.
@@ -1704,13 +1688,13 @@ Section MMultisetFacts.
       rewrite Hin, elements_from_elements; trivial. simpl.
       destruct pair_dec as [? | Habs]; try now elim Habs.
       rewrite removeA_out; try reflexivity. intro Habs. apply Hout. revert Habs. apply InA_pair_elt.
-    - apply proj2 in Hl'. inversion_clear Hl'. simpl in *. omega.
+    - apply proj2 in Hl'. inversion_clear Hl'. simpl in *. lia.
     - apply is_elements_cons_inv in Hl'. rewrite <- elements_In, elements_from_elements; eauto.
   + assert (0 < n) by tauto.
-    rewrite not_In in Hout. rewrite Hout, plus_0_r. rewrite <- not_In in Hout.
+    rewrite not_In in Hout. rewrite Hout, Nat.add_0_r. rewrite <- not_In in Hout.
     rewrite elements_add_out; trivial; []. f_equiv.
     rewrite removeA_out; try reflexivity; [].
-    rewrite elements_spec. simpl. omega.
+    rewrite elements_spec. simpl. lia.
   Qed.
   
   (*
@@ -1785,19 +1769,19 @@ Section MMultisetFacts.
     intros Hfadd x n m i Hn. 
     destruct m[x] eqn:Hm.
     + (* If [~In x m], then we can simply use [fold_add] *)
-      apply fold_add. assumption. unfold In. omega.
+      apply fold_add. assumption. unfold In. lia.
     + (* Otherwise, the real proof starts *)
       assert (Hperm : PermutationA eq_pair (elements (add x n m))
                      (elements (remove x (m[x]) m) ++ (x, n + m[x]) :: nil)).
       { etransitivity; try apply (PermutationA_cons_append _).
-        rewrite <- elements_add_out; try omega.
-          rewrite add_remove1; try omega. do 2 f_equiv. omega.
-          unfold In. rewrite remove_same. omega. }
+        rewrite <- elements_add_out; try lia.
+          rewrite add_remove1; try lia. do 2 f_equiv. lia.
+          unfold In. rewrite remove_same. lia. }
       rewrite fold_spec. erewrite (fold_left_symmetry_PermutationA _ _); try apply Hperm || reflexivity.
       - rewrite <- fold_left_rev_right. rewrite rev_unit. simpl. rewrite <- Hfadd. f_equiv.
         rewrite fold_left_rev_right, <- fold_spec. etransitivity.
-          symmetry. apply fold_add. omega. unfold In. rewrite remove_same. omega.
-          rewrite add_remove1; trivial. now rewrite minus_diag, add_0.
+          symmetry. apply fold_add. lia. unfold In. rewrite remove_same. lia.
+          rewrite add_remove1; trivial. now rewrite Minus.minus_diag, add_0.
       - intros ? ? ? [? ?] [? ?] [Heq ?]. now apply Hf.
       - intros [? ?] [? ?] ?. simpl. apply Hf2.
     Qed.
@@ -1810,7 +1794,7 @@ Section MMultisetFacts.
     + intros * Heq. now rewrite Heq.
     + now rewrite union_empty_l.
     + intros * ? ? Hrec. rewrite union_add_comm_l, <- Hrec. apply fold_add; trivial; [].
-      unfold In in *. rewrite union_spec. intro Habs. apply (Hm x); omega.
+      unfold In in *. rewrite union_spec. intro Habs. apply (Hm x); lia.
     Qed.
     
     Lemma fold_union_additive : additive2 eqA f ->
@@ -1864,7 +1848,7 @@ Section MMultisetFacts.
     rewrite Heq.
     - specialize (Hfg m' ltac:(intro; msetdec) x).
       rewrite add_same, Hx in Hfg. simpl in Hfg. apply Hfg; trivial; [].
-      rewrite add_In. left. split; try reflexivity. unfold In in *. omega.
+      rewrite add_In. left. split; try reflexivity. unfold In in *. lia.
     - intros m'' Hm'' x' acc' Hin' Hout'.
       assert (Hneq : x' =/= x). { intro Habs. apply Hout. now rewrite <- Habs. }
       rewrite <- (add_other x x' m[x] m' Hneq).
@@ -1938,7 +1922,7 @@ Section MMultisetFacts.
   intro m. split.
   + pattern m. apply ind; clear m.
     - intros m1 m2 Hm. setoid_rewrite Hm. reflexivity.
-    - intros m x n Hm Hn Hrec _. exists x. apply add_In. left. split; omega || reflexivity.
+    - intros m x n Hm Hn Hrec _. exists x. apply add_In. left. split; lia || reflexivity.
     - intro Habs. now elim Habs.
   + intros [x Hin]. intro Habs. revert Hin. rewrite Habs. apply In_empty.
   Qed.
@@ -1956,7 +1940,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intro m. split; intro Heq.
   + intro x. rewrite empty_spec. destruct (m[x]) eqn:Hin. reflexivity.
-    assert (Hm : In x m). { unfold In. rewrite Hin. omega. }
+    assert (Hm : In x m). { unfold In. rewrite Hin. lia. }
     rewrite <- support_spec in Hm. rewrite Heq in Hm. inversion Hm.
   + apply (@PermutationA_nil _ equiv _). rewrite Heq. now rewrite support_empty.
   Qed.
@@ -1966,12 +1950,12 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros x m. split; intro Hm.
   + assert (Hin : In x m). { rewrite <- support_spec, Hm. now left. }
-    unfold In in Hin. split; try omega. intro y. rewrite singleton_spec.
+    unfold In in Hin. split; try lia. intro y. rewrite singleton_spec.
     destruct (equiv_dec y x) as [Heq | Hneq]. now rewrite Heq.
     destruct m[y] eqn:Hy. reflexivity.
-    assert (Hiny : In y m). { unfold In. rewrite Hy. omega. }
+    assert (Hiny : In y m). { unfold In. rewrite Hy. lia. }
     rewrite <- support_spec, Hm in Hiny. inversion_clear Hiny. contradiction. inversion H.
-  + destruct Hm as [Hm Hmult]. rewrite Hm. apply support_singleton. omega.
+  + destruct Hm as [Hm Hmult]. rewrite Hm. apply support_singleton. lia.
   Qed.
   
   Lemma support_add : forall x n m, n > 0 ->
@@ -1985,7 +1969,7 @@ Section MMultisetFacts.
   * intro z. destruct (In_dec x m) as [Hin | Hin].
     + do 2 rewrite support_spec. unfold In in *. msetdec.
     + rewrite support_spec. unfold In in *. msetdec.
-      - split; intro. now left. omega.
+      - split; intro. now left. lia.
       - split; intro Hz.
           right. now rewrite support_spec.
           inversion Hz; subst. contradiction. now rewrite support_spec in H0.
@@ -1993,14 +1977,14 @@ Section MMultisetFacts.
   
   Lemma support_remove : forall x n m,
     PermutationA equiv (support (remove x n m))
-      (if le_dec (m[x]) n then removeA equiv_dec x (support m) else support m).
+      (if Compare_dec.le_dec (m[x]) n then removeA equiv_dec x (support m) else support m).
   Proof using FMultisetsSpec.
   intros x n m. apply (NoDupA_equivlistA_PermutationA _).
   + apply support_NoDupA. 
-  + destruct (le_dec (m[x]) n) as [Hin | Hin].
+  + destruct (Compare_dec.le_dec (m[x]) n) as [Hin | Hin].
     - apply (removeA_NoDupA _). apply support_NoDupA.
     - apply support_NoDupA.
-  + intro z. destruct (le_dec (m[x]) n) as [Hle | Hlt].
+  + intro z. destruct (Compare_dec.le_dec (m[x]) n) as [Hle | Hlt].
     - rewrite (removeA_InA _). do 2 rewrite support_spec. unfold In in *. split; intro Hin.
         destruct (equiv_dec z x).
           exfalso. revert Hin. msetdec.
@@ -2046,7 +2030,7 @@ Section MMultisetFacts.
   + intro x. rewrite support_elements. rewrite (InA_map_iff _ _). split; intro Hin.
     - exists (x, m[x]). now split.
     - destruct Hin as [[y p] [Heq Hin]]. rewrite elements_spec in Hin |- *.
-      simpl in *. intuition. rewrite <- Heq. omega.
+      simpl in *. intuition. rewrite <- Heq. lia.
     - clear. now intros [x n] [y p] [? ?].
   Qed.
   
@@ -2055,8 +2039,8 @@ Section MMultisetFacts.
   Lemma cardinal_lower_aux : forall (l : list (elt * nat)) acc, acc <= fold_left (fun acc xn => snd xn + acc) l acc.
   Proof using .
   induction l; intro acc; simpl.
-  - omega.
-  - transitivity (snd a + acc). omega. apply IHl.
+  - lia.
+  - transitivity (snd a + acc). lia. apply IHl.
   Qed.
   
   Lemma fold_left_cardinal : Proper (PermutationA eq_pair ==> Logic.eq ==> Logic.eq)
@@ -2064,27 +2048,27 @@ Section MMultisetFacts.
   Proof using .
   apply (fold_left_symmetry_PermutationA _ _).
   - intros ? ? ? [? ?] [? ?] [? Heq]. hnf in *. simpl in *. now subst.
-  - intros [? ?] [? ?] ?. omega.
+  - intros [? ?] [? ?] ?. lia.
   Qed.
   
   Corollary cardinal_lower : forall x m, m[x] <= cardinal m.
   Proof using FMultisetsSpec.
-  intros x m. destruct (m[x]) eqn:Hm. omega.
-  assert (Hin : InA eq_pair (x, S n) (elements m)). { rewrite elements_spec. split; simpl. assumption. omega. }
+  intros x m. destruct (m[x]) eqn:Hm. lia.
+  assert (Hin : InA eq_pair (x, S n) (elements m)). { rewrite elements_spec. split; simpl. assumption. lia. }
   rewrite cardinal_spec, fold_spec.
   apply (PermutationA_split _) in Hin. destruct Hin as [l Hperm]. assert (Heq := eq_refl 0).
-  rewrite fold_left_cardinal; try eassumption. simpl. rewrite plus_0_r. now apply cardinal_lower_aux.
+  rewrite fold_left_cardinal; try eassumption. simpl. rewrite Nat.add_0_r. now apply cardinal_lower_aux.
   Qed.
   
   Corollary cardinal_In : forall x m, In x m -> 0 < cardinal m.
-  Proof using FMultisetsSpec. intros. apply lt_le_trans with (m[x]). assumption. apply cardinal_lower. Qed.
+  Proof using FMultisetsSpec. intros. apply Nat.lt_le_trans with (m[x]). assumption. apply cardinal_lower. Qed.
   
   Lemma cardinal_0 : forall m, cardinal m = 0 <-> m == empty.
   Proof using FMultisetsSpec.
   intro m. split; intro Hm.
   + intro y. rewrite empty_spec, <- empty_spec with y. revert y. change (m == empty). rewrite <- elements_nil.
     destruct (elements m) as [| [x n] l] eqn:Helt. reflexivity.
-    simpl in Hm. elim (lt_irrefl 0). apply lt_le_trans with n.
+    simpl in Hm. elim (Nat.lt_irrefl 0). apply Nat.lt_le_trans with n.
     - apply elements_pos with x m. rewrite Helt. now left.
     - assert (Hn : m[x] = n). { eapply proj1. rewrite <- (elements_spec (x, n)), Helt. now left. }
       rewrite <- Hn, <- Hm. apply cardinal_lower.
@@ -2095,23 +2079,23 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intros m₁ m₂ Hm ? ? ?. apply (fold_compat _ _); trivial; [|].
   - now repeat intro; subst.
-  - repeat intro. omega.
+  - repeat intro. lia.
   Qed.
   
   Theorem cardinal_union : forall m₁ m₂, cardinal (union m₁ m₂) = cardinal m₁ + cardinal m₂.
   Proof using FMultisetsSpec.
   assert (Proper (equiv ==> eq ==> equiv ==> equiv) (fun (_ : elt) (n acc : nat) => n + acc)).
-  { repeat intro. cbn in *. omega. }
+  { repeat intro. cbn in *. lia. }
   assert (transpose2 equiv (fun (_ : elt) (n0 acc : nat) => n0 + acc)).
-  { repeat intro. cbn; omega. }
+  { repeat intro. cbn; lia. }
   intros m₁ m₂. do 2 rewrite cardinal_spec. rewrite (fold_union_additive _); trivial.
   + rewrite <- cardinal_spec. revert m₁. apply ind.
     - intros ? ? Heq. now rewrite Heq.
     - intros. destruct n.
       -- now rewrite add_0.
-      -- repeat rewrite (fold_add _); trivial; omega.
+      -- repeat rewrite (fold_add _); trivial; lia.
     - now do 2 rewrite fold_empty.
-  + repeat intro. cbn. omega.
+  + repeat intro. cbn. lia.
   Qed.
   
   Corollary cardinal_add : forall x n m, cardinal (add x n m) = n + cardinal m.
@@ -2119,12 +2103,12 @@ Section MMultisetFacts.
   
   Theorem cardinal_remove : forall x n m, cardinal (remove x n m) = cardinal m - min n (m[x]).
   Proof using FMultisetsSpec.
-  intros x n m. destruct (le_dec n (m[x])) as [Hle | Hlt].
-  + setoid_rewrite <- (add_0 x) at 3. erewrite <- (minus_diag n).
-    rewrite <- (@add_remove1 x n n m), cardinal_add, min_l; trivial. omega.
-  + assert (Hle : m[x] <= n) by omega.
-    setoid_rewrite <- (add_0 x) at 3. erewrite <- minus_diag.
-    rewrite <- (@add_remove2 x _ n m Hle (le_refl _)), cardinal_add, min_r; trivial. omega.
+  intros x n m. destruct (Compare_dec.le_dec n (m[x])) as [Hle | Hlt].
+  + setoid_rewrite <- (add_0 x) at 3. erewrite <- (Minus.minus_diag n).
+    rewrite <- (@add_remove1 x n n m), cardinal_add, min_l; trivial. lia.
+  + assert (Hle : m[x] <= n) by lia.
+    setoid_rewrite <- (add_0 x) at 3. erewrite <- Minus.minus_diag.
+    rewrite <- (@add_remove2 x _ n m Hle (Nat.le_refl _)), cardinal_add, min_r; trivial. lia.
   Qed.
   
   Global Instance cardinal_sub_compat : Proper (Subset ==> le) cardinal.
@@ -2132,27 +2116,27 @@ Section MMultisetFacts.
   intro s. pattern s. apply ind; clear s.
   + intros ? ? Hm. now setoid_rewrite Hm.
   + intros m x n Hin Hn Hrec m' Hsub. rewrite (cardinal_add _).
-    assert (n <= m'[x]). { transitivity (n + m[x]). omega. specialize (Hsub x). msetdec. }
+    assert (n <= m'[x]). { transitivity (n + m[x]). lia. specialize (Hsub x). msetdec. }
     assert (n <= cardinal m'). { etransitivity; try eassumption. apply cardinal_lower. }
     apply add_subset_remove in Hsub. apply Hrec in Hsub. rewrite cardinal_remove in Hsub.
-    etransitivity. apply plus_le_compat. reflexivity. apply Hsub. rewrite min_l; trivial. omega.
-  + intros. rewrite cardinal_empty. omega.
+    etransitivity. apply Plus.plus_le_compat. reflexivity. apply Hsub. rewrite min_l; trivial. lia.
+  + intros. rewrite cardinal_empty. lia.
   Qed.
   
   Lemma cardinal_inter_le_min : forall m1 m2, cardinal (inter m1 m2) <= min (cardinal m1) (cardinal m2).
   Proof using FMultisetsSpec.
   intro m1; pattern m1. apply ind; clear m1.
   * intros m1 m1' Heq. split; intros Hle m2; rewrite Heq || rewrite <- Heq; apply Hle.
-  * intros m x n Hout Hn Hind m2. destruct (le_lt_dec n (m2[x])) as [Hle | Hlt].
+  * intros m x n Hout Hn Hind m2. destruct (Compare_dec.le_lt_dec n (m2[x])) as [Hle | Hlt].
     + rewrite inter_add_l1; trivial. rewrite <- (add_remove_cancel Hle) at 2.
-      do 3 rewrite cardinal_add. rewrite Min.plus_min_distr_l. apply plus_le_compat_l, Hind.
-    + rewrite inter_add_l2; try omega.
+      do 3 rewrite cardinal_add. rewrite Min.plus_min_distr_l. apply Plus.plus_le_compat_l, Hind.
+    + rewrite inter_add_l2; try lia.
       transitivity (Init.Nat.min (cardinal (add x (m2[x]) m)) (cardinal m2)).
       - rewrite <- (add_remove_cancel (reflexivity (m2[x]))) at 4.
-        do 3 rewrite cardinal_add. rewrite Min.plus_min_distr_l. apply plus_le_compat_l.
-        rewrite remove_cap; try omega. apply Hind.
-      - do 2 rewrite cardinal_add. apply Nat.min_le_compat_r. omega.
-  * intro. rewrite inter_empty_l, cardinal_empty. omega.
+        do 3 rewrite cardinal_add. rewrite Min.plus_min_distr_l. apply Plus.plus_le_compat_l.
+        rewrite remove_cap; try lia. apply Hind.
+      - do 2 rewrite cardinal_add. apply Nat.min_le_compat_r. lia.
+  * intro. rewrite inter_empty_l, cardinal_empty. lia.
   Qed.
   
   Lemma cardinal_diff_upper : forall m1 m2, cardinal (diff m1 m2) <= cardinal m1.
@@ -2162,14 +2146,14 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   intro m1. pattern m1. apply ind; clear m1.
   + intros m1 m1' Heq. now setoid_rewrite Heq.
-  + intros m x n Hout Hn Hind m2. destruct (le_lt_dec n (m2[x])) as [Hle | Hlt].
+  + intros m x n Hout Hn Hind m2. destruct (Compare_dec.le_lt_dec n (m2[x])) as [Hle | Hlt].
     - rewrite diff_add_l1; trivial. rewrite <- (add_remove_cancel Hle) at 1. do 2 rewrite cardinal_add.
-      replace (n + cardinal m - (n + cardinal(remove x n m2))) with (cardinal m - cardinal(remove x n m2)) by omega.
+      replace (n + cardinal m - (n + cardinal(remove x n m2))) with (cardinal m - cardinal(remove x n m2)) by lia.
       apply Hind.
-    - rewrite diff_add_l2; try omega. rewrite <- (add_remove_cancel (reflexivity (m2[x]))) at 1.
-      do 3 rewrite cardinal_add. rewrite <- (@remove_cap x n); try omega.
-      transitivity ((n - m2[x]) + (cardinal m - cardinal(remove x n m2))); try omega.
-      apply plus_le_compat_l, Hind.
+    - rewrite diff_add_l2; try lia. rewrite <- (add_remove_cancel (reflexivity (m2[x]))) at 1.
+      do 3 rewrite cardinal_add. rewrite <- (@remove_cap x n); try lia.
+      transitivity ((n - m2[x]) + (cardinal m - cardinal(remove x n m2))); try lia.
+      apply Plus.plus_le_compat_l, Hind.
   + intro. now rewrite diff_empty_l, cardinal_empty.
   Qed.
   
@@ -2184,7 +2168,7 @@ Section MMultisetFacts.
     transitivity (n + Init.Nat.max (cardinal m) (cardinal (remove x n m2))).
     - rewrite <- Max.plus_max_distr_l. apply Nat.max_le_compat_l. rewrite <- (cardinal_add x).
       apply cardinal_sub_compat. intro. msetdec.
-    - apply plus_le_compat_l, Hind.
+    - apply Plus.plus_le_compat_l, Hind.
   + intro. now rewrite lub_empty_l, cardinal_empty.
   Qed.
   
@@ -2194,9 +2178,9 @@ Section MMultisetFacts.
   Lemma cardinal_from_elements : forall l,
     cardinal (from_elements l) = List.fold_left (fun acc xn => snd xn + acc) l 0.
   Proof using FMultisetsSpec.
-  intro l. rewrite <- plus_0_l at 1. generalize 0. induction l as [| [x n] l]; intro p; simpl.
+  intro l. rewrite <- Plus.plus_0_l at 1. generalize 0. induction l as [| [x n] l]; intro p; simpl.
   - now rewrite cardinal_empty.
-  - rewrite cardinal_add, plus_assoc. rewrite (plus_comm  p n). apply IHl.
+  - rewrite cardinal_add, Nat.add_assoc. rewrite (Nat.add_comm  p n). apply IHl.
   Qed.
   
   Lemma cardinal_total_sub_eq : forall m1 m2, m1 [<=] m2 -> cardinal m1 = cardinal m2 -> m1 == m2.
@@ -2205,11 +2189,11 @@ Section MMultisetFacts.
   + intros m1 m1' Heq. now setoid_rewrite Heq.
   + intros m1 x n Hout Hn Hrec m2 Hsub Heq.
     assert (n <= m2[x]).
-    { transitivity (n + m1[x]); try omega.
-      specialize (Hsub x). rewrite add_same in Hsub. omega. }
+    { transitivity (n + m1[x]); try lia.
+      specialize (Hsub x). rewrite add_same in Hsub. lia. }
     rewrite <- (@add_remove_cancel x n m2); trivial. f_equiv. apply Hrec.
     - now apply add_subset_remove.
-    - rewrite cardinal_add in Heq. rewrite cardinal_remove, <- Heq, Nat.min_l; omega.
+    - rewrite cardinal_add in Heq. rewrite cardinal_remove, <- Heq, Nat.min_l; lia.
   + intros m _ Heq. symmetry. rewrite <- cardinal_0, <- Heq. apply cardinal_empty.
   Qed.
   
@@ -2246,10 +2230,10 @@ Section MMultisetFacts.
   Qed.
   
   Lemma size_remove : forall x n m,
-    In x m -> size (remove x n m) = if le_dec (m[x]) n then pred (size m) else size m.
+    In x m -> size (remove x n m) = if Compare_dec.le_dec (m[x]) n then pred (size m) else size m.
   Proof using FMultisetsSpec.
   intros x n m Hin. do 2 rewrite size_spec. rewrite support_remove.
-  destruct (le_dec (m[x]) n) as [Hle | ?]; trivial.
+  destruct (Compare_dec.le_dec (m[x]) n) as [Hle | ?]; trivial.
   rewrite <- support_spec in Hin. apply PermutationA_split in Hin; refine _. destruct Hin as [l Hin].
   assert (Hnodup : NoDupA equiv (x :: l)). { rewrite <- Hin. apply support_NoDupA. }
   (* XXX: why does [rewrite Hin] fails here? *)
@@ -2260,7 +2244,7 @@ Section MMultisetFacts.
   
   Corollary size_remove_eq : forall x n m, n < m[x] -> size (remove x n m) = size m.
   Proof using FMultisetsSpec.
-   intros x n m ?. rewrite size_remove; try (unfold In; omega). destruct (le_dec (m[x]) n); omega.
+   intros x n m ?. rewrite size_remove; try (unfold In; lia). destruct (Compare_dec.le_dec (m[x]) n); lia.
   Qed.
   
   Lemma size_union_lower : forall m1 m2, max (size m1) (size m2) <= size (union m1 m2).
@@ -2272,7 +2256,7 @@ Section MMultisetFacts.
   intros m1 m2. pattern m1. apply ind; clear m1.
   + intros m1 m1' Heq. rewrite Heq. reflexivity.
   + intros m1 x n Hin Hn Hrec. rewrite union_add_comm_l. repeat rewrite size_add; trivial.
-    destruct (In_dec x m1); try contradiction. destruct (In_dec x (union m1 m2)); omega.
+    destruct (In_dec x m1); try contradiction. destruct (In_dec x (union m1 m2)); lia.
   + rewrite size_empty, union_empty_l. reflexivity.
   Qed.
   
@@ -2301,7 +2285,7 @@ Section MMultisetFacts.
   + rewrite from_elements_nil, size_empty. reflexivity.
   + simpl. destruct n.
     - rewrite add_0. now apply le_S.
-    - rewrite size_add; try omega. destruct (In_dec x (from_elements l)); auto with arith.
+    - rewrite size_add; try lia. destruct (In_dec x (from_elements l)); auto with arith.
   Qed.
   
   Lemma size_from_elements_valid : forall l, is_elements l -> size (from_elements l) = length l.
@@ -2311,7 +2295,7 @@ Section MMultisetFacts.
   Proof using FMultisetsSpec.
   apply ind.
   + intros ? ? Heq. now rewrite Heq.
-  + intros m x n Hin Hn Hrec. rewrite size_add, cardinal_add; trivial. destruct (In_dec x m); omega.
+  + intros m x n Hin Hn Hrec. rewrite size_add, cardinal_add; trivial. destruct (In_dec x m); lia.
   + rewrite size_empty, cardinal_empty. reflexivity.
   Qed.
   
@@ -2331,23 +2315,23 @@ Section MMultisetFacts.
     Proof using FMultisetsSpec Hf. intros x m Hin. rewrite nfilter_In in Hin; intuition. Qed.
     
     Lemma nfilter_subset : forall m, nfilter f m [<=] m.
-    Proof using FMultisetsSpec Hf. intros m x. rewrite nfilter_spec; trivial. destruct (f x (m[x])); omega. Qed.
+    Proof using FMultisetsSpec Hf. intros m x. rewrite nfilter_spec; trivial. destruct (f x (m[x])); lia. Qed.
     
     Lemma nfilter_add_true : forall x n m, ~In x m -> n > 0 ->
       (nfilter f (add x n m) == add x n (nfilter f m) <-> f x n = true).
     Proof using FMultisetsSpec Hf.
-    intros x n m Hin Hn. assert (Hm : m[x] = 0) by (unfold In in Hin; omega). split; intro Heq.
+    intros x n m Hin Hn. assert (Hm : m[x] = 0) by (unfold In in Hin; lia). split; intro Heq.
     + specialize (Heq x). rewrite nfilter_spec, add_same, add_same, nfilter_spec in Heq; trivial.
-      rewrite Hm in Heq. simpl in Heq. destruct (f x n). reflexivity. omega.
+      rewrite Hm in Heq. simpl in Heq. destruct (f x n). reflexivity. lia.
     + intro y. msetdec. simpl. rewrite Heq. now destruct (f x 0).
     Qed.
     
     Lemma nfilter_add_false : forall x n m, ~In x m -> n > 0 ->
       (nfilter f (add x n m) == nfilter f m <-> f x n = false).
     Proof using FMultisetsSpec Hf.
-    intros x n m Hin Hn. assert (Hm : m[x] = 0) by (unfold In in Hin; omega). split; intro Heq.
+    intros x n m Hin Hn. assert (Hm : m[x] = 0) by (unfold In in Hin; lia). split; intro Heq.
     + specialize (Heq x). rewrite nfilter_spec, add_same, nfilter_spec in Heq; trivial.
-      rewrite Hm in Heq. simpl in Heq. destruct (f x n). destruct (f x 0); omega. reflexivity.
+      rewrite Hm in Heq. simpl in Heq. destruct (f x n). destruct (f x 0); lia. reflexivity.
     + intro y. msetdec. simpl. rewrite Heq. now destruct (f x 0).
     Qed.
     
@@ -2359,7 +2343,7 @@ Section MMultisetFacts.
     - now rewrite nfilter_add_false.
     Qed.
     
-    Global Instance nfilter_sub_compat : Proper (equiv ==> le ==> Bool.leb) f ->
+    Global Instance nfilter_sub_compat : Proper (equiv ==> le ==> Bool.le) f ->
       Proper (Subset ==> Subset) (nfilter f).
     Proof using FMultisetsSpec Hf.
     intros Hf2 m1 m2. revert m1. pattern m2. apply ind; clear m2.
@@ -2368,11 +2352,11 @@ Section MMultisetFacts.
       assert (m[x] = 0) by msetdec. assert (Hbool := Hf2 y y (reflexivity _) _ _ Hsub).
       destruct (f x n) eqn:Hfxn.
     - msetdec; try rewrite H in *.
-          destruct (f x (m'[x])), (f x 0); omega.
-          destruct (f y m'[y]); omega || now rewrite Hbool.
+          destruct (f x (m'[x])), (f x 0); lia.
+          destruct (f y m'[y]); lia || now rewrite Hbool.
       - msetdec; try rewrite H1 in *.
           simpl in Hbool. rewrite Hfxn in Hbool. now destruct (f x (m'[x])), (f x 0).
-          destruct (f y m[y]), (f y m'[y]); omega || inversion Hbool.
+          destruct (f y m[y]), (f y m'[y]); lia || inversion Hbool.
     + intros m Hm. rewrite subset_empty_r in Hm. now rewrite Hm.
     Qed.
     
@@ -2388,9 +2372,9 @@ Section MMultisetFacts.
       forall m, (forall x, In x m -> f x m[x] = g x m[x]) -> nfilter f m == nfilter g m.
     Proof using FMultisetsSpec Hf.
     intros g Hg m Hext x. repeat rewrite nfilter_spec; trivial.
-    destruct (eq_nat_dec m[x] 0) as [Heq | Hneq].
+    destruct (Nat.eq_dec m[x] 0) as [Heq | Hneq].
     - rewrite Heq. destruct (f x 0), (g x 0); reflexivity.
-    - rewrite Hext. reflexivity. unfold In. omega.
+    - rewrite Hext. reflexivity. unfold In. lia.
     Qed.
     
     Lemma elements_nfilter : forall m,
@@ -2404,7 +2388,7 @@ Section MMultisetFacts.
     * intros [x n]. split; intro Hin.
       + rewrite elements_spec in Hin. destruct Hin as [Hin Hpos]. simpl in *. subst.
       rewrite filter_InA; simpl in *.
-        - rewrite nfilter_spec in Hpos |- *; trivial. destruct (f x (m[x])) eqn:Hfx; trivial; try omega; [].
+        - rewrite nfilter_spec in Hpos |- *; trivial. destruct (f x (m[x])) eqn:Hfx; trivial; try lia; [].
           split; trivial. rewrite elements_spec; intuition.
         - intros [? ?] [? ?] [? ?]. compute in *. auto.
       + rewrite filter_InA in Hin.
@@ -2510,12 +2494,12 @@ Section MMultisetFacts.
   pattern m. apply ind; clear m.
   + intros m1 m2 Hm. now setoid_rewrite Hm.
   + intros m y n Hm Hn Hrec. rewrite nfilter_add; trivial. destruct (equiv_dec y x) as [Heq | Heq].
-    - rewrite cardinal_add, Hrec, Heq, add_same. apply plus_comm.
+    - rewrite cardinal_add, Hrec, Heq, add_same. apply Nat.add_comm.
     - rewrite add_other; msetdec.
   + now rewrite nfilter_empty, cardinal_empty, empty_spec.
   Qed.
   
-  Lemma nfilter_mono_compat : forall f g, compatb f -> compatb g -> (forall x n, Bool.leb (f x n) (g x n)) ->
+  Lemma nfilter_mono_compat : forall f g, compatb f -> compatb g -> (forall x n, Bool.le (f x n) (g x n)) ->
     forall m, nfilter f m [<=] nfilter g m.
   Proof using FMultisetsSpec.
   intros f g Hf Hg Hfg. apply ind.
@@ -2543,7 +2527,7 @@ Section MMultisetFacts.
   + intros m' x n Hin Hn Hrec Hincl Hdisjoint.
     assert (Hincl' : m' [<=] m).
     { intro y. destruct (equiv_dec y x) as [Hxy | Hxy].
-      - rewrite Hxy. transitivity (m'[x] + n); try omega; [].
+      - rewrite Hxy. transitivity (m'[x] + n); try lia; [].
         rewrite <- add_same. apply Hincl.
       - now rewrite <- (add_other x y n). }
     assert (Hdisjoint' : forall x, In x m' -> f x m'[x] && g x m'[x] = false).
@@ -2577,7 +2561,7 @@ Section MMultisetFacts.
     Proof using FMultisetsSpec Hf. intros x m Hin. rewrite filter_In in Hin; intuition. Qed.
     
     Lemma filter_subset : forall m, filter f m [<=] m.
-    Proof using FMultisetsSpec Hf. intros m x. rewrite filter_spec; trivial. destruct (f x); omega. Qed.
+    Proof using FMultisetsSpec Hf. intros m x. rewrite filter_spec; trivial. destruct (f x); lia. Qed.
     
     Lemma filter_add_true : forall x n m, n > 0 ->
       (filter f (add x n m) == add x n (filter f m) <-> f x = true).
@@ -2585,7 +2569,7 @@ Section MMultisetFacts.
     repeat intro. split.
     * intro Heq. specialize (Heq x). rewrite filter_spec in Heq; trivial.
       destruct (f x) eqn:Hfx; trivial.
-      rewrite add_same in Heq. omega.
+      rewrite add_same in Heq. lia.
     * intros Hfx y. rewrite filter_spec; trivial.
       destruct (equiv_dec y x) as [Hxy | Hxy].
       + rewrite Hxy, Hfx, Hxy. do 2 rewrite add_same. now rewrite filter_spec, Hfx.
@@ -2599,7 +2583,7 @@ Section MMultisetFacts.
     Proof using FMultisetsSpec Hf.
     repeat intro. destruct (f x) eqn:Hfx.
     + rewrite <- (@filter_add_true x n m) in Hfx; trivial. rewrite Hfx.
-      split; intro Habs; try discriminate. specialize (Habs x). rewrite add_same in Habs. omega.
+      split; intro Habs; try discriminate. specialize (Habs x). rewrite add_same in Habs. lia.
     + split; intro Heq; reflexivity || clear Heq. intro y.
       do 2 (rewrite filter_spec; trivial).
       destruct (equiv_dec y x) as [Hxy | Hxy].
@@ -2746,7 +2730,7 @@ Section MMultisetFacts.
   Qed.
   
   Lemma filter_mono_compat : forall f g, Proper (equiv ==> Logic.eq) f -> Proper (equiv ==> Logic.eq) g ->
-    (forall x, Bool.leb (f x) (g x)) -> forall m, filter f m [<=] filter g m.
+    (forall x, Bool.le (f x) (g x)) -> forall m, filter f m [<=] filter g m.
   Proof using FMultisetsSpec.
   intros f g Hf Hg Hfg m. repeat rewrite filter_nfilter; trivial. apply nfilter_mono_compat.
   - repeat intro. now apply Hf.
@@ -2861,11 +2845,11 @@ Section MMultisetFacts.
     Qed.
     
     Lemma npartition_sub_compat_fst :
-      Proper (equiv ==> le ==> Bool.leb) f -> Proper (Subset ==> Subset@@1) (npartition f).
+      Proper (equiv ==> le ==> Bool.le) f -> Proper (Subset ==> Subset@@1) (npartition f).
     Proof using FMultisetsSpec Hf. repeat intro. repeat rewrite npartition_spec_fst; trivial. now apply nfilter_sub_compat. Qed.
     
     Lemma npartition_sub_compat_snd :
-      Proper (equiv ==> le --> Bool.leb) f -> Proper (Subset ==> Subset@@2) (npartition f).
+      Proper (equiv ==> le --> Bool.le) f -> Proper (Subset ==> Subset@@2) (npartition f).
     Proof using FMultisetsSpec Hf.
     intros Hf2 ? ? ? ?. repeat rewrite npartition_spec_snd; trivial. apply nfilter_sub_compat.
     - repeat intro. f_equal. now apply Hf.
@@ -2933,7 +2917,7 @@ Section MMultisetFacts.
     intros m1 m2 [Heq1 Heq2] x. specialize (Heq1 x). specialize (Heq2 x).
     do 2 rewrite npartition_spec_fst, nfilter_spec in Heq1; trivial.
     do 2 rewrite npartition_spec_snd, nfilter_spec in Heq2; trivial; try now apply negf_compatb.
-    destruct (f x (m1[x])), (f x (m2[x])); simpl in *; omega.
+    destruct (f x (m1[x])), (f x (m2[x])); simpl in *; lia.
     Qed.
   End nPartition_results.
   
@@ -3120,11 +3104,11 @@ Section MMultisetFacts.
     Qed.
     
     Lemma partition_sub_compat_fst :
-      Proper (equiv ==> Bool.leb) f -> Proper (Subset ==> Subset@@1) (partition f).
+      Proper (equiv ==> Bool.le) f -> Proper (Subset ==> Subset@@1) (partition f).
     Proof using FMultisetsSpec Hf. repeat intro. repeat rewrite partition_spec_fst; trivial. now apply filter_sub_compat. Qed.
     
     Lemma partition_sub_compat_snd :
-      Proper (equiv --> Bool.leb) f -> Proper (Subset ==> Subset@@2) (partition f).
+      Proper (equiv --> Bool.le) f -> Proper (Subset ==> Subset@@2) (partition f).
     Proof using FMultisetsSpec Hf.
     repeat intro. repeat rewrite partition_spec_snd; trivial. apply filter_sub_compat.
     - repeat intro. f_equal. now apply Hf.
@@ -3190,7 +3174,7 @@ Section MMultisetFacts.
     intros m1 m2 [Heq1 Heq2] x. specialize (Heq1 x). specialize (Heq2 x).
     do 2 rewrite partition_spec_fst, filter_spec in Heq1; trivial.
     do 2 rewrite partition_spec_snd, filter_spec in Heq2; trivial; try now apply negf_proper.
-    destruct (f x); simpl in *; omega.
+    destruct (f x); simpl in *; lia.
     Qed.
   End Partition_results.
   
@@ -3313,7 +3297,7 @@ Section MMultisetFacts.
   Qed.
   
   Lemma choose_add_None : forall x n m, n > 0 -> choose (add x n m) <> None.
-  Proof using FMultisetsSpec. intros. rewrite choose_None, add_is_empty. omega. Qed.
+  Proof using FMultisetsSpec. intros. rewrite choose_None, add_is_empty. lia. Qed.
   
   (*
   Lemma choose_union : forall m1 m2, choose (union m1 m2) = None <-> m1 == empty /\ m2 == empty.
@@ -3347,18 +3331,18 @@ Section MMultisetFacts.
     Proof using FMultisetsSpec Hf.
     intros x n m Hn Hin. destruct (for_all f (add x n m)) eqn:Hm.
     + rewrite for_all_spec in Hm; trivial. symmetry. rewrite andb_true_iff. split.
-      - specialize (Hm x). msetdec. assert (Hx : m[x] = 0) by omega. rewrite Hx in *. now apply Hm.
+      - specialize (Hm x). msetdec. assert (Hx : m[x] = 0) by lia. rewrite Hx in *. now apply Hm.
       - rewrite for_all_spec; trivial. intros y Hy. rewrite <- (add_other x y n).
           apply Hm. msetdec.
           intro Heq. apply Hin. now rewrite <- Heq.
     + symmetry. rewrite andb_false_iff. destruct (f x n) eqn:Hfn; intuition. right.
       rewrite for_all_false in *; trivial. intro Habs. apply Hm. intros y Hy. msetdec.
-      - assert (Heq : m[x] = 0) by omega. now rewrite Heq.
+      - assert (Heq : m[x] = 0) by lia. now rewrite Heq.
       - now apply Habs.
     Qed.
     
     (** Compatibility with [\[<=\]] does not hold because new bindings can appear. *)
-    Lemma for_all_sub_compat : Proper (equiv ==> le ==> Bool.leb) f -> Proper (Subset ==> Bool.leb) (for_all f).
+    Lemma for_all_sub_compat : Proper (equiv ==> le ==> Bool.le) f -> Proper (Subset ==> Bool.le) (for_all f).
     Proof. Abort.
     
     Lemma for_all_disjoint_union : forall m1 m2,
@@ -3369,16 +3353,16 @@ Section MMultisetFacts.
     simpl; try rewrite for_all_spec in Hfm1, Hfm2 |- *; try rewrite for_all_false in *; trivial.
     + intros x Hin. rewrite union_In in Hin. specialize (Hm x). destruct Hin as [Hin | Hin].
       - destruct Hm as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction. apply Hfm1 in Hin.
-        rewrite not_In in Hin2. now rewrite union_spec, Hin2, plus_0_r.
+        rewrite not_In in Hin2. now rewrite union_spec, Hin2, Nat.add_0_r.
       - destruct Hm as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction. apply Hfm2 in Hin.
         rewrite not_In in Hin1. now rewrite union_spec, Hin1.
     + intro Habs. apply Hfm2. intros x Hin.
       destruct (Hm x) as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction.
-      rewrite not_In in Hin1. setoid_rewrite <- plus_0_l. rewrite <- Hin1, <- union_spec.
+      rewrite not_In in Hin1. setoid_rewrite <- Nat.add_0_l. rewrite <- Hin1, <- union_spec.
       apply Habs. rewrite union_In. auto.
     + intro Habs. apply Hfm1. intros x Hin.
       destruct (Hm x) as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction.
-      rewrite not_In in Hin2. setoid_rewrite <- plus_0_r. rewrite <- Hin2, <- union_spec.
+      rewrite not_In in Hin2. setoid_rewrite <- Nat.add_0_r. rewrite <- Hin2, <- union_spec.
       apply Habs. rewrite union_In. auto.
     Qed.
     
@@ -3393,7 +3377,7 @@ Section MMultisetFacts.
     Proof using FMultisetsSpec Hf.
     intros m1 m2 Hm1 Hm2. rewrite for_all_spec in Hm1, Hm2 |- *; trivial.
     intros x Hin. rewrite lub_In in Hin. rewrite lub_spec.
-    apply Nat.max_case_strong; intro; apply Hm1 || apply Hm2; destruct Hin; unfold In in *; omega.
+    apply Nat.max_case_strong; intro; apply Hm1 || apply Hm2; destruct Hin; unfold In in *; lia.
     Qed.
     
     Lemma for_all_choose : forall m x, for_all f m = true -> choose m = Some x -> f x (m[x]) = true.
@@ -3442,7 +3426,7 @@ Section MMultisetFacts.
     Lemma for_all_nfilter : forall m, for_all f m = true -> for_all f (nfilter g m) = true.
     Proof using FMultisetsSpec Hf Hg.
     intros m Hm. rewrite for_all_spec in Hm |- *; trivial. intros x Hin. unfold In in Hin.
-    rewrite nfilter_spec in Hin |- *; trivial. now destruct (g x (m[x])); apply Hm || omega.
+    rewrite nfilter_spec in Hin |- *; trivial. now destruct (g x (m[x])); apply Hm || lia.
     Qed.
     
     Lemma for_all_nfilter_merge : forall m,
@@ -3500,15 +3484,15 @@ Section MMultisetFacts.
     Proof using FMultisetsSpec Hf.
     intros x n m Hn Hin. destruct (exists_ f (add x n m)) eqn:Hm.
     + rewrite exists_spec in Hm; trivial. symmetry. rewrite orb_true_iff. destruct Hm as [y [Hy Hfy]]. msetdec.
-      - left. assert (Hm : m[x] = 0) by omega. now rewrite Hm in Hfy.
+      - left. assert (Hm : m[x] = 0) by lia. now rewrite Hm in Hfy.
       - right. exists y. now split.
     + symmetry. rewrite orb_false_iff. rewrite exists_false in *; trivial.
-      assert (Hxm : m[x] = 0) by (unfold In in Hin; omega). split.
+      assert (Hxm : m[x] = 0) by (unfold In in Hin; lia). split.
       - destruct (f x n) eqn:Hfxn; trivial. elim Hm. exists x. split; msetdec.
       - intros [y [Hy Hfy]]. apply Hm. exists y. unfold In in *. split; msetdec.
     Qed.
     
-    Lemma exists_sub_compat : Proper (equiv ==> le ==> Bool.leb) f -> Proper (Subset ==> Bool.leb) (exists_ f).
+    Lemma exists_sub_compat : Proper (equiv ==> le ==> Bool.le) f -> Proper (Subset ==> Bool.le) (exists_ f).
     Proof using FMultisetsSpec Hf.
     intros Hf2 m1. pattern m1. apply ind; clear m1.
     * intros m1 m2 Hm. setoid_rewrite Hm. reflexivity.
@@ -3517,8 +3501,8 @@ Section MMultisetFacts.
       + specialize (Hle x). rewrite not_In in Hm. rewrite add_same, Hm in Hle.
         rewrite <- (@add_remove_cancel x), exists_add; trivial.
         - apply (Hf2 _ _ (reflexivity x)) in Hle. simpl in Hle. rewrite Hall in Hle. simpl in Hle. now rewrite Hle.
-        - omega.
-        - rewrite remove_In. intros [[_ Habs] | [Habs _]]; omega || now elim Habs.
+        - lia.
+        - rewrite remove_In. intros [[_ Habs] | [Habs _]]; lia || now elim Habs.
       + setoid_rewrite Hall in Hrec. simpl in Hrec. apply Hrec. etransitivity; try eassumption. apply add_subset.
     * intros. rewrite exists_empty; trivial. intuition.
     Qed.
@@ -3532,12 +3516,12 @@ Section MMultisetFacts.
     simpl; try rewrite exists_false in *; trivial;
     try destruct Hfm1 as [x [Hin Hfm1]] || destruct Hfm2 as [x [Hin Hfm2]].
     + exists x. specialize (Hm x). destruct Hm as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction.
-      rewrite union_In. split; auto. rewrite union_spec. rewrite not_In in Hin2. now rewrite Hin2, plus_0_r.
+      rewrite union_In. split; auto. rewrite union_spec. rewrite not_In in Hin2. now rewrite Hin2, Nat.add_0_r.
     + exists x. specialize (Hm x). destruct Hm as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction.
       rewrite union_In. split; auto. rewrite union_spec. rewrite not_In in Hin1. now rewrite Hin1.
     + intro Habs. destruct Habs as [x [Hin Habs]]. rewrite union_In in Hin. specialize (Hm x).
       destruct Hin; destruct Hm as [[Hin1 Hin2] | [[Hin1 Hin2] | [Hin1 Hin2]]]; try contradiction.
-      - apply Hfm1. exists x. rewrite not_In in Hin2. rewrite union_spec, Hin2, plus_0_r in Habs. now split.
+      - apply Hfm1. exists x. rewrite not_In in Hin2. rewrite union_spec, Hin2, Nat.add_0_r in Habs. now split.
       - apply Hfm2. exists x. rewrite not_In in Hin1. rewrite union_spec, Hin1 in Habs. now split.
     Qed.
     
@@ -3583,7 +3567,7 @@ Section MMultisetFacts.
              -- rewrite add_In. tauto.
              -- rewrite add_other; trivial. intro Heq. apply Hm. now rewrite <- Heq.
         - exists x. split.
-          ++ rewrite add_In. left. split; omega || reflexivity.
+          ++ rewrite add_In. left. split; lia || reflexivity.
           ++ rewrite not_In in Hm. rewrite add_same, Hm. simpl. now rewrite Hfxn.
       + intro Habs. elim Habs. intros x Hin. elim (In_empty Hin).
     * intro Habs. destruct Hm as [x [Hin Hx]]. apply Habs in Hin. rewrite Hin in Hx. discriminate.
@@ -3750,8 +3734,8 @@ Ltac msetdec_step :=
 
 Ltac msetdec :=
   repeat (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
-          msetdec_step; easy || (try omega)).
+          msetdec_step; easy || (try lia)).
 
 Tactic Notation "msetdec_n" integer(n) :=
   do n (saturate_Einequalities; autorewrite with FMsetdec in *; unfold In in *; trivial;
-        msetdec_step; easy || (try omega)).
+        msetdec_step; easy || (try lia)).

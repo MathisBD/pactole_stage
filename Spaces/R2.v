@@ -21,7 +21,7 @@ Require Import Rbase R_sqrt Rbasic_fun Rtrigo.
 Require Import Psatz.
 Require Import RelationPairs.
 Require Import SetoidPermutation.
-Require Import Omega.
+Require Import Lia.
 Import List Permutation SetoidList.
 Require Import SetoidDec.
 Require Import FunInd.
@@ -2506,7 +2506,7 @@ Lemma SEC_reached_twice : forall l, (2 <= length l)%nat -> NoDup l ->
     /\ on_circle (SEC l) pt1 = true /\ on_circle (SEC l) pt2 = true.
 Proof using .
 intros l Hl Hnodup.
-assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; omega. }
+assert (Hnil : l <> nil). { destruct l; discriminate || simpl in Hl; lia. }
 destruct (SEC_reached Hnil) as [pt1 [Hin1 Hon1]].
 exists pt1.
 (* Put [pt1] at the front of [l] to have easier manipulations. *)
@@ -2528,7 +2528,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   pose (r := radius (SEC (pt1 :: l))).
   assert (Hr : r <> 0).
   { unfold r. rewrite SEC_zero_radius_incl_singleton. intros [pt Hincl].
-    destruct l as [| pt2 ?]; simpl in Hl; try omega; [].
+    destruct l as [| pt2 ?]; simpl in Hl; try lia; [].
     inversion_clear Hnodup. apply H. left. transitivity pt.
     - specialize (Hincl pt2 ltac:(intuition)). simpl in Hincl. intuition.
     - specialize (Hincl pt1 ltac:(intuition)). simpl in Hincl. intuition. }
@@ -2539,7 +2539,7 @@ destruct (Exists_dec (fun x => x <> pt1 /\ on_circle (SEC (pt1 :: l)) x = true))
   pose (c' := (c + ((1 - r' / r) * (pt1 - c)))%VS). (* the new center *)
   assert (Hin2 : In pt2 l).
   { apply farthest_from_in_except_In. destruct l as [| e l].
-    - cbn in Hl. omega.
+    - cbn in Hl. lia.
     - inversion_clear Hnodup. cbn in H. exists e. intuition. }
   assert (Hmax : forall x, In x l -> x <> pt1 -> dist c x <= d).
   { intros. unfold d, pt2. now apply farthest_from_in_except_le. }
@@ -2638,7 +2638,7 @@ destruct l as [| pt1 [| pt2 l']] eqn:Hl.
   + cbn in *. destruct (on_circle (SEC (pt1 :: nil)) pt1); trivial; discriminate.
   + destruct (@SEC_reached_twice (pt1 :: pt2 :: l'))
       as [pt_1 [pt_2 [Hpt_1 [Hpt_2 [Hdiff [H1 H2]]]]]].
-    * simpl. omega.
+    * simpl. lia.
     * rewrite <- Hl. now subst.
     * assert (In pt_1 (on_SEC (pt1 :: pt2 :: l'))). { unfold on_SEC. rewrite filter_In. now split. }
       assert (In pt_2 (on_SEC (pt1 :: pt2 :: l'))). { unfold on_SEC. rewrite filter_In. now split. }
@@ -2715,7 +2715,7 @@ Qed.
 Lemma SEC_alls : forall pt n, (0 < n)%nat ->  SEC (alls pt n) = {| center := pt; radius := 0 |}.
 Proof using .
 intros pt n Hn. induction n.
-+ omega.
++ lia.
 + destruct n; simpl.
   - apply SEC_singleton.
   - rewrite SEC_add_same; auto with arith. apply SEC_spec1. now left.
@@ -2748,7 +2748,7 @@ destruct Hl as [Hl | [[pt1 [Hl Hnil]] | [pt1 [pt2 [Hneq [Hpt1 Hpt2]]]]]].
 * subst. rewrite on_SEC_singleton. now left.
 * destruct (equiv_dec pt pt1) as [Heq | Heq].
   + rewrite Heq, Hl. change (pt1 :: alls pt1 (length l)) with (alls pt1 (S (length l))).
-    unfold on_SEC. rewrite (filter_InA _), on_circle_true_iff, SEC_alls; try omega; []. split.
+    unfold on_SEC. rewrite (filter_InA _), on_circle_true_iff, SEC_alls; try lia; []. split.
     - now left.
     - simpl. now rewrite dist_defined.
   + assert (Hsec : SEC (pt :: l) = {| center := middle pt pt1; radius := /2 * dist pt pt1 |}).
@@ -3198,8 +3198,8 @@ destruct (equiv_dec pt1 pt2) as [Heq12 | Heq12];
       destruct Hcol1 as [Hcol1 | Hcol1], Hcol3 as [Hcol3 | Hcol3];
       apply Heq12 + apply Heq13 + apply Heq23; apply add_reg_r with (- c)%VS; congruence.
   + assert (Hle : (length (on_SEC (pt1 :: pt2 :: pt3 :: nil)) <= 3)%nat).
-    { unfold on_SEC. rewrite filter_length. simpl length at 1. omega. }
-    rewrite Hsec in Hle. simpl in Hle. omega.
+    { unfold on_SEC. rewrite filter_length. simpl length at 1. lia. }
+    rewrite Hsec in Hle. simpl in Hle. lia.
 Qed.
 
 Lemma isobarycenter_3_pts_strictly_inside_SEC : forall pt1 pt2 pt3, ~(pt1 = pt2 /\ pt1 = pt3) ->

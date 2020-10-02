@@ -9,7 +9,7 @@
 (******************************************)
 
 
-Require Import Omega.
+Require Import Lia PeanoNat.
 Require Import SetoidList.
 Require Import RelationPairs.
 Require Import SetoidDec.
@@ -44,7 +44,7 @@ Section MMultisetExtra.
   Definition remove_all x m := remove x m[x] m.
   
   Lemma remove_all_same : forall x m, (remove_all x m)[x] = 0.
-  Proof using M. intros. unfold remove_all. rewrite remove_same. omega. Qed.
+  Proof using M. intros. unfold remove_all. rewrite remove_same. lia. Qed.
   
   Lemma remove_all_other : forall x y m, y =/= x -> (remove_all x m)[y] = m[y].
   Proof using M. intros. unfold remove_all. now rewrite remove_other. Qed.
@@ -92,7 +92,7 @@ Section MMultisetExtra.
   
   Lemma remove_all_inter : forall x m₁ m₂,
     remove_all x (inter m₁ m₂) == inter (remove_all x m₁) (remove_all x m₂).
-  Proof using M. intros x m₁ m₂ y. unfold remove_all. msetdec. now rewrite 3 Nat.sub_diag. Qed.
+  Proof using M. intros x m₁ m₂ y. unfold remove_all. msetdec. Qed.
   
   Lemma remove_all_diff : forall x m₁ m₂, remove_all x (diff m₁ m₂) == diff (remove_all x m₁) (remove_all x m₂).
   Proof using M. intros x m₁ m₂ y. unfold remove_all. msetdec. Qed.
@@ -101,7 +101,7 @@ Section MMultisetExtra.
   Proof using M. intros x m₁ m₂ y. unfold remove_all. msetdec. Qed.
   
   Lemma remove_all_lub : forall x m₁ m₂, remove_all x (lub m₁ m₂) == lub (remove_all x m₁) (remove_all x m₂).
-  Proof using M. intros x m₁ m₂ y. unfold remove_all. msetdec. now rewrite 3 Nat.sub_diag. Qed.
+  Proof using M. intros x m₁ m₂ y. unfold remove_all. msetdec. Qed.
   
   Lemma remove_all_for_all : forall f, compatb f ->
     forall x m, for_all f (remove_all x m) = for_all (fun y n => if equiv_dec y x then true else f y n) m.
@@ -184,10 +184,10 @@ Section MMultisetExtra.
   * now apply (NoDupA_strengthen subrelation_pair_elt), removeA_NoDupA, elements_NoDupA.
   * intros [y p]. unfold remove_all. rewrite elements_remove.
     assert (Hiff : y == x /\ p = m[x] - m[x] /\ p > 0 \/ ~ y == x /\ InA eq_pair (y, p) (elements m)
-                   <-> ~ y == x /\ InA eq_pair (y, p) (elements m)) by (intuition; omega).
+                   <-> ~ y == x /\ InA eq_pair (y, p) (elements m)) by (intuition; lia).
     rewrite Hiff. clear Hiff.
     induction (elements m) as [| e l]; simpl.
-    + split; intro Hin; (intuition; omega) || inv Hin.
+    + split; intro Hin; (intuition; lia) || inv Hin.
     + destruct_match.
       - rewrite <- IHl. clear IHl.
         split; [intros [Hxy Hin] | intro Hin]; intuition.
@@ -201,13 +201,13 @@ Section MMultisetExtra.
   
   Lemma remove_all_support : forall x m,
     PermutationA equiv (support (remove_all x m)) (removeA equiv_dec x (support m)).
-  Proof using M. intros. unfold remove_all. rewrite support_remove. destruct_match; reflexivity || omega. Qed.
+  Proof using M. intros. unfold remove_all. rewrite support_remove. destruct_match; reflexivity || lia. Qed.
   
   Lemma remove_all_cardinal : forall x m, cardinal (remove_all x m) = cardinal m - m[x].
   Proof using M. intros. unfold remove_all. now rewrite cardinal_remove, Nat.min_id. Qed.
   
   Lemma remove_all_size_in : forall x m, In x m -> size (remove_all x m) = size m - 1.
-  Proof using M. intros. unfold remove_all. rewrite size_remove; trivial; []. destruct_match; omega. Qed.
+  Proof using M. intros. unfold remove_all. rewrite size_remove; trivial; []. destruct_match; lia. Qed.
   
   Lemma remove_all_size_out : forall x m, ~In x m -> size (remove_all x m) = size m.
   Proof using M. intros. unfold remove_all. now rewrite remove_out. Qed.
@@ -241,7 +241,7 @@ Section MMultisetExtra.
     Proof using Hf M.
     intros x m. unfold In, map. apply fold_rect.
     + intros m₁ m₂ acc Heq Hequiv. rewrite Hequiv. now setoid_rewrite Heq.
-    + setoid_rewrite empty_spec. split; try intros [? [_ ?]]; omega.
+    + setoid_rewrite empty_spec. split; try intros [? [_ ?]]; lia.
     + intros y m' acc Hm Hin Hrec. destruct (equiv_dec x (f y)) as [Heq | Hneq]; msetdec.
       - split.
           intros. exists y. split; trivial. msetdec.
@@ -261,7 +261,7 @@ Section MMultisetExtra.
       - repeat intro. msetdec.
       - repeat intro. apply add_comm.
       - repeat intro. apply add_merge.
-      - omega.
+      - lia.
     Qed.
     
     Lemma map_spec : forall x m,
@@ -271,7 +271,7 @@ Section MMultisetExtra.
     assert (Hg : Proper (equiv ==> @Logic.eq nat ==> Logic.eq) g). { repeat intro. unfold g. msetdec. }
     pattern m. apply ind; clear m.
     + intros ? ? Hm. now rewrite Hm.
-    + intros * Hin Hrec. rewrite map_add, nfilter_add; trivial. unfold g at 2. msetdec. rewrite cardinal_add. omega.
+    + intros * Hin Hrec. rewrite map_add, nfilter_add; trivial. unfold g at 2. msetdec. rewrite cardinal_add. lia.
     + now rewrite map_empty, nfilter_empty, cardinal_empty, empty_spec.
     Qed.
     
@@ -280,11 +280,11 @@ Section MMultisetExtra.
     intro m. pattern m. apply ind; clear m.
     + intros ? ? Hm. now setoid_rewrite Hm.
     + intros m x n Hin Hn Hrec m' Hsub y.
-      assert (Hx : m[x] = 0). { unfold In in Hin. omega. }
+      assert (Hx : m[x] = 0). { unfold In in Hin. lia. }
       rewrite <- (add_remove_cancel x m' (Hsub x)). do 2 rewrite (map_add _). msetdec.
-      - apply plus_le_compat; trivial; [].
+      - apply Plus.plus_le_compat; trivial; [].
         repeat rewrite map_spec; trivial. apply add_subset_remove in Hsub.
-        apply cardinal_sub_compat, nfilter_sub_compat; solve [omega | repeat intro; msetdec].
+        apply cardinal_sub_compat, nfilter_sub_compat; solve [lia | repeat intro; msetdec].
       - now apply Hrec, add_subset_remove.
     + intros ? _. rewrite map_empty. apply subset_empty_l.
     Qed.
@@ -328,7 +328,7 @@ Section MMultisetExtra.
     Theorem map_inter : forall m₁ m₂, map f (inter m₁ m₂) [<=] inter (map f m₁) (map f m₂).
     Proof using Hf M.
     intros m1 m2 x. destruct (map f (inter m1 m2))[x] eqn:Hfx.
-    + omega.
+    + lia.
     + assert (Hin : In x (map f (inter m1 m2))) by msetdec.
       rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite inter_In in Hin.
       destruct Hin as [Hin1 Hin2]. rewrite <- Hfx, Heq. rewrite inter_spec.
@@ -338,11 +338,11 @@ Section MMultisetExtra.
     Theorem map_lub : forall m₁ m₂, lub (map f m₁) (map f m₂) [<=] map f (lub m₁ m₂).
     Proof using Hf M.
     intros m1 m2 x. destruct (lub (map f m1) (map f m2))[x] eqn:Hfx.
-    + omega.
+    + lia.
     + assert (Hin : In x (lub (map f m1) (map f m2))).
       { rewrite lub_spec in Hfx. rewrite lub_In. unfold In.
         destruct (Max.max_dec (map f m1)[x] (map f m2)[x]) as [Heq | Heq];
-        rewrite Heq in Hfx; left + right; omega. }
+        rewrite Heq in Hfx; left + right; lia. }
       rewrite lub_In in Hin. rewrite <- Hfx.
       destruct Hin as [Hin | Hin]; rewrite map_In in Hin; destruct Hin as [y [Heq Hin]]; rewrite Heq, lub_spec;
       apply Max.max_lub; apply map_sub_compat; apply lub_subset_l + apply lub_subset_r.
@@ -360,7 +360,7 @@ Section MMultisetExtra.
     Proof using Hf M.
     apply ind.
     * repeat intro. msetdec.
-    * intros m x n Hin Hn Hrec. rewrite map_add; trivial. repeat rewrite support_add; try omega.
+    * intros m x n Hin Hn Hrec. rewrite map_add; trivial. repeat rewrite support_add; try lia.
       destruct (In_dec x m); try contradiction. destruct (In_dec (f x) (map f m)).
       + intros y Hy. simpl. right. now apply Hrec.
       + intros y Hy. simpl. inversion_clear Hy.
@@ -385,8 +385,8 @@ Section MMultisetExtra.
       destruct (In_dec x m) as [Hin | Hin], (In_dec (f x) (map f m)) as [Hinf | Hinf].
       - apply Hrec.
       - elim Hinf. rewrite map_In. now exists x.
-      - omega.
-      - omega.
+      - lia.
+      - lia.
     + now rewrite map_empty.
     Qed.
     
@@ -412,7 +412,7 @@ Section MMultisetExtra.
       
       Lemma map_injective_remove : forall x n m, map f (remove x n m) == remove (f x) n (map f m).
       Proof using Hf Hf2 M.
-      intros x n m. destruct (le_dec n m[x]) as [Hle | Hlt].
+      intros x n m. destruct (Compare_dec.le_dec n m[x]) as [Hle | Hlt].
       * now apply map_remove1.
       * intro y. msetdec.
         + repeat rewrite map_injective_spec; trivial. msetdec.
@@ -420,7 +420,7 @@ Section MMultisetExtra.
           - rewrite (map_In _) in Hin. destruct Hin as [z [Heq Hz]]. msetdec.
             repeat rewrite map_injective_spec; trivial. msetdec.
           - rewrite not_In in Hin. rewrite Hin, <- not_In, (map_In _).
-            intros [z [Heq Hz]]. msetdec. rewrite map_injective_spec in Hin; trivial. omega.
+            intros [z [Heq Hz]]. msetdec. rewrite map_injective_spec in Hin; trivial. lia.
       Qed.
       
       Theorem map_injective_inter : forall m₁ m₂, map f (inter m₁ m₂) == inter (map f m₁) (map f m₂).
@@ -431,7 +431,7 @@ Section MMultisetExtra.
         unfold gt in *. rewrite Nat.min_glb_lt_iff in *. now repeat rewrite map_injective_spec.
       + rewrite inter_spec in Hn.
         assert (Hx : In x (map f m₁)).
-        { msetdec. apply lt_le_trans with (S n). omega. rewrite <- Hn. apply Min.le_min_l. }
+        { msetdec. }
         rewrite map_In in *; trivial. destruct Hx as [y [Heq Hy]]. msetdec.
         do 2 (rewrite map_injective_spec in *; trivial). msetdec.
       Qed.
@@ -451,13 +451,13 @@ Section MMultisetExtra.
         (map f (lub m₁ m₂))[x] = (map f m₁)[x].
       Proof using Hf Hf2 M.
       intros x m₁ m₂ Hle. destruct (map f m₁)[x] eqn:Heq1.
-      - apply le_n_0_eq in Hle. symmetry in Hle. destruct (map f (lub m₁ m₂))[x] eqn:Heq2; trivial.
-        assert (Hin : In x (map f (lub m₁ m₂))). { unfold In. omega. }
+      - apply Le.le_n_0_eq in Hle. symmetry in Hle. destruct (map f (lub m₁ m₂))[x] eqn:Heq2; trivial.
+        assert (Hin : In x (map f (lub m₁ m₂))). { unfold In. lia. }
         rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq in *. rewrite lub_In in Hin.
-        rewrite map_injective_spec in *. unfold In in *. destruct Hin; omega.
-      - assert (Hin : In x (map f m₁)). { unfold In. omega. }
+        rewrite map_injective_spec in *. unfold In in *. destruct Hin; lia.
+      - assert (Hin : In x (map f m₁)). { unfold In. lia. }
         rewrite map_In in Hin. destruct Hin as [y [Heq Hin]]. rewrite Heq, map_injective_spec in *.
-        rewrite lub_spec. rewrite Nat.max_l; omega.
+        rewrite lub_spec. rewrite Nat.max_l; lia.
       Qed.
       
       Theorem map_injective_lub : forall m₁ m₂, map f (lub m₁ m₂) == lub (map f m₁) (map f m₂).
@@ -493,7 +493,7 @@ Section MMultisetExtra.
       Proof using Hf Hf2 M.
       apply ind.
       * repeat intro. msetdec.
-      * intros m x n Hin Hrec. rewrite map_add; trivial. repeat rewrite support_add; try omega.
+      * intros m x n Hin Hrec. rewrite map_add; trivial. repeat rewrite support_add; try lia.
         destruct (InA_dec (eqA:=equiv) equiv_dec (f x) (support (map f m))) as [Habs | _].
         + rewrite support_spec in Habs. unfold In in *. rewrite map_injective_spec in Habs. contradiction.
         + destruct (InA_dec (eqA:=equiv) equiv_dec x (support m)) as [Habs | _].
@@ -672,7 +672,7 @@ Section MMultisetExtra.
   + unfold max_mult. apply fold_add; autoclass.
     - repeat intro. now subst.
     - repeat intro. do 2 rewrite Nat.max_assoc. now setoid_rewrite Nat.max_comm at 2.
-    - omega.
+    - lia.
   Qed.
   
   Theorem max_mult_spec_weak : forall m x, (m[x] <= max_mult m)%nat.
@@ -682,11 +682,11 @@ Section MMultisetExtra.
   * intros m x n Hout Hn Hrec y. rewrite max_mult_add; trivial.
     assert (Hx : m[x] = 0%nat). { rewrite not_In in Hout. assumption. }
     destruct (equiv_dec y x) as [Hxy | Hxy].
-    + rewrite Hxy. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
+    + rewrite Hxy. rewrite add_spec, Hx. msetdec.
     + rewrite add_other; auto. transitivity (max_mult m).
       - apply Hrec.
       - apply Max.le_max_r.
-  * intro x. rewrite empty_spec. omega.
+  * intro x. rewrite empty_spec. lia.
   Qed.
   
   (* When [m] is empty, we need an arbitrary element as withness for [y]. *)
@@ -698,17 +698,17 @@ Section MMultisetExtra.
     assert (Hx : m[x] = 0%nat) by now rewrite not_In in Hout.
     split; try intro z.
     + destruct (equiv_dec z x) as [Hzx | Hzx].
-      - rewrite Hzx. rewrite add_spec, Hx. msetdec. apply Max.le_max_l.
+      - rewrite Hzx. rewrite add_spec, Hx. msetdec.
       - rewrite add_other; trivial; [].
         transitivity (max_mult m); apply Hall || apply Max.le_max_r.
-    + rewrite Hy. destruct (le_dec n m[y]).
+    + rewrite Hy. destruct (Compare_dec.le_dec n m[y]).
       - exists y. rewrite max_r; trivial; [].
         destruct (equiv_dec y x) as [Hyx | Hyx].
-        -- rewrite Hyx in *. rewrite add_same. omega.
+        -- rewrite Hyx in *. rewrite add_same. lia.
         -- now rewrite add_other.
-      - exists x. rewrite max_l, add_same; omega.
+      - exists x. rewrite max_l, add_same; lia.
   * split.
-    + intro x. rewrite empty_spec. omega.
+    + intro x. rewrite empty_spec. lia.
     + exists dummy. now rewrite empty_spec, max_mult_empty.
   Qed.
   
@@ -725,7 +725,7 @@ Section MMultisetExtra.
       destruct (max_mult_spec x m') as [Hall' Hex'].
       rewrite <- (Hrec _ Hall' Hex').
       destruct Hex' as [y' Hy']. rewrite Hy'.
-      destruct (Nat.eq_dec (m'[y']) 0); try omega; [].
+      destruct (Nat.eq_dec (m'[y']) 0); try lia; [].
       specialize (Hall y').
       rewrite Hyx, add_same, add_other, Hout in Hall; trivial; [].
       msetdec.
@@ -741,7 +741,7 @@ Section MMultisetExtra.
   intro m. unfold max_mult.
   pattern (fold (fun _ : elt => Init.Nat.max) m 0). apply fold_rect.
   + intros ? ? ? Heq. now setoid_rewrite Heq.
-  + intros. omega.
+  + intros. lia.
   + intros x m' acc Hin Hout Hrec n Hall.
     rewrite not_In in Hout. rewrite Nat.max_lub_iff. split.
     - specialize (Hall x). now rewrite add_same, Hout in Hall.
@@ -752,7 +752,7 @@ Section MMultisetExtra.
   Proof using M.
   intro m. split; intro Heq.
   + destruct (empty_or_In_dec m) as [? | [x Hin]]; trivial.
-    elim (lt_irrefl 0). apply lt_le_trans with m[x].
+    elim (Nat.lt_irrefl 0). apply Nat.lt_le_trans with m[x].
     - exact Hin.
     - rewrite <- Heq. apply max_mult_spec_weak.
   + rewrite Heq. apply max_mult_empty.
@@ -766,9 +766,9 @@ Section MMultisetExtra.
     assert (Hle := Hsub x). rewrite add_same in Hle. unfold In in *.
     rewrite <- (add_remove_id x (n := n) m1).
     + rewrite 2 max_mult_add; trivial.
-      - rewrite <- remove_subset_add in Hsub. apply Nat.max_le_compat; auto; omega.
+      - rewrite <- remove_subset_add in Hsub. apply Nat.max_le_compat; auto; lia.
       - rewrite remove_In. intuition.
-    + replace n with (m2[x] + n) by omega. rewrite <- (add_same x n m2). apply Hsub.
+    + replace n with (m2[x] + n) by lia. rewrite <- (add_same x n m2). apply Hsub.
   * intros m Hm. rewrite subset_empty_r in Hm. now rewrite Hm.
   Qed.
   
@@ -787,30 +787,25 @@ Section MMultisetExtra.
     destruct (equiv_dec y x) as [Hyx | Hyx].
     + rewrite Hyx. rewrite add_same, add_merge.
       rewrite (max_mult_add _ Hx) in *.
-      assert (Hmx : m[x] = 0). { unfold In in *. omega. }
+      assert (Hmx : m[x] = 0). { unfold In in *. lia. }
       rewrite Hmx in *. simpl. repeat split; intro Hle.
       - apply Nat.max_le in Hle. destruct Hle.
-        -- assert (p = 0) by omega. subst. reflexivity.
-        -- repeat rewrite max_r; trivial; omega.
+        -- assert (p = 0) by lia. subst. reflexivity.
+        -- repeat rewrite max_r; trivial; lia.
       - rewrite <- Hle, Nat.add_comm. apply Nat.le_max_l.
-      - apply Max.max_lub_r in Hle. rewrite max_l; omega.
-      - rewrite <- Hle. apply Nat.max_le_compat; omega.
+      - apply Max.max_lub_r in Hle. rewrite max_l; lia.
+      - rewrite <- Hle. apply Nat.max_le_compat; lia.
     + rewrite add_other in *; trivial; [].
       rewrite add_comm, max_mult_add; try (now rewrite add_In; intuition); [].
-      destruct (Hrec y p) as [Hrec1 Hrec2], (le_dec (m[y] + p) (max_mult m)) as [Hle | Hlt].
+      destruct (Hrec y p) as [Hrec1 Hrec2], (Compare_dec.le_dec (m[y] + p) (max_mult m)) as [Hle | Hlt].
       - repeat split; intro; auto.
         -- rewrite Hrec1 in Hle. now rewrite Hle.
         -- etransitivity; eauto using Nat.le_max_r.
         -- rewrite Hrec1 in Hle. rewrite Hle.
-           apply le_antisym; trivial; []. rewrite Nat.max_le_iff. tauto.
-        -- rewrite Hrec1 in Hle. rewrite Hle in *. omega.
-      - rewrite (proj1 Hrec2); try omega; [].
-        destruct (le_dec (m[y] + p) n) as [Hle' | Hlt'].
-        -- repeat rewrite max_l; omega.
-        -- rewrite Nat.max_le_iff, Nat.max_lub_iff. split; [| intuition].
-           rewrite max_r; try omega; []. split; intro Hle; [intuition |].
-           destruct (Max.max_spec n (max_mult m)); omega.
-  * intros x n. rewrite empty_spec, max_mult_empty, add_empty, max_mult_singleton in *. omega.
+           apply Nat.le_antisymm; trivial; []. rewrite Nat.max_le_iff. tauto.
+        -- rewrite Hrec1 in Hle. rewrite Hle in *. lia.
+      - rewrite (proj1 Hrec2); try lia.
+  * intros x n. rewrite empty_spec, max_mult_empty, add_empty, max_mult_singleton in *. lia.
   Qed.
   
   Corollary max_mult_add1 : forall x n m, m[x] + n <= max_mult m <-> max_mult (add x n m) = max_mult m.
@@ -828,20 +823,20 @@ Section MMultisetExtra.
   * intros ? ? Heq. now setoid_rewrite Heq.
   * intros m y p Hy Hn Hrec x n.
     destruct (equiv_dec x y) as[Hxy | Hxy].
-    + assert (Hmx : m[x] = 0). { unfold In in *. rewrite Hxy. omega. }
+    + assert (Hmx : m[x] = 0). { unfold In in *. rewrite Hxy. lia. }
       rewrite <- Hxy in *. rewrite add_same, Hmx.
       repeat rewrite max_mult_add, Nat.max_lt_iff; trivial; []. simpl.
-      destruct (le_dec n p) as [Hle | Hlt].
+      destruct (Compare_dec.le_dec n p) as [Hle | Hlt].
       - rewrite remove_add1, max_mult_add; trivial; [].
-        intro. rewrite 2 max_r; omega.
-      - rewrite remove_add2; try omega. intro.
-        rewrite Hrec, max_r; omega.
+        intro. rewrite 2 max_r; lia.
+      - rewrite remove_add2; try lia. intro.
+        rewrite Hrec, max_r; lia.
     + rewrite add_other, remove_add_comm, 2 max_mult_add, Nat.max_lt_iff; trivial.
-      - intro. destruct (le_dec p (max_mult m)).
-        -- rewrite Hrec; omega.
-        -- assert (Hle := max_mult_remove_le x n m). rewrite 2 max_l; omega.
+      - intro. destruct (Compare_dec.le_dec p (max_mult m)).
+        -- rewrite Hrec; lia.
+        -- assert (Hle := max_mult_remove_le x n m). rewrite 2 max_l; lia.
       - rewrite remove_In. intuition.
-  * intros * Habs. rewrite empty_spec, max_mult_empty in Habs. omega.
+  * intros * Habs. rewrite empty_spec, max_mult_empty in Habs. lia.
   Qed.
   
   Corollary max_mult_remove_all : forall x m, m[x] < max_mult m -> max_mult (remove_all x m) = max_mult m.
@@ -870,9 +865,9 @@ Section MMultisetExtra.
   * apply max_mult_unique.
     + intro. msetdec. apply Nat.max_le_compat; apply max_mult_spec_weak.
     + destruct (max_mult_spec x m₁) as [Hall₁ [y₁ Hy₁]], (max_mult_spec x m₂) as [Hall₂ [y₂ Hy₂]].
-      destruct (le_dec (max_mult m₁) (max_mult m₂)).
-      - exists y₂. specialize (Hall₁ y₂). rewrite lub_spec, 2 max_r; omega.
-      - exists y₁. specialize (Hall₂ y₁). rewrite lub_spec, 2 max_l; omega.
+      destruct (Compare_dec.le_dec (max_mult m₁) (max_mult m₂)).
+      - exists y₂. specialize (Hall₁ y₂). rewrite lub_spec, 2 max_r; lia.
+      - exists y₁. specialize (Hall₂ y₁). rewrite lub_spec, 2 max_l; lia.
   Qed.
   
   (* 
@@ -927,7 +922,7 @@ Section MMultisetExtra.
   Local Hint Immediate eqb_max_mult_compat eqb_max_compat : core.
   
   (** A simple definition used for specification, proved to be equivalent to the efficient one. *)
-  Definition simple_max m := nfilter (fun _ => beq_nat (max_mult m)) m.
+  Definition simple_max m := nfilter (fun _ => Nat.eqb (max_mult m)) m.
   
   Instance simple_max_compat : Proper (equiv ==> equiv) simple_max.
   Proof using M.
@@ -948,7 +943,7 @@ Section MMultisetExtra.
   intros x y n p [k m]. unfold max_aux. cbn -[equiv].
   repeat (destruct_match; cbn -[equiv]);
   try rewrite ?Nat.compare_eq_iff, ?Nat.compare_lt_iff, ?Nat.compare_gt_iff in *;
-  subst; split; cbn -[equiv]; omega || (now f_equiv) || trivial.
+  subst; split; cbn -[equiv]; lia || (now f_equiv) || trivial.
   - apply add_comm.
   - apply add_singleton_comm.
   Qed.
@@ -970,8 +965,8 @@ Section MMultisetExtra.
     transitivity (fst (max_aux x n (fold max_aux m (0, empty)))).
     * unfold max_aux at 2. destruct_match; simpl.
       - rewrite Nat.compare_eq_iff in *. subst n. now rewrite Nat.max_id.
-      - rewrite Nat.compare_lt_iff in *. rewrite max_r; omega.
-      - rewrite Nat.compare_gt_iff in *. rewrite max_l; omega.
+      - rewrite Nat.compare_lt_iff in *. rewrite max_r; lia.
+      - rewrite Nat.compare_gt_iff in *. rewrite max_l; lia.
     * f_equiv. rewrite fold_add; autoclass; reflexivity.
   + unfold max_mult. now rewrite 2 fold_empty.
   Qed.
@@ -991,15 +986,15 @@ Section MMultisetExtra.
       - f_equiv. rewrite Hrec. apply nfilter_extensionality_compat;
         now autoclass; intros; rewrite Nat.max_id.
       - exfalso. rewrite Nat.max_id in *. tauto.
-      - exfalso. rewrite max_r in *; omega.
+      - exfalso. rewrite max_r in *; lia.
       - rewrite Hrec. apply nfilter_extensionality_compat; autoclass; [].
-        intros; rewrite max_r; reflexivity || omega.
+        intros; rewrite max_r; reflexivity || lia.
       - cut (nfilter (fun _ : elt => Nat.eqb (Nat.max n (max_mult m))) m == empty);
           try (now intro Heq; rewrite Heq, add_empty); [].
         rewrite nfilter_none, for_all_spec; try (now repeat intro; subst); [].
         intros y p. rewrite Bool.negb_true_iff, Nat.eqb_neq.
-        assert (Hmax := max_mult_spec_weak m y). omega.
-      - exfalso. rewrite max_l in *; omega.
+        assert (Hmax := max_mult_spec_weak m y). lia.
+      - exfalso. rewrite max_l in *; lia.
   + unfold max, simple_max. now rewrite fold_empty, nfilter_empty.
   Qed.
   
@@ -1014,7 +1009,7 @@ Section MMultisetExtra.
   Proof using M.
   intros m x y Hy. rewrite max_simplified in *. unfold simple_max in *.
   unfold In in Hy. rewrite nfilter_spec in Hy |- *; auto.
-  destruct (max_mult m =? m[y]) eqn:Heq; try omega.
+  destruct (max_mult m =? m[y]) eqn:Heq; try lia.
   rewrite Nat.eqb_eq in Heq. rewrite <- Heq. apply max_mult_spec_weak.
   Qed.
   
@@ -1022,7 +1017,7 @@ Section MMultisetExtra.
   Proof using M.
   intros m x. rewrite max_simplified. unfold simple_max.
   setoid_rewrite nfilter_spec; try now repeat intro; subst.
-  destruct (max_mult m =? m[x]); auto. omega.
+  destruct (max_mult m =? m[x]); auto. lia.
   Qed.
   
   Theorem max_spec_non_nil : forall m x, In x m -> exists y, In y (max m).
@@ -1033,7 +1028,7 @@ Section MMultisetExtra.
   * intros m x n Hxnotinm Hpos HI x' Hx'.
     destruct (empty_or_In_dec m) as [Hm | [x'' Hx'']].
     + exists x. unfold simple_max. rewrite nfilter_In; auto. split.
-      - rewrite add_In. left. split; reflexivity || omega.
+      - rewrite add_In. left. split; reflexivity || lia.
       - rewrite Nat.eqb_eq, max_mult_add; trivial.
         rewrite Hm at 2.
         rewrite add_empty, singleton_spec.
@@ -1044,14 +1039,14 @@ Section MMultisetExtra.
       rewrite max_mult_add; trivial.
       unfold simple_max in Hy. rewrite nfilter_In in Hy; auto.
       destruct Hy as [Hy Heq]. rewrite Nat.eqb_eq in Heq.
-      destruct (le_lt_dec n (m[y])).
+      destruct (Compare_dec.le_lt_dec n (m[y])).
       - exists y. split.
         -- msetdec.
         -- rewrite Nat.eqb_eq, Heq, add_other, Max.max_r; trivial.
            Fail now msetdec. (* BUG? *) intro Habs. msetdec.
       - exists x. split.
         -- msetdec.
-        -- rewrite Nat.eqb_eq, Max.max_l; try omega. msetdec.
+        -- rewrite Nat.eqb_eq, Max.max_l; try lia. msetdec.
   * intros x Hin. elim (In_empty Hin).
   Qed.
   
@@ -1062,7 +1057,7 @@ Section MMultisetExtra.
     - intro. now rewrite Hm.
     - destruct Hm as [x Hx].
       destruct (max_spec_non_nil Hx) as [y Hy].
-      unfold In in Hy. rewrite Heq, empty_spec in Hy. omega.
+      unfold In in Hy. rewrite Heq, empty_spec in Hy. lia.
   + rewrite Heq. rewrite max_simplified. unfold simple_max.
     apply nfilter_empty; auto.
   Qed.
@@ -1075,7 +1070,7 @@ Section MMultisetExtra.
   intros x n. destruct n.
   + rewrite singleton_0. now rewrite max_empty.
   + rewrite max_simplified. unfold simple_max.
-    rewrite nfilter_singleton_true; try omega.
+    rewrite nfilter_singleton_true; try lia.
     - rewrite max_mult_singleton. apply Nat.eqb_refl.
     - repeat intro. now subst.
   Qed.
@@ -1091,26 +1086,26 @@ Section MMultisetExtra.
   Qed.
   
   Lemma max_In_mult : forall m x, In x m -> (In x (max m) <-> (max m)[x] = m[x]).
-  Proof using M. intros m x Hin. unfold In in *. destruct (max_case m x); omega. Qed.
+  Proof using M. intros m x Hin. unfold In in *. destruct (max_case m x); lia. Qed.
   
   Lemma max_In_mult2 : forall m x, In x m -> (In x (max m) <-> (max m)[x] = max_mult m).
   Proof using M.
   intros m x Hin. rewrite max_In_mult; trivial; []. unfold In in *.
-  destruct (max_case m x); try omega. split; intro; try omega; [].
+  destruct (max_case m x); try lia. split; intro; try lia; [].
   assert (Habs : max_mult m = 0) by congruence. rewrite max_mult_0 in Habs.
-  rewrite Habs, empty_spec in Hin. omega.
+  rewrite Habs, empty_spec in Hin. lia.
   Qed.
   
   Lemma max_spec_mult : forall m x y, In x (max m) -> (In y (max m) <-> (max m)[y] = (max m)[x]).
   Proof using M.
   intros m x y Hx. split.
   + intro Hy. destruct (max_case m x) as [Hx' | Hx'], (max_case m y) as [Hy' | Hy'];
-    (unfold In in *; omega) || (try congruence).
+    (unfold In in *; lia) || (try congruence).
   + intro Heq. unfold In in *. now rewrite Heq.
   Qed.
   
   Lemma max_In : forall m x, In x (max m) -> m[x] = max_mult m.
-  Proof using M. intros m x Hin. unfold In in *. destruct (max_case m x); omega. Qed.
+  Proof using M. intros m x Hin. unfold In in *. destruct (max_case m x); lia. Qed.
   
   Theorem max_spec_lub : forall m x y,
     In x (max m) -> ~In y (max m) <-> (m[y] < m[x])%nat.
@@ -1122,23 +1117,23 @@ Section MMultisetExtra.
       - now rewrite <- max_subset.
     + intro Habs. apply Hy. rewrite max_simplified. unfold simple_max.
       rewrite nfilter_In; try now repeat intro; subst. split.
-      - unfold In in *. rewrite Habs. apply lt_le_trans with (max m)[x]; trivial. apply max_subset.
+      - unfold In in *. rewrite Habs. apply Nat.lt_le_trans with (max m)[x]; trivial. apply max_subset.
       - rewrite Habs. rewrite max_simplified in*. unfold simple_max in Hx.
         rewrite nfilter_In in Hx; try now repeat intro; subst.
-  * unfold In. destruct (max_case m y) as [? | [? ?]]; try omega.
-    apply max_In in Hx. omega.
+  * unfold In. destruct (max_case m y) as [? | [? ?]]; try lia.
+    apply max_In in Hx. lia.
   Qed.
   
   Lemma max_max_mult : forall m x, ~m == empty -> In x (max m) <-> m[x] = max_mult m.
   Proof using M.
   intros m x Hm. rewrite max_simplified. split; intro Hx.
   + apply nfilter_In in Hx; auto.
-    symmetry. apply beq_nat_true. now destruct Hx.
+    symmetry. apply Nat.eqb_eq. now destruct Hx.
   + unfold simple_max. rewrite nfilter_In; auto.
     split.
-    - red. cut (m[x]<>0). omega.
+    - red. cut (m[x]<>0). lia.
       intro Habs. now rewrite Hx, max_mult_0 in Habs.
-    - now rewrite Hx, <- beq_nat_refl.
+    - now rewrite Hx, <- EqNat.beq_nat_refl.
   Qed.
   
   Lemma max_max_mult_ex : forall m, ~m == empty -> exists x, max_mult m = m[x].
@@ -1180,15 +1175,15 @@ Section MMultisetExtra.
   Proof using M.
   intro m. split.
   + intros Heq x Hin. rewrite <- Heq in Hin. now apply max_In.
-  + intros Helt x. destruct (eq_nat_dec m[x] 0) as [Hx | Hx].
-    - rewrite Hx. cut ((max m)[x] <= 0); try omega. rewrite <- Hx. apply max_subset.
-    - assert (In x m) by (unfold In; omega).
+  + intros Helt x. destruct (Nat.eq_dec m[x] 0) as [Hx | Hx].
+    - rewrite Hx. cut ((max m)[x] <= 0); try lia. rewrite <- Hx. apply max_subset.
+    - assert (In x m) by (unfold In; lia).
       rewrite <- max_In_mult, max_In_mult3; trivial; []. auto.
   Qed.
   
   Lemma max_spec_max : forall m x, ~m == empty -> (forall y, (m[y] <= m[x])) -> max_mult m = m[x].
   Proof using M.
-  intros m x Hm Hmax. apply le_antisym.
+  intros m x Hm Hmax. apply Nat.le_antisymm.
   - destruct (@max_max_mult_ex m) as [y Hy]; auto.
     rewrite Hy. apply Hmax.
   - apply max_mult_spec_weak.
@@ -1211,11 +1206,11 @@ Section MMultisetExtra.
   Proof using M.
   intros x n m Hn y.
   assert (Heq : max_mult (add x n m) = max_mult m).
-  { rewrite <- max_mult_add1. omega. }
+  { rewrite <- max_mult_add1. lia. }
   rewrite 2 max_spec, Heq.
   destruct (equiv_dec y x) as [Hyx | Hyx].
   - rewrite Hyx in *. rewrite Hyx, add_same.
-    do 2 destruct_match; rewrite ?Nat.eqb_eq, ?Nat.eqb_neq in *; omega.
+    do 2 destruct_match; rewrite ?Nat.eqb_eq, ?Nat.eqb_neq in *; lia.
   - now rewrite add_other.
   Qed.
   
@@ -1223,11 +1218,11 @@ Section MMultisetExtra.
   Proof using M.
   intros x n m ? Hn y.
   assert (Heq : max_mult (add x n m) = max_mult m).
-  { rewrite <- max_mult_add1. omega. }
+  { rewrite <- max_mult_add1. lia. }
   rewrite max_spec, 2 add_spec, max_spec, Heq.
   destruct (equiv_dec y x) as [Hyx | Hyx].
   - rewrite Hyx, Hn, Nat.eqb_refl, Hyx. destruct_match; trivial; [].
-    rewrite Nat.eqb_eq in *. omega.
+    rewrite Nat.eqb_eq in *. lia.
   - reflexivity.
   Qed.
   
@@ -1235,14 +1230,14 @@ Section MMultisetExtra.
   Proof using M.
   intros x n m Hn y.
   assert (Heq : max_mult (add x n m) = m[x] + n).
-  { rewrite <- max_mult_add2. omega. }
+  { rewrite <- max_mult_add2. lia. }
   rewrite max_spec, add_spec, Heq.
   destruct (equiv_dec y x) as [Hyx | Hyx].
   - now rewrite Hyx, Nat.eqb_refl, singleton_same, Hyx.
   - rewrite singleton_other; trivial; [].
     destruct_match; trivial; []. rewrite Nat.eqb_eq in *.
-    cut (m[y] < m[x] + n); try omega; [].
-    apply le_lt_trans with (max_mult m); eauto. apply max_mult_spec_weak.
+    cut (m[y] < m[x] + n); try lia; [].
+    apply Nat.le_lt_trans with (max_mult m); eauto. apply max_mult_spec_weak.
   Qed.
   
   Lemma max_remove : forall x n m, m[x] < max_mult m -> max (remove x n m) == max m.
@@ -1251,33 +1246,33 @@ Section MMultisetExtra.
   * intros ? ? Heq. now setoid_rewrite Heq.
   * intros m y p Hy Hn Hrec x n.
     destruct (equiv_dec x y) as[Hxy | Hxy].
-    + assert (Hmx : m[x] = 0). { unfold In in *. rewrite Hxy. omega. }
+    + assert (Hmx : m[x] = 0). { unfold In in *. rewrite Hxy. lia. }
       rewrite <- Hxy in *. rewrite add_same, Hmx.
       repeat rewrite max_mult_add, Nat.max_lt_iff; trivial; [].
-      destruct (le_dec n p) as [Hle | Hlt].
-      - intro. rewrite remove_add1, 2 max_add_lt; reflexivity || omega.
-      - rewrite remove_add2; try omega; []. intro.
-        rewrite Hrec, max_add_lt; reflexivity || omega.
+      destruct (Compare_dec.le_dec n p) as [Hle | Hlt].
+      - intro. rewrite remove_add1, 2 max_add_lt; reflexivity || lia.
+      - rewrite remove_add2; try lia; []. intro.
+        rewrite Hrec, max_add_lt; reflexivity || lia.
     + rewrite add_other, remove_add_comm, max_mult_add, Nat.max_lt_iff; trivial; [].
       intro. rewrite not_In in Hy.
-      destruct (lt_eq_lt_dec p (max_mult m)) as [[Hlt | Heq] | Hlt].
-      - rewrite 2 max_add_lt, Hrec; try reflexivity || omega; [].
-        rewrite remove_other, max_mult_remove; omega || intuition.
-      - subst p. rewrite 2 max_add_eq; try omega;
-        rewrite remove_other, ?max_mult_remove, ?Hrec, ?Hy; omega || intuition.
-      - rewrite 2 max_add_gt, remove_other; reflexivity || omega || (try now intuition); [].
-        rewrite remove_other; generalize (max_mult_remove_le x n m); omega || intuition.
-  * intros * Habs. rewrite empty_spec, max_mult_empty in Habs. omega.
+      destruct (Compare_dec.lt_eq_lt_dec p (max_mult m)) as [[Hlt | Heq] | Hlt].
+      - rewrite 2 max_add_lt, Hrec; try reflexivity || lia; [].
+        rewrite remove_other, max_mult_remove; lia || intuition.
+      - subst p. rewrite 2 max_add_eq; try lia;
+        rewrite remove_other, ?max_mult_remove, ?Hrec, ?Hy; lia || intuition.
+      - rewrite 2 max_add_gt, remove_other; reflexivity || lia || (try now intuition); [].
+        rewrite remove_other; generalize (max_mult_remove_le x n m); lia || intuition.
+  * intros * Habs. rewrite empty_spec, max_mult_empty in Habs. lia.
   Qed.
   
   Lemma max_lub_le : forall m₁ m₂, max m₁ [<=] max (lub m₁ m₂) \/ max m₂ [<=] max (lub m₁ m₂).
   Proof using M.
-  intros m₁ m₂. destruct (le_dec (max_mult m₁) (max_mult m₂)) as [Hle | Hlt].
+  intros m₁ m₂. destruct (Compare_dec.le_dec (max_mult m₁) (max_mult m₂)) as [Hle | Hlt].
   + right. intro x. rewrite 2 max_spec, lub_spec, max_mult_lub. setoid_rewrite Nat.max_r at 2; trivial; [].
     destruct (m₂[x] =? max_mult m₂) eqn:Heq; auto with arith; [].
     rewrite max_r, Heq; trivial; [].
     rewrite Nat.eqb_eq in Heq. rewrite Heq. etransitivity; eauto using max_mult_spec_weak.
-  + assert (Hle : max_mult m₂ <= max_mult m₁) by omega.
+  + assert (Hle : max_mult m₂ <= max_mult m₁) by lia.
     left. intro x. rewrite 2 max_spec, lub_spec, max_mult_lub. setoid_rewrite Nat.max_l at 2; trivial; [].
     destruct (m₁[x] =? max_mult m₁) eqn:Heq; auto with arith; [].
     rewrite max_l, Heq; trivial; [].
@@ -1291,21 +1286,15 @@ Section MMultisetExtra.
            (m₁[x] =? max_mult m₁) eqn:Heq1, (m₂[x] =? max_mult m₂) eqn:Heq2;
   auto with arith; rewrite ?Nat.eqb_eq, ?Nat.eqb_neq in *; rewrite ?Heq_max, ?Heq1, ?Heq2.
   + rewrite Nat.max_0_r.
-    destruct (le_dec (max_mult m₂) (max_mult m₁)) as [Hle | Hlt].
-    - rewrite max_l; omega.
-    - rewrite Heq1 in *. setoid_rewrite max_r at 2 in Heq_max; try omega; [].
-      assert (max_mult m₁ = max_mult m₂).
-      { revert Heq_max. apply Nat.max_case_strong; intros; omega. }
-      rewrite max_l; omega.
+    destruct (Compare_dec.le_dec (max_mult m₂) (max_mult m₁)) as [Hle | Hlt].
+    - rewrite max_l; lia.
+    - rewrite Heq1 in *. setoid_rewrite max_r at 2 in Heq_max; try lia.
   + rewrite Nat.max_0_l.
-    destruct (le_dec (max_mult m₂) (max_mult m₁)) as [Hle | Hlt].
-    - rewrite Heq2 in *. setoid_rewrite max_l at 2 in Heq_max; try omega; [].
-      assert (max_mult m₁ = max_mult m₂).
-      { revert Heq_max. apply Nat.max_case_strong; intros; omega. }
-      rewrite max_r; omega.
-    - rewrite max_r; omega.
+    destruct (Compare_dec.le_dec (max_mult m₂) (max_mult m₁)) as [Hle | Hlt].
+    - rewrite Heq2 in *. setoid_rewrite max_l at 2 in Heq_max; try lia.
+    - rewrite max_r; lia.
   + assert (Hle1 := max_mult_spec_weak m₁ x). assert (Hle2 := max_mult_spec_weak m₂ x).
-    revert Heq_max. do 2 apply Nat.max_case_strong; intros; omega.
+    revert Heq_max. do 2 apply Nat.max_case_strong; intros; lia.
   Qed.
   
   Lemma fold_max : forall {A} eqA, Equivalence eqA ->
@@ -1331,7 +1320,7 @@ Section MMultisetExtra.
   + rewrite for_all_spec in Hmax |- *; trivial; [].
     intros x Hin. destruct (m[x] <? max_mult m) eqn:Hlt; auto with bool; [].
     assert (Hx : m[x] = max_mult m).
-    { rewrite Nat.ltb_nlt in *. apply le_antisym; omega || apply max_mult_spec_weak. }
+    { rewrite Nat.ltb_nlt in *. apply Nat.le_antisymm; lia || apply max_mult_spec_weak. }
     rewrite Hx, Bool.orb_false_r.
     rewrite <- max_In_mult3 in Hx; trivial; []. specialize (Hmax x Hx).
     rewrite max_In_mult2 in Hx; trivial; []. now rewrite Hx in Hmax.

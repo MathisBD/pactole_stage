@@ -11,7 +11,7 @@
 
 Require Import Bool.
 Require Import Arith.Div2.
-Require Import Omega Field.
+Require Import Lia Field.
 Require Import Rbase Rbasic_fun R_sqrt Rtrigo_def.
 Require Import List.
 Require Import SetoidList.
@@ -117,7 +117,7 @@ Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
 Proof using size_G.
 intros P Hconfig [g | b].
 + apply Hconfig.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
@@ -126,7 +126,7 @@ Lemma no_byz_eq : forall config1 config2 : configuration,
 Proof using size_G.
 intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
 + apply Heq.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
@@ -138,7 +138,7 @@ Qed.
 (** Define one robot to get their location whenever they are gathered. *)
 Definition g1 : G.
 Proof.
-exists 0%nat. abstract (pose (Hle := size_G); omega).
+exists 0%nat. abstract (pose (Hle := size_G); lia).
 Defined.
 
 (* Definition Spect_map f s := Spect.M.fold (fun e acc => Spect.M.add (f e) acc) s Spect.M.empty. *)
@@ -262,7 +262,7 @@ intros config. split; intro H.
     - rewrite <- (R2_dist_defined_2 pt'). apply max_dist_list_list_le; now left.
   + assert (l = nil).
     { rewrite <- length_zero_iff_nil.
-      cut (length (pt' :: l) = length (x :: nil)); try (simpl; omega).
+      cut (length (pt' :: l) = length (x :: nil)); try (simpl; lia).
       f_equiv; eauto. }
     subst. rewrite PermutationA_1 in Hperm; autoclass; [].
     elim H2. left.
@@ -462,8 +462,8 @@ assert (MainArgument: forall KP KQ, InA equiv KP nxt_elems -> InA equiv KQ nxt_e
 { intros KP KQ HinKP HinKQ.
   apply Hantec in HinKP.
   apply Hantec in HinKQ.
-  destruct HinKP as [[Pid | []] [HinP HroundP]]; try omega; [].
-  destruct HinKQ as [[Qid | []] [HinQ HroundQ]]; try omega; [].
+  destruct HinKP as [[Pid | []] [HinP HroundP]]; try lia; [].
+  destruct HinKQ as [[Qid | []] [HinQ HroundQ]]; try lia; [].
   destruct (Rle_dec delta (dist (get_location (config (Good Pid))) C)),
            (Rle_dec delta (dist (get_location (config (Good Qid))) C)).
   * (* Both P and Q are more than delta away from C *)
@@ -631,7 +631,7 @@ assert (Hantec : forall KP, InA equiv KP nxt_elems ->
                         /\ get_location (round ffgatherR2 da config (Good g)) == KP).
 { intros [KP k'] HinKP.
   rewrite Heqnxt_elems, support_spec, obs_from_config_In in HinKP.
-  destruct HinKP as [[g | []] Hg]; try omega; [].
+  destruct HinKP as [[g | []] Hg]; try lia; [].
   exists g. split; trivial; [].
   unfold elems. rewrite support_spec, obs_from_config_In.
   now exists (Good g). }
@@ -750,10 +750,10 @@ apply NoDupA_equivlistA_PermutationA; autoclass.
     rewrite Hperm, make_multiset_alls, singleton_spec. changeR2.
     destruct (x =?= pt) as [Hpt | Hpt].
     - now split.
-    - intro. omega.
+    - intro. lia.
   + inv Hin; try (now rewrite InA_nil in *); [].
     revert_one eq_pair. intros [Heq1 Heq2]. compute in Heq1, Heq2; subst.
-    assert (Hle := size_G). split; try omega; [].
+    assert (Hle := size_G). split; try lia; [].
     apply make_multiset_compat in Hperm.
     rewrite Hperm, make_multiset_alls, singleton_spec. changeR2.
     destruct (pt =?= pt); intuition.
@@ -770,7 +770,7 @@ assert (Hf : Proper (@equiv location _ * eq ==> equiv * eq) (fun xn => (fst xn, 
 rewrite Hgather.
 apply gathered_at_elements, (Preliminary.PermutationA_map _ Hf) in Hgather.
 apply barycenter_compat in Hgather. cbn [List.map] in Hgather.
-assert (INR nG <> 0). { apply not_0_INR. generalize size_G. intro. simpl. omega. }
+assert (INR nG <> 0). { apply not_0_INR. generalize size_G. intro. simpl. lia. }
 rewrite barycenter_singleton in Hgather; trivial; [].
 rewrite Hgather, update_no_move; eauto using FlexibleChoiceFlexibleUpdate.
 Qed.

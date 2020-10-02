@@ -11,7 +11,7 @@
 Require Import Psatz Rbase.
 Require Import Morphisms.
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Lia.
 Require Import Decidable.
 Require Import Equalities.
 Require Import List Setoid SetoidList Compare_dec Morphisms.
@@ -46,7 +46,7 @@ Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof.
 intros [g | b] P HP.
 + apply HP.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 (** A dummy state used for (inexistant) byzantine robots. *)
@@ -87,7 +87,7 @@ Lemma ref_config_injective :
   Util.Preliminary.injective eq equiv (fun id => get_location (ref_config id)).
 Proof.
 intros id1 id2.
-assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; omega).
+assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; lia).
 apply (no_byz id2), (no_byz id1). clear id1 id2.
 intros g1 g2 Heq. f_equal. hnf in Heq.
 unfold ref_config, create_ref_config, Ring.of_Z in *. simpl in *.
@@ -96,8 +96,8 @@ rewrite 2 Z2Nat.id in Heq; try (apply Z.mod_pos_bound; lia); [].
 assert (Hlt : forall n, (n < kG)%nat -> Z.of_nat (n * (ring_size / kG)) < Z.of_nat ring_size).
 { intros n Hn. apply Nat2Z.inj_lt.
   apply Nat.lt_le_trans with (kG * (ring_size / kG))%nat.
-  - apply mult_lt_compat_r; omega.
-  - apply Nat.mul_div_le. omega. }
+  - apply mult_lt_compat_r; lia.
+  - apply Nat.mul_div_le. lia. }
 rewrite 2 Z.mod_small in Heq; try (split; apply Zle_0_nat || apply Hlt, proj2_sig); [].
 apply Nat2Z.inj, Nat.mul_cancel_r in Heq; auto.
 Local Transparent G. unfold G. now apply eq_proj1.
@@ -122,7 +122,7 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
     { replace (to_Z (ref_config id1))
         with (to_Z (ref_config id1) - to_Z (create_ref_config g)
               + to_Z (create_ref_config g)) by ring.
-      rewrite Z.add_mod, Heq, <- Z.add_mod; try omega; []. f_equal. ring. }
+      rewrite Z.add_mod, Heq, <- Z.add_mod; try lia; []. f_equal. ring. }
     rewrite 2 Z.mod_small in Heq_mod; auto using to_Z_small; [].
     apply to_Z_injective in Heq_mod. now rewrite Heq_mod.
   + rewrite NoDupA_Leibniz. apply names_NoDup.
@@ -130,9 +130,9 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
   + intros ? ? []. now apply ref_config_injective.
   + rewrite NoDupA_Leibniz. apply names_NoDup.
 * intro pt. repeat rewrite InA_map_iff; autoclass; [].
-  assert (HkG : kG <> 0%nat) by omega.
-  assert (Z.of_nat ring_size <> 0) by omega.
-  assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; omega).
+  assert (HkG : kG <> 0%nat) by lia.
+  assert (Z.of_nat ring_size <> 0) by lia.
+  assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; lia).
   assert (Hg : (proj1_sig g < kG)%nat) by apply proj2_sig.
   assert (Hsize : (kG * (ring_size / kG) = ring_size)%nat).
   { symmetry. now rewrite Nat.div_exact. }
@@ -147,10 +147,10 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
       (* This part is a proof about modular arithmetic; we stay in Z to use the ring structure *)
       rewrite 2 Ring.Z2Z, <- Zdiv.Zminus_mod.
       unfold id'. simpl.
-      rewrite <- Nat.mul_mod_distr_r, Hsize, Zdiv.mod_Zmod, Z.mod_mod; try omega; [].
-      rewrite Nat.mul_add_distr_r, Nat2Z.inj_add, 3 Nat2Z.inj_mul, Nat2Z.inj_sub; try omega; [].
+      rewrite <- Nat.mul_mod_distr_r, Hsize, Zdiv.mod_Zmod, Z.mod_mod; try lia; [].
+      rewrite Nat.mul_add_distr_r, Nat2Z.inj_add, 3 Nat2Z.inj_mul, Nat2Z.inj_sub; try lia; [].
       rewrite Z.mul_sub_distr_r, <- (Nat2Z.inj_mul kG), Hsize.
-      rewrite Z.add_mod, Zdiv.Zminus_mod, Z.mod_same, Z.add_mod_idemp_r; try omega; [].
+      rewrite Z.add_mod, Zdiv.Zminus_mod, Z.mod_same, Z.add_mod_idemp_r; try lia; [].
       rewrite Zdiv.Zminus_mod. reflexivity.
     - rewrite InA_Leibniz. apply In_names.
   + assert (Hlt : ((proj1_sig g' + proj1_sig g) mod kG < kG)%nat) by now apply Nat.mod_upper_bound.
@@ -162,7 +162,7 @@ apply NoDupA_equivlistA_PermutationA; autoclass; [| |].
       (* This part is a proof about modular arithmetic; we stay in Z to use the ring structure *)
       rewrite 2 Ring.Z2Z, <- Zdiv.Zminus_mod.
       unfold id'. simpl.
-      rewrite <- Nat.mul_mod_distr_r, Hsize, Zdiv.mod_Zmod; try omega; [].
+      rewrite <- Nat.mul_mod_distr_r, Hsize, Zdiv.mod_Zmod; try lia; [].
       rewrite Zdiv.Zminus_mod_idemp_l. f_equal. lia.
     - rewrite InA_Leibniz. apply In_names.
 Qed.
@@ -229,12 +229,12 @@ intro Hl. induction Hl as [e [g Hvisited] | e Hlater IHvisited].
   rewrite (Stream.hd_compat Heq_e) in Hvisited. simpl in Hvisited.
   apply (f_equal (@proj1_sig _ (fun x => lt x ring_size))) in Hvisited. revert Hvisited.
   assert (1 < ring_size / kG)%nat by (apply <- Nat.div_exact in kdn; nia).
-  unfold Ring.of_Z. simpl. rewrite Z.mod_1_l, Z.mod_small; try omega; [|].
+  unfold Ring.of_Z. simpl. rewrite Z.mod_1_l, Z.mod_small; try lia; [|].
   + change 1 with (Z.of_nat 1). rewrite 2 Nat2Z.id. destruct (proj1_sig g); nia.
   + split; try apply Zle_0_nat; [].
     apply inj_lt, Nat.lt_le_trans with (kG * (ring_size / kG))%nat.
-    - apply mult_lt_compat_r; try omega; []. apply proj2_sig.
-    - rewrite <- Nat.div_exact in kdn; omega.
+    - apply mult_lt_compat_r; try lia; []. apply proj2_sig.
+    - rewrite <- Nat.div_exact in kdn; lia.
 * apply IHvisited. rewrite Heq_e, execute_tail.
   (* FIXME: why does [f_equiv] fail to find [execute_compat]? *)
   apply execute_compat; auto using round_id.
@@ -305,16 +305,16 @@ Proof. intros * Heq ?. eapply f_config_injective_local, Heq. Qed.
 Lemma f_config_is_id : forall k config, f_config config k == config <-> of_Z k = origin.
 Proof.
 intros k config. split; intro Heq.
-+ assert (g : G). { exists 0%nat. compute. omega. }
++ assert (g : G). { exists 0%nat. compute. lia. }
   specialize (Heq (Good g)). unfold f_config, map_config in Heq.
   simpl in Heq. rewrite Z.sub_opp_r in Heq.
   apply (f_equal to_Z) in Heq. rewrite Z2Z in Heq.
   apply to_Z_injective. rewrite Z2Z. change (to_Z origin) with 0.
   replace k with (to_Z (config (Good g)) + k - to_Z (config (Good g))) by ring.
-  rewrite Zdiv.Zminus_mod, Heq, Zdiv.Zminus_mod_idemp_r, Z.sub_diag, Z.mod_0_l; omega.
+  rewrite Zdiv.Zminus_mod, Heq, Zdiv.Zminus_mod_idemp_r, Z.sub_diag, Z.mod_0_l; lia.
 + unfold f_config, map_config. simpl. intro id. rewrite Z.sub_opp_r.
   apply to_Z_injective. apply (f_equal to_Z) in Heq. rewrite Z2Z in *.
-  rewrite Z.add_mod, Heq, Z.add_0_r, Z.mod_mod, Z.mod_small; omega || apply to_Z_small.
+  rewrite Z.add_mod, Heq, Z.add_0_r, Z.mod_mod, Z.mod_small; lia || apply to_Z_small.
 Qed.
 
 Lemma f_config_same_sub : forall k config1 config2, config2 == f_config config1 k ->
@@ -383,12 +383,12 @@ apply (no_byz id). clear id. intro g.
 rewrite (FSYNC_round_simplify r config2 FSYNC_one).
 rewrite (f_config_compat (FSYNC_round_simplify r config1 FSYNC_one) (reflexivity k)).
 simpl. unfold f_config. simpl. apply to_Z_injective. repeat rewrite Z2Z.
-rewrite 2 Z.sub_diag, Z.sub_opp_r, Z.add_mod_idemp_l; try omega; [].
-unfold Datatypes.id. rewrite <- Z.add_assoc. setoid_rewrite Z.add_mod; try omega; [].
+rewrite 2 Z.sub_diag, Z.sub_opp_r, Z.add_mod_idemp_l; try lia; [].
+unfold Datatypes.id. rewrite <- Z.add_assoc. setoid_rewrite Z.add_mod; try lia; [].
 do 2 f_equal.
 + do 3 f_equiv. apply (pgm_compat r), obs_from_config_compat; try reflexivity; [].
   intro. symmetry. apply (f_config_same_sub Hequiv).
-+ rewrite Hequiv. unfold f_config. simpl. rewrite Z2Z, Z.sub_opp_r, Z.mod_mod; omega.
++ rewrite Hequiv. unfold f_config. simpl. rewrite Z2Z, Z.sub_opp_r, Z.mod_mod; lia.
 Qed.
 
 Corollary equiv_config_round : forall config1 config2, equiv_config config1 config2 ->
@@ -531,9 +531,9 @@ cofix Hcoind. intros k e Hequiv. constructor.
   symmetry in Hstop. rewrite f_config_is_id in Hstop.
   apply (f_equal to_Z) in Hstop. revert Hstop.
   unfold of_Z, to_Z, target, move_along. simpl.
-  destruct move; simpl; repeat rewrite Z2Nat.id; try (apply Z.mod_pos_bound; omega); [| |].
-  - rewrite 2 Z.mod_1_l; omega || discriminate.
-  - rewrite Z.mod_mod, <- (Z.mod_add _ 1); try omega; [].
+  destruct move; simpl; repeat rewrite Z2Nat.id; try (apply Z.mod_pos_bound; lia); [| |].
+  - rewrite 2 Z.mod_1_l; lia || discriminate.
+  - rewrite Z.mod_mod, <- (Z.mod_add _ 1); try lia; [].
     replace (-1 + 1 * Z.of_nat ring_size) with (Z.of_nat ring_size - 1) by ring.
     rewrite Z.mod_small; lia.
   - now elim Hmove.

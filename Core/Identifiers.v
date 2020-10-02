@@ -12,7 +12,7 @@
 
 Require Import SetoidDec SetoidList.
 Require Import Arith_base.
-Require Import Omega.
+Require Import Lia.
 Require Import Pactole.Util.Coqlib.
 
 
@@ -42,7 +42,7 @@ Program Fixpoint build_enum N k (Hle : k <= N) acc : list (fin N) :=
     | S m => @build_enum N m _ (exist (fun x => x < N) m _ :: acc)
   end.
 Next Obligation.
-omega.
+lia.
 Qed.
 
 (** A list containing all elements of [fin N]. *)
@@ -55,9 +55,9 @@ intros N k. induction k; intros Hle l x; simpl.
 + intuition.
 + rewrite IHk. simpl. split; intro Hin.
   - destruct Hin as [[Hin | Hin] | Hin]; intuition; [].
-    subst. simpl. right. omega.
+    subst. simpl. right. lia.
   - destruct Hin as [Hin | Hin]; intuition; [].
-    assert (Hcase : proj1_sig x < k \/ proj1_sig x = k) by omega.
+    assert (Hcase : proj1_sig x < k \/ proj1_sig x = k) by lia.
     destruct Hcase as [Hcase | Hcase]; intuition; [].
     subst. do 2 left. destruct x; f_equal; simpl in *. apply le_unique.
 Qed.
@@ -70,7 +70,7 @@ Lemma build_enum_length : forall N k (Hle : k <= N) l, length (build_enum Hle l)
 Proof using .
 intros N k. induction k; intros Hle l; simpl.
 + reflexivity.
-+ rewrite IHk. simpl. omega.
++ rewrite IHk. simpl. lia.
 Qed.
 
 Lemma enum_length : forall N, length (enum N) = N.
@@ -84,9 +84,9 @@ intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
 apply IHk.
 + intros x [Hx | Hx].
   - now subst.
-  - apply Hin in Hx. omega.
+  - apply Hin in Hx. lia.
 + constructor; trivial; [].
-  intro Habs. apply Hin in Habs. simpl in Habs. omega.
+  intro Habs. apply Hin in Habs. simpl in Habs. lia.
 Qed.
 
 Lemma enum_NoDup : forall N, NoDup (enum N).
@@ -102,7 +102,7 @@ intros N k. induction k; intros Hle l Hin Hl; simpl; auto; [].
 apply IHk.
 + intros x [Hx | Hx].
   - now subst.
-  - apply Hin in Hx. omega.
+  - apply Hin in Hx. lia.
 + constructor; trivial; [].
   destruct l; constructor; []. simpl. apply Hin. now left.
 Qed.
@@ -124,9 +124,9 @@ Theorem build_enum_eq : forall {A} eqA N (f g : fin N -> A) k (Hle : k <= N) l,
   forall x, proj1_sig x < k -> eqA (f x) (g x).
 Proof using .
 intros A eqA N f g k. induction k; intros Hle l Heq x Hx; simpl.
-* destruct x; simpl in *; omega.
-* assert (Hlt : k <= N) by omega.
-  assert (Hcase : proj1_sig x < k \/ proj1_sig x = k) by omega.
+* destruct x; simpl in *; lia.
+* assert (Hlt : k <= N) by lia.
+  assert (Hcase : proj1_sig x < k \/ proj1_sig x = k) by lia.
   destruct Hcase as [Hcase | Hcase].
   + apply IHk with (x := x) in Heq; auto.
   + subst k. simpl in Heq. rewrite build_enum_app_nil, map_app, map_app in Heq.
@@ -150,17 +150,17 @@ Lemma firstn_build_enum_le : forall N k (Hle : k <= N) l k' (Hk : k' <= N), k' <
   firstn k' (build_enum Hle l) = @build_enum N k' Hk nil.
 Proof using .
 intros N k. induction k; intros Hk l k' Hk' Hle.
-* assert (k' = 0) by omega. now subst.
+* assert (k' = 0) by lia. now subst.
 * rewrite build_enum_app_nil, firstn_app, build_enum_length.
-  replace (k' - (S k + length (@nil (fin N)))) with 0 by omega.
+  replace (k' - (S k + length (@nil (fin N)))) with 0 by lia.
   rewrite app_nil_r.
   destruct (Nat.eq_dec k' (S k)) as [Heq | Heq].
   + subst k'. rewrite firstn_all2.
     - f_equal. apply le_unique.
-    - rewrite build_enum_length. simpl. omega.
+    - rewrite build_enum_length. simpl. lia.
   + simpl build_enum. erewrite IHk.
     - f_equal.
-    - omega.
+    - lia.
 Qed.
 
 Lemma firstn_build_enum_lt : forall N k (Hle : k <= N) l k', k <= k' ->
@@ -170,7 +170,7 @@ intros N k. induction k; intros Hle l k' Hk.
 + now rewrite Nat.sub_0_r.
 + rewrite build_enum_app_nil, firstn_app, build_enum_length, Nat.add_0_r.
   rewrite firstn_all2, <- build_enum_app_nil; trivial; [].
-  rewrite build_enum_length. simpl. omega.
+  rewrite build_enum_length. simpl. lia.
 Qed.
 
 Lemma firstn_enum_le : forall N k (Hle : k <= N), firstn k (enum N) = build_enum Hle nil.
@@ -210,7 +210,7 @@ intros N k x. split; intro Hin.
     rewrite firstn_skipn. rewrite NoDupA_Leibniz. apply enum_NoDup. }
   rewrite firstn_enum_spec in Hin'. split; auto with zarith; []. apply proj2_sig.
 + assert (Hin' : In x (enum N)) by apply In_enum, proj2_sig.
-  rewrite <- (firstn_skipn k), in_app_iff, firstn_enum_spec in Hin'. intuition omega.
+  rewrite <- (firstn_skipn k), in_app_iff, firstn_enum_spec in Hin'. intuition lia.
 Qed.
 
 (** ** Byzantine Robots *)

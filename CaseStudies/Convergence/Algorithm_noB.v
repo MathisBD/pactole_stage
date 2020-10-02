@@ -21,7 +21,7 @@
 Require Import Utf8.
 Require Import Reals.
 Require Import SetoidDec.
-Require Import Omega.
+Require Import Lia.
 Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
@@ -88,7 +88,7 @@ Lemma obs_non_empty : forall config pt, obs_from_config config pt =/= @empty loc
 Proof.
 intros config pt.
 rewrite obs_from_config_ignore_snd. intro Habs.
-assert (Hn : 0%nat < n). { generalize n_non_0. intro. omega. }
+assert (Hn : 0%nat < n). { generalize n_non_0. intro. lia. }
 pose (g := exist _ 0%nat Hn : G).
 specialize (Habs (config (Good g))).
 rewrite empty_spec in Habs.
@@ -104,7 +104,7 @@ Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
 Proof.
 intros P Hg [g | b].
 + apply Hg.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 (** ** Properties of executions  *)

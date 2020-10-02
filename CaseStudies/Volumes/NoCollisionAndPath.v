@@ -1,7 +1,8 @@
-Set Automatic Coercions Import. (* coercions are available as soon as functor application *)
+(* This option was removed in 2019 https://github.com/coq/coq/pull/8094 *)
+(*Set Automatic Coercions Import. *) (* coercions are available as soon as functor application *)
 Require Import Bool.
 Require Import Arith.Div2.
-Require Import Omega Field.
+Require Import Lia Field.
 Require Import Rbase Rbasic_fun R_sqrt Rtrigo_def.
 Require Import List.
 Require Import SetoidList.
@@ -2321,10 +2322,10 @@ Hypothesis exists_one : exists id, P id.
 Definition Pbool x := if Pdec x then true else false.
 
 Lemma Pbool_spec : forall x, Pbool x = true <-> P x.
-Proof. clear. intro. unfold Pbool. destruct_match; firstorder. Qed.
+Proof using. clear. intro. unfold Pbool. destruct_match; firstorder. discriminate. Qed.
 
 Corollary Pbool_false : forall x, Pbool x = false <-> ~P x.
-Proof. intro. rewrite <- Pbool_spec. now destruct (Pbool x). Qed.
+Proof using . intro. rewrite <- Pbool_spec. now destruct (Pbool x). Qed.
 
 Definition ident_ltb (config:config) (id1 id2: @ident Identifiers) := Nat.ltb (get_ident (config id1)) (get_ident (config id2)).
 Definition ident_leb (config:config) id1 id2 := if names_eq_dec id1 id2 then true else ident_ltb config id1 id2.
@@ -2335,31 +2336,31 @@ Definition ident_le config id1 id2 := ident_leb config id1 id2 = true.
 
 Lemma ident_ltb_trans : forall config id1 id2 id3,
   ident_ltb config id1 id2 = true -> ident_ltb config id2 id3 = true -> ident_ltb config id1 id3 = true.
-Proof.
+Proof using Robots.
 unfold ident_ltb in *.
 induction names; intros config id1 id2 id3; simpl.
-+ unfold get_ident in *. rewrite 3 Nat.ltb_lt. omega. 
++ unfold get_ident in *. rewrite 3 Nat.ltb_lt. lia. 
 + repeat destruct_match; tauto || discriminate || eauto.
 Qed.
 
 Lemma ident_ltb_irrefl : forall config id, ident_ltb config id id = false.
-Proof. intros config id. unfold ident_ltb.
-       rewrite Nat.ltb_nlt. omega. Qed.
+Proof using . intros config id. unfold ident_ltb.
+       rewrite Nat.ltb_nlt. lia. Qed.
 
 Instance ident_lt_strict config : StrictOrder (ident_lt config).
-Proof. unfold ident_lt. split.
+Proof using Robots. unfold ident_lt. split.
 + intro. simpl. now rewrite ident_ltb_irrefl.
 + repeat intro. eauto using ident_ltb_trans.
 Qed.
 
 Instance ident_le_preorder config : PreOrder (ident_le config).
-Proof. unfold ident_le, ident_leb. split.
+Proof using Robots. unfold ident_le, ident_leb. split.
 + intro. now destruct_match.
 + intros x y z. repeat destruct_match; subst; auto; []. apply ident_ltb_trans.
 Qed.
 
 Lemma ident_le_linear : forall conf id id', {ident_le conf id id'} + {ident_le conf id' id}.
-Proof.
+Proof using .
   intros.
   unfold ident_le, ident_leb.
   do 2 destruct (names_eq_dec _ _); auto.
@@ -2379,11 +2380,11 @@ Proof.
   destruct (Geq_dec g g').
   now rewrite e0 in *.
   now assert (Hfalse := ident_unique conf n2).
-  omega.
+  lia.
 Qed.
 
 Lemma ident_le_dec : forall conf id id', {ident_le conf id id'} + {~ident_le conf id id'}.
-Proof.
+Proof using .
   intros.
   unfold ident_le, ident_leb.
   destruct (names_eq_dec _ _); try auto.
@@ -2393,7 +2394,7 @@ Qed.
 
 
 Theorem exists_min : forall conf, exists id, P id /\ forall id', P id' -> ident_le conf id id'.
-Proof.
+Proof using Pdec Robots exists_one.
 pose (P' := fun id => List.In id names /\ P id).
 assert (Hequiv : forall id, P id <-> P' id).
 { intros id. unfold P'. assert (Hin := In_names id). tauto. }
@@ -2466,13 +2467,13 @@ Lemma ident_ltb_trans : forall config id1 id2 id3,
 Proof.
 unfold ident_ltb in *.
 induction names; intros config id1 id2 id3; simpl.
-+ unfold get_ident in *. rewrite 3 Nat.ltb_lt. omega. 
++ unfold get_ident in *. rewrite 3 Nat.ltb_lt. lia. 
 + repeat destruct_match; tauto || discriminate || eauto.
 Qed.
 
 Lemma ident_ltb_irrefl : forall config id, ident_ltb config id id = false.
 Proof. intros config id. unfold ident_ltb.
-       rewrite Nat.ltb_nlt. omega. Qed.
+       rewrite Nat.ltb_nlt. lia. Qed.
 
 Instance ident_lt_strict config : StrictOrder (ident_lt config).
 Proof. unfold ident_lt. split.
@@ -2525,7 +2526,7 @@ Admitted.
 
 *)
 Corollary robin : forall conf, exists id, P(id) /\ forall id', id <> id' -> P(id') -> get_ident (conf id) < get_ident (conf id').
-Proof.
+Proof using Pdec Robots exists_one.
   intro conf.
   destruct (exists_min conf) as [id_min [? Hmin]].
 exists id_min. split; trivial; [].
@@ -2819,7 +2820,7 @@ Proof.
             simpl in *; rewrite <- Hframe_dist.
             rewrite 2 andb_true_iff. repeat split; try rewrite Rle_bool_true_iff; auto.
          -- unfold get_ident in *; simpl in *.
-            rewrite Nat.leb_le; omega.
+            rewrite Nat.leb_le; lia.
          -- intros x y Hxy.
             destruct x as (rx,(((ix,lx),ax),bx)), y as (ry,(((iy,ly),ay),By)).
             simpl in Hxy.
@@ -3006,7 +3007,7 @@ Proof.
                  rewrite Hconf in *. 
                  unfold get_ident; simpl.
                  rewrite Nat.leb_le.
-                 omega.
+                 lia.
               -- intros (?,(((?,?),?),?)) (?,(((?,?),?),?)) (Hr,(Hi,(Hl, (Ha, Hb)))).
                  simpl in *.
                  now rewrite Ha, Hl, Hr, Hi. }
@@ -3044,7 +3045,7 @@ Proof.
             destruct Hhigher as (Hap0,(Hexists_based, Hhigher)).
             specialize (Hhigher g' g). unfold get_based in *; rewrite Hconf in *; simpl in Hhigher.
             specialize (Hhigher Hbased' (reflexivity _)).
-            omega.
+            lia.
             auto.
          ++ assert (Hgood := @round_good_g g conf da Hpred).
             rewrite Hconf_round.
@@ -3401,7 +3402,7 @@ Proof.
     destruct (negb _) eqn : Hident_far_1' in Htoo_far_1'; simpl in Htoo_far_1'; try discriminate.
     unfold get_ident in Htoo_far_1'; simpl in Htoo_far_1'.
     rewrite Nat.ltb_lt in *.
-    omega.
+    lia.
     rewrite negb_true_iff , negb_false_iff in *.
     rewrite Nat.eqb_eq, Nat.eqb_neq in *.
     destruct Hident_far_1; unfold get_ident in *; simpl in *; auto.
@@ -4925,7 +4926,7 @@ Proof.
         destruct (change_frame da conf g_ex) as ((?,?),[|]);
         reflexivity.
         apply In_names.
-        rewrite Hconf_ex; unfold get_ident in *; simpl in *; omega.
+        rewrite Hconf_ex; unfold get_ident in *; simpl in *; lia.
         unfold get_alive in *; simpl in *; auto.
         rewrite negb_true_iff in *; unfold get_based in *; simpl in *;auto.
         unfold get_location, State_ILA, AddInfo, OnlyLocation,
@@ -5127,7 +5128,7 @@ Proof.
     specialize (H1 g g'); rewrite Hconf, Hconf' in *.
     unfold get_based in *; simpl in *; specialize (H1 (reflexivity _) (reflexivity _)).    
     unfold get_ident in *; simpl in *.
-    destruct (upt_robot_dies_b _); simpl; omega.
+    destruct (upt_robot_dies_b _); simpl; lia.
 Qed.
 
 
@@ -5356,7 +5357,7 @@ Proof.
              
              rewrite Nat.leb_le, <-Hconf .
              unfold get_ident in *; simpl in *.
-             omega.
+             lia.
              intros x y Hxy.
              rewrite (fst_compat Hxy).
              rewrite (get_alive_compat Hxy), (get_ident_compat Hxy).
@@ -5366,7 +5367,7 @@ Proof.
            {
              
              rewrite (Nat.neq_0_lt_0 _) in Hn_0.
-             unfold get_ident in *; simpl in *; omega.
+             unfold get_ident in *; simpl in *; lia.
 
            }
            rewrite Hconf in *.
@@ -5493,7 +5494,7 @@ Proof.
              rewrite Nat.leb_le.
              rewrite Hconf in *.
              unfold get_ident in *; simpl in *.
-             omega.
+             lia.
              intros x' y Hxy.
              rewrite (fst_compat Hxy).
              rewrite (get_alive_compat Hxy), (get_ident_compat Hxy).
@@ -5523,7 +5524,7 @@ Proof.
                    rewrite Htarget_spec in Htarget_ident.
                    unfold equiv, bool_Setoid, eq_setoid in Htarget_ident.
                    unfold get_ident in *; rewrite Nat.leb_le , Hconf, Hconf_target in *; simpl in *.
-                   omega.
+                   lia.
                    rewrite Hconf_target in *; unfold get_based in *; simpl in H1; rewrite H1.
                    simpl.
                    now rewrite Hbool_target; unfold get_alive; simpl.
@@ -5577,7 +5578,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                      rewrite Htarget_spec in Htarget_ident.
                      unfold equiv, bool_Setoid, eq_setoid in Htarget_ident.
                      unfold get_ident in *; rewrite Nat.leb_le , Hconf, Hconf_target in *; simpl in *.
-                     omega.
+                     lia.
                      rewrite Nat.ltb_lt in Hident_too_close.
                      rewrite <- Hspec_too_close in Hident_too_close.
                      unfold get_ident in *; simpl in *; auto.
@@ -5606,7 +5607,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                      rewrite Htarget_spec in Htarget_ident.
                      unfold equiv, bool_Setoid, eq_setoid in Htarget_ident.
                      unfold get_ident in *; rewrite Nat.leb_le , Hconf, Hconf_target in *; simpl in *.
-                     omega.
+                     lia.
                    }
                    unfold get_based in Hbased_target; rewrite Hconf_target in *; simpl in Hbased_target; rewrite Hbased_target.
 
@@ -5674,7 +5675,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                    rewrite Nat.leb_le.
                    transitivity (get_ident (conf (Good g_target))).
                    rewrite Nat.ltb_lt, <- Hspec_too_close in Hident_too_close.
-                   unfold get_ident in *; simpl in *; omega.
+                   unfold get_ident in *; simpl in *; lia.
                    destruct Hpred as (Horigin, ?).
                    specialize (Horigin conf g (change_frame da conf g) (reflexivity _)).
                    revert Horigin; intro Horigin.
@@ -5783,7 +5784,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                            unfold equiv, bool_Setoid, eq_setoid in Htarget_ident.
                            unfold get_ident in *; rewrite Nat.leb_le , Hconf, Hconf_target in *; simpl in *.
                            rewrite Htarget_spec_ident in *.
-                           omega.
+                           lia.
                          }
                          unfold get_based in Hbased_target; rewrite Hconf_target in *; simpl in Hbased_target; rewrite Hbased_target.
                          simpl.
@@ -6169,7 +6170,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                                simpl in *.
                                destruct H0 as (Hident_other',_).
                                rewrite Hident_other', Hconf in *.
-                               simpl in *; omega.
+                               simpl in *; lia.
                                rewrite Hconf in *; simpl in *; auto.
                                rewrite Hother1_spec in Hother1_alive; unfold get_alive in *;
                                  simpl in *;
@@ -6324,7 +6325,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                                  simpl in *.
                                  destruct H0 as (Hident_other,_).
                                  rewrite Hident_other, Hconf in *.
-                                 simpl in *; omega.
+                                 simpl in *; lia.
                                
                                  
                                  rewrite dist_sym. auto.
@@ -6501,7 +6502,7 @@ Proof.
   clear H3.
   destruct Hbased_higher_round as (?,(?,?)).
   specialize (H5 x g' Hbased_rx Hbased_r').
-  omega.
+  lia.
   exists x; repeat split; simpl in *; auto.  
   
 Qed.
@@ -6613,10 +6614,10 @@ Proof.
         destruct (negb _) eqn : Hnegb_1 in Htoo_far_1; try (simpl in Htoo_far_1; discriminate).
         rewrite <- 2 ident_preserved in ident_near_aux; try apply Hpred.
         rewrite Nat.ltb_lt in Htoo_far_1.
-        unfold get_ident in *; simpl in *; omega.
+        unfold get_ident in *; simpl in *; lia.
         rewrite negb_false_iff, Nat.eqb_eq in Hnegb_1.
         rewrite <- 2 ident_preserved in ident_near_aux; try auto.
-        unfold get_ident in *; simpl in *; rewrite Hnegb_1 in *; omega.
+        unfold get_ident in *; simpl in *; rewrite Hnegb_1 in *; lia.
         assert (get_alive (round rbg_ila da conf (Good g_near)) = true) by
             now (unfold get_alive in *; simpl in *; auto).
         apply (still_alive_means_alive) in H; try apply Hpred; try apply Hbased_higher.
@@ -7060,7 +7061,7 @@ Proof.
                rewrite <- ident_preserved, Hconf in Hident_exec'; try auto.
                unfold get_ident in *; simpl in *.
                rewrite Nat.leb_le, Nat.ltb_lt in *.
-               unfold ILA in *; omega.
+               unfold ILA in *; lia.
                
              * intros x y Hxy.
                rewrite (get_alive_compat Hxy).
@@ -7335,7 +7336,7 @@ Proof.
             intros; split; try (lra);
             unfold get_alive; simpl; 
             auto).
-            unfold get_ident; simpl; rewrite Nat.leb_le; omega.
+            unfold get_ident; simpl; rewrite Nat.leb_le; lia.
             intros x y Hxy.
             rewrite (get_alive_compat Hxy).
             rewrite (get_ident_compat Hxy), (get_location_compat _ _ Hxy).
@@ -7379,7 +7380,7 @@ Proof.
               rewrite (get_ident_compat H) in H1.
               unfold get_based, get_ident in *.
               simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-              rewrite Nat.leb_le in *. omega.
+              rewrite Nat.leb_le in *. lia.
             }
             unfold get_based in H4.
             
@@ -7460,7 +7461,7 @@ Proof.
                      rewrite (get_ident_compat H) in H1.
                      unfold get_based, get_ident in *.
                      simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-                     rewrite Nat.leb_le in *. omega.
+                     rewrite Nat.leb_le in *. lia.
                    }
                    unfold get_based in *; rewrite Hconf_far in H6; simpl in H6; 
                    rewrite H6 in *.
@@ -7565,7 +7566,7 @@ Proof.
                    destruct b; rewrite dist_same; lra.
                    simpl in *; assumption.
                    simpl in *; assumption.
-                   unfold get_ident in *; rewrite Nat.leb_le; simpl; omega.
+                   unfold get_ident in *; rewrite Nat.leb_le; simpl; lia.
                    intros x y Hxy.
                    rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                    rewrite (get_alive_compat Hxy).
@@ -7588,9 +7589,9 @@ Proof.
                    rewrite <- Hspec_too_close in Hident_too_close;
                      unfold get_ident in *; simpl in Hident_too_close;
                      rewrite Nat.ltb_lt in Hident_too_close; simpl.
-                   omega.
+                   lia.
                    unfold get_ident in *; simpl in *; rewrite Hconf in *; simpl in *; 
-                     omega.
+                     lia.
                    intros x y Hxy.
                    rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                    rewrite (get_alive_compat Hxy).
@@ -7664,7 +7665,7 @@ Proof.
                  rewrite (get_ident_compat H) in H1.
                  unfold get_based, get_ident in *.
                  simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-                 rewrite Nat.leb_le in *. omega.
+                 rewrite Nat.leb_le in *. lia.
                }
                unfold get_based in *; rewrite Hconf_far in H4; simpl in H4; 
                  rewrite H4 in *.
@@ -7683,7 +7684,7 @@ Proof.
                  rewrite (get_ident_compat H) in H1.
                  unfold get_based, get_ident in *.
                  simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-                 rewrite Nat.leb_le in *. omega.
+                 rewrite Nat.leb_le in *. lia.
                }
                rewrite negb_true_iff.
                unfold get_based; simpl.
@@ -8113,9 +8114,9 @@ Proof.
         revert Hident_near; intro Hident_near.
         assert (Hident_near' : get_ident ( (round rbg_ila da conf (Good g_near))) <
                                get_ident ( (round rbg_ila da conf (Good g))))by
-            (unfold get_ident in *; simpl in *; omega).
+            (unfold get_ident in *; simpl in *; lia).
         rewrite <- 2 ident_preserved in Hident_near'; try apply Hpred.
-        rewrite Hconf in Hident_near'; unfold get_ident in *; simpl in *; omega.
+        rewrite Hconf in Hident_near'; unfold get_ident in *; simpl in *; lia.
         intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy).
         reflexivity.
       * set (spect := obs_from_config _ _) in *.
@@ -8196,7 +8197,7 @@ Proof.
             lra.
             unfold get_alive; rewrite Hconf; simpl in *; assumption.
             unfold get_alive; simpl in *; assumption.
-            rewrite Hconf; simpl in *; rewrite Nat.leb_le; omega.
+            rewrite Hconf; simpl in *; rewrite Nat.leb_le; lia.
             intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy).
             reflexivity.
             destruct Hpred as (Horigin, ?).
@@ -8251,7 +8252,7 @@ Proof.
                  rewrite (get_ident_compat H) in H1.
                  unfold get_based, get_ident in *.
                  simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-                 rewrite Nat.leb_le in *. destruct H1; omega.
+                 rewrite Nat.leb_le in *. destruct H1; lia.
 
                }
                rewrite Hconf_far in H4; unfold get_based in H4; simpl in H4; rewrite H4.
@@ -8449,7 +8450,7 @@ Proof.
                      }
                    specialize (Hexecuted da Hpred_backup H8 Halive_far).
                    destruct Hless_that_Dp as (g_less, (Halive_less, (Hident_less, Hpos_less))).
-                   rewrite Hconf in *. rewrite Halive_r in *. omega. 
+                   rewrite Hconf in *. rewrite Halive_r in *. lia. 
                    rewrite <- Nat.le_succ_l in Hident_g'.
                    intros g_near Halive_near  Hdist_near Hindent_near.
                    simpl.
@@ -8484,7 +8485,7 @@ Proof.
                      now simpl in *.
                      now simpl in *.
                      
-                     unfold get_ident in *; simpl in *; auto.  rewrite Nat.leb_le; omega.  
+                     unfold get_ident in *; simpl in *; auto.  rewrite Nat.leb_le; lia.  
                      intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy).
                      reflexivity.
                    }
@@ -8551,7 +8552,7 @@ Proof.
                    now simpl in *.
                    now simpl in *.
                    rewrite Nat.leb_le.
-                   unfold get_ident in *; simpl in *; omega.
+                   unfold get_ident in *; simpl in *; lia.
                    intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy). 
                    rewrite (get_alive_compat Hxy), (get_ident_compat (Hxy)).
                    reflexivity. 
@@ -8564,7 +8565,7 @@ Proof.
           (comp (bij_translation t) (if b then reflexion else Similarity.id)))
          (fst (p_far, (i_far, l_far, a_far, b_far))), snd (p_far, (i_far, l_far, a_far, b_far))))).
                    unfold get_ident in *; rewrite <- Hspec_too_close, Hconf_far in *;
-                     simpl in *. omega.
+                     simpl in *. lia.
                    assert (get_ident
     ((comp (bij_rotation r)
         (comp (bij_translation t) (if b then reflexion else Similarity.id)))
@@ -8618,7 +8619,7 @@ Proof.
                    destruct b; rewrite <- H; unfold target, spect, obs_from_config, Spect_ILA;
                    unfold get_alive, get_ident; reflexivity. 
                    unfold get_ident in *; simpl in *; 
-                   destruct b; omega.
+                   destruct b; lia.
                    intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy). 
                    rewrite (get_alive_compat Hxy), (get_ident_compat (Hxy)).
                    reflexivity. 
@@ -8680,7 +8681,7 @@ Proof.
                  rewrite (get_ident_compat H) in H1.
                  unfold get_based, get_ident in *.
                  simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-                 rewrite Nat.leb_le in *. destruct H1; omega.
+                 rewrite Nat.leb_le in *. destruct H1; lia.
 
                }
                rewrite Hconf_far in H4; unfold get_based in H4; simpl in H4; rewrite H4.
@@ -8701,7 +8702,7 @@ Proof.
                  rewrite (get_ident_compat H) in H1.
                  unfold get_based, get_ident in *.
                  simpl in *; specialize (Hhigher (reflexivity _) (reflexivity _)).
-                 rewrite Nat.leb_le in *. omega.
+                 rewrite Nat.leb_le in *. lia.
                }
                rewrite negb_true_iff.
                unfold get_based; simpl.
@@ -8823,7 +8824,7 @@ Proof.
     clear Haux.
     destruct Hbased_higher_round as (Hap0_r, (Hex_r, Hhi_r)).
     specialize (Hhi_r g g_dead Hfalse_r Hbased_dead).
-    omega.
+    lia.
     destruct (get_based (conf (Good g_dead))) eqn : Hfalse.
     + rewrite round_good_g in Hbased_dead, Hfalse_r; try auto.
       simpl in *.
@@ -8878,19 +8879,19 @@ Proof.
     destruct (negb _) eqn : Hident_far_1' in Htoo_far_1'; simpl in Htoo_far_1'; try discriminate.
     unfold get_ident in Htoo_far_1'; simpl in Htoo_far_1'.
     rewrite Nat.ltb_lt in *.
-    omega.
+    lia.
     rewrite negb_true_iff , negb_false_iff in *.
     rewrite Nat.eqb_eq, Nat.eqb_neq in *.
     destruct Hident_far_1; unfold get_ident in *; simpl in *; auto.
     assert (Hg : g <> g_dead).
     intro H; rewrite H in *. 
-    omega.
+    lia.
     destruct (ident_unique conf  Hg).
     rewrite negb_false_iff, Nat.eqb_eq in *; unfold get_ident in *; simpl in *; auto.
     + destruct (Hbased_higher) as (?,(?, Hhi)).
       specialize (Hhi g g_dead Hbased Hfalse).
       rewrite <- 2 ident_preserved in Hident_dead; try auto.
-      omega.
+      lia.
  -
    destruct (get_based (conf (Good g_dead))) eqn : Hbased_false.
    * destruct (Hbased_higher) as (Hap0,(Hex, Hhi)).
@@ -9143,12 +9144,12 @@ Proof.
        destruct (negb _) eqn : Hnegb_g.
        rewrite Nat.ltb_lt in *.
        rewrite <- 2 ident_preserved in Hident_exec; try auto.
-       unfold get_ident in *; rewrite Hconf, Hconf' in *; simpl in *. omega.
+       unfold get_ident in *; rewrite Hconf, Hconf' in *; simpl in *. lia.
        rewrite negb_false_iff, Nat.eqb_eq in *.
        destruct (Geq_dec g g').
-       rewrite e in *; omega.
+       rewrite e in *; lia.
        assert (Hident_d := ident_unique conf n0).
-       rewrite Hconf, Hconf' in *; unfold get_ident in *; simpl in *; omega.
+       rewrite Hconf, Hconf' in *; unfold get_ident in *; simpl in *; lia.
      }
 
      unfold get_based in *; simpl in *; rewrite H in *; discriminate.
@@ -9261,7 +9262,7 @@ Proof.
     now unfold get_alive in *; simpl in *.
     now unfold get_alive in *; simpl in *.
     rewrite <- 2 ident_preserved in Hident_exec; auto. 
-    rewrite <- Hconf', Nat.leb_le; unfold get_ident in *; simpl in *; omega.
+    rewrite <- Hconf', Nat.leb_le; unfold get_ident in *; simpl in *; lia.
     intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy). 
     assert (Hcompat := get_ident_compat Hxy).
     rewrite Hcompat.
@@ -9363,7 +9364,7 @@ Proof.
         specialize (Hhi g g' Hbased).
         rewrite <- 2 ident_preserved in Hident_exec; try auto.
         rewrite Hconf' in *; unfold get_based in Hhi; simpl in Hhi; specialize (Hhi (reflexivity _)).
-        omega.
+        lia.
         unfold get_based in *; simpl in *; auto.
     + 
     unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location, Datatypes.id in *.    
@@ -9471,7 +9472,7 @@ Proof.
   specialize (Hpath g (still_alive_means_alive g Hpred Hbased_higher Halive)).
   destruct Hpath as [H_0| H_exists_g'].
   + rewrite <- ident_preserved, H_0 in H_not_0; try auto.
-    omega.
+    lia.
   + destruct H_exists_g' as (g', (Halive_g', (Hdist_g', (Hident_g', Hbased_g')))).
     assert (Halive' := Halive).
     rewrite round_good_g in Halive; try apply Hpred.
@@ -9642,7 +9643,7 @@ Proof.
         fold target in Hident_target.
         rewrite (get_ident_compat Htarget_spec), Nat.leb_le in Hident_target.
         unfold get_ident in *; rewrite Hconf in *; simpl in *.
-        omega.
+        lia.
         rewrite Htarget_spec in Hbased_target; unfold get_based in *; simpl in *; auto.
       }
       
@@ -9727,7 +9728,7 @@ Proof.
                     unfold get_alive in *; now simpl in *.
                     unfold get_alive in *; now simpl in *.
                     rewrite Hconf, Nat.leb_le.
-                    destruct b; unfold get_ident in *; simpl in *; omega.
+                    destruct b; unfold get_ident in *; simpl in *; lia.
                     
                     intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy); reflexivity.
                     assert (H_0 : get_ident (pos, (ide, lig, ali, bas)) > 0).
@@ -9815,7 +9816,7 @@ Proof.
                    lra.
                    simpl in *; assumption.
                    simpl in *; assumption.
-                   rewrite Nat.leb_le. unfold get_ident; simpl; omega.
+                   rewrite Nat.leb_le. unfold get_ident; simpl; lia.
                    intros x y Hxy.
                    rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                    rewrite (get_alive_compat Hxy).
@@ -9831,8 +9832,8 @@ Proof.
                    rewrite Hbased_target, <- Htarget_spec, Hconf.
                    reflexivity.
                    transitivity (get_ident (conf (Good g_target))).
-                   unfold get_ident in *; simpl in *; omega.
-                   unfold get_ident in *; rewrite Hconf in *; simpl in *; omega.
+                   unfold get_ident in *; simpl in *; lia.
+                   unfold get_ident in *; rewrite Hconf in *; simpl in *; lia.
                    intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy); reflexivity.
                     }
                     assert (Hclose_first := @light_close_first (obs_from_config
@@ -9908,7 +9909,7 @@ Proof.
                     unfold get_alive in *; rewrite Hconf in *; simpl in *; assumption.
                     rewrite Hconf, Nat.leb_le.
                     unfold get_ident in *; simpl in *;
-                      omega.
+                      lia.
                     intros x y Hxy.
                     rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                     rewrite (get_alive_compat Hxy).
@@ -9990,7 +9991,7 @@ Proof.
                       rewrite sqrt_0; generalize Dmax_7D D_0; lra.
                     unfold get_alive in *; rewrite Hconf in *; now simpl in *.
                     unfold get_alive in *; rewrite Hconf in *; simpl in *; assumption.
-                    rewrite Hconf, Nat.leb_le. unfold get_ident; simpl; omega.
+                    rewrite Hconf, Nat.leb_le. unfold get_ident; simpl; lia.
                     intros x y Hxy.
                     rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                     rewrite (get_alive_compat Hxy).
@@ -10137,7 +10138,7 @@ Proof.
                          generalize D_0, Dmax_7D; lra.
                          now simpl.
                          unfold get_alive in *; simpl in *; assumption.
-                         rewrite Nat.leb_le. unfold get_ident; simpl; omega.
+                         rewrite Nat.leb_le. unfold get_ident; simpl; lia.
                          intros x y Hxy.
                          rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                          rewrite (get_alive_compat Hxy).
@@ -10269,7 +10270,7 @@ Proof.
                          unfold get_alive in *; simpl in *; assumption.
                          unfold get_alive in *; rewrite Hconf in *; simpl in *; assumption.
                          rewrite Nat.leb_le.
-                         unfold get_ident in *; simpl in *; omega.
+                         unfold get_ident in *; simpl in *; lia.
                          intros x y Hxy.
                          rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                          rewrite (get_alive_compat Hxy).
@@ -10351,7 +10352,7 @@ Proof.
                          unfold get_alive in *; simpl in *; assumption.
                          unfold get_alive in *; rewrite Hconf in *; simpl in *; assumption.
                          rewrite Nat.leb_le.
-                         unfold get_ident in *; simpl in *; omega.
+                         unfold get_ident in *; simpl in *; lia.
                          intros x y Hxy.
                          rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                          rewrite (get_alive_compat Hxy).
@@ -10542,7 +10543,7 @@ Proof.
                          unfold get_alive in *; simpl in *; assumption.
                          unfold get_alive in *; simpl in *; assumption.
                          rewrite Nat.leb_le.
-                         unfold get_ident in *; simpl in *; omega.
+                         unfold get_ident in *; simpl in *; lia.
                          intros x y Hxy.
                          rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                          rewrite (get_alive_compat Hxy).
@@ -10589,7 +10590,7 @@ Proof.
                          unfold get_alive in *; simpl in *; assumption.
                          unfold get_alive in *; simpl in *; assumption.
                          rewrite Nat.leb_le.
-                         unfold get_ident in *; simpl in *; omega.
+                         unfold get_ident in *; simpl in *; lia.
                          intros x y Hxy.
                          rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                          rewrite (get_alive_compat Hxy).
@@ -10661,7 +10662,7 @@ unfold obs_from_config, Spect_ILA.
                          now simpl.
                          simpl in *; assumption.
                          rewrite Nat.leb_le.
-                         unfold get_ident in *; simpl in *; omega.
+                         unfold get_ident in *; simpl in *; lia.
                          intros x y Hxy.
                          rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                          rewrite (get_alive_compat Hxy).
@@ -10764,7 +10765,7 @@ unfold obs_from_config, Spect_ILA.
                  now simpl.
                  unfold get_alive in *; simpl in *; assumption.
                  rewrite Nat.leb_le.
-                 unfold get_ident in *; simpl in *; omega.
+                 unfold get_ident in *; simpl in *; lia.
                  intros x y Hxy.
                  rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                  rewrite (get_alive_compat Hxy).
@@ -10895,7 +10896,7 @@ unfold obs_from_config, Spect_ILA.
                  generalize D_0, Dmax_7D; lra.
                  now simpl.
                  simpl in *; assumption.
-                 rewrite Nat.leb_le. unfold get_ident; simpl; omega.
+                 rewrite Nat.leb_le. unfold get_ident; simpl; lia.
                  intros x y Hxy.
                  rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                  rewrite (get_alive_compat Hxy).
@@ -11018,7 +11019,7 @@ unfold obs_from_config, Spect_ILA.
 
                                rewrite (get_ident_compat Hother1_spec) in Hother1_ident.
                                unfold get_ident in *; rewrite Hconf, Nat.leb_le in *;
-                                 simpl in *. omega.
+                                 simpl in *. lia.
                                rewrite Hconf in *; simpl in *; auto.
                                rewrite Hother1_spec in Hother1_alive; unfold get_alive in *;
                                  simpl in *;
@@ -11176,7 +11177,7 @@ unfold obs_from_config, Spect_ILA.
                                  specialize (Hhi g_other g Hfalse_based).
                                  unfold get_based in *; rewrite Hconf in Hhi.
                                  simpl in Hhi; specialize (Hhi (reflexivity _)).
-                                 rewrite Nat.leb_le, Hconf in *; unfold get_ident in *; simpl in *; omega.
+                                 rewrite Nat.leb_le, Hconf in *; unfold get_ident in *; simpl in *; lia.
                                  rewrite dist_sym. auto.
                                  rewrite Hlight_true in *.
                                  discriminate.
@@ -11343,15 +11344,15 @@ unfold obs_from_config, Spect_ILA.
                              }
                              
                              apply (Nat.lt_le_trans _ (get_ident inf)).
-                             omega.
+                             lia.
                              rewrite <- Hinf2_spec, H in *; unfold get_ident in *; simpl in *.
-                             omega.
+                             lia.
 
                              rewrite <- Hconf_round.
                              rewrite <- 2 ident_preserved; try auto.
                              transitivity (get_ident (conf (Good g_other))); try auto.                             
                              rewrite Hother_spec in H.
-                             unfold get_ident in *; simpl in *; omega.
+                             unfold get_ident in *; simpl in *; lia.
 intros x y Hxy.
                              rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                              rewrite (get_alive_compat Hxy).
@@ -11402,14 +11403,14 @@ intros x y Hxy.
                              }
                              
                              apply (Nat.lt_le_trans _ (get_ident inf)).
-                             omega.
+                             lia.
                              rewrite <- Hinf2_spec, H in *; unfold get_ident in *; simpl in *.
-                             omega.
+                             lia.
                              rewrite <- Hconf_round.
                              rewrite <- 2 ident_preserved; try auto.
                              transitivity (get_ident (conf (Good g_other))); try auto.                             
                              rewrite Hother_spec in H.
-                             unfold get_ident in *; simpl in *; omega.
+                             unfold get_ident in *; simpl in *; lia.
 intros x y Hxy.
                              rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                              rewrite (get_alive_compat Hxy).
@@ -11462,14 +11463,14 @@ intros x y Hxy.
                              }
                              
                              apply (Nat.lt_le_trans _ (get_ident inf)).
-                             omega.
+                             lia.
                              rewrite <- Hinf2_spec, H in *; unfold get_ident in *; simpl in *.
-                             omega.
+                             lia.
                              rewrite <- Hconf_round.
                              rewrite <- 2 ident_preserved; try auto.
                              transitivity (get_ident (conf (Good g_other))); try auto.                             
                              rewrite Hother_spec in H.
-                             unfold get_ident in *; simpl in *; omega.
+                             unfold get_ident in *; simpl in *; lia.
 intros x y Hxy.
                              rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                              rewrite (get_alive_compat Hxy).
@@ -11962,7 +11963,7 @@ Proof.
     try (unfold get_alive in *; now simpl in *);
     try (assert (Hfalse := In_Bnames byz);
          now simpl in *).
-  unfold get_ident in *; simpl in *; omega.                                           
+  unfold get_ident in *; simpl in *; lia.                                           
   destruct (conf (Good g_other)) as (p_other, (((i_other, l_other), a_other), b_other)) eqn : Hconf_other.
   specialize (Hall g_other).
   assert (Hfalse : get_light (conf (Good g_other)) = true).

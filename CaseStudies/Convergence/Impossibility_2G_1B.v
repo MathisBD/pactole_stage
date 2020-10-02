@@ -23,7 +23,7 @@ Require Import Reals.
 Require Import Psatz.
 Require Import SetoidDec.
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Lia.
 Require Import SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
@@ -125,14 +125,14 @@ Corollary even_nG : Nat.Even nG.
 Proof. exists nB. apply nG_nB. Qed.
 
 Corollary nG_non_0 : nG <> 0.
-Proof. rewrite nG_nB. assert (Hn0 := n_non_0). simpl. omega. Qed.
+Proof. rewrite nG_nB. assert (Hn0 := n_non_0). simpl. lia. Qed.
 
 Corollary half_size_pos : Nat.div2 nG > 0.
 Proof.
 assert (Hn0 := n_non_0). rewrite nG_nB, nB_value.
 destruct n as [| ?].
-- omega.
-- simpl. rewrite plus_comm. simpl. omega.
+- lia.
+- simpl. rewrite plus_comm. simpl. lia.
 Qed.
 
 
@@ -226,10 +226,10 @@ Qed.
 
 (** First and last robots are resp. in the first and in the second half. *)
 Definition gfirst : G.
-Proof. exists 0. abstract (generalize n_non_0; intro; omega). Defined.
+Proof. exists 0. abstract (generalize n_non_0; intro; lia). Defined.
 
 Definition glast : G.
-Proof. exists (pred nG). abstract (simpl; generalize n_non_0; intro; omega). Defined.
+Proof. exists (pred nG). abstract (simpl; generalize n_non_0; intro; lia). Defined.
 
 Lemma gfirst_left : In gfirst left.
 Proof. rewrite left_spec. simpl. apply half_size_pos. Qed.
@@ -300,7 +300,7 @@ intros pt1 pt2 Hdiff pt k. induction k as [| k]; intros l Hnodup Hlen.
     - rewrite in_app_iff in Hin. intro Heq. subst. intuition. }
   destruct Hdup as [Hal [Hzl [Hl Haz]]].
   assert (Hlen' : (length l = 2 * k)%nat).
-  { simpl in Hlen. rewrite app_length in Hlen. simpl in *. omega. }
+  { simpl in Hlen. rewrite app_length in Hlen. simpl in *. lia. }
   cbn [map]. rewrite map_app. cbn [map].
    destruct (in_dec Geq_dec a (a :: half1 l)) as [_ | Habs].
    destruct (in_dec Geq_dec z (a :: half1 l)) as [Habs | _].
@@ -334,10 +334,10 @@ unfold left_dec, left. rewrite (obs_config_aux H01 _ nB).
   - hnf in Heq. subst. rewrite countA_occ_alls_in; autoclass; [].
     repeat rewrite add_same, singleton_other; trivial; simpl; [].
     Local Transparent B. simpl.
-    rewrite enum_length. omega.
+    rewrite enum_length. lia.
     Local Opaque B.
   - hnf in Heq. subst. rewrite countA_occ_alls_out; autoclass; [].
-    repeat rewrite add_other, singleton_same; trivial; []. omega.
+    repeat rewrite add_other, singleton_same; trivial; []. lia.
   - rewrite countA_occ_alls_out; auto; [].
     now repeat rewrite add_other, singleton_other.
 + apply Gnames_NoDup.
@@ -355,10 +355,10 @@ rewrite (map_ext_in _ (fun x => if left_dec x then 0%R else 1%R)); auto; [].
 unfold left_dec, left. rewrite (obs_config_aux H01 _ nB).
 + destruct (pt =?= 0) as [Heq | Hneq]; [| destruct (pt =?= 1) as [Heq | Hneq']].
   - hnf in Heq. subst. rewrite countA_occ_alls_out; auto.
-    repeat rewrite add_same, singleton_other; trivial; []. omega.
+    repeat rewrite add_same, singleton_other; trivial; []. lia.
   - hnf in Heq. subst. rewrite countA_occ_alls_in; autoclass; [].
     repeat rewrite add_other, singleton_same; trivial; [].
-    rewrite Bnames_length. simpl. omega.
+    rewrite Bnames_length. simpl. lia.
   - rewrite countA_occ_alls_out; auto; [].
     now repeat rewrite add_other, singleton_other.
 + apply Gnames_NoDup.

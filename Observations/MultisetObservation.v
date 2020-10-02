@@ -9,7 +9,7 @@
 
 Require Import Utf8_core.
 Require Import Arith_base.
-Require Import Omega.
+Require Import Lia.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Pactole.Util.FMaps.FMapList.
@@ -77,7 +77,7 @@ exists nil. split. now auto. rewrite make_multiset_nil, empty_spec in Hin. subst
 rewrite make_multiset_cons in Hin. destruct (equiv_dec x a) as [Heq | Heq].
 - setoid_rewrite <- Heq. rewrite <- Heq in Hin. rewrite add_spec in Hin. destruct n.
   + rewrite equiv_dec_refl in Hin.
-    omega.
+    lia.
   + rewrite equiv_dec_refl in Hin.
     rewrite plus_comm in Hin. cbn in Hin. apply eq_add_S, IHl in Hin. destruct Hin as [l' [Hl1 Hl2]].
   exists l'. split. assumption. simpl. now constructor.
@@ -93,7 +93,7 @@ intros x n. induction n.
 + simpl alls. rewrite make_multiset_cons. rewrite IHn. intro y. rewrite singleton_spec.
   destruct (equiv_dec y x) as [Heq | Heq].
   - rewrite Heq, add_spec, singleton_spec.
-    destruct (equiv_dec x x) as [_ | Helim]. omega. now elim Helim.
+    destruct (equiv_dec x x) as [_ | Helim]. lia. now elim Helim.
   - rewrite add_other; auto. rewrite singleton_spec.
     destruct (equiv_dec y x); trivial; []. contradiction.
 Qed.
@@ -104,7 +104,7 @@ intros x l. unfold make_multiset. rewrite from_elements_In.
 setoid_rewrite InA_map_iff; autoclass.
 + split; intro Hin.
   - destruct Hin as [n [[y [[Heq _] Hy]] Hn]]. hnf in *. cbn in *. now rewrite <- Heq.
-  - exists 1. split; try omega; []. now exists x.
+  - exists 1. split; try lia; []. now exists x.
 + intros ? ? Heq. now split.
 Qed.
 
@@ -119,8 +119,8 @@ intros f Hf l. induction l as [| e l].
 + intro. rewrite (filter_compat Hf), make_multiset_nil; try apply make_multiset_nil; [].
   now rewrite filter_empty.
 + simpl List.filter. destruct (f e) eqn:Htest.
-  - do 2 rewrite make_multiset_cons. rewrite filter_add, Htest, IHl; trivial; reflexivity || omega.
-  - rewrite make_multiset_cons, filter_add, Htest, IHl; trivial; reflexivity || omega.
+  - do 2 rewrite make_multiset_cons. rewrite filter_add, Htest, IHl; trivial; reflexivity || lia.
+  - rewrite make_multiset_cons, filter_add, Htest, IHl; trivial; reflexivity || lia.
 Qed.
 
 Theorem cardinal_make_multiset : forall l, cardinal (make_multiset l) = length l.
@@ -135,7 +135,7 @@ Proof using .
 intros x l. induction l.
 + rewrite make_multiset_nil. now rewrite empty_spec.
 + rewrite make_multiset_cons. simpl countA_occ. destruct (equiv_dec a x) as [Heq | Hneq].
-  - rewrite <- Heq at 1. rewrite add_spec, equiv_dec_refl, Heq, IHl. omega.
+  - rewrite <- Heq at 1. rewrite add_spec, equiv_dec_refl, Heq, IHl. lia.
   - apply nequiv_sym in Hneq. rewrite add_other. now apply IHl. assumption.
 Qed.
 
@@ -146,9 +146,9 @@ intros x l y. induction l as [| a l].
 * rewrite make_multiset_nil. rewrite empty_spec. now rewrite remove_0, empty_spec.
 * rewrite make_multiset_cons. simpl removeA.
   destruct (equiv_dec y x) as [Hyx | Hyx], (equiv_dec x a) as [Hxa | Hxa].
-  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite remove_same. rewrite Hxa, add_same. omega.
+  + rewrite Hyx, Hxa in *. rewrite IHl. setoid_rewrite remove_same. rewrite Hxa, add_same. lia.
   + rewrite Hyx in *. rewrite make_multiset_cons, add_other; auto.
-    rewrite IHl. do 2 rewrite remove_same. simpl. omega.
+    rewrite IHl. do 2 rewrite remove_same. simpl. lia.
   + rewrite IHl. repeat rewrite remove_other; auto; [].
     rewrite Hxa in *. rewrite add_other; auto.
   + rewrite make_multiset_cons. rewrite remove_other; auto. destruct (equiv_dec y a) as [Hya | Hya].

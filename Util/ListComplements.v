@@ -24,7 +24,7 @@ Require Import List SetoidList.
 Require Export SetoidPermutation.
 Require Import Sorting.Permutation.
 Require Import Bool.
-Require Import Arith.Div2 Omega.
+Require Import Arith.Div2 Lia PeanoNat.
 Require Import Psatz.
 Require Import SetoidDec.
 Require Import Pactole.Util.Preliminary.
@@ -81,15 +81,17 @@ Qed.
 Lemma length_0 : forall l : list A, length l = 0 -> l = nil.
 Proof using . intros [|] H; reflexivity || discriminate H. Qed.
 
+(* Require Import Omega. *)
+
 Lemma InA_nth : forall d x (l : list A), InA eqA x l ->
   exists n y, (n < length l)%nat /\ eqA x y /\ nth n l d = y.
 Proof using .
 intros d x l Hin. induction l as [| e l].
 + inversion Hin.
 + inversion_clear Hin.
-  - exists 0, e. repeat split; trivial; simpl; omega.
+  - exists 0, e. repeat split; trivial; simpl; lia.
   - destruct IHl as [n [y [Hn [Hy Hl]]]]; trivial; [].
-    apply lt_n_S in Hn. exists (S n), y. now repeat split.
+    apply Lt.lt_n_S in Hn. exists (S n), y. now repeat split.
 Qed.
 
 (* Already exists as [List.In_nth] but with a reversed argument order
@@ -154,7 +156,7 @@ Lemma hd_last_diff : forall l d d', length l > 1 -> NoDupA eqA l ->
   ~eqA (hd d l) (last l d').
 Proof using HeqA.
 intros l d d' Hl Hnodup Heq.
-destruct l as [| x [| y l]]; simpl in Hl; try omega.
+destruct l as [| x [| y l]]; simpl in Hl; try lia.
 inversion_clear Hnodup. change (eqA x (last (y :: l) d')) in Heq.
 apply H. rewrite Heq. rewrite InA_alt. eexists; split; try reflexivity.
 apply last_In. discriminate.
@@ -174,7 +176,7 @@ intros [| x l].
 + reflexivity.
 + simpl. split; intro Habs.
   - assert (Hlen : length (rev l ++ x :: nil) = length (@nil A)) by now rewrite Habs.
-    rewrite app_length in Hlen. simpl in Hlen. omega.
+    rewrite app_length in Hlen. simpl in Hlen. lia.
   - discriminate.
 Qed.
 
@@ -369,7 +371,7 @@ Qed.
 Corollary alls_not_In : forall (x y : A) n, x <> y -> ~In y (alls x n).
 Proof using .
 intros x y n Hxy Habs. apply Hxy. symmetry.
-destruct n. now inversion Habs. rewrite alls_In_iff in Habs; assumption || omega.
+destruct n. now inversion Habs. rewrite alls_In_iff in Habs; assumption || lia.
 Qed.
 
 Lemma alls_InA : forall x y n, InA eqA y (alls x n) -> eqA y x.
@@ -385,7 +387,7 @@ Qed.
 Corollary alls_notA_In : forall (x y : A) n, ~eqA x y -> ~InA eqA y (alls x n).
 Proof using HeqA.
 intros x y n Hxy Habs. apply Hxy. symmetry.
-destruct n. now inversion Habs. rewrite alls_InA_iff in Habs; assumption || omega.
+destruct n. now inversion Habs. rewrite alls_InA_iff in Habs; assumption || lia.
 Qed.
 
 Lemma alls_inj1 : forall x1 x2 n1 n2, alls x1 (S n1) = alls x2 n2 -> x1 = x2.
@@ -681,7 +683,7 @@ Theorem PermutationA_cons_inv :
 Proof using HeqA. intros; exact (PermutationA_app_inv nil l nil l' a H). Qed.
 
 Global Instance PermutationA_length : Proper (PermutationA eqA ==> Logic.eq) (@length A).
-Proof using . clear. intros l1 l2 perm. induction perm; simpl; omega. Qed.
+Proof using . clear. intros l1 l2 perm. induction perm; simpl; lia. Qed.
 
 Lemma PermutationA_length1 : forall x l,
   PermutationA eqA l (x :: nil) -> exists y, eqA x y /\ l = y :: nil.
@@ -692,14 +694,14 @@ intros x l Hperm. destruct l as [| a [| b l]].
   apply PermutationA_InA_inside with a _ _ in Hperm.
     destruct Hperm as [l1 [y [l2 [Heq Hl]]]].
     rewrite Hl in Hlength. rewrite app_length in Hlength. simpl in Hlength.
-    assert (Hl1 : length l1 = 0) by omega. assert (Hl2 : length l2 = 0) by omega. clear Hlength.
+    assert (Hl1 : length l1 = 0) by lia. assert (Hl2 : length l2 = 0) by lia. clear Hlength.
     destruct l1, l2.
       inversion Hl. now split.
       now inversion Hl.
       discriminate Hl1.
       discriminate Hl2.
     now left.
-- apply PermutationA_length in Hperm. simpl in Hperm. omega.
+- apply PermutationA_length in Hperm. simpl in Hperm. lia.
 Qed.
 
 Lemma PermutationA_1 : forall x x', PermutationA eqA (x :: nil) (x' :: nil) <-> eqA x x'.
@@ -1124,7 +1126,7 @@ Lemma NoDupA_inclA_length : forall l1 l2,
   NoDupA eqA l1 -> inclA eqA l1 l2 -> length l1 <= length l2.
 Proof using HeqA.
 intro l1. induction l1 as [| a l1]; intros l2 Hnodup Hincl.
-+ simpl. omega.
++ simpl. lia.
 + assert (Hin : InA eqA a l2). { apply Hincl. now left. }
   apply (PermutationA_split _) in Hin. destruct Hin as [l2' Heql2]. 
   rewrite Heql2 in *. inversion_clear Hnodup.
@@ -1135,12 +1137,12 @@ Lemma NoDupA_inclA_length_PermutationA : forall l1 l2, NoDupA eqA l1 -> NoDupA e
   inclA eqA l1 l2 -> length l2 <= length l1 -> PermutationA eqA l1 l2.
 Proof using HeqA.
 intro l1. induction l1 as [| x l1]; intros l2 Hnodup1 Hnodup2 Hincl Hlen.
-+ destruct l2; try reflexivity. cbn in *. omega.
++ destruct l2; try reflexivity. cbn in *. lia.
 + assert (Hin : InA eqA x l2). { apply Hincl. now left. }
   apply (PermutationA_split _) in Hin. destruct Hin as [l2' Heql2]. 
   rewrite Heql2 in *. constructor; try reflexivity.
   inversion_clear Hnodup1. inversion_clear Hnodup2.
-  apply inclA_cons_inv in Hincl; trivial. apply IHl1; auto. cbn in *. omega.
+  apply inclA_cons_inv in Hincl; trivial. apply IHl1; auto. cbn in *. lia.
 Qed.
 
 End inclA_results.
@@ -1178,7 +1180,7 @@ intros a b Hab l. induction l as [| x l]; intros [| x' l'] Hl.
   rewrite Heql in *. rewrite Hxy, <- (PermutationA_middle _) in Hl.
   apply (PermutationA_cons_inv _), IHl in Hl. simpl.
   rewrite Hl. repeat rewrite countA_occ_app. simpl.
-  destruct (eq_dec x a) as [Hx | Hx], (eq_dec y b) as [Hy | Hy]; try omega.
+  destruct (eq_dec x a) as [Hx | Hx], (eq_dec y b) as [Hy | Hy]; try lia.
   - elim Hy. now rewrite <- Hxy, <- Hab.
   - elim Hx. now rewrite Hxy, Hab.
 Qed.
@@ -1196,10 +1198,10 @@ Lemma countA_occ_pos : forall x l, countA_occ x l > 0 <-> InA eqA x l.
 Proof using HeqA.
 intros x l. induction l as [| a l]; simpl.
 + split; intro Habs.
-  - omega.
+  - lia.
   - rewrite InA_nil in Habs. elim Habs.
 + destruct (eq_dec a x) as [Heq | Heq].
-  - split; intro; omega || now left.
+  - split; intro; lia || now left.
   - rewrite IHl. split; intro Hin; try now right; [].
     inversion_clear Hin; trivial. now elim Heq.
 Qed.
@@ -1208,7 +1210,7 @@ Lemma countA_occ_length_le : forall l (x : A), countA_occ x l <= length l.
 Proof using .
 intros l x. induction l; simpl.
   reflexivity.
-  destruct (eq_dec a x); omega.
+  destruct (eq_dec a x); lia.
 Qed.
 
 Lemma countA_occ_partition : forall f, Proper (eqA ==> eq) f -> forall l x,
@@ -1219,11 +1221,11 @@ intros f Hf l. induction l as [| a l].
 * intro x. destruct (f a) eqn:Hfa.
   + apply (partition_cons1 f a l (surjective_pairing (partition f l))) in Hfa. rewrite Hfa. simpl.
     destruct (eq_dec a x) as [Heq | Heq].
-    - rewrite IHl. omega.
+    - rewrite IHl. lia.
     - apply IHl.
   + apply (partition_cons2 f a l (surjective_pairing (partition f l))) in Hfa. rewrite Hfa. simpl.
     destruct (eq_dec a x) as [Heq | Heq].
-    - rewrite IHl. omega.
+    - rewrite IHl. lia.
     - apply IHl.
 Qed.
 
@@ -1246,7 +1248,7 @@ intros x l. induction l as [| a l]; intro n; simpl.
   + apply PermutationA_nil in Heq; autoclass; now destruct n.
 * destruct (eq_dec a x) as [Heq | Heq].
   + split; intro Hn.
-    - destruct n as [| n]; try omega; [].
+    - destruct n as [| n]; try lia; [].
       apply eq_add_S in Hn. rewrite IHl in Hn.
       simpl. constructor; trivial; [].
       destruct_match; auto; now symmetry in Heq.
@@ -1254,7 +1256,7 @@ intros x l. induction l as [| a l]; intro n; simpl.
       assert (n <> 0).
       { intro. subst. simpl in Hn. assert (Hin : InA eqA a (a :: l)) by now left.
         rewrite Hn, removeA_InA in Hin; autoclass; tauto. }
-      destruct n as [| n]; try omega; [].
+      destruct n as [| n]; try lia; [].
       f_equal. rewrite IHl. simpl in Hn. rewrite <- Heq in Hn at 1.
       apply PermutationA_cons_inv in Hn; autoclass.
   + rewrite IHl. destruct (eq_dec x a); try (now elim Heq); [].
@@ -1320,7 +1322,7 @@ intro l. induction l as [| e l]; intros n a Hle.
 + now inversion_clear Hle.
 + destruct n; simpl in *.
   - reflexivity.
-  - f_equal. apply IHl. omega.
+  - f_equal. apply IHl. lia.
 Qed.
 
 Lemma firstn_NoDup : forall (l : list A) n, NoDup l -> NoDup (firstn n l).
@@ -1342,13 +1344,13 @@ Qed.
 
 Lemma In_skipn : forall l l' (pt : A) n, n <= length l -> In pt (skipn n (l ++ pt :: l')).
 Proof using .
-intros l l' pt. generalize (le_refl (length l)). generalize l at -2. induction l; simpl.
-* intros [| x l] Hl [| n] ?; simpl in *; try tauto || omega.
+intros l l' pt. generalize (Nat.le_refl (length l)). generalize l at -2. induction l; simpl.
+* intros [| x l] Hl [| n] ?; simpl in *; try tauto || lia.
 * intros [| x l''] Hl'' n Hn; simpl in *; try tauto.
-  + destruct n; simpl; tauto || omega.
+  + destruct n; simpl; tauto || lia.
   + destruct n; simpl.
-    - right. change (In pt (skipn 0 (l'' ++ pt :: l'))). apply IHl; omega.
-    - apply IHl; omega.
+    - right. change (In pt (skipn 0 (l'' ++ pt :: l'))). apply IHl; lia.
+    - apply IHl; lia.
 Qed.
 
 Lemma skipn_add_hd : forall n l (a : A), skipn (S n) (a :: l) = skipn n l.
@@ -1362,7 +1364,7 @@ induction n; intros l x a Hin; simpl in *.
 Qed.
 
 Lemma In_skipn_add : forall l (pt : A), In pt (skipn (Nat.div2 (length l)) (l ++ pt :: nil)).
-Proof using . intros. apply In_skipn. apply Nat.div2_decr. omega. Qed.
+Proof using . intros. apply In_skipn. apply Nat.div2_decr. lia. Qed.
 
 Lemma skipn_add_tl : forall l n (a : A), n <= length l ->
   skipn n (l ++ a :: nil) = skipn n l ++ a :: nil.
@@ -1371,7 +1373,7 @@ intro l. induction l as [| e l]; intros n a Hle; simpl in *.
 + now inversion_clear Hle.
 + destruct n; simpl in *.
   - reflexivity.
-  - apply IHl. omega.
+  - apply IHl. lia.
 Qed.
 
 Lemma skipn_NoDup : forall (l : list A) n, NoDup l -> NoDup (skipn n l).
@@ -1407,14 +1409,14 @@ Proof using .
   rewrite firstn_length.
   rewrite min_l;auto.
   apply Nat.div2_decr.
-  omega.
+  lia.
 Qed.
 
 Corollary half2_length : forall l, length (half2 l) = length l - div2 (length l).
 Proof using . intros. unfold half2. now rewrite skipn_length. Qed.
 
 Corollary half2_even_length : forall l, Nat.Even (length l) -> length (half2 l) = div2 (length l).
-Proof using . intros l H. unfold half2. rewrite skipn_length. apply even_div2 in H. omega. Qed.
+Proof using . intros l H. unfold half2. rewrite skipn_length. apply even_div2 in H. lia. Qed.
 
 Lemma merge_halves : forall l : list A, half1 l ++ half2 l = l.
 Proof using . intro. apply firstn_skipn. Qed.
@@ -1427,14 +1429,14 @@ Proof using . intros ? ? ?. rewrite <- merge_halves. apply in_app_iff. tauto. Qe
 
 Lemma half1_cons2 : forall (e e' : A) l, half1 (e :: l ++ e' :: nil) = e :: half1 l.
 Proof using .
-intros e e' l. unfold half1 at 1. simpl. rewrite app_length, plus_comm. simpl.
-f_equal. apply firstn_add_tl. apply Nat.div2_decr. omega.
+intros e e' l. unfold half1 at 1. simpl. rewrite app_length, Nat.add_comm. simpl.
+f_equal. apply firstn_add_tl. apply Nat.div2_decr. lia.
 Qed.
 
 Lemma half2_cons2 : forall (e e' : A) l, half2 (e :: l ++ e' :: nil) = half2 l ++ e' :: nil.
 Proof using .
-intros e e' l. unfold half2 at 1. simpl. rewrite app_length, plus_comm. simpl.
-apply skipn_add_tl. apply Nat.div2_decr. omega.
+intros e e' l. unfold half2 at 1. simpl. rewrite app_length, Nat.add_comm. simpl.
+apply skipn_add_tl. apply Nat.div2_decr. lia.
 Qed.
 
 Lemma half1_dec : (forall x y : A, {x = y} + {x <> y}) ->
@@ -1469,14 +1471,14 @@ Lemma first_last_ind_aux : forall P : list A -> Prop,
   forall l l' : list A, length l' <= length l -> P l'.
 Proof using .
 intros P Pnil Pone Prec l. induction l as [| x l]; intros l' Hlength.
-* destruct l'. apply Pnil. simpl in Hlength. omega.
+* destruct l'. apply Pnil. simpl in Hlength. lia.
 * destruct l as [| x' l].
-  + destruct l' as [| ? [| ? ?]]; apply Pnil || apply Pone || simpl in Hlength; omega.
+  + destruct l' as [| ? [| ? ?]]; apply Pnil || apply Pone || simpl in Hlength; lia.
   + destruct l' as [| ? [| ? ?]]; try apply Pnil || apply Pone.
     destruct (@exists_last _ (a0 :: l0)) as [l2 [ y Hy]]; try discriminate.
     rewrite Hy. apply Prec. apply IHl. transitivity (length (l2 ++ y :: nil)).
-    - rewrite app_length. omega.
-    - rewrite Hy in Hlength. simpl in *. omega.
+    - rewrite app_length. lia.
+    - rewrite Hy in Hlength. simpl in *. lia.
 Qed.
 
 Theorem first_last_ind : forall P : list A -> Prop, P nil -> (forall x, P (x :: nil)) ->
@@ -1489,10 +1491,10 @@ Corollary first_last_even_ind : forall P : list A -> Prop, P nil ->
 Proof using .
 intros P Pnil Prec l. pattern l. apply first_last_ind; clear l.
 + auto.
-+ simpl. intros x Habs. inversion Habs. omega.
-+ intros x y l Hrec Hlen. rewrite app_length, plus_comm in Hlen.
++ simpl. intros x Habs. inversion Habs. lia.
++ intros x y l Hrec Hlen. rewrite app_length, Nat.add_comm in Hlen.
   simpl in Hlen. destruct Hlen as [n Hlen].
-  apply Prec, Hrec; exists (pred n); omega.
+  apply Prec, Hrec; exists (pred n); lia.
 Qed.
 
 End List_halves.
@@ -1622,7 +1624,7 @@ revert g Hg Hfg. induction l1 as [| e1 l1]; intros g Hg Hfg l2 Hl.
     - rewrite <- (IHl1 _ Hg Hfg _ Hequiv). simpl.
       rewrite <- Rmax_assoc, (Rmax_right 0); try apply max_list_nonneg; [].
       f_equal. apply Hfg. reflexivity.
-    - rewrite <- (countA_occ_pos _ equiv_dec) in Hin; autoclass. omega.
+    - rewrite <- (countA_occ_pos _ equiv_dec) in Hin; autoclass. lia.
 Qed.
 
 Lemma max_list_le : forall f, Proper (equiv ==> eq) f ->
@@ -1769,19 +1771,19 @@ Lemma odd_middle : forall l (d : A), Nat.Odd (length l) ->
 Proof using .
 intros l d. generalize (eq_refl (length l)). generalize (length l) at 2 3 4 5. intro n. revert l.
 induction n using nat_ind2; intros l Hl [m Hm].
-+ omega.
++ lia.
 + destruct l as [| a [| b l]]; try discriminate Hl. reflexivity.
 + simpl. destruct l as [| a [| b l]]; try reflexivity.
   assert (Hnil : b :: l <> nil) by discriminate. revert Hl Hnil. generalize (b :: l). clear l.
   intros l Hlen Hnil. destruct (exists_last Hnil) as [l' [z Heq]]. subst l. simpl.
   rewrite rev_app_distr. simpl in *. apply eq_add_S in Hlen.
-  rewrite app_length, plus_comm in Hlen. simpl in Hlen. apply eq_add_S in Hlen. clear Hnil.
+  rewrite app_length, Nat.add_comm in Hlen. simpl in Hlen. apply eq_add_S in Hlen. clear Hnil.
   destruct n as [| n].
-  - clear -Hm. omega.
-  - assert (div2 (S n) < length l'). { rewrite Hlen. apply Nat.lt_div2. omega. }
+  - clear -Hm. lia.
+  - assert (div2 (S n) < length l'). { rewrite Hlen. apply Nat.lt_div2. lia. }
     repeat rewrite app_nth1; trivial. apply IHn.
       assumption.
-      destruct m as [| m]. omega. exists m. omega.
+      destruct m as [| m]. lia. exists m. lia.
       now rewrite rev_length.
 Qed.
 
@@ -1841,7 +1843,7 @@ Lemma eqlistA_app_split : forall l1 l2 l1' l2',
 
 Proof using .
 intro l. induction l as [| x l1];
-intros l2 [| y l1'] l2' Heq Hlen; simpl in *; auto; try omega; [].
+intros l2 [| y l1'] l2' Heq Hlen; simpl in *; auto; try lia; [].
 inv Heq. edestruct IHl1; eauto.
 Qed.
 
@@ -1885,7 +1887,7 @@ Corollary filter_length : forall {A} f (l : list A),
 Proof using .
 intros. apply plus_minus.
 rewrite <- (partition_length f), partition_filter.
-simpl. apply plus_comm.
+simpl. apply Nat.add_comm.
 Qed.
 
 (* Definition remove_Perm_properR := remove_Perm_proper Rdec. *)

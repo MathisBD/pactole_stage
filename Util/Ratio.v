@@ -19,7 +19,7 @@
 (**************************************************************************)
 
 
-Require Import Omega.
+Require Import Lia.
 Require Import Morphisms.
 Require Import Rbase.
 Require Import Psatz.
@@ -56,7 +56,7 @@ Qed.
 (* Convenient notations.
    The first one is used to automatically provide the proofs, whereas the second one is used for display. *)
 Definition mk_ratio n m Hm Hn : ratio := exist _ _ (mk_ratio_proof n m Hm Hn).
-Notation "n '/r' m" := (mk_ratio n m ltac:(clear; abstract omega) ltac:(clear; abstract omega))
+Notation "n '/r' m" := (mk_ratio n m ltac:(clear; abstract lia) ltac:(clear; abstract lia))
   (only parsing, at level 10).
 Notation "n '/r' m" := (mk_ratio n m _ _) (at level 10, only printing).
 
@@ -108,7 +108,7 @@ intros n m Hm Hn. apply lt_INR in Hn. apply lt_0_INR in Hm. split.
 Qed.
 
 Definition mk_strict_ratio n m Hm Hn : strict_ratio := exist _ _ (mk_strict_ratio_proof n m Hm Hn).
-Notation "n '/sr' m" := (mk_strict_ratio n m ltac:(clear; abstract omega) ltac:(clear; abstract omega))
+Notation "n '/sr' m" := (mk_strict_ratio n m ltac:(clear; abstract lia) ltac:(clear; abstract lia))
   (only parsing, at level 10).
 Notation "n '/sr' m" := (mk_strict_ratio n m _ _) (at level 10, only printing).
 

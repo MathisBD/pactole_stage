@@ -19,7 +19,7 @@
 (**************************************************************************)
 
 Require Import Utf8_core.
-Require Import Omega.
+Require Import Lia.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import SetoidClass.
@@ -111,7 +111,7 @@ intros x n Hn. induction n; simpl alls.
 + inversion Hn.
 + rewrite make_set_cons. destruct n.
   - simpl alls. rewrite make_set_nil. intro. fsetdec.
-  - rewrite IHn. intro. fsetdec. omega.
+  - rewrite IHn. intro. fsetdec. lia.
 Qed.
 
 Theorem make_set_spec : forall x l, In x (make_set l) <-> InA equiv x l.
@@ -125,7 +125,7 @@ Theorem cardinal_make_set : forall l, cardinal (make_set l) <= length l.
 Proof.
 induction l as [| x l]; simpl.
 + now rewrite make_set_nil, cardinal_empty.
-+ transitivity (S (cardinal (make_set l))); try omega; [].
++ transitivity (S (cardinal (make_set l))); try lia; [].
   rewrite make_set_cons, 2 cardinal_spec.
   change (S (length (elements (make_set l))))
     with (length (x :: elements (make_set l))).

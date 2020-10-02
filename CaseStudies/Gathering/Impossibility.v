@@ -21,7 +21,7 @@ Require Import Reals.
 Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Lia.
 Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
@@ -105,16 +105,16 @@ Lemma nG_ge_2 : 2 <= nG.
 Proof.
 assert (Heven := even_nG). assert (HnG0 := nG_non_0).
 inversion Heven. simpl.
-destruct n as [| [| ?]]; omega.
+destruct n as [| [| ?]]; lia.
 Qed.
 
 Lemma half_size_config : Nat.div2 nG > 0.
 Proof using even_nG nG_non_0.
 assert (Heven := even_nG). assert (HnG0 := nG_non_0).
 simpl. destruct n as [| [| ?]].
-- omega.
-- destruct Heven. omega.
-- simpl. omega.
+- lia.
+- destruct Heven. lia.
+- simpl. lia.
 Qed.
 
 (* We need to unfold [obs_is_ok] for rewriting *)
@@ -126,7 +126,7 @@ Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof using nG_non_0.
 intros [g | b] P HP.
 + apply HP.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 Lemma no_byz_eq : forall config1 config2,
@@ -171,7 +171,7 @@ assert (Hcompat : Proper (PermutationA equiv ==> PermutationA equiv ==> Permutat
     rewrite Hperm2; try eassumption; []. now apply Hrec. }
 cbn [List.map]. rewrite from_elements_cons.
 rewrite IHl at 1.
-assert (H01 : 0 < 1) by omega.
+assert (H01 : 0 < 1) by lia.
 assert (Hperm := elements_add (x := e) (m := from_elements (List.map (fun x : location => (x, 1)) l))
                               (or_introl H01)).
 rewrite (Hcompat _ _ (reflexivity _) _ _ Hperm).
@@ -182,10 +182,10 @@ destruct (Nat.eq_dec (from_elements (List.map (fun x : location => (x, 1)) l))[e
   rewrite Preliminary.removeA_out; try reflexivity; []. (* TODO: put it also in Util/Preliminary *)
   rewrite elements_spec. simpl. intuition.
 * (* [e] does appear in the observation *)
-  change (alls e (from_elements (List.map (fun x : location => (x, 1)) l))[e] ++
+  change (alls e (from_elements (List.map (fun x' : location => (x', 1)) l))[e] ++
           fold_right (fun '(x, n) (acc : list location) => alls x n ++ acc) nil
-            (removeA (eqA:=eq_pair) pair_dec (e, (from_elements (List.map (fun x : location => (x, 1)) l))[e])
-              (elements (from_elements (List.map (fun x : location => (x, 1)) l)))))
+            (removeA (eqA:=eq_pair) pair_dec (e, (from_elements (List.map (fun x'' : location => (x'', 1)) l))[e])
+              (elements (from_elements (List.map (fun x''' : location => (x''', 1)) l)))))
     with (fold_right (fun '(x, n) (acc : list location) => alls x n ++ acc) nil
            ((e, (from_elements (List.map (fun x : location => (x, 1)) l))[e])
             :: (removeA (eqA:=eq_pair) pair_dec (e, (from_elements (List.map (fun x : location => (x, 1)) l))[e])
@@ -257,7 +257,7 @@ Local Opaque G B.
     the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
-Proof using nG_non_0. exists 0. generalize nG_non_0. intro. omega. Qed.
+Proof using nG_non_0. exists 0. generalize nG_non_0. intro. lia. Qed.
 
 (** *  Proof of the impossiblity of gathering  **)
 
@@ -293,7 +293,7 @@ destruct (get_location (config (Good g)) =?= pt1) as [Heq1 | Heq1].
   - unfold observation0.
     rewrite Hobs, map_add, map_singleton, 
             build_similarity_eq1, build_similarity_eq2; autoclass; [].
-    intro. rewrite 2 add_spec, 2 singleton_spec. do 2 destruct_match; simpl in *; omega.
+    intro. rewrite 2 add_spec, 2 singleton_spec. do 2 destruct_match; simpl in *; lia.
   - rewrite build_similarity_eq1. symmetry.
     assert (Hin := pos_in_config config origin (Good g)).
     rewrite Hobs, add_In, In_singleton in Hin. hnf in Heq1. tauto.
@@ -364,19 +364,19 @@ assert (Heven : Nat.Even nG).
   + apply Bool.not_true_is_false. intro Hodd.
     rewrite Hsim, map_cardinal in Hcardinal; autoclass; [].
     unfold observation0 in Hcardinal. rewrite cardinal_add, cardinal_singleton in Hcardinal.
-    rewrite (Nat.div2_odd nG) in Hcardinal at 3. rewrite Hodd in *. simpl in *. omega. }
+    rewrite (Nat.div2_odd nG) in Hcardinal at 3. rewrite Hodd in *. simpl in *. lia. }
 repeat split; trivial; [|].
 + rewrite <- Nat.even_spec in Heven.
   assert (HnG := nG_non_0). simpl nG in *.
-  destruct n as [| [| ?]]; simpl; discriminate || omega || now elim HnG.
+  destruct n as [| [| ?]]; simpl; discriminate || lia || now elim HnG.
 + exists (sim origin), (sim one).
   repeat split.
   - intro Heq. apply Similarity.injective in Heq. symmetry in Heq. revert Heq. apply non_trivial.
   - rewrite Hsim, map_injective_spec; autoclass; try apply Similarity.injective; [].
-    unfold observation0. rewrite add_same, singleton_other; try omega; [].
+    unfold observation0. rewrite add_same, singleton_other; try lia; [].
     symmetry. apply non_trivial.
   - rewrite Hsim, map_injective_spec; autoclass; try apply Similarity.injective; [].
-    unfold observation0. rewrite add_other, singleton_same; try omega; [].
+    unfold observation0. rewrite add_other, singleton_same; try lia; [].
     apply non_trivial.
 Qed.
 
@@ -839,7 +839,7 @@ assert (Hin1 : In (sim⁻¹ one) (!! config)).
     apply pos_in_config. }
 intro pt. rewrite Hobs, 2 add_spec, 2 singleton_spec.
 repeat destruct_match;
-solve [ omega
+solve [ lia
       | elim Hdiff; transitivity pt; eauto
       | elim Hdiff_sim; transitivity pt; eauto
       | elim Hdiff_sim;
@@ -1043,7 +1043,7 @@ assert (Hobs0 := change_frame2_obs g0 Hinvalid). fold sim0 in Hobs0.
    to build the similarity that maps the canonical configuration to the next one. *)
 assert (Hin : In ((sim0 ⁻¹) one) (!! config)).
 { rewrite Hobs0. unfold observation0. rewrite map_add, map_singleton, add_In, In_singleton; autoclass. }
-rewrite obs_from_config_In in Hin. destruct Hin as [[g1 | []] Hg1]; try omega; [].
+rewrite obs_from_config_In in Hin. destruct Hin as [[g1 | []] Hg1]; try lia; [].
 pose (sim1 := change_frame2 config g1).
 assert (Hdiff : get_location (config (Good g0)) =/= get_location (config (Good g1))).
 { rewrite Hg1, <- center_change_frame2; trivial; [].
@@ -1104,7 +1104,7 @@ rewrite 2 mk_info_get_location.
    to build the similarity that maps the canonical configuration to the next one. *)
 assert (Hin : In ((sim0 ⁻¹) one) (!! config)).
 { rewrite Hobs0. unfold observation0. rewrite map_add, map_singleton, add_In, In_singleton; autoclass. }
-rewrite obs_from_config_In in Hin. destruct Hin as [[g3 | []] Hg3]; try omega; [].
+rewrite obs_from_config_In in Hin. destruct Hin as [[g3 | []] Hg3]; try lia; [].
 pose (sim1 := change_frame2 config g3).
 assert (Hdiff : get_location (config (Good g0)) =/= get_location (config (Good g3))).
 { rewrite Hg3, <- center_change_frame2; trivial; [].
@@ -1268,7 +1268,7 @@ Theorem kFair_bad_demon : forall config, WithMultiplicity.invalid config -> kFai
 Proof using build_similarity_inverse.
 intros. unfold bad_demon.
 destruct (move =?= one).
-- apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega.
+- apply kFair_mono with 0%nat. exact kFair_bad_demon1. lia.
 - now apply kFair_bad_demon2.
 Qed.
 

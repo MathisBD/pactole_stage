@@ -19,7 +19,7 @@
 Require Import Utf8_core.
 Require Import Bool.
 Require Import Arith_base.
-Require Import Omega.
+Require Import Lia.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import Rbase.

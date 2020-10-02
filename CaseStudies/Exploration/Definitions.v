@@ -8,7 +8,7 @@
 (**************************************************************************)
 
 
-Require Import Reals Omega Arith.Div2 Psatz SetoidDec.
+Require Import Reals Lia Arith.Div2 Psatz SetoidDec.
 Require Export Pactole.Setting.
 Require Export Pactole.Spaces.Ring.
 Require Export Pactole.Spaces.Isomorphism.

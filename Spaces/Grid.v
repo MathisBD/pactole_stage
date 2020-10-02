@@ -98,7 +98,7 @@ Proof.
   try abstract (solve [ split; intro Heq; subst; unfold edge_tgt; simpl in *; try tauto; [];
               destruct e as [p d], Heq as [? Heq]; simpl in *; f_equal; trivial; [];
               subst; unfold edge_tgt in *;
-              destruct p, d; simpl in *; reflexivity || (injection Heq; omega) ]); [].
+              destruct p, d; simpl in *; reflexivity || (injection Heq; lia) ]); [].
   split; try tauto; []. intros [].
   abstract (subst; destruct e as [? []]; unfold edge_tgt in *; simpl in *; auto).
 Defined.
@@ -138,7 +138,7 @@ Definition translation (v : Z*Z) : Bijection.bijection (Z*Z).
            Bijection.retraction := fun x => (fst x - fst v, snd x - snd v) |}.
 Proof.
 intros x y. simpl.
-abstract (split; intro; subst; destruct x || destruct y; f_equal; simpl; omega).
+abstract (split; intro; subst; destruct x || destruct y; f_equal; simpl; lia).
 Defined.
 
 Instance translation_compat : Proper (equiv ==> equiv) translation.
@@ -158,7 +158,7 @@ Definition rotation (r : angle) : Bijection.bijection (Z*Z).
            Bijection.retraction := mk_rotation (opp_angle r) |}.
 Proof.
 intros x y. simpl.
-abstract (split; intro; subst; destruct r; simpl; destruct x || destruct y; simpl; f_equal; omega).
+abstract (split; intro; subst; destruct r; simpl; destruct x || destruct y; simpl; f_equal; lia).
 Defined.
 
 Instance rotation_compat : Proper (equiv ==> equiv) rotation := reflexive_proper _.
@@ -177,7 +177,7 @@ Definition reflection (r : angle) : Bijection.bijection (Z*Z).
            Bijection.retraction := mk_reflection r |}.
 Proof.
 intros x y. simpl.
-abstract (split; intro; subst; destruct r; simpl; destruct x || destruct y; simpl; f_equal; omega).
+abstract (split; intro; subst; destruct r; simpl; destruct x || destruct y; simpl; f_equal; lia).
 Defined.
 
 Instance reflection_compat : Proper (equiv ==> equiv) reflection := reflexive_proper _.

@@ -9,7 +9,7 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
-Require Import Omega.
+Require Import Lia.
 Require Import Equalities.
 Require Import Morphisms.
 Require Import RelationPairs.

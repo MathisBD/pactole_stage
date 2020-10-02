@@ -20,7 +20,7 @@
 Require Import Utf8_core.
 Require Import Arith_base.
 Require Import Reals.
-Require Import Omega.
+Require Import Lia.
 Require Import Psatz.
 Require Import SetoidList.
 Require Import Pactole.Setting.
