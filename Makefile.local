@@ -1,0 +1,11 @@
+
+# "make vos" will fail on files containing "Print Assumptions Foo. We
+# put these commands in separate files called xxx_Assumptions.v. And
+# the target "make fast" is like "make vos" but without thes files.
+
+## VOFILES is not defined before the "-include Makefile.local", so we
+## use VFILES
+VOFILESNOASSUMPTION=$(filter-out _Assumptions.v,$(VFILES))
+VOSFILESNOASSUMPTION=$(VOFILESNOASSUMPTION:%.v=%.vos)
+fast: $(VOSFILESNOASSUMPTION)
+.PHONY: fast
