@@ -840,4 +840,6 @@ Qed.
 
 End GatheringInR2.
 
-Print Assumptions FSGathering_in_R2.
+(* Prefer not to leave this here, so that make -vos does not fail here.
+See Peleg_Assumptions.v *)
+(* Print Assumptions FSGathering_in_R2. *)

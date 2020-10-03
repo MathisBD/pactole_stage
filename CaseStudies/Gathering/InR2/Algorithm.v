@@ -3414,4 +3414,4 @@ End GatheringInR2.
 
 (* this is ignored when coq -vos is used. This will fail when coqtop
    if relying on .vos. But it will succeed when using .vo *)
-Print Assumptions Gathering_in_R2. 
+(* Print Assumptions Gathering_in_R2.  *)

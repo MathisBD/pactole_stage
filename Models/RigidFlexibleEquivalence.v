@@ -262,5 +262,6 @@ Corollary Flex_Rigid : forall r config (d : flex_demon), is_rigid_demon d ->
 Proof using Flex Rigid update_only_location. intros. now apply F2R_preserves_eq. Qed.
 
 End RigidFlexibleEquivalence.
-
-Print Assumptions Flex_Rigid.
+(* Do not leave this here, because it makes "make vos" fail.
+ It is done in Rigidflexibleequivalence_Assumptions.v instead *)
+(* Print Assumptions Flex_Rigid. *)

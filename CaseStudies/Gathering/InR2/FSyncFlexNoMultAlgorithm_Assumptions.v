@@ -1,0 +1,2 @@
+Require Pactole.CaseStudies.Gathering.InR2.FSyncFlexNoMultAlgorithm.
+Print Assumptions FSyncFlexNoMultAlgorithm.FSGathering_in_R2.

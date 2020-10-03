@@ -1613,4 +1613,6 @@ Qed.
 
 End CorrectnessProof.
 
-Print Assumptions Gathering_in_R.
+(* Do not leave this here, because it makes "make vos" fail.
+ It is done in Algorithm_Assumptions.v instead *)
+(* Print Assumptions Gathering_in_R. *)

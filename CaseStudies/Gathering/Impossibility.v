@@ -1315,4 +1315,6 @@ Qed.
 
 End ImpossibilityProof.
 
-Print Assumptions noGathering.
+(* Prefer not to leave this here, so that make -vos does not fail here.
+See Impossibility_Assumptions.v *)
+(* Print Assumptions noGathering. *)

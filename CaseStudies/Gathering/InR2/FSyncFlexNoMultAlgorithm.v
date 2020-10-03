@@ -772,6 +772,8 @@ Qed.
 
 End GatheringInR2.
 
-Print Assumptions FSGathering_in_R2.
+(* Prefer not to leave this here, so that make -vos does not fail here.
+See FSyncFlexNoMultAlgorithm_Assumptions.v *)
+(* Print Assumptions FSGathering_in_R2. *)
 (* FIXME: find and eliminate the use of Classical_Prop.classic
           It comes from a bug in intuition/tauto. See set_observation.v. *)

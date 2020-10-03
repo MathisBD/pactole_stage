@@ -736,4 +736,6 @@ Qed.
 
 End ConvergenceImpossibility.
 
-Print Assumptions noConvergence.
+(* Do not leave this here, because it makes "make vos" fail.
+ It is done in Impossiblity_2G_1B_Assumptions.v instead *)
+(* Print Assumptions noConvergence. *)

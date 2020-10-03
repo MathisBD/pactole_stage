@@ -568,4 +568,6 @@ Qed.
 
 End Exploration.
 
-Print Assumptions no_exploration.
+(* Do not leave this here, because it makes "make vos" fail.
+ It is done in Impossibilitykdividesn_Assumptions.v instead *)
+(* Print Assumptions no_exploration. *)
