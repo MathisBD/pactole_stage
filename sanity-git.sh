@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# if launched by git commit
+# cd dev_coq
+
 AUXFILES=".allvfiles .trackedfiles .untrackedvfiles .unfoundvfiles"
 
 # Removing tolerated untracked files.
@@ -45,14 +48,26 @@ then
     EXITCODE=1
 fi
 
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
 if [ "$EXITCODE2" -eq 1 -a "$EXITCODE1" -eq 1 ];
 then
-    echo Everything seems find
     EXITCODE=0
+else
+    echo "${RED}Commit was aborted for the reason described above.${NC}"
+    echo
+    echo "The_coqProject seems to be outdated wrt actual files in your"
+    echo "working directory."
+    echo
+    echo "Please fix the problem above or use \"git commit --no-verify.\""
+    echo "if you know what you are doing."
+    echo
 fi
 
-# rm .trackedfiles
-
 rm -f $AUXFILES
+
+# if launched by git commit
+# cd ..
 
 exit $EXITCODE
