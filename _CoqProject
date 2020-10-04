@@ -91,7 +91,7 @@ CaseStudies/Gathering/InR2/Viglietta_Assumptions.v
 ## Case Study: Ring Exploration
 CaseStudies/Exploration/Definitions.v
 CaseStudies/Exploration/ImpossibilityKDividesN.v
-#CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v
+CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v
 CaseStudies/Exploration/Tower.v
 CaseStudies/Exploration/Tower_Assumptions.v
 
