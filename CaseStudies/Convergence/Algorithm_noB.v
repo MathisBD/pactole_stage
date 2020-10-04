@@ -64,7 +64,7 @@ Instance InactiveFun : inactive_function unit := {
   inactive_compat := ltac:(repeat intro; subst; auto) }.
 
 Instance Update : RigidSetting.
-Proof. split. now intros. Qed.
+Proof using . split. now intros. Qed.
 
 (* Refolding typeclass instances *)
 Ltac changeR2 :=
@@ -85,7 +85,7 @@ Implicit Type pt : location.
 
 (** As there are robots, the observation can never be empty. *)
 Lemma obs_non_empty : forall config pt, obs_from_config config pt =/= @empty location _ _ _.
-Proof.
+Proof using n_non_0.
 intros config pt.
 rewrite obs_from_config_ignore_snd. intro Habs.
 assert (Hn : 0%nat < n). { generalize n_non_0. intro. lia. }
@@ -101,7 +101,7 @@ Hint Resolve obs_non_empty : core.
 (** There is no byzantine robot so to prove anything about an ident
     we just need to consider good robots.*)
 Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
-Proof.
+Proof using n_non_0.
 intros P Hg [g | b].
 + apply Hg.
 + destruct b. lia.
@@ -123,13 +123,13 @@ Definition imprisoned (center : R2) (radius : R) (e : execution) : Prop :=
 Definition attracted (c : R2) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
 
 Instance contained_compat : Proper (equiv ==> Logic.eq ==> equiv ==> iff) contained.
-Proof.
+Proof using .
 intros ? ? Hc ? ? Hr ? ? Hconfig. subst. unfold contained.
 setoid_rewrite Hc. setoid_rewrite Hconfig. reflexivity.
 Qed.
 
 Instance imprisoned_compat : Proper (equiv ==> Logic.eq ==> @equiv _ Stream.stream_Setoid ==> iff) imprisoned.
-Proof.
+Proof using .
 unfold imprisoned. repeat intro.
 apply Stream.forever_compat; trivial; []. repeat intro.
 apply Stream.instant_compat; trivial; [].
@@ -137,7 +137,7 @@ now apply contained_compat.
 Qed.
 
 Instance attracted_compat : Proper (equiv ==> eq ==> @equiv _ Stream.stream_Setoid ==> iff) attracted.
-Proof. intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
+Proof using . intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
 (** A robogram solves convergence if all robots are attracted to a point,
     no matter what the demon and the starting configuration are. *)
@@ -150,7 +150,7 @@ Definition solution_FSYNC (r : robogram) : Prop :=
   forall (ε : R), 0 < ε → exists (pt : R2), attracted pt ε (execute r d config).
 
 Lemma synchro : ∀ r, solution_SSYNC r → solution_FSYNC r.
-Proof.
+Proof using .
 unfold solution_SSYNC. intros r Hfair config d Hd.
 apply Hfair, FSYNC_implies_fair; autoclass.
 Qed.
@@ -164,7 +164,7 @@ Definition convergeR2_pgm (s : observation) : location :=
   isobarycenter (elements s).
 
 Instance convergeR2_pgm_compat : Proper (equiv ==> equiv) convergeR2_pgm.
-Proof. intros ? ? Heq. unfold convergeR2_pgm. apply isobarycenter_compat. now rewrite Heq. Qed.
+Proof using . intros ? ? Heq. unfold convergeR2_pgm. apply isobarycenter_compat. now rewrite Heq. Qed.
 
 Definition convergeR2 : robogram := {| pgm := convergeR2_pgm |}.
 
@@ -174,7 +174,7 @@ Theorem round_simplify : forall da config, SSYNC_da da ->
   == fun id => if da.(activate) id
                then isobarycenter (@elements location _ _ _ (!! config))
                else config id.
-Proof.
+Proof using n_non_0.
 intros da config HSSYNC. rewrite SSYNC_round_simplify; trivial; [].
 intro id. pattern id. apply no_byz. clear id. intro g.
 unfold round. destruct_match; try reflexivity; [].
@@ -200,7 +200,7 @@ Axiom isobarycenter_circle : forall center radius (l : list R2),
 
 Lemma contained_isobarycenter : forall c r config,
   contained c r config -> (dist c (isobarycenter (elements (!! config))) <= r)%R.
-Proof.
+Proof using n_non_0.
 intros c r config Hc. apply isobarycenter_circle.
 rewrite Forall_forall. intro.
 rewrite <- InA_Leibniz. change eq with (@equiv location _).
@@ -211,7 +211,7 @@ Qed.
 
 Lemma contained_next : forall da c r config, SSYNC_da da ->
   contained c r config -> contained c r (round convergeR2 da config).
-Proof.
+Proof using n_non_0.
 intros da c r config HSSYNC Hconfig g.
 rewrite round_simplify; trivial; [].
 destruct_match.
@@ -221,7 +221,7 @@ Qed.
 
 Lemma converge_forever : forall d c r config, SSYNC d ->
   contained c r config -> imprisoned c r (execute convergeR2 d config).
-Proof.
+Proof using n_non_0.
 cofix Hcorec. intros d c r config [] Hrec. constructor.
 - apply Hrec.
 - apply Hcorec; auto using contained_next.
@@ -233,7 +233,7 @@ Qed.
 (************************)
 
 Theorem convergence_FSYNC : solution_FSYNC convergeR2.
-Proof.
+Proof using n_non_0.
 intros config d [Hfair ?] ε Hε.
 exists (isobarycenter (elements (obs_from_config (Observation := set_observation) config 0))).
 apply Stream.Later, Stream.Now. rewrite execute_tail.

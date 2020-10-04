@@ -56,23 +56,23 @@ Context `{RealMetricSpace}.
 Definition max_dist_pt_list pt := max_list (fun pt' => dist pt pt').
 
 Lemma max_dist_pt_list_nonneg : forall pt l, 0 <= max_dist_pt_list pt l.
-Proof. intros. apply max_list_aux_min. Qed.
+Proof using . intros. apply max_list_aux_min. Qed.
 
 Lemma max_dist_pt_list_app : forall pt l1 l2,
   max_dist_pt_list pt (l1 ++ l2) = Rmax (max_dist_pt_list pt l1) (max_dist_pt_list pt l2).
-Proof. intros. apply max_list_app. Qed.
+Proof using . intros. apply max_list_app. Qed.
 
 Global Instance max_dist_pt_list_compat :
   Proper (equiv ==> equivlistA equiv ==> eq) max_dist_pt_list.
-Proof. intros ? ? Heq1. apply max_list_compat. intros ? ? Heq2. now rewrite Heq1, Heq2. Qed.
+Proof using . intros ? ? Heq1. apply max_list_compat. intros ? ? Heq2. now rewrite Heq1, Heq2. Qed.
 
 Lemma max_dist_pt_list_le : forall pt l pt1,
   InA equiv pt1 l -> dist pt pt1 <= max_dist_pt_list pt l.
-Proof. intros. apply max_list_le; trivial; now apply dist_compat. Qed.
+Proof using . intros. apply max_list_le; trivial; now apply dist_compat. Qed.
 
 Lemma max_dist_pt_list_ex : forall pt l, l <> nil ->
   exists pt1, InA equiv pt1 l /\ dist pt pt1 = max_dist_pt_list pt l.
-Proof.
+Proof using .
 intros pt l Hl. destruct (max_list_ex (dist pt) Hl) as [pt' [Hin Heq]].
 rewrite Rmax_left in Heq; try apply dist_nonneg; [].
 eauto.
@@ -80,7 +80,7 @@ Qed.
 
 Lemma max_dist_pt_list_eq_0 : forall pt l,
   max_dist_pt_list pt l = 0%R <-> forall x, InA equiv x l -> x == pt.
-Proof.
+Proof using .
 intros pt l. unfold max_dist_pt_list.
 rewrite (max_list_eq_0 (dist_compat _ _ (reflexivity pt)) (dist_nonneg pt)).
 setoid_rewrite dist_sym. setoid_rewrite dist_defined.
@@ -93,14 +93,14 @@ Definition max_dist_list_list l1 l2 : R :=
 
 Global Instance max_dist_list_list_compat :
   Proper (equivlistA equiv ==> equivlistA equiv ==> eq) max_dist_list_list.
-Proof.
+Proof using .
 repeat intro. apply max_list_compat; trivial; [].
 repeat intro. now apply max_dist_pt_list_compat.
 Qed.
 
 Lemma max_dist_list_list_le : forall pt1 l1 pt2 l2,
   InA equiv pt1 l1 -> InA equiv pt2 l2 -> dist pt1 pt2 <= max_dist_list_list l1 l2.
-Proof.
+Proof using .
 intros. transitivity (max_dist_pt_list pt1 l2).
 - now apply max_dist_pt_list_le.
 - now apply (max_list_le (fun x y Hxy => max_dist_pt_list_compat x y Hxy _ _ (reflexivity l2))).
@@ -108,7 +108,7 @@ Qed.
 
 Lemma max_dist_list_list_ex : forall l1 l2, l1 <> nil -> l2 <> nil ->
   exists pt1 pt2, InA equiv pt1 l1 /\ InA equiv pt2 l2 /\ dist pt1 pt2 = max_dist_list_list l1 l2.
-Proof.
+Proof using .
 intros l1 l2 Hl1 Hl2.
 destruct (max_list_ex (fun pt => max_dist_pt_list pt l2) Hl1) as [pt1 [Hin1 Heq1]].
 destruct (max_dist_pt_list_ex pt1 _ Hl2) as [pt2 [Hin2 Heq2]].
@@ -122,7 +122,7 @@ Qed.
 
 Lemma max_dist_list_list_cons_le : forall pt l,
   max_dist_list_list l l <= max_dist_list_list (pt :: l) (pt :: l).
-Proof.
+Proof using .
 intros pt [| pt' l].
 - cbn. repeat rewrite Rmax_left; apply dist_nonneg.
 - destruct (@max_dist_list_list_ex (pt' :: l) (pt' :: l))

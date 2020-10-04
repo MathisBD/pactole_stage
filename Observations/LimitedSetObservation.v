@@ -68,7 +68,7 @@ Local Notation "'from_config' radius" := (@obs_from_config _ _ _ _ (limited_set_
 
 Lemma obs_from_config_ignore_snd : forall ref_state config state,
   obs_from_config config state == obs_from_config config ref_state.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma obs_from_config_map : forall sim : similarity location,
   forall Psim radius config pt,
@@ -76,7 +76,7 @@ Lemma obs_from_config_map : forall sim : similarity location,
   == from_config (Similarity.zoom sim * radius)
                  (map_config (lift (existT precondition sim Psim)) config)
                  ((lift (existT precondition sim Psim)) pt).
-Proof.
+Proof using .
 repeat intro. unfold obs_from_config, limited_set_observation.
 rewrite config_list_map; try (now apply lift_compat; simpl; apply Bijection.section_compat); [].
 rewrite map_map, 2 filter_map, <- SetObservation.make_set_map, map_map; autoclass; [].
@@ -93,7 +93,7 @@ Qed.
 Property pos_in_config : forall radius config state id,
   ((dist (get_location (config id)) (get_location state)) <= radius)%R ->
   In (get_location (config id)) (from_config radius config state).
-Proof.
+Proof using .
 intros radius config state id. unfold obs_from_config. simpl.
 rewrite SetObservation.make_set_spec, filter_InA, InA_map_iff; autoclass; [|].
 + intro Hle. repeat esplit; auto; [|].
@@ -105,7 +105,7 @@ Qed.
 Property obs_from_config_In : forall radius config state l,
   In l (from_config radius config state)
   <-> exists id, get_location (config id) == l /\ (dist l (get_location state) <= radius)%R.
-Proof.
+Proof using .
 intros radius config state l. split; intro Hin.
 + unfold obs_is_ok, obs_from_config, limited_set_observation in *. simpl in *.
   rewrite SetObservation.make_set_spec, filter_InA in Hin.

@@ -128,7 +128,7 @@ Definition Explore_and_Stop (r : robogram) :=
 
 (** Compatibility properties *)
 Global Instance is_visited_compat : Proper (equiv ==> equiv ==> iff) is_visited.
-Proof.
+Proof using .
 intros pt1 pt2 Hpt config1 config2 Hconfig.
 split; intros [g Hv]; exists g.
 - now rewrite <- Hconfig, Hv, Hpt.
@@ -136,18 +136,18 @@ split; intros [g Hv]; exists g.
 Qed.
 
 Global Instance Will_be_visited_compat : Proper (equiv ==> equiv ==> iff) Will_be_visited.
-Proof.
+Proof using .
 intros ? ? ?. now apply Stream.eventually_compat, Stream.instant_compat, is_visited_compat.
 Qed.
 
 Global Instance Stall_compat : Proper (equiv ==> iff) Stall.
-Proof.
+Proof using .
 intros e1 e2 He. split; intros Hs; unfold Stall in *;
 (now rewrite <- He) || now rewrite He.
 Qed.
 
 Global Instance Stopped_compat : Proper (equiv ==> iff) Stopped.
-Proof.
+Proof using .
 intros e1 e2 He. split; revert e1 e2 He; coinduction rec.
 - destruct H. now rewrite <- He.
 - destruct H as [_ H], He as [_ He]. apply (rec _ _ He H).
@@ -156,10 +156,10 @@ intros e1 e2 He. split; revert e1 e2 He; coinduction rec.
 Qed.
 
 Global Instance Will_stop_compat : Proper (equiv ==> iff) Will_stop.
-Proof. apply Stream.eventually_compat, Stopped_compat. Qed.
+Proof using . apply Stream.eventually_compat, Stopped_compat. Qed.
 
 Global Instance Valid_starting_config_compat : Proper (equiv ==> iff) Valid_starting_config.
-Proof.
+Proof using .
 intros ? ? Hconfig.
 unfold Valid_starting_config, Util.Preliminary.injective.
 now setoid_rewrite Hconfig.
@@ -168,6 +168,6 @@ Qed.
 (** We can decide if a given configuration is a valid starting one. *)
 Lemma Valid_starting_config_dec : forall config,
   {Valid_starting_config config} + {~ Valid_starting_config config}.
-Proof. intro config. unfold Valid_starting_config. apply config_injective_dec. Qed.
+Proof using . intro config. unfold Valid_starting_config. apply config_injective_dec. Qed.
 
 End ExplorationDefs.

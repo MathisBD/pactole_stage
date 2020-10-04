@@ -102,7 +102,7 @@ Implicit Type da : demonic_action.
 
 
 Lemma nG_ge_2 : 2 <= nG.
-Proof.
+Proof using even_nG nG_non_0.
 assert (Heven := even_nG). assert (HnG0 := nG_non_0).
 inversion Heven. simpl.
 destruct n as [| [| ?]]; lia.

@@ -74,7 +74,7 @@ Instance InactiveFun : inactive_function unit := {
   inactive_compat := ltac:(repeat intro; subst; auto) }.
 
 Instance Update : RigidSetting.
-Proof. split. now intros. Qed.
+Proof using . split. now intros. Qed.
 
 Notation "!!" := (fun config => obs_from_config config origin).
 
@@ -107,28 +107,28 @@ Definition obs_from_config_spec : forall config (pt : R),
  := fun config => @obs_from_config_spec R _ _ _ _ config 0%R.
 
 Lemma nB_value : nB = n.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 (** Not true in general as the info may change even if the robot does not move. *)
 Lemma no_moving_same_config : forall r da config,
   moving r da config = List.nil -> round r da config == config.
-Proof.
+Proof using .
 intros r da config Hmove id.
 destruct (round r da config id =?= config id) as [Heq | Heq]; trivial; [].
 apply <- moving_spec in Heq. rewrite Hmove in Heq. inversion Heq.
 Qed.
 
 Lemma nG_nB : nG = 2 * nB.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Corollary even_nG : Nat.Even nG.
-Proof. exists nB. apply nG_nB. Qed.
+Proof using . exists nB. apply nG_nB. Qed.
 
 Corollary nG_non_0 : nG <> 0.
-Proof. rewrite nG_nB. assert (Hn0 := n_non_0). simpl. lia. Qed.
+Proof using n_non_0. rewrite nG_nB. assert (Hn0 := n_non_0). simpl. lia. Qed.
 
 Corollary half_size_pos : Nat.div2 nG > 0.
-Proof.
+Proof using n_non_0.
 assert (Hn0 := n_non_0). rewrite nG_nB, nB_value.
 destruct n as [| ?].
 - lia.
@@ -149,7 +149,7 @@ Definition imprisoned (center : R) (radius : R) (e : execution) : Prop :=
 Definition attracted (c : R) (r : R) (e : execution) : Prop := Stream.eventually (imprisoned c r) e.
 
 Instance imprisoned_compat : Proper (equiv ==> Logic.eq ==> equiv ==> iff) imprisoned.
-Proof.
+Proof using .
 intros c1 c2 Hc ? r Hr e1 e2 He. subst. split.
 + revert c1 c2 e1 e2 Hc He. coinduction Hrec.
   - intro g.
@@ -166,7 +166,7 @@ intros c1 c2 Hc ? r Hr e1 e2 He. subst. split.
 Qed.
 
 Instance attracted_compat : Proper (equiv ==> eq ==> equiv ==> iff) attracted.
-Proof. intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
+Proof using . intros ? ? Heq ? ? ?. now apply Stream.eventually_compat, imprisoned_compat. Qed.
 
 (** A solution is just convergence property for any demon. *)
 Definition solution (r : robogram) : Prop :=
@@ -179,7 +179,7 @@ Definition solution_FSYNC (r : robogram) : Prop :=
 
 (** A SSYNC solution is also a FSYNC solution. *)
 Lemma synchro : ∀ r, solution r → solution_FSYNC r.
-Proof. unfold solution. intros r Hfair config d Hd. apply Hfair, FSYNC_implies_fair; autoclass. Qed.
+Proof using . unfold solution. intros r Hfair config d Hd. apply Hfair, FSYNC_implies_fair; autoclass. Qed.
 
 Close Scope R_scope.
 Close Scope vector_scope.
@@ -191,12 +191,12 @@ Definition left  := half1 Gnames.
 Definition right := half2 Gnames.
 
 Lemma merge_left_right : left ++ right = Gnames.
-Proof. apply merge_halves. Qed.
+Proof using . apply merge_halves. Qed.
 
 Definition left_dec (g : G) := List.in_dec Geq_dec g left.
 
 Lemma not_left_is_right : forall g : G, ~In g left -> In g right.
-Proof.
+Proof using .
 intros g Hleft.
 assert (Hin : List.In g Gnames) by apply In_Gnames.
 rewrite <- merge_left_right, in_app_iff in Hin.
@@ -204,14 +204,14 @@ destruct Hin; contradiction || assumption.
 Qed.
 
 Lemma left_right_exclusive : forall g, In g left -> In g right -> False.
-Proof.
+Proof using .
 unfold left, right, half1, half2. intros.
 eapply firstn_skipn_nodup_exclusive; try eassumption.
 apply Gnames_NoDup.
 Qed.
 
 Lemma left_spec : forall g, In g left <-> proj1_sig g < Nat.div2 nG.
-Proof.
+Proof using .
 Local Transparent G.
 intro g. unfold left, half1. rewrite Gnames_length. unfold Gnames.
 apply firstn_enum_spec.
@@ -219,7 +219,7 @@ Local Opaque G.
 Qed.
 
 Lemma right_spec : forall g, In g right <-> Nat.div2 nG <= proj1_sig g.
-Proof.
+Proof using .
 intro g. unfold right, half2. rewrite Gnames_length. unfold Gnames.
 rewrite (skipn_enum_spec (Nat.div2 nG) g). intuition. apply proj2_sig.
 Qed.
@@ -232,10 +232,10 @@ Definition glast : G.
 Proof. exists (pred nG). abstract (simpl; generalize n_non_0; intro; lia). Defined.
 
 Lemma gfirst_left : In gfirst left.
-Proof. rewrite left_spec. simpl. apply half_size_pos. Qed.
+Proof using . rewrite left_spec. simpl. apply half_size_pos. Qed.
 
 Lemma glast_right : In glast right.
-Proof.
+Proof using .
 rewrite right_spec. simpl. assert (Heven := even_nG).
 destruct n as [| [| ]]; simpl; auto; [].
 apply le_n_S, Nat.div2_decr, le_n_Sn.
@@ -272,7 +272,7 @@ Arguments config1 id : simpl never.
 Arguments config2 id : simpl never.
 
 Lemma minus_1 : -1 <> 0.
-Proof. apply Ropp_neq_0_compat, R1_neq_R0. Qed.
+Proof using . apply Ropp_neq_0_compat, R1_neq_R0. Qed.
 
 Definition observation1 := add 0 nG (singleton 1 nB).
 Definition observation2 := add 0 nB (singleton 1 nG).
@@ -283,7 +283,7 @@ Lemma obs_config_aux : forall pt1 pt2 : R, pt1 =/= pt2 ->
   countA_occ equiv equiv_dec pt
     (map (fun x  => if in_dec Geq_dec x (half1 l) then pt1 else pt2) l)
   = (add pt1 n (singleton pt2 n))[pt].
-Proof.
+Proof using n_non_0.
 intros pt1 pt2 Hdiff pt k. induction k as [| k]; intros l Hnodup Hlen.
 * apply length_0 in Hlen. subst. simpl map. now rewrite add_0, singleton_0 (* , empty_spec *) .
 * replace (2 * S k)%nat with (S (S (2 * k)))%nat in Hlen by ring.
@@ -322,7 +322,7 @@ intros pt1 pt2 Hdiff pt k. induction k as [| k]; intros l Hnodup Hlen.
 Qed.
 
 Theorem obs_config1 : !! config1 == observation1.
-Proof.
+Proof using n_non_0.
 intro pt. unfold config1, observation1.
 rewrite obs_from_config_spec, config_list_spec. cbn [fst].
 change names with (map Good Gnames ++ map Byz Bnames).
@@ -345,7 +345,7 @@ unfold left_dec, left. rewrite (obs_config_aux H01 _ nB).
 Qed.
 
 Theorem obs_config2 : !! config2 == observation2.
-Proof.
+Proof using n_non_0.
 intro pt. unfold config2, observation2.
 rewrite obs_from_config_spec, config_list_spec. cbn [fst].
 change names with (map Good Gnames ++ map Byz Bnames).
@@ -368,10 +368,10 @@ Qed.
 Definition swap (pt : location) := translation (opp pt) ∘ (homothecy pt minus_1).
 
 Instance swap_compat : Proper (equiv ==> equiv) swap.
-Proof. intros pt pt' Hpt x. simpl. rewrite Hpt. ring. Qed.
+Proof using . intros pt pt' Hpt x. simpl. rewrite Hpt. ring. Qed.
 
 Lemma swap_obs2_obs1 : MMultisetExtraOps.map (swap 1) observation2 == observation1.
-Proof.
+Proof using .
 intro pt. unfold observation1, observation2, swap. rewrite map_add, map_singleton; autoclass; [].
 cbn -[add singleton].
 ring_simplify (1 + -1 * (0 + -(1)) + -(1)).
@@ -435,7 +435,7 @@ Defined.
 Definition bad_demon : demon := Stream.alternate bad_da1 bad_da2.
 
 Theorem kFair_bad_demon : kFair 1 bad_demon.
-Proof.
+Proof using .
 cofix cofx.
 constructor; [| constructor].
 * intros [g1 | b1] id2; [destruct (left_dec g1) |].
@@ -474,10 +474,10 @@ constructor; [| constructor].
 Qed.
 
 Corollary Fair_bad_demon : Fair bad_demon.
-Proof. apply kFair_Fair with 1%nat; autoclass. apply kFair_bad_demon. Qed.
+Proof using . apply kFair_Fair with 1%nat; autoclass. apply kFair_bad_demon. Qed.
 
 Corollary kFair_bad_demon' : forall k, (k>=1)%nat -> kFair k bad_demon.
-Proof.
+Proof using .
 intros.
 eapply kFair_mono with 1%nat.
 - apply kFair_bad_demon; auto.
@@ -515,7 +515,7 @@ CoFixpoint shifting_demon d pt :=
   Stream.cons (shifting_da (pt + d + 1)) (shifting_demon d (pt + d)).
 
 Lemma Fair_shifting_demon : forall d pt, Fair (shifting_demon d pt).
-Proof.
+Proof using .
 intros d pt. apply FSYNC_implies_fair; autoclass; []. revert pt.
 cofix shift_fair. intro pt. constructor.
 + repeat intro. simpl. reflexivity.
@@ -536,7 +536,7 @@ Lemma observation_config0 : forall pt : location,
   @equiv observation _
     (!! (map_config (lift (existT precondition (translation (opp pt)) I)) (config0 pt)))
     observation1.
-Proof.
+Proof using .
 intros pt x. unfold config0, observation1.
 rewrite obs_from_config_spec, config_list_spec.
 change names with (map Good Gnames ++ map Byz Bnames).
@@ -557,7 +557,7 @@ rewrite (map_ext_in _ (fun _ : G => 0)), (map_ext_in _ (fun _ : B => 1)).
 Qed.
 
 Corollary obs_config0_0 : !! (config0 0) == observation1.
-Proof.
+Proof using .
 rewrite <- (observation_config0 0). f_equiv. simpl lift.
 rewrite <- map_config_id at 1. f_equiv.
 intros ? ? Heq. rewrite Heq. unfold id. simpl in *. field.
@@ -570,7 +570,7 @@ Hypothesis absurdmove : move <> 0.
 
 Lemma round_move : forall pt,
   round r (shifting_da (pt + move + 1)) (config0 pt) == config0 (pt + move).
-Proof.
+Proof using .
 intros pt id. unfold round. cbn -[fst obs_from_config].
 destruct id as [g | b].
 - assert (Htranslate := observation_config0 pt).
@@ -582,7 +582,7 @@ Qed.
 
 Lemma keep_moving_by_eq : forall pt config,
   config == config0 pt -> execute r (shifting_demon move pt) config == shifting_execution move pt.
-Proof.
+Proof using .
 cofix shift_exec. intros pt config Heq.
 constructor.
 + simpl. assumption.
@@ -591,10 +591,10 @@ Qed.
 
 Theorem keep_moving : forall pt,
   execute r (shifting_demon move pt) (config0 pt) == shifting_execution move pt.
-Proof. intro. apply keep_moving_by_eq. reflexivity. Qed.
+Proof using . intro. apply keep_moving_by_eq. reflexivity. Qed.
 
 Theorem absurd : False.
-Proof.
+Proof using absurdmove n_non_0 sol.
 assert (Hthird_move : 0 < Rabs (move / 3)). { apply Rabs_pos_lt. lra. }
 specialize (sol (config0 0) (Fair_shifting_demon move 0) Hthird_move).
 destruct sol as [pt Hpt]. rewrite keep_moving in Hpt.
@@ -618,13 +618,13 @@ Qed.
 End AbsurdMove.
 
 Theorem no_move1 : r observation1 = 0.
-Proof.
+Proof using n_non_0 sol.
 destruct (Rdec (r observation1) 0) as [? | Hmove]; trivial.
 exfalso. apply absurd. assumption.
 Qed.
 
 Corollary no_move2 : r (!! (map_config (swap 1) config2)) == 0.
-Proof.
+Proof using n_non_0 sol.
 setoid_rewrite <- no_move1 at 2.
 apply (pgm_compat r). f_equiv.
 change (Bijection.section (swap 1)) with (lift (existT precondition (swap 1) I)).
@@ -635,7 +635,7 @@ apply swap_obs2_obs1.
 Qed.
 
 Lemma round_config1 : round r bad_da1 config1 == config2.
-Proof.
+Proof using n_non_0 sol.
 intros id. unfold round.
 simpl (activate bad_da1). unfold activate1.
 destruct id as [g | b]; try reflexivity; [].
@@ -649,7 +649,7 @@ rewrite obs_config1. apply no_move1.
 Qed.
 
 Lemma round_config2 : round r bad_da2 config2 == config1.
-Proof.
+Proof using n_non_0 sol.
 intros id. unfold round.
 simpl (activate bad_da2). unfold activate2.
 destruct id as [g | b]; try reflexivity; [].
@@ -662,7 +662,7 @@ simpl. ring.
 Qed.
 
 Theorem execute_bad_demon : execute r bad_demon config1 == exec.
-Proof.
+Proof using n_non_0 sol.
 cut (forall e, execute r bad_demon config1 == e -> e == exec); auto.
 cofix exec. intros e He; constructor; [| constructor].
 + rewrite <- He. unfold Stream.instant2. simpl. now split.
@@ -695,7 +695,7 @@ Definition attracted_ind2 (c : R) (r : R) (P : execution → Prop)
     end.
 
 Theorem noConvergence : forall r, ~solution r.
-Proof.
+Proof using n_non_0.
 intros r Hr.
 assert (Hpos : 0 < 1/4) by lra.
 destruct (Hr config1 bad_demon Fair_bad_demon _ Hpos) as [pt Hpt].
