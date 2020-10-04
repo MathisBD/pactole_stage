@@ -9,9 +9,9 @@ AUXFILES=".allvfiles .trackedfiles .untrackedvfiles .unfoundvfiles"
 # TOLERATED="Foo/Bar/toto.v\\|Baz/titi.v"
 TOLERATED="Util/FSets/OrderedType.v"
 
-find . -name "*.v" | sed -e 's/\.\///' | grep -v $TOLERATED > .allvfiles
+find . -name "*.v" | sed -e 's/\.\///' | grep -v "\.#\\|*~" | grep -v $TOLERATED > .allvfiles
 
-grep -v "^-\\|^[[:space:]]*#\\|^[[:space:]]*$\\|~$" _CoqProject > .trackedfiles
+grep -v "^-\\|^[[:space:]]*#\\|^[[:space:]]*$" _CoqProject > .trackedfiles
 
 grep -v -f .trackedfiles .allvfiles > .untrackedvfiles
 EXITCODE1=$?

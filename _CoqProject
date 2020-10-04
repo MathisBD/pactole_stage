@@ -2,6 +2,9 @@
 -Q . Pactole
 -arg -w
 -arg -notation-overridden
+# Spaces in args are not supported, see Makefile.local
+#-arg -set
+#-arg "Suggest Proof Using=true"
 
 ## External libraries
 #Util/FSets/OrderedType.v
