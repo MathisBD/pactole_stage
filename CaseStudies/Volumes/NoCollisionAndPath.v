@@ -476,7 +476,7 @@ Defined.
 
 (* si on ne veux pas de multiset car les robots ne voient pas les robots non actifs, comment faire pour les mettre en routes? car ça se passe dans el robogram.
    a moins d'ajouter en dur lors de la création du spectre le robot qui a (id = threshold) 
-il faut aussi faire attention a ce que le spectre ne modifie pas D, ni aucune distance. a voir comment faire, peut etre en spécifiant plus le Spectre (avec un "S" et pas un "s"), et donc la fonction obs_from_config
+il faut aussi faire attention a ce que le spectre ne modifie pas D, ni aucune distance. a voir comment faire, peut etre en spécifiant plus le Specte (avec un "S" et pas un "s"), et donc la fonction obs_from_config
  *)
 
 (*  ça sert a rien c'est même mauvais
