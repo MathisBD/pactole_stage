@@ -19,7 +19,7 @@
 (**************************************************************************)
 
 
-Require Import Omega.
+Require Import Lia PeanoNat.
 Require Import SetoidList.
 Require Export Pactole.CaseStudies.Gathering.Definitions.
 Require Export Pactole.Observations.MultisetObservation.
@@ -27,7 +27,7 @@ Close Scope R_scope.
 Close Scope VectorSpace_scope.
 Set Implicit Arguments.
 Typeclasses eauto := (bfs) 5.
-
+Require Even.
 
 (** Gathering Definitions specific to a setting with multiplicities, i.e. a multiset observation. *)
 
@@ -89,7 +89,7 @@ assert (Hl : config_list config = nil).
   now intro; rewrite Heq. }
 rewrite Hl in Hlgth.
 simpl in *.
-omega.
+lia.
 Qed.
 
 Lemma invalid_size : nB = 0 ->
@@ -119,7 +119,7 @@ rewrite <- (@cardinal_total_sub_eq _ _ _ _ _ (add pt2 (Nat.div2 nG) (singleton p
     destruct_match; try contradiction; [].
     auto with arith.
 + rewrite cardinal_add, cardinal_singleton, cardinal_obs_from_config.
-  rewrite HnB, plus_0_r. now apply even_div2.
+  rewrite HnB, Nat.add_0_r. now apply even_div2.
 Qed.
 
 Lemma invalid_strengthen : nB = 0 -> forall config, invalid config ->
@@ -141,10 +141,10 @@ destruct Hconfig as [Heven [Hge2 [pt1' [pt2' [Hdiff [Hpt1' Hpt2']]]]]].
 assert (Hcase : pt1' == pt1 /\ pt2' == pt2 \/ pt1' == pt2 /\ pt2' == pt1).
 { assert (Hin1 : InA equiv pt1' (pt1 :: pt2 :: nil)).
   { rewrite <- Hsupp, support_spec. unfold In. rewrite Hpt1'.
-    destruct nG as [| [| nG]]; simpl; omega. }
+    destruct nG as [| [| nG]]; simpl; lia. }
   assert (Hin2 : InA equiv pt2' (pt1 :: pt2 :: nil)).
   { rewrite <- Hsupp, support_spec. unfold In. rewrite Hpt2'.
-    destruct nG as [| [| nG]]; simpl; omega. }
+    destruct nG as [| [| nG]]; simpl; lia. }
   rewrite 2 InA_cons, InA_nil in Hin1, Hin2. clear -Hin1 Hin2 Hdiff.
   decompose [or] Hin1; decompose [or] Hin2; tauto || elim Hdiff; etransitivity; eauto. }
 split.
@@ -156,8 +156,8 @@ split.
     destruct Hcase as [[Heq1 Heq2] | [Heq1 Heq2]];
     rewrite Heq1 in *; rewrite Heq2 in *;
     try match goal with H : pt == _ |- _ => rewrite H in *; clear H end;
-    rewrite ?Hpt1', ?Hpt2'; omega || now elim Hdiff.
-  - rewrite cardinal_add, cardinal_singleton, cardinal_obs_from_config, even_div2; auto; omega.
+    rewrite ?Hpt1', ?Hpt2'; lia || now elim Hdiff.
+  - rewrite cardinal_add, cardinal_singleton, cardinal_obs_from_config, even_div2; auto; lia.
 Qed.
 
 Lemma invalid_same_location : nB = 0 -> forall config pt1 pt2 pt3, invalid config ->
@@ -178,7 +178,7 @@ Lemma invalid_dec : nB = 0 -> forall config, {invalid config} + {~invalid config
 Proof using .
 intros HnB config.
 destruct (size (!! config)) as [| [| [| n]]] eqn:Hsize;
-try (right; intro Habs; apply invalid_size in Habs; omega); [].
+try (right; intro Habs; apply invalid_size in Habs; lia); [].
 rewrite size_elements in Hsize.
 destruct (elements (!! config)) as [| [pt1 n1] [| [pt2 n2] [| ? ?]]] eqn:Helem;
 try discriminate; [].
@@ -187,14 +187,14 @@ destruct (n1 =?= n2) as [Hn | Hn].
   assert (2 * n1 = nG).
   { assert (Hcardinal := cardinal_obs_from_config config origin).
     rewrite cardinal_fold_elements, Helem in Hcardinal. simpl in Hcardinal.
-    rewrite <- Hn, HnB in Hcardinal. omega. }
+    rewrite <- Hn, HnB in Hcardinal. lia. }
   assert (n1 = Nat.div2 nG). { rewrite <- (Exp_prop.div2_double n1). now f_equal. }
   split; [| split].
   + now exists n1.
-  + cut (0 < n1); try omega; [].
+  + cut (0 < n1); try lia; [].
     assert (Hin : InA eq_pair (pt1, n1) (elements (!! config))).
     { rewrite Helem. now left. }
-    rewrite elements_spec in Hin. simpl in Hin. omega.
+    rewrite elements_spec in Hin. simpl in Hin. lia.
   + exists pt1, pt2.
     hnf in Hn. subst n1 n2.
     repeat split.
@@ -210,14 +210,14 @@ destruct (n1 =?= n2) as [Hn | Hn].
 * right.
   intro Hvalid. elim Hn.
   assert (Hhalf : 0 < Nat.div2 nG).
-  { destruct Hvalid as [_ [Hle _]]. destruct nG as [| [| ?]]; simpl; omega. }
+  { destruct Hvalid as [_ [Hle _]]. destruct nG as [| [| ?]]; simpl; lia. }
   destruct (invalid_strengthen HnB Hvalid) as [pt1' [pt2' Hdiff Hobs]].
   assert (Hperm : PermutationA eq_pair ((pt1, n1) :: (pt2, n2) :: nil)
                                        ((pt1', Nat.div2 nG) :: (pt2', Nat.div2 nG) :: nil)).
   { rewrite <- Helem, Hobs. rewrite elements_add, elements_singleton; auto; [].
     cbn [removeA]. rewrite singleton_other; trivial; [].
     constructor.
-    + split; simpl; reflexivity || omega.
+    + split; simpl; reflexivity || lia.
     + destruct_match.
       - elim Hdiff. hnf in * |-; simpl in *. auto.
       - reflexivity. }

@@ -9,7 +9,7 @@
 
 
 Require Import Reals.
-Require Import Omega.
+Require Import Lia.
 Require Import Lra.
 Require Import SetoidList.
 Require Import SetoidDec.
@@ -379,7 +379,7 @@ Section BarycenterResults.
   Proof using .
   intros E dm Hnotempty Hdm p Hp.
   assert (Hlength_pos: 0 < INR (List.length E)).
-  { apply lt_0_INR. destruct E; try (now elim Hnotempty); []. simpl. omega. }
+  { apply lt_0_INR. destruct E; try (now elim Hnotempty); []. simpl. lia. }
   rewrite norm_dist. subst. unfold isobarycenter.
   setoid_replace p%VS with (- / INR (length E) * (- INR (length E) * p))%VS
     by (rewrite mul_morph, Ropp_inv_permute, <- Rinv_l_sym, mul_1; lra || reflexivity).

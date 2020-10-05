@@ -9,7 +9,7 @@
 (******************************************)
 
 
-Require Import Omega.
+Require Import Lia.
 Require Import Arith.Div2.
 Require Import Reals.
 Require Import List.
@@ -271,7 +271,7 @@ Lemma removeA_length_le eq_dec : forall l (x : A), length (@removeA A eqA eq_dec
 Proof using .
 intros l x. induction l; simpl.
   reflexivity.
-  destruct (eq_dec x a); simpl; omega.
+  destruct (eq_dec x a); simpl; lia.
 Qed.
 
 Lemma removeA_NoDupA eq_dec : forall x l, NoDupA eqA l -> NoDupA eqA (@removeA A eqA eq_dec x l).
@@ -427,7 +427,7 @@ intros x l Hperm. destruct l as [| a [| b l]].
 - repeat constructor. apply PermutationA_InA_inside with a _ _ in Hperm; try now left.
   destruct Hperm as [l1 [y [l2 [Heq Hl]]]].
   destruct l1 as [| ? [| ? ?]], l2 as [| ? ?]; try discriminate Hl. inversion_clear Hl. assumption.
-- apply PermutationA_length in Hperm. simpl in Hperm. omega.
+- apply PermutationA_length in Hperm. simpl in Hperm. lia.
 Qed.
 
 Lemma NoDupA_strengthen : forall l, subrelation eqA eqA' -> NoDupA eqA' l -> NoDupA eqA l.
@@ -637,12 +637,12 @@ Lemma fold_left_cons_length_aux : forall (f : A -> B) l1 l2,
 Proof using .
 intros f l1. induction l1; intro l2; simpl.
   reflexivity.
-  rewrite IHl1. simpl. omega.
+  rewrite IHl1. simpl. lia.
 Qed.
 
 Corollary fold_left_cons_length : forall (f : A -> B) l,
   length (fold_left (fun acc x => f x :: acc) l nil) = length l.
-Proof using . intros. rewrite fold_left_cons_length_aux. simpl. omega. Qed.
+Proof using . intros. rewrite fold_left_cons_length_aux. simpl. lia. Qed.
 
 Lemma NoDupA_inj_map :
   forall (f : A -> B) (l : list A), Proper (eqA ==> eqB) f -> injective eqA eqB f ->
@@ -661,7 +661,7 @@ Qed.
 Lemma NoDupA_inclA_length : forall l1 l2, NoDupA eqA l1 -> inclA eqA l1 l2 -> length l1 <= length l2.
 Proof using HeqA.
 intro l1. induction l1 as [| a l1]; intros l2 Hnodup Hincl.
-+ simpl. omega.
++ simpl. lia.
 + assert (Hin : InA eqA a l2). { apply Hincl. now left. }
   apply PermutationA_split in Hin. destruct Hin as [l2' Heql2]. 
   rewrite Heql2 in *. inversion_clear Hnodup.
@@ -740,10 +740,10 @@ Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
 Proof using . intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
 
 Lemma min_is_0 : forall n m, min n m = 0 <-> n = 0 \/ m = 0.
-Proof using . intros [| n] [| m]; intuition. discriminate. Qed.
+Proof using . intros [| n] [| m]; intuition. Qed.
 
 Lemma max_is_0 : forall n m, max n m = 0 <-> n = 0 /\ m = 0.
 Proof using . intros [| n] [| m]; intuition; discriminate. Qed.
 
-Lemma Bleb_refl : forall x, Bool.leb x x.
+Lemma Bleb_refl : forall x, Bool.le x x.
 Proof using . intros [|]; simpl; auto. Qed.

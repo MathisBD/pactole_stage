@@ -9,7 +9,7 @@
 (**************************************************************************)
 
 
-Require Import Omega Psatz SetoidDec Rbase.
+Require Import Lia Psatz SetoidDec Rbase.
 Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Core.Identifiers.
 Require Export Pactole.Spaces.Graph.
@@ -77,7 +77,7 @@ Proof using . intros. apply Zdiv.Z_mod_lt. destruct RR. simpl. lia. Qed.
 Lemma to_Z_inf_n (x : Z): Z.to_nat (x mod Z.of_nat ring_size)%Z < ring_size.
 Proof using .
 intros. rewrite <- Nat2Z.id, <- Z2Nat.inj_lt;
-try apply Zdiv.Z_mod_lt; destruct RR; simpl; omega.
+try apply Zdiv.Z_mod_lt; destruct RR; simpl; lia.
 Qed.
 
 Definition to_Z (v : ring_node) : Z := Z.of_nat (proj1_sig v).
@@ -98,7 +98,7 @@ apply Nat2Z.inj in Heq. subst. f_equal. apply le_unique.
 Qed.
 
 Lemma to_Z_small : forall v, (0 <= to_Z v < Z.of_nat ring_size)%Z.
-Proof using . intro. unfold to_Z. split; try omega; []. apply Nat2Z.inj_lt. apply proj2_sig. Qed.
+Proof using . intro. unfold to_Z. split; try lia; []. apply Nat2Z.inj_lt. apply proj2_sig. Qed.
 
 Lemma Z2Z : forall l, (to_Z (of_Z l) = l mod Z.of_nat ring_size)%Z.
 Proof using .
@@ -110,7 +110,7 @@ Qed.
 Lemma V2V : forall v, of_Z (to_Z v) == v.
 Proof using .
 intros [k Hk]. hnf. unfold to_Z, of_Z. apply eq_proj1. simpl.
-rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; omega.
+rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; lia.
 Qed.
 
 (** From a node, if we move in one direction, get get to another node. *)
@@ -128,7 +128,7 @@ destruct (Nat.eq_dec ring_size 2) as [Hsize | Hsize];
 repeat destruct_match; try tauto || discriminate; [|];
 intros _; unfold of_Z; apply eq_proj1; simpl; rewrite Hsize; simpl;
 assert (Hv2 := proj2_sig v2);
-destruct v2 as [[| [| [| v]]] ?]; simpl in *; omega.
+destruct v2 as [[| [| [| v]]] ?]; simpl in *; lia.
 Qed.
 
 Definition Ring (thd : ring_edge -> R)
@@ -155,7 +155,7 @@ refine ({|
   try tauto || discriminate; [| |];
   try (destruct (fst e2) as [k ?]; unfold to_Z; simpl;
        match goal with H : ring_size = 2 |- _ => try rewrite H in *; clear H end;
-       destruct k as [| [| k]]; simpl; omega); [].
+       destruct k as [| [| k]]; simpl; lia); [].
   rewrite move_along_compat; trivial; try rewrite Hd; reflexivity.
 (* * (* find_edge_compat *)
   intros v1 v2 Hv12 v3 v4 Hv34. hnf in *. subst.
@@ -175,7 +175,7 @@ Open Scope Z_scope.
     - elim Hneq_a. rewrite <- Htgt. rewrite Z2Z. apply eq_proj1.
       unfold of_Z. simpl. rewrite Zdiv.Zplus_mod_idemp_l.
       ring_simplify (to_Z a - 1 + 1).
-      unfold to_Z. rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; try omega; [].
+      unfold to_Z. rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; try lia; [].
       apply proj2_sig.
     - contradiction.
   + intros Hedge. elim (Hedge (a, Backward)).
@@ -183,7 +183,7 @@ Open Scope Z_scope.
     rewrite Heq_a, Z2Z. apply eq_proj1.
     unfold Z.sub, of_Z. simpl. rewrite Zdiv.Zplus_mod_idemp_l.
     ring_simplify (to_Z b + 1 + -1).
-    unfold to_Z. rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; omega || apply proj2_sig.
+    unfold to_Z. rewrite <- Zdiv.mod_Zmod, Nat2Z.id, Nat.mod_small; lia || apply proj2_sig.
   + intro Hedge. destruct (of_Z (to_Z a + 1) =?= b) as [Heq_b | Hneq_b].
     - elim (Hedge (a, Forward)).
       split; simpl; try reflexivity; []. now rewrite <- Heq_b.
@@ -211,15 +211,15 @@ Open Scope Z_scope.
     apply (f_equal (@proj1_sig _ _)) in Heq. simpl in Heq. rewrite Hsize in *.
     destruct v2 as [| [| ?]]; simpl in *; lia.
   + apply eq_proj1. destruct v as [v Hv]. unfold of_Z, to_Z. simpl. rewrite Hsize in *.
-    destruct v as [| [| ?]]; simpl; omega.
+    destruct v as [| [| ?]]; simpl; lia.
   + match goal with H : _ = v |- _ => rename H into Heq end.
     apply (f_equal (@proj1_sig _ _)) in Heq.
     unfold to_Z, of_Z in Heq. destruct v as [v Hv]. simpl in Heq.
-    rewrite Hsize in *. destruct v as [| [| ?]]; simpl in *; omega || lia.
+    rewrite Hsize in *. destruct v as [| [| ?]]; simpl in *; lia || lia.
   + match goal with H : v = _ |- _ => rename H into Heq end.
     apply (f_equal (@proj1_sig _ _)) in Heq.
     unfold to_Z, of_Z in Heq. destruct v as [v Hv]. simpl in Heq.
-    rewrite Hsize in *. destruct v as [| [| ?]]; simpl in *; omega || lia.
+    rewrite Hsize in *. destruct v as [| [| ?]]; simpl in *; lia || lia.
   + match goal with H : of_Z (to_Z v + 1) = of_Z (to_Z v - 1) -> False |- _ => apply H end.
     apply eq_proj1. unfold of_Z, to_Z. simpl.
     rewrite <- (Zdiv.Z_mod_plus_full (_ - 1) 1 (Z.of_nat ring_size)).
@@ -228,30 +228,30 @@ Open Scope Z_scope.
     apply (f_equal to_Z) in Heq. symmetry in Heq. revert Heq.
     rewrite 2 Z2Z. destruct v2 as [v2 ?]. unfold of_Z, to_Z. simpl.
     rewrite Zdiv.Zplus_mod_idemp_l.
-    rewrite <- (Z.mod_small (Z.of_nat v2) (Z.of_nat ring_size)) at 2; try omega; [].
+    rewrite <- (Z.mod_small (Z.of_nat v2) (Z.of_nat ring_size)) at 2; try lia; [].
     replace (Z.of_nat v2 + 1 + 1) with (Z.of_nat v2 + 2) by ring.
-    apply Zadd_small_mod_non_conf. omega.
+    apply Zadd_small_mod_non_conf. lia.
   + rewrite Z2Z. apply eq_proj1. destruct v2 as [v2 Hv2]. unfold to_Z, of_Z; simpl.
     rewrite Zdiv.Zminus_mod_idemp_l.
     ring_simplify (Z.of_nat v2 + 1 - 1). rewrite Z.mod_small, Nat2Z.id; lia.
   + exfalso. match goal with H : _ = _ |- _ => rename H into Heq end.
     apply (f_equal to_Z)in Heq. rewrite Z2Z in Heq. destruct v2 as [v2 ?].
     unfold to_Z, of_Z in Heq. simpl in Heq. symmetry in Heq. revert Heq.
-    rewrite <- (Z.mod_small (Z.of_nat v2) (Z.of_nat ring_size)) at 2; try omega; [].
-    apply Zadd_small_mod_non_conf. omega.
+    rewrite <- (Z.mod_small (Z.of_nat v2) (Z.of_nat ring_size)) at 2; try lia; [].
+    apply Zadd_small_mod_non_conf. lia.
   + exfalso. match goal with H : _ = _ |- _ => rename H into Heq end.
     apply (f_equal to_Z) in Heq. revert Heq.
     rewrite 2 Z2Z. replace (to_Z v + 1) with (to_Z v - 1 + 2) by ring.
-    apply Zadd_small_mod_non_conf. omega.
+    apply Zadd_small_mod_non_conf. lia.
   + exfalso. match goal with H : _ = _ |- _ => rename H into Heq end.
     apply (f_equal to_Z) in Heq. revert Heq.
     rewrite Z2Z. rewrite <- (Z.mod_small _ _ (to_Z_small v)) at 2.
-    apply Zadd_small_mod_non_conf. omega.
+    apply Zadd_small_mod_non_conf. lia.
   + exfalso. match goal with H : _ = _ |- _ => rename H into Heq end.
     apply (f_equal to_Z) in Heq. revert Heq.
     rewrite Z2Z. rewrite <- (Z.mod_small _ _ (to_Z_small v)) at 1.
     replace (to_Z v) with (to_Z v - 1 + 1) at 1 by ring.
-    apply Zadd_small_mod_non_conf. omega.
+    apply Zadd_small_mod_non_conf. lia.
   + match goal with H : _ = of_Z (_ + 1) -> False |- _ => apply H end.
     apply to_Z_injective. rewrite 2 Z2Z, Zdiv.Zplus_mod_idemp_l.
     ring_simplify (to_Z v - 1 + 1). symmetry. apply Z.mod_small, to_Z_small.

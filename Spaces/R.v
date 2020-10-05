@@ -21,7 +21,7 @@
 
 Require Import Bool.
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Lia.
 Require Export Rbase Rbasic_fun.
 Require Import Sorting.
 Require Import List.

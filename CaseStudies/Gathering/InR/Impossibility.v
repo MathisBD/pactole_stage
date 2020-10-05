@@ -21,7 +21,7 @@ Require Import Reals.
 Require Import Psatz.
 Require Import Morphisms.
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Lia.
 Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
@@ -77,16 +77,16 @@ Lemma nG_ge_2 : 2 <= nG.
 Proof using even_nG nG_non_0.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
 inversion Heven. simpl.
-destruct n as [| [| ?]]; omega.
+destruct n as [| [| ?]]; lia.
 Qed.
 
 Lemma half_size_config : Nat.div2 nG > 0.
 Proof using even_nG nG_non_0.
 assert (Heven := even_nG). assert (H0 := nG_non_0).
 simpl. destruct n as [| [| ?]].
-- omega.
-- destruct Heven. omega.
-- simpl. omega.
+- lia.
+- destruct Heven. lia.
+- simpl. lia.
 Qed.
 
 (* We need to unfold [obs_is_ok] for rewriting *)
@@ -98,7 +98,7 @@ Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
 Proof using nG_non_0.
 intros [g | b] P HP.
 + apply HP.
-+ destruct b. omega.
++ destruct b. lia.
 Qed.
 
 Lemma no_byz_eq : forall config1 config2,
@@ -134,7 +134,7 @@ assert (Hcompat : Proper (PermutationA equiv ==> PermutationA equiv ==> Permutat
     rewrite Hperm2; try eassumption; []. now apply Hrec. }
 cbn [List.map]. rewrite from_elements_cons.
 rewrite IHl at 1.
-assert (H01 : 0 < 1) by omega.
+assert (H01 : 0 < 1) by lia.
 assert (Hperm := elements_add (x := e) (m := from_elements (List.map (fun x : location => (x, 1)) l))
                               (or_introl H01)).
 rewrite (Hcompat _ _ (reflexivity _) _ _ Hperm).
@@ -220,7 +220,7 @@ Local Opaque G B.
     the first one will be the one that [g0] belongs to.
     The actual value of g0 is irrelevant so we make its body opaque.  *)
 Definition g0 : G.
-Proof using nG_non_0. exists 0. generalize nG_non_0. intro. omega. Qed.
+Proof using nG_non_0. exists 0. generalize nG_non_0. intro. lia. Qed.
 
 (** *  Proof of the impossiblity of gathering  **)
 
@@ -255,7 +255,7 @@ destruct (get_location (config (Good g)) =?= pt1) as [Heq1 | Heq1].
   exists (build_similarity H01 Hdiff).
   - unfold observation0.
     rewrite Hobs, map_add, map_singleton, build_similarity_eq1, build_similarity_eq2; autoclass.
-    intro. rewrite 2 add_spec, 2 singleton_spec. do 2 destruct_match; hnf in *; omega.
+    intro. rewrite 2 add_spec, 2 singleton_spec. do 2 destruct_match; hnf in *; lia.
   - rewrite build_similarity_eq1. symmetry.
     assert (Hin := pos_in_config config origin (Good g)).
     rewrite Hobs, add_In, In_singleton in Hin. hnf in Heq1. tauto.
@@ -306,19 +306,19 @@ assert (Heven : Nat.Even nG).
   + apply Bool.not_true_is_false. intro Hodd.
     rewrite Hsim, map_cardinal in Hcardinal; autoclass; [].
     unfold observation0 in Hcardinal. rewrite cardinal_add, cardinal_singleton in Hcardinal.
-    rewrite (Nat.div2_odd nG) in Hcardinal at 3. rewrite Hodd in *. simpl in *. omega. }
+    rewrite (Nat.div2_odd nG) in Hcardinal at 3. rewrite Hodd in *. simpl in *. lia. }
 repeat split; trivial; [|].
 + rewrite <- Nat.even_spec in Heven.
   assert (HnG := nG_non_0). simpl nG in *.
-  destruct n as [| [| ?]]; simpl; discriminate || omega || now elim HnG.
+  destruct n as [| [| ?]]; simpl; discriminate || lia || now elim HnG.
 + exists (sim origin), (sim one).
   repeat split.
   - intro Heq. apply Similarity.injective in Heq. symmetry in Heq. revert Heq. apply non_trivial.
   - rewrite Hsim, map_injective_spec; autoclass; try apply Similarity.injective; [].
-    unfold observation0. rewrite add_same, singleton_other; try omega; [].
+    unfold observation0. rewrite add_same, singleton_other; try lia; [].
     simpl. lra.
   - rewrite Hsim, map_injective_spec; autoclass; try apply Similarity.injective; [].
-    unfold observation0. rewrite add_other, singleton_same; try omega; [].
+    unfold observation0. rewrite add_other, singleton_same; try lia; [].
     simpl. lra.
 Qed.
 
@@ -856,10 +856,10 @@ assert (Hcase : forall id, get_location (config id) = pt1 \/ get_location (confi
 (* Let [g1] and [g2] be robots mapped to these two locations. *)
 assert (Hin1 : In pt1 (!! config)).
 { rewrite Hobs, add_In. left. split; trivial; reflexivity. }
-rewrite obs_from_config_In in Hin1. destruct Hin1 as [[g1 | []] Hg1]; try omega; [].
+rewrite obs_from_config_In in Hin1. destruct Hin1 as [[g1 | []] Hg1]; try lia; [].
 assert (Hin2 : In pt2 (!! config)).
 { rewrite Hobs, add_In, In_singleton. right. split; trivial; reflexivity. }
-rewrite obs_from_config_In in Hin2. destruct Hin2 as [[g2 | []] Hg2]; try omega; [].
+rewrite obs_from_config_In in Hin2. destruct Hin2 as [[g2 | []] Hg2]; try lia; [].
 (* To ease the rest of the proof, we assume that pt1 is the location of [g0],
    swapping them if necessary. *)
 assert (Hg : exists g, get_location (config (Good g0)) =/= get_location (config (Good g))).
@@ -914,10 +914,10 @@ assert (Hcase : forall id, get_location (config id) = pt1 \/ get_location (confi
 (* Let [g1] and [g2] be robots mapped to these two locations. *)
 assert (Hin1 : In pt1 (!! config)).
 { rewrite Hobs, add_In. left. split; trivial; reflexivity. }
-rewrite obs_from_config_In in Hin1. destruct Hin1 as [[g1' | []] Hg1]; try omega; [].
+rewrite obs_from_config_In in Hin1. destruct Hin1 as [[g1' | []] Hg1]; try lia; [].
 assert (Hin2 : In pt2 (!! config)).
 { rewrite Hobs, add_In, In_singleton. right. split; trivial; reflexivity. }
-rewrite obs_from_config_In in Hin2. destruct Hin2 as [[g2' | []] Hg2]; try omega; [].
+rewrite obs_from_config_In in Hin2. destruct Hin2 as [[g2' | []] Hg2]; try lia; [].
 (* To ease the rest of the proof, we assume that pt1 is the location of [g0],
    swapping them if necessary. *)
 assert (Hg : exists g, get_location (config (Good g0)) =/= get_location (config (Good g))).
@@ -1041,7 +1041,7 @@ Theorem kFair_bad_demon : forall config, invalid config -> kFair 1 (bad_demon co
 Proof using .
 intros. unfold bad_demon.
 destruct (Rdec move 1).
-- apply kFair_mono with 0%nat. exact kFair_bad_demon1. omega.
+- apply kFair_mono with 0%nat. exact kFair_bad_demon1. lia.
 - now apply kFair_bad_demon2.
 Qed.
 
@@ -1076,4 +1076,6 @@ Qed.
 
 End ImpossibilityProof.
 
-Print Assumptions noGathering.
+(* Prefer not to leave this here, so that make -vos does not fail here.
+See Impossibility_Assumptions.v *)
+(* Print Assumptions noGathering. *)

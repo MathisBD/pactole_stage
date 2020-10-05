@@ -11,7 +11,7 @@
 
 (* Require Import MMapInterface. *)
 Require Import Arith_base.
-Require Import Omega.
+Require Import Lia.
 Require Import PArith.
 Require Import Bool.
 Require Import RelationPairs.
@@ -160,8 +160,8 @@ Notation "s  [c=]  t" := (Subset s t) (at level 70, no associativity).
 
 Lemma m_add_same : forall x n s, (m_add x n s)[x] = n + s[x].
 Proof using MapSpec.
-intros x n s. unfold m_add. simpl. destruct (Nat.eq_dec n 0). omega.
-unfold m_multiplicity at 1. rewrite add_eq_o, Nat2Pos.id; omega || reflexivity.
+intros x n s. unfold m_add. simpl. destruct (Nat.eq_dec n 0). lia.
+unfold m_multiplicity at 1. rewrite add_eq_o, Nat2Pos.id; lia || reflexivity.
 Qed.
 
 Lemma m_add_other : forall x y n s, x =/= y -> (m_add y n s)[x] = s[x].
@@ -294,8 +294,8 @@ Qed.
 (** Specification of [add] *)
 Global Instance add_spec : AddSpec elt _.
 Proof using MapSpec. split.
-+ intros x n s. unfold add. simpl. unfold m_add. destruct (Nat.eq_dec n 0). omega.
-  unfold m_multiplicity at 1. rewrite add_eq_o, Nat2Pos.id; reflexivity || omega.
++ intros x n s. unfold add. simpl. unfold m_add. destruct (Nat.eq_dec n 0). lia.
+  unfold m_multiplicity at 1. rewrite add_eq_o, Nat2Pos.id; reflexivity || lia.
 + intros x y n s Hyx. unfold add. simpl. unfold m_add. destruct (Nat.eq_dec n 0); trivial; [].
   unfold m_multiplicity at 1 3. rewrite add_neq_o; reflexivity || now symmetry.
 Qed.
@@ -303,10 +303,10 @@ Qed.
 (** Specification of [remove] *)
 Global Instance remove_spec : RemoveSpec elt _.
 Proof using MapSpec. split.
-+ intros x n s. unfold remove. simpl. destruct (Nat.eq_dec n 0). omega.
++ intros x n s. unfold remove. simpl. destruct (Nat.eq_dec n 0). lia.
   destruct (le_lt_dec (m_multiplicity x s) n) as [Hle | Hlt]; unfold m_multiplicity at 1; simpl.
-  - rewrite remove_eq_o; reflexivity || omega.
-  - rewrite add_eq_o, Nat2Pos.id; reflexivity || omega.
+  - rewrite remove_eq_o; reflexivity || lia.
+  - rewrite add_eq_o, Nat2Pos.id; reflexivity || lia.
 + intros x y n s Hyx. unfold remove. simpl. destruct (Nat.eq_dec n 0); trivial.
   destruct (le_lt_dec (m_multiplicity x s) n) as [Hle | Hlt]; unfold m_multiplicity at 1; simpl.
   - rewrite remove_neq_o; reflexivity || now symmetry.
@@ -336,7 +336,7 @@ Proof using MapSpec. split.
     - intros [n Habs]. now rewrite find_mapsto_iff, Hin in Habs.
 * intros x s s'. unfold lub. simpl.
   replace (max (m_multiplicity x s) (m_multiplicity x s'))
-    with (m_multiplicity x s - m_multiplicity x s' + m_multiplicity x s') by (apply Max.max_case_strong; omega).
+    with (m_multiplicity x s - m_multiplicity x s' + m_multiplicity x s') by (apply Max.max_case_strong; lia).
   destruct (find x s) eqn:Hin.
   + erewrite (fold_add); eauto.
     -unfold multiplicity. simpl. unfold m_multiplicity. now rewrite Hin.
@@ -404,7 +404,7 @@ split; trivial.
   unfold m_multiplicity at 3. setoid_rewrite empty_o.
   split; intro Hle.
   + intro x. destruct (find x s) eqn:Hin.
-    - cut (s[x] - s'[x] = 0). omega. rewrite <- diff_spec. simpl.
+    - cut (s[x] - s'[x] = 0). lia. rewrite <- diff_spec. simpl.
       erewrite fold_add; eauto; [|].
       ++ unfold multiplicity. simpl. unfold m_multiplicity at 2. rewrite empty_o, plus_0_r.
          specialize (Hle x). erewrite fold_add in Hle; eauto.
@@ -412,11 +412,11 @@ split; trivial.
             now rewrite empty_o, plus_0_r in Hle.
          -- intros ? ? Heq ? ? ?. subst. now rewrite Heq.
       ++ intros ? ? Heq ? ? ?. subst. now rewrite Heq.
-    - simpl. unfold m_multiplicity at 1. rewrite Hin. omega.
+    - simpl. unfold m_multiplicity at 1. rewrite Hin. lia.
   + intro x. destruct (find x s) eqn:Hin.
     - erewrite fold_add; eauto.
       -- unfold multiplicity. simpl. unfold m_multiplicity at 2. rewrite empty_o, plus_0_r.
-         specialize (Hle x). simpl in Hle. unfold m_multiplicity at 1 in Hle. rewrite Hin in Hle. omega.
+         specialize (Hle x). simpl in Hle. unfold m_multiplicity at 1 in Hle. rewrite Hin in Hle. lia.
       -- intros ? ? Heq ? ? ?. subst. now rewrite Heq.
     - erewrite fold_add_out; eauto.
       -- unfold multiplicity. simpl. unfold m_multiplicity. now rewrite empty_o.
@@ -438,9 +438,9 @@ Proof using MapSpec. split.
     rewrite <- elements_mapsto_iff, find_mapsto_iff in Hin.
     unfold m_multiplicity. rewrite <- Heq1, Hin. split; trivial. apply Pos2Nat.is_pos.
   + exists (x, Pos.of_nat n). destruct H as [H1 H2]. simpl in *. split.
-    - split; hnf; simpl. reflexivity. apply Nat2Pos.id. omega.
+    - split; hnf; simpl. reflexivity. apply Nat2Pos.id. lia.
     - rewrite <- elements_mapsto_iff, find_mapsto_iff. subst. unfold m_multiplicity in *.
-      destruct (find x s). now rewrite Pos2Nat.id. omega.
+      destruct (find x s). now rewrite Pos2Nat.id. lia.
   + autoclass.
   + autoclass.
   + clear. intros [] [] []. intros. split; simpl in *. assumption. now subst.
@@ -551,7 +551,7 @@ split; trivial.
     - now inversion Habs.
     - clear -Hs. simpl in Hs. revert p0 Hs. induction l. discriminate. intros. simpl in Hs. now apply (IHl _ Hs).
   + destruct (choose s) eqn:H; trivial; [].
-    apply Hchoose_Some in H. rewrite Hs in H. unfold In in H. rewrite empty_spec in H. omega.
+    apply Hchoose_Some in H. rewrite Hs in H. unfold In in H. rewrite empty_spec in H. lia.
 Qed.
 
 (** Specification of [filter] *)
@@ -583,7 +583,7 @@ induction (FMapInterface.elements s); simpl; intro s'; simpl in Hs.
   destruct (equiv_dec (x, Pos.of_nat (multiplicity x s)) (y, m)) as [Heq | Hneq].
   + destruct Heq as [H1 H2]. simpl in H1, H2 |- *. rewrite H1 in *. subst m.
     rewrite (fold_nfilter_out_list (fun x y => f x (Pos.to_nat y)) _ (Pos.of_nat (multiplicity y s))).
-    - cbn in Hin. rewrite Nat2Pos.id; try omega; [].
+    - cbn in Hin. rewrite Nat2Pos.id; try lia; [].
       destruct (f y (m_multiplicity y s)) eqn:Htest; now rewrite ?m_add_same, H1.
     - inversion_clear Hdup. intro Habs. apply H. rewrite InA_map_iff; autoclass.
       -- exists (y, Pos.of_nat (m_multiplicity y s)). split; reflexivity || eassumption.
@@ -623,11 +623,11 @@ assert (Hnfilter : forall (f : elt -> nat -> bool) (x : elt) (s : multiset elt),
   destruct (m_multiplicity x s) eqn:Hin.
   + rewrite nfilter_spec_out.
     - unfold multiplicity. simpl. unfold m_multiplicity. rewrite empty_o. now destruct (f x 0).
-    - unfold In. simpl. omega.
+    - unfold In. simpl. lia.
   + rewrite nfilter_spec_In.
     - unfold multiplicity. simpl. unfold m_multiplicity at 3 4. now rewrite empty_o, Hin, plus_0_r.
     - assumption.
-    - unfold In. simpl. omega.
+    - unfold In. simpl. lia.
 * split; trivial.
   intros f x s Hf. change (filter f s) with (nfilter (fun x _ => f x) s).
   apply Hnfilter. repeat intro. now apply Hf.
@@ -688,7 +688,7 @@ intros f s b Hf. unfold m_fold. rewrite fold_1. unfold For_all. split; intro H.
 + destruct H as [Hb H]. subst b.
   assert (forall xn, InA eq_key_elt xn (FMapInterface.elements s) -> f (fst xn) (Pos.to_nat (snd xn)) = true).
   { intros [x n] Hx. simpl. rewrite Melements_multiplicity in Hx. destruct Hx as [Hm Hp].
-    setoid_rewrite <- Pos2Nat.id. rewrite <- Hm, Nat2Pos.id. apply H. unfold In. simpl. now setoid_rewrite Hm. omega. }
+    setoid_rewrite <- Pos2Nat.id. rewrite <- Hm, Nat2Pos.id. apply H. unfold In. simpl. now setoid_rewrite Hm. lia. }
   clear H. revert H0. induction (FMapInterface.elements s); simpl; intro Hin; trivial.
   rewrite Hin. apply IHl. intros x Hx. apply Hin. now right. now left.
 Qed.
@@ -702,8 +702,8 @@ assert (Hequiv : Exists (fun x n => f x n = true) s <->
         exists x, exists n, InA eq_key_elt (x, n) (FMapInterface.elements s) /\ f x (Pos.to_nat n) = true).
 { split; intros [x Hx].
   + destruct Hx as [Hin Hfx]. exists x. exists (Pos.of_nat (m_multiplicity x s)). split.
-    - rewrite Melements_multiplicity. unfold In in Hin. simpl in *. rewrite Nat2Pos.id. now split. omega.
-    - rewrite Nat2Pos.id. assumption. unfold In in Hin. simpl in Hin. omega.
+    - rewrite Melements_multiplicity. unfold In in Hin. simpl in *. rewrite Nat2Pos.id. now split. lia.
+    - rewrite Nat2Pos.id. assumption. unfold In in Hin. simpl in Hin. lia.
   + destruct Hx as [n [Hin Hfx]]. exists x. rewrite Melements_multiplicity in Hin. destruct Hin as [Hn Hp]. split.
     - simpl in *. unfold In. simpl. now rewrite Hn.
     - simpl in *. now rewrite Hn. }
@@ -769,7 +769,7 @@ induction (FMapInterface.elements s); simpl; intros [s1 s2]; simpl in Hs.
   destruct (equiv_dec (x, Pos.of_nat (multiplicity x s)) (y, m)) as [Heq | Hneq].
   + destruct Heq as [H1 H2]. simpl in H1, H2 |- *. rewrite H1 in *. subst m.
     rewrite (fold_npartition_fst_out_list f _ (Pos.of_nat (multiplicity y s))).
-    - rewrite Nat2Pos.id; try omega; [].
+    - rewrite Nat2Pos.id; try lia; [].
       destruct (f y (m_multiplicity y s)) eqn:Htest; simpl; now rewrite ?m_add_same, H1.
     - inversion_clear Hdup. intro Habs. apply H. rewrite InA_map_iff.
       -- exists (y, Pos.of_nat (multiplicity y s)). split; eauto; reflexivity.
@@ -843,7 +843,7 @@ induction (FMapInterface.elements s); simpl; intros [s1 s2]; simpl in Hs.
   destruct (equiv_dec (x, Pos.of_nat (multiplicity x s)) (y, m)) as [Heq | Hneq].
   + destruct Heq as [H1 H2]. simpl in H1, H2 |- *. rewrite H1 in *. subst m.
     rewrite (fold_npartition_snd_out_list f _ (Pos.of_nat (multiplicity y s))).
-    - rewrite Nat2Pos.id; try omega; [].
+    - rewrite Nat2Pos.id; try lia; [].
       destruct (f y (m_multiplicity y s)) eqn:Htest; simpl; now rewrite ?m_add_same, H1.
     - inversion_clear Hdup. intro Habs. apply H. rewrite InA_map_iff.
       -- exists (y, Pos.of_nat (multiplicity y s)). split; reflexivity || eassumption.
@@ -887,21 +887,21 @@ Proof using MapSpec. split.
   destruct (m_multiplicity x s) eqn:Hin.
   + rewrite npartition_spec_fst_out.
     - simpl. unfold multiplicity. simpl. unfold m_multiplicity. rewrite empty_o. now destruct (f x 0).
-    - unfold In. simpl. omega.
+    - unfold In. simpl. lia.
   + setoid_rewrite npartition_spec_fst_In.
     - simpl. unfold m_multiplicity at 3 4. now rewrite empty_o, Hin, plus_0_r.
     - assumption.
-    - unfold In. simpl. omega.
+    - unfold In. simpl. lia.
 * intros f s Hf x. rewrite nfilter_spec.
   + unfold npartition. simpl.
     destruct (m_multiplicity x s) eqn:Hin.
     - rewrite npartition_spec_snd_out.
       -- simpl. unfold m_multiplicity. rewrite empty_o. now destruct (f x 0).
-      -- unfold In. simpl. omega.
+      -- unfold In. simpl. lia.
     - rewrite npartition_spec_snd_In.
       -- simpl. unfold m_multiplicity at 2 4. rewrite empty_o, Hin, plus_0_r. now destruct (f x (S n)).
       -- assumption.
-      -- unfold In. simpl. omega.
+      -- unfold In. simpl. lia.
   + intros ? ? Heq ? ? ?. subst. now rewrite Heq.
 Qed.
 

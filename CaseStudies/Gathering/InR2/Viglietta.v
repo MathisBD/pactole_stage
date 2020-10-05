@@ -471,6 +471,4 @@ destruct (gathered_at_dec config (get_location (config (Good r0)))) as [Hgather 
 + intros [pt Hpt]. apply Hgather. now rewrite (Hpt r0).
 Qed.
 
-Print Assumptions Viglietta_correct.
-
 End RDV.

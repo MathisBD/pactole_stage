@@ -20,7 +20,7 @@
 
 
 Require Import Arith.Div2.
-Require Import Omega.
+Require Import Lia.
 Require Export SetoidDec.
 Require Export Pactole.Util.Preliminary.
 Require Export Pactole.Setting.

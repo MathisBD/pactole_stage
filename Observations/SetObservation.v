@@ -19,7 +19,7 @@
 (**************************************************************************)
 
 Require Import Utf8_core.
-Require Import Omega.
+Require Import Lia.
 Require Import SetoidList.
 Require Import SetoidDec.
 Require Import SetoidClass.
@@ -46,12 +46,12 @@ Ltac fsetdec := set_iff; tauto.
 Definition make_set l := fold_left (fun acc x => add x acc) l empty.
 
 Lemma make_set_nil : make_set nil == empty.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma make_set_cons_aux : forall l x m,
   List.fold_left (fun acc y => add y acc) (x :: l) m ==
   add x (List.fold_left (fun acc x => add x acc) l m).
-Proof.
+Proof using .
 intro l. induction l as [| e l]; intros x s.
 + reflexivity.
 + simpl fold_left.
@@ -62,10 +62,10 @@ intro l. induction l as [| e l]; intros x s.
 Qed.
 
 Lemma make_set_cons : forall x l, make_set (x :: l) == add x (make_set l).
-Proof. intros x l. unfold make_set. now rewrite make_set_cons_aux. Qed.
+Proof using . intros x l. unfold make_set. now rewrite make_set_cons_aux. Qed.
 
 Lemma make_set_empty : forall l, make_set l == empty <-> l = nil.
-Proof.
+Proof using .
 intro l. split; intro Hl.
 + destruct l as [| x l]. reflexivity. rewrite make_set_cons in Hl.
   specialize (Hl x). rewrite add_spec, empty_spec in Hl.
@@ -74,14 +74,14 @@ intro l. split; intro Hl.
 Qed.
 
 Lemma make_set_app : forall l l', make_set (l ++ l') == union (make_set l) (make_set l').
-Proof.
+Proof using .
 induction l as [| e l]; intros l'.
 + rewrite make_set_nil. simpl. intro. fsetdec.
 + simpl List.app. rewrite 2 make_set_cons, IHl. intro. fsetdec.
 Qed.
 
 Instance make_set_compat : Proper (PermutationA equiv ==> equiv) make_set.
-Proof.
+Proof using .
 intro l1. induction l1 as [| x l1]; intros l2 Hperm.
 + apply (PermutationA_nil _) in Hperm. now subst.
 + assert (Hx := @PermutationA_InA_inside _ _ _ x _ _ Hperm).
@@ -95,7 +95,7 @@ Qed.
 
 Lemma make_set_PermutationA : forall x l,
   exists l' n, ~InA equiv x l' /\ PermutationA equiv l (alls x n ++ l').
-Proof.
+Proof using H.
 intros x l. induction l as [| e l].
 * exists nil, 0. split. now auto. simpl. reflexivity.
 * destruct IHl as [l' [n [Hin Hperm]]]. destruct (e =?= x) as [Heq | Heq].
@@ -106,26 +106,26 @@ intros x l. induction l as [| e l].
 Qed.
 
 Lemma make_set_alls : forall x n, 0 < n -> make_set (alls x n) == singleton x.
-Proof.
+Proof using .
 intros x n Hn. induction n; simpl alls.
 + inversion Hn.
 + rewrite make_set_cons. destruct n.
   - simpl alls. rewrite make_set_nil. intro. fsetdec.
-  - rewrite IHn. intro. fsetdec. omega.
+  - rewrite IHn. intro. fsetdec. lia.
 Qed.
 
 Theorem make_set_spec : forall x l, In x (make_set l) <-> InA equiv x l.
-Proof.
+Proof using .
 intros x l. induction l.
 + rewrite make_set_nil, InA_nil. fsetdec.
 + rewrite make_set_cons, add_spec, IHl, InA_cons. split; intros [|]; auto.
 Qed.
 
 Theorem cardinal_make_set : forall l, cardinal (make_set l) <= length l.
-Proof.
+Proof using .
 induction l as [| x l]; simpl.
 + now rewrite make_set_nil, cardinal_empty.
-+ transitivity (S (cardinal (make_set l))); try omega; [].
++ transitivity (S (cardinal (make_set l))); try lia; [].
   rewrite make_set_cons, 2 cardinal_spec.
   change (S (length (elements (make_set l))))
     with (length (x :: elements (make_set l))).
@@ -136,7 +136,7 @@ induction l as [| x l]; simpl.
 Qed.
 
 Theorem cardinal_NoDupA_make_set : forall l, NoDupA equiv l -> cardinal (make_set l) = length l.
-Proof.
+Proof using .
 intros l Hl. induction l as [| x l]; simpl.
 - now rewrite make_set_nil, cardinal_empty.
 - inv Hl. rewrite <- IHl; trivial; [].
@@ -146,7 +146,7 @@ Qed.
 
 Theorem make_set_map : forall f, Proper (equiv ==> equiv) f ->
   forall l, make_set (List.map f l) == map f (make_set l).
-Proof.
+Proof using .
 intros f Hf l. induction l; simpl List.map.
 + now rewrite make_set_nil, map_empty.
 + do 2 rewrite make_set_cons. now rewrite map_add, IHl.
@@ -189,13 +189,13 @@ Notation obs_from_config := (@obs_from_config _ _ _ _ set_observation).
 
 Lemma obs_from_config_ignore_snd : forall ref_state config state,
   obs_from_config config state == obs_from_config config ref_state.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 Lemma obs_from_config_map : forall f Pf, Proper (equiv ==> equiv) f ->
   forall config pt,
   map f (obs_from_config config pt)
   == obs_from_config (map_config (lift (existT _ f Pf)) config) (lift (existT _ f Pf) pt).
-Proof.
+Proof using .
 repeat intro. unfold obs_from_config, set_observation.
 rewrite config_list_map, map_map, <- make_set_map, map_map.
 + apply make_set_compat, eqlistA_PermutationA_subrelation.
@@ -209,7 +209,7 @@ Qed.
 
 Theorem cardinal_obs_from_config : forall config state,
   cardinal (obs_from_config config state) <= nG + nB.
-Proof.
+Proof using .
 intros. unfold obs_from_config, set_observation.
 etransitivity; try apply cardinal_make_set; [].
 now rewrite map_length, config_list_length.
@@ -217,7 +217,7 @@ Qed.
 
 Property pos_in_config : forall config state id,
   In (get_location (config id)) (obs_from_config config state).
-Proof.
+Proof using .
 intros config state id. unfold obs_from_config. simpl.
 rewrite make_set_spec, InA_map_iff; autoclass; [].
 eexists. split; auto; []. apply config_list_InA. now exists id.
@@ -225,7 +225,7 @@ Qed.
 
 Property obs_from_config_In : forall config pt l,
   In l (obs_from_config config pt) <-> exists id, get_location (config id) == l.
-Proof.
+Proof using .
 intros config pt l. split; intro Hin.
 + assert (Heq := obs_from_config_spec config pt).
   unfold obs_is_ok, obs_from_config, set_observation in *.

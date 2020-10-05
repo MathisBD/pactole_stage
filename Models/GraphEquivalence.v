@@ -9,7 +9,7 @@
 
 Set Implicit Arguments.
 Require Import Utf8.
-Require Import Omega.
+Require Import Lia.
 Require Import Equalities.
 Require Import Morphisms.
 Require Import RelationPairs.
@@ -116,7 +116,8 @@ Proof.
   split; try reflexivity; []. cbn -[equiv]. apply stable_threshold_inverse, proj2_sig.
 + intros config1 config2 Hconfig gg g ?. subst gg. now rewrite Hconfig.
 + intros config1 config2 Hconfig gg g ? traj1 traj2 Htraj. subst gg. now rewrite Hconfig, Htraj.
-+ intros config1 config2 Hconfig id1 id2 Hid. simpl in Hid. subst id1. now rewrite Hconfig.
++ intros config1 config2 Hconfig id1 id2 Hid. simpl in Hid. subst id1.
+  now rewrite Hconfig.
 Defined.
 
 Instance da_D2C_compat : Proper (equiv ==> equiv) da_D2C.
@@ -435,17 +436,20 @@ simpl activate. destruct_match.
       destruct (precondition_satisfied da config g) as [iso [Hiso'' Ht]].
       simpl projT1 in *. clear -Hiso Hiso'' Hiso' HCiso.
       intro v. rewrite <- (Hiso' v). reflexivity. }
-    unfold lift, InfoG, InfoV. simpl projT1. Time rewrite Hnew_local_state.
+    unfold lift, InfoG, InfoV. simpl projT1.
+    Time setoid_rewrite Hnew_local_state.
     destruct Dnew_local_state as [[v e] Hvalid].
     unfold state_V2G. simpl fst. simpl snd. simpl proj2_sig.
     unfold liftG. cbn [projT2]. repeat split.
     - rewrite HCiso'. cbn. f_equiv. symmetry. apply Hiso.
     - unfold equiv. cbn -[equiv precondition_satisfied_inv].
-      Time rewrite <- 2 (proj1 (iso_morphism _ e)), HCiso'.
+      Time setoid_rewrite <- (proj1 (iso_morphism _ e)).
+      Time setoid_rewrite HCiso'.
       transitivity (inverse Diso (src e)); try apply HDiso'; [].
       f_equiv. apply inverse_compat. now symmetry.
     - unfold equiv. cbn -[equiv precondition_satisfied_inv].
-      Time rewrite <- 2 (proj2 (iso_morphism _ e)), HCiso'.
+      Time setoid_rewrite <- (proj2 (iso_morphism _ e)).
+      Time setoid_rewrite HCiso'.
       transitivity (inverse Diso (tgt e)); try apply HDiso'; [].
       f_equiv. apply inverse_compat. now symmetry.
     - hnf. rewrite <- 2 iso_threshold.
@@ -754,7 +758,15 @@ simpl activate. destruct_match_eq Hactive.
          (* destruct takes too long... *)
          assert (threshold (Bijection.section (iso_E (projT1 (precondition_satisfied_inv da config g))) e)
                  <= proj_ratio (proj_strict_ratio p)) by now rewrite Htest.
-         Time destruct_match; try contradiction; []. (* 230 sec!!!! *)
+
+         (* too slow, case is faster *)
+         (* Time destruct_match; try contradiction; []. (* 230 sec!!!! *) *)
+         Time match goal with
+              | |- (match ?x with | _ => _ end) == _ => case x
+              end.
+         all:swap 1 2.
+         { intros notH.
+           apply (absurd _ H);assumption. }
          split; simpl fst; simpl snd.
          -- transitivity (tgt (Bijection.section (iso_E (inverse Ciso)) e)); [apply HCisoE |].
             rewrite Hv, <- (proj2 (iso_morphism _ e)). cbn -[equiv].
@@ -767,7 +779,14 @@ simpl activate. destruct_match_eq Hactive.
       ++ destruct Hnew_local_state as [Hv He]. simpl fst in Hv. simpl snd in He.
          assert (¬ threshold (Bijection.section (iso_E (projT1 (precondition_satisfied_inv da config g))) e)
                    <= proj_ratio (proj_strict_ratio p)) by now rewrite Htest.
-         Time destruct_match; try contradiction; []. (* 230 sec!!!! *)
+
+         (* too slow, case is faster *)
+         (* Time destruct_match; try contradiction; []. (* 230 sec!!!! *) *)
+         Time match goal with
+              | |- (match ?x with | _ => _ end) == _ => case x
+              end.
+         { intros notH.
+           apply (absurd _ notH);assumption. }
          split; simpl fst; simpl snd.
          -- rewrite <- (proj1 (iso_morphism _ _)), Hv.
             transitivity (Bijection.section (iso_V (inverse Ciso)) (src e)); [apply HCiso' |].

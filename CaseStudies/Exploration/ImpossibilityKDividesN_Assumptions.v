@@ -1,0 +1,2 @@
+Require Pactole.CaseStudies.Exploration.ImpossibilityKDividesN.
+Print Assumptions ImpossibilityKDividesN.no_exploration.

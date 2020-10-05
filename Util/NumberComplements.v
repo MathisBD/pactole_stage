@@ -21,7 +21,7 @@
 
 Require Import SetoidDec.
 Require Import Reals.
-Require Import Omega Psatz.
+Require Import Lia Psatz.
 
 
 (* ******************************** *)
@@ -235,7 +235,7 @@ Lemma div2_le_compat : Proper (le ==> le) Nat.div2.
 Proof.
 intro n. induction n using nat_ind2; intros m Heq; auto with arith.
 destruct m as [| [| m]]; try now inversion Heq.
-simpl. do 2 apply le_S_n in Heq. apply IHn in Heq. omega.
+simpl. do 2 apply le_S_n in Heq. apply IHn in Heq. lia.
 Qed.
 
 Lemma even_div2 : forall n, Nat.Even n -> Nat.div2 n + Nat.div2 n = n.
@@ -257,25 +257,25 @@ Proof.
 intros k n Hn.
 destruct (Z.eq_dec (k mod n) (n - 1)) as [Heq | Heq].
 + right. rewrite <- Zdiv.Zplus_mod_idemp_l, Heq.
-  ring_simplify (n - 1 + 1). split; trivial; []. apply Z.mod_same. omega.
+  ring_simplify (n - 1 + 1). split; trivial; []. apply Z.mod_same. lia.
 + left. rewrite <- Zdiv.Zplus_mod_idemp_l. apply Z.mod_small.
-  assert (Hle := Z.mod_pos_bound k n Hn). omega.
+  assert (Hle := Z.mod_pos_bound k n Hn). lia.
 Qed.
 
 Lemma Zopp_mod : forall k n, 0 <= k < n -> (-k) mod n = (n - (k mod n)) mod n.
 Proof.
 intros k n Hn. destruct (Z.eq_dec k 0).
-- subst. rewrite 2 Z.mod_0_l, Z.sub_0_r, Z.mod_same; omega.
-- rewrite Z.mod_opp_l_nz, Z.mod_small; try rewrite Z.mod_small; omega.
+- subst. rewrite 2 Z.mod_0_l, Z.sub_0_r, Z.mod_same; lia.
+- rewrite Z.mod_opp_l_nz, Z.mod_small; try rewrite Z.mod_small; lia.
 Qed.
 
 Lemma Zadd_small_mod_non_conf : forall k n x, (0 < k < n -> (x + k) mod n <> x mod n)%Z.
 Proof.
-intros k n x ? Habs. assert (Hn : (0 < n)%Z) by omega.
+intros k n x ? Habs. assert (Hn : (0 < n)%Z) by lia.
 assert (Hk : (k mod n = 0)%Z).
 { replace k with (x + k - x)%Z by ring.
   rewrite Zdiv.Zminus_mod, Habs, Zminus_diag, Z.mod_0_l; lia. }
-rewrite Z.mod_small in Hk; omega.
+rewrite Z.mod_small in Hk; lia.
 Qed.
 
 Lemma Zsub_mod_is_0 : forall k k' n, 0 <= k < n -> 0 <= k' < n -> ((k - k') mod n = 0 <-> k = k').

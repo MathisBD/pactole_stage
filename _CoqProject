@@ -2,6 +2,9 @@
 -Q . Pactole
 -arg -w
 -arg -notation-overridden
+# Spaces in args are not supported, see Makefile.local
+#-arg -set
+#-arg "Suggest Proof Using=true"
 
 ## External libraries
 #Util/FSets/OrderedType.v
@@ -37,6 +40,7 @@ Setting.v
 Models/Flexible.v
 Models/Rigid.v
 Models/RigidFlexibleEquivalence.v
+Models/RigidFlexibleEquivalence_Assumptions.v
 Models/DiscreteGraph.v
 Models/Similarity.v
 Models/ContinuousGraph.v
@@ -66,23 +70,33 @@ Observations/PreCompositionObservation.v
 
 ## Case Study: Convergence
 CaseStudies/Convergence/Impossibility_2G_1B.v
+CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v
 CaseStudies/Convergence/Algorithm_noB.v
 
 ## Case Study: Gathering
 CaseStudies/Gathering/Definitions.v
 CaseStudies/Gathering/WithMultiplicity.v
 CaseStudies/Gathering/Impossibility.v
+CaseStudies/Gathering/Impossibility_Assumptions.v
 CaseStudies/Gathering/InR/Impossibility.v
+CaseStudies/Gathering/InR/Impossibility_Assumptions.v
 CaseStudies/Gathering/InR/Algorithm.v
+CaseStudies/Gathering/InR/Algorithm_Assumptions.v
 CaseStudies/Gathering/InR2/Algorithm.v
+CaseStudies/Gathering/InR2/Algorithm_Assumptions.v
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v
+CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v
 CaseStudies/Gathering/InR2/Peleg.v
+CaseStudies/Gathering/InR2/Peleg_Assumptions.v
 CaseStudies/Gathering/InR2/Viglietta.v
+CaseStudies/Gathering/InR2/Viglietta_Assumptions.v
 
 ## Case Study: Ring Exploration
 CaseStudies/Exploration/Definitions.v
 CaseStudies/Exploration/ImpossibilityKDividesN.v
+CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v
 CaseStudies/Exploration/Tower.v
+CaseStudies/Exploration/Tower_Assumptions.v
 
 ## Case Study: Volume
 CaseStudies/Volumes/NoCollisionAndPath.v

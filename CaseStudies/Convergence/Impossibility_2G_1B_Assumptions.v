@@ -1,0 +1,2 @@
+Require Pactole.CaseStudies.Convergence.Impossibility_2G_1B.
+Print Assumptions Impossibility_2G_1B.noConvergence.

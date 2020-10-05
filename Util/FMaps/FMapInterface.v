@@ -365,13 +365,13 @@ Definition zadjust_1 `{H : @FMapSpecs key key_Setoid key_EqDec F} :=
 Definition zadjust_2 `{H : @FMapSpecs key key_Setoid key_EqDec F} :=
   @adjust_2 _ _ _ _ (@FFMapSpecs_adjust _ _ _ _ H). *)
 
-Hint Immediate @zMapsTo_1 @zmem_2 @zis_empty_2
-  @zmap_2 @zmapi_2 @zadd_3 @zremove_3 @zfind_2
-(*   @zinsert_4 @zadjust_3 *)
+Hint Immediate zMapsTo_1 zmem_2 zis_empty_2
+  zmap_2 zmapi_2 zadd_3 zremove_3 zfind_2
+(*   zinsert_4 zadjust_3 *)
   : map.
-Hint Resolve @zmem_1 @zis_empty_1 @zis_empty_2 @zadd_1 @zadd_2 @zremove_1
-  @zremove_2 @zfind_1 @zfold_1 @zmap_1 @zmapi_1 @zmapi_2
-(*   @zinsert_1 @zinsert_2 @zinsert_3 @zadjust_1 @zadjust_2 *)
+Hint Resolve zmem_1 zis_empty_1 zis_empty_2 zadd_1 zadd_2 zremove_1
+  zremove_2 zfind_1 zfold_1 zmap_1 zmapi_1 zmapi_2
+(*   zinsert_1 zinsert_2 zinsert_3 zadjust_1 zadjust_2 *)
   : map.
 Hint Unfold eq_key eq_key_elt : core.
 (* Typeclasses Opaque dict. *)
