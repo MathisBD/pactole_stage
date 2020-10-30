@@ -247,11 +247,12 @@ destruct (NeverVisited_ref_config (reflexivity _)) as [pt Hpt].
 apply Hpt, Hw.
 Qed.
 
-Theorem no_exploration_idle : exists d, FSYNC d  /\ ~ FullSolExplorationStop r d.
+Theorem no_exploration_idle : ~ Explore_and_Stop r. 
 Proof using Hmove k_inf_n k_sup_1 kdn.
-exists bad_demon. split; [apply FYSNC_setting |].
 intros Habs.
-destruct (Habs ref_config) as [Hexpl _].
+destruct (Habs bad_demon ref_config) as [Hexpl _].
+apply FSYNC_implies_fair, FYSNC_setting.
+apply ref_config_injective.
 now apply never_visited.
 Qed.
 
@@ -544,12 +545,15 @@ cofix Hcoind. intros k e Hequiv. constructor.
 Qed.
 
 (** Final theorem when robots move. *)
-Theorem no_exploration_moving : exists d, FSYNC d /\ ~ FullSolExplorationStop r d.
+Theorem no_exploration_moving : ~ Explore_and_Stop r. 
 Proof using Hmove k_inf_n k_sup_1 kdn.
-exists bad_demon. split; [apply FYSNC_setting |].
-intros Habs.
-unfold FullSolExplorationStop in *.
-destruct (Habs ref_config) as [_ Hstop]. revert Hstop.
+  intros Habs.
+  unfold Explore_and_Stop in *.
+  destruct (Habs bad_demon ref_config) as [_ Hstop].
+  apply FSYNC_implies_fair. apply FYSNC_setting.
+  unfold Valid_starting_config.
+  apply ref_config_injective.
+  revert Hstop.
 now apply AlwaysMoving_not_WillStop, ref_config_AlwaysMoving.
 Qed.
 
@@ -559,7 +563,7 @@ End DoesMove.
 (** Final theorem combining both cases:
     In the asynchronous model, if the number of robots [kG] divides the size [n] of the ring,
     then the exploration with stop of a n-node ring is not possible. *)
-Theorem no_exploration : exists d, FSYNC d /\ ~ FullSolExplorationStop r d.
+Theorem no_exploration : ~ Explore_and_Stop r.
 Proof using k_inf_n k_sup_1 kdn.
 destruct (move =?= SelfLoop) as [Hmove | Hmove].
 + now apply no_exploration_idle.
