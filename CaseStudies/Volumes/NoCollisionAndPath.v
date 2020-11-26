@@ -613,16 +613,17 @@ Context {move_to: obs_ILA -> location -> bool }.
 Axiom move_to_Some_zone : forall obs choice,
     move_to obs choice = true ->
     (forall x, In x obs -> let (pos_x, light_x) := x in
-                                    dist choice pos_x > 2*D)%R.
+                           dist pos_x (0,0) > 0 ->
+                           dist choice pos_x > 2*D)%R.
 
+
+(* si on ne peux pas bouger, pour toute position autour de choice,  *)
 Axiom move_to_None :
   forall (obs : obs_ILA) (choice : location),
   move_to obs choice = false ->
-  forall pos : location,
-  (dist pos (0,0)%R <= D)%R ->
   exists other : R2 * ILA,
     (other ∈ obs)%set /\
-    (exists inf, In inf obs /\ (get_location inf) == pos /\ get_ident other < get_ident inf) /\
+    (exists inf, In inf obs /\ get_ident other < get_ident inf) /\
     (dist (get_location other) choice <= 2*D)%R. 
 (*    ~(exists pos, forall x, In x obs -> let (pos_x, ligth_x) := x in
                                                dist pos pos_x > 2*D /\ dist pos (0,0)%R <= D)%R.*)
@@ -637,7 +638,7 @@ Context {choose_new_pos: obs_ILA -> location -> location}.
 Context {choose_new_pos_compat : Proper (equiv ==> equiv ==> equiv) choose_new_pos}.
 Axiom choose_new_pos_correct : forall obs target new,
     new == choose_new_pos obs target ->
-    (dist new target < Dp /\ dist new (0,0) < D)%R.
+    (dist new target <= Dp /\ dist new (0,0) <= D)%R.
     
 
 Definition rbg_fnc (s:obs_ILA) : R2*light
@@ -2193,7 +2194,7 @@ Proof.
     unfold new_pos. reflexivity.
     fold new_pos.
     simpl (fst _).
-    apply Rlt_le in H0. rewrite <- Rle_bool_true_iff in H0.
+    rewrite <- Rle_bool_true_iff in H0.
     destruct based; rewrite Hconf;
       try (destruct (upt_robot_too_far _ _)); destruct b.
     + simpl (fst _).
@@ -2541,6 +2542,7 @@ End DecidableProperty.
 
 Lemma moving_means_not_near : forall conf (da:da_ila) g,
     da_predicat da ->
+    no_collision_conf conf ->
     path_conf conf ->
     based_higher conf ->
     get_location (conf (Good g)) <> get_location (round rbg_ila da conf (Good g))
@@ -2555,7 +2557,7 @@ Lemma moving_means_not_near : forall conf (da:da_ila) g,
                        get_alive (conf (Good g')) = true /\ get_based (conf (Good g')) = false /\
                    ((Rle_bool (dist (get_location (conf (Good g'))) (get_location (round rbg_ila da conf (Good g)))) Dp) == true)%R)).
 Proof.
-  intros conf da g Hpred Hpath Hhigher Hmove Halive.
+  intros conf da g Hpred Hcoll Hpath Hhigher Hmove Halive.
   destruct (round rbg_ila da conf (Good g)) as (p_round, (((i_round, l_round), a_round), b_round)) eqn : Hconf_round.
   assert (Hconf_round' : round rbg_ila da conf (Good g) == (p_round, (((i_round, l_round), a_round), b_round))) by now rewrite Hconf_round.
   rewrite <- Hconf_round in *.
@@ -2752,7 +2754,7 @@ Proof.
      + set (new_pos := choose_new_pos _ _).
        assert (Hchoose_new_pos_dist := @choose_new_pos_correct _ _ (new_pos) (reflexivity _)).
        repeat split.
-       * apply Rlt_le.
+       *
          
          rewrite dist_sym;
          destruct Hchoose_new_pos_dist as (_,Hchoose);
@@ -2855,8 +2857,38 @@ Proof.
            (Rgeom.xr (fst new_pos) (snd new_pos) (- r) + - fst t,
            Rgeom.yr (fst new_pos) (snd new_pos) (- r) + - snd t))) == new_pos)%R.
             destruct b; simpl in *; auto.
-            destruct b; rewrite H;
-            rewrite dist_sym; apply Hmove_some.
+            destruct (Geq_dec g g').
+            +++
+              rewrite <- e, Hconf in Hident'. lia.
+            +++
+              destruct Hpred as (Horigin,_).
+              specialize (Horigin conf g (r,t,b) Hchange).
+              simpl in Horigin.
+              unfold Datatypes.id in Horigin.
+              
+              specialize (Hcoll g g' n0). rewrite Hconf in Hcoll; unfold get_based at 1 in Hcoll.
+              assert (dist (get_location (conf (Good g))) (get_location (conf (Good g'))) <> 0)%R.
+              rewrite Hconf; apply Hcoll; 
+              unfold get_alive; simpl in *; auto.
+              rewrite <- Horigin in Hmove_some.
+              destruct b; rewrite H;
+                rewrite dist_sym; apply Hmove_some.
+              rewrite (frame_dist _ _ (r,t,true)) in H0.
+
+              assert (forall (x y : R2), dist x y <> 0%R -> dist x y > 0%R)%R.
+              intros. 
+              generalize (dist_nonneg x y). lra.
+              apply H1.
+              rewrite dist_sym in H0.
+              simpl in *; apply H0.
+              rewrite (frame_dist _ _ (r,t,false)) in H0.
+
+              assert (forall (x y : R2), dist x y <> 0%R -> dist x y > 0%R)%R.
+              intros. 
+              generalize (dist_nonneg x y). lra.
+              apply H1.
+              rewrite dist_sym in H0.
+              simpl in *; apply H0.
          -- assert (Hd_round' := dist_round_max_d g' Hpred Hpath Halive_g').
             unfold equiv, bool_Setoid, eq_setoid in Hd_round'.
             rewrite Rle_bool_true_iff in Hd_round'.
@@ -3160,31 +3192,6 @@ Qed.
 
 
 (*
-Lemma not_moving_means_near_or_dangerous :
-  forall conf (da:da_ila) g,
-    da_predicat da ->
-    get_location (conf (Good g)) == get_location (round rbg_ila da conf (Good g))
-    -> get_alive (round rbg_ila da conf (Good g)) = true
-    -> (* move_to_some but of 0 *)
-    ( (forall g', get_ident (conf (Good g')) < get_ident (conf (Good g))
-                       -> get_alive (conf (Good g')) = true
-                       -> (Rle_bool (dist (get_location (conf (Good g'))) (get_location ((round rbg_ila da conf (Good g))))) (2*D) == false)%R)
-    /\ (exists g', get_ident (conf (Good g')) < get_ident (conf (Good g)) /\
-                   ((Rle_bool (dist (get_location (conf (Good g'))) (get_location (round rbg_ila da conf (Good g)))) Dp) == true)%R))
-    \/
-    (* move_to_none *)
-    (* forall pot_pos, dist pot_pos g < D -> forall g', ident g' < ident g -> 
-       dist g' pot_pos <= 2D \/  COMMENT PARLER DE LA CIBLE DU OBSRE SANS RENTRER DANS LES DETAILS*)
-
-
-
-
-    
-    (forall pot_pos, dist (get_location (conf (Good g))) pot_pos > D \/
-                 (exists other, (get_ident other < get_ident  (conf (Good g)))
-                                /\ (dist (get_location other) pot_pos <= 2 * D)%R)
-                   \/ (dist (fst (choose_target obs)) (fst (conf (Good g))) > Dp)
-    ).
 *)
 
 
@@ -3218,6 +3225,7 @@ Lemma no_collision_cont : forall (conf:config) (da:da_ila),
     no_collision_conf (round rbg_ila da conf).
 Proof.
   intros conf da no_col Hpred Hpath Hbased_higher g g' Hg Hbased_r Hbased'_r Halive Halive'.
+  assert (Hcoll := no_col).
   specialize (no_col g g' Hg).
   destruct (get_based (conf (Good g))) eqn : Hbased, (get_based (conf (Good g'))) eqn : Hbased'.
   + rewrite round_good_g in Hbased_r, Hbased'_r; try apply Hpred.
@@ -3549,7 +3557,7 @@ Proof.
     destruct (R2_EqDec (@get_location Loc _ _ (conf (Good g'))) (@get_location Loc _ _ (round rbg_ila da conf (Good g')))%R).
   - now rewrite <- e, <- e0.
   - unfold get_based in *; simpl in Hbased, Hbased'.
-    assert (Hmove := moving_means_not_near g' Hpred Hpath Hbased_higher c Halive').
+    assert (Hmove := moving_means_not_near g' Hpred Hcoll Hpath Hbased_higher c Halive').
     destruct Hmove as (HD, (H2d, Hdp)).
     specialize (H2d g).
     destruct ((leb (get_ident (conf (Good g'))) (get_ident (conf (Good g)))))
@@ -3765,7 +3773,7 @@ Proof.
       generalize D_0;
       lra.
   - unfold get_based in *.
-    assert (Hmove := moving_means_not_near g Hpred Hpath Hbased_higher c Halive).
+    assert (Hmove := moving_means_not_near g Hpred Hcoll Hpath Hbased_higher c Halive).
     destruct Hmove as (HD, (H2d, Hdp)).
     specialize (H2d g').
     destruct ((leb (get_ident (conf (Good g))) (get_ident (conf (Good g')))))
@@ -3975,7 +3983,7 @@ Proof.
       generalize D_0;
       lra.
   - unfold get_based in *;
-      assert (Hmove := moving_means_not_near g Hpred Hpath Hbased_higher c Halive).
+      assert (Hmove := moving_means_not_near g Hpred Hcoll Hpath Hbased_higher c Halive).
     destruct Hmove as (HD, (H2d, Hdp)).
     specialize (H2d g').
     destruct ((leb (get_ident (conf (Good g))) (get_ident (conf (Good g')))))
@@ -4164,7 +4172,7 @@ Proof.
         simpl in *; unfold Datatypes.id in *;
           rewrite Hdist_D in Htrue.
         exfalso; apply no_fixpoint_negb in Htrue; auto.
-      * assert (Hmove' := moving_means_not_near g' Hpred Hpath Hbased_higher c0 Halive').
+      * assert (Hmove' := moving_means_not_near g' Hpred Hcoll Hpath Hbased_higher c0 Halive').
         destruct Hmove' as (HD', (H2d', Hdp')).
         specialize (H2d' g).
         assert ( get_ident (conf (Good g)) < get_ident (conf (Good g'))).
@@ -4194,7 +4202,7 @@ Proof.
       intros Hd; destruct H2d.
       unfold get_based ; assumption.
       rewrite dist_sym.
-      assert (Hmove' := moving_means_not_near g' Hpred Hpath Hbased_higher c0 Halive').
+      assert (Hmove' := moving_means_not_near g' Hpred Hcoll Hpath Hbased_higher c0 Halive').
       destruct Hmove' as (HD', (H2d', Hdp')).
       specialize (H2d' g).
       set (x := (get_location (round rbg_ila da conf (Good g)))) in *;
@@ -5856,7 +5864,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                  (comp (bij_translation t) (if b then reflexion else Similarity.id))) new_pos))
                                                            (retraction
            (comp (bij_rotation r)
-              (comp (bij_translation t) (if b then reflexion else Similarity.id))) (get_location target)) < Dp)%R).
+              (comp (bij_translation t) (if b then reflexion else Similarity.id))) (get_location target)) <= Dp)%R).
                         rewrite (frame_dist _ _ (r,t,b)).
                         unfold frame_choice_bijection, Frame.
                         destruct b; rewrite 2 section_retraction;
@@ -5869,7 +5877,7 @@ target est vivant apres le round car elle est à moins de Dp, et que tous les au
                         assert (Hdist_choose_dp' : (dist (retraction
                               (comp (bij_rotation r)
                                  (comp (bij_translation t)
-                                    (if b then reflexion else Similarity.id))) new_pos) (fst (conf (Good g_target))) < Dp)%R).
+                                    (if b then reflexion else Similarity.id))) new_pos) (fst (conf (Good g_target))) <= Dp)%R).
                         rewrite <- Hret_sec.
                         destruct b; simpl in *; apply Hdist_choose_dp_aux.
                         assert (Hti := RealMetricSpace.triang_ineq  (retraction
@@ -6005,7 +6013,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                  (comp (bij_translation t) (if b then reflexion else Similarity.id))) new_pos))
                                                            (retraction
            (comp (bij_rotation r)
-              (comp (bij_translation t) (if b then reflexion else Similarity.id))) (get_location target)) < Dp)%R).
+              (comp (bij_translation t) (if b then reflexion else Similarity.id))) (get_location target)) <= Dp)%R).
                         rewrite (frame_dist _ _ (r,t,b)).
                         unfold frame_choice_bijection, Frame.
                         destruct b; rewrite 2 section_retraction;
@@ -6018,7 +6026,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                         assert (Hdist_choose_dp' : (dist (retraction
                               (comp (bij_rotation r)
                                  (comp (bij_translation t)
-                                    (if b then reflexion else Similarity.id))) new_pos) (fst (conf (Good g_target))) < Dp)%R).
+                                    (if b then reflexion else Similarity.id))) new_pos) (fst (conf (Good g_target))) <= Dp)%R).
                         rewrite <- Hret_sec.
                         destruct b; simpl in *; apply Hdist_choose_dp_aux.
                         assert (Hti := RealMetricSpace.triang_ineq  (retraction
@@ -6091,11 +6099,11 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                         }
                         assert (Hmove_None := move_to_None Hmove).
                         destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange.
-                       
+                       (*
                        specialize (Hmove_None (((comp (bij_rotation r)
                             (comp (bij_translation t)
                                (if b then reflexion else Similarity.id)))
-                                                  (fst (round rbg_ila da conf (Good g)))))).
+                                                  (fst (round rbg_ila da conf (Good g)))))).*)
                        assert (Hsame_pos : get_location (round rbg_ila da conf (Good g)) = get_location (conf (Good g))).
                        {
                          rewrite round_good_g; try auto.
@@ -6113,19 +6121,20 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                          now cbn.
                        }
                        destruct Hmove_None as (other,(Hother_obs, Hmove_other)).
-                       -- destruct Hpred as (Horigin,_).
+(*                       -- destruct Hpred as (Horigin,_).
                           revert Horigin; intro Horigin.
                           specialize (Horigin (conf) g (r,t,b) Hchange).
                           rewrite Hconf in Horigin.
                           cbn in Hsame_pos.
                           unfold Datatypes.id in *.
+                          exists 
                           rewrite Hsame_pos.
                           unfold frame_choice_bijection, Frame in Horigin.
                           rewrite <- Horigin.
                           rewrite Hconf.
                           unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location.
                           unfold Datatypes.id.
-                          destruct b; rewrite dist_same; generalize D_0; lra.
+                          destruct b; rewrite dist_same; generalize D_0; lra.*)
                        -- unfold obs_from_config, Obs_ILA in Hother_obs.
                           rewrite make_set_spec, filter_InA, config_list_InA in Hother_obs.
                           rewrite 3 andb_true_iff, Rle_bool_true_iff in Hother_obs.
@@ -6140,7 +6149,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                              unfold get_ident in *; simpl in Hother_ident.
                              rewrite Nat.leb_le in Hother_ident.
                              destruct Hmove_other as (Hmove_other, Hdist_other_round_2D).
-                             destruct Hmove_other as (other1, (Hother_in,(Hother_pos, Hother_ident'))). 
+                             destruct Hmove_other as (other1, (Hother_in,(*Hother_pos,*) Hother_ident')). 
                              revert Hcoll; intro Hcoll.
                              unfold no_collision_conf in Hcoll.
                              unfold obs_from_config, Obs_ILA, map_config in Hother_in.
@@ -6148,10 +6157,15 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                              rewrite 3 andb_true_iff in Hother_in.
                              destruct Hother_in as (([g_other'|byz], Hother1_spec), (((Hother1_dist,Hother1_alive),Hother1_aliveg), Hother1_ident));
                                try (assert (Hfalse := In_Bnames byz);
-                                    now simpl in *).                              
-                             assert (Hident_g : g_other' = g).
-                             {
-                               destruct (Geq_dec g g_other'); try auto.
+                                    now simpl in *).
+                             (* nouvelle façon de faire *)
+
+                             assert (Hident_g :get_ident (conf (Good  g_other')) <= get_ident (conf (Good g))).
+                             { rewrite Hother1_spec in Hother1_ident. 
+                               unfold get_ident in *; simpl in *; auto.
+                               rewrite Nat.leb_le, Hconf in *.
+                               simpl in *; auto.
+                               (*destruct (Geq_dec g g_other'); try auto.
                                specialize (Hcoll _ _ n0).
                                destruct Hcoll.
                                now rewrite Hconf; unfold get_based; simpl.
@@ -6187,13 +6201,13 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                                rewrite (frame_dist _ _ (r,t,b)).
                                unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location, frame_choice_bijection, Frame, Datatypes.id in *.
                                rewrite Hother_pos. 
-                               destruct b; apply dist_same.
+                               destruct b; apply dist_same. *)
                              }
                              assert (get_ident (other) < get_ident (other1)).
                              unfold get_ident in *; auto.
                              rewrite Hother_spec, Hother1_spec in H.
                              unfold get_ident in H; simpl in H.
-                             now rewrite <- Hident_g.
+                             apply (Nat.lt_le_trans (fst (fst (fst (snd (conf (Good g_other)))))) ( fst (fst (fst (snd (conf (Good g_other')))))) (fst (fst (fst (snd (conf (Good g))))))); auto.
                              intros x y Hxy.
                              rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                              rewrite (get_alive_compat Hxy).
@@ -6342,7 +6356,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                              repeat split; auto.
                              rewrite <- ident_preserved; auto.
                              transitivity (get_ident (conf (Good g_other))); auto.
-                             destruct Hmove_other as ((copy, (Hcopy_spec, (Hcopy_pos, Hcopy_ident))), _).
+                             destruct Hmove_other as ((copy, (Hcopy_spec, (*(Hcopy_pos,*) Hcopy_ident(*)*))), _).
                              unfold obs_from_config, Obs_ILA in Hcopy_spec.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hcopy_spec.
                              rewrite 3 andb_true_iff, Rle_bool_true_iff in Hcopy_spec.
@@ -6386,7 +6400,7 @@ rewrite <- 2 ident_preserved; try apply Hpred.
                                rewrite (frame_dist _ _ (r,t,b)).
                                rewrite section_retraction.
                                unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location, Datatypes.id in Hdist_new_D.
-                               left. apply Hdist_new_D. 
+                               apply Hdist_new_D. 
                              }
                              assert (Hdist_other_new : (dist (fst (conf (Good g_other)))
                     (retraction (frame_choice_bijection (r, t, b)) new_pos) <= 2*D)%R).
@@ -7069,7 +7083,41 @@ Proof.
                rewrite (get_ident_compat Hxy).
                destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange.
                reflexivity.
-                       }
+             * rewrite <- Hconf' in *.
+               assert (Hident_p := ident_preserved conf ). 
+               unfold get_ident in Hident_exec, Hident_p.
+               simpl in Hident_p, Hident_exec.
+               rewrite Nat.ltb_lt in Hident_exec.
+               rewrite <- 2 Hident_p in Hident_exec; try apply Hpred.
+               destruct (Geq_dec g g_exec). rewrite e0 in Hident_exec.
+               lia.
+               specialize (Hcol _ _ n0).
+               assert (forall (x y : R2), dist x y <> 0%R -> dist x y > 0%R)%R.
+              intros. 
+              generalize (dist_nonneg x y). lra.
+              apply H2.
+              assert (dist (get_location (conf (Good g))) (get_location (conf (Good g_exec))) <> 0)%R.
+              apply Hcol.
+              unfold get_based; rewrite Hconf; now simpl.
+              rewrite negb_true_iff in Hbased_exec.
+              destruct (get_based (conf (Good g_exec))) eqn : Hbased_exec_before; try auto.
+              destruct Hbased_higher as (_,(_,Hbased_ident)).
+              specialize (Hbased_ident g_exec g Hbased_exec_before).
+              rewrite Hconf in *.
+              specialize (Hbased_ident (reflexivity _)).
+              unfold get_ident in *; simpl in *. lia.
+              rewrite Hconf; unfold get_alive; simpl; auto.
+              apply (still_alive_means_alive g_exec Hpred); try auto.
+              destruct Hpred as (Horigin,_).
+              destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange.
+              specialize (Horigin conf g (r,t,b) Hchange).
+              simpl in Horigin.
+              unfold Datatypes.id in Horigin.
+              rewrite <- Horigin.
+              rewrite dist_sym in H3.
+              rewrite (frame_dist _ _ (r,t,b)) in H3.
+              destruct b; simpl in *; apply H3. 
+           }
            destruct (change_frame da conf g) as ((r,t),b) eqn : Hchange.
            clear H1.
            assert (new_pos == ((comp (bij_rotation r)
@@ -8119,6 +8167,38 @@ Proof.
         rewrite Hconf in Hident_near'; unfold get_ident in *; simpl in *; lia.
         intros x y Hxy; rewrite (RelationPairs.fst_compat _ _ _ _ Hxy), (get_alive_compat Hxy), (get_ident_compat Hxy).
         reflexivity.
+        assert (Hident_p := ident_preserved conf ). 
+        unfold get_ident in Hident_near, Hident_p.
+        simpl in Hident_p, Hident_near.
+        rewrite Nat.ltb_lt in Hident_near.
+        rewrite <- 2 Hident_p in Hident_near; try apply Hpred.
+        destruct (Geq_dec g g_near). rewrite e in Hident_near.
+        lia.
+        specialize (Hcol _ _ n0).
+        assert (forall (x y : R2), dist x y <> 0%R -> dist x y > 0%R)%R.
+        intros. 
+        generalize (dist_nonneg x y). lra.
+        apply H.
+        assert (dist (get_location (conf (Good g))) (get_location (conf (Good g_near))) <> 0)%R.
+        apply Hcol.
+        unfold get_based; rewrite Hconf; now simpl.
+        rewrite negb_true_iff in Hbased_near.
+        destruct (get_based (conf (Good g_near))) eqn : Hbased_near_before; try auto.
+        destruct Hbased_higher as (_,(_,Hbased_ident)).
+        specialize (Hbased_ident g_near g Hbased_near_before).
+        rewrite Hconf in *.
+        specialize (Hbased_ident (reflexivity _)).
+        unfold get_ident in *; simpl in *. lia.
+        rewrite Hconf; unfold get_alive; simpl; auto.
+        apply (still_alive_means_alive g_near Hpred); try auto.
+        destruct Hpred as (Horigin,_).
+        specialize (Horigin conf g (r,t,b) Hchange).
+        simpl in Horigin.
+        unfold Datatypes.id in Horigin.
+        rewrite <- Horigin.
+        rewrite dist_sym in H0.
+        rewrite (frame_dist _ _ (r,t,b)) in H0.
+        destruct b; simpl in *; apply H0. 
       * set (obs := obs_from_config _ _) in *.
         assert (Hin_obs := @choose_target_in_obs obs
                            (choose_target obs) (reflexivity _)).
@@ -9267,13 +9347,90 @@ Proof.
     assert (Hcompat := get_ident_compat Hxy).
     rewrite Hcompat.
     reflexivity.
+    (* assert (Hfalse' : (dist (get_location (conf (Good g'))) (get_location (round rbg_ila da conf (Good g'))) <> 0)%R).
+    intro Hfalse'.
+    assert (Hdist_g'_round : (dist (get_location (conf (Good g))) (get_location (conf (Good g'))) > D)%R).
+    apply Rnot_le_gt.
+    intro Hfalse_dist.
+    unfold upt_robot_dies_b in Hbool.
+    rewrite orb_false_iff in Hbool.
+    destruct Hbool as (Hex,_).
+    rewrite <- negb_true_iff, forallb_existsb, forallb_forall in Hex.
+    specialize (Hex  (comp (bij_rotation r) (comp (bij_translation t) (if b then reflexion else Similarity.id)) (fst (conf (Good g))),
+                 snd (conf (Good g)))).
+    rewrite negb_true_iff, Rle_bool_false_iff in Hex.
+    apply Hex.
+    rewrite filter_In, config_list_spec, in_map_iff, 2 andb_true_iff.
+    repeat split; try auto.
+    exists (Good g). split; auto. destruct b; reflexivity. apply In_names.
+    rewrite Nat.ltb_lt.
+    rewrite <- 2 ident_preserved in Hident_exec; try apply Hpred.
+    unfold get_ident in *; simpl in *. 
+    lia.
+    destruct (get_based (conf (Good g))) eqn : Hbased.
+    destruct Hbased_higher as (_,(_,Hbased_ident)).
+    specialize (Hbased_ident g g' Hbased).
+    rewrite Hconf' in *.
+    specialize (Hbased_ident (reflexivity _)).
+    rewrite <- 2 ident_preserved in Hident_exec; try apply Hpred.
+    unfold get_ident in *; simpl in *. rewrite Hconf' in *; simpl in *. lia.
+    rewrite negb_true_iff; unfold get_based; simpl in *; auto.
+    rewrite (frame_dist _ _ (r,t,b)) in Hfalse_dist.
+    destruct b; simpl in *; apply Hfalse_dist.
+    rewrite dist_defined in Hfalse'.
+    rewrite Hfalse', Hdist in Hdist_g'_round.
+    lra.
+    
+    rewrite round_good_g in Hfalse'; try apply Hpred.
+    simpl (get_location _) in Hfalse'.
+    unfold upt_aux, map_config in Hfalse'.  
+    rewrite Hchange', Hbool, Hconf' in Hfalse'.
+    simpl (Datatypes.id _) in Hfalse'.
+    
+    destruct (upt_robot_too_far _) eqn : Htoo_far. rewrite Hbool in Hfalse'.
+    assert (Hfalse_dist : (dist (get_location conf (Good g)) (get_location (round rbg_ila da conf (Good g))) <> 0)%R).
+    *)
     assert(Hfalse' : (dist new_pos (fst ((
               ((comp (bij_rotation r)
                   (comp (bij_translation t) (if b then reflexion else Similarity.id)))
                  (fst (conf (Good g))), snd (conf (Good g)))) )) > 2 * D)%R).
     unfold obs in *.
     rewrite Hconf' in *. 
-    destruct b; specialize (Hfalse H0); apply Hfalse.
+    specialize (Hfalse H0); apply Hfalse.
+    assert (Hpred_backup := Hpred).
+    destruct Hpred_backup as (Horigin, ?).
+    specialize (Horigin conf g' (change_frame da conf g') (reflexivity _)).
+    rewrite Hchange' in *.
+    unfold frame_choice_bijection, Frame, Datatypes.id in *.
+    rewrite <- Horigin.
+        apply Rnot_le_gt.
+    intro Hfalse_dist.
+    unfold upt_robot_dies_b in Hbool.
+    rewrite orb_false_iff in Hbool.
+    destruct Hbool as (Hex,_).
+    rewrite <- negb_true_iff, forallb_existsb, forallb_forall in Hex.
+    specialize (Hex  (comp (bij_rotation r) (comp (bij_translation t) (if b then reflexion else Similarity.id)) (fst (conf (Good g))),
+                 snd (conf (Good g)))).
+    rewrite negb_true_iff, Rle_bool_false_iff in Hex.
+    apply Hex.
+    rewrite filter_In, config_list_spec, in_map_iff, 2 andb_true_iff.
+    repeat split; try auto.
+    exists (Good g). split; auto. destruct b; reflexivity. apply In_names.
+    rewrite Nat.ltb_lt.
+    rewrite <- 2 ident_preserved in Hident_exec; try apply Hpred.
+    unfold get_ident in *; simpl in *. 
+    lia.
+    destruct (get_based (conf (Good g))) eqn : Hbased.
+    destruct Hbased_higher as (_,(_,Hbased_ident)).
+    specialize (Hbased_ident g g' Hbased).
+    rewrite Hconf' in *.
+    specialize (Hbased_ident (reflexivity _)).
+    rewrite <- 2 ident_preserved in Hident_exec; try apply Hpred.
+    unfold get_ident in *; simpl in *. rewrite Hconf' in *; simpl in *. lia.
+    rewrite negb_true_iff; unfold get_based; simpl in *; auto.
+    assert (forall x, x <= 0 -> x <= D)%R.
+    intros; generalize D_0; lra.
+    apply H2, Hfalse_dist.
     clear Hfalse H0; rename Hfalse' into Hfalse.
     destruct (round rbg_ila da conf (Good g')) as (pos_round', (((ident_round', light_round'), alive_round'), based_round')) eqn : Hconf_round'.
     assert (round rbg_ila da conf (Good g') == (pos_round', (((ident_round', light_round'), alive_round'), based_round'))) by now rewrite Hconf_round'.
@@ -10211,7 +10368,7 @@ Proof.
                        { destruct H4.
                          unfold Loc, location, make_Location in *;
                          unfold reflexion, Similarity.id in *; destruct b; simpl in *;
-                           specialize (H4 (Rlt_le _ _ Hdist_dp));
+                           specialize (H4 Hdist_dp);
                          apply H4.
                        }
                        clear H4.
@@ -10433,8 +10590,8 @@ Proof.
                                                                 (if b then reflexion else Similarity.id)))
                                                       (fst (p_target, (i_target, l_target, a_target,b_target))),
                                                     snd (p_target, (i_target, l_target, a_target, b_target))))) <= Dp)%R).
-                             rewrite Hdist_t_dp.
-                             destruct b; apply (Rlt_le _ _ Hdist_choose_dp).
+                             destruct b; rewrite Hbased in *; rewrite Hdist_t_dp. apply (Hdist_choose_dp).
+                             apply Hdist_choose_dp.
                              rewrite <- Hpos_round.
                              rewrite (frame_dist _ _ (r,t,b)).
                              unfold frame_choice_bijection, Frame. 
@@ -10947,10 +11104,10 @@ unfold obs_from_config, Obs_ILA.
                        rewrite Htarget_spec_pos in Hchoose_correct; rewrite Hconf_target in *; simpl in *;  lra. 
                     ** assert (Hmove_None := move_to_None Hmove_to).
                        rewrite Hchange in Hmove_None.
-                       specialize (Hmove_None (((comp (bij_rotation r)
+(*                       specialize (Hmove_None (((comp (bij_rotation r)
                             (comp (bij_translation t)
                                (if b then reflexion else Similarity.id)))
-                                                  (fst (round rbg_ila da conf (Good g)))))).
+                                                  (fst (round rbg_ila da conf (Good g)))))).*)
                        assert (Hsame_pos : get_location (round rbg_ila da conf (Good g)) = get_location (conf (Good g))).
                        {
                          rewrite round_good_g; try auto.
@@ -10968,7 +11125,7 @@ unfold obs_from_config, Obs_ILA.
                          now cbn.
                        }
                        destruct Hmove_None as (other,(Hother_obs, Hmove_other)).
-                       -- destruct Hpred as (Horigin,_).
+                       --(* destruct Hpred as (Horigin,_).
                           revert Horigin; intro Horigin.
                           specialize (Horigin (conf) g (r,t,b) Hchange).
                           rewrite Hconf in Horigin.
@@ -10981,7 +11138,7 @@ unfold obs_from_config, Obs_ILA.
                           unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location.
                           unfold Datatypes.id.
                           destruct b; rewrite dist_same; generalize D_0; lra.
-                       -- unfold obs_from_config, Obs_ILA, map_config in Hother_obs.
+                       -- *)unfold obs_from_config, Obs_ILA, map_config in Hother_obs.
                           rewrite make_set_spec, filter_InA, config_list_InA in Hother_obs.
                           rewrite 3 andb_true_iff, Rle_bool_true_iff in Hother_obs.
                           destruct Hother_obs as (([g_other|b_other],Hother_spec),
@@ -10996,7 +11153,7 @@ unfold obs_from_config, Obs_ILA.
                              unfold get_ident in *; simpl in Hother_ident.
                              rewrite Nat.leb_le in Hother_ident.
                              destruct Hmove_other as (Hmove_other, Hdist_other_round_2D).
-                             destruct Hmove_other as (other1, (Hother_in,(Hother_pos, Hother_ident'))). 
+                             destruct Hmove_other as (other1, (Hother_in,(*(Hother_pos,*) Hother_ident'(*)*))). 
                              revert Hcol; intro Hcol.
                              unfold no_collision_conf in Hcol.
                              unfold obs_from_config, Obs_ILA, map_config in Hother_in.
@@ -11004,7 +11161,12 @@ unfold obs_from_config, Obs_ILA.
                              rewrite 3 andb_true_iff in Hother_in.
                              destruct Hother_in as (([g_other'|byz], Hother1_spec), (((Hother1_dist,Hother1_alive),Hother1_aliveg), Hother1_ident));
                                try (assert (Hfalse := In_Bnames byz);
-                                    now simpl in *).                              
+                                    now simpl in *).
+                             assert (Hident_g :get_ident (conf (Good  g_other')) <= get_ident (conf (Good g))).
+                             { rewrite Hother1_spec in Hother1_ident. 
+                               unfold get_ident in *; simpl in *; auto.
+                               rewrite Nat.leb_le, Hconf in *.
+                               simpl in *; auto. (*                              
                              assert (Hident_g : g_other' = g).
                              {
                                destruct (Geq_dec g g_other'); try auto.
@@ -11036,13 +11198,14 @@ unfold obs_from_config, Obs_ILA.
                                rewrite (frame_dist _ _ (r,t,b)).
                                unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location, frame_choice_bijection, Frame, Datatypes.id in *.
                                rewrite Hother_pos. 
-                               destruct b; apply dist_same.
+                               destruct b; apply dist_same. *)
                              }
                              assert (get_ident (other) < get_ident (other1)).
                              unfold get_ident in *; auto.
                              rewrite Hother_spec, Hother1_spec in H.
                              unfold get_ident in H; simpl in H.
-                             now rewrite <- Hident_g.
+                             apply (Nat.lt_le_trans (fst (fst (fst (snd (conf (Good g_other)))))) ( fst (fst (fst (snd (conf (Good g_other')))))) (fst (fst (fst (snd (conf (Good g))))))); auto.
+(*                             now rewrite <- Hident_g.*)
                              intros x y Hxy.
                              rewrite (RelationPairs.fst_compat _ _ _ _ Hxy).
                              rewrite (get_alive_compat Hxy).
@@ -11190,7 +11353,7 @@ unfold obs_from_config, Obs_ILA.
                              transitivity (get_ident (conf (Good g_other))); auto.
 
                              (* début  *)
-                             destruct Hmove_other as ((copy, (Hcopy_spec, (Hcopy_pos, Hcopy_ident))), _).
+                             destruct Hmove_other as ((copy, (Hcopy_spec, (*(Hcopy_pos,*) Hcopy_ident(*)*))), _).
                              unfold obs_from_config, Obs_ILA in Hcopy_spec.
                              rewrite make_set_spec, filter_InA, config_list_InA in Hcopy_spec.
                              rewrite 3 andb_true_iff, Rle_bool_true_iff in Hcopy_spec.
