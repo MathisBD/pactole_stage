@@ -41,12 +41,12 @@ Instance Robots : Names := Robots kG 0.
 (** Assumptions on the number of robots: it is non zero and strictly divides the ring size. *)
 Hypothesis kdn : (ring_size mod kG = 0)%nat.
 Hypothesis k_inf_n : (kG < ring_size)%nat.
-Hypothesis k_sup_1 : (1 < kG)%nat.
+(*Hypothesis k_sup_1 : (1 < kG)%nat.*)
 
 (** There is no byzantine robot so we can simplify properties about identifiers and configurations. *)
 (* TODO: put properties with no byz into a file Models/NoByzantine.v *)
 Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_inf_n (*k_sup_1*) kdn.
 intros [g | b] P HP.
 + apply HP.
 + destruct b. lia.
@@ -61,7 +61,7 @@ Notation execute := (execute (UpdFun := UpdFun)).
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
-Proof using k_inf_n k_sup_1 kdn. intros config1 config2 Heq id. apply (no_byz id). intro g. apply Heq. Qed.
+Proof using k_inf_n (*k_sup_1*) kdn. intros config1 config2 Heq id. apply (no_byz id). intro g. apply Heq. Qed.
 
 (** In order to prove that at least one position is occupied, we define the list of positions. *)
 Definition Vlist := Identifiers.enum ring_size.
@@ -74,7 +74,7 @@ Proof using . apply enum_length. Qed.
 
 (** As there is strictly less robots than location, there is an empty location. *)
 Lemma ConfigExistsEmpty : forall config, ¬ (∀ pt, In pt (!! config)).
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_inf_n (*k_sup_1*) kdn.
 generalize k_inf_n; intros Hkin config Hall.
 assert (Hsize : size (!! config) < ring_size).
 { apply le_lt_trans with (cardinal (!! config)).
@@ -114,7 +114,7 @@ Theorem no_stop_on_starting_config : forall r d config,
   Explore_and_Stop r ->
   Valid_starting_config config ->
   ~Stopped (execute r d config).
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_inf_n (*k_sup_1*) kdn.
 intros r d config.
 generalize (@reflexivity execution equiv _ (execute r d config)).
 generalize (execute r d config) at -2.
@@ -145,7 +145,7 @@ Lemma tower_on_final_config : forall r d config,
   Explore_and_Stop r ->
   Stopped (execute r d config) ->
   exists loc, ((!! config)[loc] > 1)%nat.
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_inf_n (*k_sup_1*) kdn.
 intros r d config Hfair Hsol Hstop.
 assert (Hequiv := @no_stop_on_starting_config r d config Hfair Hsol).
 assert (Hvalid : ~Valid_starting_config config) by tauto.
@@ -197,7 +197,7 @@ Lemma no_exploration_k_inf_2 : forall r d config,
   Explore_and_Stop r ->
   Valid_starting_config config ->
   (kG > 1)%nat.
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_inf_n (*k_sup_1*) kdn.
 intros r d config Hfair Hsol Hvalid.
 assert (Hexr := exec_stopped r).
 assert (Htower := tower_on_final_config).
@@ -207,7 +207,8 @@ specialize (Htower r d' config' Hfair' Hsol Hstop').
 destruct Htower.
 assert (Hcard := cardinal_lower x (!! config')).
 rewrite cardinal_obs_from_config in Hcard.
-lia.
+unfold nG, nB in *.
+unfold Robots in *. simpl in *. lia.
 Qed.
 
 End Tower.
