@@ -8557,11 +8557,6 @@ Qed.
 
 Parameter conf_init : config.
 
-Axiom conf_init_or_exists_conf_before : forall conf,
-    exists conf_p da_p, da_predicat da_p /\ conf == round rbg_ila da_p conf_p.
-
-
-
 
 Lemma executioner_next_means_moving :
    forall conf g da (* da' *),
