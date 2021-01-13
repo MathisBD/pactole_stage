@@ -32,44 +32,55 @@ Require Import Pactole.Util.MMultiset.MMultisetInterface.
 Require Import Pactole.Observations.SetObservation.
 Require Import Pactole.Observations.PointedObservation.
 Set Implicit Arguments.
+(* TODO: rename Dmax *)
+(* Keeping connection from a fixed base to a free robot. All robots
+(including the free one) share the same speed (max distance D in one
+round) and the same detection radius (Dmax). The existence of a family
+of solution is shown when Dmax > 7*D. No optimality is proved. *)
 
-(* on  veut créer l'algo sur les robots volumiques pour qu'il y ait toujours un chemin entre la base et 1 *)
-
+(* We have a given finite number n of robot. The final lemma will require
+that there are enough robots during the execution. *)
 Parameter n: nat.
 
-(* il y a n "bon" robots et 0 byzantins*)
+(* All robots are non byzantine *)
 Instance Identifiers : Names := Robots n 0.
 
 Definition identifiants := nat.
 Definition indentifiants_setoid := eq_setoid nat.
-
-Parameter ident_max : identifiants.
-
-Axiom idnet_max_not_1 : ident_max > 1. 
-
-(*variable pour savoir si les robots sont allumé ou pas: Si la variable de type [light] est à vrai, il est allumé*)
+(* Each robots have a light, which state is on or off*)
 Definition light := bool.
+(* A robot will be alive or not (the latter meaning it has withdrawn
+from the task). No collision with dead robots are considered *)
 Definition alive := bool.
+(* A robot may be still at base, waiting to be needed by the task. No
+collision implying non launched rbrobot is considered either. *)
 Definition based := bool.
-
+(* Max distance D traveled by a robot between two rounds. This defines
+   the "death zone": any two robots closer than that are immediately
+   considered colliding. *)
 Parameter D: R.
+Axiom D_0: (D>0)%R.
 
-
+(* Robots evolve on the plane *)
 Instance Loc : Location := make_Location (R2).
 Instance VS : RealVectorSpace location := R2_VS.
 Instance ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_VS R2_ES : typeclass_instances.
-(* le rayon de volume des robots *)
-Parameter R_r : R.
-(* la distance max parcourue entre 2 activation*)
+(* Max detection radius: robot inside this radius are in the
+     observation of the robot, the other are not seen. *)
 Parameter Dmax : R.
-Definition Dp(*oursuite*) := (Dmax - D)%R.
-
-Axiom D_0: (D>0)%R.
+(* We fix the lower bound of Dmax to seven times the max travel
+   distance in one round. *)
 Axiom Dmax_7D : (Dmax > 7*D)%R.
 
-Definition ILA :Type := identifiants*light*alive*based. 
+(* Dp is the distance where a robot is still visible but from which it
+   becomes able to leave the visibility radius at next round. *)
+Definition Dp(*oursuite*) := (Dmax - D)%R.
 
+(* The state of a robot contains its location and the four following
+informations: its name, its light, its liveness and whether it has
+been launched or not. *)
+Definition ILA :Type := identifiants*light*alive*based. 
 
 
 Instance ILA_Setoid : Setoid ILA.
@@ -118,8 +129,6 @@ Notation "s [ x ]" := (multiplicity x s) (at level 2, no associativity, format "
 Notation "!! config" := (@obs_from_config location _ _ _ set_observation config origin) (at level 10).
 Notation support := (@support location _ _ _).
 
-
-
 Definition config:= @configuration Loc (R2*ILA) State_ILA Identifiers.
 
 Definition get_ident (elt : R2*ILA) : identifiants := fst(fst(fst(snd elt))).
@@ -158,7 +167,8 @@ Proof. intros ? ? Heq.
 Qed.
 
 
-
+(* In the problem of connection, the free robot (numbered 0) is
+   launched and alive. By definition of the problem. *)
 Axiom ident_0_alive : forall conf g, get_ident (conf (Good g)) = 0 ->
                                      get_alive (conf (Good g)) = true.
 
@@ -517,37 +527,41 @@ Defined.
 
 Definition obs_ILA := @observation (R2*ILA) Loc State_ILA _ Obs_ILA.
 
+(* ******************************************** *)
+(* The following axioms (introduced by Context or Axiom) are the
+   constraints a protocol should verify to be proved correct in the
+   following. These constraints define the family of protocols we
+   prove correct. *)
+(* ******************************************** *)
 
-(* pour ce qui est du robogramme
-================================================================================= *)
-
-Parameter threshold : identifiants.
-
+(* ********* Hypothesis on chose_target ******* *)
+(* The protocole should provide a function that chose a robot to
+   "follow" among it observable (visible) ones. *)
 Context {choose_target : obs_ILA -> (R2*ILA)}.
-
-(* propiété de choose_cible*)
-
 Context {choose_target_compat : Proper (equiv ==> equiv) choose_target}.
 
+(* This function should always chose a robot alive. *)
 Axiom choose_target_alive : forall obs target,
-    choose_target obs == target
-    -> get_alive target == true.
+    choose_target obs == target -> get_alive target == true.
 
+(* It should always prefer unlit robots. *)
 Axiom light_off_first: forall obs target,
     choose_target obs == target -> 
-                      get_light (target) == true ->
-                      (* il n'y a pas de robots etein *)
-                      For_all (fun (elt: R2*ILA) =>
-                                     get_light elt == true) obs
-    .
+    (* if the chosen rrobot is lit *)
+    get_light (target) == true ->
+    (* Then there was no unlitten ones *)
+    For_all (fun (elt: R2*ILA) => get_light elt == true) obs .
 
+(* it should always return a robot whose id is strictly smaller than
+the observing robot itself (i.e. the one that is at (0,0)). *)
 Axiom target_lower : forall obs target (zero: R2*ILA),
-        In zero obs -> get_location zero == (0,0)%R ->
-        choose_target obs == target ->
-        get_ident target < get_ident zero.
+    In zero obs -> get_location zero == (0,0)%R ->
+    choose_target obs == target ->
+    get_ident target < get_ident zero.
         
 
-    
+(* If it choses a lit robot despite light_off_first, it should prefer
+   robot closer than Dp if possible. *)
 Axiom light_close_first : forall obs target,
     choose_target obs == target ->
     get_light target == true ->
@@ -555,24 +569,17 @@ Axiom light_close_first : forall obs target,
     For_all (fun (elt : R2*ILA) =>
                ((dist (0,0)%R (get_location elt)) > Dp \/ get_location elt = (0,0))%R) obs.
 
-(* ça ne veux pas dire que il y a toujours au moins un robot dans le obs? 
-
-faire attention
-
-          /\            /\   
-         /  \          /  \    
-        /  | \        /  | \
-       /   .  \      /   .  \
-      /________\    /________\
-
-*)
+(* It should always return a visible robot.  *)
 Axiom choose_target_in_obs : forall obs target,
-    choose_target obs = target  ->
-    In target obs.
+    choose_target obs = target  -> In target obs.
 
+(* ********* Hypothesis on move_to ********* *)
+(* move_to returns true if it is safe to go to a target.. *)
 
 Context {move_to: obs_ILA -> location -> bool }.
 
+(* it should return true only if there are no *other* robot near the
+   target (distance > 2*D) *)
 Axiom move_to_Some_zone : forall obs choice,
     move_to obs choice = true ->
     (forall x, In x obs -> let (pos_x, light_x) := x in
@@ -580,7 +587,9 @@ Axiom move_to_Some_zone : forall obs choice,
                            dist choice pos_x > 2*D)%R.
 
 
-(* si on ne peux pas bouger, pour toute position autour de choice,  *)
+(* it should return false if there is at least another observable
+   robots and one robot smaller than an observable one is too close to
+   target. *)
 Axiom move_to_None :
   forall (obs : obs_ILA) (choice : location),
   move_to obs choice = false ->
@@ -591,13 +600,20 @@ Axiom move_to_None :
 
 Context {move_to_compat : Proper (equiv ==> equiv ==> equiv) move_to}.
 
+(* ********* Hypothesis on choose_new_pos  ********* *)
+(* choose_new_pos returns the position to aim, givent he robot to follow *)
+
 Context {choose_new_pos: obs_ILA -> location -> location}.
 Context {choose_new_pos_compat : Proper (equiv ==> equiv ==> equiv) choose_new_pos}.
+
+(* It should always return a target reachable in 1 round, and within
+   reasonable range of the robot folloed. *)
 Axiom choose_new_pos_correct : forall obs target new,
     new == choose_new_pos obs target ->
     (dist new target <= Dp /\ dist new (0,0) <= D)%R.
     
-
+(* The protocol is defined as follows, it makes use of the three
+   generic auxiliary functions defined above. *)
 Definition rbg_fnc (s:obs_ILA) : R2*light
   :=
     (* on choisit la target *)
@@ -624,26 +640,42 @@ Qed.
 Definition rbg_ila : robogram :=
   {| pgm := rbg_fnc |}.
 
-
+(* This needs to instantiated for our generic model to fully
+   operational, but as there are no byzantine robot it not used
+   anywhere. *)
 Context {inactive_choice_ila : inactive_choice bool}.
 
+(* A demon in this context. *)
 Definition da_ila := @demonic_action (R2*ILA) Loc State_ILA _ (R2*light) (R*R2*bool) bool bool robot_choice_RL Frame Choice _.
 
+(* This says that a demonic choice always centers the observation on
+the ibserving robot. *)
 Definition change_frame_origin (da:da_ila):= forall (config:config) g (tframe:R*R2*bool),
     da.(change_frame) config g = tframe ->
     let bij := frame_choice_bijection tframe in
     bij (get_location (config (Good g))) == (0,0)%R.
 
+(* da_predicat d means that d is Fully synchronous and follows the above property. *)
 Definition da_predicat (da:da_ila) := (change_frame_origin da) (*/\ (choose_update_close da)*) /\ FSYNC_da da.
 
+Definition demon_ila_type := @demon  (R2*ILA) Loc State_ILA _ (R2*light) (R*R2*bool) bool bool robot_choice_RL Frame Choice _.
 
+Definition demon_ILA (demon : demon_ila_type) := Stream.forever (Stream.instant da_predicat) demon.
 
-(* pour tout ce qui est config initiale 
+(* This needs to instantiated for our generic model to fully
+   operational, but as there are no byzantine robot it not used
+   anywhere. *)
+Context {inactive_ila : @inactive_function (R2 * ILA) Loc State_ILA Identifiers bool
+         inactive_choice_ila}.
+
+(* Initial configuration
 ===============================================================================*)
 
-(* faire la même chose que pour la DA/le démon, faire un predicat ""global"" *)
+(* All this properties state that the original configuration verifies
+   the global invariant + a few others specific properties.. *)
 
-(* tous les robots sont a plus de D dans la conf init *)
+(* TODO: Same thig for DA/le démon, have a predicate ""global"" *)
+
 Definition config_init_not_close (config_init:config) := forall id,
     match (config_init id) with
       (pos, (((ident, light), alive),based)) =>
@@ -694,14 +726,6 @@ Definition config_init_pred config :=
   /\ config_init_base_linked config
   /\ config_init_based_higher_id config
 /\ config_init_based_0 config.
-
-Definition demon_ila_type := @demon  (R2*ILA) Loc State_ILA _ (R2*light) (R*R2*bool) bool bool robot_choice_RL Frame Choice _.
-
-Definition demon_ILA (demon : demon_ila_type) := Stream.forever (Stream.instant da_predicat) demon.
-
-
-Context {inactive_ila : @inactive_function (R2 * ILA) Loc State_ILA Identifiers bool
-         inactive_choice_ila}.
 
 
 Lemma let_split : forall {A B C E:Type} (x w:A) (y t:B) (a b:C) (u v : E) (z: A*B*C*E),
@@ -10164,11 +10188,14 @@ Proof.
                                     (frame_choice_bijection (r,t,b)) (get_location (conf (Good g_false))))%R.
                            unfold frame_choice_bijection, Frame. destruct b; simpl;
                            unfold get_location, State_ILA, OnlyLocation, AddInfo, get_location;
-                           now simpl.destruct Hlight_close as [Hlight_close|Hlight_close].
-                           destruct b; rewrite (dist_compat _ _ (reflexivity _) _ _ H0), <- frame_dist in Hlight_close;
-                             assumption.
+                           now simpl.
+                           destruct Hlight_close as [Hlight_close|Hlight_close].
+                           destruct b;
+                             rewrite (dist_compat _ _ (reflexivity _) _ _ H0)
+                             , <- frame_dist in Hlight_close
+                             ; assumption.
 
-                                               assert (g_false <> g).
+                           assert (g_false <> g).
                     {
                       destruct (Geq_dec g_false g).
                       rewrite e in Hident_false.
