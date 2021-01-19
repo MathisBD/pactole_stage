@@ -42,7 +42,7 @@ Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance limited_set_observation (radius : R) : Observation.
+Instance limited_set_observation (radius : R) : Observation.
 simple refine {|
   observation := set location;
   obs_from_config config state :=
@@ -66,13 +66,9 @@ Defined.
 
 Local Notation "'from_config' radius" := (@obs_from_config _ _ _ _ (limited_set_observation radius)) (at level 1).
 
-Lemma obs_from_config_ignore_snd : forall ref_state config state,
-  obs_from_config config state == obs_from_config config ref_state.
-Proof using . reflexivity. Qed.
-
-Lemma obs_from_config_map : forall sim : similarity location,
-  forall Psim radius config pt,
-  map sim (from_config radius config pt)
+Lemma obs_from_config_map : forall radius (sim : similarity location),
+  forall Psim config pt,
+  map (sim_f sim) (from_config radius config pt)
   == from_config (Similarity.zoom sim * radius)
                  (map_config (lift (existT precondition sim Psim)) config)
                  ((lift (existT precondition sim Psim)) pt).

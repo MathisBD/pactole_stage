@@ -173,7 +173,7 @@ Context `{St : State info}.
 Context `{Names}.
 Implicit Type config : configuration.
 
-Global Instance multiset_observation : Observation.
+Instance multiset_observation : Observation.
 simple refine {|
   observation := multiset location;
   

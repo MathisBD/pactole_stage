@@ -46,6 +46,8 @@ Context `{inactive_choice}.
 Context {UpdFun : update_function _ _ _}.
 Context {InaFun : inactive_function _}.
 
+Global Existing Instance multiset_observation.
+
 Notation "!! config" :=
   (@obs_from_config location _ _ _ multiset_observation config origin : observation) (at level 10).
 

@@ -56,9 +56,9 @@ Instance location_ES : EuclideanSpace location := R_ES.
 Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 (** The only information in the state of a robot is its location.
     Changes of frame must come from a similarity. *)
-(* Instance Info : State location := OnlyLocation
-  (fun f => sigT (fun sim : similarity location => Bijection.section sim == f)). *)
 Instance Info : State location := OnlyLocation (fun _ => True).
+(** Robots observe the location of others robots with strong multiplicity. *)
+Instance Obs : Observation := multiset_observation.
 (** Demons use similarities to perform the change of frame of reference. *)
 Instance FC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
 (** Demons do not make any choice in how a robot state is updated, both when active or not. *)

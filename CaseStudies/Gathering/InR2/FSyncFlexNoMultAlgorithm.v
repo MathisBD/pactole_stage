@@ -57,6 +57,9 @@ Instance Info : State location := OnlyLocation (fun _ => True).
 Lemma no_info : forall x y, get_location x == get_location y -> x == y.
 Proof using . now intros. Qed.
 
+(** Robots observe the location of others robots with strong multiplicity. *)
+Instance Obs : Observation := set_observation.
+
 (* Refolding typeclass instances *)
 Ltac changeR2 :=
   change R2 with location in *;

@@ -39,12 +39,15 @@ Context {Robots : Names}.
 (** Robots are on nodes *)
 Global Instance Loc : Location := make_Location ring_node.
 
-(** Robot only decide in which direction they want to move *)
-Global Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
-
 (** States of robots only contains their location. *)
 Global Instance St : State location := OnlyLocation (fun _ => True).
 Global Existing Instance proj_graph.
+
+(** Robots observe the location of others robots with strong multiplicity. *)
+Global Existing Instance multiset_observation.
+
+(** Robots only decide in which direction they want to move. *)
+Global Instance RC : robot_choice direction := { robot_choice_Setoid := direction_Setoid }.
 
 (** Demon's frame choice: we move back the robot to the origin with a translation
                           and we can choose the orientation of the ring. *)

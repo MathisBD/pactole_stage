@@ -165,7 +165,7 @@ Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance set_observation : Observation.
+Instance set_observation : Observation.
 simple refine {|
   observation := set location;
   

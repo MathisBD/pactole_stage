@@ -50,6 +50,7 @@ Instance Loc_VS : RealVectorSpace location := R2_VS.
 Instance Loc_ES : EuclideanSpace location := R2_ES.
 Remove Hints R2_Setoid R2_EqDec : typeclass_instances.
 Instance Info : State location := OnlyLocation (fun _ => True).
+Instance Obs : Observation := set_observation.
 Instance Robots : robot_choice location := { robot_choice_Setoid := location_Setoid }.
 Instance FDC : frame_choice (Similarity.similarity location) := FrameChoiceSimilarity.
 Instance NoActiveChoice : update_choice unit := {update_choice_EqDec := unit_eqdec}.

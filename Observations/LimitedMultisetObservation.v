@@ -53,7 +53,7 @@ Context `{Names}.
 
 Implicit Type config : configuration.
 
-Global Instance limited_multiset_observation (radius : R) : Observation.
+Instance limited_multiset_observation (radius : R) : Observation.
 simple refine {|
   observation := multiset location;
   obs_from_config config state :=
@@ -77,10 +77,6 @@ Defined.
 
 Local Notation "'from_config' radius" :=
   (@obs_from_config _ _ _ _ (limited_multiset_observation radius)) (at level 1).
-
-Lemma obs_from_config_ignore_snd : forall ref_state config state,
-  obs_from_config config state == obs_from_config config ref_state.
-Proof using . reflexivity. Qed.
 
 Lemma obs_from_config_map : forall sim : similarity location,
   forall Psim radius config state,

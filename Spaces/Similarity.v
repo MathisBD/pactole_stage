@@ -44,16 +44,15 @@ Record similarity := {
   sim_f :> bijection T;
   zoom : R;
   dist_prop : forall x y, dist (sim_f x) (sim_f y) = zoom * dist x y}.
-(* Arguments similarity T {_} {_} {_} {_}. *)
 
 Global Instance similarity_Setoid : Setoid similarity.
 simple refine {| equiv := fun sim1 sim2 => equiv (sim_f sim1) (sim_f sim2) |}.
 Proof.
 * apply bij_Setoid.
 * split.
-+ repeat intro. reflexivity.
-+ repeat intro. now symmetry.
-+ repeat intro. etransitivity; eauto.
+  + repeat intro. reflexivity.
+  + repeat intro. now symmetry.
+  + repeat intro. etransitivity; eauto.
 Defined.
 
 Global Instance f_compat : Proper (equiv ==> equiv) sim_f.
