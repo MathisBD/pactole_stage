@@ -29,7 +29,7 @@ Set Implicit Arguments.
 (* To avoid infinite loops, we use a breadth-first search... *)
 Typeclasses eauto := (bfs) 20.
 (* but we need to remove [eq_setoid] as it matches everything... *)
-Remove Hints eq_setoid : Setoid.
+Global Remove Hints eq_setoid : Setoid.
 (* while still declaring it for the types for which we still want to use it. *)
 Instance R_Setoid : Setoid R := eq_setoid R.
 Instance Z_Setoid : Setoid Z := eq_setoid Z.
