@@ -28,6 +28,7 @@ Require Import Psatz.
 Require Import Inverse_Image.
 (* Pactole basic definitions *)
 Require Export Pactole.Setting.
+Require Import FMapFacts.
 (* Specific to R topology *)
 Require Import Pactole.Spaces.R.
 (* Specific to gathering *)

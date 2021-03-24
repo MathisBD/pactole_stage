@@ -30,6 +30,7 @@ Require Import Morphisms.
 Require Import Psatz.
 Require Import Inverse_Image.
 Require Import FunInd.
+Require Import FMapFacts.
 
 (* Pactole basic definitions *)
 Require Export Pactole.Setting.
