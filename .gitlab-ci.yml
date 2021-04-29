@@ -17,32 +17,6 @@ stages:
     - make -j "$NJOBS"
     - make install
 
-# TODO: remove unneeded versions below
-#
-# coq:8.4:
-#   extends: .build
-
-# coq:8.5:
-#   extends: .build
-
-# coq:8.6:
-#   extends: .build
-
-# coq:8.7:
-#   extends: .build
-
-# coq:8.8:
-#   extends: .build
-
-# coq:8.9:
-#   extends: .build
-
-coq:8.10:
-  extends: .build
-
-coq:8.11:
-  extends: .build
-
 coq:8.12:
   extends: .build
 
