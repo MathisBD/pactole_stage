@@ -32,7 +32,7 @@ Section Equal.
     constructor; firstorder eauto.
   Qed.
 End Equal.
-Hint Unfold Equal_pw : set.
+#[export] Hint Unfold Equal_pw : set.
 
 
 (** * [FSet] : the interface of sets
@@ -426,14 +426,14 @@ Definition zelements_2 `{H : @FSetSpecs A St HA F} :=
 (* Definition zmax_elt_3 `{H : @FSetSpecs A St HA F} := *)
   (* @max_elt_3 _ _ _ _ (@FFSetSpecs_max_elt _ _ _ _ H). *)
 
-Hint Resolve zmem_1 zequal_1 zsubset_1 zempty_1
+#[export] Hint Resolve zmem_1 zequal_1 zsubset_1 zempty_1
   zis_empty_1 zchoose_1 zchoose_2 zadd_1 zadd_2 zremove_1
   zremove_2 zsingleton_2 zunion_1 zunion_2 zunion_3
   zinter_3 zdiff_3 zfold_1 zfilter_3 zfor_all_1 zexists_1
     zpartition_1 zpartition_2 zelements_1 zelements_3w
  (* zelements_3 *)
     : set.
-Hint Immediate zIn_1 zmem_2 zequal_2 zsubset_2 zis_empty_2 zadd_3
+#[export] Hint Immediate zIn_1 zmem_2 zequal_2 zsubset_2 zis_empty_2 zadd_3
   zremove_3 zsingleton_1 zinter_1 zinter_2 zdiff_1 zdiff_2
   zfilter_1 zfilter_2 zfor_all_2 zexists_2 zelements_2
     (*zmin_elt_1 zmin_elt_2 zmin_elt_3 zmax_elt_1 zmax_elt_2 zmax_elt_3*)

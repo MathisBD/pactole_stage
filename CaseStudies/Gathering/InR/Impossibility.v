@@ -25,6 +25,7 @@ Require Import Lia.
 Require Import List SetoidList.
 Require Import Pactole.Util.Preliminary.
 Require Import Pactole.Setting.
+Require Import FMapFacts.
 Require Import Pactole.Spaces.R.
 Require Import Pactole.Models.Rigid.
 Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.

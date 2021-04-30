@@ -1,17 +1,30 @@
+# -*- mode: makefile -*-
 
-# "make vos" will fail on files containing "Print Assumptions Foo. We
-# put these commands in separate files called xxx_Assumptions.v. And
-# the target "make fast" is like "make vos" but without thes files.
+# "make vos" and "make vok" will fail on files containing "Print
+# Assumptions Foo". These kind of coq commands are in separate files
+# called xxx_Assumptions.v. We create targets "vos-nocheck" and
+# "vok-nocheck" which ignore these files.
+
+.PHONY: vos-nocheck vok-nocheck
 
 ## VOFILES is not defined before the "-include Makefile.local", so we
 ## use VFILES
-VOFILESNOASSUMPTION=$(filter-out _Assumptions.v,$(VFILES))
+VOFILESNOASSUMPTION=$(filter-out %_Assumptions.v,$(VFILES))
 VOSFILESNOASSUMPTION=$(VOFILESNOASSUMPTION:%.v=%.vos)
-fast: $(VOSFILESNOASSUMPTION)
-.PHONY: fast
+VOKFILESNOASSUMPTION=$(VOFILESNOASSUMPTION:%.v=%.vok)
+
+# special target for fast (and unsafe) compilation when developing
+# proofs. See also README.md.
+
+# This replaces "make vos", it excludes xxx_Assumptions.v files
+vos-nocheck: $(VOSFILESNOASSUMPTION)
+
+# This replaces "make vok", it excludes xxx_Assumptions.v files
+vok-nocheck: $(VOKFILESNOASSUMPTION)
 
 # This prints message when a "proof using" is missing. This cannot be
-# specified in _coqProjectbecause spaces in args are not supported by
+# specified in _coqProject because spaces in args are not supported by
 # coq_makefile.
+# Remove to see where we should add "Proof using annotations".
 COQEXTRAFLAGS+= -set "Suggest Proof Using=true"
 

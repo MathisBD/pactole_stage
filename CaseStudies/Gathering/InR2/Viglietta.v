@@ -356,8 +356,12 @@ destruct (gathered_at_dec config (get_location (config (Good r0)))) as [| Hgathe
     now destruct_match.
   + (* both robots have color B, hence measure config = 3 *)
     destruct (activate da (Good r0)) eqn:Hactive1,
-             (activate da (Good r1)) eqn:Hactive2; simpl; try lia; [].
-    destruct Hone_active; discriminate.
+             (activate da (Good r1)) eqn:Hactive2; simpl.
+    -- try lia.
+    -- try lia.
+    -- try lia.
+    -- (* in coq8.13 lia also solves this. *)
+      destruct Hone_active; discriminate.
 Qed.
 
 (** Fairness entails progress. *)

@@ -17,10 +17,10 @@ Local Open Scope equiv_scope.
    There are additional specifications, for boolean functions in particular,
    in the [InductiveSpec] section at the end of the file.
    *)
-Hint Extern 1 (Equivalence _) => constructor; congruence : core.
-Hint Extern 1 (equiv ?x ?x) => reflexivity : core.
-Hint Extern 2 (equiv ?y ?x) => now symmetry : core.
-Hint Extern 2 (Equivalence.equiv ?y ?x) => now symmetry : core.
+#[export] Hint Extern 1 (Equivalence _) => constructor; congruence : core.
+#[export] Hint Extern 1 (equiv ?x ?x) => reflexivity : core.
+#[export] Hint Extern 2 (equiv ?y ?x) => now symmetry : core.
+#[export] Hint Extern 2 (Equivalence.equiv ?y ?x) => now symmetry : core.
 
 Notation Leibniz := (@eq _) (only parsing).
 

@@ -740,7 +740,7 @@ Lemma le_neq_lt : forall m n : nat, n <= m -> n <> m -> n < m.
 Proof using . intros n m Hle Hneq. now destruct (le_lt_or_eq _ _ Hle). Qed.
 
 Lemma min_is_0 : forall n m, min n m = 0 <-> n = 0 \/ m = 0.
-Proof using . intros [| n] [| m]; intuition. Qed.
+Proof using . intros [| n] [| m]; intuition;discriminate. Qed.
 
 Lemma max_is_0 : forall n m, max n m = 0 <-> n = 0 /\ m = 0.
 Proof using . intros [| n] [| m]; intuition; discriminate. Qed.

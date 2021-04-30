@@ -726,10 +726,10 @@ Section WeakFacts.
     rewrite eq_bool_alt, <-is_empty_iff, <-is_empty_iff, Hm; intuition.
   Qed.
 
-  Global Instance mem_m :
+  Global Instance mem_m elt :
     Proper (equiv ==> Equal ==> Leibniz) (@mem key _ _ _ elt).
   Proof using HF.
-    intros elt k k' Hk m m' Hm.
+    intros k k' Hk m m' Hm.
     rewrite eq_bool_alt, <- mem_in_iff, <-mem_in_iff, Hk, Hm; intuition.
   Qed.
 
