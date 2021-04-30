@@ -18,6 +18,7 @@ package.tgz
 .nia.cache
 .nra.cache
 .coqdeps.d
+.Makefile.d
 makefile
 Makefile
 makefile.bak
