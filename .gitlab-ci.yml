@@ -7,7 +7,6 @@ stages:
   before_script:
     - if [ -n "${COMPILER_EDGE}" ]; then opam switch ${COMPILER_EDGE} && eval $(opam env); fi
     - opam update -y
-#    - opam install -y -v -j ${NJOBS} coq-mathcomp-ssreflect
     - opam config list
     - opam repo list
     - opam list
@@ -15,13 +14,10 @@ stages:
     - sudo chown -R coq:coq "$CI_PROJECT_DIR"
     - coq_makefile -f _CoqProject -o Makefile
     - make -j "$NJOBS"
-    - make install
+#    - make install
 
 coq:8.12:
   extends: .build
 
 coq:8.13:
-  extends: .build
-
-coq:dev:
   extends: .build
