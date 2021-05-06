@@ -24,3 +24,4 @@ Makefile
 makefile.bak
 Makefile.bak
 Makefile.conf
+.Makefile.d

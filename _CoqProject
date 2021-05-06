@@ -106,4 +106,4 @@ CaseStudies/Exploration/Tower.v
 CaseStudies/Exploration/Tower_Assumptions.v
 
 ## Case Study: Volume
-CaseStudies/Volumes/NoCollisionAndPath.v
+#CaseStudies/Volumes/NoCollisionAndPath.v
