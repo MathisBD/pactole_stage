@@ -43,6 +43,8 @@ Require Import Pactole.CaseStudies.Gathering.Definitions.
 Require Import Pactole.Observations.MultisetObservation.
 (* Specific to rigidity *)
 Require Import Pactole.Models.Rigid.
+(* Specific to settings with no Byzantine robots *)
+Require Import Pactole.Models.NoByzantine.
 
 (* User defined *)
 Import Permutation.
@@ -71,6 +73,8 @@ Hypothesis size_G : (3 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
+Instance NoByz : NoByzantine.
+Proof using . now split. Qed.
 
 (* Existing Instance R2_Setoid.
 Existing Instance R2_EqDec.
@@ -126,21 +130,10 @@ intro. rewrite config_list_spec, map_cst.
 rewrite names_length. simpl. now rewrite plus_0_r.
 Qed.
 
-Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
-Proof using size_G.
-intros P Hg [g | b].
-+ apply Hg.
-+ destruct b. lia.
-Qed.
-
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
-Proof using size_G.
-intros config1 config2 Heq id. apply WithMultiplicity.no_info. destruct id as [g | b].
-+ apply Heq.
-+ destruct b. lia.
-Qed.
+Proof using . intros. apply no_byz_eq. intro. now apply WithMultiplicity.no_info. Qed.
 
 Lemma map_sim_support : forall (f : Bijection.bijection location) (s : observation),
   PermutationA (@equiv location _) (support (map f s)) (List.map f (support s)).

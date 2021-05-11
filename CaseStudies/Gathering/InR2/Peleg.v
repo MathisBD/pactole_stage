@@ -22,6 +22,7 @@ Require Import Psatz.
 Require Import Inverse_Image.
 Require Import Pactole.Setting.
 Require Import Pactole.Models.Flexible.
+Require Import Pactole.Models.NoByzantine.
 Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.CaseStudies.Gathering.WithMultiplicity.
@@ -48,6 +49,8 @@ Hypothesis size_G : (2 <= n)%nat.
 
 (** There are n good robots and no byzantine ones. *)
 Instance MyRobots : Names := Robots n 0.
+Instance NoByz : NoByzantine.
+Proof using . now split. Qed.
 
 Instance Loc : Location := make_Location R2.
 Instance Loc_VS : @RealVectorSpace location location_Setoid location_EqDec := R2_VS.
@@ -113,21 +116,11 @@ Coercion paths_in_R2 : location >-> path_R2.
 Instance paths_in_R2_compat : Proper (@equiv _ location_Setoid ==> equiv) paths_in_R2.
 Proof using . intros pt1 pt2 Heq. now rewrite Heq. Qed.
 
-Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
-Proof using size_G.
-intros P Hconfig [g | b].
-+ apply Hconfig.
-+ destruct b. lia.
-Qed.
 
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
-Proof using size_G.
-intros config1 config2 Heq id. apply no_info. destruct id as [g | b].
-+ apply Heq.
-+ destruct b. lia.
-Qed.
+Proof using . intros. apply no_byz_eq. intro. now apply WithMultiplicity.no_info. Qed.
 
 Lemma config_list_alls : forall pt, config_list (fun _ => pt) = alls pt nG.
 Proof using .
@@ -703,7 +696,7 @@ Lemma gathered_precise : forall config pt,
 Proof using size_G.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
-- symmetry. revert id. apply no_byz, Hgather.
+- symmetry. apply (no_byz id), Hgather.
 Qed.
 (*
 Corollary not_gathered_generalize : forall config id,

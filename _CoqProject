@@ -44,6 +44,7 @@ Core/Formalism.v
 Setting.v
 
 ## Models
+Models/NoByzantine.v
 Models/Flexible.v
 Models/Rigid.v
 Models/RigidFlexibleEquivalence.v

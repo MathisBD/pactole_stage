@@ -14,6 +14,7 @@ Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Models.Similarity.
+Require Import Pactole.Models.NoByzantine.
 Require Import Pactole.CaseStudies.Gathering.Definitions.
 
 (* Helping typeclass resolution avoid infinite loops. *)
@@ -27,8 +28,10 @@ Local Existing Instance R2.R2_ES.
 
 Section RDV.
 
-(** There are only 2 robots: r0 and r1. *)
+(** There are only 2 robots: r0 and r1, and neither is Byzantine. *)
 Instance N : Names := Robots 2 0.
+Instance NoByz : NoByzantine.
+Proof using . now split. Qed.
 
 Notation lt2 := (fun x => x < 2)%nat.
 Definition lt02 : (0 < 2)%nat := ltac:(abstract lia).
@@ -59,15 +62,6 @@ Definition info := (location * light)%type.
 
 Instance St : State info := AddInfo light
    (OnlyLocation (fun f => sigT (fun sim : similarity location => Bijection.section sim == f))).
-
-(** Since there are none, we can ignore Byzantine robots. *)
-Lemma no_byz_eq : forall config1 config2 : configuration,
-  (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
-Proof using .
-intros config1 config2 Heq id. destruct id as [g | b].
-+ apply Heq.
-+ destruct b. exfalso. lia.
-Qed.
 
 (** The robot have access to the full state of all robots, that is, their locations and lights. *)
 Instance Obs : @Observation info Loc St N.
