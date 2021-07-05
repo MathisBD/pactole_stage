@@ -53,8 +53,7 @@ Global Instance RC : robot_choice direction := { robot_choice_Setoid := directio
                           and we can choose the orientation of the ring. *)
 Global Instance FC : frame_choice (Z * bool) := {
   frame_choice_bijection :=
-    fun nb => if snd nb then @compose _ _ IsoComposition (Ring.trans (fst nb)) (Ring.sym (fst nb))
-                        else Ring.trans (fst nb);
+    fun nb => if snd nb then Ring.sym (fst nb) else Ring.trans (fst nb);
   frame_choice_Setoid := eq_setoid _ }.
 
 Global Existing Instance NoChoice.
@@ -112,11 +111,19 @@ Definition Stopped (e : execution) : Prop :=
 Definition Will_stop (e : execution) : Prop :=
   Stream.eventually Stopped e.
 
-(** [Exploration_with_stop e] means that after a finite time, every node of the space has been
-  visited, and after that time, all robots will stay at the same place forever. *)
-Definition FullSolExplorationStop (r : robogram) (d : demon) :=
-  forall config, (forall l, Will_be_visited l (execute r d config))
-              /\ Will_stop (execute r d config).
+(** [Exploration_with_stop r d config] means that executing [r] against demon [d] from
+    configuration [config] indeed solves exploration with stop: after a finite time, every
+    node of the space has been visited and all robots will stay at the same place forever. *)
+Definition ExplorationWithStop (r : robogram) (d : demon) (config : configuration) :=
+  (forall l, Will_be_visited l (execute r d config))
+  /\ Will_stop (execute r d config).
+
+(** [FullSolExplorationWithStop r d] means that the robogram [r] solves exploration with stop
+    agains demon [d] regardless of the starting configuration.
+
+    This is actually impossible when the number of robots is less than the size of the ring. *)
+Definition FullSolExplorationWithStop (r : robogram) (d : demon) :=
+  forall config, ExplorationWithStop r d config.
 
 (** Acceptable starting configurations contain no tower,
     that is, all robots are at different locations. *)
@@ -126,8 +133,7 @@ Definition Valid_starting_config config : Prop :=
 
 Definition Explore_and_Stop (r : robogram) :=
   forall d config, Fair d -> Valid_starting_config config ->
-    (forall pt, Will_be_visited pt (execute r d config))
-             /\ Will_stop (execute r d config).
+  ExplorationWithStop r d config.
 
 (** Compatibility properties *)
 Global Instance is_visited_compat : Proper (equiv ==> equiv ==> iff) is_visited.

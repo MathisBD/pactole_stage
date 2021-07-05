@@ -15,6 +15,7 @@ Require Import Lia.
 Require Import Decidable.
 Require Import Equalities.
 Require Import List Setoid SetoidList Compare_dec Morphisms.
+Require Import Pactole.Models.NoByzantine.
 Require Import Pactole.CaseStudies.Exploration.Definitions.
 
 
@@ -33,31 +34,22 @@ Instance Robots : Names := Robots kG 0.
 
 (** Assumptions on the number of robots: it is non zero, less than and divides the ring size. *)
 Hypothesis kdn : (ring_size mod kG = 0)%nat.
-(* This version triggers an "out of memory" error in the Program Definition of [da]!
+(* (* FIXME: This version triggers an "out of memory" error in the Program Definition of [da]! *)
 Hypothesis k_bounds : (1 < kG < ring_size)%nat.
 Definition k_sup_1 : (1 < kG)%nat := proj1 k_bounds.
 Definition k_inf_n : (kG < ring_size)%nat := proj2 k_bounds. *)
 Hypothesis k_sup_1 : (1 < kG)%nat.
 Hypothesis k_inf_n : (kG < ring_size)%nat.
 
-(** There is no byzantine robot so we can simplify properties
-    about identifiers and configurations. *)
-Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
-Proof using k_inf_n k_sup_1 kdn.
-intros [g | b] P HP.
-+ apply HP.
-+ destruct b. lia.
-Qed.
+
+Instance NoByz : NoByzantine.
+Proof using . now split. Qed.
 
 (** A dummy state used for (inexistant) byzantine robots. *)
 Definition origin : location := of_Z 0.
-Definition dummy_val : location := origin. (* could be anything *)
+Definition dummy_loc : location := origin. (* could be anything *)
 
 Notation "!! config" := (obs_from_config config origin) (at level 0).
-
-Lemma no_byz_eq : forall config1 config2 : configuration,
-  (forall g, config1 (Good g) == config2 (Good g)) -> config1 == config2.
-Proof using k_inf_n k_sup_1 kdn. intros config1 config2 Heq id. apply (no_byz id). intro g. apply Heq. Qed.
 
 
 (** Let us consider an arbirary robogram. *)
@@ -80,12 +72,12 @@ Definition create_ref_config (g : G) : location :=
 Definition ref_config : configuration :=
   fun id => match id with
               | Good g => create_ref_config g
-              | Byz b => dummy_val
+              | Byz b => dummy_loc
             end.
 
 Lemma ref_config_injective :
   Util.Preliminary.injective eq equiv (fun id => get_location (ref_config id)).
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_sup_1 k_inf_n kdn.
 intros id1 id2.
 assert (ring_size / kG <> 0)%nat by (rewrite Nat.div_small_iff; lia).
 apply (no_byz id2), (no_byz id1). clear id1 id2.
@@ -106,7 +98,7 @@ Qed.
 (**  Translating [ref_config] by multiples of [ring_size / kG] does not change its observation. *)
 Lemma obs_trans_ref_config : forall g,
   !! (map_config (Ring.trans (to_Z (create_ref_config g))) ref_config) == !! ref_config.
-Proof using k_inf_n k_sup_1 kdn.
+Proof using k_sup_1 k_inf_n kdn.
 unfold obs_from_config,
        MultisetObservation.multiset_observation, MultisetObservation.make_multiset.
 intro g. apply MMultisetFacts.from_elements_compat. (* FIXME: [f_equiv] works but is too long *)
@@ -170,7 +162,7 @@ Qed.
 (** The demon activate all robots and shifts their view to be on 0. *)
 Program Definition da : demonic_action := {|
   activate := fun id => true;
-  relocate_byz := fun _ _ => dummy_val;
+  relocate_byz := fun _ _ => dummy_loc;
   change_frame := fun config g => (to_Z (config (Good g)), false);
   choose_update := fun _ _ _ => tt;
   choose_inactive := fun _ _ => tt |}.

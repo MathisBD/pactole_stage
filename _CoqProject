@@ -2,6 +2,13 @@
 -Q . Pactole
 -arg -w
 -arg -notation-overridden
+
+# This warning appeared in coq 8.13. We can fix it by putting
+# "#[export]" in front of Hint commands. But it wouldn't compile in
+# <8.12. We only support >= 8.12 now so this is nont needed anymore.
+#-arg -w
+#-arg -deprecated-hint-without-locality
+
 # Spaces in args are not supported, see Makefile.local
 #-arg -set
 #-arg "Suggest Proof Using=true"
@@ -37,6 +44,7 @@ Core/Formalism.v
 Setting.v
 
 ## Models
+Models/NoByzantine.v
 Models/Flexible.v
 Models/Rigid.v
 Models/RigidFlexibleEquivalence.v
@@ -98,3 +106,5 @@ CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v
 CaseStudies/Exploration/Tower.v
 CaseStudies/Exploration/Tower_Assumptions.v
 
+## Case Study: Volume
+CaseStudies/Volumes/NoCollisionAndPath.v

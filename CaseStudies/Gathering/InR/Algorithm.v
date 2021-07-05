@@ -28,6 +28,7 @@ Require Import Psatz.
 Require Import Inverse_Image.
 (* Pactole basic definitions *)
 Require Export Pactole.Setting.
+Require Import FMapFacts.
 (* Specific to R topology *)
 Require Import Pactole.Spaces.R.
 (* Specific to gathering *)
@@ -39,6 +40,8 @@ Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Similarity.
 (* Specific to rigidity *)
 Require Export Pactole.Models.Rigid.
+(* Specific to settings without Byzantine robots *)
+Require Export Pactole.Models.NoByzantine.
 
 (* User defined *)
 Import Permutation.
@@ -58,6 +61,8 @@ Variable n : nat.
 Hypothesis size_G : n >= 2.
 (** We assume that we have at least two good robots and no byzantine one. *)
 Instance MyRobots : Names := Robots n 0.
+Instance NoByz : NoByzantine.
+Proof using . now split. Qed.
 
 (* (* BUG?: To help finding correct instances, loops otherwise! *)
 Existing Instance R_Setoid.
@@ -105,21 +110,10 @@ intros sim x y. destruct (similarity_in_R_case sim) as [Hsim | Hsim];
 repeat rewrite Hsim; cbn in *; field.
 Qed.
 
-Lemma no_byz : forall P (config : configuration), (forall g, P (config (Good g))) -> forall id, P (config id).
-Proof using size_G.
-intros P config Hconfig [g | b].
-+ apply Hconfig.
-+ destruct b. lia.
-Qed.
-
 Lemma no_byz_eq : forall config1 config2 : configuration,
   (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
   config1 == config2.
-Proof using size_G.
-intros config1 config2 Heq id. apply WithMultiplicity.no_info. destruct id as [g | b].
-+ apply Heq.
-+ destruct b. lia.
-Qed.
+Proof using . intros. apply no_byz_eq. intro. now apply WithMultiplicity.no_info. Qed.
 
 
 (** Spectra can never be empty as the number of robots is non null. *)
@@ -1447,7 +1441,7 @@ Lemma gathered_precise : forall config pt,
 Proof using size_G.
 intros config pt Hgather id id'. transitivity pt.
 - apply Hgather.
-- symmetry. apply no_byz. apply Hgather.
+- symmetry. apply (no_byz id), Hgather.
 Qed.
 
 Corollary not_gathered_generalize : forall config id,
@@ -1564,7 +1558,7 @@ intros da Hda config pt Hgather. rewrite (round_simplify_Majority).
     induction names as [| id l].
     + reflexivity.
     + simpl. destruct_match.
-      - elim Hdiff. simpl in *. subst. apply no_byz. intro g. apply Hgather.
+      - elim Hdiff. simpl in *. subst. apply (no_byz id), Hgather.
       - apply IHl. }
   rewrite H0. specialize (Hgather g1). rewrite <- Hgather. apply pos_in_config.
 Qed.

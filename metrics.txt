@@ -1,0 +1,34 @@
+Formalization                              LOC (coqwc on spec + proof)
+===============================================
+Util
++-- Coqlib & Co                           2385
++-- FSets + FMaps                         4033
++-- MMultiset                             5807
+Core                                      1000
+Spaces
++-- Continuous spaces (R, R^2, etc.)      4490
++-- Discrete spaces (graphs, ring, grid)   686
+Observations
++-- Multiset                               293
++-- Set                                    265
++-- Other                                   68
+Models
++-- Rigid/flexible + equivalence           275
++-- Continuous/discrete graphs            1187
+Case Studies
++-- Gathering
+    +-- common part                       1407
+    +-- Impossibility (R + general)       2029
+    +-- SSYNC, R                          1388
+    +-- SSYNC, R^2                        2307
+    +-- Peleg + flexible                  1293
+    +-- Viglietta                          407
++-- Convergence
+    +-- Impossibility                      578
+    +-- Algorithm                          170
++-- Exploration
+    +-- Impossibility                      474
+    +-- Tower                              203
++-- Life-line                             1592
+===============================================
+Total                                    31462

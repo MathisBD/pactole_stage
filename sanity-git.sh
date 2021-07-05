@@ -1,7 +1,20 @@
 #!/bin/sh
 
-# if launched by git commit
-# cd dev_coq
+# This script checks that pactole archive is in a correct state:
+# - no coq file should be there but not cited in _CoqProject (untrackedvfiles).
+# - no file cited in _CoqProject should be absent (unfoundvfiles).
+#
+# NOTE: we do note check that compilation succeeds. It is too long and
+# should be checked by CI anyway..
+
+# To enable this as a pre-commit check, do (assuming you do NOT
+# already have a pre-commit script in .git/hooks):
+#
+# cp sanity-git.sh .git/hooks/pre-commit
+# chmod u+x .git/hooks/pre-commit
+#
+# Note that you will need to do that on each local clone you have, as
+# it is not versionized.
 
 AUXFILES=".allvfiles .trackedfiles .untrackedvfiles .unfoundvfiles"
 
@@ -54,6 +67,7 @@ NC='\033[0m' # No Color
 if [ "$EXITCODE2" -eq 1 -a "$EXITCODE1" -eq 1 ];
 then
     EXITCODE=0
+    echo "Sanity check OK"
 else
     echo "${RED}Commit was aborted for the reason described above.${NC}"
     echo
@@ -66,8 +80,5 @@ else
 fi
 
 rm -f $AUXFILES
-
-# if launched by git commit
-# cd ..
 
 exit $EXITCODE

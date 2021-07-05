@@ -28,6 +28,7 @@ Require Import Pactole.Setting.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Observations.SetObservation.
 Require Import Pactole.Models.Rigid.
+Require Import Pactole.Models.NoByzantine.
 Require Import Pactole.Models.Similarity.
 Set Implicit Arguments.
 Close Scope R_scope.
@@ -43,6 +44,8 @@ Variable n : nat.
 Hypothesis n_non_0 : n <> 0%nat.
 
 Instance MyRobots : Names := Robots n 0.
+Instance NoByz : NoByzantine.
+Proof. now split. Qed.
 
 (* BUG?: To help finding correct instances, loops otherwise! *)
 Instance Loc : Location := {| location := R2 |}.
@@ -99,14 +102,6 @@ Qed.
 
 Hint Resolve obs_non_empty : core.
 
-(** There is no byzantine robot so to prove anything about an ident
-    we just need to consider good robots.*)
-Lemma no_byz : forall P, (forall g, P (Good g)) -> forall id, P id.
-Proof using n_non_0.
-intros P Hg [g | b].
-+ apply Hg.
-+ destruct b. lia.
-Qed.
 
 (** ** Properties of executions  *)
 

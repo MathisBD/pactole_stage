@@ -30,6 +30,7 @@ Require Import Pactole.CaseStudies.Gathering.Definitions.
 Require Pactole.CaseStudies.Gathering.WithMultiplicity.
 Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Rigid.
+Require Import Pactole.Models.NoByzantine.
 Set Implicit Arguments.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
@@ -45,6 +46,8 @@ Section ImpossibilityProof.
 (** There are n good robots and no byzantine ones. *)
 Variable n : nat.
 Instance MyRobots : Names := Robots n 0.
+Instance NoByz : NoByzantine.
+Proof using . now split. Qed.
 
 (** We assume that the number of robots is even and non-null. *)
 Hypothesis even_nG : Nat.Even n.
@@ -100,6 +103,10 @@ Instance Frame : frame_choice (similarity location) := FrameChoiceSimilarity.
 Implicit Type config : configuration.
 Implicit Type da : demonic_action.
 
+Lemma no_byz_eq : forall config1 config2 : configuration,
+  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) ->
+  config1 == config2.
+Proof using . intros. apply no_byz_eq. intro. now apply WithMultiplicity.no_info. Qed.
 
 Lemma nG_ge_2 : 2 <= nG.
 Proof using even_nG nG_non_0.
@@ -121,17 +128,6 @@ Qed.
 Definition obs_from_config_spec : forall config (pt : location),
   (!! config)[pt] = countA_occ _ equiv_dec pt (List.map get_location (config_list config))
   := WithMultiplicity.obs_from_config_spec.
-
-Lemma no_byz : forall (id : ident) P, (forall g, P (Good g)) -> P id.
-Proof using nG_non_0.
-intros [g | b] P HP.
-+ apply HP.
-+ destruct b. lia.
-Qed.
-
-Lemma no_byz_eq : forall config1 config2,
-  (forall g, get_location (config1 (Good g)) == get_location (config2 (Good g))) -> config1 == config2.
-Proof using nG_non_0. intros config1 config2 Heq id. apply (no_byz id), Heq. Qed.
 
 Definition mk_info : location -> location := id.
 Arguments mk_info _%VectorSpace_scope.

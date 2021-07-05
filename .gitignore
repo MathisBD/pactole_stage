@@ -1,4 +1,6 @@
 *.vo
+*.vok
+*.vos
 *.vio
 *.glob
 *.v.d
@@ -16,8 +18,10 @@ package.tgz
 .nia.cache
 .nra.cache
 .coqdeps.d
+.Makefile.d
 makefile
 Makefile
 makefile.bak
 Makefile.bak
 Makefile.conf
+.Makefile.d
