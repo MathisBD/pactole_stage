@@ -26,5 +26,5 @@ vok-nocheck: $(VOKFILESNOASSUMPTION)
 # specified in _coqProject because spaces in args are not supported by
 # coq_makefile.
 # Remove to see where we should add "Proof using annotations".
-COQEXTRAFLAGS+= -set "Suggest Proof Using=true"
+COQEXTRAFLAGS+= -set "Suggest Proof Using=yes"
 

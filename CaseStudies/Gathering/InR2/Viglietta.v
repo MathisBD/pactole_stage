@@ -40,10 +40,8 @@ Definition r0 : G := exist lt2 0%nat lt02.
 Definition r1 : G := exist lt2 1%nat lt12.
 
 Lemma id_case : forall id, id = Good r0 \/ id = Good r1.
-Proof using .
-intros [[[| [| ?]] ?] | []]; simpl;
-solve [ exfalso; lia
-      | now left + right; f_equal; apply eq_proj1 ].
+Proof usin 
+now repeat intros ? ? ->.w left + right; f_equal; apply eq_proj1 ].
 Qed.
 
 (** The space is R², so that we can define similarities and they respect middle points. *)
@@ -78,8 +76,8 @@ simple refine {| observation := info * info;   (* self & other robot's state *)
 Proof.
 + Time abstract (intros ? ? Hconfig ? ? Hpt; cbn zeta;
                  repeat destruct_match;
-                 solve [ split; apply Hconfig
-                       | rewrite Hconfig, Hpt in *; now exfalso ]).
+                 solve [ split ; apply Hconfig
+                       | split ; rewrite Hconfig, Hpt in *; now exfalso ]).
 + intros. cbn -[equiv]. reflexivity.
 Defined.
 
@@ -142,15 +140,14 @@ intros f Hf config st.
 unfold obs_from_config. cbn -[equiv_dec equiv].
 repeat destruct_match.
 + now repeat split.
-+ exfalso. cut (config (Good r0) == st); auto; [].
-  match goal with H : _ == _ |- _ => revert H end.
-  intros [Hfst Hsnd]. destruct f as [f [sim Hsim]].
-  cbn -[equiv] in *. rewrite <- Hsim in *.
-  apply Similarity.injective in Hfst. now split.
++ exfalso. apply c. inv e ; simpl in H, H0.
+  destruct f as [f [sim Hsim]]. split ; auto.
+  simpl in H. now apply (injective sim) ; rewrite Hsim, H.
 + exfalso. cut (lift f (config (Good r0)) == lift f st); auto; [].
   now apply (lift_compat Hf).
 + now repeat split.
 Qed.
+
 
 Lemma rendezvous_pgm_map : forall f s,
   rendezvous_pgm (map_spect (lift (State := St) f) s) == lift f (rendezvous_pgm s).
@@ -168,31 +165,26 @@ Lemma round_simplify : forall da config,
                then rendezvous (!! config § config id)
                else config id.
 Proof using .
-intros da config Hda. apply no_byz_eq. intro g. unfold round.
-cbn -[location_Setoid location inverse equiv get_location lift frame_choice_bijection].
-destruct_match; try reflexivity; [].
-change (rendezvous_pgm (!! config § config (Good g)))
-  with (Datatypes.id (rendezvous_pgm (!! config § config (Good g)))).
+intros da config simP. apply no_byz_eq. intros g. unfold round. 
+cbn -[inverse equiv lift frame_choice_bijection location].
+destruct_match ; try reflexivity.
 pose (f_state := existT (fun f => {sim : similarity location & Bijection.section sim == f})
-                        (frame_choice_bijection (change_frame da config g))
-                        (precondition_satisfied da config g)).
+  (frame_choice_bijection (change_frame da config g))
+  (precondition_satisfied da config g)).
 pose (f_state_inv := existT (fun f => {sim : similarity location & Bijection.section sim == f})
-                            (frame_choice_bijection (change_frame da config g) ⁻¹)
-                            (precondition_satisfied_inv da config g)).
-change (@equiv info _
-        (lift f_state_inv (rendezvous_pgm
-           (!! map_config (lift f_state) config § lift f_state (config (Good g)))))
-        (rendezvous (!! config § config (Good g)))).
-assert (Hrel : Proper
-  (RelationPairs.RelCompFun (equiv ==> equiv)%signature (projT1 (P:=precondition))) f_state_inv).
-{ intros x y Hxy. cbn -[equiv]. now rewrite Hxy. }
-transitivity (lift f_state_inv
-  (rendezvous_pgm (map_spect (lift f_state)
-       (!! config § config (Good g))))).
-+ apply (lift_compat Hrel), (pgm_compat rendezvous), obs_from_config_map.
-  intros x y Hxy. destruct f_state as [f [sim Hsim]]. cbn -[equiv]. rewrite <- Hsim. now f_equiv.
-+ rewrite rendezvous_pgm_map.
-  cbn -[equiv]. split; cbn -[equiv]; try reflexivity; []. apply Bijection.retraction_section.
+  (frame_choice_bijection (change_frame da config g) ⁻¹)
+  (precondition_satisfied_inv da config g)).
+change (@equiv info _ 
+  (lift f_state_inv (rendezvous_pgm (!! map_config (lift f_state) config § lift f_state (config (Good g)))))
+  (rendezvous_pgm (!! config § config (Good g)))).
+rewrite <-rendezvous_pgm_map. f_equiv.
+rewrite <-obs_from_config_map. f_equiv.
++ intros id. cbn [map_config]. split ; simpl ; try reflexivity.
+  now rewrite Bijection.retraction_section.
++ split ; simpl ; try reflexivity. 
+  now rewrite Bijection.retraction_section.
++ intros x y Hxy. cbn -[equiv]. 
+  now apply Bijection.retraction_compat.
 Qed.
 
 (** Correctness: if the program terminates, it is correct *)
@@ -400,6 +392,8 @@ destruct l1 eqn:Hl1; [| destruct l2 eqn:Hl2].
   destruct_match; try (now intuition); [].
   intros [_ Habs]. simpl in Habs. congruence.
 Qed.
+
+Print FirstMive
 
 Lemma Fair_FirstMove : forall d, Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
   forall config, ~(exists pt, gathered_at pt config) -> FirstMove rendezvous d config.

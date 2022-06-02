@@ -38,7 +38,6 @@ Existing Instance MakeFMultisetsFacts.
 
 
 (** **  Building multisets from lists  **)
-
 Definition make_multiset l := from_elements (List.map (fun x => (x, 1)) l).
 
 Lemma make_multiset_nil : make_multiset nil == empty.
@@ -54,6 +53,8 @@ destruct l; cbn.
 - intuition.
 - split; intro Hl; inv Hl. discriminate.
 Qed.
+
+
 
 Lemma make_multiset_app : forall l l',
   make_multiset (l ++ l') == union (make_multiset l) (make_multiset l').

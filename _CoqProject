@@ -1,4 +1,3 @@
--install none
 -Q . Pactole
 -arg -w
 -arg -notation-overridden

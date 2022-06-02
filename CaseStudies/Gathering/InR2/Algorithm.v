@@ -3128,7 +3128,7 @@ Proof using Hssync.
            rewrite Hmaj'.
            left. lia.
         -- (* Still in a diameter case after one round *)
-           assert (Hperm' := diameter_round_same Hmaj' Hperm).
+           assert (HpeStaterm' := diameter_round_same Hmaj' Hperm).
            assert (Hcase : clean_diameter_case config).
            { repeat split; trivial; setoid_rewrite Hsec; do 2 eexists; reflexivity. }
            assert (Htarget' := diameter_next_target_same Hvalid Hcase Hmaj').
