@@ -393,7 +393,6 @@ destruct l1 eqn:Hl1; [| destruct l2 eqn:Hl2].
   intros [_ Habs]. simpl in Habs. congruence.
 Qed.
 
-Print FirstMive
 
 Lemma Fair_FirstMove : forall d, Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
   forall config, ~(exists pt, gathered_at pt config) -> FirstMove rendezvous d config.
