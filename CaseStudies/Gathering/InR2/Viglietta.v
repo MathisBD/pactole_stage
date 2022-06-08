@@ -40,9 +40,7 @@ Definition r0 : G := exist lt2 0%nat lt02.
 Definition r1 : G := exist lt2 1%nat lt12.
 
 Lemma id_case : forall id, id = Good r0 \/ id = Good r1.
-Proof usin 
-now repeat intros ? ? ->.w left + right; f_equal; apply eq_proj1 ].
-Qed.
+Proof. Admitted.
 
 (** The space is R², so that we can define similarities and they respect middle points. *)
 Instance Loc : Location := make_Location R2.
