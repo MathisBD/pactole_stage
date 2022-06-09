@@ -1,3 +1,5 @@
+AA
+
 This repository stores the Coq code of the Pactole project,
 dedicated to formal verification of mobile robotic swarm protocols.
 
