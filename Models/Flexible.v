@@ -30,6 +30,7 @@ Require Import Pactole.Models.Similarity.
 
 Typeclasses eauto := (bfs).
 
+About path.
 
 (** Flexible demons are a special case of demons with the additional property that
     the updated location of the robot is not necessarily the one chosen by the robogram,
