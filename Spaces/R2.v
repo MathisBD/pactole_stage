@@ -188,6 +188,9 @@ Qed.
 
 (** **  Results not holding in generic Euclidean spaces  **)
 
+Print perpendicular.
+Print inner_product.
+
 (** The unitary orthogonal vector (with direct orientation). *)
 Definition orthogonal (u : R2) : R2 := (/(norm u) * (snd u, (- fst u)%R))%VS.
 Definition colinear (u v : R2) := perpendicular u (orthogonal v).

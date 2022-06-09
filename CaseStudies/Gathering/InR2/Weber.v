@@ -123,7 +123,19 @@ Proof. intros Rdec. unfold ForallTriplets. repeat (apply Forall_dec ; intros ?).
 (* The equivalence between ForallTriplets and regular forall. *)
 Lemma ForallTriplets_forall R l1 l2 l3 : 
   (ForallTriplets R l1 l2 l3) <-> forall x y z, List.In x l1 -> List.In y l2 -> List.In z l3 -> R x y z.
-Proof. Admitted.
+Proof. 
+unfold ForallTriplets. split.
++ intros H x y z Hinx Hiny Hinz.
+  rewrite Forall_forall in H. specialize (H x Hinx).
+  rewrite Forall_forall in H. specialize (H y Hiny).
+  rewrite Forall_forall in H. specialize (H z Hinz).
+  exact H.
++ intros H. 
+  rewrite Forall_forall. intros x Hinx.
+  rewrite Forall_forall. intros y Hiny.
+  rewrite Forall_forall. intros z Hinz.
+  auto.
+Qed.
 
 End ForallTriplets.
 
@@ -134,50 +146,50 @@ Local Existing Instances R2_VS R2_ES ForallTriplets_PermutationA_compat.
 
 (* The determinant of two vectors in R². 
  * We use this to define what it means for two vectors to be parallel. *)
-Definition det (x y : R2) := (fst x * snd y - snd x * fst y)%R.
+(*Definition det (x y : R2) := (fst x * snd y - snd x * fst y)%R.*)
 
-Local Instance det_compat : Proper (equiv ==> equiv ==> equiv) det. 
-Proof using . intros x x' Hxx' y y' Hyy'. unfold det. now rewrite Hxx', Hyy'. Qed. 
+(*Local Instance det_compat : Proper (equiv ==> equiv ==> equiv) det. 
+Proof using . intros x x' Hxx' y y' Hyy'. unfold det. now rewrite Hxx', Hyy'. Qed. *)
 
 (* This would require proving (and more importantly stating) that for a similarity [f],
  * there exists an orthogonal matrix [A] and a vector [b] such that
  * [forall x, f(x) = f.(zoom)*A*x + b]. 
  * We would need mathcomp (or some other math library) to do this. *)
-Lemma det_sub_similarity x y z (f : similarity R2) : 
-  det (f y - f x) (f z - f x) == (f.(zoom) * det (y - x) (z - x))%R.
+Lemma colinear_similarity x y z (f : similarity R2) : 
+  colinear (f y - f x) (f z - f x) <-> colinear (y - x) (z - x).
 Proof. Admitted. 
 
-(* A finite collection of points are colinear iff every triplet of points are aligned. *)
+(* A finite collection of points are aligned iff every triplet of points are aligned. *)
 (* This definition is based on lists : we could have used multisets,
  * and the code might have been cleaner (who knows). 
  * In the current state of things, we have to convert observations from multiset to list format, 
  * which requires lots of boilerplate lemmas. *)
-Definition colinear (points : list R2) := 
-  ForallTriplets (fun x y z => det (y - x) (z - x) == 0%R) points points points.
+Definition aligned (points : list R2) := 
+  ForallTriplets (fun x y z => colinear (y - x) (z - x)) points points points.
 
-(* [colinear] doesn't depent on the order of the points. *)
-Local Instance colinear_compat : Proper (PermutationA equiv ==> equiv) colinear.
-Proof using . intros p p' Hpp'. unfold colinear. now f_equiv. Qed.
+(* [aligned] doesn't depent on the order of the points. *)
+Local Instance aligned_compat : Proper (PermutationA equiv ==> equiv) aligned.
+Proof using . intros p p' Hpp'. unfold aligned. now f_equiv. Qed.
 
-(* Whether a finite collection of poitns are colinear is decidable. The proof given here 
+(* Whether a finite collection of poitns are aligned is decidable. The proof given here 
  * obviously constructs a very slow algorithm (O(n^3)), but we don't really care. *)
-Lemma colinear_dec points : {colinear points} + {~colinear points}.
-Proof. unfold colinear. apply ForallTriplets_dec. intros x y z. now apply equiv_dec. Qed. 
+Lemma aligned_dec points : {aligned points} + {~aligned points}.
+Proof. unfold aligned. apply ForallTriplets_dec. intros x y z. apply colinear_dec. Qed.
 
-Lemma colinear_similarity_weak points (f : similarity R2) :
-  colinear points -> colinear (List.map f points).
+Lemma aligned_similarity_weak points (f : similarity R2) :
+  aligned points -> aligned (List.map f points).
 Proof.
-unfold colinear. repeat rewrite ForallTriplets_forall. intros H x y z.
+unfold aligned. repeat rewrite ForallTriplets_forall. intros H x y z.
 repeat rewrite in_map_iff. intros [x0 [Hfx Hpx]] [y0 [Hfy Hpy]] [z0 [Hfz Hpz]].
-rewrite <-Hfx, <-Hfy, <-Hfz. rewrite det_sub_similarity. now apply Rmult_eq_0_compat_l, H.
+rewrite <-Hfx, <-Hfy, <-Hfz. rewrite colinear_similarity. now apply H.
 Qed.
 
-Lemma colinear_similarity points (f : similarity R2) :
-  colinear points <-> colinear (List.map f points).
+Lemma aligned_similarity points (f : similarity R2) :
+  aligned points <-> aligned (List.map f points).
 Proof.
-split ; try apply colinear_similarity_weak.
-intros H. apply colinear_similarity_weak with (List.map f points) (inverse f) in H. revert H.
-apply colinear_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
+split ; try apply aligned_similarity_weak.
+intros H. apply aligned_similarity_weak with (List.map f points) (inverse f) in H. revert H.
+apply aligned_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
 intros x y Hxy. cbn -[equiv]. now rewrite Bijection.retraction_section.
 Qed.
 
@@ -247,7 +259,7 @@ Proof. Admitted.
 
 (* If the points aren't colinear, than the weber point is unique. *)
 Lemma weber_unique points x y : 
-  ~colinear points -> Weber points x -> Weber points y -> x == y.
+  ~aligned points -> Weber points x -> Weber points y -> x == y.
 Proof. Admitted.
 
 Lemma dist_sum_similarity (f : similarity R2) points x : 
@@ -295,7 +307,7 @@ Qed.
  * origin [o] and direction [d], [o] included. 
  * If d == 0 then the set of points represented is reduced to [o]. *)
 Definition half_line (o d : R2) : R2 -> Prop := fun x =>
-  exists t : R, (0 <= t)%R \/ (x == o + t * d)%VS.
+  exists t : R, (0 <= t)%R /\ (x == o + t * d)%VS.
 
 Local Instance half_line_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) half_line.
 Proof using .
@@ -325,7 +337,7 @@ End WeberPoint.
 
 
 Section Gathering.
-Local Existing Instances colinear_compat weber_compat weber_calc_compat.
+Local Existing Instances aligned_compat weber_compat weber_calc_compat.
 
 (* The number of robots *)
 Variables n : nat.
@@ -407,7 +419,7 @@ Qed.
 
 (* The main algorithm : just move towards the weber point until all robots are aligned. *)
 Definition gatherW_pgm obs : location := 
-  if colinear_dec (multi_support obs) 
+  if aligned_dec (multi_support obs) 
   (* Don't move (the robot's local frame is always centered on itself, i.e. its position is at the origin). *)
   then origin 
   (* Go towards the weber point. *)
@@ -418,7 +430,7 @@ Proof using .
 intros s1 s2 Hs. unfold gatherW_pgm.
 repeat destruct_match.
 + reflexivity.
-+ rewrite Hs in c. now intuition.
++ rewrite Hs in a. now intuition.
 + rewrite Hs in n0. now intuition.
 + apply weber_unique with (multi_support s1) ; auto.
   - now apply weber_calc_correct.
@@ -541,7 +553,7 @@ Lemma round_simplify da config : similarity_da_prop da ->
   round gatherW da config == 
   fun id => 
     if activate da id then 
-      if colinear_dec (config_list config) then config id 
+      if aligned_dec (config_list config) then config id 
       else weber_calc (config_list config)
     else config id.
 Proof. 
@@ -561,61 +573,44 @@ change_LHS (lift f_inv (gatherW_pgm (obs_from_config
 assert (Proper (equiv ==> equiv) (projT1 f)) as f_compat.
 { unfold f ; cbn -[equiv]. intros x y Hxy ; now rewrite Hxy. }
 unfold gatherW_pgm ; destruct_match.
-+ rewrite multi_support_map in c by auto.
++ rewrite multi_support_map in a by auto.
   cbn -[equiv inverse config_list location] in *. 
-  rewrite <-colinear_similarity in c. change_LHS (center (change_frame da config g)).
+  rewrite <-aligned_similarity in a. change_LHS (center (change_frame da config g)).
   rewrite Hsim ; cbn -[equiv config_list] ; unfold id.
   now destruct_match ; intuition.
 + rewrite multi_support_map in * by auto.
   cbn -[equiv inverse config_list location multi_support] in *.
   pose (sim := change_frame da config g) ; fold sim in n0 ; fold sim.
-  rewrite <-colinear_similarity in n0. destruct_match ; intuition.
+  rewrite <-aligned_similarity in n0. destruct_match ; intuition.
   apply weber_unique with (config_list config) ; [now auto| |now apply weber_calc_correct].
   apply weber_similarity with sim. cbn -[config_list]. rewrite Bijection.section_retraction.
   now apply weber_calc_correct.
 Qed.
   
 (* This is the goal (for all demons and configs). *)
-Definition eventually_colinear config (d : demon) (r : robogram) := 
+Definition eventually_aligned config (d : demon) (r : robogram) := 
   Stream.eventually 
-    (Stream.forever (Stream.instant (fun c => colinear (config_list c)))) 
+    (Stream.forever (Stream.instant (fun c => aligned (config_list c)))) 
     (execute r d config).
 
-(* If the robots are colinear, they stay colinear. *)
-Lemma round_preserves_colinear da config : similarity_da_prop da ->
-  colinear (config_list config) -> colinear (config_list (round gatherW da config)).
+(* If the robots are aligned, they stay aligned. *)
+Lemma round_preserves_aligned da config : similarity_da_prop da ->
+  aligned (config_list config) -> aligned (config_list (round gatherW da config)).
 Proof. 
-intros Hsim Hcol. assert (round gatherW da config == config) as H.
+intros Hsim Halign. assert (round gatherW da config == config) as H.
 { intros id. rewrite round_simplify by auto. repeat destruct_match ; auto. }
 now rewrite H.
 Qed.
 
-Lemma colinear_over config (d : demon) :
+Lemma aligned_over config (d : demon) :
   Stream.forever (Stream.instant similarity_da_prop) d ->
-  colinear (config_list config) -> eventually_colinear config d gatherW.
+  aligned (config_list config) -> eventually_aligned config d gatherW.
 Proof.
 Admitted.
 
-(* This measure strictly decreases whenever a robot moves. *)
-Definition measure config := 
-  let ps := config_list config in 
-  n - countA_occ equiv R2_EqDec (weber_calc ps) ps.
-
-Local Instance measure_compat : Proper (equiv ==> eq) measure.
-Proof. intros c c' Hc. unfold measure. now rewrite Hc. Qed.
-
-(* All the magic is here : when the robots move 
- * they go towards the weber point so it is preserved. 
- * This still holds in a flexible and/or asynchronous setting.
- * The point calculated by weber_calc thus stays the same during an execution,
- * until the robots are colinear. *)
-Lemma round_preserves_weber config da w :
-  similarity_da_prop da -> Weber (config_list config) w -> 
-    Weber (config_list (round gatherW da config)) w.
-Proof. Admitted.
 
 Lemma sub_lt_sub (i j k : nat) : j < i <= k -> k - i < k - j.
-Proof using . lia. Qed.
+Proof. lia. Qed.
 
 Lemma countA_occ_le w ps ps' :
   Forall2 (fun x x' => x' == x \/ x' == w) ps ps' -> 
@@ -717,15 +712,57 @@ intros Hlen. split.
     cbn in Hcom. inv Hcom. rewrite Forall_cons_iff in Hforall. constructor ; intuition.
 Qed.
 
+
+(* This measure strictly decreases whenever a robot moves. *)
+Definition measure config := 
+  let ps := config_list config in 
+  n - countA_occ equiv R2_EqDec (weber_calc ps) ps.
+
+Local Instance measure_compat : Proper (equiv ==> eq) measure.
+Proof. intros c c' Hc. unfold measure. now rewrite Hc. Qed.
+
+Lemma half_line_origin o d : half_line o d o.
+Proof. 
+unfold half_line. exists 0%R. split ; [apply Rle_refl|].
+rewrite mul_0, add_origin_r. reflexivity.
+Qed.
+
+Lemma half_line_segment x y : half_line x (y - x) y.
+Proof.
+unfold half_line. exists 1%R. split ; [apply Rle_0_1|].
+rewrite mul_1, RealVectorSpace.add_comm, <-add_assoc.
+assert (H := add_opp x). rewrite RealVectorSpace.add_comm in H. rewrite H.
+rewrite add_origin_r. reflexivity.
+Qed.
+
+(* All the magic is here : when the robots move 
+ * they go towards the weber point so it is preserved. 
+ * This still holds in a flexible and/or asynchronous setting.
+ * The point calculated by weber_calc thus stays the same during an execution,
+ * until the robots are colinear. *)
+Lemma round_preserves_weber config da w :
+  similarity_da_prop da -> Weber (config_list config) w -> 
+    Weber (config_list (round gatherW da config)) w.
+Proof. 
+intros Hsim Hweb. apply weber_half_line with (config_list config) ; auto.
+rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
+intros [x x']. rewrite config_list_In_combine.
+intros [id [Hx Hx']]. revert Hx'. rewrite round_simplify by auto. 
+repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply half_line_segment.
+assert (w == weber_calc (config_list config)) as Hw.
+{ apply weber_unique with (config_list config) ; auto. apply weber_calc_correct. }
+rewrite Hw. apply half_line_origin.
+Qed.
+
 (* If a robot moves, either the measure decreases or the robots become colinear. *)
 Lemma round_decreases_measure config da : 
   similarity_da_prop da ->
   moving gatherW da config <> nil -> 
-    colinear (config_list (round gatherW da config)) \/ 
+    aligned (config_list (round gatherW da config)) \/ 
     measure (round gatherW da config) < measure config.
 Proof. 
 intros Hsim Hmove. 
-destruct (colinear_dec (config_list (round gatherW da config))) as [Rcol | RNcol] ; [now left|right].
+destruct (aligned_dec (config_list (round gatherW da config))) as [Rcol | RNcol] ; [now left|right].
 assert (weber_calc (config_list (round gatherW da config)) == weber_calc (config_list config)) as Hweb.
 { 
   apply weber_unique with (config_list (round gatherW da config)) ; auto.
@@ -746,29 +783,88 @@ unfold measure. apply sub_lt_sub. split.
   rewrite config_list_length. cbn ; lia.
 Qed.
 
+Lemma gathered_aligned ps x : 
+  (Forall (fun y => y == x) ps) -> aligned ps.
+Proof. 
+rewrite Forall_forall. intros Hgathered.
+unfold aligned. rewrite ForallTriplets_forall.
+intros a b c Ha Hb Hc.
+apply Hgathered in Ha, Hb, Hc. rewrite Ha, Hb, Hc, add_opp.
+apply colinear_origin_r.
+Qed.
+
+Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
+Proof. intuition. Qed.
+
+(* If the robots aren't aligned yet then there exists at least one robot which, 
+ * if activated, will move. 
+ * Any robot that isn't on the weber point will do the trick. *)
+Lemma one_must_move config : ~aligned (config_list config) ->
+  exists r, forall da, similarity_da_prop da -> activate da r = true ->
+                       round gatherW da config r =/= config r.
+Proof.
+intros Nalign.
+cut (exists r, config r =/= weber_calc (config_list config)). 
+{
+  intros [r Hr]. exists r. intros da Hsim Hact. rewrite round_simplify by auto.
+  repeat destruct_match ; intuition.
+}
+assert (List.Exists (fun x => x =/= weber_calc (config_list config)) (config_list config)) as HE.
+{ 
+  apply neg_Forall_Exists_neg ; [intros ; apply equiv_dec|].
+  revert Nalign. apply contra. apply gathered_aligned.
+}
+rewrite Exists_exists in HE. destruct HE as [x [Hin Hx]].
+apply (@In_InA R2 equiv _) in Hin. 
+changeR2. change location_Setoid with state_Setoid in *. rewrite config_list_InA in Hin.
+destruct Hin as [r Hr]. exists r. now rewrite <-Hr.
+Qed.
 
 (* Fairness entails progress. *)
 Lemma fair_first_move (d : demon) config : 
   Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
-  ~(colinear (config_list config)) -> FirstMove gatherW d config.
-Proof. Admitted.
+  ~(aligned (config_list config)) -> FirstMove gatherW d config.
+Proof.
+intros Hfair Hsim Nalign.
+destruct (one_must_move config Nalign) as [id Hmove].
+destruct Hfair as [locallyfair Hfair].
+specialize (locallyfair id).
+revert config Nalign Hmove.
+induction locallyfair as [d Hnow | d] ; intros config Nalign Hmove.
+* apply MoveNow. apply Hmove in Hnow.
+  + rewrite <-(moving_spec gatherW (Stream.hd d) config id) in Hnow.
+    intros Habs. now rewrite Habs in Hnow.   
+  + apply Hsim.
+* destruct (moving gatherW (Stream.hd d) config) as [| id' mov] eqn:Hmoving.
+  + apply MoveLater ; trivial.
+    apply IHlocallyfair.
+    - apply Hfair.
+    - apply Hsim.
+    - apply no_moving_same_config in Hmoving. now rewrite Hmoving.
+    - intros da Hda Hactive. apply no_moving_same_config in Hmoving.
+      rewrite (Hmoving id).
+      apply (round_compat (reflexivity gatherW) (reflexivity da)) in Hmoving. 
+      rewrite (Hmoving id).
+      now apply Hmove.
+  + apply MoveNow. rewrite Hmoving. discriminate.
+Qed.
 
 (* The proof is essentially a well-founded induction on [measure config].
  * Fairness ensures that the measure must decrease at some point. *)
 Theorem weber_correct (d : demon) config : 
   Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
-  eventually_colinear config d gatherW.
+  eventually_aligned config d gatherW.
 Proof.
 remember (measure config) as k. 
 generalize dependent d. generalize dependent config.
 pattern k. apply (well_founded_ind lt_wf). clear k.
 intros k IHk config Hk d Hfair Hsim.
-destruct (colinear_dec (config_list config)) as [col | Ncol] ;
-  [now apply colinear_over|].
-induction (fair_first_move config Hfair Hsim Ncol) as [d config Hmove | d config Hmove FM IH_FM] ;
+destruct (aligned_dec (config_list config)) as [align | Nalign] ;
+  [now apply aligned_over|].
+induction (fair_first_move config Hfair Hsim Nalign) as [d config Hmove | d config Hmove FM IH_FM] ;
   destruct Hsim as [Hsim_hd Hsim_tl] ; cbn in Hsim_hd ; apply Stream.Later.
-+ destruct (round_decreases_measure config Hsim_hd Hmove) as [Rcol | Rmeasure].
-  - now apply colinear_over.
++ destruct (round_decreases_measure config Hsim_hd Hmove) as [Ralign | Rmeasure].
+  - now apply aligned_over.
   - eapply IHk. 
     * rewrite Hk. exact Rmeasure.  
     * reflexivity.
