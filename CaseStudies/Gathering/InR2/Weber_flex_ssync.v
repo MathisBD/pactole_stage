@@ -76,7 +76,26 @@ Ltac change_RHS E :=
   | [ |- ?LHS == ?RHS ] => change (LHS == E)
   end.
 
-Print ForallPairs.
+(* Simplify a goal involving calculations in R2 by developing everything. *)
+Ltac simplifyR2 :=
+  unfold Rminus ; 
+  repeat (try rewrite mul_distr_add ;
+          try rewrite <-add_morph ;
+          try rewrite mul_0 ;
+          try rewrite mul_1 ; 
+          try rewrite add_origin_l ; 
+          try rewrite add_origin_r ; 
+          try rewrite mul_opp ; 
+          try rewrite minus_morph ;
+          try rewrite opp_opp ; 
+          try rewrite opp_origin ;
+          try rewrite R2_opp_dist ; 
+          try rewrite add_opp).
+      
+
+Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
+Proof. intuition. Qed.
+
 
 Section ForallTriplets.
 Variables (A B C : Type).
@@ -337,7 +356,7 @@ End WeberPoint.
 
 
 Section Gathering.
-Local Existing Instances aligned_compat weber_compat weber_calc_compat.
+Local Existing Instances aligned_compat weber_compat weber_calc_compat dist_sum_compat.
 
 (* The number of robots *)
 Variables n : nat.
@@ -347,6 +366,38 @@ Hypothesis lt_0n : 0 < n.
 Local Instance N : Names := Robots n 0.
 Local Instance NoByz : NoByzantine.
 Proof using . now split. Qed.
+
+Lemma list_in_length_n0 {A : Type} x (l : list A) : List.In x l -> length l <> 0.
+Proof. intros Hin. induction l as [|y l IH] ; cbn ; auto. Qed.
+
+Lemma byz_impl_false : B -> False.
+Proof. 
+intros b. assert (Hbyz := In_Bnames b). 
+apply list_in_length_n0 in Hbyz. 
+rewrite Bnames_length in Hbyz.
+cbn in Hbyz. intuition.
+Qed.
+
+(* Use this tactic to solve any goal
+ * provided there is a byzantine robot as a hypothesis. *)
+Ltac byz_exfalso :=
+  match goal with 
+  | b : ?B |- _ => exfalso ; apply (byz_impl_false b)
+  end.
+
+(* Since all robots are good robots, we can define a function
+ * from identifiers to good identifiers. *)
+Definition unpack_good (id : ident) : G :=
+  match id with 
+  | Good g => g 
+  | Byz _ => ltac:(byz_exfalso)
+  end.
+
+Lemma good_unpack_good id : Good (unpack_good id) == id.
+Proof. unfold unpack_good. destruct_match ; [auto | byz_exfalso]. Qed.
+
+Lemma unpack_good_good g : unpack_good (Good g) = g.
+Proof. reflexivity. Qed.  
 
 (* The robots are in the plane (R^2). *)
 Local Instance Loc : Location := make_Location R2.
@@ -374,6 +425,7 @@ Local Instance InactiveC : inactive_choice unit := NoChoiceIna.
 
 (* In a flexible setting, the minimum distance that robots are allowed to move is delta. *)
 Variables delta : R.
+Hypothesis delta_g0 : (0 < delta)%R.
 
 (* We are in a flexible and semi-synchronous setting (for now). *)
 Local Instance UpdateF : update_function (path location) (similarity location) ratio := 
@@ -546,44 +598,104 @@ change (f (config id)) with (map_config f config id).
 now rewrite multi_support_config, config_list_map.
 Qed.
 
+
+Lemma lift_update_swap da config1 config2 g target :
+  @equiv location _
+    (lift (existT precondition (frame_choice_bijection (change_frame da config1 g ⁻¹))
+                               (precondition_satisfied_inv da config1 g))
+          (update config2
+           g (change_frame da config1 g) target (choose_update da config2 g target)))
+    (update (map_config (lift (existT precondition (frame_choice_bijection (change_frame da config1 g ⁻¹))
+                                      (precondition_satisfied_inv da config1 g)))
+                        config2)
+            g Similarity.id
+            (lift_path (frame_choice_bijection (change_frame da config1 g ⁻¹)) target)
+            (choose_update da config2 g target)).
+Proof using .
+cbn -[inverse dist equiv]. unfold id.
+rewrite Similarity.dist_prop, Rmult_1_l.
+destruct_match_eq Hle; destruct_match_eq Hle' ; try reflexivity ; [|];
+rewrite Rle_bool_true_iff, Rle_bool_false_iff in *;
+exfalso; revert_one not; intro Hgoal; apply Hgoal.
+- assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g)).
+  eapply Rmult_le_reg_l; eauto; []. simpl.
+  rewrite <- Rmult_assoc, Rinv_r, Rmult_1_l; trivial; [].
+  changeR2. lra.
+- assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g ⁻¹)).
+  eapply Rmult_le_reg_l; eauto; []. simpl.
+  rewrite <- Rmult_assoc, Rinv_l, Rmult_1_l; trivial; [].
+  changeR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
+Qed.
+
 (* Simplify the [round] function and express it in the global frame of reference. *)
 (* All the proofs below use this simplified version. *)
 Lemma round_simplify da config : similarity_da_prop da -> 
+  exists r : G -> ratio,
   round gatherW da config == 
-  fun id => 
-    if activate da id then 
-      if aligned_dec (config_list config) then config id 
-      else weber_calc (config_list config)
-    else config id.
+  fun id => if activate da id then 
+              if aligned_dec (config_list config) then config id 
+              else 
+                let trajectory := straight_path (config id) (weber_calc (config_list config)) in
+                update config (unpack_good id) Similarity.id trajectory (r (unpack_good id))
+            else config id.
 Proof. 
-intros Hsim. apply no_byz_eq. intros g. unfold round. 
-cbn -[inverse equiv lift location config_list origin].
-destruct_match ; try reflexivity.
-pose (f := existT (fun _ : location -> location => True)
-  (frame_choice_bijection (change_frame da config g))
-  (precondition_satisfied da config g)).
+intros Hsim. eexists ?[r]. intros id. unfold round. 
+destruct_match ; [|reflexivity].
+destruct_match ; [|byz_exfalso].
+cbn -[inverse equiv lift precondition frame_choice_bijection config_list origin update].
+rewrite (lift_update_swap da config _ g). 
+pose (f := existT precondition
+  (change_frame da config g)
+  (precondition_satisfied da config g)). 
 pose (f_inv := existT (fun _ : location -> location => True)
-  (frame_choice_bijection (change_frame da config g) ⁻¹)
+  ((change_frame da config g) ⁻¹)
   (precondition_satisfied_inv da config g)).
-change_LHS (lift f_inv (gatherW_pgm (obs_from_config 
-  (map_config (lift f) config) 
-  ((lift f) (config (Good g)))
-))).
+pose (obs := obs_from_config (map_config (lift f) config) (lift f (config (Good g)))).
+change_LHS (update 
+  (map_config (lift f_inv) (map_config (lift f) config)) g Similarity.id
+  (lift_path
+    (frame_choice_bijection (change_frame da config g ⁻¹))
+    (gatherW_pgm obs))
+  (choose_update da
+    (map_config (lift f) config) g (gatherW_pgm obs))).
 assert (Proper (equiv ==> equiv) (projT1 f)) as f_compat.
 { unfold f ; cbn -[equiv]. intros x y Hxy ; now rewrite Hxy. }
-unfold gatherW_pgm ; destruct_match.
-+ rewrite multi_support_map in a by auto.
-  cbn -[equiv inverse config_list location] in *. 
-  rewrite <-aligned_similarity in a. change_LHS (center (change_frame da config g)).
-  rewrite Hsim ; cbn -[equiv config_list] ; unfold id.
-  now destruct_match ; intuition.
-+ rewrite multi_support_map in * by auto.
-  cbn -[equiv inverse config_list location multi_support] in *.
-  pose (sim := change_frame da config g) ; fold sim in n0 ; fold sim.
-  rewrite <-aligned_similarity in n0. destruct_match ; intuition.
-  apply weber_unique with (config_list config) ; [now auto| |now apply weber_calc_correct].
-  apply weber_similarity with sim. cbn -[config_list]. rewrite Bijection.section_retraction.
-  now apply weber_calc_correct.
+assert (Halign_loc_glob : aligned (config_list config) <-> aligned (multi_support obs)).
+{ unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[config_list]. apply aligned_similarity. }
+destruct_match.
+(* The robots are aligned. *)
++ unfold gatherW_pgm. destruct_match ; [|intuition].
+  cbn -[equiv lift dist mul inverse]. unfold id.
+  repeat rewrite mul_origin. destruct_match ; apply Hsim.
+(* The robots aren't aligned. *)
++ unfold gatherW_pgm. destruct_match ; [intuition|].
+  pose (sim := change_frame da config g). changeR2. fold sim.
+  assert (Hweb : weber_calc (multi_support obs) == sim (weber_calc (config_list config))).
+  {
+    unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[equiv config_list].
+    changeR2. fold sim. 
+    apply weber_unique with (List.map sim (config_list config)).
+    - now rewrite <-aligned_similarity.
+    - apply weber_calc_correct.
+    - apply weber_similarity, weber_calc_correct.
+  }
+  change location_Setoid with state_Setoid. apply update_compat ; auto.
+  - intros r. cbn -[equiv]. rewrite Bijection.retraction_section. reflexivity.
+  - intros r. rewrite Hweb. 
+    pose (w := weber_calc (config_list config)). fold w. 
+    pose (c := config (Good g)). fold c.
+    cbn -[equiv w c opp RealVectorSpace.add mul inverse].
+    rewrite sim_mul.  
+    assert (Hcenter : (sim ⁻¹) 0%VS == c).
+    { changeR2. change_LHS (center sim). apply Hsim. }
+    assert (Hsim_cancel : forall x, (inverse sim) (sim x) == x).
+    { cbn -[equiv]. now setoid_rewrite Bijection.retraction_section. }
+    rewrite Hcenter, Hsim_cancel. simplifyR2. 
+    rewrite 2 RealVectorSpace.add_assoc. f_equiv. now rewrite RealVectorSpace.add_comm.
+  - rewrite Hweb. 
+    instantiate (r := fun g => choose_update da (map_config ?[sim] config) g
+      (local_straight_path (?[sim'] (weber_calc (config_list config))))).
+    cbn -[equiv config_list]. reflexivity.
 Qed.
   
 (* This is the goal (for all demons and configs). *)
@@ -597,7 +709,8 @@ Lemma round_preserves_aligned da config : similarity_da_prop da ->
   aligned (config_list config) -> aligned (config_list (round gatherW da config)).
 Proof. 
 intros Hsim Halign. assert (round gatherW da config == config) as H.
-{ intros id. rewrite round_simplify by auto. repeat destruct_match ; auto. }
+{ intros id. destruct (round_simplify config Hsim) as [r Hround].
+  rewrite Hround. repeat destruct_match ; auto. }
 now rewrite H.
 Qed.
 
@@ -608,7 +721,7 @@ Proof.
 Admitted.
 
 
-Lemma sub_lt_sub (i j k : nat) : j < i <= k -> k - i < k - j.
+(*Lemma sub_lt_sub (i j k : nat) : j < i <= k -> k - i < k - j.
 Proof. lia. Qed.
 
 Lemma countA_occ_le w ps ps' :
@@ -634,7 +747,7 @@ intros HF HE. induction HF as [| x x' l l' Hxx' Hll' IH].
     repeat destruct_match ; intuition. apply le_lt_n_Sm. now apply countA_occ_le.
   - destruct Hxx' as [Exx' | Ex'w] ; cbn -[equiv] ; repeat destruct_match ; intuition.
     rewrite Exx', e in c. intuition.
-Qed.
+Qed.*)
 
 Lemma nth_enum i m d :
   forall Him : i < m, nth i (enum m) d = exist (fun x => x < m) i Him.
@@ -646,9 +759,6 @@ intros Him. apply eq_proj1, Nat.le_antisymm ; cbn.
   rewrite app_nth2 ; [apply nth_In|] ; rewrite firstn_length_le by (rewrite enum_length ; lia) ; auto.
   rewrite Nat.sub_diag, skipn_length, enum_length. lia.
 Qed.
-
-Lemma list_in_length_n0 {A : Type} x (l : list A) : List.In x l -> length l <> 0.
-Proof. intros Hin. induction l as [|y l IH] ; cbn ; auto. Qed.
 
 (* This would have been much more pleasant to do with mathcomp's tuples. *)
 Lemma config_list_In_combine x x' c c' : 
@@ -712,13 +822,21 @@ intros Hlen. split.
 Qed.
 
 
-(* This measure strictly decreases whenever a robot moves. *)
-Definition measure config := 
+(* This measure counts how many robots aren't on the weber point. *)
+Definition measure_count config := 
   let ps := config_list config in 
-  n - countA_occ equiv R2_EqDec (weber_calc ps) ps.
+  INR (n - countA_occ equiv R2_EqDec (weber_calc ps) ps).
 
-Local Instance measure_compat : Proper (equiv ==> eq) measure.
-Proof. intros c c' Hc. unfold measure. now rewrite Hc. Qed.
+(* This measure counts the total distance from the robots to the weber point. *)
+Definition measure_dist config :=
+  let ps := config_list config in 
+  dist_sum ps (weber_calc ps).
+
+(* This measure is positive, and decreases whenever a robot moves. *)
+Definition measure config := (measure_count config + measure_dist config)%R.
+
+Local Instance measure_compat : Proper (equiv ==> equiv) measure.
+Proof. intros c c' Hc. unfold measure, measure_count, measure_dist. now rewrite Hc. Qed.
 
 Lemma half_line_origin o d : half_line o d o.
 Proof. 
@@ -734,9 +852,10 @@ assert (H := add_opp x). rewrite RealVectorSpace.add_comm in H. rewrite H.
 rewrite add_origin_r. reflexivity.
 Qed.
 
+
 (* All the magic is here : when the robots move 
  * they go towards the weber point so it is preserved. 
- * This still holds in a flexible and/or asynchronous setting.
+ * This still holds in an asynchronous setting.
  * The point calculated by weber_calc thus stays the same during an execution,
  * until the robots are colinear. *)
 Lemma round_preserves_weber config da w :
@@ -746,19 +865,36 @@ Proof.
 intros Hsim Hweb. apply weber_half_line with (config_list config) ; auto.
 rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
 intros [x x']. rewrite config_list_In_combine.
-intros [id [Hx Hx']]. revert Hx'. rewrite round_simplify by auto. 
+intros [id [Hx Hx']]. destruct (round_simplify config Hsim) as [r Hround].
+revert Hx'. rewrite Hround. 
 repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply half_line_segment.
 assert (w == weber_calc (config_list config)) as Hw.
 { apply weber_unique with (config_list config) ; auto. apply weber_calc_correct. }
-rewrite Hw. apply half_line_origin.
+cbn zeta. rewrite <-Hw. cbn -[mul opp RealVectorSpace.add dist]. unfold Datatypes.id.
+pose (c := config id). fold c.
+destruct_match ; unfold half_line.
++ pose (ri := r (unpack_good id)). fold ri. 
+  exists (1 - ri)%R ; split.
+  - generalize (ratio_bounds ri). lra.
+  - simplifyR2. 
+    rewrite (RealVectorSpace.add_comm (ri * w) (- (ri * c))), 3 RealVectorSpace.add_assoc.
+    f_equiv ; f_equiv.
+    rewrite (RealVectorSpace.add_comm c (-w)), RealVectorSpace.add_assoc.
+    now simplifyR2.
++ exists 0%R ; split.
+  - lra.
+  - simplifyR2. rewrite (RealVectorSpace.add_comm w (-c)), RealVectorSpace.add_assoc.
+    now simplifyR2.  
 Qed.
+
+Search "min" R.
 
 (* If a robot moves, either the measure decreases or the robots become colinear. *)
 Lemma round_decreases_measure config da : 
   similarity_da_prop da ->
   moving gatherW da config <> nil -> 
     aligned (config_list (round gatherW da config)) \/ 
-    measure (round gatherW da config) < measure config.
+    (measure (round gatherW da config) <= measure config - Rmin delta 1)%R.
 Proof. 
 intros Hsim Hmove. 
 destruct (aligned_dec (config_list (round gatherW da config))) as [Rcol | RNcol] ; [now left|right].
@@ -768,9 +904,9 @@ assert (weber_calc (config_list (round gatherW da config)) == weber_calc (config
   + apply weber_calc_correct.
   + apply round_preserves_weber ; [auto | apply weber_calc_correct].  
 }
-unfold measure. apply sub_lt_sub. split.
-+ destruct (not_nil_In Hmove) as [i Hi]. apply moving_spec in Hi.
-  rewrite Hweb. apply countA_occ_lt.
+destruct (not_nil_In Hmove) as [i Hi]. apply moving_spec in Hi.
+
+rewrite Hweb. apply countA_occ_lt.
   - rewrite Forall2_Forall, Forall_forall. intros [x x'] Hin.
     apply config_list_In_combine in Hin. destruct Hin as [j [-> ->]].
     rewrite round_simplify by auto. repeat destruct_match ; intuition.
@@ -791,9 +927,6 @@ intros a b c Ha Hb Hc.
 apply Hgathered in Ha, Hb, Hc. rewrite Ha, Hb, Hc, add_opp.
 apply colinear_origin_r.
 Qed.
-
-Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
-Proof. intuition. Qed.
 
 (* If the robots aren't aligned yet then there exists at least one robot which, 
  * if activated, will move. 

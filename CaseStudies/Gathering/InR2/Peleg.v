@@ -345,26 +345,18 @@ remember (List.map (fun xn : location * nat => (fst xn, INR (snd xn))) E) as E'.
 assert (lift_path (frame_choice_bijection (sim ⁻¹)) (paths_in_R2 (sim (barycenter E')))
         == straight_path (get_location (config (Good g))) (barycenter E')).
 { intro r. cbn [path_f lift_path straight_path paths_in_R2 local_straight_path].
-simpl frame_choice_bijection.
+  simpl frame_choice_bijection.
   assert (Heq := sim_mul (sim ⁻¹) r). rewrite Heq. clear Heq. changeR2.
   change (sim ⁻¹ (sim (barycenter E')))%VS with ((sim ⁻¹ ∘ sim) (barycenter E'))%VS.
   rewrite Similarity.compose_inverse_l. change (Similarity.id (barycenter E')) with (barycenter E').
   rewrite Hda. unfold Rminus.
   rewrite mul_distr_add, <- add_morph, minus_morph, mul_opp, mul_1, 2 add_assoc.
   apply RealVectorSpace.add_compat; try reflexivity; []. apply RealVectorSpace.add_comm. }
-apply get_location_compat, update_compat; auto.
-+ transitivity (map_config id config); try apply map_config_id; [].
-  rewrite map_config_merge.
-  - f_equiv. intros x y Hxy.
-    changeR2. rewrite <- Heqsim.
-    transitivity (get_location (lift (existT precondition (frame_choice_bijection (sim ⁻¹))
-                                                          (precondition_satisfied_inv da config g))
-                                     (lift (existT precondition (frame_choice_bijection sim)
-                                           (precondition_satisfied da config g)) x))); try reflexivity; [].
-    rewrite 2 get_location_lift. simpl. rewrite Bijection.retraction_section. apply Hxy.
-  - autoclass.
-  - apply lift_compat. intros x y Hxy. now rewrite Hxy.
-+ 
+apply get_location_compat. apply update_compat. ; auto.
++ Local Transparent lift. Local Transparent map_config. 
+  intros r. cbn -[equiv]. now rewrite Heqsim, Bijection.retraction_section.
++ changeR2. rewrite <-Heqsim. exact H.
++   
 Admitted. (* Peleg's gathering in FSYNC: round_simplify -> hypothesis missing on the demon *)
 
 (** If possible, the measure decreases by at least delta at each step. *)
