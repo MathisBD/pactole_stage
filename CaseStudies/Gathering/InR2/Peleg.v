@@ -105,7 +105,8 @@ Notation Madd := (MMultisetInterface.add).
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.
 Implicit Type d : similarity_demon.
-Arguments origin : simpl never.
+Arguments origin : simpl rewrite in Hdelta. RealVectorSpace.add_assoc in Hdelta.
+never.
 Arguments dist : simpl never.
 
 (* The robot trajectories are straight paths. *)
@@ -337,10 +338,7 @@ apply (@PermutationA_map _ _ _ (equiv * eq)%signature _ (fun xn => (fst xn, INR 
 rewrite map_map, <- (map_map (fun xn => (fst xn, INR (snd xn))) (fun xn => (sim (fst xn), snd xn))) in Hperm.
 apply barycenter_compat, paths_in_R2_compat in Hperm.
 rewrite barycenter_sim_morph in Hperm;
-try (intro Habs; apply map_eq_nil in Habs; rewrite HeqE, elements_nil in Habs; now apply obs_non_nil in Habs); [].
-subst sim. changeR2.
-rewrite lift_update_swap, <- Hperm.
-remember (change_frame da config g) as sim.
+try (intro Hab)ge_frame da config g) as sim.
 remember (List.map (fun xn : location * nat => (fst xn, INR (snd xn))) E) as E'.
 assert (lift_path (frame_choice_bijection (sim ⁻¹)) (paths_in_R2 (sim (barycenter E')))
         == straight_path (get_location (config (Good g))) (barycenter E')).
@@ -358,6 +356,8 @@ apply get_location_compat. apply update_compat. ; auto.
 + changeR2. rewrite <-Heqsim. exact H.
 +   
 Admitted. (* Peleg's gathering in FSYNC: round_simplify -> hypothesis missing on the demon *)
+(* Mathis Bouverot : See Weber_flex_ssync.v for a solution. *)
+
 
 (** If possible, the measure decreases by at least delta at each step. *)
 Theorem round_lt_config : forall da config,
