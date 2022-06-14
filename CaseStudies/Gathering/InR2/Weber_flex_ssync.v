@@ -246,6 +246,16 @@ intros HF HE. induction HF as [| x x' l l' Hx Hl IH].
   - apply IH in HE. lra.
 Qed.
 
+Lemma list_sum_ge_0 l : 
+  Forall (Rle 0%R) l -> (0 <= list_sum l)%R. 
+Proof.
+intros H. transitivity (list_sum (alls 0%R (length l))).
++ apply Req_le_sym. induction l as [|x l IH] ; auto.
+  cbn. rewrite IH ; try lra. rewrite Forall_cons_iff in H. apply H.
++ apply list_sum_le. induction l as [|x l IH] ; cbn ; auto.
+  rewrite Forall_cons_iff in H. apply Forall2_cons ; intuition.
+Qed. 
+
 (* This is the function that a weber point minimizes. *)
 Definition dist_sum points (x : R2) := 
   list_sum (List.map (dist x) points).
@@ -830,8 +840,15 @@ apply Rplus_compat.
 + now rewrite Hc.
 Qed.
 
-Lemma measure_noneg config : (0 <= measure config)%R.
-Proof. Admitted.
+
+Lemma measure_nonneg config : (0 <= measure config)%R.
+Proof. 
+unfold measure. apply Rplus_le_le_0_compat.
++ unfold measure_count. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
+  intros x _. destruct_match ; lra.
++ unfold measure_dist. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
+  intros x _. apply dist_nonneg.   
+Qed.
 
 Lemma half_line_origin o d : half_line o d o.
 Proof. 
@@ -1000,7 +1017,7 @@ destruct (round gatherW da config i =?= weber_calc (config_list config)) as [Hre
         rewrite Rabs_pos_eq ; [|generalize (ratio_bounds ri) ; lra].
         rewrite Rmult_plus_distr_r, Rmult_1_l.
         simpl location in Hdelta |- *.
-        apply Rplus_le_compat ; try lra. Search Ropp Rmult. 
+        apply Rplus_le_compat ; try lra.
         rewrite <-Ropp_mult_distr_l. now apply Ropp_le_contravar.
       --exfalso. apply HNreached. rewrite Hround. destruct_match ; [|intuition].
         cbn -[config_list dist mul opp RealVectorSpace.add].
@@ -1010,17 +1027,6 @@ destruct (round gatherW da config i =?= weber_calc (config_list config)) as [Hre
         now simplifyR2.
     * exfalso. apply Hi. rewrite Hround. destruct_match ; intuition.
 Qed.
-
-(* This is the well founded relation we will perform induction on. *)
-Definition lt_config eps c c' := 
-  (0 <= measure c <= measure c' - eps)%R. 
-
-Lemma lt_config_compat : Proper (equiv ==> equiv ==> equiv ==> iff) lt_config.
-Proof. Admitted.
-
-Lemma lt_config_wf eps : (eps > 0)%R -> well_founded (lt_config eps).
-Proof. Admitted.
-
 
 Lemma gathered_aligned ps x : 
   (Forall (fun y => y == x) ps) -> aligned ps.
@@ -1108,30 +1114,57 @@ induction locallyfair as [d Hnow | d] ; intros config Nalign Hmove.
   + apply MoveNow. rewrite Hmoving. discriminate.
 Qed.
 
+(* This is the well founded relation we will perform induction on. *)
+Definition lt_config eps c c' := 
+  (0 <= measure c <= measure c' - eps)%R. 
+
+Local Instance lt_config_compat : Proper (equiv ==> equiv ==> equiv ==> iff) lt_config.
+Proof. intros e e' He c1 c1' Hc1 c2 c2' Hc2. unfold lt_config. now rewrite He, Hc1, Hc2. Qed.
+
+(* We proove this using the well-foundedness of lt on nat. *)
+Lemma lt_config_wf eps : (eps > 0)%R -> well_founded (lt_config eps).
+Proof. 
+intros Heps. unfold well_founded. intros c.
+pose (f := fun x : R => Z.to_nat (up (x / eps))).
+remember (f (measure c)) as k. generalize dependent c. 
+pattern k. apply (well_founded_ind lt_wf). clear k.
+intros k IH c Hk. apply Acc_intro. intros c' Hc'. apply IH with (f (measure c')) ; auto.
+rewrite Hk ; unfold f ; unfold lt_config in Hc'.
+rewrite <-Z2Nat.inj_lt.
++ apply Zup_lt. unfold Rdiv. rewrite <-(Rinv_r eps) by lra. 
+  rewrite <-Rmult_minus_distr_r. apply Rmult_le_compat_r ; intuition.
++ apply up_le_0_compat, Rdiv_le_0_compat ; intuition. 
++ apply up_le_0_compat, Rdiv_le_0_compat ; intuition.
+  transitivity eps ; intuition. 
+  apply (Rplus_le_reg_r (- eps)). rewrite Rplus_opp_r. etransitivity ; eauto.
+Qed.
+
 (* The proof is essentially a well-founded induction on [measure config].
  * Fairness ensures that the measure must decrease at some point. *)
-Theorem weber_correct (d : demon) config : 
+Theorem weber_correct config : forall d,
   Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
   eventually_aligned config d gatherW.
 Proof.
-remember (measure config) as k. 
-generalize dependent d. generalize dependent config.
-pattern k. apply (well_founded_ind lt_wf). clear k.
-intros k IHk config Hk d Hfair Hsim.
+assert (Hdelta1 : (Rmin delta 1 > 0)%R).
+{ unfold Rmin. destruct_match ; lra. }
+induction config as [config IH] using (well_founded_ind (lt_config_wf Hdelta1)).
+intros d Hfair Hsim.
 destruct (aligned_dec (config_list config)) as [align | Nalign] ;
   [now apply aligned_over|].
 induction (fair_first_move config Hfair Hsim Nalign) as [d config Hmove | d config Hmove FM IH_FM] ;
   destruct Hsim as [Hsim_hd Hsim_tl] ; cbn in Hsim_hd ; apply Stream.Later.
 + destruct (round_decreases_measure config Hsim_hd Hmove) as [Ralign | Rmeasure].
   - now apply aligned_over.
-  - eapply IHk. 
-    * rewrite Hk. exact Rmeasure.  
-    * reflexivity.
-    * destruct Hfair as [_ Hfair_tl]. exact Hfair_tl.
-    * exact Hsim_tl.
-+ apply no_moving_same_config in Hmove.
-  apply IH_FM ; (try rewrite Hmove) ; auto.
-  destruct Hfair as [_ Hfair_tl]. exact Hfair_tl.
-Qed.
+  - apply IH.
+    * unfold lt_config. split ; [apply measure_nonneg | apply Rmeasure].  
+    * apply Hfair. 
+    * apply Hsim_tl. 
++ apply no_moving_same_config in Hmove. cbn -[config_list].
+  apply IH_FM.
+  - intros c' Hc' d' Hfair' Hsim'. rewrite Hmove in Hc'. apply IH ; auto.
+  - apply Hfair.
+  - apply Hsim_tl.
+  - now rewrite Hmove.
+Qed.  
 
 End Gathering.
