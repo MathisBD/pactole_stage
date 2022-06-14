@@ -11,7 +11,9 @@
 
 
 (**************************************************************************)
-(* This file implements an algorithm to align all robots on an arbitrary 
+(* Author : Mathis Bouverot-Dupuis (June 2022).
+
+ * This file implements an algorithm to align all robots on an arbitrary 
  * axis, in the plane (R²). The algorithm assumes there are no byzantine robots,
  * and should work in a flexible and asynchronous setting 
  * (the proof maybe hasn't got that far yet). 
@@ -59,24 +61,26 @@ Require Import Pactole.Models.NoByzantine.
 Import Permutation.
 Import Datatypes.
 
+
 Set Implicit Arguments.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
 
 
-(* Change the left hand side of an setoid-equality with a convertible term. *)
+(* Change the left hand side of a setoid-equality with a convertible term. *)
 Ltac change_LHS E := 
   match goal with 
   | [ |- ?LHS == ?RHS ] => change (E == RHS)
   end.
 
-(* Change the right hand side of an setoid-equality with a convertible term. *)
+(* Change the right hand side of a setoid-equality with a convertible term. *)
 Ltac change_RHS E := 
   match goal with 
   | [ |- ?LHS == ?RHS ] => change (LHS == E)
   end.
 
-(* Simplify a goal involving calculations in R2 by developing everything. *)
+(* Simplify a goal involving calculations in R2 by expanding everything. 
+ * This is rarely useful. *)
 Ltac simplifyR2 :=
   unfold Rminus ; 
   repeat (try rewrite mul_distr_add ;
@@ -175,7 +179,8 @@ Proof. Admitted.
 (* This definition is based on lists : we could have used multisets,
  * and the code might have been cleaner (who knows). 
  * In the current state of things, we have to convert observations from multiset to list format, 
- * which requires lots of boilerplate lemmas. *)
+ * which requires lots of boilerplate lemmas, however definitions on lists 
+ * ([aligned] and [Weber] mainly) are clean and lightweight. *)
 Definition aligned (points : list R2) := 
   ForallTriplets (fun x y z => colinear (y - x) (z - x)) points points points.
 
@@ -322,7 +327,6 @@ repeat rewrite dist_sum_similarity. apply Rmult_le_compat_l.
 + now apply H.
 Qed.
 
-
 (* A weber point is preserved by similarities. 
  * This is important because it means that all robots will calculate the same correct weber point, 
  * even though they view the configuration up to a change of frame (i.e. a similarity). *)
@@ -426,15 +430,16 @@ Local Instance LocVS : RealVectorSpace location := R2_VS.
 Local Instance LocES : EuclideanSpace location := R2_ES.
 
 (* Refolding typeclass instances *)
-Ltac changeR2 :=
+Ltac foldR2 :=
   change R2 with location in *;
   change R2_Setoid with location_Setoid in *;
+  change state_Setoid with location_Setoid in *;
   change R2_EqDec with location_EqDec in *;
+  change state_EqDec with location_EqDec in *;
   change R2_VS with LocVS in *;
   change R2_ES with LocES in *.
 
-
-(* Robots don't have an state (and thus no memory) apart from their location. *)
+(* Robots don't have a state (and thus no memory) apart from their location. *)
 Local Instance St : State location := OnlyLocation (fun f => True).
 (* Robots choose their destination and also the path they take to this destination. *)
 Local Instance RobotC : robot_choice (path location) := {| robot_choice_Setoid := @path_Setoid _ location_Setoid |}.
@@ -641,11 +646,11 @@ exfalso; revert_one not; intro Hgoal; apply Hgoal.
 - assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g)).
   eapply Rmult_le_reg_l; eauto; []. simpl.
   rewrite <- Rmult_assoc, Rinv_r, Rmult_1_l; trivial; [].
-  changeR2. lra.
+  foldR2. lra.
 - assert (Hzoom := Similarity.zoom_pos (change_frame da config1 g ⁻¹)).
   eapply Rmult_le_reg_l; eauto; []. simpl.
   rewrite <- Rmult_assoc, Rinv_l, Rmult_1_l; trivial; [].
-  changeR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
+  foldR2. generalize (Similarity.zoom_pos (change_frame da config1 g)). lra.
 Qed.
 
 (* Simplify the [round] function and express it in the global frame of reference. *)
@@ -690,11 +695,11 @@ destruct_match.
   repeat rewrite mul_origin. destruct_match ; apply Hsim.
 (* The robots aren't aligned. *)
 + unfold gatherW_pgm. destruct_match ; [intuition|].
-  pose (sim := change_frame da config g). changeR2. fold sim.
+  pose (sim := change_frame da config g). foldR2. fold sim.
   assert (Hweb : weber_calc (multi_support obs) == sim (weber_calc (config_list config))).
   {
     unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[equiv config_list].
-    changeR2. fold sim. 
+    foldR2. fold sim. 
     apply weber_unique with (List.map sim (config_list config)).
     - now rewrite <-aligned_similarity.
     - apply weber_calc_correct.
@@ -708,7 +713,7 @@ destruct_match.
     cbn -[equiv w c opp RealVectorSpace.add mul inverse].
     rewrite sim_mul.  
     assert (Hcenter : (sim ⁻¹) 0%VS == c).
-    { changeR2. change_LHS (center sim). apply Hsim. }
+    { foldR2. change_LHS (center sim). apply Hsim. }
     assert (Hsim_cancel : forall x, (inverse sim) (sim x) == x).
     { cbn -[equiv]. now setoid_rewrite Bijection.retraction_section. }
     rewrite Hcenter, Hsim_cancel. simplifyR2. 
@@ -1005,7 +1010,7 @@ destruct (round gatherW da config i =?= weber_calc (config_list config)) as [Hre
     rewrite Hround. destruct_match_eq Hact ; [destruct_match_eq Halign|].
     * exfalso. now apply RNcol, round_preserves_aligned.
     * cbn zeta. 
-      pose (w := weber_calc (config_list config)). changeR2. fold w. 
+      pose (w := weber_calc (config_list config)). foldR2. fold w. 
       pose (x := config i). fold x.
       pose (ri := r (unpack_good i)). fold ri.
       cbn -[dist RealVectorSpace.add mul opp w ri]. rewrite Rmult_1_l, mul_1.
@@ -1021,7 +1026,7 @@ destruct (round gatherW da config i =?= weber_calc (config_list config)) as [Hre
         rewrite <-Ropp_mult_distr_l. now apply Ropp_le_contravar.
       --exfalso. apply HNreached. rewrite Hround. destruct_match ; [|intuition].
         cbn -[config_list dist mul opp RealVectorSpace.add].
-        rewrite Rmult_1_l, good_unpack_good ; unfold id ; fold x ; fold ri ; changeR2 ; fold w.
+        rewrite Rmult_1_l, good_unpack_good ; unfold id ; fold x ; fold ri ; foldR2 ; fold w.
         destruct_match ; intuition. 
         rewrite mul_1, (RealVectorSpace.add_comm w), RealVectorSpace.add_assoc. 
         now simplifyR2.
@@ -1081,7 +1086,7 @@ assert (List.Exists (fun x => x =/= weber_calc (config_list config)) (config_lis
 }
 rewrite Exists_exists in HE. destruct HE as [x [Hin Hx]].
 apply (@In_InA R2 equiv _) in Hin. 
-changeR2. change location_Setoid with state_Setoid in *. rewrite config_list_InA in Hin.
+foldR2. change location_Setoid with state_Setoid in *. rewrite config_list_InA in Hin.
 destruct Hin as [r Hr]. exists r. now rewrite <-Hr.
 Qed.
 

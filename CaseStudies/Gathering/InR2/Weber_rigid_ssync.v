@@ -11,7 +11,9 @@
 
 
 (**************************************************************************)
-(* This file implements an algorithm to align all robots on an arbitrary 
+(* Author : Mathis Bouverot-Dupuis (June 2022).
+
+ * This file implements an algorithm to align all robots on an arbitrary 
  * axis, in the plane (R²). The algorithm assumes there are no byzantine robots,
  * and should work in a flexible and asynchronous setting 
  * (the proof maybe hasn't got that far yet). 
@@ -354,10 +356,12 @@ Local Instance LocVS : RealVectorSpace location := R2_VS.
 Local Instance LocES : EuclideanSpace location := R2_ES.
 
 (* Refolding typeclass instances *)
-Ltac changeR2 :=
+Ltac foldR2 :=
   change R2 with location in *;
   change R2_Setoid with location_Setoid in *;
+  change state_Setoid with location_Setoid in *;
   change R2_EqDec with location_EqDec in *;
+  change state_EqDec with location_EqDec in *;
   change R2_VS with LocVS in *;
   change R2_ES with LocES in *.
 
@@ -816,7 +820,7 @@ assert (List.Exists (fun x => x =/= weber_calc (config_list config)) (config_lis
 }
 rewrite Exists_exists in HE. destruct HE as [x [Hin Hx]].
 apply (@In_InA R2 equiv _) in Hin. 
-changeR2. change location_Setoid with state_Setoid in *. rewrite config_list_InA in Hin.
+foldR2. change location_Setoid with state_Setoid in *. rewrite config_list_InA in Hin.
 destruct Hin as [r Hr]. exists r. now rewrite <-Hr.
 Qed.
 
