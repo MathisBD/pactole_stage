@@ -229,7 +229,7 @@ Lemma gathered_at_over : forall d,
 Proof using .
 cofix Hind. intros d Hsim pt config Hgather. constructor.
 + clear Hind. simpl. assumption.
-+ apply Hind; try apply gathered_at_forever; trivial; apply Hd || apply Hsim.
++ apply Hind. try apply gathered_at_forever; trivial; apply Hd || apply Hsim.
 Qed.
 
 (** Termination measure *)

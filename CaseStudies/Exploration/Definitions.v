@@ -60,6 +60,7 @@ Global Existing Instance NoChoice.
 Global Existing Instance NoChoiceIna.
 Global Existing Instance NoChoiceInaFun.
 
+
 Global Instance UpdFun : update_function direction (Z * bool) unit := {
   update := fun config g _ dir _ => move_along (config (Good g)) dir;
   update_compat := ltac:(repeat intro; subst; now apply move_along_compat) }.

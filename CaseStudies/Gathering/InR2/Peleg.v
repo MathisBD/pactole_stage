@@ -105,8 +105,7 @@ Notation Madd := (MMultisetInterface.add).
 Implicit Type config : configuration.
 Implicit Type da : similarity_da.
 Implicit Type d : similarity_demon.
-Arguments origin : simpl rewrite in Hdelta. RealVectorSpace.add_assoc in Hdelta.
-never.
+Arguments origin : simpl never.
 Arguments dist : simpl never.
 
 (* The robot trajectories are straight paths. *)
@@ -338,25 +337,36 @@ apply (@PermutationA_map _ _ _ (equiv * eq)%signature _ (fun xn => (fst xn, INR 
 rewrite map_map, <- (map_map (fun xn => (fst xn, INR (snd xn))) (fun xn => (sim (fst xn), snd xn))) in Hperm.
 apply barycenter_compat, paths_in_R2_compat in Hperm.
 rewrite barycenter_sim_morph in Hperm;
-try (intro Hab)ge_frame da config g) as sim.
+try (intro Habs; apply map_eq_nil in Habs; rewrite HeqE, elements_nil in Habs; now apply obs_non_nil in Habs); [].
+subst sim. changeR2.
+rewrite lift_update_swap, <- Hperm.
+remember (change_frame da config g) as sim.
 remember (List.map (fun xn : location * nat => (fst xn, INR (snd xn))) E) as E'.
 assert (lift_path (frame_choice_bijection (sim ⁻¹)) (paths_in_R2 (sim (barycenter E')))
         == straight_path (get_location (config (Good g))) (barycenter E')).
 { intro r. cbn [path_f lift_path straight_path paths_in_R2 local_straight_path].
-  simpl frame_choice_bijection.
+simpl frame_choice_bijection.
   assert (Heq := sim_mul (sim ⁻¹) r). rewrite Heq. clear Heq. changeR2.
   change (sim ⁻¹ (sim (barycenter E')))%VS with ((sim ⁻¹ ∘ sim) (barycenter E'))%VS.
   rewrite Similarity.compose_inverse_l. change (Similarity.id (barycenter E')) with (barycenter E').
   rewrite Hda. unfold Rminus.
   rewrite mul_distr_add, <- add_morph, minus_morph, mul_opp, mul_1, 2 add_assoc.
   apply RealVectorSpace.add_compat; try reflexivity; []. apply RealVectorSpace.add_comm. }
-apply get_location_compat. apply update_compat. ; auto.
-+ Local Transparent lift. Local Transparent map_config. 
-  intros r. cbn -[equiv]. now rewrite Heqsim, Bijection.retraction_section.
-+ changeR2. rewrite <-Heqsim. exact H.
-+   
+apply get_location_compat, update_compat; auto.
++ transitivity (map_config id config); try apply map_config_id; [].
+  rewrite map_config_merge.
+  - f_equiv. intros x y Hxy.
+    changeR2. rewrite <- Heqsim.
+    transitivity (get_location (lift (existT precondition (frame_choice_bijection (sim ⁻¹))
+                                                          (precondition_satisfied_inv da config g))
+                                     (lift (existT precondition (frame_choice_bijection sim)
+                                           (precondition_satisfied da config g)) x))); try reflexivity; [].
+    rewrite 2 get_location_lift. simpl. rewrite Bijection.retraction_section. apply Hxy.
+  - autoclass.
+  - apply lift_compat. intros x y Hxy. now rewrite Hxy.
++ 
 Admitted. (* Peleg's gathering in FSYNC: round_simplify -> hypothesis missing on the demon *)
-(* Mathis Bouverot : See Weber_flex_ssync.v for a solution. *)
+(* Mathis Bouverot : See Weber/gathering_flex_ssync.v for a solution. *)
 
 
 (** If possible, the measure decreases by at least delta at each step. *)

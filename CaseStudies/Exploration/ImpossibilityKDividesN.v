@@ -191,7 +191,6 @@ Proof using . coinduction Hcoind. apply FSYNC_one. Qed.
 Definition move := pgm r (!! ref_config).
 Definition target := move_along origin move.
 
-
 (** **  First case: robots do not move  **)
 
 (** In this case, the configuration stays exactly the same

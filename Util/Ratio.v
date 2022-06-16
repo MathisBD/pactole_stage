@@ -117,7 +117,7 @@ Notation "n '/sr' m" := (mk_strict_ratio n m _ _) (at level 10, only printing).
 (** Trajectories are paths inside the space. *)
 (* FIXME: I should use typeclasses to avoid the explicit parameter T.
           Otherwise, path cannot be used as a target class for coercions. *)
-Record path T `{Setoid T}:= {
+Record path T `{Setoid T} := {
   path_f :> ratio -> T;
   path_compat :> Proper (equiv ==> equiv) path_f }.
 Arguments path_f {T} {_} _ _.

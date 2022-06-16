@@ -15,8 +15,7 @@
 
  * This file implements an algorithm to align all robots on an arbitrary 
  * axis, in the plane (R²). The algorithm assumes there are no byzantine robots,
- * and should work in a flexible and asynchronous setting 
- * (the proof maybe hasn't got that far yet). 
+ * and works in a RIGID and SEMI-SYNCHRONOUS setting.
 
  * The algorithm is as follows : all robots go towards the 'weber point' of 
  * the configuration. The weber point, also called geometric median, is unique 
@@ -56,6 +55,9 @@ Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Rigid.
 (* Specific to settings with no Byzantine robots *)
 Require Import Pactole.Models.NoByzantine.
+(* Specific to definition and properties of the weber point. *)
+Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Weber_point.
+
 
 (* User defined *)
 Import Permutation.
@@ -78,250 +80,8 @@ Ltac change_RHS E :=
   | [ |- ?LHS == ?RHS ] => change (LHS == E)
   end.
 
-Print ForallPairs.
 
-Section ForallTriplets.
-Variables (A B C : Type).
-Implicit Types (R : A -> B -> C -> Prop).
-
-(* The proposition R holds for every triplet in the cartesian product (l1 * l2 * l3). *)
-Definition ForallTriplets R l1 l2 l3 : Prop :=
-  Forall (fun x => Forall (fun y => Forall (fun z => R x y z) l3) l2) l1.
-
-Local Instance Forall_PermutationA_compat_strong {T : Type} `{Setoid T} : 
-  Proper ((equiv ==> iff) ==> PermutationA equiv ==> iff) (@Forall T).
-Proof using . 
-intros P P' HP l l' Hl. elim Hl.
-+ intuition.
-+ intros x x' t t' Hx Ht IH. repeat rewrite Forall_cons_iff. now f_equiv ; [apply HP|].
-+ intros x y t. repeat rewrite Forall_cons_iff. repeat rewrite <-and_assoc. f_equiv.
-  - rewrite and_comm. now f_equiv ; auto.
-  - f_equiv. intros ? ? ->. now apply HP.
-+ intros t1 t2 t3 _ IH1 _ IH2. rewrite IH1, <-IH2.
-  f_equiv. intros ? ? ->. symmetry. now apply HP.
-Qed.
-
-Local Instance ForallTriplets_PermutationA_compat  `{Setoid A} `{Setoid B} `{Setoid C} : 
-  Proper ((equiv ==> equiv ==> equiv ==> iff) ==> 
-    PermutationA equiv ==> PermutationA equiv ==> PermutationA equiv ==> iff) ForallTriplets.
-Proof. 
-intros R R' HR l1 l1' Hl1 l2 l2' Hl2 l3 l3' Hl3. unfold ForallTriplets.
-repeat (f_equiv ; auto ; intros ? ? ?). now apply HR.
-Qed.
-
-(*Definition sumbool_impl (P P' Q Q' : Prop) (f : P -> P') (g : Q -> Q') : 
-    ({P} + {Q}) -> ({P'} + {Q'}) := fun t => 
-  match t with 
-  | left t1 => left (f t1)
-  | right t2 => right (g t2) 
-  end.*)
-
-(* As with Forall, ForallTriplets is decidable (provided R is decidable). *)
-Lemma ForallTriplets_dec R l1 l2 l3 : 
-  (forall x y z, {R x y z} + {~ R x y z}) ->
-  {ForallTriplets R l1 l2 l3} + {~ ForallTriplets R l1 l2 l3}.
-Proof. intros Rdec. unfold ForallTriplets. repeat (apply Forall_dec ; intros ?). now apply Rdec. Qed.
-
-(* The equivalence between ForallTriplets and regular forall. *)
-Lemma ForallTriplets_forall R l1 l2 l3 : 
-  (ForallTriplets R l1 l2 l3) <-> forall x y z, List.In x l1 -> List.In y l2 -> List.In z l3 -> R x y z.
-Proof. 
-unfold ForallTriplets. split.
-+ intros H x y z Hinx Hiny Hinz.
-  rewrite Forall_forall in H. specialize (H x Hinx).
-  rewrite Forall_forall in H. specialize (H y Hiny).
-  rewrite Forall_forall in H. specialize (H z Hinz).
-  exact H.
-+ intros H. 
-  rewrite Forall_forall. intros x Hinx.
-  rewrite Forall_forall. intros y Hiny.
-  rewrite Forall_forall. intros z Hinz.
-  auto.
-Qed.
-
-End ForallTriplets.
-
-Section WeberPoint.
-Implicit Types (points : list R2).
-
-Local Existing Instances R2_VS R2_ES ForallTriplets_PermutationA_compat.
-
-(* The determinant of two vectors in R². 
- * We use this to define what it means for two vectors to be parallel. *)
-(*Definition det (x y : R2) := (fst x * snd y - snd x * fst y)%R.*)
-
-(*Local Instance det_compat : Proper (equiv ==> equiv ==> equiv) det. 
-Proof using . intros x x' Hxx' y y' Hyy'. unfold det. now rewrite Hxx', Hyy'. Qed. *)
-
-(* This would require proving (and more importantly stating) that for a similarity [f],
- * there exists an orthogonal matrix [A] and a vector [b] such that
- * [forall x, f(x) = f.(zoom)*A*x + b]. 
- * We would need mathcomp (or some other math library) to do this. *)
-Lemma colinear_similarity x y z (f : similarity R2) : 
-  colinear (f y - f x) (f z - f x) <-> colinear (y - x) (z - x).
-Proof. Admitted. 
-
-(* A finite collection of points are aligned iff every triplet of points are aligned. *)
-(* This definition is based on lists : we could have used multisets,
- * and the code might have been cleaner (who knows). 
- * In the current state of things, we have to convert observations from multiset to list format, 
- * which requires lots of boilerplate lemmas. *)
-Definition aligned (points : list R2) := 
-  ForallTriplets (fun x y z => colinear (y - x) (z - x)) points points points.
-
-(* [aligned] doesn't depent on the order of the points. *)
-Local Instance aligned_compat : Proper (PermutationA equiv ==> equiv) aligned.
-Proof using . intros p p' Hpp'. unfold aligned. now f_equiv. Qed.
-
-(* Whether a finite collection of poitns are aligned is decidable. The proof given here 
- * obviously constructs a very slow algorithm (O(n^3)), but we don't really care. *)
-Lemma aligned_dec points : {aligned points} + {~aligned points}.
-Proof. unfold aligned. apply ForallTriplets_dec. intros x y z. apply colinear_dec. Qed.
-
-Lemma aligned_similarity_weak points (f : similarity R2) :
-  aligned points -> aligned (List.map f points).
-Proof.
-unfold aligned. repeat rewrite ForallTriplets_forall. intros H x y z.
-repeat rewrite in_map_iff. intros [x0 [Hfx Hpx]] [y0 [Hfy Hpy]] [z0 [Hfz Hpz]].
-rewrite <-Hfx, <-Hfy, <-Hfz. rewrite colinear_similarity. now apply H.
-Qed.
-
-Lemma aligned_similarity points (f : similarity R2) :
-  aligned points <-> aligned (List.map f points).
-Proof.
-split ; try apply aligned_similarity_weak.
-intros H. apply aligned_similarity_weak with (List.map f points) (inverse f) in H. revert H.
-apply aligned_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
-intros x y Hxy. cbn -[equiv]. now rewrite Bijection.retraction_section.
-Qed.
-
-(* A Weber point of a finite collection P of points 
- * is a point that minimizes the sum of the distances to elements of P.
- * In general, there is no unique weber point for a collection.
- * However it is unique if the points in P are not colinear. *)
-
-(* Compute the sum of the element of a list [l] *)
-Fixpoint list_sum l :=
-  match l with 
-  | nil => 0%R 
-  | hd :: tl => (hd + list_sum tl)%R 
-  end.
-
-Local Instance list_sum_compat : 
-  Proper (PermutationA (@equiv R _) ==> equiv) list_sum.
-Proof.
-intros l l' Hll'. elim Hll'.
-+ now reflexivity.
-+ intros x x' t t' Hxx' Htt' IH. cbn -[equiv]. now rewrite Hxx', IH.
-+ intros x y t. cbn -[equiv].
-  repeat rewrite <-Rplus_assoc. f_equiv. now rewrite Rplus_comm.
-+ intros t t' t'' _ IH1 _ IH2. now rewrite IH1, IH2.
-Qed.    
-
-(* This is the function that a weber point minimizes. *)
-Definition dist_sum points (x : R2) := 
-  list_sum (List.map (dist x) points).
-
-Local Instance dist_sum_compat : Proper (PermutationA equiv ==> equiv ==> equiv) dist_sum.
-Proof using .
-intros p p' Hpp' x y Hxy. unfold dist_sum. f_equiv. now rewrite Hpp', Hxy.
-Qed.
-
-(* [argmin f P] is the set of elements that minimize [f] in the set [P],
- * when sets are represented by membership predicates. *)
-Definition argmin {A : Type} (f : A -> R) (P : A -> Prop) : A -> Prop := 
-  fun a => P a /\ forall b, P b -> (f a <= f b)%R.
-  
-Local Instance argmin_compat {A : Type} : Proper (equiv ==> equiv ==> @Logic.eq A ==> equiv) argmin.
-Proof using . 
-intros f g Hfg P P' HPP' a a' Haa'. unfold argmin.
-rewrite <-Haa'. setoid_rewrite <-HPP'. setoid_rewrite <-Hfg.
-reflexivity.
-Qed.
-
-(* The trivial predicate true everywhere. *)
-Definition predT {A : Type} : A -> Prop := fun _ => True.
-
-(* The set of Weber points of a finite collection of points *)
-Definition Weber points : R2 -> Prop := argmin (dist_sum points) predT.
-
-(* [Weber] doesn't depend on the order of the points. *)
-Local Instance weber_compat : Proper (PermutationA equiv ==> equiv ==> equiv) Weber.
-Proof using .
-  intros p p' Hpp' x y Hxy. unfold Weber. f_equiv ; try auto. intros z. now f_equiv.
-Qed.
-
-(* We can show that a weber point can equivalently be defined as
- * an argmin on a compact set of points (instead of an argmin on the whole plane),
- * and a continuous function always has a minimum on a compact set. *)
-(* RMK : this is also true if [points] is empty. *)
-Lemma weber_exists points : 
-  exists x, Weber points x.
-Proof. Admitted.
-
-(* If the points aren't colinear, than the weber point is unique. *)
-Lemma weber_unique points x y : 
-  ~aligned points -> Weber points x -> Weber points y -> x == y.
-Proof. Admitted.
-
-Lemma dist_sum_similarity (f : similarity R2) points x : 
-  (dist_sum (List.map f points) (f x) == f.(zoom) * dist_sum points x)%R.
-Proof. 
-elim points.
-+ cbn. now rewrite Rmult_0_r.
-+ intros p ps IH. cbn -[dist]. 
-  now rewrite dist_prop, IH, Rmult_plus_distr_l.
-Qed.
-
-Lemma weber_similarity_weak points w (f : similarity R2) : 
-  Weber points w -> Weber (List.map f points) (f w).
-Proof.
-unfold Weber, argmin. intros [_ H]. split ; try now unfold predT.
-intros b _. rewrite <-(Bijection.section_retraction f b). 
-remember (Bijection.retraction f b) as b'.
-repeat rewrite dist_sum_similarity. apply Rmult_le_compat_l.
-+ now apply Rlt_le, zoom_pos.
-+ now apply H.
-Qed.
-
-
-(* A weber point is preserved by similarities. 
- * This is important because it means that all robots will calculate the same correct weber point, 
- * even though they view the configuration up to a change of frame (i.e. a similarity). *)
-Lemma weber_similarity points w (f : similarity R2) : 
-  Weber points w <-> Weber (List.map f points) (f w).
-Proof.
-split.
-+ now apply weber_similarity_weak.
-+ intros H. apply (@weber_similarity_weak _ _ (f ⁻¹)) in H.
-  revert H. rewrite map_map.
-  pose (f1f := fun x => (f ⁻¹) (f x)). 
-  fold f1f. change ((f ⁻¹) (f w)) with (f1f w).
-  assert (forall x, f1f x == x).
-  { intros x. cbn -[equiv]. now rewrite Bijection.retraction_section. }
-  apply weber_compat.
-  - apply eqlistA_PermutationA. rewrite <-List.map_id at 1. f_equiv.
-    intros x y Hxy. now rewrite H.
-  - now rewrite H.
-Qed.  
-
-(* [half_line o d] represents the set of points that are in the the half line with 
- * origin [o] and direction [d], [o] included. 
- * If d == 0 then the set of points represented is reduced to [o]. *)
-Definition half_line (o d : R2) : R2 -> Prop := fun x =>
-  exists t : R, (0 <= t)%R /\ (x == o + t * d)%VS.
-
-Local Instance half_line_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) half_line.
-Proof using .
-intros x x' Hxx' y y' Hyy' z z' Hzz'. unfold half_line. now rewrite Hxx', Hyy', Hzz'. 
-Qed.
-
-(* If we move each point towards/away from the weber point in a straight line
- * (without crossing the weber point), the weber point is preserved. 
- * We can even move robots onto the weber point, it will still be preserved. *)
-Lemma weber_half_line ps ps' w : 
-  Forall2 (fun x y => half_line w (x - w) y) ps ps' -> Weber ps w -> Weber ps' w.
-Proof. Admitted.
+Section Gathering.
 
 (* We assume the existence of a function that calculates a weber point of a collection
  * (even when the weber point is not unique).
@@ -330,20 +90,15 @@ Proof. Admitted.
 Axiom weber_calc : list R2 -> R2.
 Axiom weber_calc_correct : forall ps, Weber ps (weber_calc ps).
 (* We also suppose this function doesn't depend on the order of the points. 
- * This is probably not necessary (we can show that it holds when the points aren't colinear) 
- * but simplifies the proof a bit. *)
+* This is probably not necessary (we can show that it holds when the points aren't colinear) 
+* but simplifies the proof a bit. *)
 Axiom weber_calc_compat : Proper (PermutationA equiv ==> equiv) weber_calc.
 Local Existing Instance weber_calc_compat.
-
-End WeberPoint.
-
-
-Section Gathering.
-Local Existing Instances aligned_compat weber_compat weber_calc_compat.
-
+ 
 (* The number of robots *)
 Variables n : nat.
 Hypothesis lt_0n : 0 < n.
+
 
 (* There are no byzantine robots. *)
 Local Instance N : Names := Robots n 0.
@@ -375,7 +130,7 @@ Local Instance FrameC : frame_choice (similarity location) := FrameChoiceSimilar
 Local Instance UpdateC : update_choice unit := NoChoice.
 Local Instance InactiveC : inactive_choice unit := NoChoiceIna.
 
-(* We are in a rigid and semi-synchronous setting (for now). *)
+(* We are in a rigid and semi-synchronous setting. *)
 Local Instance UpdateF : update_function _ _ _.
   refine {| update := fun _ _ _ target _ => target |}.
 Proof using . now repeat intro. Defined. 
@@ -608,10 +363,15 @@ Qed.
 
 Lemma aligned_over config (d : demon) :
   Stream.forever (Stream.instant similarity_da_prop) d ->
-  aligned (config_list config) -> eventually_aligned config d gatherW.
+  aligned (config_list config) -> 
+  Stream.forever (Stream.instant (fun c => aligned (config_list c))) (execute gatherW d config).
 Proof.
-Admitted.
-
+revert config d. 
+cofix Hind. intros config d Hsim Halign. constructor.
++ cbn -[config_list]. apply Halign.
++ cbn -[config_list]. simple apply Hind ; [apply Hsim |]. 
+  apply round_preserves_aligned ; [apply Hsim | apply Halign].
+Qed.
 
 Lemma sub_lt_sub (i j k : nat) : j < i <= k -> k - i < k - j.
 Proof. lia. Qed.
@@ -864,11 +624,11 @@ generalize dependent d. generalize dependent config.
 pattern k. apply (well_founded_ind lt_wf). clear k.
 intros k IHk config Hk d Hfair Hsim.
 destruct (aligned_dec (config_list config)) as [align | Nalign] ;
-  [now apply aligned_over|].
+  [now apply Stream.Now, aligned_over|].
 induction (fair_first_move config Hfair Hsim Nalign) as [d config Hmove | d config Hmove FM IH_FM] ;
   destruct Hsim as [Hsim_hd Hsim_tl] ; cbn in Hsim_hd ; apply Stream.Later.
 + destruct (round_decreases_measure config Hsim_hd Hmove) as [Ralign | Rmeasure].
-  - now apply aligned_over.
+  - now apply Stream.Now, aligned_over.
   - eapply IHk. 
     * rewrite Hk. exact Rmeasure.  
     * reflexivity.
