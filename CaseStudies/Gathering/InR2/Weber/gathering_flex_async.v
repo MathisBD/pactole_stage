@@ -80,6 +80,35 @@ Ltac change_RHS E :=
   | [ |- ?LHS == ?RHS ] => change (LHS == E)
   end.
 
+(* This tactic feeds the precondition of an implication in order to derive the conclusion
+  (taken from http://comments.gmane.org/gmane.science.mathematics.logic.coq.club/7013).
+
+  Usage: feed H.
+
+  H: P -> Q  ==becomes==>  H: P
+                          ____
+                          Q
+
+  After completing this proof, Q becomes a hypothesis in the context. *)
+  Ltac feed H :=
+  match type of H with
+  | ?foo -> _ =>
+    let FOO := fresh in
+    assert foo as FOO; [|specialize (H FOO); clear FOO]
+  end.
+
+(* Generalization of feed for multiple hypotheses.
+    feed_n is useful for accessing conclusions of long implications.
+
+    Usage: feed_n 3 H.
+      H: P1 -> P2 -> P3 -> Q.
+
+    We'll be asked to prove P1, P2 and P3, so that Q can be inferred. *)
+Ltac feed_n n H := match constr:(n) with
+  | O => idtac
+  | (S ?m) => feed H ; [| feed_n m H]
+  end.
+
 (* Simplify a goal involving calculations in R2 by expanding everything. 
  * This is rarely useful. *)
 Ltac simplifyR2 :=
@@ -163,17 +192,6 @@ Local Instance Loc : Location := make_Location R2.
 Local Instance LocVS : RealVectorSpace location := R2_VS.
 Local Instance LocES : EuclideanSpace location := R2_ES.
 
-(* Refolding typeclass instances *)
-Ltac foldR2 :=
-  change R2 with location in *;
-  change R2_Setoid with location_Setoid in *;
-  change state_Setoid with location_Setoid in *;
-  change R2_EqDec with location_EqDec in *;
-  change state_EqDec with location_EqDec in *;
-  change R2_VS with LocVS in *;
-  change R2_ES with LocES in *.
-
-
 (* This is what represents a robot's state.
  * The first location is the robot's start position (where it performed its last 'compute').
  * The second location is the robot's destination (what the robogram computed).
@@ -227,6 +245,16 @@ Proof using .
 + abstract (intros [f Hf] [g Hg] ; cbn -[equiv] ; intros Hfg [[s d] r] [[s' d'] r'] [[Hs Hd] Hr] ;
             cbn -[equiv location] in * |- ; repeat split ; cbn -[equiv] ; auto).
 Defined.
+
+(* Refolding typeclass instances *)
+Ltac foldR2 :=
+  change R2 with location in * ;
+  change R2_Setoid with location_Setoid in * ;
+  change R2_EqDec with location_EqDec in * ;
+  change R2_VS with LocVS in * ;
+  change R2_ES with LocES in * ;
+  change info_Setoid with state_Setoid in * ;
+  change info_EqDec with state_EqDec in *.
 
 (* Robots choose their destination.
  * They will move to this destination along a straight path. *)
@@ -716,11 +744,16 @@ Qed.
     
 
 (* This is the main invariant : the robots are alway headed towards a weber point. *)
-Lemma invariant_stg_weber config da w : similarity_da_prop da -> 
-  let invariant c := config_stay_or_go c w /\ Weber (pos_list c) w in 
-  invariant config -> invariant (round gatherW da config).
-Proof. 
-cbn zeta. intros Hsim [Hstg Hweb]. destruct (round_simplify config Hsim) as [r Hround].
+Definition invariant w config : Prop := 
+  config_stay_or_go config w /\ Weber (pos_list config) w. 
+
+Local Instance invariant_compat : Proper (equiv ==> equiv ==> iff) invariant.
+Proof. intros w w' Hw c c' Hc. unfold invariant. now rewrite Hc, Hw. Qed. 
+
+Lemma round_preserves_invariant config da w : similarity_da_prop da -> 
+  invariant w config -> invariant w (round gatherW da config).
+Proof.
+unfold invariant. intros Hsim [Hstg Hweb]. destruct (round_simplify config Hsim) as [r Hround].
 split.
 + case (aligned_dec (pos_list config)) as [Halign | HNalign] ; cbn zeta in Hround.
   (* The robots are aligned. *)  
@@ -755,16 +788,153 @@ split.
     * now rewrite Hb.
 Qed.
 
+Lemma aligned_tail p0 ps : aligned (p0 :: ps) -> aligned ps. 
+Proof. 
+unfold aligned. rewrite 2 ForallTriplets_forall. intros H x y z Hinx Hiny Hinz.
+apply H ; now right. 
+Qed.
+
+Lemma list_all_eq_or_perm {A : Type} `{Setoid A} (x0 : A) l : 
+  (forall x, InA equiv x l -> x == x0) \/ (exists x1 l1, PermutationA equiv l (x1 :: l1) /\ x1 =/= x0).
+Proof.
+
+Admitted.
+
+Lemma aligned_spec p0 ps : 
+  aligned (p0 :: ps) <-> exists v, forall p, InA equiv p ps -> exists t, (p == p0 + t * v)%VS.
+Proof. 
+split.
++ case (list_all_eq_or_perm p0 ps) as [Hall_eq | [p1 [ps' [Hperm Hp1p0]]]].
+  - intros _. exists 0%VS. intros p Hin. apply Hall_eq in Hin. rewrite Hin. 
+    exists 0%R. rewrite mul_0, add_origin_r. reflexivity.
+  - unfold aligned. rewrite ForallTriplets_forall.
+    setoid_rewrite <-InA_Leibniz. change (@eq R2) with (@equiv R2 _).
+    setoid_rewrite Hperm. intros H. 
+    exists (p1 - p0)%VS. intros p Hin.
+    specialize (H p0 p1 p). feed_n 3 H ; 
+      [now left | now right ; left | now right ; apply Hin |].
+    apply colinear_exists_mul in H.
+    * destruct H as [t H]. exists t. rewrite <-H.
+      now rewrite (RealVectorSpace.add_comm p), RealVectorSpace.add_assoc, add_opp, add_origin_l.
+    * now rewrite R2sub_origin.
++ intros [v H]. unfold aligned. rewrite ForallTriplets_forall.
+  setoid_rewrite <-InA_Leibniz. change (@eq R2) with (@equiv R2 _).
+  intros x y z Hinx Hiny Hinz. 
+  assert (H' : forall p, InA equiv p (p0 :: ps) -> exists t, p == (p0 + t * v)%VS).
+  {
+    intros p Hin. rewrite InA_cons in Hin. case Hin as [Hin1 | Hin2].
+    - exists 0%R. now rewrite Hin1, mul_0, add_origin_r.
+    - now apply H.  
+  }
+  apply H' in Hinx, Hiny, Hinz. 
+  destruct Hinx as [tx Hx].
+  destruct Hiny as [ty Hy].
+  destruct Hinz as [tz Hz].
+  rewrite Hx, Hy, Hz. 
+  rewrite (RealVectorSpace.add_comm _ (ty * v)), (RealVectorSpace.add_comm _ (tz * v)).
+  rewrite <-2 RealVectorSpace.add_assoc, opp_distr_add.
+  rewrite (RealVectorSpace.add_assoc p0), add_opp, add_origin_l.
+  rewrite <-minus_morph, 2 add_morph.
+  apply colinear_mul_compat_l, colinear_mul_compat_r.
+  reflexivity.
+Qed.
+
+(* A weber point of aligned points is on the same line. *)
+Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
+Proof. Admitted.
+
+Lemma straight_path_0 p p' : straight_path p p' ratio_0 == p. 
+Proof. cbn -[equiv mul opp RealVectorSpace.add]. now rewrite mul_0, add_origin_r. Qed. 
+
+Lemma straight_path_same p r : straight_path p p r == p.
+Proof. cbn -[equiv mul opp RealVectorSpace.add]. now rewrite add_opp, mul_origin, add_origin_r. Qed. 
+
+
+(* This part is rather complicated in ASYNC, since robots continue moving
+ * even after being aligned. However we show that they stay aligned : 
+ * this mainly comes from the fact that if robots are aligned,
+ * then any weber point is also on the same line. *)
+Lemma round_preserves_aligned config da w : similarity_da_prop da -> 
+  invariant w config -> 
+  aligned (pos_list config) -> 
+  aligned (pos_list (round gatherW da config)).
+Proof. 
+intros Hsim [Hstg Hweb] Halign. assert (H := weber_aligned Halign Hweb).
+rewrite aligned_spec in H. destruct H as [v H].
+apply aligned_tail with w. rewrite aligned_spec. 
+exists v. intros p. unfold pos_list. 
+rewrite (@InA_map_iff _ _ equiv equiv) ; autoclass ; 
+  [|foldR2 ; apply get_location_compat].
+intros [x [Hx Hin]]. foldR2. rewrite config_list_InA in Hin.
+destruct Hin as [id Hid]. revert Hid.
+specialize (H (get_location (config id))). feed H.
+{ 
+  unfold pos_list. rewrite (@InA_map_iff _ _ equiv equiv) ; autoclass ;
+    [|foldR2 ; apply get_location_compat].
+  exists (config id). split ; [auto|].
+  foldR2. rewrite config_list_InA.
+  now exists id.
+}
+destruct H as [t H].
+destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct_match.
+(* The robot is activated. *)
++ cbn zeta. destruct_match ; [|intuition].
+  intros Hid. exists t. rewrite <-Hx, <-H, Hid.
+  cbn -[equiv straight_path]. now rewrite straight_path_0.
+(* The robot isn't activated. *)
++ cbn -[equiv straight_path mul RealVectorSpace.add].
+  specialize (Hstg id). destruct (config id) as [[s d] rx].
+  rewrite <-Hx. clear Hx Hround.
+  case Hstg as [Hstay | Hgo].
+  - rewrite Hstay in *. intros Hid. exists t. rewrite Hid, <-H.
+    cbn -[equiv straight_path]. now repeat rewrite straight_path_same.
+  - rewrite Hgo in *. intros Hid. setoid_rewrite Hid.
+    unfold add_ratio. case (Rle_dec R1 (rx + r id)) as [Rle | RNle].
+    * cbn -[equiv straight_path mul RealVectorSpace.add]. 
+      setoid_rewrite straight_path_1. exists 0%R. now rewrite mul_0, add_origin_r.
+    * cbn -[equiv mul opp RealVectorSpace.add] in H |- *. change R1 with 1%R in *.
+      assert (Halg : exists t', (w - s == t' * v)%VS).
+      {
+        exists (t / (rx - 1))%R. unfold Rdiv. 
+        rewrite Rmult_comm, <-mul_morph. 
+        apply R2div_reg_l ; [generalize (ratio_bounds (r id)) ; lra|].
+        unfold Rminus. rewrite <-add_morph, minus_morph, mul_1.
+        rewrite opp_distr_add, opp_opp, (RealVectorSpace.add_comm _ s).
+        rewrite RealVectorSpace.add_assoc, (RealVectorSpace.add_comm _ s).
+        rewrite H, (RealVectorSpace.add_comm w), <-RealVectorSpace.add_assoc, add_opp.
+        now rewrite add_origin_r. 
+      }
+      destruct Halg as [t' Halg]. 
+      exists (-t' + (rx + r id) * t')%R.
+      rewrite Halg, <-(add_morph (-t')%R), RealVectorSpace.add_assoc, mul_morph.
+      f_equiv. rewrite minus_morph, <-Halg, opp_distr_add, opp_opp.
+      rewrite RealVectorSpace.add_assoc, add_opp, add_origin_l.
+      reflexivity.
+Qed.
+
+
+
+(* If the robots don't end up colinear, then the point calculated by weber_calc doesn't change. *)
+Corollary round_preserves_weber_calc config da : similarity_da_prop da -> 
+  invariant ~aligned (config_list (round gatherW da config)) -> 
+  weber_calc (config_list (round gatherW da config)) == weber_calc (config_list config). 
+Proof. 
+intros Hsim HNalign.
+apply weber_unique with (config_list (round gatherW da config)) ; auto.
++ apply weber_calc_correct.
++ apply round_preserves_weber ; [auto | apply weber_calc_correct].
+Qed.
 
 (* This measure counts how many robots aren't on the weber point. *)
 Definition measure_count config : R := 
-  let ps := config_list config in 
+  let ps := pos_list config in 
   (*INR (n - countA_occ equiv R2_EqDec (weber_calc ps) ps).*)
   list_sum (List.map (fun x => if x =?= weber_calc ps then 0%R else 1%R) ps).
 
 (* This measure counts the total distance from the robots to the weber point. *)
 Definition measure_dist config : R :=
-  let ps := config_list config in 
+  let ps := pos_list config in 
   dist_sum ps (weber_calc ps).
 
 (* This measure is positive, and decreases whenever a robot moves. *)
@@ -781,7 +951,6 @@ apply Rplus_compat.
 + now rewrite Hc.
 Qed.
 
-
 Lemma measure_nonneg config : (0 <= measure config)%R.
 Proof. 
 unfold measure. apply Rplus_le_le_0_compat.
@@ -791,52 +960,6 @@ unfold measure. apply Rplus_le_le_0_compat.
   intros x _. apply dist_nonneg.   
 Qed.
 
-
-
-(* All the magic is here : when the robots move 
- * they go towards the weber point so it is preserved. 
- * This still holds in an asynchronous setting.
- * The point calculated by weber_calc thus stays the same during an execution,
- * until the robots are colinear. *)
-Lemma round_preserves_weber config da w :
-  similarity_da_prop da -> Weber (config_list config) w -> 
-    Weber (config_list (round gatherW da config)) w.
-Proof. 
-intros Hsim Hweb. apply weber_half_line with (config_list config) ; auto.
-rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
-intros [x x']. rewrite config_list_In_combine.
-intros [id [Hx Hx']]. destruct (round_simplify config Hsim) as [r Hround].
-revert Hx'. rewrite Hround. 
-repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply half_line_segment.
-assert (w == weber_calc (config_list config)) as Hw.
-{ apply weber_unique with (config_list config) ; auto. apply weber_calc_correct. }
-cbn zeta. rewrite <-Hw. cbn -[mul opp RealVectorSpace.add dist]. unfold Datatypes.id.
-pose (c := config id). fold c.
-destruct_match ; unfold half_line.
-+ pose (ri := r (unpack_good id)). fold ri. 
-  exists (1 - ri)%R ; split.
-  - generalize (ratio_bounds ri). lra.
-  - simplifyR2. 
-    rewrite (RealVectorSpace.add_comm (ri * w) (- (ri * c))), 3 RealVectorSpace.add_assoc.
-    f_equiv ; f_equiv.
-    rewrite (RealVectorSpace.add_comm c (-w)), RealVectorSpace.add_assoc.
-    now simplifyR2.
-+ exists 0%R ; split.
-  - lra.
-  - simplifyR2. rewrite (RealVectorSpace.add_comm w (-c)), RealVectorSpace.add_assoc.
-    now simplifyR2.  
-Qed.
-
-(* If the robots don't end up colinear, then the point calculated by weber_calc doesn't change. *)
-Corollary round_preserves_weber_calc config da :
-  similarity_da_prop da -> ~aligned (config_list (round gatherW da config)) -> 
-  weber_calc (config_list (round gatherW da config)) == weber_calc (config_list config). 
-Proof. 
-intros Hsim HNalign.
-apply weber_unique with (config_list (round gatherW da config)) ; auto.
-+ apply weber_calc_correct.
-+ apply round_preserves_weber ; [auto | apply weber_calc_correct].
-Qed.
 
 
 
