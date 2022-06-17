@@ -584,7 +584,6 @@ apply Rplus_compat.
 + now rewrite Hc.
 Qed.
 
-
 Lemma measure_nonneg config : (0 <= measure config)%R.
 Proof. 
 unfold measure. apply Rplus_le_le_0_compat.
@@ -593,21 +592,6 @@ unfold measure. apply Rplus_le_le_0_compat.
 + unfold measure_dist. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
   intros x _. apply dist_nonneg.   
 Qed.
-
-Lemma half_line_origin o d : half_line o d o.
-Proof. 
-unfold half_line. exists 0%R. split ; [apply Rle_refl|].
-rewrite mul_0, add_origin_r. reflexivity.
-Qed.
-
-Lemma half_line_segment x y : half_line x (y - x) y.
-Proof.
-unfold half_line. exists 1%R. split ; [apply Rle_0_1|].
-rewrite mul_1, RealVectorSpace.add_comm, <-add_assoc.
-assert (H := add_opp x). rewrite RealVectorSpace.add_comm in H. rewrite H.
-rewrite add_origin_r. reflexivity.
-Qed.
-
 
 (* All the magic is here : when the robots move 
  * they go towards the weber point so it is preserved. 

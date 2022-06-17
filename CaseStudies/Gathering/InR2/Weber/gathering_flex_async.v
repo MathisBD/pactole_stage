@@ -277,6 +277,9 @@ repeat split ; cbn -[equiv] ; auto.
 f_equiv ; auto.
 Defined.
 
+(* This is a shorthand for the list of positions of robots in a configuration. *)
+Definition pos_list (config : configuration) : list location := 
+  List.map get_location (config_list config).
 
 (* The support of a multiset, but elements are repeated 
  * a number of times equal to their multiplicity. 
@@ -426,9 +429,9 @@ Qed.
 Lemma multi_support_config (config : configuration) (id : ident) : 
   @PermutationA location equiv 
     (@multi_support location _ _ (obs_from_config config (config id))) 
-    (List.map get_location (config_list config)).
+    (pos_list config).
 Proof. 
-pose (l := List.map get_location (config_list config)). fold l.
+pose (l := pos_list config). fold l.
 change (obs_from_config config (config id)) with (make_multiset l).
 apply PermutationA_countA_occ. intros x. rewrite multi_support_countA. now apply make_multiset_spec.
 Qed. 
@@ -441,7 +444,7 @@ Corollary multi_support_map f config id :
 Proof.  
 intros H. destruct f as [f Pf].
 change (lift (existT precondition f Pf) (config id)) with (map_config (lift (existT precondition f Pf)) config id).
-rewrite multi_support_config, config_list_map, map_map.
+rewrite multi_support_config. unfold pos_list. rewrite config_list_map, map_map.
 + apply eqlistA_PermutationA. f_equiv. intros [[s d] r] [[s' d'] r'] Hsdr. inv Hsdr.
   cbn -[equiv straight_path]. destruct Pf as [sim Hsim]. rewrite <-Hsim. apply straight_path_similarity.
 + intros [[s d] r] [[s' d'] r'] [[Hs Hd] Hr]. cbn -[equiv] in H, Hs, Hd, Hr |- *. 
@@ -472,9 +475,11 @@ Lemma round_simplify da config : similarity_da_prop da ->
   exists r : ident -> ratio,
   round gatherW da config == 
   fun id => if activate da id then
-              let ps := List.map get_location (config_list config) in 
-              let target := if aligned_dec ps then get_location (config id) else weber_calc ps in 
-                (get_location (config id), target, ratio_0)
+              let target := 
+                if aligned_dec (pos_list config) 
+                then get_location (config id) 
+                else weber_calc (pos_list config) 
+              in (get_location (config id), target, ratio_0)
             else inactive config id (r id).
 Proof. 
 intros Hsim. eexists ?[r]. intros id. unfold round. 
@@ -526,35 +531,53 @@ destruct_match.
   destruct (config (Good g)) as [[start dest] r].
   rewrite Bijection.retraction_section. reflexivity.
 Qed.
-  
+
 (* This is the goal (for all demons and configs). *)
 Definition eventually_aligned config (d : demon) (r : robogram) := 
   Stream.eventually 
     (Stream.forever (Stream.instant (fun c => aligned (List.map get_location (config_list c))))) 
     (execute r d config).
 
-(* If the robots are aligned, they stay aligned. *)
-Lemma round_preserves_aligned da config : similarity_da_prop da ->
-  aligned (config_list config) -> aligned (config_list (round gatherW da config)).
+(* This is the property : all robots stay where they are. 
+ * This is what should be verified in the initial configuration. *)
+Definition config_stay (config : configuration) : Prop := 
+  forall id, let '(start, dest, _) := config id in dest == start.
+
+Local Instance config_stay_compat : Proper (equiv ==> iff) config_stay.
 Proof. 
-intros Hsim Halign. assert (round gatherW da config == config) as H.
-{ intros id. destruct (round_simplify config Hsim) as [r Hround].
-  rewrite Hround. repeat destruct_match ; auto. }
-now rewrite H.
+intros c c' Hc. unfold config_stay. 
+assert (H : forall id, c id == c' id) by (intros id ; now specialize (Hc id)).
+split ; intros H1 id ; specialize (H1 id) ; specialize (H id) ;
+  destruct (c id) as [[s d] r] ; destruct (c' id) as [[s' d'] r'] ;
+  destruct H as [[Hs Hd] _] ; cbn -[equiv] in Hs, Hd.
++ now rewrite <-Hs, <-Hd.
++ now rewrite Hs, Hd.    
 Qed.
 
-Lemma aligned_over config (d : demon) :
-  Stream.forever (Stream.instant similarity_da_prop) d ->
-  aligned (config_list config) -> 
-  Stream.forever (Stream.instant (fun c => aligned (config_list c))) (execute gatherW d config).
+(* This is the property : all robots stay where they are OR 
+ * go towards point p. *)
+Definition config_stay_or_go (config : configuration) p : Prop := 
+  forall id, let '(start, dest, _) := config id in dest == start \/ dest == p.
+
+Local Instance config_stay_or_go_compat : Proper (equiv ==> equiv ==> iff) config_stay_or_go.
+Proof. 
+intros c c' Hc p p' Hp. unfold config_stay_or_go. 
+assert (H : forall id, c id == c' id) by (intros id ; now specialize (Hc id)).
+split ; intros H1 id ; specialize (H1 id) ; specialize (H id) ;
+  destruct (c id) as [[s d] r] ; destruct (c' id) as [[s' d'] r'] ;
+  destruct H as [[Hs Hd] _] ; cbn -[equiv] in Hs, Hd ; case H1 as [Hstay | Hgo].
++ left. now rewrite <-Hs, <-Hd.
++ right. now rewrite <-Hd, <-Hp.
++ left. now rewrite Hs, Hd.
++ right. now rewrite Hd, Hp.      
+Qed.
+  
+Lemma config_stay_impl_config_stg config :
+  config_stay config -> forall p, config_stay_or_go config p.
 Proof.
-revert config d. 
-cofix Hind. intros config d Hsim Halign. constructor.
-+ cbn -[config_list]. apply Halign.
-+ cbn -[config_list]. simple apply Hind ; [apply Hsim |]. 
-  apply round_preserves_aligned ; [apply Hsim | apply Halign].
+unfold config_stay, config_stay_or_go. intros Hstay p i. specialize (Hstay i). 
+destruct (config i) as [[start dest] _]. now left.
 Qed.
-
 
 Lemma nth_enum i m d :
   forall Him : i < m, nth i (enum m) d = exist (fun x => x < m) i Him.
@@ -567,39 +590,58 @@ intros Him. apply eq_proj1, Nat.le_antisymm ; cbn.
   rewrite Nat.sub_diag, skipn_length, enum_length. lia.
 Qed.
 
+Lemma nth_InA {A : Type} {eqA : relation A} i l d :
+  Reflexive eqA -> 
+  i < length l -> InA eqA (nth i l d) l.
+Proof.
+intros Hrefl Hi. induction l using rev_ind. 
++ cbn in Hi. lia.
++ rewrite app_length in Hi. cbn in Hi.
+  case (lt_dec i (length l)) as [Hi_lt | Hi_ge].
+  - rewrite InA_app_iff ; left. Search nth app. 
+    rewrite app_nth1 by auto. now apply IHl.
+  - assert (Hi_eq : i = length l) by lia.
+    rewrite Hi_eq, nth_middle, InA_app_iff ; right.
+    now apply InA_cons_hd.
+Qed. 
+
 (* This would have been much more pleasant to do with mathcomp's tuples. *)
-Lemma config_list_In_combine x x' c c' : 
-  List.In (x, x') (combine (config_list c) (config_list c')) <-> 
+Lemma config_list_InA_combine x x' c c' : 
+  InA equiv (x, x') (combine (config_list c) (config_list c')) <-> 
   exists id, x == c id /\ x' == c' id.
 Proof.
 assert (g0 : G).
 { change G with (fin n). apply (exist _ 0). lia. }
 split.
-+ intros Hin. apply (@In_nth (location * location) _ _ (c (Good g0), c' (Good g0))) in Hin.
-  destruct Hin as [i [Hi Hi']]. 
-  rewrite combine_nth in Hi' by now repeat rewrite config_list_length. inv Hi'.
++ intros Hin. Check In_nth. Search InA nth. 
+  apply (@InA_nth (info * info) equiv (c (Good g0), c' (Good g0))) in Hin.
+  destruct Hin as [i [[y y'] [Hi [Hxy Hi']]]]. 
+  rewrite combine_nth in Hi' by now repeat rewrite config_list_length. 
+  inv Hi'. inv Hxy ; cbn -[equiv config_list] in * |-.
+  setoid_rewrite H. setoid_rewrite H0.
   assert (i < n) as Hin.
   { 
     eapply Nat.lt_le_trans ; [exact Hi|]. rewrite combine_length.
     repeat rewrite config_list_length. rewrite Nat.min_id. cbn. lia. 
   }
   pose (g := exist (fun x => x < n) i Hin).
-  change (fin n) with G in *. exists (Good g) ;
+  change (fin n) with G in *. exists (Good g).
   split ; rewrite config_list_spec, map_nth ; f_equiv ; unfold names ;
     rewrite app_nth1, map_nth by (now rewrite map_length, Gnames_length) ;
     f_equiv ; cbn ; change G with (fin n) ; apply nth_enum.  
-+ intros [[g|b] [Hx Hx']]. 
-  - assert ((x, x') = nth (proj1_sig g) (combine (config_list c) (config_list c')) (c (Good g0), c' (Good g0))) as H.
-    { 
-      rewrite combine_nth by now repeat rewrite config_list_length.
-      destruct g as [g Hg].
-      repeat rewrite config_list_spec, map_nth. rewrite Hx, Hx'. unfold names.
-      repeat rewrite app_nth1, map_nth by now rewrite map_length, Gnames_length.
-      repeat f_equal ; cbn ; change G with (fin n) ; erewrite nth_enum ; reflexivity.   
-    }
-    rewrite H. apply nth_In. rewrite combine_length. repeat rewrite config_list_length.
-    rewrite Nat.min_id. cbn. destruct g. cbn. lia.
-  - exfalso. assert (Hbyz := In_Bnames b). apply list_in_length_n0 in Hbyz. rewrite Bnames_length in Hbyz. auto.
++ intros [[g|b] [Hx Hx']] ; [|byz_exfalso]. 
+  assert (H : (x, x') == nth (proj1_sig g) (combine (config_list c) (config_list c')) (c (Good g0), c' (Good g0))).
+  { 
+    rewrite combine_nth by now repeat rewrite config_list_length.
+    destruct g as [g Hg].
+    repeat rewrite config_list_spec, map_nth. unfold names.
+    repeat rewrite app_nth1, map_nth by now rewrite map_length, Gnames_length.
+    split ; cbn -[equiv].
+    * rewrite Hx. repeat f_equiv. change G with (fin n). erewrite nth_enum. reflexivity.
+    * rewrite Hx'. repeat f_equiv. change G with (fin n). erewrite nth_enum. reflexivity.
+  }
+  rewrite H. apply nth_InA ; autoclass. rewrite combine_length. repeat rewrite config_list_length.
+  rewrite Nat.min_id. cbn. destruct g. cbn. lia.
 Qed.
 
 Lemma combine_nil_or {A B : Type} (l : list A) (l' : list B) :
@@ -627,6 +669,92 @@ intros Hlen. split.
     destruct l' as [|x' l'] ; [discriminate|].
     cbn in Hcom. inv Hcom. rewrite Forall_cons_iff in Hforall. constructor ; intuition.
 Qed.
+
+Lemma combine_map {A B C : Type} l l' (f : A -> C) (f' : B -> C) : 
+  combine (List.map f l) (List.map f' l') = List.map (fun '(x, x') => (f x, f' x')) (combine l l').
+Proof.
+generalize l'. clear l'. induction l as [| x l IH] ; intros [|x' l'] ; cbn ; try reflexivity.
+f_equal. apply IH.
+Qed.
+
+Lemma colinear_exists_mul u v : 
+  ~ u == 0%VS -> colinear u v -> exists t, v == (t * u)%VS. 
+Proof.
+intros Hu_n0 Hcol. destruct (colinear_decompose Hu_n0 Hcol) as [Hdecomp | Hdecomp].
++ exists (norm v / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
+  now rewrite mul_morph.
++ exists ((- norm v) / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
+  now rewrite mul_morph.
+Qed.   
+
+
+
+(* A robot is moving from [s] to [d]. It is thus on the half line [L] 
+ * originating at [d] and passing through [s]. If we move the robot a bit closer to [d],
+ * it is still on [L]. *)
+Lemma half_line_progress s d (r1 r2 : ratio) :
+  half_line d (straight_path s d r1 - d) (straight_path s d (add_ratio r1 r2)).
+Proof. 
+unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].   
++ rewrite straight_path_1. apply half_line_origin. 
++ change R1 with 1%R in HNle. cbn -[mul opp RealVectorSpace.add]. 
+  assert (H : (s + r1 * (d - s) - d == (1 - r1) * (s - d))%VS).
+  { 
+    rewrite (RealVectorSpace.add_comm s), <-RealVectorSpace.add_assoc, RealVectorSpace.add_comm.
+    unfold Rminus. rewrite <-add_morph, mul_1. f_equiv.
+    rewrite minus_morph, <-mul_opp. f_equiv. 
+    now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm. 
+  }
+  rewrite H ; clear H.
+  rewrite <-half_line_mul_dir by (generalize (ratio_bounds r2) ; lra).
+  unfold half_line. exists (1 - (r1 + r2))%R. split ; [lra|].
+  unfold Rminus. rewrite <-(add_morph 1%R), mul_1, RealVectorSpace.add_assoc. f_equiv.
+  - now rewrite (RealVectorSpace.add_comm s), RealVectorSpace.add_assoc, add_opp, add_origin_l.
+  - rewrite minus_morph, <-mul_opp. f_equiv. 
+    now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.
+Qed. 
+    
+
+(* This is the main invariant : the robots are alway headed towards a weber point. *)
+Lemma invariant_stg_weber config da w : similarity_da_prop da -> 
+  let invariant c := config_stay_or_go c w /\ Weber (pos_list c) w in 
+  invariant config -> invariant (round gatherW da config).
+Proof. 
+cbn zeta. intros Hsim [Hstg Hweb]. destruct (round_simplify config Hsim) as [r Hround].
+split.
++ case (aligned_dec (pos_list config)) as [Halign | HNalign] ; cbn zeta in Hround.
+  (* The robots are aligned. *)  
+  - rewrite Hround. intros i. destruct_match ; [now left |].
+    specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].
+  (* The robots aren't aligned. *)
+  - rewrite Hround. intros i. destruct_match.
+    * right. apply weber_unique with (pos_list config) ; auto.
+      apply weber_calc_correct.
+    * specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].   
++ revert Hweb. apply weber_half_line. 
+  rewrite Forall2_Forall, Forall_forall by (now unfold pos_list ; repeat rewrite map_length, config_list_length).
+  intros [x x'] Hin. apply (@In_InA _ equiv) in Hin ; autoclass. foldR2.
+  unfold pos_list in Hin. rewrite combine_map, (@InA_map_iff _ _ equiv equiv) in Hin ; autoclass.
+  - destruct Hin as [[y y'] [Hxy Hin]]. apply config_list_InA_combine in Hin.
+    destruct Hin as [i [Hi Hi']].
+    destruct Hxy as [Hx Hx'] ; cbn -[equiv get_location] in Hx, Hx'. 
+    rewrite <-Hx, <-Hx', Hi, Hi'. rewrite (Hround i).
+    destruct_match.
+    (* Activated robots don't move. *)
+    * cbn zeta. cbn -[config_list RealVectorSpace.add opp mul]. rewrite mul_0, add_origin_r. 
+      destruct (config i) as [[s d] ri]. apply half_line_segment.
+    (* Inactive robots move along a straight line towards w. *)
+    * cbn -[straight_path mul opp RealVectorSpace.add]. 
+      specialize (Hstg i). destruct (config i) as [[s d] ri].
+      case Hstg as [Hstay | Hgo].
+      --rewrite Hstay. cbn -[mul opp RealVectorSpace.add]. 
+        rewrite add_opp, 2 mul_origin, add_origin_r. apply half_line_segment.
+      --rewrite Hgo. apply half_line_progress.
+  - intros [a b] [a' b'] [Ha Hb]. cbn -[equiv] in Ha, Hb. split ; cbn -[equiv get_location].
+    * now rewrite Ha.
+    * now rewrite Hb.
+Qed.
+
 
 (* This measure counts how many robots aren't on the weber point. *)
 Definition measure_count config : R := 
@@ -663,19 +791,6 @@ unfold measure. apply Rplus_le_le_0_compat.
   intros x _. apply dist_nonneg.   
 Qed.
 
-Lemma half_line_origin o d : half_line o d o.
-Proof. 
-unfold half_line. exists 0%R. split ; [apply Rle_refl|].
-rewrite mul_0, add_origin_r. reflexivity.
-Qed.
-
-Lemma half_line_segment x y : half_line x (y - x) y.
-Proof.
-unfold half_line. exists 1%R. split ; [apply Rle_0_1|].
-rewrite mul_1, RealVectorSpace.add_comm, <-add_assoc.
-assert (H := add_opp x). rewrite RealVectorSpace.add_comm in H. rewrite H.
-rewrite add_origin_r. reflexivity.
-Qed.
 
 
 (* All the magic is here : when the robots move 
@@ -724,12 +839,6 @@ apply weber_unique with (config_list (round gatherW da config)) ; auto.
 Qed.
 
 
-Lemma combine_map {A B C : Type} l l' (f : A -> C) (f' : B -> C) : 
-  combine (List.map f l) (List.map f' l') = List.map (fun '(x, x') => (f x, f' x')) (combine l l').
-Proof.
-generalize l'. clear l'. induction l as [| x l IH] ; intros [|x' l'] ; cbn ; try reflexivity.
-f_equal. apply IH.
-Qed.
 
 Lemma Forall2_le_count_weber config da : 
   similarity_da_prop da -> ~aligned (config_list (round gatherW da config)) ->

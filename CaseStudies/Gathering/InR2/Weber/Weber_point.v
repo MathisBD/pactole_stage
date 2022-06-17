@@ -119,13 +119,6 @@ Implicit Types (points : list R2).
 
 Local Existing Instances R2_VS R2_ES ForallTriplets_PermutationA_compat.
 
-(* The determinant of two vectors in R². 
- * We use this to define what it means for two vectors to be parallel. *)
-(*Definition det (x y : R2) := (fst x * snd y - snd x * fst y)%R.*)
-
-(*Local Instance det_compat : Proper (equiv ==> equiv ==> equiv) det. 
-Proof using . intros x x' Hxx' y y' Hyy'. unfold det. now rewrite Hxx', Hyy'. Qed. *)
-
 (* This would require proving (and more importantly stating) that for a similarity [f],
  * there exists an orthogonal matrix [A] and a vector [b] such that
  * [forall x, f(x) = f.(zoom)*A*x + b]. 
@@ -316,9 +309,36 @@ Proof using .
 intros x x' Hxx' y y' Hyy' z z' Hzz'. unfold half_line. now rewrite Hxx', Hyy', Hzz'. 
 Qed.
 
+Lemma half_line_origin o d : half_line o d o.
+Proof. 
+unfold half_line. exists 0%R. split ; [apply Rle_refl|].
+rewrite mul_0, add_origin_r. reflexivity.
+Qed.
+
+Lemma half_line_segment x y : half_line x (y - x) y.
+Proof.
+unfold half_line. exists 1%R. split ; [apply Rle_0_1|].
+rewrite mul_1, RealVectorSpace.add_comm, <-add_assoc.
+assert (H := add_opp x). rewrite RealVectorSpace.add_comm in H. rewrite H.
+rewrite add_origin_r. reflexivity.
+Qed.
+
+Lemma half_line_mul_dir o d x t : 
+  (0 < t)%R -> (half_line o d x <-> half_line o (t * d)%VS x).
+Proof. 
+intros Ht. split ; intros [s [Hs Hx]] ; unfold half_line.
++ exists (s / t)%R. split. 
+  - unfold Rdiv. now apply Rle_mult_inv_pos.
+  - rewrite Hx. f_equiv. rewrite mul_morph. f_equiv. unfold Rdiv.  
+    rewrite Rmult_assoc, Rinv_l ; lra.
++ exists (s * t)%R. split.
+  - nra.
+  - rewrite Hx. f_equiv. now rewrite mul_morph.
+Qed.
+
 (* If we move each point towards/away from the weber point in a straight line
  * (without crossing the weber point), the weber point is preserved. 
- * We can even move robots onto the weber point, it will still be preserved. *)
+ * We can even move points onto the weber point, it will still be preserved. *)
 Lemma weber_half_line ps ps' w : 
   Forall2 (fun x y => half_line w (x - w) y) ps ps' -> Weber ps w -> Weber ps' w.
 Proof. Admitted.
