@@ -80,35 +80,6 @@ Ltac change_RHS E :=
   | [ |- ?LHS == ?RHS ] => change (LHS == E)
   end.
 
-(* This tactic feeds the precondition of an implication in order to derive the conclusion
-  (taken from http://comments.gmane.org/gmane.science.mathematics.logic.coq.club/7013).
-
-  Usage: feed H.
-
-  H: P -> Q  ==becomes==>  H: P
-                          ____
-                          Q
-
-  After completing this proof, Q becomes a hypothesis in the context. *)
-  Ltac feed H :=
-  match type of H with
-  | ?foo -> _ =>
-    let FOO := fresh in
-    assert foo as FOO; [|specialize (H FOO); clear FOO]
-  end.
-
-(* Generalization of feed for multiple hypotheses.
-    feed_n is useful for accessing conclusions of long implications.
-
-    Usage: feed_n 3 H.
-      H: P1 -> P2 -> P3 -> Q.
-
-    We'll be asked to prove P1, P2 and P3, so that Q can be inferred. *)
-Ltac feed_n n H := match constr:(n) with
-  | O => idtac
-  | (S ?m) => feed H ; [| feed_n m H]
-  end.
-
 (* Simplify a goal involving calculations in R2 by expanding everything. 
  * This is rarely useful. *)
 Ltac simplifyR2 :=
@@ -228,7 +199,6 @@ reflexivity.
 Qed.
 
 Local Instance St : State info.
-Print State. 
 simple refine {|
   get_location := fun '(start, dest, r) => straight_path start dest r ; 
   state_Setoid := info_Setoid ;
@@ -626,7 +596,7 @@ intros Hrefl Hi. induction l using rev_ind.
 + cbn in Hi. lia.
 + rewrite app_length in Hi. cbn in Hi.
   case (lt_dec i (length l)) as [Hi_lt | Hi_ge].
-  - rewrite InA_app_iff ; left. Search nth app. 
+  - rewrite InA_app_iff ; left.
     rewrite app_nth1 by auto. now apply IHl.
   - assert (Hi_eq : i = length l) by lia.
     rewrite Hi_eq, nth_middle, InA_app_iff ; right.
@@ -641,7 +611,7 @@ Proof.
 assert (g0 : G).
 { change G with (fin n). apply (exist _ 0). lia. }
 split.
-+ intros Hin. Check In_nth. Search InA nth. 
++ intros Hin.
   apply (@InA_nth (info * info) equiv (c (Good g0), c' (Good g0))) in Hin.
   destruct Hin as [i [[y y'] [Hi [Hxy Hi']]]]. 
   rewrite combine_nth in Hi' by now repeat rewrite config_list_length. 
@@ -672,6 +642,30 @@ split.
   rewrite Nat.min_id. cbn. destruct g. cbn. lia.
 Qed.
 
+Lemma combine_map {A B C : Type} l l' (f : A -> C) (f' : B -> C) : 
+  combine (List.map f l) (List.map f' l') = List.map (fun '(x, x') => (f x, f' x')) (combine l l').
+Proof.
+generalize l'. clear l'. induction l as [| x l IH] ; intros [|x' l'] ; cbn ; try reflexivity.
+f_equal. apply IH.
+Qed.
+
+Lemma pos_list_InA_combine x x' c c' : 
+  InA equiv (x, x') (combine (pos_list c) (pos_list c')) <-> 
+  exists id, x == get_location (c id) /\ x' == get_location (c' id).
+Proof.
+unfold pos_list. rewrite combine_map. rewrite (@InA_map_iff _ _ equiv equiv) ; autoclass.
++ split.
+  - intros [[y y'] [[Hx Hx'] Hin]]. cbn -[equiv get_location] in Hx, Hx'.
+    rewrite config_list_InA_combine in Hin. destruct Hin as [id [Hy Hy']].
+    exists id. rewrite <-Hy, <-Hy', Hx, Hx'. auto.
+  - intros [id [Hx Hx']].
+    exists (c id, c' id). rewrite <-Hx, Hx'. split ; [auto|].
+    rewrite config_list_InA_combine. exists id. auto.
++ intros [? ?] [? ?] [H1 H2]. cbn -[equiv] in H1, H2. split ; cbn -[equiv get_location].
+  - now rewrite H1.
+  - now rewrite H2.
+Qed. 
+
 Lemma combine_nil_or {A B : Type} (l : list A) (l' : list B) :
   combine l l' = nil <-> (l = nil \/ l' = nil).
 Proof. 
@@ -698,25 +692,6 @@ intros Hlen. split.
     cbn in Hcom. inv Hcom. rewrite Forall_cons_iff in Hforall. constructor ; intuition.
 Qed.
 
-Lemma combine_map {A B C : Type} l l' (f : A -> C) (f' : B -> C) : 
-  combine (List.map f l) (List.map f' l') = List.map (fun '(x, x') => (f x, f' x')) (combine l l').
-Proof.
-generalize l'. clear l'. induction l as [| x l IH] ; intros [|x' l'] ; cbn ; try reflexivity.
-f_equal. apply IH.
-Qed.
-
-Lemma colinear_exists_mul u v : 
-  ~ u == 0%VS -> colinear u v -> exists t, v == (t * u)%VS. 
-Proof.
-intros Hu_n0 Hcol. destruct (colinear_decompose Hu_n0 Hcol) as [Hdecomp | Hdecomp].
-+ exists (norm v / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
-  now rewrite mul_morph.
-+ exists ((- norm v) / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
-  now rewrite mul_morph.
-Qed.   
-
-
-
 (* A robot is moving from [s] to [d]. It is thus on the half line [L] 
  * originating at [d] and passing through [s]. If we move the robot a bit closer to [d],
  * it is still on [L]. *)
@@ -737,7 +712,7 @@ unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].
   rewrite <-half_line_mul_dir by (generalize (ratio_bounds r2) ; lra).
   unfold half_line. exists (1 - (r1 + r2))%R. split ; [lra|].
   unfold Rminus. rewrite <-(add_morph 1%R), mul_1, RealVectorSpace.add_assoc. f_equiv.
-  - now rewrite (RealVectorSpace.add_comm s), RealVectorSpace.add_assoc, add_opp, add_origin_l.
+  - now rewrite add_sub.
   - rewrite minus_morph, <-mul_opp. f_equiv. 
     now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.
 Qed. 
@@ -788,60 +763,15 @@ split.
     * now rewrite Hb.
 Qed.
 
-Lemma aligned_tail p0 ps : aligned (p0 :: ps) -> aligned ps. 
-Proof. 
-unfold aligned. rewrite 2 ForallTriplets_forall. intros H x y z Hinx Hiny Hinz.
-apply H ; now right. 
-Qed.
-
-Lemma list_all_eq_or_perm {A : Type} `{Setoid A} (x0 : A) l : 
-  (forall x, InA equiv x l -> x == x0) \/ (exists x1 l1, PermutationA equiv l (x1 :: l1) /\ x1 =/= x0).
+(* If the robots aren't aligned, then the point refered to in the invariant
+ * is necessarily the unique weber point. *)
+Lemma invariant_weber_calc config w :
+  invariant w config -> ~aligned (pos_list config) -> 
+  w == weber_calc (pos_list config).
 Proof.
-
-Admitted.
-
-Lemma aligned_spec p0 ps : 
-  aligned (p0 :: ps) <-> exists v, forall p, InA equiv p ps -> exists t, (p == p0 + t * v)%VS.
-Proof. 
-split.
-+ case (list_all_eq_or_perm p0 ps) as [Hall_eq | [p1 [ps' [Hperm Hp1p0]]]].
-  - intros _. exists 0%VS. intros p Hin. apply Hall_eq in Hin. rewrite Hin. 
-    exists 0%R. rewrite mul_0, add_origin_r. reflexivity.
-  - unfold aligned. rewrite ForallTriplets_forall.
-    setoid_rewrite <-InA_Leibniz. change (@eq R2) with (@equiv R2 _).
-    setoid_rewrite Hperm. intros H. 
-    exists (p1 - p0)%VS. intros p Hin.
-    specialize (H p0 p1 p). feed_n 3 H ; 
-      [now left | now right ; left | now right ; apply Hin |].
-    apply colinear_exists_mul in H.
-    * destruct H as [t H]. exists t. rewrite <-H.
-      now rewrite (RealVectorSpace.add_comm p), RealVectorSpace.add_assoc, add_opp, add_origin_l.
-    * now rewrite R2sub_origin.
-+ intros [v H]. unfold aligned. rewrite ForallTriplets_forall.
-  setoid_rewrite <-InA_Leibniz. change (@eq R2) with (@equiv R2 _).
-  intros x y z Hinx Hiny Hinz. 
-  assert (H' : forall p, InA equiv p (p0 :: ps) -> exists t, p == (p0 + t * v)%VS).
-  {
-    intros p Hin. rewrite InA_cons in Hin. case Hin as [Hin1 | Hin2].
-    - exists 0%R. now rewrite Hin1, mul_0, add_origin_r.
-    - now apply H.  
-  }
-  apply H' in Hinx, Hiny, Hinz. 
-  destruct Hinx as [tx Hx].
-  destruct Hiny as [ty Hy].
-  destruct Hinz as [tz Hz].
-  rewrite Hx, Hy, Hz. 
-  rewrite (RealVectorSpace.add_comm _ (ty * v)), (RealVectorSpace.add_comm _ (tz * v)).
-  rewrite <-2 RealVectorSpace.add_assoc, opp_distr_add.
-  rewrite (RealVectorSpace.add_assoc p0), add_opp, add_origin_l.
-  rewrite <-minus_morph, 2 add_morph.
-  apply colinear_mul_compat_l, colinear_mul_compat_r.
-  reflexivity.
+intros [Hweb Hstg] HNalign. apply weber_unique with (pos_list config) ; auto.
+apply weber_calc_correct.
 Qed.
-
-(* A weber point of aligned points is on the same line. *)
-Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
-Proof. Admitted.
 
 Lemma straight_path_0 p p' : straight_path p p' ratio_0 == p. 
 Proof. cbn -[equiv mul opp RealVectorSpace.add]. now rewrite mul_0, add_origin_r. Qed. 
@@ -913,17 +843,20 @@ destruct_match.
       reflexivity.
 Qed.
 
-
-
-(* If the robots don't end up colinear, then the point calculated by weber_calc doesn't change. *)
-Corollary round_preserves_weber_calc config da : similarity_da_prop da -> 
-  invariant ~aligned (config_list (round gatherW da config)) -> 
-  weber_calc (config_list (round gatherW da config)) == weber_calc (config_list config). 
-Proof. 
-intros Hsim HNalign.
-apply weber_unique with (config_list (round gatherW da config)) ; auto.
-+ apply weber_calc_correct.
-+ apply round_preserves_weber ; [auto | apply weber_calc_correct].
+(* If the robots are aligned at any point, they stay aligned forever. *)
+Corollary aligned_over config (d : demon) w :
+  Stream.forever (Stream.instant similarity_da_prop) d ->
+  invariant w config -> 
+  aligned (pos_list config) -> 
+  Stream.forever (Stream.instant (fun c => aligned (pos_list c))) (execute gatherW d config).
+Proof.
+revert config d.
+cofix Hind. intros config d Hsim Hinv Halign. constructor.
++ cbn -[pos_list]. exact Halign.
++ cbn -[pos_list]. apply Hind.
+  - apply Hsim.
+  - apply round_preserves_invariant ; [apply Hsim | exact Hinv].
+  - apply round_preserves_aligned with w ; [apply Hsim | exact Hinv | exact Halign].
 Qed.
 
 (* This measure counts how many robots aren't on the weber point. *)
@@ -960,58 +893,117 @@ unfold measure. apply Rplus_le_le_0_compat.
   intros x _. apply dist_nonneg.   
 Qed.
 
-
-
-
-Lemma Forall2_le_count_weber config da : 
-  similarity_da_prop da -> ~aligned (config_list (round gatherW da config)) ->
-  Forall2 Rle
-    (List.map
-      (fun x : R2 => if x =?= weber_calc (config_list (round gatherW da config)) then 0%R else 1%R) 
-      (config_list (round gatherW da config)))
-    (List.map
-      (fun x : R2 => if x =?= weber_calc (config_list config) then 0%R else 1%R)
-      (config_list config)).
-Proof. 
-intros Hsim RNcol.  
-assert (Hweb := round_preserves_weber_calc config Hsim RNcol).
-rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length, config_list_length.
-intros [x' x] Hin. apply config_list_In_combine in Hin. destruct Hin as [id [Hx Hx']].
-repeat destruct_match ; try lra. rewrite Hx, Hx', Hweb in *.
-assert (H : round gatherW da config id == weber_calc (config_list config)).
-{ 
-  destruct (round_simplify config Hsim) as [r Hround].
-  rewrite Hround. repeat destruct_match ; auto.
-  cbn zeta. rewrite <-e. cbn -[equiv dist mul opp RealVectorSpace.add]. 
-  simplifyR2. now destruct_match.
-}
-rewrite <-H in e. intuition.
+Lemma mul_eq0_iff (k : R) (x : R2) : (k * x == 0)%VS <-> (k == 0)%R \/ (x == 0)%VS.
+Proof.
+split ; intros H.
++ case (k =?= 0%R) as [Hk | Hk] ; [now left | right].
+  apply mul_reg_l with k ; [intuition|].
+  rewrite mul_origin. exact H.
++ destruct H as [Hk | Hx].
+  - now rewrite Hk, mul_0.
+  - now rewrite Hx, mul_origin.
 Qed.
 
-Lemma Forall2_le_dist_weber config da : 
-  similarity_da_prop da -> ~aligned (config_list (round gatherW da config)) ->
+Lemma straight_path_end s d r : 
+  straight_path s d r == d <-> (s == d \/ proj_ratio r == 1%R).
+Proof.
+split. 
++ intros Hend. cbn -[mul opp RealVectorSpace.add] in Hend.
+  assert (H : ((r - 1) * (d - s) == 0)%VS).
+  {
+    unfold Rminus. rewrite <-add_morph, minus_morph, mul_1, opp_distr_add, opp_opp.
+    rewrite (RealVectorSpace.add_comm _ s), RealVectorSpace.add_assoc, (RealVectorSpace.add_comm _ s).
+    now rewrite Hend, add_opp.
+  }  
+  rewrite mul_eq0_iff in H. case H as [H1 | H2].
+  - right. Print ratio. Search sig proj1_sig eq. cbn in H1 |- *. lra.
+  - left. now rewrite R2sub_origin in H2.
++ intros [H1 | H2].
+  - now rewrite H1, straight_path_same.
+  - cbn -[mul opp RealVectorSpace.add equiv]. rewrite H2, mul_1.
+    now rewrite add_sub. 
+Qed.
+
+Lemma Forall2_le_count_weber config da w : 
+  similarity_da_prop da -> 
+  invariant w config -> 
+  ~aligned (pos_list (round gatherW da config)) ->
+  Forall2 Rle
+    (List.map
+      (fun x : R2 => if x =?= weber_calc (pos_list (round gatherW da config)) then 0%R else 1%R) 
+      (pos_list (round gatherW da config)))
+    (List.map
+      (fun x : R2 => if x =?= weber_calc (pos_list config) then 0%R else 1%R)
+      (pos_list config)).
+Proof. 
+intros Hsim Hinv HRNalign.
+assert (HRw : w == weber_calc (pos_list (round gatherW da config))).
+{ now apply invariant_weber_calc ; [apply round_preserves_invariant|]. }
+assert (Hw : w == weber_calc (pos_list config)).
+{ apply invariant_weber_calc ; auto. intros Halign. apply HRNalign. now apply round_preserves_aligned with w. }
+rewrite <-Hw, <-HRw.
+rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall ; 
+  [|unfold pos_list ; repeat rewrite map_length ; now repeat rewrite config_list_length].
+intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass. rewrite pos_list_InA_combine in Hin.
+destruct Hin as [id [Hx' Hx]].
+case (x =?= w) as [Hxw | Hxw] ; case (x' =?= w) as [Hxw' | Hxw'] ; 
+  repeat destruct_match ; intuition. 
+exfalso. rewrite Hx, Hx' in *. clear Hx Hx'. apply Hxw'.
+destruct (round_simplify config Hsim) as [r Hround].
+rewrite (Hround id). repeat destruct_match ; rewrite <-Hxw ; cbn -[equiv straight_path].
++ now rewrite straight_path_0.
++ now rewrite straight_path_0.
++ destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+  destruct (config id) as [[s d] ri]. case Hstg as [Hstay | Hgo].
+  - now rewrite Hstay, 2 straight_path_same.
+  - rewrite Hgo in *. cbn -[equiv straight_path] in Hxw. rewrite Hxw.
+    rewrite straight_path_end in Hxw. case Hxw as [H1 | H2].
+    * now rewrite H1, straight_path_same.
+    * assert (Hadd_ratio : proj_ratio (add_ratio ri (r id)) == 1%R).
+      { unfold add_ratio. destruct_match ; cbn ; auto. 
+        change R1 with 1%R in *. cbn in H2. generalize (ratio_bounds (r id)). lra. }
+      cbn -[equiv mul opp RealVectorSpace.add]. rewrite Hadd_ratio, mul_1.
+      now rewrite add_sub.
+Qed.   
+
+Lemma Forall2_le_dist_weber config da w : 
+  similarity_da_prop da -> 
+  invariant w config ->
+  ~aligned (pos_list (round gatherW da config)) ->
   Forall2 Rle
     (List.map 
-      (dist (weber_calc (config_list (round gatherW da config))))
-      (config_list (round gatherW da config)))
+      (dist (weber_calc (pos_list (round gatherW da config))))
+      (pos_list (round gatherW da config)))
     (List.map 
-      (dist (weber_calc (config_list config))) 
-      (config_list config)).
+      (dist (weber_calc (pos_list config))) 
+      (pos_list config)).
 Proof. 
-intros Hsim RNcol.
-assert (Hweb := round_preserves_weber_calc config Hsim RNcol).
-rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length, config_list_length.
-intros [x' x] Hin. apply config_list_In_combine in Hin. destruct Hin as [id [Hx' Hx]].
-rewrite Hx, Hx', Hweb. destruct (round_simplify config Hsim) as [r Hround].
-rewrite Hround. repeat destruct_match ; try lra.
-cbn zeta. pose (w := weber_calc (config_list config)). fold w. rewrite <-Hx.
-pose (ri := r (unpack_good id)). fold ri.
-cbn -[dist RealVectorSpace.add mul opp w ri]. destruct_match.
-+ repeat rewrite norm_dist. rewrite R2_opp_dist, RealVectorSpace.add_assoc.
-  rewrite <-(mul_1 (w - x)) at 1. rewrite <-minus_morph, add_morph, norm_mul.
-  rewrite <-Rmult_1_l. apply Rmult_le_compat_r ; try apply norm_nonneg.
-  unfold Rabs. destruct_match ; generalize (ratio_bounds ri) ; lra.
-+ rewrite mul_1, (RealVectorSpace.add_comm w), RealVectorSpace.add_assoc.
+intros Hsim Hinv HRNalign.
+assert (HRw : w == weber_calc (pos_list (round gatherW da config))).
+{ now apply invariant_weber_calc ; [apply round_preserves_invariant|]. }
+assert (Hw : w == weber_calc (pos_list config)).
+{ apply invariant_weber_calc ; auto. intros Halign. apply HRNalign. now apply round_preserves_aligned with w. }
+rewrite <-Hw, <-HRw, Forall2_Forall, combine_map, Forall_map, Forall_forall ;
+  [| unfold pos_list ; repeat rewrite map_length ; now repeat rewrite config_list_length].
+intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
+rewrite pos_list_InA_combine in Hin. destruct Hin as [id [Hx' Hx]].
+rewrite Hx, Hx'. clear Hx Hx'.
+destruct (round_simplify config Hsim) as [r Hround].
+rewrite (Hround id). repeat destruct_match.
++ cbn -[straight_path equiv dist]. rewrite straight_path_0. now apply Req_le.
++ cbn -[straight_path equiv dist]. rewrite straight_path_0. now apply Req_le.
++ cbn -[dist straight_path]. destruct Hinv as [Hstg Hweb].
+  specialize (Hstg id). destruct (config id) as [[s d] ri].
+  case Hstg as [Hstay | Hgo].
+  - rewrite Hstay, 2 straight_path_same. lra.
+  - rewrite Hgo. unfold add_ratio. destruct_match.
+    * rewrite straight_path_1, dist_same. apply dist_nonneg.
+    * cbn -[dist mul opp RealVectorSpace.add].
+      repeat rewrite norm_dist. rewrite 2 R2_opp_dist, 2 RealVectorSpace.add_assoc.
+      rewrite <-(mul_1 (w - s)) at 1. rewrite <-(mul_1 (w - s)) at 1. rewrite <-minus_morph, add_morph, norm_mul.
+    rewrite <-Rmult_1_l. apply Rmult_le_compat_r ; try apply norm_nonneg.
+    unfold Rabs. destruct_match ; generalize (ratio_bounds ri) ; lra.
+  + rewrite mul_1, (RealVectorSpace.add_comm w), RealVectorSpace.add_assoc.
   simplifyR2. rewrite dist_same. apply dist_nonneg.
 Qed.
 
@@ -1037,7 +1029,7 @@ destruct (round gatherW da config i =?= weber_calc (config_list config)) as [Hre
     split ; [apply config_list_In_combine ; exists i ; intuition |].
     repeat destruct_match ; solve [lra | rewrite Hreached in * ; intuition]. 
   - unfold measure_dist. apply list_sum_le. now apply Forall2_le_dist_weber.
-(* The robots that moved didn't reach its destination. *)
+(* The robot that moved didn't reach its destination. *)
 + transitivity (measure config - delta)%R ; [|generalize (Rmin_l delta 1%R) ; lra].
   unfold measure, Rminus. rewrite Rplus_assoc. 
   apply Rplus_le_compat.

@@ -53,6 +53,38 @@ Set Implicit Arguments.
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
 
+
+
+(* This tactic feeds the precondition of an implication in order to derive the conclusion
+  (taken from http://comments.gmane.org/gmane.science.mathematics.logic.coq.club/7013).
+
+  Usage: feed H.
+
+  H: P -> Q  ==becomes==>  H: P
+                          ____
+                          Q
+
+  After completing this proof, Q becomes a hypothesis in the context. *)
+  Ltac feed H :=
+  match type of H with
+  | ?foo -> _ =>
+    let FOO := fresh in
+    assert foo as FOO; [|specialize (H FOO); clear FOO]
+  end.
+
+(* Generalization of feed for multiple hypotheses.
+    feed_n is useful for accessing conclusions of long implications.
+
+    Usage: feed_n 3 H.
+      H: P1 -> P2 -> P3 -> Q.
+
+    We'll be asked to prove P1, P2 and P3, so that Q can be inferred. *)
+Ltac feed_n n H := match constr:(n) with
+  | O => idtac
+  | (S ?m) => feed H ; [| feed_n m H]
+  end.
+
+
 Section ForallTriplets.
 Variables (A B C : Type).
 Implicit Types (R : A -> B -> C -> Prop).
@@ -139,6 +171,12 @@ Definition aligned (points : list R2) :=
 Global Instance aligned_compat : Proper (PermutationA equiv ==> equiv) aligned.
 Proof using . intros p p' Hpp'. unfold aligned. now f_equiv. Qed.
 
+Lemma aligned_tail p0 ps : aligned (p0 :: ps) -> aligned ps. 
+Proof. 
+unfold aligned. rewrite 2 ForallTriplets_forall. intros H x y z Hinx Hiny Hinz.
+apply H ; now right. 
+Qed.
+
 (* Whether a finite collection of poitns are aligned is decidable. The proof given here 
  * obviously constructs a very slow algorithm (O(n^3)), but we don't really care. *)
 Lemma aligned_dec points : {aligned points} + {~aligned points}.
@@ -159,6 +197,73 @@ split ; try apply aligned_similarity_weak.
 intros H. apply aligned_similarity_weak with (List.map f points) (inverse f) in H. revert H.
 apply aligned_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
 intros x y Hxy. cbn -[equiv]. now rewrite Bijection.retraction_section.
+Qed.
+
+Lemma list_all_eq_or_perm {A : Type} `{Setoid A} `{EqDec A} (x0 : A) l : 
+  (forall x, InA equiv x l -> x == x0) \/ (exists x1 l1, PermutationA equiv l (x1 :: l1) /\ x1 =/= x0).
+Proof.
+case (Forall_dec (equiv x0) (equiv_dec x0) l) as [Hall_eq | HNall_eq].
++ left. intros x Hin. rewrite Forall_forall in Hall_eq.
+  rewrite InA_alt in Hin. destruct Hin as [y [Hxy Hin]].
+  rewrite Hxy. symmetry. now apply Hall_eq.
++ right. apply neg_Forall_Exists_neg in HNall_eq ; [|apply equiv_dec].
+  rewrite Exists_exists in HNall_eq. destruct HNall_eq as [x1 [Hin Hx1]].
+  apply (@In_InA _ equiv) in Hin ; autoclass.
+  apply PermutationA_split in Hin ; autoclass.
+  destruct Hin as [l1 Hperm].
+  exists x1. exists l1. split ; [exact Hperm | symmetry ; exact Hx1].
+Qed.
+
+Lemma add_sub {A : Type} `{R : RealVectorSpace A} (x y : A) :
+  (x + (y - x) == y)%VS.
+Proof. now rewrite (RealVectorSpace.add_comm y), RealVectorSpace.add_assoc, add_opp, add_origin_l. Qed. 
+
+Lemma colinear_exists_mul u v : 
+  ~ u == 0%VS -> colinear u v -> exists t, v == (t * u)%VS. 
+Proof.
+intros Hu_n0 Hcol. destruct (colinear_decompose Hu_n0 Hcol) as [Hdecomp | Hdecomp].
++ exists (norm v / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
+  now rewrite mul_morph.
++ exists ((- norm v) / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
+  now rewrite mul_morph.
+Qed.   
+
+Lemma aligned_spec p0 ps : 
+  aligned (p0 :: ps) <-> exists v, forall p, InA equiv p ps -> exists t, (p == p0 + t * v)%VS.
+Proof. 
+split.
++ case (list_all_eq_or_perm p0 ps) as [Hall_eq | [p1 [ps' [Hperm Hp1p0]]]].
+  - intros _. exists 0%VS. intros p Hin. apply Hall_eq in Hin. rewrite Hin. 
+    exists 0%R. rewrite mul_0, add_origin_r. reflexivity.
+  - unfold aligned. rewrite ForallTriplets_forall.
+    setoid_rewrite <-InA_Leibniz. change (@eq R2) with (@equiv R2 _).
+    setoid_rewrite Hperm. intros H. 
+    exists (p1 - p0)%VS. intros p Hin.
+    specialize (H p0 p1 p). feed_n 3 H ; 
+      [now left | now right ; left | now right ; apply Hin |].
+    apply colinear_exists_mul in H.
+    * destruct H as [t H]. exists t. now rewrite <-H, add_sub.
+    * now rewrite R2sub_origin.
++ intros [v H]. unfold aligned. rewrite ForallTriplets_forall.
+  setoid_rewrite <-InA_Leibniz. change (@eq R2) with (@equiv R2 _).
+  intros x y z Hinx Hiny Hinz. 
+  assert (H' : forall p, InA equiv p (p0 :: ps) -> exists t, p == (p0 + t * v)%VS).
+  {
+    intros p Hin. rewrite InA_cons in Hin. case Hin as [Hin1 | Hin2].
+    - exists 0%R. now rewrite Hin1, mul_0, add_origin_r.
+    - now apply H.  
+  }
+  apply H' in Hinx, Hiny, Hinz. 
+  destruct Hinx as [tx Hx].
+  destruct Hiny as [ty Hy].
+  destruct Hinz as [tz Hz].
+  rewrite Hx, Hy, Hz. 
+  rewrite (RealVectorSpace.add_comm _ (ty * v)), (RealVectorSpace.add_comm _ (tz * v)).
+  rewrite <-2 RealVectorSpace.add_assoc, opp_distr_add.
+  rewrite (RealVectorSpace.add_assoc p0), add_opp, add_origin_l.
+  rewrite <-minus_morph, 2 add_morph.
+  apply colinear_mul_compat_l, colinear_mul_compat_r.
+  reflexivity.
 Qed.
 
 (* A Weber point of a finite collection P of points 
@@ -318,9 +423,7 @@ Qed.
 Lemma half_line_segment x y : half_line x (y - x) y.
 Proof.
 unfold half_line. exists 1%R. split ; [apply Rle_0_1|].
-rewrite mul_1, RealVectorSpace.add_comm, <-add_assoc.
-assert (H := add_opp x). rewrite RealVectorSpace.add_comm in H. rewrite H.
-rewrite add_origin_r. reflexivity.
+now rewrite mul_1, add_sub.
 Qed.
 
 Lemma half_line_mul_dir o d x t : 
@@ -341,6 +444,10 @@ Qed.
  * We can even move points onto the weber point, it will still be preserved. *)
 Lemma weber_half_line ps ps' w : 
   Forall2 (fun x y => half_line w (x - w) y) ps ps' -> Weber ps w -> Weber ps' w.
+Proof. Admitted.
+
+(* A weber point of aligned points is on the same line. *)
+Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
 Proof. Admitted.
 
 End WeberPoint.

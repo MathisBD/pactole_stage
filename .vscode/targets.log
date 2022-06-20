@@ -5,9 +5,8 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
- 
 
-# Make data base, printed on Fri Jun 17 15:26:38 2022
+# Make data base, printed on Mon Jun 20 11:15:50 2022
 
 # Variables
 
@@ -17,6 +16,7 @@ CAMLDOC = "$(OCAMLFIND)" ocamldoc
 <D = $(patsubst %/,%,$(dir $<))
 # automatic
 ?F = $(notdir $?)
+ 
 # makefile (from 'Makefile', line 39)
 COQCORELIB := /home/mathis/.opam/default/lib/coq/../coq-core/
 # makefile (from 'Makefile', line 286)
@@ -182,7 +182,7 @@ COQMF_VFILES = Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSet
 # makefile (from 'Makefile.conf', line 44)
 COQMF_COQ_SRC_SUBDIRS = boot config lib clib kernel library engine pretyping interp gramlib parsing proofs tactics toplevel printing ide stm vernac plugins/btauto plugins/cc plugins/derive plugins/extraction plugins/firstorder plugins/funind plugins/ltac plugins/ltac2 plugins/micromega plugins/nsatz plugins/ring plugins/rtauto plugins/ssr plugins/ssrmatching plugins/syntax
 # environment
-SESSION_MANAGER = local/mathis-MS-7C56:@/tmp/.ICE-unix/1357,unix/mathis-MS-7C56:/tmp/.ICE-unix/1357
+SESSION_MANAGER = local/mathis-MS-7C56:@/tmp/.ICE-unix/1366,unix/mathis-MS-7C56:/tmp/.ICE-unix/1366
 # makefile (from 'Makefile', line 30)
 INSTALLCOQDOCROOT := Pactole
 # environment
@@ -248,7 +248,7 @@ COQMF_MLLIBFILES =
 # environment
 XDG_SESSION_DESKTOP = KDE
 # environment
-SSH_AUTH_SOCK = /tmp/ssh-i8xldi8YIpqc/agent.1243
+SSH_AUTH_SOCK = /tmp/ssh-YL3HSU8y3tgA/agent.1263
 # makefile (from 'Makefile.conf', line 26)
 COQMF_SRC_SUBDIRS = 
 # automatic
@@ -287,12 +287,13 @@ KDE_SESSION_VERSION = 5
 ALLDFILES = $(addsuffix .d,$(ALLSRCFILES)) $(VDFILE)
 # makefile (from 'Makefile', line 149)
 TIMING_SORT_BY_MEM = 
+ 
 # default
 .LOADED := 
 # environment
 XDG_SEAT = seat0
 # environment
-SSH_AGENT_PID = 1289
+SSH_AGENT_PID = 1308
 # makefile (from 'Makefile', line 260)
 COQMAKEFILE_VERSION := 8.15.1
 # environment
@@ -402,7 +403,7 @@ COQMF_OCAMLLIBS =
 # makefile (from 'Makefile.conf', line 63)
 COQMF_INSTALLCOQDOCROOT = Pactole
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-1796e331-aa07-48e7-943e-cb7ab2b2ca70.sock
+VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-c53e5c2c-231b-4e5c-9c09-69e175152a2b.sock
 # environment
 XDG_SESSION_ID = 3
 # environment
@@ -461,7 +462,6 @@ DOCDIR := /home/mathis/.opam/default/doc/coq/
 *F = $(notdir $*)
 # environment
 XDG_SEAT_PATH = /org/freedesktop/DisplayManager/Seat0
- 
 # makefile (from 'Makefile', line 314)
 VOS = vos
 # environment
@@ -525,6 +525,7 @@ MAKEFILES :=
 # environment
 SNAP_COOKIE = KzcuQuNT4mQa55dHzjXl9mU1NTmmIfpryc2-mscb7R37vc1PsLjA
 # makefile (from 'Makefile', line 155)
+ 
 TIME_OF_PRETTY_BOTH_BUILD_FILE = time-of-build-both.log
 # environment
 LC_NUMERIC = fr_FR.UTF-8
@@ -603,7 +604,7 @@ LANG = C
 # makefile (from 'Makefile', line 25)
 MLFILES := 
 # environment
-VSCODE_PID = 57997
+VSCODE_PID = 1614
 # environment
 KDE_SESSION_UID = 1000
 # variable set hash-table stats:
@@ -730,6 +731,7 @@ Util/Coqlib.v.beautified: Util/Coqlib.v Util/Coqlib.v Util/Preliminary.vo Util/S
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
+ 
 # Not a target:
 Util/Coqlib.v.after-timing:
 #  Implicit rule search has not been done.
@@ -749,7 +751,6 @@ Util/FSets/FSetList.vos: Util/FSets/FSetList.v Util/FSets/FSetList.v Util/Coqlib
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
- 
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Spaces/R.g.html: Spaces/R.v Spaces/R.glob
@@ -932,7 +933,6 @@ Util/ListComplements.v.beautified: Util/ListComplements.v Util/ListComplements.v
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
- 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -942,6 +942,7 @@ Models/ContinuousGraph.v.before-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.glob: CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Impossibility_2G_1B.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Convergence/Impossibility_2G_1B_Assumptions'
@@ -1129,7 +1130,6 @@ Spaces/RealVectorSpace.g.tex: Spaces/RealVectorSpace.v
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
- 
 Core/Formalism.v.beautified: Core/Formalism.v Core/Formalism.v Util/Coqlib.vo Util/Bijection.vo Util/Ratio.vo Util/Stream.vo Core/Identifiers.vo Core/State.vo Core/Configuration.vo Observations/Definition.vo Spaces/RealMetricSpace.vo Spaces/Similarity.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Core/Formalism'
@@ -1174,6 +1174,7 @@ CaseStudies/Gathering/InR/Impossibility.html: CaseStudies/Gathering/InR/Impossib
 Util/MMultiset/MMultisetWMap.vos: Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetWMap.v Util/FMaps/FMapInterface.vos Util/FMaps/FMapFacts.vos Util/MMultiset/Preliminary.vos Util/MMultiset/MMultisetInterface.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetWMap'
+ 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
@@ -1315,7 +1316,6 @@ Util/MMultiset/MMultisetInterface.tex: Util/MMultiset/MMultisetInterface.v
 Models/DiscreteGraph.v.timing.diff: Models/DiscreteGraph.v.before-timing Models/DiscreteGraph.v.after-timing
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/DiscreteGraph.v'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 787):
@@ -1435,6 +1435,7 @@ Util/FMaps/FMapFacts.html: Util/FMaps/FMapFacts.v Util/FMaps/FMapFacts.glob
 #  Implicit/static pattern stem: 'Util/FMaps/FMapFacts'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 803):
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
@@ -1475,7 +1476,6 @@ Spaces/Ring.glob: Spaces/Ring.v Spaces/Ring.v Util/Coqlib.vo Core/Identifiers.vo
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 772):
- 
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Util/FSets/FSetInterface.v.beautified: Util/FSets/FSetInterface.v Util/FSets/FSetInterface.v
@@ -1510,7 +1510,7 @@ Core/State.vo: Core/State.v Core/State.v Util/Coqlib.vo Util/Bijection.vo Core/I
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-06-17 15:26:38.565007134
+#  Last modified 2022-06-20 11:15:50.162712735
 #  File has been updated.
 #  Successfully updated.
 
@@ -1648,7 +1648,6 @@ Observations/PointedObservation.vo: Observations/PointedObservation.v Observatio
 #  Implicit/static pattern stem: 'Observations/PointedObservation'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
@@ -1709,6 +1708,7 @@ Util/Stream.vo: Util/Stream.v Util/Stream.v Util/Coqlib.vo | .Makefile.d
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 763):
+ 
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
 
@@ -1805,7 +1805,6 @@ Spaces/Grid.g.html: Spaces/Grid.v Spaces/Grid.glob
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
- 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
 # Not a target:
@@ -1931,7 +1930,6 @@ Models/DiscreteGraph.v.after-timing:
 CaseStudies/Gathering/InR/Algorithm_Assumptions.tex: CaseStudies/Gathering/InR/Algorithm_Assumptions.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm_Assumptions'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 795):
@@ -1986,6 +1984,7 @@ Spaces/Similarity.v.beautified: Spaces/Similarity.v Spaces/Similarity.v Util/Coq
 # Not a target:
 Util/Lexprod.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 10:42:34.408710694
 #  File has been updated.
 #  Successfully updated.
@@ -2048,7 +2047,6 @@ Models/DiscreteGraph.tex: Models/DiscreteGraph.v
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.required_vos: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v Setting.vos Models/Flexible.vos Models/NoByzantine.vos Observations/SetObservation.vos Spaces/R2.vos CaseStudies/Gathering/Definitions.vos
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -2180,7 +2178,6 @@ Core/Formalism.v.before-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
- 
 
 Setting.vok: Setting.v Setting.v Util/Coqlib.vos Util/Ratio.vos Util/Stream.vos Util/Lexprod.vos Core/Identifiers.vos Core/State.vos Core/Configuration.vos Observations/Definition.vos Core/Formalism.vos
 #  Implicit rule search has not been done.
@@ -2243,6 +2240,7 @@ Models/GraphEquivalence.vok: Models/GraphEquivalence.v Models/GraphEquivalence.v
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 print-pretty-timed-diff::
+ 
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
@@ -2318,7 +2316,6 @@ Observations/MultisetObservation.v.before-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
- 
 CaseStudies/Gathering/InR2/Algorithm_Assumptions.g.tex: CaseStudies/Gathering/InR2/Algorithm_Assumptions.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Algorithm_Assumptions'
@@ -2455,7 +2452,6 @@ CaseStudies/Gathering/Impossibility.glob: CaseStudies/Gathering/Impossibility.v 
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 # Not a target:
- 
 CaseStudies/Gathering/Impossibility_Assumptions.v.before-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -2501,6 +2497,7 @@ Util/Preliminary.vo: Util/Preliminary.v Util/Preliminary.v Util/FMaps/FMapInterf
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
+ 
 
 CaseStudies/Gathering/InR/Impossibility.g.tex: CaseStudies/Gathering/InR/Impossibility.v
 #  Implicit rule search has not been done.
@@ -2574,7 +2571,6 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.g.tex: CaseStudi
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
- 
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
@@ -2704,7 +2700,6 @@ Util/Ratio.html: Util/Ratio.v Util/Ratio.glob
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
 
- 
 CaseStudies/Gathering/InR/Algorithm_Assumptions.vos: CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR/Algorithm.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm_Assumptions'
@@ -2735,6 +2730,7 @@ CaseStudies/Exploration/Definitions.v.timing.diff: CaseStudies/Exploration/Defin
 # Not a target:
 CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 10:42:34.396710643
 #  File has been updated.
 #  Successfully updated.
@@ -2833,7 +2829,6 @@ Spaces/Similarity.vos: Spaces/Similarity.v Spaces/Similarity.v Util/Coqlib.vos U
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
- 
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -2975,7 +2970,6 @@ Util/FMaps/FMapList.html: Util/FMaps/FMapList.v Util/FMaps/FMapList.glob
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
 
- 
 # Not a target:
 CaseStudies/Convergence/Algorithm_noB.v.before-timing:
 #  Implicit rule search has not been done.
@@ -2991,6 +2985,7 @@ CaseStudies/Gathering/Impossibility.v.before-timing:
 # Not a target:
 Util/MMultiset/Preliminary.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 11:30:25.14719953
 #  File has been updated.
 #  Successfully updated.
@@ -3100,7 +3095,6 @@ Util/FSets/FSetInterface.vio: Util/FSets/FSetInterface.v Util/FSets/FSetInterfac
 #  Implicit/static pattern stem: 'Util/FSets/FSetInterface'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -3230,7 +3224,6 @@ Core/Configuration.v.beautified: Core/Configuration.v Core/Configuration.v Util/
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
- 
 # Not a target:
 Core/Configuration.v.after-timing:
 #  Implicit rule search has not been done.
@@ -3265,6 +3258,7 @@ Observations/PreCompositionObservation.g.tex: Observations/PreCompositionObserva
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
+ 
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
@@ -3364,7 +3358,6 @@ Observations/MultisetObservation.v.beautified: Observations/MultisetObservation.
 #  Implicit/static pattern stem: 'Observations/MultisetObservation'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
@@ -3503,7 +3496,6 @@ CaseStudies/Exploration/Definitions.required_vos: CaseStudies/Exploration/Defini
 
 # Not a target:
 Models/Flexible.v.before-timing:
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -3538,6 +3530,7 @@ Observations/PreCompositionObservation.vo: Observations/PreCompositionObservatio
 Util/MMultiset/MMultisetFacts.required_vos: Util/MMultiset/MMultisetFacts.v Util/MMultiset/Preliminary.vos Util/MMultiset/MMultisetInterface.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
+ 
 #  File has not been updated.
 
 CaseStudies/Convergence/Algorithm_noB.v.timing.diff: CaseStudies/Convergence/Algorithm_noB.v.before-timing CaseStudies/Convergence/Algorithm_noB.v.after-timing
@@ -3647,7 +3640,6 @@ Spaces/Ring.g.html: Spaces/Ring.v Spaces/Ring.glob
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
- 
 
 CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.g.tex: CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v
 #  Implicit rule search has not been done.
@@ -3767,7 +3759,6 @@ CaseStudies/Gathering/WithMultiplicity.html: CaseStudies/Gathering/WithMultiplic
 Core/Identifiers.vok: Core/Identifiers.v Core/Identifiers.v Util/Coqlib.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Core/Identifiers'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
@@ -3785,6 +3776,7 @@ Core/Identifiers.g.html: Core/Identifiers.v Core/Identifiers.glob
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vos: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vos
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -3916,7 +3908,6 @@ debug:
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 909):
 	$(foreach v,\
 		$(sort $(filter-out $(INITIAL_VARS) INITIAL_VARS,\
@@ -4001,6 +3992,7 @@ CaseStudies/Exploration/Definitions.vos: CaseStudies/Exploration/Definitions.v C
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 Util/FMaps/FMapFacts.tex: Util/FMaps/FMapFacts.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/FMaps/FMapFacts'
@@ -4048,7 +4040,6 @@ Models/RigidFlexibleEquivalence.tex: Models/RigidFlexibleEquivalence.v
 #  Implicit/static pattern stem: 'Models/RigidFlexibleEquivalence'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 795):
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
@@ -4187,6 +4178,7 @@ Util/MMultiset/Preliminary.html: Util/MMultiset/Preliminary.v Util/MMultiset/Pre
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 803):
 	$(SHOW)'COQDOC -html $<'
+ 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
 
 Spaces/R2.tex: Spaces/R2.v
@@ -4200,7 +4192,6 @@ Spaces/R2.tex: Spaces/R2.v
 
 CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.g.html: CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.glob
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'CaseStudies/Convergence/Impossibility_2G_1B_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -4344,7 +4335,6 @@ Models/GraphEquivalence.g.html: Models/GraphEquivalence.v Models/GraphEquivalenc
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
- 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
 Spaces/R.required_vo: Spaces/R.v Util/Coqlib.vo Util/Bijection.vo Spaces/EuclideanSpace.vo Spaces/Similarity.vo
@@ -4391,6 +4381,7 @@ Models/Similarity.g.tex: Models/Similarity.v
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vok: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vos
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -4477,7 +4468,6 @@ Spaces/R2.vio: Spaces/R2.v Spaces/R2.v Util/Coqlib.vio Spaces/EuclideanSpace.vio
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
- 
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -4579,6 +4569,7 @@ CaseStudies/Exploration/Tower_Assumptions.vo: CaseStudies/Exploration/Tower_Assu
 # Not a target:
 Setting.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 10:42:34.408710694
 #  File has been updated.
 #  Successfully updated.
@@ -4592,7 +4583,6 @@ CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.html: CaseStudies/Conver
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
 
- 
 Observations/SetObservation.g.tex: Observations/SetObservation.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/SetObservation'
@@ -4726,7 +4716,6 @@ Models/Rigid.v.timing.diff: Models/Rigid.v.before-timing Models/Rigid.v.after-ti
 
 Spaces/R.v.timing.diff: Spaces/R.v.before-timing Spaces/R.v.after-timing
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Spaces/R.v'
 #  Modification time never checked.
 #  File has not been updated.
@@ -4763,6 +4752,7 @@ Models/RigidFlexibleEquivalence_Assumptions.v.timing.diff: Models/RigidFlexibleE
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
 # Not a target:
+ 
 Models/RigidFlexibleEquivalence_Assumptions.v:
 #  Implicit rule search has been done.
 #  Last modified 2022-06-09 10:42:34.408710694
@@ -4859,7 +4849,6 @@ make-pretty-timed::
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 425):
 	$(HIDE)rm -f pretty-timed-success.ok
 	$(HIDE)($(MAKE) --no-print-directory -f "$(PARENT)" $(TGTS) TIMED=1 2>&1 && touch pretty-timed-success.ok) | tee -a $(TIME_OF_BUILD_FILE)
@@ -4946,6 +4935,7 @@ Spaces/RealMetricSpace.required_vos: Spaces/RealMetricSpace.v Util/Coqlib.vos Sp
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
+ 
 
 CaseStudies/Gathering/InR2/Peleg.vok: CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg.v Setting.vos Models/Flexible.vos Models/NoByzantine.vos Observations/MultisetObservation.vos Spaces/R2.vos CaseStudies/Gathering/WithMultiplicity.vos CaseStudies/Gathering/Definitions.vos
 #  Implicit rule search has not been done.
@@ -4994,7 +4984,6 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vok: CaseStudies/Gathering/I
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -5136,6 +5125,7 @@ Spaces/R.v.beautified: Spaces/R.v Spaces/R.v Util/Coqlib.vo Util/Bijection.vo Sp
 
 # Not a target:
 Spaces/R.v.after-timing:
+ 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -5187,7 +5177,6 @@ Spaces/RealVectorSpace.v.after-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
- 
 
 CaseStudies/Gathering/InR2/Viglietta.vok: CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta.v Setting.vos Spaces/R.vos Spaces/R2.vos Models/Similarity.vos Models/NoByzantine.vos CaseStudies/Gathering/Definitions.vos
 #  Implicit rule search has not been done.
@@ -5340,6 +5329,7 @@ Util/Bijection.v.after-timing:
 #  File has not been updated.
 
 Models/RigidFlexibleEquivalence.v.timing.diff: Models/RigidFlexibleEquivalence.v.before-timing Models/RigidFlexibleEquivalence.v.after-timing
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/RigidFlexibleEquivalence.v'
 #  Modification time never checked.
@@ -5364,7 +5354,6 @@ all-gal.ps: all.ps
 #  Modification time never checked.
 #  File has not been updated.
 # variable set hash-table stats:
- 
 # Load=1/32=3%, Rehash=0, Collisions=0/1=0%
 
 Util/MMultiset/MMultisetExtraOps.vo: Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.vo Util/MMultiset/MMultisetInterface.vo Util/MMultiset/MMultisetFacts.vo | .Makefile.d
@@ -5530,9 +5519,9 @@ Observations/PointedObservation.v.after-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 Util/MMultiset/Preliminary.g.tex: Util/MMultiset/Preliminary.v
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Util/MMultiset/Preliminary'
 #  Modification time never checked.
 #  File has not been updated.
@@ -5705,7 +5694,6 @@ CaseStudies/Gathering/InR2/Viglietta.glob: CaseStudies/Gathering/InR2/Viglietta.
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 CaseStudies/Gathering/Impossibility.vio: CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility.v Util/Preliminary.vio Setting.vio Spaces/EuclideanSpace.vio CaseStudies/Gathering/Definitions.vio CaseStudies/Gathering/WithMultiplicity.vio Models/Rigid.vio Models/NoByzantine.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Impossibility'
@@ -5738,6 +5726,7 @@ Models/GraphEquivalence.v.beautified: Models/GraphEquivalence.v Models/GraphEqui
 #  Implicit/static pattern stem: 'Models/GraphEquivalence'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
@@ -5904,7 +5893,6 @@ Observations/SetObservation.v.beautified: Observations/SetObservation.v Observat
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
- 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -5959,6 +5947,7 @@ Util/Bijection.vok: Util/Bijection.v Util/Bijection.v Util/Coqlib.vos
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 CaseStudies/Exploration/ImpossibilityKDividesN.required_vos: CaseStudies/Exploration/ImpossibilityKDividesN.v Models/NoByzantine.vos CaseStudies/Exploration/Definitions.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -6094,8 +6083,7 @@ Models/NoByzantine.g.tex: Models/NoByzantine.v
 
 Makefile.conf: _CoqProject
 #  Implicit rule search has not been done.
- 
-#  Last modified 2022-06-17 15:26:38.565007134
+#  Last modified 2022-06-20 11:15:50.162712735
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 47):
@@ -6123,7 +6111,7 @@ Util/Stream.html: Util/Stream.v Util/Stream.glob
 
 .Makefile.d: _CoqProject Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.v Util/Preliminary.v Util/SetoidDefs.v Util/NumberComplements.v Util/ListComplements.v Util/Coqlib.v Util/Bijection.v Util/Stream.v Util/Lexprod.v Util/Ratio.v Core/Identifiers.v Core/State.v Core/Configuration.v Core/Formalism.v Setting.v Models/NoByzantine.v Models/Flexible.v Models/Rigid.v Models/RigidFlexibleEquivalence.v Models/RigidFlexibleEquivalence_Assumptions.v Models/DiscreteGraph.v Models/Similarity.v Models/ContinuousGraph.v Models/GraphEquivalence.v Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v Spaces/Ring.v Spaces/Grid.v Observations/Definition.v Observations/MultisetObservation.v Observations/SetObservation.v Observations/LimitedSetObservation.v Observations/LimitedMultisetObservation.v Observations/PointedObservation.v Observations/PreCompositionObservation.v CaseStudies/Convergence/Impossibility_2G_1B.v CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Algorithm_noB.v CaseStudies/Gathering/Definitions.v CaseStudies/Gathering/WithMultiplicity.v CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility.v CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/Algorithm.v CaseStudies/Gathering/InR2/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta_Assumptions.v CaseStudies/Gathering/InR2/Weber/Weber_point.v CaseStudies/Exploration/Definitions.v CaseStudies/Exploration/ImpossibilityKDividesN.v CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v CaseStudies/Exploration/Tower.v CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Volumes/NoCollisionAndPath.v
 #  Implicit rule search has not been done.
-#  Last modified 2022-06-17 15:26:38.561007163
+#  Last modified 2022-06-20 11:15:50.158712735
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 853):
@@ -6134,6 +6122,7 @@ Spaces/Isomorphism.g.html: Spaces/Isomorphism.v Spaces/Isomorphism.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/Isomorphism'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
@@ -6261,7 +6250,6 @@ Util/NumberComplements.vok: Util/NumberComplements.v Util/NumberComplements.v
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 all.ps: Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.v Util/Preliminary.v Util/SetoidDefs.v Util/NumberComplements.v Util/ListComplements.v Util/Coqlib.v Util/Bijection.v Util/Stream.v Util/Lexprod.v Util/Ratio.v Core/Identifiers.v Core/State.v Core/Configuration.v Core/Formalism.v Setting.v Models/NoByzantine.v Models/Flexible.v Models/Rigid.v Models/RigidFlexibleEquivalence.v Models/RigidFlexibleEquivalence_Assumptions.v Models/DiscreteGraph.v Models/Similarity.v Models/ContinuousGraph.v Models/GraphEquivalence.v Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v Spaces/Ring.v Spaces/Grid.v Observations/Definition.v Observations/MultisetObservation.v Observations/SetObservation.v Observations/LimitedSetObservation.v Observations/LimitedMultisetObservation.v Observations/PointedObservation.v Observations/PreCompositionObservation.v CaseStudies/Convergence/Impossibility_2G_1B.v CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Algorithm_noB.v CaseStudies/Gathering/Definitions.v CaseStudies/Gathering/WithMultiplicity.v CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility.v CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/Algorithm.v CaseStudies/Gathering/InR2/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta_Assumptions.v CaseStudies/Gathering/InR2/Weber/Weber_point.v CaseStudies/Exploration/Definitions.v CaseStudies/Exploration/ImpossibilityKDividesN.v CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v CaseStudies/Exploration/Tower.v CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Volumes/NoCollisionAndPath.v
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -6341,6 +6329,7 @@ Spaces/R2.v.timing.diff: Spaces/R2.v.before-timing Spaces/R2.v.after-timing
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
+ 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.html: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm'
@@ -6435,7 +6424,6 @@ Observations/Definition.g.tex: Observations/Definition.v
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
- 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
 CaseStudies/Gathering/InR2/Weber/Weber_point.v.timing.diff: CaseStudies/Gathering/InR2/Weber/Weber_point.v.before-timing CaseStudies/Gathering/InR2/Weber/Weber_point.v.after-timing
@@ -6544,6 +6532,7 @@ Core/Identifiers.v.before-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
+ 
 
 Models/GraphEquivalence.required_vo: Models/GraphEquivalence.v Setting.vo Spaces/Graph.vo Spaces/Isomorphism.vo Models/ContinuousGraph.vo Models/DiscreteGraph.vo
 #  Implicit rule search has not been done.
@@ -6619,7 +6608,6 @@ Spaces/R.vio: Spaces/R.v Spaces/R.v Util/Coqlib.vio Util/Bijection.vio Spaces/Eu
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 vio: Util/FSets/FSetInterface.vio Util/FSets/FSetFacts.vio Util/FSets/FSetList.vio Util/FMaps/FMapInterface.vio Util/FMaps/FMapFacts.vio Util/FMaps/FMapList.vio Util/MMultiset/MMultisetInterface.vio Util/MMultiset/MMultisetWMap.vio Util/MMultiset/MMultisetFacts.vio Util/MMultiset/MMultisetExtraOps.vio Util/MMultiset/Preliminary.vio Util/Preliminary.vio Util/SetoidDefs.vio Util/NumberComplements.vio Util/ListComplements.vio Util/Coqlib.vio Util/Bijection.vio Util/Stream.vio Util/Lexprod.vio Util/Ratio.vio Core/Identifiers.vio Core/State.vio Core/Configuration.vio Core/Formalism.vio Setting.vio Models/NoByzantine.vio Models/Flexible.vio Models/Rigid.vio Models/RigidFlexibleEquivalence.vio Models/RigidFlexibleEquivalence_Assumptions.vio Models/DiscreteGraph.vio Models/Similarity.vio Models/ContinuousGraph.vio Models/GraphEquivalence.vio Spaces/RealVectorSpace.vio Spaces/RealMetricSpace.vio Spaces/RealNormedSpace.vio Spaces/EuclideanSpace.vio Spaces/Similarity.vio Spaces/R.vio Spaces/R2.vio Spaces/Graph.vio Spaces/Isomorphism.vio Spaces/Ring.vio Spaces/Grid.vio Observations/Definition.vio Observations/MultisetObservation.vio Observations/SetObservation.vio Observations/LimitedSetObservation.vio Observations/LimitedMultisetObservation.vio Observations/PointedObservation.vio Observations/PreCompositionObservation.vio CaseStudies/Convergence/Impossibility_2G_1B.vio CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.vio CaseStudies/Convergence/Algorithm_noB.vio CaseStudies/Gathering/Definitions.vio CaseStudies/Gathering/WithMultiplicity.vio CaseStudies/Gathering/Impossibility.vio CaseStudies/Gathering/Impossibility_Assumptions.vio CaseStudies/Gathering/InR/Impossibility.vio CaseStudies/Gathering/InR/Impossibility_Assumptions.vio CaseStudies/Gathering/InR/Algorithm.vio CaseStudies/Gathering/InR/Algorithm_Assumptions.vio CaseStudies/Gathering/InR2/Algorithm.vio CaseStudies/Gathering/InR2/Algorithm_Assumptions.vio CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vio CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vio CaseStudies/Gathering/InR2/Peleg.vio CaseStudies/Gathering/InR2/Peleg_Assumptions.vio CaseStudies/Gathering/InR2/Viglietta.vio CaseStudies/Gathering/InR2/Viglietta_Assumptions.vio CaseStudies/Gathering/InR2/Weber/Weber_point.vio CaseStudies/Exploration/Definitions.vio CaseStudies/Exploration/ImpossibilityKDividesN.vio CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.vio CaseStudies/Exploration/Tower.vio CaseStudies/Exploration/Tower_Assumptions.vio CaseStudies/Volumes/NoCollisionAndPath.vio
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
@@ -6732,6 +6720,7 @@ Util/FSets/FSetFacts.vok: Util/FSets/FSetFacts.v Util/FSets/FSetFacts.v Util/Coq
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
+ 
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Util/FSets/FSetFacts.g.html: Util/FSets/FSetFacts.v Util/FSets/FSetFacts.glob
@@ -6911,7 +6900,6 @@ Spaces/RealVectorSpace.v.beautified: Spaces/RealVectorSpace.v Spaces/RealVectorS
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
- 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -6921,6 +6909,7 @@ CaseStudies/Gathering/InR2/Weber/Weber_point.v.beautified: CaseStudies/Gathering
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
+ 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -7136,7 +7125,6 @@ Observations/Definition.v.timing.diff: Observations/Definition.v.before-timing O
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 787):
- 
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
@@ -7201,6 +7189,7 @@ Spaces/RealNormedSpace.g.html: Spaces/RealNormedSpace.v Spaces/RealNormedSpace.g
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
+ 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
 Core/Configuration.required_vos: Core/Configuration.v Util/Coqlib.vos Util/Bijection.vos Core/Identifiers.vos Core/State.vos
@@ -7321,7 +7310,6 @@ CaseStudies/Convergence/Impossibility_2G_1B.v.before-timing:
 
 Models/RigidFlexibleEquivalence.vio: Models/RigidFlexibleEquivalence.v Models/RigidFlexibleEquivalence.v Setting.vio Spaces/RealMetricSpace.vio Spaces/Similarity.vio Models/Rigid.vio Models/Flexible.vio
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Models/RigidFlexibleEquivalence'
 #  Modification time never checked.
 #  File has not been updated.
@@ -7424,6 +7412,7 @@ Spaces/Similarity.glob: Spaces/Similarity.v Spaces/Similarity.v Util/Coqlib.vo U
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v.timing.diff: CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v.before-timing CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v.after-timing
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v'
 #  Modification time never checked.
@@ -7481,7 +7470,6 @@ vok: Util/FSets/FSetInterface.vok Util/FSets/FSetFacts.vok Util/FSets/FSetList.v
 #  File has not been updated.
 
 CaseStudies/Gathering/InR2/Algorithm_Assumptions.required_vos: CaseStudies/Gathering/InR2/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/Algorithm.vos
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -7620,6 +7608,7 @@ Util/Coqlib.vok: Util/Coqlib.v Util/Coqlib.v Util/Preliminary.vos Util/SetoidDef
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Observations/LimitedSetObservation.glob: Observations/LimitedSetObservation.v Observations/LimitedSetObservation.v Util/FSets/FSetInterface.vo Util/FSets/FSetFacts.vo Util/Coqlib.vo Core/Identifiers.vo Core/State.vo Core/Configuration.vo Observations/Definition.vo Spaces/RealMetricSpace.vo Spaces/Similarity.vo Observations/SetObservation.vo
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/LimitedSetObservation'
 #  Modification time never checked.
@@ -7664,7 +7653,6 @@ Spaces/EuclideanSpace.vos: Spaces/EuclideanSpace.v Spaces/EuclideanSpace.v Util/
 #  Implicit/static pattern stem: 'Spaces/EuclideanSpace'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -7845,7 +7833,6 @@ CaseStudies/Gathering/InR2/Peleg.v.timing.diff: CaseStudies/Gathering/InR2/Peleg
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 787):
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
- 
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
 Util/ListComplements.vok: Util/ListComplements.v Util/ListComplements.v Util/Preliminary.vos Util/NumberComplements.vos
@@ -7910,6 +7897,7 @@ CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v.after-timing:
 
 Spaces/Isomorphism.vok: Spaces/Isomorphism.v Spaces/Isomorphism.v Util/Coqlib.vos Util/Bijection.vos Core/Configuration.vos Spaces/Graph.vos
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'Spaces/Isomorphism'
 #  Modification time never checked.
 #  File has not been updated.
@@ -8017,7 +8005,6 @@ Util/SetoidDefs.required_vo: Util/SetoidDefs.v Util/Preliminary.vo
 #  Modification time never checked.
 #  File has not been updated.
 
- 
 CaseStudies/Gathering/InR/Algorithm.required_vo: CaseStudies/Gathering/InR/Algorithm.v Setting.vo Spaces/R.vo CaseStudies/Gathering/WithMultiplicity.vo CaseStudies/Gathering/Definitions.vo Observations/MultisetObservation.vo Models/Similarity.vo Models/Rigid.vo Models/NoByzantine.vo
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -8137,6 +8124,7 @@ Util/FSets/FSetList.html: Util/FSets/FSetList.v Util/FSets/FSetList.glob
 
 Util/MMultiset/MMultisetInterface.vo: Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/Preliminary.vo | .Makefile.d
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetInterface'
 #  Modification time never checked.
 #  File has not been updated.
@@ -8178,7 +8166,6 @@ CaseStudies/Gathering/InR2/Peleg_Assumptions.v.beautified: CaseStudies/Gathering
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
- 
 
 # Not a target:
 CaseStudies/Gathering/InR2/Peleg_Assumptions.v.after-timing:
@@ -8346,6 +8333,7 @@ Util/FSets/FSetInterface.g.html: Util/FSets/FSetInterface.v Util/FSets/FSetInter
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
+ 
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
@@ -8360,7 +8348,6 @@ Spaces/Grid.tex: Spaces/Grid.v
 
 Setting.tex: Setting.v
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Setting'
 #  Modification time never checked.
 #  File has not been updated.
@@ -8547,11 +8534,11 @@ Util/Stream.glob: Util/Stream.v Util/Stream.v Util/Coqlib.vo
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Models/Flexible.required_vos: Models/Flexible.v Util/Preliminary.vos Setting.vos Spaces/RealMetricSpace.vos Spaces/Similarity.vos Models/Similarity.vos
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 CaseStudies/Gathering/InR/Impossibility.vok: CaseStudies/Gathering/InR/Impossibility.v CaseStudies/Gathering/InR/Impossibility.v Util/Preliminary.vos Setting.vos Spaces/R.vos Models/Rigid.vos Models/NoByzantine.vos CaseStudies/Gathering/WithMultiplicity.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Impossibility'
@@ -8723,7 +8710,6 @@ Models/DiscreteGraph.v:
 #  File has been updated.
 #  Successfully updated.
 
- 
 Spaces/Similarity.vo: Spaces/Similarity.v Spaces/Similarity.v Util/Coqlib.vo Util/Bijection.vo Spaces/EuclideanSpace.vo | .Makefile.d
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/Similarity'
@@ -8827,6 +8813,7 @@ Util/FSets/FSetFacts.vio: Util/FSets/FSetFacts.v Util/FSets/FSetFacts.v Util/Coq
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/FSets/FSetFacts'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
@@ -8909,7 +8896,6 @@ Models/ContinuousGraph.vo: Models/ContinuousGraph.v Models/ContinuousGraph.v Set
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
- 
 
 Models/GraphEquivalence.vos: Models/GraphEquivalence.v Models/GraphEquivalence.v Setting.vos Spaces/Graph.vos Spaces/Isomorphism.vos Models/ContinuousGraph.vos Models/DiscreteGraph.vos
 #  Implicit rule search has not been done.
@@ -9044,6 +9030,7 @@ Spaces/Grid.vos: Spaces/Grid.v Spaces/Grid.v Util/Coqlib.vos Spaces/Graph.vos Ut
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 Observations/Definition.vio: Observations/Definition.v Observations/Definition.v Core/Identifiers.vio Core/State.vio Core/Configuration.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/Definition'
@@ -9074,7 +9061,6 @@ Core/Identifiers.vio: Core/Identifiers.v Core/Identifiers.v Util/Coqlib.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Core/Identifiers'
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
@@ -9177,7 +9163,6 @@ Observations/LimitedMultisetObservation.g.tex: Observations/LimitedMultisetObser
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
- 
 Util/NumberComplements.required_vo: Util/NumberComplements.v
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -9219,6 +9204,7 @@ Util/Ratio.required_vos: Util/Ratio.v Util/Coqlib.vos
 # Not a target:
 Util/Coqlib.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 10:42:34.408710694
 #  File has been updated.
 #  Successfully updated.
@@ -9275,7 +9261,6 @@ Core/State.g.html: Core/State.v Core/State.glob
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
 Models/RigidFlexibleEquivalence.required_vo: Models/RigidFlexibleEquivalence.v Setting.vo Spaces/RealMetricSpace.vo Spaces/Similarity.vo Models/Rigid.vo Models/Flexible.vo
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -9354,7 +9339,6 @@ Util/SetoidDefs.vos: Util/SetoidDefs.v Util/SetoidDefs.v Util/Preliminary.vos
 
 Spaces/Graph.required_vos: Spaces/Graph.v Util/Coqlib.vos Core/Identifiers.vos
 #  Implicit rule search has not been done.
- 
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -9381,6 +9365,7 @@ Util/MMultiset/MMultisetFacts.required_vo: Util/MMultiset/MMultisetFacts.v Util/
 
 CaseStudies/Gathering/InR2/Peleg.vos: CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg.v Setting.vos Models/Flexible.vos Models/NoByzantine.vos Observations/MultisetObservation.vos Spaces/R2.vos CaseStudies/Gathering/WithMultiplicity.vos CaseStudies/Gathering/Definitions.vos
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Peleg'
 #  Modification time never checked.
 #  File has not been updated.
@@ -9454,7 +9439,6 @@ CaseStudies/Gathering/InR/Algorithm_Assumptions.vok: CaseStudies/Gathering/InR/A
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
- 
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -9547,7 +9531,6 @@ Util/FSets/FSetInterface.html: Util/FSets/FSetInterface.v Util/FSets/FSetInterfa
 
 Models/GraphEquivalence.vio: Models/GraphEquivalence.v Models/GraphEquivalence.v Setting.vio Spaces/Graph.vio Spaces/Isomorphism.vio Models/ContinuousGraph.vio Models/DiscreteGraph.vio
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Models/GraphEquivalence'
 #  Modification time never checked.
 #  File has not been updated.
@@ -9555,6 +9538,7 @@ Models/GraphEquivalence.vio: Models/GraphEquivalence.v Models/GraphEquivalence.v
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 Models/GraphEquivalence.vo: Models/GraphEquivalence.v Models/GraphEquivalence.v Setting.vo Spaces/Graph.vo Spaces/Isomorphism.vo Models/ContinuousGraph.vo Models/DiscreteGraph.vo | .Makefile.d
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/GraphEquivalence'
@@ -9644,7 +9628,6 @@ CaseStudies/Exploration/Tower_Assumptions.vio: CaseStudies/Exploration/Tower_Ass
 Util/MMultiset/Preliminary.glob: Util/MMultiset/Preliminary.v Util/MMultiset/Preliminary.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/MMultiset/Preliminary'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 772):
@@ -9720,6 +9703,7 @@ CaseStudies/Gathering/InR/Algorithm.vos: CaseStudies/Gathering/InR/Algorithm.v C
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -9760,7 +9744,6 @@ Spaces/Ring.vos: Spaces/Ring.v Spaces/Ring.v Util/Coqlib.vos Core/Identifiers.vo
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
- 
 
 html: Util/FSets/FSetInterface.glob Util/FSets/FSetFacts.glob Util/FSets/FSetList.glob Util/FMaps/FMapInterface.glob Util/FMaps/FMapFacts.glob Util/FMaps/FMapList.glob Util/MMultiset/MMultisetInterface.glob Util/MMultiset/MMultisetWMap.glob Util/MMultiset/MMultisetFacts.glob Util/MMultiset/MMultisetExtraOps.glob Util/MMultiset/Preliminary.glob Util/Preliminary.glob Util/SetoidDefs.glob Util/NumberComplements.glob Util/ListComplements.glob Util/Coqlib.glob Util/Bijection.glob Util/Stream.glob Util/Lexprod.glob Util/Ratio.glob Core/Identifiers.glob Core/State.glob Core/Configuration.glob Core/Formalism.glob Setting.glob Models/NoByzantine.glob Models/Flexible.glob Models/Rigid.glob Models/RigidFlexibleEquivalence.glob Models/RigidFlexibleEquivalence_Assumptions.glob Models/DiscreteGraph.glob Models/Similarity.glob Models/ContinuousGraph.glob Models/GraphEquivalence.glob Spaces/RealVectorSpace.glob Spaces/RealMetricSpace.glob Spaces/RealNormedSpace.glob Spaces/EuclideanSpace.glob Spaces/Similarity.glob Spaces/R.glob Spaces/R2.glob Spaces/Graph.glob Spaces/Isomorphism.glob Spaces/Ring.glob Spaces/Grid.glob Observations/Definition.glob Observations/MultisetObservation.glob Observations/SetObservation.glob Observations/LimitedSetObservation.glob Observations/LimitedMultisetObservation.glob Observations/PointedObservation.glob Observations/PreCompositionObservation.glob CaseStudies/Convergence/Impossibility_2G_1B.glob CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.glob CaseStudies/Convergence/Algorithm_noB.glob CaseStudies/Gathering/Definitions.glob CaseStudies/Gathering/WithMultiplicity.glob CaseStudies/Gathering/Impossibility.glob CaseStudies/Gathering/Impossibility_Assumptions.glob CaseStudies/Gathering/InR/Impossibility.glob CaseStudies/Gathering/InR/Impossibility_Assumptions.glob CaseStudies/Gathering/InR/Algorithm.glob CaseStudies/Gathering/InR/Algorithm_Assumptions.glob CaseStudies/Gathering/InR2/Algorithm.glob CaseStudies/Gathering/InR2/Algorithm_Assumptions.glob CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.glob CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.glob CaseStudies/Gathering/InR2/Peleg.glob CaseStudies/Gathering/InR2/Peleg_Assumptions.glob CaseStudies/Gathering/InR2/Viglietta.glob CaseStudies/Gathering/InR2/Viglietta_Assumptions.glob CaseStudies/Gathering/InR2/Weber/Weber_point.glob CaseStudies/Exploration/Definitions.glob CaseStudies/Exploration/ImpossibilityKDividesN.glob CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.glob CaseStudies/Exploration/Tower.glob CaseStudies/Exploration/Tower_Assumptions.glob CaseStudies/Volumes/NoCollisionAndPath.glob Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.v Util/Preliminary.v Util/SetoidDefs.v Util/NumberComplements.v Util/ListComplements.v Util/Coqlib.v Util/Bijection.v Util/Stream.v Util/Lexprod.v Util/Ratio.v Core/Identifiers.v Core/State.v Core/Configuration.v Core/Formalism.v Setting.v Models/NoByzantine.v Models/Flexible.v Models/Rigid.v Models/RigidFlexibleEquivalence.v Models/RigidFlexibleEquivalence_Assumptions.v Models/DiscreteGraph.v Models/Similarity.v Models/ContinuousGraph.v Models/GraphEquivalence.v Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v Spaces/Ring.v Spaces/Grid.v Observations/Definition.v Observations/MultisetObservation.v Observations/SetObservation.v Observations/LimitedSetObservation.v Observations/LimitedMultisetObservation.v Observations/PointedObservation.v Observations/PreCompositionObservation.v CaseStudies/Convergence/Impossibility_2G_1B.v CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Algorithm_noB.v CaseStudies/Gathering/Definitions.v CaseStudies/Gathering/WithMultiplicity.v CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility.v CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/Algorithm.v CaseStudies/Gathering/InR2/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta_Assumptions.v CaseStudies/Gathering/InR2/Weber/Weber_point.v CaseStudies/Exploration/Definitions.v CaseStudies/Exploration/ImpossibilityKDividesN.v CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v CaseStudies/Exploration/Tower.v CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Volumes/NoCollisionAndPath.v
 #  Implicit rule search has not been done.
@@ -9862,7 +9845,6 @@ Util/FSets/FSetFacts.v.timing.diff: Util/FSets/FSetFacts.v.before-timing Util/FS
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
- 
 Util/NumberComplements.v.beautified: Util/NumberComplements.v Util/NumberComplements.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/NumberComplements'
@@ -9874,6 +9856,7 @@ Util/NumberComplements.v.beautified: Util/NumberComplements.v Util/NumberComplem
 
 # Not a target:
 Util/NumberComplements.v.after-timing:
+ 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -10041,6 +10024,7 @@ Util/MMultiset/MMultisetInterface.required_vo: Util/MMultiset/MMultisetInterface
 #  File has not been updated.
 
 Util/MMultiset/MMultisetExtraOps.required_vos: Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.vos Util/MMultiset/MMultisetInterface.vos Util/MMultiset/MMultisetFacts.vos
+ 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -10051,7 +10035,6 @@ printenv::
 #  File does not exist.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 869):
- 
 	$(warning printenv is deprecated)
 	$(warning write extensions in Makefile.local or include Makefile.conf)
 	@echo 'COQLIB = $(COQLIB)'
@@ -10166,7 +10149,6 @@ CaseStudies/Gathering/InR2/Peleg.vio: CaseStudies/Gathering/InR2/Peleg.v CaseStu
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 Observations/MultisetObservation.vo: Observations/MultisetObservation.v Observations/MultisetObservation.v Util/FMaps/FMapList.vo Util/MMultiset/MMultisetWMap.vo Util/MMultiset/MMultisetInterface.vo Util/MMultiset/MMultisetFacts.vo Util/MMultiset/MMultisetExtraOps.vo Util/Coqlib.vo Core/Identifiers.vo Core/State.vo Core/Configuration.vo Observations/Definition.vo | .Makefile.d
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/MultisetObservation'
@@ -10197,6 +10179,7 @@ beautify: Util/FSets/FSetInterface.v.beautified Util/FSets/FSetFacts.v.beautifie
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.glob: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -10243,7 +10226,6 @@ Util/MMultiset/MMultisetFacts.tex: Util/MMultiset/MMultisetFacts.v
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
- 
 Util/Stream.v.beautified: Util/Stream.v Util/Stream.v Util/Coqlib.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/Stream'
@@ -10335,7 +10317,6 @@ CaseStudies/Gathering/InR2/Algorithm_Assumptions.v:
 
 CaseStudies/Gathering/InR2/Algorithm.g.tex: CaseStudies/Gathering/InR2/Algorithm.v
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Algorithm'
 #  Modification time never checked.
 #  File has not been updated.
@@ -10382,6 +10363,7 @@ CaseStudies/Gathering/Impossibility_Assumptions.v:
 #  Last modified 2022-06-09 10:42:34.400710659
 #  File has been updated.
 #  Successfully updated.
+ 
 
 Spaces/RealNormedSpace.v.timing.diff: Spaces/RealNormedSpace.v.before-timing Spaces/RealNormedSpace.v.after-timing
 #  Implicit rule search has not been done.
@@ -10434,7 +10416,6 @@ CaseStudies/Gathering/Definitions.glob: CaseStudies/Gathering/Definitions.v Case
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Definitions'
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -10562,6 +10543,7 @@ Core/Formalism.g.tex: Core/Formalism.v
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
+ 
 CaseStudies/Exploration/Tower_Assumptions.required_vos: CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Exploration/Tower.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -10581,7 +10563,6 @@ CaseStudies/Gathering/Impossibility_Assumptions.vo: CaseStudies/Gathering/Imposs
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Impossibility_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
@@ -10862,12 +10843,12 @@ CaseStudies/Convergence/Algorithm_noB.vo: CaseStudies/Convergence/Algorithm_noB.
 
 Util/FSets/FSetInterface.g.tex: Util/FSets/FSetInterface.v
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Util/FSets/FSetInterface'
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
+ 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
 Core/Identifiers.v.beautified: Core/Identifiers.v Core/Identifiers.v Util/Coqlib.vo
@@ -11169,6 +11150,7 @@ CaseStudies/Gathering/InR2/Weber/Weber_point.g.html: CaseStudies/Gathering/InR2/
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
 uninstall::
+ 
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
@@ -11194,7 +11176,6 @@ Models/DiscreteGraph.g.tex: Models/DiscreteGraph.v
 
 # Not a target:
 CaseStudies/Gathering/InR/Algorithm_Assumptions.v.before-timing:
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -11247,18 +11228,18 @@ Spaces/Similarity.g.tex: Spaces/Similarity.v
 # strcache performance: lookups = 7309 / hit rate = 80%
 # hash-table stats:
 # Load=1403/8192=17%, Rehash=0, Collisions=471/7309=6%
-# Finished Make data base on Fri Jun 17 15:26:38 2022
+# Finished Make data base on Mon Jun 20 11:15:50 2022
 
  
 # GNU Make 4.2.1
- 
 # Built for x86_64-pc-linux-gnu
 # Copyright (C) 1988-2016 Free Software Foundation, Inc.
 # License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+ 
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Fri Jun 17 15:26:38 2022
+# Make data base, printed on Mon Jun 20 11:15:50 2022
 
 # Variables
 
@@ -11289,6 +11270,7 @@ XDG_SESSION_CLASS = user
 # makefile (from 'Makefile', line 36)
 COQLIBS_NOML := -Q . Pactole 
 # makefile (from 'Makefile', line 271)
+ 
 CAMLDOCFLAGS := -thread -rectypes -w -a+1..3-4+5..8-9+10..26-27+28..40-41-42+43-44-45+46..47-48+49..57-58+59..66-67-68+69-70 -safe-string -strict-sequence -I "/home/mathis/.opam/default/lib/coq/../coq-core//boot" -I "/home/mathis/.opam/default/lib/coq/../coq-core//config" -I "/home/mathis/.opam/default/lib/coq/../coq-core//lib" -I "/home/mathis/.opam/default/lib/coq/../coq-core//clib" -I "/home/mathis/.opam/default/lib/coq/../coq-core//kernel" -I "/home/mathis/.opam/default/lib/coq/../coq-core//library" -I "/home/mathis/.opam/default/lib/coq/../coq-core//engine" -I "/home/mathis/.opam/default/lib/coq/../coq-core//pretyping" -I "/home/mathis/.opam/default/lib/coq/../coq-core//interp" -I "/home/mathis/.opam/default/lib/coq/../coq-core//gramlib" -I "/home/mathis/.opam/default/lib/coq/../coq-core//parsing" -I "/home/mathis/.opam/default/lib/coq/../coq-core//proofs" -I "/home/mathis/.opam/default/lib/coq/../coq-core//tactics" -I "/home/mathis/.opam/default/lib/coq/../coq-core//toplevel" -I "/home/mathis/.opam/default/lib/coq/../coq-core//printing" -I "/home/mathis/.opam/default/lib/coq/../coq-core//ide" -I "/home/mathis/.opam/default/lib/coq/../coq-core//stm" -I "/home/mathis/.opam/default/lib/coq/../coq-core//vernac" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/btauto" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/cc" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/derive" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/extraction" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/firstorder" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/funind" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/ltac" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/ltac2" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/micromega" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/nsatz" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/ring" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/rtauto" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/ssr" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/ssrmatching" -I "/home/mathis/.opam/default/lib/coq/../coq-core//plugins/syntax"
 # environment
 SNAP_COMMON = /var/snap/code/common
@@ -11317,7 +11299,6 @@ COQCORE_SRC_SUBDIRS := boot config lib clib kernel library engine pretyping inte
 # makefile
 CURDIR := /home/mathis/src/pactole-stage
 # makefile
- 
 SHELL = /bin/sh
 # environment
 SNAP_DATA = /var/snap/code/99
@@ -11358,6 +11339,7 @@ COQCHKFLAGS = -silent -o $(COQCHKEXTRAFLAGS)
 # makefile (from 'Makefile', line 328)
 OFILES = $(CMXFILES:.cmx=.o)
 # makefile (from 'Makefile.conf', line 46)
+ 
 COQMF_WINDRIVE = 
 # makefile (from 'Makefile', line 90)
 STDTIME = command time -f $(TIMEFMT)
@@ -11434,13 +11416,14 @@ COQMF_VFILES = Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSet
 # makefile (from 'Makefile.conf', line 44)
 COQMF_COQ_SRC_SUBDIRS = boot config lib clib kernel library engine pretyping interp gramlib parsing proofs tactics toplevel printing ide stm vernac plugins/btauto plugins/cc plugins/derive plugins/extraction plugins/firstorder plugins/funind plugins/ltac plugins/ltac2 plugins/micromega plugins/nsatz plugins/ring plugins/rtauto plugins/ssr plugins/ssrmatching plugins/syntax
 # environment
-SESSION_MANAGER = local/mathis-MS-7C56:@/tmp/.ICE-unix/1357,unix/mathis-MS-7C56:/tmp/.ICE-unix/1357
+SESSION_MANAGER = local/mathis-MS-7C56:@/tmp/.ICE-unix/1366,unix/mathis-MS-7C56:/tmp/.ICE-unix/1366
 # makefile (from 'Makefile', line 30)
 INSTALLCOQDOCROOT := Pactole
 # environment
 XDG_RUNTIME_DIR = /run/user/1000
 # makefile (from 'Makefile', line 107)
 COQMKFILE = "$(COQBIN)coq_makefile"
+ 
 # environment
 GDK_PIXBUF_MODULE_FILE = /home/mathis/snap/code/common/.cache/gdk-pixbuf-loaders.cache
 # makefile (from 'Makefile', line 223)
@@ -11456,7 +11439,6 @@ strip_dotslash = $(patsubst ./%,%,$(1))
 # makefile (from 'Makefile', line 114)
 BEFORE = 
 # makefile (from 'Makefile', line 139)
- 
 TIMING = 
 # environment
 SNAP_VERSION = 30d9c6cd
@@ -11499,9 +11481,10 @@ VFILES := Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.
 # makefile (from 'Makefile.conf', line 16)
 COQMF_MLLIBFILES = 
 # environment
+ 
 XDG_SESSION_DESKTOP = KDE
 # environment
-SSH_AUTH_SOCK = /tmp/ssh-i8xldi8YIpqc/agent.1243
+SSH_AUTH_SOCK = /tmp/ssh-YL3HSU8y3tgA/agent.1263
 # makefile (from 'Makefile.conf', line 26)
 COQMF_SRC_SUBDIRS = 
 # automatic
@@ -11545,7 +11528,7 @@ TIMING_SORT_BY_MEM =
 # environment
 XDG_SEAT = seat0
 # environment
-SSH_AGENT_PID = 1289
+SSH_AGENT_PID = 1308
 # makefile (from 'Makefile', line 260)
 COQMAKEFILE_VERSION := 8.15.1
 # environment
@@ -11567,6 +11550,7 @@ CAMLDEBUG =
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
+ 
 HOME = /home/mathis
 # makefile (from 'Makefile', line 102)
 COQCHK = "$(COQBIN)coqchk"
@@ -11598,7 +11582,6 @@ SNAP_CONTEXT = KzcuQuNT4mQa55dHzjXl9mU1NTmmIfpryc2-mscb7R37vc1PsLjA
 KEEP_ERROR = 
 # makefile (from 'Makefile', line 173)
 COQTOPINSTALL = $(call destination_path,$(COQLIB)/toploop) 
- 
 # environment
 KDE_FULL_SESSION = true
 # environment
@@ -11656,7 +11639,8 @@ COQMF_OCAMLLIBS =
 # makefile (from 'Makefile.conf', line 63)
 COQMF_INSTALLCOQDOCROOT = Pactole
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-1796e331-aa07-48e7-943e-cb7ab2b2ca70.sock
+ 
+VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-c53e5c2c-231b-4e5c-9c09-69e175152a2b.sock
 # environment
 XDG_SESSION_ID = 3
 # environment
@@ -11728,6 +11712,7 @@ COQMF_MLFILES =
 # makefile
 MAKEFLAGS = pqrR
 # makefile (from 'Makefile.conf', line 38)
+ 
 COQMF_COQCORELIB = /home/mathis/.opam/default/lib/coq/../coq-core/
 # makefile (from 'Makefile', line 822)
 redir_if_ok = > "$@" || ( RV=$$?; rm -f "$@"; exit $$RV )
@@ -11763,7 +11748,6 @@ LIBEDFILES = $(call strip_dotslash, $(foreach lib, $(call strip_dotslash, $(MLLI
 COQEXTRAFLAGS = -set "Suggest Proof Using=yes"
 # environment
 QT_ACCESSIBILITY = 1
- 
 # makefile (from 'Makefile', line 41)
 OCAMLFIND := /home/mathis/.opam/default/bin/ocamlfind
 # makefile (from 'Makefile', line 31)
@@ -11786,6 +11770,7 @@ LC_NUMERIC = fr_FR.UTF-8
 VDFILE_FLAGS := -f _CoqProject  
 # automatic
 <F = $(notdir $<)
+ 
 # makefile (from 'Makefile', line 167)
 windrive_path = $(if $(COQMF_WINDRIVE),$(subst $(COQMF_WINDRIVE),/,$(1)),$(1))
 # makefile (from 'Makefile', line 321)
@@ -11857,11 +11842,12 @@ LANG = C
 # makefile (from 'Makefile', line 25)
 MLFILES := 
 # environment
-VSCODE_PID = 57997
+VSCODE_PID = 1614
 # environment
 KDE_SESSION_UID = 1000
 # variable set hash-table stats:
 # Load=297/1024=29%, Rehash=0, Collisions=121/635=19%
+ 
 
 # Pattern-specific Variable Values
 
@@ -11897,7 +11883,6 @@ CaseStudies/Exploration/Definitions.html: CaseStudies/Exploration/Definitions.v 
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
 
- 
 Observations/LimitedSetObservation.vok: Observations/LimitedSetObservation.v Observations/LimitedSetObservation.v Util/FSets/FSetInterface.vos Util/FSets/FSetFacts.vos Util/Coqlib.vos Core/Identifiers.vos Core/State.vos Core/Configuration.vos Observations/Definition.vos Spaces/RealMetricSpace.vos Spaces/Similarity.vos Observations/SetObservation.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/LimitedSetObservation'
@@ -11934,6 +11919,7 @@ Models/DiscreteGraph.v.before-timing:
 Util/MMultiset/MMultisetWMap.required_vos: Util/MMultiset/MMultisetWMap.v Util/FMaps/FMapInterface.vos Util/FMaps/FMapFacts.vos Util/MMultiset/Preliminary.vos Util/MMultiset/MMultisetInterface.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
+ 
 #  File has not been updated.
 
 # Not a target:
@@ -12016,6 +12002,7 @@ Spaces/R.g.html: Spaces/R.v Spaces/R.glob
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
+ 
 Spaces/Isomorphism.required_vo: Spaces/Isomorphism.v Util/Coqlib.vo Util/Bijection.vo Core/Configuration.vo Spaces/Graph.vo
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -12052,7 +12039,6 @@ Spaces/Similarity.tex: Spaces/Similarity.v
 
 Spaces/Grid.vo: Spaces/Grid.v Spaces/Grid.v Util/Coqlib.vo Spaces/Graph.vo Util/Bijection.vo Core/State.vo Core/Formalism.vo | .Makefile.d
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Spaces/Grid'
 #  Modification time never checked.
 #  File has not been updated.
@@ -12109,6 +12095,7 @@ Models/ContinuousGraph.g.tex: Models/ContinuousGraph.v
 #  Implicit/static pattern stem: 'Models/ContinuousGraph'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
@@ -12192,6 +12179,7 @@ Util/ListComplements.v.beautified: Util/ListComplements.v Util/ListComplements.v
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
 # Not a target:
+ 
 Models/ContinuousGraph.v.before-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -12214,7 +12202,6 @@ Util/FSets/FSetInterface.v.timing.diff: Util/FSets/FSetInterface.v.before-timing
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
- 
 CaseStudies/Gathering/InR2/Algorithm_Assumptions.html: CaseStudies/Gathering/InR2/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/Algorithm_Assumptions.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Algorithm_Assumptions'
@@ -12275,6 +12262,7 @@ Util/MMultiset/MMultisetExtraOps.vos: Util/MMultiset/MMultisetExtraOps.v Util/MM
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 CaseStudies/Gathering/InR/Algorithm.g.tex: CaseStudies/Gathering/InR/Algorithm.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm'
@@ -12368,6 +12356,7 @@ CaseStudies/Volumes/NoCollisionAndPath.v.timing.diff: CaseStudies/Volumes/NoColl
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
+ 
 CaseStudies/Gathering/InR2/Peleg.glob: CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg.v Setting.vo Models/Flexible.vo Models/NoByzantine.vo Observations/MultisetObservation.vo Spaces/R2.vo CaseStudies/Gathering/WithMultiplicity.vo CaseStudies/Gathering/Definitions.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Peleg'
@@ -12376,7 +12365,6 @@ CaseStudies/Gathering/InR2/Peleg.glob: CaseStudies/Gathering/InR2/Peleg.v CaseSt
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 Spaces/RealVectorSpace.g.tex: Spaces/RealVectorSpace.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/RealVectorSpace'
@@ -12456,6 +12444,7 @@ Spaces/R.vok: Spaces/R.v Spaces/R.v Util/Coqlib.vos Util/Bijection.vos Spaces/Eu
 bytefiles:
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
+ 
 #  File does not exist.
 #  File has not been updated.
 
@@ -12543,10 +12532,10 @@ Spaces/RealVectorSpace.g.html: Spaces/RealVectorSpace.v Spaces/RealVectorSpace.g
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
- 
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
+ 
 # Not a target:
 Spaces/R.v:
 #  Implicit rule search has been done.
@@ -12702,7 +12691,6 @@ all.pdf: Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v
 		-toc $(COQDOCFLAGS) -pdf $(GAL) $(COQDOCLIBS) \
 		-o $@ `$(COQDEP) -sort $(VFILES)`
 
- 
 CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.required_vo: CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v CaseStudies/Exploration/ImpossibilityKDividesN.vo
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -12751,6 +12739,7 @@ Spaces/Ring.glob: Spaces/Ring.v Spaces/Ring.v Util/Coqlib.vo Core/Identifiers.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/Ring'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -12787,7 +12776,7 @@ Core/State.vo: Core/State.v Core/State.v Util/Coqlib.vo Util/Bijection.vo Core/I
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-06-17 15:26:38.565007134
+#  Last modified 2022-06-20 11:15:50.162712735
 #  File has been updated.
 #  Successfully updated.
 
@@ -12881,7 +12870,6 @@ CaseStudies/Gathering/WithMultiplicity.vo: CaseStudies/Gathering/WithMultiplicit
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
 
- 
 Setting.required_vos: Setting.v Util/Coqlib.vos Util/Ratio.vos Util/Stream.vos Util/Lexprod.vos Core/Identifiers.vos Core/State.vos Core/Configuration.vos Observations/Definition.vos Core/Formalism.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -12892,6 +12880,7 @@ Observations/PointedObservation.vok: Observations/PointedObservation.v Observati
 #  Implicit/static pattern stem: 'Observations/PointedObservation'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -12994,6 +12983,7 @@ Util/Lexprod.g.html: Util/Lexprod.v Util/Lexprod.glob
 #  Implicit/static pattern stem: 'Util/Lexprod'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
@@ -13054,7 +13044,6 @@ CaseStudies/Volumes/NoCollisionAndPath.tex: CaseStudies/Volumes/NoCollisionAndPa
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
- 
 Spaces/Grid.g.html: Spaces/Grid.v Spaces/Grid.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/Grid'
@@ -13085,6 +13074,7 @@ CaseStudies/Gathering/InR/Algorithm_Assumptions.v.beautified: CaseStudies/Gather
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
+ 
 # Not a target:
 CaseStudies/Gathering/InR/Algorithm_Assumptions.v.after-timing:
 #  Implicit rule search has not been done.
@@ -13178,6 +13168,7 @@ Util/Lexprod.vok: Util/Lexprod.v Util/Lexprod.v
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 # Not a target:
 Models/DiscreteGraph.v.after-timing:
 #  Implicit rule search has not been done.
@@ -13235,7 +13226,6 @@ Spaces/Similarity.v.beautified: Spaces/Similarity.v Spaces/Similarity.v Util/Coq
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
- 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -13262,6 +13252,7 @@ Models/RigidFlexibleEquivalence.vok: Models/RigidFlexibleEquivalence.v Models/Ri
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/RigidFlexibleEquivalence'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
@@ -13358,6 +13349,7 @@ Models/DiscreteGraph.v.beautified: Models/DiscreteGraph.v Models/DiscreteGraph.v
 # Not a target:
 CaseStudies/Exploration/Definitions.v.before-timing:
 #  Implicit rule search has not been done.
+ 
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -13423,7 +13415,6 @@ Observations/PointedObservation.tex: Observations/PointedObservation.v
 
 Util/MMultiset/MMultisetInterface.vos: Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/Preliminary.vos
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetInterface'
 #  Modification time never checked.
 #  File has not been updated.
@@ -13450,6 +13441,7 @@ Models/ContinuousGraph.v.beautified: Models/ContinuousGraph.v Models/ContinuousG
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/ContinuousGraph'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
@@ -13538,6 +13530,7 @@ CaseStudies/Gathering/Definitions.v.timing.diff: CaseStudies/Gathering/Definitio
 Observations/Definition.g.html: Observations/Definition.v Observations/Definition.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/Definition'
+ 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
@@ -13611,7 +13604,6 @@ Observations/LimitedMultisetObservation.glob: Observations/LimitedMultisetObserv
 CaseStudies/Gathering/Impossibility_Assumptions.g.tex: CaseStudies/Gathering/Impossibility_Assumptions.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Impossibility_Assumptions'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
@@ -13692,6 +13684,7 @@ Util/FSets/FSetInterface.vos: Util/FSets/FSetInterface.v Util/FSets/FSetInterfac
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 Models/Rigid.vio: Models/Rigid.v Models/Rigid.v Util/Preliminary.vio Setting.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/Rigid'
@@ -13794,7 +13787,6 @@ Models/Similarity.required_vo: Models/Similarity.v Setting.vo Spaces/RealMetricS
 CaseStudies/Gathering/InR2/Peleg_Assumptions.vok: CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Peleg.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Peleg_Assumptions'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
@@ -13809,6 +13801,7 @@ Models/Similarity.vio: Models/Similarity.v Models/Similarity.v Setting.vio Space
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
+ 
 
 validate: Util/FSets/FSetInterface.vo Util/FSets/FSetFacts.vo Util/FSets/FSetList.vo Util/FMaps/FMapInterface.vo Util/FMaps/FMapFacts.vo Util/FMaps/FMapList.vo Util/MMultiset/MMultisetInterface.vo Util/MMultiset/MMultisetWMap.vo Util/MMultiset/MMultisetFacts.vo Util/MMultiset/MMultisetExtraOps.vo Util/MMultiset/Preliminary.vo Util/Preliminary.vo Util/SetoidDefs.vo Util/NumberComplements.vo Util/ListComplements.vo Util/Coqlib.vo Util/Bijection.vo Util/Stream.vo Util/Lexprod.vo Util/Ratio.vo Core/Identifiers.vo Core/State.vo Core/Configuration.vo Core/Formalism.vo Setting.vo Models/NoByzantine.vo Models/Flexible.vo Models/Rigid.vo Models/RigidFlexibleEquivalence.vo Models/RigidFlexibleEquivalence_Assumptions.vo Models/DiscreteGraph.vo Models/Similarity.vo Models/ContinuousGraph.vo Models/GraphEquivalence.vo Spaces/RealVectorSpace.vo Spaces/RealMetricSpace.vo Spaces/RealNormedSpace.vo Spaces/EuclideanSpace.vo Spaces/Similarity.vo Spaces/R.vo Spaces/R2.vo Spaces/Graph.vo Spaces/Isomorphism.vo Spaces/Ring.vo Spaces/Grid.vo Observations/Definition.vo Observations/MultisetObservation.vo Observations/SetObservation.vo Observations/LimitedSetObservation.vo Observations/LimitedMultisetObservation.vo Observations/PointedObservation.vo Observations/PreCompositionObservation.vo CaseStudies/Convergence/Impossibility_2G_1B.vo CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.vo CaseStudies/Convergence/Algorithm_noB.vo CaseStudies/Gathering/Definitions.vo CaseStudies/Gathering/WithMultiplicity.vo CaseStudies/Gathering/Impossibility.vo CaseStudies/Gathering/Impossibility_Assumptions.vo CaseStudies/Gathering/InR/Impossibility.vo CaseStudies/Gathering/InR/Impossibility_Assumptions.vo CaseStudies/Gathering/InR/Algorithm.vo CaseStudies/Gathering/InR/Algorithm_Assumptions.vo CaseStudies/Gathering/InR2/Algorithm.vo CaseStudies/Gathering/InR2/Algorithm_Assumptions.vo CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vo CaseStudies/Gathering/InR2/Peleg.vo CaseStudies/Gathering/InR2/Peleg_Assumptions.vo CaseStudies/Gathering/InR2/Viglietta.vo CaseStudies/Gathering/InR2/Viglietta_Assumptions.vo CaseStudies/Gathering/InR2/Weber/Weber_point.vo CaseStudies/Exploration/Definitions.vo CaseStudies/Exploration/ImpossibilityKDividesN.vo CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.vo CaseStudies/Exploration/Tower.vo CaseStudies/Exploration/Tower_Assumptions.vo CaseStudies/Volumes/NoCollisionAndPath.vo
 #  Phony target (prerequisite of .PHONY).
@@ -13905,6 +13898,7 @@ Spaces/R.html: Spaces/R.v Spaces/R.glob
 #  Implicit/static pattern stem: 'Spaces/R'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 803):
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
@@ -13964,7 +13958,6 @@ CaseStudies/Gathering/InR/Algorithm_Assumptions.vos: CaseStudies/Gathering/InR/A
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
- 
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -14017,6 +14010,7 @@ Observations/MultisetObservation.required_vo: Observations/MultisetObservation.v
 
 CaseStudies/Gathering/Definitions.v.beautified: CaseStudies/Gathering/Definitions.v CaseStudies/Gathering/Definitions.v Util/Preliminary.vo Setting.vo Spaces/RealMetricSpace.vo Spaces/Similarity.vo Models/Similarity.vo
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Definitions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -14120,6 +14114,7 @@ Util/MMultiset/MMultisetInterface.vio: Util/MMultiset/MMultisetInterface.v Util/
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
+ 
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -14150,7 +14145,6 @@ Spaces/Graph.v:
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.g.html: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.glob
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -14225,6 +14219,7 @@ Util/FMaps/FMapList.html: Util/FMaps/FMapList.v Util/FMaps/FMapList.glob
 #  Implicit/static pattern stem: 'Util/FMaps/FMapList'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 803):
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
@@ -14329,6 +14324,7 @@ Spaces/EuclideanSpace.vo: Spaces/EuclideanSpace.v Spaces/EuclideanSpace.v Util/C
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 763):
+ 
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
 
@@ -14352,7 +14348,6 @@ Util/FSets/FSetInterface.vio: Util/FSets/FSetInterface.v Util/FSets/FSetInterfac
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/FSets/FSetInterface'
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
@@ -14427,6 +14422,7 @@ Util/FMaps/FMapInterface.vok: Util/FMaps/FMapInterface.v Util/FMaps/FMapInterfac
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
+ 
 
 CaseStudies/Gathering/InR/Impossibility_Assumptions.v.beautified: CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility.vo
 #  Implicit rule search has not been done.
@@ -14527,10 +14523,10 @@ CaseStudies/Gathering/InR/Impossibility_Assumptions.tex: CaseStudies/Gathering/I
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 795):
 	$(SHOW)'COQDOC -latex $<'
- 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
 Util/FSets/FSetInterface.vo: Util/FSets/FSetInterface.v Util/FSets/FSetInterface.v | .Makefile.d
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/FSets/FSetInterface'
 #  Modification time never checked.
@@ -14640,6 +14636,7 @@ Models/NoByzantine.vok: Models/NoByzantine.v Models/NoByzantine.v Core/Identifie
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
+ 
 
 archclean::
 #  Phony target (prerequisite of .PHONY).
@@ -14698,7 +14695,6 @@ Core/Formalism.g.html: Core/Formalism.v Core/Formalism.glob
 
 # Not a target:
 Models/NoByzantine.v:
- 
 #  Implicit rule search has been done.
 #  Last modified 2022-06-09 10:42:34.408710694
 #  File has been updated.
@@ -14751,6 +14747,7 @@ Spaces/RealMetricSpace.g.tex: Spaces/RealMetricSpace.v
 
 CaseStudies/Exploration/Definitions.required_vos: CaseStudies/Exploration/Definitions.v Setting.vos Spaces/Ring.vos Spaces/Isomorphism.vos Observations/MultisetObservation.vos
 #  Implicit rule search has not been done.
+ 
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -14860,6 +14857,7 @@ install-doc:: html mlihtml
 	 install -m 0644 "$$i" "$$dest";\
 	 echo INSTALL "$$i" "$$dest";\
 	done
+ 
 	$(HIDE)install -d \
 		"$(COQDOCINSTALL)/$(INSTALLCOQDOCROOT)/mlihtml"
 	$(HIDE)for i in mlihtml/*; do \
@@ -14884,7 +14882,6 @@ make-pretty-timed-after::
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
- 
 # variable set hash-table stats:
 # Load=1/32=3%, Rehash=0, Collisions=0/1=0%
 #  recipe to execute (from 'Makefile', line 425):
@@ -14957,6 +14954,7 @@ real-all.timing.diff: Util/FSets/FSetInterface.v.timing.diff Util/FSets/FSetFact
 #  File does not exist.
 #  File has not been updated.
 
+ 
 Util/Preliminary.html: Util/Preliminary.v Util/Preliminary.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/Preliminary'
@@ -15034,7 +15032,6 @@ Core/Identifiers.g.html: Core/Identifiers.v Core/Identifiers.glob
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
- 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vos: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions'
@@ -15073,6 +15070,7 @@ Observations/Definition.v:
 #  Implicit rule search has been done.
 #  Last modified 2022-06-09 10:42:34.408710694
 #  File has been updated.
+ 
 #  Successfully updated.
 
 CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.g.tex: CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v
@@ -15187,6 +15185,7 @@ Models/RigidFlexibleEquivalence_Assumptions.g.tex: Models/RigidFlexibleEquivalen
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/RigidFlexibleEquivalence_Assumptions'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
@@ -15224,7 +15223,6 @@ Observations/LimitedSetObservation.v.timing.diff: Observations/LimitedSetObserva
 #  recipe to execute (from 'Makefile', line 787):
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
- 
 
 CaseStudies/Gathering/InR/Impossibility_Assumptions.vos: CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility.vos
 #  Implicit rule search has not been done.
@@ -15276,6 +15274,7 @@ CaseStudies/Gathering/Definitions.v:
 #  Successfully updated.
 
 Util/FMaps/FMapFacts.required_vos: Util/FMaps/FMapFacts.v Util/FMaps/FMapInterface.vos
+ 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -15384,12 +15383,12 @@ Models/GraphEquivalence.glob: Models/GraphEquivalence.v Models/GraphEquivalence.
 Util/FMaps/FMapList.g.tex: Util/FMaps/FMapList.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/FMaps/FMapList'
+ 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
- 
 
 Util/Ratio.g.tex: Util/Ratio.v
 #  Implicit rule search has not been done.
@@ -15500,6 +15499,7 @@ Spaces/RealNormedSpace.required_vos: Spaces/RealNormedSpace.v Util/Coqlib.vos Sp
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 # Not a target:
 Observations/PointedObservation.v.before-timing:
 #  Implicit rule search has not been done.
@@ -15574,7 +15574,6 @@ CaseStudies/Gathering/InR2/Algorithm_Assumptions.vos: CaseStudies/Gathering/InR2
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.required_vos: CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Impossibility_2G_1B.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -15607,6 +15606,7 @@ Spaces/R.required_vo: Spaces/R.v Util/Coqlib.vo Util/Bijection.vo Spaces/Euclide
 CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v.before-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
+ 
 #  File has not been updated.
 
 Util/MMultiset/MMultisetInterface.glob: Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/Preliminary.vo
@@ -15703,6 +15703,7 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vio: CaseStudies/Gathering/I
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -15743,7 +15744,6 @@ Spaces/Grid.vok: Spaces/Grid.v Spaces/Grid.v Util/Coqlib.vos Spaces/Graph.vos Ut
 # Not a target:
 CaseStudies/Exploration/Tower_Assumptions.v:
 #  Implicit rule search has been done.
- 
 #  Last modified 2022-06-09 10:42:34.396710643
 #  File has been updated.
 #  Successfully updated.
@@ -15803,6 +15803,7 @@ Core/State.v.beautified: Core/State.v Core/State.v Util/Coqlib.vo Util/Bijection
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
+ 
 # Not a target:
 Util/Lexprod.v.before-timing:
 #  Implicit rule search has not been done.
@@ -15898,6 +15899,7 @@ Core/State.tex: Core/State.v
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 795):
+ 
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
@@ -15921,7 +15923,6 @@ Util/FSets/FSetInterface.glob: Util/FSets/FSetInterface.v Util/FSets/FSetInterfa
 # Not a target:
 CaseStudies/Gathering/InR2/Peleg_Assumptions.v:
 #  Implicit rule search has been done.
- 
 #  Last modified 2022-06-09 10:42:34.404710678
 #  File has been updated.
 #  Successfully updated.
@@ -15995,6 +15996,7 @@ CaseStudies/Exploration/Definitions.vio: CaseStudies/Exploration/Definitions.v C
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
+ 
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -16084,7 +16086,6 @@ Util/FMaps/FMapFacts.vos: Util/FMaps/FMapFacts.v Util/FMaps/FMapFacts.v Util/FMa
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
- 
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 CaseStudies/Exploration/ImpossibilityKDividesN.g.tex: CaseStudies/Exploration/ImpossibilityKDividesN.v
@@ -16100,6 +16101,7 @@ Util/NumberComplements.vos: Util/NumberComplements.v Util/NumberComplements.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/NumberComplements'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
@@ -16207,6 +16209,7 @@ CaseStudies/Gathering/InR2/Peleg.vok: CaseStudies/Gathering/InR2/Peleg.v CaseStu
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 CaseStudies/Gathering/InR/Algorithm_Assumptions.glob: CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR/Algorithm.vo
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm_Assumptions'
 #  Modification time never checked.
@@ -16269,7 +16272,6 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo: CaseStudies/Gathering/In
 CaseStudies/Exploration/Tower.vok: CaseStudies/Exploration/Tower.v CaseStudies/Exploration/Tower.v Models/NoByzantine.vos CaseStudies/Exploration/Definitions.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Exploration/Tower'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
@@ -16304,6 +16306,7 @@ CaseStudies/Exploration/Tower.vo: CaseStudies/Exploration/Tower.v CaseStudies/Ex
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Exploration/Tower'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
@@ -16406,6 +16409,7 @@ CaseStudies/Gathering/InR2/Viglietta_Assumptions.v.after-timing:
 #  File has not been updated.
 
 CaseStudies/Gathering/Impossibility_Assumptions.vio: CaseStudies/Gathering/Impossibility_Assumptions.v CaseStudies/Gathering/Impossibility_Assumptions.v CaseStudies/Gathering/Impossibility.vio
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Impossibility_Assumptions'
 #  Modification time never checked.
@@ -16451,7 +16455,6 @@ Models/GraphEquivalence.required_vos: Models/GraphEquivalence.v Setting.vos Spac
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
- 
 
 Spaces/R.tex: Spaces/R.v
 #  Implicit rule search has not been done.
@@ -16513,6 +16516,7 @@ Spaces/RealVectorSpace.tex: Spaces/RealVectorSpace.v
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 795):
+ 
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
@@ -16621,8 +16625,8 @@ Util/MMultiset/MMultisetExtraOps.vo: Util/MMultiset/MMultisetExtraOps.v Util/MMu
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetExtraOps'
 #  Modification time never checked.
 #  File has not been updated.
-#  recipe to execute (from 'Makefile', line 763):
  
+#  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
 
@@ -16725,6 +16729,7 @@ Util/FMaps/FMapList.v.after-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 Util/Ratio.v.beautified: Util/Ratio.v Util/Ratio.v Util/Coqlib.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/Ratio'
@@ -16790,7 +16795,6 @@ Util/MMultiset/Preliminary.g.tex: Util/MMultiset/Preliminary.v
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
 CaseStudies/Gathering/InR/Algorithm.glob: CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Algorithm.v Setting.vo Spaces/R.vo CaseStudies/Gathering/WithMultiplicity.vo CaseStudies/Gathering/Definitions.vo Observations/MultisetObservation.vo Models/Similarity.vo Models/Rigid.vo Models/NoByzantine.vo
- 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm'
 #  Modification time never checked.
@@ -16830,6 +16834,7 @@ Util/Ratio.tex: Util/Ratio.v
 #  Implicit/static pattern stem: 'Util/Ratio'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 795):
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
@@ -16936,6 +16941,7 @@ Util/Stream.tex: Util/Stream.v
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 795):
 	$(SHOW)'COQDOC -latex $<'
+ 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
 CaseStudies/Gathering/InR2/Viglietta.v.beautified: CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta.v Setting.vo Spaces/R.vo Spaces/R2.vo Models/Similarity.vo Models/NoByzantine.vo CaseStudies/Gathering/Definitions.vo
@@ -16975,7 +16981,6 @@ Observations/PreCompositionObservation.g.html: Observations/PreCompositionObserv
 
 CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.tex: CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -17039,6 +17044,7 @@ Util/Lexprod.v.after-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
+ 
 
 CaseStudies/Gathering/InR2/Viglietta.tex: CaseStudies/Gathering/InR2/Viglietta.v
 #  Implicit rule search has not been done.
@@ -17140,6 +17146,7 @@ CaseStudies/Exploration/Tower_Assumptions.html: CaseStudies/Exploration/Tower_As
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
 
+ 
 quick: vio
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
@@ -17153,7 +17160,6 @@ Observations/SetObservation.v.beautified: Observations/SetObservation.v Observat
 #  Implicit/static pattern stem: 'Observations/SetObservation'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
@@ -17256,6 +17262,7 @@ Spaces/Graph.required_vo: Spaces/Graph.v Util/Coqlib.vo Core/Identifiers.vo
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 Spaces/R.vos: Spaces/R.v Spaces/R.v Util/Coqlib.vos Util/Bijection.vos Spaces/EuclideanSpace.vos Spaces/Similarity.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/R'
@@ -17303,7 +17310,6 @@ install:
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 574):
 	$(HIDE)code=0; for f in $(FILESTOINSTALL); do\
 	 if ! [ -f "$$f" ]; then >&2 echo $$f does not exist; code=1; fi \
@@ -17345,13 +17351,14 @@ Models/NoByzantine.g.tex: Models/NoByzantine.v
 
 Makefile.conf: _CoqProject
 #  Implicit rule search has not been done.
-#  Last modified 2022-06-17 15:26:38.565007134
+#  Last modified 2022-06-20 11:15:50.162712735
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 47):
 	coq_makefile -f _CoqProject -o Makefile
 
 # Not a target:
+ 
 Models/Similarity.v.after-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -17373,7 +17380,7 @@ Util/Stream.html: Util/Stream.v Util/Stream.glob
 
 .Makefile.d: _CoqProject Util/FSets/FSetInterface.v Util/FSets/FSetFacts.v Util/FSets/FSetList.v Util/FMaps/FMapInterface.v Util/FMaps/FMapFacts.v Util/FMaps/FMapList.v Util/MMultiset/MMultisetInterface.v Util/MMultiset/MMultisetWMap.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.v Util/Preliminary.v Util/SetoidDefs.v Util/NumberComplements.v Util/ListComplements.v Util/Coqlib.v Util/Bijection.v Util/Stream.v Util/Lexprod.v Util/Ratio.v Core/Identifiers.v Core/State.v Core/Configuration.v Core/Formalism.v Setting.v Models/NoByzantine.v Models/Flexible.v Models/Rigid.v Models/RigidFlexibleEquivalence.v Models/RigidFlexibleEquivalence_Assumptions.v Models/DiscreteGraph.v Models/Similarity.v Models/ContinuousGraph.v Models/GraphEquivalence.v Spaces/RealVectorSpace.v Spaces/RealMetricSpace.v Spaces/RealNormedSpace.v Spaces/EuclideanSpace.v Spaces/Similarity.v Spaces/R.v Spaces/R2.v Spaces/Graph.v Spaces/Isomorphism.v Spaces/Ring.v Spaces/Grid.v Observations/Definition.v Observations/MultisetObservation.v Observations/SetObservation.v Observations/LimitedSetObservation.v Observations/LimitedMultisetObservation.v Observations/PointedObservation.v Observations/PreCompositionObservation.v CaseStudies/Convergence/Impossibility_2G_1B.v CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.v CaseStudies/Convergence/Algorithm_noB.v CaseStudies/Gathering/Definitions.v CaseStudies/Gathering/WithMultiplicity.v CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Impossibility.v CaseStudies/Gathering/InR/Impossibility_Assumptions.v CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/Algorithm.v CaseStudies/Gathering/InR2/Algorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta_Assumptions.v CaseStudies/Gathering/InR2/Weber/Weber_point.v CaseStudies/Exploration/Definitions.v CaseStudies/Exploration/ImpossibilityKDividesN.v CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.v CaseStudies/Exploration/Tower.v CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Volumes/NoCollisionAndPath.v
 #  Implicit rule search has not been done.
-#  Last modified 2022-06-17 15:26:38.561007163
+#  Last modified 2022-06-20 11:15:50.158712735
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 853):
@@ -17448,6 +17455,7 @@ Util/Bijection.vos: Util/Bijection.v Util/Bijection.v Util/Coqlib.vos
 
 # Not a target:
 CaseStudies/Gathering/Impossibility.v.after-timing:
+ 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -17486,7 +17494,6 @@ Util/MMultiset/Preliminary.v.timing.diff: Util/MMultiset/Preliminary.v.before-ti
 #  Implicit/static pattern stem: 'Util/MMultiset/Preliminary.v'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 787):
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
@@ -17567,6 +17574,7 @@ Util/FMaps/FMapList.vos: Util/FMaps/FMapList.v Util/FMaps/FMapList.v Util/Coqlib
 Util/Ratio.vos: Util/Ratio.v Util/Ratio.v Util/Coqlib.vos
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/Ratio'
+ 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
@@ -17672,9 +17680,9 @@ Util/Stream.vos: Util/Stream.v Util/Stream.v Util/Coqlib.vos
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 # Not a target:
- 
 Util/ListComplements.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 10:42:34.408710694
 #  File has been updated.
 #  Successfully updated.
@@ -17780,6 +17788,7 @@ Observations/Definition.v.before-timing:
 Models/GraphEquivalence.v.after-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
+ 
 #  File has not been updated.
 
 # Not a target:
@@ -17960,6 +17969,7 @@ Spaces/Graph.tex: Spaces/Graph.v
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
+ 
 Util/MMultiset/Preliminary.v.beautified: Util/MMultiset/Preliminary.v Util/MMultiset/Preliminary.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/MMultiset/Preliminary'
@@ -18033,7 +18043,6 @@ Observations/LimitedMultisetObservation.vok: Observations/LimitedMultisetObserva
 #  Implicit/static pattern stem: 'Observations/LimitedMultisetObservation'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -18077,6 +18086,7 @@ Models/RigidFlexibleEquivalence_Assumptions.vio: Models/RigidFlexibleEquivalence
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 775):
+ 
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -18171,6 +18181,7 @@ CaseStudies/Gathering/InR2/Weber/Weber_point.v.beautified: CaseStudies/Gathering
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
+ 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -18237,7 +18248,6 @@ Observations/Definition.required_vo: Observations/Definition.v Core/Identifiers.
 
 CaseStudies/Gathering/InR2/Peleg_Assumptions.g.tex: CaseStudies/Gathering/InR2/Peleg_Assumptions.v
 #  Implicit rule search has not been done.
- 
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Peleg_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
@@ -18272,6 +18282,7 @@ Observations/PointedObservation.vio: Observations/PointedObservation.v Observati
 CaseStudies/Gathering/InR2/Weber/Weber_point.tex: CaseStudies/Gathering/InR2/Weber/Weber_point.v
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Weber/Weber_point'
+ 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 795):
@@ -18371,6 +18382,7 @@ Util/Preliminary.vos: Util/Preliminary.v Util/Preliminary.v Util/FMaps/FMapInter
 #  Implicit/static pattern stem: 'Util/Preliminary'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -18426,7 +18438,6 @@ CaseStudies/Gathering/InR2/Algorithm.glob: CaseStudies/Gathering/InR2/Algorithm.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Algorithm'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -18472,6 +18483,7 @@ Spaces/RealNormedSpace.vo: Spaces/RealNormedSpace.v Spaces/RealNormedSpace.v Uti
 #  Implicit/static pattern stem: 'Spaces/RealNormedSpace'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
@@ -18570,6 +18582,7 @@ CaseStudies/Convergence/Impossibility_2G_1B.v.before-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
+ 
 Models/RigidFlexibleEquivalence.vio: Models/RigidFlexibleEquivalence.v Models/RigidFlexibleEquivalence.v Setting.vio Spaces/RealMetricSpace.vio Spaces/Similarity.vio Models/Rigid.vio Models/Flexible.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/RigidFlexibleEquivalence'
@@ -18617,7 +18630,6 @@ Observations/PreCompositionObservation.v.after-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
- 
 Util/NumberComplements.g.html: Util/NumberComplements.v Util/NumberComplements.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/NumberComplements'
@@ -18650,6 +18662,7 @@ Core/State.required_vo: Core/State.v Util/Coqlib.vo Util/Bijection.vo Core/Ident
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
+ 
 
 # Not a target:
 CaseStudies/Convergence/Algorithm_noB.v:
@@ -18744,6 +18757,7 @@ CaseStudies/Gathering/InR2/Peleg.g.tex: CaseStudies/Gathering/InR2/Peleg.v
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
+ 
 
 Util/Bijection.g.html: Util/Bijection.v Util/Bijection.glob
 #  Implicit rule search has not been done.
@@ -18771,7 +18785,6 @@ CaseStudies/Gathering/Impossibility_Assumptions.required_vos: CaseStudies/Gather
 CaseStudies/Gathering/InR2/Peleg_Assumptions.required_vo: CaseStudies/Gathering/InR2/Peleg_Assumptions.v CaseStudies/Gathering/InR2/Peleg.vo
 #  Implicit rule search has not been done.
 #  Modification time never checked.
- 
 #  File has not been updated.
 
 Util/MMultiset/MMultisetExtraOps.glob: Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/Preliminary.vo Util/MMultiset/MMultisetInterface.vo Util/MMultiset/MMultisetFacts.vo
@@ -18855,6 +18868,7 @@ Observations/Definition.v.after-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
+ 
 
 Spaces/Grid.required_vo: Spaces/Grid.v Util/Coqlib.vo Spaces/Graph.vo Util/Bijection.vo Core/State.vo Core/Formalism.vo
 #  Implicit rule search has not been done.
@@ -18951,12 +18965,12 @@ Observations/Definition.tex: Observations/Definition.v
 #  recipe to execute (from 'Makefile', line 795):
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
+ 
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v.timing.diff: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v.before-timing CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v.after-timing
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v'
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 787):
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
@@ -19048,6 +19062,7 @@ Spaces/Grid.v.timing.diff: Spaces/Grid.v.before-timing Spaces/Grid.v.after-timin
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
+ 
 Setting.v.timing.diff: Setting.v.before-timing Setting.v.after-timing
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Setting.v'
@@ -19135,7 +19150,6 @@ Makefile.local:
 Core/State.v:
 #  Implicit rule search has been done.
 #  Last modified 2022-06-09 10:42:34.404710678
- 
 #  File has been updated.
 #  Successfully updated.
 
@@ -19146,6 +19160,7 @@ Util/FSets/FSetFacts.glob: Util/FSets/FSetFacts.v Util/FSets/FSetFacts.v Util/Co
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
+ 
 
 # Not a target:
 Spaces/Ring.v.before-timing:
@@ -19238,6 +19253,7 @@ CaseStudies/Gathering/InR2/Peleg.v:
 #  Implicit rule search has been done.
 #  Last modified 2022-06-17 09:17:01.214913236
 #  File has been updated.
+ 
 #  Successfully updated.
 
 CaseStudies/Gathering/Impossibility.vo: CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility.v Util/Preliminary.vo Setting.vo Spaces/EuclideanSpace.vo CaseStudies/Gathering/Definitions.vo CaseStudies/Gathering/WithMultiplicity.vo Models/Rigid.vo Models/NoByzantine.vo | .Makefile.d
@@ -19311,7 +19327,6 @@ CaseStudies/Gathering/InR2/Weber/Weber_point.glob: CaseStudies/Gathering/InR2/We
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Weber/Weber_point'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -19338,6 +19353,7 @@ Models/NoByzantine.vos: Models/NoByzantine.v Models/NoByzantine.v Core/Identifie
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 Observations/LimitedMultisetObservation.html: Observations/LimitedMultisetObservation.v Observations/LimitedMultisetObservation.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/LimitedMultisetObservation'
@@ -19437,6 +19453,7 @@ CaseStudies/Gathering/InR2/Peleg_Assumptions.v.after-timing:
 #  File has not been updated.
 
 CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v.beautified: CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.v CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions'
 #  Modification time never checked.
@@ -19470,7 +19487,6 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.v.timing.diff: CaseStudies/G
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 787):
 	$(SHOW)PYTHON TIMING-DIFF $*.{before,after}-timing
- 
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" print-pretty-single-time-diff BEFORE=$*.before-timing AFTER=$*.after-timing TIME_OF_PRETTY_BUILD_FILE="$@"
 
 CaseStudies/Exploration/Tower_Assumptions.v.beautified: CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Exploration/Tower_Assumptions.v CaseStudies/Exploration/Tower.vo
@@ -19544,6 +19560,7 @@ Util/MMultiset/MMultisetFacts.vio: Util/MMultiset/MMultisetFacts.v Util/MMultise
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetFacts'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 775):
 	$(SHOW)COQC -vio $<
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -19652,12 +19669,12 @@ Util/FMaps/FMapFacts.vio: Util/FMaps/FMapFacts.v Util/FMaps/FMapFacts.v Util/FMa
 	$(HIDE)$(TIMER) $(COQC) -vio $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Observations/Definition.vos: Observations/Definition.v Observations/Definition.v Core/Identifiers.vos Core/State.vos Core/Configuration.vos
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/Definition'
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
- 
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -19757,6 +19774,7 @@ Core/State.v.after-timing:
 
 Util/MMultiset/MMultisetExtraOps.v.timing.diff: Util/MMultiset/MMultisetExtraOps.v.before-timing Util/MMultiset/MMultisetExtraOps.v.after-timing
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetExtraOps.v'
 #  Modification time never checked.
 #  File has not been updated.
@@ -19830,7 +19848,6 @@ CaseStudies/Gathering/InR/Algorithm_Assumptions.g.html: CaseStudies/Gathering/In
 
 Models/Rigid.required_vo: Models/Rigid.v Util/Preliminary.vo Setting.vo
 #  Implicit rule search has not been done.
- 
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -19861,6 +19878,7 @@ Util/SetoidDefs.v.after-timing:
 # Not a target:
 CaseStudies/Gathering/InR/Algorithm_Assumptions.v:
 #  Implicit rule search has been done.
+ 
 #  Last modified 2022-06-09 10:42:34.400710659
 #  File has been updated.
 #  Successfully updated.
@@ -19949,6 +19967,7 @@ CaseStudies/Exploration/Tower.v.beautified: CaseStudies/Exploration/Tower.v Case
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
+ 
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
@@ -19998,7 +20017,6 @@ Spaces/EuclideanSpace.v.after-timing:
 #  Modification time never checked.
 #  File has not been updated.
 
- 
 CaseStudies/Gathering/InR2/Viglietta.g.html: CaseStudies/Gathering/InR2/Viglietta.v CaseStudies/Gathering/InR2/Viglietta.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Viglietta'
@@ -20043,6 +20061,7 @@ CaseStudies/Gathering/InR/Algorithm.g.html: CaseStudies/Gathering/InR/Algorithm.
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
@@ -20130,6 +20149,7 @@ Util/FMaps/FMapInterface.v.beautified: Util/FMaps/FMapInterface.v Util/FMaps/FMa
 #  Implicit/static pattern stem: 'Util/FMaps/FMapInterface'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
 	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
@@ -20167,7 +20187,6 @@ Models/GraphEquivalence.vos: Models/GraphEquivalence.v Models/GraphEquivalence.v
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
- 
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -20222,6 +20241,7 @@ Spaces/Isomorphism.glob: Spaces/Isomorphism.v Spaces/Isomorphism.v Util/Coqlib.v
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Core/State.g.tex: Core/State.v
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Core/State'
 #  Modification time never checked.
@@ -20323,6 +20343,7 @@ Observations/Definition.vok: Observations/Definition.v Observations/Definition.v
 
 Core/Identifiers.vio: Core/Identifiers.v Core/Identifiers.v Util/Coqlib.vio
 #  Implicit rule search has not been done.
+ 
 #  Implicit/static pattern stem: 'Core/Identifiers'
 #  Modification time never checked.
 #  File has not been updated.
@@ -20337,7 +20358,6 @@ Util/MMultiset/MMultisetExtraOps.v:
 #  File has been updated.
 #  Successfully updated.
 
- 
 CaseStudies/Gathering/InR/Algorithm.vo: CaseStudies/Gathering/InR/Algorithm.v CaseStudies/Gathering/InR/Algorithm.v Setting.vo Spaces/R.vo CaseStudies/Gathering/WithMultiplicity.vo CaseStudies/Gathering/Definitions.vo Observations/MultisetObservation.vo Models/Similarity.vo Models/Rigid.vo Models/NoByzantine.vo | .Makefile.d
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm'
@@ -20413,6 +20433,7 @@ Models/DiscreteGraph.html: Models/DiscreteGraph.v Models/DiscreteGraph.glob
 #  recipe to execute (from 'Makefile', line 803):
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
+ 
 
 Spaces/Similarity.required_vos: Spaces/Similarity.v Util/Coqlib.vos Util/Bijection.vos Spaces/EuclideanSpace.vos
 #  Implicit rule search has not been done.
@@ -20499,7 +20520,6 @@ Observations/PointedObservation.required_vos: Observations/PointedObservation.v 
 # Not a target:
 Observations/LimitedMultisetObservation.v.before-timing:
 #  Implicit rule search has not been done.
- 
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -20511,6 +20531,7 @@ Util/MMultiset/MMultisetInterface.v:
 #  Successfully updated.
 
 # Not a target:
+ 
 Models/RigidFlexibleEquivalence.v.after-timing:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -20602,6 +20623,7 @@ Util/SetoidDefs.vos: Util/SetoidDefs.v Util/SetoidDefs.v Util/Preliminary.vos
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 Spaces/Graph.required_vos: Spaces/Graph.v Util/Coqlib.vos Core/Identifiers.vos
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -20665,7 +20687,6 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vos: CaseStudies/Gathering/I
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 install-byte:
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -20705,6 +20726,7 @@ CaseStudies/Gathering/InR/Algorithm_Assumptions.vok: CaseStudies/Gathering/InR/A
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
+ 
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 clean::
@@ -20807,6 +20829,7 @@ Models/GraphEquivalence.vo: Models/GraphEquivalence.v Models/GraphEquivalence.v 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Models/GraphEquivalence'
 #  Modification time never checked.
+ 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 763):
 	$(SHOW)COQC $<
@@ -20860,7 +20883,6 @@ CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vio: CaseStudies
 Core/State.html: Core/State.v Core/State.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Core/State'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 803):
@@ -20903,6 +20925,7 @@ CaseStudies/Gathering/InR2/Peleg_Assumptions.g.html: CaseStudies/Gathering/InR2/
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Peleg_Assumptions'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
@@ -21005,6 +21028,7 @@ Spaces/Ring.vos: Spaces/Ring.v Spaces/Ring.v Util/Coqlib.vos Core/Identifiers.vo
 #  Implicit/static pattern stem: 'Spaces/Ring'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -21024,7 +21048,6 @@ Util/FSets/FSetList.required_vo: Util/FSets/FSetList.v Util/Coqlib.vo Util/FSets
 #  Modification time never checked.
 #  File has not been updated.
 
- 
 Spaces/EuclideanSpace.glob: Spaces/EuclideanSpace.v Spaces/EuclideanSpace.v Util/Coqlib.vo Spaces/RealNormedSpace.vo
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Spaces/EuclideanSpace'
@@ -21083,6 +21106,7 @@ Models/ContinuousGraph.glob: Models/ContinuousGraph.v Models/ContinuousGraph.v S
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
+ 
 CaseStudies/Convergence/Impossibility_2G_1B.vio: CaseStudies/Convergence/Impossibility_2G_1B.v CaseStudies/Convergence/Impossibility_2G_1B.v Util/Preliminary.vio Setting.vio Spaces/R.vio Observations/MultisetObservation.vio Models/Similarity.vio Models/Rigid.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Convergence/Impossibility_2G_1B'
@@ -21200,6 +21224,7 @@ Core/Configuration.vok: Core/Configuration.v Core/Configuration.v Util/Coqlib.vo
 #  Implicit/static pattern stem: 'Core/Configuration'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 783):
 	$(SHOW)COQC -vok $<
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
@@ -21222,7 +21247,6 @@ CaseStudies/Gathering/InR2/Algorithm_Assumptions.v.after-timing:
 # Not a target:
 CaseStudies/Gathering/InR/Impossibility_Assumptions.v:
 #  Implicit rule search has been done.
- 
 #  Last modified 2022-06-09 10:42:34.400710659
 #  File has been updated.
 #  Successfully updated.
@@ -21298,6 +21322,7 @@ printenv::
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 869):
 	$(warning printenv is deprecated)
 	$(warning write extensions in Makefile.local or include Makefile.conf)
@@ -21399,12 +21424,12 @@ Observations/MultisetObservation.g.html: Observations/MultisetObservation.v Obse
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/MultisetObservation'
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
+ 
 CaseStudies/Gathering/InR2/Peleg.vio: CaseStudies/Gathering/InR2/Peleg.v CaseStudies/Gathering/InR2/Peleg.v Setting.vio Models/Flexible.vio Models/NoByzantine.vio Observations/MultisetObservation.vio Spaces/R2.vio CaseStudies/Gathering/WithMultiplicity.vio CaseStudies/Gathering/Definitions.vio
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR2/Peleg'
@@ -21489,6 +21514,7 @@ Util/MMultiset/MMultisetFacts.tex: Util/MMultiset/MMultisetFacts.v
 #  recipe to execute (from 'Makefile', line 795):
 	$(SHOW)'COQDOC -latex $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
+ 
 
 Util/Stream.v.beautified: Util/Stream.v Util/Stream.v Util/Coqlib.vo
 #  Implicit rule search has not been done.
@@ -21552,7 +21578,6 @@ all.timing.diff:
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 392):
 	$(HIDE)$(MAKE) --no-print-directory -f "$(SELF)" pre-all
@@ -21599,6 +21624,7 @@ Util/ListComplements.g.tex: Util/ListComplements.v
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
 Util/MMultiset/MMultisetFacts.vo: Util/MMultiset/MMultisetFacts.v Util/MMultiset/MMultisetFacts.v Util/MMultiset/Preliminary.vo Util/MMultiset/MMultisetInterface.vo | .Makefile.d
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetFacts'
 #  Modification time never checked.
@@ -21704,6 +21730,7 @@ Util/FMaps/FMapInterface.glob: Util/FMaps/FMapInterface.v Util/FMaps/FMapInterfa
 #  Implicit/static pattern stem: 'Util/FMaps/FMapInterface'
 #  Modification time never checked.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
@@ -21745,7 +21772,6 @@ Observations/LimitedMultisetObservation.v.beautified: Observations/LimitedMultis
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Observations/LimitedMultisetObservation'
 #  Modification time never checked.
- 
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 791):
 	$(SHOW)'BEAUTIFY $<'
@@ -21800,6 +21826,7 @@ Spaces/Ring.vok: Spaces/Ring.v Spaces/Ring.v Util/Coqlib.vos Core/Identifiers.vo
 	$(HIDE)$(TIMER) $(COQC) -vok $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 Core/Formalism.g.tex: Core/Formalism.v
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'Core/Formalism'
 #  Modification time never checked.
@@ -21893,6 +21920,7 @@ Util/MMultiset/MMultisetExtraOps.tex: Util/MMultiset/MMultisetExtraOps.v
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@
 
 CaseStudies/Gathering/InR/Algorithm_Assumptions.v.timing.diff: CaseStudies/Gathering/InR/Algorithm_Assumptions.v.before-timing CaseStudies/Gathering/InR/Algorithm_Assumptions.v.after-timing
+ 
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/InR/Algorithm_Assumptions.v'
 #  Modification time never checked.
@@ -21930,7 +21958,6 @@ Core/Identifiers.glob: Core/Identifiers.v Core/Identifiers.v Util/Coqlib.vo
 #  recipe to execute (from 'Makefile', line 772):
 	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
- 
 Util/Coqlib.required_vo: Util/Coqlib.v Util/Preliminary.vo Util/SetoidDefs.vo Util/NumberComplements.vo Util/ListComplements.vo
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -21988,6 +22015,7 @@ Util/FMaps/FMapFacts.g.html: Util/FMaps/FMapFacts.v Util/FMaps/FMapFacts.glob
 	$(SHOW)'COQDOC -html -g $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS)  -html -g $< -o $@
 
+ 
 Observations/LimitedMultisetObservation.required_vo: Observations/LimitedMultisetObservation.v Util/FMaps/FMapList.vo Util/MMultiset/MMultisetWMap.vo Util/MMultiset/MMultisetInterface.vo Util/MMultiset/MMultisetFacts.vo Util/MMultiset/MMultisetExtraOps.vo Util/Coqlib.vo Core/Identifiers.vo Core/State.vo Core/Configuration.vo Observations/Definition.vo Observations/MultisetObservation.vo Spaces/RealMetricSpace.vo Spaces/Similarity.vo
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -22076,6 +22104,7 @@ post-all::
 #  Implicit rule search has not been done.
 #  File does not exist.
 #  File has not been updated.
+ 
 #  recipe to execute (from 'Makefile', line 461):
 	@# Extension point
 
@@ -22090,7 +22119,6 @@ CaseStudies/Gathering/InR2/Viglietta_Assumptions.glob: CaseStudies/Gathering/InR
 CaseStudies/Gathering/Impossibility.g.html: CaseStudies/Gathering/Impossibility.v CaseStudies/Gathering/Impossibility.glob
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: 'CaseStudies/Gathering/Impossibility'
- 
 #  Modification time never checked.
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 807):
@@ -22178,6 +22206,7 @@ Observations/MultisetObservation.vos: Observations/MultisetObservation.v Observa
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
+ 
 
 Util/MMultiset/MMultisetExtraOps.g.html: Util/MMultiset/MMultisetExtraOps.v Util/MMultiset/MMultisetExtraOps.glob
 #  Implicit rule search has not been done.
@@ -22259,7 +22288,6 @@ Util/MMultiset/MMultisetExtraOps.html: Util/MMultiset/MMultisetExtraOps.v Util/M
 #  Implicit/static pattern stem: 'Util/MMultiset/MMultisetExtraOps'
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  recipe to execute (from 'Makefile', line 803):
 	$(SHOW)'COQDOC -html $<'
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -html $< -o $@
@@ -22285,6 +22313,7 @@ Util/MMultiset/MMultisetFacts.vos: Util/MMultiset/MMultisetFacts.v Util/MMultise
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 779):
 	$(SHOW)COQC -vos $<
+ 
 	$(HIDE)$(TIMER) $(COQC) -vos $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 real-all: Util/FSets/FSetInterface.vo Util/FSets/FSetFacts.vo Util/FSets/FSetList.vo Util/FMaps/FMapInterface.vo Util/FMaps/FMapFacts.vo Util/FMaps/FMapList.vo Util/MMultiset/MMultisetInterface.vo Util/MMultiset/MMultisetWMap.vo Util/MMultiset/MMultisetFacts.vo Util/MMultiset/MMultisetExtraOps.vo Util/MMultiset/Preliminary.vo Util/Preliminary.vo Util/SetoidDefs.vo Util/NumberComplements.vo Util/ListComplements.vo Util/Coqlib.vo Util/Bijection.vo Util/Stream.vo Util/Lexprod.vo Util/Ratio.vo Core/Identifiers.vo Core/State.vo Core/Configuration.vo Core/Formalism.vo Setting.vo Models/NoByzantine.vo Models/Flexible.vo Models/Rigid.vo Models/RigidFlexibleEquivalence.vo Models/RigidFlexibleEquivalence_Assumptions.vo Models/DiscreteGraph.vo Models/Similarity.vo Models/ContinuousGraph.vo Models/GraphEquivalence.vo Spaces/RealVectorSpace.vo Spaces/RealMetricSpace.vo Spaces/RealNormedSpace.vo Spaces/EuclideanSpace.vo Spaces/Similarity.vo Spaces/R.vo Spaces/R2.vo Spaces/Graph.vo Spaces/Isomorphism.vo Spaces/Ring.vo Spaces/Grid.vo Observations/Definition.vo Observations/MultisetObservation.vo Observations/SetObservation.vo Observations/LimitedSetObservation.vo Observations/LimitedMultisetObservation.vo Observations/PointedObservation.vo Observations/PreCompositionObservation.vo CaseStudies/Convergence/Impossibility_2G_1B.vo CaseStudies/Convergence/Impossibility_2G_1B_Assumptions.vo CaseStudies/Convergence/Algorithm_noB.vo CaseStudies/Gathering/Definitions.vo CaseStudies/Gathering/WithMultiplicity.vo CaseStudies/Gathering/Impossibility.vo CaseStudies/Gathering/Impossibility_Assumptions.vo CaseStudies/Gathering/InR/Impossibility.vo CaseStudies/Gathering/InR/Impossibility_Assumptions.vo CaseStudies/Gathering/InR/Algorithm.vo CaseStudies/Gathering/InR/Algorithm_Assumptions.vo CaseStudies/Gathering/InR2/Algorithm.vo CaseStudies/Gathering/InR2/Algorithm_Assumptions.vo CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm.vo CaseStudies/Gathering/InR2/FSyncFlexNoMultAlgorithm_Assumptions.vo CaseStudies/Gathering/InR2/Peleg.vo CaseStudies/Gathering/InR2/Peleg_Assumptions.vo CaseStudies/Gathering/InR2/Viglietta.vo CaseStudies/Gathering/InR2/Viglietta_Assumptions.vo CaseStudies/Gathering/InR2/Weber/Weber_point.vo CaseStudies/Exploration/Definitions.vo CaseStudies/Exploration/ImpossibilityKDividesN.vo CaseStudies/Exploration/ImpossibilityKDividesN_Assumptions.vo CaseStudies/Exploration/Tower.vo CaseStudies/Exploration/Tower_Assumptions.vo CaseStudies/Volumes/NoCollisionAndPath.vo optfiles
@@ -22370,6 +22399,7 @@ CaseStudies/Gathering/InR/Algorithm_Assumptions.g.tex: CaseStudies/Gathering/InR
 #  File has not been updated.
 #  recipe to execute (from 'Makefile', line 799):
 	$(SHOW)'COQDOC -latex -g $<'
+ 
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
 Spaces/Isomorphism.v.timing.diff: Spaces/Isomorphism.v.before-timing Spaces/Isomorphism.v.after-timing
@@ -22440,7 +22470,6 @@ Models/DiscreteGraph.g.tex: Models/DiscreteGraph.v
 # Not a target:
 CaseStudies/Gathering/InR/Algorithm_Assumptions.v.before-timing:
 #  Implicit rule search has not been done.
- 
 #  Modification time never checked.
 #  File has not been updated.
 
@@ -22477,6 +22506,7 @@ Spaces/Similarity.g.tex: Spaces/Similarity.v
 	$(HIDE)$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@
 
 # files hash-table stats:
+ 
 # Load=1309/2048=64%, Rehash=1, Collisions=6157/6705=92%
 # VPATH Search Paths
 
@@ -22492,6 +22522,6 @@ Spaces/Similarity.g.tex: Spaces/Similarity.v
 # strcache performance: lookups = 7340 / hit rate = 80%
 # hash-table stats:
 # Load=1424/8192=17%, Rehash=0, Collisions=481/7340=7%
-# Finished Make data base on Fri Jun 17 15:26:38 2022
+# Finished Make data base on Mon Jun 20 11:15:50 2022
 
  

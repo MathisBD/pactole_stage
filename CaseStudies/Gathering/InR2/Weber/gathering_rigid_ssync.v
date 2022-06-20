@@ -200,7 +200,7 @@ Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
 
 Lemma eq_dec_refl {A B : Type} `(eq_dec : EqDec A) (x : A) (u v : B) : 
   (if eq_dec x x then u else v) = u.
-Proof. destruct_match ; [reflexivity | unfold complement in c ; intuition]. Qed.
+Proof using . destruct_match ; [reflexivity | unfold complement in c ; intuition]. Qed.
 
 Local Instance countA_occ_compat_setoid {A : Type} `{eq_dec : EqDec A} : 
   Proper (equiv ==> PermutationA equiv ==> equiv) (countA_occ equiv eq_dec).
@@ -208,7 +208,7 @@ Proof using . intros x x' Hx l l' Hl. now apply countA_occ_compat ; autoclass. Q
 
 Lemma countA_occ_removeA_same {A : Type} `{eq_dec : EqDec A} x l :
   countA_occ equiv eq_dec x (removeA eq_dec x l) = 0.
-Proof. 
+Proof using . 
 induction l as [|y l IH].
 + reflexivity.
 + cbn. destruct_match.
@@ -218,7 +218,7 @@ Qed.
 
 Lemma countA_occ_removeA_other {A : Type} `{eq_dec : EqDec A} x y l :
   x =/= y -> countA_occ equiv eq_dec x (removeA eq_dec y l) = countA_occ equiv eq_dec x l.
-Proof.
+Proof using .
 intros Hxy. induction l as [|z l IH].
 + reflexivity.
 + cbn. repeat destruct_match.
@@ -232,7 +232,7 @@ Qed.
 Lemma PermutationA_countA_occ {A : Type} `{eq_dec : EqDec A} l l' :
   PermutationA equiv l l' <-> 
   forall x, countA_occ equiv eq_dec x l == countA_occ equiv eq_dec x l'.
-Proof. 
+Proof using . 
 split.
 + intros Hperm x. elim Hperm.
   - now reflexivity.
@@ -253,7 +253,7 @@ split.
       cbn. reflexivity.
     * eapply IH ; [|reflexivity|].
       ++apply (Nat.le_lt_trans _ (length l)) ; [apply Preliminary.removeA_length_le|].
-        rewrite Hm. cbn. lia.
+        rewrite Hm. cbn. apply Nat.lt_succ_diag_r.
       ++intros y. case (eq_dec x y) as [Hxy|Hxy]. 
         rewrite <-Hxy. repeat rewrite countA_occ_removeA_same. reflexivity.
         repeat rewrite countA_occ_removeA_other by (symmetry ; auto).
@@ -262,7 +262,7 @@ Qed.
 
 Lemma multi_support_add {A : Type} `{EqDec A} s x k : ~ In x s -> k > 0 ->
   PermutationA equiv (multi_support (add x k s)) (alls x k ++ multi_support s).
-Proof. 
+Proof using . 
 intros Hin Hk. unfold multi_support. 
 transitivity (flat_map (fun '(x0, mx) => alls x0 mx) ((x, k) :: elements s)).
 + f_equiv.
@@ -273,7 +273,7 @@ Qed.
 
 Lemma multi_support_countA {A : Type} `{eq_dec : EqDec A} s x :
   countA_occ equiv eq_dec x (multi_support s) == s[x]. 
-Proof.
+Proof using .
 pattern s. apply MMultisetFacts.ind.
 + intros m m' Hm. f_equiv. 
   - apply countA_occ_compat ; autoclass. now rewrite Hm.
@@ -290,7 +290,7 @@ Lemma multi_support_config config id :
   PermutationA equiv 
     (multi_support (obs_from_config config (config id))) 
     (config_list config).
-Proof.
+Proof using .
 cbv -[multi_support config_list equiv make_multiset List.map]. rewrite List.map_id.
 apply PermutationA_countA_occ. intros x. rewrite multi_support_countA. now apply make_multiset_spec.
 Qed. 
@@ -300,7 +300,7 @@ Corollary multi_support_map f config id :
   PermutationA equiv 
     (multi_support (obs_from_config (map_config (lift f) config) (lift f (config id))))
     (List.map (projT1 f) (config_list config)).
-Proof.  
+Proof using .  
 intros H. destruct f as [f Pf]. cbn -[equiv config_list multi_support]. 
 change (f (config id)) with (map_config f config id).
 now rewrite multi_support_config, config_list_map.
@@ -315,7 +315,7 @@ Lemma round_simplify da config : similarity_da_prop da ->
       if aligned_dec (config_list config) then config id 
       else weber_calc (config_list config)
     else config id.
-Proof. 
+Proof using . 
 intros Hsim. apply no_byz_eq. intros g. unfold round. 
 cbn -[inverse equiv lift location config_list origin].
 destruct_match ; try reflexivity.
@@ -355,7 +355,7 @@ Definition eventually_aligned config (d : demon) (r : robogram) :=
 (* If the robots are aligned, they stay aligned. *)
 Lemma round_preserves_aligned da config : similarity_da_prop da ->
   aligned (config_list config) -> aligned (config_list (round gatherW da config)).
-Proof. 
+Proof using . 
 intros Hsim Halign. assert (round gatherW da config == config) as H.
 { intros id. rewrite round_simplify by auto. repeat destruct_match ; auto. }
 now rewrite H.
@@ -365,7 +365,7 @@ Lemma aligned_over config (d : demon) :
   Stream.forever (Stream.instant similarity_da_prop) d ->
   aligned (config_list config) -> 
   Stream.forever (Stream.instant (fun c => aligned (config_list c))) (execute gatherW d config).
-Proof.
+Proof using .
 revert config d. 
 cofix Hind. intros config d Hsim Halign. constructor.
 + cbn -[config_list]. apply Halign.
@@ -374,12 +374,12 @@ cofix Hind. intros config d Hsim Halign. constructor.
 Qed.
 
 Lemma sub_lt_sub (i j k : nat) : j < i <= k -> k - i < k - j.
-Proof. lia. Qed.
+Proof using lt_0n. lia. Qed.
 
 Lemma countA_occ_le w ps ps' :
   Forall2 (fun x x' => x' == x \/ x' == w) ps ps' -> 
     countA_occ equiv R2_EqDec w ps <= countA_occ equiv R2_EqDec w ps'.
-Proof. 
+Proof using . 
 intros HF. induction HF as [| x x' l l' Hxx' Hll' IH] ; [auto|].
 cbn -[equiv]. repeat destruct_match ; intuition.
 rewrite H, e in c. intuition.
@@ -389,7 +389,7 @@ Lemma countA_occ_lt w ps ps' :
   Forall2 (fun x x' => x' == x \/ x' == w) ps ps' -> 
   List.Exists (fun '(x, x') => x' =/= x) (combine ps ps') ->
     countA_occ equiv R2_EqDec w ps < countA_occ equiv R2_EqDec w ps'.
-Proof.
+Proof using .
 intros HF HE. induction HF as [| x x' l l' Hxx' Hll' IH].
 + rewrite Exists_exists in HE. destruct HE as [x [In_nil _]]. now apply in_nil in In_nil.
 + cbn -[complement equiv] in HE. rewrite Exists_cons in HE.
