@@ -325,6 +325,12 @@ Proof using .
 intros p p' Hpp' x y Hxy. unfold dist_sum. f_equiv. now rewrite Hpp', Hxy.
 Qed.
 
+Lemma dist_sum_nonneg points x : (0 <= dist_sum points x)%R.
+Proof.
+apply list_sum_ge_0. rewrite Forall_forall. intros d Hin. rewrite in_map_iff in Hin.
+destruct Hin as [y [Hd Hin]]. rewrite <-Hd. apply dist_nonneg.
+Qed.
+
 (* [argmin f P] is the set of elements that minimize [f] in the set [P],
  * when sets are represented by membership predicates. *)
 Definition argmin {A : Type} (f : A -> R) (P : A -> Prop) : A -> Prop := 

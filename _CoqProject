@@ -97,9 +97,12 @@ CaseStudies/Gathering/InR2/Peleg.v
 CaseStudies/Gathering/InR2/Peleg_Assumptions.v
 CaseStudies/Gathering/InR2/Viglietta.v
 CaseStudies/Gathering/InR2/Viglietta_Assumptions.v
+
+## Case Study: Weber point
+CaseStudies/Gathering/InR2/Weber/Utils.v
 CaseStudies/Gathering/InR2/Weber/Weber_point.v
-CaseStudies/Gathering/InR2/Weber/gathering_rigid_ssync.v
-CaseStudies/Gathering/InR2/Weber/gathering_flex_ssync.v
+CaseStudies/Gathering/InR2/Weber/Align_rigid_ssync.v
+CaseStudies/Gathering/InR2/Weber/Align_flex_ssync.v
 
 
 ## Case Study: Ring Exploration

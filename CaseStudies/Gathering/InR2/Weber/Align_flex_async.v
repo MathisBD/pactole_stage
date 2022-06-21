@@ -45,6 +45,7 @@ Typeclasses eauto := (bfs).
 (* Pactole basic definitions *)
 Require Export Pactole.Setting.
 (* Specific to R^2 topology *)
+Require Import Pactole.Spaces.RealMetricSpace.
 Require Import Pactole.Spaces.R2.
 (* Specific to gathering *)
 Require Pactole.CaseStudies.Gathering.WithMultiplicity.
@@ -245,6 +246,11 @@ Local Instance InactiveC : inactive_choice ratio := { inactive_choice_Setoid := 
 Variables delta : R.
 Hypothesis delta_g0 : (0 < delta)%R.
 
+(* This is the property that must be verified in a flexible setting. *)
+Definition flex_da_prop da := 
+  forall id (config : configuration), activate da id = true -> 
+    let '(s, d, r) := config id in 
+    straight_path s d r == d (*\/ (delta <= dist s (straight_path s d r))%R*).
 
 (* We are in a flexible and semi-synchronous setting. *)
 Local Instance UpdateF : update_function location (similarity location) unit.
@@ -859,39 +865,88 @@ cofix Hind. intros config d Hsim Hinv Halign. constructor.
   - apply round_preserves_aligned with w ; [apply Hsim | exact Hinv | exact Halign].
 Qed.
 
-(* This measure counts how many robots aren't on the weber point. *)
-Definition measure_count config : R := 
-  let ps := pos_list config in 
-  (*INR (n - countA_occ equiv R2_EqDec (weber_calc ps) ps).*)
-  list_sum (List.map (fun x => if x =?= weber_calc ps then 0%R else 1%R) ps).
 
-(* This measure counts the total distance from the robots to the weber point. *)
-Definition measure_dist config : R :=
-  let ps := pos_list config in 
-  dist_sum ps (weber_calc ps).
+(* We say that a robot is looping when its start and destination points are equal. *)
+Definition is_looping (robot : info) : bool := 
+  let '(s, d, r) := robot in if s =?= d then true else false.
 
-(* This measure is positive, and decreases whenever a robot moves. *)
-Definition measure config := (measure_count config + measure_dist config)%R.
+(* Boolean function to test whether a robot is on a point. *)
+Definition is_on x (robot : info) : bool :=
+  let '(s, d, r) := robot in if straight_path s d r =?= x then true else false.
+
+
+(*Definition is_web_loop config id : bool :=
+  let '(s, d, r) := config id in 
+  if s =?= d then 
+    if s =?= weber_calc (pos_list config) then true 
+    else false 
+  else false.
+
+Local Instance is_web_loop_compat : Proper (equiv ==> eq ==> eq) is_web_loop.
+Proof. Admitted.
+
+Lemma is_web_loop_spec config id : 
+  is_web_loop config id = true <-> 
+  let '(s, d, r) := config id in s == d /\ s == weber_calc (pos_list config).
+Proof. Admitted.
+
+Definition is_nonweb_loop config id : bool :=
+  let '(s, d, r) := config id in 
+  if s =?= d then 
+    if s =?= weber_calc (pos_list config) then false 
+    else true 
+  else false.
+
+Local Instance is_nonweb_loop_compat : Proper (equiv ==> eq ==> eq) is_nonweb_loop.
+Proof. Admitted.
+
+Lemma is_nonweb_loop_spec config id : 
+  is_nonweb_loop config id = true <-> 
+  let '(s, d, r) := config id in s == d /\ s =/= weber_calc (pos_list config).
+Proof. Admitted. 
+*)
+
+Definition BtoR : bool -> R := fun b => if b then 1%R else 0%R.
+
+(* This measure counts how many robots are [not on the weber point] and [looping]. *)
+Definition measure_loop_nonweb config : R :=
+  let w := weber_calc (pos_list config) in
+  list_sum (List.map 
+    (fun r => BtoR (is_looping r && negb (is_on w r))) 
+    (config_list config)).
+
+(* This measure counts how many robots are not [looping on the weber point]. *)
+Definition measure_loop_web config : R :=
+  let w := weber_calc (pos_list config) in
+  list_sum (List.map 
+    (fun r => BtoR (negb (is_looping r && is_on w r)))
+    (config_list config)).
+
+(* This measure counts the total distance from the weber point to 
+ * the last update position of each robot. 
+ * RMK : this is NOT the distance from the weber point to the 
+ * current position of each robot. *)
+Definition measure_dist config : R := 
+  dist_sum 
+    (List.map (fun '(s, _, _) => s) (config_list config)) 
+    (weber_calc (pos_list config)).
+
+(* The resulting measure is well-founded, and decreases whenever a robot is activated. *)
+Definition measure config : R := 
+  measure_loop_nonweb config + measure_loop_web config + measure_dist config.
 
 Local Instance measure_compat : Proper (equiv ==> equiv) measure.
 Proof. 
-intros c c' Hc. unfold measure, measure_count, measure_dist.
-assert (Rplus_compat : Proper (equiv ==> equiv ==> equiv) Rplus).
-{ intros x x' Hx y y' Hy. now rewrite Hx, Hy. } 
-apply Rplus_compat.
-+ apply list_sum_compat, eqlistA_PermutationA. f_equiv ; [| now rewrite Hc].
-  intros ? ? H. repeat destruct_match ; rewrite H, Hc in * ; intuition.
-+ now rewrite Hc.
-Qed.
-
-Lemma measure_nonneg config : (0 <= measure config)%R.
-Proof. 
-unfold measure. apply Rplus_le_le_0_compat.
-+ unfold measure_count. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
-  intros x _. destruct_match ; lra.
-+ unfold measure_dist. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
-  intros x _. apply dist_nonneg.   
-Qed.
+(*intros c c' Hc. unfold measure, measure_count, measure_dist.
+f_equiv.
++ apply list_sum_compat, eqlistA_PermutationA. f_equiv.
+  intros i i' Hi. now rewrite Hi, Hc.
++ f_equiv ; [|now rewrite Hc]. apply eqlistA_PermutationA. 
+  apply map_eqlistA_compat with equiv ; autoclass.
+  - repeat intros [[? ?] ?]. auto.
+  - now rewrite Hc.
+Qed.*)
+Admitted. 
 
 Lemma mul_eq0_iff (k : R) (x : R2) : (k * x == 0)%VS <-> (k == 0)%R \/ (x == 0)%VS.
 Proof.
@@ -916,7 +971,7 @@ split.
     now rewrite Hend, add_opp.
   }  
   rewrite mul_eq0_iff in H. case H as [H1 | H2].
-  - right. Print ratio. Search sig proj1_sig eq. cbn in H1 |- *. lra.
+  - right. cbn in H1 |- *. lra.
   - left. now rewrite R2sub_origin in H2.
 + intros [H1 | H2].
   - now rewrite H1, straight_path_same.
@@ -924,7 +979,8 @@ split.
     now rewrite add_sub. 
 Qed.
 
-Lemma Forall2_le_count_weber config da w : 
+
+(*Lemma Forall2_le_count_weber config da w : 
   similarity_da_prop da -> 
   invariant w config -> 
   ~aligned (pos_list (round gatherW da config)) ->
@@ -964,9 +1020,49 @@ rewrite (Hround id). repeat destruct_match ; rewrite <-Hxw ; cbn -[equiv straigh
         change R1 with 1%R in *. cbn in H2. generalize (ratio_bounds (r id)). lra. }
       cbn -[equiv mul opp RealVectorSpace.add]. rewrite Hadd_ratio, mul_1.
       now rewrite add_sub.
-Qed.   
+Qed.   *)
 
-Lemma Forall2_le_dist_weber config da w : 
+Lemma straight_path_dist_start (s d : R2) (r : ratio) : 
+  dist s (straight_path s d r) == (r * dist s d)%R.
+Proof. 
+rewrite 2 norm_dist. cbn -[norm mul opp RealVectorSpace.add equiv].
+rewrite opp_distr_add, RealVectorSpace.add_assoc, add_opp, add_origin_l.
+rewrite <-mul_opp, opp_distr_add, opp_opp, RealVectorSpace.add_comm.
+rewrite norm_mul, Rabs_pos_eq ; [reflexivity | apply ratio_bounds].
+Qed.
+
+Lemma straight_path_dist_end (s d : R2) (r : ratio) : 
+  dist d (straight_path s d r) == ((1 - r) * dist s d)%R.
+Proof.  
+rewrite 2 norm_dist. cbn -[norm mul opp RealVectorSpace.add equiv].
+assert (H : (d - (s + r * (d - s)) == (r - 1) * (s - d))%VS).
+{
+  unfold Rminus. rewrite <-add_morph, minus_morph, mul_1, 2 opp_distr_add, opp_opp.
+  rewrite (RealVectorSpace.add_comm _ (-s + d)%VS), RealVectorSpace.add_assoc.
+  f_equiv.
+  + now rewrite RealVectorSpace.add_comm.
+  + rewrite <-mul_opp. f_equiv. now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.  
+}
+rewrite H, norm_mul. f_equiv. rewrite Rabs_left1.
++ now rewrite Ropp_minus_distr.
++ generalize (ratio_bounds r). lra.
+Qed. 
+
+Lemma add_ratio_ge_left (r1 r2 : ratio) : (r1 <= add_ratio r1 r2)%R. 
+Proof.
+unfold add_ratio. destruct_match.
++ apply ratio_bounds.
++ cbn. generalize (ratio_bounds r2). lra.
+Qed.
+
+Lemma add_ratio_ge_right (r1 r2 : ratio) : (r2 <= add_ratio r1 r2)%R. 
+Proof.
+unfold add_ratio. destruct_match.
++ apply ratio_bounds.
++ cbn. generalize (ratio_bounds r1). lra.
+Qed. 
+
+(*Lemma Forall2_le_dist_weber config da w : 
   similarity_da_prop da -> 
   invariant w config ->
   ~aligned (pos_list (round gatherW da config)) ->
@@ -995,77 +1091,85 @@ rewrite (Hround id). repeat destruct_match.
 + cbn -[dist straight_path]. destruct Hinv as [Hstg Hweb].
   specialize (Hstg id). destruct (config id) as [[s d] ri].
   case Hstg as [Hstay | Hgo].
-  - rewrite Hstay, 2 straight_path_same. lra.
-  - rewrite Hgo. unfold add_ratio. destruct_match.
-    * rewrite straight_path_1, dist_same. apply dist_nonneg.
-    * cbn -[dist mul opp RealVectorSpace.add].
-      repeat rewrite norm_dist. rewrite 2 R2_opp_dist, 2 RealVectorSpace.add_assoc.
-      rewrite <-(mul_1 (w - s)) at 1. rewrite <-(mul_1 (w - s)) at 1. rewrite <-minus_morph, add_morph, norm_mul.
-    rewrite <-Rmult_1_l. apply Rmult_le_compat_r ; try apply norm_nonneg.
-    unfold Rabs. destruct_match ; generalize (ratio_bounds ri) ; lra.
-  + rewrite mul_1, (RealVectorSpace.add_comm w), RealVectorSpace.add_assoc.
-  simplifyR2. rewrite dist_same. apply dist_nonneg.
-Qed.
+  - rewrite Hstay, 2 straight_path_same. now apply Req_le.
+  - rewrite Hgo. rewrite 2 straight_path_dist_end.
+    apply Rmult_le_compat_r ; try apply dist_nonneg.
+    unfold Rminus. apply Rplus_le_compat_l, Ropp_le_contravar, add_ratio_ge_left.
+Qed.*)
+    
+Lemma In_InA_is_leibniz {A : Type} (eqA : relation A) x l : 
+  (forall x y, eqA x y -> x = y) -> (InA eqA x l <-> List.In x l).
+Proof. Admitted.
 
-(* If a robot moves, either the measure strictly decreases or the robots become colinear. *)
-Lemma round_decreases_measure config da : 
-  similarity_da_prop da ->
-  moving gatherW da config <> nil -> 
-    aligned (config_list (round gatherW da config)) \/ 
+(* If a robot that is not [looping on the weber point] is activated, 
+ * the measure strictly decreases. *)
+Lemma round_decreases_measure config da w : 
+  similarity_da_prop da -> 
+  flex_da_prop da ->
+  invariant w config -> 
+  (exists id, activate da id = true /\ is_looping (config id) && is_on w (config id) = false) -> 
     (measure (round gatherW da config) <= measure config - Rmin delta 1)%R.
 Proof. 
-intros Hsim Hmove. 
-destruct (aligned_dec (config_list (round gatherW da config))) as [Rcol | RNcol] ; [now left|right].
-assert (Hweb := round_preserves_weber_calc config Hsim RNcol).
-destruct (not_nil_In Hmove) as [i Hi]. apply moving_spec in Hi.
-destruct (round gatherW da config i =?= weber_calc (config_list config)) as [Hreached | HNreached].
+(*intros Hsim Hinv [i Hmove]. 
+destruct (aligned_dec (pos_list (round gatherW da config))) as [HRalign | HRNalign] ; [now left|right].
+assert (HRw : w == weber_calc (pos_list (round gatherW da config))).
+{ now apply invariant_weber_calc ; [apply round_preserves_invariant|]. }
+assert (Hw : w == weber_calc (pos_list config)).
+{ apply invariant_weber_calc ; auto. intros Halign. apply HRNalign. now apply round_preserves_aligned with w. }
+destruct (get_location (round gatherW da config i) =?= w) as [Hreached | HNreached].
 (* The robot that moved reached its destination. *)
 + transitivity (measure config - 1)%R ; [|generalize (Rmin_r delta 1%R) ; lra].
   unfold measure, Rminus. rewrite Rplus_assoc, (Rplus_comm _ (-1)%R), <-Rplus_assoc.
   apply Rplus_le_compat.
-  - unfold measure_count. apply list_sum_le_eps ; [now apply Forall2_le_count_weber|].
+  - unfold measure_count. apply list_sum_le_eps ; [eapply Forall2_le_count_weber ; eauto|].
     rewrite combine_map, Exists_map. apply Exists_exists. 
-    exists (round gatherW da config i, config i).
-    split ; [apply config_list_In_combine ; exists i ; intuition |].
-    repeat destruct_match ; solve [lra | rewrite Hreached in * ; intuition]. 
-  - unfold measure_dist. apply list_sum_le. now apply Forall2_le_dist_weber.
+    exists (get_location (round gatherW da config i), get_location (config i)).
+    split. 
+    * rewrite <-(In_InA_is_leibniz equiv) by now (intros [? ?] [? ?] [? ?] ; f_equal ; auto).
+      rewrite pos_list_InA_combine. exists i. auto.
+    * repeat destruct_match ; solve [lra | rewrite Hreached, <-HRw, <-Hw in * ; intuition].
+  - unfold measure_dist. apply list_sum_le. eapply Forall2_le_dist_weber ; eauto. 
 (* The robot that moved didn't reach its destination. *)
 + transitivity (measure config - delta)%R ; [|generalize (Rmin_l delta 1%R) ; lra].
   unfold measure, Rminus. rewrite Rplus_assoc. 
   apply Rplus_le_compat.
-  - unfold measure_count. apply list_sum_le. now apply Forall2_le_count_weber.
-  - unfold measure_dist. apply list_sum_le_eps ; [now apply Forall2_le_dist_weber|].
+  - unfold measure_count. apply list_sum_le. eapply Forall2_le_count_weber ; eauto.
+  - unfold measure_dist. apply list_sum_le_eps ; [eapply Forall2_le_dist_weber ; eauto|].
     rewrite combine_map, Exists_map. apply Exists_exists. 
-    exists (round gatherW da config i, config i).
-    split ; [apply config_list_In_combine ; exists i ; intuition |].
-    rewrite Hweb. destruct (round_simplify config Hsim) as [r Hround].
-    rewrite Hround. destruct_match_eq Hact ; [destruct_match_eq Halign|].
-    * exfalso. now apply RNcol, round_preserves_aligned.
-    * cbn zeta. 
-      pose (w := weber_calc (config_list config)). foldR2. fold w. 
-      pose (x := config i). fold x.
-      pose (ri := r (unpack_good i)). fold ri.
-      cbn -[dist RealVectorSpace.add mul opp w ri]. rewrite Rmult_1_l, mul_1.
-      destruct_match_eq Hdelta ; unfold id in * ; rewrite good_unpack_good in * ; fold x in Hdelta.
-      --rewrite Rle_bool_true_iff in Hdelta. repeat rewrite norm_dist in *.
-        rewrite R2_opp_dist, RealVectorSpace.add_assoc in Hdelta |- *. 
-        rewrite add_opp, add_origin_l, norm_opp, norm_mul, Rabs_pos_eq in Hdelta by (generalize (ratio_bounds ri) ; lra).
-        rewrite <-(mul_1 (w - x)) at 1. rewrite <-minus_morph, add_morph, norm_mul.
-        rewrite Rabs_pos_eq ; [|generalize (ratio_bounds ri) ; lra].
-        rewrite Rmult_plus_distr_r, Rmult_1_l.
-        simpl location in Hdelta |- *.
-        apply Rplus_le_compat ; try lra.
-        rewrite <-Ropp_mult_distr_l. now apply Ropp_le_contravar.
-      --exfalso. apply HNreached. rewrite Hround. destruct_match ; [|intuition].
-        cbn -[config_list dist mul opp RealVectorSpace.add].
-        rewrite Rmult_1_l, good_unpack_good ; unfold id ; fold x ; fold ri ; foldR2 ; fold w.
-        destruct_match ; intuition. 
-        rewrite mul_1, (RealVectorSpace.add_comm w), RealVectorSpace.add_assoc. 
-        now simplifyR2.
-    * exfalso. apply Hi. rewrite Hround. destruct_match ; intuition.
-Qed.
+    exists (get_location (round gatherW da config i), get_location (config i)).
+    split.
+    * rewrite <-(In_InA_is_leibniz equiv) by now (intros [? ?] [? ?] [? ?] ; f_equal ; auto).
+      rewrite pos_list_InA_combine. exists i. intuition.
+    * rewrite <-HRw, <-Hw in *. destruct (round_simplify config Hsim) as [r Hround].
+      rewrite (Hround i) in *. destruct_match_eq Hact ; [destruct_match_eq Halign|].
+      ++exfalso. eapply HRNalign, round_preserves_aligned ; eauto.
+      ++exfalso. apply Hmove. cbn -[equiv straight_path]. now rewrite straight_path_0.
+      ++revert Hmove. cbn -[dist straight_path]. destruct Hinv as [Hstg Hweb].
+        specialize (Hstg i). destruct (config i) as [[s d] ri].
+        case Hstg as [Hstay | Hgo].
+        --intros Hmove. exfalso. apply Hmove. now rewrite Hstay, 2 straight_path_same.
+        --rewrite Hgo. intros Hmove. rewrite 2straight_path_dist_end.
+        destruct_match_eq Hdelta ; unfold id in * ; rewrite good_unpack_good in * ; fold x in Hdelta.
+        --rewrite Rle_bool_true_iff in Hdelta. repeat rewrite norm_dist in *.
+          rewrite R2_opp_dist, RealVectorSpace.add_assoc in Hdelta |- *. 
+          rewrite add_opp, add_origin_l, norm_opp, norm_mul, Rabs_pos_eq in Hdelta by (generalize (ratio_bounds ri) ; lra).
+          rewrite <-(mul_1 (w - x)) at 1. rewrite <-minus_morph, add_morph, norm_mul.
+          rewrite Rabs_pos_eq ; [|generalize (ratio_bounds ri) ; lra].
+          rewrite Rmult_plus_distr_r, Rmult_1_l.
+          simpl location in Hdelta |- *.
+          apply Rplus_le_compat ; try lra.
+          rewrite <-Ropp_mult_distr_l. now apply Ropp_le_contravar.
+        --exfalso. apply HNreached. rewrite Hround. destruct_match ; [|intuition].
+          cbn -[config_list dist mul opp RealVectorSpace.add].
+          rewrite Rmult_1_l, good_unpack_good ; unfold id ; fold x ; fold ri ; foldR2 ; fold w.
+          destruct_match ; intuition. 
+          rewrite mul_1, (RealVectorSpace.add_comm w), RealVectorSpace.add_assoc. 
+          now simplifyR2.
+      * exfalso. apply Hi. rewrite Hround. destruct_match ; intuition.
+Qed.*)
+Admitted.
 
-Lemma gathered_aligned ps x : 
+(*Lemma gathered_aligned ps x : 
   (Forall (fun y => y == x) ps) -> aligned ps.
 Proof. 
 rewrite Forall_forall. intros Hgathered.
@@ -1073,23 +1177,39 @@ unfold aligned. rewrite ForallTriplets_forall.
 intros a b c Ha Hb Hc.
 apply Hgathered in Ha, Hb, Hc. rewrite Ha, Hb, Hc, add_opp.
 apply colinear_origin_r.
-Qed.
+Qed.*)
 
-Lemma mul_eq0_iff (k : R) (x : R2) : (k * x == 0)%VS <-> (k == 0)%R \/ (x == 0)%VS.
+(* This inductive proposition counts how many turns are left before
+ * a robot that isn't [looping on the weber point] is activated. *)
+Inductive FirstActivNLW w : demon -> configuration -> Prop :=
+  | FirstActivNLW_Now : forall d config, 
+    (exists id, activate (Stream.hd d) id = true /\ is_looping (config id) && is_on w (config id) = false) -> 
+      FirstActivNLW w d config
+  | FirstActivNLW_Later : forall d config,
+    FirstActivNLW w (Stream.tl d) (round gatherW (Stream.hd d) config) -> 
+      FirstActivNLW w d config. 
+
+Lemma exists_non_webloop config w : 
+  ~aligned (pos_list config) ->
+  invariant w config -> 
+  exists id, is_looping (config id) && is_on w (config id) = false.
+Proof. Admitted.
+
+(* Fairness entails that if the robots aren't aligned yet, 
+ * then a robot that isn't [looping on w] will eventually be activated. *)
+Lemma nonweb_will_activate config d w : 
+  ~aligned (pos_list config) ->    
+  invariant w config -> 
+  FirstActivNLW w d config.
 Proof.
-split ; intros H.
-+ case (k =?= 0%R) as [Hk | Hk] ; [now left | right].
-  apply mul_reg_l with k ; [intuition|].
-  rewrite mul_origin. exact H.
-+ destruct H as [Hk | Hx].
-  - now rewrite Hk, mul_0.
-  - now rewrite Hx, mul_origin.
-Qed.
+(* induction on the fairness for the id of [exists_non_webloop]. *) 
+Admitted.
+
 
 (* If the robots aren't aligned yet then there exists at least one robot which, 
  * if activated, will move. 
  * Any robot that isn't on the weber point will do the trick. *)
-Lemma one_must_move config : ~aligned (config_list config) ->
+(*Lemma one_must_move config : ~aligned (config_list config) ->
   exists i, forall da, similarity_da_prop da -> activate da i = true ->
                        round gatherW da config i =/= config i.
 Proof.
@@ -1149,7 +1269,7 @@ induction locallyfair as [d Hnow | d] ; intros config Nalign Hmove.
       rewrite (Hmoving id).
       now apply Hmove.
   + apply MoveNow. rewrite Hmoving. discriminate.
-Qed.
+Qed.*)
 
 (* This is the well founded relation we will perform induction on. *)
 Definition lt_config eps c c' := 
@@ -1179,7 +1299,9 @@ Qed.
 (* The proof is essentially a well-founded induction on [measure config].
  * Fairness ensures that the measure must decrease at some point. *)
 Theorem weber_correct config : forall d,
-  Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
+  Fair d -> 
+  Stream.forever (Stream.instant similarity_da_prop) d ->
+  Stream.forever (Stream.instant flex_da_prop) d ->
   eventually_aligned config d gatherW.
 Proof.
 assert (Hdelta1 : (Rmin delta 1 > 0)%R).
