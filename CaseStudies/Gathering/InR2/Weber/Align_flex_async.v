@@ -56,6 +56,8 @@ Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Flexible.
 (* Specific to settings with no Byzantine robots *)
 Require Import Pactole.Models.NoByzantine.
+(* Utility lemmas. *)
+Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Utils.
 (* Specific to definition and properties of the weber point. *)
 Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Weber_point.
 
@@ -69,41 +71,7 @@ Close Scope R_scope.
 Close Scope VectorSpace_scope.
 
 
-(* Change the left hand side of a setoid-equality with a convertible term. *)
-Ltac change_LHS E := 
-  match goal with 
-  | [ |- ?LHS == ?RHS ] => change (E == RHS)
-  end.
-
-(* Change the right hand side of a setoid-equality with a convertible term. *)
-Ltac change_RHS E := 
-  match goal with 
-  | [ |- ?LHS == ?RHS ] => change (LHS == E)
-  end.
-
-(* Simplify a goal involving calculations in R2 by expanding everything. 
- * This is rarely useful. *)
-Ltac simplifyR2 :=
-  unfold Rminus ; 
-  repeat (try rewrite mul_distr_add ;
-          try rewrite <-add_morph ;
-          try rewrite mul_0 ;
-          try rewrite mul_1 ; 
-          try rewrite add_origin_l ; 
-          try rewrite add_origin_r ; 
-          try rewrite mul_opp ; 
-          try rewrite minus_morph ;
-          try rewrite opp_opp ; 
-          try rewrite opp_origin ;
-          try rewrite R2_opp_dist ; 
-          try rewrite add_opp).
-      
-
-Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
-Proof. intuition. Qed.
-
-
-Section Gathering.
+Section Alignment.
 Local Existing Instances dist_sum_compat.
 
 (* We assume the existence of a function that calculates a weber point of a collection
@@ -292,27 +260,6 @@ Definition pos_list (config : configuration) : list location :=
 Definition multi_support {A} `{EqDec A} (s : multiset A) :=
   List.flat_map (fun '(x, mx) => alls x mx) (elements s).
 
-Local Instance flat_map_compat_eq {A B} `{Setoid A} `{Setoid B} : 
-  Proper ((equiv ==> PermutationA equiv) ==> eqlistA equiv ==> PermutationA equiv) (@flat_map A B).
-Proof using . 
-intros f f' Hff' l l' Hll'. elim Hll'.
-+ cbn. now reflexivity.
-+ intros x x' t t' Hxx' Htt' IH. cbn. now f_equiv ; auto.
-Qed.
-
-Local Instance flat_map_compat_perm {A B} `{Setoid A} `{Setoid B} : 
-  Proper ((equiv ==> PermutationA equiv) ==> PermutationA equiv ==> PermutationA equiv) (@flat_map A B).
-Proof using . 
-intros f f' Hff' l l' Hll'. elim Hll'.
-+ simpl. now reflexivity.
-+ intros x x' t t' Hxx' Htt' IH. cbn. rewrite <-IH. f_equiv. now apply Hff'.
-+ intros x y t. cbn. repeat rewrite app_assoc. f_equiv.
- - rewrite PermutationA_app_comm. f_equiv ; now apply Hff'. now apply setoid_equiv.
- - now f_equiv.
-+ intros t t' t'' _ IH1 _ IH2. rewrite IH1, <-IH2. f_equiv. 
-  intros x x' Hxx'. symmetry. now apply Hff'.
-Qed.
-
 Local Instance multi_support_compat {A} `{EqDec A} : Proper (equiv ==> PermutationA equiv) (@multi_support A _ _).
 Proof using . 
 intros s s' Hss'. unfold multi_support. f_equiv.
@@ -343,64 +290,6 @@ repeat destruct_match.
 Qed.
 
 Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
-
-Local Instance countA_occ_compat_setoid {A : Type} `{eq_dec : EqDec A} : 
-  Proper (equiv ==> PermutationA equiv ==> equiv) (countA_occ equiv eq_dec).
-Proof using . intros x x' Hx l l' Hl. now apply countA_occ_compat ; autoclass. Qed.
-
-Lemma countA_occ_removeA_same {A : Type} `{eq_dec : EqDec A} x l :
-  countA_occ equiv eq_dec x (removeA eq_dec x l) = 0.
-Proof. 
-induction l as [|y l IH].
-+ reflexivity.
-+ cbn. destruct_match.
-  - now rewrite IH.
-  - cbn. destruct_match ; [intuition | now rewrite IH].
-Qed.    
-
-Lemma countA_occ_removeA_other {A : Type} `{eq_dec : EqDec A} x y l :
-  x =/= y -> countA_occ equiv eq_dec x (removeA eq_dec y l) = countA_occ equiv eq_dec x l.
-Proof.
-intros Hxy. induction l as [|z l IH].
-+ reflexivity.
-+ cbn. repeat destruct_match.
-  - rewrite <-e in e0. symmetry in e0. intuition.
-  - now rewrite IH.
-  - rewrite e. cbn. rewrite IH. destruct_match ; [|intuition]. reflexivity.
-  - cbn. destruct_match ; [intuition|]. now rewrite IH.
-Qed.    
-
-
-Lemma PermutationA_countA_occ {A : Type} `{eq_dec : EqDec A} l l' :
-  PermutationA equiv l l' <-> 
-  forall x, countA_occ equiv eq_dec x l == countA_occ equiv eq_dec x l'.
-Proof. 
-split.
-+ intros Hperm x. elim Hperm.
-  - now reflexivity.
-  - intros x1 x2 l1 l2 Hx Hl IH. cbn. 
-    repeat destruct_match ; try (now rewrite IH) ; 
-      rewrite <-e, Hx in c ; unfold complement in c ; now intuition.
-  - intros a b t. cbn. repeat destruct_match ; reflexivity.
-  - intros l1 l2 l3 _ H1 _ H2. now rewrite H1, <-H2.
-+ intros Hcount. remember (length l) as m. generalize l l' Heqm Hcount.
-  pattern m. apply (well_founded_ind lt_wf). clear m l l' Heqm Hcount.
-  intros m IH [|x l] l' Hm Hcount.
-  -  cbn in *. destruct l' as [|y tl'] ; [now apply permA_nil|].
-    specialize (Hcount y). revert Hcount ; cbn. destruct_match ; [|intuition]. discriminate.
-  - rewrite (PermutationA_count_split _ eq_dec x l).
-    rewrite (PermutationA_count_split _ eq_dec x l').
-    rewrite app_comm_cons. f_equiv.
-    * apply eqlistA_PermutationA. rewrite <-Hcount. cbn. destruct_match ; [|intuition].
-      cbn. reflexivity.
-    * eapply IH ; [|reflexivity|].
-      ++apply (Nat.le_lt_trans _ (length l)) ; [apply Preliminary.removeA_length_le|].
-        rewrite Hm. cbn. lia.
-      ++intros y. case (eq_dec x y) as [Hxy|Hxy]. 
-        rewrite <-Hxy. repeat rewrite countA_occ_removeA_same. reflexivity.
-        repeat rewrite countA_occ_removeA_other by (symmetry ; auto).
-        rewrite <-Hcount. cbn. destruct_match ; [intuition|reflexivity].
-Qed.
 
 Lemma multi_support_add {A : Type} `{EqDec A} s x k : ~ In x s -> k > 0 ->
   PermutationA equiv (multi_support (add x k s)) (alls x k ++ multi_support s).
@@ -583,32 +472,6 @@ unfold config_stay, config_stay_or_go. intros Hstay p i. specialize (Hstay i).
 destruct (config i) as [[start dest] _]. now left.
 Qed.
 
-Lemma nth_enum i m d :
-  forall Him : i < m, nth i (enum m) d = exist (fun x => x < m) i Him.
-Proof.
-intros Him. apply eq_proj1, Nat.le_antisymm ; cbn.
-+ apply lt_n_Sm_le, firstn_enum_spec. rewrite <-(firstn_skipn (S i)) at 1.
-  rewrite app_nth1 ; [apply nth_In|] ; rewrite firstn_length_le ; try rewrite enum_length ; lia. 
-+ apply skipn_enum_spec. rewrite <-(firstn_skipn i) at 1.
-  rewrite app_nth2 ; [apply nth_In|] ; rewrite firstn_length_le by (rewrite enum_length ; lia) ; auto.
-  rewrite Nat.sub_diag, skipn_length, enum_length. lia.
-Qed.
-
-Lemma nth_InA {A : Type} {eqA : relation A} i l d :
-  Reflexive eqA -> 
-  i < length l -> InA eqA (nth i l d) l.
-Proof.
-intros Hrefl Hi. induction l using rev_ind. 
-+ cbn in Hi. lia.
-+ rewrite app_length in Hi. cbn in Hi.
-  case (lt_dec i (length l)) as [Hi_lt | Hi_ge].
-  - rewrite InA_app_iff ; left.
-    rewrite app_nth1 by auto. now apply IHl.
-  - assert (Hi_eq : i = length l) by lia.
-    rewrite Hi_eq, nth_middle, InA_app_iff ; right.
-    now apply InA_cons_hd.
-Qed. 
-
 (* This would have been much more pleasant to do with mathcomp's tuples. *)
 Lemma config_list_InA_combine x x' c c' : 
   InA equiv (x, x') (combine (config_list c) (config_list c')) <-> 
@@ -648,13 +511,6 @@ split.
   rewrite Nat.min_id. cbn. destruct g. cbn. lia.
 Qed.
 
-Lemma combine_map {A B C : Type} l l' (f : A -> C) (f' : B -> C) : 
-  combine (List.map f l) (List.map f' l') = List.map (fun '(x, x') => (f x, f' x')) (combine l l').
-Proof.
-generalize l'. clear l'. induction l as [| x l IH] ; intros [|x' l'] ; cbn ; try reflexivity.
-f_equal. apply IH.
-Qed.
-
 Lemma pos_list_InA_combine x x' c c' : 
   InA equiv (x, x') (combine (pos_list c) (pos_list c')) <-> 
   exists id, x == get_location (c id) /\ x' == get_location (c' id).
@@ -671,32 +527,6 @@ unfold pos_list. rewrite combine_map. rewrite (@InA_map_iff _ _ equiv equiv) ; a
   - now rewrite H1.
   - now rewrite H2.
 Qed. 
-
-Lemma combine_nil_or {A B : Type} (l : list A) (l' : list B) :
-  combine l l' = nil <-> (l = nil \/ l' = nil).
-Proof. 
-split.
-+ intros Hcom. destruct l as [|x l] ; destruct l' as [|x' l'] ; intuition.
-  discriminate Hcom.
-+ intros [-> | ->] ; [|rewrite combine_nil] ; reflexivity.
-Qed.
-
-Lemma Forall2_Forall {A B : Type} (R : A -> B -> Prop) l l' : length l = length l' -> 
-  (Forall2 R l l' <-> Forall (fun '(x, y) => R x y) (combine l l')).
-Proof. 
-intros Hlen. split.
-+ intros Hforall2. induction Hforall2 as [|x x' l l' Hx Hl IH] ; constructor ; auto.
-+ intros Hforall. remember (combine l l') as c.
-  generalize dependent l'. generalize dependent l. generalize dependent c.
-  induction c as [|a c IH] ; intros Hforall l l' Hlen Hcom.
-  - symmetry in Hcom. rewrite combine_nil_or in Hcom. 
-    destruct Hcom as [-> | ->] ; cbn in Hlen ; [symmetry in Hlen|] ; 
-      apply length_0 in Hlen ; rewrite Hlen ; constructor.
-  - destruct a as [y y']. 
-    destruct l as [|x l] ; [discriminate|]. 
-    destruct l' as [|x' l'] ; [discriminate|].
-    cbn in Hcom. inv Hcom. rewrite Forall_cons_iff in Hforall. constructor ; intuition.
-Qed.
 
 (* A robot is moving from [s] to [d]. It is thus on the half line [L] 
  * originating at [d] and passing through [s]. If we move the robot a bit closer to [d],
@@ -731,6 +561,9 @@ Definition invariant w config : Prop :=
 Local Instance invariant_compat : Proper (equiv ==> equiv ==> iff) invariant.
 Proof. intros w w' Hw c c' Hc. unfold invariant. now rewrite Hc, Hw. Qed. 
 
+
+(* What is remarquable is that the invariant is preserved regardless of 
+ * whether the robots are aligned or not. *)
 Lemma round_preserves_invariant config da w : similarity_da_prop da -> 
   invariant w config -> invariant w (round gatherW da config).
 Proof.
@@ -747,26 +580,19 @@ split.
     * specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].   
 + revert Hweb. apply weber_half_line. 
   rewrite Forall2_Forall, Forall_forall by (now unfold pos_list ; repeat rewrite map_length, config_list_length).
-  intros [x x'] Hin. apply (@In_InA _ equiv) in Hin ; autoclass. foldR2.
-  unfold pos_list in Hin. rewrite combine_map, (@InA_map_iff _ _ equiv equiv) in Hin ; autoclass.
-  - destruct Hin as [[y y'] [Hxy Hin]]. apply config_list_InA_combine in Hin.
-    destruct Hin as [i [Hi Hi']].
-    destruct Hxy as [Hx Hx'] ; cbn -[equiv get_location] in Hx, Hx'. 
-    rewrite <-Hx, <-Hx', Hi, Hi'. rewrite (Hround i).
-    destruct_match.
-    (* Activated robots don't move. *)
-    * cbn zeta. cbn -[config_list RealVectorSpace.add opp mul]. rewrite mul_0, add_origin_r. 
-      destruct (config i) as [[s d] ri]. apply half_line_segment.
-    (* Inactive robots move along a straight line towards w. *)
-    * cbn -[straight_path mul opp RealVectorSpace.add]. 
-      specialize (Hstg i). destruct (config i) as [[s d] ri].
-      case Hstg as [Hstay | Hgo].
-      --rewrite Hstay. cbn -[mul opp RealVectorSpace.add]. 
-        rewrite add_opp, 2 mul_origin, add_origin_r. apply half_line_segment.
-      --rewrite Hgo. apply half_line_progress.
-  - intros [a b] [a' b'] [Ha Hb]. cbn -[equiv] in Ha, Hb. split ; cbn -[equiv get_location].
-    * now rewrite Ha.
-    * now rewrite Hb.
+  intros [x x'] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
+  rewrite pos_list_InA_combine in Hin. destruct Hin as [id [Hx Hx']].
+  rewrite Hx, Hx', (Hround id).
+  destruct_match.
+  (* Activated robots don't move. *)
+  * cbn zeta. cbn -[config_list RealVectorSpace.add opp mul]. rewrite mul_0, add_origin_r. 
+    destruct (config id) as [[s d] ri]. apply half_line_segment.
+  (* Inactive robots move along a straight line towards w. *)
+  * cbn -[straight_path mul opp RealVectorSpace.add]. 
+    specialize (Hstg id). destruct (config id) as [[s d] ri].
+    case Hstg as [Hstay | Hgo].
+    --rewrite Hstay, 2 straight_path_same. apply half_line_segment.
+    --rewrite Hgo. apply half_line_progress.
 Qed.
 
 (* If the robots aren't aligned, then the point refered to in the invariant
@@ -778,13 +604,6 @@ Proof.
 intros [Hweb Hstg] HNalign. apply weber_unique with (pos_list config) ; auto.
 apply weber_calc_correct.
 Qed.
-
-Lemma straight_path_0 p p' : straight_path p p' ratio_0 == p. 
-Proof. cbn -[equiv mul opp RealVectorSpace.add]. now rewrite mul_0, add_origin_r. Qed. 
-
-Lemma straight_path_same p r : straight_path p p r == p.
-Proof. cbn -[equiv mul opp RealVectorSpace.add]. now rewrite add_opp, mul_origin, add_origin_r. Qed. 
-
 
 (* This part is rather complicated in ASYNC, since robots continue moving
  * even after being aligned. However we show that they stay aligned : 
@@ -948,36 +767,6 @@ f_equiv.
 Qed.*)
 Admitted. 
 
-Lemma mul_eq0_iff (k : R) (x : R2) : (k * x == 0)%VS <-> (k == 0)%R \/ (x == 0)%VS.
-Proof.
-split ; intros H.
-+ case (k =?= 0%R) as [Hk | Hk] ; [now left | right].
-  apply mul_reg_l with k ; [intuition|].
-  rewrite mul_origin. exact H.
-+ destruct H as [Hk | Hx].
-  - now rewrite Hk, mul_0.
-  - now rewrite Hx, mul_origin.
-Qed.
-
-Lemma straight_path_end s d r : 
-  straight_path s d r == d <-> (s == d \/ proj_ratio r == 1%R).
-Proof.
-split. 
-+ intros Hend. cbn -[mul opp RealVectorSpace.add] in Hend.
-  assert (H : ((r - 1) * (d - s) == 0)%VS).
-  {
-    unfold Rminus. rewrite <-add_morph, minus_morph, mul_1, opp_distr_add, opp_opp.
-    rewrite (RealVectorSpace.add_comm _ s), RealVectorSpace.add_assoc, (RealVectorSpace.add_comm _ s).
-    now rewrite Hend, add_opp.
-  }  
-  rewrite mul_eq0_iff in H. case H as [H1 | H2].
-  - right. cbn in H1 |- *. lra.
-  - left. now rewrite R2sub_origin in H2.
-+ intros [H1 | H2].
-  - now rewrite H1, straight_path_same.
-  - cbn -[mul opp RealVectorSpace.add equiv]. rewrite H2, mul_1.
-    now rewrite add_sub. 
-Qed.
 
 
 (*Lemma Forall2_le_count_weber config da w : 
@@ -1021,46 +810,6 @@ rewrite (Hround id). repeat destruct_match ; rewrite <-Hxw ; cbn -[equiv straigh
       cbn -[equiv mul opp RealVectorSpace.add]. rewrite Hadd_ratio, mul_1.
       now rewrite add_sub.
 Qed.   *)
-
-Lemma straight_path_dist_start (s d : R2) (r : ratio) : 
-  dist s (straight_path s d r) == (r * dist s d)%R.
-Proof. 
-rewrite 2 norm_dist. cbn -[norm mul opp RealVectorSpace.add equiv].
-rewrite opp_distr_add, RealVectorSpace.add_assoc, add_opp, add_origin_l.
-rewrite <-mul_opp, opp_distr_add, opp_opp, RealVectorSpace.add_comm.
-rewrite norm_mul, Rabs_pos_eq ; [reflexivity | apply ratio_bounds].
-Qed.
-
-Lemma straight_path_dist_end (s d : R2) (r : ratio) : 
-  dist d (straight_path s d r) == ((1 - r) * dist s d)%R.
-Proof.  
-rewrite 2 norm_dist. cbn -[norm mul opp RealVectorSpace.add equiv].
-assert (H : (d - (s + r * (d - s)) == (r - 1) * (s - d))%VS).
-{
-  unfold Rminus. rewrite <-add_morph, minus_morph, mul_1, 2 opp_distr_add, opp_opp.
-  rewrite (RealVectorSpace.add_comm _ (-s + d)%VS), RealVectorSpace.add_assoc.
-  f_equiv.
-  + now rewrite RealVectorSpace.add_comm.
-  + rewrite <-mul_opp. f_equiv. now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.  
-}
-rewrite H, norm_mul. f_equiv. rewrite Rabs_left1.
-+ now rewrite Ropp_minus_distr.
-+ generalize (ratio_bounds r). lra.
-Qed. 
-
-Lemma add_ratio_ge_left (r1 r2 : ratio) : (r1 <= add_ratio r1 r2)%R. 
-Proof.
-unfold add_ratio. destruct_match.
-+ apply ratio_bounds.
-+ cbn. generalize (ratio_bounds r2). lra.
-Qed.
-
-Lemma add_ratio_ge_right (r1 r2 : ratio) : (r2 <= add_ratio r1 r2)%R. 
-Proof.
-unfold add_ratio. destruct_match.
-+ apply ratio_bounds.
-+ cbn. generalize (ratio_bounds r1). lra.
-Qed. 
 
 (*Lemma Forall2_le_dist_weber config da w : 
   similarity_da_prop da -> 
@@ -1326,4 +1075,4 @@ induction (fair_first_move config Hfair Hsim Nalign) as [d config Hmove | d conf
   - now rewrite Hmove.
 Qed.  
 
-End Gathering.
+End Alignment.

@@ -55,6 +55,8 @@ Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Models.Rigid.
 (* Specific to settings with no Byzantine robots *)
 Require Import Pactole.Models.NoByzantine.
+(* Utility lemmas. *)
+Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Utils.
 (* Specific to definition and properties of the weber point. *)
 Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Weber_point.
 
@@ -68,20 +70,8 @@ Close Scope R_scope.
 Close Scope VectorSpace_scope.
 
 
-(* Change the left hand side of an setoid-equality with a convertible term. *)
-Ltac change_LHS E := 
-  match goal with 
-  | [ |- ?LHS == ?RHS ] => change (E == RHS)
-  end.
 
-(* Change the right hand side of an setoid-equality with a convertible term. *)
-Ltac change_RHS E := 
-  match goal with 
-  | [ |- ?LHS == ?RHS ] => change (LHS == E)
-  end.
-
-
-Section Gathering.
+Section Alignment.
 
 (* We assume the existence of a function that calculates a weber point of a collection
  * (even when the weber point is not unique).
@@ -147,27 +137,6 @@ Proof using . split. reflexivity. Qed.
 Definition multi_support {A} `{EqDec A} (s : multiset A) :=
   List.flat_map (fun '(x, mx) => alls x mx) (elements s).
 
-Local Instance flat_map_compat_eq {A B} `{Setoid A} `{Setoid B} : 
-  Proper ((equiv ==> PermutationA equiv) ==> eqlistA equiv ==> PermutationA equiv) (@flat_map A B).
-Proof using . 
-intros f f' Hff' l l' Hll'. elim Hll'.
-+ cbn. now reflexivity.
-+ intros x x' t t' Hxx' Htt' IH. cbn. now f_equiv ; auto.
-Qed.
-
-Local Instance flat_map_compat_perm {A B} `{Setoid A} `{Setoid B} : 
-  Proper ((equiv ==> PermutationA equiv) ==> PermutationA equiv ==> PermutationA equiv) (@flat_map A B).
-Proof using . 
-intros f f' Hff' l l' Hll'. elim Hll'.
-+ simpl. now reflexivity.
-+ intros x x' t t' Hxx' Htt' IH. cbn. rewrite <-IH. f_equiv. now apply Hff'.
-+ intros x y t. cbn. repeat rewrite app_assoc. f_equiv.
- - rewrite PermutationA_app_comm. f_equiv ; now apply Hff'. now apply setoid_equiv.
- - now f_equiv.
-+ intros t t' t'' _ IH1 _ IH2. rewrite IH1, <-IH2. f_equiv. 
-  intros x x' Hxx'. symmetry. now apply Hff'.
-Qed.
-
 Local Instance multi_support_compat {A} `{EqDec A} : Proper (equiv ==> PermutationA equiv) (@multi_support A _ _).
 Proof using . 
 intros s s' Hss'. unfold multi_support. f_equiv.
@@ -197,68 +166,6 @@ repeat destruct_match.
 Qed.
 
 Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
-
-Lemma eq_dec_refl {A B : Type} `(eq_dec : EqDec A) (x : A) (u v : B) : 
-  (if eq_dec x x then u else v) = u.
-Proof using . destruct_match ; [reflexivity | unfold complement in c ; intuition]. Qed.
-
-Local Instance countA_occ_compat_setoid {A : Type} `{eq_dec : EqDec A} : 
-  Proper (equiv ==> PermutationA equiv ==> equiv) (countA_occ equiv eq_dec).
-Proof using . intros x x' Hx l l' Hl. now apply countA_occ_compat ; autoclass. Qed.
-
-Lemma countA_occ_removeA_same {A : Type} `{eq_dec : EqDec A} x l :
-  countA_occ equiv eq_dec x (removeA eq_dec x l) = 0.
-Proof using . 
-induction l as [|y l IH].
-+ reflexivity.
-+ cbn. destruct_match.
-  - now rewrite IH.
-  - cbn. destruct_match ; [intuition | now rewrite IH].
-Qed.    
-
-Lemma countA_occ_removeA_other {A : Type} `{eq_dec : EqDec A} x y l :
-  x =/= y -> countA_occ equiv eq_dec x (removeA eq_dec y l) = countA_occ equiv eq_dec x l.
-Proof using .
-intros Hxy. induction l as [|z l IH].
-+ reflexivity.
-+ cbn. repeat destruct_match.
-  - rewrite <-e in e0. symmetry in e0. intuition.
-  - now rewrite IH.
-  - rewrite e. cbn. now rewrite (eq_dec_refl eq_dec), IH.
-  - cbn. destruct_match ; [intuition|]. now rewrite IH.
-Qed.    
-
-
-Lemma PermutationA_countA_occ {A : Type} `{eq_dec : EqDec A} l l' :
-  PermutationA equiv l l' <-> 
-  forall x, countA_occ equiv eq_dec x l == countA_occ equiv eq_dec x l'.
-Proof using . 
-split.
-+ intros Hperm x. elim Hperm.
-  - now reflexivity.
-  - intros x1 x2 l1 l2 Hx Hl IH. cbn. 
-    repeat destruct_match ; try (now rewrite IH) ; 
-      rewrite <-e, Hx in c ; unfold complement in c ; now intuition.
-  - intros a b t. cbn. repeat destruct_match ; reflexivity.
-  - intros l1 l2 l3 _ H1 _ H2. now rewrite H1, <-H2.
-+ intros Hcount. remember (length l) as m. generalize l l' Heqm Hcount.
-  pattern m. apply (well_founded_ind lt_wf). clear m l l' Heqm Hcount.
-  intros m IH [|x l] l' Hm Hcount.
-  -  cbn in *. destruct l' as [|y tl'] ; [now apply permA_nil|].
-    specialize (Hcount y). revert Hcount ; cbn. rewrite (eq_dec_refl eq_dec). discriminate.
-  - rewrite (PermutationA_count_split _ eq_dec x l).
-    rewrite (PermutationA_count_split _ eq_dec x l').
-    rewrite app_comm_cons. f_equiv.
-    * apply eqlistA_PermutationA. rewrite <-Hcount. cbn. rewrite (eq_dec_refl eq_dec).
-      cbn. reflexivity.
-    * eapply IH ; [|reflexivity|].
-      ++apply (Nat.le_lt_trans _ (length l)) ; [apply Preliminary.removeA_length_le|].
-        rewrite Hm. cbn. apply Nat.lt_succ_diag_r.
-      ++intros y. case (eq_dec x y) as [Hxy|Hxy]. 
-        rewrite <-Hxy. repeat rewrite countA_occ_removeA_same. reflexivity.
-        repeat rewrite countA_occ_removeA_other by (symmetry ; auto).
-        rewrite <-Hcount. cbn. destruct_match ; [intuition|reflexivity].
-Qed.
 
 Lemma multi_support_add {A : Type} `{EqDec A} s x k : ~ In x s -> k > 0 ->
   PermutationA equiv (multi_support (add x k s)) (alls x k ++ multi_support s).
@@ -376,50 +283,14 @@ Qed.
 Lemma sub_lt_sub (i j k : nat) : j < i <= k -> k - i < k - j.
 Proof using lt_0n. lia. Qed.
 
-Lemma countA_occ_le w ps ps' :
-  Forall2 (fun x x' => x' == x \/ x' == w) ps ps' -> 
-    countA_occ equiv R2_EqDec w ps <= countA_occ equiv R2_EqDec w ps'.
-Proof using . 
-intros HF. induction HF as [| x x' l l' Hxx' Hll' IH] ; [auto|].
-cbn -[equiv]. repeat destruct_match ; intuition.
-rewrite H, e in c. intuition.
-Qed.
-
-Lemma countA_occ_lt w ps ps' : 
-  Forall2 (fun x x' => x' == x \/ x' == w) ps ps' -> 
-  List.Exists (fun '(x, x') => x' =/= x) (combine ps ps') ->
-    countA_occ equiv R2_EqDec w ps < countA_occ equiv R2_EqDec w ps'.
-Proof using .
-intros HF HE. induction HF as [| x x' l l' Hxx' Hll' IH].
-+ rewrite Exists_exists in HE. destruct HE as [x [In_nil _]]. now apply in_nil in In_nil.
-+ cbn -[complement equiv] in HE. rewrite Exists_cons in HE.
-  destruct HE as [Dxx' | HE].
-  - destruct Hxx' as [Exx' | Ex'w] ; intuition.
-    rewrite Ex'w in Dxx' |- *. cbn -[equiv].
-    repeat destruct_match ; intuition. apply le_lt_n_Sm. now apply countA_occ_le.
-  - destruct Hxx' as [Exx' | Ex'w] ; cbn -[equiv] ; repeat destruct_match ; intuition.
-    rewrite Exx', e in c. intuition.
-Qed.
-
-Lemma nth_enum i m d :
-  forall Him : i < m, nth i (enum m) d = exist (fun x => x < m) i Him.
-Proof.
-intros Him. apply eq_proj1, Nat.le_antisymm ; cbn.
-+ apply lt_n_Sm_le, firstn_enum_spec. rewrite <-(firstn_skipn (S i)) at 1.
-  rewrite app_nth1 ; [apply nth_In|] ; rewrite firstn_length_le ; try rewrite enum_length ; lia. 
-+ apply skipn_enum_spec. rewrite <-(firstn_skipn i) at 1.
-  rewrite app_nth2 ; [apply nth_In|] ; rewrite firstn_length_le by (rewrite enum_length ; lia) ; auto.
-  rewrite Nat.sub_diag, skipn_length, enum_length. lia.
-Qed.
-
 Lemma list_in_length_n0 {A : Type} x (l : list A) : List.In x l -> length l <> 0.
-Proof. intros Hin. induction l as [|y l IH] ; cbn ; auto. Qed.
+Proof using . intros Hin. induction l as [|y l IH] ; cbn ; auto. Qed.
 
 (* This would have been much more pleasant to do with mathcomp's tuples. *)
 Lemma config_list_In_combine x x' c c' : 
   List.In (x, x') (combine (config_list c) (config_list c')) <-> 
   exists id, x == c id /\ x' == c' id.
-Proof.
+Proof using lt_0n.
 assert (g0 : G).
 { change G with (fin n). apply (exist _ 0). lia. }
 split.
@@ -450,40 +321,13 @@ split.
   - exfalso. assert (Hbyz := In_Bnames b). apply list_in_length_n0 in Hbyz. rewrite Bnames_length in Hbyz. auto.
 Qed.
 
-Lemma combine_nil_or {A B : Type} (l : list A) (l' : list B) :
-  combine l l' = nil <-> (l = nil \/ l' = nil).
-Proof. 
-split.
-+ intros Hcom. destruct l as [|x l] ; destruct l' as [|x' l'] ; intuition.
-  discriminate Hcom.
-+ intros [-> | ->] ; [|rewrite combine_nil] ; reflexivity.
-Qed.
-
-Lemma Forall2_Forall {A B : Type} (R : A -> B -> Prop) l l' : length l = length l' -> 
-  (Forall2 R l l' <-> Forall (fun '(x, y) => R x y) (combine l l')).
-Proof. 
-intros Hlen. split.
-+ intros Hforall2. induction Hforall2 as [|x x' l l' Hx Hl IH] ; constructor ; auto.
-+ intros Hforall. remember (combine l l') as c.
-  generalize dependent l'. generalize dependent l. generalize dependent c.
-  induction c as [|a c IH] ; intros Hforall l l' Hlen Hcom.
-  - symmetry in Hcom. rewrite combine_nil_or in Hcom. 
-    destruct Hcom as [-> | ->] ; cbn in Hlen ; [symmetry in Hlen|] ; 
-      apply length_0 in Hlen ; rewrite Hlen ; constructor.
-  - destruct a as [y y']. 
-    destruct l as [|x l] ; [discriminate|]. 
-    destruct l' as [|x' l'] ; [discriminate|].
-    cbn in Hcom. inv Hcom. rewrite Forall_cons_iff in Hforall. constructor ; intuition.
-Qed.
-
-
 (* This measure strictly decreases whenever a robot moves. *)
 Definition measure config := 
   let ps := config_list config in 
   n - countA_occ equiv R2_EqDec (weber_calc ps) ps.
 
 Local Instance measure_compat : Proper (equiv ==> eq) measure.
-Proof. intros c c' Hc. unfold measure. now rewrite Hc. Qed.
+Proof using . intros c c' Hc. unfold measure. now rewrite Hc. Qed.
 
 (* All the magic is here : when the robots move 
  * they go towards the weber point so it is preserved. 
@@ -493,7 +337,7 @@ Proof. intros c c' Hc. unfold measure. now rewrite Hc. Qed.
 Lemma round_preserves_weber config da w :
   similarity_da_prop da -> Weber (config_list config) w -> 
     Weber (config_list (round gatherW da config)) w.
-Proof. 
+Proof using lt_0n. 
 intros Hsim Hweb. apply weber_half_line with (config_list config) ; auto.
 rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
 intros [x x']. rewrite config_list_In_combine.
@@ -510,7 +354,7 @@ Lemma round_decreases_measure config da :
   moving gatherW da config <> nil -> 
     aligned (config_list (round gatherW da config)) \/ 
     measure (round gatherW da config) < measure config.
-Proof. 
+Proof using lt_0n. 
 intros Hsim Hmove. 
 destruct (aligned_dec (config_list (round gatherW da config))) as [Rcol | RNcol] ; [now left|right].
 assert (weber_calc (config_list (round gatherW da config)) == weber_calc (config_list config)) as Hweb.
@@ -535,7 +379,7 @@ Qed.
 
 Lemma gathered_aligned ps x : 
   (Forall (fun y => y == x) ps) -> aligned ps.
-Proof. 
+Proof using . 
 rewrite Forall_forall. intros Hgathered.
 unfold aligned. rewrite ForallTriplets_forall.
 intros a b c Ha Hb Hc.
@@ -543,16 +387,13 @@ apply Hgathered in Ha, Hb, Hc. rewrite Ha, Hb, Hc, add_opp.
 apply colinear_origin_r.
 Qed.
 
-Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
-Proof. intuition. Qed.
-
 (* If the robots aren't aligned yet then there exists at least one robot which, 
  * if activated, will move. 
  * Any robot that isn't on the weber point will do the trick. *)
 Lemma one_must_move config : ~aligned (config_list config) ->
   exists r, forall da, similarity_da_prop da -> activate da r = true ->
                        round gatherW da config r =/= config r.
-Proof.
+Proof using .
 intros Nalign.
 cut (exists r, config r =/= weber_calc (config_list config)). 
 {
@@ -574,7 +415,7 @@ Qed.
 Lemma fair_first_move (d : demon) config : 
   Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
   ~(aligned (config_list config)) -> FirstMove gatherW d config.
-Proof.
+Proof using .
 intros Hfair Hsim Nalign.
 destruct (one_must_move config Nalign) as [id Hmove].
 destruct Hfair as [locallyfair Hfair].
@@ -604,7 +445,7 @@ Qed.
 Theorem weber_correct (d : demon) config : 
   Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
   eventually_aligned config d gatherW.
-Proof.
+Proof using lt_0n.
 remember (measure config) as k. 
 generalize dependent d. generalize dependent config.
 pattern k. apply (well_founded_ind lt_wf). clear k.
@@ -625,4 +466,4 @@ induction (fair_first_move config Hfair Hsim Nalign) as [d config Hmove | d conf
   destruct Hfair as [_ Hfair_tl]. exact Hfair_tl.
 Qed.
 
-End Gathering.
+End Alignment.

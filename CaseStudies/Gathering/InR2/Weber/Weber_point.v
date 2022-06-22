@@ -39,112 +39,17 @@ Require Import SetoidDec.
 (* Helping typeclass resolution avoid infinite loops. *)
 Typeclasses eauto := (bfs).
 
-(* Specific to R^2 topology *)
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Util.SetoidDefs.
 Require Import Pactole.Util.Coqlib.
 Require Import Pactole.Spaces.Similarity.
-
-(* User defined *)
-Import Permutation.
-Import Datatypes.
+Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Utils.
 
 Set Implicit Arguments.
+
 Close Scope R_scope.
 Close Scope VectorSpace_scope.
 
-
-
-(* This tactic feeds the precondition of an implication in order to derive the conclusion
-  (taken from http://comments.gmane.org/gmane.science.mathematics.logic.coq.club/7013).
-
-  Usage: feed H.
-
-  H: P -> Q  ==becomes==>  H: P
-                          ____
-                          Q
-
-  After completing this proof, Q becomes a hypothesis in the context. *)
-  Ltac feed H :=
-  match type of H with
-  | ?foo -> _ =>
-    let FOO := fresh in
-    assert foo as FOO; [|specialize (H FOO); clear FOO]
-  end.
-
-(* Generalization of feed for multiple hypotheses.
-    feed_n is useful for accessing conclusions of long implications.
-
-    Usage: feed_n 3 H.
-      H: P1 -> P2 -> P3 -> Q.
-
-    We'll be asked to prove P1, P2 and P3, so that Q can be inferred. *)
-Ltac feed_n n H := match constr:(n) with
-  | O => idtac
-  | (S ?m) => feed H ; [| feed_n m H]
-  end.
-
-
-Section ForallTriplets.
-Variables (A B C : Type).
-Implicit Types (R : A -> B -> C -> Prop).
-
-(* The proposition R holds for every triplet in the cartesian product (l1 * l2 * l3). *)
-Definition ForallTriplets R l1 l2 l3 : Prop :=
-  Forall (fun x => Forall (fun y => Forall (fun z => R x y z) l3) l2) l1.
-
-Local Instance Forall_PermutationA_compat_strong {T : Type} `{Setoid T} : 
-  Proper ((equiv ==> iff) ==> PermutationA equiv ==> iff) (@Forall T).
-Proof using . 
-intros P P' HP l l' Hl. elim Hl.
-+ intuition.
-+ intros x x' t t' Hx Ht IH. repeat rewrite Forall_cons_iff. now f_equiv ; [apply HP|].
-+ intros x y t. repeat rewrite Forall_cons_iff. repeat rewrite <-and_assoc. f_equiv.
-  - rewrite and_comm. now f_equiv ; auto.
-  - f_equiv. intros ? ? ->. now apply HP.
-+ intros t1 t2 t3 _ IH1 _ IH2. rewrite IH1, <-IH2.
-  f_equiv. intros ? ? ->. symmetry. now apply HP.
-Qed.
-
-Local Instance ForallTriplets_PermutationA_compat  `{Setoid A} `{Setoid B} `{Setoid C} : 
-  Proper ((equiv ==> equiv ==> equiv ==> iff) ==> 
-    PermutationA equiv ==> PermutationA equiv ==> PermutationA equiv ==> iff) ForallTriplets.
-Proof using . 
-intros R R' HR l1 l1' Hl1 l2 l2' Hl2 l3 l3' Hl3. unfold ForallTriplets.
-repeat (f_equiv ; auto ; intros ? ? ?). now apply HR.
-Qed.
-
-(*Definition sumbool_impl (P P' Q Q' : Prop) (f : P -> P') (g : Q -> Q') : 
-    ({P} + {Q}) -> ({P'} + {Q'}) := fun t => 
-  match t with 
-  | left t1 => left (f t1)
-  | right t2 => right (g t2) 
-  end.*)
-
-(* As with Forall, ForallTriplets is decidable (provided R is decidable). *)
-Lemma ForallTriplets_dec R l1 l2 l3 : 
-  (forall x y z, {R x y z} + {~ R x y z}) ->
-  {ForallTriplets R l1 l2 l3} + {~ ForallTriplets R l1 l2 l3}.
-Proof using . intros Rdec. unfold ForallTriplets. repeat (apply Forall_dec ; intros ?). now apply Rdec. Qed.
-
-(* The equivalence between ForallTriplets and regular forall. *)
-Lemma ForallTriplets_forall R l1 l2 l3 : 
-  (ForallTriplets R l1 l2 l3) <-> forall x y z, List.In x l1 -> List.In y l2 -> List.In z l3 -> R x y z.
-Proof using . 
-unfold ForallTriplets. split.
-+ intros H x y z Hinx Hiny Hinz.
-  rewrite Forall_forall in H. specialize (H x Hinx).
-  rewrite Forall_forall in H. specialize (H y Hiny).
-  rewrite Forall_forall in H. specialize (H z Hinz).
-  exact H.
-+ intros H. 
-  rewrite Forall_forall. intros x Hinx.
-  rewrite Forall_forall. intros y Hiny.
-  rewrite Forall_forall. intros z Hinz.
-  auto.
-Qed.
-
-End ForallTriplets.
 
 Section WeberPoint.
 Implicit Types (points : list R2).
@@ -157,7 +62,7 @@ Local Existing Instances R2_VS R2_ES ForallTriplets_PermutationA_compat.
  * We would need mathcomp (or some other math library) to do this. *)
 Lemma colinear_similarity x y z (f : similarity R2) : 
   colinear (f y - f x) (f z - f x) <-> colinear (y - x) (z - x).
-Proof. Admitted. 
+Proof. Admitted.
 
 (* A finite collection of points are aligned iff every triplet of points are aligned. *)
 (* This definition is based on lists : we could have used multisets,
@@ -198,35 +103,6 @@ intros H. apply aligned_similarity_weak with (List.map f points) (inverse f) in 
 apply aligned_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
 intros x y Hxy. cbn -[equiv]. now rewrite Bijection.retraction_section.
 Qed.
-
-Lemma list_all_eq_or_perm {A : Type} `{Setoid A} `{EqDec A} (x0 : A) l : 
-  (forall x, InA equiv x l -> x == x0) \/ (exists x1 l1, PermutationA equiv l (x1 :: l1) /\ x1 =/= x0).
-Proof.
-case (Forall_dec (equiv x0) (equiv_dec x0) l) as [Hall_eq | HNall_eq].
-+ left. intros x Hin. rewrite Forall_forall in Hall_eq.
-  rewrite InA_alt in Hin. destruct Hin as [y [Hxy Hin]].
-  rewrite Hxy. symmetry. now apply Hall_eq.
-+ right. apply neg_Forall_Exists_neg in HNall_eq ; [|apply equiv_dec].
-  rewrite Exists_exists in HNall_eq. destruct HNall_eq as [x1 [Hin Hx1]].
-  apply (@In_InA _ equiv) in Hin ; autoclass.
-  apply PermutationA_split in Hin ; autoclass.
-  destruct Hin as [l1 Hperm].
-  exists x1. exists l1. split ; [exact Hperm | symmetry ; exact Hx1].
-Qed.
-
-Lemma add_sub {A : Type} `{R : RealVectorSpace A} (x y : A) :
-  (x + (y - x) == y)%VS.
-Proof. now rewrite (RealVectorSpace.add_comm y), RealVectorSpace.add_assoc, add_opp, add_origin_l. Qed. 
-
-Lemma colinear_exists_mul u v : 
-  ~ u == 0%VS -> colinear u v -> exists t, v == (t * u)%VS. 
-Proof.
-intros Hu_n0 Hcol. destruct (colinear_decompose Hu_n0 Hcol) as [Hdecomp | Hdecomp].
-+ exists (norm v / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
-  now rewrite mul_morph.
-+ exists ((- norm v) / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
-  now rewrite mul_morph.
-Qed.   
 
 Lemma aligned_spec p0 ps : 
   aligned (p0 :: ps) <-> exists v, forall p, InA equiv p ps -> exists t, (p == p0 + t * v)%VS.
@@ -387,7 +263,6 @@ repeat rewrite dist_sum_similarity. apply Rmult_le_compat_l.
 + now apply Rlt_le, zoom_pos.
 + now apply H.
 Qed.
-
 
 (* A weber point is preserved by similarities. 
  * This is important because it means that all robots will calculate the same correct weber point, 
