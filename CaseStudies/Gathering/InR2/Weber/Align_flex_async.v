@@ -743,21 +743,31 @@ Definition measure config : R :=
 
 Local Instance measure_compat : Proper (equiv ==> equiv) measure.
 Proof. 
-(*intros c c' Hc. unfold measure, measure_count, measure_dist.
-f_equiv.
-+ apply list_sum_compat, eqlistA_PermutationA. f_equiv.
+intros c c' Hc. unfold measure.
+f_equiv ; [f_equiv|].
++ unfold measure_loop_nonweb. apply list_sum_compat, eqlistA_PermutationA. 
+  f_equiv ; [| now rewrite Hc].
   intros i i' Hi. now rewrite Hi, Hc.
-+ f_equiv ; [|now rewrite Hc]. apply eqlistA_PermutationA. 
++ unfold measure_loop_web. apply list_sum_compat, eqlistA_PermutationA. 
+  f_equiv ; [| now rewrite Hc].
+  intros i i' Hi. now rewrite Hi, Hc.
++ unfold measure_dist. f_equiv ; [|now rewrite Hc]. apply eqlistA_PermutationA. 
   apply map_eqlistA_compat with equiv ; autoclass.
   - repeat intros [[? ?] ?]. auto.
   - now rewrite Hc.
-Qed.*)
-Admitted. 
+Qed.
 
+(* The measure is trivially non-negative. *)
 Lemma measure_nonneg config : (0 <= measure config)%R.
-Proof. Admitted.
-
-
+Proof.
+unfold measure. repeat apply Rplus_le_le_0_compat.
++ apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
+  intros x _. unfold BtoR. destruct_match ; lra.
++ apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
+  intros x _. unfold BtoR. destruct_match ; lra.
++ unfold measure_dist. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
+  intros x _. apply dist_nonneg.   
+Qed.
 
 (*Lemma Forall2_le_count_weber config da w : 
   similarity_da_prop da -> 
