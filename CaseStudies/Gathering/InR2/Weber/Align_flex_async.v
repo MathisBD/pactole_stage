@@ -792,12 +792,28 @@ Proof. now apply invariant_weber_calc ; [apply round_preserves_invariant|]. Qed.
 Lemma Hw : w == weber_calc (pos_list config).
 Proof. apply invariant_weber_calc ; auto. apply HNalign. Qed. 
 
-Lemma BtoR_le b1 b2 : (b1 = true -> b2 = true) -> (BtoR b1 <= BtoR b2)%R.
-Proof. intros H. unfold BtoR. repeat destruct_match ; lra. Qed. 
+Lemma BtoR_le b1 b2 : (b1 = true -> b2 = true) <-> (BtoR b1 <= BtoR b2)%R.
+Proof. unfold BtoR. repeat destruct_match ; lra. Qed.
+
+Lemma BtoR_le_1 b1 b2 : (b1 = false /\ b2 = true) <-> (BtoR b1 <= BtoR b2 - 1)%R.
+Proof. unfold BtoR. repeat destruct_match ; lra. Qed.
 
 Lemma weber_dist_decreases id :
   (dist w (get_start (round gatherW da config id)) <= dist w (get_start (config id)))%R.
-Proof. Admitted.
+Proof. 
+destruct Hinv as [Hstg Hweb].
+destruct (round_simplify config Hsim) as [r Hround].
+rewrite (Hround id). destruct_match. 
++ destruct_match ; [assert (HNalign := HNalign) ; intuition |].
+  cbn -[dist straight_path]. specialize (Hstg id).
+  destruct (config id) as [[s d] ri]. cbn [get_start].
+  case Hstg as [Hstay | Hgo].
+  - rewrite Hstay, straight_path_same. reflexivity.
+  - rewrite Hgo. rewrite straight_path_dist_end, dist_sym. 
+    rewrite <-Rmult_1_l. apply Rmult_le_compat_r ; [apply dist_nonneg|].
+    generalize (ratio_bounds ri). lra.
++ cbn -[dist straight_path]. destruct (config id) as [[s d] ri]. cbn [get_start]. reflexivity.
+Qed.
 
 Lemma weber_dist_decreases_strong id :
   activate da id = true -> 
@@ -805,8 +821,23 @@ Lemma weber_dist_decreases_strong id :
   get_location (config id) =/= w ->
   flex_da_prop da ->
   (dist w (get_start (round gatherW da config id)) <= dist w (get_start (config id)) - delta)%R.
-Proof. Admitted.
-
+Proof.
+intros Hact Hdest Hloc Hflex. specialize (Hflex id config Hact).
+destruct Hinv as [Hstg Hweb].
+destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id). 
+foldR2. change FrameChoiceSimilarity with FrameC in *. destruct_match_eq H ; [|intuition]. 
+destruct_match ; [assert (HNalign := HNalign) ; intuition |].
+cbn -[dist straight_path]. specialize (Hstg id).
+destruct (config id) as [[s d] ri]. cbn -[dist equiv straight_path] in Hdest, Hloc, Hflex |- *.
+case Hstg as [Hstay | Hgo].
++ exfalso. rewrite Hstay, straight_path_same in *. intuition.
++ rewrite Hgo in *. case Hflex as [Hreached | Hdelta] ; [intuition|].
+  transitivity (dist w s - dist s (straight_path s w ri))%R.
+  - rewrite straight_path_dist_end, straight_path_dist_start, <-(Rmult_1_l (dist w s)), dist_sym.
+    rewrite <-Rmult_minus_distr_r. reflexivity.
+  - unfold Rminus. apply Rplus_le_compat_l, Ropp_le_contravar. exact Hdelta.
+Qed.
+  
 Lemma measure_dist_decreases : 
   (measure_dist (round gatherW da config) <= measure_dist config)%R.
 Proof. 
@@ -814,16 +845,34 @@ apply list_sum_le. rewrite Forall2_Forall by (now repeat rewrite map_length ; re
 rewrite combine_map, Forall_map, Forall_forall.
 intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
 rewrite combine_map, (@InA_map_iff _ _ equiv equiv) in Hin ; autoclass.
-- destruct Hin as [[y' y] [[Hy' Hy] Hin]]. cbn -[equiv] in Hy, Hy'.
++ destruct Hin as [[y' y] [[Hy' Hy] Hin]]. cbn -[equiv] in Hy, Hy'.
   rewrite config_list_InA_combine in Hin. destruct Hin as [id [Hx' Hx]].
   rewrite <-Hw, <-HRw, <-Hy, <-Hy', Hx, Hx'. apply weber_dist_decreases ; auto.
-- intros [? ?] [? ?] [H1 H2]. now rewrite H1, H2.
++ intros [? ?] [? ?] [H1 H2]. now rewrite H1, H2.
 Qed.
+
+Lemma contra_bool b1 b2 : (b2 = true -> b1 = true) -> (negb b1 = true -> negb b2 = true).
+Proof. case b1 ; case b2 ; intuition. Qed.
 
 Lemma loop_web_decreases id : 
   (BtoR (negb (is_looping (round gatherW da config id) && is_on w (round gatherW da config id))) <=  
   BtoR (negb (is_looping (config id) && is_on w (config id))))%R.
-Proof. Admitted.
+Proof. 
+destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+apply BtoR_le. apply contra_bool. rewrite 2 andb_true_iff. intros [Hloop Hon]. revert Hloop Hon.
+destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct_match.
++ destruct_match ; [assert (HNalign := HNalign) ; intuition |].
+  rewrite <-Hw. unfold is_looping, is_on. cbn -[straight_path equiv_dec].
+  destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
+  rewrite straight_path_0. intuition.
++ unfold is_looping, is_on. cbn -[straight_path equiv_dec]. 
+  destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
+  case Hstg as [Hstay | Hgo].
+  - rewrite Hstay, 2 straight_path_same. intuition.
+  - rewrite Hgo. destruct_match ; [|intuition]. rewrite e.
+    rewrite 2 straight_path_same. destruct_match ; intuition.
+Qed.
 
 Lemma loop_web_decreases_strong id :
   activate da id = true -> 
@@ -831,7 +880,20 @@ Lemma loop_web_decreases_strong id :
   get_start (config id) =/= w ->
   (BtoR (negb (is_looping (round gatherW da config id) && is_on w (round gatherW da config id))) <=  
   BtoR (negb (is_looping (config id) && is_on w (config id))) - 1)%R.
-Proof. Admitted.
+Proof.
+intros Hact Hloc Hstart. apply BtoR_le_1. 
+rewrite negb_true_iff, negb_false_iff, andb_true_iff, andb_false_iff.
+destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+foldR2. change FrameChoiceSimilarity with FrameC. destruct_match_eq H ; [|intuition].
+destruct_match ; [assert (HNalign := HNalign) ; intuition |]. rewrite <-Hw. cbn zeta.
+revert Hloc Hstart. unfold is_looping, is_on. cbn -[straight_path equiv equiv_dec].
+destruct (config id) as [[s d] ri]. cbn [get_start get_destination]. 
+case Hstg as [Hstay | Hgo].
++ rewrite Hstay. repeat rewrite straight_path_same. intuition.
++ rewrite Hgo. rewrite straight_path_0. intros -> Hsw.
+  repeat split ; [| |left] ; destruct_match ; intuition.
+Qed.
 
 Lemma measure_loop_web_decreases : 
   (measure_loop_web (round gatherW da config) <= measure_loop_web config)%R.
@@ -846,14 +908,43 @@ Qed.
 Lemma loop_nonweb_decreases id :
   (BtoR (is_looping (round gatherW da config id) && negb (is_on w (round gatherW da config id))) <=
   BtoR (is_looping (config id) && negb (is_on w (config id))))%R.
-Proof. Admitted.
+Proof.
+destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+apply BtoR_le. rewrite 2 andb_true_iff, 2 negb_true_iff.
+intros [Hloop Hon]. revert Hloop Hon.
+destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct_match.
++ destruct_match ; [assert (HNalign := HNalign) ; intuition |].
+  rewrite <-Hw. unfold is_looping, is_on. cbn -[straight_path equiv_dec].
+  destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
+  rewrite straight_path_0. intros ->. intuition.
++ unfold is_looping, is_on. cbn -[straight_path equiv_dec].
+  destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
+  case Hstg as [Hstay | Hgo].
+  - rewrite Hstay, 2 straight_path_same. intuition.
+  - rewrite Hgo. destruct_match ; [|intuition]. rewrite e.
+    rewrite 2 straight_path_same. intuition.
+Qed.
 
 Lemma loop_nonweb_decreases_strong id :
   activate da id = true -> 
   get_destination (config id) =/= w -> 
   (BtoR (is_looping (round gatherW da config id) && negb (is_on w (round gatherW da config id))) <=
   BtoR (is_looping (config id) && negb (is_on w (config id))) - 1)%R.
-Proof. Admitted.
+Proof. 
+intros Hact Hdest. apply BtoR_le_1. 
+rewrite andb_true_iff, andb_false_iff, negb_false_iff, negb_true_iff.
+destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+foldR2. change FrameChoiceSimilarity with FrameC. destruct_match_eq H ; [|intuition].
+destruct_match ; [assert (HNalign := HNalign) ; intuition |]. rewrite <-Hw. cbn zeta.
+revert Hdest. unfold is_looping, is_on. cbn -[straight_path equiv equiv_dec].
+destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
+rewrite straight_path_0. 
+case Hstg as [Hstay | Hgo].
++ rewrite Hstay. repeat rewrite straight_path_same. intros Hsw. repeat destruct_match ; intuition.
++ intuition.
+Qed.
 
 Lemma measure_loop_nonweb_decreases : 
   (measure_loop_nonweb (round gatherW da config) <= measure_loop_nonweb config)%R.
@@ -866,83 +957,6 @@ rewrite <-Hw, <-HRw, Hx, Hx'. apply loop_nonweb_decreases ; auto.
 Qed.
 
 End MeasureDecreaseLemmas.
-
-(*Lemma Forall2_le_count_weber config da w : 
-  similarity_da_prop da -> 
-  invariant w config -> 
-  ~aligned (pos_list (round gatherW da config)) ->
-  Forall2 Rle
-    (List.map
-      (fun x : R2 => if x =?= weber_calc (pos_list (round gatherW da config)) then 0%R else 1%R) 
-      (pos_list (round gatherW da config)))
-    (List.map
-      (fun x : R2 => if x =?= weber_calc (pos_list config) then 0%R else 1%R)
-      (pos_list config)).
-Proof. 
-intros Hsim Hinv HRNalign.
-assert (HRw : w == weber_calc (pos_list (round gatherW da config))).
-{ now apply invariant_weber_calc ; [apply round_preserves_invariant|]. }
-assert (Hw : w == weber_calc (pos_list config)).
-{ apply invariant_weber_calc ; auto. intros Halign. apply HRNalign. now apply round_preserves_aligned with w. }
-rewrite <-Hw, <-HRw.
-rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall ; 
-  [|unfold pos_list ; repeat rewrite map_length ; now repeat rewrite config_list_length].
-intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass. rewrite pos_list_InA_combine in Hin.
-destruct Hin as [id [Hx' Hx]].
-case (x =?= w) as [Hxw | Hxw] ; case (x' =?= w) as [Hxw' | Hxw'] ; 
-  repeat destruct_match ; intuition. 
-exfalso. rewrite Hx, Hx' in *. clear Hx Hx'. apply Hxw'.
-destruct (round_simplify config Hsim) as [r Hround].
-rewrite (Hround id). repeat destruct_match ; rewrite <-Hxw ; cbn -[equiv straight_path].
-+ now rewrite straight_path_0.
-+ now rewrite straight_path_0.
-+ destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
-  destruct (config id) as [[s d] ri]. case Hstg as [Hstay | Hgo].
-  - now rewrite Hstay, 2 straight_path_same.
-  - rewrite Hgo in *. cbn -[equiv straight_path] in Hxw. rewrite Hxw.
-    rewrite straight_path_end in Hxw. case Hxw as [H1 | H2].
-    * now rewrite H1, straight_path_same.
-    * assert (Hadd_ratio : proj_ratio (add_ratio ri (r id)) == 1%R).
-      { unfold add_ratio. destruct_match ; cbn ; auto. 
-        change R1 with 1%R in *. cbn in H2. generalize (ratio_bounds (r id)). lra. }
-      cbn -[equiv mul opp RealVectorSpace.add]. rewrite Hadd_ratio, mul_1.
-      now rewrite add_sub.
-Qed.   *)
-
-(*Lemma Forall2_le_dist_weber config da w : 
-  similarity_da_prop da -> 
-  invariant w config ->
-  ~aligned (pos_list (round gatherW da config)) ->
-  Forall2 Rle
-    (List.map 
-      (dist (weber_calc (pos_list (round gatherW da config))))
-      (pos_list (round gatherW da config)))
-    (List.map 
-      (dist (weber_calc (pos_list config))) 
-      (pos_list config)).
-Proof. 
-intros Hsim Hinv HRNalign.
-assert (HRw : w == weber_calc (pos_list (round gatherW da config))).
-{ now apply invariant_weber_calc ; [apply round_preserves_invariant|]. }
-assert (Hw : w == weber_calc (pos_list config)).
-{ apply invariant_weber_calc ; auto. intros Halign. apply HRNalign. now apply round_preserves_aligned with w. }
-rewrite <-Hw, <-HRw, Forall2_Forall, combine_map, Forall_map, Forall_forall ;
-  [| unfold pos_list ; repeat rewrite map_length ; now repeat rewrite config_list_length].
-intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
-rewrite pos_list_InA_combine in Hin. destruct Hin as [id [Hx' Hx]].
-rewrite Hx, Hx'. clear Hx Hx'.
-destruct (round_simplify config Hsim) as [r Hround].
-rewrite (Hround id). repeat destruct_match.
-+ cbn -[straight_path equiv dist]. rewrite straight_path_0. now apply Req_le.
-+ cbn -[straight_path equiv dist]. rewrite straight_path_0. now apply Req_le.
-+ cbn -[dist straight_path]. destruct Hinv as [Hstg Hweb].
-  specialize (Hstg id). destruct (config id) as [[s d] ri].
-  case Hstg as [Hstay | Hgo].
-  - rewrite Hstay, 2 straight_path_same. now apply Req_le.
-  - rewrite Hgo. rewrite 2 straight_path_dist_end.
-    apply Rmult_le_compat_r ; try apply dist_nonneg.
-    unfold Rminus. apply Rplus_le_compat_l, Ropp_le_contravar, add_ratio_ge_left.
-Qed.*)
     
 Lemma In_InA_is_leibniz {A : Type} (eqA : relation A) x l : 
   (forall x y, eqA x y -> x = y) -> (InA eqA x l <-> List.In x l).
@@ -985,7 +999,8 @@ rewrite andb_false_iff in Hnlw. destruct Hnlw as [HNloop | HNon].
   case (s =?= d) as [Hsd | Hsd].  
   - exfalso. revert HNloop. destruct_match ; intuition.
   - case Hstg as [Hstay | Hgo] ; [intuition|]. clear HNloop.
-    case (get_location (config id) =?= )
+    (*case (get_location (config id) =?= )*)
+Admitted.
 
 
 (*intros Hsim Hinv [i Hmove]. 
@@ -1045,7 +1060,6 @@ destruct (get_location (round gatherW da config i) =?= w) as [Hreached | HNreach
           now simplifyR2.
       * exfalso. apply Hi. rewrite Hround. destruct_match ; intuition.
 Qed.*)
-Admitted.
 
 (* This inductive proposition counts how many turns are left before
  * a robot that isn't [looping on w] is activated. *)
@@ -1169,7 +1183,7 @@ case (aligned_dec (pos_list config)) as [Halign | HNalign] ;
 induction (non_webloop_will_activate Hsim Hfair HNalign Hinv) as [d config id Hact Hnwl | d config Hnwl_later IHnwl].
 + apply Stream.Later. apply IH.
   - unfold lt_config. split ; [apply measure_nonneg|].
-    apply round_decreases_measure with w.
+    apply round_decreases_measure_strong with w.
     * apply Hsim.
     * apply Hflex.
     * apply Hinv.
