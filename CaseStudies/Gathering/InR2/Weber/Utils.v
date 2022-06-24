@@ -38,8 +38,11 @@ Require Import Pactole.Util.Ratio.
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Observations.MultisetObservation.
 Require Import Pactole.Core.Identifiers.
+Require Import Pactole.Spaces.Similarity.
 
 Set Implicit Arguments.
+
+Close Scope R_scope.
 
 Local Existing Instance R2_VS.
 Local Existing Instance R2_ES.
@@ -100,6 +103,40 @@ repeat (try rewrite mul_distr_add ;
 
 Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
 Proof. intuition. Qed.
+
+(* This inductive type inspired by mathcomp allows elegant destruction 
+ * of if-statements (more than the 'destruct_match' tactic).
+ * Usage : [case ifP_sumbool] will destuct the first if-statement 
+ * with a sumbool condition in the goal. *)
+Section IfSpecSumbool.
+Variables (P Q : Prop) (T : Type).
+Implicit Types (u v : T).
+
+Inductive if_spec_sumbool u v : {P} + {Q} -> T -> Prop := 
+  | if_spec_sumbool_true (p : P) : if_spec_sumbool u v (left p) u 
+  | if_spec_sumbool_false (q : Q) : if_spec_sumbool u v (right q) v.
+
+Lemma ifP_sumbool (c : {P} + {Q}) u v : if_spec_sumbool u v c (if c then u else v).
+Proof using . case c ; constructor. Qed.
+
+End IfSpecSumbool.
+
+(* Usage : [case ifP_sumbool] will destuct the first if-statement 
+ * with a boolean condition in the goal. *)
+Section IfSpecBool.
+Variables (T : Type) (u v : T).
+
+Inductive if_spec_bool (B NB : Prop) : bool -> T -> Prop := 
+  | if_spec_bool_true : B -> if_spec_bool B NB true u 
+  | if_spec_bool_false : NB -> if_spec_bool B NB false v.
+
+Lemma ifP_bool b : if_spec_bool (b = true) (b = false) b (if b then u else v).
+Proof using . case b ; constructor ; reflexivity. Qed.
+
+End IfSpecBool.
+
+(* Lemma ifP_bool_test b : b = negb b -> (if b then b || b else false) = false.
+Proof. case ifP_bool. ... *)
 
 
 Section ForallTriplets.
@@ -233,6 +270,7 @@ split.
         repeat rewrite countA_occ_removeA_other by (symmetry ; auto).
         rewrite <-Hcount. cbn. destruct_match ; [intuition|reflexivity].
 Qed.
+
 
 Lemma countA_occ_le {A : Type} `{eq_dec : EqDec A} w ps ps' :
   Forall2 (fun x x' => x' == x \/ x' == w) ps ps' -> 
@@ -375,6 +413,26 @@ split.
     now rewrite add_sub. 
 Qed.
 
+
+
+Lemma straight_path_similarity (f : similarity R2) x y r :
+  straight_path (f x) (f y) r == f (straight_path x y r).
+Proof using .
+cbn -[mul opp RealVectorSpace.add]. 
+rewrite sim_add, <-RealVectorSpace.add_assoc. f_equal.
+rewrite sim_mul. unfold Rminus. rewrite <-add_morph, mul_1.
+rewrite (RealVectorSpace.add_comm (f 0%VS) _), <-2 RealVectorSpace.add_assoc.
+rewrite add_opp, add_origin_r. 
+rewrite minus_morph, <-mul_opp, <-mul_distr_add. f_equal.
+rewrite sim_add, sim_opp, <-2 RealVectorSpace.add_assoc. f_equal.
+change 2%R with (1 + 1)%R. rewrite <-add_morph, mul_1. 
+rewrite RealVectorSpace.add_comm, 2 RealVectorSpace.add_assoc. 
+rewrite <-add_origin_l. f_equal.
++ rewrite <-(RealVectorSpace.add_assoc (- f 0)%VS _), (RealVectorSpace.add_comm (- f 0)%VS (f 0)%VS), add_opp.
+  rewrite add_origin_r, RealVectorSpace.add_comm, add_opp.
+  reflexivity.
++ rewrite add_origin_l. reflexivity. 
+Qed.
 
 Lemma straight_path_dist_start (s d : R2) (r : ratio) : 
   dist s (straight_path s d r) == (r * dist s d)%R.
