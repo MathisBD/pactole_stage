@@ -13,7 +13,7 @@
 (**************************************************************************)
 (* Author : Mathis Bouverot-Dupuis (June 2022).
 
- * This file implements an algorithm to align all robots on an arbitrary 
+ * This file implements an algorithm to ALIGN all robots on an arbitrary 
  * axis, in the plane (R²). The algorithm assumes there are no byzantine robots,
  * and works in a RIGID and SEMI-SYNCHRONOUS setting.
 

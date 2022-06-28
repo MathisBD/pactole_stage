@@ -155,7 +155,7 @@ Fixpoint list_sum l :=
   end.
 
 Local Instance list_sum_compat : 
-  Proper (PermutationA (@equiv R _) ==> equiv) list_sum.
+  Proper (PermutationA equiv ==> equiv) list_sum.
 Proof.
 intros l l' Hll'. elim Hll'.
 + now reflexivity.
@@ -163,7 +163,7 @@ intros l l' Hll'. elim Hll'.
 + intros x y t. cbn -[equiv].
   repeat rewrite <-Rplus_assoc. f_equiv. now rewrite Rplus_comm.
 + intros t t' t'' _ IH1 _ IH2. now rewrite IH1, IH2.
-Qed.    
+Qed.
 
 Lemma list_sum_le l l' : Forall2 Rle l l' -> (list_sum l <= list_sum l')%R.
 Proof. 
@@ -226,10 +226,16 @@ Definition predT {A : Type} : A -> Prop := fun _ => True.
 Definition Weber points : R2 -> Prop := argmin (dist_sum points) predT.
 
 (* [Weber] doesn't depend on the order of the points. *)
-Global Instance weber_compat : Proper (PermutationA equiv ==> equiv ==> equiv) Weber.
+Global Instance weber_compat : Proper (PermutationA equiv ==> equiv ==> iff) Weber.
 Proof using .
   intros p p' Hpp' x y Hxy. unfold Weber. f_equiv ; try auto. intros z. now f_equiv.
 Qed.
+
+(* [OnlyWeber ps w] means that [w] is the unique weber point of [ps]. *)
+Definition OnlyWeber ps w : Prop := Weber ps w /\ (forall x, Weber ps x -> x == w).
+
+Global Instance only_weber_compat : Proper (PermutationA equiv ==> equiv ==> iff) OnlyWeber.
+Proof. intros ? ? H1 ? ? H2. unfold OnlyWeber. setoid_rewrite H1. setoid_rewrite H2. reflexivity. Qed.
 
 (* We can show that a weber point can equivalently be defined as
  * an argmin on a compact set of points (instead of an argmin on the whole plane),
@@ -330,5 +336,18 @@ Proof. Admitted.
 (* A weber point of aligned points is on the same line. *)
 Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
 Proof. Admitted.
+
+(* See the thesis of Zohir Bouzid, lemma 3.1.5. *)
+Lemma weber_half_line_strong ps ps' w0 : 
+  Forall2 (fun x y => half_line w0 (x - w0) y) ps ps' -> Weber ps w0 ->
+  (forall w, Weber ps' w <-> (Weber ps w /\ Forall2 (fun x y => half_line w (x - w) y) ps ps')).
+Proof. Admitted. 
+
+(* See the thesis of Zohir Bouzid, corollary 3.1.1. *)
+Corollary weber_half_line_unique ps ps' w : 
+  Forall2 (fun x y => half_line w (x - w) y) ps ps' -> 
+  OnlyWeber ps w -> 
+  OnlyWeber ps' w. 
+Proof. Admitted. 
 
 End WeberPoint.

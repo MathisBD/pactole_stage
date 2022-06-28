@@ -13,15 +13,15 @@
 (**************************************************************************)
 (* Author : Mathis Bouverot-Dupuis (June 2022).
 
- * This file implements an algorithm to ALIGN all robots on an arbitrary 
- * axis, in the plane (R²). The algorithm assumes there are no byzantine robots,
+ * This file implements an algorithm to GATHER all robots in the plane (R²). 
+ * The algorithm assumes there are no byzantine robots,
  * and works in a FLEXIBLE and ASYNCHRONOUS setting. 
 
  * The algorithm is as follows : all robots go towards the 'weber point' of 
- * the configuration. The weber point, also called geometric median, is unique 
- * if the robots are not aligned, and has the property that moving any robot
- * towards the weber point in a straight line doesn't change the weber point. 
- * It thus remains at the same place throughout the whole execution.  *)
+ * the configuration.
+ * The algorithm works on initial configurations where the weber point is unique.
+ * Thanks to a property of the weber point (see the thesis of Zohir Bouzid, 
+ * corollary 3.1.1), it remains unique and at the same place throughout the whole execution. *)
 (**************************************************************************)
 
 
@@ -132,15 +132,15 @@ Local Instance Loc : Location := make_Location R2.
 Local Instance LocVS : RealVectorSpace location := R2_VS.
 Local Instance LocES : EuclideanSpace location := R2_ES.
 
-(* This is what represents a robot's state.
+(* - This is what represents a robot's state.
  * The first location is the robot's start position (where it performed its last 'compute').
  * The second location is the robot's destination (what the robogram computed).
  * The ratio indicates how far the robot has moved along the straight path
- * from start to destination. *)
-(* The robogram doesn't have access to all of this information : 
+ * from start to destination.
+ * - The robogram doesn't have access to all of this information : 
  * when we create an observation, this state gets reduced to 
- * only the current position of the robot. *)
-(* I would have prefered to use a path instead of a (start, destination) pair,
+ * only the current position of the robot.
+ * - I would have prefered to use a path instead of a (start, destination) pair,
  * but we need an EqDec instance on [info]. *)
 Definition info := ((location * location) * ratio)%type.
 
@@ -261,25 +261,14 @@ intros s s' Hss'. unfold multi_support. f_equiv.
 Qed.
 
 (* The main algorithm : just move towards the weber point
- * (in a straight line) until all robots are aligned. *)
+ * (in a straight line) until all robots are gathered.
+ * Note that [obs] describes the positions of the robots in the 
+ * LOCAL frame of reference. *)
 Definition gatherW_pgm obs : location := 
-  if aligned_dec (multi_support obs) 
-  (* Don't move (the robot's local frame is always centered on itself, i.e. its position is at the origin). *)
-  then origin 
-  (* Go towards the weber point. *)
-  else weber_calc (multi_support obs).
+  weber_calc (multi_support obs).
 
 Local Instance gatherW_pgm_compat : Proper (equiv ==> equiv) gatherW_pgm.
-Proof using .
-intros s1 s2 Hs. unfold gatherW_pgm.
-repeat destruct_match.
-+ reflexivity.
-+ rewrite Hs in a. now intuition.
-+ rewrite Hs in n0. now intuition.
-+ apply weber_unique with (multi_support s1) ; auto.
-  - now apply weber_calc_correct.
-  - rewrite Hs. now apply weber_calc_correct.
-Qed.
+Proof using . intros ? ? H. unfold gatherW_pgm. now rewrite H. Qed. 
 
 Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
 
@@ -354,20 +343,19 @@ cbn -[inverse equiv straight_path]. destruct (config2 (Good g)) as [[start dest]
 now rewrite straight_path_similarity.
 Qed.
 
-(* Simplify the [round] function and express it in the global frame of reference. *)
-(* All the proofs below use this simplified version. *)
-Lemma round_simplify da config : similarity_da_prop da ->
+(* Simplify the [round] function and express it in the global frame of reference.
+ * This simplification only works when the weber point is unique.
+ * All the proofs below use this simplified version. *)
+Lemma round_simplify da config w : 
+  similarity_da_prop da ->
+  OnlyWeber (pos_list config) w ->
   exists r : ident -> ratio,
   round gatherW da config == 
-  fun id => if activate da id then
-              let target := 
-                if aligned_dec (pos_list config) 
-                then get_location (config id) 
-                else weber_calc (pos_list config) 
-              in (get_location (config id), target, ratio_0)
+  fun id => if activate da id 
+            then (get_location (config id), w, ratio_0)
             else inactive config id (r id).
 Proof using . 
-intros Hsim. eexists ?[r]. intros id. unfold round. 
+intros Hsim [Hw HwU]. eexists ?[r]. intros id. unfold round. 
 destruct_match ; [|reflexivity].
 destruct_match ; [|byz_exfalso].
 cbn -[inverse equiv lift precondition frame_choice_bijection config_list origin update get_location].
@@ -393,37 +381,23 @@ assert (Proper (equiv ==> equiv) (projT1 f)) as f_compat.
 assert (Halign_loc_glob : aligned (List.map get_location (config_list config)) <-> aligned (multi_support obs)).
 { unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[config_list get_location].
   now rewrite (aligned_similarity _ (change_frame da config g)), map_map. }
-destruct_match.
-(* The robots are aligned. *)
-+ unfold gatherW_pgm. destruct_match ; [|intuition].
-  change (frame_choice_bijection (change_frame da config g ⁻¹) 0%VS) with (center (change_frame da config g)).
-  rewrite Hsim. cbn -[equiv inverse straight_path lift].
-  destruct (config (Good g)) as [[start dest] r].
-  reflexivity.
-(* The robots aren't aligned. *)
-+ unfold gatherW_pgm. destruct_match ; [intuition|].
-  pose (sim := change_frame da config g). foldR2. fold sim.
-  assert (Hweb : weber_calc (multi_support obs) == sim (weber_calc (List.map get_location (config_list config)))).
-  {
-    unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[equiv config_list get_location].
-    foldR2. fold sim. 
-    apply weber_unique with (List.map sim (List.map get_location (config_list config))).
-    - now rewrite <-aligned_similarity.
-    - rewrite map_map. apply weber_calc_correct.
-    - apply weber_similarity, weber_calc_correct.
-  }
-  rewrite Hweb. cbn -[equiv config_list straight_path].
-  destruct (config (Good g)) as [[start dest] r].
-  rewrite Bijection.retraction_section. reflexivity.
+unfold gatherW_pgm.
+pose (sim := change_frame da config g). foldR2. fold sim.
+assert (Hw_sim : OnlyWeber (List.map sim (pos_list config)) (sim w)).
+{
+  split ; [now apply weber_similarity|]. 
+  intros w' Hw'. rewrite <-(Bijection.section_retraction sim w') in Hw' |- *. 
+  f_equiv. apply HwU. now rewrite <-weber_similarity in Hw'.
+}
+assert (Hweb : weber_calc (multi_support obs) == sim w).
+{
+  unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[equiv config_list get_location].
+  foldR2. fold sim. rewrite <-map_map. change (List.map get_location (config_list config)) with (pos_list config).
+  apply Hw_sim, weber_calc_correct.
+}
+rewrite Hweb. cbn -[equiv config_list straight_path get_location].
+rewrite Bijection.retraction_section. reflexivity.
 Qed.
-
-(* This is the goal (for all demons and configs).
- * Notice that we allow robots to move once they are aligned ; 
- * the line could even change (as long as the robots stay aligned). *)
-Definition eventually_aligned config (d : demon) (r : robogram) := 
-  Stream.eventually 
-    (Stream.forever (Stream.instant (fun c => aligned (pos_list c)))) 
-    (execute r d config).
 
 (* This is the property : all robots stay where they are. 
  * This is what should be verified in the initial configuration. *)
@@ -559,40 +533,30 @@ unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].
     now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.
 Qed. 
     
-
-(* This is the main invariant : the robots are alway headed towards a weber point. *)
+(* This is the main invariant : the robots are alway headed towards the unique weber point. *)
 Definition invariant w config : Prop := 
-  config_stay_or_go config w /\ Weber (pos_list config) w. 
+  config_stay_or_go config w /\ OnlyWeber (pos_list config) w. 
 
 Local Instance invariant_compat : Proper (equiv ==> equiv ==> iff) invariant.
 Proof using . intros w w' Hw c c' Hc. unfold invariant. now rewrite Hc, Hw. Qed. 
 
-
-(* What is remarquable is that the invariant is preserved regardless of 
- * whether the robots are aligned or not. *)
+(* The invariant is preserved. *)
 Lemma round_preserves_invariant config da w : similarity_da_prop da -> 
   invariant w config -> invariant w (round gatherW da config).
 Proof using lt_0n.
-unfold invariant. intros Hsim [Hstg Hweb]. destruct (round_simplify config Hsim) as [r Hround].
+unfold invariant. intros Hsim [Hstg Hweb]. destruct (round_simplify config Hsim Hweb) as [r Hround].
 split.
-+ case (aligned_dec (pos_list config)) as [Halign | HNalign] ; cbn zeta in Hround.
-  (* The robots are aligned. *)  
-  - rewrite Hround. intros i. destruct_match ; [now left |].
-    specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].
-  (* The robots aren't aligned. *)
-  - rewrite Hround. intros i. destruct_match.
-    * right. apply weber_unique with (pos_list config) ; auto.
-      apply weber_calc_correct.
-    * specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].   
-+ revert Hweb. apply weber_half_line. 
++ rewrite Hround. intros i. destruct_match ; [now right|].
+  specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].   
++ revert Hweb. apply weber_half_line_unique. 
   rewrite Forall2_Forall, Forall_forall by (now unfold pos_list ; repeat rewrite map_length, config_list_length).
   intros [x x'] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
   rewrite pos_list_InA_combine in Hin. destruct Hin as [id [Hx Hx']].
   rewrite Hx, Hx', (Hround id).
   destruct_match.
   (* Activated robots don't move. *)
-  * cbn zeta. cbn -[config_list RealVectorSpace.add opp mul]. rewrite mul_0, add_origin_r. 
-    destruct (config id) as [[s d] ri]. apply half_line_segment.
+  * destruct (config id) as [[s d] ri]. cbn -[straight_path RealVectorSpace.add opp].
+    rewrite straight_path_0. apply half_line_segment.
   (* Inactive robots move along a straight line towards w. *)
   * cbn -[straight_path mul opp RealVectorSpace.add]. 
     specialize (Hstg id). destruct (config id) as [[s d] ri].
@@ -601,88 +565,21 @@ split.
     --rewrite Hgo. apply half_line_progress.
 Qed.
 
-(* If the robots aren't aligned, then the point refered to in the invariant
- * is necessarily the unique weber point. *)
-Lemma invariant_weber_calc config w :
-  invariant w config -> ~aligned (pos_list config) -> 
-  w == weber_calc (pos_list config).
-Proof using .
-intros [Hweb Hstg] HNalign. apply weber_unique with (pos_list config) ; auto.
-apply weber_calc_correct.
-Qed.
-
-(* This part is rather complicated in ASYNC, since robots continue moving
- * even after being aligned. However we show that they stay aligned : 
- * this mainly comes from the fact that if robots are aligned,
- * then any weber point is also on the same line. *)
-Lemma round_preserves_aligned config da w : similarity_da_prop da -> 
-  invariant w config -> 
-  aligned (pos_list config) -> 
-  aligned (pos_list (round gatherW da config)).
-Proof using . 
-intros Hsim [Hstg Hweb] Halign. assert (H := weber_aligned Halign Hweb).
-rewrite aligned_spec in H. destruct H as [v H].
-apply aligned_tail with w. rewrite aligned_spec. 
-exists v. intros p. unfold pos_list. 
-rewrite (@InA_map_iff _ _ equiv equiv) ; autoclass ; 
-  [|foldR2 ; apply get_location_compat].
-intros [x [Hx Hin]]. foldR2. rewrite config_list_InA in Hin.
-destruct Hin as [id Hid]. revert Hid.
-specialize (H (get_location (config id))). feed H.
-{ rewrite pos_list_InA. now exists id. }
-destruct H as [t H].
-destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
-destruct_match.
-(* The robot is activated. *)
-+ cbn zeta. destruct_match ; [|intuition].
-  intros Hid. exists t. rewrite <-Hx, <-H, Hid.
-  cbn -[equiv straight_path]. now rewrite straight_path_0.
-(* The robot isn't activated. *)
-+ cbn -[equiv straight_path mul RealVectorSpace.add].
-  specialize (Hstg id). destruct (config id) as [[s d] rx].
-  rewrite <-Hx. clear Hx Hround.
+Lemma round_preserves_gathered config da w : 
+  similarity_da_prop da -> invariant w config ->
+  gathered_at w config -> gathered_at w (round gatherW da config).
+Proof.
+intros Hsim [Hstg Hweb] Hgather g. destruct (round_simplify config Hsim Hweb) as [r Hround].
+rewrite (Hround (Good g)). destruct_match.
++ rewrite Hgather. cbn -[equiv straight_path]. now rewrite straight_path_same.
++ cbn -[equiv straight_path]. specialize (Hstg (Good g)). specialize (Hgather g). 
+  destruct (config (Good g)) as [[s d] rg]. cbn -[straight_path equiv] in Hgather.
   case Hstg as [Hstay | Hgo].
-  - rewrite Hstay in *. intros Hid. exists t. rewrite Hid, <-H.
-    cbn -[equiv straight_path]. now repeat rewrite straight_path_same.
-  - rewrite Hgo in *. intros Hid. setoid_rewrite Hid.
-    unfold add_ratio. case (Rle_dec R1 (rx + r id)) as [Rle | RNle].
-    * cbn -[equiv straight_path mul RealVectorSpace.add]. 
-      setoid_rewrite straight_path_1. exists 0%R. now rewrite mul_0, add_origin_r.
-    * cbn -[equiv mul opp RealVectorSpace.add] in H |- *. change R1 with 1%R in *.
-      assert (Halg : exists t', (w - s == t' * v)%VS).
-      {
-        exists (t / (rx - 1))%R. unfold Rdiv. 
-        rewrite Rmult_comm, <-mul_morph. 
-        apply R2div_reg_l ; [generalize (ratio_bounds (r id)) ; lra|].
-        unfold Rminus. rewrite <-add_morph, minus_morph, mul_1.
-        rewrite opp_distr_add, opp_opp, (RealVectorSpace.add_comm _ s).
-        rewrite RealVectorSpace.add_assoc, (RealVectorSpace.add_comm _ s).
-        rewrite H, (RealVectorSpace.add_comm w), <-RealVectorSpace.add_assoc, add_opp.
-        now rewrite add_origin_r. 
-      }
-      destruct Halg as [t' Halg]. 
-      exists (-t' + (rx + r id) * t')%R.
-      rewrite Halg, <-(add_morph (-t')%R), RealVectorSpace.add_assoc, mul_morph.
-      f_equiv. rewrite minus_morph, <-Halg, opp_distr_add, opp_opp.
-      rewrite RealVectorSpace.add_assoc, add_opp, add_origin_l.
-      reflexivity.
-Qed.
-
-(* If the robots are aligned at any point, they stay aligned forever. *)
-Corollary aligned_over config (d : demon) w :
-  Stream.forever (Stream.instant similarity_da_prop) d ->
-  invariant w config -> 
-  aligned (pos_list config) -> 
-  Stream.forever (Stream.instant (fun c => aligned (pos_list c))) (execute gatherW d config).
-Proof using lt_0n.
-revert config d.
-cofix Hind. intros config d Hsim Hinv Halign. constructor.
-+ cbn -[pos_list]. exact Halign.
-+ cbn -[pos_list]. apply Hind.
-  - apply Hsim.
-  - apply round_preserves_invariant ; [apply Hsim | exact Hinv].
-  - apply round_preserves_aligned with w ; [apply Hsim | exact Hinv | exact Halign].
-Qed.
+  - rewrite Hstay in *. now rewrite straight_path_same in *.
+  - rewrite Hgo in *. rewrite straight_path_end in Hgather.
+    case Hgather as [Hsw | Hrg].
+    * now rewrite Hsw, straight_path_same.
+    * Search add_ratio. unfold add_ratio. destruct_match ; cbn -[straight_path equiv].        
 
 (* We say that a robot is looping when its start and destination points are equal. *)
 Definition is_looping (robot : info) : bool := 
