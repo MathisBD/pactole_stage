@@ -417,7 +417,9 @@ destruct_match.
   rewrite Bijection.retraction_section. reflexivity.
 Qed.
 
-(* This is the goal (for all demons and configs). *)
+(* This is the goal (for all demons and configs).
+ * Notice that we allow robots to move once they are aligned ; 
+ * the line could even change (as long as the robots stay aligned). *)
 Definition eventually_aligned config (d : demon) (r : robogram) := 
   Stream.eventually 
     (Stream.forever (Stream.instant (fun c => aligned (pos_list c)))) 
@@ -1074,7 +1076,8 @@ Qed.
 
 
 (* This inductive proposition counts how many turns are left before
- * a robot that isn't [looping on w] is activated. *)
+ * a robot that isn't [looping on w] is activated.
+ * This is analoguous to FirstMove in the SSYNC case. *)
 Inductive FirstActivNLW w : demon -> configuration -> Prop :=
   | FirstActivNLW_Now : forall d config id, 
     activate (Stream.hd d) id = true -> is_looping (config id) && is_on w (config id) = false -> 
@@ -1093,6 +1096,7 @@ apply Hgathered in Ha, Hb, Hc. rewrite Ha, Hb, Hc, add_opp.
 apply colinear_origin_r.
 Qed.
     
+(* If the robots aren't aligned yet, there exists a robot that isn't [looping on w]. *)
 Lemma exists_non_webloop config w : 
   ~aligned (pos_list config) ->
   invariant w config -> 
@@ -1176,9 +1180,12 @@ rewrite <-Z2Nat.inj_lt.
 Qed.
 
 
-(* The proof is essentially a well-founded induction on [measure config].
- * Fairness ensures that the measure must decrease at some point. *)
-Theorem weber_correct_aux w config d :
+(* Notice that [invariant w config] is in the assumptions : 
+ * see the next theorem for the final assumptions. 
+ * The proof is essentially a well-founded induction on [measure config].
+ * Fairness ensures that the measure must decrease at some point,
+ * which leads to a second induction on [FirstMoveNLW w d config]. *)
+Lemma weber_correct_aux w config d :
   Fair d -> 
   invariant w config ->
   Stream.forever (Stream.instant similarity_da_prop) d ->
@@ -1227,5 +1234,38 @@ induction (non_webloop_will_activate Hsim Hfair HNalign Hinv) as [d config id Ha
     * apply HRRNalign.
     * apply HRNalign. 
 Qed.
+
+(* This is the main theorem : we assume that initially 
+ * the robots are all looping on their position. 
+ * Then they will eventually be aligned. *)
+Theorem weber_correct config d :
+  Fair d -> 
+  config_stay config -> (* the initial configuration satisfies this property. *)
+  Stream.forever (Stream.instant similarity_da_prop) d ->
+  Stream.forever (Stream.instant flex_da_prop) d ->
+  eventually_aligned config d gatherW.
+Proof using lt_0n delta_g0.
+intros Hfair Hstay Hsim Hflex. 
+apply weber_correct_aux with (weber_calc (pos_list config)) ; auto.
+now split ; [apply config_stay_impl_config_stg | apply weber_calc_correct]. 
+Qed.
+
+
+(*Inductive Still : demon -> configuration -> Prop :=
+  StillNow : forall d config, 
+    (forall id, get_location (round gatherW (Stream.hd d) config id) == get_location (config id)) ->
+    Still (Stream.tl d) (round gatherW (Stream.hd d) config) -> 
+    Still d config.  
+
+Inductive EventuallyStill : demon -> configuration -> Prop := 
+  | ESNow : forall d config, Still d config -> EventuallyStill d config
+  | ESLater : forall d config, EventuallyStill (Stream.tl d) (round gatherW (Stream.hd d) config) -> EventuallyStill d config.
+
+Theorem weber_non_move config d : 
+  Fair d -> 
+  config_stay config ->
+  Stream.forever (Stream.instant similarity_da_prop) d ->
+  Stream.forever (Stream.instant flex_da_prop) d ->
+  EventuallyStill config d.*)
 
 End Alignment.
