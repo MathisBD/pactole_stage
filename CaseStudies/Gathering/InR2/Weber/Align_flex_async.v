@@ -277,8 +277,8 @@ repeat destruct_match.
 + rewrite Hs in a. now intuition.
 + rewrite Hs in n0. now intuition.
 + apply weber_unique with (multi_support s1) ; auto.
-  - now apply weber_calc_correct.
   - rewrite Hs. now apply weber_calc_correct.
+  - now apply weber_calc_correct.
 Qed.
 
 Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
@@ -409,8 +409,8 @@ destruct_match.
     foldR2. fold sim. 
     apply weber_unique with (List.map sim (List.map get_location (config_list config))).
     - now rewrite <-aligned_similarity.
-    - rewrite map_map. apply weber_calc_correct.
     - apply weber_similarity, weber_calc_correct.
+    - rewrite map_map. apply weber_calc_correct.
   }
   rewrite Hweb. cbn -[equiv config_list straight_path].
   destruct (config (Good g)) as [[start dest] r].
@@ -534,31 +534,30 @@ unfold pos_list. rewrite (@InA_map_iff _ _ equiv equiv) ; autoclass.
 + foldR2. apply get_location_compat.
 Qed. 
 
-(* A robot is moving from [s] to [d]. It is thus on the half line [L] 
- * originating at [d] and passing through [s]. If we move the robot a bit closer to [d],
- * it is still on [L]. *)
-Lemma half_line_progress s d (r1 r2 : ratio) :
-  half_line d (straight_path s d r1 - d) (straight_path s d (add_ratio r1 r2)).
-Proof using . 
-unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].   
-+ rewrite straight_path_1. apply half_line_origin. 
-+ change R1 with 1%R in HNle. cbn -[mul opp RealVectorSpace.add]. 
-  assert (H : (s + r1 * (d - s) - d == (1 - r1) * (s - d))%VS).
-  { 
-    rewrite (RealVectorSpace.add_comm s), <-RealVectorSpace.add_assoc, RealVectorSpace.add_comm.
-    unfold Rminus. rewrite <-add_morph, mul_1. f_equiv.
-    rewrite minus_morph, <-mul_opp. f_equiv. 
-    now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm. 
-  }
-  rewrite H ; clear H.
-  rewrite <-half_line_mul_dir by (generalize (ratio_bounds r2) ; lra).
-  unfold half_line. exists (1 - (r1 + r2))%R. split ; [lra|].
-  unfold Rminus. rewrite <-(add_morph 1%R), mul_1, RealVectorSpace.add_assoc. f_equiv.
-  - now rewrite add_sub.
-  - rewrite minus_morph, <-mul_opp. f_equiv. 
-    now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.
-Qed. 
-    
+(* A technical lemma used to prove the fact that the configuration always
+ * contracts towards the weber point. *)
+Lemma segment_progress a b r1 r2 : 
+  segment b (straight_path a b r1) (straight_path a b (add_ratio r1 r2)).
+Proof using .
+assert (Hr1 := ratio_bounds r1).
+assert (Hr2 := ratio_bounds r2).  
+unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].
++ rewrite straight_path_1. apply segment_start.
++ change R1 with 1%R in HNle. cbn -[mul opp RealVectorSpace.add].
+  unfold segment. exists (r2 / (1 - r1))%R. split.
+  - split ; [apply Rdiv_le_0_compat | apply Rdiv_le_1] ; lra.
+  - apply mul_reg_l with (1 - r1)%R ; [lra|].
+    repeat rewrite (mul_distr_add (1 - r1)). repeat rewrite mul_morph.
+    unfold Rdiv. rewrite <-Rmult_assoc, Rinv_r_simpl_m by lra.
+    rewrite Rmult_minus_distr_l, Rmult_1_r, <-Rmult_assoc, Rinv_r_simpl_m by lra.
+    assert (H : (a + r1 * (b - a) == r1 * b + (1 - r1) * a)%VS).
+    { unfold Rminus. rewrite mul_distr_add, <-add_morph, mul_1, 2 RealVectorSpace.add_assoc.
+      rewrite minus_morph, mul_opp. f_equiv. rewrite RealVectorSpace.add_comm. reflexivity. }
+    rewrite H, (RealVectorSpace.add_comm ((1 - r1) * a)), 2 mul_distr_add.
+    rewrite <-RealVectorSpace.add_assoc, (RealVectorSpace.add_assoc (r2 * b)). f_equiv.
+    * rewrite mul_morph, add_morph. f_equiv. lra.
+    * rewrite mul_opp, <-minus_morph, add_morph, mul_morph. f_equiv. lra. 
+Qed.
 
 (* This is the main invariant : the robots are alway headed towards a weber point. *)
 Definition invariant w config : Prop := 
@@ -584,21 +583,21 @@ split.
     * right. apply weber_unique with (pos_list config) ; auto.
       apply weber_calc_correct.
     * specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].   
-+ revert Hweb. apply weber_half_line. 
++ revert Hweb. apply weber_contract. unfold contract. 
   rewrite Forall2_Forall, Forall_forall by (now unfold pos_list ; repeat rewrite map_length, config_list_length).
   intros [x x'] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
   rewrite pos_list_InA_combine in Hin. destruct Hin as [id [Hx Hx']].
   rewrite Hx, Hx', (Hround id).
   destruct_match.
   (* Activated robots don't move. *)
-  * cbn zeta. cbn -[config_list RealVectorSpace.add opp mul]. rewrite mul_0, add_origin_r. 
-    destruct (config id) as [[s d] ri]. apply half_line_segment.
+  * cbn zeta. cbn -[config_list straight_path]. rewrite straight_path_0. 
+    apply segment_end.
   (* Inactive robots move along a straight line towards w. *)
-  * cbn -[straight_path mul opp RealVectorSpace.add]. 
+  * cbn -[straight_path]. 
     specialize (Hstg id). destruct (config id) as [[s d] ri].
     case Hstg as [Hstay | Hgo].
-    --rewrite Hstay, 2 straight_path_same. apply half_line_segment.
-    --rewrite Hgo. apply half_line_progress.
+    --rewrite Hstay, 2 straight_path_same. apply segment_end.
+    --rewrite Hgo. apply segment_progress.
 Qed.
 
 (* If the robots aren't aligned, then the point refered to in the invariant

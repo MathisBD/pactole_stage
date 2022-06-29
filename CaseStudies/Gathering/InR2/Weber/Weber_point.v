@@ -42,6 +42,7 @@ Typeclasses eauto := (bfs).
 Require Import Pactole.Spaces.R2.
 Require Import Pactole.Util.SetoidDefs.
 Require Import Pactole.Util.Coqlib.
+Require Import Pactole.Util.Ratio.
 Require Import Pactole.Spaces.Similarity.
 Require Import Pactole.CaseStudies.Gathering.InR2.Weber.Utils.
 
@@ -246,8 +247,8 @@ Lemma weber_exists points :
 Proof. Admitted.
 
 (* If the points aren't colinear, than the weber point is unique. *)
-Lemma weber_unique points x y : 
-  ~aligned points -> Weber points x -> Weber points y -> x == y.
+Lemma weber_unique points w : 
+  ~aligned points -> Weber points w -> OnlyWeber points w.
 Proof. Admitted.
 
 Lemma dist_sum_similarity (f : similarity R2) points x : 
@@ -290,30 +291,56 @@ split.
   - now rewrite H.
 Qed.  
 
-(* [half_line o d] represents the set of points that are in the the half line with 
- * origin [o] and direction [d], [o] included. 
- * If d == 0 then the set of points represented is reduced to [o]. *)
-Definition half_line (o d : R2) : R2 -> Prop := fun x =>
-  exists t : R, (0 <= t)%R /\ (x == o + t * d)%VS.
+(* A weber point of aligned points is on the same line. *)
+Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
+Proof. Admitted.
 
-Local Instance half_line_compat : Proper (equiv ==> equiv ==> equiv ==> equiv) half_line.
+(* [segment a b] represents the set of points that are in the segment 
+ * [a, b], endpoints included. *)
+Definition segment (a b : R2) : R2 -> Prop := fun x =>
+  exists t : R, (0 <= t <= 1)%R /\ (x == t * a + (1 - t) * b)%VS.
+
+Local Instance segment_compat : Proper (equiv ==> equiv ==> equiv ==> iff) segment.
 Proof using .
-intros x x' Hxx' y y' Hyy' z z' Hzz'. unfold half_line. now rewrite Hxx', Hyy', Hzz'. 
+intros ? ? H1 ? ? H2 ? ? H3. unfold segment. now rewrite H1, H2, H3. 
 Qed.
 
-Lemma half_line_origin o d : half_line o d o.
-Proof. 
-unfold half_line. exists 0%R. split ; [apply Rle_refl|].
-rewrite mul_0, add_origin_r. reflexivity.
-Qed.
-
-Lemma half_line_segment x y : half_line x (y - x) y.
+Lemma segment_sym a b x : segment a b x <-> segment b a x.
 Proof.
-unfold half_line. exists 1%R. split ; [apply Rle_0_1|].
-now rewrite mul_1, add_sub.
+revert a b x. 
+cut (forall a b x, segment a b x -> segment b a x).
+{ intros H. split ; apply H. }
+intros a b x.
+unfold segment. intros [t [Ht Hx]].
+exists (1 - t)%R. split ; [lra|].
+assert (H : ((1 - (1 - t)) == t)%R).
+{ unfold Rminus. now rewrite Ropp_plus_distr, Ropp_involutive, <-Rplus_assoc, Rplus_opp_r, Rplus_0_l. } 
+rewrite H, RealVectorSpace.add_comm. exact Hx.
+Qed. 
+
+Lemma segment_start a b : segment a b a.
+Proof. 
+unfold segment. exists 1%R. split ; [lra|]. 
+now rewrite mul_1, Rminus_eq_0, mul_0, add_origin_r.
 Qed.
 
-Lemma half_line_mul_dir o d x t : 
+Lemma segment_end a b : segment a b b.
+Proof. 
+unfold segment. exists 0%R. split ; [lra|]. 
+now rewrite mul_0, Rminus_0_r, mul_1, add_origin_l.
+Qed.
+
+Lemma segment_straight_path a b (r : ratio) : segment a b (straight_path a b r).
+Proof.
+rewrite segment_sym. unfold segment. exists r. split.
++ apply ratio_bounds.
++ cbn -[equiv RealVectorSpace.add mul opp].
+  rewrite mul_distr_add, 2 (RealVectorSpace.add_comm (r * b)), RealVectorSpace.add_assoc.
+  f_equiv. unfold Rminus. rewrite <-add_morph, mul_1. f_equiv.
+  now rewrite minus_morph, mul_opp.
+Qed.
+
+(*Lemma half_line_mul_dir o d x t : 
   (0 < t)%R -> (half_line o d x <-> half_line o (t * d)%VS x).
 Proof. 
 intros Ht. split ; intros [s [Hs Hx]] ; unfold half_line.
@@ -324,30 +351,30 @@ intros Ht. split ; intros [s [Hs Hx]] ; unfold half_line.
 + exists (s * t)%R. split.
   - nra.
   - rewrite Hx. f_equiv. now rewrite mul_morph.
-Qed.
+Qed.*)
 
-(* If we move each point towards/away from the weber point in a straight line
- * (without crossing the weber point), the weber point is preserved. 
- * We can even move points onto the weber point, it will still be preserved. *)
-Lemma weber_half_line ps ps' w : 
-  Forall2 (fun x y => half_line w (x - w) y) ps ps' -> Weber ps w -> Weber ps' w.
-Proof. Admitted.
+(* [contract ps ps' x] means that [ps'] is obtained from [ps] by moving
+ * each point towards [x].*)
+Definition contract ps ps' x := 
+  Forall2 (fun p p' => segment x p p') ps ps'.
 
-(* A weber point of aligned points is on the same line. *)
-Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
+Local Instance contract_compat : Proper (eqlistA equiv ==> eqlistA equiv ==> equiv ==> iff) contract.
+Proof. intros ? ? H1 ? ? H2 ? ? H3. unfold contract. Search Forall2 Proper. Admitted.
+
+(* We can even move points onto the weber point, it will still be preserved. *)
+Lemma weber_contract ps ps' w : 
+  contract ps ps' w -> Weber ps w -> Weber ps' w.
 Proof. Admitted.
 
 (* See the thesis of Zohir Bouzid, lemma 3.1.5. *)
-Lemma weber_half_line_strong ps ps' w0 : 
-  Forall2 (fun x y => half_line w0 (x - w0) y) ps ps' -> Weber ps w0 ->
-  (forall w, Weber ps' w <-> (Weber ps w /\ Forall2 (fun x y => half_line w (x - w) y) ps ps')).
+Lemma weber_contract_strong ps ps' w0 : 
+  contract ps ps' w0 -> Weber ps w0 ->
+  (forall w, Weber ps' w <-> (Weber ps w /\ contract ps ps' w)).
 Proof. Admitted. 
 
 (* See the thesis of Zohir Bouzid, corollary 3.1.1. *)
-Corollary weber_half_line_unique ps ps' w : 
-  Forall2 (fun x y => half_line w (x - w) y) ps ps' -> 
-  OnlyWeber ps w -> 
-  OnlyWeber ps' w. 
+Corollary weber_contract_unique ps ps' w : 
+  contract ps ps' w -> OnlyWeber ps w -> OnlyWeber ps' w. 
 Proof. Admitted. 
 
 End WeberPoint.

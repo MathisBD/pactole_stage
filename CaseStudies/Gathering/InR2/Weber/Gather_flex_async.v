@@ -71,7 +71,7 @@ Close Scope R_scope.
 Close Scope VectorSpace_scope.
 
 
-Section Alignment.
+Section Gathering.
 Local Existing Instances dist_sum_compat.
 
 (* We assume the existence of a function that calculates a weber point of a collection
@@ -249,7 +249,7 @@ Definition pos_list (config : configuration) : list location :=
 (* The support of a multiset, but elements are repeated 
  * a number of times equal to their multiplicity. 
  * This is needed to convert an observation from multiset to list format, 
- * so that we can use functions [colinear_dec] and [weber_calc]. *)
+ * so that we can use functions such as [weber_calc]. *)
 Definition multi_support {A} `{EqDec A} (s : multiset A) :=
   List.flat_map (fun '(x, mx) => alls x mx) (elements s).
 
@@ -378,9 +378,6 @@ assert (Hcancel : map_config (lift f_inv) (map_config (lift f) config) == config
 rewrite Hcancel.
 assert (Proper (equiv ==> equiv) (projT1 f)) as f_compat.
 { unfold f ; cbn -[equiv]. intros x y Hxy ; now rewrite Hxy. }
-assert (Halign_loc_glob : aligned (List.map get_location (config_list config)) <-> aligned (multi_support obs)).
-{ unfold obs. rewrite multi_support_map by auto. unfold f. cbn -[config_list get_location].
-  now rewrite (aligned_similarity _ (change_frame da config g)), map_map. }
 unfold gatherW_pgm.
 pose (sim := change_frame da config g). foldR2. fold sim.
 assert (Hw_sim : OnlyWeber (List.map sim (pos_list config)) (sim w)).
@@ -508,30 +505,6 @@ unfold pos_list. rewrite (@InA_map_iff _ _ equiv equiv) ; autoclass.
 + foldR2. apply get_location_compat.
 Qed. 
 
-(* A robot is moving from [s] to [d]. It is thus on the half line [L] 
- * originating at [d] and passing through [s]. If we move the robot a bit closer to [d],
- * it is still on [L]. *)
-Lemma half_line_progress s d (r1 r2 : ratio) :
-  half_line d (straight_path s d r1 - d) (straight_path s d (add_ratio r1 r2)).
-Proof using . 
-unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].   
-+ rewrite straight_path_1. apply half_line_origin. 
-+ change R1 with 1%R in HNle. cbn -[mul opp RealVectorSpace.add]. 
-  assert (H : (s + r1 * (d - s) - d == (1 - r1) * (s - d))%VS).
-  { 
-    rewrite (RealVectorSpace.add_comm s), <-RealVectorSpace.add_assoc, RealVectorSpace.add_comm.
-    unfold Rminus. rewrite <-add_morph, mul_1. f_equiv.
-    rewrite minus_morph, <-mul_opp. f_equiv. 
-    now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm. 
-  }
-  rewrite H ; clear H.
-  rewrite <-half_line_mul_dir by (generalize (ratio_bounds r2) ; lra).
-  unfold half_line. exists (1 - (r1 + r2))%R. split ; [lra|].
-  unfold Rminus. rewrite <-(add_morph 1%R), mul_1, RealVectorSpace.add_assoc. f_equiv.
-  - now rewrite add_sub.
-  - rewrite minus_morph, <-mul_opp. f_equiv. 
-    now rewrite opp_distr_add, opp_opp, RealVectorSpace.add_comm.
-Qed. 
     
 (* This is the main invariant : the robots are alway headed towards the unique weber point. *)
 Definition invariant w config : Prop := 
@@ -539,6 +512,31 @@ Definition invariant w config : Prop :=
 
 Local Instance invariant_compat : Proper (equiv ==> equiv ==> iff) invariant.
 Proof using . intros w w' Hw c c' Hc. unfold invariant. now rewrite Hc, Hw. Qed. 
+
+(* A technical lemma used to prove the fact that the configuration always
+ * contracts towards the weber point. *)
+Lemma segment_progress a b r1 r2 : 
+  segment b (straight_path a b r1) (straight_path a b (add_ratio r1 r2)).
+Proof using .
+assert (Hr1 := ratio_bounds r1).
+assert (Hr2 := ratio_bounds r2).  
+unfold add_ratio. case (Rle_dec R1 (r1 + r2)) as [Hle | HNle].
++ rewrite straight_path_1. apply segment_start.
++ change R1 with 1%R in HNle. cbn -[mul opp RealVectorSpace.add].
+ unfold segment. exists (r2 / (1 - r1))%R. split.
+ - split ; [apply Rdiv_le_0_compat | apply Rdiv_le_1] ; lra.
+ - apply mul_reg_l with (1 - r1)%R ; [lra|].
+   repeat rewrite (mul_distr_add (1 - r1)). repeat rewrite mul_morph.
+   unfold Rdiv. rewrite <-Rmult_assoc, Rinv_r_simpl_m by lra.
+   rewrite Rmult_minus_distr_l, Rmult_1_r, <-Rmult_assoc, Rinv_r_simpl_m by lra.
+   assert (H : (a + r1 * (b - a) == r1 * b + (1 - r1) * a)%VS).
+   { unfold Rminus. rewrite mul_distr_add, <-add_morph, mul_1, 2 RealVectorSpace.add_assoc.
+     rewrite minus_morph, mul_opp. f_equiv. rewrite RealVectorSpace.add_comm. reflexivity. }
+   rewrite H, (RealVectorSpace.add_comm ((1 - r1) * a)), 2 mul_distr_add.
+   rewrite <-RealVectorSpace.add_assoc, (RealVectorSpace.add_assoc (r2 * b)). f_equiv.
+   * rewrite mul_morph, add_morph. f_equiv. lra.
+   * rewrite mul_opp, <-minus_morph, add_morph, mul_morph. f_equiv. lra. 
+Qed.
 
 (* The invariant is preserved. *)
 Lemma round_preserves_invariant config da w : similarity_da_prop da -> 
@@ -548,7 +546,7 @@ unfold invariant. intros Hsim [Hstg Hweb]. destruct (round_simplify config Hsim 
 split.
 + rewrite Hround. intros i. destruct_match ; [now right|].
   specialize (Hstg i). cbn -[equiv]. now destruct (config i) as [[s d] _].   
-+ revert Hweb. apply weber_half_line_unique. 
++ revert Hweb. apply weber_contract_unique. unfold contract. 
   rewrite Forall2_Forall, Forall_forall by (now unfold pos_list ; repeat rewrite map_length, config_list_length).
   intros [x x'] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
   rewrite pos_list_InA_combine in Hin. destruct Hin as [id [Hx Hx']].
@@ -556,19 +554,20 @@ split.
   destruct_match.
   (* Activated robots don't move. *)
   * destruct (config id) as [[s d] ri]. cbn -[straight_path RealVectorSpace.add opp].
-    rewrite straight_path_0. apply half_line_segment.
+    rewrite straight_path_0. apply segment_end.
   (* Inactive robots move along a straight line towards w. *)
   * cbn -[straight_path mul opp RealVectorSpace.add]. 
     specialize (Hstg id). destruct (config id) as [[s d] ri].
     case Hstg as [Hstay | Hgo].
-    --rewrite Hstay, 2 straight_path_same. apply half_line_segment.
-    --rewrite Hgo. apply half_line_progress.
+    --rewrite Hstay, 2 straight_path_same. apply segment_end.
+    --rewrite Hgo. apply segment_progress.
 Qed.
 
+(* If the robots are gathered at the weber point, they don't move. *)
 Lemma round_preserves_gathered config da w : 
   similarity_da_prop da -> invariant w config ->
   gathered_at w config -> gathered_at w (round gatherW da config).
-Proof.
+Proof using .
 intros Hsim [Hstg Hweb] Hgather g. destruct (round_simplify config Hsim Hweb) as [r Hround].
 rewrite (Hround (Good g)). destruct_match.
 + rewrite Hgather. cbn -[equiv straight_path]. now rewrite straight_path_same.
@@ -579,7 +578,26 @@ rewrite (Hround (Good g)). destruct_match.
   - rewrite Hgo in *. rewrite straight_path_end in Hgather.
     case Hgather as [Hsw | Hrg].
     * now rewrite Hsw, straight_path_same.
-    * Search add_ratio. unfold add_ratio. destruct_match ; cbn -[straight_path equiv].        
+    * unfold add_ratio. destruct_match.
+      ++ now rewrite straight_path_1.
+      ++exfalso. change R1 with 1%R in *. rewrite Hrg in *. 
+        generalize (ratio_bounds (r (Good g))). lra.
+Qed.
+    
+Lemma gathered_over config d w : 
+  Stream.forever (Stream.instant similarity_da_prop) d -> 
+  invariant w config -> 
+  gathered_at w config -> 
+  Gather w (execute gatherW d config).
+Proof using lt_0n. 
+revert config d.
+cofix Hind. intros config d Hsim Hinv Hgather. constructor.
++ cbn. exact Hgather.
++ cbn. apply Hind.
+  - apply Hsim.
+  - now apply round_preserves_invariant ; [apply Hsim|].
+  - now apply round_preserves_gathered ; [apply Hsim| |].
+Qed.   
 
 (* We say that a robot is looping when its start and destination points are equal. *)
 Definition is_looping (robot : info) : bool := 
@@ -662,21 +680,18 @@ Section MeasureDecreaseLemmas.
 Variables (config : configuration) (da : demonic_action) (w : location).
 Hypothesis (Hsim : similarity_da_prop da).
 Hypothesis (Hinv : invariant w config).
-Hypothesis (HRNalign : ~aligned (pos_list (round gatherW da config))).
 
-Lemma HNalign : ~aligned (pos_list config).
-Proof using HRNalign Hinv Hsim. 
-intro Halign. now apply HRNalign, round_preserves_aligned with w. 
-Qed.
+Lemma HRinv : invariant w (round gatherW da config).
+Proof using Hinv Hsim lt_0n. now apply round_preserves_invariant. Qed. 
 
 Lemma HRw : w == weber_calc (pos_list (round gatherW da config)).
-Proof using HRNalign Hinv Hsim lt_0n. 
-now apply invariant_weber_calc ; [apply round_preserves_invariant|]. 
+Proof using Hinv Hsim lt_0n.
+symmetry. apply HRinv, weber_calc_correct. 
 Qed.
 
 Lemma Hw : w == weber_calc (pos_list config).
-Proof using HRNalign Hinv Hsim. 
-apply invariant_weber_calc ; auto. apply HNalign. 
+Proof using Hinv Hsim. 
+symmetry. apply Hinv, weber_calc_correct. 
 Qed. 
 
 Lemma BtoR_le b1 b2 : (b1 = true -> b2 = true) <-> (BtoR b1 <= BtoR b2)%R.
@@ -687,12 +702,11 @@ Proof using . unfold BtoR. repeat destruct_match ; lra. Qed.
 
 Lemma weber_dist_decreases id :
   (dist w (get_start (round gatherW da config id)) <= dist w (get_start (config id)))%R.
-Proof using HRNalign Hinv Hsim. 
+Proof using Hinv Hsim. 
 destruct Hinv as [Hstg Hweb].
-destruct (round_simplify config Hsim) as [r Hround].
+destruct (round_simplify config Hsim Hweb) as [r Hround].
 rewrite (Hround id). destruct_match. 
-+ destruct_match ; [assert (HNalign := HNalign) ; intuition |].
-  cbn -[dist straight_path]. specialize (Hstg id).
++ cbn -[dist straight_path]. specialize (Hstg id).
   destruct (config id) as [[s d] ri]. cbn [get_start].
   case Hstg as [Hstay | Hgo].
   - rewrite Hstay, straight_path_same. reflexivity.
@@ -708,12 +722,11 @@ Lemma weber_dist_decreases_strong id :
   get_location (config id) =/= w ->
   flex_da_prop da ->
   (dist w (get_start (round gatherW da config id)) <= dist w (get_start (config id)) - delta)%R.
-Proof using HRNalign Hinv Hsim.
+Proof using Hinv Hsim.
 intros Hact Hdest Hloc Hflex. specialize (Hflex id config Hact).
 destruct Hinv as [Hstg Hweb].
-destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id). 
+destruct (round_simplify config Hsim Hweb) as [r Hround]. rewrite (Hround id). 
 foldR2. change FrameChoiceSimilarity with FrameC in *. destruct_match_eq H ; [|intuition]. 
-destruct_match ; [assert (HNalign := HNalign) ; intuition |].
 cbn -[dist straight_path]. specialize (Hstg id).
 destruct (config id) as [[s d] ri]. cbn -[dist equiv straight_path] in Hdest, Hloc, Hflex |- *.
 case Hstg as [Hstay | Hgo].
@@ -727,7 +740,7 @@ Qed.
   
 Lemma measure_dist_decreases : 
   (measure_dist (round gatherW da config) <= measure_dist config)%R.
-Proof using HRNalign Hinv Hsim lt_0n. 
+Proof using Hinv Hsim lt_0n. 
 apply list_sum_le. rewrite Forall2_Forall by (now repeat rewrite map_length ; repeat rewrite config_list_length).
 rewrite combine_map, Forall_map, Forall_forall.
 intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
@@ -744,13 +757,12 @@ Proof using . case b1 ; case b2 ; intuition. Qed.
 Lemma loop_web_decreases id : 
   (BtoR (negb (is_looping (round gatherW da config id) && is_on w (round gatherW da config id))) <=  
   BtoR (negb (is_looping (config id) && is_on w (config id))))%R.
-Proof using HRNalign Hinv Hsim. 
+Proof using Hinv Hsim. 
 destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
 apply BtoR_le. apply contra_bool. rewrite 2 andb_true_iff. intros [Hloop Hon]. revert Hloop Hon.
-destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct (round_simplify config Hsim Hweb) as [r Hround]. rewrite (Hround id).
 destruct_match.
-+ destruct_match ; [assert (HNalign := HNalign) ; intuition |].
-  rewrite <-Hw. unfold is_looping, is_on. cbn -[straight_path equiv_dec].
++ unfold is_looping, is_on. cbn -[straight_path equiv_dec].
   destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
   rewrite straight_path_0. intuition.
 + unfold is_looping, is_on. cbn -[straight_path equiv_dec]. 
@@ -766,14 +778,13 @@ Lemma loop_web_decreases_strong id :
   get_start (config id) =/= w ->
   (BtoR (negb (is_looping (round gatherW da config id) && is_on w (round gatherW da config id))) <=  
   BtoR (negb (is_looping (config id) && is_on w (config id))) - 1)%R.
-Proof using HRNalign Hinv Hsim.
+Proof using Hinv Hsim.
+destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
 intros Hact Hloc Hstart. apply BtoR_le_1. 
 rewrite negb_true_iff, negb_false_iff, andb_true_iff, andb_false_iff.
-destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
-destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+destruct (round_simplify config Hsim Hweb) as [r Hround]. rewrite (Hround id).
 foldR2. change FrameChoiceSimilarity with FrameC.
 revert Hact. case ifP_bool ; [intros Hact _ | discriminate].
-destruct_match ; [assert (HNalign := HNalign) ; intuition |]. rewrite <-Hw. cbn zeta.
 revert Hloc Hstart. unfold is_looping, is_on. cbn -[straight_path equiv equiv_dec].
 destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
 case Hstg as [Hstay | Hgo].
@@ -784,7 +795,7 @@ Qed.
 
 Lemma measure_loop_web_decreases : 
   (measure_loop_web (round gatherW da config) <= measure_loop_web config)%R.
-Proof using HRNalign Hinv Hsim lt_0n. 
+Proof using Hinv Hsim lt_0n. 
 apply list_sum_le. rewrite Forall2_Forall by (now repeat rewrite map_length ; repeat rewrite config_list_length).
 rewrite combine_map, Forall_map, Forall_forall.
 intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
@@ -795,14 +806,13 @@ Qed.
 Lemma loop_nonweb_decreases id :
   (BtoR (is_looping (round gatherW da config id) && negb (is_on w (round gatherW da config id))) <=
   BtoR (is_looping (config id) && negb (is_on w (config id))))%R.
-Proof using HRNalign Hinv Hsim.
+Proof using Hinv Hsim.
 destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
 apply BtoR_le. rewrite 2 andb_true_iff, 2 negb_true_iff.
 intros [Hloop Hon]. revert Hloop Hon.
-destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
+destruct (round_simplify config Hsim Hweb) as [r Hround]. rewrite (Hround id).
 destruct_match.
-+ destruct_match ; [assert (HNalign := HNalign) ; intuition |].
-  rewrite <-Hw. unfold is_looping, is_on. cbn -[straight_path equiv_dec].
++ unfold is_looping, is_on. cbn -[straight_path equiv_dec].
   destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
   rewrite straight_path_0. intros ->. intuition.
 + unfold is_looping, is_on. cbn -[straight_path equiv_dec].
@@ -817,14 +827,13 @@ Lemma loop_nonweb_decreases_strong id :
   get_destination (config id) =/= w -> 
   (BtoR (is_looping (round gatherW da config id) && negb (is_on w (round gatherW da config id))) <=
   BtoR (is_looping (config id) && negb (is_on w (config id))) - 1)%R.
-Proof using HRNalign Hinv Hsim. 
+Proof using Hinv Hsim. 
+destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
 intros Hact Hdest. apply BtoR_le_1. 
 rewrite andb_true_iff, andb_false_iff, negb_false_iff, negb_true_iff.
-destruct (round_simplify config Hsim) as [r Hround]. rewrite (Hround id).
-destruct Hinv as [Hstg Hweb]. specialize (Hstg id).
+destruct (round_simplify config Hsim Hweb) as [r Hround]. rewrite (Hround id).
 foldR2. change FrameChoiceSimilarity with FrameC. 
 revert Hact. case ifP_bool ; [|discriminate].
-destruct_match ; [assert (HNalign := HNalign) ; intuition |]. rewrite <-Hw. cbn zeta.
 revert Hdest. unfold is_looping, is_on. cbn -[straight_path equiv equiv_dec].
 destruct (config id) as [[s d] ri]. cbn [get_start get_destination].
 rewrite straight_path_0. 
@@ -835,7 +844,7 @@ Qed.
 
 Lemma measure_loop_nonweb_decreases : 
   (measure_loop_nonweb (round gatherW da config) <= measure_loop_nonweb config)%R.
-Proof using HRNalign Hinv Hsim lt_0n. 
+Proof using Hinv Hsim lt_0n. 
 apply list_sum_le. rewrite Forall2_Forall by (now repeat rewrite map_length ; repeat rewrite config_list_length).
 rewrite combine_map, Forall_map, Forall_forall.
 intros [x' x] Hin. apply (@In_InA _ equiv) in Hin ; autoclass.
@@ -862,10 +871,9 @@ Qed.
 Lemma round_decrease_measure config da w :
   similarity_da_prop da ->
   invariant w config ->
-  ~aligned (pos_list (round gatherW da config)) ->  
     (measure (round gatherW da config) <= measure config)%R. 
 Proof using lt_0n.
-intros Hsim Hinv HRNalign.
+intros Hsim Hinv.
 unfold measure. repeat apply Rplus_le_compat.
 + apply measure_loop_nonweb_decreases with w ; auto.
 + apply measure_loop_web_decreases with w ; auto.
@@ -891,18 +899,15 @@ Lemma round_decreases_measure_strong config da w :
   similarity_da_prop da -> 
   flex_da_prop da ->
   invariant w config -> 
-  ~aligned (pos_list (round gatherW da config)) ->
   (exists id, activate da id = true /\ is_looping (config id) && is_on w (config id) = false) -> 
     (measure (round gatherW da config) <= measure config - Rmin delta 1)%R.
 Proof using lt_0n. 
-intros Hsim Hflex Hinv HRNalign [id [Hact Hnlw]].
+intros Hsim Hflex Hinv [id [Hact Hnlw]].
 assert (H := Hinv). destruct H as [Hstg Hweb]. specialize (Hstg id). 
-assert (HNalign : ~aligned (pos_list config)).
-{ intro Halign. now apply HRNalign, round_preserves_aligned with w. }
 assert (HRw : w == weber_calc (pos_list (round gatherW da config))).
-{ now apply invariant_weber_calc ; [apply round_preserves_invariant|]. }
+{ symmetry. apply (round_preserves_invariant Hsim Hinv). apply weber_calc_correct. }
 assert (Hw : w == weber_calc (pos_list config)).
-{ apply invariant_weber_calc ; auto. }
+{ symmetry. apply Hinv. apply weber_calc_correct. }
 rewrite andb_false_iff in Hnlw. 
 case (Sumbool.sumbool_of_bool (is_looping (config id))) as [Hloop | HNloop]. 
 + destruct Hnlw as [HNloop | HNon] ; [now rewrite Hloop in HNloop |].
@@ -971,7 +976,6 @@ case (Sumbool.sumbool_of_bool (is_looping (config id))) as [Hloop | HNloop].
       ++intros [? ?] [? ?] ; split ; auto.  
 Qed.
 
-
 (* This inductive proposition counts how many turns are left before
  * a robot that isn't [looping on w] is activated.
  * This is analoguous to FirstMove in the SSYNC case. *)
@@ -982,33 +986,21 @@ Inductive FirstActivNLW w : demon -> configuration -> Prop :=
   | FirstActivNLW_Later : forall d config,
     FirstActivNLW w (Stream.tl d) (round gatherW (Stream.hd d) config) -> 
       FirstActivNLW w d config. 
-
-Lemma gathered_aligned ps x : 
-  Forall (fun y => y == x) ps -> aligned ps.
-Proof using. 
-rewrite Forall_forall. intros Hgathered.
-unfold aligned. rewrite ForallTriplets_forall.
-intros a b c Ha Hb Hc.
-apply Hgathered in Ha, Hb, Hc. rewrite Ha, Hb, Hc, add_opp.
-apply colinear_origin_r.
-Qed.
     
-(* If the robots aren't aligned yet, there exists a robot that isn't [looping on w]. *)
+(* If the robots aren't gathered yet, there exists a robot that isn't [looping on w]. *)
 Lemma exists_non_webloop config w : 
-  ~aligned (pos_list config) ->
+  ~gathered_at w config ->
   invariant w config -> 
   exists id, is_looping (config id) && is_on w (config id) = false.
 Proof using lt_0n. 
-intros HNalign Hinv.
+intros HNgather Hinv.
 assert (H := Forall_dec (fun id => is_looping (config id) && is_on w (config id) = true)).
 feed H ; [intros id ; case (is_looping (config id) && is_on w (config id)) ; intuition |].
 case (H names) as [HT | HF] ; clear H.
-+ exfalso. apply HNalign. apply gathered_aligned with w. 
-  rewrite Forall_forall in HT |- *. intros x.
-  rewrite <-(In_InA_is_leibniz equiv) by now intros [? ?] [? ?].
-  rewrite pos_list_InA. intros [id ->].
-  specialize (HT id). feed HT ; [apply In_names |].
-  rewrite andb_true_iff in HT. destruct HT as [Hloop Hon].
++ exfalso. apply HNgather. unfold gathered_at. 
+  rewrite Forall_forall in HT. intros g.
+  specialize (HT (Good g)). feed HT ; [apply In_names |].
+  rewrite andb_true_iff in HT. destruct HT as [_ Hon].
   revert Hon. unfold is_on. case ifP_sumbool ; try discriminate. auto. 
 + rewrite <-Exists_Forall_neg, Exists_exists in HF.
   - destruct HF as [id [_ Hnwl]]. apply not_true_is_false in Hnwl. 
@@ -1016,19 +1008,19 @@ case (H names) as [HT | HF] ; clear H.
   - intros id. tauto.
 Qed.
 
-(* Fairness entails that if the robots aren't aligned yet, 
+(* Fairness entails that if the robots aren't gathered yet, 
  * then a robot that isn't [looping on w] will eventually be activated. *)
 Lemma non_webloop_will_activate config d w :
   Stream.forever (Stream.instant similarity_da_prop) d ->
   Fair d ->
-  ~aligned (pos_list config) ->    
+  ~gathered_at w config ->    
   invariant w config -> 
   FirstActivNLW w d config.
 Proof using lt_0n.
-intros Hsim Hfair HNalign Hinv.
-destruct (exists_non_webloop HNalign Hinv) as [id Hnwl].
+intros Hsim Hfair HNgather Hinv.
+destruct (exists_non_webloop HNgather Hinv) as [id Hnwl].
 destruct Hfair as [Hlocallyfair Hfair]. specialize (Hlocallyfair id).
-clear HNalign. generalize dependent config.
+clear HNgather. generalize dependent config.
 induction Hlocallyfair as [d Hact | d HNact Hlater IH].
 + intros config Hinv Hnwl.
   apply FirstActivNLW_Now with id ; auto.
@@ -1038,7 +1030,8 @@ induction Hlocallyfair as [d Hact | d HNact Hlater IH].
   - apply Hfair.
   - apply round_preserves_invariant ; [apply Hsim | apply Hinv].
   - destruct Hsim as [Hsim_hd Hsim_tl]. 
-    destruct (round_simplify config Hsim_hd) as [r Hround].
+    destruct Hinv as [Hstg Hweb].
+    destruct (round_simplify config Hsim_hd Hweb) as [r Hround].
     rewrite (Hround id). destruct_match_eq Hact ; 
       [foldR2 ; rewrite Hact in HNact ; discriminate |].
     cbn. destruct (config id) as [[start dest] ri].
@@ -1087,20 +1080,16 @@ Lemma weber_correct_aux w config d :
   invariant w config ->
   Stream.forever (Stream.instant similarity_da_prop) d ->
   Stream.forever (Stream.instant flex_da_prop) d ->
-  eventually_aligned config d gatherW.
+  WillGather (execute gatherW d config).
 Proof using lt_0n delta_g0.
 assert (Hdelta1 : (Rmin delta 1 > 0)%R).
 { unfold Rmin. destruct_match ; lra. }
 revert d.
 induction config as [config IH] using (well_founded_ind (lt_config_wf Hdelta1)).
 intros d Hfair Hinv Hsim Hflex.
-case (aligned_dec (pos_list (round gatherW (Stream.hd d) config))) as [HRalign | HRNalign].
-{ apply Stream.Later, Stream.Now, aligned_over with w ; auto.
-  + apply Hsim.
-  + now apply round_preserves_invariant ; [apply Hsim |]. } 
-assert (HNalign : ~aligned (pos_list config)).
-{ revert HRNalign. now apply contra, round_preserves_aligned with w ; [apply Hsim|]. }
-induction (non_webloop_will_activate Hsim Hfair HNalign Hinv) as [d config id Hact Hnwl | d config Hnwl_later IHnwl].
+case (gathered_at_dec config w) as [Hgather | HNgather].
+{ apply Stream.Now. exists w. now apply gathered_over. }
+induction (non_webloop_will_activate Hsim Hfair HNgather Hinv) as [d config id Hact Hnwl | d config Hnwl_later IHnwl].
 + apply Stream.Later. apply IH ; auto.
   - unfold lt_config. split ; [apply measure_nonneg|].
     apply round_decreases_measure_strong with w ; auto.
@@ -1112,13 +1101,11 @@ induction (non_webloop_will_activate Hsim Hfair HNalign Hinv) as [d config id Ha
   - apply Hsim.
   - apply Hflex.
 + apply Stream.Later. 
-  case (aligned_dec (pos_list (round gatherW (Stream.hd (Stream.tl d)) (round gatherW (Stream.hd d) config)))) 
-    as [HRRalign | HRRNalign].
-  - apply Stream.Later, Stream.Now, aligned_over with w ; auto.
-    * destruct Hsim as [_ Hsim]. apply Hsim.
-    * apply round_preserves_invariant ; [destruct Hsim as [_ Hsim] ; apply Hsim |].
-      apply round_preserves_invariant ; [apply Hsim | auto].
-  - apply IHnwl.
+  case (gathered_at_dec (round gatherW (Stream.hd d) config) w) as [HRgather | HRNgather].
+  - apply Stream.Now. exists w. apply gathered_over ; auto.
+    * apply Hsim.
+    * now apply round_preserves_invariant ; [apply Hsim|].
+  - apply IHnwl ; auto.
     * intros c Hc. apply IH. unfold lt_config in Hc |- *.
       split ; [apply measure_nonneg|].
       etransitivity ; [apply Hc|].
@@ -1128,23 +1115,25 @@ induction (non_webloop_will_activate Hsim Hfair HNalign Hinv) as [d config id Ha
     * apply round_preserves_invariant ; [apply Hsim | auto].
     * apply Hsim. 
     * apply Hflex.
-    * apply HRRNalign.
-    * apply HRNalign. 
 Qed.
 
-(* This is the main theorem : we assume that initially 
- * the robots are all looping on their position. 
- * Then they will eventually be aligned. *)
+(* This is the main theorem. *)
 Theorem weber_correct config d :
   Fair d -> 
-  config_stay config -> (* the initial configuration satisfies this property. *)
+  (* Initially, no robot is moving. *)
+  config_stay config -> 
+  (* Initially, the configuration has a unique weber point *)
+  OnlyWeber (pos_list config) (weber_calc (pos_list config)) -> 
+  (* The frame changes (chosen by the demon) are similarities. *)
   Stream.forever (Stream.instant similarity_da_prop) d ->
+  (* We are in a flexible setting *)
   Stream.forever (Stream.instant flex_da_prop) d ->
-  eventually_aligned config d gatherW.
+  (* The robots will gather on the weber point (this is not explicit in this theorem). *)
+  WillGather (execute gatherW d config).
 Proof using lt_0n delta_g0.
 intros Hfair Hstay Hsim Hflex. 
 apply weber_correct_aux with (weber_calc (pos_list config)) ; auto.
-now split ; [apply config_stay_impl_config_stg | apply weber_calc_correct]. 
+now split ; [apply config_stay_impl_config_stg|]. 
 Qed.
 
-End Alignment.
+End Gathering.

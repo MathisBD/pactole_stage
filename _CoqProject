@@ -104,6 +104,7 @@ CaseStudies/Gathering/InR2/Weber/Weber_point.v
 CaseStudies/Gathering/InR2/Weber/Align_rigid_ssync.v
 CaseStudies/Gathering/InR2/Weber/Align_flex_ssync.v
 CaseStudies/Gathering/InR2/Weber/Align_flex_async.v
+CaseStudies/Gathering/InR2/Weber/Gather_flex_async.v
 
 ## Case Study: Ring Exploration
 CaseStudies/Exploration/Definitions.v

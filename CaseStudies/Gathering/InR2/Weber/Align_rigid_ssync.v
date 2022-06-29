@@ -161,8 +161,8 @@ repeat destruct_match.
 + rewrite Hs in a. now intuition.
 + rewrite Hs in n0. now intuition.
 + apply weber_unique with (multi_support s1) ; auto.
-  - now apply weber_calc_correct.
   - rewrite Hs. now apply weber_calc_correct.
+  - now apply weber_calc_correct.
 Qed.
 
 Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
@@ -248,7 +248,7 @@ unfold gatherW_pgm ; destruct_match.
   cbn -[equiv inverse config_list location multi_support] in *.
   pose (sim := change_frame da config g) ; fold sim in n0 ; fold sim.
   rewrite <-aligned_similarity in n0. destruct_match ; intuition.
-  apply weber_unique with (config_list config) ; [now auto| |now apply weber_calc_correct].
+  apply weber_unique with (config_list config) ; auto ; [now apply weber_calc_correct|].
   apply weber_similarity with sim. cbn -[config_list]. rewrite Bijection.section_retraction.
   now apply weber_calc_correct.
 Qed.
@@ -338,14 +338,14 @@ Lemma round_preserves_weber config da w :
   similarity_da_prop da -> Weber (config_list config) w -> 
     Weber (config_list (round gatherW da config)) w.
 Proof using lt_0n. 
-intros Hsim Hweb. apply weber_half_line with (config_list config) ; auto.
-rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
+intros Hsim Hweb. apply weber_contract with (config_list config) ; auto.
+unfold contract. rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
 intros [x x']. rewrite config_list_In_combine.
 intros [id [Hx Hx']]. revert Hx'. rewrite round_simplify by auto. 
-repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply half_line_segment.
+repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply segment_end.
 assert (w == weber_calc (config_list config)) as Hw.
-{ apply weber_unique with (config_list config) ; auto. apply weber_calc_correct. }
-rewrite Hw. apply half_line_origin.
+{ apply weber_unique with (config_list config) ; auto. now apply weber_calc_correct. }
+rewrite <-Hw. apply segment_start.
 Qed.
 
 (* If a robot moves, either the measure decreases or the robots become colinear. *)
@@ -360,8 +360,8 @@ destruct (aligned_dec (config_list (round gatherW da config))) as [Rcol | RNcol]
 assert (weber_calc (config_list (round gatherW da config)) == weber_calc (config_list config)) as Hweb.
 { 
   apply weber_unique with (config_list (round gatherW da config)) ; auto.
-  + apply weber_calc_correct.
-  + apply round_preserves_weber ; [auto | apply weber_calc_correct].  
+  + apply round_preserves_weber ; [auto | apply weber_calc_correct].
+  + apply weber_calc_correct.  
 }
 unfold measure. apply sub_lt_sub. split.
 + destruct (not_nil_In Hmove) as [i Hi]. apply moving_spec in Hi.

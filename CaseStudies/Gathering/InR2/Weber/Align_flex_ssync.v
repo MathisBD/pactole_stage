@@ -195,8 +195,8 @@ repeat destruct_match.
 + rewrite Hs in a. now intuition.
 + rewrite Hs in n0. now intuition.
 + f_equiv. apply weber_unique with (multi_support s1) ; auto.
-  - now apply weber_calc_correct.
   - rewrite Hs. now apply weber_calc_correct.
+  - now apply weber_calc_correct.
 Qed.
 
 Definition gatherW : robogram := {| pgm := gatherW_pgm |}.
@@ -326,8 +326,8 @@ destruct_match.
     foldR2. fold sim. 
     apply weber_unique with (List.map sim (config_list config)).
     - now rewrite <-aligned_similarity.
-    - apply weber_calc_correct.
     - apply weber_similarity, weber_calc_correct.
+    - apply weber_calc_correct.
   }
   change location_Setoid with state_Setoid. apply update_compat ; auto.
   - intros r. cbn -[equiv]. rewrite Bijection.retraction_section. reflexivity.
@@ -455,29 +455,17 @@ Lemma round_preserves_weber config da w :
   similarity_da_prop da -> Weber (config_list config) w -> 
     Weber (config_list (round gatherW da config)) w.
 Proof using lt_0n. 
-intros Hsim Hweb. apply weber_half_line with (config_list config) ; auto.
-rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
+intros Hsim Hweb. apply weber_contract with (config_list config) ; auto.
+unfold contract. rewrite Forall2_Forall, Forall_forall by now repeat rewrite config_list_length.
 intros [x x']. rewrite config_list_In_combine.
 intros [id [Hx Hx']]. destruct (round_simplify config Hsim) as [r Hround].
 revert Hx'. rewrite Hround. 
-repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply half_line_segment.
+repeat destruct_match ; intros Hx' ; rewrite Hx, Hx' ; try apply segment_end.
 assert (w == weber_calc (config_list config)) as Hw.
 { apply weber_unique with (config_list config) ; auto. apply weber_calc_correct. }
-cbn zeta. rewrite <-Hw. cbn -[mul opp RealVectorSpace.add dist]. unfold Datatypes.id.
+cbn zeta. rewrite <-Hw. cbn -[dist straight_path]. unfold Datatypes.id.
 pose (c := config id). fold c.
-destruct_match ; unfold half_line.
-+ pose (ri := r (unpack_good id)). fold ri. 
-  exists (1 - ri)%R ; split.
-  - generalize (ratio_bounds ri). lra.
-  - simplifyR2. 
-    rewrite (RealVectorSpace.add_comm (ri * w) (- (ri * c))), 3 RealVectorSpace.add_assoc.
-    f_equiv ; f_equiv.
-    rewrite (RealVectorSpace.add_comm c (-w)), RealVectorSpace.add_assoc.
-    now simplifyR2.
-+ exists 0%R ; split.
-  - lra.
-  - simplifyR2. rewrite (RealVectorSpace.add_comm w (-c)), RealVectorSpace.add_assoc.
-    now simplifyR2.  
+destruct_match ; rewrite segment_sym ; apply segment_straight_path.
 Qed.
 
 (* If the robots don't end up colinear, then the point calculated by weber_calc doesn't change. *)
@@ -487,8 +475,8 @@ Corollary round_preserves_weber_calc config da :
 Proof using lt_0n. 
 intros Hsim HNalign.
 apply weber_unique with (config_list (round gatherW da config)) ; auto.
-+ apply weber_calc_correct.
 + apply round_preserves_weber ; [auto | apply weber_calc_correct].
++ apply weber_calc_correct.
 Qed.
 
 Lemma Forall2_le_count_weber config da : 
