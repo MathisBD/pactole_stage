@@ -432,39 +432,13 @@ split.
   lra.
 Qed.
 
-
-Lemma contract_argmin_weak ps ps' x : 
-  contract ps ps' x -> argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x.
-Proof.
-intros Hcontract y. unfold dist_sum, Rminus.
-repeat rewrite list_sum_map_opp, list_sum_map_add.
-2, 3: now symmetry ; eapply Forall2_length, Hcontract.
-apply list_sum_le. rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now rewrite 2 map_length.
-intros [a b] Hin. rewrite in_combine_id in Hin. destruct Hin as [<- Hin].
-destruct a as [p' p]. apply segment_argmin. assert (H := Hcontract). 
-revert H. unfold contract. rewrite Forall2_Forall, Forall_forall by eapply Forall2_length, Hcontract.
-intros H. specialize (H (p, p')). apply H. now rewrite in_combine_sym. 
-Qed.
-
-Lemma contract_argmin ps ps' x0 x : 
-  contract ps ps' x0 ->  
-  (contract ps ps' x <-> argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x).
-Proof. 
-intros Hcontract0. split. 
-+ apply contract_argmin_weak.
-+ apply contract_argmin_weak in Hcontract0.
-  unfold dist_sum, Rminus, argmin in *.
-  rewrite list_sum_map_opp.
-2, 3: now symmetry ; eapply Forall2_length, Hcontract.
-Admitted.
-
 Lemma Rminus_eq0_iff x y : (x - y)%R = 0%R <-> x = y. 
 Proof. lra. Qed.
 
 Lemma Rle_minus_sim r1 r2 : (r1 <= r2)%R -> (0 <= r2 - r1)%R.
 Proof. lra. Qed.
 
-Lemma argmin_sum {A : Type} (f g : A -> R) x0 x :
+Lemma argmin_sum2 {A : Type} (f g : A -> R) x0 x :
   argmin f x0 -> argmin g x0 -> 
   (argmin (fun x => (f x + g x)%R)x <-> argmin f x /\ argmin g x).
 Proof. 
@@ -483,13 +457,61 @@ intros Hf0 Hg0. split ; unfold argmin in *.
   - apply Hg.
 Qed. 
 
+Lemma argmin_sum {A : Type} (F : list (A -> R)) x0 x :
+  (Forall (fun f => argmin f x0) F) -> 
+  (argmin (fun x => list_sum (map (fun f => f x) F)%R)x <-> Forall (fun f => argmin f x) F).
+Proof. 
+intros HF0. revert x. induction F as [|f F IH] ; intros x. 
++ cbn. split ; intros _ ; [constructor|].
+  unfold argmin. reflexivity.
++ rewrite Forall_cons_iff in HF0 |- *. destruct HF0 as [Hf0 HF0]. 
+  specialize (IH HF0). cbn. rewrite <-IH. apply argmin_sum2 with x0 ; auto.
+  rewrite IH. exact HF0.
+Qed.
+
+
+Lemma dist_sum_diff_eq ps ps' x : 
+  length ps' = length ps -> 
+  (dist_sum ps' x - dist_sum ps x)%R == list_sum (map 
+    (fun '(p', p) => (dist x p' - dist x p)%R) 
+    (combine ps' ps)).
+Proof.
+intros Hlen. unfold Rminus, dist_sum. 
+rewrite list_sum_map_opp, list_sum_map_add by now symmetry.
+reflexivity.
+Qed. 
+
+Lemma contract_argmin_weak ps ps' x : 
+  contract ps ps' x -> argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x.
+Proof.
+intros Hcontract y. rewrite 2 dist_sum_diff_eq.
+2, 3: now symmetry ; eapply Forall2_length, Hcontract.
+apply list_sum_le. rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now rewrite 2 map_length.
+intros [a b] Hin. rewrite in_combine_id in Hin. destruct Hin as [<- Hin].
+destruct a as [p' p]. apply segment_argmin. assert (H := Hcontract). 
+revert H. unfold contract. rewrite Forall2_Forall, Forall_forall by eapply Forall2_length, Hcontract.
+intros H. specialize (H (p, p')). apply H. now rewrite in_combine_sym. 
+Qed.
+
+(* This is quite an amusing property. *)
+Lemma contract_argmin ps ps' x0 x : 
+  contract ps ps' x0 ->  
+  (contract ps ps' x <-> argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x).
+Proof. 
+intros Hcontract0. split. 
++ apply contract_argmin_weak.
++ Check argmin_sum. (* use the -> direction of argmin_sum. *)
+
+Admitted.
+
+
 (* See the thesis of Zohir Bouzid, lemma 3.1.5. *)
 Lemma weber_contract_strong ps ps' w0 : 
   contract ps ps' w0 -> Weber ps w0 ->
   (forall w, Weber ps' w <-> (Weber ps w /\ contract ps ps' w)).
 Proof. 
 intros Hcontract0 Hweb0 w. rewrite contract_argmin in * ; eauto. unfold Weber in *.
-rewrite <-(argmin_sum _ Hweb0 Hcontract0). f_equiv. 
+rewrite <-(argmin_sum2 _ Hweb0 Hcontract0). f_equiv. 
 intros x. rewrite Rplus_minus. reflexivity.
 Qed.
 
