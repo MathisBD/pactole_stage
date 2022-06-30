@@ -324,6 +324,31 @@ generalize l'. clear l'. induction l as [| x l IH] ; intros [|x' l'] ; cbn ; try
 f_equal. apply IH.
 Qed.
 
+Lemma in_combine_id {A : Type} (a b : A) l : 
+  List.In (a, b) (combine l l) <-> (a = b /\ List.In a l).
+Proof. 
+induction l as [|x l IH].
++ cbn. intuition.
++ cbn. rewrite IH. split.
+  - intros [Hxx | [-> Hin]].
+    * inv Hxx. intuition.
+    * intuition.
+  - intros [-> [-> | Hin]] ; intuition.
+Qed.
+
+Lemma in_combine_sym {A B : Type} (a : A) (b : B) l1 l2 : 
+  List.In (a, b) (combine l1 l2) <-> List.In (b, a) (combine l2 l1).
+Proof.
+cut (forall (A B : Type) (x : A) (y : B) l l', 
+  List.In (x, y) (combine l l') -> List.In (y, x) (combine l' l)).
+{ intros H. split ; apply H. }
+clear a b l1 l2 A B. intros A B a b l1.
+induction l1 as [|x1 l1 IH] ; intros l2 Hin ; [now cbn in Hin|].
+case l2 as [|x2 l2] ; [now cbn in Hin|]. cbn in Hin |- *. 
+case Hin as [Heq | Hin].
++ inv Heq. now left.
++ right. apply IH. exact Hin.
+Qed.
 
 Lemma Forall2_Forall {A B : Type} (R : A -> B -> Prop) l l' : length l = length l' -> 
   (Forall2 R l l' <-> Forall (fun '(x, y) => R x y) (combine l l')).
@@ -341,6 +366,10 @@ intros Hlen. split.
     destruct l' as [|x' l'] ; [discriminate|].
     cbn in Hcom. inv Hcom. rewrite Forall_cons_iff in Hforall. constructor ; intuition.
 Qed.
+
+Lemma Forall2_length {A B : Type} (R : A -> B -> Prop) l1 l2 : 
+  Forall2 R l1 l2 -> length l1 = length l2.
+Proof. intros HF2. induction HF2 ; cbn ; lia. Qed.
 
 Lemma mul_eq0_iff (k : R) (x : R2) : (k * x == 0)%VS <-> (k == 0)%R \/ (x == 0)%VS.
 Proof.
@@ -483,3 +512,5 @@ intros Hu_n0 Hcol. destruct (colinear_decompose Hu_n0 Hcol) as [Hdecomp | Hdecom
 + exists ((- norm v) / norm u)%R. rewrite Hdecomp at 1. unfold Rdiv, unitary.
   now rewrite mul_morph.
 Qed.   
+
+
