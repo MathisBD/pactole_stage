@@ -196,13 +196,22 @@ Qed.
 
 Lemma list_sum_map_opp {A : Type} (f : A -> R) l : 
   (-(list_sum (map f l)) == list_sum (map (fun x => -(f x)) l))%R.
-Proof. Admitted.
+Proof. 
+induction l as [|x l IH]. 
++ cbn. now rewrite Ropp_0.
++ cbn. now rewrite Ropp_plus_distr, <-IH.
+Qed. 
 
 Lemma list_sum_map_add {A : Type} (f1 f2 : A -> R) l1 l2 : 
   length l1 = length l2 -> 
   (list_sum (map f1 l1) + list_sum (map f2 l2) == 
     list_sum (map (fun '(x1, x2) => f1 x1 + f2 x2) (combine l1 l2)))%R.
-Proof. Admitted.
+Proof.
+revert l2. induction l1 as [|x1 l1 IH] ; intros l2 Hlen ; cbn.
++ rewrite Rplus_0_l. case l2 as [|x2 l2] ; cbn in * ; [reflexivity | discriminate].
++ case l2 as [|x2 l2] ; cbn in * ; [discriminate|]. inv Hlen.
+  rewrite <-IH by auto. lra.
+Qed.
 
 (* This is the function that a weber point minimizes. *)
 Definition dist_sum points (x : R2) := 
@@ -457,11 +466,14 @@ intros Hf0 Hg0. split ; unfold argmin in *.
   - apply Hg.
 Qed. 
 
-Lemma argmin_sum {A : Type} (F : list (A -> R)) x0 x :
-  (Forall (fun f => argmin f x0) F) -> 
-  (argmin (fun x => list_sum (map (fun f => f x) F)%R)x <-> Forall (fun f => argmin f x) F).
+(* When a collection of functions have a common argmin, 
+ * minimizing their sum is equivalent to minimizing each function. *)
+Lemma argmin_sum {I A : Type} (F : I -> A -> R) (x0 x : A) (li : list I) :
+  (Forall (fun i => argmin (F i) x0) li) -> 
+    (argmin (fun x => list_sum (map (fun i => F i x) li))) x <-> 
+    Forall (fun i => argmin (F i) x) li.
 Proof. 
-intros HF0. revert x. induction F as [|f F IH] ; intros x. 
+intros HF0. revert x. induction li as [|i li IH] ; intros x. 
 + cbn. split ; intros _ ; [constructor|].
   unfold argmin. reflexivity.
 + rewrite Forall_cons_iff in HF0 |- *. destruct HF0 as [Hf0 HF0]. 
@@ -469,41 +481,40 @@ intros HF0. revert x. induction F as [|f F IH] ; intros x.
   rewrite IH. exact HF0.
 Qed.
 
-
-Lemma dist_sum_diff_eq ps ps' x : 
+Lemma argmin_dist_sum_diff ps ps' x : 
   length ps' = length ps -> 
-  (dist_sum ps' x - dist_sum ps x)%R == list_sum (map 
-    (fun '(p', p) => (dist x p' - dist x p)%R) 
-    (combine ps' ps)).
+  argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x <-> 
+  argmin (fun y => list_sum (map (fun '(p', p) => (dist y p' - dist y p)%R) (combine ps' ps))) x.
 Proof.
-intros Hlen. unfold Rminus, dist_sum. 
+intros Hlen. f_equiv. intros y. unfold Rminus, dist_sum. 
 rewrite list_sum_map_opp, list_sum_map_add by now symmetry.
 reflexivity.
 Qed. 
-
-Lemma contract_argmin_weak ps ps' x : 
-  contract ps ps' x -> argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x.
-Proof.
-intros Hcontract y. rewrite 2 dist_sum_diff_eq.
-2, 3: now symmetry ; eapply Forall2_length, Hcontract.
-apply list_sum_le. rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now rewrite 2 map_length.
-intros [a b] Hin. rewrite in_combine_id in Hin. destruct Hin as [<- Hin].
-destruct a as [p' p]. apply segment_argmin. assert (H := Hcontract). 
-revert H. unfold contract. rewrite Forall2_Forall, Forall_forall by eapply Forall2_length, Hcontract.
-intros H. specialize (H (p, p')). apply H. now rewrite in_combine_sym. 
-Qed.
 
 (* This is quite an amusing property. *)
 Lemma contract_argmin ps ps' x0 x : 
   contract ps ps' x0 ->  
   (contract ps ps' x <-> argmin (fun y => (dist_sum ps' y - dist_sum ps y)%R) x).
 Proof. 
-intros Hcontract0. split. 
-+ apply contract_argmin_weak.
-+ Check argmin_sum. (* use the -> direction of argmin_sum. *)
-
-Admitted.
-
+intros Hcontr0. split. 
+(* This direction is always true. *)
++ clear Hcontr0. intros Hcontr. rewrite argmin_dist_sum_diff by now symmetry ; eapply Forall2_length, Hcontr.
+  intros y. apply list_sum_le. 
+  rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now rewrite 2 map_length.
+  intros [a b] Hin. rewrite in_combine_id in Hin. destruct Hin as [<- Hin].
+  destruct a as [p' p]. apply segment_argmin. assert (H := Hcontr). 
+  revert H. unfold contract. rewrite Forall2_Forall, Forall_forall by eapply Forall2_length, Hcontr.
+  intros H. specialize (H (p, p')). apply H. now rewrite in_combine_sym.
+(* This direction holds because the lines [pi, pi'[ have an intersection point [x0]. *)
++ assert (Hlen : length ps' = length ps). { symmetry. eapply Forall2_length, Hcontr0. }
+  rewrite argmin_dist_sum_diff by auto. rewrite argmin_sum.
+  - unfold contract. rewrite Forall2_Forall, 2 Forall_forall by now symmetry. 
+    intros Hargmin [p p'] Hin. specialize (Hargmin (p', p)). 
+    feed Hargmin. { now rewrite in_combine_sym. } rewrite segment_argmin. exact Hargmin.
+  - unfold contract in Hcontr0. rewrite Forall2_Forall, Forall_forall in Hcontr0 by now symmetry.
+    rewrite Forall_forall. intros [p' p] Hin. specialize (Hcontr0 (p, p')).
+    rewrite <-segment_argmin. apply Hcontr0. now rewrite in_combine_sym.
+Qed.
 
 (* See the thesis of Zohir Bouzid, lemma 3.1.5. *)
 Lemma weber_contract_strong ps ps' w0 : 
