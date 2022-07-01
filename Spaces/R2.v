@@ -500,7 +500,7 @@ Qed.
 Theorem triang_ineq_eq : forall u v w,
   dist u w = dist u v + dist v w -> colinear (w - u) (v - u) /\ colinear (w - u) (w - v).
 Proof using .
-intros u v w Heq. null (w - u)%VS.
+intros u v w Heq. About null. null (w - u)%VS.
 * split; apply colinear_origin_l.
 * rewrite dist_sym, norm_dist in Heq.
   assert (Huw : (w - u =(w - v) + (v - u))%VS).

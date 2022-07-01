@@ -172,6 +172,32 @@ intros HF. induction HF as [| x x' l l' Hx Hl IH] ; try now auto.
 cbn -[equiv]. now apply Rplus_le_compat.
 Qed.
 
+Lemma Rminus_eq0_iff x y : (x - y)%R = 0%R <-> x = y. 
+Proof. lra. Qed.
+
+Lemma Rle_minus_sim r1 r2 : (r1 <= r2)%R -> (0 <= r2 - r1)%R.
+Proof. lra. Qed.
+
+Lemma eq_sym_iff {A : Type} (x y : A) : x = y <-> y = x.
+Proof. intuition. Qed.
+
+Lemma list_sum_le_eq l l' : 
+  Forall2 Rle l l' -> list_sum l == list_sum l' -> Forall2 equiv l l'.
+Proof. 
+intros HF. induction HF as [|x x' l l' Hx HF IH] ; cbn.
++ intros _. constructor.
++ intros Hsum.
+  assert (H : x = x' /\ list_sum l = list_sum l').
+  {
+    rewrite (eq_sym_iff x), (eq_sym_iff (list_sum l)). 
+    rewrite <-(Rminus_eq0_iff x'), <-(Rminus_eq0_iff (list_sum l')). apply Rplus_eq_R0.
+    - lra.
+    - apply list_sum_le in HF. lra.
+    - lra. 
+  }
+  constructor ; intuition.
+Qed.
+
 Lemma list_sum_le_eps l l' eps : Forall2 Rle l l' -> 
   List.Exists (fun '(x, x') => (x <= x' + eps)%R) (combine l l') -> 
   (list_sum l <= list_sum l' + eps)%R.
@@ -202,7 +228,31 @@ induction l as [|x l IH].
 + cbn. now rewrite Ropp_plus_distr, <-IH.
 Qed. 
 
-Lemma list_sum_map_add {A : Type} (f1 f2 : A -> R) l1 l2 : 
+Lemma list_sum_map_mult_l {A : Type} (f : A -> R) l t :
+  (t * list_sum (map f l) == list_sum (map (fun x => t * f x) l))%R.
+Proof. 
+induction l as [|x l IH] ; cbn. 
++ lra.
++ rewrite <-IH. lra.
+Qed.
+
+Lemma list_sum_map_mult_r {A : Type} (f : A -> R) l t :
+  (list_sum (map f l) * t == list_sum (map (fun x => f x * t) l))%R.
+Proof. 
+induction l as [|x l IH] ; cbn. 
++ lra.
++ rewrite <-IH. lra.
+Qed. 
+
+Lemma list_sum_map_add {A : Type} (f g : A -> R) l :
+  (list_sum (map f l) + list_sum (map g l) == list_sum (map (fun x => f x + g x) l))%R.
+Proof.
+induction l as [|x l IH] ; cbn.
++ lra.
++ rewrite <-IH. lra.
+Qed. 
+
+Lemma list_sum_map_add_combine {A : Type} (f1 f2 : A -> R) l1 l2 : 
   length l1 = length l2 -> 
   (list_sum (map f1 l1) + list_sum (map f2 l2) == 
     list_sum (map (fun '(x1, x2) => f1 x1 + f2 x2) (combine l1 l2)))%R.
@@ -210,7 +260,7 @@ Proof.
 revert l2. induction l1 as [|x1 l1 IH] ; intros l2 Hlen ; cbn.
 + rewrite Rplus_0_l. case l2 as [|x2 l2] ; cbn in * ; [reflexivity | discriminate].
 + case l2 as [|x2 l2] ; cbn in * ; [discriminate|]. inv Hlen.
-  rewrite <-IH by auto. lra.
+ rewrite <-IH by auto. lra.
 Qed.
 
 (* This is the function that a weber point minimizes. *)
@@ -263,18 +313,126 @@ Lemma weber_exists points :
   exists x, Weber points x.
 Proof. Admitted.
 
-(* If the points aren't colinear, than the weber point is unique. *)
+Lemma dist_middle_leq (a b x : R2) : 
+  (dist x (middle a b) <= (dist x a + dist x b) / 2)%R.
+Proof. 
+unfold middle, Rdiv. repeat rewrite norm_dist. apply Rmult_le_reg_l with 2%R ; try lra. 
+rewrite <-Rmult_assoc, Rinv_r_simpl_m by lra. rewrite <-(Rabs_pos_eq 2%R) at 1 by lra. 
+rewrite <-norm_mul, mul_distr_add by lra. rewrite <-mul_opp, mul_morph, Rmult_1_l, Rinv_r, mul_1 by lra.
+change 2%R with (1 + 1)%R. rewrite <-add_morph, mul_1.
+rewrite <-RealVectorSpace.add_assoc, opp_distr_add, (RealVectorSpace.add_assoc x (-a)).
+rewrite (RealVectorSpace.add_comm _ (-b)), RealVectorSpace.add_assoc.
+rewrite Rplus_comm. apply triang_ineq.
+Qed.
+
+Lemma Rmult_reg_iff_l r r1 r2 : 
+  ~ r == 0%R -> (r * r1 == r * r2 <-> r1 == r2)%R.
+Proof. cbn. nra. Qed.
+
+Lemma dist_middle_eq_iff (a b x : R2) : 
+  ~ a == b ->
+  (dist x (middle a b) == (dist x a + dist x b) / 2)%R <-> 
+  (exists t, (0 <= t)%R /\ (x - a == t * (a - b) \/ x - b == t * (b - a))%VS).
+Proof.
+intros Hab. unfold middle, Rdiv. 
+repeat rewrite norm_dist. rewrite <-(@Rmult_reg_iff_l 2%R) by (cbn ; lra). 
+rewrite <-Rmult_assoc, Rinv_r_simpl_m by lra. rewrite <-(Rabs_pos_eq 2%R) at 1 by lra. 
+rewrite <-norm_mul, mul_distr_add by lra. rewrite <-mul_opp, mul_morph, Rmult_1_l, Rinv_r, mul_1 by lra.
+change 2%R with (1 + 1)%R. rewrite <-add_morph, mul_1.
+rewrite <-RealVectorSpace.add_assoc, opp_distr_add, (RealVectorSpace.add_assoc x (-a)).
+rewrite (RealVectorSpace.add_comm _ (-b)), RealVectorSpace.add_assoc, Rplus_comm.
+symmetry ; split.
++ intros [t [Ht [Hx1 | Hx1]]] ; rewrite Hx1.
+  - assert (Hx2 : (x - b == (t + 1) * (a - b))%VS).
+    { rewrite <-add_morph, mul_1, <-Hx1, RealVectorSpace.add_assoc. f_equiv. 
+      now rewrite RealVectorSpace.add_comm, add_sub. }
+    rewrite Hx2, add_morph, 3 norm_mul, 3 Rabs_pos_eq by lra. 
+    cbn -[mul opp RealVectorSpace.add norm]. lra.
+  - assert (Hx2 : (x - a == (t + 1) * (b - a))%VS).
+    { rewrite <-add_morph, mul_1, <-Hx1, RealVectorSpace.add_assoc. f_equiv. 
+      now rewrite RealVectorSpace.add_comm, add_sub. }
+    rewrite Hx2, add_morph, 3 norm_mul, 3 Rabs_pos_eq by lra. 
+    cbn -[mul opp RealVectorSpace.add norm]. lra.
++ intros H.
+  assert (Hcol : colinear (x - a) (x - b)).
+  { 
+    apply colinear_inner_product_spec.
+    apply (f_equal Rsqr) in H. rewrite squared_norm_product in H.
+    rewrite inner_product_add_l in H. setoid_rewrite inner_product_add_r in H.
+    rewrite <- 2 squared_norm_product in H.
+    rewrite R_sqr.Rsqr_plus in H. rewrite inner_product_sym in H.
+    assert (Hprod : inner_product (x - a) (x - b) = (norm (x - a) * norm (x - b))%R) by nra.
+    apply (f_equal Rabs) in Hprod. setoid_rewrite Rabs_pos_eq in Hprod at 2.
+    - exact Hprod.
+    - apply Rmult_le_pos ; apply norm_nonneg.
+  }
+  rewrite <-colinear_opp_compat_r, <-colinear_add in Hcol.
+  assert (H1 : (x - a - (x - b) == b - a)%VS).
+  { rewrite opp_distr_add, opp_opp, RealVectorSpace.add_assoc, RealVectorSpace.add_comm.
+    f_equiv. now rewrite (RealVectorSpace.add_comm x), <-RealVectorSpace.add_assoc, add_opp, add_origin_r. }
+  rewrite H1 in Hcol. clear H1. symmetry in Hcol.
+  apply colinear_decompose in Hcol. 2: rewrite R2sub_origin ; intuition.
+  pose (t := (norm (x - a) * / (norm (b - a)))%R).
+  unfold unitary in Hcol. rewrite 2 mul_morph, <-Ropp_mult_distr_l in Hcol. fold t in Hcol.
+  assert (Ht1 : (0 <= t)%R).
+  { unfold t. apply Rle_mult_inv_pos ; [apply norm_nonneg |].
+    apply Rle_neq_lt ; [apply norm_nonneg |]. rewrite <-norm_dist. intros Hab'.
+    apply Hab, dist_defined. now rewrite dist_sym. }
+  destruct Hcol as [Hxa | Hxa].
+  - assert (Hxb : (x - b == (t - 1) * (b - a))%VS).
+    { unfold Rminus. rewrite <-add_morph, minus_morph, mul_1, <-Hxa, opp_distr_add.
+      rewrite <-RealVectorSpace.add_assoc. now rewrite add_sub. } 
+    rewrite Hxa, Hxb, add_morph, 3 norm_mul, <-Rmult_plus_distr_r, (Rabs_pos_eq t) in H by auto.
+    apply Rmult_eq_reg_r in H. 
+    2: rewrite <-norm_dist, dist_sym ; intros Hdist ; now apply Hab, dist_defined.
+    case (Rle_dec 1 t) as [Ht2 | Ht2].
+    * exists (t - 1)%R. split ; [lra | now right].
+    * case (Rle_dec (1 / 2)%R t) as [Ht3 | Ht3]. 
+      ++rewrite Rabs_pos_eq, Rabs_left1 in H by lra. assert (Ht : t = 0%R) by lra. lra.
+      ++rewrite 2 Rabs_left1 in H by lra. assert (Ht : t = 0%R) by lra.
+        exists 0%R. split ; [lra | left]. now rewrite Hxa, Ht, 2 mul_0.
+  - exists t. split ; [auto | left]. rewrite Hxa, minus_morph, <-mul_opp, opp_distr_add, opp_opp.
+    now rewrite RealVectorSpace.add_comm.
+Qed.
+  
+(* If the points aren't colinear, then the weber point is unique. *)
 Lemma weber_unique points w : 
   ~aligned points -> Weber points w -> OnlyWeber points w.
-Proof. Admitted.
+Proof.
+intros HNalign Hweb. split ; [auto|]. intros w2 Hweb2.
+case (w =?= w2) as [Heq | HNeq] ; [intuition | exfalso].
+apply HNalign. apply aligned_tail with w. rewrite aligned_spec.
+exists (w - w2)%VS. intros x Hin.
+cut (dist x (middle w w2) == (dist x w + dist x w2) / 2)%R. 
+{ 
+  rewrite dist_middle_eq_iff by intuition. intros [t [Ht [Hx | Hx]]].
+  + exists t. now rewrite <-Hx, add_sub.
+  + exists (-(1 + t))%R. rewrite minus_morph, <-mul_opp, opp_distr_add, opp_opp, (RealVectorSpace.add_comm _ w2).
+    rewrite <-add_morph, mul_1, <-Hx. now rewrite RealVectorSpace.add_assoc, 2 add_sub. 
+} 
+pose (l1 := map (dist (middle w w2)) points).
+pose (l2 := map (fun x => (dist w x + dist w2 x) / 2)%R points).
+assert (H := @list_sum_le_eq l1 l2). feed_n 2 H.
++ unfold l1, l2. rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length.
+  intros [x1 x2]. rewrite in_combine_id. intros [-> _]. rewrite 3 (dist_sym x2). apply dist_middle_leq.
++ unfold l1, l2. apply Rle_antisym.
+  - apply list_sum_le. rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length.
+    intros [x1 x2]. rewrite in_combine_id. intros [-> _]. rewrite 3 (dist_sym x2). apply dist_middle_leq.
+  - unfold Rdiv. rewrite <-list_sum_map_mult_r.
+    apply Rmult_le_reg_l with 2%R ; try lra.
+    rewrite <-Rmult_assoc, Rinv_r_simpl_m, <-list_sum_map_add by lra.
+    change 2%R with (1 + 1)%R. rewrite Rmult_plus_distr_r, Rmult_1_l.
+    apply Rplus_le_compat ; [apply Hweb | apply Hweb2].
++ revert H. unfold l1, l2. rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length.
+  intros H. rewrite 3 (dist_sym _ x). specialize (H (x, x)). apply H. 
+  rewrite in_combine_id. split ; [reflexivity|]. rewrite <-InA_Leibniz. exact Hin.
+Qed.
 
 Lemma dist_sum_similarity (f : similarity R2) points x : 
   (dist_sum (List.map f points) (f x) == f.(zoom) * dist_sum points x)%R.
 Proof. 
-elim points.
-+ cbn. now rewrite Rmult_0_r.
-+ intros p ps IH. cbn -[dist]. 
-  now rewrite dist_prop, IH, Rmult_plus_distr_l.
+unfold dist_sum. rewrite map_map, list_sum_map_mult_l. f_equiv.
+apply eqlistA_PermutationA. f_equiv. intros ? ? H. now rewrite H, dist_prop.
 Qed.
 
 Lemma weber_similarity_weak points w (f : similarity R2) : 
@@ -441,12 +599,6 @@ split.
   lra.
 Qed.
 
-Lemma Rminus_eq0_iff x y : (x - y)%R = 0%R <-> x = y. 
-Proof. lra. Qed.
-
-Lemma Rle_minus_sim r1 r2 : (r1 <= r2)%R -> (0 <= r2 - r1)%R.
-Proof. lra. Qed.
-
 Lemma argmin_sum2 {A : Type} (f g : A -> R) x0 x :
   argmin f x0 -> argmin g x0 -> 
   (argmin (fun x => (f x + g x)%R)x <-> argmin f x /\ argmin g x).
@@ -487,7 +639,7 @@ Lemma argmin_dist_sum_diff ps ps' x :
   argmin (fun y => list_sum (map (fun '(p', p) => (dist y p' - dist y p)%R) (combine ps' ps))) x.
 Proof.
 intros Hlen. f_equiv. intros y. unfold Rminus, dist_sum. 
-rewrite list_sum_map_opp, list_sum_map_add by now symmetry.
+rewrite list_sum_map_opp, list_sum_map_add_combine by now symmetry.
 reflexivity.
 Qed. 
 
