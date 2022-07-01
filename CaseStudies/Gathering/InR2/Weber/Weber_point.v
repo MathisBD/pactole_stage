@@ -83,6 +83,12 @@ unfold aligned. rewrite 2 ForallTriplets_forall. intros H x y z Hinx Hiny Hinz.
 apply H ; now right. 
 Qed.
 
+Lemma aligned_single x0 : aligned (x0 :: nil).
+Proof. 
+unfold aligned. rewrite ForallTriplets_forall. intros x y z Hinx Hiny Hinz.
+cbn in Hinx, Hiny, Hinz. intuition. subst. reflexivity.
+Qed.
+
 (* Whether a finite collection of poitns are aligned is decidable. The proof given here 
  * obviously constructs a very slow algorithm (O(n^3)), but we don't really care. *)
 Lemma aligned_dec points : {aligned points} + {~aligned points}.
@@ -305,6 +311,10 @@ Definition OnlyWeber ps w : Prop := Weber ps w /\ (forall x, Weber ps x -> x == 
 Global Instance only_weber_compat : Proper (PermutationA equiv ==> equiv ==> iff) OnlyWeber.
 Proof. intros ? ? H1 ? ? H2. unfold OnlyWeber. setoid_rewrite H1. setoid_rewrite H2. reflexivity. Qed.
 
+Lemma weber_gathered points x0 :
+  Forall (equiv x0) points -> OnlyWeber points x0.
+Proof. Admitted.
+
 (* We can show that a weber point can equivalently be defined as
  * an argmin on a compact set of points (instead of an argmin on the whole plane),
  * and a continuous function always has a minimum on a compact set. *)
@@ -466,9 +476,84 @@ split.
   - now rewrite H.
 Qed.  
 
+Lemma list_sum_lt l l' : 
+  l <> nil -> Forall2 Rlt l l' -> (list_sum l < list_sum l')%R.
+Proof. 
+intros Hnil HF. induction HF as [|x x' l l' Hx Hl IH] ; cbn.
++ intuition.
++ apply Rplus_lt_le_compat ; auto. case l as [|y l].
+  - inv Hl. reflexivity.
+  - apply Rlt_le, IH. discriminate.
+Qed.
+
 (* A weber point of aligned points is on the same line. *)
 Lemma weber_aligned ps w : aligned ps -> Weber ps w -> aligned (w :: ps).
-Proof. Admitted.
+Proof. 
+intros Halign Hweb. destruct ps as [|x0 ps] ; [apply aligned_single |].
+rewrite aligned_spec in Halign. destruct Halign as [v Halign].
+setoid_rewrite InA_Leibniz in Halign.
+null v.
+(* The points are all the same. *)
++ assert (forall x, In x ps -> x == x0).
+  { intros x Hin. apply Halign in Hin. destruct Hin as [t Hx].
+    rewrite mul_origin, add_origin_r in Hx. exact Hx. }
+  assert (Hw : w == x0).
+  { apply (@weber_gathered (x0 :: ps) x0) ; auto. constructor ; auto.
+    rewrite Forall_forall. symmetry. now apply H. }
+  rewrite Hw, aligned_spec. exists 0%VS. intros x Hin. rewrite InA_Leibniz in Hin.
+  exists 0%R. rewrite mul_origin, add_origin_r.
+  case Hin as [-> | Hin] ; auto.
+(* The points are not all the same. *)
++ (* [p] is the orthogonal projection of [w] on the line formed by [ps]. *)
+  pose (p := (x0 + (inner_product (w - x0) v / (norm v)²) * v)%VS).
+  case (w =?= p) as [Hwp | Hwp].
+  (* [w] is on the line. *)
+  - assert (Hperm : PermutationA equiv (w :: x0 :: ps) (x0 :: w :: ps)) by constructor.
+    rewrite Hperm, aligned_spec. 
+    exists v. intros x. rewrite InA_Leibniz. intros [<- | Hin].
+    * eexists ?[t]. rewrite Hwp. unfold p. f_equiv.
+    * now apply Halign.
+  (* [w] is not on the line : contradiction. *)
+  - exfalso. 
+    cut (dist_sum (x0 :: ps) p < dist_sum (x0 :: ps) w)%R. { generalize (Hweb p). lra. }
+    apply list_sum_lt. 
+    (* TODO *)
+    
+    rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length.
+    intros [x x2]. rewrite in_combine_id. intros [<- Hin].
+    assert (Hp : (p - x = (inner_product (w - x) v / (norm v)²) * v)%VS).
+    { 
+      case Hin as [<- | Hin] ; [unfold p ; now rewrite <-RealVectorSpace.add_assoc, add_sub |].
+      apply Halign in Hin. destruct Hin as [t Hx].
+      assert (Hpx : (p - x == (inner_product (w - x0) v / (norm v)² - t) * v)%VS).
+      { rewrite Hx. unfold p. rewrite (RealVectorSpace.add_comm x0), <-RealVectorSpace.add_assoc.
+        rewrite opp_distr_add, (RealVectorSpace.add_assoc x0), add_opp, add_origin_l.
+        rewrite <-minus_morph, add_morph. reflexivity. }
+      rewrite Hpx, Hx. f_equiv. rewrite opp_distr_add, RealVectorSpace.add_assoc.
+      setoid_rewrite inner_product_add_l at 2. rewrite Rdiv_plus_distr. unfold Rminus. f_equiv.
+      rewrite <-minus_morph, inner_product_mul_l. unfold Rdiv. rewrite Rmult_assoc, squared_norm_product, Rinv_r.
+      * now rewrite Rmult_1_r. 
+      * now rewrite <-squared_norm_product, <-Rsqr_0, <-square_norm_equiv, norm_defined by lra. 
+    }
+    assert (Hwx : (w - x == w - p + (p - x))%VS).
+    { rewrite <-RealVectorSpace.add_assoc. f_equiv. rewrite RealVectorSpace.add_assoc.
+      now rewrite (RealVectorSpace.add_comm _ p), add_opp, add_origin_l. }
+    rewrite 2 norm_dist, <-pos_Rsqr_lt, Hwx by apply norm_nonneg.
+    assert (Hperp : perpendicular (w - p) (p - x)).
+    {
+      unfold perpendicular.
+      assert (Hwp2 : (w - p == w - x - (p - x))%VS).
+      { now rewrite <-RealVectorSpace.add_assoc, opp_distr_add, add_sub. }
+      rewrite Hwp2, inner_product_add_l, inner_product_opp_l, Hp, 2 inner_product_mul_r, inner_product_mul_l.
+      unfold Rdiv. repeat rewrite Rmult_assoc. rewrite squared_norm_product, Rinv_l, Rmult_1_r ; [lra|].
+      now rewrite <-squared_norm_product, <-Rsqr_0, <-square_norm_equiv, norm_defined by lra. 
+    }
+    apply Pythagoras in Hperp. rewrite Hperp.
+    cut (0 < (norm (w - p))²)%R. { lra. }
+    rewrite <-Rsqr_0. apply R_sqr.Rsqr_incrst_1 ; try solve [lra | apply norm_nonneg].
+    apply Rle_neq_lt ; [apply norm_nonneg|].
+    rewrite eq_sym_iff, norm_defined, R2sub_origin. intuition.
+Qed.
 
 (* [segment a b] represents the set of points that are in the segment 
  * [a, b], endpoints included. *)
