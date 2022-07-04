@@ -1,0 +1,192 @@
+
+
+\RequirePackage{tikz,pgf,colortbl,listings,ifmtarg}
+\usetikzlibrary{fit,shapes,arrows,decorations.markings,calc,positioning}
+
+
+
+%\definecolor{annotatecolor}{rgb}{1,0,0}
+\definecolor{annotatecolor}{RGB}{193,0,0}
+\definecolor{annotatetextcolor}{RGB}{193,0,42}
+
+\newcommand{\koordd}[2]{\tikz\coordinate(#1);#2\tikz\coordinate(#1xxend);}
+
+\newcommand{\annotateopacity}{.25}
+\newcommand{\koord}[1]{\tikz\coordinate(#1);}
+\tikzstyle{every picture}+=[baseline=-.25em,remember picture,>=stealth,thick,line width=.3pt,cap=round] %,join=round fails sometimes
+\tikzstyle{annotatestyle}=[color=annotatetextcolor,font=\normalfont]
+\tikzstyle{annottransp}=[opacity=\annotateopacity]
+\tikzstyle{annotatefillstyle}=[ultra thick,color=annotatecolor]
+\tikzset{red/.style={annotatestyle}}%>=stealth,
+\tikzset{red>/.style={->,annotatefillstyle}}%>=stealth,
+\tikzset{red</.style={<-,annotatefillstyle}}
+\tikzset{<red>/.style={<->,annotatefillstyle}}
+%\tikzstyle{annotfleche}=[->,annotatefillstyle,line width=.05cm,opacity=.5]
+%\tikzstyle{Annotfleche}=[->,annotatefillstyle,line width=.08cm,opacity=.5]
+\tikzset{bigovalise/.style 2 args={fill,annotatefillstyle,annottransp,ellipse,%
+    xshift={#1/2},%
+    text width={#1/1.3},%
+    text height={#2}%
+  }%
+}%
+
+\tikzstyle{ovalise}=[bigovalise={#1}{0pt},%
+  minimum height={1em+5pt},%
+]
+
+% la tkizlib "fit" marche bien mais crée des ellipses un peu grande,
+% d'où le inner sep négatif.
+\tikzset{ovalfit/.style 2 args={fill,annotatefillstyle,annottransp,ellipse,minimum height={1em+5pt},fit={(#1) (#2)},inner sep=-4pt}}
+% On laisse le fit se débrouiller
+\tikzset{ovalfitL/.style 2 args={fill,annotatefillstyle,annottransp,ellipse,minimum height={1em+5pt},fit={(#1) (#2)}}}
+%\tikzset{ovalfit/.style 2 args={annotatefillstyle,rounded rectangle,minimum height={1em+5pt},fit={(#1) (#2)},inner sep=0pt}}
+
+
+
+% #1 is best if given by width("text") where
+% text is the text in the node (where
+% punctuation is replaced by letter for
+% correct width computation)
+
+
+
+% Pour faire une ligne horizontale paramétrée par son épaisseur
+\makeatletter
+\def\vhrulefill#1{\leavevmode\leaders\hrule\@height#1\hfill \kern\z@}
+\makeatother
+
+\makeatletter
+
+%#1 noeud de gauche
+%#2 noeud de droite
+%#3 Nom du noeud oval créé
+%#4 l'annotation d'overlay si présente (ex: <2-3>)
+\newcommand<>{\annotoval}[3]{
+  %% french has some sepcial active char that make this fail,
+  %% deactivate them temporarily:
+  \shorthandoff{:!}
+  \node#4[ovalfit={#1}{#2}] (#3) at ($(#1)!0.5!(#2)$){};
+  \shorthandon{:!}
+}
+% même chose en plus large
+\newcommand<>{\annotovalL}[3]{
+  \shorthandoff{:!}
+  \node#4[ovalfitL={#1}{#2}] (#3) at ($(#1)!0.5!(#2)$){};
+  \shorthandon{:!}
+}
+
+%#1 noeud de gauche
+%#2 largeur de l'oval
+%#3 Nom du noeud oval créé
+%#4 l'annotation d'overlay si présente (ex: <2-3>)
+\newcommand<>{\annotovalw}[3]{
+  \node#4[ovalise=#2,xshift=.5ex] (#3) at (#1) {};
+}
+
+%#1 optionel largeur de l'annotation (le texte)
+%#2 nom du noeud de l'oval (typiquement ovalxxx)
+%#3 Nom du noeud créé pour l'annotation (typiquement annotxxx)
+%#4 x relatif de l'annotation
+%#5 y relatif de l'annotation
+%#6 texte de l'annotation
+%#7 l'annotation d'overlay si présente (ex: <2-3>)
+\newcommand<>{\annotlabel}[6][]{
+  \node#7[red,xshift=#4,yshift=#5] (#3) at (#2) {
+    \@ifmtarg{#1}{\bfseries #6}{
+      \begin{minipage}{#1}
+        \bfseries #6
+      \end{minipage}}
+  };
+}
+
+%#1 = (optionnel) largeur de l'annotation (default \linewidth))
+%#2 = noeud tikz de placement de l'oval
+%#3 = x relatif de l'annotation
+%#4 = y relatif de l'annotation
+%#5 = texte de l'annotation
+%#6= l'annotation d'overlay si présente (ex: <2-3>)
+\newcommand<>{\annotfit}[5][]{%
+  \annotoval#6{#2}{#2xxend}{oval#2};
+  \annotlabel#6[#1]{oval#2}{annot#2}{#3}{#4}{#5}
+  \draw#6[red>,annottransp] (annot#2) -- (oval#2);
+}
+% même chose en plus large
+\newcommand<>{\annotfitL}[5][]{%
+  \annotovalL#6{#2}{#2xxend}{oval#2};
+  \annotlabel#6[#1]{oval#2}{annot#2}{#3}{#4}{#5}
+  \draw#6[red>,annottransp] (annot#2) -- (oval#2);
+}
+%% Version plus propre
+%#1 = (optionnel) largeur de l'annotation (default \linewidth))
+%#2 = noeud gauche
+%#3 = noeud droit
+%#4 = x relatif de l'annotation
+%#5 = y relatif de l'annotation
+%#6 = texte de l'annotation
+%#7= l'annotation d'overlay si présente (ex: <2-3>)
+\newcommand<>{\annotatefit}[6][]{%
+  \annotoval#7{#2}{#3}{oval#2};
+  \annotlabel#7[#1]{oval#2}{annot#2}{#4}{#5}{#6}
+  \draw#7[red>,annottransp] (annot#2) -- (oval#2);
+}
+% même chose en plus large
+\newcommand<>{\annotatefitL}[6][]{%
+  \annotovalL#7{#2}{#3}{oval#2};
+  \annotlabel#7[#1]{oval#2}{annot#2}{#4}{#5}{#6}
+  \draw#7[red>,annottransp] (annot#2) -- (oval#2);
+}
+
+%#1 = (optionnel) largeur de l'annotation (default \linewidth))
+%#2 = largeur de l'oval
+%#3 = noeud tikz de placement de l'oval
+%#4 = x relatif de l'annotation
+%#5 = y relatif de l'annotation
+%#6 = texte de l'annotation
+%#7= l'annotation d'overlay si présente (ex: <2-3>)
+\newcommand<>{\annotate}[6][]{%
+    \annotovalw#7{#3}{#2}{oval#3}
+    \annotlabel#7[#1]{oval#3}{annot#3}{#4}{#5}{#6}
+    \draw#7[red>,annottransp] (annot#3) -- (oval#3);
+  }
+
+% another annotation to an already annotated oval
+%#1 = largeur de l'annotation (default \linewidth))
+%#2 = noeud tikz de placement de l'oval
+%#3 = x relatif de l'annotation
+%#4 = y relatif de l'annotation
+%#5 = texte de l'annotation
+% supports overlay specs (6th arg)
+% TODO: support more than one reannotate
+\newcommand<>{\reannotate}[5][]{%
+  % FIXME: the name reannot#2 here is adhoc and cannot be reused for a
+  % second reannot.
+  \def\tmp{#1}%
+  \annotlabel#6[#1]{oval#2}{reannot#2}{#3}{#4}{#5}
+    \draw#6[red>,annottransp] (reannot#2) -- (oval#2);
+}
+% use an already defined annotation and point it to a second oval
+% #1: largeur oval
+% #2: noeud à ovaliser
+% #3 noeud déjà annoté
+\newcommand<>{\annotatesame}[3]{%
+  \annotovalw#4{#2}{#1}{oval#2}
+  \draw#4[red>,annottransp] (annot#3) -- (oval#2);
+}
+
+% #1: noeud gauche
+% #2 noeud droit
+% #3 noeud déjà annoté
+% #4 optional overlay spec
+\newcommand<>{\annotatesamefitL}[3]{%
+  \annotovalL#4{#1}{#2}{oval#1}
+  \draw#4[red>,annottransp] (annot#3) -- (oval#1);
+}
+
+\makeatother
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
+
+%  LocalWords:  contournable
