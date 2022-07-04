@@ -57,14 +57,6 @@ Implicit Types (points : list R2).
 
 Local Existing Instances R2_VS R2_ES ForallTriplets_PermutationA_compat.
 
-(* This would require proving (and more importantly stating) that for a similarity [f],
- * there exists an orthogonal matrix [A] and a vector [b] such that
- * [forall x, f(x) = f.(zoom)*A*x + b]. 
- * We would need mathcomp (or some other math library) to do this. *)
-Lemma colinear_similarity x y z (f : similarity R2) : 
-  colinear (f y - f x) (f z - f x) <-> colinear (y - x) (z - x).
-Proof. Admitted.
-
 (* A finite collection of points are aligned iff every triplet of points are aligned. *)
 (* This definition is based on lists : we could have used multisets,
  * and the code might have been cleaner (who knows). 
@@ -77,11 +69,8 @@ Definition aligned (points : list R2) :=
 Global Instance aligned_compat : Proper (PermutationA equiv ==> equiv) aligned.
 Proof using . intros p p' Hpp'. unfold aligned. now f_equiv. Qed.
 
-Lemma aligned_tail p0 ps : aligned (p0 :: ps) -> aligned ps. 
-Proof. 
-unfold aligned. rewrite 2 ForallTriplets_forall. intros H x y z Hinx Hiny Hinz.
-apply H ; now right. 
-Qed.
+Lemma aligned_nil : aligned nil.
+Proof. unfold aligned. unfold ForallTriplets. constructor. Qed. 
 
 Lemma aligned_single x0 : aligned (x0 :: nil).
 Proof. 
@@ -89,28 +78,19 @@ unfold aligned. rewrite ForallTriplets_forall. intros x y z Hinx Hiny Hinz.
 cbn in Hinx, Hiny, Hinz. intuition. subst. reflexivity.
 Qed.
 
+Lemma aligned_tail p0 ps : aligned (p0 :: ps) -> aligned ps. 
+Proof. 
+unfold aligned. rewrite 2 ForallTriplets_forall. intros H x y z Hinx Hiny Hinz.
+apply H ; now right. 
+Qed.
+
+
 (* Whether a finite collection of poitns are aligned is decidable. The proof given here 
  * obviously constructs a very slow algorithm (O(n^3)), but we don't really care. *)
 Lemma aligned_dec points : {aligned points} + {~aligned points}.
 Proof. unfold aligned. apply ForallTriplets_dec. intros x y z. apply colinear_dec. Qed.
 
-Lemma aligned_similarity_weak points (f : similarity R2) :
-  aligned points -> aligned (List.map f points).
-Proof.
-unfold aligned. repeat rewrite ForallTriplets_forall. intros H x y z.
-repeat rewrite in_map_iff. intros [x0 [Hfx Hpx]] [y0 [Hfy Hpy]] [z0 [Hfz Hpz]].
-rewrite <-Hfx, <-Hfy, <-Hfz. rewrite colinear_similarity. now apply H.
-Qed.
-
-Lemma aligned_similarity points (f : similarity R2) :
-  aligned points <-> aligned (List.map f points).
-Proof.
-split ; try apply aligned_similarity_weak.
-intros H. apply aligned_similarity_weak with (List.map f points) (inverse f) in H. revert H.
-apply aligned_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
-intros x y Hxy. cbn -[equiv]. now rewrite Bijection.retraction_section.
-Qed.
-
+(* This is a useful alternate definition of alignement. *)
 Lemma aligned_spec p0 ps : 
   aligned (p0 :: ps) <-> exists v, forall p, InA equiv p ps -> exists t, (p == p0 + t * v)%VS.
 Proof. 
@@ -147,6 +127,30 @@ split.
   rewrite <-minus_morph, 2 add_morph.
   apply colinear_mul_compat_l, colinear_mul_compat_r.
   reflexivity.
+Qed.
+
+Lemma aligned_similarity_weak points (f : similarity R2) :
+  aligned points -> aligned (List.map f points).
+Proof.
+destruct points as [|x0 ps].
++ intros _. cbn. apply aligned_nil. 
++ cbn. do 2 (rewrite aligned_spec ; setoid_rewrite InA_Leibniz). 
+  intros [v Halign]. eexists ?[fv]. intros y Hin.
+  rewrite in_map_iff in Hin. destruct Hin as [x [<- Hin]]. destruct (Halign x Hin) as [t Hx]. rewrite Hx.
+  eexists ?[ft]. rewrite sim_add, sim_mul, <-2 RealVectorSpace.add_assoc. f_equiv.
+  instantiate (ft := t). instantiate (fv := (f v - f 0)%VS).
+  unfold Rminus. rewrite <-add_morph, mul_distr_add, mul_1. 
+  rewrite <-RealVectorSpace.add_assoc, add_sub. f_equiv.
+  now rewrite mul_opp, minus_morph.
+Qed.
+
+Lemma aligned_similarity points (f : similarity R2) :
+  aligned points <-> aligned (List.map f points).
+Proof.
+split ; try apply aligned_similarity_weak.
+intros H. apply aligned_similarity_weak with (List.map f points) (inverse f) in H. revert H.
+apply aligned_compat, eqlistA_PermutationA. rewrite <-List.map_id at 1. rewrite map_map. f_equiv.
+intros x y Hxy. cbn -[equiv]. now rewrite Bijection.retraction_section.
 Qed.
 
 (* A Weber point of a finite collection P of points 
@@ -311,17 +315,39 @@ Definition OnlyWeber ps w : Prop := Weber ps w /\ (forall x, Weber ps x -> x == 
 Global Instance only_weber_compat : Proper (PermutationA equiv ==> equiv ==> iff) OnlyWeber.
 Proof. intros ? ? H1 ? ? H2. unfold OnlyWeber. setoid_rewrite H1. setoid_rewrite H2. reflexivity. Qed.
 
-Lemma weber_gathered points x0 :
-  Forall (equiv x0) points -> OnlyWeber points x0.
-Proof. Admitted.
+Lemma weber_gathered ps x0 :
+  Forall (equiv x0) (x0 :: ps) -> OnlyWeber (x0 :: ps) x0.
+Proof.
+intros H. rewrite Forall_cons_iff in H. destruct H as [_ H].
+assert (Hpos : forall x ps, (0 <= dist_sum ps x)%R).
+{ intros x ps'. apply list_sum_ge_0. rewrite Forall_map, Forall_forall.
+  intros y _. apply dist_nonneg. }
+assert (H0 : dist_sum (x0 :: ps) x0 == 0%R).
+{ cbn -[dist]. rewrite dist_same, Rplus_0_l.
+  induction H as [|x l Hx Hl IH].
+  + cbn. reflexivity.
+  + cbn -[dist]. rewrite Hx at 1. rewrite dist_same, Rplus_0_l. now apply IH. }
+split.
++ intros y. rewrite H0. apply Hpos.
++ intros y Hweb.
+  assert (Hy : dist_sum (x0 :: ps) y == 0%R).  
+  { apply Rle_antisym.
+    - specialize (Hweb x0). rewrite H0 in Hweb. exact Hweb.
+    - apply Hpos. }
+  cbn -[dist] in Hy. apply Rplus_eq_R0 in Hy.
+  - apply dist_defined, Hy.
+  - apply dist_nonneg.
+  - apply Hpos.   
+Qed.
 
+(* This lemma isn't needed. *)
 (* We can show that a weber point can equivalently be defined as
  * an argmin on a compact set of points (instead of an argmin on the whole plane),
  * and a continuous function always has a minimum on a compact set. *)
 (* RMK : this is also true if [points] is empty. *)
-Lemma weber_exists points : 
+(*Lemma weber_exists points : 
   exists x, Weber points x.
-Proof. Admitted.
+Proof. Admitted.*)
 
 Lemma dist_middle_leq (a b x : R2) : 
   (dist x (middle a b) <= (dist x a + dist x b) / 2)%R.
@@ -498,7 +524,7 @@ null v.
   { intros x Hin. apply Halign in Hin. destruct Hin as [t Hx].
     rewrite mul_origin, add_origin_r in Hx. exact Hx. }
   assert (Hw : w == x0).
-  { apply (@weber_gathered (x0 :: ps) x0) ; auto. constructor ; auto.
+  { apply (@weber_gathered ps x0) ; auto. constructor ; auto.
     rewrite Forall_forall. symmetry. now apply H. }
   rewrite Hw, aligned_spec. exists 0%VS. intros x Hin. rewrite InA_Leibniz in Hin.
   exists 0%R. rewrite mul_origin, add_origin_r.
@@ -516,9 +542,7 @@ null v.
   (* [w] is not on the line : contradiction. *)
   - exfalso. 
     cut (dist_sum (x0 :: ps) p < dist_sum (x0 :: ps) w)%R. { generalize (Hweb p). lra. }
-    apply list_sum_lt. 
-    (* TODO *)
-    
+    apply list_sum_lt. { cbn [map]. discriminate. } 
     rewrite Forall2_Forall, combine_map, Forall_map, Forall_forall by now repeat rewrite map_length.
     intros [x x2]. rewrite in_combine_id. intros [<- Hin].
     assert (Hp : (p - x = (inner_product (w - x) v / (norm v)²) * v)%VS).
@@ -652,7 +676,7 @@ case (a =?= b) as [Eab | NEab].
     rewrite (dist_sym x a), (dist_sym b a) in Hdist. repeat rewrite norm_dist in Hdist.
     rewrite Hxa, Hxb in Hdist. repeat rewrite norm_mul in Hdist.
     rewrite <-Rmult_plus_distr_r in Hdist.
-    rewrite <-(Rmult_1_l (norm (b - a)%VS)) in Hdist at 1. Search Rmult "reg".
+    rewrite <-(Rmult_1_l (norm (b - a)%VS)) in Hdist at 1.
     apply Rmult_eq_reg_r in Hdist ; [now symmetry|].
     rewrite norm_defined. intros H. apply NEab. rewrite R2sub_origin in H. now symmetry.
   }

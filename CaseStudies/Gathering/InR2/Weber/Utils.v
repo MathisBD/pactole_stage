@@ -105,7 +105,7 @@ Lemma contra (P Q : Prop) : (Q -> P) -> (~P -> ~Q).
 Proof. intuition. Qed.
 
 (* This inductive type inspired by mathcomp allows elegant destruction 
- * of if-statements (more than the 'destruct_match' tactic).
+ * of if-statements (more so than the 'destruct_match' tactic).
  * Usage : [case ifP_sumbool] will destuct the first if-statement 
  * with a sumbool condition in the goal. *)
 Section IfSpecSumbool.
@@ -121,7 +121,7 @@ Proof using . case c ; constructor. Qed.
 
 End IfSpecSumbool.
 
-(* Usage : [case ifP_sumbool] will destuct the first if-statement 
+(* Usage : [case ifP_bool] will destuct the first if-statement 
  * with a boolean condition in the goal. *)
 Section IfSpecBool.
 Variables (T : Type) (u v : T).
@@ -137,7 +137,6 @@ End IfSpecBool.
 
 (* Lemma ifP_bool_test b : b = negb b -> (if b then b || b else false) = false.
 Proof. case ifP_bool. ... *)
-
 
 Section ForallTriplets.
 Variable (A B C : Type).
@@ -441,7 +440,6 @@ split.
   - cbn -[mul opp RealVectorSpace.add equiv]. rewrite H2, mul_1.
     now rewrite add_sub. 
 Qed.
-
 
 
 Lemma straight_path_similarity (f : similarity R2) x y r :

@@ -692,7 +692,8 @@ Qed.
 (* The proof is essentially a well-founded induction on [measure config].
  * Fairness ensures that the measure must decrease at some point. *)
 Theorem weber_correct config : forall d,
-  Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
+  Fair d -> 
+  Stream.forever (Stream.instant similarity_da_prop) d ->
   eventually_aligned config d gatherW.
 Proof using delta_g0 lt_0n.
 assert (Hdelta1 : (Rmin delta 1 > 0)%R).

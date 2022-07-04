@@ -1239,8 +1239,11 @@ Qed.
  * Then they will eventually be aligned. *)
 Theorem weber_correct config d :
   Fair d -> 
-  config_stay config -> (* the initial configuration satisfies this property. *)
+  (* Initially no robot is moving. *)
+  config_stay config ->
+  (* Frame changes (chosen by the demon) are similarities centered on the observing robot. *)
   Stream.forever (Stream.instant similarity_da_prop) d ->
+  (* We are in a flexible setting. *)
   Stream.forever (Stream.instant flex_da_prop) d ->
   eventually_aligned config d gatherW.
 Proof using lt_0n delta_g0.

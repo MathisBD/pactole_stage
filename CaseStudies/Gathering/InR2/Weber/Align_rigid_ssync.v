@@ -443,7 +443,8 @@ Qed.
 (* The proof is essentially a well-founded induction on [measure config].
  * Fairness ensures that the measure must decrease at some point. *)
 Theorem weber_correct (d : demon) config : 
-  Fair d -> Stream.forever (Stream.instant similarity_da_prop) d ->
+  Fair d -> 
+  Stream.forever (Stream.instant similarity_da_prop) d ->
   eventually_aligned config d gatherW.
 Proof using lt_0n.
 remember (measure config) as k. 

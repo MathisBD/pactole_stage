@@ -1124,7 +1124,7 @@ Theorem weber_correct config d :
   config_stay config -> 
   (* Initially, the configuration has a unique weber point *)
   OnlyWeber (pos_list config) (weber_calc (pos_list config)) -> 
-  (* The frame changes (chosen by the demon) are similarities. *)
+  (* The frame changes (chosen by the demon) are similarities centered on the observing robot. *)
   Stream.forever (Stream.instant similarity_da_prop) d ->
   (* We are in a flexible setting *)
   Stream.forever (Stream.instant flex_da_prop) d ->
