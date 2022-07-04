@@ -1,0 +1,67 @@
+%%  -*- ispell-local-dictionary: "american-w_accents" -*-
+\documentclass[utf8x]{beamer}
+\usepackage{etex}
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsthm,amsfonts}
+\usepackage[all, color, pdf]{xy}
+\usepackage{mathtools}
+\usepackage{xcolor}
+%\usepackage{realboxes} % for \Colorbox
+\usepackage{skull} % for \skull
+%\usepackage{ulem}
+\usepackage{marvosym} % for \Lightning
+\usepackage{amssymb}
+\usepackage{cancel}
+\usepackage{fourier} % for \danger
+\usepackage{tikz}
+\usetikzlibrary{arrows, decorations.pathmorphing, decorations.pathreplacing,
+  decorations.markings, decorations.text, positioning, shapes.geometric,
+  arrows.meta, backgrounds, fit, math}
+  %arrows.meta, backgrounds, fit, math,shapes,calc
+%\usepackage{manfnt}
+\usepackage[scaled=0.85]{beramono}
+\renewcommand{\ttdefault}{pcr}
+\usepackage{listings}
+%\lstset{backgroundcolor=\color{black!15}}
+%\lstset{basicstyle=\scriptsize\bf\ttfamily,escapeinside={(*@}{@*)}}
+
+\lstset{escapeinside={(*@}{@*)}}
+
+%\usecolortheme{crane}
+
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamercovered{invisible}
+
+\definecolor{mygreen}{rgb}{0,.6,0}
+\newcommand\hfilll{\hskip 0pt plus 1filll}
+\newcommand\cit[1]{\hfill {\scriptsize \textcolor{purple}{[#1]}}}
+\newcommand\gris[1]{\uncover{{\color{gray} #1}}}
+\newcommand\auteur[2]{#1~\textsc{#2}}
+\newcommand\mycite[1]{\textcolor{purple}{#1}}
+\newcommand\Checkmark{\textcolor{mygreen}{\checkmark}}
+\newcommand<>{\alertb}[1]{\alt#2{\textcolor{blue}{#1}}{#1}}
+
+% Rising dots
+\makeatletter
+\def\revddots{\mathinner{\mkern1mu\raise\p@
+\vbox{\kern7\p@\hbox{.}}\mkern2mu
+\raise4\p@\hbox{.}\mkern2mu\raise7\p@\hbox{.}\mkern1mu}}
+\makeatother
+
+
+\usetikzlibrary{arrows,chains,calc}
+
+\title{}
+\author{\auteur{Mathis}{Bouverot-Dupuis}}
+\institute{CNAM -- ??}
+\date[12 juillet 2022]{12 juillet 2022}
+
+
+\begin{document}
+
+\frame{\maketitle}
+
+\end{document}
