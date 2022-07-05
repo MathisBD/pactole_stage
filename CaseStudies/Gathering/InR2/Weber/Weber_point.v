@@ -288,7 +288,7 @@ apply list_sum_ge_0. rewrite Forall_forall. intros d Hin. rewrite in_map_iff in 
 destruct Hin as [y [Hd Hin]]. rewrite <-Hd. apply dist_nonneg.
 Qed.
 
-(* [argmin f P] is the set of elements that minimize [f] in the set [P],
+(* [argmin f] is the set of elements that minimize [f],
  * when sets are represented by membership predicates. *)
 Definition argmin {A : Type} (f : A -> R) : A -> Prop := 
   fun a => forall b, (f a <= f b)%R.

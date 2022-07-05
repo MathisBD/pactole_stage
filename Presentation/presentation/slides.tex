@@ -15,15 +15,12 @@
 \usepackage{amssymb}
 \usepackage{cancel}
 \usepackage{fourier} % for \danger
-\usepackage{tikz}
-\usetikzlibrary{arrows, decorations.pathmorphing, decorations.pathreplacing,
-  decorations.markings, decorations.text, positioning, shapes.geometric,
-  arrows.meta, backgrounds, fit, math}
-  %arrows.meta, backgrounds, fit, math,shapes,calc
-%\usepackage{manfnt}
 \usepackage[scaled=0.85]{beramono}
 \renewcommand{\ttdefault}{pcr}
 \usepackage{listings}
+\usepackage{lstcoq}
+\lstset{language=Coq}
+
 %\lstset{backgroundcolor=\color{black!15}}
 %\lstset{basicstyle=\scriptsize\bf\ttfamily,escapeinside={(*@}{@*)}}
 
@@ -63,5 +60,60 @@
 \begin{document}
 
 \frame{\maketitle}
+
+\begin{frame}
+  \tableofcontents
+\end{frame}
+
+\section{Model}
+%%%%%%%%%%%%%%%
+
+\begin{frame}
+  \frametitle{Suzuji \& Yamashita's Model}
+
+  \begin{overlayarea}{\linewidth}{10em}
+  \begin{minipage}{.45 \linewidth}
+    Very simple (dumb) robots :
+    \begin{itemize}
+      \item<1-> Points in $R^2$ (can overlap)
+      \item<2-> Anonymous
+      \item<3-> No direct communication
+      \item<4-> No common direction/scale 
+      \item<5-> Strong multiplicity detection
+      \item<6-> Same robogram
+    \end{itemize}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{.45 \linewidth}
+    \includegraphics<1-3>[width=\linewidth, keepaspectratio]{figures/points_scattered}
+    \includegraphics<4->[width=\linewidth, keepaspectratio]{figures/points_referential}
+  \end{minipage}
+  \end{overlayarea}
+\end{frame}
+
+
+% align en coq
+
+\begin{frame}[fragile]
+  \frametitle{Aligment : Goal}
+  \begin{overlayarea}{\linewidth}{10em}
+    Goal : move robots to a common line, and make them stay on the line.
+    
+    %\includegraphics<1>[width=\linewidth, keepaspectratio]{figures/points_align}
+    \begin{lstlisting}[language=Coq]
+      Definition round (r:robogram) (da:demonic_action) cfg
+    \end{lstlisting}
+  \end{overlayarea}
+\end{frame}
+
+\section{Weber Point}
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{Alignment}
+%%%%%%%%%%%%%%%
+
+\section{Gathering}
+%%%%%%%%%%%%%%%%%%%
+% -> citer propriété de Zohir Bouzid
 
 \end{document}

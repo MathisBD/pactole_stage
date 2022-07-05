@@ -1,0 +1,93 @@
+%%
+%% Coq definition (c) 2001 Guillaume Dufay 
+%%                           <Guillaume.Dufay@sophia.inria.fr>
+%%
+\lstdefinelanguage{Coq}%
+  {morekeywords={let,in,signature,polyinterpkind,termination,%
+      coq_certify_proof,termcrit,Goal,Notation,Class%
+      Variable,Inductive,CoInductive,Fixpoint,CoFixpoint,Function,%
+      Definition,Lemma,Theorem,Axiom,Local,Save,Grammar,Syntax,intro,%
+      trivial,Qed,intros,symmetry,simpl,rewrite,apply,elim,assumption,%
+      left,cut,match,auto,unfold,exact,right,Hypothesis,pattern,destruct,%
+      constructor,Defined,Fix,Record,Proof,induction,Hints,exists,%% exists_,%
+%      myexb,myforb,myex_,%
+      Parameter,Parameters,split,red,reflexivity,transitivity,if,then,else,%
+      Opaque,Transparent,inversion,absurd,generalize,Mutual,of,end,with,%
+      Class,Module,Type,Prop,Declare,Section,End,Import,fun,Rewall,match,fail,%
+      eauto,repeat,replace,progress,forall,forallb,autorewrite,Functional,%
+      Scheme,params,refine,using,discriminate,try,solve,functional,%
+      Instance,Corollary,%
+%      nat_ind,le_ind,%
+    },%
+   sensitive,%
+   morecomment=[n]{(*}{*)},%
+   %commentstyle={\ttfamily\color{red!75!black}},
+   escapeinside={(*@}{@*)},%
+   morestring=[d]",%
+   literate={=>}{{$\Rightarrow$}}2{>->}{{$\rightarrowtail$}}2%
+{->}{{$\mathop{\to{}}$}}1{~}{{$\ $}}1{\\not}{{$\neg$}}1%
+{<->}{{$\Leftrightarrow$}}1
+% Necessite amssymb %%%%%%%%%%%%%%
+{\\Parrow}{{$\Rrightarrow$}}1%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+{==}{{$\equiv$}}1%
+{<>}{{$\neq$}}1%
+{<=}{{$\leq$}}1%
+{/\\}{{$\land$}}2{\\/}{{$\lor$}}2%
+{forall}{{$\forall$}}1{exists}{{$\exists$}}1%
+{forallb}{{forallb}}7%
+{myforb}{{forallb}}7%
+{myexb}{{existsb}}7%
+{myex_}{{exists_}}6%
+{exists_}{{exists}}6%
+{\\G}{{$\mathrm{\Gamma}$}}1{|-}{{$\vdash$}}2%
+{\\D}{{$\mathrm{\Delta}$}}1{-o}{{$\multimap$}}3%
+{\\E}{{$\mathrm{\Delta\!}$\textquotesingle}}2%
+{**}{{$\otimes$}}1{++}{{$\oplus$}}1%
+{\\emptyset}{{$\emptyset$}}1{\\in}{{$\in$}}2%
+{\\Top}{{$\top$}}1{\\U}{{$\cup$}}3%
+{epsilon}{{$\varepsilon$}}1%
+{\\!}{{$\!$}}1{\\phi}{{$\phi$}}1%
+{Qc}{{$\mathbb{Q}$}}1%
+{Rset}{{$\mathbb{R}$}}1%
+{Zset}{{$\mathbb{Z}$}}1%
+{\%R}{{$_\mathbb{R}$}}1%
+{\%R2}{{$_{\mathbb{R}^2}$}}1%
+{\%nat}{{$_\mathbb{N}$}}1%
+{\%Z}{{$_\mathbb{Z}$}}1%
+{\%V}{{$_V$}}1%
+{\]\]}{$\texttt{]\!]}$}1% $\texttt{$[\![#1]\!]$
+{\[\[}{$\texttt{[\![}$}1% $\texttt{$[\![#1]\!]$
+%{\{}{$\texttt{\{}$}1%
+{\{}{{\normalsize\bf\ttfamily\{}}1%
+{\}}{{\normalsize\bf\ttfamily\}}}1%
+{;}{{\normalsize\bf\ttfamily;}}1%
+{sigma}{$\sigma$}1%
+{delta}{$\delta$}1%
+{uplus}{$\uplus$}1%
+{lceil}{$\lceil$}1%
+{rceil}{$\rceil$}1%
+{singl}{$\texttt{\{\!\,\cdot\,\!\}}$}2%
+{\\o}{$\circ$}1%
+{^-1}{{${}^{\texttt -1}${}}}1%
+{__}{{\_}}1%
+% {_0}{{${}_{\tt 0}${}}}1%
+ {_1}{{${}_{\tt 1}${}}}1%
+ {_2}{{${}_{\tt 2}${}}}1%
+ {_3}{{${}_{\tt 3}${}}}1%
+% {_4}{{${}_{\tt 4}${}}}1%
+% {_n}{{${}_{\tt n}${}}}1%
+% {_k}{{${}_{\tt k}${}}}1%
+{~}{$\neg$}1%
+}[keywords,comments,strings]%
+\endinput
+
+
+%%% Local Variables: ***
+%%% mode: latex ***
+%%% TeX-PDF-mode: t ***
+%%% ispell-dictionary: "british" ***
+%%% ispell-local-dictionary: "british" ***
+%%% mode: flyspell ***
+%%% TeX-master: "main" ***
+%%% End: ***

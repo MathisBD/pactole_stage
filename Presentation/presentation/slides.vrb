@@ -1,0 +1,9 @@
+\frametitle{Aligment : Goal}
+  \begin{overlayarea}{\linewidth}{10em}
+    Goal : move robots to a common line, and make them stay on the line.
+
+    %\includegraphics<1>[width=\linewidth, keepaspectratio]{figures/points_align}
+    \begin{lstlisting}[language=Coq]
+      Definition round (r:robogram) (da:demonic_action) cfg
+    \end{lstlisting}
+  \end{overlayarea}
