@@ -1,0 +1,575 @@
+\RequirePackage{tikz,pgf,colortbl}
+
+
+\definecolor{colorCtitle}{rgb}{0.92,0.92,.95}
+\definecolor{myblue}{rgb}{0.3,0.3,.7}
+\definecolor{kwcolor}{rgb}{0,0,1}
+\definecolor{commentcolor}{rgb}{.6,.3,.3}
+\definecolor{kindcolor}{rgb}{0.1,0.5,.1}
+
+% Background color by language
+\definecolor{colorpy}{RGB}{247,245,243}
+\definecolor{colorasm}{RGB}{255,250,240}
+\definecolor{colorpascal}{RGB}{255,250,240}
+\definecolor{colorpascaltitle}{RGB}{240,245,235}
+\definecolor{colorJ}{rgb}{0.95,0.95,.98}
+\definecolor{colorJtitle}{rgb}{0.92,0.92,.95}
+\definecolor{colorOcamltitle}{rgb}{0.92,0.95,.95}
+\definecolor{colorOcaml}{rgb}{0.95,0.98,.98}
+\definecolor{colorCoq}{rgb}{0.95,0.95,.98}
+
+% Change this to change the font in listings
+\newcommand{\blstfont}{\fontfamily{pcr}}
+
+\lstset{flexiblecolumns=false,mathescape=true,language=C,showstringspaces=false,
+  rangeprefix=/*-,rangesuffix=-*/,includerangemarker=false,
+  basicstyle=\tt,
+  %keywordstyle=\bf\color{kwcolor},
+  %commentstyle=\it\color{commentcolor},
+  %keywordstyle=[2]\bf\color{kindcolor},
+  stringstyle=\color{red!40!black},
+}
+\lstset{escapeinside={/*@}{@*/}}
+
+\lstdefinestyle{normal}
+{
+  basicstyle=\blstfont\normalsize,%
+}
+\lstdefinestyle{big}
+{
+  basicstyle=\normalsize\bf\blstfont,%
+}
+\lstdefinestyle{small}
+{
+  basicstyle=\blstfont\small,%
+  keywordstyle=\bfseries\color{kwcolor},%
+  commentstyle=\itshape\blstfont\color{myblue}
+}
+
+\lstdefinestyle{invisible}
+{
+  basicstyle=\blstfont\color{white},%
+  keywordstyle=\bfseries\color{white},%
+  commentstyle=\itshape\blstfont\color{white}
+}
+
+\lstdefinestyle{script}
+{
+  basicstyle=\blstfont\scriptsize,%
+  keywordstyle=\bfseries\color{kwcolor},%
+  commentstyle=\itshape\blstfont\color{commentcolor}
+}
+
+\lstdefinestyle{lightscript}
+{
+  basicstyle=\blstfont\scriptsize\color{lightgray},
+  keywordstyle=\bfseries\color{lightgray},
+  commentstyle=\itshape\blstfont\color{lightgray}
+}
+\lstdefinestyle{lightsmall}
+{
+  basicstyle=\blstfont\small\color{lightgray},
+  keywordstyle=\bfseries\color{lightgray},
+  commentstyle=\itshape\blstfont\color{lightgray}
+}
+
+
+% Dans lstlisting on fait plus petit
+\AtBeginEnvironment{lstlisting}{\lstset{style=script}}
+
+\usepackage[many]{tcolorbox}
+\tcbuselibrary{listings,xparse}
+\def\commonlstenvoptions{
+   % spartan,
+   %frame empty,
+   arc=4pt,outer arc=4pt,
+   %size=minimal,
+   boxsep=0pt, % unit (pt,mm) mandatory here
+   boxrule=.1px,
+   left=1mm,right=2mm,top=-2mm,bottom=-2mm,
+   listing only
+}
+
+\def\commonlstinlineoptions{
+  colupper=black,nobeforeafter,tcbox raise base,
+  arc=2pt,outer arc=2pt,
+  boxrule=.1px,
+  boxsep=0pt,left=1.5pt,right=1.5pt,top=3pt,bottom=2.8pt,
+}
+
+
+\newtcblisting{lstlistingC}[1][]
+ {
+   colback=colorCoq,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}C},
+   listing options={
+     
+     #1
+   }
+ }
+
+% Pour changer le nom du langage: C\# C++
+\newtcblisting{lstlistingCarg}[3][]
+ {
+   colback=colorCoq,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}#2},
+   listing options={
+     language=#3,
+     
+     #1
+   }
+ }
+
+
+\newtcblisting{lstlistingPy}[1][]
+ {
+   colback=colorpy,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Python},
+   listing options={
+     
+     language=python,
+     #1
+   }
+ }
+
+
+\newtcblisting{lstlistingAsm}[1][]
+ {
+   colback=colorasm,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Assembleur},
+   listing options={
+     
+     #1
+   }
+ }
+
+\newtcblisting{lstlistingAsmT}[2][]
+ {
+   colback=colorasm,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}#2},
+   listing options={
+     
+     #1
+   }
+ }
+
+
+
+\newtcblisting{lstlistingJava}[1][]
+ {
+   colback=colorJ,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorJtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Java},
+   listing options={
+     language=Java,
+     
+     #1
+   }
+ }
+
+\newtcblisting{lstlistingOcaml}[1][]
+ {
+   colback=colorOcaml,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorOcamltitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Ocaml},
+   listing options={
+     language=Caml, %[Objective]?
+     escapeinside={(*@}{@*)},
+     
+     #1
+   }
+ }
+
+\newtcblisting{lstlistingPascal}[1][]
+ {
+   colbacktitle=colorpascaltitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Pascal},
+   %title=\hfill\tt\bfseries Pascal,
+   colback=colorpascal,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=Pascal,
+     
+     morekeywords={Use,},
+     #1
+   }
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingC}[2][]
+ {
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}C},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorCoq,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     
+     #1
+   },
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingPy}[2][]
+ {
+   colbacktitle=colorCtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Python},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorpy,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     
+     language=Python,
+     #1
+   },
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingJ}[2][]
+ {
+   colbacktitle=colorJtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Java},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorJ,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=Java,
+     
+     #1
+   },
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingOcaml}[2][]
+ {
+   colbacktitle=colorOcamltitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Ocaml},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorOcaml,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=Caml,
+     escapeinside={(*@}{@*)},
+     
+     #1
+   },
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingPascal}[2][]
+{
+   colbacktitle=colorpascaltitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Pascal},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorpascal,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=Pascal,
+     morekeywords={Use,},
+     
+     #1
+   },
+ }
+
+
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingasm}[2][]
+{
+   listing engine=listings,
+   listing file={#2},
+   colback=colorasm,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     %language={[x86masm]Assembler},
+     
+     #1
+   },
+ }
+
+% \lstinlineCv{foo} ou bien \lstinlineCv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineCv}{ O{white} v}
+{ colback=colorCoq,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineC}{ O{white} m}
+{ colback=colorCoq,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline!#2!}
+
+% \lstinlinePyv{foo} ou bien \lstinlinePyv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlinePyv}{ O{white} v}
+{ colback=colorpy,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline[language=Python,style=small]!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlinePy}{ O{white} m}
+{ colback=colorpy,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Python,style=small]!#2!}
+
+% \lstinlineCv{foo} ou bien \lstinlineCv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineAsmv}{ O{white} v}
+{ colback=colorasm,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineAsm}{ O{white} m}
+{ colback=colorasm,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline!#2!}
+
+
+
+% \lstinlineOcamlv{foo} ou bien \lstinlineOcamlv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineOcamlv}{ O{white} v}
+{ colback=colorOcaml,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Caml,escapeinside={(*@}{@*)}]!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineOcaml}{ O{white} m}
+{ colback=colorOcaml,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline[language=Caml,escapeinside={(*@}{@*)}]!#2!}
+
+% \lstinlineCv{foo} ou bien \lstinlineCv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlinePv}{ O{white} v}
+{ colback=colorpascal,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+   listing options={
+     language=Pascal
+   }
+}
+{\lstinline!#2!}
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineP}{ O{white} m}
+{ colback=colorpascal,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+   listing options={
+     language=Pascal
+   }
+}
+{\lstinline!#2!}
+
+% \lstinlineCv{foo} ou bien \lstinlineCv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineJv}{ O{white} v}
+{ colback=colorJ,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Java,style=small]!#2!}
+% ############
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineJ}{ O{white} m}
+{ colback=colorJ,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Java,style=small]!#2!}
+
+
+
+ %%%%% HTML
+\definecolor{colorHtmltitle}{rgb}{0.92,0.95,.95}
+\definecolor{colorHtml}{rgb}{0.95,0.98,.98}
+
+\newtcblisting{lstlistingHtml}[1][]
+ {
+   colback=colorHtml,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorHtmltitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Html},
+   listing options={
+     language=html, %[Objective]?
+     escapeinside={(*@}{@*)},
+     
+     #1
+   }
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingHtml}[2][]
+ {
+   colbacktitle=colorHtmltitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Html},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorHtml,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=HTML,
+     escapeinside={(*@}{@*)},
+     
+     #1
+   },
+ }
+
+
+% \lstinlineHtmlv{foo} ou bien \lstinlineHtmlv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineHtmlv}{ O{white} v}
+{ colback=colorHtml,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Html,escapeinside={(*@}{@*)}]!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineHtml}{ O{white} m}
+{ colback=colorHtml,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline[language=html,escapeinside={(*@}{@*)}]!#2!}
+
+
+ %%%%% COQ
+\definecolor{colorCoqtitle}{rgb}{0.92,0.95,.95}
+\definecolor{colorCoq}{rgb}{0.95,0.98,.98}
+
+\newtcblisting{lstlistingCoq}[1][]
+ {
+   colback=colorCoq,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorCoqtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Coq},
+   listing options={
+     language=Coq, %[Objective]?
+     escapeinside={(*@}{@*)},
+     #1
+   }
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingCoq}[2][]
+ {
+   colbacktitle=colorCoqtitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}Coq},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorCoq,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=Coq,
+     escapeinside={(*@}{@*)},
+     
+     #1
+   },
+ }
+
+
+% \lstinlineCoqv{foo} ou bien \lstinlineCoqv!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineCoqv}{ O{white} v}
+{ colback=colorCoq,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Coq,escapeinside={(*@}{@*)}]!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineCoq}{ O{white} m}
+{ colback=colorCoq,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline[language=Coq,escapeinside={(*@}{@*)}]!#2!}
+
+
+ %%%%% NO
+\definecolor{colorNotitle}{rgb}{0.95,0.92,.93}
+\definecolor{colorNo}{rgb}{0.98,0.95,.96}
+
+\newtcblisting{lstlistingNo}[1][]
+ {
+   colback=colorNo,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   colbacktitle=colorNotitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}},
+   listing options={
+     language=Caml, %[Objective]?
+     escapeinside={(*@}{@*)},
+     
+     #1
+   }
+ }
+
+% La même chose pour lstinputlisting
+\newtcbinputlisting{\lstinputlistingNo}[2][]
+ {
+   colbacktitle=colorNotitle,
+   adjusted title=\hfill\normalsize\tt\bfseries {\color{gray}},
+   listing engine=listings,
+   listing file={#2},
+   colback=colorNo,
+   code={\pgfkeysalsofrom{\commonlstenvoptions}},
+   listing options={
+     language=Caml,
+     escapeinside={(*@}{@*)},
+     #1
+   },
+ }
+
+
+% \lstinlineNov{foo} ou bien \lstinlineNov!foo! etc
+% ATTENTION: si dans un argument de macro ça ne marche pas
+\NewTotalTCBox{\lstinlineNov}{ O{white} v}
+{ colback=colorNo,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}},
+}
+{\lstinline[language=Caml,escapeinside={(*@}{@*)}]!#2!}
+
+% Version qui ne peut pas aller dans un argument de macro, on utilse
+% {} comme parenthésage MAIS ATTENTION le code est interprété
+% BUH MARCHE PAS dans une macro \only...
+\NewTotalTCBox{\lstinlineNo}{ O{white} m}
+{ colback=colorNo,
+  code={\pgfkeysalsofrom{\commonlstinlineoptions}}
+}
+{\lstinline[language=Caml,escapeinside={(*@}{@*)}]!#2!}

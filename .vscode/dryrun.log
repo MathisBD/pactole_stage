@@ -1,8 +1,6 @@
 make --dry-run --always-make --keep-going --print-directory
 make: Entering directory '/home/mathis/src/pactole-stage'
  
-make: Warning: File 'Makefile.conf' has modification time 6152 s in the future
-
 COQDEP VFILES
  
 coq_makefile -f _CoqProject -o Makefile
@@ -62,12 +60,12 @@ echo ""COQC Util/Bijection.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Util/Bijection.v 
 echo ""COQC Util/Stream.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Util/Stream.v 
+ 
 echo ""COQC Util/Lexprod.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Util/Lexprod.v 
 echo ""COQC Util/Ratio.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Util/Ratio.v 
 echo ""COQC Core/Identifiers.v
- 
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Core/Identifiers.v 
 echo ""COQC Core/State.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Core/State.v 
@@ -85,6 +83,7 @@ echo ""COQC Spaces/EuclideanSpace.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Spaces/EuclideanSpace.v 
 echo ""COQC Spaces/Similarity.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Spaces/Similarity.v 
+ 
 echo ""COQC Core/Formalism.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Core/Formalism.v 
 echo ""COQC Setting.v
@@ -103,13 +102,13 @@ echo ""COQC Models/RigidFlexibleEquivalence_Assumptions.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Models/RigidFlexibleEquivalence_Assumptions.v 
 echo ""COQC Spaces/Graph.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Spaces/Graph.v 
+ 
 echo ""COQC Spaces/Isomorphism.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Spaces/Isomorphism.v 
 echo ""COQC Models/DiscreteGraph.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Models/DiscreteGraph.v 
 echo ""COQC Models/ContinuousGraph.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Models/ContinuousGraph.v 
- 
 echo ""COQC Models/GraphEquivalence.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Models/GraphEquivalence.v 
 echo ""COQC Spaces/R.v
@@ -124,6 +123,7 @@ echo ""COQC Observations/MultisetObservation.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Observations/MultisetObservation.v 
 echo ""COQC Observations/SetObservation.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Observations/SetObservation.v 
+ 
 echo ""COQC Observations/LimitedSetObservation.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  Observations/LimitedSetObservation.v 
 echo ""COQC Observations/LimitedMultisetObservation.v
@@ -167,12 +167,12 @@ echo ""COQC CaseStudies/Gathering/InR2/Peleg.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Peleg.v 
 echo ""COQC CaseStudies/Gathering/InR2/Peleg_Assumptions.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Peleg_Assumptions.v 
+ 
 echo ""COQC CaseStudies/Gathering/InR2/Viglietta.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Viglietta.v 
 echo ""COQC CaseStudies/Gathering/InR2/Viglietta_Assumptions.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Viglietta_Assumptions.v 
 echo ""COQC CaseStudies/Gathering/InR2/Weber/Utils.v
- 
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Weber/Utils.v 
 echo ""COQC CaseStudies/Gathering/InR2/Weber/Weber_point.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Weber/Weber_point.v 
@@ -182,6 +182,8 @@ echo ""COQC CaseStudies/Gathering/InR2/Weber/Align_flex_ssync.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Weber/Align_flex_ssync.v 
 echo ""COQC CaseStudies/Gathering/InR2/Weber/Align_flex_async.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Weber/Align_flex_async.v 
+echo ""COQC CaseStudies/Gathering/InR2/Weber/Gather_flex_async.v
+"coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Gathering/InR2/Weber/Gather_flex_async.v 
 echo ""COQC CaseStudies/Exploration/Definitions.v
 "coqc"   -q '-w' '-notation-overridden' -set "Suggest Proof Using=yes" "-w" "-deprecated-native-compiler-option" "-native-compiler" "no" -Q . Pactole  CaseStudies/Exploration/Definitions.v 
 echo ""COQC CaseStudies/Exploration/ImpossibilityKDividesN.v

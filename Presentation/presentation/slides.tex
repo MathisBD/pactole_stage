@@ -20,6 +20,8 @@
 \usepackage{listings}
 \usepackage{lstcoq}
 \lstset{language=Coq}
+\usepackage{boxedlistings}
+\lstset{style=script}
 
 %\lstset{backgroundcolor=\color{black!15}}
 %\lstset{basicstyle=\scriptsize\bf\ttfamily,escapeinside={(*@}{@*)}}
@@ -49,8 +51,6 @@
 \makeatother
 
 
-\usetikzlibrary{arrows,chains,calc}
-
 \title{}
 \author{\auteur{Mathis}{Bouverot-Dupuis}}
 \institute{CNAM -- ??}
@@ -65,11 +65,13 @@
   \tableofcontents
 \end{frame}
 
+
+
 \section{Model}
 %%%%%%%%%%%%%%%
 
 \begin{frame}
-  \frametitle{Suzuji \& Yamashita's Model}
+  \frametitle{Suzuki \& Yamashita's Model}
 
   \begin{overlayarea}{\linewidth}{10em}
   \begin{minipage}{.45 \linewidth}
@@ -91,29 +93,276 @@
   \end{overlayarea}
 \end{frame}
 
-
-% align en coq
-
-\begin{frame}[fragile]
-  \frametitle{Aligment : Goal}
-  \begin{overlayarea}{\linewidth}{10em}
-    Goal : move robots to a common line, and make them stay on the line.
-    
-    %\includegraphics<1>[width=\linewidth, keepaspectratio]{figures/points_align}
-    \begin{lstlisting}[language=Coq]
-      Definition round (r:robogram) (da:demonic_action) cfg
-    \end{lstlisting}
-  \end{overlayarea}
-\end{frame}
-
 \section{Weber Point}
 %%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+\frametitle{Weber point : Definition}
+\begin{overlayarea}{\linewidth}{20em}
+
+  \begin{itemize}
+    \item<1-> Let $X$ : multiset of points in $R^2$
+    \item<2-> Sum of distances to X : 
+      $$D_X(p) := \sum_{x \in X} \lVert x - p \rVert$$
+    \item<3-> Set of weber points of X : 
+      $$\{p \mid p \textrm{ minimizes } D_X\}$$
+    \item<4-> Similar to barycenter (sum of distances v.s. sum of distances squared).
+  \end{itemize}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}
+\frametitle{Weber point v.s Barycenter}
+\begin{overlayarea}{\linewidth}{20em}
+
+  \begin{center}
+  \begin{tabular}{ |c|c|c| } 
+    \hline
+           & barycenter & weber point \\ 
+    \hline
+    exists & \only<2->{Yes} & \only<2->{Yes} \\ 
+    \hline
+    unique & \only<3->{Yes} & \only<3->{\textcolor{red}{No}} \\ 
+    \hline
+    computable & \only<4->{Yes} & \only<4->{\textcolor{red}{No}} \\
+    \hline
+  \end{tabular}
+  \end{center}
+
+  \only<5->{When is the weber point unique ?}
+  \begin{itemize}
+    \item<6-> Points not aligned.
+    \item<7-> Odd number of points.
+    \item<8-> Otherwise : sometimes.
+  \end{itemize}
+
+  \only<9->{How about computability ?}
+  \begin{itemize}
+    \item<10-> We don't care (toy example).
+  \end{itemize}
+
+  \only<11->{Why use the weber point ?}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}
+\frametitle{Contraction Lemma}
+\begin{overlayarea}{\linewidth}{20em}
+
+  \begin{itemize}
+    \item<1-> Let \textcolor{red}{$X$}, \textcolor{green}{$Y$} : multiset of points (cf. figure).
+    \item<2-> Suppose \textcolor{blue}{$w$} $\in WP(X)$.
+    \item<3-> Then \textcolor{blue}{$w$} $\in WP(Y)$.
+  \end{itemize}
+
+  \begin{center}
+    \includegraphics[width=0.7\linewidth, keepaspectratio]{figures/weber_contract}
+  \end{center}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}
+\frametitle{Contraction Lemma (proof idea)}
+\begin{overlayarea}{\linewidth}{20em}
+
+  Alternate characterization of weber points :
+  \begin{itemize}
+    \item<2-> Recall $D_X(p) := \sum_{x \in X} \lVert x - p \rVert$.
+    \item<3-> $D_X$ is convex \& differentiable (almost) everywhere.
+    \item<4-> Minimizing $D_X$ $\iff$ gradient of $D_x$ is $0$. 
+    \item<5-> Gradient : 
+      $\nabla D_X(p) = \sum_{x \in X} \frac{p - x}{\lVert p - x \rVert}$
+  \end{itemize}
+  
+  \begin{center}
+    \includegraphics<1-4>[width=0.7\linewidth, keepaspectratio]{figures/weber_charact}
+    \includegraphics<5->[width=0.7\linewidth, keepaspectratio]{figures/weber_charact_arrows}
+  \end{center}
+
+\end{overlayarea}
+\end{frame}
 
 \section{Alignment}
 %%%%%%%%%%%%%%%
 
+\begin{frame}[fragile]
+\frametitle{Alignment}
+\begin{overlayarea}{\linewidth}{20em}
+   
+  Goal : move robots to a common line, and make them stay on the line.
+    
+  \begin{onlyenv}<1>
+    \vspace{2em}
+    \includegraphics[width=\linewidth, keepaspectratio]{figures/points_align}
+  \end{onlyenv}
+  
+  \begin{onlyenv}<2->
+    \begin{lstlistingCoq}
+Definition aligned : configuration -> Prop.
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3->
+    \begin{lstlistingCoq}
+Definition eventually_aligned (c:configuration) 
+(d:demon) (r:robogram) := 
+  Stream.eventually 
+    (Stream.forever (Stream.instant aligned)) 
+    (execute r d c).
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \begin{onlyenv}<4->
+    \begin{lstlistingCoq}
+Theorem alignment_correct := 
+  forall (c:configuration) (d:demon), 
+    (* Hypotheses *) -> 
+    eventually_aligned c d align_robogram.
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Robogram}
+\begin{overlayarea}{\linewidth}{10em}
+
+  Very simple robogram : move towards the weber point (in a straight line) until aligned.
+
+  \begin{onlyenv}<2->
+    \begin{lstlistingCoq}
+Definition align_robogram (obs:observation) : R2 := 
+  if aligned_dec obs
+  then origin 
+  else weber_calc obs.
+  \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3->
+    \begin{lstlistingCoq}
+Definition observation := multiset R2.
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}
+\frametitle{Setting}
+\begin{overlayarea}{\linewidth}{10em}
+
+  Suzuki \& Yamashita's Model : several versions.
+  \begin{itemize}
+    \item<1-> Fully-synchronous (FSYNC), semi-synchronous (SSYNC) or asynchronous (ASYNC) ?
+    \item<2-> Rigid or flexible ?
+  \end{itemize}
+
+  \only<3->{My proofs (alignment) :} 
+  \begin{itemize}
+    \item<4-> SSYNC \& rigid.
+    \item<5-> SSYNC \& flexible.
+    \item<6-> ASYNC (first time in Pactole) \& flexible.
+  \end{itemize}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{ASYNC model}
+\begin{overlayarea}{\linewidth}{20em}
+
+  How do we represent robots ?
+  \begin{itemize}
+    \item<2-> SSYNC : current position only.
+    \item<3-> ASYNC : start, destination \& current positions.
+  \end{itemize}
+
+  \begin{onlyenv}<4->
+    \begin{lstlistingCoq}
+(* start, dest and ratio *)
+Definition info := (location * location * ratio)%type.
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \begin{onlyenv}<5->
+    \begin{lstlistingCoq}
+Instance St : State info := 
+{ get_location := fun '(start, dest, r) => 
+    straight_path start dest r }.
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \only<6->{How to update robots each round ?} 
+  \begin{itemize}
+    \item<7-> Activated robots : 
+      \begin{lstlisting}
+new_start <- straight_path start dest ratio
+new_dest  <- robogram (obs_from_config config)
+new_ratio <- 0
+      \end{lstlisting}
+    \item<8-> Other robots : 
+      \begin{lstlisting}
+new_ratio <- ratio + demon_ratio
+      \end{lstlisting}
+  \end{itemize}
+
+  \only<8->{\textbf{obs\_from\_config} forgets the start and destination.}
+  
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{ASYNC model : rigid \& flexible}
+\begin{overlayarea}{\linewidth}{15em}
+  
+  How to define rigid \& flexible demons in ASYNC ?  
+  \vspace{1em}
+
+  \begin{onlyenv}<2->
+    Rigid : no longer the default setting.
+    \begin{lstlistingCoq}
+Definition rigid_da_prop (da:demonic_action) :=
+  forall (c:configuration) (id:identifier),
+    da.(activate) id = true -> 
+    get_location (c id) == get_destination (c id).
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3->
+    Flexible :
+    \begin{lstlistingCoq}
+Definition flex_da_prop (da:demonic_action) (delta:R) :=
+  forall (c:configuration) (id:identifier),
+    da.(activate) id = true -> 
+    get_location (c id) == get_destination (c id) \/
+    delta <= dist (get_start (c id)) (get_location (c id)).
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+\end{overlayarea}
+\end{frame}
+\begin{frame}
+
+
+\frametitle{Decreasing measure}
+\begin{overlayarea}{\linewidth}{15em}
+
+  We define a measure that decreases each time a robot is activated.
+
+
+
+\end{overlayarea}
+\end{frame}
+
+
 \section{Gathering}
 %%%%%%%%%%%%%%%%%%%
-% -> citer propriété de Zohir Bouzid
+
+
+
 
 \end{document}

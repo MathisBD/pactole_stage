@@ -1,2 +1,6 @@
-Definition round (r:robogram) (da:demonic_action) cfg
+Definition flex_da_prop (da:demonic_action) (delta:R) :=
+  forall (c:configuration) (id:identifier),
+    da.(activate) id = true ->
+    get_location (c id) == get_destination (c id) \/
+    delta <= dist (get_start (c id)) (get_location (c id)).
     
