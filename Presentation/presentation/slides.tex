@@ -1,5 +1,7 @@
 %%  -*- ispell-local-dictionary: "american-w_accents" -*-
+\PassOptionsToPackage{dvipsnames}{xcolor}
 \documentclass[utf8x]{beamer}
+\usepackage[dvipsnames]{xcolor}
 \usepackage{etex}
 \usepackage[english]{babel}
 \usepackage[utf8x]{inputenc}
@@ -7,7 +9,6 @@
 \usepackage{amsmath,amsthm,amsfonts}
 \usepackage[all, color, pdf]{xy}
 \usepackage{mathtools}
-\usepackage{xcolor}
 %\usepackage{realboxes} % for \Colorbox
 \usepackage{skull} % for \skull
 %\usepackage{ulem}
@@ -34,7 +35,6 @@
 \setbeamertemplate{navigation symbols}{}
 \setbeamercovered{invisible}
 
-\definecolor{mygreen}{rgb}{0,.6,0}
 \newcommand\hfilll{\hskip 0pt plus 1filll}
 \newcommand\cit[1]{\hfill {\scriptsize \textcolor{purple}{[#1]}}}
 \newcommand\gris[1]{\uncover{{\color{gray} #1}}}
@@ -51,33 +51,32 @@
 \makeatother
 
 
-\title{}
+\title{Formal Proof of a Gathering Algorithm in the Pactole Framework}
 \author{\auteur{Mathis}{Bouverot-Dupuis}}
-\institute{CNAM -- ??}
-\date[12 juillet 2022]{12 juillet 2022}
+\institute{Boss : Pierre Courtieu (CNAM)}
+\date[12 juillet 2022]{June - July 2022}
 
 
 \begin{document}
-
 \frame{\maketitle}
 
 \begin{frame}
+\frametitle{Talk outline}
   \tableofcontents
 \end{frame}
 
 
-
-\section{Model}
+\section{Suzuki \& Yamashita's Model}
 %%%%%%%%%%%%%%%
 
 \begin{frame}
-  \frametitle{Suzuki \& Yamashita's Model}
-
-  \begin{overlayarea}{\linewidth}{10em}
-  \begin{minipage}{.45 \linewidth}
+\frametitle{Suzuki \& Yamashita's Model}
+\begin{overlayarea}{\linewidth}{10em}
+  
+  \begin{minipage}{.6 \linewidth}
     Very simple (dumb) robots :
     \begin{itemize}
-      \item<1-> Points in $R^2$ (can overlap)
+      \item<1-> Points in $\mathbb{R}^2$ (can overlap)
       \item<2-> Anonymous
       \item<3-> No direct communication
       \item<4-> No common direction/scale 
@@ -86,14 +85,15 @@
     \end{itemize}
   \end{minipage}
   \hfill
-  \begin{minipage}{.45 \linewidth}
+  \begin{minipage}{.38 \linewidth}
     \includegraphics<1-3>[width=\linewidth, keepaspectratio]{figures/points_scattered}
     \includegraphics<4->[width=\linewidth, keepaspectratio]{figures/points_referential}
   \end{minipage}
-  \end{overlayarea}
+
+\end{overlayarea}
 \end{frame}
 
-\section{Weber Point}
+\section{Weber Point Properties}
 %%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}
@@ -101,7 +101,7 @@
 \begin{overlayarea}{\linewidth}{20em}
 
   \begin{itemize}
-    \item<1-> Let $X$ : multiset of points in $R^2$
+    \item<1-> Let $X$ : multiset of points in $\mathbb{R}^2$
     \item<2-> Sum of distances to X : 
       $$D_X(p) := \sum_{x \in X} \lVert x - p \rVert$$
     \item<3-> Set of weber points of X : 
@@ -116,6 +116,8 @@
 \frametitle{Weber point v.s Barycenter}
 \begin{overlayarea}{\linewidth}{20em}
 
+  \vspace{1em}
+
   \begin{center}
   \begin{tabular}{ |c|c|c| } 
     \hline
@@ -129,6 +131,8 @@
     \hline
   \end{tabular}
   \end{center}
+
+  \vspace{1em}
 
   \only<5->{When is the weber point unique ?}
   \begin{itemize}
@@ -152,7 +156,7 @@
 \begin{overlayarea}{\linewidth}{20em}
 
   \begin{itemize}
-    \item<1-> Let \textcolor{red}{$X$}, \textcolor{green}{$Y$} : multiset of points (cf. figure).
+    \item<1-> Let \textcolor{BrickRed}{\bf{X}}, \textcolor{LimeGreen}{\bf{Y}} : multiset of points (cf. figure).
     \item<2-> Suppose \textcolor{blue}{$w$} $\in WP(X)$.
     \item<3-> Then \textcolor{blue}{$w$} $\in WP(Y)$.
   \end{itemize}
@@ -178,8 +182,8 @@
   \end{itemize}
   
   \begin{center}
-    \includegraphics<1-4>[width=0.7\linewidth, keepaspectratio]{figures/weber_charact}
-    \includegraphics<5->[width=0.7\linewidth, keepaspectratio]{figures/weber_charact_arrows}
+    \includegraphics<1-4>[width=0.65\linewidth, keepaspectratio]{figures/weber_charact}
+    \includegraphics<5->[width=0.65\linewidth, keepaspectratio]{figures/weber_charact_arrows}
   \end{center}
 
 \end{overlayarea}
@@ -219,7 +223,7 @@ Definition eventually_aligned (c:configuration)
     \begin{lstlistingCoq}
 Theorem alignment_correct := 
   forall (c:configuration) (d:demon), 
-    (* Hypotheses *) -> 
+    (* Hypotheses on d *) -> 
     eventually_aligned c d align_robogram.
     \end{lstlistingCoq}
   \end{onlyenv}
@@ -283,7 +287,6 @@ Definition observation := multiset R2.
 
   \begin{onlyenv}<4->
     \begin{lstlistingCoq}
-(* start, dest and ratio *)
 Definition info := (location * location * ratio)%type.
     \end{lstlistingCoq}
   \end{onlyenv}
@@ -326,7 +329,7 @@ new_ratio <- ratio + demon_ratio
     Rigid : no longer the default setting.
     \begin{lstlistingCoq}
 Definition rigid_da_prop (da:demonic_action) :=
-  forall (c:configuration) (id:identifier),
+  forall (c:configuration) (id:ident),
     da.(activate) id = true -> 
     get_location (c id) == get_destination (c id).
     \end{lstlistingCoq}
@@ -336,7 +339,7 @@ Definition rigid_da_prop (da:demonic_action) :=
     Flexible :
     \begin{lstlistingCoq}
 Definition flex_da_prop (da:demonic_action) (delta:R) :=
-  forall (c:configuration) (id:identifier),
+  forall (c:configuration) (id:ident),
     da.(activate) id = true -> 
     get_location (c id) == get_destination (c id) \/
     delta <= dist (get_start (c id)) (get_location (c id)).
@@ -345,15 +348,86 @@ Definition flex_da_prop (da:demonic_action) (delta:R) :=
 
 \end{overlayarea}
 \end{frame}
-\begin{frame}
 
 
+\begin{frame}[fragile]
 \frametitle{Decreasing measure}
 \begin{overlayarea}{\linewidth}{15em}
+  
+  We define a measure that decreases each time a robot that isn't on the weber point is activated.
+  
+  \begin{itemize}
+    \item<1-> Simple case : SSYNC \& rigid.
+    \item<2-> Count how many robots have not arrived yet.
+  \end{itemize}
 
-  We define a measure that decreases each time a robot is activated.
+  \begin{onlyenv}<3-> 
+    \begin{lstlistingCoq}
+Definition measure (c:configuration) :=
+  n - countA_occ _ _ (weber_calc c) c.
+    \end{lstlistingCoq}
+  \end{onlyenv} 
+  
+  \begin{onlyenv}<4-> 
+    \begin{lstlistingCoq}
+Lemma round_decreases_measure :
+  forall (c:config) (da:demonic_action), 
+    (* Hypotheses on da *) ->
+    (exists id, da.(activate) id = true /\ 
+      get_location (c id) =/= weber_calc c) -> 
+    aligned (round gatherW da c).
+    \end{lstlistingCoq}
+  \end{onlyenv}
 
+\end{overlayarea}
+\end{frame}
 
+\begin{frame}
+\frametitle{Decreasing measure (ASYNC \& flex)}
+\begin{overlayarea}{\linewidth}{20em}
+  
+  Lifecycle of a robot in ASYNC flex : \\
+  \begin{minipage}{0.32 \linewidth}
+    \includegraphics<2->[width=0.9\linewidth, keepaspectratio]{figures/activate_first}
+  \end{minipage}
+  \begin{minipage}{0.32 \linewidth}
+    \includegraphics<3->[width=0.9\linewidth, keepaspectratio]{figures/activate_second}
+  \end{minipage}
+  \begin{minipage}{0.32 \linewidth}
+    \includegraphics<4->[width=0.9\linewidth, keepaspectratio]{figures/activate_third}
+  \end{minipage}
+
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Decreasing measure (ASYNC \& flex)}
+\begin{overlayarea}{\linewidth}{20em}
+    
+  We need one measure for each type of activation. 
+
+  \begin{itemize}
+    \item<2-> \textbf{measure\textsubscript{1}} : count how many robots are looping but not on the weber point. 
+    \item<3-> \textbf{measure\textsubscript{2}} : count the total distance from the start of each robot to the weber point. 
+    \item<4-> \textbf{measure\textsubscript{3}} : count how many robots are \textbf{not} looping on the weber point.  
+  \end{itemize}
+
+  \only<5->{The final measure is $\textbf{measure\textsubscript{1}} + \textbf{measure\textsubscript{2}} + \textbf{measure\textsubscript{3}}$.}
+  
+  \only<6->{The proof is then a well-founded induction on the measure.}
+
+  \begin{onlyenv}<7-> 
+    \begin{lstlistingCoq}
+Definition lt_config (c1 c2:configuration) :=
+  0 <= measure c1 <= measure c2 - min 1 delta.
+    \end{lstlistingCoq}
+  \end{onlyenv}
+
+  \begin{onlyenv}<8-> 
+    \begin{lstlistingCoq}
+Lemma lt_config_wf : well_founded lt_config.
+    \end{lstlistingCoq}
+  \end{onlyenv}
 
 \end{overlayarea}
 \end{frame}
@@ -363,6 +437,75 @@ Definition flex_da_prop (da:demonic_action) (delta:R) :=
 %%%%%%%%%%%%%%%%%%%
 
 
+\begin{frame}[fragile]
+\frametitle{Gathering}
+\begin{overlayarea}{\linewidth}{20em}
 
+  \vspace{1em}
+
+  Does the algorithm work for gathering ? 
+  \pause
+  \begin{itemize}
+    \item Problem when aligned : weber point is not unique.
+  \end{itemize}
+  \pause 
+  Switch to another algorithm once aligned ?
+  \pause 
+  \begin{itemize}
+    \item Does not work in ASYNC. 
+  \end{itemize}
+  \pause
+  For which initial configurations does the weber algorithm work ?
+  \pause
+  \begin{itemize}
+    \item When the weber point is unique (initially).
+  \end{itemize}
+
+\end{overlayarea}
+\end{frame}
+  
+\begin{frame}
+\frametitle{Strong Contraction Lemma (Zohir Bouzid)}
+\begin{overlayarea}{\linewidth}{20em}
+  
+  \begin{itemize}
+    \item<1-> Let \textcolor{BrickRed}{\bf{X}}, \textcolor{LimeGreen}{\bf{Y}} : multiset of points (cf. figure).
+    \item<2-> Suppose \textcolor{blue}{$w$} is the \textbf{\textcolor{red}{unique}} weber point of $X$.
+    \item<3-> Then \textcolor{blue}{$w$} is the \textbf{\textcolor{red}{unique}} weber point of $Y$.
+  \end{itemize}
+
+  \begin{center}
+    \includegraphics[width=0.7\linewidth, keepaspectratio]{figures/weber_contract}
+  \end{center}
+  
+\end{overlayarea}
+\end{frame}
+
+\begin{frame}
+\frametitle{Recap}
+\begin{overlayarea}{\linewidth}{20em}
+    
+  \begin{itemize}
+    \pause
+    \item Formal proof in Coq of a simple algorithm to solve the gathering problem.
+    \pause
+    \item Formal proof in Coq of the properties of the weber point.
+    \pause
+    \item Assumes the weber point is computable.
+    \pause
+    \item Asynchronous and flexible setting.
+    \pause
+    \item Not universal : initial position must have a unique weber point.
+  \end{itemize}
+
+  \pause 
+  \vspace{2em}
+  \begin{center}
+    \huge Thank you !
+  \end{center}
+
+\end{overlayarea}
+\end{frame}
+  
 
 \end{document}

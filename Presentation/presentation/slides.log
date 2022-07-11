@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.1.5)  5 JUL 2022 17:41
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.1.5)  11 JUL 2022 18:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -210,7 +210,10 @@ Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1368.
 Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1369.
 Package xcolor Info: Model `Gray' substituted by `gray' on input line 1370.
 Package xcolor Info: Model `wave' substituted by `hsb' on input line 1371.
-)
+
+(/usr/local/texlive/2020/texmf-dist/tex/latex/graphics/dvipsnam.def
+File: dvipsnam.def 2016/06/17 v3.0m Driver-dependent file (DPC,SPQR)
+))
 (/usr/local/texlive/2020/texmf-dist/tex/generic/pgf/basiclayer/pgfcore.code.tex
 Package: pgfcore 2020/12/27 v3.1.8b (3.1.8b)
 (/usr/local/texlive/2020/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex
@@ -1599,18 +1602,18 @@ LaTeX Font Info:    Redeclaring math accent \widetilde on input line 60.
 es.toc) [2
 
 ]
-<figures/points_scattered.jpg, id=44, 1204.5pt x 1606.0pt>
+<figures/points_scattered.jpg, id=51, 1204.5pt x 1606.0pt>
 File: figures/points_scattered.jpg Graphic file (type jpg)
 <use figures/points_scattered.jpg>
 Package pdftex.def Info: figures/points_scattered.jpg  used on input line 94.
-(pdftex.def)             Requested size: 138.2795pt x 184.35529pt.
+(pdftex.def)             Requested size: 116.77164pt x 155.68379pt.
 
 Underfull \hbox (badness 10000) in paragraph at lines 94--94
 
  []
 
 
-Overfull \vbox (89.15509pt too high) detected at line 94
+Overfull \vbox (60.4836pt too high) detected at line 94
  []
 
 [3
@@ -1619,14 +1622,14 @@ Overfull \vbox (89.15509pt too high) detected at line 94
 File: figures/points_scattered.jpg Graphic file (type jpg)
 <use figures/points_scattered.jpg>
 Package pdftex.def Info: figures/points_scattered.jpg  used on input line 94.
-(pdftex.def)             Requested size: 138.2795pt x 184.35529pt.
+(pdftex.def)             Requested size: 116.77164pt x 155.68379pt.
 
 Underfull \hbox (badness 10000) in paragraph at lines 94--94
 
  []
 
 
-Overfull \vbox (89.15509pt too high) detected at line 94
+Overfull \vbox (60.4836pt too high) detected at line 94
  []
 
 [4
@@ -1635,27 +1638,27 @@ Overfull \vbox (89.15509pt too high) detected at line 94
 File: figures/points_scattered.jpg Graphic file (type jpg)
 <use figures/points_scattered.jpg>
 Package pdftex.def Info: figures/points_scattered.jpg  used on input line 94.
-(pdftex.def)             Requested size: 138.2795pt x 184.35529pt.
+(pdftex.def)             Requested size: 116.77164pt x 155.68379pt.
 
 Underfull \hbox (badness 10000) in paragraph at lines 94--94
 
  []
 
 
-Overfull \vbox (89.15509pt too high) detected at line 94
+Overfull \vbox (60.4836pt too high) detected at line 94
  []
 
 [5
 
 ]
-<figures/points_referential.jpg, id=62, 1204.5pt x 1606.0pt>
+<figures/points_referential.jpg, id=68, 1204.5pt x 1606.0pt>
 File: figures/points_referential.jpg Graphic file (type jpg)
 <use figures/points_referential.jpg>
 Package pdftex.def Info: figures/points_referential.jpg  used on input line 94.
 
-(pdftex.def)             Requested size: 138.2795pt x 184.35529pt.
+(pdftex.def)             Requested size: 116.77164pt x 155.68379pt.
 
-Overfull \vbox (75.55508pt too high) detected at line 94
+Overfull \vbox (46.88359pt too high) detected at line 94
  []
 
 [6
@@ -1665,9 +1668,9 @@ File: figures/points_referential.jpg Graphic file (type jpg)
 <use figures/points_referential.jpg>
 Package pdftex.def Info: figures/points_referential.jpg  used on input line 94.
 
-(pdftex.def)             Requested size: 138.2795pt x 184.35529pt.
+(pdftex.def)             Requested size: 116.77164pt x 155.68379pt.
 
-Overfull \vbox (75.55508pt too high) detected at line 94
+Overfull \vbox (46.88359pt too high) detected at line 94
  []
 
 [7
@@ -1677,9 +1680,9 @@ File: figures/points_referential.jpg Graphic file (type jpg)
 <use figures/points_referential.jpg>
 Package pdftex.def Info: figures/points_referential.jpg  used on input line 94.
 
-(pdftex.def)             Requested size: 138.2795pt x 184.35529pt.
+(pdftex.def)             Requested size: 116.77164pt x 155.68379pt.
 
-Overfull \vbox (75.55508pt too high) detected at line 94
+Overfull \vbox (46.88359pt too high) detected at line 94
  []
 
 [8
@@ -1721,13 +1724,13 @@ File: t1futs.fd 2004/03/02 Fontinst v1.926 font definitions for T1/futs.
 ] [23
 
 ]
-<figures/weber_contract.jpg, id=160, 635.37375pt x 458.71375pt>
+<figures/weber_contract.jpg, id=167, 635.37375pt x 458.71375pt>
 File: figures/weber_contract.jpg Graphic file (type jpg)
 <use figures/weber_contract.jpg>
-Package pdftex.def Info: figures/weber_contract.jpg  used on input line 165.
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 169.
 (pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
 
-Overfull \vbox (1.32574pt too high) detected at line 165
+Overfull \vbox (1.32574pt too high) detected at line 169
  []
 
 [24
@@ -1735,10 +1738,10 @@ Overfull \vbox (1.32574pt too high) detected at line 165
  <./figures/weber_contract.jpg>]
 File: figures/weber_contract.jpg Graphic file (type jpg)
 <use figures/weber_contract.jpg>
-Package pdftex.def Info: figures/weber_contract.jpg  used on input line 165.
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 169.
 (pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
 
-Overfull \vbox (1.32574pt too high) detected at line 165
+Overfull \vbox (1.32574pt too high) detected at line 169
  []
 
 [25
@@ -1746,22 +1749,22 @@ Overfull \vbox (1.32574pt too high) detected at line 165
 ]
 File: figures/weber_contract.jpg Graphic file (type jpg)
 <use figures/weber_contract.jpg>
-Package pdftex.def Info: figures/weber_contract.jpg  used on input line 165.
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 169.
 (pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
 
-Overfull \vbox (1.32574pt too high) detected at line 165
+Overfull \vbox (1.32574pt too high) detected at line 169
  []
 
 [26
 
 ]
-<figures/weber_charact.jpg, id=177, 635.37375pt x 458.71375pt>
+<figures/weber_charact.jpg, id=185, 635.37375pt x 458.71375pt>
 File: figures/weber_charact.jpg Graphic file (type jpg)
 <use figures/weber_charact.jpg>
-Package pdftex.def Info: figures/weber_charact.jpg  used on input line 186.
-(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+Package pdftex.def Info: figures/weber_charact.jpg  used on input line 190.
+(pdftex.def)             Requested size: 199.73653pt x 144.20161pt.
 
-Overfull \vbox (29.00687pt too high) detected at line 186
+Overfull \vbox (17.91281pt too high) detected at line 190
  []
 
 [27
@@ -1769,10 +1772,10 @@ Overfull \vbox (29.00687pt too high) detected at line 186
  <./figures/weber_charact.jpg>]
 File: figures/weber_charact.jpg Graphic file (type jpg)
 <use figures/weber_charact.jpg>
-Package pdftex.def Info: figures/weber_charact.jpg  used on input line 186.
-(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+Package pdftex.def Info: figures/weber_charact.jpg  used on input line 190.
+(pdftex.def)             Requested size: 199.73653pt x 144.20161pt.
 
-Overfull \vbox (29.00687pt too high) detected at line 186
+Overfull \vbox (17.91281pt too high) detected at line 190
  []
 
 [28
@@ -1780,10 +1783,10 @@ Overfull \vbox (29.00687pt too high) detected at line 186
 ]
 File: figures/weber_charact.jpg Graphic file (type jpg)
 <use figures/weber_charact.jpg>
-Package pdftex.def Info: figures/weber_charact.jpg  used on input line 186.
-(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+Package pdftex.def Info: figures/weber_charact.jpg  used on input line 190.
+(pdftex.def)             Requested size: 199.73653pt x 144.20161pt.
 
-Overfull \vbox (29.00687pt too high) detected at line 186
+Overfull \vbox (17.91281pt too high) detected at line 190
  []
 
 [29
@@ -1791,23 +1794,23 @@ Overfull \vbox (29.00687pt too high) detected at line 186
 ]
 File: figures/weber_charact.jpg Graphic file (type jpg)
 <use figures/weber_charact.jpg>
-Package pdftex.def Info: figures/weber_charact.jpg  used on input line 186.
-(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+Package pdftex.def Info: figures/weber_charact.jpg  used on input line 190.
+(pdftex.def)             Requested size: 199.73653pt x 144.20161pt.
 
-Overfull \vbox (29.00687pt too high) detected at line 186
+Overfull \vbox (17.91281pt too high) detected at line 190
  []
 
 [30
 
 ]
-<figures/weber_charact_arrows.jpg, id=198, 635.37375pt x 458.71375pt>
+<figures/weber_charact_arrows.jpg, id=206, 635.37375pt x 458.71375pt>
 File: figures/weber_charact_arrows.jpg Graphic file (type jpg)
 <use figures/weber_charact_arrows.jpg>
 Package pdftex.def Info: figures/weber_charact_arrows.jpg  used on input line 1
-86.
-(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+90.
+(pdftex.def)             Requested size: 199.73653pt x 144.20161pt.
 
-Overfull \vbox (29.00687pt too high) detected at line 186
+Overfull \vbox (17.91281pt too high) detected at line 190
  []
 
 [31
@@ -1816,7 +1819,7 @@ Overfull \vbox (29.00687pt too high) detected at line 186
 \openout4 = `slides.vrb'.
 
  (./slides.vrb
-<figures/points_align.jpg, id=205, 1056.94875pt x 336.25626pt>
+<figures/points_align.jpg, id=213, 1056.94875pt x 336.25626pt>
 File: figures/points_align.jpg Graphic file (type jpg)
 <use figures/points_align.jpg>
 Package pdftex.def Info: figures/points_align.jpg  used on input line 8.
@@ -1931,37 +1934,37 @@ Overfull \vbox (0.95116pt too high) detected at line 21
 ) [38
 
 ]
-Overfull \vbox (3.05669pt too high) detected at line 272
+Overfull \vbox (3.05669pt too high) detected at line 276
  []
 
 [39
 
 ]
-Overfull \vbox (3.05669pt too high) detected at line 272
+Overfull \vbox (3.05669pt too high) detected at line 276
  []
 
 [40
 
 ]
-Overfull \vbox (16.6567pt too high) detected at line 272
+Overfull \vbox (16.6567pt too high) detected at line 276
  []
 
 [41
 
 ]
-Overfull \vbox (16.6567pt too high) detected at line 272
+Overfull \vbox (16.6567pt too high) detected at line 276
  []
 
 [42
 
 ]
-Overfull \vbox (16.6567pt too high) detected at line 272
+Overfull \vbox (16.6567pt too high) detected at line 276
  []
 
 [43
 
 ]
-Overfull \vbox (16.6567pt too high) detected at line 272
+Overfull \vbox (16.6567pt too high) detected at line 276
  []
 
 [44
@@ -2011,7 +2014,7 @@ Overfull \vbox (16.6567pt too high) detected at line 272
 \openout6 = `slides.listing'.
 
  (./slides.listing)
-Overfull \vbox (15.03976pt too high) detected at line 41
+Overfull \vbox (5.53976pt too high) detected at line 40
  []
 
 ) [49
@@ -2023,7 +2026,7 @@ Overfull \vbox (15.03976pt too high) detected at line 41
 \openout6 = `slides.listing'.
 
  (./slides.listing)
-Overfull \vbox (28.63977pt too high) detected at line 41
+Overfull \vbox (19.13977pt too high) detected at line 40
  []
 
 ) [50
@@ -2035,7 +2038,7 @@ Overfull \vbox (28.63977pt too high) detected at line 41
 \openout6 = `slides.listing'.
 
  (./slides.listing)
-Overfull \vbox (28.63977pt too high) detected at line 41
+Overfull \vbox (19.13977pt too high) detected at line 40
  []
 
 ) [51
@@ -2047,7 +2050,7 @@ Overfull \vbox (28.63977pt too high) detected at line 41
 \openout6 = `slides.listing'.
 
  (./slides.listing)
-Overfull \vbox (46.02797pt too high) detected at line 41
+Overfull \vbox (36.52797pt too high) detected at line 40
  []
 
 ) [52
@@ -2085,7 +2088,220 @@ Overfull \vbox (15.83109pt too high) detected at line 28
 
 ) [55
 
-] [56
+]
+\openout4 = `slides.vrb'.
+
+ (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)) [56
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+
+(./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)) [57
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+
+(./slides.listing)) [58
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+Overfull \vbox (8.25107pt too high) detected at line 29
+ []
+
+) [59
+
+] [60
+
+]
+<figures/activate_first.jpg, id=367, 301.125pt x 655.44875pt>
+File: figures/activate_first.jpg Graphic file (type jpg)
+<use figures/activate_first.jpg>
+Package pdftex.def Info: figures/activate_first.jpg  used on input line 401.
+(pdftex.def)             Requested size: 88.5009pt x 192.6356pt.
+ [61
+
+ <./figures/activate_first.jpg>]
+File: figures/activate_first.jpg Graphic file (type jpg)
+<use figures/activate_first.jpg>
+Package pdftex.def Info: figures/activate_first.jpg  used on input line 401.
+(pdftex.def)             Requested size: 88.5009pt x 192.6356pt.
+<figures/activate_second.jpg, id=374, 301.125pt x 655.44875pt>
+File: figures/activate_second.jpg Graphic file (type jpg)
+<use figures/activate_second.jpg>
+Package pdftex.def Info: figures/activate_second.jpg  used on input line 401.
+(pdftex.def)             Requested size: 88.5009pt x 192.6356pt.
+ [62
+
+ <./figures/activate_second.jpg>]
+File: figures/activate_first.jpg Graphic file (type jpg)
+<use figures/activate_first.jpg>
+Package pdftex.def Info: figures/activate_first.jpg  used on input line 401.
+(pdftex.def)             Requested size: 88.5009pt x 192.6356pt.
+File: figures/activate_second.jpg Graphic file (type jpg)
+<use figures/activate_second.jpg>
+Package pdftex.def Info: figures/activate_second.jpg  used on input line 401.
+(pdftex.def)             Requested size: 88.5009pt x 192.6356pt.
+<figures/activate_third.jpg, id=380, 301.125pt x 655.44875pt>
+File: figures/activate_third.jpg Graphic file (type jpg)
+<use figures/activate_third.jpg>
+Package pdftex.def Info: figures/activate_third.jpg  used on input line 401.
+(pdftex.def)             Requested size: 88.5009pt x 192.6356pt.
+ [63
+
+ <./figures/activate_third.jpg>]
+\openout4 = `slides.vrb'.
+
+ (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+
+(./slides.listing)) [64
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing))
+[65
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)) [66
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+
+(./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)) [67
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+
+(./slides.listing)) [68
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing))
+[69
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+ (./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)) [70
+
+] (./slides.vrb
+\openout6 = `slides.listing'.
+
+
+(./slides.listing)
+\openout6 = `slides.listing'.
+
+ (./slides.listing)) [71
+
+]
+\openout4 = `slides.vrb'.
+
+ (./slides.vrb) [72
+
+] (./slides.vrb)
+[73
+
+] (./slides.vrb) [74
+
+] (./slides.vrb) [75
+
+] (./slides.vrb) [76
+
+] (./slides.vrb) [77
+
+]
+File: figures/weber_contract.jpg Graphic file (type jpg)
+<use figures/weber_contract.jpg>
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 482.
+(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+
+Overfull \vbox (0.71689pt too high) detected at line 482
+ []
+
+[78
+
+]
+File: figures/weber_contract.jpg Graphic file (type jpg)
+<use figures/weber_contract.jpg>
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 482.
+(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+
+Overfull \vbox (0.71689pt too high) detected at line 482
+ []
+
+[79
+
+]
+File: figures/weber_contract.jpg Graphic file (type jpg)
+<use figures/weber_contract.jpg>
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 482.
+(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+
+Overfull \vbox (0.71689pt too high) detected at line 482
+ []
+
+[80
+
+] [81
+
+] [82
+
+] [83
+
+] [84
+
+] [85
+
+] [86
+
+] [87
 
 ]
 \tf@nav=\write9
@@ -2102,36 +2318,39 @@ Overfull \vbox (15.83109pt too high) detected at line 28
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
 Package rerunfilecheck Info: File `slides.out' has not changed.
-(rerunfilecheck)             Checksum: 96530226BD21499C21CF7130B98E45FD;257.
+(rerunfilecheck)             Checksum: 1D08A7E9101C0B3A830810D0F06B03FD;520.
  ) 
 Here is how much of TeX's memory you used:
- 36898 strings out of 479310
- 684983 string characters out of 5867388
- 1101552 words of memory out of 5000000
- 53060 multiletter control sequences out of 15000+600000
- 449810 words of font info for 118 fonts, out of 8000000 for 9000
+ 37247 strings out of 479310
+ 690096 string characters out of 5867388
+ 1107292 words of memory out of 5000000
+ 53251 multiletter control sequences out of 15000+600000
+ 460829 words of font info for 141 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 125i,12n,120p,3226b,1890s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 125i,13n,120p,3226b,1890s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2020/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}
 {/usr/local/texlive/2020/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/tex
 live/2020/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb></usr/local/texl
 ive/2020/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi10.pfb></usr/local/texl
 ive/2020/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi8.pfb></usr/local/texli
-ve/2020/texmf-dist/fonts/type1/public/fourier/fourier-mex.pfb></usr/local/texli
-ve/2020/texmf-dist/fonts/type1/public/fourier/fourier-mlit.pfb></usr/local/texl
-ive/2020/texmf-dist/fonts/type1/public/fourier/fourier-ms.pfb></usr/local/texli
-ve/2020/texmf-dist/fonts/type1/adobe/utopia/putr8a.pfb></usr/local/texlive/2020
-/texmf-dist/fonts/type1/public/cm-super/sfss0800.pfb></usr/local/texlive/2020/t
-exmf-dist/fonts/type1/public/cm-super/sfss1095.pfb></usr/local/texlive/2020/tex
-mf-dist/fonts/type1/public/cm-super/sfss1440.pfb></usr/local/texlive/2020/texmf
--dist/fonts/type1/public/cm-super/sfsx1095.pfb></usr/local/texlive/2020/texmf-d
-ist/fonts/type1/urw/courier/ucrb8a.pfb></usr/local/texlive/2020/texmf-dist/font
-s/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2020/texmf-dist/fonts/type1/
-urw/courier/ucrro8a.pfb>
-Output written on slides.pdf (56 pages, 423576 bytes).
+ve/2020/texmf-dist/fonts/type1/public/fourier/fourier-bb.pfb></usr/local/texliv
+e/2020/texmf-dist/fonts/type1/public/fourier/fourier-mex.pfb></usr/local/texliv
+e/2020/texmf-dist/fonts/type1/public/fourier/fourier-mlit.pfb></usr/local/texli
+ve/2020/texmf-dist/fonts/type1/public/fourier/fourier-ms.pfb></usr/local/texliv
+e/2020/texmf-dist/fonts/type1/adobe/utopia/putr8a.pfb></usr/local/texlive/2020/
+texmf-dist/fonts/type1/public/cm-super/sfss0800.pfb></usr/local/texlive/2020/te
+xmf-dist/fonts/type1/public/cm-super/sfss1095.pfb></usr/local/texlive/2020/texm
+f-dist/fonts/type1/public/cm-super/sfss1440.pfb></usr/local/texlive/2020/texmf-
+dist/fonts/type1/public/cm-super/sfss2074.pfb></usr/local/texlive/2020/texmf-di
+st/fonts/type1/public/cm-super/sfsx0800.pfb></usr/local/texlive/2020/texmf-dist
+/fonts/type1/public/cm-super/sfsx1095.pfb></usr/local/texlive/2020/texmf-dist/f
+onts/type1/urw/courier/ucrb8a.pfb></usr/local/texlive/2020/texmf-dist/fonts/typ
+e1/urw/courier/ucrr8a.pfb></usr/local/texlive/2020/texmf-dist/fonts/type1/urw/c
+ourier/ucrro8a.pfb>
+Output written on slides.pdf (87 pages, 550317 bytes).
 PDF statistics:
- 417 PDF objects out of 1000 (max. 8388607)
- 329 compressed objects within 4 object streams
- 116 named destinations out of 1000 (max. 500000)
- 97 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 610 PDF objects out of 1000 (max. 8388607)
+ 484 compressed objects within 5 object streams
+ 179 named destinations out of 1000 (max. 500000)
+ 120 words of extra memory for PDF output out of 10000 (max. 10000000)
 
