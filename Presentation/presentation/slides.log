@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.1.5)  11 JUL 2022 18:07
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.1.5)  11 JUL 2022 18:21
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2256,24 +2256,15 @@ Package pdftex.def Info: figures/activate_third.jpg  used on input line 401.
 
 ] (./slides.vrb) [77
 
-]
-File: figures/weber_contract.jpg Graphic file (type jpg)
-<use figures/weber_contract.jpg>
-Package pdftex.def Info: figures/weber_contract.jpg  used on input line 482.
-(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
-
-Overfull \vbox (0.71689pt too high) detected at line 482
- []
-
-[78
+] (./slides.vrb) [78
 
 ]
 File: figures/weber_contract.jpg Graphic file (type jpg)
 <use figures/weber_contract.jpg>
-Package pdftex.def Info: figures/weber_contract.jpg  used on input line 482.
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 484.
 (pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
 
-Overfull \vbox (0.71689pt too high) detected at line 482
+Overfull \vbox (0.71689pt too high) detected at line 484
  []
 
 [79
@@ -2281,15 +2272,24 @@ Overfull \vbox (0.71689pt too high) detected at line 482
 ]
 File: figures/weber_contract.jpg Graphic file (type jpg)
 <use figures/weber_contract.jpg>
-Package pdftex.def Info: figures/weber_contract.jpg  used on input line 482.
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 484.
 (pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
 
-Overfull \vbox (0.71689pt too high) detected at line 482
+Overfull \vbox (0.71689pt too high) detected at line 484
  []
 
 [80
 
-] [81
+]
+File: figures/weber_contract.jpg Graphic file (type jpg)
+<use figures/weber_contract.jpg>
+Package pdftex.def Info: figures/weber_contract.jpg  used on input line 484.
+(pdftex.def)             Requested size: 215.10196pt x 155.29567pt.
+
+Overfull \vbox (0.71689pt too high) detected at line 484
+ []
+
+[81
 
 ] [82
 
@@ -2302,6 +2302,8 @@ Overfull \vbox (0.71689pt too high) detected at line 482
 ] [86
 
 ] [87
+
+] [88
 
 ]
 \tf@nav=\write9
@@ -2321,8 +2323,8 @@ Package rerunfilecheck Info: File `slides.out' has not changed.
 (rerunfilecheck)             Checksum: 1D08A7E9101C0B3A830810D0F06B03FD;520.
  ) 
 Here is how much of TeX's memory you used:
- 37247 strings out of 479310
- 690096 string characters out of 5867388
+ 37251 strings out of 479310
+ 690137 string characters out of 5867388
  1107292 words of memory out of 5000000
  53251 multiletter control sequences out of 15000+600000
  460829 words of font info for 141 fonts, out of 8000000 for 9000
@@ -2347,10 +2349,10 @@ st/fonts/type1/public/cm-super/sfsx0800.pfb></usr/local/texlive/2020/texmf-dist
 onts/type1/urw/courier/ucrb8a.pfb></usr/local/texlive/2020/texmf-dist/fonts/typ
 e1/urw/courier/ucrr8a.pfb></usr/local/texlive/2020/texmf-dist/fonts/type1/urw/c
 ourier/ucrro8a.pfb>
-Output written on slides.pdf (87 pages, 550317 bytes).
+Output written on slides.pdf (88 pages, 551759 bytes).
 PDF statistics:
- 610 PDF objects out of 1000 (max. 8388607)
- 484 compressed objects within 5 object streams
- 179 named destinations out of 1000 (max. 500000)
+ 617 PDF objects out of 1000 (max. 8388607)
+ 490 compressed objects within 5 object streams
+ 181 named destinations out of 1000 (max. 500000)
  120 words of extra memory for PDF output out of 10000 (max. 10000000)
 
